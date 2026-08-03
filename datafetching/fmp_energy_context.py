@@ -17,6 +17,7 @@ ENERGY_RETURN_TRANSFORM_VERSION = "signed-log1p-abs-start-v1"
 ENERGY_CANONICAL_INSTRUMENT = "WTI"
 ENERGY_CANONICAL_SYMBOL = "CLUSD"
 ENERGY_PROXY_SYMBOL = "USO"
+FMP_ENERGY_MAX_CLOCK_SKEW_SECONDS = 5.0
 
 ENERGY_CONTEXT_COLUMNS = (
     "context_name",
@@ -76,9 +77,15 @@ def normalize_fmp_quote_timestamps(
     return normalized
 
 
-def calculate_fmp_energy_context(source: pd.DataFrame) -> pd.DataFrame:
+def calculate_fmp_energy_context(
+    source: pd.DataFrame,
+    *,
+    max_clock_skew_seconds: float = FMP_ENERGY_MAX_CLOCK_SKEW_SECONDS,
+) -> pd.DataFrame:
     """Canonicalize CLUSD/USO identity and derive only same-chain returns."""
 
+    if max_clock_skew_seconds < 0:
+        raise ValueError("max_clock_skew_seconds must not be negative")
     if source.empty:
         raise FmpEnergyContextNotReady("Persisted FMP WTI quote history is empty")
     fetched_column = _first_column(source, ("fetched_at",))
@@ -131,10 +138,14 @@ def calculate_fmp_energy_context(source: pd.DataFrame) -> pd.DataFrame:
             raw.get(fetched_column),
             field="fetched_at",
         )
-        if observed_at > fetched_at:
+        clock_skew_seconds = (observed_at - fetched_at).total_seconds()
+        if clock_skew_seconds > max_clock_skew_seconds:
             raise FmpEnergyContextQualityError(
-                "FMP provider quote timestamp is after local receipt"
+                "FMP provider quote timestamp exceeds local receipt by "
+                f"{clock_skew_seconds:.3f}s (maximum allowed clock skew is "
+                f"{max_clock_skew_seconds:.3f}s)"
             )
+        available_at = max(observed_at, fetched_at)
         price = _finite_number(raw.get(price_column), field="price")
         rows.append(
             {
@@ -150,7 +161,7 @@ def calculate_fmp_energy_context(source: pd.DataFrame) -> pd.DataFrame:
                 "return_transform_version": ENERGY_RETURN_TRANSFORM_VERSION,
                 "observed_at": observed_at,
                 "fetched_at": fetched_at,
-                "available_at": fetched_at,
+                "available_at": available_at,
                 "calculation": ENERGY_CONTEXT_CALCULATION,
                 "calculation_version": ENERGY_CONTEXT_CALCULATION_VERSION,
                 "schema_version": ENERGY_CONTEXT_SCHEMA_VERSION,

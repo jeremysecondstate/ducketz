@@ -1,6 +1,6 @@
 # Parquet ID contract
 
-Implementation snapshot: 2026-08-01
+Implementation snapshot: 2026-08-03
 
 This is the repository-wide persistence rule:
 
@@ -20,8 +20,11 @@ Every persisted Parquet must satisfy all of the following:
 2. `id` is a string column and is the first physical field.
 3. Every non-empty row has a non-null, non-blank `id`.
 4. `id` is unique inside that Parquet.
-5. `id` is assembled from the minimum natural columns needed to distinguish the
-   row inside that file.
+5. Declared calculated and Loop B grains assemble `id` from their exact natural
+   columns. Provider-ingestion files prefer the minimum usual natural columns,
+   adaptively add readable event values for real provider collisions, and use a
+   deterministic file-local row fallback only when no safe value combination
+   exists.
 6. Timestamp components use readable UTC ISO-8601 text.
 7. `id` is not a SHA value, digest, UUID, random token, content address, or
    registry key.
@@ -29,7 +32,8 @@ Every persisted Parquet must satisfy all of the following:
    names ending in `*_id` or `*_ids` and names containing the reserved identity
    terms `hash`, `digest`, `fingerprint`, `checksum`, `sha1`, `sha224`,
    `sha256`, `sha384`, `sha512`, `receipt`, `lineage`, `identity`,
-   `content_address`, `uuid`, or `guid`.
+   `content_address`, `uuid`, or `guid`. Provider-native fields with those names
+   are preserved only in raw provider evidence and are not Duckets identities.
 9. Joins use `id` only when two files have the same exact row grain. Otherwise
    they use the readable natural columns shared by both files.
 10. Loop control-plane fields are never persisted in a Parquet. Generations,
@@ -71,7 +75,7 @@ Current writers use these recipes:
 | macro release-context row | `context_name`, `available_at`, `calculation_version` | `fred-release-context\|2026-07-29T20:05:00Z\|1.0.0` |
 | SEC filing-event row | `symbol`, `filing_accepted_at`, `event_type`, `available_at` | `NVDA\|2026-07-29T20:00:00Z\|offering\|2026-07-29T20:05:00Z` |
 | FMP energy-context row | `canonical_instrument`, `provider_instrument`, `available_at`, `calculation_version` | `WTI\|CLUSD\|2026-07-29T20:05:00Z\|1.0.0` |
-| Databento MBP event, raw or normalized | `symbol`, `ts_event`, `sequence`, `action`, `side`, `depth`, `price` | `NQ.v.0\|2026-07-29T17:01:22.486829957Z\|359962893\|T\|A\|0\|27620.5` |
+| Databento MBP event, raw or normalized | usual key: `symbol`, `ts_event`, `sequence`, `action`, `side`, `depth`, `price`; add `size`, `flags`, or another readable event value only for a real collision | `NQ.v.0\|2026-07-29T17:01:22.486829957Z\|359962893\|T\|A\|0\|27620.5` |
 | ML sample | `symbol`, `horizon`, `decision_timestamp` | `NVDA\|1d\|2026-07-29T20:05:00Z` |
 | prediction | `symbol`, `horizon`, `decision_timestamp`, `prediction_created_at` | `NVDA\|1d\|2026-07-29T20:05:00Z\|2026-07-29T21:00:00Z` |
 | evaluation | same four columns as its prediction | `NVDA\|1d\|2026-07-29T20:05:00Z\|2026-07-29T21:00:00Z` |
@@ -102,14 +106,17 @@ The exact contract graph in `legs_json` is not part of the ID. It is an
 ordinary value used to reproduce analytics and draft an order; treating it as
 a hidden content identity is forbidden.
 
-Current writers reject incomplete or non-unique declared natural keys. Immutable
-append writers also reject conflicts with persisted rows; full current-rebuild
-writers atomically replace the complete output. No writer synthesizes a row
-number or fallback ID. Databento MBP responses are deduplicated only when
-provider rows are exact duplicates, before Duckets adds fetch metadata. Distinct
-book events remain separate even when they share timestamps and venue sequence
-numbers. `NO CURRENT ROWS` records use a separate `*_status` latest-snapshot
-Parquet, so an empty provider window cannot change previously persisted events.
+Calculated and Loop B writers reject incomplete or non-unique declared natural
+keys. Immutable append writers also reject conflicts with persisted rows; full
+current-rebuild writers atomically replace the complete output. Provider writers
+do not fail a successful fetch merely because an undocumented provider shape
+does not match a local ID recipe: they extend the readable key and finally use a
+deterministic file-local ordinal. Databento MBP responses are deduplicated only
+when provider rows are exact duplicates, before Duckets adds fetch metadata.
+Distinct book events remain separate even when they share timestamps and venue
+sequence numbers. `NO CURRENT ROWS` records use a separate `*_status`
+latest-snapshot Parquet, so an empty provider window cannot change previously
+persisted events.
 
 ## Before and after: normalized bar
 
@@ -748,18 +755,13 @@ checksum must never be:
 - a model or run name;
 - an input to another identity value.
 
-## Provider-native `*_id` exceptions
+## Provider-native identity fields
 
-The complete allowlist is:
-
-| Field | Provider | Why it remains | Allowed location | Proof of boundary |
-| --- | --- | --- | --- | --- |
-| `instrument_id` | Databento | Native instrument code in the Databento response | raw Databento Parquet only | raw writes preserve provider fields; `datafetching/bar_schema.py` defines normalized bars without it |
-| `publisher_id` | Databento | Native publisher code in the Databento response | raw Databento Parquet only | raw-writer coverage preserves it; normalized bars use the seven-field explicit schema |
-
-These values are data supplied by external providers. Duckets does not generate
-them, does not join normalized or calculated rows on them, and does not copy
-them into model, prediction, evaluation, monitoring, or intelligence Parquets.
+Raw provider payloads preserve provider-native `*_id`, UUID, checksum, digest,
+and hash fields without a source-specific allowlist. These values are evidence
+supplied by an external provider. Duckets does not generate them, does not use
+them as its leading `id`, and does not copy them into normalized, calculated,
+model, prediction, evaluation, monitoring, or intelligence Parquets.
 
 `FredSeriesSpec.series_id` remains a request-configuration field in production
 code, not a persisted Parquet column. FRED Parquets use readable series,
@@ -769,13 +771,14 @@ If a raw provider table itself uses the reserved name `id`, the raw writer
 preserves that value as `provider_native_identifier` before creating the
 Duckets `id`. This readable name is not an additional `*_id` field.
 
-There are no other remaining persisted `*_id` or `*_ids` fields.
+There are no other Duckets-generated persisted `*_id` or `*_ids` fields.
 
 ## Enforcement
 
 The contract is enforced at three levels:
 
-1. shared readable-ID construction rejects missing or non-unique natural keys;
+1. shared provider persistence adaptively resolves readable identity while
+   explicit calculated and Loop B schemas reject invalid declared grains;
 2. explicit Arrow schema builders reject forbidden identity-shaped columns;
 3. repository tests inspect every explicit persisted Parquet schema and exercise
    a clean temporary datastore through one Loop A and one Loop B cycle.

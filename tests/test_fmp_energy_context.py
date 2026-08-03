@@ -10,6 +10,7 @@ from app.services.fmp_macro_context import FmpMacroContextSpec
 from datafetching import fmp_fetch
 from datafetching.fmp_energy_context import (
     ENERGY_CONTEXT_COLUMNS,
+    FmpEnergyContextQualityError,
     calculate_fmp_energy_context,
     fmp_energy_context_path,
     materialize_fmp_energy_context,
@@ -155,6 +156,49 @@ def test_fmp_energy_repairs_legacy_nanosecond_misparse() -> None:
     assert calculated["available_at"].item() == pd.Timestamp(
         "2026-07-29T16:01:00Z"
     )
+
+
+def test_fmp_energy_allows_small_provider_clock_skew_and_delays_availability() -> None:
+    source = pd.DataFrame(
+        [
+            _quote_row(
+                provider_symbol="USO",
+                timestamp="2026-08-03T13:40:01Z",
+                fetched_at="2026-08-03T13:40:00.854380Z",
+                price=119.795,
+                proxy=True,
+            )
+        ]
+    )
+
+    calculated = calculate_fmp_energy_context(source)
+
+    assert calculated["observed_at"].item() == pd.Timestamp(
+        "2026-08-03T13:40:01Z"
+    )
+    assert calculated["fetched_at"].item() == pd.Timestamp(
+        "2026-08-03T13:40:00.854380Z"
+    )
+    assert calculated["available_at"].item() == pd.Timestamp(
+        "2026-08-03T13:40:01Z"
+    )
+
+
+def test_fmp_energy_still_rejects_material_provider_clock_skew() -> None:
+    source = pd.DataFrame(
+        [
+            _quote_row(
+                provider_symbol="USO",
+                timestamp="2026-08-03T13:40:06Z",
+                fetched_at="2026-08-03T13:40:00Z",
+                price=119.795,
+                proxy=True,
+            )
+        ]
+    )
+
+    with pytest.raises(FmpEnergyContextQualityError, match="6.000s"):
+        calculate_fmp_energy_context(source)
 
 
 def test_fmp_source_appends_to_legacy_arrow_timestamp(
@@ -419,6 +463,48 @@ def test_fmp_fetch_normalizes_then_persists_before_materialization(
 
     assert result.data_files == 2
     assert result.error_files == 0
+
+
+def test_fmp_local_quality_skip_is_advisory_not_provider_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _CorporateProvider:
+        base_url = "https://example.test"
+
+        def corporate_specs(self, _: str) -> tuple[()]:
+            return ()
+
+        def _get_json(self, *_: object, **__: object) -> list[object]:
+            return []
+
+    class _MacroProvider:
+        base_url = "https://example.test"
+
+        def commodity_proxy_specs(self) -> tuple[()]:
+            return ()
+
+        def fetch_commodity_proxy_quotes(self, _: tuple[()]) -> list[object]:
+            return []
+
+    def _quality_skip(_: Path) -> None:
+        raise FmpEnergyContextQualityError("optional context is ambiguous")
+
+    monkeypatch.setattr(fmp_fetch, "FmpCorporateDataProvider", _CorporateProvider)
+    monkeypatch.setattr(fmp_fetch, "FmpMacroContextProvider", _MacroProvider)
+    monkeypatch.setattr(fmp_fetch, "materialize_fmp_energy_context", _quality_skip)
+
+    result = fmp_fetch.fetch("NVDA", ParquetStore(tmp_path))
+
+    assert result.error_files == 0
+    assert result.advisory_files == 1
+    advisories = list(tmp_path.rglob("diagnostics/*.parquet"))
+    assert len(advisories) == 1
+    stored = pd.read_parquet(advisories[0])
+    assert stored["severity"].tolist() == ["advisory"]
+    assert stored["advisory_type"].tolist() == [
+        "FmpEnergyContextQualityError"
+    ]
 
 
 def _quote_row(

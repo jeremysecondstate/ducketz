@@ -22,6 +22,7 @@ from datafetching.bar_timing import (
 from datafetching.continuation import latest_normalized_bar_timestamp
 from datafetching.cme_cross_asset_context import (
     CmeCrossAssetNotReady,
+    CmeCrossAssetQualityError,
     materialize_cme_cross_asset_context,
 )
 from datafetching.derived_bars import DERIVED_INTRADAY_FREQUENCIES, derive_intraday_bars
@@ -44,6 +45,7 @@ def fetch(
     """
     data_files = 0
     error_files = 0
+    advisory_files = 0
     provider = DatabentoMarketDataProvider()
     observed_at = datetime.now(timezone.utc)
     native_results = list(_fetch_native_results(provider, symbol, profile, store))
@@ -141,11 +143,12 @@ def fetch(
     error_files += derived_errors
 
     if include_cme:
-        cme_data_files, cme_error_files = _fetch_cme(store)
+        cme_data_files, cme_error_files, cme_advisory_files = _fetch_cme(store)
         data_files += cme_data_files
         error_files += cme_error_files
+        advisory_files += cme_advisory_files
 
-    return FetchResult("databento", data_files, error_files)
+    return FetchResult("databento", data_files, error_files, advisory_files)
 
 
 def _save_derived_intraday_bars(
@@ -305,10 +308,11 @@ def _continuation_overlap(frequency: str) -> timedelta:
         raise ValueError(f"Unsupported Databento native frequency: {frequency}") from exc
 
 
-def _fetch_cme(store: ParquetStore) -> tuple[int, int]:
+def _fetch_cme(store: ParquetStore) -> tuple[int, int, int]:
     provider = DatabentoCmeContextProvider()
     data_files = 0
     error_files = 0
+    advisory_files = 0
 
     try:
         specs = provider.specs()
@@ -322,7 +326,7 @@ def _fetch_cme(store: ParquetStore) -> tuple[int, int]:
             error_message=str(exc),
             pool="cme",
         )
-        return 0, 1
+        return 0, 1, 0
 
     for requested_spec in specs:
         spec = requested_spec
@@ -447,6 +451,25 @@ def _fetch_cme(store: ParquetStore) -> tuple[int, int]:
         calculated_path = materialize_cme_cross_asset_context(store.root_dir)
     except CmeCrossAssetNotReady:
         calculated_path = None
+    except CmeCrossAssetQualityError as exc:
+        advisory_path = store.save_advisory(
+            source="databento",
+            category="macro",
+            symbol="CME_CONTEXT",
+            request_key="cross-asset-context",
+            advisory_type=type(exc).__name__,
+            advisory_message=str(exc),
+            metadata={
+                "calculation": "cross-asset-context",
+                "input_policy": "persisted_rows_only",
+                "provider_rows_preserved": True,
+            },
+            pool="cme",
+        )
+        recorded = advisory_path if advisory_path is not None else "existing advisory"
+        print(f"[CME/cross-asset-context] advisory recorded: {recorded}")
+        advisory_files += 1
+        calculated_path = None
     except Exception as exc:
         store.save_error(
             source="databento",
@@ -466,7 +489,7 @@ def _fetch_cme(store: ParquetStore) -> tuple[int, int]:
     if calculated_path is not None:
         data_files += 1
 
-    return data_files, error_files
+    return data_files, error_files, advisory_files
 
 
 def _cme_target_path(

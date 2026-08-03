@@ -9,6 +9,7 @@ from app.services.fmp_macro_context import FmpMacroContextProvider
 from datafetching import FetchResult
 from datafetching.fmp_energy_context import (
     FmpEnergyContextNotReady,
+    FmpEnergyContextQualityError,
     materialize_fmp_energy_context,
     normalize_fmp_quote_timestamps,
 )
@@ -24,6 +25,7 @@ def fetch(
     """Fetch FMP corporate data and optional shared commodity proxies."""
     data_files = 0
     error_files = 0
+    advisory_files = 0
 
     corporate = FmpCorporateDataProvider()
     corporate_specs = (
@@ -109,7 +111,7 @@ def fetch(
             data_files += 1
 
     if not include_macro:
-        return FetchResult("fmp", data_files, error_files)
+        return FetchResult("fmp", data_files, error_files, advisory_files)
 
     macro = FmpMacroContextProvider()
     commodity_specs = macro.commodity_proxy_specs()
@@ -162,6 +164,23 @@ def fetch(
         calculated_path = materialize_fmp_energy_context(store.root_dir)
     except FmpEnergyContextNotReady:
         calculated_path = None
+    except FmpEnergyContextQualityError as exc:
+        store.save_advisory(
+            source="fmp",
+            category="macro",
+            symbol="ENERGY_CONTEXT",
+            request_key="energy-context",
+            advisory_type=type(exc).__name__,
+            advisory_message=str(exc),
+            metadata={
+                "calculation": "energy-context",
+                "input_policy": "persisted_rows_only",
+                "provider_rows_preserved": True,
+            },
+            pool="macro",
+        )
+        advisory_files += 1
+        calculated_path = None
     except Exception as exc:
         store.save_error(
             source="fmp",
@@ -181,4 +200,4 @@ def fetch(
     if calculated_path is not None:
         data_files += 1
 
-    return FetchResult("fmp", data_files, error_files)
+    return FetchResult("fmp", data_files, error_files, advisory_files)

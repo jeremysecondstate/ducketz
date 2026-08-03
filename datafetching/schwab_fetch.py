@@ -119,7 +119,10 @@ def fetch(symbol: str, store: ParquetStore, *, profile: str = "continuation") ->
     provider = SchwabMarketDataProvider(session=session)
     data_files = 0
     error_files = 0
+    advisory_files = 0
     failure_counts: Counter[str] = Counter()
+    advisory_counts: Counter[str] = Counter()
+    continuation_windows = 0
 
     try:
         quote, raw_quote = provider.fetch_quote(symbol)
@@ -138,16 +141,17 @@ def fetch(symbol: str, store: ParquetStore, *, profile: str = "continuation") ->
             data_files += 1
         except QuoteLiquidityQualityError as exc:
             detail = f"{type(exc).__name__}: {exc}"
-            store.save_error(
+            store.save_advisory(
                 source="schwab",
                 category="quotes",
                 symbol=symbol,
                 request_key="quote_liquidity",
-                error_type=type(exc).__name__,
-                error_message=str(exc),
+                advisory_type=type(exc).__name__,
+                advisory_message=str(exc),
                 metadata={
                     "calculation": "quote-liquidity",
                     "provider_payload_reused": True,
+                    "provider_rows_preserved": True,
                     "quote_event_at": (
                         quote.quote_event_at.isoformat()
                         if quote.quote_event_at is not None
@@ -156,8 +160,8 @@ def fetch(symbol: str, store: ParquetStore, *, profile: str = "continuation") ->
                     "fetched_at": quote.fetched_at.isoformat(),
                 },
             )
-            failure_counts[detail] += 1
-            error_files += 1
+            advisory_counts[detail] += 1
+            advisory_files += 1
     except Exception as exc:
         detail = f"{type(exc).__name__}: {exc}"
         store.save_error(
@@ -195,11 +199,7 @@ def fetch(symbol: str, store: ParquetStore, *, profile: str = "continuation") ->
                     "requesting configured history"
                 )
             else:
-                print(
-                    f"[{symbol}/schwab/{spec.key}] latest stored "
-                    f"{latest_stored.isoformat()}; requesting missing tail from "
-                    f"{start_datetime.isoformat()}"
-                )
+                continuation_windows += 1
             bars, raw_payload = provider.fetch_bars_for_spec(
                 symbol,
                 spec,
@@ -243,27 +243,18 @@ def fetch(symbol: str, store: ParquetStore, *, profile: str = "continuation") ->
         ) is not None:
             data_files += 1
 
-    try:
-        request_started_at = datetime.now(timezone.utc)
-        clock = latest_completed_bar_clock(
-            store.root_dir,
-            symbol=symbol,
-            as_of=request_started_at,
-        )
-        option_payload = session.get_option_chain_snapshot(symbol, as_of=request_started_at)
-        fetched_at = datetime.now(timezone.utc)
-        output = persist_schwab_option_snapshot(
-            store.root_dir,
-            symbol=symbol,
-            payload=option_payload,
-            clock=clock,
-            fetched_at=fetched_at,
-            quote_cutoff_at=request_started_at,
-        )
-        data_files += 3
+    if continuation_windows:
         print(
-            f"[{symbol}/schwab/options] {output.contract_rows} contracts at "
-            f"decision time {clock.decision_timestamp.isoformat()} -> {output.features_path}"
+            f"[{symbol}/schwab] continuation refreshed "
+            f"{continuation_windows} stored request windows; overlap handled "
+            "automatically"
+        )
+
+    request_started_at = datetime.now(timezone.utc)
+    try:
+        option_payload = session.get_option_chain_snapshot(
+            symbol,
+            as_of=request_started_at,
         )
     except Exception as exc:
         detail = f"{type(exc).__name__}: {exc}"
@@ -282,13 +273,86 @@ def fetch(symbol: str, store: ParquetStore, *, profile: str = "continuation") ->
         )
         failure_counts[detail] += 1
         error_files += 1
+    else:
+        fetched_at = datetime.now(timezone.utc)
+        option_metadata = {
+            "strike_count": OPTION_CHAIN_STRIKE_COUNT,
+            "horizon_days": OPTION_CHAIN_HORIZON_DAYS,
+            "timestamp_policy": "latest_completed_databento_1m_quarter_hour_bar_end",
+            "request_started_at": request_started_at.isoformat(),
+            "provider_fetched_at": fetched_at.isoformat(),
+        }
+        try:
+            if store.save_raw_payload(
+                source="schwab",
+                category="options",
+                symbol=symbol,
+                endpoint="option_chain_snapshot",
+                payload=option_payload,
+                metadata=option_metadata,
+            ) is not None:
+                data_files += 1
+            clock = latest_completed_bar_clock(
+                store.root_dir,
+                symbol=symbol,
+                as_of=request_started_at,
+            )
+            output = persist_schwab_option_snapshot(
+                store.root_dir,
+                symbol=symbol,
+                payload=option_payload,
+                clock=clock,
+                fetched_at=fetched_at,
+                quote_cutoff_at=request_started_at,
+            )
+        except (TypeError, ValueError, RuntimeError) as exc:
+            detail = f"{type(exc).__name__}: {exc}"
+            store.save_advisory(
+                source="schwab",
+                category="options",
+                symbol=symbol,
+                request_key="option_chain_snapshot",
+                advisory_type=type(exc).__name__,
+                advisory_message=str(exc),
+                metadata={
+                    **option_metadata,
+                    "provider_payload_reused": True,
+                    "provider_rows_preserved": True,
+                },
+            )
+            advisory_counts[detail] += 1
+            advisory_files += 1
+        except Exception as exc:
+            detail = f"{type(exc).__name__}: {exc}"
+            store.save_error(
+                source="schwab",
+                category="options",
+                symbol=symbol,
+                request_key="option_chain_snapshot_persistence",
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+                metadata=option_metadata,
+            )
+            failure_counts[detail] += 1
+            error_files += 1
+        else:
+            data_files += 3
+            print(
+                f"[{symbol}/schwab/options] {output.contract_rows} contracts at "
+                f"decision time {clock.decision_timestamp.isoformat()} -> "
+                f"{output.features_path}"
+            )
 
     if failure_counts:
         print("[schwab] grouped request failures:")
         for detail, count in failure_counts.most_common():
             print(f"[schwab]   {count} x {detail}")
+    if advisory_counts:
+        print("[schwab] non-blocking local advisories:")
+        for detail, count in advisory_counts.most_common():
+            print(f"[schwab]   {count} x {detail}")
 
-    return FetchResult("schwab", data_files, error_files)
+    return FetchResult("schwab", data_files, error_files, advisory_files)
 
 
 def _specs_for_profile(profile: str) -> tuple[SchwabPriceHistorySpec, ...]:

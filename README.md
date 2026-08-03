@@ -139,9 +139,11 @@ file, pointer, acknowledgement, or coordination mechanism is used.
 ## Parquet identity rule
 
 Every persisted Parquet contains exactly one Duckets-generated identifier
-column. It is named `id`, is readable, and is built from the minimum natural
-columns that distinguish a row inside that file. Duckets does not persist hash,
-UUID, publication, receipt, policy, specification, or lineage identifiers.
+column. It is named `id` and is readable. Declared calculated and Loop B grains
+use their exact natural columns; provider ingestion adaptively extends a usual
+key and can use a deterministic file-local row fallback rather than rejecting
+valid fetched evidence. Provider-native IDs, UUIDs, and hashes may remain in raw
+provider data but are never used as the Duckets `id`.
 Loop-control state is JSON-only. The persisted Loop B sample schema also omits
 the redundant `feature_available_at`, `feature_computed_at`, and
 `materialized_at` workflow fields.

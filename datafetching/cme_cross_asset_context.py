@@ -17,6 +17,7 @@ CME_CONTINUOUS_ROLL_POLICY_VERSION = "databento-continuous-v0-roll-v1"
 CME_CONTEXT_TIMEFRAME = "1h"
 CME_CONTEXT_ROOTS = ("NQ", "ES", "RTY", "GC", "CL")
 CME_CONTEXT_MAX_STALENESS = pd.Timedelta(minutes=15)
+CME_CONTEXT_MAX_CLOCK_SKEW = pd.Timedelta(seconds=5)
 CME_BOOK_LOOKBACK = pd.Timedelta(minutes=15)
 
 CME_CONTEXT_COLUMNS = (
@@ -649,7 +650,7 @@ def _reject_stale(
     label: str,
 ) -> None:
     age = calculated_at - event_at
-    if age < pd.Timedelta(0):
+    if age < -CME_CONTEXT_MAX_CLOCK_SKEW:
         raise CmeCrossAssetQualityError(f"{label} event is in the future")
     if age > CME_CONTEXT_MAX_STALENESS:
         raise CmeCrossAssetQualityError(
@@ -667,7 +668,7 @@ def _reject_future_evidence(
         raise CmeCrossAssetQualityError(
             "CME context has no complete event/receipt evidence"
         )
-    if max(timestamps) > calculated_at:
+    if max(timestamps) > calculated_at + CME_CONTEXT_MAX_CLOCK_SKEW:
         raise CmeCrossAssetQualityError(
             "CME context contains evidence after calculation completion"
         )

@@ -227,6 +227,7 @@ def run_cycle(
         )
         changed = sum(result.data_files for result in results)
         provider_errors = sum(result.error_files for result in results)
+        local_advisories = sum(result.advisory_files for result in results)
         failures += provider_errors
         error_breakdown = ", ".join(
             f"{result.provider}={result.error_files}"
@@ -234,9 +235,18 @@ def run_cycle(
             if result.error_files
         )
         detail = f" ({error_breakdown})" if error_breakdown else ""
+        advisory_breakdown = ", ".join(
+            f"{result.provider}={result.advisory_files}"
+            for result in results
+            if result.advisory_files
+        )
+        advisory_detail = (
+            f" ({advisory_breakdown})" if advisory_breakdown else ""
+        )
         print(
             f"[{symbol}] changed parquet files: {changed}; "
-            f"provider errors: {provider_errors}{detail}"
+            f"hard failures: {provider_errors}{detail}; "
+            f"local advisories: {local_advisories}{advisory_detail}"
         )
 
         if run_fundamental_calculations and "fmp" in symbol_providers:

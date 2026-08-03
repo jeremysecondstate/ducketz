@@ -45,8 +45,8 @@ DATASTORE/
 ## One readable ID per Parquet
 
 Every raw, normalized, error, calculated, and model-facing Parquet has one
-Duckets-generated string column named `id`. The value uses the smallest natural
-key available in that file:
+Duckets-generated string column named `id`. The value normally uses the
+smallest natural key available in that file:
 
 - normalized bars: `timestamp`;
 - FRED observations: observation date;
@@ -56,18 +56,20 @@ key available in that file:
   provider key;
 - errors: source, category, request, error type, and error message.
 
-The `id` value is not a hash or UUID. No other Duckets-generated `*_id`, `*_ids`,
-digest, receipt, or lineage column is persisted.
+The Duckets `id` value is not a hash or UUID. No other Duckets-generated
+`*_id`, `*_ids`, digest, receipt, or lineage column is persisted.
 Loop generation, write-state, lease, acknowledgement, and other control-plane
 fields are also stripped from normalized and calculated Parquets.
 
-Raw, normalized, and calculated writers fail closed when they cannot construct
-a complete key that is unique inside the file. They never synthesize row-number
-IDs.
+Provider-ingestion writers adapt when the usual recipe is not unique: they add
+complete readable event values until it is unique. If a new provider shape has
+no safe readable combination, the provider file receives deterministic
+file-local `row-NNNNNN` IDs instead of failing the fetch. Explicit calculated
+and Loop B schemas keep their declared natural-key validation.
 
-Provider-native identifiers may remain only in raw provider-shaped data. The
-current explicit exceptions are Databento `instrument_id` and `publisher_id`.
-Calculated and normalized outputs do not carry them.
+Provider-native identifiers, UUIDs, and hashes are preserved in raw
+provider-shaped data without a source allowlist. They remain provider values,
+not the Duckets `id`. Calculated and normalized outputs do not carry them.
 
 See
 [`docs/datafetch-ml/parquet-id-contract.md`](../docs/datafetch-ml/parquet-id-contract.md)
@@ -163,8 +165,13 @@ Each cycle:
 4. recalculates point-in-time fundamentals;
 5. recalculates technical metrics;
 6. rebuilds cross-domain signals;
-7. reports per-stage failures and, unless `--once` was used, waits for the next
+7. reports hard provider/persistence failures separately from non-blocking local
+   calculation advisories and, unless `--once` was used, waits for the next
    interval.
+
+Only hard failures mark a Loop A generation `FAILED`. Optional project-local
+feature quality skips are stored under `diagnostics`, leave fetched provider
+rows intact, and do not block Loop B from validating the available inputs.
 
 The supervisor creates `.ducketz-orchestration.lock` in the datastore so two
 Loop A processes cannot write the same files. `Ctrl+C` exits the loop and removes

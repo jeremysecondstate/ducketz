@@ -25,6 +25,7 @@ from datafetching.bar_schema import (
 from datafetching.bar_timing import annotate_bar_timing, completed_market_bars
 from datafetching.ids import (
     ID_COLUMN,
+    adaptive_unique_key,
     add_readable_id,
     minimum_unique_key,
     preserve_provider_native_id,
@@ -86,6 +87,11 @@ DATABENTO_MBP_NATURAL_KEY = (
     "side",
     "depth",
     "price",
+)
+DATABENTO_MBP_EXTENDED_NATURAL_KEY = (
+    *DATABENTO_MBP_NATURAL_KEY,
+    "size",
+    "flags",
 )
 DATABENTO_BBO_NATURAL_KEY = (
     "symbol",
@@ -331,6 +337,54 @@ class ParquetStore:
             keys=("source", "category", "request_key", "error_type", "error_message"),
         )
 
+    def save_advisory(
+        self,
+        *,
+        source: str,
+        category: str,
+        symbol: str,
+        request_key: str,
+        advisory_type: str,
+        advisory_message: str,
+        metadata: dict[str, object] | None = None,
+        pool: str | None = None,
+    ) -> Path | None:
+        """Persist a non-blocking local quality diagnostic.
+
+        Advisories describe optional project-local calculations that were
+        skipped after provider evidence was fetched and persisted.  They live
+        outside the hard-error tree and do not make a Loop A generation fail.
+        """
+
+        row = {
+            "symbol": symbol,
+            "source": source,
+            "category": category,
+            "request_key": request_key,
+            "fetched_at": _now(),
+            "severity": "advisory",
+            "advisory_type": advisory_type,
+            "advisory_message": advisory_message,
+            **dict(metadata or {}),
+        }
+        return self._write(
+            scope="diagnostics",
+            source=source,
+            category=category,
+            symbol=symbol,
+            suffix=request_key,
+            dataset_key=request_key,
+            pool=pool,
+            frame=_frame([row]),
+            keys=(
+                "source",
+                "category",
+                "request_key",
+                "advisory_type",
+                "advisory_message",
+            ),
+        )
+
     def _save_rows(
         self,
         source: str,
@@ -438,17 +492,20 @@ class ParquetStore:
         changed = changed or availability_migrated or temporal_schema_mismatch
         if not changed and not legacy and not schema_mismatch:
             return None
-        natural_keys = _infer_keys(output, category, readable_only=True)
-        if not natural_keys:
-            requested = tuple(key for key in keys if key in output.columns)
-            natural_keys = minimum_unique_key(
-                output,
-                (requested,),
-                reject_opaque=True,
-            )
+        natural_keys = _infer_keys(
+            output,
+            category,
+            readable_only=True,
+            preferred_keys=keys,
+        )
         output = add_readable_id(
             output.reset_index(drop=True),
             key_columns=natural_keys,
+            fallback_prefix=_readable_fallback_prefix(
+                source=source,
+                category=category,
+                dataset_key=dataset_key or suffix or timeframe or symbol,
+            ),
         )
         if expected_columns:
             output = output.reindex(columns=expected_columns)
@@ -702,11 +759,33 @@ def _infer_keys(
     category: str,
     *,
     readable_only: bool = False,
+    preferred_keys: Sequence[str] = (),
 ) -> tuple[str, ...]:
-    return minimum_unique_key(
+    candidates = _key_candidates(frame, category)
+    declared = minimum_unique_key(
         frame,
-        _key_candidates(frame, category),
+        candidates,
         reject_opaque=readable_only,
+    )
+    if declared:
+        return declared
+    requested = tuple(
+        str(key) for key in preferred_keys if str(key) in frame.columns
+    )
+    if requested:
+        requested_unique = minimum_unique_key(
+            frame,
+            (requested,),
+            reject_opaque=readable_only,
+        )
+        if requested_unique:
+            return requested_unique
+        candidates = (requested, *candidates)
+    return adaptive_unique_key(
+        frame,
+        candidates,
+        reject_opaque=readable_only,
+        excluded_columns=tuple(VOLATILE_COLUMNS),
     )
 
 
@@ -734,6 +813,11 @@ def _key_candidates(
     candidates: list[tuple[str, ...]] = []
     if all(column in frame.columns for column in DATABENTO_MBP_NATURAL_KEY):
         candidates.append(DATABENTO_MBP_NATURAL_KEY)
+    if all(
+        column in frame.columns
+        for column in DATABENTO_MBP_EXTENDED_NATURAL_KEY
+    ):
+        candidates.append(DATABENTO_MBP_EXTENDED_NATURAL_KEY)
     if all(column in frame.columns for column in DATABENTO_BBO_NATURAL_KEY):
         candidates.append(DATABENTO_BBO_NATURAL_KEY)
     candidates.extend((column,) for column in temporal)
@@ -786,24 +870,13 @@ def _minimum_upsert_key(
         pd.concat([existing, incoming], ignore_index=True, sort=False),
         category,
     )
-    candidate_columns = list(
-        dict.fromkeys(
-            column
-            for candidate in candidates
-            for column in candidate
-            if column in existing.columns or column in incoming.columns
-        )
-    )
-    combined = pd.concat([existing, incoming], ignore_index=True, sort=False)
-    signatures = combined.reindex(columns=candidate_columns).drop_duplicates()
     for candidate in candidates:
         if existing.empty:
             existing_key = candidate
         else:
             existing_key = minimum_unique_key(existing, (candidate,))
         incoming_key = minimum_unique_key(incoming, (candidate,))
-        signature_key = minimum_unique_key(signatures, (candidate,))
-        if existing_key and incoming_key and signature_key:
+        if existing_key and incoming_key:
             return candidate
     return ()
 
@@ -825,6 +898,20 @@ def _sort(frame: pd.DataFrame, keys: Sequence[str]) -> pd.DataFrame:
         return frame.sort_values(columns, kind="stable").reset_index(drop=True)
     except (TypeError, ValueError):
         return frame.reset_index(drop=True)
+
+
+def _readable_fallback_prefix(
+    *,
+    source: str,
+    category: str,
+    dataset_key: str,
+) -> str:
+    parts = [source, category, dataset_key]
+    return "|".join(
+        safe_token(str(part).strip())
+        for part in parts
+        if str(part).strip()
+    ) or "provider-row"
 
 
 def _align(left: pd.DataFrame, right: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:

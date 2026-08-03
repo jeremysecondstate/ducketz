@@ -21,7 +21,7 @@ def test_loop_a_stage_order_preserves_fetch_and_calculations(
 
     def fetch(*_args: object, **_kwargs: object) -> tuple[FetchResult, ...]:
         events.append("fetch")
-        return (FetchResult("fmp", 2, 0),)
+        return (FetchResult("fmp", 2, 0, advisory_files=3),)
 
     def stage(name: str):
         def run(_args: list[str]) -> int:

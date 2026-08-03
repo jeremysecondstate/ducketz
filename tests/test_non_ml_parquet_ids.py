@@ -598,6 +598,44 @@ def test_databento_mbp_rows_use_book_event_values_for_readable_ids(
     ) is None
 
 
+def test_databento_mbp_collision_adaptively_adds_event_discriminators(
+    tmp_path: Path,
+) -> None:
+    event = "2026-08-03T05:33:15.622385887Z"
+    base = {
+        "symbol": "NQU6",
+        "source": "databento",
+        "timestamp": event,
+        "ts_event": event,
+        "ts_recv": "2026-08-03T05:33:15.622500000Z",
+        "sequence": 400_100,
+        "action": "T",
+        "side": "A",
+        "depth": 0,
+        "price": 21_450.25,
+        "fetched_at": "2026-08-03T13:39:00Z",
+    }
+    rows = [
+        {**base, "size": 1, "flags": 0},
+        {**base, "size": 2, "flags": 128},
+    ]
+
+    path = ParquetStore(tmp_path).save_macro_rows(
+        "databento",
+        "CME_CONTRACTS",
+        "cme_contracts_mbp-10",
+        rows,
+        pool="cme",
+    )
+
+    assert path is not None
+    stored = pd.read_parquet(path)
+    assert len(stored) == 2
+    assert stored["id"].is_unique
+    assert set(stored["id"].str.extract(r"(\d+\|\d+)$")[0]) == {
+        "1|0",
+        "2|128",
+    }
 def test_databento_bbo_rows_without_events_publish_status_and_remain_raw(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -971,98 +1009,122 @@ def test_opaque_provider_id_remains_raw_data_but_is_not_the_ducketz_id(
     assert stored["id"].tolist() == ["2026-07-29T15:01:02Z"]
 
 
-def test_normalized_rows_without_a_natural_key_fail_instead_of_using_row_numbers(
+def test_provider_rows_adapt_identity_instead_of_failing_without_declared_keys(
     tmp_path: Path,
 ) -> None:
     store = ParquetStore(tmp_path)
-    with pytest.raises(
-        ValueError,
-        match="requires at least one natural column",
-    ):
-        store.save_corporate_rows(
-            "example",
-            "GOOG",
-            "unkeyed",
-            [{"value": 1.0}, {"value": 2.0}],
-        )
-    with pytest.raises(
-        ValueError,
-        match="requires at least one natural column",
-    ):
-        store.save_raw_frame(
-            source="example",
-            category="other",
-            symbol="GOOG",
-            endpoint="unkeyed",
-            frame=pd.DataFrame({"value": [1.0, 2.0]}),
-        )
+    normalized_path = store.save_corporate_rows(
+        "example",
+        "GOOG",
+        "unkeyed",
+        [{"value": 1.0}, {"value": 2.0}],
+    )
+    raw_path = store.save_raw_frame(
+        source="example",
+        category="other",
+        symbol="GOOG",
+        endpoint="unkeyed",
+        frame=pd.DataFrame({"value": [1.0, 2.0]}),
+    )
+
+    assert normalized_path is not None
+    assert raw_path is not None
+    assert pd.read_parquet(normalized_path)["id"].is_unique
+    assert pd.read_parquet(raw_path)["id"].is_unique
 
 
-def test_unregistered_raw_id_columns_are_rejected(
+def test_provider_rows_use_stable_file_local_fallback_when_values_are_not_id_safe(
+    tmp_path: Path,
+) -> None:
+    path = ParquetStore(tmp_path).save_corporate_rows(
+        "example",
+        "GOOG",
+        "opaque-payload",
+        [
+            {"payload": "a" * 300},
+            {"payload": "b" * 300},
+        ],
+    )
+
+    assert path is not None
+    stored = pd.read_parquet(path)
+    assert stored["id"].str.endswith(("row-000001", "row-000002")).all()
+    assert stored["id"].is_unique
+
+
+def test_provider_native_id_columns_are_preserved_in_raw_data(
     tmp_path: Path,
 ) -> None:
     store = ParquetStore(tmp_path)
-    with pytest.raises(
-        ValueError,
-        match="not registered for example: sample_id",
-    ):
-        store.save_raw_frame(
-            source="example",
-            category="trades",
-            symbol="GOOG",
-            endpoint="timesales",
-            frame=pd.DataFrame(
-                {
-                    "sample_id": ["internal-looking-value"],
-                    "timestamp": ["2026-07-29T15:01:02Z"],
-                }
-            ),
-        )
+    path = store.save_raw_frame(
+        source="example",
+        category="trades",
+        symbol="GOOG",
+        endpoint="timesales",
+        frame=pd.DataFrame(
+            {
+                "sample_id": ["internal-looking-value"],
+                "timestamp": ["2026-07-29T15:01:02Z"],
+            }
+        ),
+    )
+
+    assert path is not None
+    stored = pd.read_parquet(path)
+    assert stored["sample_id"].tolist() == ["internal-looking-value"]
+    assert stored["id"].tolist() == ["2026-07-29T15:01:02Z"]
 
 
-def test_provider_id_allowlist_is_source_specific(tmp_path: Path) -> None:
+def test_provider_native_ids_do_not_require_a_source_allowlist(tmp_path: Path) -> None:
     store = ParquetStore(tmp_path)
-    with pytest.raises(
-        ValueError,
-        match="not registered for fred: instrument_id",
-    ):
-        store.save_raw_frame(
-            source="fred",
-            category="macro",
-            symbol="GDP",
-            endpoint="GDP",
-            frame=pd.DataFrame(
-                {
-                    "timestamp": ["2026-07-29T15:01:02Z"],
-                    "instrument_id": [11667],
-                    "value": [1.0],
-                }
-            ),
-        )
+    path = store.save_raw_frame(
+        source="fred",
+        category="macro",
+        symbol="GDP",
+        endpoint="GDP",
+        frame=pd.DataFrame(
+            {
+                "timestamp": ["2026-07-29T15:01:02Z"],
+                "instrument_id": [11667],
+                "value": [1.0],
+            }
+        ),
+    )
+
+    assert path is not None
+    assert pd.read_parquet(path)["instrument_id"].tolist() == [11667]
 
 
-def test_unregistered_raw_hash_identity_columns_are_rejected(
+def test_provider_native_hash_fields_are_preserved_but_not_used_as_ducketz_id(
     tmp_path: Path,
 ) -> None:
     store = ParquetStore(tmp_path)
-    with pytest.raises(
-        ValueError,
-        match="not registered for example",
-    ):
-        store.save_raw_frame(
-            source="example",
-            category="trades",
-            symbol="GOOG",
-            endpoint="timesales",
-            frame=pd.DataFrame(
-                {
-                    "timestamp": ["2026-07-29T15:01:02Z"],
-                    "content_hash": ["opaque"],
-                    "lineage_hash": ["opaque"],
-                    "checksum_sha256": ["opaque"],
-                    "sampleId": ["opaque"],
-                    "eventUUID": ["opaque"],
-                    "contentHash": ["opaque"],
-                }
-            ),
-        )
+    path = store.save_raw_frame(
+        source="example",
+        category="trades",
+        symbol="GOOG",
+        endpoint="timesales",
+        frame=pd.DataFrame(
+            {
+                "timestamp": ["2026-07-29T15:01:02Z"],
+                "content_hash": ["opaque"],
+                "lineage_hash": ["opaque"],
+                "checksum_sha256": ["opaque"],
+                "sampleId": ["opaque"],
+                "eventUUID": ["opaque"],
+                "contentHash": ["opaque"],
+            }
+        ),
+    )
+
+    assert path is not None
+    stored = pd.read_parquet(path)
+    assert stored["id"].tolist() == ["2026-07-29T15:01:02Z"]
+    assert {
+        "content_hash",
+        "lineage_hash",
+        "checksum_sha256",
+        "sampleId",
+        "eventUUID",
+        "contentHash",
+    }.issubset(stored.columns)

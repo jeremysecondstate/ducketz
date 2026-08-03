@@ -549,6 +549,68 @@ def test_schwab_fetch_reuses_a_fresh_fetched_quote_for_liquidity(
     assert len(pd.read_parquet(liquidity_paths[0])) == 1
 
 
+def test_schwab_option_local_contract_skip_is_advisory_and_raw_is_preserved(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    receipt = datetime.now(UTC)
+
+    class FakeSession:
+        def get_option_chain_snapshot(
+            self,
+            symbol: str,
+            *,
+            as_of: datetime,
+        ) -> dict[str, Any]:
+            assert symbol == "GOOG"
+            assert as_of <= datetime.now(UTC)
+            return {"provider_payload": "preserved"}
+
+    class FakeProvider:
+        def __init__(self, *, session: FakeSession) -> None:
+            self.session = session
+
+        def fetch_quote(self, symbol: str) -> tuple[MarketQuote, dict[str, Any]]:
+            return (
+                MarketQuote(
+                    symbol=symbol,
+                    source="schwab",
+                    fetched_at=receipt,
+                    quote_event_at=receipt - timedelta(seconds=1),
+                    bid=99.9,
+                    ask=100.1,
+                ),
+                {"quoteTimeInLong": int(receipt.timestamp() * 1000)},
+            )
+
+    def local_contract_skip(*_: object, **__: object) -> None:
+        raise ValueError("optional option feature contract is ambiguous")
+
+    monkeypatch.setattr(schwab_fetch, "DataFetchingSchwabSession", FakeSession)
+    monkeypatch.setattr(schwab_fetch, "SchwabMarketDataProvider", FakeProvider)
+    monkeypatch.setattr(schwab_fetch, "_specs_for_profile", lambda _profile: ())
+    monkeypatch.setattr(
+        schwab_fetch,
+        "latest_completed_bar_clock",
+        lambda *_args, **_kwargs: _decision_clock(tmp_path),
+    )
+    monkeypatch.setattr(
+        schwab_fetch,
+        "persist_schwab_option_snapshot",
+        local_contract_skip,
+    )
+
+    result = schwab_fetch.fetch("GOOG", ParquetStore(tmp_path))
+
+    assert result.error_files == 0
+    assert result.advisory_files == 1
+    raw_options = list(
+        (tmp_path / "stocks" / "GOOG" / "options").rglob("raw/*.parquet")
+    )
+    assert len(raw_options) == 1
+    assert "provider_payload" in pd.read_parquet(raw_options[0]).loc[0, "payload_json"]
+
+
 def test_schwab_fetch_persists_closed_session_quote_as_unavailable_evidence(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

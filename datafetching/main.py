@@ -95,16 +95,19 @@ def main(argv: list[str] | None = None) -> int:
     for result in results:
         print(
             f"[{result.provider}] changed parquet files: {result.data_files}; "
-            f"error events: {result.error_files}"
+            f"hard failures: {result.error_files}; "
+            f"local advisories: {result.advisory_files}"
         )
 
     total_data = sum(result.data_files for result in results)
     total_errors = sum(result.error_files for result in results)
+    total_advisories = sum(result.advisory_files for result in results)
     print()
     print("FETCH SUMMARY")
     print("=============")
     print(f"Changed parquet files: {total_data}")
-    print(f"Error events: {total_errors}")
+    print(f"Hard failures: {total_errors}")
+    print(f"Local advisories: {total_advisories}")
     return 1 if total_errors else 0
 
 

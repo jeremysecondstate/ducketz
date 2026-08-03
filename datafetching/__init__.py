@@ -14,3 +14,4 @@ class FetchResult:
     provider: str
     data_files: int
     error_files: int
+    advisory_files: int = 0

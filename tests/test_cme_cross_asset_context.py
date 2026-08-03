@@ -19,6 +19,7 @@ from datafetching.cme_cross_asset_context import (
     cme_cross_asset_context_path,
     materialize_cme_cross_asset_context,
 )
+from datafetching.parquet_store import ParquetStore
 
 _WINDOW_START = pd.Timestamp("2026-07-29T17:00:00Z")
 _CALCULATED_AT = pd.Timestamp("2026-07-29T18:02:00Z")
@@ -230,7 +231,7 @@ def test_databento_fetch_materializes_only_after_source_persistence(
         _materialize,
     )
 
-    assert databento_fetch._fetch_cme(store) == (2, 0)
+    assert databento_fetch._fetch_cme(store) == (2, 0, 0)
 
 
 def test_cme_persistence_failure_records_group_schema_request_and_target(
@@ -296,7 +297,7 @@ def test_cme_persistence_failure_records_group_schema_request_and_target(
     )
     store = _Store()
 
-    assert databento_fetch._fetch_cme(store) == (0, 1)
+    assert databento_fetch._fetch_cme(store) == (0, 1, 0)
     assert len(store.errors) == 1
     error = store.errors[0]
     target = (
@@ -329,6 +330,36 @@ def test_cme_persistence_failure_records_group_schema_request_and_target(
     incoming_schema = json.loads(str(metadata["incoming_schema"]))
     assert incoming_schema["timestamp"] in {"object", "str", "string"}
     assert "ts_event" in incoming_schema
+
+
+def test_cme_local_quality_skip_is_advisory_not_provider_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _Provider:
+        def specs(self) -> tuple[()]:
+            return ()
+
+    def _quality_skip(_: Path) -> None:
+        raise CmeCrossAssetQualityError("optional context is limit-saturated")
+
+    monkeypatch.setattr(databento_fetch, "DatabentoCmeContextProvider", _Provider)
+    monkeypatch.setattr(
+        databento_fetch,
+        "materialize_cme_cross_asset_context",
+        _quality_skip,
+    )
+
+    outcome = databento_fetch._fetch_cme(ParquetStore(tmp_path))
+
+    assert outcome == (0, 0, 1)
+    advisories = list(tmp_path.rglob("diagnostics/*.parquet"))
+    assert len(advisories) == 1
+    stored = pd.read_parquet(advisories[0])
+    assert stored["severity"].tolist() == ["advisory"]
+    assert stored["advisory_type"].tolist() == [
+        "CmeCrossAssetQualityError"
+    ]
 
 
 def _source_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
