@@ -106,6 +106,7 @@ class RuntimeConfig:
     assessment_clusters: int | None = None
     lockbox_clusters: int | None = None
     latest_per_symbol: bool = True
+    require_all_routes: bool = False
     feature_profile: str = DEFAULT_FEATURE_PROFILE
 
     def __post_init__(self) -> None:
@@ -260,7 +261,7 @@ def run_loop_b_once(
         for route in materialization.routes
         if route.status != "READY" or route.error
     ]
-    if failed_routes:
+    if failed_routes and runtime.require_all_routes:
         rendered = ", ".join(
             f"{route.symbol}/{route.horizon}" for route in failed_routes
         )
@@ -404,29 +405,39 @@ def run_loop_b_once(
         for horizon in WEEKLY_HORIZON_ORDER
         if horizon in effective_specifications
     )
-    if weekly_horizons and not any(
-        key.startswith("model|1w") for key in route_errors
-    ):
-        try:
-            weekly_created_at = utc_timestamp(clock())
-            weekly_live, newly_issued = _weekly_live_predictions(
-                samples,
-                models=models,
-                verified_runs=verified_weekly_runs,
-                specifications=effective_specifications,
-                symbols=selected_symbols,
-                assumed_round_trip_cost=runtime.assumed_round_trip_cost,
-                prediction_created_at=weekly_created_at,
-            )
-            prediction_frames.append(weekly_live)
-            if not newly_issued.empty:
-                fresh_live_frames.append(newly_issued)
-        except Exception as exc:
-            route_errors["weekly|snapshot"] = f"{type(exc).__name__}: {exc}"
-            _report(
-                reporter,
-                f"[Loop B/weekly snapshot] {route_errors['weekly|snapshot']}",
-            )
+    ready_route_pairs = {
+        (route.symbol, route.horizon)
+        for route in materialization.routes
+        if route.status == "READY" and not route.error
+    }
+    weekly_ready_symbols = tuple(
+        symbol
+        for symbol in selected_symbols
+        if all((symbol, horizon) in ready_route_pairs for horizon in weekly_horizons)
+    )
+    if weekly_horizons and all(horizon in models for horizon in weekly_horizons):
+        weekly_created_at = utc_timestamp(clock())
+        for symbol in weekly_ready_symbols:
+            try:
+                weekly_live, newly_issued = _weekly_live_predictions(
+                    samples,
+                    models=models,
+                    verified_runs=verified_weekly_runs,
+                    specifications=effective_specifications,
+                    symbols=(symbol,),
+                    assumed_round_trip_cost=runtime.assumed_round_trip_cost,
+                    prediction_created_at=weekly_created_at,
+                )
+                prediction_frames.append(weekly_live)
+                if not newly_issued.empty:
+                    fresh_live_frames.append(newly_issued)
+            except Exception as exc:
+                error_key = f"{symbol}|weekly-snapshot"
+                route_errors[error_key] = f"{type(exc).__name__}: {exc}"
+                _report(
+                    reporter,
+                    f"[Loop B/{symbol} weekly snapshot] {route_errors[error_key]}",
+                )
 
     predictions = (
         pd.concat(prediction_frames, ignore_index=True, sort=False)
@@ -434,18 +445,41 @@ def run_loop_b_once(
         else empty_frame(PREDICTION_SCHEMA)
     )
     predictions = _project(predictions, PREDICTION_SCHEMA.names)
-    expected_routes = {
-        (symbol, horizon)
-        for symbol in selected_symbols
-        for horizon in effective_specifications
-    }
+    expected_routes = (
+        {
+            (symbol, horizon)
+            for symbol in selected_symbols
+            for horizon in effective_specifications
+        }
+        if runtime.require_all_routes
+        else ready_route_pairs
+    )
     observed_routes = set(
         predictions.loc[:, ["symbol", "horizon"]]
         .drop_duplicates()
         .itertuples(index=False, name=None)
     )
     missing_routes = sorted(expected_routes.difference(observed_routes))
-    if missing_routes:
+    for symbol, horizon in missing_routes:
+        route_errors.setdefault(
+            f"{symbol}|{horizon}",
+            "No prediction rows were produced for a materialized route",
+        )
+    if predictions.empty:
+        rendered = ", ".join(
+            f"{symbol}/{horizon}"
+            for symbol in selected_symbols
+            for horizon in effective_specifications
+        )
+        details = "; ".join(
+            f"{key}: {value}" for key, value in sorted(route_errors.items())
+        )
+        suffix = f" ({details})" if details else ""
+        raise RuntimeError(
+            "Loop B produced no predictions for required routes: "
+            f"{rendered}{suffix}"
+        )
+    if missing_routes and runtime.require_all_routes:
         rendered = ", ".join(
             f"{symbol}/{horizon}" for symbol, horizon in missing_routes
         )
@@ -457,7 +491,7 @@ def run_loop_b_once(
             "Loop B produced no predictions for required routes: "
             f"{rendered}{suffix}"
         )
-    if route_errors:
+    if route_errors and runtime.require_all_routes:
         details = "; ".join(
             f"{key}: {value}" for key, value in sorted(route_errors.items())
         )
@@ -465,7 +499,7 @@ def run_loop_b_once(
             "Loop B route failures prevent fail-closed publication: "
             + details
         )
-    if weekly_horizons:
+    if weekly_horizons and runtime.require_all_routes:
         _require_complete_weekly_live_predictions(
             predictions,
             symbols=selected_symbols,

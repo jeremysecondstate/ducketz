@@ -135,6 +135,16 @@ def discover_bar_datasets(
         grouped_files: dict[str, list[Path]] = {}
 
         for file_order, (path, folder_timeframe) in enumerate(path_entries):
+            # Canonical-layout files already declare their timeframe in the
+            # directory path.  Apply the requested filter before reading the
+            # Parquet so a horizon-scoped consumer does not deserialize every
+            # unrelated bar history only to discard it below.
+            if (
+                folder_timeframe
+                and selected_timeframes
+                and folder_timeframe.strip().lower() not in selected_timeframes
+            ):
+                continue
             try:
                 if folder_timeframe:
                     frame, _physical_schema = read_normalized_bar_parquet(

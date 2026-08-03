@@ -327,6 +327,7 @@ def test_frozen_weekly_snapshot_reuses_receipt_history_across_loop_updates(
         calibration_clusters=2,
         assessment_clusters=2,
         lockbox_clusters=2,
+        require_all_routes=True,
     )
     first_created = pd.Timestamp("2026-02-02T13:30:00Z")
     current_materialization = _synthetic_materialization(
@@ -449,6 +450,7 @@ def test_weekly_route_failure_preserves_prior_atomic_publication(
         calibration_clusters=2,
         assessment_clusters=2,
         lockbox_clusters=2,
+        require_all_routes=True,
     )
     current_materialization = _synthetic_materialization(
         tmp_path,
@@ -544,6 +546,7 @@ def test_four_hour_route_failure_does_not_replace_current_publication(
         calibration_clusters=2,
         assessment_clusters=2,
         lockbox_clusters=2,
+        require_all_routes=True,
     )
     first = run_loop_b_once(
         tmp_path,
@@ -638,6 +641,7 @@ def test_four_hour_live_prediction_failure_is_transactional(
         calibration_clusters=2,
         assessment_clusters=2,
         lockbox_clusters=2,
+        require_all_routes=True,
     )
     first = run_loop_b_once(
         tmp_path,

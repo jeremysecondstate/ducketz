@@ -13,7 +13,7 @@ cytoolz==1.1.0
 databento==0.81.0
 databento-dbn==0.62.0
 distro==1.9.0
--e git+https://github.com/jeremysecondstate/ducketz.git@204ea96b89107bfb1b54190d9c06c60503f68265#egg=ducketz
+-e git+https://github.com/jeremysecondstate/ducketz.git
 eth-account==0.13.7
 eth-hash==0.8.0
 eth-keyfile==0.8.1

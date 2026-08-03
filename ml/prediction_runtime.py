@@ -82,6 +82,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--calibration-clusters", type=int, default=None)
     parser.add_argument("--assessment-clusters", type=int, default=None)
     parser.add_argument("--lockbox-clusters", type=int, default=None)
+    parser.add_argument(
+        "--require-all-routes",
+        action="store_true",
+        help=(
+            "Fail the complete cycle when any requested symbol/horizon route is "
+            "unavailable. By default, publish valid routes and record limitations."
+        ),
+    )
     parser.add_argument("--round-trip-cost", type=float, default=0.001)
     args = parser.parse_args(argv)
 
@@ -131,6 +139,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         calibration_clusters=args.calibration_clusters,
         assessment_clusters=args.assessment_clusters,
         lockbox_clusters=args.lockbox_clusters,
+        require_all_routes=args.require_all_routes,
         feature_profile=args.feature_profile,
     )
     selected_symbols = tuple(args.symbols or discover_symbols(root))

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -552,6 +553,26 @@ def test_loop_b_reports_a_failed_symbol_route_when_another_symbol_succeeds(
 ) -> None:
     _write_synthetic_loop_a_outputs(tmp_path)
 
+    result = run_loop_b_once(
+        tmp_path,
+        symbols=("GOOG", "NVDA"),
+        config=_CONFIG,
+        specifications=_SPECIFICATIONS,
+        run_timestamp=_FIRST_RUN,
+        input_available_at=_FIRST_RUN,
+        reporter=None,
+    )
+
+    assert result.status == "COMPLETED_WITH_LIMITATIONS"
+    assert "NVDA|1d" in result.route_errors
+    assert "Expected one adjusted bar dataset" in result.route_errors["NVDA|1d"]
+    predictions = pd.read_parquet(result.run_directory / "predictions.parquet")
+    assert set(predictions["symbol"]) == {"GOOG"}
+
+
+def test_loop_b_can_require_every_requested_symbol_route(tmp_path: Path) -> None:
+    _write_synthetic_loop_a_outputs(tmp_path)
+
     with pytest.raises(
         RuntimeError,
         match=(
@@ -562,7 +583,7 @@ def test_loop_b_reports_a_failed_symbol_route_when_another_symbol_succeeds(
         run_loop_b_once(
             tmp_path,
             symbols=("GOOG", "NVDA"),
-            config=_CONFIG,
+            config=replace(_CONFIG, require_all_routes=True),
             specifications=_SPECIFICATIONS,
             run_timestamp=_FIRST_RUN,
             input_available_at=_FIRST_RUN,

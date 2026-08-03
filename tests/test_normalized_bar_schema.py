@@ -368,6 +368,43 @@ def test_canonical_incomplete_marker_tombstones_completed_legacy_overlap(
     ]
 
 
+def test_discovery_skips_unrequested_canonical_timeframes_before_reading(
+    tmp_path: Path,
+) -> None:
+    selected_path = normalized_bar_path(
+        tmp_path,
+        source="databento",
+        symbol="GOOG",
+        timeframe="1m",
+        request_key="source_1000d_1m_ohlcv-1m_1m",
+    )
+    selected_path.parent.mkdir(parents=True)
+    _wide_frame(["2026-07-29T15:14:00Z"]).to_parquet(
+        selected_path,
+        index=False,
+    )
+
+    unrequested_path = normalized_bar_path(
+        tmp_path,
+        source="databento",
+        symbol="GOOG",
+        timeframe="1s",
+        request_key="source_5d_1s_ohlcv-1s_1s",
+    )
+    unrequested_path.parent.mkdir(parents=True)
+    unrequested_path.write_bytes(b"not a parquet file")
+
+    datasets = discover_bar_datasets(
+        tmp_path,
+        symbol="GOOG",
+        providers=("databento",),
+        timeframes={"1m"},
+    )
+
+    assert len(datasets) == 1
+    assert datasets[0].timeframe == "1m"
+
+
 def test_wrong_six_column_dtypes_are_coerced_and_rewritten(
     tmp_path: Path,
 ) -> None:

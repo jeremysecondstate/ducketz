@@ -22,6 +22,14 @@ class ResearchInstrument:
 INITIAL_RESEARCH_INSTRUMENTS: tuple[ResearchInstrument, ...] = (
     ResearchInstrument("DE", "NYSE", "USD", "XNYS"),
     ResearchInstrument("CAT", "NYSE", "USD", "XNYS"),
+    ResearchInstrument("AAPL", "NASDAQ", "USD", "XNAS"),
+    ResearchInstrument("MSFT", "NASDAQ", "USD", "XNAS"),
+    ResearchInstrument("AMZN", "NASDAQ", "USD", "XNAS"),
+    ResearchInstrument("META", "NASDAQ", "USD", "XNAS"),
+    ResearchInstrument("AVGO", "NASDAQ", "USD", "XNAS"),
+    ResearchInstrument("AMD", "NASDAQ", "USD", "XNAS"),
+    ResearchInstrument("TSLA", "NASDAQ", "USD", "XNAS"),
+    ResearchInstrument("QCOM", "NASDAQ", "USD", "XNAS"),
     ResearchInstrument("SNDK", "NASDAQ", "USD", "XNAS"),
     ResearchInstrument("PLAB", "NASDAQ", "USD", "XNAS"),
     ResearchInstrument("MU", "NASDAQ", "USD", "XNAS"),
@@ -32,6 +40,15 @@ INITIAL_RESEARCH_INSTRUMENTS: tuple[ResearchInstrument, ...] = (
 _RESEARCH_METADATA_BY_SYMBOL = {
     instrument.symbol: instrument for instrument in INITIAL_RESEARCH_INSTRUMENTS
 }
+
+# Loop B operates on explicitly selected symbols under the datastore's ``stocks``
+# namespace.  An unregistered ticker is therefore still a usable US-equity
+# research instrument; the generic venue remains visible in persisted metadata,
+# while XNYS supplies the common regular-session schedule already used by the
+# canonical technical pipeline.  Exact venue metadata above wins when available.
+_DEFAULT_US_EQUITY_VENUE = "US_EQUITY"
+_DEFAULT_US_EQUITY_CURRENCY = "USD"
+_DEFAULT_US_EQUITY_CALENDAR = "XNYS"
 
 
 def read_watchlist(path: Path) -> tuple[str, ...]:
@@ -65,14 +82,14 @@ def initial_universe_membership(
     rows: list[dict[str, object]] = []
     for raw_symbol in symbols:
         symbol = str(raw_symbol).strip().upper()
-        try:
-            instrument = _RESEARCH_METADATA_BY_SYMBOL[symbol]
-        except KeyError as exc:
-            supported = ", ".join(sorted(_RESEARCH_METADATA_BY_SYMBOL))
-            raise MLContractError(
-                f"No research metadata is registered for {symbol!r}; "
-                f"supported symbols: {supported}."
-            ) from exc
+        instrument = _RESEARCH_METADATA_BY_SYMBOL.get(symbol)
+        if instrument is None:
+            instrument = ResearchInstrument(
+                symbol,
+                _DEFAULT_US_EQUITY_VENUE,
+                _DEFAULT_US_EQUITY_CURRENCY,
+                _DEFAULT_US_EQUITY_CALENDAR,
+            )
         if symbol not in effective_from_by_symbol:
             raise MLContractError(f"Missing universe effective_from for {symbol}")
         effective_from = pd.Timestamp(effective_from_by_symbol[symbol])
