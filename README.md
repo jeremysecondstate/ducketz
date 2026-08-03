@@ -76,9 +76,10 @@ family. The default integrated profile and the legacy `production-v1` and
 `technical-all-v2` profiles remain available through `--feature-profile`; see
 the migration guide for the contract boundary and blockers.
 
-The `1h` and `4h` routes keep completed native `1h` bars as their feature and
-decision source, but their v2 targets use exact adjusted native Databento `1m`
-constituents. The exchange calendar selects the official session open,
+The `1h` and `4h` routes use completed canonical `1h` bars as their feature and
+decision source. Native Databento hours are preferred, with a full-constituent
+`1m`-derived hour filling provider publication lag. Their v2 targets use exact
+adjusted native Databento `1m` constituents. The exchange calendar selects the official session open,
 post-break resume, or next safe full-local-clock anchor before price lookup,
 then accumulates 60 or 240 eligible regular-session minutes. Closed periods
 pause accumulation while intervening price gaps remain in the return. Loop A

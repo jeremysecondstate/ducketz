@@ -56,7 +56,7 @@ These timestamps are values, not separate timing or decision identifiers.
 
 | Setting | Rule |
 | --- | --- |
-| source timeframe | completed native `1h` bars |
+| source timeframe | completed canonical `1h` bars; native preferred, complete `1m`-derived continuity fallback |
 | target definition | `next-60-eligible-regular-minutes-open-close-v2` |
 | information available | source-bar end plus five minutes |
 | target start | first calendar candidate strictly after information availability |
@@ -81,7 +81,7 @@ safe next full-local-clock anchor.
 | Setting | Rule |
 | --- | --- |
 | target definition | `next-240-eligible-regular-minutes-open-close-v2` |
-| source timeframe | completed canonical native `1h` bars; no synthetic `4h` bars |
+| source timeframe | completed canonical `1h` bars; native preferred, complete `1m`-derived continuity fallback; no synthetic `4h` bars |
 | decision cadence | after every completed eligible `1h` source bar |
 | information available | source-bar end plus five minutes |
 | target selection | choose the same versioned calendar candidate, then predetermine exactly 240 eligible regular-session minute timestamps before price lookup |
@@ -102,7 +102,7 @@ Every one of the predetermined 60 or 240 eligible native-minute records must
 exist.
 Missing the first, a middle, or the final constituent keeps the original
 window and leaves the label incomplete; no later price is substituted. The
-completed native `1h` source bar supplies `previous_period_direction`, while
+completed canonical `1h` source bar supplies `previous_period_direction`, while
 the native `1m` target prices and returns never enter model features.
 
 ## 1d route

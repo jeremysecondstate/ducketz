@@ -1,6 +1,6 @@
 # Rolling forecast dashboard
 
-Implementation snapshot: 2026-08-01
+Implementation snapshot: 2026-08-03
 
 The first Duckets application tab is a read-only view of Loop B's current `1h`,
 `4h`, and `1d` routes plus one frozen weekly snapshot. The weekly snapshot is
@@ -243,6 +243,14 @@ enough. A frozen weekly route instead remains operationally current while its
 verified snapshot is being carried forward. That status does not reopen it for
 action after Day 1 starts; its already-issued probability remains visible as
 research context under the explicit frozen indicator.
+
+The dashboard summary distinguishes a fully stale publication from a mixed
+route state. If at least one current ordinary route or verified frozen weekly
+outlook coexists with stale routes, the summary uses a warning tone and says
+that current outlooks have route timing gaps. It uses the red stale state only
+when no route reports an operationally current status. The route detail reports
+live routes, current frozen weekly outlooks, and published rows separately so a
+valid frozen outlook is never described as zero current data.
 
 ### Live-evidence labels
 

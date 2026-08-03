@@ -81,17 +81,22 @@ MULTI_SESSION daily, weekly, and monthly bars
 `input_incomplete_bar_count` records how many provider rows were intentionally
 excluded by the calculation-time check.
 
-## Databento derived intervals
+## Databento derived intervals and hourly continuity
 
-The Databento lane derives `5m`, `10m`, `15m`, and `30m` intervals from completed
-one-minute bars. Aggregation:
+The Databento lane derives `5m`, `10m`, `15m`, `30m`, and `1h` intervals from
+completed one-minute bars. The derived `1h` lane is a continuity fallback for
+the provider's sometimes-delayed native hourly publication. When both files
+contain the same timestamp, the native hour wins; a complete derived hour fills
+only a timestamp the native file has not published yet. Aggregation:
 
 1. receives finalized normalized-source candidates;
 2. independently discards an incomplete one-minute bar;
 3. groups by Eastern market date and session type;
 4. aggregates OHLCV without crossing session boundaries;
-5. emits the larger bar only after that interval has closed;
-6. writes `id, timestamp, open, high, low, close, volume`.
+5. requires every expected one-minute constituent, so a continuation tail can
+   never overwrite a complete interval with a partial aggregate;
+6. emits the larger bar only after that interval has closed;
+7. writes `id, timestamp, open, high, low, close, volume`.
 
 Outputs use the normal stock layout:
 
@@ -100,6 +105,7 @@ DATASTORE/stocks/<SYMBOL>/bars/5m/databento/normalized/*.parquet
 DATASTORE/stocks/<SYMBOL>/bars/10m/databento/normalized/*.parquet
 DATASTORE/stocks/<SYMBOL>/bars/15m/databento/normalized/*.parquet
 DATASTORE/stocks/<SYMBOL>/bars/30m/databento/normalized/*.parquet
+DATASTORE/stocks/<SYMBOL>/bars/1h/databento/normalized/*.parquet
 ```
 
 This lane complements Schwab data. Provider-aware calculations can compare both

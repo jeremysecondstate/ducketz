@@ -136,8 +136,10 @@ One Loop B iteration:
 
 The versioned intraday target contracts are
 `next-60-eligible-regular-minutes-open-close-v2` for `1h` and
-`next-240-eligible-regular-minutes-open-close-v2` for `4h`. Both keep completed
-native `1h` bars as the decision and feature source. The calendar fixes the
+`next-240-eligible-regular-minutes-open-close-v2` for `4h`. Both use completed
+canonical `1h` bars as the decision and feature source. Native Databento rows
+win duplicate timestamps, while an all-60-minute derived hour fills only a
+native publication lag. The calendar fixes the
 target before price lookup using
 `session-open-break-resume-plus-full-local-clock-anchor-v1`: each continuous
 regular-session segment contributes its exact start (the official session open
@@ -154,8 +156,8 @@ selected minute's open and `target_close` is the final selected minute's close.
 Every predetermined minute must exist. A missing first, middle, or final minute
 keeps the window fixed and the label incomplete; Loop B never substitutes a
 later minute. Target minutes do not enter the feature matrix, and
-`previous_period_direction` continues to come from the completed native `1h`
-source bar.
+`previous_period_direction` continues to come from the completed canonical
+`1h` source bar.
 
 On an ordinary XNAS session this makes a pre-open `1h` target
 09:30–10:30 Eastern and a pre-open `4h` target 09:30–13:30 Eastern. In summer,

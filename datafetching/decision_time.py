@@ -41,7 +41,7 @@ def latest_completed_bar_clock(
     Duckets fetches option surfaces on a 15-minute cadence. The source of truth is the
     normalized Databento 1m Parquet, so ``decision_timestamp`` is the newest completed
     1m ``bar_end_timestamp`` that lands exactly on a wall-clock quarter-hour boundary
-    (:00, :15, :30, or :45). Derived 5m/10m/15m/30m Parquets are not consulted.
+    (:00, :15, :30, or :45). Derived higher-timeframe Parquets are not consulted.
     """
 
     clean_symbol = symbol.strip().upper()

@@ -26,6 +26,7 @@ from app.ui.rolling_forecast_data import (
     load_forecast_dashboard,
     route_accessible_status_labels,
     route_outcome_evidence_label,
+    route_publication_summary,
 )
 from app.ui.rolling_forecasts import RollingForecastTab
 from ml.live_evidence import minimum_live_decisions
@@ -252,7 +253,37 @@ def test_stale_data_uses_backend_operational_status(
     view = load_forecast_dashboard(path)
 
     assert view.freshness_label == "Data is stale"
+    assert view.freshness_tone == "danger"
     assert view.operational_label == "Operational data is stale"
+
+
+def test_current_weekly_outlook_with_stale_live_routes_is_not_global_failure(
+    tmp_path: Path,
+) -> None:
+    path = _write(
+        tmp_path,
+        [
+            *_weekly_rows(),
+            *(
+                _row(
+                    horizon=horizon,
+                    actionability_status="NOT_ACTIONABLE",
+                    operational_status="OPERATIONALLY_STALE",
+                )
+                for horizon in STANDARD_HORIZON_ORDER
+            ),
+        ],
+    )
+
+    view = load_forecast_dashboard(path)
+
+    assert view.freshness_label == "Current outlooks with route gaps"
+    assert view.freshness_tone == "warning"
+    assert view.operational_label == "Operational with route timing gaps"
+    assert view.operational_tone == "warning"
+    assert route_publication_summary(view) == (
+        "0 live routes; 1 current frozen weekly outlook; 9 published rows"
+    )
 
 
 def test_unsupported_schema_version_is_structured(

@@ -24,6 +24,7 @@ from app.ui.rolling_forecast_data import (
     load_forecast_dashboard,
     route_accessible_status_labels,
     route_outcome_evidence_label,
+    route_publication_summary,
 )
 from app.ui.theme import (
     ACCENT,
@@ -469,12 +470,7 @@ class RollingForecastTab:
                 local_timezone=self.local_timezone,
             )
         )
-        route_detail = (
-            f"{view.actionable_route_count} current of "
-            f"{view.published_route_count} published routes; "
-            f"{view.frozen_weekly_snapshot_count} frozen weekly snapshot"
-            + ("s" if view.frozen_weekly_snapshot_count != 1 else "")
-        )
+        route_detail = route_publication_summary(view)
         cards = (
             (
                 "Data freshness",

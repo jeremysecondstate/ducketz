@@ -8,12 +8,13 @@ import pandas as pd
 from app.models.market_data import MarketBar
 from datafetching.bar_timing import annotate_bar_timing
 
-DERIVED_INTRADAY_FREQUENCIES = ("5m", "10m", "15m", "30m")
+DERIVED_INTRADAY_FREQUENCIES = ("5m", "10m", "15m", "30m", "1h")
 _RESAMPLE_RULES = {
     "5m": "5min",
     "10m": "10min",
     "15m": "15min",
     "30m": "30min",
+    "1h": "1h",
 }
 
 
@@ -42,7 +43,7 @@ class DerivedMarketBar:
         API while preventing an ISO-string value from colliding with the stored
         timestamp column on the next fetch cycle.
         """
-        minutes = int(self.timeframe.removesuffix("m"))
+        minutes = _frequency_minutes(self.timeframe)
         return self.timestamp + timedelta(minutes=minutes)
 
 
@@ -56,8 +57,10 @@ def derive_intraday_bars(
     """Aggregate completed 1-minute bars without crossing market sessions.
 
     The current 1-minute candle is excluded before aggregation, and a derived
-    candle is emitted only after its own 5/10/15/30-minute interval has closed.
-    This makes polling at arbitrary offsets, including every 27 minutes, safe.
+    candle is emitted only after its own 5/10/15/30/60-minute interval has
+    closed and every expected one-minute constituent is present. This makes
+    polling at arbitrary offsets safe and prevents an overlapping continuation
+    tail from replacing a complete derived candle with a partial one.
     """
     frequency = output_frequency.strip().lower()
     try:
@@ -116,7 +119,11 @@ def derive_intraday_bars(
 
     derived = pd.concat(pieces, ignore_index=True, sort=False).sort_values("timestamp")
     derived = annotate_bar_timing(derived, timeframe=frequency, as_of=observed_at)
-    derived = derived.loc[derived["bar_complete"]].reset_index(drop=True)
+    expected_source_bar_count = _frequency_minutes(frequency)
+    derived = derived.loc[
+        derived["bar_complete"]
+        & derived["source_bar_count"].eq(expected_source_bar_count)
+    ].reset_index(drop=True)
 
     clean_symbol = symbol.strip().upper()
     return [
@@ -144,3 +151,15 @@ def _as_utc_timestamp(value: datetime | pd.Timestamp | None) -> pd.Timestamp:
         return pd.Timestamp.now(tz="UTC")
     parsed = pd.Timestamp(value)
     return parsed.tz_localize("UTC") if parsed.tzinfo is None else parsed.tz_convert("UTC")
+
+
+def _frequency_minutes(value: str) -> int:
+    frequency = str(value).strip().lower()
+    if frequency == "1h":
+        return 60
+    if frequency.endswith("m") and frequency[:-1].isdigit():
+        minutes = int(frequency[:-1])
+        if minutes > 0:
+            return minutes
+    choices = ", ".join(DERIVED_INTRADAY_FREQUENCIES)
+    raise ValueError(f"Unsupported derived intraday frequency {value!r}; use {choices}.")

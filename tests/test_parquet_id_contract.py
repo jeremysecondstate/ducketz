@@ -10,7 +10,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from datafetching import bar_schema
-from datafetching.ids import RAW_PROVIDER_ID_COLUMNS
+from datafetching.ids import validate_raw_provider_id_columns
 from datafetching.parquet_store import ParquetStore
 from ml import parquet_contracts
 
@@ -57,20 +57,19 @@ def assert_parquet_contract(path: Path) -> None:
         index for index, part in enumerate(lowered_parts) if part == "raw"
     ]
     raw = bool(raw_indexes)
-    raw_source = (
-        lowered_parts[raw_indexes[-1] - 1]
-        if raw and raw_indexes[-1] > 0
-        else ""
-    )
-    allowed = set(RAW_PROVIDER_ID_COLUMNS.get(raw_source, ()))
-    forbidden = parquet_contracts.forbidden_identity_columns(
-        schema.names,
-        allowed_provider_native=allowed,
-    )
-    assert forbidden == [], f"{path}: {forbidden}"
-    if not raw:
-        provider_columns = set().union(*RAW_PROVIDER_ID_COLUMNS.values())
-        assert not provider_columns.intersection(schema.names), path
+    if raw:
+        raw_source = (
+            lowered_parts[raw_indexes[-1] - 1]
+            if raw_indexes[-1] > 0
+            else "unknown"
+        )
+        validate_raw_provider_id_columns(
+            pd.DataFrame(columns=schema.names),
+            source=raw_source,
+        )
+    else:
+        forbidden = parquet_contracts.forbidden_identity_columns(schema.names)
+        assert forbidden == [], f"{path}: {forbidden}"
 
     frame = pd.read_parquet(path, columns=["id"])
     if frame.empty:
@@ -224,7 +223,7 @@ def test_readable_id_validator_rejects_hash_uuid_and_extra_ids() -> None:
         )
 
 
-def test_raw_provider_identifiers_are_narrowly_allowed(
+def test_raw_provider_identifiers_are_preserved_without_an_allowlist(
     tmp_path: Path,
 ) -> None:
     store = ParquetStore(tmp_path)

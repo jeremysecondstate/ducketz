@@ -129,9 +129,11 @@ one-hour target. Ordinary intraday decisions retain full local-clock starts
 across breaks, early closes, overnight closures, weekends, holidays, and DST
 transitions.
 
-Materialization maps both intraday routes to completed native `1h` source bars
-for features and `previous_period_direction`, while loading native `1m` only
-for targets. `4h` shares the existing `(symbol, "1h")` source cache with `1h`;
+Materialization maps both intraday routes to completed canonical `1h` source
+bars for features and `previous_period_direction`, while loading native `1m`
+only for targets. Native hours win duplicate timestamps and a complete
+one-minute-derived hour fills only native publication lag. `4h` shares the
+existing `(symbol, "1h")` source cache with `1h`;
 the target caches are shared by symbol as well. There is no Loop A `4h`
 provider fetch or synthetic `4h` bar write, and future target minute prices
 never enter model features.

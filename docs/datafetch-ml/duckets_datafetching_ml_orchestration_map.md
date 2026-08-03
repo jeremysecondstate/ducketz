@@ -103,14 +103,15 @@ being selected. Later symbols omit FRED but run the other selected
 symbol-specific providers.
 
 Databento's live native bar requests are `1s`, `1m`, `1h`, and `1d`. Loop A
-derives only `5m`, `10m`, `15m`, and `30m` bars, from completed normalized
-`1m` bars and without crossing session boundaries. Definitions for other
-resampling intervals elsewhere in the repository are not used by the live
-Databento fetch lane.
+derives `5m`, `10m`, `15m`, `30m`, and a continuity-fallback `1h` from complete
+`1m` constituents without crossing session boundaries. Native `1h` rows win
+duplicate timestamps; the derived hour fills only a provider-publication lag.
+Every derived interval requires its full one-minute constituent count.
 
-Loop B's `4h` route reuses the canonical native `1h` source and its
-`(symbol, "1h")` cache entry. Loop A does not request, derive, or persist a
-synthetic `4h` bar.
+Loop B's `4h` route reuses the canonical completed `1h` source and its
+`(symbol, "1h")` cache entry. That source prefers native Databento evidence and
+uses the complete one-minute-derived hour only during native publication lag.
+Loop A does not request, derive, or persist a synthetic `4h` bar.
 
 Schwab runs quote, price-history, and option-chain work in that order. Its
 option `snapshot_for` clock comes from the latest completed normalized

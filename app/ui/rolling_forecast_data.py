@@ -492,6 +492,19 @@ def format_session_date(
     )
 
 
+def route_publication_summary(view: ForecastDashboardView) -> str:
+    """Describe live routes and the frozen outlook without conflating them."""
+
+    live = view.actionable_route_count
+    frozen = view.frozen_weekly_snapshot_count
+    return (
+        f"{live} live route" + ("s" if live != 1 else "")
+        + f"; {frozen} current frozen weekly outlook"
+        + ("s" if frozen != 1 else "")
+        + f"; {view.published_route_count} published rows"
+    )
+
+
 def route_outcome_evidence_label(route: ForecastRouteView) -> str:
     labels = {
         "PENDING_EVIDENCE": "Pending evidence",
@@ -989,7 +1002,13 @@ def _freshness(statuses: tuple[str, ...]) -> tuple[str, str]:
         return "Latest refresh failed", "danger"
     if "REFRESH_IN_PROGRESS" in statuses:
         return "Refresh in progress", "warning"
-    if any("STALE" in status for status in statuses):
+    has_stale = any("STALE" in status for status in statuses)
+    has_current = any(
+        status in _CURRENT_OPERATIONAL_STATUSES for status in statuses
+    )
+    if has_stale and has_current:
+        return "Current outlooks with route gaps", "warning"
+    if has_stale:
         return "Data is stale", "danger"
     if all(
         status in _CURRENT_OPERATIONAL_STATUSES for status in statuses
@@ -1007,7 +1026,13 @@ def _operational_summary(
         return "Refresh failed", "danger"
     if "REFRESH_IN_PROGRESS" in statuses:
         return "Refreshing current output", "warning"
-    if any("STALE" in status for status in statuses):
+    has_stale = any("STALE" in status for status in statuses)
+    has_current = any(
+        status in _CURRENT_OPERATIONAL_STATUSES for status in statuses
+    )
+    if has_stale and has_current:
+        return "Operational with route timing gaps", "warning"
+    if has_stale:
         return "Operational data is stale", "danger"
     if all(
         status in _CURRENT_OPERATIONAL_STATUSES for status in statuses

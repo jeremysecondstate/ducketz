@@ -172,11 +172,13 @@ The active default sets contain:
 | `1d` | `loop-a-all-v1-1d` | 139 | `mr` 13; `bp` 13; bar shape 3; weekly context 3; technical lifecycle 5; fundamental direction 25; point-in-time fundamentals 13; fundamental-technical lifecycle 17; quote 1; options 32; energy 1; macro 4; SEC 3; CME 6 |
 | `1w`, `1w-d1` ... `1w-d5` | `loop-a-all-v1-1w` | 132 | `mr` 14; `bp` 12; bar shape 3; weekly context 3; technical lifecycle 5; fundamental direction 25; point-in-time fundamentals 13; fundamental-technical lifecycle 17; options 29; macro 4; SEC 3; CME 4 |
 
-The `1h` and `4h` routes deliberately use completed canonical native `1h` bars
-for decisions and features while using canonical adjusted native Databento
-`1m` bars only for their predetermined target prices. The `4h` route reuses
-the same native `1h` source cache as `1h`. Loop A does not fetch or persist
-synthetic `4h` bars, and target minute bars never enter model features.
+The `1h` and `4h` routes deliberately use completed canonical `1h` bars for
+decisions and features while using canonical adjusted native Databento `1m`
+bars only for their predetermined target prices. Native hourly rows are
+preferred at duplicate timestamps; an all-60-constituent `1m` aggregate fills
+only a native publication lag. The `4h` route reuses the same `1h` source cache
+as `1h`. Loop A does not fetch or persist synthetic `4h` bars, and target minute
+bars never enter model features.
 
 The weekly family creates six historical candidates after each eligible daily
 decision. Components Day 1 through Day 5 predict each future eligible session's
@@ -311,7 +313,7 @@ Both use calendar policy
 `session-open-break-resume-plus-full-local-clock-anchor-v1` and target-price
 source `canonical-adjusted-native-1m-interval-open-v1`. The target procedure is:
 
-1. a completed eligible native `1h` source bar supplies the decision features
+1. a completed eligible canonical `1h` source bar supplies the decision features
    and `previous_period_direction`; information becomes available at the
    source-bar end plus the five-minute processing delay;
 2. before any price lookup, each continuous regular-session segment contributes
