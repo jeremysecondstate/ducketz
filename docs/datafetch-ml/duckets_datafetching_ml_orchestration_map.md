@@ -239,24 +239,25 @@ source decisions are eligible.
    information availability, then fixes exactly 60 or 240 eligible regular
    one-minute constituents from adjusted native `1m` target data. Each weekly
    route uses the existing 132-column `1w` feature inventory. Aggregate `1w`
-   targets Day 1 official open through Day 5 official close; the five components
-   target each eligible session's official open-to-close direction.
+   targets Day 1 official open through the final eligible close of Day 1's
+   exchange week; the five components target each eligible session's official
+   open-to-close direction.
 5. Exclude verified prior-LIVE target starts from offline partitioning, then
    split the remaining completed targets chronologically by distinct
    `target_window_start` cluster into training, calibration, assessment, and a
    latest closed lockbox.
 6. Purge actual target-window overlap across training-to-calibration,
    calibration-to-assessment, and assessment-to-lockbox boundaries. This
-   purges overlapping rolling five-session aggregate windows as well as `4h`
+   purges overlapping rolling remaining-week aggregate windows as well as `4h`
    windows. Never coerce, read, return, predict, or score lockbox targets.
 7. Reuse a compatible model or train and calibrate a new model. Under the
    default logistic/Platt configuration, aggregate `1w` uses the route-specific
    estimator and calibrator policy described below.
 8. Generate assessment predictions and currently actionable non-weekly
-   predictions. For public `1w`, issue all six LIVE rows together only after
-   the final eligible exchange-week session closes plus processing delay and
-   before Day 1 opens, or reuse the exact complete origin bundle from verified
-   receipt-chain history.
+   predictions. For public `1w`, use the latest completed daily decision to
+   issue aggregate `1w` plus the contiguous Day 1 prefix remaining in one
+   exchange week. Reuse the exact verified rows for the same decision; replace
+   them when a newer completed decision produces a shorter outlook.
 9. Remove every directional closed-lockbox cluster from the publishable sample
    view and pass the removed `target_window_start` values to strategy analytics
    as a forbidden set. A reappearing start is a hard failure.
@@ -421,12 +422,14 @@ the immutable run's `intelligence.parquet`. The explicit path above remains
 available as a compatibility mirror and as the legacy fallback when no pointer
 exists; it is not publication authority for receipt-era runs.
 
-The Rolling Forecasts route order remains `1h`, `4h`, `1d`, `1w`, but `1w` renders one
-**5-session outlook** backed by six internal rows. A complete successful
-three-symbol all-horizon publication therefore contains 27 current rows and
-renders three ordinary cards plus one grouped weekly outlook per symbol. That
-is the publication contract, not evidence that such a live run has already
-occurred. Deployment and supervisor restart remain explicit operator actions.
+The Rolling Forecasts route order remains `1h`, `4h`, `1d`, `1w`, but `1w`
+renders one **remaining-week outlook** from the current aggregate and Day 1
+prefix. A complete successful three-symbol all-horizon publication still
+contains 27 current-output model-route rows and renders three ordinary cards
+plus one grouped weekly outlook per symbol. Unused later weekly routes carry no
+current probability. That is the publication contract, not evidence that such
+a live run has already occurred. Deployment and supervisor restart remain
+explicit operator actions.
 
 The sibling Options Strategies tab starts from the predictable path:
 

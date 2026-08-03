@@ -652,21 +652,21 @@ class RollingForecastTab:
         header.pack(fill=tk.X)
         ttk.Label(
             header,
-            text="5-session outlook",
+            text="Remaining-week outlook",
             style="ForecastCardTitle.TLabel",
         ).pack(side=tk.LEFT, anchor=tk.W)
 
         if outlook is None:
             ttk.Label(
                 header,
-                text="No frozen snapshot",
+                text="No current snapshot",
                 style="ForecastNeutral.TLabel",
             ).pack(side=tk.RIGHT, anchor=tk.E)
             ttk.Label(
                 card,
                 text=(
-                    "No complete aggregate plus Day 1 through Day 5 weekly "
-                    "snapshot was published for this symbol."
+                    "No current remaining-week aggregate and session snapshot "
+                    "was published for this symbol."
                 ),
                 style="ForecastMuted.TLabel",
                 wraplength=980,
@@ -676,7 +676,7 @@ class RollingForecastTab:
 
         ttk.Label(
             header,
-            text="Frozen weekly snapshot",
+            text="Current remaining-week snapshot",
             style="ForecastSuccess.TLabel",
         ).pack(side=tk.RIGHT, anchor=tk.E)
         ttk.Label(
@@ -704,7 +704,7 @@ class RollingForecastTab:
         aggregate_panel.pack(fill=tk.X, pady=(10, 4))
         ttk.Label(
             aggregate_panel,
-            text="Aggregate (Full Week)",
+            text="Aggregate (Remaining Week)",
             style="ForecastCardTitle.TLabel",
         ).pack(anchor=tk.W)
         ttk.Label(

@@ -51,9 +51,9 @@ def test_supported_horizon_order_labels_and_subtitle_are_exact() -> None:
     )
     assert HORIZON_LABELS["4h"] == "4 hour"
     assert f"{HORIZON_LABELS['4h']} forecast" == "4 hour forecast"
-    assert HORIZON_LABELS["1w"] == "5-session aggregate"
+    assert HORIZON_LABELS["1w"] == "Remaining-week aggregate"
     assert FORECAST_SUBTITLE == (
-        "Read-only 1h, 4h, 1d, and frozen 5-session probability outlooks. "
+        "Read-only 1h, 4h, 1d, and dynamic remaining-week probability outlooks. "
         "Probabilities are not recommendations."
     )
 
@@ -83,12 +83,61 @@ def test_three_standard_cards_and_complete_weekly_outlook_are_grouped(
     assert [
         route.probability_up for route in view.symbols[0].routes
     ] == [0.61, 0.59, 0.57, 0.54]
-    assert view.symbols[0].routes[-1].horizon_label == "5-session aggregate"
+    assert view.symbols[0].routes[-1].horizon_label == "Remaining-week aggregate"
     assert view.symbols[0].weekly_outlook is not None
     assert [
         route.horizon for route in view.symbols[0].weekly_outlook.sessions
     ] == ["1w-d1", "1w-d2", "1w-d3", "1w-d4", "1w-d5"]
     assert view.freshness_label == "Data pipeline is current"
+
+
+def test_monday_decision_renders_dynamic_tuesday_through_friday_outlook(
+    tmp_path: Path,
+) -> None:
+    rows = _weekly_rows()[:5]
+    windows = (
+        ("2026-08-04T13:30:00Z", "2026-08-04T20:00:00Z"),
+        ("2026-08-05T13:30:00Z", "2026-08-05T20:00:00Z"),
+        ("2026-08-06T13:30:00Z", "2026-08-06T20:00:00Z"),
+        ("2026-08-07T13:30:00Z", "2026-08-07T20:00:00Z"),
+    )
+    for index, row in enumerate(rows):
+        horizon = str(row["horizon"])
+        start, end = windows[0] if horizon == "1w" else windows[index - 1]
+        row.update(
+            {
+                "id": f"GOOG|{horizon}|2026-08-03T20:05:00Z",
+                "decision_timestamp": "2026-08-03T20:05:00Z",
+                "forecast_created_at": "2026-08-03T20:06:00Z",
+                "information_available_at": "2026-08-03T20:05:00Z",
+                "target_window_start": start,
+                "target_window_end": windows[-1][1] if horizon == "1w" else end,
+                "actionable_until": windows[0][1] if horizon == "1w" else end,
+            }
+        )
+    rows.append(
+        _row(
+            horizon="1w-d5",
+            actionability_status="NO_ACTIONABLE_CANDIDATE",
+        )
+    )
+
+    view = load_forecast_dashboard(_write(tmp_path, rows))
+    outlook = view.symbols[0].weekly_outlook
+
+    assert outlook is not None
+    assert outlook.aggregate.target_window_start == datetime(
+        2026, 8, 4, 13, 30, tzinfo=timezone.utc
+    )
+    assert outlook.aggregate.target_window_end == datetime(
+        2026, 8, 7, 20, 0, tzinfo=timezone.utc
+    )
+    assert [route.horizon for route in outlook.sessions] == [
+        "1w-d1",
+        "1w-d2",
+        "1w-d3",
+        "1w-d4",
+    ]
 
 
 def test_legacy_short_horizon_output_has_missing_cards(
@@ -282,7 +331,7 @@ def test_current_weekly_outlook_with_stale_live_routes_is_not_global_failure(
     assert view.operational_label == "Operational with route timing gaps"
     assert view.operational_tone == "warning"
     assert route_publication_summary(view) == (
-        "0 live routes; 1 current frozen weekly outlook; 9 published rows"
+        "0 live routes; 1 current remaining-week outlook; 9 published rows"
     )
 
 
@@ -608,13 +657,16 @@ def test_frozen_weekly_probabilities_survive_evidence_only_refreshes(
 
 
 def test_incomplete_frozen_weekly_bundle_is_rejected(tmp_path: Path) -> None:
-    path = _write(tmp_path, _weekly_rows()[:-1])
+    path = _write(
+        tmp_path,
+        [row for row in _weekly_rows() if row["horizon"] != "1w-d3"],
+    )
 
     with pytest.raises(ForecastDataError) as caught:
         load_forecast_dashboard(path)
 
-    assert "Incomplete frozen weekly snapshot" in caught.value.message
-    assert "1w-d5" in caught.value.message
+    assert "Incomplete remaining-week snapshot" in caught.value.message
+    assert "contiguous Day 1 prefix" in caught.value.message
 
 
 def test_retired_next_session_weekly_target_is_rejected(tmp_path: Path) -> None:
@@ -627,23 +679,25 @@ def test_retired_next_session_weekly_target_is_rejected(tmp_path: Path) -> None:
     with pytest.raises(ForecastDataError) as caught:
         load_forecast_dashboard(path)
 
-    assert "does not use the frozen five-session target definition" in (
+    assert "does not use the dynamic remaining-week target definition" in (
         caught.value.message
     )
 
 
-def test_frozen_weekly_bundle_requires_one_pre_entry_issuance(
+def test_remaining_week_bundle_requires_issuance_before_its_deadline(
     tmp_path: Path,
 ) -> None:
     rows = _weekly_rows()
     for row in rows:
-        row["forecast_created_at"] = "2026-08-03T13:30:00Z"
+        row["forecast_created_at"] = "2026-08-03T20:00:00Z"
     path = _write(tmp_path, rows)
 
     with pytest.raises(ForecastDataError) as caught:
         load_forecast_dashboard(path)
 
-    assert "was not issued before Day 1 opened" in caught.value.message
+    assert "was not issued before every published route deadline" in (
+        caught.value.message
+    )
 
 
 def test_weekly_bundle_requires_explicit_frozen_runtime_status(
@@ -656,17 +710,17 @@ def test_weekly_bundle_requires_explicit_frozen_runtime_status(
     with pytest.raises(ForecastDataError) as caught:
         load_forecast_dashboard(path)
 
-    assert "is not marked as a frozen weekly snapshot" in caught.value.message
+    assert "contiguous Day 1 prefix" in caught.value.message
 
 
 def test_weekly_card_source_contains_required_frozen_outlook_content() -> None:
     source = inspect.getsource(RollingForecastTab._build_weekly_outlook_card)
 
     for required_text in (
-        "5-session outlook",
-        "Frozen weekly snapshot",
+        "Remaining-week outlook",
+        "Current remaining-week snapshot",
         "Snapshot issued",
-        "Aggregate (Full Week)",
+        "Aggregate (Remaining Week)",
         "UTC open",
         "Local open",
         "Outcome/evidence",
@@ -1001,12 +1055,12 @@ def _weekly_rows(
         ("1w-d5", "2026-08-07T13:30:00Z", "2026-08-07T20:00:00Z"),
     )
     versions = {
-        "1w": "frozen-five-session-aggregate-open-close-v1",
-        "1w-d1": "frozen-five-session-d1-open-close-v1",
-        "1w-d2": "frozen-five-session-d2-open-close-v1",
-        "1w-d3": "frozen-five-session-d3-open-close-v1",
-        "1w-d4": "frozen-five-session-d4-open-close-v1",
-        "1w-d5": "frozen-five-session-d5-open-close-v1",
+        "1w": "dynamic-remaining-week-aggregate-open-close-v2",
+        "1w-d1": "dynamic-remaining-week-d1-open-close-v2",
+        "1w-d2": "dynamic-remaining-week-d2-open-close-v2",
+        "1w-d3": "dynamic-remaining-week-d3-open-close-v2",
+        "1w-d4": "dynamic-remaining-week-d4-open-close-v2",
+        "1w-d5": "dynamic-remaining-week-d5-open-close-v2",
     }
     probabilities = (0.54, 0.51, 0.52, 0.53, 0.54, 0.55)
     statuses = intelligence_statuses or ("PENDING_EVIDENCE",) * 6
@@ -1041,7 +1095,11 @@ def _weekly_rows(
                 "information_available_at": "2026-07-31T20:05:00Z",
                 "target_window_start": target_start,
                 "target_window_end": target_end,
-                "actionable_until": "2026-08-03T13:30:00Z",
+                "actionable_until": (
+                    "2026-08-03T20:00:00Z"
+                    if horizon == "1w"
+                    else target_end
+                ),
                 "target_definition_version": versions[horizon],
             }
         )

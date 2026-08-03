@@ -240,7 +240,7 @@ DEFAULT_HORIZON_SPECIFICATIONS: Final[
     "1w": HorizonSpecification(
         horizon="1w",
         target_definition_version=(
-            "frozen-five-session-aggregate-open-close-v1"
+            "dynamic-remaining-week-aggregate-open-close-v2"
         ),
         source_timeframe="1d",
         information_availability_rule=(
@@ -248,27 +248,31 @@ DEFAULT_HORIZON_SPECIFICATIONS: Final[
         ),
         decision_time_rule=(
             "historical_candidates_after_each_completed_eligible_session_close_"
-            "live_issuance_only_after_final_exchange_week_session_close_and_"
-            "processing_delay"
+            "live_issuance_from_latest_completed_session_for_targets_remaining_"
+            "in_one_exchange_week"
         ),
         target_window_start_rule="next_eligible_session_open",
-        target_window_end_rule="fifth_eligible_session_close",
+        target_window_end_rule=(
+            "final_eligible_session_close_of_next_targets_exchange_week"
+        ),
         return_definition=(
-            "first_eligible_session_open_to_fifth_eligible_session_close_"
-            "simple_return"
+            "first_remaining_exchange_week_session_open_to_final_remaining_"
+            "exchange_week_session_close_simple_return"
         ),
         label_definition=(
-            "cost_adjusted_five_session_endpoint_return_strictly_positive_"
-            "available_after_fifth_session_close_plus_processing_delay"
+            "cost_adjusted_remaining_exchange_week_endpoint_return_strictly_"
+            "positive_available_after_final_session_close_plus_processing_delay"
         ),
         cost_convention=(
             "explicit_round_trip_rate_subtracted_once_from_simple_return"
         ),
         exchange_calendar_rule=(
-            "next_five_eligible_regular_sessions_with_holidays_early_closes_"
-            "weekends_and_dst_from_exchange_calendar"
+            "eligible_regular_sessions_remaining_in_the_next_targets_exchange_"
+            "week_with_holidays_early_closes_weekends_and_dst_from_calendar"
         ),
-        actionability_deadline="strictly_before_first_eligible_session_open",
+        actionability_deadline=(
+            "strictly_before_first_remaining_component_session_close"
+        ),
         feature_set="technical-all",
     ),
 }
@@ -279,7 +283,7 @@ def _weekly_component_specification(lead: int) -> HorizonSpecification:
     return HorizonSpecification(
         horizon=horizon,
         target_definition_version=(
-            f"frozen-five-session-d{lead}-open-close-v1"
+            f"dynamic-remaining-week-d{lead}-open-close-v2"
         ),
         source_timeframe="1d",
         information_availability_rule=(
@@ -287,8 +291,8 @@ def _weekly_component_specification(lead: int) -> HorizonSpecification:
         ),
         decision_time_rule=(
             "historical_candidates_after_each_completed_eligible_session_close_"
-            "live_issuance_only_after_final_exchange_week_session_close_and_"
-            "processing_delay"
+            "live_issuance_from_latest_completed_session_for_targets_remaining_"
+            "in_one_exchange_week"
         ),
         target_window_start_rule=f"d_plus_{lead}_eligible_session_open",
         target_window_end_rule=f"d_plus_{lead}_eligible_session_close",
@@ -306,7 +310,7 @@ def _weekly_component_specification(lead: int) -> HorizonSpecification:
             "next_five_eligible_regular_sessions_with_holidays_early_closes_"
             "weekends_and_dst_from_exchange_calendar"
         ),
-        actionability_deadline="strictly_before_first_eligible_session_open",
+        actionability_deadline="strictly_before_component_session_close",
         feature_set="technical-all",
     )
 

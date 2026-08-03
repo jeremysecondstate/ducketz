@@ -85,14 +85,16 @@ then accumulates 60 or 240 eligible regular-session minutes. Closed periods
 pause accumulation while intervening price gaps remain in the return. Loop A
 does not fetch or persist synthetic `4h` bars.
 
-The public `1w` selection is a frozen **5-session outlook**, not a next-session
-forecast. Internally it expands to six ordinary horizon values in the existing
-`horizon` column: `1w` for the aggregate D+1-open-to-D+5-close return and
-`1w-d1` through `1w-d5` for each eligible session's open-to-close return. The
-exchange calendar supplies the five actual sessions and official windows,
-including holidays, early closes, weekends, and DST. A weekly snapshot is
-issued only after the final eligible session of the exchange week closes plus
-the processing delay and strictly before D+1 opens.
+The public `1w` selection is a dynamic **remaining-week outlook**. Internally
+the existing `1w` route is the aggregate from the next eligible session's open
+through the final eligible close of that exchange week, while `1w-d1` through
+`1w-d5` supply the available per-session open-to-close routes. Only the Day 1
+prefix that remains in the same exchange week is published as the current
+snapshot. Thus a Monday-close decision publishes a Tuesday-through-Friday
+aggregate plus `d1` through `d4`; Wednesday close publishes Thursday-Friday
+plus `d1` and `d2`. The exchange calendar handles holidays, early closes,
+weekends, and DST, and every route remains eligible until its applicable
+session-close deadline.
 
 The feature mappings, point-in-time rules, quarantine gates, and model reuse
 contract are documented in
@@ -122,18 +124,18 @@ This prevents Loop B from ingesting a mixture of two Loop A cycles without any
 bootstrap, readiness lease, decision-timestamp handoff, acknowledgement, or
 rejection state. Loop B runs on its normal UTC phase whenever the latest Loop A
 cycle is `COMPLETE`. Non-weekly routes retain their existing rolling behavior.
-Once a weekly snapshot is issued, later Loop B cycles recover its exact six
-prediction rows from verified receipt-chain history and preserve their
-probabilities, model versions, prediction timestamps, and target windows. Those
-cycles may reconcile outcomes and refresh evidence/status, but neither Loop A
-updates nor later Loop B cycles rescore the issued weekly outlook. Each
-requested route still validates its actual input files and schema. In
+Once a remaining-week snapshot is issued, later Loop B cycles recover its exact
+prediction rows for that same daily decision from verified receipt-chain
+history and preserve their probabilities, model versions, prediction
+timestamps, and target windows. A newer completed daily decision may issue a
+shorter aggregate-plus-Day-1-prefix outlook. Each requested route still
+validates its actual input files and schema. In
 generation mode, failures are isolated by symbol and horizon while the atomic
 current-output pointer advances only to a complete immutable Loop B run.
 
-If the six-route weekly snapshot was not published before D+1 opened, Loop B
-fails closed and waits for the next weekly issuance. It does not bootstrap,
-backfill, manufacture a post-entry forecast, lower partition requirements, or
+If a coherent remaining-week snapshot cannot publish before its applicable
+session-close deadline, Loop B fails closed until a newer eligible decision is
+available. It does not bootstrap, backfill, lower partition requirements, or
 use a legacy target fallback. No new dataset, Parquet column, datastore state
 file, pointer, acknowledgement, or coordination mechanism is used.
 
@@ -163,8 +165,8 @@ python -m app.main ui
 
 The first tab is the read-only rolling forecast dashboard. It retains the
 existing `1h`, `4h`, and `1d` cards and presents `1w` as one grouped
-**5-session outlook** with the aggregate probability, frozen issuance time,
-aggregate window, and dated D+1 through D+5 session rows. By default it follows
+**remaining-week outlook** with the aggregate probability, issuance time,
+aggregate window, and dated remaining-session rows. By default it follows
 the single authoritative current-view pointer:
 
 ```text
@@ -192,5 +194,4 @@ Dashboard setup and behavior are documented in
 
 Deployment, model training against an operational datastore, and supervisor
 restarts remain explicit operator actions. This repository documentation does
-not claim that a live six-route weekly publication has been deployed or
-observed.
+not claim that a live dynamic weekly publication has been deployed or observed.

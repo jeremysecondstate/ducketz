@@ -152,8 +152,9 @@ intelligence row is one of:
 - `ROUTE_UNAVAILABLE` when no last-good forecast exists.
 
 The run returns `COMPLETED_WITH_LIMITATIONS` and records redacted route errors.
-The six weekly routes remain an atomic outlook per symbol; a failed symbol does
-not prevent another fully ready symbol from issuing its weekly outlook.
+The current weekly aggregate and contiguous Day 1 prefix remain an atomic
+outlook per symbol; a failed symbol does not prevent another fully ready symbol
+from issuing its weekly outlook.
 
 ## Crash and restart behavior
 

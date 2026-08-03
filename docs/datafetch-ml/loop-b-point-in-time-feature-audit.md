@@ -29,9 +29,10 @@ loop and did not reinterpret that historical run as current deployment proof.
    exactly clones `1h`; selecting all public horizons still produces a physical
    `samples.parquet` schema with the ordered union of 143 feature columns.
 3. The weekly family creates six historical candidates at every eligible daily
-   decision: aggregate `1w` targets Day 1 open through Day 5 close, and
-   `1w-d1` through `1w-d5` target each session's open-to-close return. LIVE
-   issuance is restricted to the final eligible exchange-week decision.
+   decision: aggregate `1w` targets Day 1 open through the final close of Day
+   1's exchange week, and `1w-d1` through `1w-d5` target each session's
+   open-to-close return. LIVE issuance uses the latest completed decision and
+   publishes the same-week Day 1 prefix.
 4. Bar shape, weekly context, and SEC events use specialized point-in-time
    loaders. Most other added families use generic backward as-of joins.
 5. Generic joins enforce availability and freshness where configured, but
@@ -83,7 +84,7 @@ profiles and does not expose an arbitrary feature-list override.
 | `1h` | Completed canonical hourly bar plus five minutes | Exact hourly technical/bar values plus causally available as-of families | First native-minute open through final native-minute close of the next 60 calendar-selected eligible regular-session minutes |
 | `4h` | Every completed eligible canonical hourly bar plus five minutes | The same ordered hourly technical/as-of inventory and freshness policy as `1h` | First native-minute open through final native-minute close of the next 240 calendar-selected eligible regular-session minutes |
 | `1d` | Completed canonical daily session plus five minutes | Exact daily technical/bar values, previous completed weekly context, and causally available as-of families | Next eligible session open-to-close |
-| `1w` | Historical candidates after every eligible daily session plus five minutes; LIVE only after the final exchange-week session | Daily technical/bar values and the previous completed exchange week | Day 1 official open through Day 5 official close |
+| `1w` | Historical and LIVE candidates after every eligible completed daily session plus five minutes | Daily technical/bar values and the previous completed exchange week | Day 1 official open through the final eligible close of Day 1's exchange week |
 | `1w-d1` ... `1w-d5` | Same historical and LIVE decision rules as aggregate `1w` | Exact same ordered 132-column weekly inventory | Each corresponding eligible session's official open-to-close |
 
 Weekly context is calculated from canonical Databento daily sessions. It
@@ -92,13 +93,13 @@ completed week, including holiday-shortened weeks. It is joined backward to
 subsequent daily decisions.
 
 The exchange calendar selects the next five eligible sessions, including
-holidays, early closes, weekends, and DST. Each component matures at its own
-close plus five minutes; aggregate `1w` matures after Day 5 close plus five
+holidays, early closes, weekends, and DST, then LIVE publication keeps the Day
+1 prefix in one exchange week. Each component matures at its own close plus
+five minutes; aggregate `1w` matures after its dynamic final close plus five
 minutes. All six routes use separate single-target models and subtract the
-configured round-trip cost once. Once a complete LIVE bundle is promoted, its
-probabilities, model versions, prediction timestamp, and target windows are
-reused exactly from verified receipt-chain history throughout its target
-period. Retired next-session `1w` models and predictions are incompatible.
+configured round-trip cost once. Exact rows are reused for the same decision;
+a newer completed daily decision may publish a shorter outlook. Retired `1w`
+models and predictions are incompatible.
 
 The exact revised target definitions are
 `next-60-eligible-regular-minutes-open-close-v2` for `1h` and
@@ -456,11 +457,11 @@ This is a dated coverage observation, not a promotion decision or stable
 contract. It demonstrates why `ACTIVE` must not be read as
 “coverage-qualified.”
 
-This observed run predates both the `4h` implementation and the frozen weekly
+This observed run predates both the `4h` implementation and the dynamic weekly
 target family, and it also predates the strategy artifacts described above.
 Its `1w` rows use the retired next-session definition and are not compatible
 with aggregate `1w` or `1w-d1` through `1w-d5`. It is not evidence of live
-`4h` predictions, a frozen weekly snapshot, a 27-row all-horizon publication,
+`4h` predictions, a dynamic weekly snapshot, a 27-row all-horizon publication,
 or strategy-model performance. Those are separate operational facts and were
 not inferred from this historical run.
 
@@ -513,10 +514,11 @@ Prior LIVE predictions used for reconciliation are loaded only from verified
 complete manifests and output inventories. A run that declares the
 transactional publication contract must also have a valid receipt bound to its
 manifest and be reachable through the authoritative pointer's linked
-publication history. Weekly origins are stricter: only complete six-row bundles
-from that verified receipt chain, revalidated against the natural samples and
-official exchange calendar, may be reused or counted as evidence; the legacy
-history path is excluded. Their target starts are excluded from later offline
+publication history. Weekly origins are stricter: only coherent aggregate plus
+Day 1-prefix snapshots from that verified receipt chain, revalidated against
+the natural samples and official exchange calendar, may be reused or counted
+as evidence; the legacy history path is excluded. Their target starts are
+excluded from later offline
 training, calibration, assessment, and model-time lockbox partitioning so
 genuinely prior-LIVE outcomes can mature only through reconciliation.
 Incomplete or corrupt run directories are skipped.

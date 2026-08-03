@@ -811,7 +811,11 @@ def _synthetic_materialization(
                 ),
             }
             live_start, live_end = weekly_windows[horizon]
-            live_actionable_until = pd.Timestamp("2026-02-02T14:30:00Z")
+            live_actionable_until = (
+                pd.Timestamp("2026-02-02T21:00:00Z")
+                if horizon == "1w"
+                else live_end
+            )
         else:
             live_start = created_at + pd.Timedelta(hours=1)
             live_end = live_start + window

@@ -174,13 +174,45 @@ def build_rolling_samples(
         raise MLContractError(
             "Rolling target windows must begin after information availability"
         )
-    if not (
-        (result["information_available_at"] < result["actionable_until"])
-        & (result["actionable_until"] <= result["target_window_start"])
-    ).all():
+    horizons = result["horizon"].astype(str)
+    weekly_aggregate = horizons.eq("1w")
+    weekly_components = horizons.str.fullmatch(
+        r"1w-d[1-5]"
+    )
+    valid_actionability = (
+        result["information_available_at"] < result["actionable_until"]
+    ) & (
+        (
+            ~(weekly_aggregate | weekly_components)
+            & (
+                result["actionable_until"]
+                <= result["target_window_start"]
+            )
+        )
+        | (
+            weekly_components
+            & (
+                result["actionable_until"]
+                == result["target_window_end"]
+            )
+        )
+        | (
+            weekly_aggregate
+            & (
+                result["actionable_until"]
+                > result["target_window_start"]
+            )
+            & (
+                result["actionable_until"]
+                <= result["target_window_end"]
+            )
+        )
+    )
+    if not valid_actionability.all():
         raise MLContractError(
             "Rolling actionability deadlines must follow information "
-            "availability and not exceed target entry"
+            "availability; ordinary routes cannot exceed target entry, and "
+            "remaining-week routes expire within their target window"
         )
     return result.sort_values(
         ["information_available_at", "symbol", "horizon", "id"],
@@ -381,7 +413,7 @@ def _weekly_windows(
     calendar: ExchangeSessionCalendar,
     route_horizon: str,
 ) -> list[tuple[int, dict[str, object]]]:
-    """Build one frozen-weekly target route at every eligible daily decision."""
+    """Build one dynamic remaining-week route at each daily decision."""
 
     leads = {
         "1w-d1": 1,
@@ -392,7 +424,7 @@ def _weekly_windows(
     }
     if route_horizon != "1w" and route_horizon not in leads:
         raise MLContractError(
-            f"Unsupported frozen weekly target route: {route_horizon!r}"
+            f"Unsupported remaining-week target route: {route_horizon!r}"
         )
     price_lookup = {
         pd.Timestamp(row.exchange_session): row
@@ -406,14 +438,30 @@ def _weekly_windows(
             future_session_count=5,
         )
         first_session = resolved.future_sessions[0]
-        actionable_until = calendar.session_open(first_session)
         if route_horizon == "1w":
+            remaining_week_sessions: list[pd.Timestamp] = []
+            for future_session in resolved.future_sessions:
+                remaining_week_sessions.append(pd.Timestamp(future_session))
+                if calendar.is_final_session_of_exchange_week(future_session):
+                    break
+            final_session_is_week_end = (
+                bool(remaining_week_sessions)
+                and calendar.is_final_session_of_exchange_week(
+                    remaining_week_sessions[-1]
+                )
+            )
+            if not final_session_is_week_end:
+                raise MLContractError(
+                    "Could not resolve the final remaining exchange-week session"
+                )
             start_session = first_session
-            end_session = resolved.future_sessions[-1]
+            end_session = remaining_week_sessions[-1]
+            actionable_until = calendar.session_close(first_session)
         else:
             component_session = resolved.future_sessions[leads[route_horizon] - 1]
             start_session = component_session
             end_session = component_session
+            actionable_until = calendar.session_close(component_session)
         start_price = price_lookup.get(start_session)
         end_price = price_lookup.get(end_session)
         source_price = price_lookup.get(pd.Timestamp(row["exchange_session"]))

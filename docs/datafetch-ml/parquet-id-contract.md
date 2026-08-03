@@ -403,12 +403,14 @@ contract, its `publication.json` receipt must be valid and bound to that
 manifest, and the run must be reachable through the authoritative pointer's
 publication chain.
 
-The frozen weekly path reuses the exact origin prediction row rather than
-creating a later snapshot. Because `prediction_created_at` remains unchanged,
-natural-grain deduplication keeps one prediction/evaluation event and one
-possible evidence contribution per internal weekly route. The origin run must
-be reachable through the verified receipt chain and must have committed all six
-weekly rows before Day 1 opened.
+The dynamic weekly path reuses the exact origin prediction rows for the same
+daily decision. Because `prediction_created_at` remains unchanged at that
+natural grain, deduplication keeps one prediction/evaluation event and one
+possible evidence contribution per internal weekly route. A newer completed
+daily decision has a different natural key and may publish a shorter aggregate
+plus Day 1 prefix. Every reused origin must be reachable through the verified
+receipt chain and must have committed before its applicable session-close
+deadline.
 
 ## Strategy candidate and audit schemas
 
@@ -589,7 +591,7 @@ schema_version
 
 `ml/parquet_contracts.py` defines and enforces these physical Arrow schemas.
 
-The 5-session outlook continues to use only `samples.parquet`,
+The remaining-week outlook continues to use only `samples.parquet`,
 `predictions.parquet`, `evaluations.parquet`, `monitoring.parquet`, and
 `intelligence.parquet`. It adds no Parquet column, dataset type, state file,
 pointer, acknowledgement, or coordination record.
@@ -614,8 +616,9 @@ a schema example, not a deployment claim.
 For non-weekly current intelligence, `OPERATIONALLY_CURRENT` requires an
 actionable current route. A ready non-weekly route without a current actionable
 prediction is `OPERATIONALLY_STALE`. A verified weekly route remains current
-while its frozen snapshot is carried forward, without reopening action after
-the shared Day 1 `actionable_until` deadline.
+while its remaining-week snapshot is published. Aggregate `1w` and `d1` expire
+at the first remaining session close; later components expire at their own
+session closes.
 
 ## Timestamped run and model directories
 

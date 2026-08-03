@@ -45,9 +45,11 @@ readiness reports are audit metadata, not an admission gate for this profile.
 There is no arbitrary feature-set override.
 
 Omitting `--horizons` selects the canonical public default `1h 4h 1d 1w`.
-Selecting `1w` always requires all six internal weekly routes. The same
-fail-closed rules apply to every symbol requested in that cycle. The public
-behavior of `1h`, `4h`, and `1d` is unchanged.
+Selecting `1w` always requires all six internal weekly model routes. LIVE
+output then contains aggregate `1w` and only the Day 1 prefix that remains in
+the current target exchange week. The same fail-closed rules apply to every
+symbol requested in that cycle. The public behavior of `1h`, `4h`, and `1d` is
+unchanged.
 
 Recurring supervisor:
 
@@ -182,9 +184,10 @@ bars never enter model features.
 
 The weekly family creates six historical candidates after each eligible daily
 decision. Components Day 1 through Day 5 predict each future eligible session's
-open-to-close direction, while aggregate `1w` predicts Day 1 open through Day 5
-close. This daily rolling cadence preserves training density; LIVE issuance is
-restricted separately to the final eligible decision of the exchange week.
+open-to-close direction, while aggregate `1w` predicts Day 1 open through the
+final eligible close of Day 1's exchange week. This daily rolling cadence
+preserves training density. LIVE issuance uses the latest completed daily
+decision and publishes only the same-week Day 1 prefix.
 
 The feature registry selects explicit columns. It does not discover arbitrary
 numeric columns. The default `loop-a-all-v1` profile selects one explicit,
@@ -340,19 +343,20 @@ The weekly target procedure is independent of the intraday minute-count
 procedure:
 
 1. aggregate `1w` uses target version
-   `frozen-five-session-aggregate-open-close-v1`, while the components use
-   `frozen-five-session-d1-open-close-v1` through
-   `frozen-five-session-d5-open-close-v1`;
+   `dynamic-remaining-week-aggregate-open-close-v2`, while the components use
+   `dynamic-remaining-week-d1-open-close-v2` through
+   `dynamic-remaining-week-d5-open-close-v2`;
 2. after each eligible completed daily decision, the exchange calendar selects
    the next five eligible sessions;
 3. `1w-d1` through `1w-d5` use each selected session's official open and close;
-4. aggregate `1w` starts at Day 1's official open and ends at Day 5's official
-   close;
+4. aggregate `1w` starts at Day 1's official open and ends at the final
+   eligible close in Day 1's exchange week;
 5. each route subtracts the configured round-trip cost exactly once;
 6. each component label becomes available at its own close plus processing
-   delay, while aggregate `1w` waits for Day 5 close plus processing delay; and
-7. weekends, holidays, early closes, and DST come from the exchange calendar,
-   so Day 5 may fall in the following calendar week.
+   delay, while aggregate `1w` waits for its dynamic final close plus processing
+   delay; and
+7. weekends, holidays, early closes, and DST come from the exchange calendar;
+   the LIVE prefix stops at the exchange-week boundary.
 
 The six historical routes use separate ordinary single-target models. They do
 not recursively consume one another's predictions.
@@ -417,7 +421,7 @@ calibration, calibration to assessment, and assessment to lockbox. Loop B
 selects sufficient earlier clusters so the configured minimum training,
 calibration, and assessment counts survive purging; if it cannot, it fails
 readiness clearly instead of automatically reducing a requirement. Aggregate
-`1w` therefore purges overlap from its rolling five-session windows. Windows
+`1w` therefore purges overlap from its rolling remaining-week windows. Windows
 that end exactly at the next start are
 conservatively treated as sharing a target-price endpoint and are purged,
 because their labels are not available before that boundary. The configured
@@ -559,16 +563,19 @@ The manifest's separate `lockbox` block contains only its
 Loop B writes:
 
 - `BACKTEST` predictions for the assessment partition;
-- `LIVE` predictions for the latest actionable row per symbol and horizon,
-  where `prediction_created_at < actionable_until <= target_window_start`.
+- ordinary `LIVE` predictions for the latest actionable row per symbol and
+  horizon, where `prediction_created_at < actionable_until <=
+  target_window_start`; and
+- remaining-week `LIVE` predictions where `prediction_created_at <
+  actionable_until <= target_window_end`.
 
-For the weekly family, a new LIVE group is allowed only after the final eligible
-session of the exchange week closes plus processing delay and strictly before
-Day 1 opens. All six routes must succeed in the same publication. Later cycles
-locate that issuance through verified receipt-chain history and copy the exact
-origin rows; they do not create new prediction timestamps or rescore the
-snapshot. If no complete eligible group was published before entry, the weekly
-route fails closed until the next exchange-week issuance.
+For the weekly family, the latest completed daily decision supplies aggregate
+`1w` and the contiguous Day 1 prefix whose targets remain in one exchange week.
+Aggregate `1w` and `d1` must publish before the first remaining session closes;
+later components use their own close. Later cycles copy the exact verified rows
+for the same decision, while a newer completed decision issues a shorter
+outlook. If no coherent group can publish before its deadlines, that weekly
+issuance fails closed until a newer eligible decision exists.
 
 Each prediction has:
 
@@ -593,7 +600,8 @@ prediction_created_at
 `model_version` is the readable UTC timestamp directory of the model artifact
 used for that row. The pre-existing non-weekly compatibility path can recover
 the value from an older verified run directory. Weekly reuse has no such
-adapter: all six origin rows must carry the current complete prediction schema.
+adapter: every route in the dynamic origin snapshot must carry the current
+complete prediction schema.
 
 The runtime does not create IDs for the model, feature set, target, horizon, or
 prediction event.
@@ -798,7 +806,8 @@ Each observed symbol/horizon route gets a `completed_live_forecasts` row with
 `scope_type = symbol_horizon` and `scope_value = symbol|horizon`. A completed
 LIVE forecast is a genuinely prospective `EVALUATED` prediction with a
 complete label, compatible contract/window/cost, valid information timing, and
-`prediction_created_at < actionable_until <= target_window_start`. A run declaring the
+its route-specific deadline geometry: ordinary routes end no later than target
+entry, while remaining-week routes end no later than target close. A run declaring the
 transactional publication contract must also have a valid `publication.json`
 receipt bound to its verified manifest and be reachable through the
 authoritative pointer's publication chain. The row counts these forecasts
@@ -887,8 +896,9 @@ For `1h`, `4h`, and `1d`, `operational_status` is `OPERATIONALLY_CURRENT` only
 when the route is ready and has an actionable current prediction. A ready
 non-weekly route with no current actionable prediction is
 `OPERATIONALLY_STALE`. A verified weekly route remains
-`OPERATIONALLY_CURRENT` while its frozen snapshot is carried forward; this
-does not make it actionable again after Day 1 opens.
+`OPERATIONALLY_CURRENT` while its remaining-week snapshot is published. The
+snapshot's aggregate and component session-close deadlines remain explicit,
+and a newer completed daily decision may replace it with a shorter outlook.
 
 This output reports evidence and limitations; it does not place trades or change
 model settings.
@@ -963,12 +973,12 @@ output has been deployed or observed.
 
 By default the desktop Rolling Forecasts tab follows the authoritative pointer.
 An explicit override can read a fixture directly. That tab accepts current
-`one-id-v2`, keeps the `1h`, `4h`, and `1d` cards unchanged, and groups the six
-weekly rows into one **5-session outlook**. It shows aggregate probability,
-frozen issuance time, aggregate bounds, and five dated component rows with
-weekday, UTC/local open/close windows, probability, and pending/completed
-evidence status. Rolling Forecasts remains read-only and keeps automated action
-disabled.
+`one-id-v2`, keeps the `1h`, `4h`, and `1d` cards unchanged, and groups the
+current aggregate plus Day 1 prefix into one **remaining-week outlook**. It
+shows aggregate probability, issuance time, dynamic aggregate bounds, and the
+dated remaining components with weekday, UTC/local open/close windows,
+probability, and pending/completed evidence status. Rolling Forecasts remains
+read-only and keeps automated action disabled.
 
 The sibling Options Strategies tab resolves the same authoritative run's
 `strategy-candidates.parquet`, then joins a newly fetched Schwab account
@@ -1028,9 +1038,9 @@ dashboard continues to load the last successfully published rows and
 timestamps; runtime exit status and logs carry the failed-cycle diagnosis.
 
 Deployment, operational model training, and supervisor restart remain operator
-actions. This documentation does not claim that a six-route weekly snapshot was
-published, does not train against an operational datastore, and does not restart
-services.
+actions. This documentation does not claim that a dynamic remaining-week
+snapshot was published, does not train against an operational datastore, and
+does not restart services.
 
 ## Physical Parquet contract
 

@@ -48,11 +48,11 @@ def test_horizon_contracts_are_readable_and_share_feature_columns() -> None:
     )
     weekly = contracts["1w"]
     assert weekly["target_definition_version"] == (
-        "frozen-five-session-aggregate-open-close-v1"
+        "dynamic-remaining-week-aggregate-open-close-v2"
     )
     assert weekly["return_definition"] == (
-        "first_eligible_session_open_to_fifth_eligible_session_close_"
-        "simple_return"
+        "first_remaining_exchange_week_session_open_to_final_remaining_"
+        "exchange_week_session_close_simple_return"
     )
     expanded = horizon_specifications_for_profile(
         "loop-a-all-v1",
@@ -473,14 +473,14 @@ def test_frozen_weekly_routes_resolve_the_requested_july_31_outlook() -> None:
         component = observed[f"1w-d{lead}"]
         assert component["target_window_start"] == starts[lead - 1]
         assert component["target_window_end"] == ends[lead - 1]
-        assert component["actionable_until"] == starts[0]
+        assert component["actionable_until"] == ends[lead - 1]
         assert component["label_available_at"] == (
             ends[lead - 1] + pd.Timedelta(minutes=5)
         )
-    assert aggregate["actionable_until"] == starts[0]
+    assert aggregate["actionable_until"] == ends[0]
 
 
-def test_five_eligible_sessions_cross_a_holiday_week_boundary() -> None:
+def test_aggregate_ends_with_the_first_target_exchange_week() -> None:
     prices = pd.DataFrame(
         [
             _daily_price("2026-05-22T00:00:00Z", 100.0, 101.0),
@@ -509,7 +509,7 @@ def test_five_eligible_sessions_cross_a_holiday_week_boundary() -> None:
         "2026-05-26T13:30:00Z"
     )
     assert aggregate["target_window_end"] == pd.Timestamp(
-        "2026-06-01T20:00:00Z"
+        "2026-05-29T20:00:00Z"
     )
 
 

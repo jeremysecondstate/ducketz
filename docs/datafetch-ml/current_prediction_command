@@ -14,6 +14,6 @@ python -m ml.prediction_runtime `
 
 # Loop A and Loop B serialize datastore cycles with one crash-released OS lock.
 # Public 1w expands internally to aggregate 1w plus 1w-d1 through 1w-d5.
-# Once that six-route snapshot is issued, later cycles reuse its exact verified
-# prediction rows and only refresh maturity/evidence status; they do not assign
-# a new prediction_created_at or revise probabilities/model versions/windows.
+# LIVE output uses aggregate 1w plus the Day 1 prefix remaining in one exchange
+# week. Later cycles reuse exact verified rows for the same daily decision; a
+# newer completed decision publishes the correspondingly shorter outlook.

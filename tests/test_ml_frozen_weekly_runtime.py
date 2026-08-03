@@ -19,7 +19,10 @@ from ml.model_runtime import RuntimeModel
 from ml.parquet_contracts import PREDICTION_SCHEMA, write_parquet_with_schema
 from ml.runtime_pipeline import (
     VerifiedWeeklyPredictionRun,
+    _compatible_prospective_live_predictions,
+    _evaluation_frame,
     _load_prior_live_predictions,
+    _valid_archived_live_rows,
     _validate_weekly_specification_set,
     _weekly_live_predictions,
     _weekly_prediction_evidence_status,
@@ -80,7 +83,6 @@ def test_friday_issuance_creates_exact_august_three_through_seven_bundle(
     assert issued["prediction_created_at"].nunique() == 1
     assert issued["prediction_created_at"].iloc[0] == _ISSUED_AT
     assert issued["prediction_created_at"].lt(_D1_OPEN).all()
-    assert issued["actionable_until"].eq(_D1_OPEN).all()
     assert issued["decision_timestamp"].eq(_FRIDAY_DECISION).all()
 
     ordered = issued.set_index("horizon")
@@ -92,15 +94,19 @@ def test_friday_issuance_creates_exact_august_three_through_seven_bundle(
         [f"{session}T20:00:00Z" for session in _FIRST_TARGET_SESSIONS],
         utc=True,
     )
+    assert issued.loc[issued["horizon"].eq("1w"), "actionable_until"].eq(
+        expected_ends[0]
+    ).all()
     assert ordered.loc["1w", "target_window_start"] == expected_starts[0]
     assert ordered.loc["1w", "target_window_end"] == expected_ends[-1]
     for lead in range(1, 6):
         row = ordered.loc[f"1w-d{lead}"]
         assert row["target_window_start"] == expected_starts[lead - 1]
         assert row["target_window_end"] == expected_ends[lead - 1]
+        assert row["actionable_until"] == expected_ends[lead - 1]
 
 
-def test_verified_snapshot_reuse_is_byte_stable_across_models_samples_and_cycles(
+def test_same_decision_is_reused_but_newer_decision_shortens_the_outlook(
     tmp_path: Path,
 ) -> None:
     original_samples = _sample_bundle(
@@ -129,17 +135,7 @@ def test_verified_snapshot_reuse_is_byte_stable_across_models_samples_and_cycles
             "2026-08-10",
         ),
     )
-    later_samples = pd.concat(
-        [
-            original_samples.assign(
-                label_status=lambda frame: frame["horizon"].map(
-                    {"1w-d1": "COMPLETE"}
-                ).fillna("INCOMPLETE_LABEL")
-            ),
-            monday_samples,
-        ],
-        ignore_index=True,
-    )
+    later_samples = pd.concat([original_samples, monday_samples], ignore_index=True)
     changed_models = _models(
         tmp_path,
         probability_base=0.81,
@@ -147,48 +143,44 @@ def test_verified_snapshot_reuse_is_byte_stable_across_models_samples_and_cycles
     )
 
     first_reuse, first_fresh = _weekly_live_predictions(
-        later_samples,
+        original_samples,
         models=changed_models,
         verified_runs=(verified,),
         specifications=_SPECIFICATIONS,
         symbols=(_SYMBOL,),
         assumed_round_trip_cost=_COST,
-        prediction_created_at=pd.Timestamp("2026-08-04T20:06:00Z"),
+        prediction_created_at=pd.Timestamp("2026-08-03T15:00:00Z"),
     )
-    repeated_reuse, repeated_fresh = _weekly_live_predictions(
+    refreshed, refreshed_fresh = _weekly_live_predictions(
         later_samples,
         models=_models(tmp_path, probability_base=0.11, version="next-cycle"),
         verified_runs=(verified,),
         specifications=_SPECIFICATIONS,
         symbols=(_SYMBOL,),
         assumed_round_trip_cost=_COST,
-        prediction_created_at=pd.Timestamp("2026-08-05T15:00:00Z"),
+        prediction_created_at=pd.Timestamp("2026-08-04T15:00:00Z"),
     )
 
     assert first_fresh.empty
-    assert repeated_fresh.empty
     pd.testing.assert_frame_equal(
         issued.loc[:, _FROZEN_COLUMNS].reset_index(drop=True),
         first_reuse.loc[:, _FROZEN_COLUMNS].reset_index(drop=True),
     )
-    pd.testing.assert_frame_equal(
-        issued.loc[:, _FROZEN_COLUMNS].reset_index(drop=True),
-        repeated_reuse.loc[:, _FROZEN_COLUMNS].reset_index(drop=True),
-    )
     assert _frozen_bytes(issued) == _frozen_bytes(first_reuse)
-    assert _frozen_bytes(issued) == _frozen_bytes(repeated_reuse)
     assert not first_reuse["model_version"].str.contains("daily-refresh").any()
-    assert not repeated_reuse["model_version"].str.contains("next-cycle").any()
+    assert tuple(refreshed["horizon"]) == WEEKLY_HORIZON_ORDER[:5]
+    assert tuple(refreshed_fresh["horizon"]) == WEEKLY_HORIZON_ORDER[:5]
+    assert refreshed["decision_timestamp"].eq(
+        pd.Timestamp("2026-08-03T20:05:00Z")
+    ).all()
+    assert refreshed["model_version"].str.contains("next-cycle").all()
 
 
 @pytest.mark.parametrize(
     "attempted_at",
-    (
-        _D1_OPEN,
-        _D1_OPEN + pd.Timedelta(minutes=1),
-    ),
+    (_D1_OPEN, _D1_OPEN + pd.Timedelta(hours=3)),
 )
-def test_no_weekly_issuance_at_or_after_d1_without_verified_snapshot(
+def test_late_monday_issuance_keeps_each_component_open_until_its_close(
     tmp_path: Path,
     attempted_at: pd.Timestamp,
 ) -> None:
@@ -198,16 +190,181 @@ def test_no_weekly_issuance_at_or_after_d1_without_verified_snapshot(
         target_sessions=_FIRST_TARGET_SESSIONS,
     )
 
-    with pytest.raises(RuntimeError, match="no verified frozen weekly snapshot"):
-        _weekly_live_predictions(
-            samples,
-            models=_models(tmp_path, probability_base=0.5, version="too-late"),
-            verified_runs=(),
-            specifications=_SPECIFICATIONS,
-            symbols=(_SYMBOL,),
-            assumed_round_trip_cost=_COST,
-            prediction_created_at=attempted_at,
-        )
+    issued, fresh = _weekly_live_predictions(
+        samples,
+        models=_models(tmp_path, probability_base=0.5, version="monday-remainder"),
+        verified_runs=(),
+        specifications=_SPECIFICATIONS,
+        symbols=(_SYMBOL,),
+        assumed_round_trip_cost=_COST,
+        prediction_created_at=attempted_at,
+    )
+
+    assert tuple(issued["horizon"]) == WEEKLY_HORIZON_ORDER
+    assert len(issued) == len(fresh) == 6
+    assert issued["prediction_created_at"].lt(issued["actionable_until"]).all()
+
+
+@pytest.mark.parametrize(
+    (
+        "decision_session",
+        "decision_timestamp",
+        "target_sessions",
+        "issued_at",
+        "expected",
+    ),
+    (
+        (
+            "2026-08-03",
+            pd.Timestamp("2026-08-03T20:05:00Z"),
+            ("2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07", "2026-08-10"),
+            pd.Timestamp("2026-08-03T20:06:00Z"),
+            ("1w", "1w-d1", "1w-d2", "1w-d3", "1w-d4"),
+        ),
+        (
+            "2026-08-04",
+            pd.Timestamp("2026-08-04T20:05:00Z"),
+            ("2026-08-05", "2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11"),
+            pd.Timestamp("2026-08-04T20:06:00Z"),
+            ("1w", "1w-d1", "1w-d2", "1w-d3"),
+        ),
+        (
+            "2026-08-05",
+            pd.Timestamp("2026-08-05T20:05:00Z"),
+            ("2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11", "2026-08-12"),
+            pd.Timestamp("2026-08-05T20:06:00Z"),
+            ("1w", "1w-d1", "1w-d2"),
+        ),
+        (
+            "2026-08-06",
+            pd.Timestamp("2026-08-06T20:05:00Z"),
+            ("2026-08-07", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13"),
+            pd.Timestamp("2026-08-06T20:06:00Z"),
+            ("1w", "1w-d1"),
+        ),
+    ),
+)
+def test_latest_completed_session_issues_only_the_remaining_exchange_week(
+    tmp_path: Path,
+    decision_session: str,
+    decision_timestamp: pd.Timestamp,
+    target_sessions: tuple[str, ...],
+    issued_at: pd.Timestamp,
+    expected: tuple[str, ...],
+) -> None:
+    samples = _sample_bundle(
+        decision_session=decision_session,
+        decision_timestamp=decision_timestamp,
+        target_sessions=target_sessions,
+    )
+
+    issued, fresh = _weekly_live_predictions(
+        samples,
+        models=_models(tmp_path, probability_base=0.5, version=decision_session),
+        verified_runs=(),
+        specifications=_SPECIFICATIONS,
+        symbols=(_SYMBOL,),
+        assumed_round_trip_cost=_COST,
+        prediction_created_at=issued_at,
+    )
+
+    assert tuple(issued["horizon"]) == expected
+    assert tuple(fresh["horizon"]) == expected
+    assert issued["target_window_end"].dt.dayofweek.eq(4).any()
+
+
+def test_dynamic_weekly_deadlines_survive_verified_run_compatibility_checks(
+    tmp_path: Path,
+) -> None:
+    samples = _sample_bundle(
+        decision_session="2026-08-03",
+        decision_timestamp=pd.Timestamp("2026-08-03T20:05:00Z"),
+        target_sessions=(
+            "2026-08-04",
+            "2026-08-05",
+            "2026-08-06",
+            "2026-08-07",
+            "2026-08-10",
+        ),
+    )
+    issued_at = pd.Timestamp("2026-08-03T20:06:00Z")
+    issued, _fresh = _weekly_live_predictions(
+        samples,
+        models=_models(tmp_path, probability_base=0.5, version="archive"),
+        verified_runs=(),
+        specifications=_SPECIFICATIONS,
+        symbols=(_SYMBOL,),
+        assumed_round_trip_cost=_COST,
+        prediction_created_at=issued_at,
+    )
+
+    valid = _valid_archived_live_rows(
+        issued,
+        as_of=pd.Timestamp("2026-08-04T15:00:00Z"),
+        supported_horizons=frozenset(WEEKLY_HORIZON_ORDER),
+        manifest_run=issued_at,
+        promoted_at=issued_at + pd.Timedelta(minutes=1),
+    )
+    compatible = pd.concat(
+        [
+            _compatible_prospective_live_predictions(
+                valid,
+                specification=_SPECIFICATIONS[horizon],
+                assumed_round_trip_cost=_COST,
+            )
+            for horizon in WEEKLY_HORIZON_ORDER
+        ],
+        ignore_index=True,
+    )
+    expected = WEEKLY_HORIZON_ORDER[:5]
+
+    assert tuple(
+        horizon for horizon in WEEKLY_HORIZON_ORDER if horizon in set(valid["horizon"])
+    ) == expected
+    assert tuple(
+        horizon
+        for horizon in WEEKLY_HORIZON_ORDER
+        if horizon in set(compatible["horizon"])
+    ) == expected
+
+
+def test_thursday_midday_aggregate_and_daily_routes_remain_evaluable(
+    tmp_path: Path,
+) -> None:
+    samples = _sample_bundle(
+        decision_session="2026-08-05",
+        decision_timestamp=pd.Timestamp("2026-08-05T20:05:00Z"),
+        target_sessions=(
+            "2026-08-06",
+            "2026-08-07",
+            "2026-08-10",
+            "2026-08-11",
+            "2026-08-12",
+        ),
+    )
+    issued, _fresh = _weekly_live_predictions(
+        samples,
+        models=_models(tmp_path, probability_base=0.5, version="midday"),
+        verified_runs=(),
+        specifications=_SPECIFICATIONS,
+        symbols=(_SYMBOL,),
+        assumed_round_trip_cost=_COST,
+        prediction_created_at=pd.Timestamp("2026-08-06T15:00:00Z"),
+    )
+    completed = samples.copy()
+    completed["label_status"] = "COMPLETE"
+    completed["target_cost_adjusted_positive"] = 1
+    completed["forward_raw_return"] = 0.02
+    completed["forward_cost_adjusted_return"] = 0.019
+
+    evaluations = _evaluation_frame(
+        issued,
+        completed,
+        evaluated_at=pd.Timestamp("2026-08-07T20:06:00Z"),
+    )
+
+    assert tuple(issued["horizon"]) == ("1w", "1w-d1", "1w-d2")
+    assert evaluations["evaluation_status"].eq("EVALUATED").all()
 
 
 def test_partial_weekly_contract_and_partial_candidate_fail_all_or_nothing(
@@ -215,7 +372,7 @@ def test_partial_weekly_contract_and_partial_candidate_fail_all_or_nothing(
 ) -> None:
     partial_specifications = dict(_SPECIFICATIONS)
     partial_specifications.pop("1w-d5")
-    with pytest.raises(ValueError, match="all-or-nothing six-route contract"):
+    with pytest.raises(ValueError, match="requires all six route specifications"):
         _validate_weekly_specification_set(partial_specifications)
 
     partial_samples = _sample_bundle(
@@ -223,7 +380,7 @@ def test_partial_weekly_contract_and_partial_candidate_fail_all_or_nothing(
         decision_timestamp=_FRIDAY_DECISION,
         target_sessions=_FIRST_TARGET_SESSIONS,
     ).loc[lambda frame: ~frame["horizon"].eq("1w-d5")]
-    with pytest.raises(RuntimeError, match="no verified frozen weekly snapshot"):
+    with pytest.raises(RuntimeError, match="no verified weekly outlook"):
         _weekly_live_predictions(
             partial_samples,
             models=_models(tmp_path, probability_base=0.5, version="partial"),
@@ -344,7 +501,7 @@ def test_active_original_survives_independent_maturity_and_evidence_updates(
     }
 
 
-def test_nonfinal_session_and_corrupt_component_window_fail_closed(
+def test_nonfinal_session_issues_remaining_week_and_corrupt_window_fails_closed(
     tmp_path: Path,
 ) -> None:
     monday = _sample_bundle(
@@ -358,16 +515,16 @@ def test_nonfinal_session_and_corrupt_component_window_fail_closed(
             "2026-08-10",
         ),
     )
-    with pytest.raises(RuntimeError, match="not the final eligible session"):
-        _weekly_live_predictions(
-            monday,
-            models=_models(tmp_path, probability_base=0.5, version="monday"),
-            verified_runs=(),
-            specifications=_SPECIFICATIONS,
-            symbols=(_SYMBOL,),
-            assumed_round_trip_cost=_COST,
-            prediction_created_at=pd.Timestamp("2026-08-03T20:06:00Z"),
-        )
+    issued, _fresh = _weekly_live_predictions(
+        monday,
+        models=_models(tmp_path, probability_base=0.5, version="monday"),
+        verified_runs=(),
+        specifications=_SPECIFICATIONS,
+        symbols=(_SYMBOL,),
+        assumed_round_trip_cost=_COST,
+        prediction_created_at=pd.Timestamp("2026-08-03T20:06:00Z"),
+    )
+    assert tuple(issued["horizon"]) == WEEKLY_HORIZON_ORDER[:5]
 
     malformed = _sample_bundle(
         decision_session="2026-07-31",
@@ -377,7 +534,10 @@ def test_nonfinal_session_and_corrupt_component_window_fail_closed(
     malformed.loc[
         malformed["horizon"].eq("1w-d1"), "target_window_end"
     ] = pd.Timestamp("2026-08-10T20:00:00Z")
-    with pytest.raises(RuntimeError, match="1w-d1 is not the official"):
+    malformed.loc[
+        malformed["horizon"].eq("1w-d1"), "actionable_until"
+    ] = pd.Timestamp("2026-08-10T20:00:00Z")
+    with pytest.raises(RuntimeError, match="1w-d1 target window"):
         _weekly_live_predictions(
             malformed,
             models=_models(tmp_path, probability_base=0.5, version="bad-window"),
@@ -496,7 +656,7 @@ def test_legacy_weekly_rows_are_excluded_from_live_evidence_history(
     assert observed.empty
 
 
-def test_holiday_spillover_keeps_original_snapshot_through_d5(
+def test_new_final_session_decision_replaces_a_holiday_week_snapshot(
     tmp_path: Path,
 ) -> None:
     original_samples = _sample_bundle(
@@ -549,11 +709,14 @@ def test_holiday_spillover_keeps_original_snapshot_through_d5(
         prediction_created_at=pd.Timestamp("2026-09-11T20:06:00Z"),
     )
 
-    assert fresh.empty
-    assert _frozen_bytes(reused) == _frozen_bytes(issued)
+    assert len(reused) == len(fresh) == 6
+    assert reused["decision_timestamp"].eq(
+        pd.Timestamp("2026-09-11T20:05:00Z")
+    ).all()
     assert reused.loc[
-        reused["horizon"].eq("1w-d5"), "target_window_start"
-    ].iloc[0] == pd.Timestamp("2026-09-14T13:30:00Z")
+        reused["horizon"].eq("1w"), "target_window_end"
+    ].iloc[0] == pd.Timestamp("2026-09-18T20:00:00Z")
+    assert _frozen_bytes(reused) != _frozen_bytes(issued)
 
 
 class _ConstantEstimator:
@@ -610,12 +773,25 @@ def _sample_bundle(
 ) -> pd.DataFrame:
     starts = [pd.Timestamp(f"{session}T13:30:00Z") for session in target_sessions]
     ends = [pd.Timestamp(f"{session}T20:00:00Z") for session in target_sessions]
+    first_week = (
+        starts[0].normalize()
+        - pd.Timedelta(days=int(starts[0].weekday()))
+    )
+    remaining_week_ends = [
+        end
+        for start, end in zip(starts, ends, strict=True)
+        if (
+            start.normalize()
+            - pd.Timedelta(days=int(start.weekday()))
+        )
+        == first_week
+    ]
     rows: list[dict[str, object]] = []
     for horizon in WEEKLY_HORIZON_ORDER:
         specification = _SPECIFICATIONS[horizon]
         if horizon == "1w":
             target_start = starts[0]
-            target_end = ends[-1]
+            target_end = remaining_week_ends[-1]
         else:
             lead = int(horizon[-1])
             target_start = starts[lead - 1]
@@ -631,7 +807,9 @@ def _sample_bundle(
                 "information_available_at": decision_timestamp,
                 "target_window_start": target_start,
                 "target_window_end": target_end,
-                "actionable_until": starts[0],
+                "actionable_until": (
+                    ends[0] if horizon == "1w" else ends[int(horizon[-1]) - 1]
+                ),
                 "target_definition_version": (
                     specification.target_definition_version
                 ),

@@ -1,4 +1,4 @@
-# Rolling 1h, 4h, 1d, and frozen 5-session forecasts
+# Rolling 1h, 4h, 1d, and dynamic remaining-week forecasts
 
 Implementation snapshot: 2026-08-01
 
@@ -9,7 +9,7 @@ Loop B exposes four public selections in canonical order:
 - `4h`: direction across the next 240 calendar-selected eligible
   regular-session minutes;
 - `1d`: direction of the next eligible regular session;
-- `1w`: one frozen 5-session outlook.
+- `1w`: one dynamic remaining-week outlook.
 
 Public `1w` expands internally to six ordinary values in the existing `horizon`
 column: aggregate `1w` and components `1w-d1` through `1w-d5`. Operators select
@@ -30,14 +30,15 @@ A live prediction is actionable exactly when:
 
 ```text
 information_available_at <= prediction_created_at < actionable_until
-actionable_until <= target_window_start
+ordinary routes: actionable_until <= target_window_start
+remaining-week routes: actionable_until <= target_window_end
 ```
 
 Equality at `actionable_until` is too late. For `1h`, `4h`, and `1d`, that
-deadline equals target entry. All six weekly routes instead share Day 1 open as
-their deadline, even though Day 2 through Day 5 start later. A carried frozen
-weekly snapshot remains visible as research context after its action deadline;
-it is not reopened for action.
+deadline equals target entry. For a remaining-week snapshot, aggregate `1w`
+and `d1` expire at the first remaining session close; each later component
+expires at its own session close. This permits a same-session forecast before
+the official close while still rejecting equality at the deadline.
 
 Each sample also records:
 
@@ -121,7 +122,7 @@ the native `1m` target prices and returns never enter model features.
 Weekends and exchange holidays are skipped by the calendar rather than handled
 with fixed clock arithmetic.
 
-## 5-session weekly family
+## Dynamic remaining-week family
 
 | Setting | Rule |
 | --- | --- |
@@ -129,44 +130,46 @@ with fixed clock arithmetic.
 | historical training cadence | one candidate after every completed eligible daily decision |
 | weekly context | most recently completed exchange week, joined backward as-of by its actual availability |
 | internal horizons | aggregate `1w`; `1w-d1` through `1w-d5` |
-| aggregate target version | `frozen-five-session-aggregate-open-close-v1` |
-| component target versions | `frozen-five-session-d1-open-close-v1` through `frozen-five-session-d5-open-close-v1` |
+| aggregate target version | `dynamic-remaining-week-aggregate-open-close-v2` |
+| component target versions | `dynamic-remaining-week-d1-open-close-v2` through `dynamic-remaining-week-d5-open-close-v2` |
 | daily targets | each selected eligible session's official open through official close |
-| aggregate target | Day 1 official open through Day 5 official close |
+| aggregate target | Day 1 official open through the final eligible close of Day 1's exchange week |
 | return | simple open-to-close return for each route |
 | label | configured round-trip cost subtracted once; adjusted return strictly greater than zero |
-| calendar | next five eligible exchange sessions, including holidays, early closes, weekends, and DST |
-| LIVE issuance | after the final eligible session of the exchange week closes plus processing delay |
-| action deadline | the complete six-route publication must commit strictly before Day 1 opens |
+| calendar | next five eligible exchange sessions are resolved; LIVE publication keeps the Day 1 prefix in one exchange week |
+| LIVE issuance | from the latest completed daily decision plus processing delay |
+| action deadline | aggregate `1w` and `d1` expire at the first remaining session close; later components expire at their own closes |
 
 Every eligible completed daily decision produces six historical training
 candidates. `1w-d1` through `1w-d5` use the first through fifth future eligible
-sessions. Aggregate `1w` uses the first target session's open and the fifth
-target session's close. These are six independent single-target models; no
-predicted day is recursively fed into another.
+sessions. Aggregate `1w` uses the first target session's open and the final
+eligible close in that target's exchange week, so its historical target is
+also dynamic. These are six independent single-target models; no predicted day
+is recursively fed into another.
 
 The calendar supplies actual sessions rather than assuming Monday through
 Friday. After Friday, July 31, 2026, Day 1 through Day 5 are August 3 through
 August 7 and aggregate `1w` spans Monday's official open through Friday's
-official close. If a holiday intervenes, Day 5 can fall in the following calendar
-week. Early-close and UTC offsets come from the same exchange schedule.
+official close. After Monday, August 3 closes, the next snapshot instead spans
+Tuesday through Friday and publishes `1w` plus `d1` through `d4`. After
+Wednesday closes it spans Thursday through Friday and publishes `1w`, `d1`,
+and `d2`. A holiday shortens the prefix rather than pushing the aggregate into
+the following exchange week. Early-close and UTC offsets come from the same
+exchange schedule.
 
-The five components mature independently at their respective close plus the
-existing processing delay. Aggregate `1w` matures only after Day 5 closes plus
-that delay. Until maturity, target values remain null and evidence is pending.
+The components mature independently at their respective close plus the
+existing processing delay. Aggregate `1w` matures after its dynamic final
+close plus that delay. Until maturity, target values remain null and evidence
+is pending.
 
-Only the final eligible decision of the exchange week can issue a LIVE weekly
-snapshot. Once all six rows are committed, later cycles recover the exact
-origin rows from verified receipt-chain history. Probabilities, model versions,
-`prediction_created_at`, and target windows remain unchanged throughout the
-target period; only evaluation, outcome, and evidence status may advance. If no
-complete snapshot committed before Day 1 opened, the route fails closed until the
-next weekly issuance. There is no post-entry manufacture, bootstrap, backfill,
-target substitution, lowered partition requirement, or retired-target fallback.
-If a holiday pushes Day 5 into the following exchange week, an intervening
-final-week decision cannot displace the still-active snapshot. That overlapping
-candidate is skipped; after the original target period, the runtime waits for
-the next eligible weekly issuance rather than manufacturing it after entry.
+Any latest completed eligible daily decision can issue a LIVE remaining-week
+snapshot while its first target session has not closed. The aggregate and the
+matching `d1` prefix are committed together. Later cycles recover the exact
+origin rows for the same decision from verified receipt-chain history, but a
+newer completed decision supersedes them with a shorter remaining-week target.
+There is no bootstrap, backfill, target substitution, lowered partition
+requirement, or retired-target fallback. If no coherent snapshot can commit
+before its applicable session-close deadline, that issuance fails closed.
 
 ## Features
 
@@ -315,7 +318,7 @@ clusters in one calendar day. The horizon-specific defaults are:
 For every route, target windows that reach a later partition boundary are
 purged at every transition: training to calibration, calibration to assessment,
 and assessment to lockbox. This is especially material for aggregate `1w`,
-whose rolling five-session windows overlap. Loop B selects enough earlier
+whose rolling remaining-week windows overlap. Loop B selects enough earlier
 clusters for the configured training, calibration, and assessment requirements
 to survive purging; if that is impossible, readiness fails clearly rather than
 reducing a requirement. Training, calibration, assessment, and lockbox sample
@@ -357,8 +360,8 @@ isotonic calibration.
 | `1h` | Logistic regression + Platt calibration | Cost-adjusted return over the next 60 eligible regular-session minutes is positive | Model execution: `ml/runtime_pipeline.py`; fit/reuse: `ml/model_runtime.py`; estimator: `ml/models/registry.py`; calibration: `ml/calibration.py`; target: `ml/horizons.py`, `ml/rolling_samples.py` |
 | `4h` | Logistic regression + Platt calibration | Cost-adjusted return over the next 240 eligible regular-session minutes is positive | Model execution: `ml/runtime_pipeline.py`; fit/reuse: `ml/model_runtime.py`; estimator: `ml/models/registry.py`; calibration: `ml/calibration.py`; target: `ml/horizons.py`, `ml/rolling_samples.py` |
 | `1d` | Logistic regression + Platt calibration | Next eligible session's cost-adjusted open-to-close return is positive | Model execution: `ml/runtime_pipeline.py`; fit/reuse: `ml/model_runtime.py`; estimator: `ml/models/registry.py`; calibration: `ml/calibration.py`; target: `ml/horizons.py`, `ml/rolling_samples.py` |
-| `1w` | L1 logistic regression + support-bounded Platt calibration | Cost-adjusted return from Day 1 open through Day 5 close is positive | Model execution and frozen issuance: `ml/runtime_pipeline.py`; fit/reuse and aggregate override: `ml/model_runtime.py`; estimator: `ml/models/registry.py`; calibration: `ml/calibration.py`; target: `ml/horizons.py`, `ml/rolling_samples.py` |
-| `1w-d1` ... `1w-d5` | Five separate logistic regression + Platt calibration models | The corresponding eligible session's cost-adjusted open-to-close return is positive | Model execution and frozen issuance: `ml/runtime_pipeline.py`; fit/reuse: `ml/model_runtime.py`; estimator: `ml/models/registry.py`; calibration: `ml/calibration.py`; targets: `ml/horizons.py`, `ml/rolling_samples.py` |
+| `1w` | L1 logistic regression + support-bounded Platt calibration | Cost-adjusted return from Day 1 open through the final close of Day 1's exchange week is positive | Model execution and remaining-week issuance: `ml/runtime_pipeline.py`; fit/reuse and aggregate override: `ml/model_runtime.py`; estimator: `ml/models/registry.py`; calibration: `ml/calibration.py`; target: `ml/horizons.py`, `ml/rolling_samples.py` |
+| `1w-d1` ... `1w-d5` | Five separate logistic regression + Platt calibration models | The corresponding eligible session's cost-adjusted open-to-close return is positive | Model execution and remaining-week issuance: `ml/runtime_pipeline.py`; fit/reuse: `ml/model_runtime.py`; estimator: `ml/models/registry.py`; calibration: `ml/calibration.py`; targets: `ml/horizons.py`, `ml/rolling_samples.py` |
 
 Every row predicts the binary `target_cost_adjusted_positive` column. The
 continuous `forward_raw_return` and `forward_cost_adjusted_return` values are
@@ -555,10 +558,11 @@ timestamp, and the six weekly rows cannot collide with one another.
 A prediction receives scores only when that natural key resolves to a complete
 target, its target-definition version and serialized specification match, both
 target-window timestamps match, and `assumed_round_trip_cost` matches. A `LIVE`
-prediction must also have valid available information and satisfy the strict
-prospective rule `prediction_created_at < actionable_until <=
-target_window_start`; equality at the action deadline is post-entry and cannot
-be live evidence. For every weekly component, `actionable_until` is Day 1 open.
+prediction must also have valid available information and satisfy its strict
+deadline rule. Ordinary routes require `prediction_created_at <
+actionable_until <= target_window_start`; remaining-week routes require
+`prediction_created_at < actionable_until <= target_window_end`. Equality at
+the action deadline is post-deadline and cannot be live evidence.
 
 `evaluation_status` explains every unscored row:
 
@@ -623,7 +627,8 @@ row with `scope_type = symbol_horizon` and
 prediction whose mode is genuinely prospective `LIVE`. It therefore has a
 complete matured label, matching target contract, matching predetermined target
 window, matching cost, valid information timing, and
-`prediction_created_at < actionable_until <= target_window_start`. If its run declares the
+`prediction_created_at < actionable_until`; ordinary deadlines cannot exceed
+target entry and remaining-week deadlines cannot exceed target close. If its run declares the
 transactional publication contract, that run must also have a valid
 `publication.json` receipt bound to its verified manifest and be reachable
 through the authoritative pointer's publication chain.
@@ -686,8 +691,9 @@ and risk analysis; they do not enable automated action.
 For `1h`, `4h`, and `1d`, a route is `OPERATIONALLY_CURRENT` only while it has
 an actionable current prediction. A ready non-weekly route whose entry window
 has started and has no current forecast is `OPERATIONALLY_STALE`. A verified
-weekly route remains `OPERATIONALLY_CURRENT` while the frozen snapshot is
-carried forward, without becoming actionable again after Day 1 opens.
+weekly route remains `OPERATIONALLY_CURRENT` while its coherent
+remaining-week snapshot is published. A newer completed daily decision
+supersedes the prior snapshot with a shorter target set.
 
 ## Run and current storage
 
@@ -767,11 +773,11 @@ Within a successful run, a non-weekly route can still have assessment/backtest
 predictions but no eligible current live row. That route is published with null
 probability, `NOT_ACTIONABLE`, `OPERATIONALLY_STALE`, and a readable limitation.
 The UI verifies the exact current `one-id-v2` Arrow schema,
-orders the unchanged `1h`, `4h`, and `1d` cards and groups the six weekly rows
-as one **5-session outlook**. That outlook shows aggregate up/down probability,
-frozen issuance time, aggregate bounds, and Day 1 through Day 5 with actual weekday,
-date, UTC/local windows, probability, pending/completed evidence status, and a
-clear **Frozen weekly snapshot** indicator.
+orders the unchanged `1h`, `4h`, and `1d` cards and groups the current weekly
+aggregate and Day 1 prefix as one **remaining-week outlook**. That outlook
+shows aggregate up/down probability, issuance time, dynamic aggregate bounds,
+and each remaining session with its actual weekday, date, UTC/local window,
+probability, and pending/completed evidence status.
 It exposes route-specific evidence and limitations and never authorizes
 automated action. Cards no
 longer render a separate model-testing row, separator, or accessible

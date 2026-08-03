@@ -3,9 +3,10 @@
 Implementation snapshot: 2026-08-03
 
 The first Duckets application tab is a read-only view of Loop B's current `1h`,
-`4h`, and `1d` routes plus one frozen weekly snapshot. The weekly snapshot is
-made of six ordinary intelligence rows: aggregate `1w` and components
-`1w-d1` through `1w-d5`.
+`4h`, and `1d` routes plus one dynamic remaining-week snapshot. The weekly
+model family still uses aggregate `1w` and components `1w-d1` through
+`1w-d5`; the current snapshot contains the aggregate and only the contiguous
+Day 1 prefix whose targets remain in one exchange week.
 
 ## Run
 
@@ -141,52 +142,54 @@ The UI accepts these internal horizon values without adding any Parquet field:
 1w-d5
 ```
 
-If any weekly route is present for a symbol, all six weekly routes must be
-present and coherent. The adapter requires one shared decision timestamp, one
-shared issuance timestamp, a shared Day 1 entry deadline, issuance strictly
-before Day 1 opens, ordered component windows, and an aggregate window exactly
-from Day 1 open through Day 5 close. Probabilities must be present and
-complementary. The accepted target-definition versions are:
+If any row is marked `FROZEN_WEEKLY_SNAPSHOT`, the frozen rows must contain
+aggregate `1w` plus a contiguous prefix beginning with `1w-d1`. Unused later
+model-route rows may remain in current output with no forecast status. The
+adapter requires one shared decision timestamp, issuance timestamp, and
+information time; ordered component windows; aggregate bounds from Day 1 open
+through the last published component close; aggregate and `d1` deadlines at
+the first remaining session close; and every later component deadline at its
+own close. Probabilities must be present and complementary. The accepted
+target-definition versions are:
 
 | Horizon | Target-definition version |
 | --- | --- |
-| `1w` | `frozen-five-session-aggregate-open-close-v1` |
-| `1w-d1` | `frozen-five-session-d1-open-close-v1` |
-| `1w-d2` | `frozen-five-session-d2-open-close-v1` |
-| `1w-d3` | `frozen-five-session-d3-open-close-v1` |
-| `1w-d4` | `frozen-five-session-d4-open-close-v1` |
-| `1w-d5` | `frozen-five-session-d5-open-close-v1` |
+| `1w` | `dynamic-remaining-week-aggregate-open-close-v2` |
+| `1w-d1` | `dynamic-remaining-week-d1-open-close-v2` |
+| `1w-d2` | `dynamic-remaining-week-d2-open-close-v2` |
+| `1w-d3` | `dynamic-remaining-week-d3-open-close-v2` |
+| `1w-d4` | `dynamic-remaining-week-d4-open-close-v2` |
+| `1w-d5` | `dynamic-remaining-week-d5-open-close-v2` |
 
-The retired next-session `1w` target is rejected rather than adapted into a
-five-session outlook. No synthetic component rows or compatibility forecast
+Retired fixed-window `1w` targets are rejected rather than adapted into a
+remaining-week outlook. No synthetic component rows or compatibility forecast
 are created.
 
 ## Display behavior
 
 The dashboard creates three ordinary cards for `1h`, `4h`, and `1d`, followed
-by one full-width **5-session outlook**. The subtitle is:
+by one full-width **remaining-week outlook**. The subtitle is:
 
-> Read-only 1h, 4h, 1d, and frozen 5-session probability outlooks.
+> Read-only 1h, 4h, 1d, and dynamic remaining-week probability outlooks.
 > Probabilities are not recommendations.
 
 The weekly composite shows:
 
-- a clear **Frozen weekly snapshot** indicator;
+- a clear **Current remaining-week snapshot** indicator;
 - the shared UTC and local issuance timestamp;
-- an **Aggregate (Full Week)** panel with up/down probability and UTC/local
-  start/end timestamps for the Day 1-open-to-Day 5-close window;
-- Day 1 through Day 5 rows with actual weekday/date;
+- an **Aggregate (Remaining Week)** panel with up/down probability and UTC/local
+  start/end timestamps for the dynamic aggregate window;
+- one row for every remaining Day 1-prefix session, with actual weekday/date;
 - each component's up/down probability and UTC/local open/close timestamps;
 - each route's pending/completed outcome-evidence status and accumulated
   live-evidence progress.
 
 For `1h`, `4h`, and `1d`, probabilities remain visible only when
 `actionability_status` is `ACTIONABLE`. A supplied stale probability is still
-suppressed and reported as a display safeguard. A validated frozen weekly
-probability remains visible throughout its target period even though entry is
-closed; this exception requires `actionability_status = FROZEN_WEEKLY_SNAPSHOT`
-and one of the six exact target versions above. It does not weaken ordinary
-route suppression.
+suppressed and reported as a display safeguard. A validated remaining-week
+probability remains visible for its published snapshot; this exception requires
+`actionability_status = FROZEN_WEEKLY_SNAPSHOT` and one of the six exact target
+versions above. It does not weaken ordinary route suppression.
 
 The displayed probabilities are the `probability_up` and `probability_down`
 values already published by Loop B. The UI does not load `model.joblib`, refit
@@ -200,10 +203,10 @@ route's accumulated verified prospective evidence. The UI does not infer
 maturity from its own wall clock.
 
 A missing ordinary horizon gets an explicit "No current forecast" card. If no
-weekly routes are present, the full-width weekly card says that no complete
-frozen snapshot was published. If only part of a weekly bundle is present, the
-whole publication is rejected as incompatible rather than displaying a partial
-snapshot.
+weekly routes are current, the full-width weekly card says that no current
+remaining-week snapshot was published. A valid shorter Day 1 prefix is shown;
+a missing aggregate, missing Day 1, or gap inside that prefix rejects the
+publication as incompatible.
 
 Cards do not show a separate model-testing row. Model identity remains in Debug
 details. Operational state and limitations remain visible in the dashboard
@@ -213,7 +216,7 @@ ticket has the explicit, operator-confirmed Schwab submission path described
 above.
 
 An older valid physical `one-id-v1` file containing only ordinary short
-horizons remains readable. Legacy `1w` rows are not treated as five-session
+horizons remains readable. Legacy `1w` rows are not treated as remaining-week
 forecasts. Legacy rows have no persisted minimum, so the adapter supplies the
 shared threshold for ordinary routes only.
 
@@ -233,24 +236,25 @@ the visible canvas.
 
 The adapter trusts persisted operational and evidence statuses and does not
 recalculate them against the UI machine's wall clock. It independently verifies
-the frozen bundle's structural timing invariants before rendering the badge.
+the remaining-week snapshot's structural timing invariants before rendering
+the badge.
 
 ### Operational status
 
 For `1h`, `4h`, and `1d`, `OPERATIONALLY_CURRENT` requires an actionable current
 prediction at publication. Successfully loading ready inputs and a model is not
-enough. A frozen weekly route instead remains operationally current while its
-verified snapshot is being carried forward. That status does not reopen it for
-action after Day 1 starts; its already-issued probability remains visible as
-research context under the explicit frozen indicator.
+enough. A remaining-week route instead remains operationally current while its
+verified snapshot is published. Its session-close deadline is persisted by
+Loop B, and a newer completed decision may replace it with the shorter current
+outlook.
 
 The dashboard summary distinguishes a fully stale publication from a mixed
-route state. If at least one current ordinary route or verified frozen weekly
+route state. If at least one current ordinary route or verified remaining-week
 outlook coexists with stale routes, the summary uses a warning tone and says
 that current outlooks have route timing gaps. It uses the red stale state only
 when no route reports an operationally current status. The route detail reports
-live routes, current frozen weekly outlooks, and published rows separately so a
-valid frozen outlook is never described as zero current data.
+live routes, current remaining-week outlooks, and published rows separately so
+a valid weekly outlook is never described as zero current data.
 
 ### Live-evidence labels
 
@@ -262,7 +266,8 @@ On a symbol card, a **completed live forecast** is one genuinely prospective
   `publication.json` receipt bound to that manifest and is reachable through
   the authoritative pointer's publication chain;
 - had valid information and was created strictly before its predetermined
-  target window started;
+  route deadline (target entry for ordinary routes, session close for the
+  dynamic weekly routes);
 - has since reached a complete label after the full target window and processing
   delay; and
 - reconciled with the same target-definition contract, exact target start/end,
@@ -279,14 +284,14 @@ Repeated publications of that decision count once. The earliest eligible
 Including symbol and horizon in the key prevents cross-symbol and cross-horizon
 collisions.
 
-`BACKTEST` rows, pending labels, post-entry predictions, incompatible target
+`BACKTEST` rows, pending labels, post-deadline predictions, incompatible target
 contracts, mismatched target windows or costs, invalid predictions, incomplete
 or invalid manifests, and closed-lockbox rows never increase
 `completed_decision_count`. Historical rolling samples and offline assessment
 evaluations are not prospective live evidence. A `4h` forecast cannot complete
 until its entire target and processing delay have elapsed. Each `1w-dN` route
 can complete only after that session's close plus processing delay; aggregate
-`1w` can complete only after Day 5 close plus processing delay.
+`1w` can complete only after its dynamic final close plus processing delay.
 
 The count and `minimum_live_decision_count` are both route-specific. They refer
 to the card's symbol/horizon, not a pooled horizon-wide model sample.
@@ -294,7 +299,7 @@ to the card's symbol/horizon, not a pooled horizon-wide model sample.
 | Completed count | Exact card and accessible wording |
 | --- | --- |
 | zero for `1h` or `4h` | `Live evidence: Awaiting first completed forecast (0 of 60)` |
-| zero for `1d` or any frozen weekly route | `Live evidence: Awaiting first completed forecast (0 of 30)` |
+| zero for `1d` or any remaining-week route | `Live evidence: Awaiting first completed forecast (0 of 30)` |
 | one or more | `Live evidence: X of N completed forecasts`, with the route's persisted count and threshold substituted |
 
 The thresholds are 60 decisions for `1h`, 60 for `4h`, 30 for `1d`, and 30 for

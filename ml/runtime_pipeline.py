@@ -500,7 +500,7 @@ def run_loop_b_once(
             + details
         )
     if weekly_horizons and runtime.require_all_routes:
-        _require_complete_weekly_live_predictions(
+        _require_weekly_live_predictions(
             predictions,
             symbols=selected_symbols,
             specifications=effective_specifications,
@@ -1016,7 +1016,7 @@ def _validate_weekly_specification_set(
             if horizon not in requested
         ]
         raise ValueError(
-            "The weekly outlook is one all-or-nothing six-route contract; "
+            "The weekly model family requires all six route specifications; "
             "missing " + ", ".join(missing)
         )
 
@@ -1028,7 +1028,7 @@ def _verified_weekly_prediction_rows(
     specifications: Mapping[str, HorizonSpecification],
     assumed_round_trip_cost: float,
 ) -> pd.DataFrame:
-    """Return only complete calendar-proven receipt-chain weekly origins."""
+    """Return calendar-proven receipt-chain remaining-week origins."""
 
     weekly_specifications = {
         horizon: specifications[horizon]
@@ -1068,7 +1068,7 @@ def _weekly_live_predictions(
     assumed_round_trip_cost: float,
     prediction_created_at: pd.Timestamp,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Issue one coherent bundle or reuse its exact verified prediction rows."""
+    """Issue the latest remaining-week outlook or reuse that exact decision."""
 
     weekly_specifications = {
         horizon: specifications[horizon]
@@ -1101,21 +1101,6 @@ def _weekly_live_predictions(
         symbol_name = str(symbol).strip().upper()
         candidate = candidates.get(symbol_name)
         prior_bundles = verified.get(symbol_name, ())
-        pending_bundles = [
-            bundle
-            for _promoted_at, bundle in prior_bundles
-            if _weekly_prediction_target_period_is_pending(
-                bundle,
-                as_of=prediction_created_at,
-            )
-        ]
-        if len(pending_bundles) > 1:
-            raise RuntimeError(
-                f"{symbol_name} has overlapping verified weekly snapshots"
-            )
-        if pending_bundles:
-            selected.append(pending_bundles[0].copy())
-            continue
         if candidate is not None:
             matching = next(
                 (
@@ -1128,6 +1113,11 @@ def _weekly_live_predictions(
             if matching is not None:
                 selected.append(matching.copy())
                 continue
+            candidate_horizons = tuple(
+                horizon
+                for horizon in WEEKLY_HORIZON_ORDER
+                if horizon in set(candidate["horizon"].astype(str))
+            )
             issued_frames = [
                 _prediction_frame(
                     models[horizon],
@@ -1135,7 +1125,7 @@ def _weekly_live_predictions(
                     prediction_created_at=prediction_created_at,
                     mode="LIVE",
                 )
-                for horizon in WEEKLY_HORIZON_ORDER
+                for horizon in candidate_horizons
             ]
             issued = pd.concat(issued_frames, ignore_index=True, sort=False)
             _validate_weekly_prediction_bundle(
@@ -1163,8 +1153,8 @@ def _weekly_live_predictions(
         )
         if active is None:
             raise RuntimeError(
-                f"{symbol_name} has no verified frozen weekly snapshot and "
-                "no eligible final-session issuance before Day 1 opened"
+                f"{symbol_name} has no verified weekly outlook and no "
+                "remaining exchange-week session before its close"
             )
         selected.append(active.copy())
 
@@ -1178,7 +1168,7 @@ def _weekly_live_predictions(
         if newly_issued
         else empty_frame(PREDICTION_SCHEMA)
     )
-    _require_complete_weekly_live_predictions(
+    _require_weekly_live_predictions(
         output,
         symbols=symbols,
         specifications=weekly_specifications,
@@ -1187,21 +1177,6 @@ def _weekly_live_predictions(
         _project(output, PREDICTION_SCHEMA.names),
         _project(fresh, PREDICTION_SCHEMA.names),
     )
-
-
-def _weekly_prediction_target_period_is_pending(
-    bundle: pd.DataFrame,
-    *,
-    as_of: object,
-) -> bool:
-    d5_end = pd.to_datetime(
-        bundle.loc[bundle["horizon"].eq("1w-d5"), "target_window_end"],
-        utc=True,
-        errors="coerce",
-    )
-    if len(d5_end) != 1 or d5_end.isna().any():
-        raise RuntimeError("Weekly snapshot has no valid Day 5 close")
-    return utc_timestamp(as_of) < pd.Timestamp(d5_end.iloc[0])
 
 
 def _weekly_issuance_candidates(
@@ -1243,59 +1218,105 @@ def _weekly_issuance_candidates(
         raise RuntimeError("Weekly issuance samples contain invalid timestamps")
 
     result: dict[str, pd.DataFrame] = {}
+    required_horizons = set(WEEKLY_HORIZON_ORDER)
     for raw_symbol in symbols:
         symbol = str(raw_symbol).strip().upper()
         symbol_rows = weekly.loc[weekly["symbol"].eq(symbol)].copy()
-        aggregate_candidates = symbol_rows.loc[
-            symbol_rows["horizon"].eq("1w")
-            & ~symbol_rows["label_status"].eq("COMPLETE")
-            & symbol_rows["information_available_at"].le(as_of)
-            & symbol_rows["actionable_until"].gt(as_of)
-        ].sort_values("decision_timestamp", ascending=False)
-        for aggregate in aggregate_candidates.itertuples(index=False):
-            decision = pd.Timestamp(aggregate.decision_timestamp)
+        decisions = (
+            symbol_rows.loc[
+                symbol_rows["information_available_at"].le(as_of),
+                "decision_timestamp",
+            ]
+            .drop_duplicates()
+            .sort_values(ascending=False)
+        )
+        for decision in decisions:
             bundle = symbol_rows.loc[
                 symbol_rows["decision_timestamp"].eq(decision)
             ].copy()
-            if len(bundle) != len(WEEKLY_HORIZON_ORDER):
-                continue
-            if not (
-                bundle["information_available_at"].le(as_of).all()
-                and bundle["actionable_until"].gt(as_of).all()
-                and ~bundle["label_status"].eq("COMPLETE").any()
+            if (
+                len(bundle) != len(WEEKLY_HORIZON_ORDER)
+                or set(bundle["horizon"].astype(str)) != required_horizons
+                or bundle["horizon"].duplicated().any()
             ):
                 continue
-            _validate_weekly_sample_bundle(
-                bundle,
-                specifications=specifications,
-                assumed_round_trip_cost=assumed_round_trip_cost,
-            )
             calendar_name = _one_text_value(
                 bundle["exchange_calendar"],
                 label=f"{symbol} weekly exchange calendar",
             )
-            session = pd.Timestamp(aggregate.exchange_session)
+            session_values = pd.to_datetime(
+                bundle["exchange_session"], errors="coerce"
+            ).dt.tz_localize(None).dt.normalize()
+            if session_values.isna().any() or session_values.nunique() != 1:
+                raise RuntimeError(
+                    f"{symbol} weekly issuance does not share one decision session"
+                )
+            session = pd.Timestamp(session_values.iloc[0])
             calendar = ExchangeSessionCalendar(
                 calendar_name,
                 start=session - pd.Timedelta(days=14),
                 end=session + pd.Timedelta(days=45),
             )
-            if not calendar.is_final_session_of_exchange_week(session):
-                continue
-            expected_information = (
-                calendar.session_close(session)
-                + specifications["1w"].processing_delay
+
+            remaining = _remaining_week_candidate(
+                bundle,
+                calendar=calendar,
+                as_of=as_of,
+                symbol=symbol,
             )
-            if not bundle["information_available_at"].eq(
-                expected_information
-            ).all():
-                raise RuntimeError(
-                    f"{symbol} weekly issuance is not exactly the final "
-                    "session close plus processing delay"
-                )
-            result[symbol] = _sort_weekly_rows(bundle)
+            if remaining.empty:
+                continue
+            _validate_weekly_sample_bundle(
+                remaining,
+                specifications=specifications,
+                assumed_round_trip_cost=assumed_round_trip_cost,
+            )
+            result[symbol] = _sort_weekly_rows(remaining)
             break
     return result
+
+
+def _remaining_week_candidate(
+    bundle: pd.DataFrame,
+    *,
+    calendar: ExchangeSessionCalendar,
+    as_of: pd.Timestamp,
+    symbol: str,
+) -> pd.DataFrame:
+    components = bundle.loc[
+        bundle["horizon"].isin(WEEKLY_HORIZON_ORDER[1:])
+        & ~bundle["label_status"].eq("COMPLETE")
+        & bundle["information_available_at"].le(as_of)
+        & bundle["actionable_until"].gt(as_of)
+    ].copy()
+    if components.empty:
+        return components
+
+    week_keys: list[pd.Timestamp] = []
+    for row in components.itertuples(index=False):
+        session = _weekly_target_session(
+            calendar,
+            start=row.target_window_start,
+            end=row.target_window_end,
+            label=f"{symbol} {row.horizon}",
+        )
+        week_keys.append(_exchange_week_key(session))
+    components["__exchange_week"] = week_keys
+    first_week = components.sort_values("target_window_start").iloc[0][
+        "__exchange_week"
+    ]
+    components = components.loc[
+        components["__exchange_week"].eq(first_week)
+    ].drop(columns="__exchange_week")
+    aggregate = bundle.loc[
+        bundle["horizon"].eq("1w")
+        & ~bundle["label_status"].eq("COMPLETE")
+        & bundle["information_available_at"].le(as_of)
+        & bundle["actionable_until"].gt(as_of)
+    ].copy()
+    if len(aggregate) != 1:
+        return bundle.iloc[0:0].copy()
+    return pd.concat([aggregate, components], ignore_index=True, sort=False)
 
 
 def _weekly_prediction_bundles(
@@ -1315,8 +1336,6 @@ def _weekly_prediction_bundles(
             sort=False,
             dropna=False,
         ):
-            if len(candidate) != len(WEEKLY_HORIZON_ORDER):
-                continue
             try:
                 _validate_weekly_prediction_bundle(
                     candidate,
@@ -1372,14 +1391,18 @@ def _matching_weekly_sample_bundle(
     sample_decisions = pd.to_datetime(
         samples["decision_timestamp"], utc=True, errors="coerce"
     )
+    try:
+        horizons = _weekly_bundle_horizons(predictions)
+    except RuntimeError:
+        return None
     candidate = samples.loc[
-        samples["horizon"].isin(WEEKLY_HORIZON_ORDER)
+        samples["horizon"].isin(horizons)
         & samples["symbol"].astype("string").str.strip().str.upper().eq(
             str(symbols.iloc[0])
         )
         & sample_decisions.eq(decisions.iloc[0])
     ].copy()
-    if len(candidate) != len(WEEKLY_HORIZON_ORDER):
+    if len(candidate) != len(horizons):
         return None
     try:
         _validate_weekly_sample_bundle(
@@ -1441,6 +1464,56 @@ def _weekly_prediction_bundle_signature(frame: pd.DataFrame) -> str:
     )
 
 
+def _weekly_bundle_horizons(frame: pd.DataFrame) -> tuple[str, ...]:
+    if frame.empty or "horizon" not in frame.columns:
+        raise RuntimeError("Weekly outlook contains no routes")
+    horizons = tuple(frame["horizon"].astype(str))
+    if len(set(horizons)) != len(horizons):
+        raise RuntimeError("Weekly outlook contains duplicate routes")
+    if "1w" not in horizons:
+        raise RuntimeError("Remaining-week outlook requires its aggregate route")
+    component_order = WEEKLY_HORIZON_ORDER[1:]
+    ordered = tuple(horizon for horizon in component_order if horizon in horizons)
+    if not ordered or len(ordered) + 1 != len(horizons):
+        raise RuntimeError("Weekly outlook contains unsupported component routes")
+    positions = tuple(component_order.index(horizon) for horizon in ordered)
+    if positions != tuple(range(0, positions[-1] + 1)):
+        raise RuntimeError(
+            "Remaining-week component routes must be a Day 1 prefix"
+        )
+    return ("1w", *ordered)
+
+
+def _exchange_week_key(session: object) -> pd.Timestamp:
+    label = pd.Timestamp(session)
+    if label.tzinfo is not None:
+        label = label.tz_convert("UTC").tz_localize(None)
+    label = label.normalize()
+    return (label - pd.Timedelta(days=int(label.weekday()))).normalize()
+
+
+def _weekly_target_session(
+    calendar: ExchangeSessionCalendar,
+    *,
+    start: object,
+    end: object,
+    label: str,
+) -> pd.Timestamp:
+    target_start = utc_timestamp(start)
+    target_end = utc_timestamp(end)
+    matches = [
+        pd.Timestamp(session)
+        for session in calendar.sessions
+        if calendar.session_open(session) == target_start
+        and calendar.session_close(session) == target_end
+    ]
+    if len(matches) != 1:
+        raise RuntimeError(
+            f"{label} target window does not resolve to one exchange session"
+        )
+    return matches[0]
+
+
 def _validate_weekly_sample_bundle(
     frame: pd.DataFrame,
     *,
@@ -1500,14 +1573,11 @@ def _validate_weekly_sample_calendar(
         start=decision_session - pd.Timedelta(days=14),
         end=decision_session + pd.Timedelta(days=45),
     )
-    if not calendar.is_final_session_of_exchange_week(decision_session):
-        raise RuntimeError(
-            "Weekly bundle decision session is not the final eligible "
-            "session of its exchange week"
-        )
+    horizons = _weekly_bundle_horizons(frame)
+    first_specification = specifications[horizons[0]]
     expected_information = (
         calendar.session_close(decision_session)
-        + specifications["1w"].processing_delay
+        + first_specification.processing_delay
     )
     information = pd.to_datetime(
         frame["information_available_at"], utc=True, errors="coerce"
@@ -1517,12 +1587,12 @@ def _validate_weekly_sample_calendar(
     )
     if not information.eq(expected_information).all():
         raise RuntimeError(
-            "Weekly bundle information time is not the final session close "
+            "Weekly bundle information time is not the decision session close "
             "plus processing delay"
         )
     if not decisions.eq(expected_information).all():
         raise RuntimeError(
-            "Weekly bundle decision time is not the final session close plus "
+            "Weekly bundle decision time is not the decision session close plus "
             "processing delay"
         )
     resolved = calendar.horizon(
@@ -1530,7 +1600,7 @@ def _validate_weekly_sample_calendar(
         decision_timestamp=expected_information,
         future_session_count=5,
     )
-    ordered = frame.set_index("horizon").loc[list(WEEKLY_HORIZON_ORDER)]
+    ordered = frame.set_index("horizon").loc[list(horizons)]
     starts = pd.to_datetime(ordered["target_window_start"], utc=True)
     ends = pd.to_datetime(ordered["target_window_end"], utc=True)
     expected_starts = tuple(
@@ -1539,8 +1609,9 @@ def _validate_weekly_sample_calendar(
     expected_ends = tuple(
         calendar.session_close(session) for session in resolved.future_sessions
     )
-    for lead in range(1, 6):
-        horizon = f"1w-d{lead}"
+    component_sessions: list[pd.Timestamp] = []
+    for horizon in horizons[1:]:
+        lead = int(horizon.removeprefix("1w-d"))
         if (
             starts.loc[horizon] != expected_starts[lead - 1]
             or ends.loc[horizon] != expected_ends[lead - 1]
@@ -1549,12 +1620,20 @@ def _validate_weekly_sample_calendar(
                 f"{horizon} is not the official open-to-close window for "
                 "the required consecutive eligible session"
             )
+        component_sessions.append(pd.Timestamp(resolved.future_sessions[lead - 1]))
+    if len(
+        {_exchange_week_key(session) for session in component_sessions}
+    ) != 1:
+        raise RuntimeError(
+            "Remaining-week components must belong to one exchange week"
+        )
+    final_lead = int(horizons[-1].removeprefix("1w-d"))
     if (
         starts.loc["1w"] != expected_starts[0]
-        or ends.loc["1w"] != expected_ends[-1]
+        or ends.loc["1w"] != expected_ends[final_lead - 1]
     ):
         raise RuntimeError(
-            "Weekly aggregate is not Day 1 official open through Day 5 official close"
+            "Weekly aggregate does not span the remaining exchange-week sessions"
         )
 
 
@@ -1584,7 +1663,9 @@ def _validate_weekly_prediction_bundle(
     if created.isna().any() or created.nunique() != 1:
         raise RuntimeError("Weekly bundle must share one issuance timestamp")
     if not created.lt(deadlines).all():
-        raise RuntimeError("Weekly bundle was created at or after Day 1 opened")
+        raise RuntimeError(
+            "Weekly outlook was created at or after one of its route deadlines"
+        )
     if frame[["model_name", "model_version"]].isna().any().any():
         raise RuntimeError("Weekly bundle must preserve every model version")
     probability = pd.to_numeric(
@@ -1595,11 +1676,7 @@ def _validate_weekly_prediction_bundle(
 
 
 def _validate_weekly_bundle_geometry(frame: pd.DataFrame) -> None:
-    if len(frame) != len(WEEKLY_HORIZON_ORDER):
-        raise RuntimeError("Weekly bundle must contain exactly six rows")
-    horizons = frame["horizon"].astype(str)
-    if set(horizons) != set(WEEKLY_HORIZON_ORDER) or horizons.duplicated().any():
-        raise RuntimeError("Weekly bundle must contain aggregate and Day 1 through Day 5")
+    horizons = _weekly_bundle_horizons(frame)
     for column in (
         "decision_timestamp",
         "information_available_at",
@@ -1610,30 +1687,49 @@ def _validate_weekly_bundle_geometry(frame: pd.DataFrame) -> None:
         values = pd.to_datetime(frame[column], utc=True, errors="coerce")
         if values.isna().any():
             raise RuntimeError(f"Weekly bundle contains invalid {column}")
-        if column in {
-            "decision_timestamp",
-            "information_available_at",
-            "actionable_until",
-        } and values.nunique() != 1:
+        if (
+            column in {"decision_timestamp", "information_available_at"}
+            and values.nunique() != 1
+        ):
             raise RuntimeError(f"Weekly bundle must share one {column}")
-    ordered = frame.set_index("horizon").loc[list(WEEKLY_HORIZON_ORDER)]
+    ordered = frame.set_index("horizon").loc[list(horizons)]
     starts = pd.to_datetime(ordered["target_window_start"], utc=True)
     ends = pd.to_datetime(ordered["target_window_end"], utc=True)
-    deadline = pd.Timestamp(ordered["actionable_until"].iloc[0])
+    deadlines = pd.to_datetime(ordered["actionable_until"], utc=True)
     if not starts.lt(ends).all():
         raise RuntimeError("Weekly target windows must have positive duration")
-    if starts.loc["1w"] != starts.loc["1w-d1"]:
+    component_horizons = horizons[1:]
+    component_starts = starts.loc[list(component_horizons)]
+    component_ends = ends.loc[list(component_horizons)]
+    component_deadlines = deadlines.loc[list(component_horizons)]
+    if starts.loc["1w"] != component_starts.iloc[0]:
         raise RuntimeError("Weekly aggregate must start at Day 1 open")
-    if ends.loc["1w"] != ends.loc["1w-d5"]:
-        raise RuntimeError("Weekly aggregate must end at Day 5 close")
-    if deadline != starts.loc["1w-d1"]:
-        raise RuntimeError("Every weekly route must use Day 1 open as its deadline")
-    component_starts = starts.loc[list(WEEKLY_HORIZON_ORDER[1:])]
+    if ends.loc["1w"] != component_ends.iloc[-1]:
+        raise RuntimeError(
+            "Weekly aggregate must end at the final remaining session close"
+        )
+    if deadlines.loc["1w"] != component_ends.iloc[0]:
+        raise RuntimeError(
+            "Weekly aggregate must expire at the first remaining session close"
+        )
+    if not component_deadlines.eq(component_ends).all():
+        raise RuntimeError(
+            "Every weekly component must use its own session close as its deadline"
+        )
     if (
         not component_starts.is_monotonic_increasing
         or component_starts.duplicated().any()
     ):
-        raise RuntimeError("Day 1 through Day 5 target sessions must be strictly ordered")
+        raise RuntimeError(
+            "Day 1 through Day 5 target sessions must be strictly ordered"
+        )
+    if any(
+        previous >= current
+        for previous, current in zip(
+            component_ends.iloc[:-1], component_starts.iloc[1:], strict=True
+        )
+    ):
+        raise RuntimeError("Weekly component target sessions overlap")
 
 
 def _weekly_prediction_matches_samples(
@@ -1643,6 +1739,10 @@ def _weekly_prediction_matches_samples(
     prediction_rows = predictions.set_index("horizon")
     sample_rows = samples.set_index("horizon")
     if set(prediction_rows.index) != set(sample_rows.index):
+        return False
+    try:
+        horizons = _weekly_bundle_horizons(predictions)
+    except RuntimeError:
         return False
     for column in (
         "decision_timestamp",
@@ -1654,8 +1754,8 @@ def _weekly_prediction_matches_samples(
         "target_specification",
         "assumed_round_trip_cost",
     ):
-        left = prediction_rows.loc[list(WEEKLY_HORIZON_ORDER), column]
-        right = sample_rows.loc[list(WEEKLY_HORIZON_ORDER), column]
+        left = prediction_rows.loc[list(horizons), column]
+        right = sample_rows.loc[list(horizons), column]
         if column.endswith("timestamp") or column in {
             "target_window_start",
             "target_window_end",
@@ -1698,9 +1798,17 @@ def _weekly_prediction_bundle_is_active(
     )
     if matching_samples is None:
         return False
-    ordered = bundle.set_index("horizon")
-    d5_start = pd.Timestamp(ordered.loc["1w-d5", "target_window_start"])
-    d5_end = pd.Timestamp(ordered.loc["1w-d5", "target_window_end"])
+    try:
+        horizons = _weekly_bundle_horizons(bundle)
+    except RuntimeError:
+        return False
+    final_horizon = horizons[-1]
+    final_rows = bundle.loc[bundle["horizon"].eq(final_horizon)]
+    if len(final_rows) != 1:
+        return False
+    final_row = final_rows.iloc[0]
+    final_start = pd.Timestamp(final_row["target_window_start"])
+    final_end = pd.Timestamp(final_row["target_window_end"])
     symbol = str(bundle["symbol"].iloc[0]).strip().upper()
     calendars = matching_samples["exchange_calendar"]
     calendar_name = _one_text_value(
@@ -1709,24 +1817,27 @@ def _weekly_prediction_bundle_is_active(
     )
     calendar = ExchangeSessionCalendar(
         calendar_name,
-        start=d5_start - pd.Timedelta(days=14),
-        end=d5_end + pd.Timedelta(days=45),
+        start=final_start - pd.Timedelta(days=14),
+        end=final_end + pd.Timedelta(days=45),
     )
-    matches = [
-        index
-        for index, session in enumerate(calendar.sessions)
-        if calendar.session_open(session) == d5_start
-        and calendar.session_close(session) == d5_end
-    ]
-    if len(matches) != 1 or matches[0] + 1 >= len(calendar.sessions):
+    final_session = _weekly_target_session(
+        calendar,
+        start=final_start,
+        end=final_end,
+        label=f"{symbol} final weekly component",
+    )
+    location = calendar.sessions.get_loc(final_session)
+    if not isinstance(location, (int, np.integer)) or location + 1 >= len(
+        calendar.sessions
+    ):
         raise RuntimeError(
-            f"{symbol} Day 5 window does not resolve to one exchange session"
+            f"{symbol} final weekly component has no following exchange session"
         )
-    next_open = calendar.session_open(calendar.sessions[matches[0] + 1])
+    next_open = calendar.session_open(calendar.sessions[int(location) + 1])
     return utc_timestamp(as_of) < next_open
 
 
-def _require_complete_weekly_live_predictions(
+def _require_weekly_live_predictions(
     predictions: pd.DataFrame,
     *,
     symbols: Sequence[str],
@@ -1953,7 +2064,7 @@ def _load_verified_weekly_prediction_runs(
     specifications: Mapping[str, HorizonSpecification],
     assumed_round_trip_cost: float,
 ) -> tuple[VerifiedWeeklyPredictionRun, ...]:
-    """Read only receipt-chain runs that can prove a six-route issuance."""
+    """Read receipt-chain runs that prove a coherent remaining-week issuance."""
 
     weekly_specifications = {
         horizon: specifications[horizon]
@@ -1963,7 +2074,9 @@ def _load_verified_weekly_prediction_runs(
     if not weekly_specifications:
         return ()
     if set(weekly_specifications) != set(WEEKLY_HORIZON_ORDER):
-        raise RuntimeError("Verified weekly lookup requires all six routes")
+        raise RuntimeError(
+            "Verified weekly lookup requires all six model-route specifications"
+        )
     promoted_runs = authoritative_receipt_runs(datastore_root)
     results: list[VerifiedWeeklyPredictionRun] = []
     for run_directory, promoted_at in sorted(
@@ -2157,7 +2270,7 @@ def _manifest_target_metadata(
             # Early one-id-v1 manifests predate per-horizon serialization.
             # The 1d target policy is unchanged; exact window and cost checks
             # remain mandatory at reconciliation. The retired next-session 1w
-            # policy must never be inferred as the new five-session aggregate.
+            # policy must never be inferred as the dynamic remaining-week aggregate.
             payload = current.as_dict()
             version = current.target_definition_version
         else:
@@ -2224,6 +2337,14 @@ def _valid_archived_live_rows(
         errors="coerce",
     )
     symbol = output["symbol"].astype("string").str.strip()
+    weekly = output["horizon"].astype("string").isin(WEEKLY_HORIZON_ORDER)
+    valid_deadline = (
+        ~weekly
+        & output["actionable_until"].le(output["target_window_start"])
+    ) | (
+        weekly
+        & output["actionable_until"].le(output["target_window_end"])
+    )
     valid = (
         output["prediction_mode"].eq("LIVE")
         & output["prediction_status"].eq("CREATED")
@@ -2236,7 +2357,7 @@ def _valid_archived_live_rows(
             output["prediction_created_at"]
         )
         & output["prediction_created_at"].lt(output["actionable_until"])
-        & output["actionable_until"].le(output["target_window_start"])
+        & valid_deadline
         & output["prediction_created_at"].le(as_of)
         & probability.between(0.0, 1.0, inclusive="both")
         & np.isfinite(cost)
@@ -2293,6 +2414,11 @@ def _compatible_prospective_live_predictions(
         utc=True,
         errors="coerce",
     )
+    target_end = pd.to_datetime(
+        predictions["target_window_end"],
+        utc=True,
+        errors="coerce",
+    )
     actionable_until = pd.to_datetime(
         predictions["actionable_until"],
         utc=True,
@@ -2312,6 +2438,11 @@ def _compatible_prospective_live_predictions(
         ),
         index=predictions.index,
     )
+    deadline_matches = (
+        actionable_until.le(target_end)
+        if is_weekly_horizon(specification.horizon)
+        else actionable_until.le(target_start)
+    )
     compatible = (
         predictions["prediction_mode"].eq("LIVE")
         & predictions["prediction_status"].eq("CREATED")
@@ -2325,10 +2456,11 @@ def _compatible_prospective_live_predictions(
         & information.notna()
         & created.notna()
         & target_start.notna()
+        & target_end.notna()
         & actionable_until.notna()
         & information.le(created)
         & created.lt(actionable_until)
-        & actionable_until.le(target_start)
+        & deadline_matches
         & cost_matches
     )
     return predictions.loc[compatible].copy()
@@ -2500,13 +2632,22 @@ def _evaluation_frame(
         & information_available.notna()
         & information_available.le(prediction_created)
     )
-    pre_entry = (
+    weekly_prediction = merged["horizon"].astype("string").isin(
+        WEEKLY_HORIZON_ORDER
+    )
+    deadline_geometry = (
+        ~weekly_prediction & predicted_deadline.le(predicted_start)
+    ) | (
+        weekly_prediction & predicted_deadline.le(predicted_end)
+    )
+    pre_deadline = (
         ~merged["prediction_mode"].eq("LIVE")
         | (
             prediction_created.notna()
             & predicted_deadline.notna()
             & predicted_start.notna()
-            & predicted_deadline.le(predicted_start)
+            & predicted_end.notna()
+            & deadline_geometry
             & prediction_created.lt(predicted_deadline)
         )
     )
@@ -2516,7 +2657,7 @@ def _evaluation_frame(
         & contract_matches
         & window_matches
         & cost_matches
-        & pre_entry
+        & pre_deadline
     )
     raw = pd.to_numeric(merged["raw_probability"], errors="coerce")
     calibrated = pd.to_numeric(
@@ -2555,7 +2696,7 @@ def _evaluation_frame(
                 & contract_matches
                 & window_matches
                 & cost_matches
-                & ~pre_entry
+                & ~pre_deadline
             ),
         ),
         (
@@ -2997,12 +3138,12 @@ def _intelligence_frame(
                     None
                     if prediction is not None
                     else (
-                        "no frozen weekly snapshot"
+                        "no remaining-week snapshot"
                         if is_weekly_horizon(horizon)
                         else "no actionable prediction"
                     )
                 ),
-                "frozen weekly snapshot" if weekly_snapshot else None,
+                "remaining-week snapshot" if weekly_snapshot else None,
                 "research support only; automated action is disabled",
             )
             if value

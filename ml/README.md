@@ -175,31 +175,29 @@ The weekly family creates historical rolling candidates after every eligible
 daily decision so each of its six single-target models retains daily training
 density. `1w-d1` through `1w-d5` respectively use each of the next five
 eligible sessions' official open and close. Aggregate `1w` starts at D+1's
-official open and ends at D+5's official close. The configured round-trip cost
-is subtracted once from each route's simple return. Daily components mature
-independently at their session close plus processing delay; aggregate `1w`
-matures only after D+5 closes plus that delay.
+official open and ends at the final eligible close of D+1's exchange week. The
+configured round-trip cost is subtracted once from each route's simple return.
+Daily components mature independently at their session close plus processing
+delay; aggregate `1w` matures after its dynamic final close plus that delay.
 
 The aggregate target version is
-`frozen-five-session-aggregate-open-close-v1`; component target versions are
-`frozen-five-session-d1-open-close-v1` through
-`frozen-five-session-d5-open-close-v1`. These versions prevent reuse of the
-retired next-session `1w` target.
+`dynamic-remaining-week-aggregate-open-close-v2`; component target versions
+are `dynamic-remaining-week-d1-open-close-v2` through
+`dynamic-remaining-week-d5-open-close-v2`. These versions prevent reuse of the
+retired fixed-window targets.
 
-LIVE issuance is weekly rather than daily. The authoritative six-route
-snapshot is issued only after the final eligible session of the exchange week
-closes plus processing delay and strictly before D+1 opens. The exchange
-calendar, not fixed weekday or UTC arithmetic, chooses the five sessions and
-handles holidays, early closes, weekends, and DST. Once issued, later cycles
-reuse the exact verified prediction rows, including probabilities, model
-versions, prediction timestamps, and target windows. Loop A updates can change
-future training inputs but cannot revise that issued outlook.
+LIVE issuance follows the latest completed daily decision. The exchange
+calendar, not fixed weekday or UTC arithmetic, chooses the remaining sessions
+and handles holidays, early closes, weekends, and DST. Aggregate `1w` and
+`1w-d1` expire at the first remaining session close; each later component
+expires at its own close. Repeated cycles reuse the exact verified rows for the
+same decision, while a newer completed decision replaces them with the shorter
+remaining-week outlook.
 
-If no complete six-route snapshot reached the verified publication chain before
-D+1 opened, the weekly route fails closed until the next issuance. It does not
-bootstrap, backfill, manufacture a post-entry row, substitute a target, lower a
-partition requirement, or infer compatibility from the retired next-session
-`1w` contract.
+If no coherent aggregate-plus-component-prefix snapshot can be issued before
+its applicable close, the weekly route fails closed. It does not bootstrap,
+backfill, substitute a target, lower a partition requirement, or infer
+compatibility from a retired target contract.
 
 Live-evidence thresholds are 60 decisions for `1h`, 60 for `4h`, and 30 for
 `1d` and each of the six internal weekly horizons. Offline assessment rows
@@ -220,7 +218,9 @@ A model error is diagnosed at its horizon, but publication is all-or-nothing.
 If any requested symbol/horizon route fails materialization or lacks a required
 prediction, the current run is not replaced and the prior successful current
 files remain in place. Selecting public `1w` makes all six internal weekly
-routes required; five successful rows never form a partial weekly publication.
+models and historical routes required. LIVE publication is nevertheless
+dynamic: aggregate `1w` plus the valid same-week Day 1 prefix is one coherent
+outlook, while later component model rows carry no current probability.
 
 ## One-ID Parquet contract
 
@@ -372,9 +372,10 @@ route-specific live-evidence denominator; the visible card cleanup alone did
 not require or cause the schema change.
 For `1h`, `4h`, and `1d`, `OPERATIONALLY_CURRENT` means the route has an
 actionable current prediction. A ready non-weekly route whose forecast window
-has started is `OPERATIONALLY_STALE`. A verified weekly route remains current
-while its frozen snapshot is carried forward, but it is not actionable again
-after the shared D+1 deadline.
+has started is `OPERATIONALLY_STALE`. A verified remaining-week route remains
+current for its published decision. Aggregate `1w` and `d1` use the first
+remaining session close as their deadline; later components use their own
+session closes.
 
 The UI follows the authoritative pointer; it does not discover a run by
 directory recency. See
@@ -382,9 +383,10 @@ directory recency. See
 
 A successful publication contains one route for every requested internal
 symbol/horizon. With `GOOG`, `MU`, and `NVDA` and public selections `1h 4h 1d
-1w`, that means 27 current rows: three unchanged non-weekly routes plus six
-weekly routes per symbol. The UI groups the six weekly rows into one
-**5-session outlook** rather than showing six unrelated cards. This is a
+1w`, that means 27 current-output rows: three unchanged non-weekly routes plus
+six weekly model-route rows per symbol. The UI groups the aggregate and current
+Day 1 prefix into one **remaining-week outlook** and treats the unused later
+component rows as unavailable rather than as forecasts. This is a
 contract consequence, not a claim that such a live publication has been
 deployed or observed; deployment and supervisor restart remain operator actions.
 

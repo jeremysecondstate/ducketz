@@ -28,15 +28,15 @@ from ml.parquet_contracts import (
 
 STANDARD_HORIZON_ORDER: Final = ("1h", "4h", "1d")
 # ``HORIZON_ORDER`` remains the visual card order: three ordinary cards and
-# one aggregate weekly card. The five component routes are rendered inside the
-# weekly card rather than as peer cards.
+# one remaining-week aggregate card. Its component routes are rendered inside
+# the weekly card rather than as peer cards.
 HORIZON_ORDER: Final = (*STANDARD_HORIZON_ORDER, "1w")
 SUPPORTED_HORIZON_ORDER: Final = INTERNAL_HORIZON_ORDER
 HORIZON_LABELS: Final = {
     "1h": "1 hour",
     "4h": "4 hour",
     "1d": "1 day",
-    "1w": "5-session aggregate",
+    "1w": "Remaining-week aggregate",
     "1w-d1": "Day 1",
     "1w-d2": "Day 2",
     "1w-d3": "Day 3",
@@ -44,7 +44,7 @@ HORIZON_LABELS: Final = {
     "1w-d5": "Day 5",
 }
 FORECAST_SUBTITLE: Final = (
-    "Read-only 1h, 4h, 1d, and frozen 5-session probability outlooks. "
+    "Read-only 1h, 4h, 1d, and dynamic remaining-week probability outlooks. "
     "Probabilities are not recommendations."
 )
 ACTIONABLE_STATUS: Final = "ACTIONABLE"
@@ -499,7 +499,7 @@ def route_publication_summary(view: ForecastDashboardView) -> str:
     frozen = view.frozen_weekly_snapshot_count
     return (
         f"{live} live route" + ("s" if live != 1 else "")
-        + f"; {frozen} current frozen weekly outlook"
+        + f"; {frozen} current remaining-week outlook"
         + ("s" if frozen != 1 else "")
         + f"; {view.published_route_count} published rows"
     )
@@ -565,7 +565,7 @@ def dashboard_debug_text(view: ForecastDashboardView) -> str:
         f"Loaded at: {view.loaded_at.isoformat()}",
         "Operational statuses: "
         + (", ".join(view.operational_statuses) or "(none)"),
-        f"Frozen weekly snapshots: {view.frozen_weekly_snapshot_count}",
+        f"Remaining-week snapshots: {view.frozen_weekly_snapshot_count}",
         f"Automated action allowed: {view.automated_action_allowed}",
     ]
     for symbol in view.symbols:
@@ -587,31 +587,52 @@ def _weekly_outlook_view(
     present = {
         horizon: route_rows[(symbol, horizon)]
         for horizon in WEEKLY_HORIZON_ORDER
-        if (symbol, horizon) in route_rows
+        if (
+            (symbol, horizon) in route_rows
+            and _text(
+                route_rows[(symbol, horizon)].get("actionability_status")
+            )
+            == "FROZEN_WEEKLY_SNAPSHOT"
+        )
     }
     if not present:
         return None
-    missing = tuple(
-        horizon for horizon in WEEKLY_HORIZON_ORDER if horizon not in present
-    )
-    if missing:
+    if "1w" not in present:
         raise _contract_error(
             source_path,
-            f"Incomplete frozen weekly snapshot for {symbol}; missing "
-            + ", ".join(missing),
+            f"Incomplete remaining-week snapshot for {symbol}; the aggregate "
+            "route is missing.",
         )
+    component_order = WEEKLY_HORIZON_ORDER[1:]
+    component_horizons = tuple(
+        horizon for horizon in component_order if horizon in present
+    )
+    if not component_horizons:
+        raise _contract_error(
+            source_path,
+            f"Incomplete remaining-week snapshot for {symbol}; Day 1 is missing.",
+        )
+    final_position = component_order.index(component_horizons[-1])
+    expected_components = component_order[: final_position + 1]
+    if component_horizons != expected_components:
+        raise _contract_error(
+            source_path,
+            f"Incomplete remaining-week snapshot for {symbol}; component "
+            "routes must be a contiguous Day 1 prefix.",
+        )
+    horizons = ("1w", *component_horizons)
 
     routes = tuple(
         _route_view(symbol, horizon, present[horizon])
-        for horizon in WEEKLY_HORIZON_ORDER
+        for horizon in horizons
     )
     for route in routes:
         expected_version = _WEEKLY_TARGET_DEFINITION_VERSIONS[route.horizon]
         if route.target_definition_version != expected_version:
             raise _contract_error(
                 source_path,
-                f"{symbol} {route.horizon} does not use the frozen "
-                "five-session target definition; expected "
+                f"{symbol} {route.horizon} does not use the dynamic "
+                "remaining-week target definition; expected "
                 f"{expected_version!r}.",
             )
         if route.actionability_status != "FROZEN_WEEKLY_SNAPSHOT":
@@ -632,7 +653,7 @@ def _weekly_outlook_view(
         ):
             raise _contract_error(
                 source_path,
-                f"{symbol} {route.horizon} is incomplete; a frozen weekly "
+                f"{symbol} {route.horizon} is incomplete; a remaining-week "
                 "route requires its issuance, target, and probability values.",
             )
         if route.target_window_start >= route.target_window_end:
@@ -661,16 +682,16 @@ def _weekly_outlook_view(
     information_available_at = aggregate.information_available_at
     decision_timestamp = aggregate.decision_timestamp
     d1_start = sessions[0].target_window_start
-    d5_end = sessions[-1].target_window_end
+    final_end = sessions[-1].target_window_end
     if any(route.forecast_created_at != issued_at for route in routes):
         raise _contract_error(
             source_path,
-            f"{symbol} frozen weekly routes do not share one issuance timestamp.",
+            f"{symbol} remaining-week routes do not share one issuance timestamp.",
         )
     if any(route.decision_timestamp != decision_timestamp for route in routes):
         raise _contract_error(
             source_path,
-            f"{symbol} frozen weekly routes do not share one decision timestamp.",
+            f"{symbol} remaining-week routes do not share one decision timestamp.",
         )
     if any(
         route.information_available_at != information_available_at
@@ -678,36 +699,47 @@ def _weekly_outlook_view(
     ):
         raise _contract_error(
             source_path,
-            f"{symbol} frozen weekly routes do not share one information time.",
+            f"{symbol} remaining-week routes do not share one information time.",
         )
-    if any(route.actionable_until != d1_start for route in routes):
+    if aggregate.actionable_until != sessions[0].target_window_end:
         raise _contract_error(
             source_path,
-            f"{symbol} frozen weekly routes do not share the Day 1 entry deadline.",
+            f"{symbol} remaining-week aggregate does not expire at the first "
+            "remaining session close.",
+        )
+    if any(
+        route.actionable_until != route.target_window_end
+        for route in sessions
+    ):
+        raise _contract_error(
+            source_path,
+            f"{symbol} remaining-week components do not expire at their own "
+            "session closes.",
         )
     if issued_at < information_available_at:
         raise _contract_error(
             source_path,
-            f"{symbol} frozen weekly snapshot predates its available information.",
+            f"{symbol} remaining-week snapshot predates its available information.",
         )
-    if issued_at >= d1_start:
+    if any(issued_at >= route.actionable_until for route in routes):
         raise _contract_error(
             source_path,
-            f"{symbol} frozen weekly snapshot was not issued before Day 1 opened.",
+            f"{symbol} remaining-week snapshot was not issued before every "
+            "published route deadline.",
         )
     if (
         aggregate.target_window_start != d1_start
-        or aggregate.target_window_end != d5_end
+        or aggregate.target_window_end != final_end
     ):
         raise _contract_error(
             source_path,
-            f"{symbol} aggregate window does not span Day 1 open through Day 5 close.",
+            f"{symbol} aggregate window does not span all remaining sessions.",
         )
     for previous, current in zip(sessions, sessions[1:]):
         if previous.target_window_end >= current.target_window_start:
             raise _contract_error(
                 source_path,
-                f"{symbol} frozen weekly session windows are not ordered.",
+                f"{symbol} remaining-week session windows are not ordered.",
             )
     return WeeklyOutlookView(
         aggregate=aggregate,
