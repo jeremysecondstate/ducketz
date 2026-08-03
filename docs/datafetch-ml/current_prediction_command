@@ -1,0 +1,19 @@
+# Start Loop B after Loop A has completed its first datastore cycle.
+# Loop B supervisor: samples, targets, model fit/reuse, predictions, evaluation, and current outputs.
+python -m ml.prediction_runtime `
+  --datastore-target pc `
+  --symbols NVDA `
+  --provider databento `
+  --horizons 1h 4h 1d 1w `
+  --feature-profile loop-a-all-v1 `
+  --model-family logistic `
+  --calibration platt `
+  --round-trip-cost 0.001 `
+  --interval-minutes 15 `
+  --phase-offset-minutes 5
+
+# Loop A and Loop B serialize datastore cycles with one crash-released OS lock.
+# Public 1w expands internally to aggregate 1w plus 1w-d1 through 1w-d5.
+# Once that six-route snapshot is issued, later cycles reuse its exact verified
+# prediction rows and only refresh maturity/evidence status; they do not assign
+# a new prediction_created_at or revise probabilities/model versions/windows.

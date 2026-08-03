@@ -1,0 +1,10 @@
+/accounts/accountNumbers
+/accounts
+/accounts/{accountNumber}
+/accounts/{accountNumber}/orders
+/accounts/{accountNumber}/orders/{orderId}
+/orders
+/accounts/{accountNumber}/previewOrder
+/accounts/{accountNumber}/transactions
+/accounts/{accountNumber}/transactions/{transactionId}
+/userPreference

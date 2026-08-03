@@ -1,0 +1,15 @@
+.venv/
+.env
+__pycache__/
+*.pyc
+.idea/
+data/
+scratch_*.py
+scratch/
+**/.ducketz-orchestration.lock
+*.egg-info/
+
+# Generated market-data artifacts belong outside the repository.
+datafetching/datastore/
+*.parquet
+*.tmp.parquet

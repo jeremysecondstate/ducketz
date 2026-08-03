@@ -1,0 +1,14 @@
+# One equity symbol per line. The orchestrator processes them in this order.
+# Add more symbols by placing them on new lines, for example:
+
+# AAPL
+# MSFT
+# AMZN
+# DE
+# SNDK
+# PLAB
+# CAT
+# MU
+# GOOG
+
+NVDA

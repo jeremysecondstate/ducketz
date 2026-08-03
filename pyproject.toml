@@ -1,0 +1,39 @@
+[project]
+name = "ducketz"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "python-dotenv>=1.0.1",
+    "requests>=2.32.3",
+    "hyperliquid-python-sdk>=0.16.0",
+    "eth-account>=0.13.0",
+    "numpy>=1.26.0",
+    "pandas>=2.2.0",
+    "pyarrow>=16.0.0",
+    "exchange-calendars",
+    "filelock>=3.16",
+]
+
+[project.optional-dependencies]
+ml = [
+    "scikit-learn>=1.5",
+    "joblib>=1.4",
+]
+ml-tree = [
+    "lightgbm>=4.3,<5",
+    "xgboost>=2.1,<4",
+]
+ml-test = [
+    "pytest>=8.0",
+]
+
+[tool.setuptools.packages.find]
+include = [
+    "app*",
+    "datafetching*",
+    "fundamentals*",
+    "options*",
+    "signals*",
+    "technicals*",
+    "ml*",
+]

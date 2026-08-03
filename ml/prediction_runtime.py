@@ -1,0 +1,272 @@
+from __future__ import annotations
+
+import argparse
+import os
+import time
+from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Iterator, Sequence
+
+from datafetching.loop_a_cycle import (
+    datastore_cycle_lock,
+    require_complete_loop_a_cycle,
+)
+from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
+from ml.horizons import (
+    DEFAULT_FEATURE_PROFILE,
+    FEATURE_PROFILES,
+    HORIZON_ORDER,
+    horizon_specifications_for_profile,
+)
+from ml.runtime_pipeline import RuntimeConfig, discover_symbols, run_loop_b_once
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Run Loop B: combine Loop A features, construct targets, train or "
+            "reuse models, predict, reconcile matured predictions, evaluate, "
+            "monitor, and refresh current intelligence outputs."
+        )
+    )
+    datastore = parser.add_mutually_exclusive_group()
+    datastore.add_argument("--datastore", type=Path, default=None)
+    datastore.add_argument(
+        "--datastore-target",
+        choices=tuple(DATASTORE_TARGETS),
+        default="pc",
+    )
+    parser.add_argument("--symbols", nargs="+", default=None)
+    parser.add_argument("--provider", default="databento")
+    parser.add_argument(
+        "--horizons",
+        nargs="+",
+        choices=HORIZON_ORDER,
+        default=list(HORIZON_ORDER),
+    )
+    parser.add_argument(
+        "--feature-profile",
+        "--feature-set-profile",
+        dest="feature_profile",
+        choices=tuple(FEATURE_PROFILES),
+        default=DEFAULT_FEATURE_PROFILE,
+        help=(
+            "Closed versioned feature profile. loop-a-all-v1 is the default "
+            "integrated Loop A set; production-v1 and technical-all-v2 retain "
+            "the legacy technical-only sets."
+        ),
+    )
+    parser.add_argument("--interval-minutes", type=int, default=60)
+    parser.add_argument(
+        "--phase-offset-minutes",
+        type=int,
+        default=5,
+        help=(
+            "UTC phase inside each recurring interval."
+        ),
+    )
+    parser.add_argument("--once", action="store_true")
+    parser.add_argument(
+        "--model-family",
+        choices=("logistic", "lightgbm", "xgboost"),
+        default="logistic",
+    )
+    parser.add_argument(
+        "--calibration",
+        choices=("none", "platt", "isotonic"),
+        default="platt",
+    )
+    parser.add_argument("--balanced-class-weight", action="store_true")
+    parser.add_argument("--minimum-train-clusters", type=int, default=None)
+    parser.add_argument("--calibration-clusters", type=int, default=None)
+    parser.add_argument("--assessment-clusters", type=int, default=None)
+    parser.add_argument("--lockbox-clusters", type=int, default=None)
+    parser.add_argument("--round-trip-cost", type=float, default=0.001)
+    args = parser.parse_args(argv)
+
+    if args.interval_minutes < 1:
+        parser.error("--interval-minutes must be at least 1")
+    if not args.once:
+        if not 0 <= args.phase_offset_minutes < args.interval_minutes:
+            parser.error(
+                "--phase-offset-minutes must satisfy "
+                "0 <= phase < interval-minutes"
+            )
+    if (
+        args.minimum_train_clusters is not None
+        and args.minimum_train_clusters < 1
+    ):
+        parser.error("--minimum-train-clusters must be at least 1")
+    if (
+        args.calibration_clusters is not None
+        and args.calibration_clusters < 1
+    ):
+        parser.error("--calibration-clusters must be at least 1")
+    if (
+        args.assessment_clusters is not None
+        and args.assessment_clusters < 1
+    ):
+        parser.error("--assessment-clusters must be at least 1")
+    if args.lockbox_clusters is not None and args.lockbox_clusters < 1:
+        parser.error("--lockbox-clusters must be at least 1")
+    if not 0.0 <= args.round_trip_cost < 1.0:
+        parser.error("--round-trip-cost must satisfy 0 <= cost < 1")
+
+    root = resolve_datastore_dir(
+        root_dir=args.datastore,
+        target=None if args.datastore is not None else args.datastore_target,
+    )
+    specifications = horizon_specifications_for_profile(
+        args.feature_profile,
+        horizons=args.horizons,
+    )
+    config = RuntimeConfig(
+        provider=args.provider,
+        model_family=args.model_family,
+        calibration_method=args.calibration,
+        class_weight="balanced" if args.balanced_class_weight else None,
+        assumed_round_trip_cost=args.round_trip_cost,
+        minimum_train_clusters=args.minimum_train_clusters,
+        calibration_clusters=args.calibration_clusters,
+        assessment_clusters=args.assessment_clusters,
+        lockbox_clusters=args.lockbox_clusters,
+        feature_profile=args.feature_profile,
+    )
+    selected_symbols = tuple(args.symbols or discover_symbols(root))
+
+    print("DUCKETS LOOP B")
+    print("==============")
+    print(f"DATASTORE: {root}")
+    print(f"Provider: {config.provider}")
+    print(f"Horizons: {', '.join(specifications)}")
+    print(f"Feature profile: {config.feature_profile}")
+    print(f"Model: {config.model_family}; calibration: {config.calibration_method}")
+    print("Options strategy analytics: schwab-spreads-v1")
+    print(f"Interval: {args.interval_minutes} minutes")
+    if not args.once:
+        print(f"UTC phase: +{args.phase_offset_minutes} minutes")
+    print("Loop A dependency: latest complete datastore inputs")
+    print("Stop: Ctrl+C")
+    print()
+
+    lock_path = root / ".duckets-ml-prediction-runtime.lock"
+    with runtime_lock(lock_path):
+        try:
+            while True:
+                if not args.once:
+                    next_run = next_boundary(
+                        datetime.now(timezone.utc),
+                        interval_minutes=args.interval_minutes,
+                        phase_offset_minutes=args.phase_offset_minutes,
+                    )
+                    print(f"Next Loop B cycle: {next_run.isoformat()}")
+                    print()
+                    time.sleep(
+                        max(
+                            0.0,
+                            (next_run - datetime.now(timezone.utc)).total_seconds(),
+                        )
+                    )
+                exit_code = 0
+                try:
+                    with datastore_cycle_lock(root, reporter=print):
+                        loop_a_cycle = require_complete_loop_a_cycle(root)
+                        started_at = datetime.now(timezone.utc)
+                        print(f"LOOP B CYCLE {started_at.isoformat()}")
+                        print("-" * 48)
+                        print(
+                            "Loop A datastore cycle: "
+                            f"{loop_a_cycle.generation}"
+                        )
+                        result = run_loop_b_once(
+                            root,
+                            symbols=selected_symbols,
+                            config=config,
+                            specifications=specifications,
+                            run_timestamp=started_at,
+                            input_available_at=loop_a_cycle.finished_at,
+                            runtime_clock=lambda: datetime.now(timezone.utc),
+                            enforce_publication_deadline=True,
+                        )
+                    print(
+                        f"{result.status}: samples={result.sample_rows}; "
+                        f"predictions={result.prediction_rows}; "
+                        f"evaluations={result.evaluation_rows}; "
+                        f"models_trained={result.models_trained}; "
+                        f"models_reused={result.models_reused}; "
+                        "strategy_candidates="
+                        f"{getattr(result, 'strategy_candidate_rows', 0)}"
+                    )
+                    print(f"Run: {result.run_directory}")
+                    print(f"Current: {result.latest_intelligence_path}")
+                except Exception as exc:
+                    exit_code = 1
+                    print(f"Loop B failed: {type(exc).__name__}: {exc}")
+
+                if args.once:
+                    return exit_code
+        except KeyboardInterrupt:
+            print("Loop B stopped.")
+            return 0
+
+
+def next_boundary(
+    now: datetime,
+    *,
+    interval_minutes: int,
+    phase_offset_minutes: int = 0,
+) -> datetime:
+    if interval_minutes < 1:
+        raise ValueError("interval_minutes must be positive")
+    if not 0 <= phase_offset_minutes < interval_minutes:
+        raise ValueError(
+            "phase_offset_minutes must satisfy 0 <= phase < interval_minutes"
+        )
+    current = now.astimezone(timezone.utc)
+    midnight = current.replace(hour=0, minute=0, second=0, microsecond=0)
+    anchor = midnight + timedelta(minutes=phase_offset_minutes)
+    if current < anchor:
+        return anchor
+    elapsed_minutes = int((current - anchor).total_seconds() // 60)
+    next_slot = ((elapsed_minutes // interval_minutes) + 1) * interval_minutes
+    boundary = anchor + timedelta(minutes=next_slot)
+    if boundary <= current:
+        boundary += timedelta(minutes=interval_minutes)
+    return boundary
+
+
+@contextmanager
+def runtime_lock(path: Path) -> Iterator[None]:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor: int | None = None
+    try:
+        descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        payload = (
+            f"pid={os.getpid()}\n"
+            f"started_at={datetime.now(timezone.utc).isoformat()}\n"
+        ).encode("utf-8")
+        os.write(descriptor, payload)
+        os.close(descriptor)
+        descriptor = None
+    except FileExistsError as exc:
+        detail = (
+            path.read_text(encoding="utf-8", errors="replace")
+            if path.is_file()
+            else ""
+        )
+        raise RuntimeError(
+            "Another Duckets Loop B process appears to be running. "
+            f"Lock: {path}\n{detail}"
+        ) from exc
+
+    try:
+        yield
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+        path.unlink(missing_ok=True)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

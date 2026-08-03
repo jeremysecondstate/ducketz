@@ -1,0 +1,774 @@
+from __future__ import annotations
+
+import threading
+import tkinter as tk
+from collections.abc import Callable
+from pathlib import Path
+from tkinter import messagebox, ttk
+
+from app.models.portfolio import PortfolioSnapshot
+from app.services.schwab import SchwabSession, sync_schwab_portfolio
+from app.services.schwab_strategy_orders import (
+    DAY_ONLY,
+    GOOD_UNTIL_CANCELED,
+    MARKET_ORDER,
+    StrategyOrderDraft,
+    build_strategy_order_payload,
+)
+from app.ui.options_strategy_data import (
+    HORIZON_LABELS,
+    StrategyCandidateView,
+    StrategyCandidatesView,
+    load_strategy_candidates,
+)
+from app.ui.schwab_order_messages import (
+    order_confirmation_message,
+    order_submitted_message,
+)
+from app.ui.theme import (
+    ACCENT,
+    BACKGROUND,
+    BORDER,
+    MUTED_TEXT,
+    SURFACE,
+    SURFACE_ALT,
+    TEXT,
+)
+
+
+class OptionsStrategiesTab:
+    def __init__(
+        self,
+        *,
+        root: tk.Tk,
+        parent: ttk.Frame,
+        candidates_path: Path | None = None,
+        snapshot_loader: Callable[[], PortfolioSnapshot] = sync_schwab_portfolio,
+        session_factory: Callable[[], SchwabSession] = SchwabSession,
+    ) -> None:
+        self.root = root
+        self.candidates_path = candidates_path
+        self.snapshot_loader = snapshot_loader
+        self.session_factory = session_factory
+        self.view: StrategyCandidatesView | None = None
+        self.visible_candidates: tuple[StrategyCandidateView, ...] = ()
+        self.selected_candidate: StrategyCandidateView | None = None
+        self.selected_order_index = 0
+        self.refresh_button: ttk.Button | None = None
+        self.candidate_table: ttk.Treeview | None = None
+        self.ticket_legs: ttk.Treeview | None = None
+        self.submit_button: ttk.Button | None = None
+
+        self.symbol = tk.StringVar()
+        self.horizon_label = tk.StringVar()
+        self.position_summary = tk.StringVar(value="Syncing Schwab account")
+        self.candidate_summary = tk.StringVar(value="Loading strategy candidates")
+        self.ticket_strategy = tk.StringVar(value="Select exact legs")
+        self.ticket_structure = tk.StringVar(value="")
+        self.ticket_order_part = tk.StringVar(value="")
+        self.ticket_quantity = tk.StringVar(value="1")
+        self.ticket_order_method = tk.StringVar()
+        self.ticket_limit_price = tk.StringVar()
+        self.ticket_duration = tk.StringVar(value=DAY_ONLY)
+        self.ticket_portfolio_impact = tk.StringVar(value="")
+
+        self._apply_styles()
+        self._build(parent)
+        self.root.after_idle(self.refresh)
+
+    def _apply_styles(self) -> None:
+        style = ttk.Style(self.root)
+        style.configure(
+            "StrategyPage.TFrame",
+            background=BACKGROUND,
+        )
+        style.configure(
+            "StrategySurface.TFrame",
+            background=SURFACE,
+            bordercolor=BORDER,
+            borderwidth=1,
+            relief=tk.SOLID,
+        )
+        style.configure(
+            "StrategyTitle.TLabel",
+            background=BACKGROUND,
+            foreground=TEXT,
+            font=("Segoe UI", 22, "bold"),
+        )
+        style.configure(
+            "StrategySubtitle.TLabel",
+            background=BACKGROUND,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 10),
+        )
+        style.configure(
+            "StrategyHeading.TLabel",
+            background=SURFACE,
+            foreground=TEXT,
+            font=("Segoe UI", 12, "bold"),
+        )
+        style.configure(
+            "StrategyBody.TLabel",
+            background=SURFACE,
+            foreground=TEXT,
+            font=("Segoe UI", 10),
+        )
+        style.configure(
+            "StrategyMuted.TLabel",
+            background=SURFACE,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 9),
+        )
+        style.configure(
+            "StrategySubmit.TButton",
+            background=ACCENT,
+            foreground="#020617",
+            bordercolor=ACCENT,
+            font=("Segoe UI", 10, "bold"),
+            padding=(12, 9),
+        )
+        style.map(
+            "StrategySubmit.TButton",
+            background=[("active", "#93c5fd"), ("disabled", SURFACE_ALT)],
+            foreground=[("disabled", MUTED_TEXT)],
+        )
+
+    def _build(self, parent: ttk.Frame) -> None:
+        outer = ttk.Frame(
+            parent,
+            padding=(16, 13, 16, 13),
+            style="StrategyPage.TFrame",
+        )
+        outer.pack(fill=tk.BOTH, expand=True)
+
+        header = ttk.Frame(outer, style="StrategyPage.TFrame")
+        header.pack(fill=tk.X, pady=(0, 12))
+        heading = ttk.Frame(header, style="StrategyPage.TFrame")
+        heading.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Label(
+            heading,
+            text="Options Strategy Rankings",
+            style="StrategyTitle.TLabel",
+        ).pack(anchor=tk.W)
+        ttk.Label(
+            heading,
+            text=(
+                "Model strategy predictions, current Schwab holdings, and "
+                "exact option contracts."
+            ),
+            style="StrategySubtitle.TLabel",
+        ).pack(anchor=tk.W, pady=(2, 0))
+        self.refresh_button = ttk.Button(
+            header,
+            text="Refresh",
+            command=self.refresh,
+        )
+        self.refresh_button.pack(side=tk.RIGHT, anchor=tk.N)
+
+        controls = ttk.Frame(
+            outer,
+            padding=(12, 10),
+            style="StrategySurface.TFrame",
+        )
+        controls.pack(fill=tk.X, pady=(0, 10))
+        ttk.Label(
+            controls,
+            text="Symbol",
+            style="StrategyBody.TLabel",
+        ).pack(side=tk.LEFT)
+        symbol_box = ttk.Combobox(
+            controls,
+            textvariable=self.symbol,
+            state="readonly",
+            width=10,
+        )
+        symbol_box.pack(side=tk.LEFT, padx=(7, 16))
+        symbol_box.bind("<<ComboboxSelected>>", self._symbol_changed)
+        self._symbol_box = symbol_box
+
+        ttk.Label(
+            controls,
+            text="Horizon",
+            style="StrategyBody.TLabel",
+        ).pack(side=tk.LEFT)
+        horizon_box = ttk.Combobox(
+            controls,
+            textvariable=self.horizon_label,
+            state="readonly",
+            width=22,
+        )
+        horizon_box.pack(side=tk.LEFT, padx=(7, 16))
+        horizon_box.bind("<<ComboboxSelected>>", self._filters_changed)
+        self._horizon_box = horizon_box
+        ttk.Label(
+            controls,
+            textvariable=self.position_summary,
+            style="StrategyBody.TLabel",
+        ).pack(side=tk.LEFT, padx=(8, 0))
+        ttk.Label(
+            controls,
+            textvariable=self.candidate_summary,
+            style="StrategyMuted.TLabel",
+        ).pack(side=tk.RIGHT)
+
+        panes = ttk.PanedWindow(outer, orient=tk.HORIZONTAL)
+        panes.pack(fill=tk.BOTH, expand=True)
+        ranking = ttk.Frame(
+            panes,
+            padding=(10, 10),
+            style="StrategySurface.TFrame",
+        )
+        ticket = ttk.Frame(
+            panes,
+            padding=(11, 10),
+            style="StrategySurface.TFrame",
+        )
+        panes.add(ranking, weight=3)
+        panes.add(ticket, weight=2)
+        self._build_ranking(ranking)
+        self._build_ticket(ticket)
+
+    def _build_ranking(self, parent: ttk.Frame) -> None:
+        ttk.Label(
+            parent,
+            text="Ranked candidates",
+            style="StrategyHeading.TLabel",
+        ).pack(anchor=tk.W)
+        ttk.Label(
+            parent,
+            text="Select an entry in Exact legs to fill the order ticket.",
+            style="StrategyMuted.TLabel",
+        ).pack(anchor=tk.W, pady=(2, 8))
+        table_frame = ttk.Frame(parent, style="StrategySurface.TFrame")
+        table_frame.pack(fill=tk.BOTH, expand=True)
+        table = ttk.Treeview(
+            table_frame,
+            columns=(
+                "rank",
+                "strategy",
+                "exact_legs",
+                "probability",
+                "expected_return",
+                "portfolio_fit",
+                "overall_score",
+            ),
+            show="headings",
+            height=18,
+        )
+        columns = (
+            ("rank", "Rank", 58, tk.E),
+            ("strategy", "Strategy", 160, tk.W),
+            ("exact_legs", "Exact legs", 330, tk.W),
+            ("probability", "Market probability", 120, tk.E),
+            ("expected_return", "Expected return", 110, tk.E),
+            ("portfolio_fit", "Portfolio fit", 125, tk.W),
+            ("overall_score", "Overall score", 100, tk.E),
+        )
+        for name, label, width, anchor in columns:
+            table.heading(name, text=label)
+            table.column(
+                name,
+                width=width,
+                minwidth=50,
+                anchor=anchor,
+                stretch=name in {"strategy", "exact_legs"},
+            )
+        scroll_y = ttk.Scrollbar(
+            table_frame,
+            orient=tk.VERTICAL,
+            command=table.yview,
+        )
+        scroll_x = ttk.Scrollbar(
+            table_frame,
+            orient=tk.HORIZONTAL,
+            command=table.xview,
+        )
+        table.configure(
+            yscrollcommand=scroll_y.set,
+            xscrollcommand=scroll_x.set,
+        )
+        scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
+        scroll_x.pack(side=tk.BOTTOM, fill=tk.X)
+        table.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        table.bind("<ButtonRelease-1>", self._candidate_clicked)
+        table.bind("<Motion>", self._candidate_motion)
+        table.bind("<Return>", self._candidate_entered)
+        self.candidate_table = table
+
+    def _build_ticket(self, parent: ttk.Frame) -> None:
+        ttk.Label(
+            parent,
+            text="Order ticket",
+            style="StrategyHeading.TLabel",
+        ).pack(anchor=tk.W)
+        ttk.Label(
+            parent,
+            textvariable=self.ticket_strategy,
+            style="StrategyBody.TLabel",
+        ).pack(anchor=tk.W, pady=(5, 0))
+        ttk.Label(
+            parent,
+            textvariable=self.ticket_structure,
+            style="StrategyMuted.TLabel",
+        ).pack(anchor=tk.W, pady=(2, 10))
+
+        fields = ttk.Frame(parent, style="StrategySurface.TFrame")
+        fields.pack(fill=tk.X)
+        order_part_box = ttk.Combobox(
+            fields,
+            textvariable=self.ticket_order_part,
+            state="readonly",
+        )
+        order_part_box.bind(
+            "<<ComboboxSelected>>",
+            self._order_part_changed,
+        )
+        self._ticket_field(
+            fields,
+            "Schwab order",
+            order_part_box,
+            row=0,
+            column=0,
+        )
+        self._order_part_box = order_part_box
+        self._ticket_field(
+            fields,
+            "Quantity",
+            ttk.Entry(fields, textvariable=self.ticket_quantity),
+            row=0,
+            column=1,
+        )
+        order_box = ttk.Combobox(
+            fields,
+            textvariable=self.ticket_order_method,
+            state="readonly",
+        )
+        order_box.bind(
+            "<<ComboboxSelected>>",
+            self._order_method_changed,
+        )
+        self._ticket_field(
+            fields,
+            "Order method",
+            order_box,
+            row=1,
+            column=0,
+        )
+        self._order_method_box = order_box
+        limit_price = ttk.Entry(
+            fields,
+            textvariable=self.ticket_limit_price,
+        )
+        self._ticket_field(
+            fields,
+            "Limit price",
+            limit_price,
+            row=1,
+            column=1,
+        )
+        self._limit_price_entry = limit_price
+        duration_box = ttk.Combobox(
+            fields,
+            textvariable=self.ticket_duration,
+            values=(DAY_ONLY, GOOD_UNTIL_CANCELED),
+            state="readonly",
+        )
+        self._ticket_field(
+            fields,
+            "Duration",
+            duration_box,
+            row=2,
+            column=0,
+        )
+
+        ttk.Label(
+            parent,
+            text="Ticket legs",
+            style="StrategyHeading.TLabel",
+        ).pack(anchor=tk.W, pady=(13, 6))
+        legs = ttk.Treeview(
+            parent,
+            columns=("action", "contract", "quantity", "bid", "ask"),
+            show="headings",
+            height=7,
+        )
+        for name, label, width, anchor in (
+            ("action", "Action", 105, tk.W),
+            ("contract", "Contract", 245, tk.W),
+            ("quantity", "Quantity", 65, tk.E),
+            ("bid", "Bid", 65, tk.E),
+            ("ask", "Ask", 65, tk.E),
+        ):
+            legs.heading(name, text=label)
+            legs.column(name, width=width, anchor=anchor)
+        legs.pack(fill=tk.X)
+        self.ticket_legs = legs
+
+        ttk.Label(
+            parent,
+            text="Portfolio impact",
+            style="StrategyHeading.TLabel",
+        ).pack(anchor=tk.W, pady=(13, 4))
+        ttk.Label(
+            parent,
+            textvariable=self.ticket_portfolio_impact,
+            style="StrategyBody.TLabel",
+            wraplength=430,
+            justify=tk.LEFT,
+        ).pack(anchor=tk.W, fill=tk.X)
+
+        self.submit_button = ttk.Button(
+            parent,
+            text="Submit Order",
+            style="StrategySubmit.TButton",
+            command=self._submit_order,
+            state=tk.DISABLED,
+        )
+        self.submit_button.pack(fill=tk.X, pady=(15, 0))
+
+    def _ticket_field(
+        self,
+        parent: ttk.Frame,
+        label: str,
+        control: ttk.Widget,
+        *,
+        row: int,
+        column: int,
+    ) -> None:
+        parent.grid_columnconfigure(column, weight=1)
+        ttk.Label(
+            parent,
+            text=label,
+            style="StrategyMuted.TLabel",
+        ).grid(
+            row=row * 2,
+            column=column,
+            sticky=tk.EW,
+            padx=(0 if column == 0 else 5, 5 if column == 0 else 0),
+            pady=(0 if row == 0 else 2, 0),
+        )
+        control.grid(
+            row=row * 2 + 1,
+            column=column,
+            sticky=tk.EW,
+            padx=(0 if column == 0 else 5, 5 if column == 0 else 0),
+            pady=(3, 7),
+        )
+
+    def refresh(self) -> None:
+        if self.refresh_button is not None:
+            self.refresh_button.configure(state=tk.DISABLED)
+        self.position_summary.set("Syncing Schwab account")
+        self.candidate_summary.set("Loading strategy candidates")
+        thread = threading.Thread(target=self._load_background, daemon=True)
+        thread.start()
+
+    def _load_background(self) -> None:
+        try:
+            snapshot = self.snapshot_loader()
+            view = load_strategy_candidates(
+                self.candidates_path,
+                snapshot=snapshot,
+            )
+        except Exception as exc:
+            self.root.after(0, lambda caught=exc: self._load_failed(caught))
+            return
+        self.root.after(0, lambda loaded=view: self._load_succeeded(loaded))
+
+    def _load_succeeded(self, view: StrategyCandidatesView) -> None:
+        self.view = view
+        if self.refresh_button is not None:
+            self.refresh_button.configure(state=tk.NORMAL)
+        self._symbol_box.configure(values=view.symbols)
+        if not view.symbols:
+            self.symbol.set("")
+            self.horizon_label.set("")
+            self.position_summary.set("No strategy candidates")
+            self.candidate_summary.set("0 candidates")
+            self._render_candidates()
+            return
+        if self.symbol.get() not in view.symbols:
+            self.symbol.set(view.symbols[0])
+        self._set_horizon_choices()
+        self._render_candidates()
+
+    def _load_failed(self, exc: Exception) -> None:
+        if self.refresh_button is not None:
+            self.refresh_button.configure(state=tk.NORMAL)
+        self.view = None
+        self.visible_candidates = ()
+        self.position_summary.set("Options strategy data could not be loaded")
+        self.candidate_summary.set("")
+        self._clear_table(self.candidate_table)
+        self._clear_ticket()
+        messagebox.showerror(
+            "Options strategy refresh failed",
+            str(exc) or "Options strategy data could not be loaded.",
+        )
+
+    def _symbol_changed(self, _event: object = None) -> None:
+        self._set_horizon_choices()
+        self._render_candidates()
+
+    def _set_horizon_choices(self) -> None:
+        if self.view is None:
+            return
+        horizons = self.view.horizons_by_symbol.get(self.symbol.get(), ())
+        labels = tuple(HORIZON_LABELS[horizon] for horizon in horizons)
+        self._horizon_box.configure(values=labels)
+        if self.horizon_label.get() not in labels:
+            preferred = HORIZON_LABELS["1d"]
+            self.horizon_label.set(
+                preferred if preferred in labels else (labels[0] if labels else "")
+            )
+
+    def _filters_changed(self, _event: object = None) -> None:
+        self._render_candidates()
+
+    def _render_candidates(self) -> None:
+        self._clear_table(self.candidate_table)
+        self._clear_ticket()
+        if self.view is None or self.candidate_table is None:
+            return
+        horizon = next(
+            (
+                key
+                for key, label in HORIZON_LABELS.items()
+                if label == self.horizon_label.get()
+            ),
+            "",
+        )
+        self.visible_candidates = tuple(
+            item
+            for item in self.view.candidates
+            if item.symbol == self.symbol.get() and item.horizon == horizon
+        )
+        for index, candidate in enumerate(self.visible_candidates):
+            self.candidate_table.insert(
+                "",
+                tk.END,
+                iid=str(index),
+                values=(
+                    candidate.rank,
+                    candidate.strategy_display_name,
+                    candidate.exact_legs,
+                    _percent(candidate.market_probability),
+                    _percent(candidate.expected_return),
+                    candidate.portfolio_fit.label,
+                    _number(candidate.overall_score, 4),
+                ),
+            )
+        self.candidate_summary.set(
+            f"{len(self.visible_candidates):,} candidates"
+        )
+        if self.visible_candidates:
+            position = self.visible_candidates[0].position
+            self.position_summary.set(_position_summary(position))
+        else:
+            self.position_summary.set("No candidates for this route")
+
+    def _candidate_clicked(self, event: tk.Event[tk.Misc]) -> None:
+        if self.candidate_table is None:
+            return
+        row_id = self.candidate_table.identify_row(event.y)
+        column = self.candidate_table.identify_column(event.x)
+        if row_id and column == "#3":
+            self.candidate_table.selection_set(row_id)
+            self._fill_ticket(int(row_id))
+
+    def _candidate_motion(self, event: tk.Event[tk.Misc]) -> None:
+        if self.candidate_table is None:
+            return
+        column = self.candidate_table.identify_column(event.x)
+        row_id = self.candidate_table.identify_row(event.y)
+        self.candidate_table.configure(
+            cursor="hand2" if column == "#3" and row_id else ""
+        )
+
+    def _candidate_entered(self, _event: object) -> None:
+        if self.candidate_table is None:
+            return
+        selected = self.candidate_table.selection()
+        if selected:
+            self._fill_ticket(int(selected[0]))
+
+    def _fill_ticket(self, index: int) -> None:
+        if not 0 <= index < len(self.visible_candidates):
+            return
+        candidate = self.visible_candidates[index]
+        draft = candidate.order_draft
+        self.selected_candidate = candidate
+        self.selected_order_index = 0
+        self.ticket_strategy.set(candidate.strategy_display_name)
+        order_word = "order" if draft.order_count == 1 else "orders"
+        leg_word = "leg" if len(draft.legs) == 1 else "legs"
+        self.ticket_structure.set(
+            f"{draft.order_count} Schwab {order_word} · "
+            f"{len(draft.legs)} strategy {leg_word}"
+        )
+        self.ticket_quantity.set("1")
+        self.ticket_portfolio_impact.set(candidate.portfolio_fit.detail)
+        order_names = tuple(order.display_name for order in draft.orders)
+        self._order_part_box.configure(values=order_names)
+        self.ticket_order_part.set(order_names[0])
+        self._render_order_part()
+        if self.submit_button is not None:
+            self.submit_button.configure(state=tk.NORMAL)
+
+    def _order_part_changed(self, _event: object = None) -> None:
+        candidate = self.selected_candidate
+        if candidate is None:
+            return
+        selected = self.ticket_order_part.get()
+        self.selected_order_index = next(
+            (
+                index
+                for index, order in enumerate(candidate.order_draft.orders)
+                if order.display_name == selected
+            ),
+            0,
+        )
+        self._render_order_part()
+
+    def _render_order_part(self) -> None:
+        candidate = self.selected_candidate
+        if candidate is None:
+            return
+        order = candidate.order_draft.orders[self.selected_order_index]
+        self.ticket_order_method.set(order.suggested_order_method)
+        self._order_method_box.configure(values=order.order_method_choices)
+        self.ticket_limit_price.set(
+            ""
+            if order.suggested_limit_price is None
+            else f"{order.suggested_limit_price:.2f}"
+        )
+        self.ticket_duration.set(order.duration)
+        self._order_method_changed()
+        self._clear_table(self.ticket_legs)
+        if self.ticket_legs is not None:
+            for leg in order.legs:
+                self.ticket_legs.insert(
+                    "",
+                    tk.END,
+                    values=(
+                        _human_instruction(leg.instruction),
+                        leg.display_name,
+                        leg.quantity,
+                        _money(leg.bid),
+                        _money(leg.ask),
+                    ),
+                )
+
+    def _order_method_changed(self, _event: object = None) -> None:
+        self._limit_price_entry.configure(
+            state=(
+                tk.DISABLED
+                if self.ticket_order_method.get() == MARKET_ORDER
+                else tk.NORMAL
+            )
+        )
+
+    def _clear_ticket(self) -> None:
+        self.selected_candidate = None
+        self.selected_order_index = 0
+        self.ticket_strategy.set("Select exact legs")
+        self.ticket_structure.set("")
+        self.ticket_order_part.set("")
+        self._order_part_box.configure(values=())
+        self.ticket_quantity.set("1")
+        self.ticket_order_method.set("")
+        self.ticket_limit_price.set("")
+        self.ticket_duration.set(DAY_ONLY)
+        self.ticket_portfolio_impact.set("")
+        self._limit_price_entry.configure(state=tk.NORMAL)
+        self._clear_table(self.ticket_legs)
+        if self.submit_button is not None:
+            self.submit_button.configure(state=tk.DISABLED)
+
+    def _submit_order(self) -> None:
+        candidate = self.selected_candidate
+        if candidate is None:
+            return
+        try:
+            payload = build_strategy_order_payload(
+                candidate.order_draft,
+                order_index=self.selected_order_index,
+                strategy_quantity=int(self.ticket_quantity.get().strip()),
+                order_method=self.ticket_order_method.get(),
+                limit_price=(
+                    None
+                    if self.ticket_order_method.get() == MARKET_ORDER
+                    else self.ticket_limit_price.get().strip()
+                ),
+                duration=self.ticket_duration.get(),
+            )
+            if not messagebox.askyesno(
+                "Confirm Option Order",
+                order_confirmation_message(payload),
+            ):
+                return
+            location = self.session_factory().submit_order(payload)
+            messagebox.showinfo(
+                "Option order submitted",
+                order_submitted_message(payload, location),
+            )
+            next_index = self.selected_order_index + 1
+            if next_index < candidate.order_draft.order_count:
+                self.selected_order_index = next_index
+                next_order = candidate.order_draft.orders[next_index]
+                self.ticket_order_part.set(next_order.display_name)
+                self._render_order_part()
+        except Exception as exc:
+            messagebox.showerror(
+                "Option order failed",
+                str(exc) or "The option order could not be submitted.",
+            )
+
+    @staticmethod
+    def _clear_table(table: ttk.Treeview | None) -> None:
+        if table is None:
+            return
+        for item in table.get_children():
+            table.delete(item)
+
+
+def _position_summary(position: object) -> str:
+    shares = float(getattr(position, "shares", 0.0))
+    options = float(getattr(position, "option_contracts", 0.0))
+    orders = int(getattr(position, "working_option_orders", 0))
+    symbol = str(getattr(position, "symbol", ""))
+    parts = [f"{symbol} position: {shares:g} shares"]
+    if options:
+        parts.append(f"{options:g} option contracts")
+    if orders:
+        parts.append(
+            f"{orders} working option order" + ("s" if orders != 1 else "")
+        )
+    return " · ".join(parts)
+
+
+def _human_instruction(value: str) -> str:
+    labels = {
+        "BUY": "Buy",
+        "SELL": "Sell",
+        "BUY_TO_OPEN": "Buy to open",
+        "SELL_TO_OPEN": "Sell to open",
+        "BUY_TO_CLOSE": "Buy to close",
+        "SELL_TO_CLOSE": "Sell to close",
+    }
+    return labels.get(value, value.replace("_", " ").title())
+
+
+def _percent(value: float | None) -> str:
+    return "—" if value is None else f"{value * 100:.2f}%"
+
+
+def _number(value: float | None, digits: int) -> str:
+    return "—" if value is None else f"{value:.{digits}f}"
+
+
+def _money(value: float | None) -> str:
+    return "—" if value is None else f"${value:,.2f}"
+
+
+__all__ = ["OptionsStrategiesTab"]

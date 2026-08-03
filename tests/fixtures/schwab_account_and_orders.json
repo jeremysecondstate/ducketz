@@ -1,0 +1,147 @@
+{
+  "account_payload": {
+    "securitiesAccount": {
+      "accountNumber": "12345678",
+      "type": "MARGIN",
+      "currentBalances": {
+        "liquidationValue": 30300.0,
+        "cashBalance": 20000.0,
+        "settledCash": 18000.0,
+        "cashAvailableForTrading": 17500.0,
+        "cashAvailableForWithdrawal": 16000.0,
+        "availableFunds": 17000.0,
+        "availableFundsNonMarginableTrade": 16500.0,
+        "buyingPower": 34000.0,
+        "buyingPowerNonMarginableTrade": 16600.0,
+        "dayTradingBuyingPower": 68000.0,
+        "marginBalance": -2500.0,
+        "maintenanceRequirement": 12000.0,
+        "maintenanceCall": 0.0,
+        "unsettledCash": 500.0
+      },
+      "positions": [
+        {
+          "instrument": {
+            "assetType": "EQUITY",
+            "symbol": "NVDA"
+          },
+          "longQuantity": 40.0,
+          "shortQuantity": 0.0,
+          "settledLongQuantity": 38.0,
+          "settledShortQuantity": 0.0,
+          "marketPrice": 210.0,
+          "marketValue": 8400.0,
+          "costBasis": 7200.0,
+          "longOpenProfitLoss": 1200.0,
+          "shortOpenProfitLoss": 0.0,
+          "currentDayProfitLoss": 40.0
+        },
+        {
+          "instrument": {
+            "assetType": "OPTION",
+            "symbol": "NVDA  260918C00210000",
+            "multiplier": 100.0
+          },
+          "longQuantity": 2.0,
+          "shortQuantity": 0.0,
+          "settledLongQuantity": 2.0,
+          "settledShortQuantity": 0.0,
+          "marketPrice": 9.5,
+          "marketValue": 1900.0,
+          "costBasis": 1600.0,
+          "longOpenProfitLoss": 300.0,
+          "shortOpenProfitLoss": 0.0,
+          "currentDayProfitLoss": -20.0
+        }
+      ]
+    }
+  },
+  "open_orders_payload": [
+    {
+      "orderId": 9001,
+      "status": "WORKING",
+      "orderType": "LIMIT",
+      "orderStrategyType": "SINGLE",
+      "complexOrderStrategyType": "NONE",
+      "quantity": 10.0,
+      "filledQuantity": 4.0,
+      "remainingQuantity": 6.0,
+      "price": 210.0,
+      "orderLegCollection": [
+        {
+          "instruction": "BUY",
+          "quantity": 10.0,
+          "instrument": {
+            "assetType": "EQUITY",
+            "symbol": "NVDA"
+          }
+        }
+      ]
+    },
+    {
+      "orderId": 9002,
+      "status": "WORKING",
+      "orderType": "MARKET",
+      "orderStrategyType": "SINGLE",
+      "complexOrderStrategyType": "NONE",
+      "quantity": 5.0,
+      "filledQuantity": 0.0,
+      "remainingQuantity": 5.0,
+      "orderLegCollection": [
+        {
+          "instruction": "SELL",
+          "quantity": 5.0,
+          "instrument": {
+            "assetType": "EQUITY",
+            "symbol": "NVDA"
+          }
+        }
+      ]
+    },
+    {
+      "orderId": 9003,
+      "status": "WORKING",
+      "orderType": "LIMIT",
+      "orderStrategyType": "SINGLE",
+      "complexOrderStrategyType": "NONE",
+      "quantity": 2.0,
+      "filledQuantity": 1.0,
+      "remainingQuantity": 1.0,
+      "price": 4.25,
+      "orderLegCollection": [
+        {
+          "instruction": "BUY_TO_OPEN",
+          "quantity": 2.0,
+          "instrument": {
+            "assetType": "OPTION",
+            "symbol": "NVDA  260918C00220000",
+            "multiplier": 100.0
+          }
+        }
+      ]
+    }
+  ],
+  "equity_quote_payload": {
+    "NVDA": {
+      "assetMainType": "EQUITY",
+      "quote": {
+        "symbol": "NVDA",
+        "bidPrice": 209.9,
+        "askPrice": 210.1,
+        "mark": 210.0,
+        "lastPrice": 210.02,
+        "quoteTimeInLong": 1784145600000
+      }
+    }
+  },
+  "option_chain_underlying_payload": {
+    "underlying": {
+      "symbol": "NVDA",
+      "bid": 209.8,
+      "ask": 210.2,
+      "mark": 210.0,
+      "last": 210.01,
+      "quoteTime": 1784145600000
+    }
+  }
+}

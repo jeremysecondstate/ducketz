@@ -1,0 +1,11 @@
+/quotes
+/{symbol_id}/quotes
+/chains
+/expirationchain
+/pricehistory
+/movers/{symbol_id}
+/markets
+/markets/{market_id}
+/instruments
+/instruments/{cusip_id}
+/ESZ21

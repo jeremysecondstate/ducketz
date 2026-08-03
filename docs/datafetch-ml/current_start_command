@@ -1,0 +1,9 @@
+# Loop A supervisor: continuously fetch, normalize, and calculate complete cycles.
+python -m datafetching.orchestrate `
+  --datastore-target pc `
+  --symbols NVDA `
+  --providers databento fmp fred schwab sec `
+  --interval-minutes 15
+
+# Start Loop A first. Each successful cycle atomically publishes COMPLETE in a
+# small datastore state file; no bootstrap or Loop B acknowledgement is used.
