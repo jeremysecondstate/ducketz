@@ -617,7 +617,7 @@ def _technical_decision(feature_set, *, horizon: str) -> pd.DataFrame:
         "decision_timestamp": decision_timestamp,
         "information_available_at": decision_timestamp,
         "available_at": decision_timestamp,
-        "source_file_path": r"C:\My Drive\DATASTORE\source.parquet",
+        "source_file_path": r"C:\DATASTORE\source.parquet",
         "audit_metadata": "excluded",
     }
     for feature in feature_set.features:

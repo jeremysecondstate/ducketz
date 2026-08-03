@@ -41,7 +41,7 @@ from datafetching.layout import (
 )
 
 # PC_DATASTORE_DIR = Path(r"C:\DATASTORE")
-PC_DATASTORE_DIR = Path(r"C:\My Drive\DATASTORE")
+PC_DATASTORE_DIR = Path(r"C:\DATASTORE")
 
 DEFAULT_DATASTORE_DIR = Path(__file__).resolve().parent / "datastore"
 DATASTORE_TARGETS = {"pc": PC_DATASTORE_DIR, "local": DEFAULT_DATASTORE_DIR}

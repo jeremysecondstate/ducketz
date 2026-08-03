@@ -51,7 +51,7 @@ def main(argv: list[str] | None = None) -> int:
         choices=tuple(DATASTORE_TARGETS),
         default=None,
         help=(
-            "Named output target: 'pc' writes to C:\\My Drive\\DATASTORE; "
+            "Named output target: 'pc' writes to C:\\DATASTORE; "
             "'local' writes to datafetching\\datastore in this checkout."
         ),
     )
@@ -61,7 +61,7 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help=(
             "Custom output path. Without an explicit target/path, "
-            "DUCKETS_DATASTORE_DIR, DUCKETS_OHLCV_PARQUET_DIR, or C:\\My Drive\\DATASTORE is used."
+            "DUCKETS_DATASTORE_DIR, DUCKETS_OHLCV_PARQUET_DIR, or C:\\DATASTORE is used."
         ),
     )
     parser.add_argument(
