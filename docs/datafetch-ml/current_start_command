@@ -1,7 +1,7 @@
 # Loop A supervisor: continuously fetch, normalize, and calculate complete cycles.
 python -m datafetching.orchestrate `
   --datastore-target pc `
-  --symbols NVDA `
+  --symbols NVDA GOOG MU AAPL MSFT AMZN META AVGO AMD TSLA QCOM DE CAT PLAB SNDK `
   --providers databento fmp fred schwab sec `
   --interval-minutes 15
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Iterable
 
 import requests
 
@@ -111,12 +111,20 @@ class DataFetchingSchwabSession(SchwabSession):
         return response.json()
 
 
-def fetch(symbol: str, store: ParquetStore, *, profile: str = "continuation") -> FetchResult:
+def fetch(
+    symbol: str,
+    store: ParquetStore,
+    *,
+    profile: str = "continuation",
+    session: DataFetchingSchwabSession | None = None,
+    provider: SchwabMarketDataProvider | None = None,
+    prefetched_quote: tuple[Any, Any] | None = None,
+) -> FetchResult:
     """Fetch every Schwab dataset, continuing each one from its stored latest timestamp."""
     specs = _specs_for_profile(profile)
     request_observed_at = datetime.now(timezone.utc)
-    session = DataFetchingSchwabSession()
-    provider = SchwabMarketDataProvider(session=session)
+    session = session or DataFetchingSchwabSession()
+    provider = provider or SchwabMarketDataProvider(session=session)
     data_files = 0
     error_files = 0
     advisory_files = 0
@@ -125,7 +133,11 @@ def fetch(symbol: str, store: ParquetStore, *, profile: str = "continuation") ->
     continuation_windows = 0
 
     try:
-        quote, raw_quote = provider.fetch_quote(symbol)
+        quote, raw_quote = (
+            prefetched_quote
+            if prefetched_quote is not None
+            else provider.fetch_quote(symbol)
+        )
         if store.save_quote(quote) is not None:
             data_files += 1
         if store.save_raw_payload(
@@ -355,6 +367,51 @@ def fetch(symbol: str, store: ParquetStore, *, profile: str = "continuation") ->
     return FetchResult("schwab", data_files, error_files, advisory_files)
 
 
+def fetch_many(
+    symbols: Iterable[str],
+    store: ParquetStore,
+    *,
+    profile: str = "continuation",
+) -> dict[str, FetchResult]:
+    """Fetch a watchlist while sharing Schwab's multi-symbol quote request."""
+    clean_symbols = _normalize_symbols(symbols)
+    if len(clean_symbols) == 1:
+        symbol = clean_symbols[0]
+        return {symbol: fetch(symbol, store, profile=profile)}
+
+    session = DataFetchingSchwabSession()
+    provider = SchwabMarketDataProvider(session=session)
+    try:
+        prefetched_quotes = provider.fetch_quotes(clean_symbols)
+    except Exception as exc:
+        print(
+            f"[schwab/quotes] batch request unavailable "
+            f"({type(exc).__name__}: {exc}); using per-symbol quote requests"
+        )
+        prefetched_quotes = {}
+
+    return {
+        symbol: fetch(
+            symbol,
+            store,
+            profile=profile,
+            session=session,
+            provider=provider,
+            prefetched_quote=prefetched_quotes.get(symbol),
+        )
+        for symbol in clean_symbols
+    }
+
+
+def _normalize_symbols(values: Iterable[str]) -> tuple[str, ...]:
+    symbols = tuple(
+        dict.fromkeys(str(value).strip().upper() for value in values if str(value).strip())
+    )
+    if not symbols:
+        raise ValueError("At least one symbol is required.")
+    return symbols
+
+
 def _specs_for_profile(profile: str) -> tuple[SchwabPriceHistorySpec, ...]:
     normalized = profile.strip().lower()
     if normalized not in {"continuation", "full", "incremental"}:
@@ -362,7 +419,40 @@ def _specs_for_profile(profile: str) -> tuple[SchwabPriceHistorySpec, ...]:
             "Schwab fetch mode must be continuation; legacy full/incremental aliases "
             "are also accepted."
         )
-    return schwab_price_history_specs()
+    specs = schwab_price_history_specs()
+    maximal_by_series: dict[
+        tuple[str, int, bool],
+        SchwabPriceHistorySpec,
+    ] = {}
+    for spec in specs:
+        series = (
+            spec.frequency_type.strip().lower(),
+            spec.frequency,
+            spec.need_extended_hours_data,
+        )
+        selected = maximal_by_series.get(series)
+        if selected is None or _history_coverage_days(spec) > _history_coverage_days(
+            selected
+        ):
+            maximal_by_series[series] = spec
+    selected_specs = set(maximal_by_series.values())
+    return tuple(spec for spec in specs if spec in selected_specs)
+
+
+def _history_coverage_days(spec: SchwabPriceHistorySpec) -> int:
+    multipliers = {
+        "day": 1,
+        "month": 31,
+        "year": 366,
+        "ytd": 366,
+    }
+    try:
+        multiplier = multipliers[spec.period_type.strip().lower()]
+    except KeyError as exc:
+        raise ValueError(
+            f"Unsupported Schwab period type: {spec.period_type}"
+        ) from exc
+    return multiplier * spec.period
 
 
 def _latest_stored_bar_timestamp(

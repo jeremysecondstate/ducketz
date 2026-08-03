@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Iterable
 
 from app.models.market_data import MarketBar, MarketQuote
 from app.services.schwab import SchwabSession
@@ -18,20 +18,25 @@ class SchwabMarketDataProvider:
     def fetch_quote(self, symbol: str) -> tuple[MarketQuote, Any]:
         clean_symbol = _symbol(symbol)
         payload = self.session.get_equity_quote(clean_symbol)
-        fetched_at = datetime.now(timezone.utc)
+        return _market_quote(clean_symbol, payload), payload
 
-        quote = MarketQuote(
-            symbol=clean_symbol,
-            source="schwab",
-            fetched_at=fetched_at,
-            quote_event_at=_quote_event_at(payload),
-            bid=_first_number(payload, ("bidPrice", "bid")),
-            ask=_first_number(payload, ("askPrice", "ask")),
-            last=_first_number(payload, ("lastPrice", "last", "regularMarketLastPrice")),
-            mark=_first_number(payload, ("mark", "markPrice")),
-            volume=_first_number(payload, ("totalVolume", "volume")),
-        )
-        return quote, payload
+    def fetch_quotes(
+        self,
+        symbols: Iterable[str],
+    ) -> dict[str, tuple[MarketQuote, Any]]:
+        clean_symbols = tuple(dict.fromkeys(_symbol(symbol) for symbol in symbols))
+        if not clean_symbols:
+            raise ValueError("At least one symbol is required.")
+        payloads = self.session.get_equity_quotes(clean_symbols)
+        fetched_at = datetime.now(timezone.utc)
+        return {
+            symbol: (
+                _market_quote(symbol, payload, fetched_at=fetched_at),
+                payload,
+            )
+            for symbol in clean_symbols
+            if (payload := payloads.get(symbol)) is not None
+        }
 
     def fetch_bars(self, symbol: str, *, timeframe: str = "1d") -> tuple[list[MarketBar], Any]:
         clean_symbol = _symbol(symbol)
@@ -164,6 +169,28 @@ def _symbol(value: str) -> str:
     if not cleaned:
         raise ValueError("Symbol is required.")
     return cleaned
+
+
+def _market_quote(
+    symbol: str,
+    payload: dict[str, Any],
+    *,
+    fetched_at: datetime | None = None,
+) -> MarketQuote:
+    return MarketQuote(
+        symbol=symbol,
+        source="schwab",
+        fetched_at=fetched_at or datetime.now(timezone.utc),
+        quote_event_at=_quote_event_at(payload),
+        bid=_first_number(payload, ("bidPrice", "bid")),
+        ask=_first_number(payload, ("askPrice", "ask")),
+        last=_first_number(
+            payload,
+            ("lastPrice", "last", "regularMarketLastPrice"),
+        ),
+        mark=_first_number(payload, ("mark", "markPrice")),
+        volume=_first_number(payload, ("totalVolume", "volume")),
+    )
 
 
 def _first_number(row: dict[str, Any], keys: tuple[str, ...]) -> float | None:

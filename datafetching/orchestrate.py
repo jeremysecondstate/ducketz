@@ -17,7 +17,12 @@ from datafetching.loop_a_cycle import (
     datastore_cycle_lock,
     finish_loop_a_cycle,
 )
-from datafetching.main import FETCH_PROFILES, PROVIDERS, run_symbol_fetch
+from datafetching.main import (
+    FETCH_PROFILES,
+    PROVIDERS,
+    run_symbol_fetch,
+    run_symbols_fetch,
+)
 from datafetching.parquet_store import DATASTORE_TARGETS, ParquetStore
 from fundamentals.main import main as run_fundamentals
 from signals.main import main as run_signals
@@ -210,21 +215,43 @@ def run_cycle(
     started_at = cycle_started_at or datetime.now(timezone.utc)
     print(f"CYCLE {started_at.isoformat()}")
     print("-" * 48)
+    if not symbols_tuple:
+        return 0
+
+    profiles = {
+        symbol: resolve_profile(store, symbol, requested_profile)
+        for symbol in symbols_tuple
+    }
+    for symbol in symbols_tuple:
+        print(f"[{symbol}] fetch mode: {profiles[symbol]}")
+
+    if len(symbols_tuple) == 1:
+        symbol = symbols_tuple[0]
+        fetch_results = {
+            symbol: run_symbol_fetch(
+                symbol,
+                store,
+                providers=providers_tuple,
+                profile=profiles[symbol],
+                include_cme=include_cme,
+                include_fmp_macro=True,
+            )
+        }
+    else:
+        fetch_results = run_symbols_fetch(
+            symbols_tuple,
+            store,
+            providers=providers_tuple,
+            profile=profiles[symbols_tuple[0]],
+            include_cme=include_cme,
+            include_fmp_macro=True,
+        )
 
     for index, symbol in enumerate(symbols_tuple):
-        profile = resolve_profile(store, symbol, requested_profile)
         symbol_providers = providers_tuple if index == 0 else tuple(
             provider for provider in providers_tuple if provider != "fred"
         )
-        print(f"[{symbol}] fetch mode: {profile}")
-        results = run_symbol_fetch(
-            symbol,
-            store,
-            providers=symbol_providers,
-            profile=profile,
-            include_cme=include_cme and index == 0,
-            include_fmp_macro=index == 0,
-        )
+        results = fetch_results[symbol]
         changed = sum(result.data_files for result in results)
         provider_errors = sum(result.error_files for result in results)
         local_advisories = sum(result.advisory_files for result in results)

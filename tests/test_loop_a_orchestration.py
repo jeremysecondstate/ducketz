@@ -53,29 +53,36 @@ def test_loop_a_stage_order_preserves_fetch_and_calculations(
     assert events == ["fetch", "fundamentals", "technicals", "signals"]
 
 
-def test_loop_a_fetches_every_configured_lane_without_a_forecast_fast_path(
+def test_loop_a_batches_the_watchlist_across_every_configured_lane(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    observed: list[tuple[str, tuple[str, ...], bool, bool]] = []
+    observed: list[tuple[tuple[str, ...], tuple[str, ...], bool, bool]] = []
 
     def fetch(
-        symbol: str,
+        symbols: tuple[str, ...],
         _store: ParquetStore,
         **kwargs: object,
-    ) -> tuple[FetchResult, ...]:
+    ) -> dict[str, tuple[FetchResult, ...]]:
         providers = tuple(kwargs["providers"])
         observed.append(
             (
-                symbol,
+                symbols,
                 providers,
                 bool(kwargs["include_cme"]),
                 bool(kwargs["include_fmp_macro"]),
             )
         )
-        return tuple(FetchResult(provider, 0, 0) for provider in providers)
+        return {
+            symbol: tuple(
+                FetchResult(provider, 0, 0)
+                for provider in providers
+                if index == 0 or provider != "fred"
+            )
+            for index, symbol in enumerate(symbols)
+        }
 
-    monkeypatch.setattr(orchestrate, "run_symbol_fetch", fetch)
+    monkeypatch.setattr(orchestrate, "run_symbols_fetch", fetch)
     monkeypatch.setattr(orchestrate, "run_fundamentals", lambda _args: 0)
     monkeypatch.setattr(orchestrate, "run_technicals", lambda _args: 0)
     monkeypatch.setattr(orchestrate, "run_signals", lambda _args: 0)
@@ -94,12 +101,11 @@ def test_loop_a_fetches_every_configured_lane_without_a_forecast_fast_path(
     assert failures == 0
     assert observed == [
         (
-            "GOOG",
+            ("GOOG", "MU"),
             ("databento", "fmp", "fred", "schwab", "sec"),
             True,
             True,
-        ),
-        ("MU", ("databento", "fmp", "schwab", "sec"), False, False),
+        )
     ]
 
 

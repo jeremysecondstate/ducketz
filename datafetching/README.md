@@ -159,7 +159,9 @@ python -m datafetching.orchestrate --datastore-target local --interval-minutes 3
 
 Each cycle:
 
-1. fetches the selected provider lanes for each symbol;
+1. fetches the selected provider lanes across the watchlist, using one
+   multi-symbol Databento request per shared continuation window, FMP batch
+   quote/market-cap requests, and a Schwab batch quote request;
 2. fetches shared FRED, FMP commodity, and CME context once;
 3. persists raw and normalized provider data;
 4. recalculates point-in-time fundamentals;
@@ -176,6 +178,13 @@ rows intact, and do not block Loop B from validating the available inputs.
 The supervisor creates `.ducketz-orchestration.lock` in the datastore so two
 Loop A processes cannot write the same files. `Ctrl+C` exits the loop and removes
 the lock.
+
+Provider endpoints that only accept one symbol remain isolated: FMP statements
+and filings, Schwab price history and option chains, and SEC filing text. A
+failed batch request falls back to those existing per-symbol paths. Loop A also
+requests only the maximal Schwab history window for each native frequency; the
+shorter overlapping windows previously produced no additional consolidated bar
+coverage.
 
 Useful calculation skips are `--skip-fundamentals`, `--skip-technicals`, and
 `--skip-signals`. `--skip-cme` disables only shared CME fetching.

@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 
 import pandas as pd
 
@@ -136,6 +136,53 @@ class DatabentoMarketDataProvider:
     def fetch_native_bars(self, symbol: str, spec: DatabentoAnalysisSourceSpec, *, available_range: DatabentoAvailableRange | None = None) -> tuple[list[MarketBar], pd.DataFrame, DatabentoAvailableRange]:
         return self.fetch_analysis_source(symbol, spec, available_range=available_range)
 
+    def fetch_native_bars_many(
+        self,
+        symbols: Iterable[str],
+        spec: DatabentoAnalysisSourceSpec,
+        *,
+        available_range: DatabentoAvailableRange | None = None,
+    ) -> tuple[
+        dict[str, tuple[list[MarketBar], pd.DataFrame]],
+        DatabentoAvailableRange,
+    ]:
+        """Fetch one schema/window for several symbols in one Databento request."""
+        clean_symbols = _symbols(symbols)
+        self._validate_config()
+        source_range = available_range or self.available_range_for_schema(spec.schema)
+        selected_range = _latest_window_range(source_range, spec.lookback)
+        store = self._client().timeseries.get_range(
+            dataset=self.dataset,
+            schema=spec.schema,
+            symbols=list(clean_symbols),
+            stype_in="raw_symbol",
+            start=selected_range.start.isoformat(),
+            end=selected_range.end.isoformat(),
+        )
+        frame = store.to_df(map_symbols=True)
+        if not isinstance(frame, pd.DataFrame):
+            frame = pd.DataFrame(frame)
+        raw_frame = frame.reset_index()
+        if not raw_frame.empty and "symbol" not in raw_frame.columns:
+            raise RuntimeError(
+                "Databento multi-symbol response did not include mapped symbols."
+            )
+
+        results: dict[str, tuple[list[MarketBar], pd.DataFrame]] = {}
+        if raw_frame.empty:
+            for symbol in clean_symbols:
+                results[symbol] = ([], raw_frame.copy())
+            return results, selected_range
+
+        mapped_symbols = raw_frame["symbol"].map(_mapped_symbol)
+        for symbol in clean_symbols:
+            symbol_frame = raw_frame.loc[mapped_symbols.eq(symbol)].reset_index(drop=True)
+            results[symbol] = (
+                _bars_from_databento_frame(symbol, spec.frequency, symbol_frame),
+                symbol_frame,
+            )
+        return results, selected_range
+
     def derive_analysis_bars(self, symbol: str, source_bars: list[MarketBar], output_frequency: str, aggregation_method: str) -> list[MarketBar]:
         clean_symbol = _symbol(symbol)
         if aggregation_method == "native":
@@ -259,3 +306,18 @@ def _symbol(value: str) -> str:
     if not cleaned:
         raise ValueError("Symbol is required.")
     return cleaned
+
+
+def _symbols(values: Iterable[str]) -> tuple[str, ...]:
+    symbols = tuple(dict.fromkeys(_symbol(value) for value in values))
+    if not symbols:
+        raise ValueError("At least one symbol is required.")
+    return symbols
+
+
+def _mapped_symbol(value: Any) -> str:
+    if value is None or pd.isna(value):
+        return ""
+    if isinstance(value, bytes):
+        value = value.decode("utf-8", errors="replace")
+    return str(value).strip().upper()

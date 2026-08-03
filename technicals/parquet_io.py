@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -330,7 +331,11 @@ def _bar_path_entries(
     if modern:
         return sorted(
             modern,
-            key=lambda item: normalized_bar_file_sort_key(item[0]),
+            key=lambda item: (
+                _schwab_history_file_sort_key(item[0])
+                if provider == "schwab"
+                else normalized_bar_file_sort_key(item[0])
+            ),
         )
 
     legacy_folder = datastore_root / "normalized" / safe_token(provider) / "bars"
@@ -343,6 +348,23 @@ def _bar_path_entries(
             key=normalized_bar_file_sort_key,
         )
     ]
+
+
+def _schwab_history_file_sort_key(path: Path) -> tuple[int, int, int, str]:
+    """Place the widest refreshed Schwab window last for duplicate revisions."""
+    layout, snapshot_time, _name = normalized_bar_file_sort_key(path)
+    match = re.search(
+        r"_(day|month|year|ytd)_(\d+)_(?:minute|daily|weekly|monthly)_",
+        path.stem.lower(),
+    )
+    if match is None:
+        coverage_days = 0
+    else:
+        multiplier = {"day": 1, "month": 31, "year": 366, "ytd": 366}[
+            match.group(1)
+        ]
+        coverage_days = multiplier * int(match.group(2))
+    return layout, snapshot_time, coverage_days, path.name
 
 
 def _normalize_bar_frame(

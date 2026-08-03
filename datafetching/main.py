@@ -10,11 +10,14 @@ if __package__ in {None, ""}:
 
 from datafetching import FetchResult
 from datafetching.databento_fetch import fetch as fetch_databento
+from datafetching.databento_fetch import fetch_many as fetch_databento_many
 from datafetching.fmp_fetch import fetch as fetch_fmp
+from datafetching.fmp_fetch import fetch_many as fetch_fmp_many
 from datafetching.fred_fetch import fetch as fetch_fred
 from datafetching.layout import safe_token
 from datafetching.parquet_store import DATASTORE_TARGETS, ParquetStore
 from datafetching.schwab_fetch import fetch as fetch_schwab
+from datafetching.schwab_fetch import fetch_many as fetch_schwab_many
 from datafetching.sec_fetch import fetch as fetch_sec
 
 PROVIDERS = ("databento", "fmp", "fred", "schwab", "sec")
@@ -134,6 +137,112 @@ def run_symbol_fetch(
         )
         results.append(result)
     return tuple(results)
+
+
+def run_symbols_fetch(
+    symbols: Iterable[str],
+    store: ParquetStore,
+    *,
+    providers: Iterable[str] = PROVIDERS,
+    profile: str = "continuation",
+    include_cme: bool = True,
+    include_fmp_macro: bool = True,
+) -> dict[str, tuple[FetchResult, ...]]:
+    """Fetch a watchlist provider-by-provider, batching supported requests."""
+    clean_symbols = tuple(
+        dict.fromkeys(
+            str(symbol).strip().upper()
+            for symbol in symbols
+            if str(symbol).strip()
+        )
+    )
+    if not clean_symbols:
+        raise ValueError("At least one symbol is required.")
+    if len(clean_symbols) == 1:
+        symbol = clean_symbols[0]
+        return {
+            symbol: run_symbol_fetch(
+                symbol,
+                store,
+                providers=providers,
+                profile=profile,
+                include_cme=include_cme,
+                include_fmp_macro=include_fmp_macro,
+            )
+        }
+
+    effective_profile = normalize_fetch_profile(profile)
+    results: dict[str, list[FetchResult]] = {
+        symbol: [] for symbol in clean_symbols
+    }
+    for provider in providers:
+        if provider not in PROVIDERS:
+            raise ValueError(f"Unknown provider: {provider}")
+        if provider == "fred":
+            first_symbol = clean_symbols[0]
+            print(f"[{first_symbol}/fred] fetching shared macro series...")
+            results[first_symbol].append(
+                run_provider_fetch(
+                    provider,
+                    first_symbol,
+                    store,
+                    profile=effective_profile,
+                    include_cme=False,
+                    include_fmp_macro=False,
+                )
+            )
+            continue
+
+        print(
+            f"[{provider}] fetching {len(clean_symbols)} symbols "
+            "with provider batching where supported..."
+        )
+        try:
+            if provider == "databento":
+                batch_results = fetch_databento_many(
+                    clean_symbols,
+                    store,
+                    include_cme=include_cme,
+                    profile=effective_profile,
+                )
+            elif provider == "fmp":
+                batch_results = fetch_fmp_many(
+                    clean_symbols,
+                    store,
+                    include_macro=include_fmp_macro,
+                )
+            elif provider == "schwab":
+                batch_results = fetch_schwab_many(
+                    clean_symbols,
+                    store,
+                    profile=effective_profile,
+                )
+            else:
+                batch_results = {}
+        except Exception as exc:
+            print(
+                f"[{provider}] batch lane failed before completion "
+                f"({type(exc).__name__}: {exc}); retrying symbols separately"
+            )
+            batch_results = {}
+
+        for index, symbol in enumerate(clean_symbols):
+            result = batch_results.get(symbol)
+            if result is None:
+                result = run_provider_fetch(
+                    provider,
+                    symbol,
+                    store,
+                    profile=effective_profile,
+                    include_cme=include_cme and index == 0,
+                    include_fmp_macro=include_fmp_macro and index == 0,
+                )
+            results[symbol].append(result)
+
+    return {
+        symbol: tuple(symbol_results)
+        for symbol, symbol_results in results.items()
+    }
 
 
 def run_provider_fetch(

@@ -4,6 +4,7 @@ import json
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Iterable
 
 import pandas as pd
 import pyarrow.parquet as pq
@@ -29,6 +30,8 @@ from datafetching.derived_bars import DERIVED_INTRADAY_FREQUENCIES, derive_intra
 from datafetching.layout import pool_data_folder, safe_token
 from datafetching.parquet_store import ParquetStore
 
+DATABENTO_MAX_SYMBOLS_PER_REQUEST = 2_000
+
 
 def fetch(
     symbol: str,
@@ -43,12 +46,85 @@ def fetch(
     candle. Normalized equity-bar Parquets are a finalized-candle dataset and
     therefore contain only intervals completed as of this fetch cycle.
     """
-    data_files = 0
-    error_files = 0
-    advisory_files = 0
     provider = DatabentoMarketDataProvider()
     observed_at = datetime.now(timezone.utc)
     native_results = list(_fetch_native_results(provider, symbol, profile, store))
+    result = _persist_native_results(
+        symbol,
+        store,
+        provider=provider,
+        profile=profile,
+        observed_at=observed_at,
+        native_results=native_results,
+    )
+
+    if include_cme:
+        result = _with_shared_cme_result(result, store)
+    return result
+
+
+def fetch_many(
+    symbols: Iterable[str],
+    store: ParquetStore,
+    *,
+    include_cme: bool = True,
+    profile: str = "continuation",
+) -> dict[str, FetchResult]:
+    """Fetch Databento bars for a watchlist using multi-symbol requests."""
+    clean_symbols = _normalize_symbols(symbols)
+    if len(clean_symbols) == 1:
+        symbol = clean_symbols[0]
+        return {
+            symbol: fetch(
+                symbol,
+                store,
+                include_cme=include_cme,
+                profile=profile,
+            )
+        }
+
+    provider = DatabentoMarketDataProvider()
+    observed_at = datetime.now(timezone.utc)
+    native_results = _fetch_native_results_many(
+        provider,
+        clean_symbols,
+        profile,
+        store,
+    )
+    results = {
+        symbol: _persist_native_results(
+            symbol,
+            store,
+            provider=provider,
+            profile=profile,
+            observed_at=observed_at,
+            native_results=native_results[symbol],
+            batch_watchlist_symbol_count=len(clean_symbols),
+        )
+        for symbol in clean_symbols
+    }
+    if include_cme:
+        first_symbol = clean_symbols[0]
+        results[first_symbol] = _with_shared_cme_result(
+            results[first_symbol],
+            store,
+        )
+    return results
+
+
+def _persist_native_results(
+    symbol: str,
+    store: ParquetStore,
+    *,
+    provider: DatabentoMarketDataProvider,
+    profile: str,
+    observed_at: datetime,
+    native_results: Iterable[tuple],
+    batch_watchlist_symbol_count: int = 1,
+) -> FetchResult:
+    data_files = 0
+    error_files = 0
+    advisory_files = 0
     source_bars_by_frequency: dict[str, list] = {}
     source_specs_by_frequency = {}
 
@@ -64,6 +140,7 @@ def fetch(
             "volume_basis": "unadjusted_market_scale",
             "corporate_action_adjustment": "none",
             "normalized_bar_policy": "completed_intervals_only",
+            "batch_watchlist_symbol_count": batch_watchlist_symbol_count,
         }
         if available_range is not None:
             metadata.update(
@@ -142,13 +219,17 @@ def fetch(
     data_files += derived_files
     error_files += derived_errors
 
-    if include_cme:
-        cme_data_files, cme_error_files, cme_advisory_files = _fetch_cme(store)
-        data_files += cme_data_files
-        error_files += cme_error_files
-        advisory_files += cme_advisory_files
-
     return FetchResult("databento", data_files, error_files, advisory_files)
+
+
+def _with_shared_cme_result(result: FetchResult, store: ParquetStore) -> FetchResult:
+    data_files, error_files, advisory_files = _fetch_cme(store)
+    return FetchResult(
+        "databento",
+        result.data_files + data_files,
+        result.error_files + error_files,
+        result.advisory_files + advisory_files,
+    )
 
 
 def _save_derived_intraday_bars(
@@ -292,6 +373,190 @@ def _fetch_native_results(
         except Exception as exc:
             results.append((spec, [], None, None, exc))
     return results
+
+
+def _fetch_native_results_many(
+    provider: DatabentoMarketDataProvider,
+    symbols: tuple[str, ...],
+    profile: str,
+    store: ParquetStore,
+) -> dict[str, list[tuple]]:
+    normalized_profile = profile.strip().lower()
+    if normalized_profile not in {"continuation", "full", "incremental"}:
+        raise ValueError(
+            "Databento fetch mode must be continuation; legacy full/incremental "
+            "aliases are also accepted."
+        )
+    specs = provider.native_specs()
+    results: dict[str, list[tuple]] = {symbol: [] for symbol in symbols}
+
+    try:
+        range_payload = call_with_persistent_databento_retry(
+            provider.dataset_range,
+            operation_name="equities dataset-range metadata",
+        )
+    except Exception as exc:
+        for symbol in symbols:
+            results[symbol].extend(
+                (spec, [], None, None, exc) for spec in specs
+            )
+        return results
+
+    for spec in specs:
+        request_key = f"{spec.key}_{spec.schema}_{spec.frequency}"
+        try:
+            available_range = provider.available_range_for_schema(
+                spec.schema,
+                dataset_range=range_payload,
+            )
+        except Exception as exc:
+            for symbol in symbols:
+                results[symbol].append((spec, [], None, None, exc))
+            continue
+
+        symbols_by_start: dict[datetime, list[str]] = {}
+        request_specs_by_start = {}
+        for symbol in symbols:
+            latest_stored = latest_normalized_bar_timestamp(
+                store.root_dir,
+                source="databento",
+                symbol=symbol,
+                timeframe=spec.frequency,
+                request_key=request_key,
+            )
+            request_spec = spec
+            if latest_stored is not None:
+                overlap = _continuation_overlap(spec.frequency)
+                requested_start = min(
+                    available_range.end,
+                    max(available_range.start, latest_stored - overlap),
+                )
+                request_spec = replace(
+                    spec,
+                    lookback=max(overlap, available_range.end - requested_start),
+                )
+                print(
+                    f"[{symbol}/databento/{request_key}] latest stored "
+                    f"{latest_stored.isoformat()}; requesting missing tail from "
+                    f"{requested_start.isoformat()}"
+                )
+            else:
+                print(
+                    f"[{symbol}/databento/{request_key}] no stored dataset; "
+                    "requesting configured history"
+                )
+            actual_start = max(
+                available_range.start,
+                available_range.end - request_spec.lookback,
+            )
+            symbols_by_start.setdefault(actual_start, []).append(symbol)
+            request_specs_by_start[actual_start] = request_spec
+
+        for actual_start, grouped_symbols in symbols_by_start.items():
+            request_spec = request_specs_by_start[actual_start]
+            for symbol_chunk in _symbol_chunks(grouped_symbols):
+                try:
+                    fetched, selected_range = call_with_persistent_databento_retry(
+                        lambda symbol_chunk=symbol_chunk, request_spec=request_spec: (
+                            provider.fetch_native_bars_many(
+                                symbol_chunk,
+                                request_spec,
+                                available_range=available_range,
+                            )
+                        ),
+                        operation_name=(
+                            f"{len(symbol_chunk)} symbols "
+                            f"{spec.schema}/{spec.frequency}"
+                        ),
+                    )
+                except Exception as exc:
+                    if _is_symbol_batch_error(exc) and len(symbol_chunk) > 1:
+                        print(
+                            f"[databento/{request_key}] batch rejected; "
+                            "isolating symbols with individual requests"
+                        )
+                        _append_isolated_native_results(
+                            results,
+                            provider=provider,
+                            symbols=symbol_chunk,
+                            spec=spec,
+                            request_spec=request_spec,
+                            available_range=available_range,
+                        )
+                    else:
+                        for symbol in symbol_chunk:
+                            results[symbol].append((spec, [], None, None, exc))
+                    continue
+
+                missing = set(symbol_chunk).difference(fetched)
+                if missing:
+                    exc = RuntimeError(
+                        "Databento batch response omitted requested symbol(s): "
+                        + ", ".join(sorted(missing))
+                    )
+                for symbol in symbol_chunk:
+                    if symbol in missing:
+                        results[symbol].append((spec, [], None, None, exc))
+                        continue
+                    bars, raw_frame = fetched[symbol]
+                    results[symbol].append(
+                        (spec, bars, raw_frame, selected_range, None)
+                    )
+    return results
+
+
+def _append_isolated_native_results(
+    results: dict[str, list[tuple]],
+    *,
+    provider: DatabentoMarketDataProvider,
+    symbols: tuple[str, ...],
+    spec,
+    request_spec,
+    available_range,
+) -> None:
+    for symbol in symbols:
+        try:
+            bars, raw_frame, selected_range = call_with_persistent_databento_retry(
+                lambda symbol=symbol: provider.fetch_native_bars(
+                    symbol,
+                    request_spec,
+                    available_range=available_range,
+                ),
+                operation_name=f"{symbol} {spec.schema}/{spec.frequency}",
+            )
+            results[symbol].append(
+                (spec, bars, raw_frame, selected_range, None)
+            )
+        except Exception as exc:
+            results[symbol].append((spec, [], None, None, exc))
+
+
+def _symbol_chunks(symbols: list[str]) -> Iterable[tuple[str, ...]]:
+    for start in range(0, len(symbols), DATABENTO_MAX_SYMBOLS_PER_REQUEST):
+        yield tuple(symbols[start : start + DATABENTO_MAX_SYMBOLS_PER_REQUEST])
+
+
+def _is_symbol_batch_error(exc: Exception) -> bool:
+    message = str(exc).strip().lower()
+    status = None
+    for attribute in ("status_code", "status", "http_status", "http_status_code"):
+        try:
+            status = int(getattr(exc, attribute, None))
+            break
+        except (TypeError, ValueError):
+            continue
+    return status in {400, 404, 422} and any(
+        marker in message for marker in ("symbol", "symbology", "instrument")
+    )
+
+
+def _normalize_symbols(values: Iterable[str]) -> tuple[str, ...]:
+    symbols = tuple(
+        dict.fromkeys(str(value).strip().upper() for value in values if str(value).strip())
+    )
+    if not symbols:
+        raise ValueError("At least one symbol is required.")
+    return symbols
 
 
 def _continuation_overlap(frequency: str) -> timedelta:

@@ -1,14 +1,17 @@
-# One equity symbol per line. The orchestrator processes them in this order.
-# Add more symbols by placing them on new lines, for example:
-
-# AAPL
-# MSFT
-# AMZN
-# DE
-# SNDK
-# PLAB
-# CAT
-# MU
-# GOOG
-
+# One equity symbol per line. Loop A batches this watchlist by provider while
+# preserving separate per-symbol Parquet outputs.
 NVDA
+GOOG
+MU
+AAPL
+MSFT
+AMZN
+META
+AVGO
+AMD
+TSLA
+QCOM
+DE
+CAT
+PLAB
+SNDK

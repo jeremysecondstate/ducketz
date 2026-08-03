@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Iterable
 from urllib.parse import urlencode
 
 import requests
@@ -262,16 +262,21 @@ class SchwabSession:
         response.raise_for_status()
         return response.json()
 
-    def get_equity_quote(self, symbol: str) -> dict[str, Any]:
-        cleaned_symbol = symbol.strip().upper()
-        if not cleaned_symbol:
-            raise ValueError("Stock / ETF symbol is required for quote.")
-
+    def get_equity_quotes(self, symbols: Iterable[str]) -> dict[str, dict[str, Any]]:
+        cleaned_symbols = tuple(
+            dict.fromkeys(
+                str(symbol).strip().upper()
+                for symbol in symbols
+                if str(symbol).strip()
+            )
+        )
+        if not cleaned_symbols:
+            raise ValueError("At least one stock / ETF symbol is required for quotes.")
         response = requests.get(
             f"{MARKETDATA_BASE_URL}/quotes",
             headers=self._headers(),
             params={
-                "symbols": cleaned_symbol,
+                "symbols": ",".join(cleaned_symbols),
                 "fields": "quote",
             },
             timeout=10,
@@ -282,16 +287,27 @@ class SchwabSession:
         if not isinstance(payload, dict):
             raise RuntimeError("Unexpected Schwab quote response.")
 
-        row = payload.get(cleaned_symbol)
+        rows_by_symbol = {
+            str(key).strip().upper(): row
+            for key, row in payload.items()
+            if isinstance(row, dict)
+        }
+        quotes: dict[str, dict[str, Any]] = {}
+        for symbol in cleaned_symbols:
+            row = rows_by_symbol.get(symbol)
+            if not isinstance(row, dict):
+                continue
+            quote = row.get("quote")
+            quotes[symbol] = quote if isinstance(quote, dict) else row
+        return quotes
 
-        if not isinstance(row, dict):
-            row = next((value for value in payload.values() if isinstance(value, dict)), None)
-
-        if not isinstance(row, dict):
+    def get_equity_quote(self, symbol: str) -> dict[str, Any]:
+        cleaned_symbol = symbol.strip().upper()
+        quotes = self.get_equity_quotes((cleaned_symbol,))
+        quote = quotes.get(cleaned_symbol)
+        if quote is None:
             raise RuntimeError(f"No quote returned for {cleaned_symbol}.")
-
-        quote = row.get("quote")
-        return quote if isinstance(quote, dict) else row
+        return quote
 
     def get_equity_mid(self, symbol: str) -> float:
         cleaned_symbol = symbol.strip().upper()

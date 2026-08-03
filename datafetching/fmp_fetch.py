@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, Iterable, Mapping
+
 from app.services.fmp_corporate_data import (
     FmpCorporateDataProvider,
     FmpCorporateDataSpec,
@@ -21,13 +23,19 @@ def fetch(
     store: ParquetStore,
     *,
     include_macro: bool = True,
+    corporate_provider: FmpCorporateDataProvider | None = None,
+    prefetched_corporate: Mapping[
+        str,
+        tuple[list[dict[str, Any]], Any, str],
+    ]
+    | None = None,
 ) -> FetchResult:
     """Fetch FMP corporate data and optional shared commodity proxies."""
     data_files = 0
     error_files = 0
     advisory_files = 0
 
-    corporate = FmpCorporateDataProvider()
+    corporate = corporate_provider or FmpCorporateDataProvider()
     corporate_specs = (
         *corporate.corporate_specs(symbol),
         FmpCorporateDataSpec("stock_splits", "splits", {"symbol": symbol}),
@@ -39,7 +47,10 @@ def fetch(
 
         endpoint_used = spec.endpoint
         try:
-            if spec.key == "stock_splits":
+            prefetched = (prefetched_corporate or {}).get(spec.key)
+            if prefetched is not None:
+                rows, raw_payload, endpoint_used = prefetched
+            elif spec.key == "stock_splits":
                 raw_payload = corporate._get_json(spec.endpoint, spec.params)
                 payload_for_rows = raw_payload
                 if isinstance(raw_payload, dict) and isinstance(raw_payload.get("historical"), list):
@@ -201,3 +212,93 @@ def fetch(
         data_files += 1
 
     return FetchResult("fmp", data_files, error_files, advisory_files)
+
+
+def fetch_many(
+    symbols: Iterable[str],
+    store: ParquetStore,
+    *,
+    include_macro: bool = True,
+) -> dict[str, FetchResult]:
+    """Fetch an FMP watchlist, sharing endpoints that accept many symbols."""
+    clean_symbols = _normalize_symbols(symbols)
+    if len(clean_symbols) == 1:
+        symbol = clean_symbols[0]
+        return {symbol: fetch(symbol, store, include_macro=include_macro)}
+
+    corporate = FmpCorporateDataProvider()
+    prefetched = _fetch_batched_corporate_data(corporate, clean_symbols)
+    return {
+        symbol: fetch(
+            symbol,
+            store,
+            include_macro=include_macro and index == 0,
+            corporate_provider=corporate,
+            prefetched_corporate=prefetched[symbol],
+        )
+        for index, symbol in enumerate(clean_symbols)
+    }
+
+
+def _fetch_batched_corporate_data(
+    provider: FmpCorporateDataProvider,
+    symbols: tuple[str, ...],
+) -> dict[str, dict[str, tuple[list[dict[str, Any]], Any, str]]]:
+    prefetched: dict[
+        str,
+        dict[str, tuple[list[dict[str, Any]], Any, str]],
+    ] = {symbol: {} for symbol in symbols}
+    for request_key, endpoint in (
+        ("quote", "batch-quote"),
+        ("market_capitalization", "market-capitalization-batch"),
+    ):
+        try:
+            payload = provider._get_json(
+                endpoint,
+                {"symbols": ",".join(symbols)},
+            )
+        except Exception as exc:
+            print(
+                f"[fmp/{endpoint}] batch request unavailable "
+                f"({type(exc).__name__}: {exc}); using per-symbol requests"
+            )
+            continue
+
+        for row in _batch_rows(payload):
+            symbol = str(row.get("symbol") or row.get("ticker") or "").strip().upper()
+            if symbol not in prefetched or request_key in prefetched[symbol]:
+                continue
+            symbol_payload = [dict(row)]
+            rows = _corporate_rows_from_payload(
+                symbol=symbol,
+                request_key=request_key,
+                endpoint=endpoint,
+                payload=symbol_payload,
+            )
+            if rows:
+                prefetched[symbol][request_key] = (
+                    rows,
+                    symbol_payload,
+                    endpoint,
+                )
+    return prefetched
+
+
+def _batch_rows(payload: Any) -> list[Mapping[str, Any]]:
+    if isinstance(payload, list):
+        return [row for row in payload if isinstance(row, Mapping)]
+    if isinstance(payload, Mapping):
+        data = payload.get("data")
+        if isinstance(data, list):
+            return [row for row in data if isinstance(row, Mapping)]
+        return [payload]
+    return []
+
+
+def _normalize_symbols(values: Iterable[str]) -> tuple[str, ...]:
+    symbols = tuple(
+        dict.fromkeys(str(value).strip().upper() for value in values if str(value).strip())
+    )
+    if not symbols:
+        raise ValueError("At least one symbol is required.")
+    return symbols
