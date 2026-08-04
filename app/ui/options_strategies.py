@@ -96,7 +96,7 @@ class OptionsStrategiesTab:
             "StrategyTitle.TLabel",
             background=BACKGROUND,
             foreground=TEXT,
-            font=("Segoe UI", 22, "bold"),
+            font=("Segoe UI", 18, "bold"),
         )
         style.configure(
             "StrategySubtitle.TLabel",
@@ -125,7 +125,7 @@ class OptionsStrategiesTab:
         style.configure(
             "StrategySubmit.TButton",
             background=ACCENT,
-            foreground="#020617",
+            foreground="#ffffff",
             bordercolor=ACCENT,
             font=("Segoe UI", 10, "bold"),
             padding=(12, 9),
@@ -147,24 +147,25 @@ class OptionsStrategiesTab:
             background=BACKGROUND,
             foreground=MUTED_TEXT,
             font=("Segoe UI", 10),
-            padding=(16, 8),
+            borderwidth=0,
+            padding=(15, 7),
         )
         style.map(
             "StrategySecondary.TNotebook.Tab",
-            background=[("selected", SURFACE), ("active", SURFACE_ALT)],
-            foreground=[("selected", TEXT), ("active", TEXT)],
+            background=[("selected", BACKGROUND), ("active", SURFACE_ALT)],
+            foreground=[("selected", ACCENT), ("active", TEXT)],
         )
 
     def _build(self, parent: ttk.Frame) -> None:
         outer = ttk.Frame(
             parent,
-            padding=(14, 11, 14, 12),
+            padding=(12, 9, 12, 10),
             style="StrategyPage.TFrame",
         )
         outer.pack(fill=tk.BOTH, expand=True)
 
         header = ttk.Frame(outer, style="StrategyPage.TFrame")
-        header.pack(fill=tk.X, pady=(0, 12))
+        header.pack(fill=tk.X, pady=(0, 8))
         heading = ttk.Frame(header, style="StrategyPage.TFrame")
         heading.pack(side=tk.LEFT, fill=tk.X, expand=True)
         ttk.Label(

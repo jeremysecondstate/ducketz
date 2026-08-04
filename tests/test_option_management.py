@@ -18,9 +18,32 @@ from app.services.schwab_option_management import (
 )
 from app.services.schwab_strategy_orders import DAY_ONLY
 from app.ui.background_tasks import run_in_background
+from app.ui.options_management import _selection_after_click
 
 
 OBSERVED_AT = datetime(2026, 8, 3, 20, 0, tzinfo=timezone.utc)
+
+
+def test_exact_leg_selection_supports_toggle_and_range_without_inferred_groups() -> None:
+    selected, anchor = _selection_after_click((), 1, None, 5, extend=False, toggle=False)
+    assert selected == (1,)
+    assert anchor == 1
+
+    selected, anchor = _selection_after_click(selected, 3, anchor, 5, extend=False, toggle=True)
+    assert selected == (1, 3)
+    assert anchor == 3
+
+    selected, anchor = _selection_after_click(selected, 1, anchor, 5, extend=True, toggle=False)
+    assert selected == (1, 2, 3)
+    assert anchor == 3
+
+    selected, anchor = _selection_after_click(selected, 2, anchor, 5, extend=False, toggle=True)
+    assert selected == (1, 3)
+    assert anchor == 2
+
+
+def test_exact_leg_selection_ignores_clicks_outside_visible_rows() -> None:
+    assert _selection_after_click((1,), 4, 2, 4, extend=False, toggle=False) == ((1,), 2)
 
 
 def test_option_position_book_preserves_exact_contracts_and_complete_summaries() -> None:

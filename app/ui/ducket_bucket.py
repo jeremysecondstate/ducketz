@@ -82,6 +82,11 @@ class DucketBucketApp:
         style = ttk.Style(self.root)
         style.theme_use("clam")
 
+        self.root.option_add("*TCombobox*Listbox.background", FIELD_BACKGROUND)
+        self.root.option_add("*TCombobox*Listbox.foreground", FIELD_TEXT)
+        self.root.option_add("*TCombobox*Listbox.selectBackground", ACCENT)
+        self.root.option_add("*TCombobox*Listbox.selectForeground", TEXT)
+
         style.configure(".", background=BACKGROUND, foreground=TEXT, fieldbackground=TABLE_FIELD)
         style.configure("TFrame", background=BACKGROUND)
         style.configure("TLabel", background=BACKGROUND, foreground=TEXT, font=BODY_FONT)
@@ -94,7 +99,16 @@ class DucketBucketApp:
             relief=tk.FLAT,
         )
         style.configure("TLabelframe.Label", background=BACKGROUND, foreground=TEXT)
-        style.configure("TButton", background=SURFACE_ALT, foreground=TEXT, bordercolor=BORDER, focusthickness=1)
+        style.configure(
+            "TButton",
+            background=SURFACE_ALT,
+            foreground=TEXT,
+            bordercolor=BORDER,
+            darkcolor=BORDER,
+            lightcolor=BORDER,
+            focusthickness=1,
+            padding=(10, 6),
+        )
         style.map(
             "TButton",
             background=[("active", ACCENT), ("disabled", SURFACE)],
@@ -173,6 +187,16 @@ class DucketBucketApp:
             fieldbackground=FIELD_BACKGROUND,
             foreground=FIELD_TEXT,
             insertcolor=FIELD_TEXT,
+            bordercolor=BORDER,
+            darkcolor=BORDER,
+            lightcolor=BORDER,
+            padding=5,
+        )
+        style.map(
+            "TEntry",
+            fieldbackground=[("disabled", SURFACE_ALT), ("readonly", FIELD_BACKGROUND)],
+            foreground=[("disabled", MUTED_TEXT), ("readonly", FIELD_TEXT)],
+            bordercolor=[("focus", ACCENT)],
         )
         style.configure(
             "TCombobox",
@@ -182,6 +206,10 @@ class DucketBucketApp:
             arrowcolor=FIELD_TEXT,
             selectbackground=FIELD_BACKGROUND,
             selectforeground=FIELD_TEXT,
+            bordercolor=BORDER,
+            darkcolor=BORDER,
+            lightcolor=BORDER,
+            padding=5,
         )
         style.map(
             "TCombobox",
@@ -201,6 +229,17 @@ class DucketBucketApp:
                 ("readonly", FIELD_TEXT),
                 ("active", FIELD_TEXT),
             ],
+            bordercolor=[("focus", ACCENT), ("active", ACCENT)],
+            arrowcolor=[("disabled", MUTED_TEXT)],
+        )
+        style.configure(
+            "TScrollbar",
+            background=SURFACE_ALT,
+            troughcolor=TABLE_FIELD,
+            bordercolor=BACKGROUND,
+            darkcolor=SURFACE_ALT,
+            lightcolor=SURFACE_ALT,
+            arrowcolor=MUTED_TEXT,
         )
 
     def _build_layout(self) -> None:
