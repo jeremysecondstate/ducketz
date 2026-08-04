@@ -833,6 +833,7 @@ def test_options_strategy_submit_uses_the_existing_schwab_session(
             return "/accounts/test/orders/12345"
 
     tab = OptionsStrategiesTab.__new__(OptionsStrategiesTab)
+    tab.root = object()
     tab.selected_candidate = SimpleNamespace(order_draft=draft)
     tab.selected_order_index = 0
     tab.ticket_quantity = _Value("1")
@@ -846,6 +847,7 @@ def test_options_strategy_submit_uses_the_existing_schwab_session(
     tab.ticket_order_part = _Value(draft.orders[0].display_name)
     tab.session_factory = _Session
     tab._render_order_part = lambda: None
+    background_calls: list[object] = []
     confirmations: list[str] = []
     receipts: list[str] = []
     monkeypatch.setattr(
@@ -860,10 +862,18 @@ def test_options_strategy_submit_uses_the_existing_schwab_session(
         "app.ui.options_strategies.messagebox.showerror",
         lambda _title, message: pytest.fail(message),
     )
+    monkeypatch.setattr(
+        "app.ui.options_strategies.run_in_background",
+        lambda root, work, on_success, _on_error: (
+            background_calls.append(root),
+            on_success(work()),
+        ),
+    )
 
     tab._submit_order()
 
     assert len(confirmations) == 1
+    assert background_calls == [tab.root]
     assert len(submitted) == 1
     assert submitted[0]["orderType"] == "NET_DEBIT"
     assert submitted[0]["complexOrderStrategyType"] == "VERTICAL"

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import threading
 import tkinter as tk
 from collections.abc import Callable
 from pathlib import Path
@@ -21,6 +20,8 @@ from app.ui.options_strategy_data import (
     StrategyCandidatesView,
     load_strategy_candidates,
 )
+from app.ui.background_tasks import run_in_background
+from app.ui.options_management import OptionsManagementView
 from app.ui.schwab_order_messages import (
     order_confirmation_message,
     order_submitted_message,
@@ -51,6 +52,8 @@ class OptionsStrategiesTab:
         self.snapshot_loader = snapshot_loader
         self.session_factory = session_factory
         self.view: StrategyCandidatesView | None = None
+        self.snapshot: PortfolioSnapshot | None = None
+        self.management_view: OptionsManagementView | None = None
         self.visible_candidates: tuple[StrategyCandidateView, ...] = ()
         self.selected_candidate: StrategyCandidateView | None = None
         self.selected_order_index = 0
@@ -132,11 +135,30 @@ class OptionsStrategiesTab:
             background=[("active", "#93c5fd"), ("disabled", SURFACE_ALT)],
             foreground=[("disabled", MUTED_TEXT)],
         )
+        style.configure(
+            "StrategySecondary.TNotebook",
+            background=BACKGROUND,
+            bordercolor=BORDER,
+            borderwidth=0,
+            tabmargins=(0, 0, 0, 0),
+        )
+        style.configure(
+            "StrategySecondary.TNotebook.Tab",
+            background=BACKGROUND,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 10),
+            padding=(16, 8),
+        )
+        style.map(
+            "StrategySecondary.TNotebook.Tab",
+            background=[("selected", SURFACE), ("active", SURFACE_ALT)],
+            foreground=[("selected", TEXT), ("active", TEXT)],
+        )
 
     def _build(self, parent: ttk.Frame) -> None:
         outer = ttk.Frame(
             parent,
-            padding=(16, 13, 16, 13),
+            padding=(14, 11, 14, 12),
             style="StrategyPage.TFrame",
         )
         outer.pack(fill=tk.BOTH, expand=True)
@@ -147,14 +169,13 @@ class OptionsStrategiesTab:
         heading.pack(side=tk.LEFT, fill=tk.X, expand=True)
         ttk.Label(
             heading,
-            text="Options Strategy Rankings",
+            text="Options Command Center",
             style="StrategyTitle.TLabel",
         ).pack(anchor=tk.W)
         ttk.Label(
             heading,
             text=(
-                "Model strategy predictions, current Schwab holdings, and "
-                "exact option contracts."
+                "Discover, monitor, and safely close exact Schwab option positions."
             ),
             style="StrategySubtitle.TLabel",
         ).pack(anchor=tk.W, pady=(2, 0))
@@ -164,6 +185,34 @@ class OptionsStrategiesTab:
             command=self.refresh,
         )
         self.refresh_button.pack(side=tk.RIGHT, anchor=tk.N)
+
+        notebook = ttk.Notebook(outer, style="StrategySecondary.TNotebook")
+        notebook.pack(fill=tk.BOTH, expand=True)
+        positions_frame = ttk.Frame(notebook, style="StrategyPage.TFrame")
+        discover_frame = ttk.Frame(notebook, style="StrategyPage.TFrame")
+        orders_frame = ttk.Frame(notebook, style="StrategyPage.TFrame")
+        notebook.add(positions_frame, text="Positions")
+        notebook.add(discover_frame, text="Discover")
+        notebook.add(orders_frame, text="Orders")
+        self._secondary_notebook = notebook
+
+        self._build_discover(discover_frame)
+        self.management_view = OptionsManagementView(
+            root=self.root,
+            positions_parent=positions_frame,
+            orders_parent=orders_frame,
+            snapshot_loader=self.snapshot_loader,
+            session_factory=self.session_factory,
+            on_refresh=self.refresh,
+        )
+
+    def _build_discover(self, parent: ttk.Frame) -> None:
+        outer = ttk.Frame(
+            parent,
+            padding=(10, 9),
+            style="StrategyPage.TFrame",
+        )
+        outer.pack(fill=tk.BOTH, expand=True)
 
         controls = ttk.Frame(
             outer,
@@ -310,7 +359,7 @@ class OptionsStrategiesTab:
             parent,
             textvariable=self.ticket_structure,
             style="StrategyMuted.TLabel",
-        ).pack(anchor=tk.W, pady=(2, 10))
+        ).pack(anchor=tk.W, pady=(1, 6))
 
         fields = ttk.Frame(parent, style="StrategySurface.TFrame")
         fields.pack(fill=tk.X)
@@ -377,20 +426,20 @@ class OptionsStrategiesTab:
             fields,
             "Duration",
             duration_box,
-            row=2,
-            column=0,
+            row=0,
+            column=2,
         )
 
         ttk.Label(
             parent,
             text="Ticket legs",
             style="StrategyHeading.TLabel",
-        ).pack(anchor=tk.W, pady=(13, 6))
+        ).pack(anchor=tk.W, pady=(8, 4))
         legs = ttk.Treeview(
             parent,
             columns=("action", "contract", "quantity", "bid", "ask"),
             show="headings",
-            height=7,
+            height=3,
         )
         for name, label, width, anchor in (
             ("action", "Action", 105, tk.W),
@@ -408,7 +457,7 @@ class OptionsStrategiesTab:
             parent,
             text="Portfolio impact",
             style="StrategyHeading.TLabel",
-        ).pack(anchor=tk.W, pady=(13, 4))
+        ).pack(anchor=tk.W, pady=(8, 2))
         ttk.Label(
             parent,
             textvariable=self.ticket_portfolio_impact,
@@ -424,7 +473,7 @@ class OptionsStrategiesTab:
             command=self._submit_order,
             state=tk.DISABLED,
         )
-        self.submit_button.pack(fill=tk.X, pady=(15, 0))
+        self.submit_button.pack(fill=tk.X, pady=(8, 0))
 
     def _ticket_field(
         self,
@@ -460,25 +509,32 @@ class OptionsStrategiesTab:
             self.refresh_button.configure(state=tk.DISABLED)
         self.position_summary.set("Syncing Schwab account")
         self.candidate_summary.set("Loading strategy candidates")
-        thread = threading.Thread(target=self._load_background, daemon=True)
-        thread.start()
+        run_in_background(
+            self.root,
+            self._load_data,
+            self._load_succeeded,
+            self._load_failed,
+        )
 
-    def _load_background(self) -> None:
-        try:
-            snapshot = self.snapshot_loader()
-            view = load_strategy_candidates(
-                self.candidates_path,
-                snapshot=snapshot,
-            )
-        except Exception as exc:
-            self.root.after(0, lambda caught=exc: self._load_failed(caught))
-            return
-        self.root.after(0, lambda loaded=view: self._load_succeeded(loaded))
+    def _load_data(self) -> tuple[PortfolioSnapshot, StrategyCandidatesView]:
+        snapshot = self.snapshot_loader()
+        view = load_strategy_candidates(
+            self.candidates_path,
+            snapshot=snapshot,
+        )
+        return snapshot, view
 
-    def _load_succeeded(self, view: StrategyCandidatesView) -> None:
+    def _load_succeeded(
+        self,
+        loaded: tuple[PortfolioSnapshot, StrategyCandidatesView],
+    ) -> None:
+        snapshot, view = loaded
+        self.snapshot = snapshot
         self.view = view
         if self.refresh_button is not None:
             self.refresh_button.configure(state=tk.NORMAL)
+        if self.management_view is not None:
+            self.management_view.show_snapshot(snapshot)
         self._symbol_box.configure(values=view.symbols)
         if not view.symbols:
             self.symbol.set("")
@@ -495,12 +551,16 @@ class OptionsStrategiesTab:
     def _load_failed(self, exc: Exception) -> None:
         if self.refresh_button is not None:
             self.refresh_button.configure(state=tk.NORMAL)
-        self.view = None
-        self.visible_candidates = ()
-        self.position_summary.set("Options strategy data could not be loaded")
-        self.candidate_summary.set("")
-        self._clear_table(self.candidate_table)
-        self._clear_ticket()
+        if self.management_view is not None:
+            self.management_view.show_refresh_error(exc)
+        if self.view is None:
+            self.visible_candidates = ()
+            self.position_summary.set("Options strategy data could not be loaded")
+            self.candidate_summary.set("")
+            self._clear_table(self.candidate_table)
+            self._clear_ticket()
+        else:
+            self.position_summary.set("Refresh failed; showing prior candidates")
         messagebox.showerror(
             "Options strategy refresh failed",
             str(exc) or "Options strategy data could not be loaded.",
@@ -707,17 +767,38 @@ class OptionsStrategiesTab:
                 order_confirmation_message(payload),
             ):
                 return
-            location = self.session_factory().submit_order(payload)
-            messagebox.showinfo(
-                "Option order submitted",
-                order_submitted_message(payload, location),
+            submit_button = getattr(self, "submit_button", None)
+            if submit_button is not None:
+                submit_button.configure(state=tk.DISABLED)
+
+            def succeeded(location: str | None) -> None:
+                if submit_button is not None:
+                    submit_button.configure(state=tk.NORMAL)
+                messagebox.showinfo(
+                    "Option order submitted",
+                    order_submitted_message(payload, location),
+                )
+                next_index = self.selected_order_index + 1
+                if next_index < candidate.order_draft.order_count:
+                    self.selected_order_index = next_index
+                    next_order = candidate.order_draft.orders[next_index]
+                    self.ticket_order_part.set(next_order.display_name)
+                    self._render_order_part()
+
+            def failed(exc: Exception) -> None:
+                if submit_button is not None:
+                    submit_button.configure(state=tk.NORMAL)
+                messagebox.showerror(
+                    "Option order failed",
+                    str(exc) or "The option order could not be submitted.",
+                )
+
+            run_in_background(
+                self.root,
+                lambda: self.session_factory().submit_order(payload),
+                succeeded,
+                failed,
             )
-            next_index = self.selected_order_index + 1
-            if next_index < candidate.order_draft.order_count:
-                self.selected_order_index = next_index
-                next_order = candidate.order_draft.orders[next_index]
-                self.ticket_order_part.set(next_order.display_name)
-                self._render_order_part()
         except Exception as exc:
             messagebox.showerror(
                 "Option order failed",

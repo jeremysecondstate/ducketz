@@ -14,6 +14,7 @@ from app.services.schwab_policy_inputs import (
     SCHWAB_TERMINAL_ORDER_STATUSES,
     normalize_schwab_policy_inputs,
 )
+from app.services.schwab_option_management import enrich_option_position_quotes
 from app.services.schwab_token_store import (
     access_token_is_fresh,
     cached_access_token_expires_at,
@@ -389,6 +390,23 @@ def sync_schwab_portfolio() -> PortfolioSnapshot:
         observed_at=synced_at,
         orders_error=orders_error,
     )
+    option_symbols = _normalized_option_symbols(account_facts)
+    if option_symbols:
+        try:
+            option_quotes = session.get_equity_quotes(option_symbols)
+        except Exception as exc:
+            normalized_positions = account_facts.get("positions")
+            if isinstance(normalized_positions, dict):
+                normalized_positions["option_quote_status"] = "UNAVAILABLE"
+                normalized_positions["option_quote_unavailable_reasons"] = [
+                    f"Schwab option quote refresh failed: {type(exc).__name__}: {exc}"
+                ]
+        else:
+            enrich_option_position_quotes(
+                account_facts,
+                option_quotes,
+                observed_at=synced_at,
+            )
     account = _securities_account(account_payload)
     account_values = account_facts["account_values"]
     if not isinstance(account_values, dict):
@@ -437,6 +455,24 @@ def _securities_account(payload: Any) -> dict[str, Any]:
         raise RuntimeError("Unexpected Schwab account response; missing securitiesAccount.")
 
     return account
+
+
+def _normalized_option_symbols(account_facts: dict[str, object]) -> tuple[str, ...]:
+    positions = account_facts.get("positions")
+    if not isinstance(positions, dict):
+        return ()
+    items = positions.get("items")
+    if not isinstance(items, list):
+        return ()
+    return tuple(
+        dict.fromkeys(
+            str(row.get("symbol") or "").strip().upper()
+            for row in items
+            if isinstance(row, dict)
+            and "OPTION" in str(row.get("asset_type") or "").upper()
+            and str(row.get("symbol") or "").strip()
+        )
+    )
 
 
 def _position_rows(account: dict[str, Any]) -> list[dict[str, Any]]:

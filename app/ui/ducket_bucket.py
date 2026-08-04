@@ -10,6 +10,7 @@ from app.models.portfolio import PortfolioSnapshot
 from app.services.aggregate import DucketBucketSnapshot
 from app.ui.options_strategies import OptionsStrategiesTab
 from app.ui.rolling_forecasts import RollingForecastTab
+from app.ui.background_tasks import run_in_background
 from app.ui.schwab_order_messages import (
     order_confirmation_message,
     order_submitted_message,
@@ -741,33 +742,53 @@ class SchwabDucketsTab(DucketsTab):
         parent.columnconfigure(column + 1, weight=1)
 
     def _load_open_orders(self) -> None:
-        try:
-            orders = SchwabSession().get_open_orders()
-            self._show_orders(self.open_orders_table, orders)
-        except Exception as exc:
-            messagebox.showerror("Open orders failed", f"{type(exc).__name__}: {exc}")
+        run_in_background(
+            self.root,
+            lambda: SchwabSession().get_open_orders(),
+            lambda orders: self._show_orders(self.open_orders_table, orders),
+            lambda exc: messagebox.showerror(
+                "Open orders failed", f"{type(exc).__name__}: {exc}"
+            ),
+        )
 
     def _load_recent_orders(self) -> None:
-        try:
-            orders = SchwabSession().get_recent_orders()
-            self._show_orders(self.recent_orders_table, orders)
-        except Exception as exc:
-            messagebox.showerror("Recent orders failed", f"{type(exc).__name__}: {exc}")
+        run_in_background(
+            self.root,
+            lambda: SchwabSession().get_recent_orders(),
+            lambda orders: self._show_orders(self.recent_orders_table, orders),
+            lambda exc: messagebox.showerror(
+                "Recent orders failed", f"{type(exc).__name__}: {exc}"
+            ),
+        )
 
     def _load_option_chain(self) -> None:
         try:
             strikes = int(self.chain_strikes.get().strip())
-            chain = SchwabSession().get_option_chain(self.chain_symbol.get(), strikes)
-            self._show_option_chain(chain)
         except Exception as exc:
             messagebox.showerror("Option chain failed", f"{type(exc).__name__}: {exc}")
+            return
+        symbol = self.chain_symbol.get()
+        run_in_background(
+            self.root,
+            lambda: SchwabSession().get_option_chain(symbol, strikes),
+            self._show_option_chain,
+            lambda exc: messagebox.showerror(
+                "Option chain failed", f"{type(exc).__name__}: {exc}"
+            ),
+        )
 
     def _cancel_order(self) -> None:
-        try:
-            result = SchwabSession().cancel_order(self.order_id.get())
-            messagebox.showinfo("Cancel order", f"Cancel response: {result}")
-        except Exception as exc:
-            messagebox.showerror("Cancel order failed", f"{type(exc).__name__}: {exc}")
+        order_id = self.order_id.get()
+        run_in_background(
+            self.root,
+            lambda: SchwabSession().cancel_order(order_id),
+            lambda result: messagebox.showinfo(
+                "Cancel order", f"Cancel response: {result}"
+            ),
+            lambda exc: messagebox.showerror(
+                "Cancel order failed", f"{type(exc).__name__}: {exc}"
+            ),
+        )
 
     def _submit_stock_order(self) -> None:
         try:
@@ -779,14 +800,25 @@ class SchwabDucketsTab(DucketsTab):
             ):
                 return
 
-            location = SchwabSession().submit_order(payload)
+        except Exception as exc:
+            messagebox.showerror("Stock / ETF order failed", f"{type(exc).__name__}: {exc}")
+            return
+
+        def succeeded(location: str | None) -> None:
             self._load_open_orders()
             messagebox.showinfo(
                 "Stock / ETF order submitted",
                 order_submitted_message(payload, location),
             )
-        except Exception as exc:
-            messagebox.showerror("Stock / ETF order failed", f"{type(exc).__name__}: {exc}")
+
+        run_in_background(
+            self.root,
+            lambda: SchwabSession().submit_order(payload),
+            succeeded,
+            lambda exc: messagebox.showerror(
+                "Stock / ETF order failed", f"{type(exc).__name__}: {exc}"
+            ),
+        )
 
     def _submit_option_order(self) -> None:
         try:
@@ -798,14 +830,25 @@ class SchwabDucketsTab(DucketsTab):
             ):
                 return
 
-            location = SchwabSession().submit_order(payload)
+        except Exception as exc:
+            messagebox.showerror("Option order failed", f"{type(exc).__name__}: {exc}")
+            return
+
+        def succeeded(location: str | None) -> None:
             self._load_open_orders()
             messagebox.showinfo(
                 "Option order submitted",
                 order_submitted_message(payload, location),
             )
-        except Exception as exc:
-            messagebox.showerror("Option order failed", f"{type(exc).__name__}: {exc}")
+
+        run_in_background(
+            self.root,
+            lambda: SchwabSession().submit_order(payload),
+            succeeded,
+            lambda exc: messagebox.showerror(
+                "Option order failed", f"{type(exc).__name__}: {exc}"
+            ),
+        )
 
     def _use_stock_mid(self) -> None:
         symbol = self.stock_symbol.get().strip().upper()
@@ -813,15 +856,19 @@ class SchwabDucketsTab(DucketsTab):
             messagebox.showwarning("Use mid", "Stock / ETF symbol is required.")
             return
 
-        try:
-            mid = SchwabSession().get_equity_mid(symbol)
-        except Exception as exc:
-            messagebox.showerror("Stock quote failed", f"{type(exc).__name__}: {exc}")
-            return
+        def succeeded(mid: float) -> None:
+            self.stock_symbol.set(symbol)
+            self.stock_order_type.set("LIMIT")
+            self.stock_entry_limit.set(f"{mid:.2f}")
 
-        self.stock_symbol.set(symbol)
-        self.stock_order_type.set("LIMIT")
-        self.stock_entry_limit.set(f"{mid:.2f}")
+        run_in_background(
+            self.root,
+            lambda: SchwabSession().get_equity_mid(symbol),
+            succeeded,
+            lambda exc: messagebox.showerror(
+                "Stock quote failed", f"{type(exc).__name__}: {exc}"
+            ),
+        )
 
     def _use_option_mid(self) -> None:
         mark = self.option_mark.get().strip()
