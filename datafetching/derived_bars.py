@@ -9,6 +9,8 @@ from app.models.market_data import MarketBar
 from datafetching.bar_timing import annotate_bar_timing
 
 DERIVED_INTRADAY_FREQUENCIES = ("5m", "10m", "15m", "30m", "1h")
+DAILY_DERIVATION_CALENDAR = "XNAS"
+DAILY_SESSION_BOUNDARY_TOLERANCE = pd.Timedelta(minutes=15)
 _RESAMPLE_RULES = {
     "5m": "5min",
     "10m": "10min",
@@ -45,6 +47,30 @@ class DerivedMarketBar:
         """
         minutes = _frequency_minutes(self.timeframe)
         return self.timestamp + timedelta(minutes=minutes)
+
+
+@dataclass(frozen=True)
+class CompletedEquitySession:
+    session_label: pd.Timestamp
+    open_timestamp: pd.Timestamp
+    close_timestamp: pd.Timestamp
+
+
+@dataclass(frozen=True)
+class DerivedDailyMarketBar:
+    symbol: str
+    source: str
+    timeframe: str
+    timestamp: datetime
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float
+    bar_complete: bool
+    bar_end_timestamp: datetime
+    session_date: str
+    source_bar_count: int
 
 
 def derive_intraday_bars(
@@ -146,11 +172,163 @@ def derive_intraday_bars(
     ]
 
 
+def latest_completed_equity_session(
+    as_of: datetime | pd.Timestamp | None = None,
+    *,
+    exchange_calendar: str = DAILY_DERIVATION_CALENDAR,
+) -> CompletedEquitySession | None:
+    """Return the latest regular session whose official close has passed."""
+
+    observed_at = _as_utc_timestamp(as_of)
+    calendar = _exchange_calendar(
+        exchange_calendar,
+        start=observed_at.normalize() - pd.Timedelta(days=14),
+        end=observed_at.normalize() + pd.Timedelta(days=7),
+    )
+    closes = pd.to_datetime(calendar.schedule["close"], utc=True)
+    completed = calendar.schedule.loc[closes.le(observed_at)]
+    if completed.empty:
+        return None
+    session = pd.Timestamp(completed.index[-1])
+    return CompletedEquitySession(
+        session_label=_utc_session_label(session),
+        open_timestamp=pd.Timestamp(completed.iloc[-1]["open"]),
+        close_timestamp=pd.Timestamp(completed.iloc[-1]["close"]),
+    )
+
+
+def derive_daily_bars(
+    symbol: str,
+    source_bars: list[MarketBar],
+    *,
+    as_of: datetime | pd.Timestamp | None = None,
+    exchange_calendar: str = DAILY_DERIVATION_CALENDAR,
+) -> list[DerivedDailyMarketBar]:
+    """Aggregate complete regular sessions from trade-bearing one-minute bars.
+
+    Databento intentionally omits an OHLCV interval when no trade occurs.  Such
+    gaps do not alter a session's OHLC or summed volume, so they remain absent
+    here.  A session is emitted only after its official close and when observed
+    trade bars reach both session boundaries within a conservative tolerance.
+    Extended-hours observations, stale continuation tails, holidays, and
+    early-close minutes cannot leak into the daily candle.
+    """
+
+    if not source_bars:
+        return []
+    observed_at = _as_utc_timestamp(as_of)
+    frame = pd.DataFrame(
+        [
+            {
+                "timestamp": bar.timestamp,
+                "open": bar.open,
+                "high": bar.high,
+                "low": bar.low,
+                "close": bar.close,
+                "volume": bar.volume,
+            }
+            for bar in source_bars
+        ]
+    )
+    frame = annotate_bar_timing(frame, timeframe="1m", as_of=observed_at)
+    frame = (
+        frame.loc[frame["bar_complete"]]
+        .dropna(subset=["timestamp", "open", "high", "low", "close"])
+        .sort_values("timestamp")
+        .drop_duplicates("timestamp", keep="last")
+    )
+    if frame.empty:
+        return []
+
+    first_label = frame["timestamp"].min().normalize().tz_localize(None)
+    final_label = max(
+        frame["timestamp"].max().normalize().tz_localize(None),
+        observed_at.normalize().tz_localize(None),
+    )
+    calendar = _exchange_calendar(
+        exchange_calendar,
+        start=first_label - pd.Timedelta(days=7),
+        end=final_label + pd.Timedelta(days=7),
+    )
+    indexed = frame.set_index("timestamp").sort_index()
+    clean_symbol = symbol.strip().upper()
+    source = str(source_bars[0].source or "databento")
+    records: list[DerivedDailyMarketBar] = []
+    for session, schedule in calendar.schedule.iterrows():
+        session_open = pd.Timestamp(schedule["open"])
+        session_close = pd.Timestamp(schedule["close"])
+        if session_close > observed_at:
+            continue
+        constituent = indexed.loc[
+            (indexed.index >= session_open) & (indexed.index < session_close)
+        ]
+        if constituent.empty:
+            continue
+        first_observed = pd.Timestamp(constituent.index[0])
+        last_observed_end = pd.Timestamp(constituent.index[-1]) + pd.Timedelta(
+            minutes=1
+        )
+        if (
+            first_observed > session_open + DAILY_SESSION_BOUNDARY_TOLERANCE
+            or last_observed_end
+            < session_close - DAILY_SESSION_BOUNDARY_TOLERANCE
+        ):
+            continue
+        records.append(
+            DerivedDailyMarketBar(
+                symbol=clean_symbol,
+                source=source,
+                timeframe="1d",
+                timestamp=_utc_session_label(session).to_pydatetime(),
+                open=float(constituent.iloc[0]["open"]),
+                high=float(constituent["high"].max()),
+                low=float(constituent["low"].min()),
+                close=float(constituent.iloc[-1]["close"]),
+                volume=float(
+                    pd.to_numeric(
+                        constituent["volume"], errors="coerce"
+                    ).fillna(0.0).sum()
+                ),
+                bar_complete=True,
+                bar_end_timestamp=session_close.to_pydatetime(),
+                session_date=pd.Timestamp(session).date().isoformat(),
+                source_bar_count=len(constituent),
+            )
+        )
+    return records
+
+
 def _as_utc_timestamp(value: datetime | pd.Timestamp | None) -> pd.Timestamp:
     if value is None:
         return pd.Timestamp.now(tz="UTC")
     parsed = pd.Timestamp(value)
     return parsed.tz_localize("UTC") if parsed.tzinfo is None else parsed.tz_convert("UTC")
+
+
+def _exchange_calendar(name: str, *, start: object, end: object):
+    try:
+        import exchange_calendars as xcals
+    except ImportError as exc:  # pragma: no cover - required project dependency
+        raise RuntimeError(
+            "exchange-calendars is required to derive daily equity bars"
+        ) from exc
+    return xcals.get_calendar(
+        name,
+        start=_calendar_date(start),
+        end=_calendar_date(end),
+    )
+
+
+def _calendar_date(value: object) -> pd.Timestamp:
+    timestamp = pd.Timestamp(value)
+    if timestamp.tzinfo is not None:
+        timestamp = timestamp.tz_convert("UTC").tz_localize(None)
+    return timestamp.normalize()
+
+
+def _utc_session_label(value: object) -> pd.Timestamp:
+    label = pd.Timestamp(value).normalize()
+    return label.tz_localize("UTC") if label.tzinfo is None else label.tz_convert("UTC")
 
 
 def _frequency_minutes(value: str) -> int:

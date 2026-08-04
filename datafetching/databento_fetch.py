@@ -9,6 +9,7 @@ from typing import Iterable
 import pandas as pd
 import pyarrow.parquet as pq
 
+from app.models.market_data import MarketBar
 from app.services.databento_cme_context import (
     DatabentoCmeContextProvider,
     DatabentoCmeContextSpec,
@@ -20,13 +21,21 @@ from datafetching.bar_timing import (
     completed_market_bars,
     finalize_normalized_bar_parquets,
 )
-from datafetching.continuation import latest_normalized_bar_timestamp
+from datafetching.continuation import (
+    latest_normalized_bar_timestamp,
+    normalized_bar_path,
+)
 from datafetching.cme_cross_asset_context import (
     CmeCrossAssetNotReady,
     CmeCrossAssetQualityError,
     materialize_cme_cross_asset_context,
 )
-from datafetching.derived_bars import DERIVED_INTRADAY_FREQUENCIES, derive_intraday_bars
+from datafetching.derived_bars import (
+    DERIVED_INTRADAY_FREQUENCIES,
+    derive_daily_bars,
+    derive_intraday_bars,
+    latest_completed_equity_session,
+)
 from datafetching.layout import pool_data_folder, safe_token
 from datafetching.parquet_store import ParquetStore
 
@@ -127,8 +136,10 @@ def _persist_native_results(
     advisory_files = 0
     source_bars_by_frequency: dict[str, list] = {}
     source_specs_by_frequency = {}
+    declared_specs_by_frequency = {}
 
     for spec, bars, raw_frame, available_range, exc in native_results:
+        declared_specs_by_frequency[spec.frequency] = spec
         metadata = {
             "provider_dataset": provider.dataset,
             "source_schema": spec.schema,
@@ -219,6 +230,18 @@ def _persist_native_results(
     data_files += derived_files
     error_files += derived_errors
 
+    daily_files, daily_errors = _save_derived_daily_bars(
+        symbol,
+        store,
+        provider=provider,
+        profile=profile,
+        minute_source_spec=source_specs_by_frequency.get("1m"),
+        daily_source_spec=declared_specs_by_frequency.get("1d"),
+        observed_at=observed_at,
+    )
+    data_files += daily_files
+    error_files += daily_errors
+
     return FetchResult("databento", data_files, error_files, advisory_files)
 
 
@@ -297,6 +320,159 @@ def _save_derived_intraday_bars(
             )
             error_files += 1
     return data_files, error_files
+
+
+def _save_derived_daily_bars(
+    symbol: str,
+    store: ParquetStore,
+    *,
+    provider: DatabentoMarketDataProvider,
+    profile: str,
+    minute_source_spec,
+    daily_source_spec,
+    observed_at: datetime,
+) -> tuple[int, int]:
+    """Fill the post-close native-daily publication lag from complete 1m bars."""
+
+    if minute_source_spec is None or daily_source_spec is None:
+        return 0, 0
+    completed_session = latest_completed_equity_session(observed_at)
+    if completed_session is None:
+        return 0, 0
+
+    minute_request_key = (
+        f"{minute_source_spec.key}_{minute_source_spec.schema}_"
+        f"{minute_source_spec.frequency}"
+    )
+    native_daily_request_key = (
+        f"{daily_source_spec.key}_{daily_source_spec.schema}_"
+        f"{daily_source_spec.frequency}"
+    )
+    derived_request_key = "derived_1m_1d"
+    latest_daily_labels = [
+        value
+        for value in (
+            latest_normalized_bar_timestamp(
+                store.root_dir,
+                source="databento",
+                symbol=symbol,
+                timeframe="1d",
+                request_key=native_daily_request_key,
+            ),
+            latest_normalized_bar_timestamp(
+                store.root_dir,
+                source="databento",
+                symbol=symbol,
+                timeframe="1d",
+                request_key=derived_request_key,
+            ),
+        )
+        if value is not None
+    ]
+    if latest_daily_labels and max(
+        _utc_session_label(value) for value in latest_daily_labels
+    ) >= completed_session.session_label:
+        return 0, 0
+
+    source_path = normalized_bar_path(
+        store.root_dir,
+        source="databento",
+        symbol=symbol,
+        timeframe="1m",
+        request_key=minute_request_key,
+    )
+    if not source_path.is_file():
+        return 0, 0
+
+    metadata = {
+        "provider_dataset": provider.dataset,
+        "source_schema": minute_source_spec.schema,
+        "source_frequency": "1m",
+        "output_frequency": "1d",
+        "aggregation_method": "regular_session_trade_ohlcv_resampled_from_1m",
+        "fetch_profile": profile,
+        "price_basis": "unadjusted_market_scale",
+        "volume_basis": "summed_from_regular_session_trade_1m",
+        "corporate_action_adjustment": "none",
+        "normalized_bar_policy": "completed_exchange_sessions_only",
+        "exchange_calendar": "XNAS",
+    }
+    try:
+        frame = pd.read_parquet(
+            source_path,
+            columns=("timestamp", "open", "high", "low", "close", "volume"),
+            filters=[
+                (
+                    "timestamp",
+                    ">=",
+                    completed_session.open_timestamp.to_pydatetime(),
+                ),
+                (
+                    "timestamp",
+                    "<",
+                    completed_session.close_timestamp.to_pydatetime(),
+                ),
+            ],
+        )
+        source_bars = [
+            MarketBar(
+                symbol=symbol,
+                source="databento",
+                timeframe="1m",
+                timestamp=pd.Timestamp(row.timestamp).to_pydatetime(),
+                open=float(row.open),
+                high=float(row.high),
+                low=float(row.low),
+                close=float(row.close),
+                volume=float(row.volume or 0.0),
+            )
+            for row in frame.itertuples(index=False)
+        ]
+        bars = derive_daily_bars(
+            symbol,
+            source_bars,
+            as_of=observed_at,
+        )
+        if not bars:
+            return 0, 0
+        changed = store.save_bars(
+            "databento",
+            symbol,
+            "1d",
+            bars,
+            request_key=derived_request_key,
+            metadata=metadata,
+            as_of=observed_at,
+        )
+        finalize_normalized_bar_parquets(
+            store.root_dir,
+            source="databento",
+            symbol=symbol,
+            timeframe="1d",
+            as_of=observed_at,
+        )
+        return int(changed is not None), 0
+    except Exception as exc:
+        store.save_error(
+            source="databento",
+            category="bars",
+            symbol=symbol,
+            request_key=derived_request_key,
+            error_type=type(exc).__name__,
+            error_message=str(exc),
+            metadata=metadata,
+        )
+        return 0, 1
+
+
+def _utc_session_label(value: object) -> pd.Timestamp:
+    timestamp = pd.Timestamp(value)
+    timestamp = (
+        timestamp.tz_localize("UTC")
+        if timestamp.tzinfo is None
+        else timestamp.tz_convert("UTC")
+    )
+    return timestamp.normalize()
 
 
 def _fetch_native_results(

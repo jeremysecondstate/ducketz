@@ -111,3 +111,17 @@ DATASTORE/stocks/<SYMBOL>/bars/1h/databento/normalized/*.parquet
 This lane complements Schwab data. Provider-aware calculations can compare both
 when they are available, while Databento-derived intervals still provide
 completed higher-timeframe coverage when Schwab intraday history is unavailable.
+
+## Daily post-close continuity
+
+Databento's native `ohlcv-1d` availability can remain on the prior session until
+the next UTC day. After the official XNAS close, the fetch lane therefore builds
+the just-completed daily candle from normalized one-minute evidence. It emits a
+daily row only when trade-bearing bars reach both regular-session boundaries,
+using the exchange calendar for holidays and early closes. Databento intentionally
+omits minute intervals with no trades; those gaps do not change daily OHLC or
+summed volume. The native daily row wins if it later overlaps the derived
+timestamp; the derived file only fills the temporary post-close gap.
+
+A daily provider timestamp is a UTC label for an exchange session, not a literal
+24-hour interval. Its completion timestamp is the official session close.

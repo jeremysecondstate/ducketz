@@ -20,8 +20,9 @@ from datafetching.bar_schema import (
 )
 from datafetching.layout import safe_token
 
-BAR_TIMING_VERSION = "1.1.0"
+BAR_TIMING_VERSION = "1.2.0"
 MARKET_TIMEZONE = ZoneInfo("America/New_York")
+DAILY_BAR_EXCHANGE_CALENDAR = "XNAS"
 _TIMEFRAME_PATTERN = re.compile(r"^(\d+)(s|m|h|d|w|mo)$")
 _BarT = TypeVar("_BarT")
 
@@ -195,6 +196,8 @@ def bar_end_timestamps(timestamps: pd.Series, timeframe: str) -> pd.Series:
     if parsed is None:
         return pd.Series(pd.NaT, index=timestamps.index, dtype="datetime64[ns, UTC]")
     amount, unit = parsed
+    if amount == 1 and unit == "d":
+        return _daily_bar_end_timestamps(timestamps)
     if unit == "mo":
         return timestamps + pd.DateOffset(months=amount)
     seconds = {
@@ -205,6 +208,47 @@ def bar_end_timestamps(timestamps: pd.Series, timeframe: str) -> pd.Series:
         "w": amount * 7 * 86_400,
     }[unit]
     return timestamps + pd.to_timedelta(seconds, unit="s")
+
+
+def _daily_bar_end_timestamps(timestamps: pd.Series) -> pd.Series:
+    """Resolve provider daily labels to their official exchange-session close.
+
+    Databento labels a US-equity daily candle at midnight UTC on the represented
+    session date.  Treating that label as a literal 24-hour interval delays the
+    completed candle until midnight, even though its regular session finished
+    hours earlier.  The exchange schedule also owns early closes and holidays.
+    """
+
+    result = pd.Series(
+        pd.NaT,
+        index=timestamps.index,
+        dtype="datetime64[ns, UTC]",
+    )
+    valid = timestamps.notna()
+    if not bool(valid.any()):
+        return result
+
+    try:
+        import exchange_calendars as xcals
+    except ImportError as exc:  # pragma: no cover - required project dependency
+        raise RuntimeError(
+            "exchange-calendars is required to finalize daily equity bars"
+        ) from exc
+
+    labels = (
+        timestamps.loc[valid]
+        .dt.tz_convert("UTC")
+        .dt.tz_localize(None)
+        .dt.normalize()
+    )
+    calendar = xcals.get_calendar(
+        DAILY_BAR_EXCHANGE_CALENDAR,
+        start=labels.min() - pd.Timedelta(days=14),
+        end=labels.max() + pd.Timedelta(days=14),
+    )
+    closes = labels.map(calendar.closes)
+    result.loc[valid] = pd.to_datetime(closes, utc=True, errors="coerce")
+    return result
 
 
 def session_metadata(timestamps: pd.Series, timeframe: str) -> pd.DataFrame:
