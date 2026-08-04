@@ -130,11 +130,19 @@ def option_position_book(snapshot: PortfolioSnapshot) -> OptionPositionBook:
         values,
         ("available_funds", "cash_available_for_withdrawal", "cash_balance"),
     )
+    buying_power = _first_number(values, ("buying_power",))
     summary = OptionPositionSummary(
         net_market_value=_complete_sum(leg.market_value for leg in legs),
         unrealized_pnl=_complete_sum(leg.unrealized_pnl for leg in legs),
         day_pnl=_complete_sum(leg.day_pnl for leg in legs),
+        theta_per_day=_complete_sum(
+            None
+            if leg.theta is None
+            else leg.theta * leg.contract_multiplier * leg.net_quantity
+            for leg in legs
+        ),
         available_funds=available_funds,
+        buying_power=buying_power,
     )
     reasons = section.get("option_unavailable_reasons") or section.get("unavailable_reasons") or ()
     return OptionPositionBook(
@@ -206,6 +214,10 @@ def build_closing_order_draft(
             ClosingOrderLeg(
                 symbol=leg.symbol,
                 display_name=_position_display_name(leg),
+                underlying_symbol=leg.underlying_symbol,
+                expiration=leg.expiration,
+                strike=leg.strike,
+                option_type=leg.option_type,
                 instruction=leg.close_instruction,
                 quantity=total_quantity,
                 ratio_quantity=ratio,

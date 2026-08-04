@@ -18,7 +18,7 @@ from app.services.schwab_option_management import (
 )
 from app.services.schwab_strategy_orders import DAY_ONLY
 from app.ui.background_tasks import run_in_background
-from app.ui.options_management import _selection_after_click
+from app.ui.options_management import _initial_position_selection, _selection_after_click
 
 
 OBSERVED_AT = datetime(2026, 8, 3, 20, 0, tzinfo=timezone.utc)
@@ -46,6 +46,32 @@ def test_exact_leg_selection_ignores_clicks_outside_visible_rows() -> None:
     assert _selection_after_click((1,), 4, 2, 4, extend=False, toggle=False) == ((1,), 2)
 
 
+def test_initial_position_selection_prefers_preserved_symbol_then_first_closable_row() -> None:
+    blocked = _position(
+        symbol="NVDA  260918P00190000",
+        quantity=1,
+        mark=0.25,
+        strike=190.0,
+    )
+    blocked["option_fields_complete"] = False
+    book = option_position_book(
+        _snapshot(
+            [
+                blocked,
+                _position(
+                    symbol="NVDA  260918P00200000",
+                    quantity=1,
+                    mark=0.50,
+                    strike=200.0,
+                ),
+            ]
+        )
+    )
+
+    assert _initial_position_selection(book.legs) == (1,)
+    assert _initial_position_selection(book.legs, (book.legs[0].symbol,)) == (0,)
+
+
 def test_option_position_book_preserves_exact_contracts_and_complete_summaries() -> None:
     snapshot = _snapshot(
         [
@@ -57,6 +83,7 @@ def test_option_position_book_preserves_exact_contracts_and_complete_summaries()
                 unrealized_pnl=-40.0,
                 day_pnl=10.0,
                 delta=-0.22,
+                theta=-0.08,
                 strike=210.0,
             ),
             _position(
@@ -67,6 +94,7 @@ def test_option_position_book_preserves_exact_contracts_and_complete_summaries()
                 unrealized_pnl=20.0,
                 day_pnl=-4.0,
                 delta=-0.10,
+                theta=-0.04,
                 strike=200.0,
                 expiration="2026-10-16",
             ),
@@ -83,7 +111,9 @@ def test_option_position_book_preserves_exact_contracts_and_complete_summaries()
     assert book.summary.net_market_value == pytest.approx(200.0)
     assert book.summary.unrealized_pnl == pytest.approx(-20.0)
     assert book.summary.day_pnl == pytest.approx(6.0)
+    assert book.summary.theta_per_day == pytest.approx(-8.0)
     assert book.summary.available_funds == pytest.approx(43_959.84)
+    assert book.summary.buying_power == pytest.approx(51_234.56)
     assert filter_option_positions(book, symbol="nvda", expiration="2026-10-16") == (
         book.legs[1],
     )
@@ -155,6 +185,10 @@ def test_single_short_option_builds_exact_buy_to_close_limit_payload() -> None:
 
     assert draft.api_order_type == "LIMIT"
     assert draft.estimated_cash_effect == pytest.approx(-165.0)
+    assert draft.legs[0].underlying_symbol == "NVDA"
+    assert draft.legs[0].expiration == "2026-09-18"
+    assert draft.legs[0].strike == pytest.approx(210.0)
+    assert draft.legs[0].option_type == "PUT"
     assert build_closing_order_payload(draft) == {
         "orderType": "LIMIT",
         "session": "NORMAL",
@@ -409,6 +443,7 @@ def _snapshot(
             "account_values": {
                 "status": "CURRENT",
                 "available_funds": 43_959.84,
+                "buying_power": 51_234.56,
             },
             "positions": {
                 "status": "CURRENT",
@@ -435,6 +470,7 @@ def _position(
     unrealized_pnl: float | None = 0.0,
     day_pnl: float | None = 0.0,
     delta: float | None = -0.2,
+    theta: float | None = -0.05,
 ) -> dict[str, object]:
     return {
         "status": "CURRENT",
@@ -446,6 +482,7 @@ def _position(
         "strike": strike,
         "expiration": expiration,
         "delta": delta,
+        "theta": theta,
         "net_quantity": quantity,
         "settled_quantity": quantity,
         "price": mark,

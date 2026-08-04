@@ -42,7 +42,9 @@ class OptionPositionSummary:
     net_market_value: float | None
     unrealized_pnl: float | None
     day_pnl: float | None
+    theta_per_day: float | None
     available_funds: float | None
+    buying_power: float | None
 
 
 @dataclass(frozen=True)
@@ -59,6 +61,10 @@ class OptionPositionBook:
 class ClosingOrderLeg:
     symbol: str
     display_name: str
+    underlying_symbol: str
+    expiration: str
+    strike: float
+    option_type: str
     instruction: str
     quantity: int
     ratio_quantity: int

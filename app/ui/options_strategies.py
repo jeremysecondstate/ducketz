@@ -192,9 +192,10 @@ class OptionsStrategiesTab:
         positions_frame = ttk.Frame(notebook, style="StrategyPage.TFrame")
         discover_frame = ttk.Frame(notebook, style="StrategyPage.TFrame")
         orders_frame = ttk.Frame(notebook, style="StrategyPage.TFrame")
-        notebook.add(positions_frame, text="Positions")
         notebook.add(discover_frame, text="Discover")
+        notebook.add(positions_frame, text="Positions")
         notebook.add(orders_frame, text="Orders")
+        notebook.select(positions_frame)
         self._secondary_notebook = notebook
 
         self._build_discover(discover_frame)

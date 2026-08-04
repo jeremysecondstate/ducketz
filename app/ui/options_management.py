@@ -72,6 +72,20 @@ def _selection_after_click(
     return tuple(sorted(selected)), clicked
 
 
+def _initial_position_selection(
+    rows: tuple[OptionPositionLeg, ...],
+    preferred_symbols: tuple[str, ...] = (),
+) -> tuple[int, ...]:
+    preferred = set(preferred_symbols)
+    preserved = tuple(index for index, row in enumerate(rows) if row.symbol in preferred)
+    if preserved:
+        return preserved
+    for index, row in enumerate(rows):
+        if not row.close_disabled_reason:
+            return (index,)
+    return (0,) if rows else ()
+
+
 class _ExactLegTable(tk.Frame):
     _HEADER_HEIGHT = 32
     _ROW_HEIGHT = 48
@@ -120,28 +134,45 @@ class _ExactLegTable(tk.Frame):
             borderwidth=0,
             takefocus=True,
         )
-        vertical = ttk.Scrollbar(self, orient=tk.VERTICAL, command=self.body.yview)
-        horizontal = ttk.Scrollbar(self, orient=tk.HORIZONTAL, command=self._xview)
+        vertical = ttk.Scrollbar(
+            self,
+            orient=tk.VERTICAL,
+            command=self.body.yview,
+            style="Management.Vertical.TScrollbar",
+        )
+        horizontal = ttk.Scrollbar(
+            self,
+            orient=tk.HORIZONTAL,
+            command=self._xview,
+            style="Management.Horizontal.TScrollbar",
+        )
+        self._vertical = vertical
+        self._horizontal = horizontal
         self.header.grid(row=0, column=0, sticky=tk.EW)
         self.body.grid(row=1, column=0, sticky=tk.NSEW)
         vertical.grid(row=1, column=1, sticky=tk.NS)
         horizontal.grid(row=2, column=0, sticky=tk.EW)
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
-        self.body.configure(yscrollcommand=vertical.set, xscrollcommand=self._body_xscroll)
+        self.body.configure(yscrollcommand=self._body_yscroll, xscrollcommand=self._body_xscroll)
         self.header.bind("<Configure>", self._schedule_redraw)
         self.body.bind("<Configure>", self._schedule_redraw)
         self.body.bind("<Button-1>", self._clicked)
         self.body.bind("<MouseWheel>", self._mouse_wheel)
         self.body.bind("<Control-a>", self._select_all)
-        self._horizontal = horizontal
 
-    def set_rows(self, rows: tuple[OptionPositionLeg, ...]) -> None:
+    def set_rows(
+        self,
+        rows: tuple[OptionPositionLeg, ...],
+        *,
+        preferred_symbols: tuple[str, ...] = (),
+    ) -> tuple[OptionPositionLeg, ...]:
         self._rows = rows
-        self._selected = ()
-        self._anchor = None
+        self._selected = _initial_position_selection(rows, preferred_symbols)
+        self._anchor = self._selected[0] if self._selected else None
         self.body.yview_moveto(0)
         self._redraw()
+        return self.selected_rows()
 
     def selected_rows(self) -> tuple[OptionPositionLeg, ...]:
         return tuple(self._rows[index] for index in self._selected if index < len(self._rows))
@@ -315,16 +346,31 @@ class _ExactLegTable(tk.Frame):
     def _body_xscroll(self, first: str, last: str) -> None:
         self._horizontal.set(first, last)
         self.header.xview_moveto(first)
+        self._set_scrollbar_visibility(self._horizontal, first, last)
+
+    def _body_yscroll(self, first: str, last: str) -> None:
+        self._vertical.set(first, last)
+        self._set_scrollbar_visibility(self._vertical, first, last)
+
+    @staticmethod
+    def _set_scrollbar_visibility(scrollbar: ttk.Scrollbar, first: str, last: str) -> None:
+        if float(first) <= 0.0 and float(last) >= 0.999999:
+            scrollbar.grid_remove()
+        else:
+            scrollbar.grid()
 
 
 class _ClosingLegPreview(tk.Frame):
     _COLUMNS = (
-        ("Action", 9, "w"),
-        ("Exact contract", 17, "w"),
-        ("Qty", 4, "e"),
-        ("Bid", 6, "e"),
-        ("Ask", 6, "e"),
-        ("Mark", 6, "e"),
+        ("Action", 6, "w"),
+        ("Symbol", 6, "w"),
+        ("Expiry", 8, "w"),
+        ("Strike", 5, "e"),
+        ("Type", 5, "w"),
+        ("Qty", 3, "e"),
+        ("Bid", 5, "e"),
+        ("Ask", 5, "e"),
+        ("Mark", 5, "e"),
     )
 
     def __init__(self, parent: tk.Misc) -> None:
@@ -348,7 +394,7 @@ class _ClosingLegPreview(tk.Frame):
                 background=SURFACE_ALT,
                 foreground=MUTED_TEXT,
                 font=("Segoe UI", 8, "bold"),
-                padx=4,
+                padx=2,
                 pady=4,
             ).grid(row=0, column=column, sticky=tk.EW)
         self.clear()
@@ -356,7 +402,7 @@ class _ClosingLegPreview(tk.Frame):
     @classmethod
     def _configure_columns(cls, frame: tk.Frame) -> None:
         for column in range(len(cls._COLUMNS)):
-            frame.grid_columnconfigure(column, weight=1 if column == 1 else 0)
+            frame.grid_columnconfigure(column, weight=1)
 
     def clear(self) -> None:
         for child in self._body.winfo_children():
@@ -383,7 +429,10 @@ class _ClosingLegPreview(tk.Frame):
             action = "Buy" if leg.instruction.startswith("BUY") else "Sell"
             values = (
                 (action, SUCCESS if action == "Buy" else DANGER),
-                (leg.symbol, TEXT),
+                (leg.underlying_symbol or "—", TEXT),
+                (_short_expiration(leg.expiration), TEXT),
+                (_number(leg.strike), TEXT),
+                (leg.option_type.title() if leg.option_type else "—", TEXT),
                 (_number(leg.quantity), TEXT),
                 (_money(leg.bid), MUTED_TEXT),
                 (_money(leg.ask), MUTED_TEXT),
@@ -397,8 +446,8 @@ class _ClosingLegPreview(tk.Frame):
                     anchor=anchor,
                     background=background,
                     foreground=color,
-                    font=("Cascadia Mono", 8) if column == 1 else ("Segoe UI", 9, "bold" if column == 0 else "normal"),
-                    padx=4,
+                    font=("Segoe UI", 8, "bold" if column == 0 else "normal"),
+                    padx=2,
                     pady=5,
                 ).grid(row=0, column=column, sticky=tk.EW)
 
@@ -427,10 +476,15 @@ class OptionsManagementView:
         self.position_symbol = tk.StringVar(master=root, value=ALL_SYMBOLS)
         self.position_expiration = tk.StringVar(master=root, value=ALL_EXPIRATIONS)
         self.position_status = tk.StringVar(master=root, value="Loading Schwab option positions")
+        self.position_updated_status = tk.StringVar(master=root)
         self.management_title = tk.StringVar(master=root, value="Select exact option legs")
         self.management_detail = tk.StringVar(
             master=root,
             value="Use Ctrl or Shift to select more than one ungrouped leg.",
+        )
+        self.close_scope = tk.StringVar(
+            master=root,
+            value="Selected exact positions · highlighted rows only",
         )
         self.close_order_type = tk.StringVar(master=root, value="—")
         self.close_limit_price = tk.StringVar(master=root)
@@ -447,6 +501,7 @@ class OptionsManagementView:
             "funds": tk.StringVar(master=root, value="—"),
         }
         self._summary_labels: dict[str, ttk.Label] = {}
+        self._summary_title_labels: dict[str, ttk.Label] = {}
         self.position_table: _ExactLegTable | None = None
         self.close_preview: _ClosingLegPreview | None = None
         self.close_estimate_label: ttk.Label | None = None
@@ -633,6 +688,16 @@ class OptionsManagementView:
             fieldbackground=SURFACE,
             foreground=TEXT,
         )
+        for orientation in ("Vertical", "Horizontal"):
+            style.configure(
+                f"Management.{orientation}.TScrollbar",
+                background=SURFACE_ALT,
+                troughcolor=TABLE_FIELD,
+                bordercolor=TABLE_FIELD,
+                darkcolor=SURFACE_ALT,
+                lightcolor=SURFACE_ALT,
+                arrowcolor=MUTED_TEXT,
+            )
 
     def _build_positions(self, parent: ttk.Frame) -> None:
         outer = ttk.Frame(parent, padding=(2, 8, 2, 2), style="ManagementPage.TFrame")
@@ -642,9 +707,9 @@ class OptionsManagementView:
         cards.pack(fill=tk.X, pady=(0, 9))
         for column in range(4):
             cards.grid_columnconfigure(column, weight=1, uniform="summary")
-        self._summary_card(cards, "Net options value", "value", 0)
+        self._summary_card(cards, "Options value", "value", 0)
         self._summary_card(cards, "Open P/L", "open", 1)
-        self._summary_card(cards, "Day P/L", "day", 2)
+        self._summary_card(cards, "Theta / day", "day", 2)
         self._summary_card(cards, "Available funds", "funds", 3)
 
         filters = ttk.Frame(outer, padding=(10, 7), style="ManagementCard.TFrame")
@@ -714,23 +779,24 @@ class OptionsManagementView:
     def _summary_card(self, parent: ttk.Frame, title: str, key: str, column: int) -> None:
         card = ttk.Frame(parent, padding=(12, 9), style="ManagementCard.TFrame")
         card.grid(row=0, column=column, sticky=tk.NSEW, padx=(0 if column == 0 else 4, 0 if column == 3 else 4))
-        ttk.Label(card, text=title, style="ManagementCardTitle.TLabel").pack(anchor=tk.W)
+        title_label = ttk.Label(card, text=title, style="ManagementCardTitle.TLabel")
+        title_label.pack(anchor=tk.W)
         value = ttk.Label(card, textvariable=self._summary_values[key], style="ManagementCardValue.TLabel")
         value.pack(anchor=tk.W, pady=(4, 0))
+        self._summary_title_labels[key] = title_label
         self._summary_labels[key] = value
 
     def _build_position_table(self, parent: ttk.Frame) -> None:
-        ttk.Label(parent, text="Held option positions", style="ManagementSection.TLabel").pack(anchor=tk.W)
+        footer = ttk.Frame(parent, style="ManagementCard.TFrame")
+        footer.pack(side=tk.BOTTOM, fill=tk.X, pady=(7, 0))
+        ttk.Label(footer, textvariable=self.position_status, style="ManagementMuted.TLabel").pack(
+            side=tk.LEFT
+        )
         ttk.Label(
-            parent,
-            text="Each row is one exact Schwab contract. Ctrl/Shift selects a custom close.",
+            footer,
+            textvariable=self.position_updated_status,
             style="ManagementMuted.TLabel",
-        ).pack(anchor=tk.W, pady=(2, 7))
-        ttk.Label(
-            parent,
-            textvariable=self.position_status,
-            style="ManagementMuted.TLabel",
-        ).pack(side=tk.BOTTOM, anchor=tk.W, fill=tk.X, pady=(7, 0))
+        ).pack(side=tk.RIGHT)
         table = _ExactLegTable(parent, on_selection_changed=self._position_selection_changed)
         table.pack(fill=tk.BOTH, expand=True)
         self.position_table = table
@@ -763,7 +829,7 @@ class OptionsManagementView:
         ttk.Label(scope, text="●", style="ManagementInsetAccent.TLabel").pack(side=tk.LEFT)
         ttk.Label(
             scope,
-            text="Selected exact positions  ·  highlighted rows only",
+            textvariable=self.close_scope,
             style="ManagementInsetBody.TLabel",
         ).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(7, 0))
 
@@ -948,7 +1014,9 @@ class OptionsManagementView:
         if self.book is None:
             self.position_status.set("Schwab option positions unavailable")
         else:
-            self.position_status.set(f"Refresh failed; showing the last valid snapshot · {type(exc).__name__}")
+            self.position_updated_status.set(
+                f"Refresh failed · showing prior data · {type(exc).__name__}"
+            )
 
     def _update_summary(self) -> None:
         if self.book is None:
@@ -957,9 +1025,12 @@ class OptionsManagementView:
         values = {
             "value": summary.net_market_value,
             "open": summary.unrealized_pnl,
-            "day": summary.day_pnl,
-            "funds": summary.available_funds,
+            "day": summary.theta_per_day,
+            "funds": summary.buying_power if summary.buying_power is not None else summary.available_funds,
         }
+        self._summary_title_labels["funds"].configure(
+            text="Buying power" if summary.buying_power is not None else "Available funds"
+        )
         for key, value in values.items():
             self._summary_values[key].set(_money(value))
             style = "ManagementCardValue.TLabel"
@@ -971,22 +1042,23 @@ class OptionsManagementView:
         self._render_positions()
 
     def _render_positions(self) -> None:
+        preferred_symbols = self.position_table.selected_symbols() if self.position_table is not None else ()
         self._clear_manage_panel()
         if self.book is None or self.position_table is None:
             return
         symbol = "" if self.position_symbol.get() == ALL_SYMBOLS else self.position_symbol.get()
         expiration = "" if self.position_expiration.get() == ALL_EXPIRATIONS else self.position_expiration.get()
         visible = filter_option_positions(self.book, symbol=symbol, expiration=expiration)
-        self.position_table.set_rows(visible)
+        selected = self.position_table.set_rows(visible, preferred_symbols=preferred_symbols)
         if visible:
             total = len(self.book.legs)
-            count = str(total) if len(visible) == total else f"{len(visible)} of {total}"
-            self.position_status.set(
-                f"{count} exact option position{'s' if total != 1 else ''} · "
-                f"{_timestamp(self.book.observed_at)}"
-            )
+            count = str(len(visible)) if len(visible) == total else f"{len(visible)} of {total}"
+            self.position_status.set(f"{count} position{'s' if len(visible) != 1 else ''}")
         else:
-            self.position_status.set("No option positions match these filters")
+            self.position_status.set("0 positions")
+        self.position_updated_status.set(f"Updated {_clock_timestamp(self.book.observed_at)}")
+        if selected:
+            self._render_close_selection(selected)
 
     def _position_selection_changed(self, selected: tuple[OptionPositionLeg, ...]) -> None:
         if self.book is None:
@@ -999,16 +1071,21 @@ class OptionsManagementView:
         if not selected or self.book is None:
             self._clear_manage_panel()
             return
-        self.management_title.set(
-            f"Manage {selected[0].underlying_symbol} position"
-            if len(selected) == 1
-            else f"Manage {len(selected)} exact legs"
-        )
-        self.management_detail.set(
-            "Close the entire exact position."
-            if len(selected) == 1
-            else "Custom selection; no strategy grouping has been inferred."
-        )
+        if len(selected) == 1:
+            leg = selected[0]
+            dte = days_to_expiration(leg.expiration, leg.observed_at)
+            self.management_title.set("Manage position")
+            self.management_detail.set(
+                f"{leg.underlying_symbol} · {leg.strike:g} {leg.option_type.title()} · "
+                f"{_number(dte)} DTE · exact OCC"
+            )
+            self.close_scope.set("Exact position · closes the highlighted contract")
+        else:
+            self.management_title.set(f"Manage {len(selected)} exact positions")
+            self.management_detail.set(
+                f"{selected[0].underlying_symbol} · custom close · no inferred strategy grouping"
+            )
+            self.close_scope.set(f"{len(selected)} exact positions · highlighted rows only")
         try:
             draft = build_closing_order_draft(
                 self.book,
@@ -1051,6 +1128,7 @@ class OptionsManagementView:
     def _clear_manage_panel(self) -> None:
         self.management_title.set("Select exact option legs")
         self.management_detail.set("Use Ctrl or Shift to select more than one ungrouped leg.")
+        self.close_scope.set("Selected exact positions · highlighted rows only")
         self.close_order_type.set("—")
         self.close_limit_price.set("")
         self.close_estimate.set("")
@@ -1498,6 +1576,21 @@ def _timestamp(value: datetime | None) -> str:
         return "time unavailable"
     local = value.astimezone() if value.tzinfo is not None else value
     return local.strftime("%b %d, %Y %I:%M:%S %p")
+
+
+def _clock_timestamp(value: datetime | None) -> str:
+    if value is None:
+        return "time unavailable"
+    local = value.astimezone() if value.tzinfo is not None else value
+    return local.strftime("%I:%M:%S %p").lstrip("0")
+
+
+def _short_expiration(value: str) -> str:
+    try:
+        expiration = date.fromisoformat(value[:10])
+    except (TypeError, ValueError):
+        return "—"
+    return expiration.strftime("%m/%d/%y")
 
 
 def days_to_expiration(expiration: str, observed_at: datetime | None) -> int | None:
