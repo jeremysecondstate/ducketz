@@ -162,14 +162,14 @@ existing processing delay. Aggregate `1w` matures after its dynamic final
 close plus that delay. Until maturity, target values remain null and evidence
 is pending.
 
-Any latest completed eligible daily decision can issue a LIVE remaining-week
-snapshot while its first target session has not closed. The aggregate and the
-matching `d1` prefix are committed together. Later cycles recover the exact
-origin rows for the same decision from verified receipt-chain history, but a
-newer completed decision supersedes them with a shorter remaining-week target.
-There is no bootstrap, backfill, target substitution, lowered partition
-requirement, or retired-target fallback. If no coherent snapshot can commit
-before its applicable session-close deadline, that issuance fails closed.
+Each symbol's latest usable completed daily decision can issue a LIVE
+remaining-week snapshot while its first target session has not closed. The
+aggregate and matching `d1` prefix are selected per symbol, so symbols first
+fetched on Tuesday and Wednesday can legitimately publish different snapshot
+shapes in one run. Prior exact rows may be reused for the same decision, but
+receipt history and a complete six-route bundle are not prerequisites. When no
+usable snapshot exists, that symbol's weekly LIVE rows are omitted until a
+newer daily decision is available.
 
 ## Features
 

@@ -23,7 +23,6 @@ from ml.runtime_pipeline import (
     _evaluation_frame,
     _load_prior_live_predictions,
     _valid_archived_live_rows,
-    _validate_weekly_specification_set,
     _weekly_live_predictions,
     _weekly_prediction_evidence_status,
 )
@@ -205,6 +204,29 @@ def test_late_monday_issuance_keeps_each_component_open_until_its_close(
     assert issued["prediction_created_at"].lt(issued["actionable_until"]).all()
 
 
+def test_no_current_symbol_decision_is_a_nonfatal_empty_snapshot(
+    tmp_path: Path,
+) -> None:
+    samples = _sample_bundle(
+        decision_session="2026-07-31",
+        decision_timestamp=_FRIDAY_DECISION,
+        target_sessions=_FIRST_TARGET_SESSIONS,
+    )
+
+    issued, fresh = _weekly_live_predictions(
+        samples,
+        models=_models(tmp_path, probability_base=0.5, version="between-bars"),
+        verified_runs=(),
+        specifications=_SPECIFICATIONS,
+        symbols=(_SYMBOL,),
+        assumed_round_trip_cost=_COST,
+        prediction_created_at=pd.Timestamp("2026-08-03T20:01:00Z"),
+    )
+
+    assert issued.empty
+    assert fresh.empty
+
+
 @pytest.mark.parametrize(
     (
         "decision_session",
@@ -367,29 +389,144 @@ def test_thursday_midday_aggregate_and_daily_routes_remain_evaluable(
     assert evaluations["evaluation_status"].eq("EVALUATED").all()
 
 
-def test_partial_weekly_contract_and_partial_candidate_fail_all_or_nothing(
+def test_tuesday_onboarding_uses_only_tuesday_through_friday_routes(
     tmp_path: Path,
 ) -> None:
-    partial_specifications = dict(_SPECIFICATIONS)
-    partial_specifications.pop("1w-d5")
-    with pytest.raises(ValueError, match="requires all six route specifications"):
-        _validate_weekly_specification_set(partial_specifications)
-
-    partial_samples = _sample_bundle(
-        decision_session="2026-07-31",
-        decision_timestamp=_FRIDAY_DECISION,
-        target_sessions=_FIRST_TARGET_SESSIONS,
+    samples = _sample_bundle(
+        decision_session="2026-08-03",
+        decision_timestamp=pd.Timestamp("2026-08-03T20:05:00Z"),
+        target_sessions=(
+            "2026-08-04",
+            "2026-08-05",
+            "2026-08-06",
+            "2026-08-07",
+            "2026-08-10",
+        ),
     ).loc[lambda frame: ~frame["horizon"].eq("1w-d5")]
-    with pytest.raises(RuntimeError, match="no verified weekly outlook"):
-        _weekly_live_predictions(
-            partial_samples,
-            models=_models(tmp_path, probability_base=0.5, version="partial"),
-            verified_runs=(),
-            specifications=_SPECIFICATIONS,
-            symbols=(_SYMBOL,),
-            assumed_round_trip_cost=_COST,
-            prediction_created_at=_ISSUED_AT,
-        )
+    specifications = dict(_SPECIFICATIONS)
+    specifications.pop("1w-d5")
+    models = _models(tmp_path, probability_base=0.5, version="tuesday-add")
+    models.pop("1w-d5")
+
+    issued, fresh = _weekly_live_predictions(
+        samples,
+        models=models,
+        verified_runs=(),
+        specifications=specifications,
+        symbols=(_SYMBOL,),
+        assumed_round_trip_cost=_COST,
+        prediction_created_at=pd.Timestamp("2026-08-04T15:00:00Z"),
+    )
+
+    assert tuple(issued["horizon"]) == WEEKLY_HORIZON_ORDER[:5]
+    assert tuple(fresh["horizon"]) == WEEKLY_HORIZON_ORDER[:5]
+
+
+def test_wednesday_onboarding_uses_only_wednesday_through_friday_routes(
+    tmp_path: Path,
+) -> None:
+    samples = _sample_bundle(
+        decision_session="2026-08-04",
+        decision_timestamp=pd.Timestamp("2026-08-04T20:05:00Z"),
+        target_sessions=(
+            "2026-08-05",
+            "2026-08-06",
+            "2026-08-07",
+            "2026-08-10",
+            "2026-08-11",
+        ),
+    ).loc[lambda frame: frame["horizon"].isin(WEEKLY_HORIZON_ORDER[:4])]
+    specifications = {
+        horizon: _SPECIFICATIONS[horizon]
+        for horizon in WEEKLY_HORIZON_ORDER[:4]
+    }
+    models = {
+        horizon: model
+        for horizon, model in _models(
+            tmp_path,
+            probability_base=0.5,
+            version="wednesday-add",
+        ).items()
+        if horizon in specifications
+    }
+
+    issued, fresh = _weekly_live_predictions(
+        samples,
+        models=models,
+        verified_runs=(),
+        specifications=specifications,
+        symbols=(_SYMBOL,),
+        assumed_round_trip_cost=_COST,
+        prediction_created_at=pd.Timestamp("2026-08-05T15:00:00Z"),
+    )
+
+    assert tuple(issued["horizon"]) == WEEKLY_HORIZON_ORDER[:4]
+    assert tuple(fresh["horizon"]) == WEEKLY_HORIZON_ORDER[:4]
+
+
+def test_symbols_keep_independent_remaining_week_snapshots(
+    tmp_path: Path,
+) -> None:
+    nvda_samples = _sample_bundle(
+        symbol="NVDA",
+        decision_session="2026-08-03",
+        decision_timestamp=pd.Timestamp("2026-08-03T20:05:00Z"),
+        target_sessions=(
+            "2026-08-04",
+            "2026-08-05",
+            "2026-08-06",
+            "2026-08-07",
+            "2026-08-10",
+        ),
+    )
+    models = _models(tmp_path, probability_base=0.5, version="mixed-symbols")
+    nvda_issued, _ = _weekly_live_predictions(
+        nvda_samples,
+        models=models,
+        verified_runs=(),
+        specifications=_SPECIFICATIONS,
+        symbols=("NVDA",),
+        assumed_round_trip_cost=_COST,
+        prediction_created_at=pd.Timestamp("2026-08-04T15:00:00Z"),
+    )
+    nvda_verified = VerifiedWeeklyPredictionRun(
+        run_directory=tmp_path / "nvda-tuesday",
+        promoted_at=pd.Timestamp("2026-08-04T15:01:00Z"),
+        predictions=nvda_issued,
+    )
+    goog_samples = _sample_bundle(
+        symbol="GOOG",
+        decision_session="2026-08-04",
+        decision_timestamp=pd.Timestamp("2026-08-04T20:05:00Z"),
+        target_sessions=(
+            "2026-08-05",
+            "2026-08-06",
+            "2026-08-07",
+            "2026-08-10",
+            "2026-08-11",
+        ),
+    )
+
+    selected, fresh = _weekly_live_predictions(
+        pd.concat([nvda_samples, goog_samples], ignore_index=True),
+        models=models,
+        verified_runs=(nvda_verified,),
+        specifications=_SPECIFICATIONS,
+        symbols=("NVDA", "GOOG"),
+        assumed_round_trip_cost=_COST,
+        prediction_created_at=pd.Timestamp("2026-08-05T15:00:00Z"),
+    )
+
+    by_symbol = {
+        symbol: tuple(group["horizon"])
+        for symbol, group in selected.groupby("symbol", sort=False)
+    }
+    assert by_symbol == {
+        "NVDA": WEEKLY_HORIZON_ORDER[:5],
+        "GOOG": WEEKLY_HORIZON_ORDER[:4],
+    }
+    assert set(fresh["symbol"]) == {"GOOG"}
+    assert tuple(fresh["horizon"]) == WEEKLY_HORIZON_ORDER[:4]
 
 
 def test_duplicate_verified_copies_select_one_bundle_without_multiplying_rows(
@@ -501,7 +638,7 @@ def test_active_original_survives_independent_maturity_and_evidence_updates(
     }
 
 
-def test_nonfinal_session_issues_remaining_week_and_corrupt_window_fails_closed(
+def test_nonfinal_session_issues_and_corrupt_window_is_skipped(
     tmp_path: Path,
 ) -> None:
     monday = _sample_bundle(
@@ -537,19 +674,22 @@ def test_nonfinal_session_issues_remaining_week_and_corrupt_window_fails_closed(
     malformed.loc[
         malformed["horizon"].eq("1w-d1"), "actionable_until"
     ] = pd.Timestamp("2026-08-10T20:00:00Z")
-    with pytest.raises(RuntimeError, match="1w-d1 target window"):
-        _weekly_live_predictions(
-            malformed,
-            models=_models(tmp_path, probability_base=0.5, version="bad-window"),
-            verified_runs=(),
-            specifications=_SPECIFICATIONS,
-            symbols=(_SYMBOL,),
-            assumed_round_trip_cost=_COST,
-            prediction_created_at=_ISSUED_AT,
-        )
+    malformed_issued, malformed_fresh = _weekly_live_predictions(
+        malformed,
+        models=_models(tmp_path, probability_base=0.5, version="bad-window"),
+        verified_runs=(),
+        specifications=_SPECIFICATIONS,
+        symbols=(_SYMBOL,),
+        assumed_round_trip_cost=_COST,
+        prediction_created_at=_ISSUED_AT,
+    )
+    assert malformed_issued.empty
+    assert malformed_fresh.empty
 
 
-def test_conflicting_verified_issuances_fail_closed(tmp_path: Path) -> None:
+def test_multiple_published_issuances_choose_the_earliest_snapshot(
+    tmp_path: Path,
+) -> None:
     samples = _sample_bundle(
         decision_session="2026-07-31",
         decision_timestamp=_FRIDAY_DECISION,
@@ -586,16 +726,18 @@ def test_conflicting_verified_issuances_fail_closed(tmp_path: Path) -> None:
         ),
     )
 
-    with pytest.raises(RuntimeError, match="conflicting verified weekly"):
-        _weekly_live_predictions(
-            samples,
-            models=_models(tmp_path, probability_base=0.9, version="ignored"),
-            verified_runs=verified,
-            specifications=_SPECIFICATIONS,
-            symbols=(_SYMBOL,),
-            assumed_round_trip_cost=_COST,
-            prediction_created_at=pd.Timestamp("2026-08-04T15:00:00Z"),
-        )
+    selected, fresh = _weekly_live_predictions(
+        samples,
+        models=_models(tmp_path, probability_base=0.9, version="ignored"),
+        verified_runs=verified,
+        specifications=_SPECIFICATIONS,
+        symbols=(_SYMBOL,),
+        assumed_round_trip_cost=_COST,
+        prediction_created_at=pd.Timestamp("2026-08-04T15:00:00Z"),
+    )
+
+    assert fresh.empty
+    assert _frozen_bytes(selected) == _frozen_bytes(first)
 
 
 def test_legacy_weekly_rows_are_excluded_from_live_evidence_history(
@@ -770,6 +912,7 @@ def _sample_bundle(
     decision_session: str,
     decision_timestamp: pd.Timestamp,
     target_sessions: tuple[str, str, str, str, str],
+    symbol: str = _SYMBOL,
 ) -> pd.DataFrame:
     starts = [pd.Timestamp(f"{session}T13:30:00Z") for session in target_sessions]
     ends = [pd.Timestamp(f"{session}T20:00:00Z") for session in target_sessions]
@@ -798,7 +941,7 @@ def _sample_bundle(
             target_end = ends[lead - 1]
         rows.append(
             {
-                "symbol": _SYMBOL,
+                "symbol": symbol,
                 "provider": "databento",
                 "exchange_calendar": "XNAS",
                 "exchange_session": pd.Timestamp(decision_session),

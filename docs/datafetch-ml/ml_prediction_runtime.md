@@ -45,10 +45,11 @@ readiness reports are audit metadata, not an admission gate for this profile.
 There is no arbitrary feature-set override.
 
 Omitting `--horizons` selects the canonical public default `1h 4h 1d 1w`.
-Selecting `1w` always requires all six internal weekly model routes. LIVE
-output then contains aggregate `1w` and only the Day 1 prefix that remains in
-the current target exchange week. The same fail-closed rules apply to every
-symbol requested in that cycle. The public behavior of `1h`, `4h`, and `1d` is
+Selecting `1w` materializes up to six internal weekly model routes. Each
+symbol's LIVE output independently contains aggregate `1w` and the Day 1
+prefix remaining in its current target exchange week. A missing or late weekly
+decision omits only that symbol's weekly LIVE rows unless the operator opts
+into `--require-all-routes`. The public behavior of `1h`, `4h`, and `1d` is
 unchanged.
 
 Recurring supervisor:
@@ -569,13 +570,13 @@ Loop B writes:
 - remaining-week `LIVE` predictions where `prediction_created_at <
   actionable_until <= target_window_end`.
 
-For the weekly family, the latest completed daily decision supplies aggregate
-`1w` and the contiguous Day 1 prefix whose targets remain in one exchange week.
-Aggregate `1w` and `d1` must publish before the first remaining session closes;
-later components use their own close. Later cycles copy the exact verified rows
-for the same decision, while a newer completed decision issues a shorter
-outlook. If no coherent group can publish before its deadlines, that weekly
-issuance fails closed until a newer eligible decision exists.
+For the weekly family, each symbol's latest usable completed daily decision
+supplies aggregate `1w` and the contiguous Day 1 prefix whose targets remain in
+one exchange week. Aggregate `1w` and `d1` must publish before the first
+remaining session closes; later components use their own close. Prior exact
+rows may be reused for the same decision, but no prior snapshot or six-route
+bundle is required. If no usable group exists, that symbol's weekly LIVE rows
+are omitted while the rest of the cycle continues.
 
 Each prediction has:
 

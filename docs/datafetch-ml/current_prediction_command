@@ -2,7 +2,7 @@
 # Loop B supervisor: samples, targets, model fit/reuse, predictions, evaluation, and current outputs.
 python -m ml.prediction_runtime `
   --datastore-target pc `
-  --symbols NVDA GOOG MU AAPL MSFT AMZN META AVGO AMD TSLA QCOM DE CAT PLAB SNDK `
+  --symbols NVDA GOOG MU AAPL MSFT AMZN META TSLA CAT SNDK `
   --provider databento `
   --horizons 1h 4h 1d 1w `
   --feature-profile loop-a-all-v1 `
@@ -14,6 +14,6 @@ python -m ml.prediction_runtime `
 
 # Loop A and Loop B serialize datastore cycles with one crash-released OS lock.
 # Public 1w expands internally to aggregate 1w plus 1w-d1 through 1w-d5.
-# LIVE output uses aggregate 1w plus the Day 1 prefix remaining in one exchange
-# week. Later cycles reuse exact verified rows for the same daily decision; a
-# newer completed decision publishes the correspondingly shorter outlook.
+# LIVE output independently selects aggregate 1w plus the usable Day 1 prefix
+# for each symbol. A prior snapshot can be reused but is not required; a symbol
+# with no current eligible decision is skipped without blocking other symbols.

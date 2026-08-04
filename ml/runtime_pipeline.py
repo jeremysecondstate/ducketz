@@ -245,8 +245,6 @@ def run_loop_b_once(
     )
     if not selected_symbols:
         raise ValueError("Loop B requires at least one symbol")
-    _validate_weekly_specification_set(effective_specifications)
-
     materialization = materialize_rolling_samples(
         root,
         symbols=selected_symbols,
@@ -410,14 +408,9 @@ def run_loop_b_once(
         for route in materialization.routes
         if route.status == "READY" and not route.error
     }
-    weekly_ready_symbols = tuple(
-        symbol
-        for symbol in selected_symbols
-        if all((symbol, horizon) in ready_route_pairs for horizon in weekly_horizons)
-    )
-    if weekly_horizons and all(horizon in models for horizon in weekly_horizons):
+    if weekly_horizons:
         weekly_created_at = utc_timestamp(clock())
-        for symbol in weekly_ready_symbols:
+        for symbol in selected_symbols:
             try:
                 weekly_live, newly_issued = _weekly_live_predictions(
                     samples,
@@ -428,7 +421,19 @@ def run_loop_b_once(
                     assumed_round_trip_cost=runtime.assumed_round_trip_cost,
                     prediction_created_at=weekly_created_at,
                 )
-                prediction_frames.append(weekly_live)
+                if weekly_live.empty:
+                    error_key = f"{symbol}|weekly-snapshot"
+                    route_errors[error_key] = (
+                        "No usable per-symbol decision, remaining-session "
+                        "route set, and fitted models; weekly LIVE rows skipped"
+                    )
+                    _report(
+                        reporter,
+                        f"[Loop B/{symbol} weekly snapshot] SKIPPED: "
+                        f"{route_errors[error_key]}",
+                    )
+                else:
+                    prediction_frames.append(weekly_live)
                 if not newly_issued.empty:
                     fresh_live_frames.append(newly_issued)
             except Exception as exc:
@@ -1005,20 +1010,16 @@ def _enforce_promotion_deadlines(
             )
 
 
-def _validate_weekly_specification_set(
+def _weekly_specifications(
     specifications: Mapping[str, HorizonSpecification],
-) -> None:
-    requested = set(specifications).intersection(WEEKLY_HORIZON_ORDER)
-    if requested and requested != set(WEEKLY_HORIZON_ORDER):
-        missing = [
-            horizon
-            for horizon in WEEKLY_HORIZON_ORDER
-            if horizon not in requested
-        ]
-        raise ValueError(
-            "The weekly model family requires all six route specifications; "
-            "missing " + ", ".join(missing)
-        )
+) -> dict[str, HorizonSpecification]:
+    """Return configured weekly routes in their public display order."""
+
+    return {
+        horizon: specifications[horizon]
+        for horizon in WEEKLY_HORIZON_ORDER
+        if horizon in specifications
+    }
 
 
 def _verified_weekly_prediction_rows(
@@ -1030,10 +1031,9 @@ def _verified_weekly_prediction_rows(
 ) -> pd.DataFrame:
     """Return calendar-proven receipt-chain remaining-week origins."""
 
-    weekly_specifications = {
-        horizon: specifications[horizon]
-        for horizon in WEEKLY_HORIZON_ORDER
-    }
+    weekly_specifications = _weekly_specifications(specifications)
+    if not weekly_specifications:
+        return empty_frame(PREDICTION_SCHEMA)
     bundles = _weekly_prediction_bundles(
         runs,
         samples=samples,
@@ -1070,18 +1070,10 @@ def _weekly_live_predictions(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Issue the latest remaining-week outlook or reuse that exact decision."""
 
-    weekly_specifications = {
-        horizon: specifications[horizon]
-        for horizon in WEEKLY_HORIZON_ORDER
-    }
-    missing_models = [
-        horizon for horizon in WEEKLY_HORIZON_ORDER if horizon not in models
-    ]
-    if missing_models:
-        raise RuntimeError(
-            "Weekly snapshot models are unavailable: "
-            + ", ".join(missing_models)
-        )
+    weekly_specifications = _weekly_specifications(specifications)
+    if not weekly_specifications:
+        empty = empty_frame(PREDICTION_SCHEMA)
+        return empty, empty.copy()
     candidates = _weekly_issuance_candidates(
         samples,
         specifications=weekly_specifications,
@@ -1118,24 +1110,31 @@ def _weekly_live_predictions(
                 for horizon in WEEKLY_HORIZON_ORDER
                 if horizon in set(candidate["horizon"].astype(str))
             )
-            issued_frames = [
-                _prediction_frame(
-                    models[horizon],
-                    candidate.loc[candidate["horizon"].eq(horizon)].copy(),
-                    prediction_created_at=prediction_created_at,
-                    mode="LIVE",
+            if all(horizon in models for horizon in candidate_horizons):
+                issued_frames = [
+                    _prediction_frame(
+                        models[horizon],
+                        candidate.loc[
+                            candidate["horizon"].eq(horizon)
+                        ].copy(),
+                        prediction_created_at=prediction_created_at,
+                        mode="LIVE",
+                    )
+                    for horizon in candidate_horizons
+                ]
+                issued = pd.concat(
+                    issued_frames,
+                    ignore_index=True,
+                    sort=False,
                 )
-                for horizon in candidate_horizons
-            ]
-            issued = pd.concat(issued_frames, ignore_index=True, sort=False)
-            _validate_weekly_prediction_bundle(
-                issued,
-                specifications=weekly_specifications,
-                assumed_round_trip_cost=assumed_round_trip_cost,
-            )
-            selected.append(issued)
-            newly_issued.append(issued)
-            continue
+                _validate_weekly_prediction_bundle(
+                    issued,
+                    specifications=weekly_specifications,
+                    assumed_round_trip_cost=assumed_round_trip_cost,
+                )
+                selected.append(issued)
+                newly_issued.append(issued)
+                continue
 
         active = next(
             (
@@ -1151,12 +1150,8 @@ def _weekly_live_predictions(
             ),
             None,
         )
-        if active is None:
-            raise RuntimeError(
-                f"{symbol_name} has no verified weekly outlook and no "
-                "remaining exchange-week session before its close"
-            )
-        selected.append(active.copy())
+        if active is not None:
+            selected.append(active.copy())
 
     output = (
         pd.concat(selected, ignore_index=True, sort=False)
@@ -1167,11 +1162,6 @@ def _weekly_live_predictions(
         pd.concat(newly_issued, ignore_index=True, sort=False)
         if newly_issued
         else empty_frame(PREDICTION_SCHEMA)
-    )
-    _require_weekly_live_predictions(
-        output,
-        symbols=symbols,
-        specifications=weekly_specifications,
     )
     return (
         _project(output, PREDICTION_SCHEMA.names),
@@ -1187,8 +1177,11 @@ def _weekly_issuance_candidates(
     as_of: pd.Timestamp,
     assumed_round_trip_cost: float,
 ) -> dict[str, pd.DataFrame]:
+    weekly_specifications = _weekly_specifications(specifications)
+    if "1w" not in weekly_specifications:
+        return {}
     weekly = samples.loc[
-        samples["horizon"].isin(WEEKLY_HORIZON_ORDER)
+        samples["horizon"].isin(weekly_specifications)
     ].copy()
     if weekly.empty:
         return {}
@@ -1205,20 +1198,19 @@ def _weekly_issuance_candidates(
     weekly["exchange_session"] = pd.to_datetime(
         weekly["exchange_session"], errors="coerce"
     ).dt.tz_localize(None).dt.normalize()
-    if weekly[
-        [
-            "decision_timestamp",
-            "information_available_at",
-            "target_window_start",
-            "target_window_end",
-            "actionable_until",
-            "exchange_session",
-        ]
-    ].isna().any().any():
-        raise RuntimeError("Weekly issuance samples contain invalid timestamps")
+    timestamp_columns = [
+        "decision_timestamp",
+        "information_available_at",
+        "target_window_start",
+        "target_window_end",
+        "actionable_until",
+        "exchange_session",
+    ]
+    weekly = weekly.dropna(subset=timestamp_columns)
+    if weekly.empty:
+        return {}
 
     result: dict[str, pd.DataFrame] = {}
-    required_horizons = set(WEEKLY_HORIZON_ORDER)
     for raw_symbol in symbols:
         symbol = str(raw_symbol).strip().upper()
         symbol_rows = weekly.loc[weekly["symbol"].eq(symbol)].copy()
@@ -1234,43 +1226,46 @@ def _weekly_issuance_candidates(
             bundle = symbol_rows.loc[
                 symbol_rows["decision_timestamp"].eq(decision)
             ].copy()
+            bundle_horizons = set(bundle["horizon"].astype(str))
             if (
-                len(bundle) != len(WEEKLY_HORIZON_ORDER)
-                or set(bundle["horizon"].astype(str)) != required_horizons
+                "1w" not in bundle_horizons
                 or bundle["horizon"].duplicated().any()
             ):
                 continue
-            calendar_name = _one_text_value(
-                bundle["exchange_calendar"],
-                label=f"{symbol} weekly exchange calendar",
-            )
-            session_values = pd.to_datetime(
-                bundle["exchange_session"], errors="coerce"
-            ).dt.tz_localize(None).dt.normalize()
-            if session_values.isna().any() or session_values.nunique() != 1:
-                raise RuntimeError(
-                    f"{symbol} weekly issuance does not share one decision session"
+            try:
+                calendar_name = _one_text_value(
+                    bundle["exchange_calendar"],
+                    label=f"{symbol} weekly exchange calendar",
                 )
-            session = pd.Timestamp(session_values.iloc[0])
-            calendar = ExchangeSessionCalendar(
-                calendar_name,
-                start=session - pd.Timedelta(days=14),
-                end=session + pd.Timedelta(days=45),
-            )
+                session_values = pd.to_datetime(
+                    bundle["exchange_session"], errors="coerce"
+                ).dt.tz_localize(None).dt.normalize()
+                if session_values.isna().any() or session_values.nunique() != 1:
+                    continue
+                session = pd.Timestamp(session_values.iloc[0])
+                calendar = ExchangeSessionCalendar(
+                    calendar_name,
+                    start=session - pd.Timedelta(days=14),
+                    end=session + pd.Timedelta(days=45),
+                )
 
-            remaining = _remaining_week_candidate(
-                bundle,
-                calendar=calendar,
-                as_of=as_of,
-                symbol=symbol,
-            )
-            if remaining.empty:
+                remaining = _remaining_week_candidate(
+                    bundle,
+                    calendar=calendar,
+                    as_of=as_of,
+                    symbol=symbol,
+                )
+                if remaining.empty:
+                    continue
+                _validate_weekly_sample_bundle(
+                    remaining,
+                    specifications=weekly_specifications,
+                    assumed_round_trip_cost=assumed_round_trip_cost,
+                )
+            except (KeyError, RuntimeError, ValueError):
+                # A malformed or obsolete decision is not a global runtime
+                # failure. Try the symbol's next-newest usable decision.
                 continue
-            _validate_weekly_sample_bundle(
-                remaining,
-                specifications=specifications,
-                assumed_round_trip_cost=assumed_round_trip_cost,
-            )
             result[symbol] = _sort_weekly_rows(remaining)
             break
     return result
@@ -1337,6 +1332,9 @@ def _weekly_prediction_bundles(
             dropna=False,
         ):
             try:
+                horizons = _weekly_bundle_horizons(candidate)
+                if any(horizon not in specifications for horizon in horizons):
+                    continue
                 _validate_weekly_prediction_bundle(
                     candidate,
                     specifications=specifications,
@@ -1424,44 +1422,27 @@ def _deduplicate_weekly_prediction_bundles(
     for symbol, items in grouped.items():
         by_decision: dict[
             pd.Timestamp,
-            tuple[pd.Timestamp, str, pd.DataFrame],
+            tuple[pd.Timestamp, pd.DataFrame],
         ] = {}
         for promoted_at, bundle in items:
             decision = pd.to_datetime(
                 bundle["decision_timestamp"], utc=True, errors="coerce"
             ).iloc[0]
-            signature = _weekly_prediction_bundle_signature(bundle)
             existing = by_decision.get(decision)
-            if existing is not None and existing[1] != signature:
-                raise RuntimeError(
-                    f"{symbol} has conflicting verified weekly snapshots for "
-                    f"decision {decision.isoformat()}"
-                )
             if existing is None or promoted_at < existing[0]:
                 by_decision[decision] = (
                     promoted_at,
-                    signature,
                     _sort_weekly_rows(bundle),
                 )
         output[symbol] = tuple(
             (promoted_at, bundle)
-            for promoted_at, _signature, bundle in sorted(
+            for promoted_at, bundle in sorted(
                 by_decision.values(),
                 key=lambda item: item[0],
                 reverse=True,
             )
         )
     return output
-
-
-def _weekly_prediction_bundle_signature(frame: pd.DataFrame) -> str:
-    ordered = _sort_weekly_rows(frame).loc[:, list(PREDICTION_SCHEMA.names)]
-    return ordered.to_json(
-        orient="records",
-        date_format="iso",
-        date_unit="us",
-        double_precision=15,
-    )
 
 
 def _weekly_bundle_horizons(frame: pd.DataFrame) -> tuple[str, ...]:
@@ -1843,10 +1824,7 @@ def _require_weekly_live_predictions(
     symbols: Sequence[str],
     specifications: Mapping[str, HorizonSpecification],
 ) -> None:
-    weekly_specifications = {
-        horizon: specifications[horizon]
-        for horizon in WEEKLY_HORIZON_ORDER
-    }
+    weekly_specifications = _weekly_specifications(specifications)
     live = predictions.loc[
         predictions["prediction_mode"].eq("LIVE")
         & predictions["horizon"].isin(WEEKLY_HORIZON_ORDER)
@@ -2066,17 +2044,9 @@ def _load_verified_weekly_prediction_runs(
 ) -> tuple[VerifiedWeeklyPredictionRun, ...]:
     """Read receipt-chain runs that prove a coherent remaining-week issuance."""
 
-    weekly_specifications = {
-        horizon: specifications[horizon]
-        for horizon in WEEKLY_HORIZON_ORDER
-        if horizon in specifications
-    }
+    weekly_specifications = _weekly_specifications(specifications)
     if not weekly_specifications:
         return ()
-    if set(weekly_specifications) != set(WEEKLY_HORIZON_ORDER):
-        raise RuntimeError(
-            "Verified weekly lookup requires all six model-route specifications"
-        )
     promoted_runs = authoritative_receipt_runs(datastore_root)
     results: list[VerifiedWeeklyPredictionRun] = []
     for run_directory, promoted_at in sorted(
@@ -2108,7 +2078,7 @@ def _load_verified_weekly_prediction_runs(
         valid = _valid_archived_live_rows(
             _project(frame, PREDICTION_SCHEMA.names),
             as_of=as_of,
-            supported_horizons=frozenset(WEEKLY_HORIZON_ORDER),
+            supported_horizons=frozenset(weekly_specifications),
             manifest_run=manifest_timestamp,
             promoted_at=promoted_at,
         )

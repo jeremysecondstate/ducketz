@@ -124,20 +124,19 @@ This prevents Loop B from ingesting a mixture of two Loop A cycles without any
 bootstrap, readiness lease, decision-timestamp handoff, acknowledgement, or
 rejection state. Loop B runs on its normal UTC phase whenever the latest Loop A
 cycle is `COMPLETE`. Non-weekly routes retain their existing rolling behavior.
-Once a remaining-week snapshot is issued, later Loop B cycles recover its exact
-prediction rows for that same daily decision from verified receipt-chain
-history and preserve their probabilities, model versions, prediction
-timestamps, and target windows. A newer completed daily decision may issue a
-shorter aggregate-plus-Day-1-prefix outlook. Each requested route still
-validates its actual input files and schema. In
+Weekly issuance is resolved independently for every symbol from that symbol's
+newest usable completed daily decision. A symbol first added on Tuesday can
+publish Tuesday-through-Friday; one first added on Wednesday can publish
+Wednesday-through-Friday in the same Loop B cycle. Prior published rows are an
+optional exact-decision reuse source, not an issuance prerequisite. Each
+requested route still validates its actual input files and schema. In
 generation mode, failures are isolated by symbol and horizon while the atomic
 current-output pointer advances only to a complete immutable Loop B run.
 
-If a coherent remaining-week snapshot cannot publish before its applicable
-session-close deadline, Loop B fails closed until a newer eligible decision is
-available. It does not bootstrap, backfill, lower partition requirements, or
-use a legacy target fallback. No new dataset, Parquet column, datastore state
-file, pointer, acknowledgement, or coordination mechanism is used.
+If a symbol has no usable remaining-week decision before the applicable close,
+Loop B simply omits that symbol's weekly LIVE snapshot for the cycle. Other
+symbols and horizons continue. The next completed daily decision can create a
+shorter snapshot without bootstrap, backfill, or a legacy target fallback.
 
 ## Parquet identity rule
 

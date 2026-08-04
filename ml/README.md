@@ -186,18 +186,19 @@ are `dynamic-remaining-week-d1-open-close-v2` through
 `dynamic-remaining-week-d5-open-close-v2`. These versions prevent reuse of the
 retired fixed-window targets.
 
-LIVE issuance follows the latest completed daily decision. The exchange
-calendar, not fixed weekday or UTC arithmetic, chooses the remaining sessions
-and handles holidays, early closes, weekends, and DST. Aggregate `1w` and
-`1w-d1` expire at the first remaining session close; each later component
-expires at its own close. Repeated cycles reuse the exact verified rows for the
-same decision, while a newer completed decision replaces them with the shorter
-remaining-week outlook.
+LIVE issuance follows each symbol's latest usable completed daily decision.
+The exchange calendar, not fixed weekday or UTC arithmetic, chooses the
+remaining sessions and handles holidays, early closes, weekends, and DST.
+Aggregate `1w` and `1w-d1` expire at the first remaining session close; each
+later component expires at its own close. A Tuesday-onboarded symbol can issue
+Tuesday-through-Friday while a Wednesday-onboarded symbol independently issues
+Wednesday-through-Friday. Repeated cycles may reuse exact published rows for
+the same decision, but prior publication is not required to issue.
 
-If no coherent aggregate-plus-component-prefix snapshot can be issued before
-its applicable close, the weekly route fails closed. It does not bootstrap,
-backfill, substitute a target, lower a partition requirement, or infer
-compatibility from a retired target contract.
+If a symbol has no usable aggregate-plus-component prefix before its applicable
+close, that symbol's weekly LIVE output is empty for the cycle. The runtime
+continues with other symbols and routes and tries again from the next completed
+daily decision.
 
 Live-evidence thresholds are 60 decisions for `1h`, 60 for `4h`, and 30 for
 `1d` and each of the six internal weekly horizons. Offline assessment rows
@@ -214,13 +215,11 @@ pre-entry prediction before live performance or evidence counting. Pooled
 evidence count. Meeting a threshold changes the readable evidence status only;
 automated action remains disabled.
 
-A model error is diagnosed at its horizon, but publication is all-or-nothing.
-If any requested symbol/horizon route fails materialization or lacks a required
-prediction, the current run is not replaced and the prior successful current
-files remain in place. Selecting public `1w` makes all six internal weekly
-models and historical routes required. LIVE publication is nevertheless
-dynamic: aggregate `1w` plus the valid same-week Day 1 prefix is one coherent
-outlook, while later component model rows carry no current probability.
+A model error is diagnosed at its horizon. By default, valid routes still
+publish and limitations remain visible; `--require-all-routes` opts into strict
+whole-cycle rejection. Selecting public `1w` materializes the six internal
+historical model routes, but LIVE issuance needs only the aggregate and the
+same-week Day 1 prefix applicable to that individual symbol at that moment.
 
 ## One-ID Parquet contract
 
