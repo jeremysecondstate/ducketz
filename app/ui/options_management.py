@@ -24,6 +24,7 @@ from app.services.schwab_option_management import (
 )
 from app.services.schwab_strategy_orders import DAY_ONLY, GOOD_UNTIL_CANCELED
 from app.ui.background_tasks import run_in_background
+from app.ui.option_exit_plans import ExitPlanBuilderDialog
 from app.ui.schwab_order_messages import order_submitted_message
 from app.ui.theme import (
     ACCENT,
@@ -631,11 +632,13 @@ class OptionsManagementView:
         snapshot_loader: Callable[[], PortfolioSnapshot],
         session_factory: Callable[[], object],
         on_refresh: Callable[[], None],
+        on_show_orders: Callable[[], None] | None = None,
     ) -> None:
         self.root = root
         self.snapshot_loader = snapshot_loader
         self.session_factory = session_factory
         self.on_refresh = on_refresh
+        self.on_show_orders = on_show_orders or (lambda: None)
         self.snapshot: PortfolioSnapshot | None = None
         self.book: OptionPositionBook | None = None
         self._working_orders: tuple[ManagedOptionOrder, ...] = ()
@@ -685,6 +688,7 @@ class OptionsManagementView:
         self.close_estimate_label: ttk.Label | None = None
         self.review_close_button: ttk.Button | None = None
         self.close_limit_entry: ttk.Entry | None = None
+        self.exit_plan_button: ttk.Button | None = None
         self.close_duration_box: ttk.Combobox | None = None
         self.close_price_scale: tk.Scale | None = None
         self._scope_controls: dict[str, tuple[tk.Frame, tk.Radiobutton, tk.Label]] = {}
@@ -1005,13 +1009,27 @@ class OptionsManagementView:
         ttk.Button(actions, text="Close", style="ManagementActiveSegment.TButton").pack(
             side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 3)
         )
-        for index, label in enumerate(("Roll", "Exit Plan", "Exercise")):
-            ttk.Button(actions, text=label, state=tk.DISABLED, style="ManagementSegment.TButton").pack(
-                side=tk.LEFT,
-                fill=tk.X,
-                expand=True,
-                padx=(3, 0 if index == 2 else 3),
-            )
+        ttk.Button(
+            actions,
+            text="Roll",
+            state=tk.DISABLED,
+            style="ManagementSegment.TButton",
+        ).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=3)
+        exit_plan = ttk.Button(
+            actions,
+            text="Exit Plan",
+            state=tk.DISABLED,
+            style="ManagementSegment.TButton",
+            command=self._open_exit_plan,
+        )
+        exit_plan.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=3)
+        self.exit_plan_button = exit_plan
+        ttk.Button(
+            actions,
+            text="Exercise",
+            state=tk.DISABLED,
+            style="ManagementSegment.TButton",
+        ).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(3, 0))
 
         ttk.Label(parent, text="Close scope", style="ManagementMuted.TLabel").pack(anchor=tk.W)
         scope_choices = ttk.Frame(parent, style="ManagementCard.TFrame")
@@ -1575,6 +1593,8 @@ class OptionsManagementView:
             self.close_duration_box.configure(state="readonly" if enabled else tk.DISABLED)
         if self.review_close_button is not None:
             self.review_close_button.configure(state=state)
+        if self.exit_plan_button is not None:
+            self.exit_plan_button.configure(state=state)
 
     def _clear_manage_panel(self) -> None:
         self.management_title.set("Select exact option legs")
@@ -1613,6 +1633,29 @@ class OptionsManagementView:
         except Exception as exc:
             messagebox.showerror("Closing order unavailable", str(exc))
             return
+        ClosingOrderReviewDialog(
+            root=self.root,
+            draft=draft,
+            on_place=self._place_closing_order,
+        )
+
+    def _open_exit_plan(self) -> None:
+        if self.book is None:
+            return
+        symbols = self._selected_position_symbols()
+        if not symbols:
+            return
+        ExitPlanBuilderDialog(
+            root=self.root,
+            book=self.book,
+            selected_symbols=symbols,
+            working_orders=self._working_orders,
+            on_review_single_target=self._review_exit_target,
+            on_close_now=self._review_closing_order,
+            on_show_orders=self.on_show_orders,
+        )
+
+    def _review_exit_target(self, draft: ClosingOrderDraft) -> None:
         ClosingOrderReviewDialog(
             root=self.root,
             draft=draft,

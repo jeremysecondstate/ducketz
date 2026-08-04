@@ -206,6 +206,7 @@ class OptionsStrategiesTab:
             snapshot_loader=self.snapshot_loader,
             session_factory=self.session_factory,
             on_refresh=self.refresh,
+            on_show_orders=lambda: notebook.select(orders_frame),
         )
 
     def _build_discover(self, parent: ttk.Frame) -> None:

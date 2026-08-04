@@ -95,6 +95,64 @@ class ClosingOrderDraft:
 
 
 @dataclass(frozen=True)
+class ExitPlanBranch:
+    branch_id: str
+    label: str
+    enabled: bool
+    trigger_basis: str
+    trigger_operator: str
+    trigger_percent: float | None
+    trigger_price: float | None
+    order_type: str
+    limit_price: float | None
+    limit_offset: float | None
+    duration: str
+    quantity_fraction: float
+    closing_order: ClosingOrderDraft | None = None
+
+
+@dataclass(frozen=True)
+class ExitPlanDraft:
+    template_id: str
+    template_name: str
+    account_label: str
+    underlying_symbol: str
+    coverage_label: str
+    position_symbols: tuple[str, ...]
+    position_mark: float
+    price_source: str
+    protected_quantity: int
+    relationship: str
+    branches: tuple[ExitPlanBranch, ...]
+    executable: bool
+    capability_reason: str | None
+    conflicting_order_ids: tuple[str, ...]
+    warnings: tuple[str, ...]
+
+    @property
+    def placeable(self) -> bool:
+        return self.executable and not self.conflicting_order_ids
+
+    @property
+    def take_profit(self) -> ExitPlanBranch | None:
+        return next((branch for branch in self.branches if branch.branch_id.startswith("target")), None)
+
+    @property
+    def stop_loss(self) -> ExitPlanBranch | None:
+        return next((branch for branch in self.branches if branch.branch_id == "stop"), None)
+
+
+@dataclass(frozen=True)
+class SavedExitPlanTemplate:
+    name: str
+    base_template_id: str
+    target_percent: float
+    stop_percent: float
+    limit_offset: float
+    duration: str
+
+
+@dataclass(frozen=True)
 class ClosingOrderSubmission:
     payload: dict[str, object]
     location: str | None
@@ -127,9 +185,12 @@ __all__ = [
     "ClosingOrderDraft",
     "ClosingOrderLeg",
     "ClosingOrderSubmission",
+    "ExitPlanBranch",
+    "ExitPlanDraft",
     "ManagedOptionOrder",
     "ManagedOrderLeg",
     "OptionPositionBook",
     "OptionPositionLeg",
     "OptionPositionSummary",
+    "SavedExitPlanTemplate",
 ]
