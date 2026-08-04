@@ -249,7 +249,8 @@ def build_closing_order_draft(
     chosen_price = suggested_price if limit_price in (None, "") else _positive_price(limit_price)
     if duration not in {DAY_ONLY, GOOD_UNTIL_CANCELED}:
         raise ValueError(f"Unsupported order duration: {duration or 'missing'}")
-    estimated_cash = direction * chosen_price * common_multiplier * order_quantity
+    normalized_price = round(chosen_price, 2)
+    estimated_cash = direction * normalized_price * common_multiplier * order_quantity
     warnings = [
         "Price and proceeds are local estimates from position marks; the current Schwab service has no wired preview call.",
         "Exact OCC symbols and quantities will be re-read immediately before placement.",
@@ -268,7 +269,7 @@ def build_closing_order_draft(
         api_order_type=api_order_type,
         complex_order_strategy_type=complex_type,
         order_quantity=order_quantity,
-        limit_price=round(chosen_price, 2),
+        limit_price=normalized_price,
         duration=duration,
         estimated_cash_effect=round(estimated_cash, 2),
         price_source=LOCAL_POSITION_MARK_SOURCE,

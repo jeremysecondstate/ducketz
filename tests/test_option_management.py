@@ -18,7 +18,14 @@ from app.services.schwab_option_management import (
 )
 from app.services.schwab_strategy_orders import DAY_ONLY
 from app.ui.background_tasks import run_in_background
-from app.ui.options_management import _initial_position_selection, _selection_after_click
+from app.ui.options_management import (
+    CLOSE_SCOPE_ENTIRE,
+    CLOSE_SCOPE_SELECTED,
+    _closing_price_rail,
+    _closing_scope_rows,
+    _initial_position_selection,
+    _selection_after_click,
+)
 
 
 OBSERVED_AT = datetime(2026, 8, 3, 20, 0, tzinfo=timezone.utc)
@@ -70,6 +77,97 @@ def test_initial_position_selection_prefers_preserved_symbol_then_first_closable
 
     assert _initial_position_selection(book.legs) == (1,)
     assert _initial_position_selection(book.legs, (book.legs[0].symbol,)) == (0,)
+
+
+def test_close_scope_uses_active_position_or_every_explicit_selection() -> None:
+    book = option_position_book(
+        _snapshot(
+            [
+                _position(symbol="NVDA  260918P00210000", quantity=1, mark=1.50),
+                _position(
+                    symbol="NVDA  260918P00200000",
+                    quantity=-1,
+                    mark=0.50,
+                    strike=200.0,
+                ),
+            ]
+        )
+    )
+
+    assert _closing_scope_rows(
+        book.legs,
+        active_symbol=book.legs[1].symbol,
+        scope=CLOSE_SCOPE_ENTIRE,
+    ) == (book.legs[1],)
+    assert _closing_scope_rows(
+        book.legs,
+        active_symbol=book.legs[1].symbol,
+        scope=CLOSE_SCOPE_SELECTED,
+    ) == book.legs
+
+
+def test_closing_price_rail_uses_executable_composite_bid_mid_ask() -> None:
+    long_leg = _position(
+        symbol="NVDA  260918P00210000",
+        quantity=1,
+        mark=1.50,
+    )
+    long_leg.update({"bid": 1.40, "ask": 1.60})
+    short_leg = _position(
+        symbol="NVDA  260918P00200000",
+        quantity=-1,
+        mark=0.50,
+        strike=200.0,
+    )
+    short_leg.update({"bid": 0.40, "ask": 0.60})
+    draft = build_closing_order_draft(
+        option_position_book(_snapshot([long_leg, short_leg])),
+        (str(long_leg["symbol"]), str(short_leg["symbol"])),
+    )
+
+    assert draft.api_order_type == "NET_CREDIT"
+    assert _closing_price_rail(draft) == pytest.approx((0.80, 1.00, 1.20))
+
+
+def test_closing_price_rail_reverses_a_short_leg_to_buy_prices() -> None:
+    short_leg = _position(
+        symbol="NVDA  260918P00210000",
+        quantity=-1,
+        mark=0.60,
+    )
+    short_leg.update({"bid": 0.50, "ask": 0.70})
+    draft = build_closing_order_draft(
+        option_position_book(_snapshot([short_leg])),
+        (str(short_leg["symbol"]),),
+    )
+
+    assert draft.legs[0].instruction == "BUY_TO_CLOSE"
+    assert _closing_price_rail(draft) == pytest.approx((0.50, 0.60, 0.70))
+
+
+def test_closing_price_rail_orients_a_net_debit_independent_of_first_leg_action() -> None:
+    long_leg = _position(
+        symbol="NVDA  260918P00200000",
+        quantity=1,
+        mark=0.50,
+        strike=200.0,
+    )
+    long_leg.update({"bid": 0.40, "ask": 0.60})
+    short_leg = _position(
+        symbol="NVDA  260918P00210000",
+        quantity=-1,
+        mark=1.50,
+        strike=210.0,
+    )
+    short_leg.update({"bid": 1.40, "ask": 1.60})
+    draft = build_closing_order_draft(
+        option_position_book(_snapshot([long_leg, short_leg])),
+        (str(long_leg["symbol"]), str(short_leg["symbol"])),
+    )
+
+    assert draft.api_order_type == "NET_DEBIT"
+    assert draft.legs[0].instruction == "SELL_TO_CLOSE"
+    assert _closing_price_rail(draft) == pytest.approx((0.80, 1.00, 1.20))
 
 
 def test_option_position_book_preserves_exact_contracts_and_complete_summaries() -> None:
@@ -203,6 +301,16 @@ def test_single_short_option_builds_exact_buy_to_close_limit_payload() -> None:
         ],
         "price": 0.55,
     }
+
+
+def test_close_cash_estimate_uses_the_displayed_cent_rounded_limit() -> None:
+    symbol = "NVDA  260918P00210000"
+    draft = build_closing_order_draft(
+        option_position_book(_snapshot([_position(symbol=symbol, quantity=1, mark=1.205)])),
+        [symbol],
+    )
+
+    assert draft.estimated_cash_effect == pytest.approx(draft.limit_price * 100)
 
 
 def test_selected_long_and_short_legs_preserve_ratio_as_one_net_credit() -> None:

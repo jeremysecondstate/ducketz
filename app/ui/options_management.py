@@ -44,6 +44,8 @@ ALL_SYMBOLS = "All symbols"
 ALL_EXPIRATIONS = "All expirations"
 SELECTED_ROW = "#174f86"
 ALTERNATE_ROW = "#0e1a2b"
+CLOSE_SCOPE_ENTIRE = "entire"
+CLOSE_SCOPE_SELECTED = "selected"
 
 
 def _selection_after_click(
@@ -86,9 +88,50 @@ def _initial_position_selection(
     return (0,) if rows else ()
 
 
+def _closing_scope_rows(
+    selected: tuple[OptionPositionLeg, ...],
+    *,
+    active_symbol: str | None,
+    scope: str,
+) -> tuple[OptionPositionLeg, ...]:
+    if not selected:
+        return ()
+    if scope == CLOSE_SCOPE_SELECTED:
+        return selected
+    active = next((leg for leg in selected if leg.symbol == active_symbol), None)
+    return (active or selected[0],)
+
+
+def _closing_price_rail(draft: ClosingOrderDraft) -> tuple[float, float, float] | None:
+    """Return a synthetic bid/mid/ask rail for the draft's net limit price."""
+    low_cash = 0.0
+    high_cash = 0.0
+    for leg in draft.legs:
+        if leg.bid is None or leg.ask is None or leg.bid < 0 or leg.ask < leg.bid:
+            return None
+        ratio = leg.ratio_quantity
+        if leg.instruction.startswith("SELL"):
+            low_cash += leg.bid * ratio
+            high_cash += leg.ask * ratio
+        else:
+            low_cash -= leg.ask * ratio
+            high_cash -= leg.bid * ratio
+
+    if draft.api_order_type == "LIMIT":
+        price_sign = 1.0 if draft.legs[0].instruction.startswith("SELL") else -1.0
+    else:
+        price_sign = 1.0 if draft.api_order_type == "NET_CREDIT" else -1.0
+    prices = sorted((price_sign * low_cash, price_sign * high_cash))
+    if prices[0] <= 0:
+        return None
+    bid, ask = prices
+    return round(bid, 2), round((bid + ask) / 2.0, 2), round(ask, 2)
+
+
 class _ExactLegTable(tk.Frame):
     _HEADER_HEIGHT = 32
     _ROW_HEIGHT = 48
+    _DETAIL_HEIGHT = 70
     _COLUMNS = (
         ("position", "Position / exact OCC", 225, "w"),
         ("quantity", "Qty", 46, "e"),
@@ -117,6 +160,7 @@ class _ExactLegTable(tk.Frame):
         self._rows: tuple[OptionPositionLeg, ...] = ()
         self._selected: tuple[int, ...] = ()
         self._anchor: int | None = None
+        self._expanded_symbols: set[str] = set()
         self._on_selection_changed = on_selection_changed
         self._redraw_pending = False
 
@@ -160,6 +204,8 @@ class _ExactLegTable(tk.Frame):
         self.body.bind("<Button-1>", self._clicked)
         self.body.bind("<MouseWheel>", self._mouse_wheel)
         self.body.bind("<Control-a>", self._select_all)
+        self.body.bind("<Return>", self._toggle_active)
+        self.body.bind("<space>", self._toggle_active)
 
     def set_rows(
         self,
@@ -167,9 +213,14 @@ class _ExactLegTable(tk.Frame):
         *,
         preferred_symbols: tuple[str, ...] = (),
     ) -> tuple[OptionPositionLeg, ...]:
+        had_rows = bool(self._rows)
         self._rows = rows
         self._selected = _initial_position_selection(rows, preferred_symbols)
         self._anchor = self._selected[0] if self._selected else None
+        visible_symbols = {row.symbol for row in rows}
+        self._expanded_symbols.intersection_update(visible_symbols)
+        if not had_rows and self._anchor is not None:
+            self._expanded_symbols.add(rows[self._anchor].symbol)
         self.body.yview_moveto(0)
         self._redraw()
         return self.selected_rows()
@@ -179,6 +230,21 @@ class _ExactLegTable(tk.Frame):
 
     def selected_symbols(self) -> tuple[str, ...]:
         return tuple(row.symbol for row in self.selected_rows())
+
+    def active_row(self) -> OptionPositionLeg | None:
+        if self._anchor is None or self._anchor >= len(self._rows):
+            return None
+        return self._rows[self._anchor]
+
+    def _row_layout(self) -> tuple[tuple[int, int, int, int], ...]:
+        layout: list[tuple[int, int, int, int]] = []
+        top = 0
+        for index, leg in enumerate(self._rows):
+            main_bottom = top + self._ROW_HEIGHT
+            bottom = main_bottom + (self._DETAIL_HEIGHT if leg.symbol in self._expanded_symbols else 0)
+            layout.append((index, top, main_bottom, bottom))
+            top = bottom
+        return tuple(layout)
 
     def _schedule_redraw(self, _event: object = None) -> None:
         if self._redraw_pending:
@@ -220,7 +286,9 @@ class _ExactLegTable(tk.Frame):
             )
             left = right
         total_width = max(left, viewport)
-        total_height = max(len(self._rows) * self._ROW_HEIGHT, self.body.winfo_height())
+        layout = self._row_layout()
+        content_height = layout[-1][3] if layout else 0
+        total_height = max(content_height, self.body.winfo_height())
         self.header.configure(scrollregion=(0, 0, total_width, self._HEADER_HEIGHT))
         self.body.configure(scrollregion=(0, 0, total_width, total_height))
         if not self._rows:
@@ -232,15 +300,23 @@ class _ExactLegTable(tk.Frame):
                 font=("Segoe UI", 10),
             )
             return
-        for index, leg in enumerate(self._rows):
-            top = index * self._ROW_HEIGHT
-            bottom = top + self._ROW_HEIGHT
+        for index, top, main_bottom, bottom in layout:
+            leg = self._rows[index]
             selected = index in self._selected
             background = SELECTED_ROW if selected else (SURFACE if index % 2 == 0 else ALTERNATE_ROW)
-            self.body.create_rectangle(0, top, total_width, bottom, fill=background, outline="")
-            self.body.create_line(0, bottom, total_width, bottom, fill=BORDER)
+            self.body.create_rectangle(0, top, total_width, main_bottom, fill=background, outline="")
+            self.body.create_line(0, main_bottom, total_width, main_bottom, fill=BORDER)
             for name, cell_left, cell_right, anchor in bounds:
                 if name == "position":
+                    expanded = leg.symbol in self._expanded_symbols
+                    self.body.create_text(
+                        cell_left + 14,
+                        top + self._ROW_HEIGHT / 2,
+                        text="⌄" if expanded else "›",
+                        anchor="center",
+                        fill="#dce7f5" if selected else MUTED_TEXT,
+                        font=("Segoe UI Symbol", 13, "bold"),
+                    )
                     descriptor = " · ".join(
                         part
                         for part in (
@@ -251,7 +327,7 @@ class _ExactLegTable(tk.Frame):
                         if part
                     )
                     self.body.create_text(
-                        cell_left + 10,
+                        cell_left + 30,
                         top + 15,
                         text=descriptor,
                         anchor="w",
@@ -259,7 +335,7 @@ class _ExactLegTable(tk.Frame):
                         font=("Segoe UI", 10, "bold"),
                     )
                     self.body.create_text(
-                        cell_left + 10,
+                        cell_left + 30,
                         top + 34,
                         text=leg.symbol or "Identity unavailable",
                         anchor="w",
@@ -276,6 +352,75 @@ class _ExactLegTable(tk.Frame):
                     fill=color,
                     font=("Segoe UI", 9, "bold" if name in {"open_pnl", "day_pnl", "action"} else "normal"),
                 )
+            if bottom > main_bottom:
+                self._draw_expanded_leg(
+                    leg,
+                    bounds,
+                    top=main_bottom,
+                    bottom=bottom,
+                    total_width=total_width,
+                    selected=selected,
+                )
+            self.body.create_line(0, bottom, total_width, bottom, fill=BORDER)
+
+    def _draw_expanded_leg(
+        self,
+        leg: OptionPositionLeg,
+        bounds: list[tuple[str, int, int, str]],
+        *,
+        top: int,
+        bottom: int,
+        total_width: int,
+        selected: bool,
+    ) -> None:
+        background = "#0c2035" if selected else TABLE_FIELD
+        self.body.create_rectangle(0, top, total_width, bottom, fill=background, outline="")
+        self.body.create_text(
+            30,
+            top + 15,
+            text="Contract details",
+            anchor="w",
+            fill=MUTED_TEXT,
+            font=("Segoe UI", 8, "bold"),
+        )
+        for name, cell_left, cell_right, anchor in bounds:
+            if name == "position":
+                action = "BUY" if leg.net_quantity > 0 else "SELL"
+                action_color = SUCCESS if action == "BUY" else DANGER
+                self.body.create_text(
+                    cell_left + 30,
+                    top + 46,
+                    text=action,
+                    anchor="w",
+                    fill=action_color,
+                    font=("Segoe UI", 8, "bold"),
+                )
+                self.body.create_text(
+                    cell_left + 70,
+                    top + 46,
+                    text=(
+                        f"{leg.underlying_symbol}  {_short_expiration(leg.expiration)}  "
+                        f"{leg.strike:g}  {leg.option_type.title()}"
+                    ),
+                    anchor="w",
+                    fill=TEXT,
+                    font=("Segoe UI", 8),
+                )
+                continue
+            if name == "quantity":
+                value, color = _number(leg.absolute_quantity), TEXT
+            elif name == "action":
+                value, color = "—", MUTED_TEXT
+            else:
+                value, color = self._cell_value(name, leg)
+            self.body.create_text(
+                self._text_x(cell_left, cell_right, anchor),
+                top + 46,
+                text=value,
+                anchor=self._canvas_anchor(anchor),
+                fill=color,
+                font=("Segoe UI", 8, "bold" if name == "action" else "normal"),
+            )
 
     @staticmethod
     def _cell_value(name: str, leg: OptionPositionLeg) -> tuple[str, str]:
@@ -312,7 +457,15 @@ class _ExactLegTable(tk.Frame):
     def _clicked(self, event: object) -> str:
         self.body.focus_set()
         y = self.body.canvasy(getattr(event, "y", 0))
-        clicked = int(y // self._ROW_HEIGHT)
+        hit = next(
+            ((index, top, main_bottom) for index, top, main_bottom, bottom in self._row_layout() if top <= y < bottom),
+            None,
+        )
+        if hit is None:
+            return "break"
+        clicked, _top, main_bottom = hit
+        previous_selection = self._selected
+        previous_anchor = self._anchor
         state = int(getattr(event, "state", 0))
         self._selected, self._anchor = _selection_after_click(
             self._selected,
@@ -322,9 +475,25 @@ class _ExactLegTable(tk.Frame):
             extend=bool(state & 0x0001),
             toggle=bool(state & 0x0004),
         )
+        if y < main_bottom and self.body.canvasx(getattr(event, "x", 0)) < 30:
+            self._toggle_expanded(clicked)
         self._redraw()
-        self._on_selection_changed(self.selected_rows())
+        if self._selected != previous_selection or self._anchor != previous_anchor:
+            self._on_selection_changed(self.selected_rows())
         return "break"
+
+    def _toggle_active(self, _event: object = None) -> str:
+        if self._anchor is not None:
+            self._toggle_expanded(self._anchor)
+            self._redraw()
+        return "break"
+
+    def _toggle_expanded(self, index: int) -> None:
+        symbol = self._rows[index].symbol
+        if symbol in self._expanded_symbols:
+            self._expanded_symbols.remove(symbol)
+        else:
+            self._expanded_symbols.add(symbol)
 
     def _select_all(self, _event: object) -> str:
         self._selected = tuple(range(len(self._rows)))
@@ -486,10 +655,19 @@ class OptionsManagementView:
             master=root,
             value="Selected exact positions · highlighted rows only",
         )
+        self.close_scope_mode = tk.StringVar(master=root, value=CLOSE_SCOPE_ENTIRE)
+        self.close_entire_detail = tk.StringVar(master=root, value="Close the active exact position")
+        self.close_selected_detail = tk.StringVar(master=root, value="Choose multiple highlighted contracts")
         self.close_order_type = tk.StringVar(master=root, value="—")
         self.close_limit_price = tk.StringVar(master=root)
         self.close_duration = tk.StringVar(master=root, value=DAY_ONLY)
+        self.close_bid_label = tk.StringVar(master=root, value="Bid —")
+        self.close_mid_label = tk.StringVar(master=root, value="Mid —")
+        self.close_ask_label = tk.StringVar(master=root, value="Ask —")
+        self.close_open_pnl = tk.StringVar(master=root, value="—")
+        self.close_estimate_title = tk.StringVar(master=root, value="Est. proceeds / cost")
         self.close_estimate = tk.StringVar(master=root)
+        self.close_fees = tk.StringVar(master=root, value="At broker review")
         self.close_estimate_source = tk.StringVar(master=root)
         self.order_source_status = tk.StringVar(master=root, value="Working orders from the latest account refresh")
         self.order_detail = tk.StringVar(master=root, value="Select an option order to inspect every leg.")
@@ -507,6 +685,11 @@ class OptionsManagementView:
         self.close_estimate_label: ttk.Label | None = None
         self.review_close_button: ttk.Button | None = None
         self.close_limit_entry: ttk.Entry | None = None
+        self.close_duration_box: ttk.Combobox | None = None
+        self.close_price_scale: tk.Scale | None = None
+        self._scope_controls: dict[str, tuple[tk.Frame, tk.Radiobutton, tk.Label]] = {}
+        self._close_draft: ClosingOrderDraft | None = None
+        self._ticket_updating = False
         self.order_table: ttk.Treeview | None = None
         self.order_legs_table: ttk.Treeview | None = None
         self.cancel_order_button: ttk.Button | None = None
@@ -703,7 +886,18 @@ class OptionsManagementView:
         outer = ttk.Frame(parent, padding=(2, 8, 2, 2), style="ManagementPage.TFrame")
         outer.pack(fill=tk.BOTH, expand=True)
 
-        cards = ttk.Frame(outer, style="ManagementPage.TFrame")
+        workspace = ttk.Frame(outer, style="ManagementPage.TFrame")
+        workspace.pack(fill=tk.BOTH, expand=True)
+        workspace.grid_columnconfigure(0, weight=13, uniform="management-workspace", minsize=620)
+        workspace.grid_columnconfigure(1, weight=7, uniform="management-workspace", minsize=400)
+        workspace.grid_rowconfigure(0, weight=1)
+
+        positions_stack = ttk.Frame(workspace, style="ManagementPage.TFrame")
+        manage_surface = ttk.Frame(workspace, padding=(11, 9), style="ManagementCard.TFrame")
+        positions_stack.grid(row=0, column=0, sticky=tk.NSEW, padx=(0, 4))
+        manage_surface.grid(row=0, column=1, sticky=tk.NSEW, padx=(4, 0))
+
+        cards = ttk.Frame(positions_stack, style="ManagementPage.TFrame")
         cards.pack(fill=tk.X, pady=(0, 9))
         for column in range(4):
             cards.grid_columnconfigure(column, weight=1, uniform="summary")
@@ -712,10 +906,11 @@ class OptionsManagementView:
         self._summary_card(cards, "Theta / day", "day", 2)
         self._summary_card(cards, "Available funds", "funds", 3)
 
-        filters = ttk.Frame(outer, padding=(10, 7), style="ManagementCard.TFrame")
+        filters = ttk.Frame(positions_stack, padding=(10, 7), style="ManagementCard.TFrame")
         filters.pack(fill=tk.X, pady=(0, 8))
-        for column, weight in enumerate((1, 1, 1, 2)):
-            filters.grid_columnconfigure(column, weight=weight)
+        for column in range(3):
+            filters.grid_columnconfigure(column, weight=1, uniform="position-filter")
+        filters.grid_columnconfigure(3, weight=1)
 
         ttk.Label(filters, text="Account", style="ManagementMuted.TLabel").grid(
             row=0, column=0, sticky=tk.W, padx=(0, 8)
@@ -753,9 +948,10 @@ class OptionsManagementView:
         self._position_expiration_box = expiration_box
         ttk.Label(
             filters,
-            text="Exact broker positions · no inferred strategy grouping",
+            text="Exact broker positions · ungrouped",
             style="ManagementMuted.TLabel",
             justify=tk.RIGHT,
+            wraplength=180,
         ).grid(
             row=0,
             column=3,
@@ -764,15 +960,8 @@ class OptionsManagementView:
             padx=(14, 0),
         )
 
-        workspace = ttk.Frame(outer, style="ManagementPage.TFrame")
-        workspace.pack(fill=tk.BOTH, expand=True)
-        workspace.grid_columnconfigure(0, weight=13, uniform="management-workspace", minsize=620)
-        workspace.grid_columnconfigure(1, weight=7, uniform="management-workspace", minsize=400)
-        workspace.grid_rowconfigure(0, weight=1)
-        position_surface = ttk.Frame(workspace, padding=(10, 9), style="ManagementCard.TFrame")
-        manage_surface = ttk.Frame(workspace, padding=(11, 9), style="ManagementCard.TFrame")
-        position_surface.grid(row=0, column=0, sticky=tk.NSEW, padx=(0, 4))
-        manage_surface.grid(row=0, column=1, sticky=tk.NSEW, padx=(4, 0))
+        position_surface = ttk.Frame(positions_stack, padding=(10, 9), style="ManagementCard.TFrame")
+        position_surface.pack(fill=tk.BOTH, expand=True)
         self._build_position_table(position_surface)
         self._build_manage_panel(manage_surface)
 
@@ -824,14 +1013,25 @@ class OptionsManagementView:
                 padx=(3, 0 if index == 2 else 3),
             )
 
-        scope = ttk.Frame(parent, padding=(8, 5), style="ManagementInset.TFrame")
-        scope.pack(fill=tk.X, pady=(0, 7))
-        ttk.Label(scope, text="●", style="ManagementInsetAccent.TLabel").pack(side=tk.LEFT)
-        ttk.Label(
-            scope,
-            textvariable=self.close_scope,
-            style="ManagementInsetBody.TLabel",
-        ).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(7, 0))
+        ttk.Label(parent, text="Close scope", style="ManagementMuted.TLabel").pack(anchor=tk.W)
+        scope_choices = ttk.Frame(parent, style="ManagementCard.TFrame")
+        scope_choices.pack(fill=tk.X, pady=(4, 7))
+        for column in range(2):
+            scope_choices.grid_columnconfigure(column, weight=1, uniform="close-scope")
+        self._scope_choice(
+            scope_choices,
+            column=0,
+            value=CLOSE_SCOPE_ENTIRE,
+            title="Entire position",
+            detail=self.close_entire_detail,
+        )
+        self._scope_choice(
+            scope_choices,
+            column=1,
+            value=CLOSE_SCOPE_SELECTED,
+            title="Selected contracts",
+            detail=self.close_selected_detail,
+        )
 
         ttk.Label(parent, text="Closing order preview", style="ManagementSection.TLabel").pack(anchor=tk.W)
         preview = _ClosingLegPreview(parent)
@@ -850,6 +1050,8 @@ class OptionsManagementView:
         self._term_label(terms, "Limit price", 0, 1)
         limit_entry = ttk.Entry(terms, textvariable=self.close_limit_price, state=tk.DISABLED, width=10)
         limit_entry.grid(row=1, column=1, sticky=tk.EW, padx=(5, 0), pady=(3, 5))
+        limit_entry.bind("<Return>", self._close_terms_changed)
+        limit_entry.bind("<FocusOut>", self._close_terms_changed)
         self.close_limit_entry = limit_entry
         self._term_label(terms, "Time in force", 0, 2)
         duration_box = ttk.Combobox(
@@ -860,35 +1062,145 @@ class OptionsManagementView:
             width=10,
         )
         duration_box.grid(row=1, column=2, sticky=tk.EW, padx=(5, 0), pady=(3, 5))
+        duration_box.bind("<<ComboboxSelected>>", self._close_terms_changed)
+        self.close_duration_box = duration_box
+
+        rail = ttk.Frame(parent, padding=(8, 5), style="ManagementInset.TFrame")
+        rail.pack(fill=tk.X, pady=(4, 0))
+        rail.grid_columnconfigure(0, weight=1)
+        rail.grid_columnconfigure(1, weight=1)
+        ttk.Label(rail, textvariable=self.close_bid_label, style="ManagementInsetMuted.TLabel").grid(
+            row=0, column=0, sticky=tk.W
+        )
+        ttk.Label(rail, textvariable=self.close_ask_label, style="ManagementInsetMuted.TLabel").grid(
+            row=0, column=1, sticky=tk.E
+        )
+        price_scale = tk.Scale(
+            rail,
+            from_=0.01,
+            to=1.0,
+            resolution=0.01,
+            showvalue=False,
+            orient=tk.HORIZONTAL,
+            command=self._price_scale_changed,
+            background=TABLE_FIELD,
+            activebackground="#eaf2fb",
+            troughcolor=BORDER,
+            highlightthickness=0,
+            borderwidth=0,
+            sliderlength=14,
+            width=7,
+            state=tk.DISABLED,
+        )
+        price_scale.grid(row=1, column=0, columnspan=2, sticky=tk.EW, pady=(2, 0))
+        ttk.Label(rail, textvariable=self.close_mid_label, style="ManagementInsetMuted.TLabel").grid(
+            row=2, column=0, columnspan=2
+        )
+        self.close_price_scale = price_scale
 
         impact = ttk.Frame(parent, padding=(8, 5), style="ManagementInset.TFrame")
         impact.pack(fill=tk.X, pady=(4, 0))
-        impact.grid_columnconfigure(1, weight=1)
         ttk.Label(impact, text="Estimated impact", style="ManagementInsetMuted.TLabel").grid(
-            row=0, column=0, sticky=tk.W
+            row=0, column=0, columnspan=3, sticky=tk.W
+        )
+        for column in range(3):
+            impact.grid_columnconfigure(column, weight=1, uniform="close-impact")
+        ttk.Label(impact, text="Open P/L (current)", style="ManagementInsetMuted.TLabel").grid(
+            row=1, column=0, pady=(6, 1)
+        )
+        ttk.Label(impact, textvariable=self.close_estimate_title, style="ManagementInsetMuted.TLabel").grid(
+            row=1, column=1, pady=(6, 1)
+        )
+        ttk.Label(impact, text="Fees est.", style="ManagementInsetMuted.TLabel").grid(
+            row=1, column=2, pady=(6, 1)
+        )
+        ttk.Label(impact, textvariable=self.close_open_pnl, style="ManagementInsetBody.TLabel").grid(
+            row=2, column=0
         )
         estimate = ttk.Label(
             impact,
             textvariable=self.close_estimate,
             style="ManagementInsetBody.TLabel",
-            justify=tk.RIGHT,
         )
-        estimate.grid(row=0, column=1, sticky=tk.E, padx=(10, 0))
+        estimate.grid(row=2, column=1)
+        ttk.Label(impact, textvariable=self.close_fees, style="ManagementInsetBody.TLabel").grid(
+            row=2, column=2
+        )
         ttk.Label(
             impact,
             textvariable=self.close_estimate_source,
             style="ManagementInsetMuted.TLabel",
-        ).grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(2, 0))
+            wraplength=390,
+            justify=tk.LEFT,
+        ).grid(row=3, column=0, columnspan=3, sticky=tk.W, pady=(6, 0))
         self.close_estimate_label = estimate
+
+        actions = ttk.Frame(parent, style="ManagementCard.TFrame")
+        actions.pack(fill=tk.X, pady=(7, 0))
+        actions.grid_columnconfigure(0, weight=1)
+        actions.grid_columnconfigure(1, weight=1)
+        ttk.Button(
+            actions,
+            text="Analyze",
+            state=tk.DISABLED,
+            style="ManagementSegment.TButton",
+        ).grid(row=0, column=0, sticky=tk.EW, padx=(0, 4))
         review = ttk.Button(
-            parent,
+            actions,
             text="Review closing order",
             style="ManagementPrimary.TButton",
             command=self._review_closing_order,
             state=tk.DISABLED,
         )
-        review.pack(fill=tk.X, pady=(7, 0))
+        review.grid(row=0, column=1, sticky=tk.EW, padx=(4, 0))
         self.review_close_button = review
+
+    def _scope_choice(
+        self,
+        parent: ttk.Frame,
+        *,
+        column: int,
+        value: str,
+        title: str,
+        detail: tk.StringVar,
+    ) -> None:
+        card = tk.Frame(
+            parent,
+            background=TABLE_FIELD,
+            highlightbackground=BORDER,
+            highlightcolor=ACCENT,
+            highlightthickness=1,
+            padx=6,
+            pady=4,
+        )
+        card.grid(row=0, column=column, sticky=tk.NSEW, padx=(0, 4) if column == 0 else (4, 0))
+        radio = tk.Radiobutton(
+            card,
+            text=title,
+            variable=self.close_scope_mode,
+            value=value,
+            command=self._close_scope_changed,
+            anchor=tk.W,
+            background=TABLE_FIELD,
+            foreground=TEXT,
+            activebackground=TABLE_FIELD,
+            activeforeground=TEXT,
+            selectcolor=SURFACE_ALT,
+            font=("Segoe UI", 9, "bold"),
+            borderwidth=0,
+            highlightthickness=0,
+        )
+        radio.pack(fill=tk.X)
+        detail_label = tk.Label(
+            card,
+            textvariable=detail,
+            anchor=tk.W,
+            background=TABLE_FIELD,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 8),
+        )
+        detail_label.pack(fill=tk.X, padx=(22, 0), pady=(0, 2))
+        self._scope_controls[value] = (card, radio, detail_label)
 
     @staticmethod
     def _term_label(parent: ttk.Frame, text: str, row: int, column: int) -> None:
@@ -1058,11 +1370,17 @@ class OptionsManagementView:
             self.position_status.set("0 positions")
         self.position_updated_status.set(f"Updated {_clock_timestamp(self.book.observed_at)}")
         if selected:
+            self.close_scope_mode.set(
+                CLOSE_SCOPE_SELECTED if len(selected) > 1 else CLOSE_SCOPE_ENTIRE
+            )
             self._render_close_selection(selected)
 
     def _position_selection_changed(self, selected: tuple[OptionPositionLeg, ...]) -> None:
         if self.book is None:
             return
+        self.close_scope_mode.set(
+            CLOSE_SCOPE_SELECTED if len(selected) > 1 else CLOSE_SCOPE_ENTIRE
+        )
         self._render_close_selection(selected)
 
     def _render_close_selection(self, selected: tuple[OptionPositionLeg, ...]) -> None:
@@ -1071,8 +1389,10 @@ class OptionsManagementView:
         if not selected or self.book is None:
             self._clear_manage_panel()
             return
-        if len(selected) == 1:
-            leg = selected[0]
+        self._update_scope_controls(selected)
+        scoped = self._scoped_position_rows(selected)
+        if len(scoped) == 1:
+            leg = scoped[0]
             dte = days_to_expiration(leg.expiration, leg.observed_at)
             self.management_title.set("Manage position")
             self.management_detail.set(
@@ -1081,31 +1401,44 @@ class OptionsManagementView:
             )
             self.close_scope.set("Exact position · closes the highlighted contract")
         else:
-            self.management_title.set(f"Manage {len(selected)} exact positions")
+            self.management_title.set(f"Manage {len(scoped)} exact positions")
             self.management_detail.set(
-                f"{selected[0].underlying_symbol} · custom close · no inferred strategy grouping"
+                f"{scoped[0].underlying_symbol} · custom close · no inferred strategy grouping"
             )
-            self.close_scope.set(f"{len(selected)} exact positions · highlighted rows only")
+            self.close_scope.set(f"{len(scoped)} exact positions · highlighted rows only")
         try:
             draft = build_closing_order_draft(
                 self.book,
-                (leg.symbol for leg in selected),
+                (leg.symbol for leg in scoped),
                 duration=self.close_duration.get(),
             )
         except Exception as exc:
-            self.close_order_type.set("Unavailable")
-            self.close_limit_price.set("")
-            self.close_estimate.set(str(exc))
-            self.close_estimate_source.set("")
-            if self.close_estimate_label is not None:
-                self.close_estimate_label.configure(style="ManagementInsetBody.TLabel")
-            self._set_close_controls(False)
+            self._render_close_error(exc, scoped)
             return
+        self._apply_close_draft(draft, scoped)
+
+    def _apply_close_draft(
+        self,
+        draft: ClosingOrderDraft,
+        scoped: tuple[OptionPositionLeg, ...],
+    ) -> None:
+        self._close_draft = draft
+        self._ticket_updating = True
         self.close_order_type.set(draft.api_order_type.replace("_", " ").title())
         self.close_limit_price.set(f"{draft.limit_price:.2f}")
-        direction = "Estimated proceeds" if draft.estimated_cash_effect >= 0 else "Estimated cost"
-        self.close_estimate.set(f"{direction}: {_money(abs(draft.estimated_cash_effect))}")
-        self.close_estimate_source.set(draft.price_source)
+        self.close_estimate_title.set(
+            "Est. proceeds" if draft.estimated_cash_effect >= 0 else "Est. cost"
+        )
+        self.close_estimate.set(_money(abs(draft.estimated_cash_effect)))
+        pnl_values = tuple(leg.unrealized_pnl for leg in scoped)
+        open_pnl = None if any(value is None for value in pnl_values) else sum(
+            float(value) for value in pnl_values if value is not None
+        )
+        self.close_open_pnl.set(_money(open_pnl))
+        self.close_fees.set("At broker review")
+        self.close_estimate_source.set(
+            f"{draft.price_source} · fees and broker buying-power impact are not locally estimated."
+        )
         if self.close_estimate_label is not None:
             self.close_estimate_label.configure(
                 style=(
@@ -1117,11 +1450,129 @@ class OptionsManagementView:
         if self.close_preview is not None:
             self.close_preview.set_legs(draft.legs)
         self._set_close_controls(True)
+        self._configure_price_rail(draft)
+        self._ticket_updating = False
+
+    def _render_close_error(
+        self,
+        exc: Exception,
+        scoped: tuple[OptionPositionLeg, ...],
+    ) -> None:
+        self._close_draft = None
+        self.close_order_type.set("Unavailable")
+        self.close_limit_price.set("")
+        self.close_estimate_title.set("Close unavailable")
+        self.close_estimate.set("—")
+        pnl_values = tuple(leg.unrealized_pnl for leg in scoped)
+        open_pnl = None if any(value is None for value in pnl_values) else sum(
+            float(value) for value in pnl_values if value is not None
+        )
+        self.close_open_pnl.set(_money(open_pnl))
+        self.close_fees.set("—")
+        self.close_estimate_source.set(str(exc))
+        self._clear_price_rail()
+        if self.close_estimate_label is not None:
+            self.close_estimate_label.configure(style="ManagementInsetBody.TLabel")
+        self._set_close_controls(False)
+
+    def _configure_price_rail(self, draft: ClosingOrderDraft) -> None:
+        rail = _closing_price_rail(draft)
+        if rail is None or self.close_price_scale is None:
+            self._clear_price_rail()
+            return
+        bid, midpoint, ask = rail
+        self.close_bid_label.set(f"Bid {_money(bid)}")
+        self.close_mid_label.set(f"Mid {_money(midpoint)}")
+        self.close_ask_label.set(f"Ask {_money(ask)}")
+        scale_from = bid
+        scale_to = ask
+        if scale_to <= scale_from:
+            scale_from = max(0.01, bid - 0.01)
+            scale_to = ask + 0.01
+        self.close_price_scale.configure(
+            from_=scale_from,
+            to=scale_to,
+            state=tk.NORMAL,
+        )
+        self.close_price_scale.set(min(max(draft.limit_price, scale_from), scale_to))
+
+    def _clear_price_rail(self) -> None:
+        self.close_bid_label.set("Bid —")
+        self.close_mid_label.set("Mid —")
+        self.close_ask_label.set("Ask —")
+        if self.close_price_scale is not None:
+            self.close_price_scale.configure(state=tk.DISABLED)
+
+    def _price_scale_changed(self, value: str) -> None:
+        if self._ticket_updating or self.book is None:
+            return
+        self._reprice_close(value)
+
+    def _close_terms_changed(self, _event: object = None) -> str | None:
+        if self._ticket_updating or self.book is None:
+            return None
+        self._reprice_close(self.close_limit_price.get())
+        return "break" if getattr(_event, "keysym", "") == "Return" else None
+
+    def _reprice_close(self, limit_price: object) -> None:
+        scoped = self._scoped_position_rows()
+        if not scoped or self.book is None:
+            return
+        try:
+            draft = build_closing_order_draft(
+                self.book,
+                (leg.symbol for leg in scoped),
+                duration=self.close_duration.get(),
+                limit_price=limit_price,
+            )
+        except Exception as exc:
+            self.close_estimate_title.set("Invalid ticket")
+            self.close_estimate.set("—")
+            self.close_estimate_source.set(str(exc))
+            if self.review_close_button is not None:
+                self.review_close_button.configure(state=tk.DISABLED)
+            return
+        self._apply_close_draft(draft, scoped)
+
+    def _close_scope_changed(self) -> None:
+        selected = self.position_table.selected_rows() if self.position_table is not None else ()
+        if selected:
+            self._render_close_selection(selected)
+
+    def _update_scope_controls(self, selected: tuple[OptionPositionLeg, ...]) -> None:
+        self.close_entire_detail.set("Close active OCC contract")
+        self.close_selected_detail.set(
+            f"Close all {len(selected)} highlighted contracts"
+            if len(selected) > 1
+            else "Highlight 2+ contracts"
+        )
+        for value, (card, radio, detail) in self._scope_controls.items():
+            enabled = bool(selected) and (value != CLOSE_SCOPE_SELECTED or len(selected) > 1)
+            radio.configure(state=tk.NORMAL if enabled else tk.DISABLED)
+            detail.configure(foreground=MUTED_TEXT if enabled else "#536174")
+            chosen = enabled and self.close_scope_mode.get() == value
+            card.configure(highlightbackground=ACCENT if chosen else BORDER)
+
+    def _scoped_position_rows(
+        self,
+        selected: tuple[OptionPositionLeg, ...] | None = None,
+    ) -> tuple[OptionPositionLeg, ...]:
+        if self.position_table is None:
+            return ()
+        current = self.position_table.selected_rows() if selected is None else selected
+        active = self.position_table.active_row()
+        return _closing_scope_rows(
+            current,
+            active_symbol=active.symbol if active is not None else None,
+            scope=self.close_scope_mode.get(),
+        )
 
     def _set_close_controls(self, enabled: bool) -> None:
         state = tk.NORMAL if enabled else tk.DISABLED
         if self.close_limit_entry is not None:
             self.close_limit_entry.configure(state=state)
+        if self.close_duration_box is not None:
+            self.close_duration_box.configure(state="readonly" if enabled else tk.DISABLED)
         if self.review_close_button is not None:
             self.review_close_button.configure(state=state)
 
@@ -1129,10 +1580,17 @@ class OptionsManagementView:
         self.management_title.set("Select exact option legs")
         self.management_detail.set("Use Ctrl or Shift to select more than one ungrouped leg.")
         self.close_scope.set("Selected exact positions · highlighted rows only")
+        self.close_scope_mode.set(CLOSE_SCOPE_ENTIRE)
         self.close_order_type.set("—")
         self.close_limit_price.set("")
+        self.close_open_pnl.set("—")
+        self.close_estimate_title.set("Est. proceeds / cost")
         self.close_estimate.set("")
+        self.close_fees.set("At broker review")
         self.close_estimate_source.set("")
+        self._close_draft = None
+        self._clear_price_rail()
+        self._update_scope_controls(())
         if self.close_estimate_label is not None:
             self.close_estimate_label.configure(style="ManagementInsetBody.TLabel")
         if self.close_preview is not None:
@@ -1140,9 +1598,7 @@ class OptionsManagementView:
         self._set_close_controls(False)
 
     def _selected_position_symbols(self) -> tuple[str, ...]:
-        if self.position_table is None:
-            return ()
-        return self.position_table.selected_symbols()
+        return tuple(leg.symbol for leg in self._scoped_position_rows())
 
     def _review_closing_order(self) -> None:
         if self.book is None:
