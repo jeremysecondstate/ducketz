@@ -56,15 +56,15 @@ from app.ui.theme import (
 
 
 _TEMPLATE_DETAILS = {
-    TARGET_STOP: ("Target + stop", "Take profit and stop loss", True),
-    SINGLE_TARGET: ("Single target", "Take profit only", True),
-    TWO_TARGETS: ("2 targets", "Scale out in two steps", False),
-    TRAILING_STOP: ("Trailing stop", "Follow price higher", False),
+    TARGET_STOP: ("Target + Stop", "Take profit and stop loss", True),
+    SINGLE_TARGET: ("Single Target", "Take profit only", True),
+    TWO_TARGETS: ("2 Targets", "Scale out in two steps", False),
+    TRAILING_STOP: ("Trailing Stop", "Follow price higher", False),
 }
 
 _TIME_EXIT_TYPE_LABELS = {
-    "Before expiration": BEFORE_EXPIRATION,
-    "Specific date and time": SPECIFIC_DATE_TIME,
+    "Before Expiration": BEFORE_EXPIRATION,
+    "Specific Date and Time": SPECIFIC_DATE_TIME,
 }
 _MARKET_CLOSE_OFFSETS = dict(MARKET_CLOSE_CHOICES)
 _TIMEZONE_CHOICES = (
@@ -208,7 +208,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.stop_percent = tk.StringVar(master=self, value="12")
         self.limit_offset = tk.StringVar(master=self, value="0.05")
         self.duration = tk.StringVar(master=self, value=GOOD_UNTIL_CANCELED)
-        self.status = tk.StringVar(master=self, value="No exit orders active")
+        self.status = tk.StringVar(master=self, value="No Exit Orders Active")
         self.builder_message = tk.StringVar(master=self)
         self.current_mark = tk.StringVar(master=self, value="—")
         self.target_price = tk.StringVar(master=self, value="—")
@@ -216,17 +216,17 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.protected_quantity = tk.StringVar(master=self, value="—")
         self.target_estimate = tk.StringVar(master=self, value="—")
         self.stop_estimate = tk.StringVar(master=self, value="—")
-        self.target_scope = tk.StringVar(master=self, value="Close entire position")
-        self.stop_scope = tk.StringVar(master=self, value="Close entire position")
-        self.saved_choice = tk.StringVar(master=self, value="Saved templates")
+        self.target_scope = tk.StringVar(master=self, value="Close Entire Position")
+        self.stop_scope = tk.StringVar(master=self, value="Close Entire Position")
+        self.saved_choice = tk.StringVar(master=self, value="Saved Templates")
         self.time_exit_configured = False
         self.time_exit_expanded = False
         self.time_exit_calendar_name = DEFAULT_OPTION_CALENDAR
-        self.time_exit_type = tk.StringVar(master=self, value="Before expiration")
+        self.time_exit_type = tk.StringVar(master=self, value="Before Expiration")
         self.time_exit_sessions = tk.StringVar(master=self, value="1")
         self.time_exit_close_choice = tk.StringVar(
             master=self,
-            value="30 minutes before scheduled close",
+            value="30 Minutes Before Scheduled Close",
         )
         self.time_exit_specific_date = tk.StringVar(
             master=self,
@@ -234,16 +234,16 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         )
         self.time_exit_specific_time = tk.StringVar(master=self, value="15:30")
         self.time_exit_timezone = tk.StringVar(master=self, value=DEFAULT_MARKET_TIMEZONE)
-        self.time_exit_heading = tk.StringVar(master=self, value="Add time-based exit")
+        self.time_exit_heading = tk.StringVar(master=self, value="Add Time-Based Exit")
         self.time_exit_detail = tk.StringVar(
             master=self,
-            value="Close before expiration or at a specific time · Review only",
+            value="Close Before Expiration or at a Specific Time · Review Only",
         )
         self.time_exit_resolved = tk.StringVar(master=self, value="Configure a rule to resolve its exact timestamp.")
         self.time_exit_local = tk.StringVar(master=self, value="")
         self.time_exit_basis = tk.StringVar(master=self, value="")
         self.time_exit_validation = tk.StringVar(master=self, value="")
-        self.time_exit_glance = tk.StringVar(master=self, value="Not configured")
+        self.time_exit_glance = tk.StringVar(master=self, value="Not Configured")
         self.footer_note = tk.StringVar(
             master=self,
             value="Estimated fees if closed: shown during review",
@@ -258,7 +258,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             if symbol in available_symbols
         }
 
-        self.title("Build exit plan")
+        self.title("Build Exit Plan")
         self.configure(background=BACKGROUND)
         self.minsize(1080, 760)
         self.transient(root)
@@ -332,7 +332,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         heading.grid(row=0, column=1, sticky=tk.NW)
         tk.Label(
             heading,
-            text="Build exit plan",
+            text="Build Exit Plan",
             background=BACKGROUND,
             foreground=TEXT,
             font=("Segoe UI", 17, "bold"),
@@ -370,10 +370,10 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         ).pack(side=tk.LEFT, padx=(0, 9), pady=5)
 
     def _build_template_section(self, parent: tk.Frame) -> None:
-        section = self._section(parent, "1. Choose a template")
+        section = self._section(parent, "1. Choose a Template")
         saved = tk.Menubutton(
             section.header,
-            text="Manage templates",
+            text="Manage Templates",
             background=SURFACE,
             foreground=ACCENT,
             activebackground=SURFACE,
@@ -463,15 +463,15 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             canvas.create_line(20, 20, 44, 20, 50, 26, 95, 26, fill=DANGER if selectable else color, width=2)
 
     def _build_coverage_section(self, parent: tk.Frame) -> None:
-        section = self._section(parent, "2. Position coverage")
+        section = self._section(parent, "2. Position Coverage")
         row = tk.Frame(section.body, background=SURFACE)
         row.pack(fill=tk.X, padx=8, pady=(6, 14))
         choices = tk.Frame(row, background=SURFACE)
         choices.pack(side=tk.LEFT)
-        entire_title = "Entire strategy" if len(self.leg_enabled) > 1 else "Entire position"
+        entire_title = "Entire Strategy" if len(self.leg_enabled) > 1 else "Entire Position"
         for value, title, detail in (
             ("entire", entire_title, "Close as one net order"),
-            ("selected", "Selected legs", "Choose exact contracts"),
+            ("selected", "Selected Legs", "Choose exact contracts"),
         ):
             card = tk.Frame(
                 choices,
@@ -557,14 +557,14 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             self._leg_chip_frames[symbol] = chip_frame
         tk.Label(
             chips,
-            text="Close as one net order",
+            text="Close as One Net Order",
             background=TABLE_FIELD,
             foreground=MUTED_TEXT,
             font=("Segoe UI", 8),
         ).pack(anchor=tk.W, padx=3, pady=(3, 0))
 
     def _build_linked_exits(self, parent: tk.Frame) -> None:
-        section = self._section(parent, "3. Linked exits")
+        section = self._section(parent, "3. Linked Exits")
         oco = tk.Canvas(
             section.header,
             background=SURFACE,
@@ -598,7 +598,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self._build_exit_row(rows, "stop")
         relation = tk.Label(
             content,
-            text="🔗  When one fills, cancel the other",
+            text="🔗  When One Fills, Cancel the Other",
             background=SURFACE,
             foreground=ACCENT,
             font=("Segoe UI", 8),
@@ -681,7 +681,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         type_row.pack(fill=tk.X)
         tk.Label(
             type_row,
-            text="Exit when",
+            text="Exit When",
             background=SURFACE_ALT,
             foreground=MUTED_TEXT,
             font=("Segoe UI", 8),
@@ -702,7 +702,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         session_group.pack(side=tk.LEFT, padx=(0, 18))
         tk.Label(
             session_group,
-            text="Trading sessions before earliest expiration",
+            text="Trading Sessions Before Earliest Expiration",
             background=SURFACE_ALT,
             foreground=MUTED_TEXT,
             font=("Segoe UI", 8),
@@ -719,7 +719,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         close_group.pack(side=tk.LEFT, fill=tk.X, expand=True)
         tk.Label(
             close_group,
-            text="Market time (relative to official session close)",
+            text="Market Time (Relative to Official Session Close)",
             background=SURFACE_ALT,
             foreground=MUTED_TEXT,
             font=("Segoe UI", 8),
@@ -775,7 +775,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         resolved.pack(fill=tk.X, pady=(10, 0))
         tk.Label(
             resolved,
-            text="Resolved trigger",
+            text="Resolved Trigger",
             background=TABLE_FIELD,
             foreground=TEXT,
             font=("Segoe UI", 8, "bold"),
@@ -896,7 +896,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         branch_copy.pack(side=tk.LEFT)
         tk.Label(
             branch_copy,
-            text="Take profit" if is_target else "Stop loss",
+            text="Take Profit" if is_target else "Stop Loss",
             background=TABLE_FIELD,
             foreground=color,
             font=("Segoe UI", 9, "bold"),
@@ -925,8 +925,8 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             ).pack(anchor=tk.W, pady=(0, 2))
             return group
 
-        basis_group = field("Trigger basis")
-        basis = ttk.Label(basis_group, text="Position mark", style="ManagementSelected.TLabel")
+        basis_group = field("Trigger Basis")
+        basis = ttk.Label(basis_group, text="Position Mark", style="ManagementSelected.TLabel")
         basis.pack()
 
         operation_group = field("Op")
@@ -957,7 +957,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             font=("Segoe UI", 8),
         ).pack(side=tk.LEFT, padx=(3, 0))
 
-        order_group = field("Order type")
+        order_group = field("Order Type")
         order_type = ttk.Label(
             order_group,
             text="LIMIT" if is_target else "STOP LIMIT",
@@ -965,7 +965,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         )
         order_type.pack()
 
-        offset_group = field("" if is_target else "Limit offset")
+        offset_group = field("" if is_target else "Limit Offset")
         if is_target:
             tk.Frame(offset_group, background=TABLE_FIELD, width=72, height=22).pack()
         else:
@@ -1001,7 +1001,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         estimate_group.grid(row=0, column=2, sticky=tk.E, padx=(12, 2))
         tk.Label(
             estimate_group,
-            text="Est. net",
+            text="Est. Net",
             background=TABLE_FIELD,
             foreground=MUTED_TEXT,
             font=("Segoe UI", 8),
@@ -1020,7 +1020,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         tk.Frame(quick, background=BORDER, height=1).pack(fill=tk.X, pady=(0, 8))
         tk.Label(
             quick,
-            text="Quick actions (requires confirmation)",
+            text="Quick Actions (Requires Confirmation)",
             background=SURFACE,
             foreground=MUTED_TEXT,
             font=("Segoe UI", 8),
@@ -1031,7 +1031,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         close_border.pack(side=tk.LEFT, padx=(0, 5))
         close_now = tk.Button(
             close_border,
-            text="⊗  Close now…",
+            text="⊗  Close Now…",
             command=self._close_now,
             background=TABLE_FIELD,
             foreground=DANGER,
@@ -1050,7 +1050,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         cancel_border.pack(side=tk.LEFT, padx=(5, 0))
         cancel = tk.Button(
             cancel_border,
-            text="Review / cancel working orders…",
+            text="Review / Cancel Working Orders…",
             command=self._show_orders,
             state=tk.NORMAL if self.working_orders else tk.DISABLED,
             background=TABLE_FIELD,
@@ -1071,21 +1071,21 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.close_now_button = close_now
 
     def _build_sequence(self, parent: tk.Frame) -> None:
-        section = self._right_section(parent, "Exit sequence")
+        section = self._right_section(parent, "Exit Sequence")
         canvas = tk.Canvas(section, background=SURFACE, highlightthickness=0, height=270)
         canvas.pack(fill=tk.X, padx=6, pady=(0, 6))
         canvas.bind("<Configure>", lambda _event: self._draw_sequence())
         self.sequence_canvas = canvas
 
     def _build_at_glance(self, parent: tk.Frame) -> None:
-        section = self._right_section(parent, "At a glance")
+        section = self._right_section(parent, "At a Glance")
         grid = tk.Frame(section, background=SURFACE)
         grid.pack(fill=tk.X, padx=6, pady=(0, 7))
         entries = (
-            ("Current mark", self.current_mark, TEXT),
-            ("Profit target", self.target_price, SUCCESS),
-            ("Stop trigger", self.stop_price, DANGER),
-            ("Protected qty", self.protected_quantity, TEXT),
+            ("Current Mark", self.current_mark, TEXT),
+            ("Profit Target", self.target_price, SUCCESS),
+            ("Stop Trigger", self.stop_price, DANGER),
+            ("Protected Qty", self.protected_quantity, TEXT),
         )
         for column, (title, variable, color) in enumerate(entries):
             grid.grid_columnconfigure(column, weight=1, uniform="exit-glance")
@@ -1097,7 +1097,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         timed.pack(fill=tk.X, padx=9, pady=(0, 9))
         tk.Label(
             timed,
-            text="⏱ Timed exit",
+            text="⏱ Timed Exit",
             background=TABLE_FIELD,
             foreground=MUTED_TEXT,
             font=("Segoe UI", 8, "bold"),
@@ -1117,9 +1117,9 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         checks = tk.Frame(section, background=SURFACE)
         checks.pack(fill=tk.X, padx=8, pady=(0, 4))
         for text, variable in (
-            ("Submit both exits as one linked order", self.atomic_link),
-            ("Activate only after broker accepts both", self.activate_after_accept),
-            ("Keep quantities synchronized", self.sync_quantities),
+            ("Submit Both Exits as One Linked Order", self.atomic_link),
+            ("Activate Only After Broker Accepts Both", self.activate_after_accept),
+            ("Keep Quantities Synchronized", self.sync_quantities),
         ):
             tk.Checkbutton(
                 checks,
@@ -1189,7 +1189,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         footer.pack(fill=tk.X, pady=(12, 2))
         save_template = ttk.Button(
             footer,
-            text="Save as template",
+            text="Save as Template",
             command=self._save_template,
             width=26,
         )
@@ -1205,7 +1205,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         ).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=12)
         review = ttk.Button(
             footer,
-            text="Review exit plan",
+            text="Review Exit Plan",
             command=self._review,
             style="ManagementPrimary.TButton",
             state=tk.DISABLED,
@@ -1346,18 +1346,18 @@ class ExitPlanBuilderDialog(tk.Toplevel):
                 now=now,
                 calendar_name=self.time_exit_calendar_name,
             )
-        raise ValueError("Choose Before expiration or Specific date and time for the timed exit.")
+        raise ValueError("Choose Before Expiration or Specific Date and Time for the timed exit.")
 
     def _update_time_exit_presentation(self, rule: TimeBasedExitRule | None) -> None:
         if rule is None:
-            self.time_exit_heading.set("Add time-based exit")
+            self.time_exit_heading.set("Add Time-Based Exit")
             self.time_exit_detail.set(
-                "Close before expiration or at a specific time · Review only"
+                "Close Before Expiration or at a Specific Time · Review Only"
             )
             self.time_exit_resolved.set("Configure a rule to resolve its exact timestamp.")
             self.time_exit_local.set("")
             self.time_exit_basis.set("")
-            self.time_exit_glance.set("Not configured")
+            self.time_exit_glance.set("Not Configured")
             self._sync_template_save_state()
             return
         presentation = time_exit_presentation(
@@ -1374,25 +1374,25 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             if presentation.local_equivalent
             else "Local equivalent: same as the scheduled time"
         )
-        self.time_exit_basis.set(presentation.expiration_basis or "Explicit absolute date and timezone")
+        self.time_exit_basis.set(presentation.expiration_basis or "Explicit Absolute Date and Timezone")
         self.time_exit_validation.set("")
         scheduled = rule.trigger_at.astimezone(ZoneInfo(rule.timezone_name))
         self.time_exit_glance.set(
             f"{scheduled:%b} {scheduled.day} · "
             f"{(scheduled.strftime('%I').lstrip('0') or '0')}:{scheduled:%M %p} "
-            "· Review only"
+            "· Review Only"
         )
         self._sync_template_save_state()
 
     def _set_time_exit_error(self, message: str) -> None:
         self.time_exit_rule = None
-        self.time_exit_heading.set("Time-based exit needs attention")
+        self.time_exit_heading.set("Time-Based Exit Needs Attention")
         self.time_exit_detail.set(message)
-        self.time_exit_resolved.set("Resolved trigger unavailable")
+        self.time_exit_resolved.set("Resolved Trigger Unavailable")
         self.time_exit_local.set("")
         self.time_exit_basis.set("")
         self.time_exit_validation.set(message)
-        self.time_exit_glance.set("Needs attention")
+        self.time_exit_glance.set("Needs Attention")
         self._sync_template_save_state()
 
     def _sync_template_save_state(self) -> None:
@@ -1407,7 +1407,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.footer_note.set(
             "Absolute timestamps cannot be saved as timeless templates."
             if absolute
-            else "Relative policy defaults only · Estimated fees are shown during review"
+            else "Relative Policy Defaults Only · Estimated Fees Are Shown During Review"
         )
 
     def _draw_oco_header(self) -> None:
@@ -1512,9 +1512,9 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self._draw_oco_connector()
         self.link_relation_label.configure(
             text=(
-                "🔗  When one fills, cancel the other"
+                "🔗  When One Fills, Cancel the Other"
                 if stop_enabled
-                else "One reviewed GTC limit close"
+                else "One Reviewed GTC Limit Close"
             ),
             foreground=ACCENT if stop_enabled else MUTED_TEXT,
         )
@@ -1553,9 +1553,9 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             self.protected_quantity.set("—")
             self.target_estimate.set("Unavailable")
             self.stop_estimate.set("Unavailable")
-            self.status.set("Plan needs attention")
+            self.status.set("Plan Needs Attention")
             self.review_button.configure(state=tk.DISABLED)
-            self.review_button.configure(text="Review exit plan")
+            self.review_button.configure(text="Review Exit Plan")
             self.cancel_orders_button.configure(
                 state=tk.NORMAL if self.working_orders else tk.DISABLED
             )
@@ -1573,9 +1573,9 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.target_estimate.set(_branch_estimate(target))
         self.stop_estimate.set(_branch_estimate(stop) if stop else "Disabled")
         if self.coverage_mode.get() == "selected":
-            close_scope = f"Close {len(draft.position_symbols)} selected leg{'s' if len(draft.position_symbols) != 1 else ''}"
+            close_scope = f"Close {len(draft.position_symbols)} Selected Leg{'s' if len(draft.position_symbols) != 1 else ''}"
         else:
-            unit = "strategy" if len(draft.position_symbols) > 1 else "contract"
+            unit = "Strategy" if len(draft.position_symbols) > 1 else "Contract"
             close_scope = (
                 f"Close {draft.protected_quantity} {unit}"
                 f"{'s' if draft.protected_quantity != 1 else ''}"
@@ -1584,32 +1584,32 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.stop_scope.set(close_scope)
         if draft.conflicting_order_ids:
             self._set_builder_message_tone(ready=False)
-            self.status.set(f"{len(draft.conflicting_order_ids)} close order conflict")
+            self.status.set(f"{len(draft.conflicting_order_ids)} Close Order Conflict")
             self.builder_message.set(
                 "Resolve working close order " + ", ".join(draft.conflicting_order_ids) + " before review."
             )
-            self.review_button.configure(text="Resolve working order first", state=tk.DISABLED)
+            self.review_button.configure(text="Resolve Working Order First", state=tk.DISABLED)
         elif draft.time_exit_rule is not None:
             self._set_builder_message_tone(ready=False)
-            self.status.set("Review only · timed execution unavailable")
+            self.status.set("Review Only · Timed Execution Unavailable")
             self.builder_message.set(draft.capability_reason or TIME_EXIT_CAPABILITY_REASON)
-            self.review_button.configure(text="Review timed plan (no placement)", state=tk.NORMAL)
+            self.review_button.configure(text="Review Timed Plan (No Placement)", state=tk.NORMAL)
         elif draft.capability_reason:
             self._set_builder_message_tone(ready=False)
-            self.status.set("Review only • linked broker placement unavailable")
+            self.status.set("Review Only • Linked Broker Placement Unavailable")
             self.builder_message.set(
                 f"{draft.capability_reason} Stop-limit orders may not fill during fast moves or price gaps."
                 if draft.template_id == TARGET_STOP
                 else draft.capability_reason
             )
-            self.review_button.configure(text="Review plan (no placement)", state=tk.NORMAL)
+            self.review_button.configure(text="Review Plan (No Placement)", state=tk.NORMAL)
         else:
             self._set_builder_message_tone(ready=True)
-            self.status.set("Single-target exit ready for review")
+            self.status.set("Single-Target Exit Ready for Review")
             self.builder_message.set(
                 "This plan becomes one exact-leg limit close. Review revalidates positions, working orders, and quotes before placement."
             )
-            self.review_button.configure(text="Review single-target order", state=tk.NORMAL)
+            self.review_button.configure(text="Review Single-Target Order", state=tk.NORMAL)
         self.cancel_orders_button.configure(
             state=tk.NORMAL if self.working_orders else tk.DISABLED
         )
@@ -1700,7 +1700,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             if target is not None:
                 branch_specs.append(
                     (
-                        f"{target.trigger_operator}{target.trigger_percent:g}% Take profit",
+                        f"{target.trigger_operator}{target.trigger_percent:g}% Take Profit",
                         f"{self.target_scope.get()} · {_money(target.trigger_price)}",
                         SUCCESS,
                     )
@@ -1708,14 +1708,14 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             if stop is not None:
                 branch_specs.append(
                     (
-                        f"{stop.trigger_operator}{stop.trigger_percent:g}% Stop loss",
+                        f"{stop.trigger_operator}{stop.trigger_percent:g}% Stop Loss",
                         f"{self.stop_scope.get()} · {_money(stop.trigger_price)}",
                         DANGER,
                     )
                 )
             branch_specs.append(
                 (
-                    "⏱ Timed exit",
+                    "⏱ Timed Exit",
                     _time_node_detail(draft.time_exit_rule),
                     WARNING,
                 )
@@ -1784,8 +1784,8 @@ class ExitPlanBuilderDialog(tk.Toplevel):
                 closed_top,
                 center + monitor_width * 0.42,
                 closed_bottom,
-                "Selected coverage closed",
-                "Other exits disarmed",
+                "Selected Coverage Closed",
+                "Other Exits Disarmed",
                 BORDER,
                 TEXT,
             )
@@ -1829,7 +1829,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
                 branch_top,
                 target_center + branch_width / 2,
                 branch_bottom,
-                f"{target.trigger_operator}{target.trigger_percent:g}% Take profit",
+                f"{target.trigger_operator}{target.trigger_percent:g}% Take Profit",
                 f"{self.target_scope.get()} · {_money(target.trigger_price)}",
                 SUCCESS,
                 SUCCESS,
@@ -1840,7 +1840,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
                 branch_top,
                 stop_center + branch_width / 2,
                 branch_bottom,
-                f"{stop.trigger_operator}{stop.trigger_percent:g}% Stop loss",
+                f"{stop.trigger_operator}{stop.trigger_percent:g}% Stop Loss",
                 f"{self.stop_scope.get()} · {_money(stop.trigger_price)}",
                 DANGER,
                 DANGER,
@@ -1855,8 +1855,8 @@ class ExitPlanBuilderDialog(tk.Toplevel):
                 closed_top,
                 center + monitor_width * 0.42,
                 closed_bottom,
-                "Position closed",
-                "No open quantity",
+                "Position Closed",
+                "No Open Quantity",
                 BORDER,
                 TEXT,
             )
@@ -1869,7 +1869,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
                 branch_top,
                 center + branch_width / 2,
                 branch_bottom,
-                f"{target.trigger_operator}{target.trigger_percent:g}% Take profit",
+                f"{target.trigger_operator}{target.trigger_percent:g}% Take Profit",
                 f"{self.target_scope.get()} · {_money(target.trigger_price)}",
                 SUCCESS,
                 SUCCESS,
@@ -1881,8 +1881,8 @@ class ExitPlanBuilderDialog(tk.Toplevel):
                 closed_top,
                 center + monitor_width * 0.42,
                 closed_bottom,
-                "Position closed",
-                "No open quantity",
+                "Position Closed",
+                "No Open Quantity",
                 BORDER,
                 TEXT,
             )
@@ -1905,7 +1905,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         canvas.create_text(
             current_x,
             45,
-            text=f"{_money(draft.position_mark)}\nCurrent mark",
+            text=f"{_money(draft.position_mark)}\nCurrent Mark",
             fill=TEXT,
             font=("Segoe UI", 8),
             justify=tk.CENTER,
@@ -1916,7 +1916,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             canvas.create_text(
                 left,
                 45,
-                text=f"{_money(stop.trigger_price)}\nStop trigger",
+                text=f"{_money(stop.trigger_price)}\nStop Trigger",
                 fill=DANGER,
                 font=("Segoe UI", 8),
                 justify=tk.CENTER,
@@ -1927,7 +1927,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             canvas.create_text(
                 right,
                 45,
-                text=f"{_money(target.trigger_price)}\nProfit target",
+                text=f"{_money(target.trigger_price)}\nProfit Target",
                 fill=SUCCESS,
                 font=("Segoe UI", 8),
                 justify=tk.CENTER,
@@ -1970,20 +1970,20 @@ class ExitPlanBuilderDialog(tk.Toplevel):
 
     def _save_template(self) -> None:
         if self.draft is None:
-            messagebox.showerror("Template unavailable", "Fix the exit-plan values before saving.", parent=self)
+            messagebox.showerror("Template Unavailable", "Fix the exit-plan values before saving.", parent=self)
             return
         if (
             self.time_exit_configured
             and _TIME_EXIT_TYPE_LABELS.get(self.time_exit_type.get()) == SPECIFIC_DATE_TIME
         ):
             messagebox.showerror(
-                "Template unavailable",
+                "Template Unavailable",
                 "A specific absolute date and time cannot be saved as a timeless reusable "
-                "template. Remove it or switch to Before expiration.",
+                "template. Remove it or switch to Before Expiration.",
                 parent=self,
             )
             return
-        name = simpledialog.askstring("Save exit-plan template", "Template name:", parent=self)
+        name = simpledialog.askstring("Save Exit-Plan Template", "Template Name:", parent=self)
         if not name:
             return
         try:
@@ -2002,12 +2002,12 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             )
             path = save_exit_plan_template(template)
         except Exception as exc:
-            messagebox.showerror("Template not saved", str(exc), parent=self)
+            messagebox.showerror("Template Not Saved", str(exc), parent=self)
             return
         self._load_saved_choices()
         self.saved_choice.set(template.name)
         messagebox.showinfo(
-            "Exit-plan template saved",
+            "Exit-Plan Template Saved",
             f"Saved configuration defaults to {path}.\n\nNo account or OCC contract identity was stored.",
             parent=self,
         )
@@ -2021,7 +2021,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.saved_templates = {template.name: template for template in templates}
         self.saved_menu.delete(0, tk.END)
         if not self.saved_templates:
-            self.saved_menu.add_command(label="No saved templates", state=tk.DISABLED)
+            self.saved_menu.add_command(label="No Saved Templates", state=tk.DISABLED)
             return
         for name in self.saved_templates:
             self.saved_menu.add_command(
@@ -2049,7 +2049,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.duration.set(template.duration)
         if template.time_exit is not None:
             self.time_exit_configured = True
-            self.time_exit_type.set("Before expiration")
+            self.time_exit_type.set("Before Expiration")
             self.time_exit_sessions.set(str(template.time_exit.sessions_before_expiration))
             close_label = next(
                 (

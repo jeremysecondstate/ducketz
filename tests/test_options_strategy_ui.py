@@ -578,7 +578,7 @@ def test_strategy_loader_combines_model_output_with_current_position(
     assert len(view.candidates) == 1
     result = view.candidates[0]
     assert result.exact_legs == "Buy 1 $105 Put · Sell 1 $95 Put"
-    assert result.portfolio_fit.label == "Downside hedge"
+    assert result.portfolio_fit.label == "Downside Hedge"
     assert result.overall_score == pytest.approx(0.1075)
     assert (
         result.order_draft.orders[0].complex_order_strategy_type
@@ -733,7 +733,7 @@ def test_portfolio_fit_combines_held_shares_and_available_funds() -> None:
 
     result = portfolio_fit(candidate, position=position)
 
-    assert result.label == "Uses shares and funds"
+    assert result.label == "Uses Shares and Funds"
     assert result.score_adjustment == pytest.approx(0.08)
     assert "$15,000.00" in result.detail
     assert "$9,500.00" in result.detail
@@ -762,7 +762,7 @@ def test_portfolio_fit_reports_funds_below_cash_secured_estimate() -> None:
 
     result = portfolio_fit(candidate, position=position)
 
-    assert result.label == "Funds below estimate"
+    assert result.label == "Funds Below Estimate"
     assert result.score_adjustment == pytest.approx(-0.03)
     assert "$5,000.00" in result.detail
     assert "$9,500.00" in result.detail

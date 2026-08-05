@@ -446,7 +446,7 @@ class DucketsTab:
         if self.sync_button is not None:
             self.sync_button.configure(state=tk.NORMAL)
 
-        messagebox.showerror("Sync failed", f"{type(exc).__name__}: {exc}")
+        messagebox.showerror("Sync Failed", f"{type(exc).__name__}: {exc}")
 
     def _insert_snapshot(self, snapshot: PortfolioSnapshot) -> None:
         if self.cash_table is None or self.holdings_table is None:
@@ -786,7 +786,7 @@ class SchwabDucketsTab(DucketsTab):
             lambda: SchwabSession().get_open_orders(),
             lambda orders: self._show_orders(self.open_orders_table, orders),
             lambda exc: messagebox.showerror(
-                "Open orders failed", f"{type(exc).__name__}: {exc}"
+                "Open Orders Failed", f"{type(exc).__name__}: {exc}"
             ),
         )
 
@@ -796,7 +796,7 @@ class SchwabDucketsTab(DucketsTab):
             lambda: SchwabSession().get_recent_orders(),
             lambda orders: self._show_orders(self.recent_orders_table, orders),
             lambda exc: messagebox.showerror(
-                "Recent orders failed", f"{type(exc).__name__}: {exc}"
+                "Recent Orders Failed", f"{type(exc).__name__}: {exc}"
             ),
         )
 
@@ -804,7 +804,7 @@ class SchwabDucketsTab(DucketsTab):
         try:
             strikes = int(self.chain_strikes.get().strip())
         except Exception as exc:
-            messagebox.showerror("Option chain failed", f"{type(exc).__name__}: {exc}")
+            messagebox.showerror("Option Chain Failed", f"{type(exc).__name__}: {exc}")
             return
         symbol = self.chain_symbol.get()
         run_in_background(
@@ -812,7 +812,7 @@ class SchwabDucketsTab(DucketsTab):
             lambda: SchwabSession().get_option_chain(symbol, strikes),
             self._show_option_chain,
             lambda exc: messagebox.showerror(
-                "Option chain failed", f"{type(exc).__name__}: {exc}"
+                "Option Chain Failed", f"{type(exc).__name__}: {exc}"
             ),
         )
 
@@ -822,10 +822,10 @@ class SchwabDucketsTab(DucketsTab):
             self.root,
             lambda: SchwabSession().cancel_order(order_id),
             lambda result: messagebox.showinfo(
-                "Cancel order", f"Cancel response: {result}"
+                "Cancel Order", f"Cancel response: {result}"
             ),
             lambda exc: messagebox.showerror(
-                "Cancel order failed", f"{type(exc).__name__}: {exc}"
+                "Cancel Order Failed", f"{type(exc).__name__}: {exc}"
             ),
         )
 
@@ -840,13 +840,13 @@ class SchwabDucketsTab(DucketsTab):
                 return
 
         except Exception as exc:
-            messagebox.showerror("Stock / ETF order failed", f"{type(exc).__name__}: {exc}")
+            messagebox.showerror("Stock / ETF Order Failed", f"{type(exc).__name__}: {exc}")
             return
 
         def succeeded(location: str | None) -> None:
             self._load_open_orders()
             messagebox.showinfo(
-                "Stock / ETF order submitted",
+                "Stock / ETF Order Submitted",
                 order_submitted_message(payload, location),
             )
 
@@ -855,7 +855,7 @@ class SchwabDucketsTab(DucketsTab):
             lambda: SchwabSession().submit_order(payload),
             succeeded,
             lambda exc: messagebox.showerror(
-                "Stock / ETF order failed", f"{type(exc).__name__}: {exc}"
+                "Stock / ETF Order Failed", f"{type(exc).__name__}: {exc}"
             ),
         )
 
@@ -870,13 +870,13 @@ class SchwabDucketsTab(DucketsTab):
                 return
 
         except Exception as exc:
-            messagebox.showerror("Option order failed", f"{type(exc).__name__}: {exc}")
+            messagebox.showerror("Option Order Failed", f"{type(exc).__name__}: {exc}")
             return
 
         def succeeded(location: str | None) -> None:
             self._load_open_orders()
             messagebox.showinfo(
-                "Option order submitted",
+                "Option Order Submitted",
                 order_submitted_message(payload, location),
             )
 
@@ -885,14 +885,14 @@ class SchwabDucketsTab(DucketsTab):
             lambda: SchwabSession().submit_order(payload),
             succeeded,
             lambda exc: messagebox.showerror(
-                "Option order failed", f"{type(exc).__name__}: {exc}"
+                "Option Order Failed", f"{type(exc).__name__}: {exc}"
             ),
         )
 
     def _use_stock_mid(self) -> None:
         symbol = self.stock_symbol.get().strip().upper()
         if not symbol:
-            messagebox.showwarning("Use mid", "Stock / ETF symbol is required.")
+            messagebox.showwarning("Use Mid", "Stock / ETF symbol is required.")
             return
 
         def succeeded(mid: float) -> None:
@@ -905,7 +905,7 @@ class SchwabDucketsTab(DucketsTab):
             lambda: SchwabSession().get_equity_mid(symbol),
             succeeded,
             lambda exc: messagebox.showerror(
-                "Stock quote failed", f"{type(exc).__name__}: {exc}"
+                "Stock Quote Failed", f"{type(exc).__name__}: {exc}"
             ),
         )
 
@@ -1175,7 +1175,7 @@ class HyperliquidDucketsTab(DucketsTab):
 
         self._hl_entry_row(ticket, "Market", self.spot_market, 0, 0)
         self._hl_combo_row(ticket, "Side", self.spot_side, HYPERLIQUID_SIDE_CHOICES, 1, 0)
-        self._hl_combo_row(ticket, "Order type", self.spot_order_type, HYPERLIQUID_ORDER_TYPE_CHOICES, 1, 2)
+        self._hl_combo_row(ticket, "Order Type", self.spot_order_type, HYPERLIQUID_ORDER_TYPE_CHOICES, 1, 2)
 
         self._hl_entry_row(ticket, "Quantity", self.spot_quantity, 2, 0)
         self._hl_combo_row(ticket, "Unit", self.spot_size_unit, HYPERLIQUID_SPOT_SIZE_UNITS, 2, 2)
@@ -1185,16 +1185,16 @@ class HyperliquidDucketsTab(DucketsTab):
             row=3, column=2, columnspan=2, sticky="ew", padx=8, pady=6
         )
 
-        self._hl_size_button_row(ticket, "Alex size %", "alex", 4)
-        self._hl_size_button_row(ticket, "Jeremy size %", "jeremy", 5)
+        self._hl_size_button_row(ticket, "Alex Size %", "alex", 4)
+        self._hl_size_button_row(ticket, "Jeremy Size %", "jeremy", 5)
 
         ttk.Label(ticket, textvariable=self.spot_size_status).grid(
             row=6, column=0, columnspan=4, sticky="w", padx=8, pady=(0, 6)
         )
 
-        self._hl_entry_row(ticket, "Stop price", self.spot_stop_price, 7, 0)
+        self._hl_entry_row(ticket, "Stop Price", self.spot_stop_price, 7, 0)
         self._hl_combo_row(ticket, "HL TIF", self.spot_tif, HYPERLIQUID_TIF_CHOICES, 8, 0)
-        self._hl_entry_row(ticket, "Cancel order ID", self.spot_cancel_order_id, 9, 0)
+        self._hl_entry_row(ticket, "Cancel Order ID", self.spot_cancel_order_id, 9, 0)
 
         actions = ttk.LabelFrame(ticket, text="Spot Actions")
         actions.grid(row=10, column=0, columnspan=4, sticky="ew", padx=8, pady=8)
@@ -1213,28 +1213,28 @@ class HyperliquidDucketsTab(DucketsTab):
 
         self._hl_entry_row(ticket, "Coin", self.perp_coin, 0, 0)
         self._hl_combo_row(ticket, "Direction", self.perp_direction, HYPERLIQUID_SIDE_CHOICES, 1, 0)
-        self._hl_combo_row(ticket, "Order type", self.perp_order_type, HYPERLIQUID_ORDER_TYPE_CHOICES, 1, 2)
+        self._hl_combo_row(ticket, "Order Type", self.perp_order_type, HYPERLIQUID_ORDER_TYPE_CHOICES, 1, 2)
 
         self._hl_entry_row(ticket, "Size", self.perp_size, 2, 0)
         self._hl_entry_row(ticket, "Entry / Limit", self.perp_entry_limit, 2, 2)
 
-        self._hl_entry_row(ticket, "TP price", self.perp_tp_price, 3, 0)
-        self._hl_entry_row(ticket, "SL price", self.perp_sl_price, 3, 2)
+        self._hl_entry_row(ticket, "TP Price", self.perp_tp_price, 3, 0)
+        self._hl_entry_row(ticket, "SL Price", self.perp_sl_price, 3, 2)
 
         self._hl_combo_row(ticket, "HL TIF", self.perp_tif, HYPERLIQUID_TIF_CHOICES, 4, 0)
-        self._hl_check_row(ticket, "Reduce-only", self.perp_reduce_only, 4, 2)
+        self._hl_check_row(ticket, "Reduce-Only", self.perp_reduce_only, 4, 2)
 
         ttk.Button(ticket, text="Use Mid", command=self._use_perp_mid).grid(
             row=5, column=2, columnspan=2, sticky="ew", padx=8, pady=6
         )
 
         self._hl_entry_row(ticket, "Leverage x", self.perp_leverage, 6, 0)
-        self._hl_combo_row(ticket, "Margin mode", self.perp_margin_mode, HYPERLIQUID_MARGIN_MODE_CHOICES, 6, 2)
+        self._hl_combo_row(ticket, "Margin Mode", self.perp_margin_mode, HYPERLIQUID_MARGIN_MODE_CHOICES, 6, 2)
 
         self._hl_check_row(ticket, "Attach TP/SL", self.perp_attach_tpsl, 7, 0)
-        self._hl_entry_row(ticket, "Fee % / side", self.perp_fee_rate, 7, 2)
+        self._hl_entry_row(ticket, "Fee % / Side", self.perp_fee_rate, 7, 2)
 
-        self._hl_entry_row(ticket, "Cancel order ID", self.perp_cancel_order_id, 8, 0)
+        self._hl_entry_row(ticket, "Cancel Order ID", self.perp_cancel_order_id, 8, 0)
 
         actions = ttk.LabelFrame(ticket, text="Perp Actions")
         actions.grid(row=9, column=0, columnspan=4, sticky="ew", padx=8, pady=8)
@@ -1397,7 +1397,7 @@ class HyperliquidDucketsTab(DucketsTab):
 
             target_var.set(_format_hyperliquid_price(price))
         except Exception as exc:
-            messagebox.showerror("Hyperliquid mid failed", f"{type(exc).__name__}: {exc}")
+            messagebox.showerror("Hyperliquid Mid Failed", f"{type(exc).__name__}: {exc}")
 
     def _apply_spot_size_percent(self, account_key: str, percent: int) -> None:
         try:
@@ -1484,7 +1484,7 @@ class HyperliquidDucketsTab(DucketsTab):
                 )
 
         if errors:
-            messagebox.showwarning("Hyperliquid open orders partially loaded", "\n".join(errors))
+            messagebox.showwarning("Hyperliquid Open Orders Partially Loaded", "\n".join(errors))
 
     def _spot_order_ticket(self) -> HyperliquidOrderTicket:
         order_type = self.spot_order_type.get().strip().lower()
@@ -1537,11 +1537,11 @@ class HyperliquidDucketsTab(DucketsTab):
             result = HyperliquidExecutionAdapter(account_key).submit(ticket)
             self._load_hyperliquid_open_orders()
             messagebox.showinfo(
-                "Hyperliquid spot order submitted",
+                "Hyperliquid Spot Order Submitted",
                 _hyperliquid_order_submitted_message(account_key, ticket, result),
             )
         except Exception as exc:
-            messagebox.showerror("Hyperliquid spot order failed", f"{type(exc).__name__}: {exc}")
+            messagebox.showerror("Hyperliquid Spot Order Failed", f"{type(exc).__name__}: {exc}")
 
     def _submit_perp_order(self, account_key: str) -> None:
         try:
@@ -1556,16 +1556,16 @@ class HyperliquidDucketsTab(DucketsTab):
             result = HyperliquidExecutionAdapter(account_key).submit(ticket)
             self._load_hyperliquid_open_orders()
             messagebox.showinfo(
-                "Hyperliquid perp order submitted",
+                "Hyperliquid Perp Order Submitted",
                 _hyperliquid_order_submitted_message(account_key, ticket, result),
             )
         except Exception as exc:
-            messagebox.showerror("Hyperliquid perp order failed", f"{type(exc).__name__}: {exc}")
+            messagebox.showerror("Hyperliquid Perp Order Failed", f"{type(exc).__name__}: {exc}")
 
     def _cancel_spot_order(self, account_key: str) -> None:
         try:
             coin = normalize_hyperliquid_spot_market(self.spot_market.get())
-            order_id = _positive_int(self.spot_cancel_order_id.get(), "Cancel order ID")
+            order_id = _positive_int(self.spot_cancel_order_id.get(), "Cancel Order ID")
 
             if not messagebox.askyesno(
                 "Confirm Hyperliquid Spot Cancel",
@@ -1575,14 +1575,14 @@ class HyperliquidDucketsTab(DucketsTab):
 
             result = HyperliquidExecutionAdapter(account_key).cancel(coin, order_id)
             self._load_hyperliquid_open_orders()
-            messagebox.showinfo("Hyperliquid spot cancel submitted", f"Response:\n{result}")
+            messagebox.showinfo("Hyperliquid Spot Cancel Submitted", f"Response:\n{result}")
         except Exception as exc:
-            messagebox.showerror("Hyperliquid spot cancel failed", f"{type(exc).__name__}: {exc}")
+            messagebox.showerror("Hyperliquid Spot Cancel Failed", f"{type(exc).__name__}: {exc}")
 
     def _cancel_perp_order(self, account_key: str) -> None:
         try:
             coin = normalize_hyperliquid_coin(self.perp_coin.get())
-            order_id = _positive_int(self.perp_cancel_order_id.get(), "Cancel order ID")
+            order_id = _positive_int(self.perp_cancel_order_id.get(), "Cancel Order ID")
 
             if not messagebox.askyesno(
                 "Confirm Hyperliquid Perp Cancel",
@@ -1592,9 +1592,9 @@ class HyperliquidDucketsTab(DucketsTab):
 
             result = HyperliquidExecutionAdapter(account_key).cancel(coin, order_id)
             self._load_hyperliquid_open_orders()
-            messagebox.showinfo("Hyperliquid perp cancel submitted", f"Response:\n{result}")
+            messagebox.showinfo("Hyperliquid Perp Cancel Submitted", f"Response:\n{result}")
         except Exception as exc:
-            messagebox.showerror("Hyperliquid perp cancel failed", f"{type(exc).__name__}: {exc}")
+            messagebox.showerror("Hyperliquid Perp Cancel Failed", f"{type(exc).__name__}: {exc}")
 
     def _edit_selected_perp_position(self) -> None:
         self._edit_selected_hyperliquid_open_order()
@@ -1607,7 +1607,7 @@ class HyperliquidDucketsTab(DucketsTab):
 
         order = self._selected_hyperliquid_order()
         if order is None:
-            messagebox.showinfo("Edit Hyperliquid order", "Select an open order first.")
+            messagebox.showinfo("Edit Hyperliquid Order", "Select an open order first.")
             return
 
         account_key = str(order.get("accountKey") or "").strip().lower()
@@ -1633,10 +1633,10 @@ class HyperliquidDucketsTab(DucketsTab):
         ttk.Label(body, text=f"Coin: {raw_coin}").grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 6))
         ttk.Label(body, text=f"Order ID: {order_id}").grid(row=2, column=0, columnspan=2, sticky="w", pady=(0, 12))
 
-        ttk.Label(body, text="New size").grid(row=3, column=0, sticky="w", padx=(0, 8), pady=6)
+        ttk.Label(body, text="New Size").grid(row=3, column=0, sticky="w", padx=(0, 8), pady=6)
         ttk.Entry(body, textvariable=size_var, width=24).grid(row=3, column=1, sticky="ew", pady=6)
 
-        ttk.Label(body, text="New price").grid(row=4, column=0, sticky="w", padx=(0, 8), pady=6)
+        ttk.Label(body, text="New Price").grid(row=4, column=0, sticky="w", padx=(0, 8), pady=6)
         ttk.Entry(body, textvariable=price_var, width=24).grid(row=4, column=1, sticky="ew", pady=6)
 
         def submit_edit() -> None:
@@ -1644,8 +1644,8 @@ class HyperliquidDucketsTab(DucketsTab):
                 ticket = HyperliquidOrderTicket(
                     coin=raw_coin,
                     is_buy=is_buy,
-                    size=_required_float(size_var.get(), "New size"),
-                    limit_price=_required_float(price_var.get(), "New price"),
+                    size=_required_float(size_var.get(), "New Size"),
+                    limit_price=_required_float(price_var.get(), "New Price"),
                     tif=str(order.get("tif") or order.get("timeInForce") or "Gtc"),
                     reduce_only=reduce_only,
                 )
@@ -1659,9 +1659,9 @@ class HyperliquidDucketsTab(DucketsTab):
                 result = HyperliquidExecutionAdapter(account_key).modify_order(order_id, ticket)
                 dialog.destroy()
                 self._load_hyperliquid_open_orders()
-                messagebox.showinfo("Hyperliquid order edited", f"Response:\n{result}")
+                messagebox.showinfo("Hyperliquid Order Edited", f"Response:\n{result}")
             except Exception as exc:
-                messagebox.showerror("Hyperliquid edit failed", f"{type(exc).__name__}: {exc}")
+                messagebox.showerror("Hyperliquid Edit Failed", f"{type(exc).__name__}: {exc}")
 
         ttk.Button(body, text="Submit Edit", command=submit_edit).grid(
             row=5,
@@ -1673,7 +1673,7 @@ class HyperliquidDucketsTab(DucketsTab):
 
     def _hyperliquid_action_not_wired(self, action: str, account_key: str) -> None:
         messagebox.showinfo(
-            "Hyperliquid action not wired yet",
+            "Hyperliquid Action Not Wired Yet",
             (
                 f"{action} for {account_key} is in the UI now, but live routing is not connected yet.\n\n"
                 "Next step: port HyperliquidExecutionAdapter from portfolio-risk-cockpit and wire this button through "

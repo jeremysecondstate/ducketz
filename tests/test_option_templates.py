@@ -30,13 +30,13 @@ def test_template_workspace_shows_every_builtin_capability_and_safe_saved_defaul
     )
 
     by_name = {row.name: row for row in rows}
-    assert {"Target + stop", "Single target", "2 targets", "Trailing stop"} <= set(by_name)
-    assert "Placeable" in by_name["Single target"].availability
-    assert "Review only" in by_name["Target + stop"].availability
-    assert "Unavailable" in by_name["2 targets"].availability
-    assert "Unavailable" in by_name["Trailing stop"].availability
-    assert by_name["Next monthly"].category == "Saved roll"
-    assert by_name["Take 20"].category == "Saved exit"
+    assert {"Target + Stop", "Single Target", "2 Targets", "Trailing Stop"} <= set(by_name)
+    assert "Placeable" in by_name["Single Target"].availability
+    assert "Review only" in by_name["Target + Stop"].availability
+    assert "Unavailable" in by_name["2 Targets"].availability
+    assert "Unavailable" in by_name["Trailing Stop"].availability
+    assert by_name["Next monthly"].category == "Saved Roll"
+    assert by_name["Take 20"].category == "Saved Exit"
     combined = " ".join(value for row in rows for value in row.__dict__.values()).casefold()
     assert "account" not in combined
     assert "occ" not in combined

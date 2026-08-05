@@ -65,9 +65,9 @@ class OptionsStrategiesTab:
 
         self.symbol = tk.StringVar()
         self.horizon_label = tk.StringVar()
-        self.position_summary = tk.StringVar(value="Syncing Schwab account")
-        self.candidate_summary = tk.StringVar(value="Loading strategy candidates")
-        self.ticket_strategy = tk.StringVar(value="Select exact legs")
+        self.position_summary = tk.StringVar(value="Syncing Schwab Account")
+        self.candidate_summary = tk.StringVar(value="Loading Strategy Candidates")
+        self.ticket_strategy = tk.StringVar(value="Select Exact Legs")
         self.ticket_structure = tk.StringVar(value="")
         self.ticket_order_part = tk.StringVar(value="")
         self.ticket_quantity = tk.StringVar(value="1")
@@ -290,12 +290,12 @@ class OptionsStrategiesTab:
     def _build_ranking(self, parent: ttk.Frame) -> None:
         ttk.Label(
             parent,
-            text="Ranked candidates",
+            text="Ranked Candidates",
             style="StrategyHeading.TLabel",
         ).pack(anchor=tk.W)
         ttk.Label(
             parent,
-            text="Select an entry in Exact legs to fill the order ticket.",
+            text="Select an entry in Exact Legs to fill the order ticket.",
             style="StrategyMuted.TLabel",
         ).pack(anchor=tk.W, pady=(2, 8))
         table_frame = ttk.Frame(parent, style="StrategySurface.TFrame")
@@ -317,11 +317,11 @@ class OptionsStrategiesTab:
         columns = (
             ("rank", "Rank", 58, tk.E),
             ("strategy", "Strategy", 160, tk.W),
-            ("exact_legs", "Exact legs", 330, tk.W),
-            ("probability", "Market probability", 120, tk.E),
-            ("expected_return", "Expected return", 110, tk.E),
-            ("portfolio_fit", "Portfolio fit", 125, tk.W),
-            ("overall_score", "Overall score", 100, tk.E),
+            ("exact_legs", "Exact Legs", 330, tk.W),
+            ("probability", "Market Probability", 120, tk.E),
+            ("expected_return", "Expected Return", 110, tk.E),
+            ("portfolio_fit", "Portfolio Fit", 125, tk.W),
+            ("overall_score", "Overall Score", 100, tk.E),
         )
         for name, label, width, anchor in columns:
             table.heading(name, text=label)
@@ -357,7 +357,7 @@ class OptionsStrategiesTab:
     def _build_ticket(self, parent: ttk.Frame) -> None:
         ttk.Label(
             parent,
-            text="Order ticket",
+            text="Order Ticket",
             style="StrategyHeading.TLabel",
         ).pack(anchor=tk.W)
         ttk.Label(
@@ -384,7 +384,7 @@ class OptionsStrategiesTab:
         )
         self._ticket_field(
             fields,
-            "Schwab order",
+            "Schwab Order",
             order_part_box,
             row=0,
             column=0,
@@ -408,7 +408,7 @@ class OptionsStrategiesTab:
         )
         self._ticket_field(
             fields,
-            "Order method",
+            "Order Method",
             order_box,
             row=1,
             column=0,
@@ -420,7 +420,7 @@ class OptionsStrategiesTab:
         )
         self._ticket_field(
             fields,
-            "Limit price",
+            "Limit Price",
             limit_price,
             row=1,
             column=1,
@@ -442,7 +442,7 @@ class OptionsStrategiesTab:
 
         ttk.Label(
             parent,
-            text="Ticket legs",
+            text="Ticket Legs",
             style="StrategyHeading.TLabel",
         ).pack(anchor=tk.W, pady=(8, 4))
         legs = ttk.Treeview(
@@ -465,7 +465,7 @@ class OptionsStrategiesTab:
 
         ttk.Label(
             parent,
-            text="Portfolio impact",
+            text="Portfolio Impact",
             style="StrategyHeading.TLabel",
         ).pack(anchor=tk.W, pady=(8, 2))
         ttk.Label(
@@ -517,8 +517,8 @@ class OptionsStrategiesTab:
     def refresh(self) -> None:
         if self.refresh_button is not None:
             self.refresh_button.configure(state=tk.DISABLED)
-        self.position_summary.set("Syncing Schwab account")
-        self.candidate_summary.set("Loading strategy candidates")
+        self.position_summary.set("Syncing Schwab Account")
+        self.candidate_summary.set("Loading Strategy Candidates")
         run_in_background(
             self.root,
             self._load_data,
@@ -549,8 +549,8 @@ class OptionsStrategiesTab:
         if not view.symbols:
             self.symbol.set("")
             self.horizon_label.set("")
-            self.position_summary.set("No strategy candidates")
-            self.candidate_summary.set("0 candidates")
+            self.position_summary.set("No Strategy Candidates")
+            self.candidate_summary.set("0 Candidates")
             self._render_candidates()
             return
         if self.symbol.get() not in view.symbols:
@@ -565,14 +565,14 @@ class OptionsStrategiesTab:
             self.management_view.show_refresh_error(exc)
         if self.view is None:
             self.visible_candidates = ()
-            self.position_summary.set("Options strategy data could not be loaded")
+            self.position_summary.set("Options Strategy Data Could Not Be Loaded")
             self.candidate_summary.set("")
             self._clear_table(self.candidate_table)
             self._clear_ticket()
         else:
-            self.position_summary.set("Refresh failed; showing prior candidates")
+            self.position_summary.set("Refresh Failed; Showing Prior Candidates")
         messagebox.showerror(
-            "Options strategy refresh failed",
+            "Options Strategy Refresh Failed",
             str(exc) or "Options strategy data could not be loaded.",
         )
 
@@ -629,13 +629,13 @@ class OptionsStrategiesTab:
                 ),
             )
         self.candidate_summary.set(
-            f"{len(self.visible_candidates):,} candidates"
+            f"{len(self.visible_candidates):,} Candidates"
         )
         if self.visible_candidates:
             position = self.visible_candidates[0].position
             self.position_summary.set(_position_summary(position))
         else:
-            self.position_summary.set("No candidates for this route")
+            self.position_summary.set("No Candidates for This Route")
 
     def _candidate_clicked(self, event: tk.Event[tk.Misc]) -> None:
         if self.candidate_table is None:
@@ -670,11 +670,11 @@ class OptionsStrategiesTab:
         self.selected_candidate = candidate
         self.selected_order_index = 0
         self.ticket_strategy.set(candidate.strategy_display_name)
-        order_word = "order" if draft.order_count == 1 else "orders"
-        leg_word = "leg" if len(draft.legs) == 1 else "legs"
+        order_word = "Order" if draft.order_count == 1 else "Orders"
+        leg_word = "Leg" if len(draft.legs) == 1 else "Legs"
         self.ticket_structure.set(
             f"{draft.order_count} Schwab {order_word} · "
-            f"{len(draft.legs)} strategy {leg_word}"
+            f"{len(draft.legs)} Strategy {leg_word}"
         )
         self.ticket_quantity.set("1")
         self.ticket_portfolio_impact.set(candidate.portfolio_fit.detail)
@@ -741,7 +741,7 @@ class OptionsStrategiesTab:
     def _clear_ticket(self) -> None:
         self.selected_candidate = None
         self.selected_order_index = 0
-        self.ticket_strategy.set("Select exact legs")
+        self.ticket_strategy.set("Select Exact Legs")
         self.ticket_structure.set("")
         self.ticket_order_part.set("")
         self._order_part_box.configure(values=())
@@ -785,7 +785,7 @@ class OptionsStrategiesTab:
                 if submit_button is not None:
                     submit_button.configure(state=tk.NORMAL)
                 messagebox.showinfo(
-                    "Option order submitted",
+                    "Option Order Submitted",
                     order_submitted_message(payload, location),
                 )
                 next_index = self.selected_order_index + 1
@@ -799,7 +799,7 @@ class OptionsStrategiesTab:
                 if submit_button is not None:
                     submit_button.configure(state=tk.NORMAL)
                 messagebox.showerror(
-                    "Option order failed",
+                    "Option Order Failed",
                     str(exc) or "The option order could not be submitted.",
                 )
 
@@ -811,7 +811,7 @@ class OptionsStrategiesTab:
             )
         except Exception as exc:
             messagebox.showerror(
-                "Option order failed",
+                "Option Order Failed",
                 str(exc) or "The option order could not be submitted.",
             )
 
@@ -842,10 +842,10 @@ def _human_instruction(value: str) -> str:
     labels = {
         "BUY": "Buy",
         "SELL": "Sell",
-        "BUY_TO_OPEN": "Buy to open",
-        "SELL_TO_OPEN": "Sell to open",
-        "BUY_TO_CLOSE": "Buy to close",
-        "SELL_TO_CLOSE": "Sell to close",
+        "BUY_TO_OPEN": "Buy to Open",
+        "SELL_TO_OPEN": "Sell to Open",
+        "BUY_TO_CLOSE": "Buy to Close",
+        "SELL_TO_CLOSE": "Sell to Close",
     }
     return labels.get(value, value.replace("_", " ").title())
 

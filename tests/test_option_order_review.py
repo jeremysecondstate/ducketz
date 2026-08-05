@@ -56,14 +56,14 @@ def test_close_review_preserves_every_exact_leg_and_masks_account() -> None:
     review = closing_order_review(draft, now=NOW)
 
     assert review.operation == OrderReviewOperation.CLOSE
-    assert review.title == "Review closing order"
-    assert "2 exact legs" in review.subtitle
+    assert review.title == "Review Closing Order"
+    assert "2 Exact Legs" in review.subtitle
     assert "Qty 1" in review.subtitle
     assert review.account_display_label.endswith(f"••••{ACCOUNT[-4:]}")
     assert ACCOUNT not in review.account_display_label
     assert [(leg.symbol, leg.action, leg.quantity) for leg in review.legs] == [
-        (LONG, "Sell to close", 1),
-        (SHORT, "Buy to close", 1),
+        (LONG, "Sell to Close", 1),
+        (SHORT, "Buy to Close", 1),
     ]
     assert all(leg.contract_label.startswith("ACME 18 SEP 26") for leg in review.legs)
     assert review.safety_copy == "This order closes a position; it does not open a new one."
@@ -92,9 +92,9 @@ def test_close_analysis_uses_the_universal_surface_without_placement_capability(
     analysis = closing_order_analysis(draft, now=NOW)
     controller = OptionOrderReviewController(review=analysis, draft=draft)
 
-    assert analysis.title == "Analyze closing order"
+    assert analysis.title == "Analyze Closing Order"
     assert analysis.placement_capability == OrderReviewPlacementCapability.REVIEW_ONLY
-    assert analysis.primary_action_label == "Finish analysis"
+    assert analysis.primary_action_label == "Finish Analysis"
     assert analysis.price_editable is False
     controller.acknowledge(True)
     assert controller.finish_review() is True
@@ -106,12 +106,12 @@ def test_close_distinguishes_local_estimates_from_unavailable_broker_values() ->
     costs = {cost.label: cost for cost in review.costs}
     metrics = {metric.label: metric for metric in review.metrics}
 
-    assert costs["Estimated net proceeds"].provenance == LOCAL_CALCULATION
-    assert costs["Estimated fees"].value == "Unavailable"
+    assert costs["Estimated Net Proceeds"].provenance == LOCAL_CALCULATION
+    assert costs["Estimated Fees"].value == "Unavailable"
     assert costs["Settlement"].value == "Unavailable"
-    assert metrics["Buying power"].after == "—"
+    assert metrics["Buying Power"].after == "—"
     assert metrics["Delta"].after == "—"
-    assert metrics["Theta / day"].after == "—"
+    assert metrics["Theta / Day"].after == "—"
     assert {notice.severity for notice in review.notices} >= {
         OrderReviewNoticeSeverity.INFORMATION,
         OrderReviewNoticeSeverity.WARNING,
@@ -125,8 +125,8 @@ def test_normal_review_hides_redundant_notice_rails_but_keeps_actionable_checks(
     routine = dialog._effective_notices(review)
     stale = dialog._effective_notices(replace(review, quote_state=OrderReviewQuoteState.STALE))
 
-    assert routine == (next(notice for notice in review.notices if notice.title == "Atomic net-order structure"),)
-    assert any(notice.blocking and notice.title == "Stale quote" for notice in stale)
+    assert routine == (next(notice for notice in review.notices if notice.title == "Atomic Net-Order Structure"),)
+    assert any(notice.blocking and notice.title == "Stale Quote" for notice in stale)
     assert "may not fill" in review.price_editor_explanation
 
 
@@ -136,23 +136,23 @@ def test_roll_review_has_close_and_replacement_roles_metrics_and_local_provenanc
     review = roll_order_review(draft, now=NOW)
 
     assert review.operation == OrderReviewOperation.ROLL
-    assert review.title == "Review roll order"
-    assert review.primary_action_label == "Finish roll review"
+    assert review.title == "Review Roll Order"
+    assert review.primary_action_label == "Finish Roll Review"
     assert review.placement_capability == OrderReviewPlacementCapability.REVIEW_ONLY
     assert review.safety_copy.startswith("This roll closes current legs and opens replacement legs")
     assert [(leg.role, leg.action, leg.quantity, leg.symbol) for leg in review.legs] == [
-        ("Close", "Sell to close", 1, LONG),
-        ("Close", "Buy to close", 1, SHORT),
-        ("Open replacement", "Buy to open", 1, "ACME  261016P00125000"),
-        ("Open replacement", "Sell to open", 1, "ACME  261016P00120000"),
+        ("Close", "Sell to Close", 1, LONG),
+        ("Close", "Buy to Close", 1, SHORT),
+        ("Open Replacement", "Buy to Open", 1, "ACME  261016P00125000"),
+        ("Open Replacement", "Sell to Open", 1, "ACME  261016P00120000"),
     ]
     metrics = {metric.label: metric for metric in review.metrics}
-    assert metrics["Current → replacement legs"].before == "2"
-    assert metrics["Current → replacement legs"].after == "2"
-    assert metrics["Days extended"].after == "+28"
+    assert metrics["Current → Replacement Legs"].before == "2"
+    assert metrics["Current → Replacement Legs"].after == "2"
+    assert metrics["Days Extended"].after == "+28"
     assert metrics["Delta"].provenance == LOCAL_CALCULATION
     costs = {cost.label: cost for cost in review.costs}
-    assert costs["Estimated fees"].value == "Unavailable"
+    assert costs["Estimated Fees"].value == "Unavailable"
     assert costs["Settlement"].value == "Unavailable"
     assert any("not verified" in notice.title.lower() for notice in review.notices)
 
@@ -166,27 +166,27 @@ def test_single_target_is_placeable_while_linked_exit_uses_the_same_review_model
     linked_review = exit_plan_review(linked, now=NOW)
 
     assert single_review.operation == OrderReviewOperation.EXIT_PLAN
-    assert single_review.title == "Review exit plan"
-    assert "2 exact review legs" in single_review.subtitle
+    assert single_review.title == "Review Exit Plan"
+    assert "2 Exact Review Legs" in single_review.subtitle
     assert single_review.placement_capability == OrderReviewPlacementCapability.SUPPORTED
-    assert single_review.primary_action_label == "Place exit order"
-    assert single_review.price_title == "Exit limit price"
+    assert single_review.primary_action_label == "Place Exit Order"
+    assert single_review.price_title == "Exit Limit Price"
     assert single_review.price_rail is not None
     assert [(leg.role, leg.symbol, leg.action) for leg in single_review.legs] == [
-        ("Target", LONG, "Sell to close"),
-        ("Target", SHORT, "Buy to close"),
+        ("Target", LONG, "Sell to Close"),
+        ("Target", SHORT, "Buy to Close"),
     ]
     assert all(leg.quantity == 1 for leg in single_review.legs)
     assert linked_review.placement_capability == OrderReviewPlacementCapability.UNAVAILABLE
-    assert "4 exact review legs" in linked_review.subtitle
-    assert linked_review.primary_action_label == "Placement unavailable"
+    assert "4 Exact Review Legs" in linked_review.subtitle
+    assert linked_review.primary_action_label == "Placement Unavailable"
     assert {leg.role for leg in linked_review.legs} == {"Target", "Stop"}
     assert all(leg.quantity == 1 for leg in linked_review.legs)
     assert any(notice.blocking for notice in linked_review.notices)
     metrics = {metric.label: metric for metric in linked_review.metrics}
-    assert metrics["Protected quantity"].after == "1"
-    assert metrics["Active branches"].after == "2"
-    assert metrics["Trigger relationship"].after == "OCO"
+    assert metrics["Protected Quantity"].after == "1"
+    assert metrics["Active Branches"].after == "2"
+    assert metrics["Trigger Relationship"].after == "OCO"
 
 
 def test_timed_exit_review_shows_schedule_and_coverage_without_duplicate_contracts() -> None:
@@ -212,18 +212,18 @@ def test_timed_exit_review_shows_schedule_and_coverage_without_duplicate_contrac
     )
 
     assert review.placement_capability == OrderReviewPlacementCapability.REVIEW_ONLY
-    assert review.primary_action_label == "Finish timed-plan review"
+    assert review.primary_action_label == "Finish Timed-Plan Review"
     assert review.placement_disabled_reason == TIME_EXIT_CAPABILITY_REASON
     assert len(review.legs) == 2
     assert {leg.symbol for leg in review.legs} == {LONG, SHORT}
     metrics = {metric.label: metric for metric in review.metrics}
-    assert metrics["Active branches"].after == "2"
-    assert metrics["Trigger relationship"].after == "First completed exit wins"
-    assert metrics["Timed rule type"].after == "Before expiration"
-    assert "America/New_York" in metrics["Resolved trigger"].after
-    assert metrics["Trigger timezone"].after == "America/New_York"
-    assert metrics["Expiration basis"].after.endswith("Sep 18, 2026")
-    assert metrics["Timed coverage"].after == "Entire strategy"
+    assert metrics["Active Branches"].after == "2"
+    assert metrics["Trigger Relationship"].after == "First Completed Exit Wins"
+    assert metrics["Timed Rule Type"].after == "Before Expiration"
+    assert "America/New_York" in metrics["Resolved Trigger"].after
+    assert metrics["Trigger Timezone"].after == "America/New_York"
+    assert metrics["Expiration Basis"].after.endswith("Sep 18, 2026")
+    assert metrics["Timed Coverage"].after == "Entire Strategy"
     assert TIME_EXIT_CAPABILITY_REASON in review.safety_copy
     assert any("Local equivalent" in notice.detail for notice in review.notices)
 
@@ -256,7 +256,7 @@ def test_elapsed_timed_exit_is_not_reviewable() -> None:
 
     assert review.placement_capability == OrderReviewPlacementCapability.UNAVAILABLE
     assert review.internal_valid is False
-    assert any(notice.title == "Timed exit is in the past" for notice in review.notices)
+    assert any(notice.title == "Timed Exit Is in the Past" for notice in review.notices)
 
 
 def test_single_target_exit_uses_close_revalidation_and_exactly_once_submission() -> None:
@@ -394,8 +394,8 @@ def test_refresh_resets_acknowledgment_and_keeps_exact_semantics() -> None:
 
     assert controller.acknowledged is False
     assert [(leg.symbol, leg.action, leg.quantity) for leg in controller.review.legs] == [
-        (LONG, "Sell to close", 1),
-        (SHORT, "Buy to close", 1),
+        (LONG, "Sell to Close", 1),
+        (SHORT, "Buy to Close", 1),
     ]
     assert controller.review.quote_state == OrderReviewQuoteState.LIVE
 
@@ -455,15 +455,15 @@ def test_acknowledgment_and_all_safety_gates_control_placement() -> None:
     controller = _controller(draft)
 
     assert controller.can_place is False
-    assert controller.state_text == "Confirmation required"
+    assert controller.state_text == "Confirmation Required"
     controller.acknowledge(True)
     assert controller.can_place is True
-    assert controller.state_text == "Ready for final revalidation"
+    assert controller.state_text == "Ready for Final Revalidation"
 
     stale = _controller(draft, now=NOW + timedelta(minutes=3))
     stale.acknowledge(True)
     assert stale.can_place is False
-    assert stale.state_text == "Stale quote — refresh required"
+    assert stale.state_text == "Stale Quote — Refresh Required"
 
 
 def test_close_back_and_save_are_non_submitting_actions() -> None:
@@ -621,10 +621,10 @@ def test_verified_preview_values_are_labeled_as_broker_values() -> None:
     assert controller.place().status == OrderReviewOutcomeStatus.ACCEPTED
 
     costs = {cost.label: cost for cost in controller.review.costs}
-    assert costs["Estimated fees"].value == "$1.23"
-    assert costs["Estimated fees"].provenance == BROKER_PREVIEW
+    assert costs["Estimated Fees"].value == "$1.23"
+    assert costs["Estimated Fees"].provenance == BROKER_PREVIEW
     assert costs["Settlement"].value == "T+1"
-    assert controller.review.broker_preview_status == "Broker preview accepted"
+    assert controller.review.broker_preview_status == "Broker Preview Accepted"
 
 
 @pytest.mark.parametrize(
@@ -753,7 +753,7 @@ def test_account_masking_preserves_safe_labels_and_masks_long_tokens() -> None:
     assert mask_account_label("Schwab ••••2048") == "Schwab ••••2048"
     assert mask_account_label("Broker 9988776655") == "Broker ••••6655"
     assert mask_account_label("Schwab test") == "Schwab test"
-    assert mask_account_label("") == "Account unavailable"
+    assert mask_account_label("") == "Account Unavailable"
 
 
 def _controller(

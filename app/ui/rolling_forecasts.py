@@ -65,12 +65,12 @@ def forecast_symbol_section_summary(
     if forecast_count < 0:
         raise ValueError("Forecast count cannot be negative.")
     weekly = (
-        "Remaining-week snapshot available"
+        "Remaining-Week Snapshot Available"
         if remaining_week_available
-        else "No remaining-week snapshot"
+        else "No Remaining-Week Snapshot"
     )
     return (
-        f"{name} · {forecast_count} forecast{'s' if forecast_count != 1 else ''} · {weekly}"
+        f"{name} · {forecast_count} Forecast{'s' if forecast_count != 1 else ''} · {weekly}"
     )
 
 
@@ -249,7 +249,7 @@ class RollingForecastTab:
         actions.pack(side=tk.RIGHT, anchor=tk.N)
         self.debug_button = ttk.Button(
             actions,
-            text="Debug details",
+            text="Debug Details",
             command=self._show_debug,
             state=tk.DISABLED,
         )
@@ -307,7 +307,7 @@ class RollingForecastTab:
 
         self.source_label = ttk.Label(
             outer,
-            text=f"Current-output source: {self.predictions_path}",
+            text=f"Current-Output Source: {self.predictions_path}",
             style="ForecastSubtitle.TLabel",
         )
         self.source_label.pack(fill=tk.X, pady=(7, 0))
@@ -342,7 +342,7 @@ class RollingForecastTab:
         except Exception as exc:
             error = ForecastDataError(
                 code="UNEXPECTED_ERROR",
-                title="Forecast dashboard could not be loaded",
+                title="Forecast Dashboard Could Not Be Loaded",
                 message=(
                     "An unexpected error occurred while preparing the "
                     "forecast dashboard."
@@ -411,7 +411,7 @@ class RollingForecastTab:
         panel.pack(fill=tk.X, pady=(4, 0))
         ttk.Label(
             panel,
-            text="Loading current forecasts...",
+            text="Loading Current Forecasts...",
             style="ForecastCardValue.TLabel",
         ).pack(anchor=tk.W)
         ttk.Label(
@@ -447,7 +447,7 @@ class RollingForecastTab:
         ).pack(anchor=tk.W, pady=(8, 0))
         ttk.Label(
             panel,
-            text=f"Configured source: {error.path}",
+            text=f"Configured Source: {error.path}",
             style="ForecastMuted.TLabel",
             wraplength=760,
             justify=tk.LEFT,
@@ -473,7 +473,7 @@ class RollingForecastTab:
             panel.pack(fill=tk.X, pady=(4, 0))
             ttk.Label(
                 panel,
-                text="No forecast rows",
+                text="No Forecast Rows",
                 style="ForecastCardTitle.TLabel",
             ).pack(anchor=tk.W)
             ttk.Label(
@@ -495,13 +495,13 @@ class RollingForecastTab:
             controls.pack(fill=tk.X, pady=(0, 7))
             ttk.Button(
                 controls,
-                text="Expand all",
+                text="Expand All",
                 command=lambda: self._set_all_symbols_expanded(True),
                 width=12,
             ).pack(side=tk.RIGHT)
             ttk.Button(
                 controls,
-                text="Collapse all",
+                text="Collapse All",
                 command=lambda: self._set_all_symbols_expanded(False),
                 width=12,
             ).pack(side=tk.RIGHT, padx=(0, 6))
@@ -592,25 +592,25 @@ class RollingForecastTab:
         route_detail = route_publication_summary(view)
         cards = (
             (
-                "Data freshness",
+                "Data Freshness",
                 view.freshness_label,
                 route_detail,
                 view.freshness_tone,
             ),
             (
-                "Last successful refresh",
+                "Last Successful Refresh",
                 format_timestamp_utc(view.last_successful_refresh),
                 refresh_detail,
                 "neutral",
             ),
             (
-                "Operational status",
+                "Operational Status",
                 view.operational_label,
                 "Independent from forecast actionability",
                 view.operational_tone,
             ),
             (
-                "Automated action",
+                "Automated Action",
                 "Off" if not view.automated_action_allowed else "Flag on",
                 view.automation_label,
                 view.automation_tone,
@@ -667,7 +667,7 @@ class RollingForecastTab:
         )
         ttk.Label(
             card,
-            text=f"{route.horizon_label} forecast",
+            text=f"{route.horizon_label} Forecast",
             style="ForecastCardTitle.TLabel",
         ).pack(anchor=tk.W)
 
@@ -684,13 +684,13 @@ class RollingForecastTab:
 
         if route.is_actionable or route.is_in_progress:
             probability_text = (
-                "Probability up: "
+                "Probability Up: "
                 f"{format_probability(route.probability_up)}\n"
-                "Probability down: "
+                "Probability Down: "
                 f"{format_probability(route.probability_down)}"
             )
         else:
-            probability_text = "No current probability"
+            probability_text = "No Current Probability"
         ttk.Label(
             card,
             text=probability_text,
@@ -700,15 +700,15 @@ class RollingForecastTab:
         ).pack(anchor=tk.W, pady=(8, 0))
 
         window_text = (
-            "Forecast window\n"
-            f"UTC start: {format_timestamp_utc(route.target_window_start)}\n"
-            f"UTC end: {format_timestamp_utc(route.target_window_end)}\n"
-            "Local start: "
+            "Forecast Window\n"
+            f"UTC Start: {format_timestamp_utc(route.target_window_start)}\n"
+            f"UTC End: {format_timestamp_utc(route.target_window_end)}\n"
+            "Local Start: "
             + format_timestamp_local(
                 route.target_window_start,
                 local_timezone=self.local_timezone,
             )
-            + "\nLocal end: "
+            + "\nLocal End: "
             + format_timestamp_local(
                 route.target_window_end,
                 local_timezone=self.local_timezone,
@@ -753,14 +753,14 @@ class RollingForecastTab:
         header.pack(fill=tk.X)
         ttk.Label(
             header,
-            text="Remaining-week outlook",
+            text="Remaining-Week Outlook",
             style="ForecastCardTitle.TLabel",
         ).pack(side=tk.LEFT, anchor=tk.W)
 
         if outlook is None:
             ttk.Label(
                 header,
-                text="No current snapshot",
+                text="No Current Snapshot",
                 style="ForecastNeutral.TLabel",
             ).pack(side=tk.RIGHT, anchor=tk.E)
             ttk.Label(
@@ -777,15 +777,15 @@ class RollingForecastTab:
 
         ttk.Label(
             header,
-            text="Current remaining-week snapshot",
+            text="Current Remaining-Week Snapshot",
             style="ForecastSuccess.TLabel",
         ).pack(side=tk.RIGHT, anchor=tk.E)
         ttk.Label(
             card,
             text=(
-                "Snapshot issued: "
+                    "Snapshot Issued: "
                 f"{format_timestamp_utc(outlook.issued_at)}\n"
-                "Local issuance: "
+                    "Local Issuance: "
                 + format_timestamp_local(
                     outlook.issued_at,
                     local_timezone=self.local_timezone,
@@ -811,8 +811,8 @@ class RollingForecastTab:
         ttk.Label(
             aggregate_panel,
             text=(
-                f"Probability up: {format_probability(aggregate.probability_up)}   "
-                f"Probability down: {format_probability(aggregate.probability_down)}"
+                f"Probability Up: {format_probability(aggregate.probability_up)}   "
+                f"Probability Down: {format_probability(aggregate.probability_down)}"
             ),
             style="ForecastCardValue.TLabel",
             wraplength=960,
@@ -821,16 +821,16 @@ class RollingForecastTab:
         ttk.Label(
             aggregate_panel,
             text=(
-                "UTC start: "
+                "UTC Start: "
                 f"{format_timestamp_utc(aggregate.target_window_start)}\n"
-                "UTC end: "
+                "UTC End: "
                 f"{format_timestamp_utc(aggregate.target_window_end)}\n"
-                "Local start: "
+                "Local Start: "
                 + format_timestamp_local(
                     aggregate.target_window_start,
                     local_timezone=self.local_timezone,
                 )
-                + "\nLocal end: "
+                + "\nLocal End: "
                 + format_timestamp_local(
                     aggregate.target_window_end,
                     local_timezone=self.local_timezone,
@@ -873,8 +873,8 @@ class RollingForecastTab:
             ttk.Label(
                 session_panel,
                 text=(
-                    f"Probability up: {format_probability(route.probability_up)}   "
-                    f"Probability down: {format_probability(route.probability_down)}"
+                    f"Probability Up: {format_probability(route.probability_up)}   "
+                    f"Probability Down: {format_probability(route.probability_down)}"
                 ),
                 style="ForecastCardValue.TLabel",
                 wraplength=960,
@@ -883,16 +883,16 @@ class RollingForecastTab:
             ttk.Label(
                 session_panel,
                 text=(
-                    "UTC open: "
+                    "UTC Open: "
                     f"{format_timestamp_utc(route.target_window_start)}\n"
-                    "UTC close: "
+                    "UTC Close: "
                     f"{format_timestamp_utc(route.target_window_end)}\n"
-                    "Local open: "
+                    "Local Open: "
                     + format_timestamp_local(
                         route.target_window_start,
                         local_timezone=self.local_timezone,
                     )
-                    + "\nLocal close: "
+                    + "\nLocal Close: "
                     + format_timestamp_local(
                         route.target_window_end,
                         local_timezone=self.local_timezone,
@@ -905,7 +905,7 @@ class RollingForecastTab:
             ttk.Label(
                 session_panel,
                 text=(
-                    "Outcome/evidence: "
+                    "Outcome/Evidence: "
                     f"{route_outcome_evidence_label(route)} · "
                     f"{route.live_evidence_label}"
                 ),
@@ -1120,7 +1120,7 @@ class RollingForecastTab:
 
         ttk.Label(
             dialog,
-            text="Technical fields and raw statuses",
+            text="Technical Fields and Raw Statuses",
             style="ForecastTitle.TLabel",
         ).pack(anchor=tk.W, padx=16, pady=(14, 8))
         text = tk.Text(

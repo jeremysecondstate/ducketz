@@ -53,10 +53,10 @@ TRAILING_STOP_CAPABILITY_REASON = (
 )
 
 TEMPLATE_LABELS: Mapping[str, str] = {
-    TARGET_STOP: "Target + stop",
-    SINGLE_TARGET: "Single target",
-    TWO_TARGETS: "2 targets",
-    TRAILING_STOP: "Trailing stop",
+    TARGET_STOP: "Target + Stop",
+    SINGLE_TARGET: "Single Target",
+    TWO_TARGETS: "2 Targets",
+    TRAILING_STOP: "Trailing Stop",
 }
 
 
@@ -127,7 +127,7 @@ def build_exit_plan_draft(
     conflicts = conflicting_closing_order_ids(working_orders, symbols)
     target_branch = ExitPlanBranch(
         branch_id="target",
-        label="Take profit",
+        label="Take Profit",
         enabled=True,
         trigger_basis="Position mark",
         trigger_operator="+" if cash_direction > 0 else "−",
@@ -142,7 +142,7 @@ def build_exit_plan_draft(
     )
     stop_branch = ExitPlanBranch(
         branch_id="stop",
-        label="Stop loss",
+        label="Stop Loss",
         enabled=True,
         trigger_basis="Position mark",
         trigger_operator="−" if cash_direction > 0 else "+",
@@ -173,10 +173,10 @@ def build_exit_plan_draft(
             "Second profit target",
         )
         branches = (
-            _without_order(target_branch, branch_id="target_1", label="First target", fraction=0.5),
+            _without_order(target_branch, branch_id="target_1", label="First Target", fraction=0.5),
             ExitPlanBranch(
                 branch_id="target_2",
-                label="Second target",
+                label="Second Target",
                 enabled=True,
                 trigger_basis="Position mark",
                 trigger_operator=target_branch.trigger_operator,
@@ -197,7 +197,7 @@ def build_exit_plan_draft(
         branches = (
             ExitPlanBranch(
                 branch_id="trailing_stop",
-                label="Trailing stop",
+                label="Trailing Stop",
                 enabled=True,
                 trigger_basis="Position mark",
                 trigger_operator="TRAIL",
@@ -244,11 +244,11 @@ def build_exit_plan_draft(
 
     underlying = base_close.legs[0].underlying_symbol if base_close.legs else ""
     if coverage_mode == "selected":
-        coverage_label = f"{len(symbols)} selected leg{'s' if len(symbols) != 1 else ''}"
+        coverage_label = f"{len(symbols)} Selected Leg{'s' if len(symbols) != 1 else ''}"
     elif len(symbols) > 1:
-        coverage_label = "Entire strategy"
+        coverage_label = "Entire Strategy"
     else:
-        coverage_label = "Entire position"
+        coverage_label = "Entire Position"
     return ExitPlanDraft(
         template_id=template_id,
         template_name=TEMPLATE_LABELS[template_id],
@@ -457,7 +457,7 @@ def _saved_time_exit_from_row(
     if rule_type != BEFORE_EXPIRATION:
         raise ValueError(
             f"Saved template {template_name!r} has an unsupported time-based exit type. "
-            "Only Before expiration may be saved."
+            "Only Before Expiration may be saved."
         )
     sessions = _positive_integer(
         value.get("sessions_before_expiration"),

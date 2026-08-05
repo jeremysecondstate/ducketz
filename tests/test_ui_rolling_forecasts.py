@@ -54,9 +54,9 @@ def test_supported_horizon_order_labels_and_subtitle_are_exact() -> None:
         "1w-d4",
         "1w-d5",
     )
-    assert HORIZON_LABELS["4h"] == "4 hour"
-    assert f"{HORIZON_LABELS['4h']} forecast" == "4 hour forecast"
-    assert HORIZON_LABELS["1w"] == "Remaining-week aggregate"
+    assert HORIZON_LABELS["4h"] == "4 Hour"
+    assert f"{HORIZON_LABELS['4h']} Forecast" == "4 Hour Forecast"
+    assert HORIZON_LABELS["1w"] == "Remaining-Week Aggregate"
     assert FORECAST_SUBTITLE == (
         "Read-only 1h, 4h, 1d, and dynamic remaining-week probability outlooks. "
         "Probabilities are not recommendations."
@@ -70,7 +70,7 @@ def test_collapsed_symbol_summary_and_header_copy_are_explicit() -> None:
         remaining_week_available=True,
     )
 
-    assert summary == "AAPL · 3 forecasts · Remaining-week snapshot available"
+    assert summary == "AAPL · 3 Forecasts · Remaining-Week Snapshot Available"
     assert forecast_symbol_header_text(
         "aapl",
         expanded=True,
@@ -85,7 +85,7 @@ def test_collapsed_symbol_summary_and_header_copy_are_explicit() -> None:
         "msft",
         forecast_count=1,
         remaining_week_available=False,
-    ) == "MSFT · 1 forecast · No remaining-week snapshot"
+    ) == "MSFT · 1 Forecast · No Remaining-Week Snapshot"
 
 
 def test_symbol_expansion_state_survives_refresh_and_new_symbols_default_open() -> None:
@@ -127,12 +127,12 @@ def test_three_standard_cards_and_complete_weekly_outlook_are_grouped(
     assert [
         route.probability_up for route in view.symbols[0].routes
     ] == [0.61, 0.59, 0.57, 0.54]
-    assert view.symbols[0].routes[-1].horizon_label == "Remaining-week aggregate"
+    assert view.symbols[0].routes[-1].horizon_label == "Remaining-Week Aggregate"
     assert view.symbols[0].weekly_outlook is not None
     assert [
         route.horizon for route in view.symbols[0].weekly_outlook.sessions
     ] == ["1w-d1", "1w-d2", "1w-d3", "1w-d4", "1w-d5"]
-    assert view.freshness_label == "Data pipeline is current"
+    assert view.freshness_label == "Data Pipeline Is Current"
 
 
 def test_monday_decision_renders_dynamic_tuesday_through_friday_outlook(
@@ -231,11 +231,11 @@ def test_mixed_actionable_and_unavailable_horizons_preserve_statuses(
         route.horizon: route for route in view.symbols[0].routes
     }
 
-    assert routes["1h"].actionability_label == "Current forecast"
-    assert routes["1d"].actionability_label == "Model unavailable"
+    assert routes["1h"].actionability_label == "Current Forecast"
+    assert routes["1d"].actionability_label == "Model Unavailable"
     assert routes["1d"].probability_up is None
     assert routes["1w"].is_missing
-    assert view.operational_label == "Operational with limitations"
+    assert view.operational_label == "Operational with Limitations"
 
 
 def test_missing_symbol_horizon_is_an_explicit_empty_route(
@@ -255,10 +255,10 @@ def test_missing_symbol_horizon_is_an_explicit_empty_route(
 
     assert four_hour.horizon == "4h"
     assert four_hour.is_missing
-    assert four_hour.horizon_label == "4 hour"
+    assert four_hour.horizon_label == "4 Hour"
     assert weekly.horizon == "1w"
     assert weekly.is_missing
-    assert weekly.actionability_label == "No current forecast"
+    assert weekly.actionability_label == "No Current Forecast"
     assert weekly.probability_up is None
 
 
@@ -404,14 +404,14 @@ def test_trusted_active_window_forecasts_remain_visible_but_not_actionable(
         for horizon in ("1h", "4h", "1d")
     )
     assert route_accessible_status_labels(routes["1h"])[0] == (
-        "Actionability: Forecast in progress — entry window passed; "
-        "not actionable"
+        "Actionability: Forecast in Progress — Entry Window Passed; "
+        "Not Actionable"
     )
     assert routes["1h"].live_evidence_label == (
-        "Awaiting first completed forecast (0 of 60)"
+        "Awaiting First Completed Forecast (0 of 60)"
     )
     assert routes["1d"].live_evidence_label == (
-        "Awaiting first completed forecast (0 of 30)"
+        "Awaiting First Completed Forecast (0 of 30)"
     )
     assert routes["1h"].target_window_start == datetime(
         2026, 8, 5, 16, 0, tzinfo=timezone.utc
@@ -466,9 +466,9 @@ def test_stale_data_uses_backend_operational_status(
 
     view = load_forecast_dashboard(path)
 
-    assert view.freshness_label == "Data is stale"
+    assert view.freshness_label == "Data Is Stale"
     assert view.freshness_tone == "danger"
-    assert view.operational_label == "Operational data is stale"
+    assert view.operational_label == "Operational Data Is Stale"
 
 
 def test_current_weekly_outlook_with_stale_live_routes_is_not_global_failure(
@@ -491,9 +491,9 @@ def test_current_weekly_outlook_with_stale_live_routes_is_not_global_failure(
 
     view = load_forecast_dashboard(path)
 
-    assert view.freshness_label == "Current outlooks with route gaps"
+    assert view.freshness_label == "Current Outlooks with Route Gaps"
     assert view.freshness_tone == "warning"
-    assert view.operational_label == "Operational with route timing gaps"
+    assert view.operational_label == "Operational with Route Timing Gaps"
     assert view.operational_tone == "warning"
     assert route_publication_summary(view) == (
         "0 live routes; 1 current remaining-week outlook; 9 published rows"
@@ -511,7 +511,7 @@ def test_unsupported_schema_version_is_structured(
         load_forecast_dashboard(path)
 
     assert caught.value.code == "UNSUPPORTED_SCHEMA_VERSION"
-    assert "newer app version" in caught.value.title
+    assert "Newer App Version" in caught.value.title
 
 
 def test_missing_file_is_structured(tmp_path: Path) -> None:
@@ -550,7 +550,7 @@ def test_operationally_current_can_still_be_non_actionable(
 
     view = load_forecast_dashboard(path)
 
-    assert view.operational_label == "Operationally current"
+    assert view.operational_label == "Operationally Current"
     assert view.actionable_route_count == 0
     assert "no actionable forecast" in view.empty_message.lower()
 
@@ -592,7 +592,7 @@ def test_insufficient_live_evidence_keeps_completed_count(
 
     route = load_forecast_dashboard(path).symbols[0].routes[0]
 
-    assert route.live_evidence_label == "7 of 60 completed forecasts"
+    assert route.live_evidence_label == "7 of 60 Completed Forecasts"
     assert route.completed_decision_count == 7
     assert route.minimum_live_decision_count == 60
 
@@ -609,43 +609,43 @@ def test_insufficient_live_evidence_keeps_completed_count(
             "1h",
             0,
             "NO_COMPLETED_DECISIONS",
-            "Awaiting first completed forecast (0 of 60)",
+            "Awaiting First Completed Forecast (0 of 60)",
         ),
         (
             "1h",
             1,
             "INSUFFICIENT_LIVE_EVIDENCE",
-            "1 of 60 completed forecasts",
+            "1 of 60 Completed Forecasts",
         ),
         (
             "1h",
             59,
             "INSUFFICIENT_LIVE_EVIDENCE",
-            "59 of 60 completed forecasts",
+            "59 of 60 Completed Forecasts",
         ),
         (
             "1h",
             60,
             "LIVE_EVIDENCE_AVAILABLE",
-            "60 of 60 completed forecasts",
+            "60 of 60 Completed Forecasts",
         ),
         (
             "4h",
             60,
             "LIVE_EVIDENCE_AVAILABLE",
-            "60 of 60 completed forecasts",
+            "60 of 60 Completed Forecasts",
         ),
         (
             "1d",
             29,
             "INSUFFICIENT_LIVE_EVIDENCE",
-            "29 of 30 completed forecasts",
+            "29 of 30 Completed Forecasts",
         ),
         (
             "1d",
             30,
             "LIVE_EVIDENCE_AVAILABLE",
-            "30 of 30 completed forecasts",
+            "30 of 30 Completed Forecasts",
         ),
     ),
 )
@@ -678,7 +678,7 @@ def test_live_evidence_wording_and_threshold_boundaries(
     )
     assert route.live_evidence_label == expected
     assert route_accessible_status_labels(route)[1] == (
-        f"Live evidence: {expected}"
+        f"Live Evidence: {expected}"
     )
 
 
@@ -772,10 +772,10 @@ def test_frozen_weekly_outlook_exposes_aggregate_and_five_dated_sessions(
         "Friday, August 7, 2026",
     ]
     assert route_outcome_evidence_label(outlook.sessions[0]) == (
-        "Completed evidence"
+        "Completed Evidence"
     )
     assert route_outcome_evidence_label(outlook.sessions[-1]) == (
-        "Pending evidence"
+        "Pending Evidence"
     )
 
 
@@ -815,9 +815,9 @@ def test_frozen_weekly_probabilities_survive_evidence_only_refreshes(
     assert [route.probability_up for route in first.routes] == [
         route.probability_up for route in second.routes
     ]
-    assert route_outcome_evidence_label(first.sessions[0]) == "Pending evidence"
+    assert route_outcome_evidence_label(first.sessions[0]) == "Pending Evidence"
     assert route_outcome_evidence_label(second.sessions[0]) == (
-        "Completed evidence"
+        "Completed Evidence"
     )
 
 
@@ -882,15 +882,33 @@ def test_weekly_card_source_contains_required_frozen_outlook_content() -> None:
     source = inspect.getsource(RollingForecastTab._build_weekly_outlook_card)
 
     for required_text in (
-        "Remaining-week outlook",
-        "Current remaining-week snapshot",
-        "Snapshot issued",
+        "Remaining-Week Outlook",
+        "Current Remaining-Week Snapshot",
+        "Snapshot Issued",
         "Aggregate (Remaining Week)",
-        "UTC open",
-        "Local open",
+        "UTC Open",
+        "Local Open",
         "Outcome/evidence",
     ):
         assert required_text in source
+
+
+def test_forecast_action_labels_use_title_capitalization() -> None:
+    source = inspect.getsource(RollingForecastTab)
+
+    for expected_text in (
+        'text="Debug Details"',
+        'text="Collapse All"',
+        'text="Expand All"',
+    ):
+        assert expected_text in source
+
+    for old_text in (
+        'text="Debug details"',
+        'text="Collapse all"',
+        'text="Expand all"',
+    ):
+        assert old_text not in source
 
 
 def test_session_date_and_local_window_are_dst_aware() -> None:
@@ -973,8 +991,8 @@ def test_status_labels_are_textual_and_accessible(
     labels = route_accessible_status_labels(route)
 
     assert labels == (
-        "Actionability: Current forecast",
-        "Live evidence: 11 of 60 completed forecasts",
+        "Actionability: Current Forecast",
+        "Live Evidence: 11 of 60 Completed Forecasts",
     )
 
 
@@ -1101,7 +1119,7 @@ def test_zero_row_parquet_is_a_useful_empty_state(
 
     assert not view.symbols
     assert view.empty_message == "No current forecast rows are available."
-    assert view.freshness_label == "No forecast data"
+    assert view.freshness_label == "No Forecast Data"
     assert not view.automated_action_allowed
 
 

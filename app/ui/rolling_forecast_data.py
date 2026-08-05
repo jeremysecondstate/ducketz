@@ -33,10 +33,10 @@ STANDARD_HORIZON_ORDER: Final = ("1h", "4h", "1d")
 HORIZON_ORDER: Final = (*STANDARD_HORIZON_ORDER, "1w")
 SUPPORTED_HORIZON_ORDER: Final = INTERNAL_HORIZON_ORDER
 HORIZON_LABELS: Final = {
-    "1h": "1 hour",
-    "4h": "4 hour",
-    "1d": "1 day",
-    "1w": "Remaining-week aggregate",
+    "1h": "1 Hour",
+    "4h": "4 Hour",
+    "1d": "1 Day",
+    "1w": "Remaining-Week Aggregate",
     "1w-d1": "Day 1",
     "1w-d2": "Day 2",
     "1w-d3": "Day 3",
@@ -268,7 +268,7 @@ def load_forecast_dashboard(
     if not source.is_file():
         raise ForecastDataError(
             code="MISSING_FILE",
-            title="Forecast data is not available",
+            title="Forecast Data Is Not Available",
             message=(
                 "The consolidated rolling forecast file has not been "
                 "published at the configured location."
@@ -494,7 +494,7 @@ def format_session_date(
     local_timezone: tzinfo | None = None,
 ) -> str:
     if value is None:
-        return "Date unavailable"
+        return "Date Unavailable"
     zone = local_timezone or datetime.now().astimezone().tzinfo or timezone.utc
     converted = _utc_datetime(value).astimezone(zone)
     return (
@@ -517,9 +517,9 @@ def route_publication_summary(view: ForecastDashboardView) -> str:
 
 def route_outcome_evidence_label(route: ForecastRouteView) -> str:
     labels = {
-        "PENDING_EVIDENCE": "Pending evidence",
-        "COMPLETED_EVIDENCE": "Completed evidence",
-        "FORECAST_IN_PROGRESS": "Forecast in progress",
+        "PENDING_EVIDENCE": "Pending Evidence",
+        "COMPLETED_EVIDENCE": "Completed Evidence",
+        "FORECAST_IN_PROGRESS": "Forecast in Progress",
     }
     return labels.get(
         route.intelligence_status,
@@ -532,7 +532,7 @@ def route_accessible_status_labels(
 ) -> tuple[str, str]:
     return (
         f"Actionability: {route.actionability_label}",
-        f"Live evidence: {route.live_evidence_label}",
+        f"Live Evidence: {route.live_evidence_label}",
     )
 
 
@@ -571,13 +571,13 @@ def dashboard_debug_text(view: ForecastDashboardView) -> str:
         "ROLLING FORECAST DEBUG DETAILS",
         "",
         f"Source: {view.source_path}",
-        f"Supported schema: {view.schema_version}",
-        f"Source rows: {view.source_row_count}",
-        f"Loaded at: {view.loaded_at.isoformat()}",
-        "Operational statuses: "
+        f"Supported Schema: {view.schema_version}",
+        f"Source Rows: {view.source_row_count}",
+        f"Loaded At: {view.loaded_at.isoformat()}",
+        "Operational Statuses: "
         + (", ".join(view.operational_statuses) or "(none)"),
-        f"Remaining-week snapshots: {view.frozen_weekly_snapshot_count}",
-        f"Automated action allowed: {view.automated_action_allowed}",
+        f"Remaining-Week Snapshots: {view.frozen_weekly_snapshot_count}",
+        f"Automated Action Allowed: {view.automated_action_allowed}",
     ]
     for symbol in view.symbols:
         lines.extend(("", symbol.symbol))
@@ -951,7 +951,7 @@ def _missing_route(
         probability_up=None,
         probability_down=None,
         actionability_status="MISSING_HORIZON",
-        actionability_label="No current forecast",
+        actionability_label="No Current Forecast",
         actionability_tone="neutral",
         model_evidence_status="MODEL_EVIDENCE_UNAVAILABLE",
         live_evidence_status="LIVE_EVIDENCE_UNAVAILABLE",
@@ -1024,7 +1024,7 @@ def _structured_read_error(
     if isinstance(exc, FileNotFoundError):
         return ForecastDataError(
             code="MISSING_FILE",
-            title="Forecast data is not available",
+            title="Forecast Data Is Not Available",
             message="The consolidated rolling forecast file is missing.",
             path=path,
             technical_detail=detail,
@@ -1032,7 +1032,7 @@ def _structured_read_error(
     if "Unsupported intelligence schema version" in message:
         return ForecastDataError(
             code="UNSUPPORTED_SCHEMA_VERSION",
-            title="Forecast data needs a newer app version",
+            title="Forecast Data Needs a Newer App Version",
             message=(
                 "The file uses a rolling forecast schema version this app "
                 "does not support."
@@ -1043,7 +1043,7 @@ def _structured_read_error(
     if "Parquet physical schema mismatch" in message:
         return ForecastDataError(
             code="SCHEMA_INCOMPATIBLE",
-            title="Forecast data has an incompatible schema",
+            title="Forecast Data Has an Incompatible Schema",
             message=(
                 "The consolidated file does not match the supported "
                 "one-id-v1 or one-id-v2 intelligence contracts."
@@ -1053,7 +1053,7 @@ def _structured_read_error(
         )
     return ForecastDataError(
         code="UNREADABLE_FILE",
-        title="Forecast data could not be read",
+        title="Forecast Data Could Not Be Read",
         message=(
             "The consolidated rolling forecast file is corrupt, incomplete, "
             "or temporarily unavailable."
@@ -1066,7 +1066,7 @@ def _structured_read_error(
 def _contract_error(path: Path, message: str) -> ForecastDataError:
     return ForecastDataError(
         code="SCHEMA_INCOMPATIBLE",
-        title="Forecast data has an incompatible schema",
+        title="Forecast Data Has an Incompatible Schema",
         message=message,
         path=path,
         technical_detail=message,
@@ -1075,48 +1075,48 @@ def _contract_error(path: Path, message: str) -> ForecastDataError:
 
 def _freshness(statuses: tuple[str, ...]) -> tuple[str, str]:
     if not statuses:
-        return "No forecast data", "neutral"
+        return "No Forecast Data", "neutral"
     if "REFRESH_FAILED" in statuses:
-        return "Latest refresh failed", "danger"
+        return "Latest Refresh Failed", "danger"
     if "REFRESH_IN_PROGRESS" in statuses:
-        return "Refresh in progress", "warning"
+        return "Refresh in Progress", "warning"
     has_stale = any("STALE" in status for status in statuses)
     has_current = any(
         status in _CURRENT_OPERATIONAL_STATUSES for status in statuses
     )
     if has_stale and has_current:
-        return "Current outlooks with route gaps", "warning"
+        return "Current Outlooks with Route Gaps", "warning"
     if has_stale:
-        return "Data is stale", "danger"
+        return "Data Is Stale", "danger"
     if all(
         status in _CURRENT_OPERATIONAL_STATUSES for status in statuses
     ):
-        return "Data pipeline is current", "success"
-    return "Data pipeline has limitations", "warning"
+        return "Data Pipeline Is Current", "success"
+    return "Data Pipeline Has Limitations", "warning"
 
 
 def _operational_summary(
     statuses: tuple[str, ...],
 ) -> tuple[str, str]:
     if not statuses:
-        return "Operational status unavailable", "neutral"
+        return "Operational Status Unavailable", "neutral"
     if "REFRESH_FAILED" in statuses:
-        return "Refresh failed", "danger"
+        return "Refresh Failed", "danger"
     if "REFRESH_IN_PROGRESS" in statuses:
-        return "Refreshing current output", "warning"
+        return "Refreshing Current Output", "warning"
     has_stale = any("STALE" in status for status in statuses)
     has_current = any(
         status in _CURRENT_OPERATIONAL_STATUSES for status in statuses
     )
     if has_stale and has_current:
-        return "Operational with route timing gaps", "warning"
+        return "Operational with Route Timing Gaps", "warning"
     if has_stale:
-        return "Operational data is stale", "danger"
+        return "Operational Data Is Stale", "danger"
     if all(
         status in _CURRENT_OPERATIONAL_STATUSES for status in statuses
     ):
-        return "Operationally current", "success"
-    return "Operational with limitations", "warning"
+        return "Operationally Current", "success"
+    return "Operational with Limitations", "warning"
 
 
 def _empty_message(
@@ -1143,18 +1143,18 @@ def _empty_message(
 
 def _actionability_label(status: str) -> str:
     labels = {
-        "ACTIONABLE": "Current forecast",
+        "ACTIONABLE": "Current Forecast",
         "TARGET_WINDOW_STARTED": (
-            "Forecast in progress — entry window passed; not actionable"
+            "Forecast in Progress — Entry Window Passed; Not Actionable"
         ),
-        "TARGET_WINDOW_PASSED": "Forecast window has passed",
-        "ENTRY_WINDOW_PASSED": "Forecast window has passed",
-        "NO_ACTIONABLE_CANDIDATE": "No current forecast",
-        "NO_ELIGIBLE_SOURCE_DATA": "No eligible source data",
-        "MODEL_UNAVAILABLE": "Model unavailable",
-        "TARGET_TIMESTAMP_INVALID": "Forecast timing unavailable",
-        "REFRESH_IN_PROGRESS": "Refresh in progress",
-        "REFRESH_FAILED": "Refresh failed",
+        "TARGET_WINDOW_PASSED": "Forecast Window Has Passed",
+        "ENTRY_WINDOW_PASSED": "Forecast Window Has Passed",
+        "NO_ACTIONABLE_CANDIDATE": "No Current Forecast",
+        "NO_ELIGIBLE_SOURCE_DATA": "No Eligible Source Data",
+        "MODEL_UNAVAILABLE": "Model Unavailable",
+        "TARGET_TIMESTAMP_INVALID": "Forecast Timing Unavailable",
+        "REFRESH_IN_PROGRESS": "Refresh in Progress",
+        "REFRESH_FAILED": "Refresh Failed",
     }
     return labels.get(status, _humanize(status))
 
@@ -1181,15 +1181,15 @@ def _live_evidence_label(
 ) -> str:
     if completed_count == 0:
         return (
-            "Awaiting first completed forecast "
+            "Awaiting First Completed Forecast "
             f"(0 of {minimum_count})"
         )
     if completed_count is not None and completed_count > 0:
         return (
-            f"{completed_count} of {minimum_count} completed forecasts"
+            f"{completed_count} of {minimum_count} Completed Forecasts"
         )
     labels = {
-        "NO_MATCHING_MODEL_ROUTE": "No matching live evidence",
+        "NO_MATCHING_MODEL_ROUTE": "No Matching Live Evidence",
         "LIVE_EVIDENCE_PENDING": "Pending",
         "LIVE_EVIDENCE_UNAVAILABLE": "Unavailable",
     }
@@ -1197,7 +1197,7 @@ def _live_evidence_label(
 
 
 def _humanize(value: str) -> str:
-    return value.replace("_", " ").strip().capitalize() or "Unavailable"
+    return value.replace("_", " ").strip().title() or "Unavailable"
 
 
 def _timestamp(value: object) -> datetime | None:

@@ -20,9 +20,9 @@ DEFAULT_MARKET_TIMEZONE = "America/New_York"
 DEFAULT_MINUTES_BEFORE_CLOSE = 30
 
 MARKET_CLOSE_CHOICES: tuple[tuple[str, int], ...] = (
-    ("At scheduled session close", 0),
-    ("30 minutes before scheduled close", 30),
-    ("60 minutes before scheduled close", 60),
+    ("At Scheduled Session Close", 0),
+    ("30 Minutes Before Scheduled Close", 30),
+    ("60 Minutes Before Scheduled Close", 60),
 )
 
 TIME_EXIT_CAPABILITY_REASON = (
@@ -201,7 +201,7 @@ def saved_time_exit_from_rule(rule: TimeBasedExitRule) -> SavedTimeBasedExitRule
     if rule.rule_type != BEFORE_EXPIRATION:
         raise ValueError(
             "A specific absolute date and time cannot be saved as a timeless reusable "
-            "template. Remove it or switch to Before expiration."
+            "template. Remove it or switch to Before Expiration."
         )
     if (
         rule.sessions_before_expiration is None
@@ -231,9 +231,9 @@ def time_exit_presentation(
         count = rule.sessions_before_expiration or 0
         basis = date.fromisoformat(str(rule.expiration_basis))
         summary = (
-            f"Time-based exit \u00b7 {count} trading session{'s' if count != 1 else ''} "
+            f"Time-Based Exit \u00b7 {count} Trading Session{'s' if count != 1 else ''} "
             f"before {_short_date(basis)} at {_clock(scheduled)} "
-            f"{_summary_zone(rule.timezone_name, scheduled)} \u00b7 Review only"
+            f"{_summary_zone(rule.timezone_name, scheduled)} \u00b7 Review Only"
         )
         expiration_basis = (
             f"Earliest of {len(rule.selected_expirations)} selected expiration"
@@ -241,8 +241,8 @@ def time_exit_presentation(
         )
     else:
         summary = (
-            f"Time-based exit \u00b7 {_short_date(scheduled.date())} at {_clock(scheduled)} "
-            f"{scheduled.tzname() or rule.timezone_name} \u00b7 Review only"
+            f"Time-Based Exit \u00b7 {_short_date(scheduled.date())} at {_clock(scheduled)} "
+            f"{scheduled.tzname() or rule.timezone_name} \u00b7 Review Only"
         )
         expiration_basis = None
     resolved = (

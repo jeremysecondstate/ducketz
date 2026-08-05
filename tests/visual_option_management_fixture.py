@@ -215,7 +215,7 @@ def _stage_capture(
             raise RuntimeError("The timed-exit accordion was not available for capture.")
         toggle_time_exit()
         if specific_time_exit:
-            target.time_exit_type.set("Specific date and time")
+            target.time_exit_type.set("Specific Date and Time")
             target._time_exit_type_changed()
         left_scroll = getattr(target, "left_scroll", None)
         canvas = getattr(left_scroll, "canvas", None)

@@ -61,8 +61,8 @@ def test_runtime_intelligence_evidence_is_rendered_by_dashboard_loader(
     )
 
     assert dashboard.operational_statuses == ("OPERATIONALLY_CURRENT",)
-    assert dashboard.operational_label == "Operationally current"
-    assert dashboard.freshness_label == "Data pipeline is current"
+    assert dashboard.operational_label == "Operationally Current"
+    assert dashboard.freshness_label == "Data Pipeline Is Current"
     assert dashboard.automated_action_allowed is False
     assert dashboard.automation_label == "Automated action is off"
     assert dashboard.published_route_count == 1
@@ -75,14 +75,14 @@ def test_runtime_intelligence_evidence_is_rendered_by_dashboard_loader(
     assert route.model_evidence_status == "OFFLINE_EVALUATED_CANDIDATE"
     assert route.live_evidence_status == "NO_COMPLETED_DECISIONS"
     assert route.live_evidence_label == (
-        "Awaiting first completed forecast (0 of 30)"
+        "Awaiting First Completed Forecast (0 of 30)"
     )
     assert route.completed_decision_count == 0
     assert route.minimum_live_decision_count == 30
     assert route.automated_action_allowed is False
     assert route_accessible_status_labels(route) == (
-        "Actionability: Current forecast",
-        "Live evidence: Awaiting first completed forecast (0 of 30)",
+        "Actionability: Current Forecast",
+        "Live Evidence: Awaiting First Completed Forecast (0 of 30)",
     )
 
 

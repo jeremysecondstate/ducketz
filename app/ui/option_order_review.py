@@ -357,7 +357,7 @@ class OptionOrderReviewDialog(tk.Toplevel):
         actions.pack(side=tk.RIGHT)
         back = ttk.Button(
             actions,
-            text="Back to edit",
+            text="Back to Edit",
             command=self._back,
             style="OrderReview.Secondary.TButton",
             takefocus=True,
@@ -365,7 +365,7 @@ class OptionOrderReviewDialog(tk.Toplevel):
         back.grid(row=0, column=0, sticky=tk.EW, padx=(0, 7))
         save = ttk.Button(
             actions,
-            text="Save order",
+            text="Save Order",
             command=self._save,
             style="OrderReview.Secondary.TButton",
             state=tk.DISABLED,
@@ -453,17 +453,17 @@ class OptionOrderReviewDialog(tk.Toplevel):
 
     def _build_order_summary(self, parent: tk.Frame, review: OptionOrderReview) -> None:
         card = self._card(parent)
-        self._section_title(card, "Order summary")
+        self._section_title(card, "Order Summary")
         facts = tk.Frame(card, background=SURFACE)
         facts.pack(fill=tk.X, pady=(7, 8))
         facts.grid_columnconfigure(1, weight=1)
         for row, (label, value) in enumerate(
             (
                 ("Account", review.account_display_label),
-                ("Strategy / purpose", review.strategy_label),
+                ("Strategy / Purpose", review.strategy_label),
                 ("Instruction", review.instruction),
-                ("Order type", review.order_type),
-                ("Time in force", review.duration),
+                ("Order Type", review.order_type),
+                ("Time in Force", review.duration),
                 ("Execution", review.execution_mode),
             )
         ):
@@ -506,7 +506,7 @@ class OptionOrderReviewDialog(tk.Toplevel):
             ("action", "Action", 88, tk.W),
             ("quantity", "Qty", 30, tk.E),
             ("contract", "Contract", 132, tk.W),
-            ("symbol", "Exact OCC symbol", 135, tk.W),
+            ("symbol", "Exact OCC Symbol", 135, tk.W),
             ("bid", "Bid", 40, tk.E),
             ("ask", "Ask", 40, tk.E),
             ("mark", "Mark", 40, tk.E),
@@ -579,7 +579,7 @@ class OptionOrderReviewDialog(tk.Toplevel):
         editor.pack(side=tk.RIGHT, anchor=tk.N)
         tk.Label(
             editor,
-            text="Limit price" if review.price_editable else "Price editing",
+            text="Limit Price" if review.price_editable else "Price Editing",
             background=SURFACE,
             foreground=MUTED_TEXT,
             font=("Segoe UI", 8),
@@ -605,7 +605,7 @@ class OptionOrderReviewDialog(tk.Toplevel):
         else:
             tk.Label(
                 editor,
-                text="Read only",
+                text="Read Only",
                 background=TABLE_FIELD,
                 foreground=MUTED_TEXT,
                 highlightbackground=BORDER,
@@ -666,7 +666,7 @@ class OptionOrderReviewDialog(tk.Toplevel):
         rail = self.controller.review.price_rail
         if rail is None:
             canvas.create_line(left, y, right, y, fill=BORDER, width=3)
-            canvas.create_text(width / 2, y + 21, text="Bid / midpoint / ask rail unavailable for this review", fill=MUTED_TEXT, font=("Segoe UI", 8))
+            canvas.create_text(width / 2, y + 21, text="Bid / Midpoint / Ask Rail Unavailable for This Review", fill=MUTED_TEXT, font=("Segoe UI", 8))
             return
         span = max(rail.ask - rail.bid, 0.01)
         selected_x = left + (min(max(rail.selected, rail.bid), rail.ask) - rail.bid) / span * (right - left)
@@ -682,7 +682,7 @@ class OptionOrderReviewDialog(tk.Toplevel):
 
     def _build_effects(self, parent: tk.Frame, review: OptionOrderReview) -> None:
         card = self._card(parent)
-        self._section_title(card, "What changes")
+        self._section_title(card, "What Changes")
         grid = tk.Frame(card, background=SURFACE)
         grid.pack(fill=tk.X, pady=(7, 0))
         grid.grid_columnconfigure(0, weight=3)
@@ -711,7 +711,7 @@ class OptionOrderReviewDialog(tk.Toplevel):
 
     def _build_costs(self, parent: tk.Frame, review: OptionOrderReview) -> None:
         card = self._card(parent)
-        self._section_title(card, "Costs & timing")
+        self._section_title(card, "Costs & Timing")
         rows = tk.Frame(card, background=SURFACE)
         rows.pack(fill=tk.X, pady=(6, 0))
         rows.grid_columnconfigure(0, weight=1)
@@ -729,7 +729,7 @@ class OptionOrderReviewDialog(tk.Toplevel):
         if not notices:
             return
         card = self._card(parent, padding=(8, 8))
-        heading = "Action required" if any(notice.blocking for notice in notices) else "Execution notes"
+        heading = "Action Required" if any(notice.blocking for notice in notices) else "Execution Notes"
         self._section_title(card, heading)
         for notice in notices:
             background, color, icon = _NOTICE_COLORS[notice.severity]
@@ -745,18 +745,18 @@ class OptionOrderReviewDialog(tk.Toplevel):
         notices = [
             notice
             for notice in review.notices
-            if notice.title != "Data provenance and revalidation"
-            and not notice.title.startswith("Limit price is ")
+            if notice.title != "Data Provenance and Revalidation"
+            and not notice.title.startswith("Limit Price Is ")
         ]
         titles = {notice.title.casefold() for notice in notices}
         if review.quote_state == OrderReviewQuoteState.UPDATING and "refreshing positions and quotes" not in titles:
-            notices.insert(0, OptionOrderReviewNotice(OrderReviewNoticeSeverity.INFORMATION, "Refreshing positions and quotes", "Current account positions and exact-leg quotes are being revalidated."))
+            notices.insert(0, OptionOrderReviewNotice(OrderReviewNoticeSeverity.INFORMATION, "Refreshing Positions and Quotes", "Current account positions and exact-leg quotes are being revalidated."))
         elif review.quote_state == OrderReviewQuoteState.AGING and "quote is aging" not in titles:
-            notices.insert(0, OptionOrderReviewNotice(OrderReviewNoticeSeverity.WARNING, "Quote is aging", "The reviewed quote is still within the placement limit but is approaching its refresh threshold."))
+            notices.insert(0, OptionOrderReviewNotice(OrderReviewNoticeSeverity.WARNING, "Quote Is Aging", "The reviewed quote is still within the placement limit but is approaching its refresh threshold."))
         elif review.quote_state == OrderReviewQuoteState.STALE and "stale quote" not in titles:
-            notices.insert(0, OptionOrderReviewNotice(OrderReviewNoticeSeverity.BLOCKING, "Stale quote", "The reviewed quote aged past the placement limit. Refresh and acknowledge again.", blocking=True))
+            notices.insert(0, OptionOrderReviewNotice(OrderReviewNoticeSeverity.BLOCKING, "Stale Quote", "The reviewed quote aged past the placement limit. Refresh and acknowledge again.", blocking=True))
         elif review.quote_state == OrderReviewQuoteState.UNAVAILABLE and "quote unavailable" not in titles and "refresh failed" not in titles:
-            notices.insert(0, OptionOrderReviewNotice(OrderReviewNoticeSeverity.BLOCKING, "Quote unavailable", "A required quote timestamp is unavailable. Placement is blocked.", blocking=True))
+            notices.insert(0, OptionOrderReviewNotice(OrderReviewNoticeSeverity.BLOCKING, "Quote Unavailable", "A required quote timestamp is unavailable. Placement is blocked.", blocking=True))
         return tuple(notices)
 
     def _build_acknowledgment(self, parent: tk.Frame, review: OptionOrderReview) -> None:
@@ -854,15 +854,15 @@ class OptionOrderReviewDialog(tk.Toplevel):
         self._inline_status = outcome.message
         self._sync_from_controller()
         if outcome.status == OrderReviewOutcomeStatus.UNKNOWN:
-            messagebox.showwarning("Submission result unknown", outcome.message, parent=self)
+            messagebox.showwarning("Submission Result Unknown", outcome.message, parent=self)
         elif outcome.status not in {OrderReviewOutcomeStatus.BLOCKED, OrderReviewOutcomeStatus.INVALIDATED}:
-            messagebox.showerror("Order not submitted", outcome.message, parent=self)
+            messagebox.showerror("Order Not Submitted", outcome.message, parent=self)
 
     def _placement_crashed(self, exc: Exception) -> None:
         self._inline_status = f"Unexpected review error: {type(exc).__name__}: {exc}"
         self._placement_dispatched = self.controller.state.value == "UNKNOWN"
         self._sync_from_controller()
-        messagebox.showerror("Order not submitted", self._inline_status, parent=self)
+        messagebox.showerror("Order Not Submitted", self._inline_status, parent=self)
 
     def _start_initial_refresh(self) -> None:
         if not self.winfo_exists() or self._refresh_dispatched or not self.controller.supports_background_refresh:
@@ -962,11 +962,11 @@ class OptionOrderReviewDialog(tk.Toplevel):
         if state == OrderReviewQuoteState.UPDATING:
             age_text = "Refreshing positions and exact-leg quotes…"
         elif age is None:
-            age_text = "Timestamp unavailable"
+            age_text = "Timestamp Unavailable"
         else:
             age_text = f"Updated {_human_age(age)} ago"
         self.quote_age_var.set(age_text)
-        quote_cost = self._cost_value_labels.get("Quote age")
+        quote_cost = self._cost_value_labels.get("Quote Age")
         if quote_cost is not None:
             safety_age = quote_age_seconds(review.validation_quote_at, now=datetime.now().astimezone())
             quote_cost.configure(text="Unavailable" if safety_age is None else _human_age(safety_age))

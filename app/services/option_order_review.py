@@ -45,11 +45,11 @@ from app.services.schwab_option_management import (
 
 
 DEFAULT_REVIEW_MAX_QUOTE_AGE_SECONDS = 120.0
-LOCAL_CALCULATION = "Local calculation"
-CURRENT_SCHWAB_QUOTE = "Current Schwab quote"
-BROKER_PREVIEW = "Broker preview"
-UNAVAILABLE_UNTIL_BROKER_REVIEW = "Unavailable until broker review"
-PREVIEW_FALLBACK_STATUS = "Not previewed — verified schema unavailable; local-estimate fallback"
+LOCAL_CALCULATION = "Local Calculation"
+CURRENT_SCHWAB_QUOTE = "Current Schwab Quote"
+BROKER_PREVIEW = "Broker Preview"
+UNAVAILABLE_UNTIL_BROKER_REVIEW = "Unavailable Until Broker Review"
+PREVIEW_FALLBACK_STATUS = "Not Previewed — Verified Schema Unavailable; Local-Estimate Fallback"
 
 
 class BrokerAuthenticationFailure(RuntimeError):
@@ -82,7 +82,7 @@ def mask_account_label(label: str) -> str:
 
     text = str(label or "").strip()
     if not text:
-        return "Account unavailable"
+        return "Account Unavailable"
     if re.search(r"[•*]{2,}\s*[A-Za-z0-9]{1,4}$", text):
         return text
 
@@ -247,7 +247,7 @@ def closing_order_review(
     if rail is None:
         notices.append(
             _blocking(
-                "Executable quote unavailable",
+                "Executable Quote Unavailable",
                 "Every reviewed leg needs a valid bid and ask before placement.",
             )
         )
@@ -256,14 +256,14 @@ def closing_order_review(
         relation = "at" if distance < 0.005 else "away from"
         notices.append(
             _warning(
-                f"Limit price is {relation} the current midpoint",
+                f"Limit Price Is {relation} the Current Midpoint",
                 "The market may move before this order fills.",
             )
         )
     if len(legs) > 1:
         notices.append(
             _information(
-                "Atomic net-order structure",
+                "Atomic Net-Order Structure",
                 f"All {len(legs)} exact legs will be transmitted as one custom net order; partial fills may still be possible.",
             )
         )
@@ -276,11 +276,11 @@ def closing_order_review(
             # The atomic-structure notice immediately above already carries this risk.
             continue
         else:
-            notices.append(_warning("Execution warning", warning))
+            notices.append(_warning("Execution Warning", warning))
     if provenance_details:
         notices.append(
             _information(
-                "Data provenance and revalidation",
+                "Data Provenance and Revalidation",
                 " ".join(provenance_details),
             )
         )
@@ -292,30 +292,30 @@ def closing_order_review(
         and all(leg.symbol and leg.quantity and leg.quantity > 0 for leg in legs)
     )
     if not internal_valid:
-        notices.append(_blocking("Invalid reviewed draft", "Required account, leg, quantity, or price data is missing."))
+        notices.append(_blocking("Invalid Reviewed Draft", "Required account, leg, quantity, or price data is missing."))
     direction = (
         OrderReviewCashDirection.CREDIT
         if draft.estimated_cash_effect >= 0
         else OrderReviewCashDirection.DEBIT
     )
-    strategy = "Exact option position" if len(legs) == 1 else "Selected exact legs"
+    strategy = "Exact Option Position" if len(legs) == 1 else "Selected Exact Legs"
     subtitle = (
-        f"{strategy} • {len(legs)} exact leg{'s' if len(legs) != 1 else ''} "
+        f"{strategy} • {len(legs)} Exact Leg{'s' if len(legs) != 1 else ''} "
         f"• Qty {draft.order_quantity}"
     )
     return OptionOrderReview(
         operation=OrderReviewOperation.CLOSE,
-        title="Review closing order",
+        title="Review Closing Order",
         subtitle=subtitle,
         account_display_label=mask_account_label(draft.account_label),
         strategy_label=strategy,
-        instruction="Close entire position" if len(legs) == 1 else "Close selected exact legs",
+        instruction="Close Entire Position" if len(legs) == 1 else "Close Selected Exact Legs",
         order_type=_order_type_label(draft.api_order_type),
         duration=draft.duration,
-        execution_mode="Atomic net order" if len(legs) > 1 else "Single closing order",
+        execution_mode="Atomic Net Order" if len(legs) > 1 else "Single Closing Order",
         legs=legs,
         package_quantity=draft.order_quantity,
-        price_title="Net price",
+        price_title="Net Price",
         net_price=draft.limit_price,
         cash_direction=direction,
         price_rail=rail,
@@ -326,7 +326,7 @@ def closing_order_review(
         ),
         estimated_cash_effect=draft.estimated_cash_effect,
         estimated_cash_label=(
-            "Estimated proceeds" if draft.estimated_cash_effect >= 0 else "Estimated cost"
+            "Estimated Proceeds" if draft.estimated_cash_effect >= 0 else "Estimated Cost"
         ),
         price_provenance=f"{LOCAL_CALCULATION} from {CURRENT_SCHWAB_QUOTE.lower()} marks",
         display_quote_at=display_quote_at,
@@ -335,35 +335,35 @@ def closing_order_review(
         quote_state=freshness,
         metrics=(
             OptionOrderReviewMetric(
-                "Position quantity",
+                "Position Quantity",
                 _quantity(draft.order_quantity),
                 "0",
                 LOCAL_CALCULATION,
             ),
-            OptionOrderReviewMetric("Open P/L", "—", "Realized / remaining unavailable", UNAVAILABLE_UNTIL_BROKER_REVIEW),
-            OptionOrderReviewMetric("Buying power", "—", "—", UNAVAILABLE_UNTIL_BROKER_REVIEW),
+            OptionOrderReviewMetric("Open P/L", "—", "Realized / Remaining Unavailable", UNAVAILABLE_UNTIL_BROKER_REVIEW),
+            OptionOrderReviewMetric("Buying Power", "—", "—", UNAVAILABLE_UNTIL_BROKER_REVIEW),
             OptionOrderReviewMetric("Delta", "—", "—", "Position Greeks unavailable in closing draft"),
-            OptionOrderReviewMetric("Theta / day", "—", "—", "Position Greeks unavailable in closing draft"),
+            OptionOrderReviewMetric("Theta / Day", "—", "—", "Position Greeks unavailable in closing draft"),
         ),
         costs=(
-            OptionOrderReviewCost("Estimated fees", "Unavailable", UNAVAILABLE_UNTIL_BROKER_REVIEW),
+            OptionOrderReviewCost("Estimated Fees", "Unavailable", UNAVAILABLE_UNTIL_BROKER_REVIEW),
             OptionOrderReviewCost(
-                "Estimated net proceeds" if draft.estimated_cash_effect >= 0 else "Estimated net cost",
+                "Estimated Net Proceeds" if draft.estimated_cash_effect >= 0 else "Estimated Net Cost",
                 _money(abs(draft.estimated_cash_effect)),
                 LOCAL_CALCULATION,
                 tone="positive" if draft.estimated_cash_effect >= 0 else "negative",
                 estimated=True,
             ),
             OptionOrderReviewCost("Settlement", "Unavailable", UNAVAILABLE_UNTIL_BROKER_REVIEW),
-            OptionOrderReviewCost("Broker preview", "Not run", "Verified preview schema unavailable"),
-            OptionOrderReviewCost("Quote age", _age_label(validation_quote_at, current), CURRENT_SCHWAB_QUOTE),
+            OptionOrderReviewCost("Broker Preview", "Not Run", "Verified preview schema unavailable"),
+            OptionOrderReviewCost("Quote Age", _age_label(validation_quote_at, current), CURRENT_SCHWAB_QUOTE),
         ),
         notices=_dedupe_notices(notices),
         acknowledgment_copy="I reviewed the contracts, actions, quantities, price, and warnings.",
         safety_copy="This order closes a position; it does not open a new one.",
         placement_capability=OrderReviewPlacementCapability.SUPPORTED,
         placement_disabled_reason=None,
-        primary_action_label="Place closing order",
+        primary_action_label="Place Closing Order",
         broker_preview_status=PREVIEW_FALLBACK_STATUS,
         internal_valid=internal_valid,
     )
@@ -382,7 +382,7 @@ def closing_order_analysis(
     )
     return replace(
         review,
-        title="Analyze closing order",
+        title="Analyze Closing Order",
         execution_mode=f"{review.execution_mode} • Analysis only",
         price_editable=False,
         price_editor_explanation=(
@@ -392,8 +392,8 @@ def closing_order_analysis(
         safety_copy="Analysis never submits an order. Continue to Review closing order when ready.",
         placement_capability=OrderReviewPlacementCapability.REVIEW_ONLY,
         placement_disabled_reason="Analysis is non-submitting; use Review closing order to continue to placement.",
-        primary_action_label="Finish analysis",
-        broker_preview_status="Not run — analysis only",
+        primary_action_label="Finish Analysis",
+        broker_preview_status="Not Run — Analysis Only",
     )
 
 
@@ -406,7 +406,7 @@ def roll_order_review(
     current = _aware(now or datetime.now(timezone.utc))
     legs = tuple(
         OptionOrderReviewLeg(
-            role="Close" if leg.role.upper() == "CLOSE" else "Open replacement",
+            role="Close" if leg.role.upper() == "CLOSE" else "Open Replacement",
             action=_human_instruction(leg.instruction),
             quantity=leg.quantity,
             contract_label=_contract_label(
@@ -436,26 +436,26 @@ def roll_order_review(
     )
     notices.append(
         _information(
-            "Execution structure",
+            "Execution Structure",
             f"{draft.execution_detail}. This route is review only and cannot transmit a broker order.",
         )
     )
     if draft.execution_mode != "ATOMIC":
         notices.append(
             _warning(
-                "Atomic roll placement is not verified",
+                "Atomic Roll Placement Is Not Verified",
                 "Separate close/open components can create temporary exposure and are not submitted here.",
             )
         )
-    notices.extend(_warning("Roll warning", warning) for warning in draft.warnings)
-    notices.extend(_blocking("Roll review blocked", blocker) for blocker in draft.review_blockers)
+    notices.extend(_warning("Roll Warning", warning) for warning in draft.warnings)
+    notices.extend(_blocking("Roll Review Blocked", blocker) for blocker in draft.review_blockers)
     rail = OptionOrderReviewPriceRail(
         bid=draft.price_rail.bid,
         midpoint=draft.price_rail.midpoint,
         ask=draft.price_rail.ask,
         selected=draft.limit_price,
     )
-    strategy = "Exact option position" if len(draft.close_legs) == 1 else "Custom option strategy"
+    strategy = "Exact Option Position" if len(draft.close_legs) == 1 else "Custom Option Strategy"
     direction = (
         OrderReviewCashDirection.CREDIT
         if draft.estimated_cash_effect >= 0
@@ -466,60 +466,60 @@ def roll_order_review(
     internal_valid = bool(draft.review_eligible and legs and draft.account_label and draft.order_quantity > 0)
     return OptionOrderReview(
         operation=OrderReviewOperation.ROLL,
-        title="Review roll order",
+        title="Review Roll Order",
         subtitle=(
-            f"Roll {draft.underlying_symbol} {strategy} • {len(legs)} exact legs "
+            f"Roll {draft.underlying_symbol} {strategy} • {len(legs)} Exact Legs "
             f"• Qty {draft.order_quantity}"
         ),
         account_display_label=mask_account_label(draft.account_label),
         strategy_label=strategy,
-        instruction="Close current legs and open exact replacement legs",
+        instruction="Close Current Legs and Open Exact Replacement Legs",
         order_type=_order_type_label(draft.api_order_type),
         duration=draft.duration,
-        execution_mode=f"{draft.execution_detail} • Review only",
+        execution_mode=f"{draft.execution_detail} • Review Only",
         legs=legs,
         package_quantity=draft.order_quantity,
-        price_title="Net roll price",
+        price_title="Net Roll Price",
         net_price=draft.limit_price,
         cash_direction=direction,
         price_rail=rail,
         price_editable=False,
         price_editor_explanation="Return to the roll workspace to change the net limit and rebuild its analysis.",
         estimated_cash_effect=draft.estimated_cash_effect,
-        estimated_cash_label="Estimated net credit" if draft.estimated_cash_effect >= 0 else "Estimated net debit",
+        estimated_cash_label="Estimated Net Credit" if draft.estimated_cash_effect >= 0 else "Estimated Net Debit",
         price_provenance=f"{LOCAL_CALCULATION} from current leg quotes",
         display_quote_at=display_quote_at,
         validation_quote_at=validation_quote_at,
         max_quote_age_seconds=max_quote_age_seconds,
         quote_state=freshness,
         metrics=(
-            OptionOrderReviewMetric("Current → replacement legs", str(len(draft.close_legs)), str(len(draft.replacement_legs)), LOCAL_CALCULATION),
-            OptionOrderReviewMetric("Days extended", "0", f"+{draft.analysis.days_extended}", LOCAL_CALCULATION),
+            OptionOrderReviewMetric("Current → Replacement Legs", str(len(draft.close_legs)), str(len(draft.replacement_legs)), LOCAL_CALCULATION),
+            OptionOrderReviewMetric("Days Extended", "0", f"+{draft.analysis.days_extended}", LOCAL_CALCULATION),
             OptionOrderReviewMetric(
-                "Realized P/L estimate",
+                "Realized P/L Estimate",
                 "Open",
                 _money(draft.analysis.estimated_realized_pnl),
                 LOCAL_CALCULATION if draft.analysis.estimated_realized_pnl is not None else "Unavailable from current position facts",
                 after_tone=_tone(draft.analysis.estimated_realized_pnl),
             ),
-            OptionOrderReviewMetric("Buying power", _money(before_metrics.buying_power), _money(after_metrics.buying_power), UNAVAILABLE_UNTIL_BROKER_REVIEW),
+            OptionOrderReviewMetric("Buying Power", _money(before_metrics.buying_power), _money(after_metrics.buying_power), UNAVAILABLE_UNTIL_BROKER_REVIEW),
             OptionOrderReviewMetric("Delta", _signed(before_metrics.delta), _signed(after_metrics.delta), LOCAL_CALCULATION),
-            OptionOrderReviewMetric("Theta / day", _money(before_metrics.theta_per_day), _money(after_metrics.theta_per_day), LOCAL_CALCULATION, before_tone=_tone(before_metrics.theta_per_day), after_tone=_tone(after_metrics.theta_per_day)),
+            OptionOrderReviewMetric("Theta / Day", _money(before_metrics.theta_per_day), _money(after_metrics.theta_per_day), LOCAL_CALCULATION, before_tone=_tone(before_metrics.theta_per_day), after_tone=_tone(after_metrics.theta_per_day)),
         ),
         costs=(
-            OptionOrderReviewCost("Estimated fees", _money_or_unavailable(draft.analysis.estimated_fees), LOCAL_CALCULATION if draft.analysis.estimated_fees is not None else "No configured fee schedule", estimated=draft.analysis.estimated_fees is not None),
-            OptionOrderReviewCost("Estimated net credit" if draft.estimated_cash_effect >= 0 else "Estimated net cost", _money(abs(draft.estimated_cash_effect)), LOCAL_CALCULATION, tone="positive" if draft.estimated_cash_effect >= 0 else "negative", estimated=True),
+            OptionOrderReviewCost("Estimated Fees", _money_or_unavailable(draft.analysis.estimated_fees), LOCAL_CALCULATION if draft.analysis.estimated_fees is not None else "No configured fee schedule", estimated=draft.analysis.estimated_fees is not None),
+            OptionOrderReviewCost("Estimated Net Credit" if draft.estimated_cash_effect >= 0 else "Estimated Net Cost", _money(abs(draft.estimated_cash_effect)), LOCAL_CALCULATION, tone="positive" if draft.estimated_cash_effect >= 0 else "negative", estimated=True),
             OptionOrderReviewCost("Settlement", "Unavailable", UNAVAILABLE_UNTIL_BROKER_REVIEW),
-            OptionOrderReviewCost("Broker preview", "Not run", "Roll placement is not enabled"),
-            OptionOrderReviewCost("Quote age", _age_label(validation_quote_at, current), CURRENT_SCHWAB_QUOTE),
+            OptionOrderReviewCost("Broker Preview", "Not Run", "Roll placement is not enabled"),
+            OptionOrderReviewCost("Quote Age", _age_label(validation_quote_at, current), CURRENT_SCHWAB_QUOTE),
         ),
         notices=_dedupe_notices(notices),
         acknowledgment_copy="I reviewed the current and replacement contracts, actions, quantities, price, and warnings.",
         safety_copy="This roll closes current legs and opens replacement legs; no order is sent from this review.",
         placement_capability=OrderReviewPlacementCapability.REVIEW_ONLY,
         placement_disabled_reason="Live roll placement is not enabled because atomic broker semantics are unverified.",
-        primary_action_label="Finish roll review",
-        broker_preview_status="Not available — roll placement is disabled",
+        primary_action_label="Finish Roll Review",
+        broker_preview_status="Not Available — Roll Placement Is Disabled",
         internal_valid=internal_valid,
     )
 
@@ -558,9 +558,9 @@ def exit_plan_review(
                 review_legs.append(
                     OptionOrderReviewLeg(
                         role=role,
-                        action="Closing action unavailable",
+                        action="Closing Action Unavailable",
                         quantity=quantity,
-                        contract_label="Exact position contract",
+                        contract_label="Exact Position Contract",
                         symbol=symbol,
                         bid=None,
                         ask=None,
@@ -578,16 +578,16 @@ def exit_plan_review(
     if timestamps:
         notices.extend(_quote_notices(freshness, validation_quote_at, current, max_quote_age_seconds))
     else:
-        notices.append(_information("Quote data unavailable", "This unsupported plan shape does not contain executable closing-order quotes."))
+        notices.append(_information("Quote Data Unavailable", "This unsupported plan shape does not contain executable closing-order quotes."))
     notices.extend(
-        _warning("Exit-plan warning", warning)
+        _warning("Exit-Plan Warning", warning)
         for warning in draft.warnings
         if not draft.capability_reason or warning != draft.capability_reason
     )
     if draft.conflicting_order_ids:
         notices.append(
             _blocking(
-                "Conflicting closing order",
+                "Conflicting Closing Order",
                 "Resolve the overlapping working closing order before activating another exit.",
             )
         )
@@ -608,7 +608,7 @@ def exit_plan_review(
             schedule_parts.append(timed_presentation.expiration_basis)
         notices.append(
             _warning(
-                "Planning only — timed execution unavailable",
+                "Planning Only — Timed Execution Unavailable",
                 (draft.capability_reason or TIME_EXIT_CAPABILITY_REASON)
                 + " "
                 + " ".join(schedule_parts),
@@ -617,12 +617,12 @@ def exit_plan_review(
         if not timed_schedule_valid:
             notices.append(
                 _blocking(
-                    "Timed exit is in the past",
+                    "Timed Exit Is in the Past",
                     "Choose a future date or time in the exit-plan builder before reviewing this plan.",
                 )
             )
     elif draft.capability_reason:
-        notices.append(_blocking("Broker placement unavailable", draft.capability_reason))
+        notices.append(_blocking("Broker Placement Unavailable", draft.capability_reason))
     placeable_close = _exit_plan_closing_draft(draft)
     can_place = placeable_close is not None and draft.placeable and timed_schedule_valid
     can_review = bool(
@@ -638,7 +638,7 @@ def exit_plan_review(
         else OrderReviewPlacementCapability.UNAVAILABLE
     )
     active_branches = sum(1 for branch in draft.branches if branch.enabled) + int(timed_rule is not None)
-    strategy = "Exact option position" if len(draft.position_symbols) == 1 else "Custom option strategy"
+    strategy = "Exact Option Position" if len(draft.position_symbols) == 1 else "Custom Option Strategy"
     durations = {branch.duration for branch in draft.branches if branch.enabled}
     duration = next(iter(durations)) if len(durations) == 1 else "Mixed"
     internal_valid = bool(
@@ -649,7 +649,7 @@ def exit_plan_review(
         and (not can_place or placeable_close is not None)
     )
     if not internal_valid:
-        notices.append(_blocking("Invalid exit-plan review", "Required position, quantity, or branch data is missing."))
+        notices.append(_blocking("Invalid Exit-Plan Review", "Required position, quantity, or branch data is missing."))
     cash_effect = placeable_close.estimated_cash_effect if placeable_close is not None else None
     cash_direction = (
         OrderReviewCashDirection.CREDIT
@@ -659,12 +659,12 @@ def exit_plan_review(
         else OrderReviewCashDirection.REFERENCE
     )
     metrics = [
-        OptionOrderReviewMetric("Protected quantity", "0", str(draft.protected_quantity), LOCAL_CALCULATION),
-        OptionOrderReviewMetric("Active branches", "0", str(active_branches), LOCAL_CALCULATION),
+        OptionOrderReviewMetric("Protected Quantity", "0", str(draft.protected_quantity), LOCAL_CALCULATION),
+        OptionOrderReviewMetric("Active Branches", "0", str(active_branches), LOCAL_CALCULATION),
         OptionOrderReviewMetric(
-            "Trigger relationship",
+            "Trigger Relationship",
             "None",
-            "First completed exit wins"
+            "First Completed Exit Wins"
             if timed_rule is not None
             else draft.relationship
             if draft.relationship.isupper()
@@ -672,7 +672,7 @@ def exit_plan_review(
             "Exit-plan configuration",
         ),
         OptionOrderReviewMetric(
-            "Resulting coverage",
+            "Resulting Coverage",
             "Unprotected",
             draft.coverage_label,
             "Exit-plan configuration",
@@ -682,29 +682,29 @@ def exit_plan_review(
         metrics.extend(
             (
                 OptionOrderReviewMetric(
-                    "Timed rule type",
+                    "Timed Rule Type",
                     "None",
-                    "Before expiration"
+                    "Before Expiration"
                     if timed_rule.rule_type == BEFORE_EXPIRATION
-                    else "Specific date and time",
+                    else "Specific Date and Time",
                     "Time-exit configuration",
                 ),
                 OptionOrderReviewMetric(
-                    "Resolved trigger",
-                    "Not scheduled",
+                    "Resolved Trigger",
+                    "Not Scheduled",
                     timed_presentation.resolved_time,
                     "Exchange-calendar resolution"
                     if timed_rule.rule_type == BEFORE_EXPIRATION
                     else "Explicit timezone conversion",
                 ),
                 OptionOrderReviewMetric(
-                    "Trigger timezone",
+                    "Trigger Timezone",
                     "None",
                     timed_rule.timezone_name,
                     "Time-exit configuration",
                 ),
                 OptionOrderReviewMetric(
-                    "Timed coverage",
+                    "Timed Coverage",
                     "None",
                     draft.coverage_label,
                     "Same exact selected coverage as price exits",
@@ -714,7 +714,7 @@ def exit_plan_review(
         if timed_presentation.expiration_basis:
             metrics.append(
                 OptionOrderReviewMetric(
-                    "Expiration basis",
+                    "Expiration Basis",
                     "None",
                     timed_presentation.expiration_basis,
                     "Earliest selected-leg expiration",
@@ -722,40 +722,40 @@ def exit_plan_review(
             )
     return OptionOrderReview(
         operation=OrderReviewOperation.EXIT_PLAN,
-        title="Review exit plan",
+        title="Review Exit Plan",
         subtitle=(
-            f"{draft.template_name} for {strategy} • {len(legs)} exact review leg"
+            f"{draft.template_name} for {strategy} • {len(legs)} Exact Review Leg"
             f"{'s' if len(legs) != 1 else ''} • Qty {draft.protected_quantity}"
         ),
         account_display_label=mask_account_label(draft.account_label),
         strategy_label=f"{draft.template_name} • {draft.coverage_label}",
         instruction=(
-            "Plan mutually exclusive price and timed closing conditions"
+            "Plan Mutually Exclusive Price and Timed Closing Conditions"
             if timed_rule is not None
-            else "Create linked closing instructions"
+            else "Create Linked Closing Instructions"
             if active_branches > 1
-            else "Create one planned closing instruction"
+            else "Create One Planned Closing Instruction"
         ),
         order_type=(
-            f"{draft.relationship} price exits + timed branch"
+            f"{draft.relationship} Price Exits + Timed Branch"
             if timed_rule is not None
             else draft.branches[0].order_type.replace("_", " ").title()
             if len(draft.branches) == 1
-            else f"{draft.relationship} linked exits"
+            else f"{draft.relationship} Linked Exits"
         ),
         duration=duration,
         execution_mode=(
-            "Single exact-leg closing order"
+            "Single Exact-Leg Closing Order"
             if can_place
-            else "Review only — timed execution is not verified"
+            else "Review Only — Timed Execution Is Not Verified"
             if timed_rule is not None and can_review
-            else "Review only"
+            else "Review Only"
             if can_review
-            else "Placement unavailable"
+            else "Placement Unavailable"
         ),
         legs=legs,
         package_quantity=draft.protected_quantity,
-        price_title="Exit limit price" if can_place else "Current position mark",
+        price_title="Exit Limit Price" if can_place else "Current Position Mark",
         net_price=placeable_close.limit_price if placeable_close is not None else draft.position_mark,
         cash_direction=cash_direction,
         price_rail=closing_price_rail(placeable_close) if placeable_close is not None else None,
@@ -763,11 +763,11 @@ def exit_plan_review(
         price_editor_explanation="Edit target, stop, and linkage terms in the exit-plan builder.",
         estimated_cash_effect=cash_effect,
         estimated_cash_label=(
-            "Estimated proceeds"
+            "Estimated Proceeds"
             if cash_effect is not None and cash_effect >= 0
-            else "Estimated cost"
+            else "Estimated Cost"
             if cash_effect is not None
-            else "Estimated proceeds or cost"
+            else "Estimated Proceeds or Cost"
         ),
         price_provenance=f"{LOCAL_CALCULATION} from current position marks",
         display_quote_at=display_quote_at,
@@ -776,9 +776,9 @@ def exit_plan_review(
         quote_state=freshness,
         metrics=tuple(metrics),
         costs=(
-            OptionOrderReviewCost("Estimated fees", "Unavailable", UNAVAILABLE_UNTIL_BROKER_REVIEW),
+            OptionOrderReviewCost("Estimated Fees", "Unavailable", UNAVAILABLE_UNTIL_BROKER_REVIEW),
             OptionOrderReviewCost(
-                "Estimated proceeds" if cash_effect is not None and cash_effect >= 0 else "Estimated cost",
+                "Estimated Proceeds" if cash_effect is not None and cash_effect >= 0 else "Estimated Cost",
                 _money_or_unavailable(abs(cash_effect) if cash_effect is not None else None),
                 LOCAL_CALCULATION if cash_effect is not None else UNAVAILABLE_UNTIL_BROKER_REVIEW,
                 tone="positive" if cash_effect is not None and cash_effect >= 0 else "negative",
@@ -786,11 +786,11 @@ def exit_plan_review(
             ),
             OptionOrderReviewCost("Settlement", "Unavailable", UNAVAILABLE_UNTIL_BROKER_REVIEW),
             OptionOrderReviewCost(
-                "Broker preview",
-                "Not run",
+                "Broker Preview",
+                "Not Run",
                 "Verified preview schema unavailable" if can_place else "Exit-plan placement is disabled",
             ),
-            OptionOrderReviewCost("Quote age", _age_label(validation_quote_at, current), CURRENT_SCHWAB_QUOTE if validation_quote_at else "Unavailable"),
+            OptionOrderReviewCost("Quote Age", _age_label(validation_quote_at, current), CURRENT_SCHWAB_QUOTE if validation_quote_at else "Unavailable"),
         ),
         notices=_dedupe_notices(notices),
         acknowledgment_copy="I reviewed the protected contracts, branch actions, quantities, triggers, and warnings.",
@@ -816,18 +816,18 @@ def exit_plan_review(
             else draft.capability_reason or "Resolve blocking exit-plan conditions before placement."
         ),
         primary_action_label=(
-            "Place exit order"
+            "Place Exit Order"
             if can_place
-            else "Finish timed-plan review"
+            else "Finish Timed-Plan Review"
             if timed_rule is not None and can_review
-            else "Finish exit-plan review"
+            else "Finish Exit-Plan Review"
             if can_review
-            else "Placement unavailable"
+            else "Placement Unavailable"
         ),
         broker_preview_status=(
             PREVIEW_FALLBACK_STATUS
             if can_place
-            else "Not available — exit-plan placement is disabled"
+            else "Not Available — Exit-Plan Placement Is Disabled"
         ),
         internal_valid=internal_valid,
     )
@@ -892,32 +892,32 @@ class OptionOrderReviewController:
     @property
     def state_text(self) -> str:
         if self.state == OrderReviewPlacementState.REVALIDATING:
-            return "Revalidating position…"
+            return "Revalidating Position…"
         if self.state == OrderReviewPlacementState.PREVIEWING:
-            return "Previewing order…"
+            return "Previewing Order…"
         if self.state == OrderReviewPlacementState.FALLBACK:
-            return "Using local-estimate fallback…"
+            return "Using Local-Estimate Fallback…"
         if self.state == OrderReviewPlacementState.SUBMITTING:
             return "Submitting…"
         if self.state == OrderReviewPlacementState.ACCEPTED:
-            return "Order accepted"
+            return "Order Accepted"
         if self.state == OrderReviewPlacementState.REJECTED:
-            return "Review rejected"
+            return "Review Rejected"
         if self.state == OrderReviewPlacementState.UNKNOWN:
-            return "Submission result unknown"
+            return "Submission Result Unknown"
         if self._refreshing or self.review.quote_state == OrderReviewQuoteState.UPDATING:
-            return "Refreshing quote…"
+            return "Refreshing Quote…"
         if self.review.placement_capability == OrderReviewPlacementCapability.UNAVAILABLE:
-            return "Placement unavailable"
+            return "Placement Unavailable"
         if self.review.placement_capability == OrderReviewPlacementCapability.REVIEW_ONLY:
-            return "Confirmation required" if not self.acknowledged else "Review complete"
+            return "Confirmation Required" if not self.acknowledged else "Review Complete"
         if self.review.quote_state == OrderReviewQuoteState.STALE:
-            return "Stale quote — refresh required"
+            return "Stale Quote — Refresh Required"
         if self.review.quote_state == OrderReviewQuoteState.UNAVAILABLE:
-            return "Quote unavailable"
+            return "Quote Unavailable"
         if self.review.has_blocking_notice or not self.review.internal_valid:
-            return "Review action required"
-        return "Ready for final revalidation" if self.acknowledged else "Confirmation required"
+            return "Review Action Required"
+        return "Ready for Final Revalidation" if self.acknowledged else "Confirmation Required"
 
     def acknowledge(self, acknowledged: bool) -> None:
         with self._lock:
@@ -1068,7 +1068,7 @@ class OptionOrderReviewController:
                 self.state = OrderReviewPlacementState.REJECTED
                 self.review = replace(
                     self.review,
-                    notices=_dedupe_notices((*self.review.notices, _blocking("Position revalidation failed", _safe_error(exc)))),
+                    notices=_dedupe_notices((*self.review.notices, _blocking("Position Revalidation Failed", _safe_error(exc)))),
                 )
             self._notify()
             return OrderReviewPlacementOutcome(OrderReviewOutcomeStatus.INVALIDATED, _safe_error(exc))
@@ -1114,7 +1114,7 @@ class OptionOrderReviewController:
                 self.review = replace(
                     refreshed_review,
                     notices=_dedupe_notices(
-                        (*refreshed_review.notices, _warning("Order facts changed", "Price or quote facts changed during final revalidation; confirm the refreshed review again."))
+                        (*refreshed_review.notices, _warning("Order Facts Changed", "Price or quote facts changed during final revalidation; confirm the refreshed review again."))
                     ),
                 )
                 self.acknowledged = False
@@ -1148,7 +1148,7 @@ class OptionOrderReviewController:
                     self.review = replace(
                         self.review,
                         broker_preview_status=f"Rejected — {reason}",
-                        notices=_dedupe_notices((*self.review.notices, _blocking("Broker preview rejected", reason))),
+                        notices=_dedupe_notices((*self.review.notices, _blocking("Broker Preview Rejected", reason))),
                     )
                 self._notify()
                 return OrderReviewPlacementOutcome(OrderReviewOutcomeStatus.PREVIEW_REJECTED, reason)
@@ -1275,7 +1275,7 @@ class OptionOrderReviewController:
             self.review = replace(
                 self.review,
                 notices=_dedupe_notices(
-                    (*self.review.notices, _blocking("Submission result unknown", "Do not resubmit blindly. Check Schwab Orders and refresh order state first."))
+                    (*self.review.notices, _blocking("Submission Result Unknown", "Do not resubmit blindly. Check Schwab Orders and refresh order state first."))
                 ),
             )
         self._notify()
@@ -1351,9 +1351,9 @@ def _refresh_placeable_review(
 def _apply_preview_values(review: OptionOrderReview, preview: BrokerOrderPreview) -> OptionOrderReview:
     costs: list[OptionOrderReviewCost] = []
     for cost in review.costs:
-        if cost.label == "Broker preview":
+        if cost.label == "Broker Preview":
             costs.append(replace(cost, value="Accepted", provenance=BROKER_PREVIEW))
-        elif cost.label == "Estimated fees":
+        elif cost.label == "Estimated Fees":
             costs.append(
                 replace(
                     cost,
@@ -1378,7 +1378,7 @@ def _apply_preview_values(review: OptionOrderReview, preview: BrokerOrderPreview
             after=_money(preview.buying_power_after) if preview.buying_power_after is not None else "—",
             provenance=BROKER_PREVIEW if preview.buying_power_after is not None else "Broker preview did not return buying-power effects",
         )
-        if metric.label == "Buying power"
+        if metric.label == "Buying Power"
         else metric
         for metric in review.metrics
     )
@@ -1386,7 +1386,7 @@ def _apply_preview_values(review: OptionOrderReview, preview: BrokerOrderPreview
         review,
         costs=tuple(costs),
         metrics=metrics,
-        broker_preview_status="Broker preview accepted",
+        broker_preview_status="Broker Preview Accepted",
     )
 
 
@@ -1441,16 +1441,16 @@ def _quote_notices(
     if state == OrderReviewQuoteState.STALE:
         return (
             _blocking(
-                "Stale quote",
+                "Stale Quote",
                 f"The oldest reviewed quote is {_age_label(timestamp, now)}; refresh before placement (maximum {max_age_seconds:.0f} seconds).",
             ),
         )
     if state == OrderReviewQuoteState.UNAVAILABLE:
-        return (_blocking("Quote unavailable", "A required quote timestamp is missing or invalid."),)
+        return (_blocking("Quote Unavailable", "A required quote timestamp is missing or invalid."),)
     if state == OrderReviewQuoteState.AGING:
         return (
             _warning(
-                "Quote is aging",
+                "Quote Is Aging",
                 f"The oldest reviewed quote is {_age_label(timestamp, now)} and will require refresh at {max_age_seconds:.0f} seconds.",
             ),
         )
@@ -1496,18 +1496,18 @@ def _contract_label(
 def _order_type_label(value: str) -> str:
     return {
         "LIMIT": "Limit",
-        "NET_CREDIT": "Net credit limit",
-        "NET_DEBIT": "Net debit limit",
+        "NET_CREDIT": "Net Credit Limit",
+        "NET_DEBIT": "Net Debit Limit",
         "MARKET": "Market",
     }.get(value.upper(), value.replace("_", " ").title())
 
 
 def _human_instruction(value: str) -> str:
     return {
-        "BUY_TO_CLOSE": "Buy to close",
-        "SELL_TO_CLOSE": "Sell to close",
-        "BUY_TO_OPEN": "Buy to open",
-        "SELL_TO_OPEN": "Sell to open",
+        "BUY_TO_CLOSE": "Buy to Close",
+        "SELL_TO_CLOSE": "Sell to Close",
+        "BUY_TO_OPEN": "Buy to Open",
+        "SELL_TO_OPEN": "Sell to Open",
     }.get(value.upper(), value.replace("_", " ").title())
 
 

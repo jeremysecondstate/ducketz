@@ -172,10 +172,10 @@ def test_single_leg_and_selected_leg_rolls_are_explicit() -> None:
         now=OBSERVED_AT,
     )
 
-    assert selected.scope_label == "1 selected leg"
+    assert selected.scope_label == "1 Selected Leg"
     assert selected.position_symbols == (SHORT, LONG)
     assert selected.close_symbols == (SHORT,)
-    assert single.scope_label == "Entire position"
+    assert single.scope_label == "Entire Position"
     assert len(single.close_legs) == len(single.replacement_legs) == 1
 
 

@@ -464,14 +464,14 @@ def build_roll_order_draft(
     ]
     if selected_price < bid or selected_price > ask:
         warnings.append("Selected net price is outside the current executable bid/ask estimate.")
-    close_component = _component("Close current legs", tuple(close_order_legs))
-    open_component = _component("Open replacement legs", tuple(replacement_order_legs))
+    close_component = _component("Close Current Legs", tuple(close_order_legs))
+    open_component = _component("Open Replacement Legs", tuple(replacement_order_legs))
     if atomic_order_supported and len(all_order_legs) <= MAX_SCHWAB_COMPLEX_LEGS:
         execution_mode = ROLL_EXECUTION_ATOMIC
         execution_detail = "One atomic custom net order"
         components = (
             RollOrderComponent(
-                label="Atomic roll",
+                label="Atomic Roll",
                 legs=all_order_legs,
                 api_order_type=api_order_type,
                 complex_order_strategy_type="CUSTOM",
@@ -521,11 +521,11 @@ def build_roll_order_draft(
 
     oldest_quote = min(leg.quote_observed_at for leg in all_order_legs)
     scope_label = (
-        "Entire strategy"
+        "Entire Strategy"
         if scope_mode == ROLL_SCOPE_ENTIRE and len(position) > 1
-        else "Entire position"
+        else "Entire Position"
         if scope_mode == ROLL_SCOPE_ENTIRE
-        else f"{len(close)} selected leg{'s' if len(close) != 1 else ''}"
+        else f"{len(close)} Selected Leg{'s' if len(close) != 1 else ''}"
     )
     return RollOrderDraft(
         account_label=book.account_label,

@@ -31,33 +31,33 @@ def option_template_workspace_rows(
 ) -> tuple[OptionTemplateWorkspaceRow, ...]:
     rows = [
         OptionTemplateWorkspaceRow(
-            "Built-in exit",
-            "Target + stop",
+            "Built-In Exit",
+            "Target + Stop",
             "Profit target plus stop-limit branch",
             f"Review only — {OCO_CAPABILITY_REASON}",
         ),
         OptionTemplateWorkspaceRow(
-            "Built-in exit",
-            "Single target",
+            "Built-In Exit",
+            "Single Target",
             "One GTC exact-leg limit close",
             "Placeable through universal review",
         ),
         OptionTemplateWorkspaceRow(
-            "Built-in exit",
-            "2 targets",
+            "Built-In Exit",
+            "2 Targets",
             "Two-step scale out",
             f"Unavailable — {TWO_TARGET_CAPABILITY_REASON}",
         ),
         OptionTemplateWorkspaceRow(
-            "Built-in exit",
-            "Trailing stop",
+            "Built-In Exit",
+            "Trailing Stop",
             "Follow the position mark",
             f"Unavailable — {TRAILING_STOP_CAPABILITY_REASON}",
         ),
     ]
     rows.extend(
         OptionTemplateWorkspaceRow(
-            "Saved roll",
+            "Saved Roll",
             template.name,
             (
                 f"+{template.days_forward} days • "
@@ -70,7 +70,7 @@ def option_template_workspace_rows(
     )
     rows.extend(
         OptionTemplateWorkspaceRow(
-            "Saved exit",
+            "Saved Exit",
             template.name,
             (
                 f"{template.base_template_id.replace('_', ' ').title()} • "
@@ -103,7 +103,7 @@ class OptionsTemplatesView:
         self.root = root
         self.roll_loader = roll_loader
         self.exit_loader = exit_loader
-        self.status = tk.StringVar(master=root, value="Loading reusable option-management templates")
+        self.status = tk.StringVar(master=root, value="Loading Reusable Option-Management Templates")
         self._build(parent)
         self.refresh()
 
@@ -138,8 +138,8 @@ class OptionsTemplatesView:
         for name, label, width, anchor in (
             ("category", "Type", 115, tk.W),
             ("name", "Template", 170, tk.W),
-            ("configuration", "Stored configuration", 360, tk.W),
-            ("availability", "Capability / how to apply", 460, tk.W),
+            ("configuration", "Stored Configuration", 360, tk.W),
+            ("availability", "Capability / How to Apply", 460, tk.W),
         ):
             table.heading(name, text=label)
             table.column(name, width=width, anchor=anchor, stretch=name in {"configuration", "availability"})

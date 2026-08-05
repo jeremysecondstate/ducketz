@@ -165,9 +165,9 @@ def test_position_coverage_copy_distinguishes_whole_strategy_from_selected_legs(
     selected = build_exit_plan_draft(book, symbols[:2], coverage_mode="selected")
     single = build_exit_plan_draft(book, symbols[:1], coverage_mode="entire")
 
-    assert whole.coverage_label == "Entire strategy"
-    assert selected.coverage_label == "2 selected legs"
-    assert single.coverage_label == "Entire position"
+    assert whole.coverage_label == "Entire Strategy"
+    assert selected.coverage_label == "2 Selected Legs"
+    assert single.coverage_label == "Entire Position"
     with pytest.raises(ValueError, match="position coverage"):
         build_exit_plan_draft(book, symbols, coverage_mode="unknown")
 

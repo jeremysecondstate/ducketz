@@ -373,13 +373,13 @@ class RollWorkspaceDialog(tk.Toplevel):
         self.bid_var = tk.StringVar(master=self, value="Bid —")
         self.mid_var = tk.StringVar(master=self, value="Mid —")
         self.ask_var = tk.StringVar(master=self, value="Ask —")
-        self.expiration_context_var = tk.StringVar(master=self, value="Waiting for chain")
-        self.status_var = tk.StringVar(master=self, value="Loading option chain")
-        self.warning_var = tk.StringVar(master=self, value="Loading current contracts and quotes…")
-        self.net_result_var = tk.StringVar(master=self, value="Net result unavailable")
+        self.expiration_context_var = tk.StringVar(master=self, value="Waiting for Chain")
+        self.status_var = tk.StringVar(master=self, value="Loading Option Chain")
+        self.warning_var = tk.StringVar(master=self, value="Loading Current Contracts and Quotes…")
+        self.net_result_var = tk.StringVar(master=self, value="Net Result Unavailable")
         self.analysis_mode = tk.StringVar(master=self, value="payoff")
 
-        self.title("Roll option position")
+        self.title("Roll Option Position")
         self.configure(background=BACKGROUND)
         self.minsize(980, 680)
         self.transient(root)
@@ -532,8 +532,8 @@ class RollWorkspaceDialog(tk.Toplevel):
         scope.pack(fill=tk.X)
         for column, (value, title, detail) in enumerate(
             (
-                (ROLL_SCOPE_ENTIRE, "Entire strategy" if len(self.controller.position_symbols) > 1 else "Entire position", "Close and replace every confirmed leg"),
-                (ROLL_SCOPE_SELECTED, "Selected legs", "Choose exact legs to roll"),
+                (ROLL_SCOPE_ENTIRE, "Entire Strategy" if len(self.controller.position_symbols) > 1 else "Entire Position", "Close and replace every confirmed leg"),
+                (ROLL_SCOPE_SELECTED, "Selected Legs", "Choose exact legs to roll"),
             )
         ):
             scope.grid_columnconfigure(column, weight=1, uniform="roll-scope")
@@ -580,7 +580,7 @@ class RollWorkspaceDialog(tk.Toplevel):
         self._divider(surface)
         close_section = tk.Frame(surface, background=SURFACE, padx=12, pady=9)
         close_section.pack(fill=tk.X)
-        self._section_heading(close_section, "1. Position to close")
+        self._section_heading(close_section, "1. Position to Close")
         self.close_table = tk.Frame(close_section, background=TABLE_FIELD, highlightbackground=BORDER, highlightthickness=1)
         self.close_table.pack(fill=tk.X, pady=(7, 0))
         self._build_close_rows()
@@ -605,7 +605,7 @@ class RollWorkspaceDialog(tk.Toplevel):
         replacement.pack(fill=tk.X)
         top = tk.Frame(replacement, background=SURFACE)
         top.pack(fill=tk.X)
-        self._section_heading(top, "2. Replacement position", pack=False).pack(side=tk.LEFT)
+        self._section_heading(top, "2. Replacement Position", pack=False).pack(side=tk.LEFT)
         expiration_box = ttk.Combobox(
             top,
             textvariable=self.expiration_var,
@@ -634,7 +634,7 @@ class RollWorkspaceDialog(tk.Toplevel):
         ).pack(side=tk.RIGHT)
         keep = tk.Checkbutton(
             context,
-            text="Keep strike widths",
+            text="Keep Strike Widths",
             variable=self.keep_widths_var,
             command=self._keep_widths_changed,
             indicatoron=False,
@@ -670,12 +670,12 @@ class RollWorkspaceDialog(tk.Toplevel):
         self._divider(surface)
         order = tk.Frame(surface, background=SURFACE, padx=12, pady=9)
         order.pack(fill=tk.X, pady=(0, 5))
-        self._section_heading(order, "3. Net order")
+        self._section_heading(order, "3. Net Order")
         terms = tk.Frame(order, background=SURFACE)
         terms.pack(fill=tk.X, pady=(7, 0))
         left = tk.Frame(terms, background=SURFACE)
         left.pack(side=tk.LEFT, anchor=tk.N)
-        tk.Label(left, text="Order type", background=SURFACE, foreground=MUTED_TEXT, font=("Segoe UI", 8)).grid(row=0, column=0, sticky=tk.W)
+        tk.Label(left, text="Order Type", background=SURFACE, foreground=MUTED_TEXT, font=("Segoe UI", 8)).grid(row=0, column=0, sticky=tk.W)
         order_type = ttk.Label(
             left,
             textvariable=self.order_type_var,
@@ -684,7 +684,7 @@ class RollWorkspaceDialog(tk.Toplevel):
             anchor=tk.W,
         )
         order_type.grid(row=1, column=0, sticky=tk.W, pady=(3, 0))
-        tk.Label(left, text="Time in force", background=SURFACE, foreground=MUTED_TEXT, font=("Segoe UI", 8)).grid(row=0, column=1, sticky=tk.W, padx=(9, 0))
+        tk.Label(left, text="Time in Force", background=SURFACE, foreground=MUTED_TEXT, font=("Segoe UI", 8)).grid(row=0, column=1, sticky=tk.W, padx=(9, 0))
         duration = ttk.Combobox(
             left,
             textvariable=self.duration_var,
@@ -698,7 +698,7 @@ class RollWorkspaceDialog(tk.Toplevel):
         self.duration_box = duration
         price = tk.Frame(terms, background=SURFACE)
         price.pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(25, 0))
-        tk.Label(price, text="Net price", background=SURFACE, foreground=MUTED_TEXT, font=("Segoe UI", 8)).pack(anchor=tk.W)
+        tk.Label(price, text="Net Price", background=SURFACE, foreground=MUTED_TEXT, font=("Segoe UI", 8)).pack(anchor=tk.W)
         price_line = tk.Frame(price, background=SURFACE)
         price_line.pack(fill=tk.X)
         self.net_price_label = tk.Label(
@@ -745,7 +745,7 @@ class RollWorkspaceDialog(tk.Toplevel):
         heading.pack(fill=tk.X)
         tk.Label(
             heading,
-            text="Before / after",
+            text="Before / After",
             background=SURFACE,
             foreground=TEXT,
             font=("Segoe UI", 17, "bold"),
@@ -793,9 +793,9 @@ class RollWorkspaceDialog(tk.Toplevel):
         self.fact_values: dict[str, tk.Label] = {}
         for column, (key, label) in enumerate(
             (
-                ("realized", "Realized P/L est."),
-                ("days", "Days extended"),
-                ("fees", "Fees est."),
+                ("realized", "Realized P/L Est."),
+                ("days", "Days Extended"),
+                ("fees", "Fees Est."),
                 ("execution", "Execution"),
             )
         ):
@@ -836,7 +836,7 @@ class RollWorkspaceDialog(tk.Toplevel):
     def _build_greeks_panel(self) -> None:
         tk.Label(
             self.greeks_panel,
-            text="Aggregate position Greeks",
+            text="Aggregate Position Greeks",
             background=TABLE_FIELD,
             foreground=TEXT,
             font=("Segoe UI", 12, "bold"),
@@ -852,11 +852,11 @@ class RollWorkspaceDialog(tk.Toplevel):
         ).pack(anchor=tk.W, padx=16, pady=(0, 15))
         grid = tk.Frame(self.greeks_panel, background=TABLE_FIELD)
         grid.pack(fill=tk.X, padx=16)
-        for column, label in enumerate(("Greek", "Before", "", "After roll")):
+        for column, label in enumerate(("Greek", "Before", "", "After Roll")):
             grid.grid_columnconfigure(column, weight=1 if column != 2 else 0)
             tk.Label(grid, text=label, background=SURFACE_ALT, foreground=MUTED_TEXT, font=("Segoe UI", 9, "bold"), padx=8, pady=6).grid(row=0, column=column, sticky=tk.EW)
         self.greeks_values: dict[str, tuple[tk.Label, tk.Label]] = {}
-        for row, (key, label) in enumerate((("delta", "Delta"), ("theta", "Theta / day")), start=1):
+        for row, (key, label) in enumerate((("delta", "Delta"), ("theta", "Theta / Day")), start=1):
             bg = TABLE_FIELD if row % 2 else SURFACE
             tk.Label(grid, text=label, background=bg, foreground=TEXT, font=("Segoe UI", 10), padx=8, pady=14).grid(row=row, column=0, sticky=tk.EW)
             before = tk.Label(grid, text="—", background=bg, foreground=TEXT, font=("Segoe UI", 11, "bold"), padx=8)
@@ -869,7 +869,7 @@ class RollWorkspaceDialog(tk.Toplevel):
     def _build_metrics(self) -> None:
         for child in self.metrics_frame.winfo_children():
             child.destroy()
-        columns = ("Metric", "Before", "", "After roll")
+        columns = ("Metric", "Before", "", "After Roll")
         for column, label in enumerate(columns):
             self.metrics_frame.grid_columnconfigure(column, weight=1 if column in {0, 1, 3} else 0)
             tk.Label(
@@ -884,12 +884,12 @@ class RollWorkspaceDialog(tk.Toplevel):
         self.metric_values: dict[str, tuple[tk.Label, tk.Label]] = {}
         for row, (key, label) in enumerate(
             (
-                ("profit", "Max profit"),
-                ("loss", "Max loss"),
+                ("profit", "Max Profit"),
+                ("loss", "Max Loss"),
                 ("breakeven", "Breakeven"),
                 ("delta", "Delta"),
-                ("theta", "Theta / day"),
-                ("buying_power", "Buying power"),
+                ("theta", "Theta / Day"),
+                ("buying_power", "Buying Power"),
             ),
             start=1,
         ):
@@ -907,10 +907,10 @@ class RollWorkspaceDialog(tk.Toplevel):
         footer = tk.Frame(parent, background=BACKGROUND)
         footer.pack(fill=tk.X, pady=(10, 1))
         ttk.Button(footer, text="Cancel", command=self.destroy, width=20).pack(side=tk.LEFT)
-        ttk.Button(footer, text="Save as template", command=self._save_template, width=24).pack(side=tk.LEFT, padx=(8, 0))
+        ttk.Button(footer, text="Save as Template", command=self._save_template, width=24).pack(side=tk.LEFT, padx=(8, 0))
         review = ttk.Button(
             footer,
-            text="Review roll order",
+            text="Review Roll Order",
             command=self._review,
             style="Roll.Primary.TButton",
             state=tk.DISABLED,
@@ -990,7 +990,7 @@ class RollWorkspaceDialog(tk.Toplevel):
             self.close_symbols_label.configure(
                 text="Exact OCC: " + "  •  ".join(symbols)
                 if symbols
-                else "No exact legs selected"
+                else "No Exact Legs Selected"
             )
 
     def _build_replacement_rows(self) -> None:
@@ -1010,7 +1010,7 @@ class RollWorkspaceDialog(tk.Toplevel):
         if draft is None:
             tk.Label(
                 self.replacement_table,
-                text=self.controller.error or "Replacement contracts unavailable",
+                text=self.controller.error or "Replacement Contracts Unavailable",
                 background=TABLE_FIELD,
                 foreground=WARNING,
                 font=("Segoe UI", 9),
@@ -1166,7 +1166,7 @@ class RollWorkspaceDialog(tk.Toplevel):
         self._sync()
 
     def _load_chain(self) -> None:
-        self._set_busy(True, "Loading exact option-chain contracts")
+        self._set_busy(True, "Loading Exact Option-Chain Contracts")
 
         def succeeded(payload: object) -> None:
             try:
@@ -1210,7 +1210,7 @@ class RollWorkspaceDialog(tk.Toplevel):
             self._build_replacement_rows()
             draft = self.controller.draft
             if draft is None:
-                self.status_var.set(self.controller.error or "Roll needs attention")
+                self.status_var.set(self.controller.error or "Roll Needs Attention")
                 self.order_type_var.set("Unavailable")
                 self.limit_price_var.set("")
                 self.net_price_var.set("—")
@@ -1218,14 +1218,14 @@ class RollWorkspaceDialog(tk.Toplevel):
                 self.bid_var.set("Bid —")
                 self.mid_var.set("Mid —")
                 self.ask_var.set("Ask —")
-                self.expiration_context_var.set("No valid replacement")
+                self.expiration_context_var.set("No Valid Replacement")
                 self.warning_var.set(self.controller.error or "Complete a valid roll configuration.")
-                self.net_result_var.set("Net result unavailable")
+                self.net_result_var.set("Net Result Unavailable")
                 self._clear_metrics()
                 self._clear_facts()
             else:
                 self.status_var.set(
-                    f"{draft.scope_label} • {len(draft.close_legs)} close + {len(draft.replacement_legs)} open legs • quotes current"
+                    f"{draft.scope_label} • {len(draft.close_legs)} Close + {len(draft.replacement_legs)} Open Legs • Quotes Current"
                 )
                 order_label = draft.api_order_type.replace("_", " ") + " LIMIT"
                 self.order_type_var.set(order_label)
@@ -1271,7 +1271,7 @@ class RollWorkspaceDialog(tk.Toplevel):
         draft = self.controller.draft
         if draft is None:
             canvas.create_line(left, y, right, y, fill=BORDER, width=2)
-            canvas.create_text(width / 2, 53, text="Current bid / midpoint / ask unavailable", fill=MUTED_TEXT, font=("Segoe UI", 8))
+            canvas.create_text(width / 2, 53, text="Current Bid / Midpoint / Ask Unavailable", fill=MUTED_TEXT, font=("Segoe UI", 8))
             return
         rail = draft.price_rail
         span = max(rail.ask - rail.bid, 0.01)
@@ -1362,18 +1362,18 @@ class RollWorkspaceDialog(tk.Toplevel):
             marker = x(underlying)
             canvas.create_line(marker, top, marker, bottom, fill=TEXT, dash=(5, 4))
             canvas.create_text(marker, top - 12, text=f"{draft.underlying_symbol} {_money(underlying)}", fill=TEXT, font=("Segoe UI", 8))
-        canvas.create_text(left, 14, text="P/L at expiration", fill=MUTED_TEXT, font=("Segoe UI", 8), anchor=tk.W)
+        canvas.create_text(left, 14, text="P/L at Expiration", fill=MUTED_TEXT, font=("Segoe UI", 8), anchor=tk.W)
         canvas.create_text((left + right) / 2, height - 12, text=f"{draft.underlying_symbol} price at expiration", fill=MUTED_TEXT, font=("Segoe UI", 8))
         legend_x = right - 112
         canvas.create_line(legend_x, 14, legend_x + 28, 14, fill=MUTED_TEXT, width=2, dash=(6, 4))
         canvas.create_text(legend_x + 35, 14, text="Current", fill=TEXT, font=("Segoe UI", 8), anchor=tk.W)
         canvas.create_line(legend_x, 28, legend_x + 28, 28, fill=ACCENT, width=2)
-        canvas.create_text(legend_x + 35, 28, text="After roll", fill=TEXT, font=("Segoe UI", 8), anchor=tk.W)
+        canvas.create_text(legend_x + 35, 28, text="After Roll", fill=TEXT, font=("Segoe UI", 8), anchor=tk.W)
 
     @staticmethod
     def _chart_unavailable(canvas: tk.Canvas, width: int, height: int, reason: str) -> None:
         canvas.create_rectangle(18, 18, width - 18, height - 18, outline=BORDER, fill=TABLE_FIELD)
-        canvas.create_text(width / 2, height / 2 - 10, text="Payoff unavailable", fill=TEXT, font=("Segoe UI", 12, "bold"))
+        canvas.create_text(width / 2, height / 2 - 10, text="Payoff Unavailable", fill=TEXT, font=("Segoe UI", 12, "bold"))
         canvas.create_text(width / 2, height / 2 + 18, text=reason, fill=MUTED_TEXT, font=("Segoe UI", 9), width=max(280, width - 90), justify=tk.CENTER)
 
     def _render_metrics(self, draft: RollOrderDraft) -> None:
@@ -1436,7 +1436,7 @@ class RollWorkspaceDialog(tk.Toplevel):
         if self._busy or draft is None or not self.controller.can_review:
             return
         self._set_step(3)
-        self._set_busy(True, "Refreshing positions and quotes before review")
+        self._set_busy(True, "Refreshing Positions and Quotes Before Review")
 
         def work() -> RollOrderDraft:
             latest_snapshot = self.snapshot_loader()
@@ -1472,9 +1472,9 @@ class RollWorkspaceDialog(tk.Toplevel):
     def _save_template(self) -> None:
         draft = self.controller.draft
         if draft is None:
-            messagebox.showerror("Template unavailable", "Complete a valid roll configuration first.", parent=self)
+            messagebox.showerror("Template Unavailable", "Complete a valid roll configuration first.", parent=self)
             return
-        name = simpledialog.askstring("Save roll template", "Template name:", parent=self)
+        name = simpledialog.askstring("Save Roll Template", "Template Name:", parent=self)
         if not name:
             return
         template = SavedRollTemplate(
@@ -1487,11 +1487,11 @@ class RollWorkspaceDialog(tk.Toplevel):
         try:
             path = save_roll_template(template, self.template_path)
         except Exception as exc:
-            messagebox.showerror("Template not saved", str(exc), parent=self)
+            messagebox.showerror("Template Not Saved", str(exc), parent=self)
             return
         self._load_saved_templates()
         messagebox.showinfo(
-            "Roll template saved",
+            "Roll Template Saved",
             f"Saved configuration defaults to {path}.\n\nNo account, quantity, quote, balance, price, or OCC symbol was stored.",
             parent=self,
         )
@@ -1505,7 +1505,7 @@ class RollWorkspaceDialog(tk.Toplevel):
         self._template_by_name = {template.name: template for template in templates}
         self.template_menu.delete(0, tk.END)
         if not templates:
-            self.template_menu.add_command(label="No saved templates", state=tk.DISABLED)
+            self.template_menu.add_command(label="No Saved Templates", state=tk.DISABLED)
             return
         for template in templates:
             self.template_menu.add_command(

@@ -26,15 +26,15 @@ from ml.parquet_contracts import (
 
 
 HORIZON_LABELS = {
-    "1h": "1 hour",
-    "4h": "4 hour",
-    "1d": "1 day",
-    "1w": "Five session aggregate",
-    "1w-d1": "Week day 1",
-    "1w-d2": "Week day 2",
-    "1w-d3": "Week day 3",
-    "1w-d4": "Week day 4",
-    "1w-d5": "Week day 5",
+    "1h": "1 Hour",
+    "4h": "4 Hour",
+    "1d": "1 Day",
+    "1w": "Five-Session Aggregate",
+    "1w-d1": "Week Day 1",
+    "1w-d2": "Week Day 2",
+    "1w-d3": "Week Day 3",
+    "1w-d4": "Week Day 4",
+    "1w-d5": "Week Day 5",
 }
 HORIZON_ORDER = tuple(HORIZON_LABELS)
 PORTFOLIO_FIT_POLICY_VERSION = "current-schwab-position-fit-v1"
@@ -239,7 +239,7 @@ def portfolio_fit(
 
     if requirement == "EXISTING_100_SHARES":
         if position.shares >= shares_needed > 0.0:
-            labels.append("Uses held shares")
+            labels.append("Uses Held Shares")
             details.append(
                 f"Uses {shares_needed:g} of the {position.shares:g} "
                 f"{position.symbol} shares in the account."
@@ -251,7 +251,7 @@ def portfolio_fit(
                 if shares_needed > 0.0
                 else 0.0
             )
-            labels.append("Share coverage")
+            labels.append("Share Coverage")
             details.append(
                 f"The strategy uses {shares_needed:g} shares; the account "
                 f"currently reports {position.shares:g}."
@@ -261,7 +261,7 @@ def portfolio_fit(
         requirement == "EXISTING_OR_ATOMIC_100_SHARES"
         and position.shares >= shares_needed > 0.0
     ):
-        labels.append("Protects held shares")
+        labels.append("Protects Held Shares")
         details.append(
             f"Applies protection to {shares_needed:g} of the "
             f"{position.shares:g} shares held."
@@ -279,13 +279,13 @@ def portfolio_fit(
     )
     if required_funds is not None:
         if position.available_cash is None:
-            labels.append("Funds not reported")
+            labels.append("Funds Not Reported")
             details.append(
                 f"The estimated requirement is ${required_funds:,.2f}; "
                 "current available funds were not reported."
             )
         elif position.available_cash >= required_funds:
-            labels.append("Funds available")
+            labels.append("Funds Available")
             details.append(
                 f"The account reports ${position.available_cash:,.2f} "
                 f"available against an estimated ${required_funds:,.2f} "
@@ -293,7 +293,7 @@ def portfolio_fit(
             )
             adjustment += 0.03
         else:
-            labels.append("Funds below estimate")
+            labels.append("Funds Below Estimate")
             details.append(
                 f"The account reports ${position.available_cash:,.2f} "
                 f"available against an estimated ${required_funds:,.2f} "
@@ -303,10 +303,10 @@ def portfolio_fit(
 
     if labels:
         if len(labels) == 2 and labels == [
-            "Uses held shares",
-            "Funds available",
+            "Uses Held Shares",
+            "Funds Available",
         ]:
-            label = "Uses shares and funds"
+            label = "Uses Shares and Funds"
         else:
             label = " · ".join(labels)
         return PortfolioFit(
@@ -319,7 +319,7 @@ def portfolio_fit(
     if position.shares > 0.0 and net_delta < 0.0:
         hedge_fraction = min(abs(net_delta) / position.shares, 1.0)
         return PortfolioFit(
-            label="Downside hedge",
+            label="Downside Hedge",
             detail=(
                 f"Adds negative delta alongside the {position.shares:g} "
                 f"{position.symbol} shares held."
@@ -328,7 +328,7 @@ def portfolio_fit(
         )
     if position.shares > 0.0 and net_delta > 0.0:
         return PortfolioFit(
-            label="Adds exposure",
+            label="Adds Exposure",
             detail=(
                 f"Adds positive delta alongside the {position.shares:g} "
                 f"{position.symbol} shares held."
@@ -337,7 +337,7 @@ def portfolio_fit(
         )
     if position.shares > 0.0:
         return PortfolioFit(
-            label="Balances exposure",
+            label="Balances Exposure",
             detail=(
                 f"Has limited directional effect alongside the "
                 f"{position.shares:g} {position.symbol} shares held."
@@ -345,7 +345,7 @@ def portfolio_fit(
             score_adjustment=0.01,
         )
     return PortfolioFit(
-        label="Independent of shares",
+        label="Independent of Shares",
         detail="This strategy does not depend on an existing stock position.",
         score_adjustment=0.0,
     )
@@ -359,9 +359,9 @@ def _exact_legs(
     try:
         legs = json.loads(str(candidate.get("legs_json") or ""))
     except (TypeError, ValueError, json.JSONDecodeError):
-        return "Exact legs unavailable"
+        return "Exact Legs Unavailable"
     if not isinstance(legs, list):
-        return "Exact legs unavailable"
+        return "Exact Legs Unavailable"
     requirement = str(candidate.get("stock_requirement") or "NONE").upper()
     parts: list[str] = []
     for leg in legs:
@@ -389,7 +389,7 @@ def _exact_legs(
         verb = "Buy" if side == "LONG" else "Sell"
         strike_text = f"${strike:g}" if strike is not None else "option"
         parts.append(f"{verb} {quantity:g} {strike_text} {option_type}")
-    return " · ".join(parts) if parts else "Exact legs unavailable"
+    return " · ".join(parts) if parts else "Exact Legs Unavailable"
 
 
 def _candidate_stock_quantity(candidate: Mapping[str, object]) -> float:

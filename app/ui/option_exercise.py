@@ -13,7 +13,7 @@ class OptionExerciseAnalysisDialog(tk.Toplevel):
     def __init__(self, *, root: tk.Misc, analysis: OptionExerciseAnalysis) -> None:
         super().__init__(root)
         self.analysis = analysis
-        self.title("Analyze option exercise")
+        self.title("Analyze Option Exercise")
         self.configure(background=BACKGROUND)
         self.minsize(720, 560)
         self.transient(root)
@@ -40,7 +40,7 @@ class OptionExerciseAnalysisDialog(tk.Toplevel):
         outer.pack(fill=tk.BOTH, expand=True)
         tk.Label(
             outer,
-            text="Analyze option exercise",
+            text="Analyze Option Exercise",
             background=BACKGROUND,
             foreground=TEXT,
             font=("Segoe UI", 19, "bold"),
@@ -64,12 +64,12 @@ class OptionExerciseAnalysisDialog(tk.Toplevel):
         facts.pack(fill=tk.X)
         rows = (
             ("Contract", self.analysis.contract_label),
-            ("Exercise quantity", str(self.analysis.quantity)),
-            ("Resulting stock quantity", f"{self.analysis.resulting_stock_quantity:+g} shares"),
-            ("Strike cash effect", _signed_money(self.analysis.strike_cash_effect)),
-            ("Underlying price", _money(self.analysis.underlying_price)),
-            ("Intrinsic value / share", _money(self.analysis.intrinsic_value_per_share)),
-            ("Extrinsic value / share", _money(self.analysis.extrinsic_value_per_share)),
+            ("Exercise Quantity", str(self.analysis.quantity)),
+            ("Resulting Stock Quantity", f"{self.analysis.resulting_stock_quantity:+g} shares"),
+            ("Strike Cash Effect", _signed_money(self.analysis.strike_cash_effect)),
+            ("Underlying Price", _money(self.analysis.underlying_price)),
+            ("Intrinsic Value / Share", _money(self.analysis.intrinsic_value_per_share)),
+            ("Extrinsic Value / Share", _money(self.analysis.extrinsic_value_per_share)),
             ("Settlement", self.analysis.settlement or "Unavailable until broker confirmation"),
         )
         facts.grid_columnconfigure(1, weight=1)
@@ -107,7 +107,7 @@ class OptionExerciseAnalysisDialog(tk.Toplevel):
         notes.pack(fill=tk.BOTH, expand=True, pady=(10, 0))
         tk.Label(
             notes,
-            text="Analysis only",
+            text="Analysis Only",
             background="#382a10",
             foreground=WARNING,
             font=("Segoe UI", 9, "bold"),
@@ -142,8 +142,8 @@ class OptionExerciseAnalysisDialog(tk.Toplevel):
             foreground=MUTED_TEXT,
             font=("Segoe UI", 8),
         ).pack(side=tk.LEFT)
-        ttk.Button(footer, text="Close analysis", command=self.destroy).pack(side=tk.RIGHT)
-        ttk.Button(footer, text="Submission unavailable", state=tk.DISABLED).pack(side=tk.RIGHT, padx=(0, 8))
+        ttk.Button(footer, text="Close Analysis", command=self.destroy).pack(side=tk.RIGHT)
+        ttk.Button(footer, text="Submission Unavailable", state=tk.DISABLED).pack(side=tk.RIGHT, padx=(0, 8))
 
 
 def _money(value: float | None) -> str:
