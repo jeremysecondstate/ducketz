@@ -53,6 +53,7 @@ def build_exit_plan_draft(
     selected_symbols: Iterable[str],
     *,
     working_orders: Sequence[ManagedOptionOrder] = (),
+    coverage_mode: str = "entire",
     template_id: str = TARGET_STOP,
     target_percent: object = 25.0,
     stop_percent: object = 12.0,
@@ -61,6 +62,8 @@ def build_exit_plan_draft(
 ) -> ExitPlanDraft:
     if template_id not in EXIT_PLAN_TEMPLATE_IDS:
         raise ValueError(f"Unknown exit-plan template: {template_id or 'missing'}")
+    if coverage_mode not in {"entire", "selected"}:
+        raise ValueError(f"Unknown position coverage: {coverage_mode or 'missing'}")
     target_pct = _percent(target_percent, "Profit target")
     stop_pct = _percent(stop_percent, "Stop loss")
     offset = _nonnegative_price(limit_offset, "Stop-limit offset")
@@ -210,16 +213,18 @@ def build_exit_plan_draft(
         )
 
     underlying = base_close.legs[0].underlying_symbol if base_close.legs else ""
+    if coverage_mode == "selected":
+        coverage_label = f"{len(symbols)} selected leg{'s' if len(symbols) != 1 else ''}"
+    elif len(symbols) > 1:
+        coverage_label = "Entire strategy"
+    else:
+        coverage_label = "Entire position"
     return ExitPlanDraft(
         template_id=template_id,
         template_name=TEMPLATE_LABELS[template_id],
         account_label=book.account_label,
         underlying_symbol=underlying,
-        coverage_label=(
-            "Entire exact position"
-            if len(symbols) == 1
-            else f"{len(symbols)} selected exact legs"
-        ),
+        coverage_label=coverage_label,
         position_symbols=symbols,
         position_mark=current_mark,
         price_source=base_close.price_source,

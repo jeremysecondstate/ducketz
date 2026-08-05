@@ -68,14 +68,15 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self._template_cards: dict[str, tk.Frame] = {}
         self._template_badges: dict[str, tk.Label] = {}
         self._leg_buttons: dict[str, tk.Checkbutton] = {}
+        self._leg_chip_frames: dict[str, tk.Frame] = {}
         self._stop_widgets: list[tk.Widget] = []
         self._refresh_after: str | None = None
 
         self.template_id = tk.StringVar(master=self, value=TARGET_STOP)
-        self.coverage_mode = tk.StringVar(
-            master=self,
-            value="selected" if len(selected_symbols) > 1 else "entire",
-        )
+        # The supplied symbols are the position/strategy being managed.  Keep
+        # the safest whole-package close as the default; selecting individual
+        # legs is always an explicit choice.
+        self.coverage_mode = tk.StringVar(master=self, value="entire")
         self.target_percent = tk.StringVar(master=self, value="25")
         self.stop_percent = tk.StringVar(master=self, value="12")
         self.limit_offset = tk.StringVar(master=self, value="0.05")
@@ -88,6 +89,8 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.protected_quantity = tk.StringVar(master=self, value="—")
         self.target_estimate = tk.StringVar(master=self, value="—")
         self.stop_estimate = tk.StringVar(master=self, value="—")
+        self.target_scope = tk.StringVar(master=self, value="Close entire position")
+        self.stop_scope = tk.StringVar(master=self, value="Close entire position")
         self.saved_choice = tk.StringVar(master=self, value="Saved templates")
         self.atomic_link = tk.BooleanVar(master=self, value=False)
         self.activate_after_accept = tk.BooleanVar(master=self, value=True)
@@ -100,7 +103,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
 
         self.title("Build exit plan")
         self.configure(background=BACKGROUND)
-        self.minsize(1060, 690)
+        self.minsize(1080, 760)
         self.transient(root)
         self.protocol("WM_DELETE_WINDOW", self.destroy)
         self._fit_to_root()
@@ -112,8 +115,8 @@ class ExitPlanBuilderDialog(tk.Toplevel):
 
     def _fit_to_root(self) -> None:
         self.root.update_idletasks()
-        width = max(1060, self.root.winfo_width() - 24)
-        height = max(690, self.root.winfo_height() - 34)
+        width = max(1080, self.root.winfo_width() - 24)
+        height = max(760, self.root.winfo_height() - 34)
         x = max(0, self.root.winfo_rootx() + 12)
         y = max(0, self.root.winfo_rooty() + 17)
         self.geometry(f"{width}x{height}+{x}+{y}")
@@ -133,7 +136,6 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self._build_template_section(left)
         self._build_coverage_section(left)
         self._build_linked_exits(left)
-        self._build_quick_actions(left)
 
         self._build_sequence(right)
         self._build_at_glance(right)
@@ -166,8 +168,9 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             font=("Segoe UI", 17, "bold"),
         ).pack(anchor=tk.W)
         first = next((leg for leg in self.book.legs if leg.symbol in self.initial_symbols), None)
+        position_kind = "custom option strategy" if len(self.initial_symbols) > 1 else "exact OCC position"
         subtitle = (
-            f"{first.underlying_symbol} · exact OCC position · {len(self.initial_symbols)} "
+            f"{first.underlying_symbol} · {position_kind} · {len(self.initial_symbols)} "
             f"leg{'s' if len(self.initial_symbols) != 1 else ''} · Qty {self._package_quantity()}"
             if first is not None
             else "Exact option position"
@@ -286,8 +289,9 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         row.pack(fill=tk.X, padx=8, pady=(4, 8))
         choices = tk.Frame(row, background=SURFACE)
         choices.pack(side=tk.LEFT)
+        entire_title = "Entire strategy" if len(self.leg_enabled) > 1 else "Entire position"
         for value, title, detail in (
-            ("entire", "Entire position", "Close as one net order"),
+            ("entire", entire_title, "Close as one net order"),
             ("selected", "Selected legs", "Choose exact contracts"),
         ):
             card = tk.Frame(choices, background=TABLE_FIELD, highlightbackground=BORDER, highlightthickness=1)
@@ -322,44 +326,80 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             else:
                 self.selected_coverage_card = card
 
-        chips = tk.Frame(row, background=TABLE_FIELD, highlightbackground=BORDER, highlightthickness=1, padx=6, pady=5)
+        chips = tk.Frame(
+            row,
+            background=TABLE_FIELD,
+            highlightbackground=BORDER,
+            highlightthickness=1,
+            padx=6,
+            pady=5,
+        )
         chips.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         by_symbol = {leg.symbol: leg for leg in self.book.legs}
         for symbol, variable in self.leg_enabled.items():
             leg = by_symbol[symbol]
-            chip = tk.Checkbutton(
+            chip_frame = tk.Frame(
                 chips,
+                background=SURFACE_ALT,
+                highlightbackground=BORDER,
+                highlightthickness=1,
+            )
+            chip_frame.pack(side=tk.LEFT, padx=3)
+            chip = tk.Checkbutton(
+                chip_frame,
                 text=f"{leg.strike:g} {leg.option_type.title()}",
                 variable=variable,
                 command=self._schedule_refresh,
-                background=TABLE_FIELD,
+                indicatoron=False,
+                background=SURFACE_ALT,
                 foreground=TEXT,
                 activebackground=TABLE_FIELD,
                 activeforeground=TEXT,
-                selectcolor=SURFACE_ALT,
+                selectcolor=TABLE_FIELD,
+                disabledforeground=TEXT,
                 font=("Segoe UI", 8),
                 borderwidth=0,
                 highlightthickness=0,
+                padx=8,
+                pady=3,
             )
-            chip.pack(side=tk.LEFT, padx=3)
+            chip.pack()
             self._leg_buttons[symbol] = chip
+            self._leg_chip_frames[symbol] = chip_frame
 
     def _build_linked_exits(self, parent: tk.Frame) -> None:
         section = self._section(parent, "3. Linked exits")
-        oco = tk.Label(
+        oco = tk.Canvas(
             section.header,
-            text="ONE CANCELS OTHER",
             background=SURFACE,
-            foreground=ACCENT,
-            font=("Segoe UI", 8, "bold"),
+            highlightthickness=0,
+            width=220,
+            height=22,
         )
-        oco.pack(side=tk.RIGHT, padx=(0, 10))
-        self.oco_label = oco
+        oco.pack(side=tk.RIGHT, padx=(0, 8))
+        oco.bind("<Configure>", lambda _event: self._draw_oco_header())
+        self.oco_header = oco
 
         content = tk.Frame(section.body, background=SURFACE)
         content.pack(fill=tk.X, padx=8, pady=(4, 6))
-        self._build_exit_row(content, "target")
-        self._build_exit_row(content, "stop")
+
+        linked_rows = tk.Frame(content, background=SURFACE)
+        linked_rows.pack(fill=tk.X)
+        connector = tk.Canvas(
+            linked_rows,
+            background=SURFACE,
+            highlightthickness=0,
+            width=52,
+            height=136,
+        )
+        connector.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 3))
+        connector.bind("<Configure>", lambda _event: self._draw_oco_connector())
+        self.oco_connector = connector
+
+        rows = tk.Frame(linked_rows, background=SURFACE)
+        rows.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self._build_exit_row(rows, "target")
+        self._build_exit_row(rows, "stop")
         relation = tk.Label(
             content,
             text="🔗  When one fills, cancel the other",
@@ -369,22 +409,46 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         )
         relation.pack(anchor=tk.W, pady=(1, 4))
         self.link_relation_label = relation
-        time_exit = tk.Frame(content, background=TABLE_FIELD, highlightbackground=BORDER, highlightthickness=1)
+
+        time_exit = tk.Frame(
+            content,
+            background=TABLE_FIELD,
+            highlightbackground=MUTED_TEXT,
+            highlightthickness=1,
+        )
         time_exit.pack(fill=tk.X)
         tk.Label(
             time_exit,
-            text="＋  Add time-based exit",
+            text="＋",
             background=TABLE_FIELD,
-            foreground="#66758a",
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 13),
+        ).pack(side=tk.LEFT, padx=(10, 7), pady=7)
+        time_copy = tk.Frame(time_exit, background=TABLE_FIELD)
+        time_copy.pack(side=tk.LEFT, fill=tk.X, expand=True, pady=6)
+        tk.Label(
+            time_copy,
+            text="Add time-based exit",
+            background=TABLE_FIELD,
+            foreground=TEXT,
             font=("Segoe UI", 9, "bold"),
-        ).pack(side=tk.LEFT, padx=9, pady=6)
+        ).pack(anchor=tk.W)
+        tk.Label(
+            time_copy,
+            text="Close before expiration or at a specific time · Not yet supported",
+            background=TABLE_FIELD,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 8),
+        ).pack(anchor=tk.W, pady=(1, 0))
         tk.Label(
             time_exit,
-            text="Not yet supported",
+            text="⌄",
             background=TABLE_FIELD,
-            foreground="#536174",
-            font=("Segoe UI", 8),
-        ).pack(side=tk.LEFT, padx=(5, 0))
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 11),
+        ).pack(side=tk.RIGHT, padx=10)
+
+        self._build_quick_actions(content)
 
     def _build_exit_row(self, parent: tk.Frame, kind: str) -> None:
         is_target = kind == "target"
@@ -415,11 +479,28 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         check.pack(side=tk.LEFT)
         tk.Label(
             title_row,
-            text="◉  Take profit" if is_target else "◉  Stop loss",
+            text="◉",
             background=TABLE_FIELD,
             foreground=color,
             font=("Segoe UI", 9, "bold"),
-        ).pack(side=tk.LEFT)
+        ).pack(side=tk.LEFT, padx=(0, 5))
+        branch_copy = tk.Frame(title_row, background=TABLE_FIELD)
+        branch_copy.pack(side=tk.LEFT)
+        tk.Label(
+            branch_copy,
+            text="Take profit" if is_target else "Stop loss",
+            background=TABLE_FIELD,
+            foreground=color,
+            font=("Segoe UI", 9, "bold"),
+        ).pack(anchor=tk.W)
+        scope = self.target_scope if is_target else self.stop_scope
+        tk.Label(
+            branch_copy,
+            textvariable=scope,
+            background=TABLE_FIELD,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 8),
+        ).pack(anchor=tk.W, pady=(1, 0))
         estimate = self.target_estimate if is_target else self.stop_estimate
         tk.Label(
             title_row,
@@ -479,25 +560,62 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             self._stop_widgets.append(duration)
 
     def _build_quick_actions(self, parent: tk.Frame) -> None:
-        quick = tk.Frame(parent, background=BACKGROUND)
-        quick.pack(fill=tk.X, pady=(7, 0))
+        quick = tk.Frame(parent, background=SURFACE)
+        quick.pack(fill=tk.X, pady=(9, 0))
+        tk.Frame(quick, background=BORDER, height=1).pack(fill=tk.X, pady=(0, 6))
         tk.Label(
             quick,
-            text="Quick actions route through confirmation",
-            background=BACKGROUND,
+            text="Quick actions (requires confirmation)",
+            background=SURFACE,
             foreground=MUTED_TEXT,
             font=("Segoe UI", 8),
-        ).pack(side=tk.LEFT)
-        cancel = ttk.Button(quick, text="Cancel working orders", command=self._show_orders)
-        cancel.pack(side=tk.RIGHT, padx=(7, 0))
+        ).pack(anchor=tk.W)
+        actions = tk.Frame(quick, background=SURFACE)
+        actions.pack(fill=tk.X, pady=(5, 0))
+        close_border = tk.Frame(actions, background=DANGER, padx=1, pady=1)
+        close_border.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+        close_now = tk.Button(
+            close_border,
+            text="⊗  Close now…",
+            command=self._close_now,
+            background=TABLE_FIELD,
+            foreground=DANGER,
+            activebackground=SURFACE_ALT,
+            activeforeground=DANGER,
+            highlightthickness=0,
+            borderwidth=0,
+            font=("Segoe UI", 9),
+            padx=16,
+            pady=4,
+            cursor="hand2",
+        )
+        close_now.pack(fill=tk.X)
+        cancel_border = tk.Frame(actions, background=BORDER, padx=1, pady=1)
+        cancel_border.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
+        cancel = tk.Button(
+            cancel_border,
+            text="⊗  Cancel working orders",
+            command=self._show_orders,
+            state=tk.NORMAL if self.working_orders else tk.DISABLED,
+            background=TABLE_FIELD,
+            foreground=TEXT,
+            activebackground=SURFACE_ALT,
+            activeforeground=TEXT,
+            disabledforeground="#536174",
+            highlightthickness=0,
+            borderwidth=0,
+            font=("Segoe UI", 9),
+            padx=16,
+            pady=4,
+            cursor="hand2",
+        )
+        cancel.pack(fill=tk.X)
         self.cancel_orders_button = cancel
-        ttk.Button(quick, text="Close now…", command=self._close_now).pack(side=tk.RIGHT)
+        self.close_now_button = close_now
 
     def _build_sequence(self, parent: tk.Frame) -> None:
         section = self._right_section(parent, "Exit sequence", expand=True)
-        # Keep the diagram compact enough for the application's supported
-        # minimum height.  The section can still grow when the root is taller.
-        canvas = tk.Canvas(section, background=SURFACE, highlightthickness=0, height=175)
+        canvas = tk.Canvas(section, background=SURFACE, highlightthickness=0, height=260)
         canvas.pack(fill=tk.BOTH, expand=True, padx=6, pady=(0, 6))
         canvas.bind("<Configure>", lambda _event: self._draw_sequence())
         self.sequence_canvas = canvas
@@ -630,6 +748,74 @@ class ExitPlanBuilderDialog(tk.Toplevel):
                 variable.set(True)
         self._refresh()
 
+    def _draw_oco_header(self) -> None:
+        canvas = getattr(self, "oco_header", None)
+        if canvas is None:
+            return
+        canvas.delete("all")
+        width = max(canvas.winfo_width(), 180)
+        height = max(canvas.winfo_height(), 20)
+        linked = self.template_id.get() == TARGET_STOP
+        color = ACCENT if linked else MUTED_TEXT
+        caption = "ONE CANCELS OTHER" if linked else "SINGLE EXIT"
+        center = width / 2
+        half_text = 66 if linked else 40
+        y = height / 2
+        canvas.create_line(3, height - 3, 3, y, center - half_text - 8, y, fill=color, width=1)
+        canvas.create_line(center + half_text + 8, y, width - 3, y, width - 3, height - 3, fill=color, width=1)
+        canvas.create_text(
+            center,
+            y,
+            text=caption,
+            fill=color,
+            font=("Segoe UI", 8, "bold"),
+        )
+
+    def _draw_oco_connector(self) -> None:
+        canvas = getattr(self, "oco_connector", None)
+        if canvas is None:
+            return
+        canvas.delete("all")
+        width = max(canvas.winfo_width(), 48)
+        height = max(canvas.winfo_height(), 120)
+        top_y = height * 0.25
+        bottom_y = height * 0.75
+        right = width - 3
+        trunk = 15
+        if self.template_id.get() != TARGET_STOP:
+            canvas.create_line(trunk, top_y, right, top_y, fill=MUTED_TEXT, arrow=tk.LAST)
+            return
+        center_y = height / 2
+        canvas.create_line(
+            trunk,
+            center_y - 11,
+            trunk,
+            top_y,
+            right,
+            top_y,
+            fill=ACCENT,
+            width=1,
+            arrow=tk.LAST,
+        )
+        canvas.create_line(
+            trunk,
+            center_y + 11,
+            trunk,
+            bottom_y,
+            right,
+            bottom_y,
+            fill=ACCENT,
+            width=1,
+            arrow=tk.LAST,
+        )
+        canvas.create_text(
+            trunk,
+            center_y,
+            text="OCO",
+            fill=MUTED_TEXT,
+            font=("Segoe UI", 8, "bold"),
+        )
+
     def _schedule_refresh(self, _event: object = None) -> None:
         if self._refresh_after is not None:
             self.after_cancel(self._refresh_after)
@@ -645,7 +831,12 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self._refresh_template_cards()
         selected = self._selected_symbols()
         for symbol, button in self._leg_buttons.items():
-            button.configure(state=tk.DISABLED if self.coverage_mode.get() == "entire" else tk.NORMAL)
+            selecting_legs = self.coverage_mode.get() == "selected"
+            button.configure(state=tk.NORMAL if selecting_legs else tk.DISABLED)
+            selected_chip = selecting_legs and self.leg_enabled[symbol].get()
+            self._leg_chip_frames[symbol].configure(
+                highlightbackground=ACCENT if selected_chip else BORDER
+            )
         entire = self.coverage_mode.get() == "entire"
         self.entire_coverage_card.configure(highlightbackground=ACCENT if entire else BORDER)
         self.selected_coverage_card.configure(highlightbackground=ACCENT if not entire else BORDER)
@@ -655,10 +846,8 @@ class ExitPlanBuilderDialog(tk.Toplevel):
                 widget.configure(state="readonly" if stop_enabled else tk.DISABLED)
             else:
                 widget.configure(state=tk.NORMAL if stop_enabled else tk.DISABLED)
-        self.oco_label.configure(
-            text="ONE CANCELS OTHER" if stop_enabled else "SINGLE EXIT",
-            foreground=ACCENT if stop_enabled else MUTED_TEXT,
-        )
+        self._draw_oco_header()
+        self._draw_oco_connector()
         self.link_relation_label.configure(
             text=(
                 "🔗  When one fills, cancel the other"
@@ -674,6 +863,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
                 self.book,
                 selected,
                 working_orders=self.working_orders,
+                coverage_mode=self.coverage_mode.get(),
                 template_id=self.template_id.get(),
                 target_percent=self.target_percent.get(),
                 stop_percent=self.stop_percent.get(),
@@ -691,6 +881,9 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             self.stop_estimate.set("Unavailable")
             self.status.set("Plan needs attention")
             self.review_button.configure(state=tk.DISABLED)
+            self.cancel_orders_button.configure(
+                state=tk.NORMAL if self.working_orders else tk.DISABLED
+            )
             self._draw_sequence()
             self._draw_price_rail()
             return
@@ -704,6 +897,16 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.protected_quantity.set(f"{draft.protected_quantity} of {draft.protected_quantity}")
         self.target_estimate.set(_branch_estimate(target))
         self.stop_estimate.set(_branch_estimate(stop) if stop else "Disabled")
+        if self.coverage_mode.get() == "selected":
+            close_scope = f"Close {len(draft.position_symbols)} selected leg{'s' if len(draft.position_symbols) != 1 else ''}"
+        else:
+            unit = "strategy" if len(draft.position_symbols) > 1 else "contract"
+            close_scope = (
+                f"Close {draft.protected_quantity} {unit}"
+                f"{'s' if draft.protected_quantity != 1 else ''}"
+            )
+        self.target_scope.set(close_scope)
+        self.stop_scope.set(close_scope)
         if draft.conflicting_order_ids:
             self.status.set(f"{len(draft.conflicting_order_ids)} close order conflict")
             self.builder_message.set(
@@ -725,7 +928,9 @@ class ExitPlanBuilderDialog(tk.Toplevel):
                 "This plan becomes one reviewed GTC limit close; no linked broker order is required."
             )
             self.review_button.configure(state=tk.NORMAL)
-        self.cancel_orders_button.configure(state=tk.NORMAL if draft.conflicting_order_ids else tk.DISABLED)
+        self.cancel_orders_button.configure(
+            state=tk.NORMAL if self.working_orders else tk.DISABLED
+        )
         self._draw_sequence()
         self._draw_price_rail()
 
@@ -750,33 +955,165 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         if canvas is None:
             return
         canvas.delete("all")
-        width = max(canvas.winfo_width(), 360)
+        width = max(canvas.winfo_width(), 320)
+        height = max(canvas.winfo_height(), 260)
         center = width / 2
         draft = self.draft
         if draft is None:
-            canvas.create_text(center, 90, text="Complete valid trigger values to preview the sequence.", fill=MUTED_TEXT, font=("Segoe UI", 9))
+            canvas.create_text(
+                center,
+                height / 2,
+                text="Complete valid trigger values to preview the sequence.",
+                fill=MUTED_TEXT,
+                font=("Segoe UI", 10),
+            )
             return
-        _canvas_box(canvas, center - 85, 4, center + 85, 33, f"Existing {draft.underlying_symbol} position\n{len(draft.position_symbols)} exact leg{'s' if len(draft.position_symbols) != 1 else ''}", BORDER, TEXT)
-        canvas.create_line(center, 33, center, 44, fill=MUTED_TEXT, arrow=tk.LAST)
-        _canvas_box(canvas, center - 78, 45, center + 78, 70, "Monitor position mark", BORDER, TEXT)
+
+        diagram_width = min(width - 28, 620)
+        diagram_height = min(max(height - 24, 260), 360)
+        top = (height - diagram_height) / 2
+        root_top = top
+        root_bottom = top + diagram_height * 0.15
+        monitor_top = top + diagram_height * 0.22
+        monitor_bottom = top + diagram_height * 0.34
+        branch_top = top + diagram_height * 0.54
+        branch_bottom = top + diagram_height * 0.73
+        closed_top = top + diagram_height * 0.86
+        closed_bottom = top + diagram_height * 0.99
+        root_width = min(230, diagram_width * 0.42)
+        monitor_width = min(210, diagram_width * 0.38)
+        root_detail = (
+            f"{len(draft.position_symbols)} leg{'s' if len(draft.position_symbols) != 1 else ''}"
+            f" · Qty {draft.protected_quantity}"
+        )
+        _canvas_node(
+            canvas,
+            center - root_width / 2,
+            root_top,
+            center + root_width / 2,
+            root_bottom,
+            f"Existing {draft.underlying_symbol} position",
+            root_detail,
+            BORDER,
+            TEXT,
+        )
+        canvas.create_line(
+            center,
+            root_bottom,
+            center,
+            monitor_top,
+            fill=MUTED_TEXT,
+            arrow=tk.LAST,
+        )
+        _canvas_node(
+            canvas,
+            center - monitor_width / 2,
+            monitor_top,
+            center + monitor_width / 2,
+            monitor_bottom,
+            "Monitor position mark",
+            "Live net mark",
+            BORDER,
+            TEXT,
+        )
         target = draft.take_profit
         stop = draft.stop_loss
         if draft.relationship == "OCO" and target and stop:
-            canvas.create_text(center, 80, text="OCO", fill=TEXT, font=("Segoe UI", 9, "bold"))
-            canvas.create_line(center, 70, center, 85, fill=MUTED_TEXT)
-            canvas.create_line(center - 105, 85, center + 105, 85, fill=MUTED_TEXT)
-            canvas.create_line(center - 105, 85, center - 105, 95, fill=MUTED_TEXT, arrow=tk.LAST)
-            canvas.create_line(center + 105, 85, center + 105, 95, fill=MUTED_TEXT, arrow=tk.LAST)
-            _canvas_box(canvas, center - 180, 96, center - 30, 132, f"{target.trigger_operator}{target.trigger_percent:g}% Take profit\n{_money(target.trigger_price)}", SUCCESS, SUCCESS)
-            _canvas_box(canvas, center + 30, 96, center + 180, 132, f"{stop.trigger_operator}{stop.trigger_percent:g}% Stop loss\n{_money(stop.trigger_price)}", DANGER, DANGER)
-            canvas.create_line(center - 105, 132, center - 105, 143, center, 151, fill=MUTED_TEXT)
-            canvas.create_line(center + 105, 132, center + 105, 143, center, 151, fill=MUTED_TEXT)
-            _canvas_box(canvas, center - 70, 151, center + 70, 174, "Position closed", BORDER, TEXT)
+            branch_gap = 34
+            branch_width = min(220, (diagram_width - branch_gap) / 2)
+            branch_offset = (branch_width + branch_gap) / 2
+            target_center = center - branch_offset
+            stop_center = center + branch_offset
+            split_y = top + diagram_height * 0.45
+            label_y = top + diagram_height * 0.405
+            canvas.create_line(center, monitor_bottom, center, split_y, fill=MUTED_TEXT)
+            canvas.create_text(
+                center,
+                label_y,
+                text="OCO",
+                fill=TEXT,
+                font=("Segoe UI", 9, "bold"),
+            )
+            canvas.create_line(target_center, split_y, stop_center, split_y, fill=MUTED_TEXT)
+            canvas.create_line(
+                target_center,
+                split_y,
+                target_center,
+                branch_top,
+                fill=MUTED_TEXT,
+                arrow=tk.LAST,
+            )
+            canvas.create_line(
+                stop_center,
+                split_y,
+                stop_center,
+                branch_top,
+                fill=MUTED_TEXT,
+                arrow=tk.LAST,
+            )
+            _canvas_node(
+                canvas,
+                target_center - branch_width / 2,
+                branch_top,
+                target_center + branch_width / 2,
+                branch_bottom,
+                f"{target.trigger_operator}{target.trigger_percent:g}% Take profit",
+                f"{self.target_scope.get()} · {_money(target.trigger_price)}",
+                SUCCESS,
+                SUCCESS,
+            )
+            _canvas_node(
+                canvas,
+                stop_center - branch_width / 2,
+                branch_top,
+                stop_center + branch_width / 2,
+                branch_bottom,
+                f"{stop.trigger_operator}{stop.trigger_percent:g}% Stop loss",
+                f"{self.stop_scope.get()} · {_money(stop.trigger_price)}",
+                DANGER,
+                DANGER,
+            )
+            merge_y = top + diagram_height * 0.80
+            canvas.create_line(target_center, branch_bottom, target_center, merge_y, center, merge_y, fill=MUTED_TEXT)
+            canvas.create_line(stop_center, branch_bottom, stop_center, merge_y, center, merge_y, fill=MUTED_TEXT)
+            canvas.create_line(center, merge_y, center, closed_top, fill=MUTED_TEXT, arrow=tk.LAST)
+            _canvas_node(
+                canvas,
+                center - monitor_width * 0.42,
+                closed_top,
+                center + monitor_width * 0.42,
+                closed_bottom,
+                "Position closed",
+                "No open quantity",
+                BORDER,
+                TEXT,
+            )
         elif target:
-            canvas.create_line(center, 70, center, 94, fill=MUTED_TEXT, arrow=tk.LAST)
-            _canvas_box(canvas, center - 92, 95, center + 92, 132, f"{target.trigger_operator}{target.trigger_percent:g}% Take profit\n{_money(target.trigger_price)}", SUCCESS, SUCCESS)
-            canvas.create_line(center, 132, center, 150, fill=MUTED_TEXT, arrow=tk.LAST)
-            _canvas_box(canvas, center - 70, 151, center + 70, 174, "Position closed", BORDER, TEXT)
+            branch_width = min(240, diagram_width * 0.5)
+            canvas.create_line(center, monitor_bottom, center, branch_top, fill=MUTED_TEXT, arrow=tk.LAST)
+            _canvas_node(
+                canvas,
+                center - branch_width / 2,
+                branch_top,
+                center + branch_width / 2,
+                branch_bottom,
+                f"{target.trigger_operator}{target.trigger_percent:g}% Take profit",
+                f"{self.target_scope.get()} · {_money(target.trigger_price)}",
+                SUCCESS,
+                SUCCESS,
+            )
+            canvas.create_line(center, branch_bottom, center, closed_top, fill=MUTED_TEXT, arrow=tk.LAST)
+            _canvas_node(
+                canvas,
+                center - monitor_width * 0.42,
+                closed_top,
+                center + monitor_width * 0.42,
+                closed_bottom,
+                "Position closed",
+                "No open quantity",
+                BORDER,
+                TEXT,
+            )
 
     def _draw_price_rail(self) -> None:
         canvas = getattr(self, "price_rail", None)
@@ -964,18 +1301,37 @@ class ExitPlanReviewDialog(tk.Toplevel):
         ttk.Button(footer, text="Placement unavailable", state=tk.DISABLED).pack(side=tk.RIGHT, padx=(0, 7))
 
 
-def _canvas_box(
+def _canvas_node(
     canvas: tk.Canvas,
     left: float,
     top: float,
     right: float,
     bottom: float,
-    text: str,
+    title: str,
+    detail: str,
     outline: str,
     foreground: str,
 ) -> None:
     canvas.create_rectangle(left, top, right, bottom, outline=outline, width=1, fill=TABLE_FIELD)
-    canvas.create_text((left + right) / 2, (top + bottom) / 2, text=text, fill=foreground, font=("Segoe UI", 8), justify=tk.CENTER)
+    center_x = (left + right) / 2
+    center_y = (top + bottom) / 2
+    spacing = min(9.0, max(6.0, (bottom - top) * 0.18))
+    canvas.create_text(
+        center_x,
+        center_y - spacing,
+        text=title,
+        fill=foreground,
+        font=("Segoe UI", 9, "bold"),
+        justify=tk.CENTER,
+    )
+    canvas.create_text(
+        center_x,
+        center_y + spacing,
+        text=detail,
+        fill=MUTED_TEXT,
+        font=("Segoe UI", 8),
+        justify=tk.CENTER,
+    )
 
 
 def _branch_estimate(branch: object) -> str:

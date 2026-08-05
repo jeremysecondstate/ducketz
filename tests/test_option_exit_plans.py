@@ -107,6 +107,32 @@ def test_working_close_order_blocks_an_overlapping_exit_plan() -> None:
         build_exit_plan_payload(draft)
 
 
+def test_position_coverage_copy_distinguishes_whole_strategy_from_selected_legs() -> None:
+    symbols = (
+        "NVDA  260918P00210000",
+        "NVDA  260918P00205000",
+        "NVDA  260918P00200000",
+    )
+    book = option_position_book(
+        _snapshot(
+            [
+                _position(symbol=symbol, quantity=1, mark=mark)
+                for symbol, mark in zip(symbols, (1.42, 0.92, 0.55), strict=True)
+            ]
+        )
+    )
+
+    whole = build_exit_plan_draft(book, symbols, coverage_mode="entire")
+    selected = build_exit_plan_draft(book, symbols[:2], coverage_mode="selected")
+    single = build_exit_plan_draft(book, symbols[:1], coverage_mode="entire")
+
+    assert whole.coverage_label == "Entire strategy"
+    assert selected.coverage_label == "2 selected legs"
+    assert single.coverage_label == "Entire position"
+    with pytest.raises(ValueError, match="position coverage"):
+        build_exit_plan_draft(book, symbols, coverage_mode="unknown")
+
+
 @pytest.mark.parametrize(
     ("template_id", "relationship", "reason_fragment"),
     [
