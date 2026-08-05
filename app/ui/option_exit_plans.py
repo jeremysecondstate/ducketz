@@ -66,9 +66,10 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.on_show_orders = on_show_orders
         self.draft: ExitPlanDraft | None = None
         self._template_cards: dict[str, tk.Frame] = {}
-        self._template_badges: dict[str, tk.Label] = {}
+        self._template_badges: dict[str, tk.Canvas] = {}
         self._leg_buttons: dict[str, tk.Checkbutton] = {}
         self._leg_chip_frames: dict[str, tk.Frame] = {}
+        self._row_enabled_vars: dict[str, tk.BooleanVar] = {}
         self._stop_widgets: list[tk.Widget] = []
         self._refresh_after: str | None = None
 
@@ -95,10 +96,11 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.atomic_link = tk.BooleanVar(master=self, value=False)
         self.activate_after_accept = tk.BooleanVar(master=self, value=True)
         self.sync_quantities = tk.BooleanVar(master=self, value=True)
+        available_symbols = {leg.symbol for leg in book.legs}
         self.leg_enabled = {
-            leg.symbol: tk.BooleanVar(master=self, value=leg.symbol in selected_symbols)
-            for leg in book.legs
-            if leg.symbol in selected_symbols
+            symbol: tk.BooleanVar(master=self, value=True)
+            for symbol in selected_symbols
+            if symbol in available_symbols
         }
 
         self.title("Build exit plan")
@@ -106,8 +108,8 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.minsize(1080, 760)
         self.transient(root)
         self.protocol("WM_DELETE_WINDOW", self.destroy)
-        self._fit_to_root()
         self._build()
+        self._fit_to_root()
         self._load_saved_choices()
         self._refresh()
         self.grab_set()
@@ -115,24 +117,29 @@ class ExitPlanBuilderDialog(tk.Toplevel):
 
     def _fit_to_root(self) -> None:
         self.root.update_idletasks()
+        self.update_idletasks()
         width = max(1080, self.root.winfo_width() - 24)
-        height = max(760, self.root.winfo_height() - 34)
-        x = max(0, self.root.winfo_rootx() + 12)
-        y = max(0, self.root.winfo_rooty() + 17)
+        available_height = max(760, self.root.winfo_height() - 34)
+        height = min(available_height, max(760, self.winfo_reqheight()))
+        x = max(0, self.root.winfo_rootx() + (self.root.winfo_width() - width) // 2)
+        y = max(0, self.root.winfo_rooty() + (self.root.winfo_height() - height) // 2)
         self.geometry(f"{width}x{height}+{x}+{y}")
 
     def _build(self) -> None:
         outer = tk.Frame(self, background=BACKGROUND, padx=12, pady=10)
         outer.pack(fill=tk.BOTH, expand=True)
-        self._build_header(outer)
-
         body = ttk.PanedWindow(outer, orient=tk.HORIZONTAL)
-        body.pack(fill=tk.BOTH, expand=True, pady=(8, 0))
+        body.pack(fill=tk.BOTH, expand=True)
         left = tk.Frame(body, background=BACKGROUND)
         right = tk.Frame(body, background=BACKGROUND)
-        body.add(left, weight=13)
-        body.add(right, weight=7)
+        # Pane weights distribute only the space beyond each pane's requested
+        # width.  The builder requests more width than the preview, so the
+        # right pane needs the larger surplus weight to land on the concept's
+        # roughly 63/37 split without clipping either pane's children.
+        body.add(left, weight=7)
+        body.add(right, weight=12)
 
+        self._build_header(left)
         self._build_template_section(left)
         self._build_coverage_section(left)
         self._build_linked_exits(left)
@@ -144,7 +151,9 @@ class ExitPlanBuilderDialog(tk.Toplevel):
 
     def _build_header(self, parent: tk.Frame) -> None:
         header = tk.Frame(parent, background=BACKGROUND)
-        header.pack(fill=tk.X)
+        header.pack(fill=tk.X, pady=(0, 9))
+        header.grid_columnconfigure(1, minsize=390)
+        header.grid_columnconfigure(3, weight=1)
         back = tk.Button(
             header,
             text="‹  Positions",
@@ -157,9 +166,9 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             font=("Segoe UI", 10),
             cursor="hand2",
         )
-        back.pack(side=tk.LEFT, anchor=tk.N, padx=(0, 14), pady=(3, 0))
+        back.grid(row=0, column=0, sticky=tk.NW, padx=(0, 14), pady=(3, 0))
         heading = tk.Frame(header, background=BACKGROUND)
-        heading.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        heading.grid(row=0, column=1, sticky=tk.NW)
         tk.Label(
             heading,
             text="Build exit plan",
@@ -183,7 +192,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             font=("Segoe UI", 9),
         ).pack(anchor=tk.W, pady=(1, 0))
         pill = tk.Frame(header, background=SURFACE_ALT, highlightbackground=BORDER, highlightthickness=1)
-        pill.pack(side=tk.RIGHT, anchor=tk.N, pady=(3, 0))
+        pill.grid(row=0, column=2, sticky=tk.N, padx=(18, 0), pady=(3, 0))
         tk.Label(
             pill,
             text="●",
@@ -201,19 +210,25 @@ class ExitPlanBuilderDialog(tk.Toplevel):
 
     def _build_template_section(self, parent: tk.Frame) -> None:
         section = self._section(parent, "1. Choose a template")
-        saved = ttk.Combobox(
+        saved = tk.Menubutton(
             section.header,
-            textvariable=self.saved_choice,
-            values=("Saved templates",),
-            state="readonly",
-            width=20,
+            text="Manage templates",
+            background=SURFACE,
+            foreground=ACCENT,
+            activebackground=SURFACE,
+            activeforeground="#5db3ff",
+            borderwidth=0,
+            highlightthickness=0,
+            font=("Segoe UI", 9),
+            cursor="hand2",
         )
         saved.pack(side=tk.RIGHT)
-        saved.bind("<<ComboboxSelected>>", self._saved_template_selected)
-        self.saved_box = saved
+        menu = tk.Menu(saved, tearoff=False, background=SURFACE_ALT, foreground=TEXT)
+        saved.configure(menu=menu)
+        self.saved_menu = menu
 
         cards = tk.Frame(section.body, background=SURFACE)
-        cards.pack(fill=tk.X, padx=8, pady=(5, 8))
+        cards.pack(fill=tk.X, padx=8, pady=(7, 14))
         for column, template_id in enumerate((TARGET_STOP, SINGLE_TARGET, TWO_TARGETS, TRAILING_STOP)):
             cards.grid_columnconfigure(column, weight=1, uniform="exit-template")
             self._template_card(cards, template_id, column)
@@ -226,10 +241,12 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             highlightbackground=BORDER,
             highlightthickness=1,
             padx=8,
-            pady=6,
+            pady=12,
+            height=126,
             cursor="hand2" if selectable else "arrow",
         )
         card.grid(row=0, column=column, sticky=tk.NSEW, padx=(0 if column == 0 else 4, 0 if column == 3 else 4))
+        card.pack_propagate(False)
         # Tk canvases default to a surprisingly large requested width.  Four of
         # those requests force the left pane to consume nearly the whole dialog,
         # even though the icons themselves only use about 100 px.  Keep the
@@ -237,7 +254,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         chart = tk.Canvas(
             card,
             width=110,
-            height=28,
+            height=38,
             background=SURFACE_ALT,
             highlightthickness=0,
         )
@@ -248,7 +265,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             text=title,
             background=SURFACE_ALT,
             foreground=TEXT if selectable else "#66758a",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 11, "bold"),
         )
         label.pack()
         detail_label = tk.Label(
@@ -256,17 +273,18 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             text=detail,
             background=SURFACE_ALT,
             foreground=MUTED_TEXT if selectable else "#536174",
-            font=("Segoe UI", 8),
+            font=("Segoe UI", 9),
         )
         detail_label.pack(pady=(1, 0))
-        badge = tk.Label(
+        badge = tk.Canvas(
             card,
-            text="",
             background=SURFACE_ALT,
-            foreground=ACCENT,
-            font=("Segoe UI", 8, "bold"),
+            highlightthickness=0,
+            width=24,
+            height=24,
         )
-        badge.pack(pady=(2, 0))
+        badge.create_oval(2, 2, 22, 22, fill=ACCENT, outline="#5db3ff")
+        badge.create_text(12, 12, text="✓", fill="#ffffff", font=("Segoe UI", 9, "bold"))
         self._template_cards[template_id] = card
         self._template_badges[template_id] = badge
         for widget in (card, chart, label, detail_label, badge):
@@ -286,7 +304,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
     def _build_coverage_section(self, parent: tk.Frame) -> None:
         section = self._section(parent, "2. Position coverage")
         row = tk.Frame(section.body, background=SURFACE)
-        row.pack(fill=tk.X, padx=8, pady=(4, 8))
+        row.pack(fill=tk.X, padx=8, pady=(6, 14))
         choices = tk.Frame(row, background=SURFACE)
         choices.pack(side=tk.LEFT)
         entire_title = "Entire strategy" if len(self.leg_enabled) > 1 else "Entire position"
@@ -294,8 +312,16 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             ("entire", entire_title, "Close as one net order"),
             ("selected", "Selected legs", "Choose exact contracts"),
         ):
-            card = tk.Frame(choices, background=TABLE_FIELD, highlightbackground=BORDER, highlightthickness=1)
+            card = tk.Frame(
+                choices,
+                background=TABLE_FIELD,
+                highlightbackground=BORDER,
+                highlightthickness=1,
+                width=220,
+                height=64,
+            )
             card.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 6))
+            card.pack_propagate(False)
             radio = tk.Radiobutton(
                 card,
                 text=title,
@@ -334,12 +360,14 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             padx=6,
             pady=5,
         )
-        chips.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        chips.pack(side=tk.LEFT, anchor=tk.N)
+        chip_row = tk.Frame(chips, background=TABLE_FIELD)
+        chip_row.pack(anchor=tk.W)
         by_symbol = {leg.symbol: leg for leg in self.book.legs}
         for symbol, variable in self.leg_enabled.items():
             leg = by_symbol[symbol]
             chip_frame = tk.Frame(
-                chips,
+                chip_row,
                 background=SURFACE_ALT,
                 highlightbackground=BORDER,
                 highlightthickness=1,
@@ -366,6 +394,13 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             chip.pack()
             self._leg_buttons[symbol] = chip
             self._leg_chip_frames[symbol] = chip_frame
+        tk.Label(
+            chips,
+            text="Close as one net order",
+            background=TABLE_FIELD,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 8),
+        ).pack(anchor=tk.W, padx=3, pady=(3, 0))
 
     def _build_linked_exits(self, parent: tk.Frame) -> None:
         section = self._section(parent, "3. Linked exits")
@@ -373,15 +408,15 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             section.header,
             background=SURFACE,
             highlightthickness=0,
-            width=220,
+            width=240,
             height=22,
         )
-        oco.pack(side=tk.RIGHT, padx=(0, 8))
+        oco.place(relx=0.48, rely=0.5, anchor=tk.CENTER)
         oco.bind("<Configure>", lambda _event: self._draw_oco_header())
         self.oco_header = oco
 
         content = tk.Frame(section.body, background=SURFACE)
-        content.pack(fill=tk.X, padx=8, pady=(4, 6))
+        content.pack(fill=tk.X, padx=8, pady=(5, 9))
 
         linked_rows = tk.Frame(content, background=SURFACE)
         linked_rows.pack(fill=tk.X)
@@ -407,7 +442,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             foreground=ACCENT,
             font=("Segoe UI", 8),
         )
-        relation.pack(anchor=tk.W, pady=(1, 4))
+        relation.pack(anchor=tk.W, pady=(4, 10))
         self.link_relation_label = relation
 
         time_exit = tk.Frame(
@@ -458,17 +493,22 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             background=TABLE_FIELD,
             highlightbackground=color,
             highlightthickness=1,
-            padx=7,
-            pady=4,
+            padx=10,
+            pady=9,
         )
-        frame.pack(fill=tk.X, pady=(0, 6))
+        frame.pack(fill=tk.X, pady=(0, 8))
+        frame.grid_columnconfigure(0, minsize=205)
+        frame.grid_columnconfigure(1, weight=1)
         if not is_target:
             self.stop_frame = frame
-        title_row = tk.Frame(frame, background=TABLE_FIELD)
-        title_row.pack(fill=tk.X)
+
+        branch = tk.Frame(frame, background=TABLE_FIELD)
+        branch.grid(row=0, column=0, sticky="nsw", padx=(0, 12))
+        enabled = tk.BooleanVar(master=self, value=True)
+        self._row_enabled_vars[kind] = enabled
         check = tk.Checkbutton(
-            title_row,
-            variable=tk.BooleanVar(master=self, value=True),
+            branch,
+            variable=enabled,
             state=tk.DISABLED,
             background=TABLE_FIELD,
             activebackground=TABLE_FIELD,
@@ -478,13 +518,13 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         )
         check.pack(side=tk.LEFT)
         tk.Label(
-            title_row,
-            text="◉",
+            branch,
+            text="◎" if is_target else "!",
             background=TABLE_FIELD,
             foreground=color,
-            font=("Segoe UI", 9, "bold"),
-        ).pack(side=tk.LEFT, padx=(0, 5))
-        branch_copy = tk.Frame(title_row, background=TABLE_FIELD)
+            font=("Segoe UI", 12, "bold"),
+        ).pack(side=tk.LEFT, padx=(0, 7))
+        branch_copy = tk.Frame(branch, background=TABLE_FIELD)
         branch_copy.pack(side=tk.LEFT)
         tk.Label(
             branch_copy,
@@ -501,68 +541,117 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             foreground=MUTED_TEXT,
             font=("Segoe UI", 8),
         ).pack(anchor=tk.W, pady=(1, 0))
-        estimate = self.target_estimate if is_target else self.stop_estimate
+
+        controls = tk.Frame(frame, background=TABLE_FIELD)
+        controls.grid(row=0, column=1, sticky=tk.EW)
+
+        def field(title: str, *, right_pad: int = 9) -> tk.Frame:
+            group = tk.Frame(controls, background=TABLE_FIELD)
+            group.pack(side=tk.LEFT, padx=(0, right_pad))
+            tk.Label(
+                group,
+                text=title,
+                background=TABLE_FIELD,
+                foreground=MUTED_TEXT,
+                font=("Segoe UI", 8),
+            ).pack(anchor=tk.W, pady=(0, 2))
+            return group
+
+        basis_group = field("Trigger basis")
+        basis = ttk.Combobox(basis_group, values=("Position mark",), state="readonly", width=12)
+        basis.set("Position mark")
+        basis.pack()
+
+        operation_group = field("Op")
         tk.Label(
-            title_row,
+            operation_group,
+            text="+" if is_target else "−",
+            background=TABLE_FIELD,
+            foreground=TEXT,
+            highlightbackground=BORDER,
+            highlightthickness=1,
+            width=3,
+            pady=3,
+            font=("Segoe UI", 9, "bold"),
+        ).pack()
+
+        value_group = field("Value")
+        value_row = tk.Frame(value_group, background=TABLE_FIELD)
+        value_row.pack()
+        value_var = self.target_percent if is_target else self.stop_percent
+        entry = ttk.Entry(value_row, textvariable=value_var, width=6)
+        entry.pack(side=tk.LEFT)
+        entry.bind("<KeyRelease>", self._schedule_refresh)
+        tk.Label(
+            value_row,
+            text="%",
+            background=TABLE_FIELD,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 8),
+        ).pack(side=tk.LEFT, padx=(3, 0))
+
+        order_group = field("Order type")
+        order_type = ttk.Combobox(
+            order_group,
+            values=("LIMIT",) if is_target else ("STOP LIMIT",),
+            state="readonly",
+            width=10,
+        )
+        order_type.set("LIMIT" if is_target else "STOP LIMIT")
+        order_type.pack()
+
+        offset_group = field("" if is_target else "Limit offset")
+        if is_target:
+            tk.Frame(offset_group, background=TABLE_FIELD, width=72, height=22).pack()
+        else:
+            offset_row = tk.Frame(offset_group, background=TABLE_FIELD)
+            offset_row.pack()
+            tk.Label(
+                offset_row,
+                text="$",
+                background=TABLE_FIELD,
+                foreground=MUTED_TEXT,
+                font=("Segoe UI", 8),
+            ).pack(side=tk.LEFT, padx=(0, 2))
+            offset = ttk.Entry(offset_row, textvariable=self.limit_offset, width=5)
+            offset.pack(side=tk.LEFT)
+            offset.bind("<KeyRelease>", self._schedule_refresh)
+            self._stop_widgets.extend((basis, entry, order_type, offset))
+
+        duration_group = field("TIF", right_pad=0)
+        duration = ttk.Combobox(
+            duration_group,
+            values=("GTC",),
+            state="readonly",
+            width=5,
+        )
+        duration.set("GTC")
+        duration.pack()
+        if not is_target:
+            self._stop_widgets.append(duration)
+
+        estimate = self.target_estimate if is_target else self.stop_estimate
+        estimate_group = tk.Frame(frame, background=TABLE_FIELD)
+        estimate_group.grid(row=0, column=2, sticky=tk.E, padx=(12, 2))
+        tk.Label(
+            estimate_group,
+            text="Est. net",
+            background=TABLE_FIELD,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 8),
+        ).pack(anchor=tk.E, pady=(0, 2))
+        tk.Label(
+            estimate_group,
             textvariable=estimate,
             background=TABLE_FIELD,
             foreground=color,
             font=("Segoe UI", 9, "bold"),
-        ).pack(side=tk.RIGHT)
-
-        controls = tk.Frame(frame, background=TABLE_FIELD)
-        controls.pack(fill=tk.X, pady=(4, 0))
-        basis = ttk.Combobox(controls, values=("Position mark",), state="readonly", width=13)
-        basis.set("Position mark")
-        basis.pack(side=tk.LEFT, padx=(0, 5))
-        tk.Label(
-            controls,
-            text="+" if is_target else "−",
-            background=TABLE_FIELD,
-            foreground=TEXT,
-            font=("Segoe UI", 10, "bold"),
-        ).pack(side=tk.LEFT, padx=3)
-        value_var = self.target_percent if is_target else self.stop_percent
-        entry = ttk.Entry(controls, textvariable=value_var, width=7)
-        entry.pack(side=tk.LEFT, padx=(0, 3))
-        entry.bind("<KeyRelease>", self._schedule_refresh)
-        tk.Label(controls, text="%", background=TABLE_FIELD, foreground=MUTED_TEXT).pack(side=tk.LEFT, padx=(0, 7))
-        order_type = ttk.Combobox(
-            controls,
-            values=("Limit",) if is_target else ("Stop limit",),
-            state="readonly",
-            width=10,
-        )
-        order_type.set("Limit" if is_target else "Stop limit")
-        order_type.pack(side=tk.LEFT, padx=(0, 5))
-        if not is_target:
-            tk.Label(
-                controls,
-                text="Offset",
-                background=TABLE_FIELD,
-                foreground=MUTED_TEXT,
-                font=("Segoe UI", 8),
-            ).pack(side=tk.LEFT, padx=(2, 3))
-            offset = ttk.Entry(controls, textvariable=self.limit_offset, width=6)
-            offset.pack(side=tk.LEFT, padx=(0, 5))
-            offset.bind("<KeyRelease>", self._schedule_refresh)
-            self._stop_widgets.extend((basis, entry, order_type, offset))
-        duration = ttk.Combobox(
-            controls,
-            textvariable=self.duration,
-            values=(GOOD_UNTIL_CANCELED,),
-            state="readonly",
-            width=8,
-        )
-        duration.pack(side=tk.RIGHT)
-        duration.bind("<<ComboboxSelected>>", self._schedule_refresh)
-        if not is_target:
-            self._stop_widgets.append(duration)
+        ).pack(anchor=tk.E)
 
     def _build_quick_actions(self, parent: tk.Frame) -> None:
         quick = tk.Frame(parent, background=SURFACE)
-        quick.pack(fill=tk.X, pady=(9, 0))
-        tk.Frame(quick, background=BORDER, height=1).pack(fill=tk.X, pady=(0, 6))
+        quick.pack(fill=tk.X, pady=(12, 0))
+        tk.Frame(quick, background=BORDER, height=1).pack(fill=tk.X, pady=(0, 8))
         tk.Label(
             quick,
             text="Quick actions (requires confirmation)",
@@ -571,9 +660,9 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             font=("Segoe UI", 8),
         ).pack(anchor=tk.W)
         actions = tk.Frame(quick, background=SURFACE)
-        actions.pack(fill=tk.X, pady=(5, 0))
+        actions.pack(fill=tk.X, pady=(7, 0))
         close_border = tk.Frame(actions, background=DANGER, padx=1, pady=1)
-        close_border.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+        close_border.pack(side=tk.LEFT, padx=(0, 5))
         close_now = tk.Button(
             close_border,
             text="⊗  Close now…",
@@ -585,13 +674,14 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             highlightthickness=0,
             borderwidth=0,
             font=("Segoe UI", 9),
+            width=24,
             padx=16,
             pady=4,
             cursor="hand2",
         )
         close_now.pack(fill=tk.X)
         cancel_border = tk.Frame(actions, background=BORDER, padx=1, pady=1)
-        cancel_border.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
+        cancel_border.pack(side=tk.LEFT, padx=(5, 0))
         cancel = tk.Button(
             cancel_border,
             text="⊗  Cancel working orders",
@@ -605,6 +695,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             highlightthickness=0,
             borderwidth=0,
             font=("Segoe UI", 9),
+            width=24,
             padx=16,
             pady=4,
             cursor="hand2",
@@ -614,9 +705,9 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.close_now_button = close_now
 
     def _build_sequence(self, parent: tk.Frame) -> None:
-        section = self._right_section(parent, "Exit sequence", expand=True)
-        canvas = tk.Canvas(section, background=SURFACE, highlightthickness=0, height=260)
-        canvas.pack(fill=tk.BOTH, expand=True, padx=6, pady=(0, 6))
+        section = self._right_section(parent, "Exit sequence")
+        canvas = tk.Canvas(section, background=SURFACE, highlightthickness=0, height=270)
+        canvas.pack(fill=tk.X, padx=6, pady=(0, 6))
         canvas.bind("<Configure>", lambda _event: self._draw_sequence())
         self.sequence_canvas = canvas
 
@@ -638,12 +729,12 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             tk.Label(cell, textvariable=variable, background=SURFACE, foreground=color, font=("Segoe UI", 11, "bold")).pack(pady=(2, 0))
 
     def _build_safeguards(self, parent: tk.Frame) -> None:
-        section = self._right_section(parent, "Safeguards")
+        section = self._right_section(parent, "Safeguards", expand=True)
         checks = tk.Frame(section, background=SURFACE)
         checks.pack(fill=tk.X, padx=8, pady=(0, 4))
         for text, variable in (
-            ("Submit both exits as one linked order (unverified)", self.atomic_link),
-            ("Activate only after broker accepts order(s)", self.activate_after_accept),
+            ("Submit both exits as one linked order", self.atomic_link),
+            ("Activate only after broker accepts both", self.activate_after_accept),
             ("Keep quantities synchronized", self.sync_quantities),
         ):
             tk.Checkbutton(
@@ -659,7 +750,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
                 font=("Segoe UI", 8),
                 borderwidth=0,
                 highlightthickness=0,
-            ).pack(anchor=tk.W)
+            ).pack(anchor=tk.W, pady=2)
         warning = tk.Frame(section, background="#382a10", highlightbackground=WARNING, highlightthickness=1)
         warning.pack(fill=tk.X, padx=8, pady=(4, 5))
         tk.Label(
@@ -675,25 +766,30 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             background="#382a10",
             foreground="#ffd58a",
             font=("Segoe UI", 8, "bold"),
-            wraplength=360,
+            wraplength=500,
             justify=tk.LEFT,
         ).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8), pady=5)
-        rail = tk.Canvas(section, height=62, background=SURFACE, highlightthickness=0)
-        rail.pack(fill=tk.X, padx=8, pady=(0, 5))
+        rail = tk.Canvas(section, height=76, background=SURFACE, highlightthickness=0)
+        rail.pack(side=tk.BOTTOM, fill=tk.X, padx=8, pady=(10, 8))
         rail.bind("<Configure>", lambda _event: self._draw_price_rail())
         self.price_rail = rail
 
     def _build_footer(self, parent: tk.Frame) -> None:
+        tk.Frame(parent, background=BORDER, height=1).pack(fill=tk.X, pady=(5, 0))
         footer = tk.Frame(parent, background=BACKGROUND)
-        footer.pack(fill=tk.X, pady=(9, 0))
-        ttk.Button(footer, text="Save as template", command=self._save_template).pack(side=tk.LEFT)
+        footer.pack(fill=tk.X, pady=(12, 2))
+        ttk.Button(
+            footer,
+            text="Save as template",
+            command=self._save_template,
+            width=26,
+        ).pack(side=tk.LEFT)
         tk.Label(
             footer,
-            textvariable=self.builder_message,
+            text="Estimated fees if closed: shown during review",
             background=BACKGROUND,
-            foreground=MUTED_TEXT,
-            font=("Segoe UI", 8),
-            wraplength=520,
+            foreground=TEXT,
+            font=("Segoe UI", 9),
             justify=tk.CENTER,
         ).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=12)
         review = ttk.Button(
@@ -702,6 +798,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             command=self._review,
             style="ManagementPrimary.TButton",
             state=tk.DISABLED,
+            width=38,
         )
         review.pack(side=tk.RIGHT)
         self.review_button = review
@@ -711,7 +808,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         frame = tk.Frame(parent, background=SURFACE, highlightbackground=BORDER, highlightthickness=1)
         frame.pack(fill=tk.X, pady=(0, 7))
         header = tk.Frame(frame, background=SURFACE)
-        header.pack(fill=tk.X, padx=8, pady=(6, 1))
+        header.pack(fill=tk.X, padx=10, pady=(9, 4))
         tk.Label(header, text=title, background=SURFACE, foreground=TEXT, font=("Segoe UI", 10, "bold")).pack(side=tk.LEFT)
         body = tk.Frame(frame, background=SURFACE)
         body.pack(fill=tk.X)
@@ -914,16 +1011,15 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             )
             self.review_button.configure(state=tk.DISABLED)
         elif draft.capability_reason:
-            self.status.set("Draft · broker linkage unverified")
+            self.status.set("No exit orders active")
             self.builder_message.set(
-                "Stop-limit orders may not fill during fast moves or price gaps. "
-                "Linked Schwab OCO placement remains unverified."
+                "Stop-limit orders may not fill during fast moves or price gaps."
                 if draft.template_id == TARGET_STOP
                 else draft.capability_reason
             )
             self.review_button.configure(state=tk.NORMAL)
         else:
-            self.status.set("Verified single-target close")
+            self.status.set("No exit orders active")
             self.builder_message.set(
                 "This plan becomes one reviewed GTC limit close; no linked broker order is required."
             )
@@ -937,18 +1033,13 @@ class ExitPlanBuilderDialog(tk.Toplevel):
     def _refresh_template_cards(self) -> None:
         current = self.template_id.get()
         for template_id, card in self._template_cards.items():
-            selectable = _TEMPLATE_DETAILS[template_id][2]
             selected = current == template_id
             card.configure(highlightbackground=ACCENT if selected else BORDER)
             badge = self._template_badges[template_id]
             if selected:
-                badge.configure(text="✓ Selected")
-            elif not selectable:
-                badge.configure(text="Not yet supported", foreground="#66758a")
-            elif template_id == TARGET_STOP:
-                badge.configure(text="Review only", foreground=WARNING)
+                badge.place(relx=1.0, x=-7, y=7, anchor=tk.NE)
             else:
-                badge.configure(text="Verified close", foreground=SUCCESS)
+                badge.place_forget()
 
     def _draw_sequence(self) -> None:
         canvas = getattr(self, "sequence_canvas", None)
@@ -1130,15 +1221,36 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         stop = draft.stop_loss
         current_x = (left + right) / 2
         canvas.create_oval(current_x - 5, y - 5, current_x + 5, y + 5, fill="#eaf2fb", outline=MUTED_TEXT)
-        canvas.create_text(current_x, 45, text=f"{_money(draft.position_mark)}\nCurrent", fill=TEXT, font=("Segoe UI", 8), justify=tk.CENTER)
+        canvas.create_text(
+            current_x,
+            45,
+            text=f"{_money(draft.position_mark)}\nCurrent mark",
+            fill=TEXT,
+            font=("Segoe UI", 8),
+            justify=tk.CENTER,
+        )
         if stop and stop.trigger_price is not None:
             canvas.create_line(left, y, current_x, y, fill=DANGER, width=3)
             canvas.create_oval(left - 5, y - 5, left + 5, y + 5, fill=DANGER, outline="#ffb0b2")
-            canvas.create_text(left, 45, text=f"{_money(stop.trigger_price)}\nStop", fill=DANGER, font=("Segoe UI", 8), justify=tk.CENTER)
+            canvas.create_text(
+                left,
+                45,
+                text=f"{_money(stop.trigger_price)}\nStop trigger",
+                fill=DANGER,
+                font=("Segoe UI", 8),
+                justify=tk.CENTER,
+            )
         if target and target.trigger_price is not None:
             canvas.create_line(current_x, y, right, y, fill=SUCCESS, width=3)
             canvas.create_oval(right - 5, y - 5, right + 5, y + 5, fill=SUCCESS, outline="#b8ffd5")
-            canvas.create_text(right, 45, text=f"{_money(target.trigger_price)}\nTarget", fill=SUCCESS, font=("Segoe UI", 8), justify=tk.CENTER)
+            canvas.create_text(
+                right,
+                45,
+                text=f"{_money(target.trigger_price)}\nProfit target",
+                fill=SUCCESS,
+                font=("Segoe UI", 8),
+                justify=tk.CENTER,
+            )
 
     def _review(self) -> None:
         draft = self.draft
@@ -1200,7 +1312,19 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             templates = ()
             self.builder_message.set(str(exc))
         self.saved_templates = {template.name: template for template in templates}
-        self.saved_box.configure(values=("Saved templates", *self.saved_templates))
+        self.saved_menu.delete(0, tk.END)
+        if not self.saved_templates:
+            self.saved_menu.add_command(label="No saved templates", state=tk.DISABLED)
+            return
+        for name in self.saved_templates:
+            self.saved_menu.add_command(
+                label=name,
+                command=lambda choice=name: self._choose_saved_template(choice),
+            )
+
+    def _choose_saved_template(self, name: str) -> None:
+        self.saved_choice.set(name)
+        self._saved_template_selected()
 
     def _saved_template_selected(self, _event: object = None) -> None:
         template = self.saved_templates.get(self.saved_choice.get())
