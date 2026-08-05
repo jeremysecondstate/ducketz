@@ -15,9 +15,13 @@ from app.models.option_management import (
     OptionPositionBook,
     SavedExitPlanTemplate,
 )
+from app.models.portfolio import PortfolioSnapshot
 from app.services.schwab_option_management import (
     build_closing_order_draft,
     build_closing_order_payload,
+    option_orders_from_snapshot,
+    option_position_book,
+    validate_closing_position_drift,
 )
 from app.services.schwab_strategy_orders import DAY_ONLY, GOOD_UNTIL_CANCELED
 
@@ -254,6 +258,34 @@ def build_exit_plan_payload(draft: ExitPlanDraft) -> dict[str, object]:
     return build_closing_order_payload(closing_order)
 
 
+def refresh_exit_plan_draft(
+    draft: ExitPlanDraft,
+    latest_snapshot: PortfolioSnapshot,
+) -> ExitPlanDraft:
+    """Rebuild a verified single-target plan from current option/account facts."""
+
+    if draft.template_id != SINGLE_TARGET or len(draft.branches) != 1:
+        raise ValueError(draft.capability_reason or "Only a single-target exit can be refreshed for placement.")
+    branch = draft.branches[0]
+    closing_order = branch.closing_order
+    if closing_order is None or branch.trigger_percent is None:
+        raise ValueError("The single-target exit does not contain a complete closing instruction.")
+    validate_closing_position_drift(closing_order, latest_snapshot)
+    latest_book = option_position_book(latest_snapshot)
+    if latest_book.status != "CURRENT":
+        raise ValueError("Current Schwab option positions are unavailable or incomplete; review again.")
+    coverage_mode = "selected" if "selected" in draft.coverage_label.casefold() else "entire"
+    return build_exit_plan_draft(
+        latest_book,
+        draft.position_symbols,
+        working_orders=option_orders_from_snapshot(latest_snapshot),
+        coverage_mode=coverage_mode,
+        template_id=SINGLE_TARGET,
+        target_percent=branch.trigger_percent,
+        duration=branch.duration,
+    )
+
+
 def conflicting_closing_order_ids(
     orders: Sequence[ManagedOptionOrder],
     selected_symbols: Iterable[str],
@@ -417,5 +449,6 @@ __all__ = [
     "conflicting_closing_order_ids",
     "default_exit_template_path",
     "load_exit_plan_templates",
+    "refresh_exit_plan_draft",
     "save_exit_plan_template",
 ]

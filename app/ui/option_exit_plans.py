@@ -11,6 +11,7 @@ from app.models.option_management import (
     OptionPositionBook,
     SavedExitPlanTemplate,
 )
+from app.models.portfolio import PortfolioSnapshot
 from app.services.option_order_review import OptionOrderReviewController, exit_plan_review
 from app.services.option_exit_plans import (
     SINGLE_TARGET,
@@ -21,7 +22,7 @@ from app.services.option_exit_plans import (
     load_exit_plan_templates,
     save_exit_plan_template,
 )
-from app.services.schwab_strategy_orders import GOOD_UNTIL_CANCELED
+from app.services.schwab_strategy_orders import DAY_ONLY, GOOD_UNTIL_CANCELED
 from app.ui.option_order_review import OptionOrderReviewDialog
 from app.ui.theme import (
     ACCENT,
@@ -46,6 +47,89 @@ _TEMPLATE_DETAILS = {
 }
 
 
+class _ExitScrolledFrame(tk.Frame):
+    def __init__(self, parent: tk.Misc, *, requested_width: int) -> None:
+        super().__init__(parent, background=BACKGROUND)
+        self.canvas = tk.Canvas(
+            self,
+            background=BACKGROUND,
+            borderwidth=0,
+            highlightthickness=0,
+            width=requested_width,
+            takefocus=True,
+        )
+        self.scrollbar = ttk.Scrollbar(self, orient=tk.VERTICAL, command=self.canvas.yview)
+        self.inner = tk.Frame(self.canvas, background=BACKGROUND)
+        self._window = self.canvas.create_window((0, 0), window=self.inner, anchor=tk.NW)
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.inner.bind("<Configure>", self._content_resized)
+        self.canvas.bind("<Configure>", self._canvas_resized)
+        self.canvas.bind("<MouseWheel>", self._wheel)
+        self.canvas.bind("<Up>", lambda _event: self._key_scroll(-1))
+        self.canvas.bind("<Down>", lambda _event: self._key_scroll(1))
+        self.canvas.bind("<Prior>", lambda _event: self._page_scroll(-1))
+        self.canvas.bind("<Next>", lambda _event: self._page_scroll(1))
+
+    def bind_descendant_navigation(self) -> None:
+        def bind(widget: tk.Misc) -> None:
+            widget.bind("<FocusIn>", self._focus_visible, add="+")
+            widget.bind("<MouseWheel>", self._wheel, add="+")
+            for child in widget.winfo_children():
+                bind(child)
+
+        bind(self.inner)
+
+    def _content_resized(self, _event: object = None) -> None:
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        self.after_idle(self._sync_scrollbar)
+
+    def _canvas_resized(self, event: tk.Event) -> None:
+        self.canvas.itemconfigure(self._window, width=max(1, int(event.width)))
+        self.after_idle(self._sync_scrollbar)
+
+    def _sync_scrollbar(self) -> None:
+        if not self.winfo_exists():
+            return
+        if self.inner.winfo_reqheight() > self.canvas.winfo_height() + 1:
+            self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        else:
+            self.scrollbar.pack_forget()
+            self.canvas.yview_moveto(0.0)
+
+    def _wheel(self, event: tk.Event) -> str:
+        delta = int(getattr(event, "delta", 0))
+        if delta:
+            self.canvas.yview_scroll(-int(delta / 120), "units")
+        return "break"
+
+    def _key_scroll(self, amount: int) -> str:
+        self.canvas.yview_scroll(amount, "units")
+        return "break"
+
+    def _page_scroll(self, amount: int) -> str:
+        self.canvas.yview_scroll(amount, "pages")
+        return "break"
+
+    def _focus_visible(self, event: tk.Event) -> None:
+        widget = event.widget
+        if not isinstance(widget, tk.Misc) or not widget.winfo_exists():
+            return
+        self.update_idletasks()
+        content_height = max(1, self.inner.winfo_height())
+        viewport_height = max(1, self.canvas.winfo_height())
+        current_top = self.canvas.canvasy(0)
+        widget_top = widget.winfo_rooty() - self.inner.winfo_rooty()
+        widget_bottom = widget_top + widget.winfo_height()
+        target_top = current_top
+        if widget_top < current_top:
+            target_top = widget_top
+        elif widget_bottom > current_top + viewport_height:
+            target_top = widget_bottom - viewport_height
+        if target_top != current_top:
+            self.canvas.yview_moveto(max(0.0, min(1.0, target_top / content_height)))
+
+
 class ExitPlanBuilderDialog(tk.Toplevel):
     def __init__(
         self,
@@ -55,7 +139,11 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         selected_symbols: tuple[str, ...],
         working_orders: tuple[ManagedOptionOrder, ...],
         on_close_now: Callable[[], None],
-        on_show_orders: Callable[[], None],
+        on_show_orders: Callable[[tuple[str, ...]], None],
+        snapshot_loader: Callable[[], PortfolioSnapshot],
+        session_factory: Callable[[], object],
+        on_accepted: Callable[[], None] | None = None,
+        on_unknown: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(root)
         self.root = root
@@ -64,6 +152,10 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.working_orders = working_orders
         self.on_close_now = on_close_now
         self.on_show_orders = on_show_orders
+        self.snapshot_loader = snapshot_loader
+        self.session_factory = session_factory
+        self.on_accepted = on_accepted
+        self.on_unknown = on_unknown
         self.draft: ExitPlanDraft | None = None
         self._template_cards: dict[str, tk.Frame] = {}
         self._template_badges: dict[str, tk.Canvas] = {}
@@ -128,16 +220,19 @@ class ExitPlanBuilderDialog(tk.Toplevel):
     def _build(self) -> None:
         outer = tk.Frame(self, background=BACKGROUND, padx=12, pady=10)
         outer.pack(fill=tk.BOTH, expand=True)
+        self._build_footer(outer)
         body = ttk.PanedWindow(outer, orient=tk.HORIZONTAL)
         body.pack(fill=tk.BOTH, expand=True)
-        left = tk.Frame(body, background=BACKGROUND)
-        right = tk.Frame(body, background=BACKGROUND)
+        left_scroll = _ExitScrolledFrame(body, requested_width=1040)
+        right_scroll = _ExitScrolledFrame(body, requested_width=600)
+        left = left_scroll.inner
+        right = right_scroll.inner
         # Pane weights distribute only the space beyond each pane's requested
         # width.  The builder requests more width than the preview, so the
         # right pane needs the larger surplus weight to land on the concept's
         # roughly 63/37 split without clipping either pane's children.
-        body.add(left, weight=7)
-        body.add(right, weight=12)
+        body.add(left_scroll, weight=7)
+        body.add(right_scroll, weight=12)
 
         self._build_header(left)
         self._build_template_section(left)
@@ -147,7 +242,10 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self._build_sequence(right)
         self._build_at_glance(right)
         self._build_safeguards(right)
-        self._build_footer(outer)
+        self.left_scroll = left_scroll
+        self.right_scroll = right_scroll
+        self.after_idle(left_scroll.bind_descendant_navigation)
+        self.after_idle(right_scroll.bind_descendant_navigation)
 
     def _build_header(self, parent: tk.Frame) -> None:
         header = tk.Frame(parent, background=BACKGROUND)
@@ -558,8 +656,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             return group
 
         basis_group = field("Trigger basis")
-        basis = ttk.Combobox(basis_group, values=("Position mark",), state="readonly", width=12)
-        basis.set("Position mark")
+        basis = ttk.Label(basis_group, text="Position mark", style="ManagementSelected.TLabel")
         basis.pack()
 
         operation_group = field("Op")
@@ -591,13 +688,11 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         ).pack(side=tk.LEFT, padx=(3, 0))
 
         order_group = field("Order type")
-        order_type = ttk.Combobox(
+        order_type = ttk.Label(
             order_group,
-            values=("LIMIT",) if is_target else ("STOP LIMIT",),
-            state="readonly",
-            width=10,
+            text="LIMIT" if is_target else "STOP LIMIT",
+            style="ManagementSelected.TLabel",
         )
-        order_type.set("LIMIT" if is_target else "STOP LIMIT")
         order_type.pack()
 
         offset_group = field("" if is_target else "Limit offset")
@@ -621,12 +716,13 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         duration_group = field("TIF", right_pad=0)
         duration = ttk.Combobox(
             duration_group,
-            values=("GTC",),
+            textvariable=self.duration,
+            values=(GOOD_UNTIL_CANCELED, DAY_ONLY),
             state="readonly",
-            width=5,
+            width=16,
         )
-        duration.set("GTC")
         duration.pack()
+        duration.bind("<<ComboboxSelected>>", self._schedule_refresh)
         if not is_target:
             self._stop_widgets.append(duration)
 
@@ -684,7 +780,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         cancel_border.pack(side=tk.LEFT, padx=(5, 0))
         cancel = tk.Button(
             cancel_border,
-            text="⊗  Cancel working orders",
+            text="Review / cancel working orders…",
             command=self._show_orders,
             state=tk.NORMAL if self.working_orders else tk.DISABLED,
             background=TABLE_FIELD,
@@ -751,32 +847,57 @@ class ExitPlanBuilderDialog(tk.Toplevel):
                 borderwidth=0,
                 highlightthickness=0,
             ).pack(anchor=tk.W, pady=2)
-        warning = tk.Frame(section, background="#382a10", highlightbackground=WARNING, highlightthickness=1)
-        warning.pack(fill=tk.X, padx=8, pady=(4, 5))
-        tk.Label(
-            warning,
+        message = tk.Frame(section, background="#382a10", highlightbackground=WARNING, highlightthickness=1)
+        message.pack(fill=tk.X, padx=8, pady=(4, 5))
+        icon = tk.Label(
+            message,
             text="⚠",
             background="#382a10",
             foreground=WARNING,
             font=("Segoe UI Symbol", 12, "bold"),
-        ).pack(side=tk.LEFT, padx=(8, 6), pady=5)
-        tk.Label(
-            warning,
+        )
+        icon.pack(side=tk.LEFT, padx=(8, 6), pady=5)
+        label = tk.Label(
+            message,
             textvariable=self.builder_message,
             background="#382a10",
             foreground="#ffd58a",
             font=("Segoe UI", 8, "bold"),
             wraplength=500,
             justify=tk.LEFT,
-        ).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8), pady=5)
+        )
+        label.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8), pady=5)
+        self.builder_message_frame = message
+        self.builder_message_icon = icon
+        self.builder_message_label = label
         rail = tk.Canvas(section, height=76, background=SURFACE, highlightthickness=0)
         rail.pack(side=tk.BOTTOM, fill=tk.X, padx=8, pady=(10, 8))
         rail.bind("<Configure>", lambda _event: self._draw_price_rail())
         self.price_rail = rail
 
+    def _set_builder_message_tone(self, *, ready: bool) -> None:
+        background = "#0e2b22" if ready else "#382a10"
+        border = SUCCESS if ready else WARNING
+        foreground = "#a7f3d0" if ready else "#ffd58a"
+        self.builder_message_frame.configure(
+            background=background,
+            highlightbackground=border,
+        )
+        self.builder_message_icon.configure(
+            text="✓" if ready else "⚠",
+            background=background,
+            foreground=border,
+        )
+        self.builder_message_label.configure(
+            background=background,
+            foreground=foreground,
+        )
+
     def _build_footer(self, parent: tk.Frame) -> None:
-        tk.Frame(parent, background=BORDER, height=1).pack(fill=tk.X, pady=(5, 0))
-        footer = tk.Frame(parent, background=BACKGROUND)
+        footer_region = tk.Frame(parent, background=BACKGROUND)
+        footer_region.pack(side=tk.BOTTOM, fill=tk.X)
+        tk.Frame(footer_region, background=BORDER, height=1).pack(fill=tk.X, pady=(5, 0))
+        footer = tk.Frame(footer_region, background=BACKGROUND)
         footer.pack(fill=tk.X, pady=(12, 2))
         ttk.Button(
             footer,
@@ -970,6 +1091,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         except Exception as exc:
             self.draft = None
             self.builder_message.set(str(exc))
+            self._set_builder_message_tone(ready=False)
             self.current_mark.set("—")
             self.target_price.set("—")
             self.stop_price.set("—")
@@ -978,6 +1100,7 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             self.stop_estimate.set("Unavailable")
             self.status.set("Plan needs attention")
             self.review_button.configure(state=tk.DISABLED)
+            self.review_button.configure(text="Review exit plan")
             self.cancel_orders_button.configure(
                 state=tk.NORMAL if self.working_orders else tk.DISABLED
             )
@@ -1005,25 +1128,28 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.target_scope.set(close_scope)
         self.stop_scope.set(close_scope)
         if draft.conflicting_order_ids:
+            self._set_builder_message_tone(ready=False)
             self.status.set(f"{len(draft.conflicting_order_ids)} close order conflict")
             self.builder_message.set(
                 "Resolve working close order " + ", ".join(draft.conflicting_order_ids) + " before review."
             )
-            self.review_button.configure(state=tk.DISABLED)
+            self.review_button.configure(text="Resolve working order first", state=tk.DISABLED)
         elif draft.capability_reason:
-            self.status.set("No exit orders active")
+            self._set_builder_message_tone(ready=False)
+            self.status.set("Review only • linked broker placement unavailable")
             self.builder_message.set(
-                "Stop-limit orders may not fill during fast moves or price gaps."
+                f"{draft.capability_reason} Stop-limit orders may not fill during fast moves or price gaps."
                 if draft.template_id == TARGET_STOP
                 else draft.capability_reason
             )
-            self.review_button.configure(state=tk.NORMAL)
+            self.review_button.configure(text="Review plan (no placement)", state=tk.NORMAL)
         else:
-            self.status.set("No exit orders active")
+            self._set_builder_message_tone(ready=True)
+            self.status.set("Single-target exit ready for review")
             self.builder_message.set(
-                "This plan becomes one reviewed GTC limit close; no linked broker order is required."
+                "This plan becomes one exact-leg limit close. Review revalidates positions, working orders, and quotes before placement."
             )
-            self.review_button.configure(state=tk.NORMAL)
+            self.review_button.configure(text="Review single-target order", state=tk.NORMAL)
         self.cancel_orders_button.configure(
             state=tk.NORMAL if self.working_orders else tk.DISABLED
         )
@@ -1259,6 +1385,10 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         controller = OptionOrderReviewController(
             review=exit_plan_review(draft, now=datetime.now(timezone.utc)),
             draft=draft,
+            snapshot_loader=self.snapshot_loader if draft.placeable else None,
+            session_factory=self.session_factory if draft.placeable else None,
+            on_accepted=self.on_accepted,
+            on_unknown=self.on_unknown,
         )
         OptionOrderReviewDialog(root=self, controller=controller)
 
@@ -1268,9 +1398,15 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.on_close_now()
 
     def _show_orders(self) -> None:
+        draft = self.draft
+        order_ids = (
+            draft.conflicting_order_ids
+            if draft is not None and draft.conflicting_order_ids
+            else tuple(order.order_id for order in self.working_orders if order.order_id)
+        )
         self.grab_release()
         self.destroy()
-        self.on_show_orders()
+        self.on_show_orders(order_ids)
 
     def _save_template(self) -> None:
         if self.draft is None:

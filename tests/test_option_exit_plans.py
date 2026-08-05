@@ -20,7 +20,7 @@ from app.services.option_exit_plans import (
     save_exit_plan_template,
 )
 from app.services.schwab_option_management import option_position_book
-from app.services.schwab_strategy_orders import GOOD_UNTIL_CANCELED
+from app.services.schwab_strategy_orders import DAY_ONLY, GOOD_UNTIL_CANCELED
 
 
 OBSERVED_AT = datetime(2026, 8, 4, 20, 0, tzinfo=timezone.utc)
@@ -74,6 +74,31 @@ def test_single_target_for_short_position_is_verified_limit_close() -> None:
     assert payload["price"] == pytest.approx(0.75)
     assert payload["orderLegCollection"][0]["instruction"] == "BUY_TO_CLOSE"
     assert payload["orderLegCollection"][0]["quantity"] == 2
+
+
+@pytest.mark.parametrize(
+    ("duration", "api_duration"),
+    [
+        (DAY_ONLY, "DAY"),
+        (GOOD_UNTIL_CANCELED, "GOOD_TILL_CANCEL"),
+    ],
+)
+def test_single_target_accepts_every_visible_time_in_force_value(
+    duration: str,
+    api_duration: str,
+) -> None:
+    symbol = "NVDA  260918P00210000"
+    book = option_position_book(_snapshot([_position(symbol=symbol, quantity=1, mark=1.00)]))
+
+    draft = build_exit_plan_draft(
+        book,
+        [symbol],
+        template_id=SINGLE_TARGET,
+        duration=duration,
+    )
+
+    assert draft.placeable is True
+    assert build_exit_plan_payload(draft)["duration"] == api_duration
 
 
 def test_working_close_order_blocks_an_overlapping_exit_plan() -> None:

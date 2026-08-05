@@ -215,6 +215,25 @@ class OptionPositionBook:
 
 
 @dataclass(frozen=True)
+class OptionExerciseAnalysis:
+    account_label: str
+    symbol: str
+    contract_label: str
+    option_type: str
+    strike: float
+    expiration: str
+    quantity: int
+    resulting_stock_quantity: float
+    strike_cash_effect: float
+    underlying_price: float | None
+    intrinsic_value_per_share: float | None
+    extrinsic_value_per_share: float | None
+    settlement: str | None
+    capability_reason: str
+    warnings: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class ClosingOrderLeg:
     symbol: str
     display_name: str
@@ -506,6 +525,7 @@ __all__ = [
     "ManagedOptionOrder",
     "ManagedOrderLeg",
     "OptionChainContract",
+    "OptionExerciseAnalysis",
     "OptionOrderReview",
     "OptionOrderReviewCost",
     "OptionOrderReviewLeg",

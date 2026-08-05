@@ -23,14 +23,20 @@ from app.services.schwab_option_management import (
 )
 from app.services.option_order_review import (
     OptionOrderReviewController,
+    closing_order_analysis,
     closing_order_review,
     closing_price_rail,
     roll_order_review,
+)
+from app.services.option_exercise import (
+    build_option_exercise_analysis,
+    exercise_action_disabled_reason,
 )
 from app.services.option_rolls import roll_action_disabled_reason
 from app.services.schwab_strategy_orders import DAY_ONLY, GOOD_UNTIL_CANCELED
 from app.ui.background_tasks import run_in_background
 from app.ui.option_exit_plans import ExitPlanBuilderDialog
+from app.ui.option_exercise import OptionExerciseAnalysisDialog
 from app.ui.option_order_review import OptionOrderReviewDialog
 from app.ui.option_rolls import RollWorkspaceDialog
 from app.ui.theme import (
@@ -114,6 +120,121 @@ def _closing_price_rail(draft: ClosingOrderDraft) -> tuple[float, float, float] 
     """Compatibility tuple around the shared review-domain price rail."""
     rail = closing_price_rail(draft)
     return None if rail is None else (rail.bid, rail.midpoint, rail.ask)
+
+
+def _matching_order_iid(
+    orders_by_iid: dict[str, ManagedOptionOrder],
+    order_ids: tuple[str, ...],
+) -> str | None:
+    wanted = set(order_ids)
+    return next(
+        (
+            iid
+            for iid, order in orders_by_iid.items()
+            if order.order_id in wanted
+        ),
+        None,
+    )
+
+
+class _VerticalScrolledPanel(ttk.Frame):
+    def __init__(
+        self,
+        parent: tk.Misc,
+        *,
+        padding: tuple[int, int] = (0, 0),
+        frame_style: str,
+    ) -> None:
+        super().__init__(parent, style=frame_style)
+        self.canvas = tk.Canvas(
+            self,
+            background=SURFACE,
+            highlightthickness=0,
+            borderwidth=0,
+            takefocus=True,
+        )
+        self.vertical = ttk.Scrollbar(
+            self,
+            orient=tk.VERTICAL,
+            command=self.canvas.yview,
+            style="Management.Vertical.TScrollbar",
+        )
+        self.inner = ttk.Frame(
+            self.canvas,
+            padding=padding,
+            style=frame_style,
+        )
+        self._window = self.canvas.create_window((0, 0), window=self.inner, anchor=tk.NW)
+        self.canvas.configure(yscrollcommand=self.vertical.set)
+        self.canvas.grid(row=0, column=0, sticky=tk.NSEW)
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        self.inner.bind("<Configure>", self._content_resized)
+        self.canvas.bind("<Configure>", self._canvas_resized)
+        self.canvas.bind("<MouseWheel>", self._wheel)
+        self.canvas.bind("<Up>", lambda _event: self._key_scroll(-1))
+        self.canvas.bind("<Down>", lambda _event: self._key_scroll(1))
+        self.canvas.bind("<Prior>", lambda _event: self._page_scroll(-1))
+        self.canvas.bind("<Next>", lambda _event: self._page_scroll(1))
+
+    def bind_descendant_navigation(self) -> None:
+        def bind(widget: tk.Misc) -> None:
+            widget.bind("<FocusIn>", self._focus_visible, add="+")
+            widget.bind("<MouseWheel>", self._wheel, add="+")
+            for child in widget.winfo_children():
+                bind(child)
+
+        bind(self.inner)
+
+    def _content_resized(self, _event: object = None) -> None:
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        self.after_idle(self._sync_scrollbar)
+
+    def _canvas_resized(self, event: tk.Event) -> None:
+        self.canvas.itemconfigure(self._window, width=max(1, int(event.width)))
+        self.after_idle(self._sync_scrollbar)
+
+    def _sync_scrollbar(self) -> None:
+        if not self.winfo_exists():
+            return
+        needs_scroll = self.inner.winfo_reqheight() > self.canvas.winfo_height() + 1
+        if needs_scroll:
+            self.vertical.grid(row=0, column=1, sticky=tk.NS)
+        else:
+            self.vertical.grid_remove()
+            self.canvas.yview_moveto(0.0)
+
+    def _wheel(self, event: tk.Event) -> str:
+        delta = int(getattr(event, "delta", 0))
+        if delta:
+            self.canvas.yview_scroll(-int(delta / 120), "units")
+        return "break"
+
+    def _key_scroll(self, amount: int) -> str:
+        self.canvas.yview_scroll(amount, "units")
+        return "break"
+
+    def _page_scroll(self, amount: int) -> str:
+        self.canvas.yview_scroll(amount, "pages")
+        return "break"
+
+    def _focus_visible(self, event: tk.Event) -> None:
+        widget = event.widget
+        if not isinstance(widget, tk.Misc) or not widget.winfo_exists():
+            return
+        self.update_idletasks()
+        content_height = max(1, self.inner.winfo_height())
+        viewport_height = max(1, self.canvas.winfo_height())
+        current_top = self.canvas.canvasy(0)
+        widget_top = widget.winfo_rooty() - self.inner.winfo_rooty()
+        widget_bottom = widget_top + widget.winfo_height()
+        target_top = current_top
+        if widget_top < current_top:
+            target_top = widget_top
+        elif widget_bottom > current_top + viewport_height:
+            target_top = widget_bottom - viewport_height
+        if target_top != current_top:
+            self.canvas.yview_moveto(max(0.0, min(1.0, target_top / content_height)))
 
 
 class _ExactLegTable(tk.Frame):
@@ -200,10 +321,15 @@ class _ExactLegTable(tk.Frame):
         rows: tuple[OptionPositionLeg, ...],
         *,
         preferred_symbols: tuple[str, ...] = (),
+        select_default: bool = True,
     ) -> tuple[OptionPositionLeg, ...]:
         had_rows = bool(self._rows)
         self._rows = rows
-        self._selected = _initial_position_selection(rows, preferred_symbols)
+        self._selected = (
+            _initial_position_selection(rows, preferred_symbols)
+            if select_default or preferred_symbols
+            else ()
+        )
         self._anchor = self._selected[0] if self._selected else None
         visible_symbols = {row.symbol for row in rows}
         self._expanded_symbols.intersection_update(visible_symbols)
@@ -212,6 +338,14 @@ class _ExactLegTable(tk.Frame):
         self.body.yview_moveto(0)
         self._redraw()
         return self.selected_rows()
+
+    def clear_selection(self) -> None:
+        if not self._selected and self._anchor is None:
+            return
+        self._selected = ()
+        self._anchor = None
+        self._redraw()
+        self._on_selection_changed(())
 
     def selected_rows(self) -> tuple[OptionPositionLeg, ...]:
         return tuple(self._rows[index] for index in self._selected if index < len(self._rows))
@@ -641,6 +775,10 @@ class OptionsManagementView:
             master=root,
             value="Use Ctrl or Shift to select more than one ungrouped leg.",
         )
+        self.management_capability_status = tk.StringVar(
+            master=root,
+            value="Select an exact option row to see available actions.",
+        )
         self.close_scope = tk.StringVar(
             master=root,
             value="Selected exact positions · highlighted rows only",
@@ -674,9 +812,12 @@ class OptionsManagementView:
         self.close_preview: _ClosingLegPreview | None = None
         self.close_estimate_label: ttk.Label | None = None
         self.review_close_button: ttk.Button | None = None
+        self.analyze_close_button: ttk.Button | None = None
         self.close_limit_entry: ttk.Entry | None = None
         self.exit_plan_button: ttk.Button | None = None
         self.roll_button: ttk.Button | None = None
+        self.exercise_button: ttk.Button | None = None
+        self.dismiss_management_button: ttk.Button | None = None
         self.close_duration_box: ttk.Combobox | None = None
         self.close_price_scale: tk.Scale | None = None
         self._scope_controls: dict[str, tuple[tk.Frame, tk.Radiobutton, tk.Label]] = {}
@@ -686,6 +827,7 @@ class OptionsManagementView:
         self.order_legs_table: ttk.Treeview | None = None
         self.cancel_order_button: ttk.Button | None = None
         self.load_recent_button: ttk.Button | None = None
+        self._management_dismissed = False
 
         self._apply_styles()
         self._build_positions(positions_parent)
@@ -755,6 +897,19 @@ class OptionsManagementView:
             background=SURFACE,
             foreground=WARNING,
             font=("Segoe UI", 9),
+        )
+        style.configure(
+            "ManagementCapability.TCheckbutton",
+            background=SURFACE,
+            foreground=MUTED_TEXT,
+            indicatorcolor=TABLE_FIELD,
+            font=("Segoe UI", 9),
+        )
+        style.map(
+            "ManagementCapability.TCheckbutton",
+            background=[("disabled", SURFACE)],
+            foreground=[("disabled", MUTED_TEXT)],
+            indicatorcolor=[("disabled", TABLE_FIELD)],
         )
         style.configure(
             "ManagementPrimary.TButton",
@@ -885,7 +1040,7 @@ class OptionsManagementView:
         workspace.grid_rowconfigure(0, weight=1)
 
         positions_stack = ttk.Frame(workspace, style="ManagementPage.TFrame")
-        manage_surface = ttk.Frame(workspace, padding=(11, 9), style="ManagementCard.TFrame")
+        manage_surface = ttk.Frame(workspace, style="ManagementCard.TFrame")
         positions_stack.grid(row=0, column=0, sticky=tk.NSEW, padx=(0, 4))
         manage_surface.grid(row=0, column=1, sticky=tk.NSEW, padx=(4, 0))
 
@@ -938,24 +1093,35 @@ class OptionsManagementView:
         expiration_box.grid(row=1, column=2, sticky=tk.EW, padx=8, pady=(3, 0))
         expiration_box.bind("<<ComboboxSelected>>", self._position_filters_changed)
         self._position_expiration_box = expiration_box
+        grouping = ttk.Frame(filters, style="ManagementCard.TFrame")
+        grouping.grid(row=0, column=3, rowspan=2, sticky=tk.EW, padx=(14, 0))
+        ttk.Checkbutton(
+            grouping,
+            text="Group legs by strategy",
+            state=tk.DISABLED,
+            takefocus=False,
+            style="ManagementCapability.TCheckbutton",
+        ).pack(anchor=tk.W)
         ttk.Label(
-            filters,
-            text="Exact broker positions · ungrouped",
+            grouping,
+            text="Unavailable: Schwab positions do not include verified strategy linkage; exact legs remain ungrouped.",
             style="ManagementMuted.TLabel",
-            justify=tk.RIGHT,
-            wraplength=180,
-        ).grid(
-            row=0,
-            column=3,
-            rowspan=2,
-            sticky=tk.E,
-            padx=(14, 0),
-        )
+            justify=tk.LEFT,
+            wraplength=220,
+        ).pack(anchor=tk.W, fill=tk.X, pady=(2, 0))
 
         position_surface = ttk.Frame(positions_stack, padding=(10, 9), style="ManagementCard.TFrame")
         position_surface.pack(fill=tk.BOTH, expand=True)
         self._build_position_table(position_surface)
-        self._build_manage_panel(manage_surface)
+        manage_scroll = _VerticalScrolledPanel(
+            manage_surface,
+            padding=(11, 9),
+            frame_style="ManagementCard.TFrame",
+        )
+        manage_scroll.pack(fill=tk.BOTH, expand=True)
+        self._build_manage_panel(manage_scroll.inner)
+        manage_scroll.after_idle(manage_scroll.bind_descendant_navigation)
+        self.manage_scroll = manage_scroll
 
     def _summary_card(self, parent: ttk.Frame, title: str, key: str, column: int) -> None:
         card = ttk.Frame(parent, padding=(12, 9), style="ManagementCard.TFrame")
@@ -983,7 +1149,21 @@ class OptionsManagementView:
         self.position_table = table
 
     def _build_manage_panel(self, parent: ttk.Frame) -> None:
-        ttk.Label(parent, textvariable=self.management_title, style="ManagementSection.TLabel").pack(anchor=tk.W)
+        heading = ttk.Frame(parent, style="ManagementCard.TFrame")
+        heading.pack(fill=tk.X)
+        ttk.Label(heading, textvariable=self.management_title, style="ManagementSection.TLabel").pack(
+            side=tk.LEFT, anchor=tk.W, fill=tk.X, expand=True
+        )
+        dismiss = ttk.Button(
+            heading,
+            text="Dismiss",
+            command=self._dismiss_management,
+            state=tk.DISABLED,
+            style="ManagementSegment.TButton",
+            takefocus=True,
+        )
+        dismiss.pack(side=tk.RIGHT)
+        self.dismiss_management_button = dismiss
         ttk.Label(
             parent,
             textvariable=self.management_detail,
@@ -1015,12 +1195,22 @@ class OptionsManagementView:
         )
         exit_plan.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=3)
         self.exit_plan_button = exit_plan
-        ttk.Button(
+        exercise = ttk.Button(
             actions,
             text="Exercise",
-            state=tk.DISABLED,
             style="ManagementSegment.TButton",
-        ).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(3, 0))
+            state=tk.DISABLED,
+            command=self._open_exercise_analysis,
+        )
+        exercise.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(3, 0))
+        self.exercise_button = exercise
+        ttk.Label(
+            parent,
+            textvariable=self.management_capability_status,
+            style="ManagementMuted.TLabel",
+            wraplength=410,
+            justify=tk.LEFT,
+        ).pack(anchor=tk.W, fill=tk.X, pady=(0, 7))
 
         ttk.Label(parent, text="Close scope", style="ManagementMuted.TLabel").pack(anchor=tk.W)
         scope_choices = ttk.Frame(parent, style="ManagementCard.TFrame")
@@ -1148,12 +1338,15 @@ class OptionsManagementView:
         actions.pack(fill=tk.X, pady=(7, 0))
         actions.grid_columnconfigure(0, weight=1)
         actions.grid_columnconfigure(1, weight=1)
-        ttk.Button(
+        analyze = ttk.Button(
             actions,
             text="Analyze",
             state=tk.DISABLED,
             style="ManagementSegment.TButton",
-        ).grid(row=0, column=0, sticky=tk.EW, padx=(0, 4))
+            command=self._analyze_closing_order,
+        )
+        analyze.grid(row=0, column=0, sticky=tk.EW, padx=(0, 4))
+        self.analyze_close_button = analyze
         review = ttk.Button(
             actions,
             text="Review closing order",
@@ -1370,7 +1563,11 @@ class OptionsManagementView:
         symbol = "" if self.position_symbol.get() == ALL_SYMBOLS else self.position_symbol.get()
         expiration = "" if self.position_expiration.get() == ALL_EXPIRATIONS else self.position_expiration.get()
         visible = filter_option_positions(self.book, symbol=symbol, expiration=expiration)
-        selected = self.position_table.set_rows(visible, preferred_symbols=preferred_symbols)
+        selected = self.position_table.set_rows(
+            visible,
+            preferred_symbols=preferred_symbols,
+            select_default=not self._management_dismissed,
+        )
         if visible:
             total = len(self.book.legs)
             count = str(len(visible)) if len(visible) == total else f"{len(visible)} of {total}"
@@ -1387,6 +1584,7 @@ class OptionsManagementView:
     def _position_selection_changed(self, selected: tuple[OptionPositionLeg, ...]) -> None:
         if self.book is None:
             return
+        self._management_dismissed = not bool(selected)
         self.close_scope_mode.set(
             CLOSE_SCOPE_SELECTED if len(selected) > 1 else CLOSE_SCOPE_ENTIRE
         )
@@ -1398,6 +1596,9 @@ class OptionsManagementView:
         if not selected or self.book is None:
             self._clear_manage_panel()
             return
+        self._management_dismissed = False
+        if self.dismiss_management_button is not None:
+            self.dismiss_management_button.configure(state=tk.NORMAL)
         self._update_scope_controls(selected)
         scoped = self._scoped_position_rows(selected)
         if len(scoped) == 1:
@@ -1459,7 +1660,7 @@ class OptionsManagementView:
         if self.close_preview is not None:
             self.close_preview.set_legs(draft.legs)
         self._set_close_controls(True)
-        self._update_roll_control(scoped)
+        self._update_management_actions(scoped)
         self._configure_price_rail(draft)
         self._ticket_updating = False
 
@@ -1484,7 +1685,7 @@ class OptionsManagementView:
         if self.close_estimate_label is not None:
             self.close_estimate_label.configure(style="ManagementInsetBody.TLabel")
         self._set_close_controls(False)
-        self._update_roll_control(scoped)
+        self._update_management_actions(scoped)
 
     def _configure_price_rail(self, draft: ClosingOrderDraft) -> None:
         rail = _closing_price_rail(draft)
@@ -1586,21 +1787,38 @@ class OptionsManagementView:
             self.close_duration_box.configure(state="readonly" if enabled else tk.DISABLED)
         if self.review_close_button is not None:
             self.review_close_button.configure(state=state)
+        if self.analyze_close_button is not None:
+            self.analyze_close_button.configure(state=state)
         if self.exit_plan_button is not None:
             self.exit_plan_button.configure(state=state)
         if not enabled and self.roll_button is not None:
             self.roll_button.configure(state=tk.DISABLED)
 
-    def _update_roll_control(self, scoped: tuple[OptionPositionLeg, ...]) -> None:
+    def _update_roll_control(self, scoped: tuple[OptionPositionLeg, ...]) -> str | None:
         if self.roll_button is None or self.book is None or not scoped:
             if self.roll_button is not None:
                 self.roll_button.configure(state=tk.DISABLED)
-            return
+            return "Select an exact option position to configure a roll."
         reason = roll_action_disabled_reason(
             self.book,
             (leg.symbol for leg in scoped),
         )
         self.roll_button.configure(state=tk.DISABLED if reason else tk.NORMAL)
+        return reason
+
+    def _update_management_actions(self, scoped: tuple[OptionPositionLeg, ...]) -> None:
+        roll_reason = self._update_roll_control(scoped)
+        exercise_reason = exercise_action_disabled_reason(scoped)
+        if self.exercise_button is not None:
+            self.exercise_button.configure(state=tk.DISABLED if exercise_reason else tk.NORMAL)
+        parts = ["Close and Analyze use the exact reversed contracts shown below."]
+        parts.append("Roll ready." if roll_reason is None else f"Roll: {roll_reason}")
+        parts.append(
+            "Exercise opens analysis only; broker submission is unavailable."
+            if exercise_reason is None
+            else f"Exercise: {exercise_reason}"
+        )
+        self.management_capability_status.set("  •  ".join(parts))
 
     def _clear_manage_panel(self) -> None:
         self.management_title.set("Select exact option legs")
@@ -1614,6 +1832,9 @@ class OptionsManagementView:
         self.close_estimate.set("")
         self.close_fees.set("At broker review")
         self.close_estimate_source.set("")
+        self.management_capability_status.set(
+            "Select an exact option row to see Close, Roll, Exit Plan, and Exercise capabilities."
+        )
         self._close_draft = None
         self._clear_price_rail()
         self._update_scope_controls(())
@@ -1621,10 +1842,64 @@ class OptionsManagementView:
             self.close_estimate_label.configure(style="ManagementInsetBody.TLabel")
         if self.close_preview is not None:
             self.close_preview.clear()
+        if self.dismiss_management_button is not None:
+            self.dismiss_management_button.configure(state=tk.DISABLED)
+        if self.exercise_button is not None:
+            self.exercise_button.configure(state=tk.DISABLED)
         self._set_close_controls(False)
+
+    def _dismiss_management(self) -> None:
+        self._management_dismissed = True
+        if self.position_table is not None:
+            self.position_table.clear_selection()
+        else:
+            self._clear_manage_panel()
 
     def _selected_position_symbols(self) -> tuple[str, ...]:
         return tuple(leg.symbol for leg in self._scoped_position_rows())
+
+    def _analyze_closing_order(self) -> None:
+        if self.book is None:
+            return
+        try:
+            draft = build_closing_order_draft(
+                self.book,
+                self._selected_position_symbols(),
+                duration=self.close_duration.get(),
+                limit_price=self.close_limit_price.get(),
+            )
+        except Exception as exc:
+            messagebox.showerror("Close analysis unavailable", str(exc))
+            return
+        controller = OptionOrderReviewController(
+            review=closing_order_analysis(draft, now=datetime.now(timezone.utc)),
+            draft=draft,
+        )
+        OptionOrderReviewDialog(root=self.root, controller=controller)
+
+    def _open_exercise_analysis(self) -> None:
+        if self.book is None:
+            return
+        scoped = self._scoped_position_rows()
+        reason = exercise_action_disabled_reason(scoped)
+        if reason:
+            messagebox.showerror("Exercise analysis unavailable", reason)
+            return
+        leg = scoped[0]
+        related = tuple(
+            item
+            for item in self.book.legs
+            if item.underlying_symbol == leg.underlying_symbol
+        )
+        try:
+            analysis = build_option_exercise_analysis(
+                leg,
+                related_position_legs=related,
+            )
+        except Exception as exc:
+            messagebox.showerror("Exercise analysis unavailable", str(exc))
+            return
+        OptionExerciseAnalysisDialog(root=self.root, analysis=analysis)
 
     def _review_closing_order(self) -> None:
         if self.book is None:
@@ -1653,7 +1928,11 @@ class OptionsManagementView:
             selected_symbols=symbols,
             working_orders=self._working_orders,
             on_close_now=self._review_closing_order,
-            on_show_orders=self.on_show_orders,
+            on_show_orders=self._show_orders_for_cancellation,
+            snapshot_loader=self.snapshot_loader,
+            session_factory=self.session_factory,
+            on_accepted=lambda: self.root.after(0, self.on_refresh),
+            on_unknown=lambda: self.root.after(0, self._load_recent_orders),
         )
 
     def _open_roll(self) -> None:
@@ -1709,6 +1988,22 @@ class OptionsManagementView:
     def _show_working_orders(self) -> None:
         self.order_source_status.set("Working orders from the latest account refresh")
         self._render_orders(self._working_orders)
+
+    def _show_orders_for_cancellation(self, order_ids: tuple[str, ...]) -> None:
+        self.on_show_orders()
+        self._show_working_orders()
+        if self.order_table is None:
+            return
+        iid = _matching_order_iid(self._visible_order_by_iid, order_ids)
+        if iid is None:
+            self.order_detail.set(
+                "No matching cancellable working order remains; refresh recent orders before taking action."
+            )
+            return
+        self.order_table.selection_set(iid)
+        self.order_table.focus(iid)
+        self.order_table.see(iid)
+        self._order_selection_changed()
 
     def _load_recent_orders(self) -> None:
         if self.load_recent_button is not None:

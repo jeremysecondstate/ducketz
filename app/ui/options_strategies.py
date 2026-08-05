@@ -22,6 +22,7 @@ from app.ui.options_strategy_data import (
 )
 from app.ui.background_tasks import run_in_background
 from app.ui.options_management import OptionsManagementView
+from app.ui.option_templates import OptionsTemplatesView
 from app.ui.schwab_order_messages import (
     order_confirmation_message,
     order_submitted_message,
@@ -192,9 +193,11 @@ class OptionsStrategiesTab:
         positions_frame = ttk.Frame(notebook, style="StrategyPage.TFrame")
         discover_frame = ttk.Frame(notebook, style="StrategyPage.TFrame")
         orders_frame = ttk.Frame(notebook, style="StrategyPage.TFrame")
+        templates_frame = ttk.Frame(notebook, style="StrategyPage.TFrame")
         notebook.add(discover_frame, text="Discover")
         notebook.add(positions_frame, text="Positions")
         notebook.add(orders_frame, text="Orders")
+        notebook.add(templates_frame, text="Templates")
         notebook.select(positions_frame)
         self._secondary_notebook = notebook
 
@@ -207,6 +210,10 @@ class OptionsStrategiesTab:
             session_factory=self.session_factory,
             on_refresh=self.refresh,
             on_show_orders=lambda: notebook.select(orders_frame),
+        )
+        self.templates_view = OptionsTemplatesView(
+            root=self.root,
+            parent=templates_frame,
         )
 
     def _build_discover(self, parent: ttk.Frame) -> None:

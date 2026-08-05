@@ -1,7 +1,7 @@
 # Start directional Loop B after Loop A has one COMPLETE generation.
 python -m ml.prediction_runtime `
   --datastore-target pc `
-  --symbols NVDA GOOG MU AAPL MSFT AMZN META TSLA QCOM CAT SNDK `
+  --symbols NVDA GOOG MU AAPL MSFT AMZN META TSLA CAT SNDK `
   --provider databento `
   --horizons 1h 4h 1d 1w `
   --feature-profile loop-a-all-v1 `
@@ -14,7 +14,7 @@ python -m ml.prediction_runtime `
 # Strategy is a separate consumer and cannot delay or mutate the Loop B run.
 python -m ml.strategy_runtime `
   --datastore-target pc `
-  --interval-minutes 60 `
+  --interval-minutes 15 `
   --phase-offset-minutes 10
 
 # Both commands stop with Ctrl+C. Loop B publishes through ml/latest/run.json;

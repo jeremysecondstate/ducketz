@@ -121,3 +121,26 @@ All four images were generated as high-fidelity, buildable 16:9 desktop UI conce
 ## Implementation workloads
 
 The sequenced implementation plan and copy-ready prompt for each ChatGPT Work task are in [CHATGPT_WORK_PLAN.md](CHATGPT_WORK_PLAN.md). The first release checkpoint is P0 after workload 08; Roll, linked exit plans, and Exercise remain isolated follow-on milestones.
+
+## Implemented capability contract
+
+The current application keeps every concept control visible, but only enables a broker action when its exact order shape and revalidation path are verified. This is the release contract for the native Tkinter implementation:
+
+| Surface | Available now | Explicit capability boundary |
+| --- | --- | --- |
+| Command Center | Exact option positions, filters, expansion, leg selection, Close, closing-order analysis/review, Roll and Exit Plan builders, Exercise analysis, Orders, and Templates | Strategy grouping is shown but disabled because Schwab position rows do not provide trustworthy strategy linkage. Exercise is analysis-only until exercise submission semantics are verified. |
+| Roll | Current and replacement legs, live-chain expiration/strike choices, net pricing, payoff/Greeks comparison, templates, Analyze, and universal Review | Review-only. Atomic multi-leg close/open submission is not enabled without verified broker semantics; the UI does not silently degrade to leg-by-leg orders. |
+| Exit Plan | Target + stop, Single target, 2 targets, and Trailing stop templates; exact coverage; OCO preview; target-price resolution; conflict detection; safe template persistence; Close now and working-order routing | A verified Single target can proceed through universal Review and placement. Linked OCO, two-target, and trailing orders stay visible but unavailable because their broker linkage/trigger schemas are not verified. |
+| Universal Review | Close and Single-target Exit placement; exact contracts; editable Close limit; bid/mid/ask context; quote aging; preview/fallback states; final position/account/order revalidation; acknowledgment; exactly-once guard | Roll, linked Exit Plan, and Exercise end in review/analysis only. Routine provenance and midpoint context are displayed in their relevant sections, while the notice rail is reserved for actionable execution risk. |
+
+### Intentional visual deviations
+
+- A **Templates** tab is included because it is part of the product structure but absent from the Concept A canvas. It separates reusable, non-sensitive configuration from live positions and orders.
+- **Group legs by strategy** remains visible and disabled with a reason instead of inventing position relationships from similar symbols or expirations.
+- The review footer uses **Close only** and an ordinary action label rather than a repeated `LOCK` prefix. Safety comes from exact-contract revalidation, acknowledgment, and exactly-once submission—not alarm copy.
+- Routine midpoint and data-provenance explanations stay beside the price and cost fields. The notice rail is titled **Execution notes** or **Action required** and contains only information that can affect execution.
+- Single-value controls are rendered as read-only facts. Dropdowns are reserved for real choices, including both Day and GTC on the verified single-target exit.
+
+### Offline visual fixture
+
+Run `pythonw tests/visual_option_management_fixture.py` from the repository root to inspect Concept A with deterministic fake account data. Optional `roll`, `exit`, and `review` arguments open Concepts B, C, and D directly; `analyze`, `exercise`, and `templates` expose the connected supporting surfaces. Capture flags can select the single-target state, acknowledgment, compact-size scrolling, and a failed convenience refresh with retained reviewed data. The fixture has no credentials or network code, and its fake session rejects submission unconditionally.

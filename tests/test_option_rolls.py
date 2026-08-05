@@ -32,6 +32,7 @@ from app.services.option_rolls import (
     save_roll_template,
     suggest_replacement_contracts,
 )
+from app.services.schwab_strategy_orders import DAY_ONLY, GOOD_UNTIL_CANCELED
 from app.ui.option_rolls import RollWorkspaceController, RollWorkspaceDialog
 from app.ui.options_management import OptionsManagementView
 
@@ -435,6 +436,44 @@ def test_non_atomic_roll_is_explicit_and_atomic_capability_builds_one_exact_payl
         "SELL_TO_OPEN",
         "BUY_TO_OPEN",
     ]
+
+
+@pytest.mark.parametrize(
+    ("duration", "api_duration"),
+    [
+        (DAY_ONLY, "DAY"),
+        (GOOD_UNTIL_CANCELED, "GOOD_TILL_CANCEL"),
+    ],
+)
+def test_roll_accepts_every_visible_time_in_force_value(
+    duration: str,
+    api_duration: str,
+) -> None:
+    book = _book(_vertical())
+    chain = parse_roll_chain(_chain(), expected_underlying="NVDA", observed_at=OBSERVED_AT)
+    replacements = suggest_replacement_contracts(
+        book.legs,
+        chain,
+        expiration="2026-09-18",
+        keep_strike_widths=True,
+    )
+    draft = build_roll_order_draft(
+        book,
+        (SHORT, LONG),
+        (SHORT, LONG),
+        replacements,
+        scope_mode=ROLL_SCOPE_ENTIRE,
+        keep_strike_widths=True,
+        duration=duration,
+        atomic_order_supported=True,
+        underlying_price=chain.underlying_price,
+        now=OBSERVED_AT,
+    )
+
+    payloads = build_roll_order_payloads(draft)
+
+    assert len(payloads) == 1
+    assert payloads[0]["duration"] == api_duration
 
 
 def test_unsupported_component_shape_blocks_review() -> None:

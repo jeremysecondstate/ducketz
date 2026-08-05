@@ -676,9 +676,14 @@ class RollWorkspaceDialog(tk.Toplevel):
         left = tk.Frame(terms, background=SURFACE)
         left.pack(side=tk.LEFT, anchor=tk.N)
         tk.Label(left, text="Order type", background=SURFACE, foreground=MUTED_TEXT, font=("Segoe UI", 8)).grid(row=0, column=0, sticky=tk.W)
-        order_type = ttk.Combobox(left, textvariable=self.order_type_var, state="readonly", width=18, takefocus=True)
+        order_type = ttk.Label(
+            left,
+            textvariable=self.order_type_var,
+            style="ManagementSelected.TLabel",
+            width=18,
+            anchor=tk.W,
+        )
         order_type.grid(row=1, column=0, sticky=tk.W, pady=(3, 0))
-        self.order_type_box = order_type
         tk.Label(left, text="Time in force", background=SURFACE, foreground=MUTED_TEXT, font=("Segoe UI", 8)).grid(row=0, column=1, sticky=tk.W, padx=(9, 0))
         duration = ttk.Combobox(
             left,
@@ -1207,7 +1212,6 @@ class RollWorkspaceDialog(tk.Toplevel):
             if draft is None:
                 self.status_var.set(self.controller.error or "Roll needs attention")
                 self.order_type_var.set("Unavailable")
-                self.order_type_box.configure(values=("Unavailable",))
                 self.limit_price_var.set("")
                 self.net_price_var.set("—")
                 self.net_kind_var.set("")
@@ -1225,7 +1229,6 @@ class RollWorkspaceDialog(tk.Toplevel):
                 )
                 order_label = draft.api_order_type.replace("_", " ") + " LIMIT"
                 self.order_type_var.set(order_label)
-                self.order_type_box.configure(values=(order_label,))
                 self.limit_price_var.set(f"{draft.limit_price:.2f}")
                 self.net_price_var.set(_money(draft.limit_price))
                 self.net_kind_var.set("CREDIT" if draft.is_credit else "DEBIT")

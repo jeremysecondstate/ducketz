@@ -27,6 +27,7 @@ from app.services.option_order_review import (
     BrokerOrderRejected,
     BrokerSubmissionResultUnknown,
     OptionOrderReviewController,
+    closing_order_analysis,
     closing_order_review,
     exit_plan_review,
     mask_account_label,
@@ -35,6 +36,7 @@ from app.services.option_order_review import (
 )
 from app.services.option_rolls import ROLL_SCOPE_ENTIRE, build_roll_order_draft
 from app.services.schwab_option_management import build_closing_order_draft, option_position_book
+from app.ui.option_order_review import OptionOrderReviewDialog
 
 
 NOW = datetime(2026, 8, 5, 17, 0, tzinfo=timezone.utc)
@@ -79,6 +81,21 @@ def test_close_credit_debit_and_bid_mid_ask_rail_are_not_inferred_from_color() -
     assert debit.price_rail.bid <= debit.price_rail.midpoint <= debit.price_rail.ask
 
 
+def test_close_analysis_uses_the_universal_surface_without_placement_capability() -> None:
+    draft = _credit_close_draft()
+
+    analysis = closing_order_analysis(draft, now=NOW)
+    controller = OptionOrderReviewController(review=analysis, draft=draft)
+
+    assert analysis.title == "Analyze closing order"
+    assert analysis.placement_capability == OrderReviewPlacementCapability.REVIEW_ONLY
+    assert analysis.primary_action_label == "Finish analysis"
+    assert analysis.price_editable is False
+    controller.acknowledge(True)
+    assert controller.finish_review() is True
+    assert controller.place().status == OrderReviewOutcomeStatus.UNSUPPORTED
+
+
 def test_close_distinguishes_local_estimates_from_unavailable_broker_values() -> None:
     review = closing_order_review(_credit_close_draft(), now=NOW)
     costs = {cost.label: cost for cost in review.costs}
@@ -94,6 +111,18 @@ def test_close_distinguishes_local_estimates_from_unavailable_broker_values() ->
         OrderReviewNoticeSeverity.INFORMATION,
         OrderReviewNoticeSeverity.WARNING,
     }
+
+
+def test_normal_review_hides_redundant_notice_rails_but_keeps_actionable_checks() -> None:
+    review = closing_order_review(_credit_close_draft(), now=NOW)
+    dialog = OptionOrderReviewDialog.__new__(OptionOrderReviewDialog)
+
+    routine = dialog._effective_notices(review)
+    stale = dialog._effective_notices(replace(review, quote_state=OrderReviewQuoteState.STALE))
+
+    assert routine == (next(notice for notice in review.notices if notice.title == "Atomic net-order structure"),)
+    assert any(notice.blocking and notice.title == "Stale quote" for notice in stale)
+    assert "may not fill" in review.price_editor_explanation
 
 
 def test_roll_review_has_close_and_replacement_roles_metrics_and_local_provenance() -> None:
@@ -123,7 +152,7 @@ def test_roll_review_has_close_and_replacement_roles_metrics_and_local_provenanc
     assert any("not verified" in notice.title.lower() for notice in review.notices)
 
 
-def test_supported_and_linked_exit_plans_use_one_review_model_without_placement() -> None:
+def test_single_target_is_placeable_while_linked_exit_uses_the_same_review_model() -> None:
     book = option_position_book(_snapshot())
     single = build_exit_plan_draft(book, (LONG, SHORT), template_id=SINGLE_TARGET)
     linked = build_exit_plan_draft(book, (LONG, SHORT), template_id=TARGET_STOP)
@@ -134,8 +163,10 @@ def test_supported_and_linked_exit_plans_use_one_review_model_without_placement(
     assert single_review.operation == OrderReviewOperation.EXIT_PLAN
     assert single_review.title == "Review exit plan"
     assert "2 exact review legs" in single_review.subtitle
-    assert single_review.placement_capability == OrderReviewPlacementCapability.REVIEW_ONLY
-    assert single_review.primary_action_label == "Finish exit-plan review"
+    assert single_review.placement_capability == OrderReviewPlacementCapability.SUPPORTED
+    assert single_review.primary_action_label == "Place exit order"
+    assert single_review.price_title == "Exit limit price"
+    assert single_review.price_rail is not None
     assert [(leg.role, leg.symbol, leg.action) for leg in single_review.legs] == [
         ("Target", LONG, "Sell to close"),
         ("Target", SHORT, "Buy to close"),
@@ -151,6 +182,84 @@ def test_supported_and_linked_exit_plans_use_one_review_model_without_placement(
     assert metrics["Protected quantity"].after == "1"
     assert metrics["Active branches"].after == "2"
     assert metrics["Trigger relationship"].after == "OCO"
+
+
+def test_single_target_exit_uses_close_revalidation_and_exactly_once_submission() -> None:
+    snapshot = _snapshot()
+    draft = build_exit_plan_draft(
+        option_position_book(snapshot),
+        (LONG, SHORT),
+        template_id=SINGLE_TARGET,
+    )
+    submissions: list[dict[str, object]] = []
+    controller = OptionOrderReviewController(
+        review=exit_plan_review(draft, now=NOW),
+        draft=draft,
+        snapshot_loader=lambda: snapshot,
+        session_factory=lambda: _Session(submissions),
+        now_provider=lambda: NOW,
+    )
+    controller.acknowledge(True)
+
+    first = controller.place()
+    second = controller.place()
+
+    assert first.status == OrderReviewOutcomeStatus.ACCEPTED
+    assert second.status == OrderReviewOutcomeStatus.BLOCKED
+    assert len(submissions) == 1
+    assert submissions[0]["duration"] == "GOOD_TILL_CANCEL"
+    assert submissions[0]["price"] == pytest.approx(draft.branches[0].limit_price)
+    assert controller.state == OrderReviewPlacementState.ACCEPTED
+
+
+def test_single_target_exit_revalidates_new_working_order_conflicts_before_submission() -> None:
+    snapshot = _snapshot()
+    draft = build_exit_plan_draft(
+        option_position_book(snapshot),
+        (LONG, SHORT),
+        template_id=SINGLE_TARGET,
+    )
+    active_order = {
+        "order_id": "4412",
+        "order_status": "WORKING",
+        "entered_time": NOW.isoformat(),
+        "order_type": "LIMIT",
+        "complex_order_strategy_type": "NONE",
+        "duration": "GOOD_TILL_CANCEL",
+        "remaining_quantity": 1,
+        "limit_price": 1.25,
+        "asset_type": "OPTION",
+        "legs": [
+            {
+                "symbol": LONG,
+                "instruction": "SELL_TO_CLOSE",
+                "remaining_quantity": 1,
+            }
+        ],
+    }
+    latest_facts = dict(snapshot.account_facts)
+    latest_facts["working_orders"] = {
+        "status": "CURRENT",
+        "items": [active_order],
+        "active_option_orders": [active_order],
+    }
+    latest = replace(snapshot, account_facts=latest_facts)
+    submissions: list[dict[str, object]] = []
+    controller = OptionOrderReviewController(
+        review=exit_plan_review(draft, now=NOW),
+        draft=draft,
+        snapshot_loader=lambda: latest,
+        session_factory=lambda: _Session(submissions),
+        now_provider=lambda: NOW,
+    )
+    controller.acknowledge(True)
+
+    outcome = controller.place()
+
+    assert outcome.status == OrderReviewOutcomeStatus.INVALIDATED
+    assert controller.review.placement_capability == OrderReviewPlacementCapability.UNAVAILABLE
+    assert any("conflicting" in notice.title.casefold() for notice in controller.review.notices)
+    assert submissions == []
 
 
 @pytest.mark.parametrize(
@@ -214,6 +323,56 @@ def test_refresh_resets_acknowledgment_and_keeps_exact_semantics() -> None:
         (SHORT, "Buy to close", 1),
     ]
     assert controller.review.quote_state == OrderReviewQuoteState.LIVE
+
+
+def test_complete_option_row_set_is_not_blocked_by_unrelated_incomplete_positions() -> None:
+    snapshot = _snapshot()
+    positions = snapshot.account_facts["positions"]
+    assert isinstance(positions, dict)
+    positions.update(
+        {
+            "status": "INCOMPLETE",
+            "option_row_set_complete": True,
+            "option_unavailable_reasons": [],
+            "unavailable_reasons": ["An unrelated equity row omitted a policy-only field."],
+        }
+    )
+    book = option_position_book(snapshot)
+    draft = build_closing_order_draft(book, (LONG, SHORT))
+    controller = _controller(draft, snapshot_loader=lambda: snapshot)
+
+    refreshed = controller.refresh_review()
+
+    assert book.status == "CURRENT"
+    assert book.unavailable_reasons == ()
+    assert refreshed.quote_state == OrderReviewQuoteState.LIVE
+    controller.acknowledge(True)
+    assert controller.can_place is True
+
+
+def test_failed_convenience_refresh_retains_fresh_review_for_final_retry() -> None:
+    snapshot = _snapshot()
+    draft = build_closing_order_draft(option_position_book(snapshot), (LONG, SHORT))
+    calls = 0
+
+    def flaky_snapshot_loader() -> PortfolioSnapshot:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise BrokerNetworkFailure("temporary quote refresh outage")
+        return snapshot
+
+    controller = _controller(draft, snapshot_loader=flaky_snapshot_loader)
+
+    with pytest.raises(BrokerNetworkFailure, match="temporary quote refresh outage"):
+        controller.refresh_review()
+
+    assert controller.review.quote_state == OrderReviewQuoteState.LIVE
+    assert controller.review.has_blocking_notice is False
+    controller.acknowledge(True)
+    assert controller.can_place is True
+    assert controller.place().status == OrderReviewOutcomeStatus.ACCEPTED
+    assert calls == 2
 
 
 def test_acknowledgment_and_all_safety_gates_control_placement() -> None:

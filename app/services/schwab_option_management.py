@@ -144,14 +144,24 @@ def option_position_book(snapshot: PortfolioSnapshot) -> OptionPositionBook:
         available_funds=available_funds,
         buying_power=buying_power,
     )
-    reasons = section.get("option_unavailable_reasons") or section.get("unavailable_reasons") or ()
+    if "option_unavailable_reasons" in section:
+        reasons = section.get("option_unavailable_reasons") or ()
+    else:
+        reasons = section.get("unavailable_reasons") or ()
+    quote_reasons = section.get("option_quote_unavailable_reasons") or ()
     return OptionPositionBook(
         account_label=snapshot.account_label,
         observed_at=observed_at,
-        status=str(section.get("status") or "UNAVAILABLE").strip().upper(),
+        status=_option_position_status(section),
         legs=tuple(legs),
         summary=summary,
-        unavailable_reasons=tuple(str(reason) for reason in reasons if str(reason).strip()),
+        unavailable_reasons=tuple(
+            dict.fromkeys(
+                str(reason)
+                for reason in (*reasons, *quote_reasons)
+                if str(reason).strip()
+            )
+        ),
     )
 
 
@@ -307,8 +317,11 @@ def validate_closing_position_drift(
     latest = option_position_book(latest_snapshot)
     if latest.account_label != draft.account_label:
         raise ValueError("The current Schwab account no longer matches the reviewed account; review the order again.")
-    if latest.status == "UNAVAILABLE":
-        raise ValueError("Current Schwab option positions are unavailable; the closing order was not submitted.")
+    if latest.status != "CURRENT":
+        raise ValueError(
+            "The current Schwab option row-set is unavailable or incomplete; "
+            "the closing order was not submitted."
+        )
     by_symbol = {leg.symbol: leg for leg in latest.legs}
     for reviewed in draft.legs:
         current = by_symbol.get(reviewed.symbol)
@@ -584,6 +597,20 @@ def _rounded(value: float | None, digits: int) -> float | None:
 
 def _is_sequence(value: object) -> bool:
     return isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray))
+
+
+def _option_position_status(section: Mapping[str, object]) -> str:
+    """Return readiness for option-position identity, not unrelated account rows."""
+
+    status = str(section.get("status") or "UNAVAILABLE").strip().upper()
+    if status == "UNAVAILABLE":
+        return status
+    option_row_set_complete = section.get("option_row_set_complete")
+    if option_row_set_complete is True:
+        return "CURRENT"
+    if option_row_set_complete is False:
+        return "INCOMPLETE"
+    return status
 
 
 __all__ = [

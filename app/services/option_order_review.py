@@ -30,6 +30,7 @@ from app.models.option_management import (
     RollOrderDraft,
 )
 from app.models.portfolio import PortfolioSnapshot
+from app.services.option_exit_plans import refresh_exit_plan_draft
 from app.services.schwab_option_management import (
     build_closing_order_draft,
     build_closing_order_payload,
@@ -314,7 +315,10 @@ def closing_order_review(
         cash_direction=direction,
         price_rail=rail,
         price_editable=True,
-        price_editor_explanation="Changing the limit rebuilds this immutable closing draft and requires confirmation again.",
+        price_editor_explanation=(
+            "Changing the limit rebuilds this closing draft and requires confirmation again. "
+            "A limit order may not fill as the market moves."
+        ),
         estimated_cash_effect=draft.estimated_cash_effect,
         estimated_cash_label=(
             "Estimated proceeds" if draft.estimated_cash_effect >= 0 else "Estimated cost"
@@ -357,6 +361,34 @@ def closing_order_review(
         primary_action_label="Place closing order",
         broker_preview_status=PREVIEW_FALLBACK_STATUS,
         internal_valid=internal_valid,
+    )
+
+
+def closing_order_analysis(
+    draft: ClosingOrderDraft,
+    *,
+    now: datetime | None = None,
+    max_quote_age_seconds: float = DEFAULT_REVIEW_MAX_QUOTE_AGE_SECONDS,
+) -> OptionOrderReview:
+    review = closing_order_review(
+        draft,
+        now=now,
+        max_quote_age_seconds=max_quote_age_seconds,
+    )
+    return replace(
+        review,
+        title="Analyze closing order",
+        execution_mode=f"{review.execution_mode} • Analysis only",
+        price_editable=False,
+        price_editor_explanation=(
+            "Return to the Close ticket to change the limit. A limit order may not fill as the market moves."
+        ),
+        acknowledgment_copy="I reviewed this non-submitting close analysis.",
+        safety_copy="Analysis never submits an order. Continue to Review closing order when ready.",
+        placement_capability=OrderReviewPlacementCapability.REVIEW_ONLY,
+        placement_disabled_reason="Analysis is non-submitting; use Review closing order to continue to placement.",
+        primary_action_label="Finish analysis",
+        broker_preview_status="Not run — analysis only",
     )
 
 
@@ -555,9 +587,13 @@ def exit_plan_review(
         )
     if draft.capability_reason:
         notices.append(_blocking("Broker placement unavailable", draft.capability_reason))
+    placeable_close = _exit_plan_closing_draft(draft)
+    can_place = placeable_close is not None and draft.placeable
     can_review = draft.executable and not draft.conflicting_order_ids
     capability = (
-        OrderReviewPlacementCapability.REVIEW_ONLY
+        OrderReviewPlacementCapability.SUPPORTED
+        if can_place
+        else OrderReviewPlacementCapability.REVIEW_ONLY
         if can_review
         else OrderReviewPlacementCapability.UNAVAILABLE
     )
@@ -565,9 +601,22 @@ def exit_plan_review(
     strategy = "Exact option position" if len(draft.position_symbols) == 1 else "Custom option strategy"
     durations = {branch.duration for branch in draft.branches if branch.enabled}
     duration = next(iter(durations)) if len(durations) == 1 else "Mixed"
-    internal_valid = bool(draft.position_symbols and draft.protected_quantity > 0 and draft.branches)
+    internal_valid = bool(
+        draft.position_symbols
+        and draft.protected_quantity > 0
+        and draft.branches
+        and (not can_place or placeable_close is not None)
+    )
     if not internal_valid:
         notices.append(_blocking("Invalid exit-plan review", "Required position, quantity, or branch data is missing."))
+    cash_effect = placeable_close.estimated_cash_effect if placeable_close is not None else None
+    cash_direction = (
+        OrderReviewCashDirection.CREDIT
+        if cash_effect is not None and cash_effect >= 0
+        else OrderReviewCashDirection.DEBIT
+        if cash_effect is not None
+        else OrderReviewCashDirection.REFERENCE
+    )
     return OptionOrderReview(
         operation=OrderReviewOperation.EXIT_PLAN,
         title="Review exit plan",
@@ -580,17 +629,29 @@ def exit_plan_review(
         instruction="Create linked closing instructions" if active_branches > 1 else "Create one planned closing instruction",
         order_type=(draft.branches[0].order_type.replace("_", " ").title() if len(draft.branches) == 1 else f"{draft.relationship} linked exits"),
         duration=duration,
-        execution_mode="Review only" if can_review else "Placement unavailable",
+        execution_mode=(
+            "Single exact-leg closing order"
+            if can_place
+            else "Review only"
+            if can_review
+            else "Placement unavailable"
+        ),
         legs=legs,
         package_quantity=draft.protected_quantity,
-        price_title="Current position mark",
-        net_price=draft.position_mark,
-        cash_direction=OrderReviewCashDirection.REFERENCE,
-        price_rail=None,
+        price_title="Exit limit price" if can_place else "Current position mark",
+        net_price=placeable_close.limit_price if placeable_close is not None else draft.position_mark,
+        cash_direction=cash_direction,
+        price_rail=closing_price_rail(placeable_close) if placeable_close is not None else None,
         price_editable=False,
         price_editor_explanation="Edit target, stop, and linkage terms in the exit-plan builder.",
-        estimated_cash_effect=None,
-        estimated_cash_label="Estimated proceeds or cost",
+        estimated_cash_effect=cash_effect,
+        estimated_cash_label=(
+            "Estimated proceeds"
+            if cash_effect is not None and cash_effect >= 0
+            else "Estimated cost"
+            if cash_effect is not None
+            else "Estimated proceeds or cost"
+        ),
         price_provenance=f"{LOCAL_CALCULATION} from current position marks",
         display_quote_at=display_quote_at,
         validation_quote_at=validation_quote_at,
@@ -609,22 +670,48 @@ def exit_plan_review(
         ),
         costs=(
             OptionOrderReviewCost("Estimated fees", "Unavailable", UNAVAILABLE_UNTIL_BROKER_REVIEW),
-            OptionOrderReviewCost("Estimated proceeds or cost", "Unavailable", UNAVAILABLE_UNTIL_BROKER_REVIEW),
+            OptionOrderReviewCost(
+                "Estimated proceeds" if cash_effect is not None and cash_effect >= 0 else "Estimated cost",
+                _money_or_unavailable(abs(cash_effect) if cash_effect is not None else None),
+                LOCAL_CALCULATION if cash_effect is not None else UNAVAILABLE_UNTIL_BROKER_REVIEW,
+                tone="positive" if cash_effect is not None and cash_effect >= 0 else "negative",
+                estimated=cash_effect is not None,
+            ),
             OptionOrderReviewCost("Settlement", "Unavailable", UNAVAILABLE_UNTIL_BROKER_REVIEW),
-            OptionOrderReviewCost("Broker preview", "Not run", "Exit-plan placement is disabled"),
+            OptionOrderReviewCost(
+                "Broker preview",
+                "Not run",
+                "Verified preview schema unavailable" if can_place else "Exit-plan placement is disabled",
+            ),
             OptionOrderReviewCost("Quote age", _age_label(validation_quote_at, current), CURRENT_SCHWAB_QUOTE if validation_quote_at else "Unavailable"),
         ),
         notices=_dedupe_notices(notices),
         acknowledgment_copy="I reviewed the protected contracts, branch actions, quantities, triggers, and warnings.",
-        safety_copy="This exit plan creates closing instructions; no order is sent from this review.",
+        safety_copy=(
+            "This exit order only closes the reviewed option position; it does not open a new position."
+            if can_place
+            else "This exit plan creates closing instructions; no order is sent from this review."
+        ),
         placement_capability=capability,
         placement_disabled_reason=(
-            "Exit-plan live placement is not enabled in the universal review."
+            None
+            if can_place
+            else "This exit-plan shape is review only."
             if can_review
             else draft.capability_reason or "Resolve blocking exit-plan conditions before placement."
         ),
-        primary_action_label="Finish exit-plan review" if can_review else "Placement unavailable",
-        broker_preview_status="Not available — exit-plan placement is disabled",
+        primary_action_label=(
+            "Place exit order"
+            if can_place
+            else "Finish exit-plan review"
+            if can_review
+            else "Placement unavailable"
+        ),
+        broker_preview_status=(
+            PREVIEW_FALLBACK_STATUS
+            if can_place
+            else "Not available — exit-plan placement is disabled"
+        ),
         internal_valid=internal_valid,
     )
 
@@ -663,7 +750,7 @@ class OptionOrderReviewController:
 
     @property
     def supports_background_refresh(self) -> bool:
-        return self.review.operation == OrderReviewOperation.CLOSE and self.snapshot_loader is not None
+        return _placement_closing_draft(self.draft) is not None and self.snapshot_loader is not None
 
     @property
     def can_place(self) -> bool:
@@ -712,7 +799,7 @@ class OptionOrderReviewController:
         if self.review.quote_state == OrderReviewQuoteState.UNAVAILABLE:
             return "Quote unavailable"
         if self.review.has_blocking_notice or not self.review.internal_valid:
-            return "Resolve blocking notices"
+            return "Review action required"
         return "Ready for final revalidation" if self.acknowledged else "Confirmation required"
 
     def acknowledge(self, acknowledged: bool) -> None:
@@ -753,6 +840,7 @@ class OptionOrderReviewController:
         with self._lock:
             if self.state in {OrderReviewPlacementState.ACCEPTED, OrderReviewPlacementState.UNKNOWN}:
                 return self.review
+            prior_review = self.review
             self._refreshing = True
             self.acknowledged = False
             self.preview_result = None
@@ -760,33 +848,28 @@ class OptionOrderReviewController:
         self._notify()
         try:
             snapshot = self.snapshot_loader()
-            assert isinstance(self.draft, ClosingOrderDraft)
-            refreshed = refresh_closing_order_draft(self.draft, snapshot)
-            updated = closing_order_review(
-                refreshed,
+            refreshed_draft, updated = _refresh_placeable_review(
+                self.draft,
+                snapshot,
                 now=self.now_provider(),
                 max_quote_age_seconds=self.review.max_quote_age_seconds,
             )
         except Exception as exc:
             with self._lock:
                 self._refreshing = False
+                retained_quote_state = quote_state(
+                    prior_review.validation_quote_at,
+                    now=self.now_provider(),
+                    max_age_seconds=prior_review.max_quote_age_seconds,
+                )
                 self.review = replace(
-                    self.review,
-                    quote_state=OrderReviewQuoteState.UNAVAILABLE,
-                    notices=_dedupe_notices(
-                        (
-                            *self.review.notices,
-                            _blocking(
-                                "Refresh failed",
-                                f"Current positions and quotes could not be revalidated: {_safe_error(exc)}",
-                            ),
-                        )
-                    ),
+                    prior_review,
+                    quote_state=retained_quote_state,
                 )
             self._notify()
             raise
         with self._lock:
-            self.draft = refreshed
+            self.draft = refreshed_draft
             self.review = updated
             self._refreshing = False
             self.acknowledged = False
@@ -835,7 +918,8 @@ class OptionOrderReviewController:
                     OrderReviewOutcomeStatus.BLOCKED,
                     self.state_text,
                 )
-            if not isinstance(self.draft, ClosingOrderDraft):
+            reviewed_closing_draft = _placement_closing_draft(self.draft)
+            if reviewed_closing_draft is None:
                 return OrderReviewPlacementOutcome(
                     OrderReviewOutcomeStatus.UNSUPPORTED,
                     "Only validated closing drafts can be submitted.",
@@ -849,15 +933,18 @@ class OptionOrderReviewController:
                 OrderReviewOutcomeStatus.BLOCKED,
                 "Required Close placement dependencies are unavailable.",
                 retryable=False,
-            )
+        )
         try:
             snapshot = self.snapshot_loader()
-            refreshed = refresh_closing_order_draft(reviewed_draft, snapshot)
-            refreshed_review = closing_order_review(
-                refreshed,
+            refreshed_draft, refreshed_review = _refresh_placeable_review(
+                reviewed_draft,
+                snapshot,
                 now=self.now_provider(),
                 max_quote_age_seconds=self.review.max_quote_age_seconds,
             )
+            refreshed_closing_draft = _review_closing_draft(refreshed_draft)
+            if refreshed_closing_draft is None:
+                raise ValueError("The refreshed review no longer contains a placeable closing order.")
         except ValueError as exc:
             with self._lock:
                 self.acknowledged = False
@@ -871,9 +958,26 @@ class OptionOrderReviewController:
         except Exception as exc:
             return self._pre_submission_exception(exc)
 
+        if (
+            refreshed_review.placement_capability != OrderReviewPlacementCapability.SUPPORTED
+            or refreshed_review.has_blocking_notice
+            or not refreshed_review.internal_valid
+        ):
+            with self._lock:
+                self.draft = refreshed_draft
+                self.review = refreshed_review
+                self.acknowledged = False
+                self.state = OrderReviewPlacementState.READY
+            self._notify()
+            return OrderReviewPlacementOutcome(
+                OrderReviewOutcomeStatus.INVALIDATED,
+                refreshed_review.placement_disabled_reason
+                or "Current order or position state requires review before placement.",
+            )
+
         if refreshed_review.quote_state not in {OrderReviewQuoteState.LIVE, OrderReviewQuoteState.AGING}:
             with self._lock:
-                self.draft = refreshed
+                self.draft = refreshed_draft
                 self.review = refreshed_review
                 self.acknowledged = False
                 self.state = OrderReviewPlacementState.READY
@@ -882,13 +986,18 @@ class OptionOrderReviewController:
                 OrderReviewOutcomeStatus.INVALIDATED,
                 "The current quote is stale or unavailable; refresh and review again.",
             )
-        if _closing_market_fingerprint(refreshed) != _closing_market_fingerprint(reviewed_draft):
+        if (
+            _closing_semantic_fingerprint(refreshed_closing_draft)
+            != _closing_semantic_fingerprint(reviewed_closing_draft)
+            or _closing_market_fingerprint(refreshed_closing_draft)
+            != _closing_market_fingerprint(reviewed_closing_draft)
+        ):
             with self._lock:
-                self.draft = refreshed
+                self.draft = refreshed_draft
                 self.review = replace(
                     refreshed_review,
                     notices=_dedupe_notices(
-                        (*refreshed_review.notices, _warning("Quote changed", "Bid, ask, or mark changed during final revalidation; confirm the refreshed review again."))
+                        (*refreshed_review.notices, _warning("Order facts changed", "Price or quote facts changed during final revalidation; confirm the refreshed review again."))
                     ),
                 )
                 self.acknowledged = False
@@ -896,10 +1005,11 @@ class OptionOrderReviewController:
             self._notify()
             return OrderReviewPlacementOutcome(
                 OrderReviewOutcomeStatus.INVALIDATED,
-                "Quote values changed during final revalidation; review and acknowledge again.",
+                "Quote values changed or the resolved order price changed during final revalidation; "
+                "review and acknowledge again.",
             )
 
-        payload = build_closing_order_payload(refreshed)
+        payload = build_closing_order_payload(refreshed_closing_draft)
         if self.previewer is not None:
             self._set_state(OrderReviewPlacementState.PREVIEWING)
             try:
@@ -955,7 +1065,7 @@ class OptionOrderReviewController:
 
         submission = ClosingOrderSubmission(payload=payload, location=location)
         with self._lock:
-            self.draft = refreshed
+            self.draft = refreshed_draft
             self.state = OrderReviewPlacementState.ACCEPTED
         self._notify()
         refresh_error: Exception | None = None
@@ -964,7 +1074,11 @@ class OptionOrderReviewController:
                 self.on_accepted()
             except Exception as exc:  # acceptance is still final even if the refresh fails
                 refresh_error = exc
-        message = "Schwab accepted the closing order."
+        message = (
+            "Schwab accepted the exit order."
+            if self.review.operation == OrderReviewOperation.EXIT_PLAN
+            else "Schwab accepted the closing order."
+        )
         if refresh_error is not None:
             message += " The follow-up position/order refresh failed; refresh the workspace manually."
         return OrderReviewPlacementOutcome(
@@ -1066,6 +1180,55 @@ class OptionOrderReviewController:
         listener = self.state_listener
         if listener is not None:
             listener(self)
+
+
+def _exit_plan_closing_draft(draft: ExitPlanDraft) -> ClosingOrderDraft | None:
+    if draft.template_id != "single_target" or len(draft.branches) != 1:
+        return None
+    return draft.branches[0].closing_order
+
+
+def _review_closing_draft(
+    draft: ClosingOrderDraft | RollOrderDraft | ExitPlanDraft,
+) -> ClosingOrderDraft | None:
+    if isinstance(draft, ClosingOrderDraft):
+        return draft
+    if isinstance(draft, ExitPlanDraft):
+        return _exit_plan_closing_draft(draft)
+    return None
+
+
+def _placement_closing_draft(
+    draft: ClosingOrderDraft | RollOrderDraft | ExitPlanDraft,
+) -> ClosingOrderDraft | None:
+    closing_draft = _review_closing_draft(draft)
+    if isinstance(draft, ExitPlanDraft) and not draft.placeable:
+        return None
+    return closing_draft
+
+
+def _refresh_placeable_review(
+    draft: ClosingOrderDraft | RollOrderDraft | ExitPlanDraft,
+    snapshot: PortfolioSnapshot,
+    *,
+    now: datetime,
+    max_quote_age_seconds: float,
+) -> tuple[ClosingOrderDraft | ExitPlanDraft, OptionOrderReview]:
+    if isinstance(draft, ClosingOrderDraft):
+        refreshed = refresh_closing_order_draft(draft, snapshot)
+        return refreshed, closing_order_review(
+            refreshed,
+            now=now,
+            max_quote_age_seconds=max_quote_age_seconds,
+        )
+    if isinstance(draft, ExitPlanDraft) and _exit_plan_closing_draft(draft) is not None:
+        refreshed_exit = refresh_exit_plan_draft(draft, snapshot)
+        return refreshed_exit, exit_plan_review(
+            refreshed_exit,
+            now=now,
+            max_quote_age_seconds=max_quote_age_seconds,
+        )
+    raise ValueError("This review does not contain a supported closing order.")
 
 
 def _apply_preview_values(review: OptionOrderReview, preview: BrokerOrderPreview) -> OptionOrderReview:
@@ -1337,6 +1500,7 @@ __all__ = [
     "OptionOrderReviewController",
     "PREVIEW_FALLBACK_STATUS",
     "UNAVAILABLE_UNTIL_BROKER_REVIEW",
+    "closing_order_analysis",
     "closing_order_review",
     "closing_price_rail",
     "exit_plan_review",

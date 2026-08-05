@@ -38,9 +38,9 @@ from app.ui.theme import (
 
 
 _NOTICE_COLORS = {
-    OrderReviewNoticeSeverity.INFORMATION: ("#0c2847", ACCENT, "INFO", "i"),
-    OrderReviewNoticeSeverity.WARNING: ("#382a10", WARNING, "WARNING", "!"),
-    OrderReviewNoticeSeverity.BLOCKING: ("#35171d", DANGER, "BLOCKING", "X"),
+    OrderReviewNoticeSeverity.INFORMATION: ("#13243a", ACCENT, "i"),
+    OrderReviewNoticeSeverity.WARNING: ("#382a10", WARNING, "!"),
+    OrderReviewNoticeSeverity.BLOCKING: ("#35171d", DANGER, "X"),
 }
 
 
@@ -336,7 +336,7 @@ class OptionOrderReviewDialog(tk.Toplevel):
         safety.pack(side=tk.LEFT, fill=tk.X, expand=True, anchor=tk.CENTER)
         tk.Label(
             safety,
-            text="LOCK",
+            text="CLOSE ONLY",
             background="#091524",
             foreground=MUTED_TEXT,
             font=("Segoe UI", 8, "bold"),
@@ -725,24 +725,29 @@ class OptionOrderReviewDialog(tk.Toplevel):
             self._cost_value_labels[cost.label] = value
 
     def _build_notices(self, parent: tk.Frame, review: OptionOrderReview) -> None:
-        card = self._card(parent, padding=(8, 8))
-        self._section_title(card, "Notices")
         notices = self._effective_notices(review)
         if not notices:
-            tk.Label(card, text="INFO  No additional notices.", background=SURFACE, foreground=MUTED_TEXT, font=("Segoe UI", 8), anchor=tk.W).pack(fill=tk.X, pady=(6, 0))
             return
+        card = self._card(parent, padding=(8, 8))
+        heading = "Action required" if any(notice.blocking for notice in notices) else "Execution notes"
+        self._section_title(card, heading)
         for notice in notices:
-            background, color, severity, icon = _NOTICE_COLORS[notice.severity]
+            background, color, icon = _NOTICE_COLORS[notice.severity]
             rail = tk.Frame(card, background=background, highlightbackground=color, highlightthickness=1)
             rail.pack(fill=tk.X, pady=(6, 0))
             tk.Label(rail, text=icon, background=background, foreground=color, font=("Segoe UI", 10, "bold"), width=3).pack(side=tk.LEFT, padx=(5, 1), pady=7)
             copy = tk.Frame(rail, background=background)
             copy.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(1, 7), pady=6)
-            tk.Label(copy, text=f"{severity} — {notice.title}", background=background, foreground=color, font=("Segoe UI", 8, "bold"), anchor=tk.W).pack(fill=tk.X)
+            tk.Label(copy, text=notice.title, background=background, foreground=color, font=("Segoe UI", 8, "bold"), anchor=tk.W).pack(fill=tk.X)
             tk.Label(copy, text=notice.detail, background=background, foreground=TEXT, font=("Segoe UI", 8), wraplength=350, justify=tk.LEFT, anchor=tk.W).pack(fill=tk.X, pady=(2, 0))
 
     def _effective_notices(self, review: OptionOrderReview) -> tuple[OptionOrderReviewNotice, ...]:
-        notices = list(review.notices)
+        notices = [
+            notice
+            for notice in review.notices
+            if notice.title != "Data provenance and revalidation"
+            and not notice.title.startswith("Limit price is ")
+        ]
         titles = {notice.title.casefold() for notice in notices}
         if review.quote_state == OrderReviewQuoteState.UPDATING and "refreshing positions and quotes" not in titles:
             notices.insert(0, OptionOrderReviewNotice(OrderReviewNoticeSeverity.INFORMATION, "Refreshing positions and quotes", "Current account positions and exact-leg quotes are being revalidated."))
@@ -836,9 +841,10 @@ class OptionOrderReviewDialog(tk.Toplevel):
         if outcome.status == OrderReviewOutcomeStatus.ACCEPTED and outcome.submission is not None:
             payload = outcome.submission.payload
             location = outcome.submission.location
+            operation = self.controller.review.operation
             self._destroy_modal()
             messagebox.showinfo(
-                "Closing order accepted",
+                "Exit order accepted" if operation == OrderReviewOperation.EXIT_PLAN else "Closing order accepted",
                 order_submitted_message(payload, location),
                 parent=self.root,
             )
@@ -869,9 +875,9 @@ class OptionOrderReviewDialog(tk.Toplevel):
             self._inline_status = "Positions and quotes refreshed — confirmation required."
             self._sync_from_controller()
 
-        def failed(exc: Exception) -> None:
+        def failed(_exc: Exception) -> None:
             self._refresh_dispatched = False
-            self._inline_status = f"Refresh failed: {str(exc) or type(exc).__name__}"
+            self._inline_status = "Refresh unavailable; reviewed data retained — Place will revalidate."
             self._sync_from_controller()
 
         run_in_background(self.root, self.controller.refresh_review, succeeded, failed)
@@ -936,8 +942,6 @@ class OptionOrderReviewDialog(tk.Toplevel):
 
     def _primary_button_text(self) -> str:
         review = self.controller.review
-        if review.placement_capability == OrderReviewPlacementCapability.SUPPORTED:
-            return f"LOCK  {review.primary_action_label}"
         return review.primary_action_label
 
     def _update_quote_header(self) -> None:

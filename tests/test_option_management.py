@@ -16,7 +16,7 @@ from app.services.schwab_option_management import (
     submit_validated_closing_order,
     validate_closing_position_drift,
 )
-from app.services.schwab_strategy_orders import DAY_ONLY
+from app.services.schwab_strategy_orders import DAY_ONLY, GOOD_UNTIL_CANCELED
 from app.ui.background_tasks import run_in_background
 from app.ui.options_management import (
     CLOSE_SCOPE_ENTIRE,
@@ -24,6 +24,7 @@ from app.ui.options_management import (
     _closing_price_rail,
     _closing_scope_rows,
     _initial_position_selection,
+    _matching_order_iid,
     _selection_after_click,
 )
 
@@ -274,6 +275,26 @@ def test_duplicate_exact_position_rows_fail_closed() -> None:
         build_closing_order_draft(book, [symbol])
 
 
+def test_option_book_fails_closed_when_option_row_set_is_explicitly_incomplete() -> None:
+    snapshot = _snapshot([_position(symbol="NVDA  260918P00210000", quantity=1, mark=1.5)])
+    positions = snapshot.account_facts["positions"]
+    assert isinstance(positions, dict)
+    positions.update(
+        {
+            "status": "INCOMPLETE",
+            "option_row_set_complete": False,
+            "option_unavailable_reasons": ["An unidentified row may be an option position."],
+        }
+    )
+
+    book = option_position_book(snapshot)
+
+    assert book.status == "INCOMPLETE"
+    draft = build_closing_order_draft(book, (book.legs[0].symbol,))
+    with pytest.raises(ValueError, match="option row-set is unavailable or incomplete"):
+        validate_closing_position_drift(draft, snapshot)
+
+
 def test_single_short_option_builds_exact_buy_to_close_limit_payload() -> None:
     symbol = "NVDA  260918P00210000"
     draft = build_closing_order_draft(
@@ -311,6 +332,27 @@ def test_close_cash_estimate_uses_the_displayed_cent_rounded_limit() -> None:
     )
 
     assert draft.estimated_cash_effect == pytest.approx(draft.limit_price * 100)
+
+
+@pytest.mark.parametrize(
+    ("duration", "api_duration"),
+    [
+        (DAY_ONLY, "DAY"),
+        (GOOD_UNTIL_CANCELED, "GOOD_TILL_CANCEL"),
+    ],
+)
+def test_close_accepts_every_visible_time_in_force_value(
+    duration: str,
+    api_duration: str,
+) -> None:
+    symbol = "NVDA  260918P00210000"
+    draft = build_closing_order_draft(
+        option_position_book(_snapshot([_position(symbol=symbol, quantity=1, mark=1.5)])),
+        [symbol],
+        duration=duration,
+    )
+
+    assert build_closing_order_payload(draft)["duration"] == api_duration
 
 
 def test_selected_long_and_short_legs_preserve_ratio_as_one_net_credit() -> None:
@@ -501,6 +543,41 @@ def test_working_and_recent_order_views_preserve_every_exact_leg() -> None:
     assert recent[0].order_id == "2002"
     assert recent[0].can_cancel is False
     assert "cannot be canceled" in str(recent[0].cancel_disabled_reason)
+
+
+def test_cancel_route_targets_the_matching_current_order_object() -> None:
+    def raw_order(order_id: str) -> dict[str, object]:
+        return {
+            "orderId": order_id,
+            "status": "WORKING",
+            "enteredTime": "2026-08-03T19:00:00Z",
+            "orderType": "LIMIT",
+            "duration": "DAY",
+            "price": 0.55,
+            "orderLegCollection": [
+                {
+                    "instruction": "BUY_TO_CLOSE",
+                    "quantity": 1,
+                    "instrument": {
+                        "symbol": "NVDA  260918P00210000",
+                        "assetType": "OPTION",
+                    },
+                }
+            ],
+        }
+
+    orders = option_orders_from_payload(
+        [
+            raw_order("100"),
+            raw_order("200"),
+        ]
+    )
+    visible = {f"order-{index}": order for index, order in enumerate(orders)}
+
+    matched = _matching_order_iid(visible, ("200",))
+    assert matched is not None
+    assert visible[matched].order_id == "200"
+    assert _matching_order_iid(visible, ("missing",)) is None
 
 
 def test_background_runner_marshals_success_and_failure_back_through_after() -> None:
