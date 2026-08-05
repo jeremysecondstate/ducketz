@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
 import pandas as pd
+from dotenv import load_dotenv
 
 from app.services.databento_cme_context import (
     DatabentoCmeContextProvider,
@@ -53,6 +54,16 @@ DEFAULT_CHUNK_MINUTES = {
     "bbo-1m": 60,
     "mbp-10": 5,
 }
+REPOSITORY_ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
+
+
+def load_repository_environment(env_file: Path | None = None) -> bool:
+    """Load CLI credentials from the repository .env without overriding the shell."""
+
+    return load_dotenv(
+        dotenv_path=env_file or REPOSITORY_ENV_FILE,
+        override=False,
+    )
 
 
 @dataclass(frozen=True)
@@ -279,6 +290,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--retry-delay-seconds", type=float, default=4.0)
     parser.add_argument("--once", action="store_true")
     args = parser.parse_args(argv)
+    load_repository_environment()
     cadences = {**DEFAULT_CADENCE_SECONDS, **_parse_schema_values(args.cadence)}
     phases = {
         **DEFAULT_PHASE_OFFSETS_SECONDS,

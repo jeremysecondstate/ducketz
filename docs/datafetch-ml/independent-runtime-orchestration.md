@@ -55,6 +55,10 @@ of these commands requires deleting, resetting, or bootstrapping an existing
 datastore. Add `--once` to any command for one bounded cycle. Press `Ctrl+C` to
 stop a continuous process; the current atomic artifact remains authoritative.
 
+The CME command explicitly loads `DATABENTO_API_KEY` from the repository-root
+`.env`. An environment variable already set in the launching shell takes
+precedence; the `.env` loader never overwrites it.
+
 ## Cadences and phase offsets
 
 The CME defaults are `ohlcv-1m=60s`, `bbo-1m=15s`, and `mbp-10=5s`, with UTC

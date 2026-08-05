@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 from dataclasses import replace
@@ -20,11 +21,32 @@ from datafetching.cme_history import (
     publish_cme_l2_snapshot,
     read_cme_cursor,
 )
-from datafetching.cme_runtime import query_chunks, run_cme_cycle
+from datafetching.cme_runtime import (
+    load_repository_environment,
+    query_chunks,
+    run_cme_cycle,
+)
 from datafetching.parquet_store import ParquetStore
 
 
 UTC = timezone.utc
+
+
+def test_cme_runtime_loads_repository_env_without_overriding_shell(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    variable = "DUCKETS_TEST_DATABENTO_ENV_LOAD"
+    env_file = tmp_path / ".env"
+    env_file.write_text(f"{variable}=from-dotenv\n", encoding="utf-8")
+    monkeypatch.delenv(variable, raising=False)
+
+    assert load_repository_environment(env_file)
+    assert os.environ[variable] == "from-dotenv"
+
+    monkeypatch.setenv(variable, "from-shell")
+    assert load_repository_environment(env_file)
+    assert os.environ[variable] == "from-shell"
 
 
 def test_partitioned_l2_history_preserves_nanoseconds_and_causal_receipts(
