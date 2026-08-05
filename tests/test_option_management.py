@@ -16,6 +16,7 @@ from app.services.schwab_option_management import (
     submit_validated_closing_order,
     validate_closing_position_drift,
 )
+from app.services.schwab_policy_inputs import normalize_schwab_policy_inputs
 from app.services.schwab_strategy_orders import DAY_ONLY, GOOD_UNTIL_CANCELED
 from app.ui.background_tasks import run_in_background
 from app.ui.options_management import (
@@ -293,6 +294,69 @@ def test_option_book_fails_closed_when_option_row_set_is_explicitly_incomplete()
     draft = build_closing_order_draft(book, (book.legs[0].symbol,))
     with pytest.raises(ValueError, match="option row-set is unavailable or incomplete"):
         validate_closing_position_drift(draft, snapshot)
+
+
+def test_collective_investment_rows_do_not_block_exact_option_revalidation() -> None:
+    option_symbol = "WULF  260918C00024000"
+    account_facts = normalize_schwab_policy_inputs(
+        {
+            "securitiesAccount": {
+                "positions": [
+                    _raw_schwab_position(
+                        symbol=option_symbol,
+                        asset_type="OPTION",
+                        price=0.93,
+                        multiplier=100.0,
+                    ),
+                    _raw_schwab_position(
+                        symbol="VXUS",
+                        asset_type="COLLECTIVE_INVESTMENT",
+                        price=72.0,
+                    ),
+                ]
+            }
+        },
+        [],
+        observed_at=OBSERVED_AT,
+    )
+    positions = account_facts["positions"]
+    assert isinstance(positions, dict)
+    assert positions["option_row_set_complete"] is True
+    assert positions["option_unavailable_reasons"] == []
+
+    snapshot = PortfolioSnapshot(
+        source="schwab",
+        account_label="Schwab",
+        synced_at=OBSERVED_AT,
+        account_facts=account_facts,
+    )
+    book = option_position_book(snapshot)
+    draft = build_closing_order_draft(book, (option_symbol,))
+
+    assert book.status == "CURRENT"
+    validate_closing_position_drift(draft, snapshot)
+
+
+def test_conflicting_asset_aliases_still_make_option_row_set_incomplete() -> None:
+    ambiguous = _raw_schwab_position(
+        symbol="VXUS",
+        asset_type="COLLECTIVE_INVESTMENT",
+        price=72.0,
+    )
+    ambiguous["assetType"] = "OPTION"
+    account_facts = normalize_schwab_policy_inputs(
+        {"securitiesAccount": {"positions": [ambiguous]}},
+        [],
+        observed_at=OBSERVED_AT,
+    )
+    positions = account_facts["positions"]
+    assert isinstance(positions, dict)
+
+    assert positions["option_row_set_complete"] is False
+    assert any(
+        "missing or conflicting asset identity" in str(reason)
+        for reason in positions["option_unavailable_reasons"]
+    )
 
 
 def test_single_short_option_builds_exact_buy_to_close_limit_payload() -> None:
@@ -678,4 +742,31 @@ def _position(
         "option_fields_complete": True,
         "option_unavailable_reasons": [],
         "unavailable_reasons": [],
+    }
+
+
+def _raw_schwab_position(
+    *,
+    symbol: str,
+    asset_type: str,
+    price: float,
+    multiplier: float | None = None,
+) -> dict[str, object]:
+    instrument: dict[str, object] = {
+        "symbol": symbol,
+        "assetType": asset_type,
+    }
+    if multiplier is not None:
+        instrument["multiplier"] = multiplier
+    return {
+        "instrument": instrument,
+        "longQuantity": 1.0,
+        "shortQuantity": 0.0,
+        "settledLongQuantity": 1.0,
+        "settledShortQuantity": 0.0,
+        "marketPrice": price,
+        "marketValue": price * (multiplier or 1.0),
+        "costBasis": price * (multiplier or 1.0),
+        "openProfitLoss": 0.0,
+        "currentDayProfitLoss": 0.0,
     }

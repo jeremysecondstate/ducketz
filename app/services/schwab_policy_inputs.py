@@ -8,6 +8,16 @@ from typing import Any
 
 SCHWAB_POLICY_INPUTS_SCHEMA_VERSION = "schwab-observed-policy-inputs/v1"
 
+# Schwab reports exchange-traded funds through the account endpoint as
+# COLLECTIVE_INVESTMENT positions.  That is an explicit non-option identity,
+# even though these rows are outside the stock-policy calculator's supported
+# EQUITY/STOCK universe.
+_REVIEWED_NON_OPTION_ASSET_TYPES = frozenset({
+    "COLLECTIVE_INVESTMENT",
+    "EQUITY",
+    "STOCK",
+})
+
 _ACCOUNT_VALUE_FIELDS: tuple[tuple[str, tuple[str, ...], str], ...] = (
     ("liquidation_value", ("liquidationValue", "currentLiquidationValue", "accountValue"), "liquidation/account value"),
     ("cash_balance", ("cashBalance",), "cash balance"),
@@ -200,13 +210,18 @@ def _normalize_positions(account: dict[str, Any]) -> dict[str, object]:
         item = _normalize_position(raw_position, source_ref)
         items.append(item)
         section_reasons.extend(str(value) for value in item["unavailable_reasons"])
-        if "OPTION" in str(item.get("asset_type") or "").upper():
+        asset_types = _normalized_asset_types(item)
+        if len(asset_types) != 1:
+            option_row_set_reasons.append(
+                f"{source_ref} has missing or conflicting asset identity, so the complete row set cannot prove whether it is an option position."
+            )
+        elif "OPTION" in asset_types[0]:
             option_row_set_reasons.extend(
                 str(value) for value in item.get("option_unavailable_reasons", [])
             )
-        elif str(item.get("asset_type") or "").upper() not in {"EQUITY", "STOCK"}:
+        elif asset_types[0] not in _REVIEWED_NON_OPTION_ASSET_TYPES:
             option_row_set_reasons.append(
-                f"{source_ref} has no reviewed asset identity, so the complete row set cannot prove it is not an option position."
+                f"{source_ref} reports unreviewed asset type {asset_types[0]}, so the complete row set cannot prove it is not an option position."
             )
 
     return {
@@ -711,14 +726,19 @@ def _normalize_working_orders(
             else _normalize_working_order(raw_order, source_ref)
         )
         items.append(item)
-        if "OPTION" in str(item.get("asset_type") or "").upper():
+        asset_types = _normalized_asset_types(item)
+        if len(asset_types) != 1:
+            option_row_set_reasons.append(
+                f"{source_ref} has missing or conflicting asset identity, so the active row set cannot prove whether it contains option legs."
+            )
+        elif "OPTION" in asset_types[0]:
             active_option_orders.append(item)
             option_row_set_reasons.extend(
                 str(value) for value in item.get("option_unavailable_reasons", [])
             )
-        elif str(item.get("asset_type") or "").upper() not in {"EQUITY", "STOCK"}:
+        elif asset_types[0] not in _REVIEWED_NON_OPTION_ASSET_TYPES:
             option_row_set_reasons.append(
-                f"{source_ref} has no reviewed asset identity, so the active row set cannot prove it contains no option legs."
+                f"{source_ref} reports unreviewed asset type {asset_types[0]}, so the active row set cannot prove it contains no option legs."
             )
         item_reasons = [str(value) for value in item["unavailable_reasons"]]
         section_reasons.extend(item_reasons)
@@ -766,6 +786,26 @@ def _normalize_working_orders(
         }
     )
     return base
+
+
+def _normalized_asset_types(item: dict[str, object]) -> tuple[str, ...]:
+    """Return every reported normalized asset type so conflicts stay fail-closed."""
+
+    identity_candidates = item.get("stock_policy_identity_candidates")
+    if isinstance(identity_candidates, dict):
+        candidates = identity_candidates.get("asset_types")
+        if isinstance(candidates, list):
+            normalized = tuple(
+                dict.fromkeys(
+                    str(value).strip().upper()
+                    for value in candidates
+                    if str(value).strip()
+                )
+            )
+            if normalized:
+                return normalized
+    asset_type = str(item.get("asset_type") or "").strip().upper()
+    return (asset_type,) if asset_type else ()
 
 
 def _normalized_option_identity(
