@@ -5,6 +5,7 @@ from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable
+import time
 
 import pandas as pd
 import pyarrow.parquet as pq
@@ -80,6 +81,7 @@ def fetch_many(
     profile: str = "continuation",
 ) -> dict[str, FetchResult]:
     """Fetch Databento bars for a watchlist using multi-symbol requests."""
+    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2A: FETCH MANY")
     clean_symbols = _normalize_symbols(symbols)
     if len(clean_symbols) == 1:
         symbol = clean_symbols[0]
@@ -92,6 +94,7 @@ def fetch_many(
             )
         }
 
+    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2B: FETCH MANY")
     provider = DatabentoMarketDataProvider()
     observed_at = datetime.now(timezone.utc)
     native_results = _fetch_native_results_many(
@@ -100,6 +103,7 @@ def fetch_many(
         profile,
         store,
     )
+    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2C: FETCH MANY")
     results = {
         symbol: _persist_native_results(
             symbol,
@@ -112,12 +116,14 @@ def fetch_many(
         )
         for symbol in clean_symbols
     }
+    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2D: FETCH MANY")
     if include_cme:
         first_symbol = clean_symbols[0]
         results[first_symbol] = _with_shared_cme_result(
             results[first_symbol],
             store,
         )
+        print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2E: FETCH MANY")
     return results
 
 
@@ -627,7 +633,7 @@ def _fetch_native_results_many(
             )
             symbols_by_start.setdefault(actual_start, []).append(symbol)
             request_specs_by_start[actual_start] = request_spec
-
+        print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1A: FETCH/DECODE SYMBOLS")
         for actual_start, grouped_symbols in symbols_by_start.items():
             request_spec = request_specs_by_start[actual_start]
             for symbol_chunk in _symbol_chunks(grouped_symbols):
@@ -645,6 +651,7 @@ def _fetch_native_results_many(
                             f"{spec.schema}/{spec.frequency}"
                         ),
                     )
+                    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1B: FETCH/DECODE SYMBOLS")
                 except Exception as exc:
                     if _is_symbol_batch_error(exc) and len(symbol_chunk) > 1:
                         print(
@@ -664,6 +671,7 @@ def _fetch_native_results_many(
                             results[symbol].append((spec, [], None, None, exc))
                     continue
 
+                print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1C: FETCH/DECODE SYMBOLS")
                 missing = set(symbol_chunk).difference(fetched)
                 if missing:
                     exc = RuntimeError(
@@ -678,6 +686,8 @@ def _fetch_native_results_many(
                     results[symbol].append(
                         (spec, bars, raw_frame, selected_range, None)
                     )
+                    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1D: FETCH/DECODE SYMBOLS")
+
     return results
 
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import re
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
@@ -77,6 +78,8 @@ def materialize_rolling_samples(
     materialized_at: object | None = None,
     reporter: Callable[[str], None] | None = print,
 ) -> RollingMaterialization:
+
+    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1A: ROLLING MAT")
     root = Path(datastore_root)
     if not root.is_dir():
         raise FileNotFoundError(f"Datastore does not exist: {root}")
@@ -117,12 +120,14 @@ def materialize_rolling_samples(
     parquet_cache: dict[tuple[Path, ...], pd.DataFrame] = {}
     derived_cache: dict[str, pd.DataFrame] = {}
 
+    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1B: ROLLING MAT")
     for horizon, specification in specifications.items():
         if horizon != specification.horizon:
             raise ValueError(
                 "Rolling specification key must match its horizon: "
                 f"{horizon!r} != {specification.horizon!r}"
             )
+        print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1C: ROLLING MAT")
         for symbol in clean_symbols:
             try:
                 if symbol not in bar_dataset_cache:
@@ -264,7 +269,10 @@ def materialize_rolling_samples(
                     f"{NO_ELIGIBLE_SOURCE_DATA}; {route.error}",
                 )
             routes.append(route)
+        print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1D: ROLLING MAT")
+    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1E: ROLLING MAT")
 
+    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1F: ROLLING MAT")
     samples = (
         pd.concat(sample_frames, ignore_index=True, sort=False)
         if sample_frames
@@ -293,6 +301,7 @@ def materialize_rolling_samples(
             ],
             kind="mergesort",
         ).drop(columns="__horizon_order").reset_index(drop=True)
+    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1G: ROLLING MAT")
     return RollingMaterialization(
         samples=samples,
         routes=tuple(routes),

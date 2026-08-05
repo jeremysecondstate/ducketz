@@ -36,12 +36,14 @@ def call_with_persistent_databento_retry(
     validation failures are raised immediately. ``KeyboardInterrupt`` is intentionally
     not caught, so Ctrl+C always stops the process.
     """
+    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 4A: DATABENTO RETRY")
 
     if delay_seconds < 0:
         raise ValueError("delay_seconds cannot be negative")
     if max_attempts < 1:
         raise ValueError("max_attempts must be at least 1")
 
+    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 4B: DATABENTO RETRY")
     for attempt in range(1, max_attempts + 1):
         try:
             result = operation()
@@ -61,6 +63,7 @@ def call_with_persistent_databento_retry(
                 )
             sleep(delay_seconds)
 
+    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 4C: DATABENTO RETRY")
     raise AssertionError("Databento retry loop exited unexpectedly")
 
 
