@@ -23,6 +23,7 @@ from datafetching.main import (
     run_symbol_fetch,
     run_symbols_fetch,
 )
+from datafetching.observability import timed_stage
 from datafetching.parquet_store import DATASTORE_TARGETS, ParquetStore
 from fundamentals.main import main as run_fundamentals
 from signals.main import main as run_signals
@@ -82,6 +83,18 @@ def main(argv: list[str] | None = None) -> int:
         "--skip-cme",
         action="store_true",
         help="Skip shared Databento CME context.",
+    )
+    parser.add_argument(
+        "--cme-mode",
+        choices=("external", "inline"),
+        default="external",
+        help="External uses datafetching.cme_runtime; inline is compatibility mode.",
+    )
+    parser.add_argument(
+        "--options-mode",
+        choices=("external", "inline"),
+        default="external",
+        help="External uses datafetching.options_runtime; inline is compatibility mode.",
     )
     parser.add_argument(
         "--skip-fundamentals",
@@ -149,7 +162,10 @@ def main(argv: list[str] | None = None) -> int:
                             store,
                             providers=args.providers,
                             requested_profile=args.profile,
-                            include_cme=not args.skip_cme,
+                            include_cme=(
+                                args.cme_mode == "inline" and not args.skip_cme
+                            ),
+                            include_options=args.options_mode == "inline",
                             run_technical_calculations=not args.skip_technicals,
                             datastore_target=args.datastore_target,
                             datastore_path=args.datastore,
@@ -205,6 +221,7 @@ def run_cycle(
     run_technical_calculations: bool,
     datastore_target: str | None,
     datastore_path: Path | None,
+    include_options: bool = False,
     run_fundamental_calculations: bool = True,
     run_signal_calculations: bool = True,
     cycle_started_at: datetime | None = None,
@@ -235,6 +252,7 @@ def run_cycle(
                 profile=profiles[symbol],
                 include_cme=include_cme,
                 include_fmp_macro=True,
+                include_options=include_options,
             )
         }
     else:
@@ -245,6 +263,7 @@ def run_cycle(
             profile=profiles[symbols_tuple[0]],
             include_cme=include_cme,
             include_fmp_macro=True,
+            include_options=include_options,
         )
 
     for index, symbol in enumerate(symbols_tuple):
@@ -282,7 +301,16 @@ def run_cycle(
                 fundamental_args.extend(["--datastore-target", datastore_target])
             elif datastore_path:
                 fundamental_args.extend(["--datastore", str(datastore_path)])
-            fundamental_exit = run_fundamentals(fundamental_args)
+            with timed_stage(
+                "loop-a.fundamentals",
+                symbol=symbol,
+                provider="fmp",
+                reporter=print,
+            ) as timing:
+                fundamental_exit = run_fundamentals(fundamental_args)
+                timing.annotate(
+                    operation="wrote" if not fundamental_exit else "failed"
+                )
             if fundamental_exit:
                 failures += 1
                 print(f"[{symbol}] fundamental calculations reported a failure.")
@@ -293,7 +321,16 @@ def run_cycle(
                 technical_args.extend(["--datastore-target", datastore_target])
             elif datastore_path:
                 technical_args.extend(["--datastore", str(datastore_path)])
-            technical_exit = run_technicals(technical_args)
+            with timed_stage(
+                "loop-a.technicals",
+                symbol=symbol,
+                provider="calculated",
+                reporter=print,
+            ) as timing:
+                technical_exit = run_technicals(technical_args)
+                timing.annotate(
+                    operation="wrote" if not technical_exit else "failed"
+                )
             if technical_exit:
                 failures += 1
                 print(f"[{symbol}] technical calculations reported a failure.")
@@ -304,7 +341,16 @@ def run_cycle(
                 signal_args.extend(["--datastore-target", datastore_target])
             elif datastore_path:
                 signal_args.extend(["--datastore", str(datastore_path)])
-            signal_exit = run_signals(signal_args)
+            with timed_stage(
+                "loop-a.signals",
+                symbol=symbol,
+                provider="calculated",
+                reporter=print,
+            ) as timing:
+                signal_exit = run_signals(signal_args)
+                timing.annotate(
+                    operation="wrote" if not signal_exit else "failed"
+                )
             if signal_exit:
                 failures += 1
                 print(f"[{symbol}] signal calculations reported a failure.")

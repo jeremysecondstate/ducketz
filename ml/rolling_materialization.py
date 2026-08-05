@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 import re
-import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
@@ -10,6 +9,7 @@ from typing import Callable, Mapping, Sequence
 import pandas as pd
 
 from datafetching.fmp_energy_context import fmp_energy_context_path
+from datafetching.observability import timed_stage
 from ml.contracts import FeatureSet, MLContractError
 from ml.datasets.families import (
     CME_FRESHNESS,
@@ -39,6 +39,10 @@ from ml.horizons import (
 from ml.rolling_samples import build_rolling_samples
 from ml.timing import NO_ELIGIBLE_SOURCE_DATA, utc_timestamp
 from ml.universe import initial_universe_membership
+from options.publication import (
+    committed_option_snapshots,
+    read_committed_option_surfaces,
+)
 from technicals.parquet_io import BarDataset, discover_bar_datasets
 
 
@@ -76,10 +80,44 @@ def materialize_rolling_samples(
     ] = DEFAULT_HORIZON_SPECIFICATIONS,
     assumed_round_trip_cost: float = 0.001,
     materialized_at: object | None = None,
+    input_available_at: object | None = None,
     reporter: Callable[[str], None] | None = print,
 ) -> RollingMaterialization:
 
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1A: ROLLING MAT")
+    with timed_stage(
+        "loop-b.materialize-samples",
+        provider=provider,
+        reporter=reporter,
+        extra={"symbol_count": len(symbols)},
+    ) as timing:
+        result = _materialize_rolling_samples(
+            datastore_root,
+            symbols=symbols,
+            provider=provider,
+            specifications=specifications,
+            assumed_round_trip_cost=assumed_round_trip_cost,
+            materialized_at=materialized_at,
+            input_available_at=input_available_at,
+            reporter=reporter,
+        )
+        timing.annotate(row_count=len(result.samples), operation="compared")
+        return result
+
+
+def _materialize_rolling_samples(
+    datastore_root: Path,
+    *,
+    symbols: Sequence[str],
+    provider: str = "databento",
+    specifications: Mapping[
+        str, HorizonSpecification
+    ] = DEFAULT_HORIZON_SPECIFICATIONS,
+    assumed_round_trip_cost: float = 0.001,
+    materialized_at: object | None = None,
+    input_available_at: object | None = None,
+    reporter: Callable[[str], None] | None = print,
+) -> RollingMaterialization:
+
     root = Path(datastore_root)
     if not root.is_dir():
         raise FileNotFoundError(f"Datastore does not exist: {root}")
@@ -99,6 +137,9 @@ def materialize_rolling_samples(
         )
     clean_provider = str(provider).strip().lower()
     created = utc_timestamp(materialized_at)
+    input_cutoff = utc_timestamp(
+        input_available_at if input_available_at is not None else created
+    )
     routes: list[RouteMaterialization] = []
     sample_frames: list[pd.DataFrame] = []
     all_sources: list[Path] = []
@@ -119,15 +160,16 @@ def materialize_rolling_samples(
     price_frame_cache: dict[tuple[str, str], pd.DataFrame] = {}
     parquet_cache: dict[tuple[Path, ...], pd.DataFrame] = {}
     derived_cache: dict[str, pd.DataFrame] = {}
+    committed_option_cache: dict[
+        tuple[tuple[str, ...], int], tuple[pd.DataFrame, tuple[Path, ...]]
+    ] = {}
 
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1B: ROLLING MAT")
     for horizon, specification in specifications.items():
         if horizon != specification.horizon:
             raise ValueError(
                 "Rolling specification key must match its horizon: "
                 f"{horizon!r} != {specification.horizon!r}"
             )
-        print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1C: ROLLING MAT")
         for symbol in clean_symbols:
             try:
                 if symbol not in bar_dataset_cache:
@@ -216,6 +258,8 @@ def materialize_rolling_samples(
                     feature_set_name=specification.feature_set,
                     parquet_cache=parquet_cache,
                     derived_cache=derived_cache,
+                    input_available_at=input_cutoff,
+                    committed_option_cache=committed_option_cache,
                 )
                 source_files = tuple(
                     dict.fromkeys((*source_files, *additional_sources))
@@ -269,10 +313,6 @@ def materialize_rolling_samples(
                     f"{NO_ELIGIBLE_SOURCE_DATA}; {route.error}",
                 )
             routes.append(route)
-        print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1D: ROLLING MAT")
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1E: ROLLING MAT")
-
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1F: ROLLING MAT")
     samples = (
         pd.concat(sample_frames, ignore_index=True, sort=False)
         if sample_frames
@@ -301,7 +341,6 @@ def materialize_rolling_samples(
             ],
             kind="mergesort",
         ).drop(columns="__horizon_order").reset_index(drop=True)
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1G: ROLLING MAT")
     return RollingMaterialization(
         samples=samples,
         routes=tuple(routes),
@@ -364,6 +403,11 @@ def _attach_loop_a_features(
     feature_set_name: str,
     parquet_cache: dict[tuple[Path, ...], pd.DataFrame],
     derived_cache: dict[str, pd.DataFrame],
+    input_available_at: object | None = None,
+    committed_option_cache: dict[
+        tuple[tuple[str, ...], int], tuple[pd.DataFrame, tuple[Path, ...]]
+    ]
+    | None = None,
 ) -> tuple[pd.DataFrame, tuple[Path, ...]]:
     feature_horizon = feature_contract_horizon(horizon)
     feature_set = DEFAULT_FEATURE_REGISTRY.feature_set(
@@ -534,16 +578,43 @@ def _attach_loop_a_features(
         source_files.extend(paths)
 
     if mapping := _family_values(feature_set, "opt"):
-        paths = _stock_glob_paths(
-            root,
-            symbols,
-            ("options", "features", "option-quality", "schwab"),
+        cutoff = utc_timestamp(
+            input_available_at
+            if input_available_at is not None
+            else output["information_available_at"].max()
         )
-        source = _read_required_sources(
-            paths,
-            family="Schwab option-quality",
-            cache=parquet_cache,
+        clean_symbols = tuple(
+            dict.fromkeys(str(symbol).strip().upper() for symbol in symbols)
         )
+        cache_key = (clean_symbols, int(cutoff.value))
+        option_cache = committed_option_cache if committed_option_cache is not None else {}
+        if cache_key not in option_cache:
+            option_cache[cache_key] = read_committed_option_surfaces(
+                root,
+                symbols=clean_symbols,
+                available_not_after=cutoff,
+            )
+        source, paths = option_cache[cache_key]
+        any_committed = any(
+            committed_option_snapshots(root, symbol=symbol)
+            for symbol in clean_symbols
+        )
+        if source.empty and not any_committed:
+            paths = _stock_glob_paths(
+                root,
+                clean_symbols,
+                ("options", "features", "option-quality", "schwab"),
+            )
+            source = _read_required_sources(
+                paths,
+                family="Schwab option-quality",
+                cache=parquet_cache,
+            )
+        elif source.empty:
+            raise FileNotFoundError(
+                "No fully committed Schwab option-quality receipt was available "
+                f"by the causal input cutoff {cutoff.isoformat()}"
+            )
         output = _join_symbol_values(
             output,
             source,

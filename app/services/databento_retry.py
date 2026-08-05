@@ -4,6 +4,8 @@ import time
 from collections.abc import Callable
 from typing import TypeVar
 
+from datafetching.observability import timed_stage
+
 _T = TypeVar("_T")
 
 DATABENTO_RETRY_DELAY_SECONDS = 4.0
@@ -26,6 +28,11 @@ def call_with_persistent_databento_retry(
     max_attempts: int = DATABENTO_RETRY_MAX_ATTEMPTS,
     sleep: Callable[[float], None] = time.sleep,
     reporter: Callable[[str], None] | None = print,
+    symbol: str | None = None,
+    schema: str | None = None,
+    request_start: object | None = None,
+    request_end: object | None = None,
+    timing_reporter: Callable[[str], None] | None = None,
 ) -> _T:
     """Retry a transient Databento request at a fixed interval.
 
@@ -36,17 +43,27 @@ def call_with_persistent_databento_retry(
     validation failures are raised immediately. ``KeyboardInterrupt`` is intentionally
     not caught, so Ctrl+C always stops the process.
     """
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 4A: DATABENTO RETRY")
-
     if delay_seconds < 0:
         raise ValueError("delay_seconds cannot be negative")
     if max_attempts < 1:
         raise ValueError("max_attempts must be at least 1")
 
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 4B: DATABENTO RETRY")
     for attempt in range(1, max_attempts + 1):
         try:
-            result = operation()
+            with timed_stage(
+                "provider.request",
+                symbol=symbol,
+                provider="databento",
+                schema=schema,
+                request_start=request_start,
+                request_end=request_end,
+                attempt=attempt,
+                reporter=timing_reporter,
+                extra={"operation_name": operation_name},
+            ) as timing:
+                result = operation()
+                row_count = _result_row_count(result)
+                timing.annotate(row_count=row_count, operation="fetched")
             if attempt > 1 and reporter is not None:
                 reporter(
                     f"[Databento] {operation_name} succeeded on attempt {attempt}."
@@ -63,8 +80,26 @@ def call_with_persistent_databento_retry(
                 )
             sleep(delay_seconds)
 
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 4C: DATABENTO RETRY")
     raise AssertionError("Databento retry loop exited unexpectedly")
+
+
+def _result_row_count(result: object) -> int | None:
+    """Best-effort provider row count without materializing an iterator."""
+
+    if isinstance(result, tuple) and result:
+        payload = result[0]
+        if isinstance(payload, dict):
+            total = 0
+            for value in payload.values():
+                if isinstance(value, tuple) and value:
+                    value = value[0]
+                if not hasattr(value, "__len__"):
+                    return None
+                total += len(value)
+            return total
+        if hasattr(payload, "__len__"):
+            return len(payload)
+    return len(result) if hasattr(result, "__len__") else None
 
 
 def is_retryable_databento_error(exc: Exception) -> bool:

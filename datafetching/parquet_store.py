@@ -439,9 +439,11 @@ class ParquetStore:
         else:
             frame = without_internal_identity_columns(frame)
         expected_columns = tuple(storage_columns)
+        normalized_bar_storage = expected_columns == NORMALIZED_BAR_COLUMNS
         if expected_columns:
             frame = frame.reindex(columns=expected_columns)
-        frame = frame.drop(columns=[ID_COLUMN], errors="ignore")
+        if not normalized_bar_storage:
+            frame = frame.drop(columns=[ID_COLUMN], errors="ignore")
         existing, legacy, schema_mismatch = self._load(
             path,
             storage_columns=expected_columns,
@@ -452,7 +454,8 @@ class ParquetStore:
             validate_raw_provider_id_columns(existing, source=source)
         else:
             existing = without_internal_identity_columns(existing)
-        existing = existing.drop(columns=[ID_COLUMN], errors="ignore")
+        if not normalized_bar_storage:
+            existing = existing.drop(columns=[ID_COLUMN], errors="ignore")
         existing, frame, temporal_schema_mismatch = _normalize_temporal_columns(
             existing,
             frame,
@@ -487,6 +490,12 @@ class ParquetStore:
                 identity_keys=revision_keys,
             )
             output, changed = _upsert(existing, revised, merge_keys)
+        elif normalized_bar_storage and merge_keys == ("timestamp",):
+            output, changed = _time_keyed_upsert(
+                existing,
+                frame,
+                key="timestamp",
+            )
         else:
             output, changed = _upsert(existing, frame, merge_keys)
         changed = changed or availability_migrated or temporal_schema_mismatch
@@ -498,15 +507,18 @@ class ParquetStore:
             readable_only=True,
             preferred_keys=keys,
         )
-        output = add_readable_id(
-            output.reset_index(drop=True),
-            key_columns=natural_keys,
-            fallback_prefix=_readable_fallback_prefix(
-                source=source,
-                category=category,
-                dataset_key=dataset_key or suffix or timeframe or symbol,
-            ),
-        )
+        if normalized_bar_storage:
+            output = project_normalized_bar_frame(output.reset_index(drop=True))
+        else:
+            output = add_readable_id(
+                output.reset_index(drop=True),
+                key_columns=natural_keys,
+                fallback_prefix=_readable_fallback_prefix(
+                    source=source,
+                    category=category,
+                    dataset_key=dataset_key or suffix or timeframe or symbol,
+                ),
+            )
         if expected_columns:
             output = output.reindex(columns=expected_columns)
         temporary = path.with_suffix(".tmp.parquet")
@@ -722,6 +734,73 @@ def _upsert(existing: pd.DataFrame, incoming: pd.DataFrame, keys: tuple[str, ...
     output = helper.drop_duplicates("__key", keep="last").drop(columns="__key")
     changed = changed or len(output) != len(rows)
     return _sort(output, usable), changed
+
+
+def _time_keyed_upsert(
+    existing: pd.DataFrame,
+    incoming: pd.DataFrame,
+    *,
+    key: str,
+) -> tuple[pd.DataFrame, bool]:
+    """Vectorized continuation merge for canonical, non-null time histories."""
+
+    existing, incoming = _normalize_key_columns(existing, incoming, (key,))
+    if incoming.empty:
+        return existing.reset_index(drop=True), False
+    if (
+        key not in existing.columns
+        or key not in incoming.columns
+        or existing[key].isna().any()
+        or incoming[key].isna().any()
+        or existing[key].duplicated(keep=False).any()
+    ):
+        return _upsert(existing, incoming, (key,))
+
+    incoming = incoming.drop_duplicates(key, keep="last").reset_index(drop=True)
+    if existing.empty:
+        return _sort(incoming, (key,)), True
+    existing, incoming = _align(existing, incoming)
+
+    existing_keys = pd.Index(existing[key])
+    incoming_keys = pd.Index(incoming[key])
+    common = incoming_keys.intersection(existing_keys)
+    compare_columns = [
+        column
+        for column in existing.columns
+        if column not in {ID_COLUMN, key} and column not in VOLATILE_COLUMNS
+    ]
+    identical_keys = pd.Index([], dtype=incoming_keys.dtype)
+    if len(common):
+        left = existing.set_index(key).reindex(common).loc[:, compare_columns]
+        right = incoming.set_index(key).reindex(common).loc[:, compare_columns]
+        equal_rows = (
+            (left.eq(right) | (left.isna() & right.isna()))
+            .fillna(False)
+            .all(axis=1)
+            if compare_columns
+            else pd.Series(True, index=common)
+        )
+        identical_keys = pd.Index(equal_rows.index[equal_rows.to_numpy()])
+
+    replacement_mask = ~incoming_keys.isin(identical_keys)
+    if not bool(replacement_mask.any()):
+        return existing.reset_index(drop=True), False
+
+    replacements = incoming.loc[replacement_mask].copy()
+    replacement_keys = pd.Index(replacements[key])
+    # A revision changes the values, not the identity of the timestamped bar.
+    # Retain a stored ID for overlapping keys; the schema projection repairs it
+    # later only if that stored identifier is actually invalid.
+    if ID_COLUMN in replacements.columns and ID_COLUMN in existing.columns:
+        stored_ids = existing.set_index(key)[ID_COLUMN]
+        preserved = replacements[key].map(stored_ids)
+        replacements[ID_COLUMN] = preserved.where(
+            preserved.notna(),
+            replacements[ID_COLUMN],
+        )
+    retained = existing.loc[~existing[key].isin(replacement_keys)]
+    output = pd.concat([retained, replacements], ignore_index=True, sort=False)
+    return _sort(output, (key,)), True
 
 
 def _append_if_changed(existing: pd.DataFrame, incoming: pd.DataFrame) -> tuple[pd.DataFrame, bool]:

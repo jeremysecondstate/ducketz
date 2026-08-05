@@ -1,9 +1,28 @@
-# Loop A supervisor: continuously fetch, normalize, and calculate complete cycles.
+# Start each command in its own PowerShell terminal. These processes share the
+# datastore through immutable/atomic contracts; CME and Options do not run in
+# Loop A's blocking path.
+
+# 1. Independent complete-history CME/L2 owner.
+python -m datafetching.cme_runtime `
+  --datastore-target pc `
+  --max-concurrency 1
+
+# 2. Loop A. The external modes are explicit here even though they are defaults.
 python -m datafetching.orchestrate `
   --datastore-target pc `
-  --symbols NVDA GOOG MU AAPL MSFT AMZN META TSLA CAT SNDK `
+  --watchlist datafetching\watchlist.txt `
   --providers databento fmp fred schwab sec `
+  --cme-mode external `
+  --options-mode external `
   --interval-minutes 15
 
-# Start Loop A first. Each successful cycle atomically publishes COMPLETE in a
-# small datastore state file; no bootstrap or Loop B acknowledgement is used.
+# 3. Independent Schwab option-chain owner. It skips symbols until Loop A has
+# produced a completed Databento 1m decision clock.
+python -m datafetching.options_runtime `
+  --datastore-target pc `
+  --watchlist datafetching\watchlist.txt `
+  --interval-minutes 15 `
+  --phase-offset-minutes 2
+
+# Stop any process with Ctrl+C. See independent-runtime-orchestration.md for
+# ownership, restart, cadence, and compatibility details.

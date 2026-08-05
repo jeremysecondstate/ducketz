@@ -14,6 +14,7 @@ from typing import Callable, Iterator, Sequence
 
 LOOP_A_CYCLE_SCHEMA_VERSION = "loop-a-cycle-v1"
 LOOP_A_CYCLE_FILENAME = ".ducketz-loop-a-cycle.json"
+LOOP_A_COMPLETE_FILENAME = ".ducketz-loop-a-complete.json"
 LOOP_A_CYCLE_LOCK_FILENAME = ".ducketz-loop-a-cycle.lock"
 _VALID_STATUSES = {"WRITING", "COMPLETE", "FAILED"}
 
@@ -123,6 +124,12 @@ def finish_loop_a_cycle(
         failure_count=failures,
     )
     _write_cycle(datastore_root, terminal)
+    if terminal.status == "COMPLETE":
+        _write_cycle(
+            datastore_root,
+            terminal,
+            filename=LOOP_A_COMPLETE_FILENAME,
+        )
     return terminal
 
 
@@ -140,7 +147,27 @@ def require_complete_loop_a_cycle(datastore_root: Path) -> LoopACycle:
 
 
 def read_loop_a_cycle(datastore_root: Path) -> LoopACycle | None:
-    path = Path(datastore_root) / LOOP_A_CYCLE_FILENAME
+    return _read_cycle_file(Path(datastore_root) / LOOP_A_CYCLE_FILENAME)
+
+
+def read_latest_complete_loop_a_cycle(datastore_root: Path) -> LoopACycle | None:
+    """Read the last successful generation without waiting for an active cycle."""
+
+    committed = _read_cycle_file(
+        Path(datastore_root) / LOOP_A_COMPLETE_FILENAME
+    )
+    if committed is not None:
+        if committed.status != "COMPLETE":
+            raise LoopACycleError(
+                "Latest committed Loop A evidence is not COMPLETE"
+            )
+        return committed
+    # Migration fallback for datastores written before the committed pointer.
+    current = read_loop_a_cycle(datastore_root)
+    return current if current is not None and current.status == "COMPLETE" else None
+
+
+def _read_cycle_file(path: Path) -> LoopACycle | None:
     if not path.is_file():
         return None
     try:
@@ -244,8 +271,13 @@ def _unlock(handle: object) -> None:
     fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
-def _write_cycle(datastore_root: Path, cycle: LoopACycle) -> None:
-    path = Path(datastore_root) / LOOP_A_CYCLE_FILENAME
+def _write_cycle(
+    datastore_root: Path,
+    cycle: LoopACycle,
+    *,
+    filename: str = LOOP_A_CYCLE_FILENAME,
+) -> None:
+    path = Path(datastore_root) / filename
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(
         dir=path.parent,

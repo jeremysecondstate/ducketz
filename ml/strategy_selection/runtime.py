@@ -59,6 +59,7 @@ def run_strategy_selection(
     input_available_at: object,
     policy: StrategySelectionPolicy | None = None,
     sample_source_files: Sequence[Path] = (),
+    history_available_not_after: object | None = None,
 ) -> StrategySelectionRun:
     effective_policy = policy or StrategySelectionPolicy()
     _validate_inputs(samples, predictions)
@@ -77,6 +78,7 @@ def run_strategy_selection(
             history = load_schwab_chain_history(
                 datastore_root,
                 symbol=str(symbol),
+                available_not_after=history_available_not_after,
             )
         except Exception as exc:
             history_errors[str(symbol)] = f"{type(exc).__name__}: {exc}"
@@ -282,7 +284,13 @@ def _historical_outcomes(
     outcome_frames: list[pd.DataFrame] = []
     failures: Counter[str] = Counter()
     candidate_rows = 0
-    for sample in samples.sort_values(
+    possible_samples, coverage_failures = _samples_with_possible_receipts(
+        samples,
+        histories=histories,
+        strictly_before=strictly_before,
+    )
+    failures.update(coverage_failures)
+    for sample in possible_samples.sort_values(
         ["target_window_start", "symbol", "decision_timestamp"],
         kind="mergesort",
     ).to_dict("records"):
@@ -384,6 +392,74 @@ def _historical_outcomes(
         "complete_outcome_rows": complete_rows,
         "failures": dict(sorted(failures.items())),
     }
+
+
+def _samples_with_possible_receipts(
+    samples: pd.DataFrame,
+    *,
+    histories: Mapping[str, SchwabChainHistory],
+    strictly_before: pd.Timestamp | None,
+) -> tuple[pd.DataFrame, Counter[str]]:
+    """Remove only samples proven impossible by actual receipt coverage."""
+
+    if samples.empty:
+        return samples.copy(), Counter()
+    retained: list[pd.DataFrame] = []
+    failures: Counter[str] = Counter()
+    symbols = samples["symbol"].astype("string").str.upper()
+    for symbol, group in samples.groupby(symbols, sort=False):
+        history = histories.get(str(symbol))
+        if history is None or history.surfaces.empty:
+            retained.append(group)
+            continue
+
+        surfaces = history.surfaces
+        snapshot_min = pd.Timestamp(surfaces["snapshot_for"].min())
+        snapshot_max = pd.Timestamp(surfaces["snapshot_for"].max())
+        available_min = pd.Timestamp(surfaces["available_at"].min())
+        available_max = pd.Timestamp(surfaces["available_at"].max())
+        bar_end = pd.to_datetime(
+            group["bar_end_timestamp"], utc=True, errors="coerce"
+        )
+        information = pd.to_datetime(
+            group["information_available_at"], utc=True, errors="coerce"
+        )
+        target_start = pd.to_datetime(
+            group["target_window_start"], utc=True, errors="coerce"
+        )
+        target_end = pd.to_datetime(
+            group["target_window_end"], utc=True, errors="coerce"
+        )
+        entry_upper = target_start - pd.Timedelta(nanoseconds=1)
+        entry_impossible = (
+            snapshot_max < bar_end
+        ) | (snapshot_min > entry_upper) | (available_max < information) | (
+            available_min > entry_upper
+        )
+
+        delays = group["horizon"].astype(str).map(_EXIT_DELAYS)
+        exit_upper = target_end + delays
+        if strictly_before is not None:
+            strict_upper = strictly_before - pd.Timedelta(nanoseconds=1)
+            exit_upper = exit_upper.where(exit_upper.le(strict_upper), strict_upper)
+        exit_impossible = (
+            snapshot_max < target_end
+        ) | (snapshot_min > exit_upper) | (available_max < target_end) | (
+            available_min > exit_upper
+        )
+        entry_mask = entry_impossible.fillna(False)
+        exit_mask = exit_impossible.fillna(False)
+        failures["entry_receipt_unavailable"] += int(entry_mask.sum())
+        failures["exit_receipt_unavailable"] += int(
+            ((~entry_mask) & exit_mask).sum()
+        )
+        retained.append(group.loc[~entry_mask & ~exit_mask])
+    return (
+        pd.concat(retained, ignore_index=True, sort=False)
+        if retained
+        else samples.iloc[0:0].copy(),
+        failures,
+    )
 
 
 def _canonical_live_predictions(predictions: pd.DataFrame) -> pd.DataFrame:

@@ -1,8 +1,7 @@
-# Start Loop B after Loop A has completed its first datastore cycle.
-# Loop B supervisor: samples, targets, model fit/reuse, predictions, evaluation, and current outputs.
+# Start directional Loop B after Loop A has one COMPLETE generation.
 python -m ml.prediction_runtime `
   --datastore-target pc `
-  --symbols NVDA GOOG MU AAPL MSFT AMZN META TSLA CAT SNDK `
+  --symbols NVDA GOOG MU AAPL MSFT AMZN META TSLA QCOM CAT SNDK `
   --provider databento `
   --horizons 1h 4h 1d 1w `
   --feature-profile loop-a-all-v1 `
@@ -12,8 +11,11 @@ python -m ml.prediction_runtime `
   --interval-minutes 15 `
   --phase-offset-minutes 5
 
-# Loop A and Loop B serialize datastore cycles with one crash-released OS lock.
-# Public 1w expands internally to aggregate 1w plus 1w-d1 through 1w-d5.
-# LIVE output independently selects aggregate 1w plus the usable Day 1 prefix
-# for each symbol. A prior snapshot can be reused but is not required; a symbol
-# with no current eligible decision is skipped without blocking other symbols.
+# Strategy is a separate consumer and cannot delay or mutate the Loop B run.
+python -m ml.strategy_runtime `
+  --datastore-target pc `
+  --interval-minutes 60 `
+  --phase-offset-minutes 10
+
+# Both commands stop with Ctrl+C. Loop B publishes through ml/latest/run.json;
+# Strategy publishes independently through ml/strategy-latest/run.json.

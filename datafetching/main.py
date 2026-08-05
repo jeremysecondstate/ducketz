@@ -69,6 +69,18 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Skip the Databento CME context fetch.",
     )
+    parser.add_argument(
+        "--cme-mode",
+        choices=("external", "inline"),
+        default="external",
+        help="Use the independent CME runtime (default) or the compatibility inline writer.",
+    )
+    parser.add_argument(
+        "--options-mode",
+        choices=("external", "inline"),
+        default="external",
+        help="Use the independent Options runtime (default) or compatibility inline acquisition.",
+    )
     args = parser.parse_args(argv)
 
     symbol = args.symbol.strip().upper()
@@ -92,8 +104,9 @@ def main(argv: list[str] | None = None) -> int:
         store,
         providers=args.providers,
         profile=profile,
-        include_cme=not args.skip_cme,
+        include_cme=args.cme_mode == "inline" and not args.skip_cme,
         include_fmp_macro=True,
+        include_options=args.options_mode == "inline",
     )
     for result in results:
         print(
@@ -122,6 +135,7 @@ def run_symbol_fetch(
     profile: str = "continuation",
     include_cme: bool = True,
     include_fmp_macro: bool = True,
+    include_options: bool = True,
 ) -> tuple[FetchResult, ...]:
     effective_profile = normalize_fetch_profile(profile)
     results: list[FetchResult] = []
@@ -134,6 +148,7 @@ def run_symbol_fetch(
             profile=effective_profile,
             include_cme=include_cme,
             include_fmp_macro=include_fmp_macro,
+            include_options=include_options,
         )
         results.append(result)
     return tuple(results)
@@ -147,6 +162,7 @@ def run_symbols_fetch(
     profile: str = "continuation",
     include_cme: bool = True,
     include_fmp_macro: bool = True,
+    include_options: bool = True,
 ) -> dict[str, tuple[FetchResult, ...]]:
     """Fetch a watchlist provider-by-provider, batching supported requests."""
     clean_symbols = tuple(
@@ -168,6 +184,7 @@ def run_symbols_fetch(
                 profile=profile,
                 include_cme=include_cme,
                 include_fmp_macro=include_fmp_macro,
+                include_options=include_options,
             )
         }
 
@@ -189,6 +206,7 @@ def run_symbols_fetch(
                     profile=effective_profile,
                     include_cme=False,
                     include_fmp_macro=False,
+                    include_options=False,
                 )
             )
             continue
@@ -216,6 +234,7 @@ def run_symbols_fetch(
                     clean_symbols,
                     store,
                     profile=effective_profile,
+                    include_options=include_options,
                 )
             else:
                 batch_results = {}
@@ -236,6 +255,7 @@ def run_symbols_fetch(
                     profile=effective_profile,
                     include_cme=include_cme and index == 0,
                     include_fmp_macro=include_fmp_macro and index == 0,
+                    include_options=include_options,
                 )
             results[symbol].append(result)
 
@@ -253,6 +273,7 @@ def run_provider_fetch(
     profile: str,
     include_cme: bool,
     include_fmp_macro: bool,
+    include_options: bool = True,
 ) -> FetchResult:
     effective_profile = normalize_fetch_profile(profile)
     runners: dict[str, Callable[[], FetchResult]] = {
@@ -264,7 +285,12 @@ def run_provider_fetch(
         ),
         "fmp": lambda: fetch_fmp(symbol, store, include_macro=include_fmp_macro),
         "fred": lambda: fetch_fred(symbol, store),
-        "schwab": lambda: fetch_schwab(symbol, store, profile=effective_profile),
+        "schwab": lambda: fetch_schwab(
+            symbol,
+            store,
+            profile=effective_profile,
+            include_options=include_options,
+        ),
         "sec": lambda: fetch_sec(symbol, store),
     }
     if provider not in runners:

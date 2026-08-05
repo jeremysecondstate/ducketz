@@ -150,6 +150,7 @@ def discover_bar_datasets(
                     frame, _physical_schema = read_normalized_bar_parquet(
                         path,
                         include_legacy_completion=True,
+                        include_ids=False,
                     )
                 else:
                     frame = pd.read_parquet(path)

@@ -18,6 +18,7 @@ from app.services.schwab_strategy_orders import (
 )
 from datafetching.parquet_store import resolve_datastore_dir
 from ml.current_publication import resolve_current_output
+from ml.strategy_publication import resolve_current_strategy_output
 from ml.parquet_contracts import (
     STRATEGY_CANDIDATE_SCHEMA,
     verify_parquet_schema,
@@ -83,7 +84,7 @@ def default_strategy_candidates_path() -> Path:
     return (
         resolve_datastore_dir()
         / "ml"
-        / "latest"
+        / "strategy-latest"
         / "strategy-candidates.parquet"
     )
 
@@ -453,10 +454,15 @@ def _resolve_authoritative_source(path: Path) -> Path:
     candidate = Path(path)
     if (
         candidate.name == "strategy-candidates.parquet"
-        and candidate.parent.name == "latest"
+        and candidate.parent.name in {"latest", "strategy-latest"}
         and candidate.parent.parent.name == "ml"
     ):
         datastore_root = candidate.parents[2]
+        if (datastore_root / "ml" / "strategy-latest" / "run.json").is_file():
+            return resolve_current_strategy_output(
+                datastore_root,
+                "strategy-candidates.parquet",
+            )
         if (datastore_root / "ml" / "latest" / "run.json").is_file():
             return resolve_current_output(
                 datastore_root,

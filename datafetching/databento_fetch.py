@@ -5,7 +5,6 @@ from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable
-import time
 
 import pandas as pd
 import pyarrow.parquet as pq
@@ -31,6 +30,7 @@ from datafetching.cme_cross_asset_context import (
     CmeCrossAssetQualityError,
     materialize_cme_cross_asset_context,
 )
+from datafetching.cme_history import cme_writer_lock_path
 from datafetching.derived_bars import (
     DERIVED_INTRADAY_FREQUENCIES,
     derive_daily_bars,
@@ -38,7 +38,9 @@ from datafetching.derived_bars import (
     latest_completed_equity_session,
 )
 from datafetching.layout import pool_data_folder, safe_token
+from datafetching.observability import timed_stage
 from datafetching.parquet_store import ParquetStore
+from datafetching.runtime_lock import exclusive_runtime_lock
 
 DATABENTO_MAX_SYMBOLS_PER_REQUEST = 2_000
 
@@ -81,7 +83,33 @@ def fetch_many(
     profile: str = "continuation",
 ) -> dict[str, FetchResult]:
     """Fetch Databento bars for a watchlist using multi-symbol requests."""
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2A: FETCH MANY")
+    requested_symbols = tuple(symbols)
+    with timed_stage(
+        "loop-a.databento-watchlist",
+        provider="databento",
+        reporter=print,
+        extra={
+            "symbol_count": len(requested_symbols),
+            "cme_mode": "inline" if include_cme else "external",
+        },
+    ) as timing:
+        results = _fetch_many(
+            requested_symbols,
+            store,
+            include_cme=include_cme,
+            profile=profile,
+        )
+        timing.annotate(row_count=len(results), operation="wrote")
+        return results
+
+
+def _fetch_many(
+    symbols: Iterable[str],
+    store: ParquetStore,
+    *,
+    include_cme: bool = True,
+    profile: str = "continuation",
+) -> dict[str, FetchResult]:
     clean_symbols = _normalize_symbols(symbols)
     if len(clean_symbols) == 1:
         symbol = clean_symbols[0]
@@ -94,7 +122,6 @@ def fetch_many(
             )
         }
 
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2B: FETCH MANY")
     provider = DatabentoMarketDataProvider()
     observed_at = datetime.now(timezone.utc)
     native_results = _fetch_native_results_many(
@@ -103,7 +130,6 @@ def fetch_many(
         profile,
         store,
     )
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2C: FETCH MANY")
     results = {
         symbol: _persist_native_results(
             symbol,
@@ -116,14 +142,12 @@ def fetch_many(
         )
         for symbol in clean_symbols
     }
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2D: FETCH MANY")
     if include_cme:
         first_symbol = clean_symbols[0]
         results[first_symbol] = _with_shared_cme_result(
             results[first_symbol],
             store,
         )
-        print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2E: FETCH MANY")
     return results
 
 
@@ -501,6 +525,8 @@ def _fetch_native_results(
         range_payload = call_with_persistent_databento_retry(
             provider.dataset_range,
             operation_name="equities dataset-range metadata",
+            schema="dataset-range",
+            timing_reporter=print,
         )
     except Exception as exc:
         return [(spec, [], None, None, exc) for spec in specs]
@@ -550,6 +576,14 @@ def _fetch_native_results(
                     )
                 ),
                 operation_name=f"{symbol} {spec.schema}/{spec.frequency}",
+                symbol=symbol,
+                schema=spec.schema,
+                request_start=max(
+                    available_range.start,
+                    available_range.end - request_spec.lookback,
+                ),
+                request_end=available_range.end,
+                timing_reporter=print,
             )
             results.append((spec, bars, raw_frame, selected_range, None))
         except Exception as exc:
@@ -576,6 +610,8 @@ def _fetch_native_results_many(
         range_payload = call_with_persistent_databento_retry(
             provider.dataset_range,
             operation_name="equities dataset-range metadata",
+            schema="dataset-range",
+            timing_reporter=print,
         )
     except Exception as exc:
         for symbol in symbols:
@@ -633,7 +669,6 @@ def _fetch_native_results_many(
             )
             symbols_by_start.setdefault(actual_start, []).append(symbol)
             request_specs_by_start[actual_start] = request_spec
-        print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1A: FETCH/DECODE SYMBOLS")
         for actual_start, grouped_symbols in symbols_by_start.items():
             request_spec = request_specs_by_start[actual_start]
             for symbol_chunk in _symbol_chunks(grouped_symbols):
@@ -650,8 +685,11 @@ def _fetch_native_results_many(
                             f"{len(symbol_chunk)} symbols "
                             f"{spec.schema}/{spec.frequency}"
                         ),
+                        schema=spec.schema,
+                        request_start=actual_start,
+                        request_end=available_range.end,
+                        timing_reporter=print,
                     )
-                    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1B: FETCH/DECODE SYMBOLS")
                 except Exception as exc:
                     if _is_symbol_batch_error(exc) and len(symbol_chunk) > 1:
                         print(
@@ -671,7 +709,6 @@ def _fetch_native_results_many(
                             results[symbol].append((spec, [], None, None, exc))
                     continue
 
-                print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1C: FETCH/DECODE SYMBOLS")
                 missing = set(symbol_chunk).difference(fetched)
                 if missing:
                     exc = RuntimeError(
@@ -686,7 +723,6 @@ def _fetch_native_results_many(
                     results[symbol].append(
                         (spec, bars, raw_frame, selected_range, None)
                     )
-                    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 1D: FETCH/DECODE SYMBOLS")
 
     return results
 
@@ -709,6 +745,14 @@ def _append_isolated_native_results(
                     available_range=available_range,
                 ),
                 operation_name=f"{symbol} {spec.schema}/{spec.frequency}",
+                symbol=symbol,
+                schema=spec.schema,
+                request_start=max(
+                    available_range.start,
+                    available_range.end - request_spec.lookback,
+                ),
+                request_end=available_range.end,
+                timing_reporter=print,
             )
             results[symbol].append(
                 (spec, bars, raw_frame, selected_range, None)
@@ -760,6 +804,14 @@ def _continuation_overlap(frequency: str) -> timedelta:
 
 
 def _fetch_cme(store: ParquetStore) -> tuple[int, int, int]:
+    with exclusive_runtime_lock(
+        cme_writer_lock_path(store.root_dir),
+        process_name="Duckets inline CME compatibility writer",
+    ):
+        return _fetch_cme_unlocked(store)
+
+
+def _fetch_cme_unlocked(store: ParquetStore) -> tuple[int, int, int]:
     provider = DatabentoCmeContextProvider()
     data_files = 0
     error_files = 0
@@ -790,6 +842,11 @@ def _fetch_cme(store: ParquetStore) -> tuple[int, int, int]:
                     requested_spec
                 ),
                 operation_name=f"CME {requested_spec.key}",
+                symbol=requested_spec.symbol,
+                schema=requested_spec.schema,
+                request_start=requested_spec.start,
+                request_end=requested_spec.end,
+                timing_reporter=print,
             )
         except Exception as caught:
             exc = caught

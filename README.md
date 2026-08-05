@@ -21,17 +21,31 @@ Before committing, every new symbol must answer:
 
 If the answer is unclear, delete it.
 
-## Two independent loops
+## Independent runtimes
 
-Duckets has two long-running supervisors connected through Parquet files.
+Duckets has five long-running processes connected through causal Parquet and
+atomic receipt contracts.
 
-- Loop A fetches provider data, writes raw and normalized data, calculates
-  fundamentals, technical metrics, signals, and model features, then repeats.
-- Loop B reads those current outputs, combines point-in-time features, constructs
-  targets, trains or reuses models, predicts, evaluates matured predictions, and
-  refreshes current intelligence outputs, then repeats.
+- CME owns complete CME OHLCV/BBO/MBP history, five-minute L2 snapshots, and
+  hourly cross-asset features.
+- Options owns Schwab chain acquisition, exact normalized contracts, and
+  option-quality surfaces.
+- Loop A owns equity/provider ingestion plus fundamentals, technicals, and
+  signals. Its default external modes never fetch CME or option chains.
+- Directional Loop B publishes samples, predictions, evaluations, monitoring,
+  and intelligence without running strategy selection.
+- Strategy consumes an already-published Loop B run and publishes through its
+  own immutable run and pointer.
 
-Loop A never starts Loop B, and Loop B never writes into Loop A datasets.
+No runtime starts another runtime, and writer locks prevent compatibility modes
+from targeting the same owned artifacts as an external process.
+
+Run one CME and Options cycle:
+
+```powershell
+python -m datafetching.cme_runtime --datastore C:\data\ducketz --once
+python -m datafetching.options_runtime --datastore C:\data\ducketz --symbols NVDA --once
+```
 
 Run one Loop A cycle:
 
@@ -44,6 +58,17 @@ Run one Loop B cycle:
 ```powershell
 python -m ml.prediction_runtime --datastore C:\data\ducketz --symbols NVDA GOOG MU --provider databento --horizons 1h 4h 1d 1w --once
 ```
+
+Run Strategy after Loop B has published:
+
+```powershell
+python -m ml.strategy_runtime --datastore C:\data\ducketz --once
+```
+
+See
+[`docs/datafetch-ml/independent-runtime-orchestration.md`](docs/datafetch-ml/independent-runtime-orchestration.md)
+for ownership, startup order, cadences, causal cutoffs, recovery, stopping, and
+inline compatibility modes.
 
 During the versioned-generation migration, keep Loop A read-only and place all
 Loop B artifacts under a separate root:
@@ -99,17 +124,15 @@ session-close deadline.
 The feature mappings, point-in-time rules, quarantine gates, and model reuse
 contract are documented in
 [`docs/datafetch-ml/audited-feature-contracts.md`](docs/datafetch-ml/audited-feature-contracts.md).
-The versioned Schwab-chain options strategy analytics stage is documented
-in
+The independent versioned Schwab-chain Strategy runtime is documented in
 [`docs/datafetch-ml/options-strategy-selection.md`](docs/datafetch-ml/options-strategy-selection.md).
 The Duckets **Options Strategies** tab displays those published predictions,
 combines them with the current Schwab position, fills exact-contract tickets
 from the **Exact legs** column, and submits the displayed single- or multi-leg
 order through the existing Schwab order path.
 
-Remove `--once` to run either supervisor continuously. Both supervisors use a
-crash-released operating-system file lock rooted in the output datastore and
-stop cleanly on `Ctrl+C`.
+Remove `--once` to run any runtime continuously. Each writer uses a datastore-
+rooted ownership lock and stops cleanly on `Ctrl+C`.
 
 For recurring production operation, use
 `docs/datafetch-ml/current_start_command` and

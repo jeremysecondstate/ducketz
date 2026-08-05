@@ -177,7 +177,9 @@ def test_explicit_arrow_schemas_are_centralized_and_cannot_evade_guard() -> None
     assert offenders == []
 
 
-def test_loop_cycle_control_state_stays_outside_parquet_producers() -> None:
+def test_loop_cycle_control_state_is_limited_to_causal_runtime_boundaries() -> None:
+    # Options reads the last COMPLETE cutoff without taking the Loop A cycle
+    # lock; it does not persist cycle fields into option Parquets.
     importers: set[Path] = set()
     for root_name in PRODUCTION_ROOTS:
         for path in Path(root_name).rglob("*.py"):
@@ -189,6 +191,7 @@ def test_loop_cycle_control_state_stays_outside_parquet_producers() -> None:
             ):
                 importers.add(path)
     assert importers == {
+        Path("datafetching/options_runtime.py"),
         Path("datafetching/orchestrate.py"),
         Path("ml/prediction_runtime.py"),
     }

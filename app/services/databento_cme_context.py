@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import time
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping
@@ -138,7 +137,6 @@ class DatabentoCmeContextProvider:
         return ""
 
     def specs(self) -> tuple[DatabentoCmeContextSpec, ...]:
-        print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 3A: SPECS-CME-CONTEXT")
         self._validate_config()
         specs: list[DatabentoCmeContextSpec] = []
         for schema in self.schemas:
@@ -148,7 +146,6 @@ class DatabentoCmeContextProvider:
                 specs.append(DatabentoCmeContextSpec("context", "CME_CONTEXT", self.context_symbols, self.dataset, schema, self.context_stype_in, start, end, self.limit))
             if self.contract_symbols:
                 specs.append(DatabentoCmeContextSpec("contracts", "CME_CONTRACTS", self.contract_symbols, self.dataset, schema, self.contract_stype_in, start, end, self.limit))
-        print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 3B: SPECS-CME-CONTEXT")
         return tuple(specs)
 
     def fetch_all_cme_context(self) -> list[tuple[DatabentoCmeContextSpec, list[dict[str, Any]], pd.DataFrame | None, Exception | None]]:

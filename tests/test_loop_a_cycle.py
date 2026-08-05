@@ -13,6 +13,7 @@ from datafetching.loop_a_cycle import (
     begin_loop_a_cycle,
     datastore_cycle_lock,
     finish_loop_a_cycle,
+    read_latest_complete_loop_a_cycle,
     read_loop_a_cycle,
     require_complete_loop_a_cycle,
 )
@@ -58,6 +59,40 @@ def test_failed_cycle_cannot_be_consumed_by_loop_b(tmp_path: Path) -> None:
     assert failed.status == "FAILED"
     with pytest.raises(LoopACycleError, match="FAILED"):
         require_complete_loop_a_cycle(tmp_path)
+
+
+def test_independent_readers_keep_prior_complete_generation_during_active_or_failed_cycle(
+    tmp_path: Path,
+) -> None:
+    first = begin_loop_a_cycle(
+        tmp_path,
+        symbols=("GOOG",),
+        providers=("databento",),
+        now="2026-07-30T15:00:00Z",
+    )
+    committed = finish_loop_a_cycle(
+        tmp_path,
+        first,
+        failure_count=0,
+        now="2026-07-30T15:01:00Z",
+    )
+    active = begin_loop_a_cycle(
+        tmp_path,
+        symbols=("GOOG",),
+        providers=("databento",),
+        now="2026-07-30T15:15:00Z",
+    )
+
+    assert read_loop_a_cycle(tmp_path) == active
+    assert read_latest_complete_loop_a_cycle(tmp_path) == committed
+
+    finish_loop_a_cycle(
+        tmp_path,
+        active,
+        failure_count=1,
+        now="2026-07-30T15:16:00Z",
+    )
+    assert read_latest_complete_loop_a_cycle(tmp_path) == committed
 
 
 def test_cycle_lock_is_released_when_the_owner_process_exits(

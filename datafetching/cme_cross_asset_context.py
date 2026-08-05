@@ -8,6 +8,7 @@ from typing import Iterable, Sequence
 import pandas as pd
 
 from datafetching.calculated_features import write_immutable_feature_partition
+from datafetching.cme_history import cme_normalized_event_paths
 
 CME_CONTEXT_NAME = "continuous-cross-asset-1h"
 CME_CONTEXT_CALCULATION = "cross-asset-context"
@@ -286,6 +287,18 @@ def cme_cross_asset_context_path(datastore_root: Path) -> Path:
 
 
 def _read_persisted_source(root: Path, dataset: str) -> pd.DataFrame:
+    schema = dataset.removeprefix("cme_context_")
+    partitioned = cme_normalized_event_paths(
+        root,
+        group_key="context",
+        schema=schema,
+    )
+    if partitioned:
+        return pd.concat(
+            [pd.read_parquet(path) for path in partitioned],
+            ignore_index=True,
+            sort=False,
+        )
     folder = (
         root
         / "pools"

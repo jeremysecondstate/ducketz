@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import threading
+import time
 from dataclasses import replace
 from pathlib import Path
 
@@ -11,8 +13,10 @@ import pytest
 
 import ml.runtime_pipeline as runtime_module
 from datafetching.bar_schema import write_normalized_bar_parquet
+from datafetching.cme_history import cme_writer_lock_path
 from datafetching.ids import add_readable_id
-from ml.artifacts import verify_manifest, write_manifest
+from datafetching.runtime_lock import exclusive_runtime_lock
+from ml.artifacts import file_checksum, verify_manifest, write_manifest
 from ml.current_publication import (
     publication_contract_kind,
     read_current_publication,
@@ -37,6 +41,9 @@ from ml.runtime_pipeline import (
     _valid_archived_live_rows,
     run_loop_b_once,
 )
+from ml.strategy_publication import read_current_strategy_publication
+from ml.strategy_runtime import run_strategy_once
+from options.publication import option_writer_lock_path
 
 
 _FIRST_RUN = pd.Timestamp("2024-06-03T12:00:00Z")
@@ -292,7 +299,7 @@ def test_loop_b_materializes_trains_predicts_and_persists_readable_ids(
         _assert_one_readable_id(path)
 
 
-def test_loop_b_always_publishes_strategy_diagnostics_without_chain_history(
+def test_loop_b_publishes_directional_outputs_before_independent_strategy(
     tmp_path: Path,
 ) -> None:
     _write_synthetic_loop_a_outputs(tmp_path)
@@ -309,24 +316,96 @@ def test_loop_b_always_publishes_strategy_diagnostics_without_chain_history(
 
     assert result.status == "COMPLETED"
     assert result.strategy_candidate_rows == 0
-    assert result.strategy_audit_rows == 40
-    candidates = pd.read_parquet(
-        result.run_directory / "strategy-candidates.parquet"
-    )
-    audit = pd.read_parquet(result.run_directory / "strategy-audit.parquet")
-    assert candidates.empty
+    assert result.strategy_audit_rows == 0
+    assert not (result.run_directory / "strategy-candidates.parquet").exists()
+    assert not (result.run_directory / "strategy-audit.parquet").exists()
     assert not (result.run_directory / "strategy-recommendations.parquet").exists()
-    assert audit["authorization_status"].eq("AUTHORIZED_SPREADS").all()
-    assert audit["construction_status"].eq(
-        "CHAIN_HISTORY_UNAVAILABLE"
-    ).all()
     manifest = verify_manifest(result.run_directory)
     strategy = manifest["configuration"]["strategy_selection"]
     assert strategy["policy"] == "schwab-spreads-v1"
     assert strategy["account_authorization"] == "SPREADS"
     assert "automated_action_allowed" not in strategy
     assert strategy["real_lockbox_used"] is False
+    assert strategy["mode"] == "independent-runtime"
+    assert strategy["authority"] == "ml/strategy-latest/run.json"
     assert strategy["research_trace"]["version"] == "nyu-hu-uh-trace-v2"
+
+
+def test_directional_publication_does_not_wait_for_active_external_writers_and_strategy_is_separate(
+    tmp_path: Path,
+) -> None:
+    _write_synthetic_loop_a_outputs(tmp_path)
+    release = threading.Event()
+    cme_entered = threading.Event()
+    options_entered = threading.Event()
+
+    def hold_writer(path: Path, entered: threading.Event, name: str) -> None:
+        with exclusive_runtime_lock(path, process_name=name):
+            entered.set()
+            release.wait(timeout=30)
+
+    threads = (
+        threading.Thread(
+            target=hold_writer,
+            args=(cme_writer_lock_path(tmp_path), cme_entered, "slow CME provider"),
+            daemon=True,
+        ),
+        threading.Thread(
+            target=hold_writer,
+            args=(option_writer_lock_path(tmp_path), options_entered, "slow Options provider"),
+            daemon=True,
+        ),
+    )
+    for thread in threads:
+        thread.start()
+    assert cme_entered.wait(timeout=5)
+    assert options_entered.wait(timeout=5)
+    try:
+        started = time.perf_counter()
+        loop_b = run_loop_b_once(
+            tmp_path,
+            symbols=("GOOG",),
+            config=_CONFIG,
+            specifications=_SPECIFICATIONS,
+            run_timestamp=_FIRST_RUN,
+            input_available_at=_FIRST_RUN,
+            reporter=None,
+        )
+        elapsed = time.perf_counter() - started
+        assert elapsed < 20
+        assert (loop_b.run_directory / "publication.json").is_file()
+        assert not (loop_b.run_directory / "strategy-audit.parquet").exists()
+    finally:
+        release.set()
+        for thread in threads:
+            thread.join(timeout=5)
+
+    source_checksums = {
+        path.name: file_checksum(path)
+        for path in loop_b.run_directory.iterdir()
+        if path.is_file()
+    }
+    strategy = run_strategy_once(
+        tmp_path,
+        run_timestamp=_FIRST_RUN + pd.Timedelta(minutes=5),
+        runtime_clock=lambda: _FIRST_RUN + pd.Timedelta(minutes=6),
+        reporter=None,
+    )
+    publication = read_current_strategy_publication(tmp_path)
+    assert publication.run_directory == strategy.run_directory
+    assert strategy.source_loop_b_directory == loop_b.run_directory
+    assert strategy.audit_rows == 40
+    assert strategy.run_directory.parent.name == "strategy-runs"
+    assert (strategy.run_directory / "strategy-audit.parquet").is_file()
+    assert source_checksums == {
+        path.name: file_checksum(path)
+        for path in loop_b.run_directory.iterdir()
+        if path.is_file()
+    }
+    manifest = verify_manifest(strategy.run_directory)
+    assert manifest["configuration"]["source_loop_b_run"] == (
+        loop_b.run_directory.relative_to(tmp_path).as_posix()
+    )
 
 
 def test_loop_b_reuses_model_then_reconciles_matured_live_predictions(

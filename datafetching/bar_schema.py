@@ -7,7 +7,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from datafetching.ids import add_readable_id
+from datafetching.ids import ID_COLUMN, add_readable_id, is_opaque_identifier
 
 NORMALIZED_BAR_VALUE_COLUMNS = (
     "timestamp",
@@ -42,6 +42,7 @@ def project_normalized_bar_frame(
     frame: pd.DataFrame,
     *,
     keep_legacy_completion: bool = False,
+    include_ids: bool = True,
 ) -> pd.DataFrame:
     """Return the canonical readable-ID plus OHLCV storage frame."""
 
@@ -65,9 +66,16 @@ def project_normalized_bar_frame(
         output[column] = pd.to_numeric(output[column], errors="coerce").astype(
             "float64"
         )
-    output = add_readable_id(output, key_columns=("timestamp",))
+    if include_ids:
+        output = _preserve_or_generate_ids(output)
+    else:
+        output = output.drop(columns=[ID_COLUMN], errors="ignore")
 
-    columns = list(NORMALIZED_BAR_COLUMNS)
+    columns = list(
+        NORMALIZED_BAR_COLUMNS
+        if include_ids
+        else NORMALIZED_BAR_VALUE_COLUMNS
+    )
     if keep_legacy_completion:
         columns.extend(
             column
@@ -81,6 +89,7 @@ def read_normalized_bar_parquet(
     path: Path,
     *,
     include_legacy_completion: bool = False,
+    include_ids: bool = True,
 ) -> tuple[pd.DataFrame, pa.Schema]:
     """Read canonical ID/OHLCV columns and return the physical source schema."""
 
@@ -97,9 +106,12 @@ def read_normalized_bar_parquet(
             + ", ".join(missing)
         )
 
-    selected = [
-        column for column in NORMALIZED_BAR_COLUMNS if column in available
-    ]
+    requested_columns = (
+        NORMALIZED_BAR_COLUMNS
+        if include_ids
+        else NORMALIZED_BAR_VALUE_COLUMNS
+    )
+    selected = [column for column in requested_columns if column in available]
     if include_legacy_completion:
         selected.extend(
             column
@@ -111,6 +123,7 @@ def read_normalized_bar_parquet(
         project_normalized_bar_frame(
             frame,
             keep_legacy_completion=include_legacy_completion,
+            include_ids=include_ids,
         ),
         physical_schema,
     )
@@ -171,6 +184,48 @@ def write_normalized_bar_parquet(frame: pd.DataFrame, path: Path) -> None:
         safe=True,
     )
     pq.write_table(table, path)
+
+
+def _preserve_or_generate_ids(frame: pd.DataFrame) -> pd.DataFrame:
+    """Keep valid stored IDs and repair only absent or invalid bar IDs."""
+
+    output = frame.copy()
+    if ID_COLUMN not in output.columns:
+        return add_readable_id(output, key_columns=("timestamp",))
+    if output.empty:
+        return add_readable_id(
+            output.drop(columns=[ID_COLUMN]),
+            key_columns=("timestamp",),
+        )
+
+    identifiers = output[ID_COLUMN].astype("string")
+    opaque = identifiers.map(
+        lambda value: is_opaque_identifier(value) if pd.notna(value) else False
+    ).astype("bool")
+    valid = pd.Series(
+        (
+            identifiers.notna()
+            & identifiers.str.strip().ne("")
+            & identifiers.str.len().le(256).fillna(False)
+            & ~opaque
+            & ~identifiers.duplicated(keep=False)
+        ).to_numpy(dtype=bool, na_value=False),
+        index=output.index,
+        dtype=bool,
+    )
+    if bool(valid.all()):
+        output[ID_COLUMN] = identifiers
+    else:
+        generated = add_readable_id(
+            output.drop(columns=[ID_COLUMN]),
+            key_columns=("timestamp",),
+        )[ID_COLUMN]
+        output[ID_COLUMN] = identifiers.where(valid, generated)
+        if output[ID_COLUMN].duplicated(keep=False).any():
+            output[ID_COLUMN] = generated
+
+    columns = [ID_COLUMN, *[column for column in output.columns if column != ID_COLUMN]]
+    return output.loc[:, columns]
 
 
 def normalized_bar_canonical_path(path: Path) -> Path:

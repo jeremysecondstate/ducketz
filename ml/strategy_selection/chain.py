@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from bisect import bisect_left, bisect_right
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Mapping
 
 import pandas as pd
 
@@ -16,6 +17,7 @@ from options.features import (
     OPTION_SURFACE_QUALITY_POLICY_VERSION,
 )
 from options.snapshot import OPTION_CHAIN_SCHEMA_VERSION
+from options.publication import committed_option_snapshots
 
 
 _SNAPSHOT_KEY = ("symbol", "snapshot_for", "available_at")
@@ -28,6 +30,57 @@ class SchwabChainHistory:
     surfaces: pd.DataFrame
     quotes: pd.DataFrame
     source_files: tuple[Path, ...]
+    contract_lookup: Mapping[
+        tuple[str, pd.Timestamp, pd.Timestamp], pd.DataFrame
+    ] = field(default_factory=dict, compare=False, repr=False)
+    surface_available_ns: tuple[int, ...] = field(
+        default=(), compare=False, repr=False
+    )
+    quote_available_ns: tuple[int, ...] = field(
+        default=(), compare=False, repr=False
+    )
+
+    def __post_init__(self) -> None:
+        surfaces = self.surfaces.sort_values(
+            ["available_at", "snapshot_for"], kind="mergesort"
+        ).reset_index(drop=True)
+        contracts = self.contracts.sort_values(
+            ["snapshot_for", "available_at", "expiration_date", "strike", "call_put"],
+            kind="mergesort",
+        ).reset_index(drop=True)
+        quotes = (
+            self.quotes.sort_values("available_at", kind="mergesort").reset_index(
+                drop=True
+            )
+            if not self.quotes.empty
+            else self.quotes
+        )
+        lookup = {
+            (
+                str(key[0]).strip().upper(),
+                pd.Timestamp(key[1]),
+                pd.Timestamp(key[2]),
+            ): group.reset_index(drop=True)
+            for key, group in contracts.groupby(
+                list(_SNAPSHOT_KEY), sort=False, dropna=False
+            )
+        }
+        object.__setattr__(self, "surfaces", surfaces)
+        object.__setattr__(self, "contracts", contracts)
+        object.__setattr__(self, "quotes", quotes)
+        object.__setattr__(self, "contract_lookup", lookup)
+        object.__setattr__(
+            self,
+            "surface_available_ns",
+            tuple(int(pd.Timestamp(value).value) for value in surfaces["available_at"]),
+        )
+        object.__setattr__(
+            self,
+            "quote_available_ns",
+            tuple(int(pd.Timestamp(value).value) for value in quotes["available_at"])
+            if not quotes.empty
+            else (),
+        )
 
 
 @dataclass(frozen=True)
@@ -44,32 +97,48 @@ def load_schwab_chain_history(
     datastore_root: Path,
     *,
     symbol: str,
+    available_not_after: object | None = None,
 ) -> SchwabChainHistory:
     root = Path(datastore_root)
     clean_symbol = str(symbol).strip().upper()
     stock_root = root / "stocks" / clean_symbol
-    contract_paths = tuple(
-        sorted(
-            (
-                stock_root
-                / "options"
-                / "chains"
-                / "schwab"
-                / "normalized"
-            ).glob("*.parquet")
-        )
+    all_committed = committed_option_snapshots(
+        root,
+        symbol=clean_symbol,
     )
-    surface_paths = tuple(
-        sorted(
-            (
-                stock_root
-                / "options"
-                / "features"
-                / "option-quality"
-                / "schwab"
-            ).glob("*.parquet")
-        )
+    committed = committed_option_snapshots(
+        root,
+        symbol=clean_symbol,
+        available_not_after=available_not_after,
     )
+    if all_committed:
+        contract_paths = tuple(snapshot.contracts_path for snapshot in committed)
+        surface_paths = tuple(snapshot.features_path for snapshot in committed)
+        receipt_paths = tuple(snapshot.receipt_path for snapshot in committed)
+    else:
+        contract_paths = tuple(
+            sorted(
+                (
+                    stock_root
+                    / "options"
+                    / "chains"
+                    / "schwab"
+                    / "normalized"
+                ).glob("*.parquet")
+            )
+        )
+        surface_paths = tuple(
+            sorted(
+                (
+                    stock_root
+                    / "options"
+                    / "features"
+                    / "option-quality"
+                    / "schwab"
+                ).glob("*.parquet")
+            )
+        )
+        receipt_paths = ()
     quote_paths = tuple(
         sorted(
             (
@@ -93,6 +162,12 @@ def load_schwab_chain_history(
     contracts = _read_many(contract_paths)
     surfaces = _read_many(surface_paths)
     quotes = _read_many(quote_paths) if quote_paths else pd.DataFrame()
+    if available_not_after is not None and not quotes.empty:
+        cutoff = _utc(available_not_after)
+        quote_available = pd.to_datetime(
+            quotes["available_at"], utc=True, errors="coerce"
+        )
+        quotes = quotes.loc[quote_available.le(cutoff)].copy()
     _validate_contracts(contracts, symbol=clean_symbol)
     _validate_surfaces(surfaces, symbol=clean_symbol)
     if not quotes.empty:
@@ -114,19 +189,12 @@ def load_schwab_chain_history(
     )
     return SchwabChainHistory(
         symbol=clean_symbol,
-        contracts=contracts.sort_values(
-            ["snapshot_for", "available_at", "expiration_date", "strike", "call_put"],
-            kind="mergesort",
-        ).reset_index(drop=True),
-        surfaces=surfaces.sort_values(
-            ["snapshot_for", "available_at"], kind="mergesort"
-        ).reset_index(drop=True),
-        quotes=quotes.sort_values("available_at", kind="mergesort").reset_index(
-            drop=True
-        )
-        if not quotes.empty
-        else quotes,
-        source_files=tuple((*contract_paths, *surface_paths, *quote_paths)),
+        contracts=contracts,
+        surfaces=surfaces,
+        quotes=quotes,
+        source_files=tuple(
+            (*contract_paths, *surface_paths, *receipt_paths, *quote_paths)
+        ),
     )
 
 
@@ -143,20 +211,16 @@ def entry_chain_receipt(
     information = _utc(information_available_at)
     target_start = _utc(target_window_start)
     cutoff = min(_utc(known_at), target_start - pd.Timedelta(nanoseconds=1))
-    eligible = history.surfaces.loc[
-        history.surfaces["snapshot_for"].ge(minimum_snapshot)
-        & history.surfaces["snapshot_for"].le(cutoff)
-        & history.surfaces["available_at"].ge(information)
-        & history.surfaces["available_at"].le(cutoff)
+    eligible = _surface_available_slice(history, information, cutoff)
+    eligible = eligible.loc[
+        eligible["snapshot_for"].ge(minimum_snapshot)
+        & eligible["snapshot_for"].le(cutoff)
     ]
     if eligible.empty:
         return None
     if receipt_choice not in {"earliest", "latest"}:
         raise ValueError("receipt_choice must be earliest or latest")
-    ordered = eligible.sort_values(
-        ["available_at", "snapshot_for"], kind="mergesort"
-    )
-    surface = ordered.iloc[0 if receipt_choice == "earliest" else -1]
+    surface = eligible.iloc[0 if receipt_choice == "earliest" else -1]
     return _receipt_for_surface(history, surface)
 
 
@@ -171,17 +235,14 @@ def exit_chain_receipt(
     upper = target_end + maximum_delay
     if strictly_before is not None:
         upper = min(upper, _utc(strictly_before) - pd.Timedelta(nanoseconds=1))
-    eligible = history.surfaces.loc[
-        history.surfaces["snapshot_for"].ge(target_end)
-        & history.surfaces["available_at"].ge(target_end)
-        & history.surfaces["available_at"].le(upper)
-        & history.surfaces["snapshot_for"].le(upper)
+    eligible = _surface_available_slice(history, target_end, upper)
+    eligible = eligible.loc[
+        eligible["snapshot_for"].ge(target_end)
+        & eligible["snapshot_for"].le(upper)
     ]
     if eligible.empty:
         return None
-    surface = eligible.sort_values(
-        ["available_at", "snapshot_for"], kind="mergesort"
-    ).iloc[0]
+    surface = eligible.iloc[0]
     return _receipt_for_surface(history, surface)
 
 
@@ -198,16 +259,12 @@ def entry_stock_quote(
     information = _utc(information_available_at)
     target_start = _utc(target_window_start)
     cutoff = min(_utc(known_at), target_start - pd.Timedelta(nanoseconds=1))
-    eligible = history.quotes.loc[
-        history.quotes["available_at"].ge(information)
-        & history.quotes["available_at"].le(cutoff)
-    ]
+    eligible = _quote_available_slice(history, information, cutoff)
     if eligible.empty:
         return None
     if receipt_choice not in {"earliest", "latest"}:
         raise ValueError("receipt_choice must be earliest or latest")
-    ordered = eligible.sort_values("available_at", kind="mergesort")
-    return ordered.iloc[0 if receipt_choice == "earliest" else -1]
+    return eligible.iloc[0 if receipt_choice == "earliest" else -1]
 
 
 def exit_stock_quote(
@@ -223,26 +280,45 @@ def exit_stock_quote(
     upper = target_end + maximum_delay
     if strictly_before is not None:
         upper = min(upper, _utc(strictly_before) - pd.Timedelta(nanoseconds=1))
-    eligible = history.quotes.loc[
-        history.quotes["available_at"].ge(target_end)
-        & history.quotes["available_at"].le(upper)
-    ]
+    eligible = _quote_available_slice(history, target_end, upper)
     if eligible.empty:
         return None
-    return eligible.sort_values("available_at", kind="mergesort").iloc[0]
+    return eligible.iloc[0]
 
 
 def _receipt_for_surface(
     history: SchwabChainHistory,
     surface: pd.Series,
 ) -> ChainReceipt:
-    mask = pd.Series(True, index=history.contracts.index)
-    for column in _SNAPSHOT_KEY:
-        mask &= history.contracts[column].eq(surface[column])
-    contracts = history.contracts.loc[mask].copy()
+    key = (
+        str(surface["symbol"]).strip().upper(),
+        pd.Timestamp(surface["snapshot_for"]),
+        pd.Timestamp(surface["available_at"]),
+    )
+    contracts = history.contract_lookup.get(key, pd.DataFrame()).copy()
     if contracts.empty:
         raise ValueError("Option-quality receipt has no exact normalized contracts")
     return ChainReceipt(contracts=contracts.reset_index(drop=True), surface=surface)
+
+
+def _surface_available_slice(
+    history: SchwabChainHistory,
+    lower: pd.Timestamp,
+    upper: pd.Timestamp,
+) -> pd.DataFrame:
+    start = bisect_left(history.surface_available_ns, int(lower.value))
+    stop = bisect_right(history.surface_available_ns, int(upper.value))
+    return history.surfaces.iloc[start:stop]
+
+
+def _quote_available_slice(
+    history: SchwabChainHistory,
+    lower: pd.Timestamp,
+    upper: pd.Timestamp,
+) -> pd.DataFrame:
+    start = bisect_left(history.quote_available_ns, int(lower.value))
+    stop = bisect_right(history.quote_available_ns, int(upper.value))
+    return history.quotes.iloc[start:stop]
 
 
 def _validate_contracts(frame: pd.DataFrame, *, symbol: str) -> None:

@@ -8,7 +8,7 @@ evidence and a compact deterministic feature row.
 Option data have two clocks:
 
 - `available_at` and `fetched_at`: when Duckets received the Schwab response;
-- `timestamp` and `decision_timestamp`: the newest completed Databento one-minute
+- `snapshot_for` and `decision_timestamp`: the newest completed Databento one-minute
   bar end that lands on `:00`, `:15`, `:30`, or `:45`.
 
 The clock reads only:
@@ -39,7 +39,22 @@ clock remains at the most recent qualifying boundary.
 
 ## Storage and readable IDs
 
-Monthly partitions bound file size while preserving appendable history:
+The authoritative generation is an immutable three-file receipt:
+
+```text
+DATASTORE/stocks/<SYMBOL>/options/
+├── snapshots/schwab/<available-ns>-<snapshot-ns>/
+│   ├── raw.parquet
+│   ├── contracts.parquet
+│   ├── option-quality.parquet
+│   ├── manifest.json
+│   └── receipt.json
+└── latest/schwab.json
+```
+
+The pointer changes only after all three Parquets and the receipt validate.
+Directories without a receipt are invisible to official readers. Monthly
+partitions remain compatibility mirrors:
 
 ```text
 DATASTORE/stocks/<SYMBOL>/options/
@@ -52,9 +67,9 @@ Every file has one Duckets-generated `id`:
 
 | Parquet | Natural ID recipe |
 | --- | --- |
-| raw response | `timestamp` |
-| normalized contracts | `timestamp\|contract_symbol` |
-| option-quality features | `timestamp` |
+| raw response | `symbol\|snapshot_for\|available_at` |
+| normalized contracts | `symbol\|snapshot_for\|available_at\|contract_symbol` |
+| option-quality features | `symbol\|snapshot_for\|available_at` |
 
 No contract, snapshot, feature-set, source, or calculation ID is generated.
 `contract_symbol` remains a readable provider value and is not renamed.
@@ -124,10 +139,22 @@ Coverage columns prevent downstream models from treating absent provider values
 as valid zeros.
 
 Twenty-day realized volatility is calculated only from split-adjusted daily
-market-regime rows whose bar-end timestamp is no later than the option decision
-timestamp. Dependent features remain null when that prerequisite is unavailable.
+market-regime rows available by the last successfully committed Loop A
+generation. An active or failed Loop A cycle does not make newer partial
+evidence eligible and does not make the Options runtime wait. Dependent features
+remain null when that committed prerequisite is unavailable.
 
 ## Fetch scope
 
-The Schwab lane requests calls and puts, 80 strikes around the underlying,
-underlying quote context, and expirations through 120 calendar days.
+The independent runtime requests calls and puts, 100 strikes around the
+underlying, underlying quote context, and expirations through 200 calendar
+days:
+
+```powershell
+python -m datafetching.options_runtime --datastore-target pc `
+  --watchlist datafetching\watchlist.txt --interval-minutes 15 `
+  --phase-offset-minutes 2
+```
+
+Loop A uses external Options mode by default. See
+[`independent-runtime-orchestration.md`](../docs/datafetch-ml/independent-runtime-orchestration.md).

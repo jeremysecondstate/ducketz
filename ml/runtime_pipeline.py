@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import shutil
-import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
@@ -11,6 +10,7 @@ from typing import Callable, Mapping, Sequence
 import numpy as np
 import pandas as pd
 
+from datafetching.observability import timed_stage
 from ml.artifacts import (
     create_timestamp_directory,
     file_checksum,
@@ -45,6 +45,7 @@ from ml.horizons import (
     is_weekly_horizon,
 )
 from ml.live_evidence import (
+    MINIMUM_LIVE_DECISIONS,
     live_evidence_status,
     minimum_live_decisions,
 )
@@ -61,8 +62,6 @@ from ml.parquet_contracts import (
     INTELLIGENCE_SCHEMA,
     MONITORING_SCHEMA,
     PREDICTION_SCHEMA,
-    STRATEGY_AUDIT_SCHEMA,
-    STRATEGY_CANDIDATE_SCHEMA,
     empty_frame,
     frame_with_readable_id,
     sample_schema,
@@ -73,7 +72,6 @@ from ml.strategy_selection import (
     STRATEGY_SELECTION_SCHWAB_SPREADS_V1,
 )
 from ml.strategy_selection.research_trace import strategy_research_trace
-from ml.strategy_selection.runtime import run_strategy_selection
 
 _RUN_OUTPUT_NAMES = frozenset(
     {
@@ -216,6 +214,45 @@ def run_loop_b_once(
     enforce_publication_deadline: bool = True,
     reporter: Callable[[str], None] | None = print,
 ) -> LoopBResult:
+    selected = tuple(symbols or ())
+    with timed_stage(
+        "loop-b.directional-publication",
+        provider=(config or RuntimeConfig()).provider,
+        reporter=reporter,
+        extra={"symbol_count": len(selected) if symbols is not None else None},
+    ) as timing:
+        result = _run_loop_b_once(
+            datastore_root,
+            symbols=symbols,
+            config=config,
+            specifications=specifications,
+            input_available_at=input_available_at,
+            run_timestamp=run_timestamp,
+            runtime_clock=runtime_clock,
+            enforce_publication_deadline=enforce_publication_deadline,
+            reporter=reporter,
+        )
+        timing.annotate(
+            row_count=result.prediction_rows,
+            operation="wrote",
+            sample_rows=result.sample_rows,
+            run_directory=str(result.run_directory),
+        )
+        return result
+
+
+def _run_loop_b_once(
+    datastore_root: Path,
+    *,
+    symbols: Sequence[str] | None = None,
+    config: RuntimeConfig | None = None,
+    specifications: Mapping[str, HorizonSpecification] | None = None,
+    input_available_at: object,
+    run_timestamp: object | None = None,
+    runtime_clock: Callable[[], object] | None = None,
+    enforce_publication_deadline: bool = True,
+    reporter: Callable[[str], None] | None = print,
+) -> LoopBResult:
     root = Path(datastore_root)
     if not root.is_dir():
         raise FileNotFoundError(f"Datastore does not exist: {root}")
@@ -252,6 +289,7 @@ def run_loop_b_once(
         specifications=effective_specifications,
         assumed_round_trip_cost=runtime.assumed_round_trip_cost,
         materialized_at=created,
+        input_available_at=input_cutoff,
         reporter=reporter,
     )
     failed_routes = [
@@ -260,7 +298,6 @@ def run_loop_b_once(
         if route.status != "READY" or route.error
     ]
     if failed_routes and runtime.require_all_routes:
-        print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2A: RUNTIME PIPE")
         rendered = ", ".join(
             f"{route.symbol}/{route.horizon}" for route in failed_routes
         )
@@ -273,7 +310,6 @@ def run_loop_b_once(
             "Loop B produced no predictions for required routes: "
             f"{rendered} ({details})"
         )
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2B: RUNTIME PIPE")
     feature_columns = _feature_columns(effective_specifications)
     samples_contract = sample_schema(feature_columns)
     samples = _project_samples(
@@ -281,7 +317,6 @@ def run_loop_b_once(
         schema_names=samples_contract.names,
     )
 
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2C: RUNTIME PIPE")
     runs_root = root / "ml" / "runs"
     run_directory = create_timestamp_directory(runs_root, timestamp=created)
     samples_path = run_directory / "samples.parquet"
@@ -291,7 +326,6 @@ def run_loop_b_once(
         as_of=created,
         specifications=effective_specifications,
     )
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2D: RUNTIME PIPE")
     verified_weekly_runs = (
         _load_verified_weekly_prediction_runs(
             root,
@@ -303,7 +337,6 @@ def run_loop_b_once(
         if any(is_weekly_horizon(value) for value in effective_specifications)
         else ()
     )
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2E: RUNTIME PIPE")
     if verified_weekly_runs:
         verified_weekly_predictions = _verified_weekly_prediction_rows(
             verified_weekly_runs,
@@ -324,14 +357,12 @@ def run_loop_b_once(
             ],
             keep="last",
         ).reset_index(drop=True)
-        print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2F: RUNTIME PIPE")
 
     prediction_frames: list[pd.DataFrame] = []
     fresh_live_frames: list[pd.DataFrame] = []
     models: dict[str, RuntimeModel] = {}
     partitions_by_horizon: dict[str, ModelPartitions] = {}
 
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2G: RUNTIME PIPE")
     route_errors: dict[str, str] = {
         f"{route.symbol}|{route.horizon}": (
             route.error or route.status.replace("_", " ").lower()
@@ -340,7 +371,6 @@ def run_loop_b_once(
         if route.status != "READY" or route.error
     }
     for horizon, specification in effective_specifications.items():
-        print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2H: RUNTIME PIPE")
         route_samples = samples.loc[samples["horizon"].eq(horizon)].copy()
         if route_samples.empty:
             route_errors[f"model|{horizon}"] = "No materialized samples"
@@ -384,14 +414,12 @@ def run_loop_b_once(
                     mode="BACKTEST",
                 )
             ]
-            print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2I: RUNTIME PIPE")
             if not is_weekly_horizon(horizon):
                 live = _live_candidates(
                     route_samples,
                     as_of=prediction_created_at,
                     latest_per_symbol=runtime.latest_per_symbol,
                 )
-                print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2J: RUNTIME PIPE")
                 if not live.empty:
                     live_predictions = _prediction_frame(
                         model,
@@ -404,7 +432,6 @@ def run_loop_b_once(
             models[horizon] = model
             partitions_by_horizon[horizon] = partitions
             prediction_frames.extend(horizon_prediction_frames)
-            print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2K: RUNTIME PIPE")
         except Exception as exc:
             error_key = f"model|{horizon}"
             route_errors[error_key] = f"{type(exc).__name__}: {exc}"
@@ -477,14 +504,12 @@ def run_loop_b_once(
         .itertuples(index=False, name=None)
     )
     missing_routes = sorted(expected_routes.difference(observed_routes))
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2L: RUNTIME PIPE")
     for symbol, horizon in missing_routes:
         route_errors.setdefault(
             f"{symbol}|{horizon}",
             "No prediction rows were produced for a materialized route",
         )
 
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2M: RUNTIME PIPE")
     if predictions.empty:
         rendered = ", ".join(
             f"{symbol}/{horizon}"
@@ -499,7 +524,6 @@ def run_loop_b_once(
             "Loop B produced no predictions for required routes: "
             f"{rendered}{suffix}"
         )
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2N: RUNTIME PIPE")
     if missing_routes and runtime.require_all_routes:
         rendered = ", ".join(
             f"{symbol}/{horizon}" for symbol, horizon in missing_routes
@@ -512,7 +536,6 @@ def run_loop_b_once(
             "Loop B produced no predictions for required routes: "
             f"{rendered}{suffix}"
         )
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2O: RUNTIME PIPE")
     if route_errors and runtime.require_all_routes:
         details = "; ".join(
             f"{key}: {value}" for key, value in sorted(route_errors.items())
@@ -521,7 +544,6 @@ def run_loop_b_once(
             "Loop B route failures prevent fail-closed publication: "
             + details
         )
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2P: RUNTIME PIPE")
     if weekly_horizons and runtime.require_all_routes:
         _require_weekly_live_predictions(
             predictions,
@@ -529,23 +551,9 @@ def run_loop_b_once(
             specifications=effective_specifications,
         )
 
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2Q: RUNTIME PIPE")
     published_samples = _closed_lockbox_view(
         samples,
         partitions_by_horizon=partitions_by_horizon,
-    )
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2R: RUNTIME PIPE")
-    strategy_selection = run_strategy_selection(
-        root,
-        samples=published_samples,
-        predictions=predictions,
-        forbidden_target_starts={
-            horizon: partitions.lockbox_cluster_values
-            for horizon, partitions in partitions_by_horizon.items()
-        },
-        run_timestamp=created,
-        input_available_at=input_cutoff,
-        sample_source_files=materialization.source_files,
     )
     write_parquet_with_schema(
         published_samples,
@@ -602,36 +610,6 @@ def run_loop_b_once(
         INTELLIGENCE_SCHEMA,
     )
 
-    strategy_candidates = _strategy_output_frame(
-        strategy_selection.candidates,
-        schema=STRATEGY_CANDIDATE_SCHEMA,
-        key_columns=("symbol", "horizon", "decision_timestamp", "candidate_key"),
-    )
-    strategy_audit = _strategy_output_frame(
-        strategy_selection.audit,
-        schema=STRATEGY_AUDIT_SCHEMA,
-        key_columns=(
-            "symbol",
-            "horizon",
-            "decision_timestamp",
-            "strategy_name",
-        ),
-    )
-    strategy_output_names = (
-        "strategy-candidates.parquet",
-        "strategy-audit.parquet",
-    )
-    write_parquet_with_schema(
-        strategy_candidates,
-        run_directory / strategy_output_names[0],
-        STRATEGY_CANDIDATE_SCHEMA,
-    )
-    write_parquet_with_schema(
-        strategy_audit,
-        run_directory / strategy_output_names[1],
-        STRATEGY_AUDIT_SCHEMA,
-    )
-
     fresh_live_predictions = (
         pd.concat(fresh_live_frames, ignore_index=True, sort=False)
         if fresh_live_frames
@@ -664,14 +642,13 @@ def run_loop_b_once(
         "evaluations.parquet",
         "monitoring.parquet",
         "intelligence.parquet",
-        *strategy_output_names,
     )
     write_manifest(
         run_directory,
         run_timestamp=created,
         input_files=tuple(
             dict.fromkeys(
-                (*materialization.source_files, *strategy_selection.source_files)
+                materialization.source_files
             )
         ),
         output_files=output_names,
@@ -697,9 +674,11 @@ def run_loop_b_once(
                 "policy": STRATEGY_SELECTION_SCHWAB_SPREADS_V1,
                 "account_authorization": "SPREADS",
                 "real_lockbox_used": False,
-                "model_reports": dict(strategy_selection.model_reports),
+                "mode": "independent-runtime",
+                "authority": "ml/strategy-latest/run.json",
                 "research_trace": strategy_research_trace(),
             },
+            "causal_input_cutoff": input_cutoff.isoformat(),
             "runtime_timing": {
                 "run_started_at": created.isoformat(),
                 "evaluated_at": evaluated_at.isoformat(),
@@ -725,7 +704,6 @@ def run_loop_b_once(
         },
         datastore_root=root,
     )
-    print(f"SLOWDOWN CHECK: [{int(time.time() * 1000)}] 2S: RUNTIME PIPE")
     latest_root = root / "ml" / "latest"
     latest_intelligence_path = (
         root / "ml-intelligence" / "latest" / "rolling-predictions.parquet"
@@ -760,10 +738,6 @@ def run_loop_b_once(
         models_reused=sum(model.reused for model in models.values()),
         route_errors=route_errors,
         latest_intelligence_path=authoritative_intelligence_path,
-        strategy_candidate_rows=len(strategy_candidates),
-        strategy_audit_rows=len(strategy_audit),
-        strategy_models_trained=strategy_selection.models_trained,
-        strategy_models_reused=strategy_selection.models_reused,
     )
 
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import datetime, timedelta, timezone
+import inspect
 from typing import Any, Iterable
 
 import requests
@@ -20,6 +21,8 @@ from datafetching.quote_liquidity import (
     QuoteLiquidityQualityError,
     persist_quote_liquidity,
 )
+from datafetching.runtime_lock import exclusive_runtime_lock
+from options.publication import option_writer_lock_path
 from options.snapshot import persist_schwab_option_snapshot
 
 OPTION_CHAIN_STRIKE_COUNT = 100
@@ -119,6 +122,7 @@ def fetch(
     session: DataFetchingSchwabSession | None = None,
     provider: SchwabMarketDataProvider | None = None,
     prefetched_quote: tuple[Any, Any] | None = None,
+    include_options: bool = True,
 ) -> FetchResult:
     """Fetch every Schwab dataset, continuing each one from its stored latest timestamp."""
     specs = _specs_for_profile(profile)
@@ -262,6 +266,46 @@ def fetch(
             "automatically"
         )
 
+    if not include_options:
+        _report_request_counts(failure_counts, advisory_counts)
+        return FetchResult("schwab", data_files, error_files, advisory_files)
+
+    try:
+        with exclusive_runtime_lock(
+            option_writer_lock_path(store.root_dir),
+            process_name="Duckets inline Options compatibility writer",
+        ):
+            option_result = _fetch_inline_option_snapshot(
+                symbol,
+                store,
+                session=session,
+            )
+    except RuntimeError as exc:
+        # A conflicting external owner must fail before the inline path performs
+        # a slow request or writes any option artifact.
+        print(f"[{symbol}/schwab/options] writer conflict: {exc}")
+        error_files += 1
+    else:
+        data_files += option_result.data_files
+        error_files += option_result.error_files
+        advisory_files += option_result.advisory_files
+
+    _report_request_counts(failure_counts, advisory_counts)
+
+    return FetchResult("schwab", data_files, error_files, advisory_files)
+
+
+def _fetch_inline_option_snapshot(
+    symbol: str,
+    store: ParquetStore,
+    *,
+    session: DataFetchingSchwabSession,
+) -> FetchResult:
+    data_files = 0
+    error_files = 0
+    advisory_files = 0
+    failure_counts: Counter[str] = Counter()
+    advisory_counts: Counter[str] = Counter()
     request_started_at = datetime.now(timezone.utc)
     try:
         option_payload = session.get_option_chain_snapshot(
@@ -309,13 +353,20 @@ def fetch(
                 symbol=symbol,
                 as_of=request_started_at,
             )
+            persist_kwargs = {
+                "symbol": symbol,
+                "payload": option_payload,
+                "clock": clock,
+                "fetched_at": fetched_at,
+                "quote_cutoff_at": request_started_at,
+            }
+            if "acquire_writer_lock" in inspect.signature(
+                persist_schwab_option_snapshot
+            ).parameters:
+                persist_kwargs["acquire_writer_lock"] = False
             output = persist_schwab_option_snapshot(
                 store.root_dir,
-                symbol=symbol,
-                payload=option_payload,
-                clock=clock,
-                fetched_at=fetched_at,
-                quote_cutoff_at=request_started_at,
+                **persist_kwargs,
             )
         except (TypeError, ValueError, RuntimeError) as exc:
             detail = f"{type(exc).__name__}: {exc}"
@@ -355,6 +406,14 @@ def fetch(
                 f"{output.features_path}"
             )
 
+    _report_request_counts(failure_counts, advisory_counts)
+    return FetchResult("schwab-options", data_files, error_files, advisory_files)
+
+
+def _report_request_counts(
+    failure_counts: Counter[str],
+    advisory_counts: Counter[str],
+) -> None:
     if failure_counts:
         print("[schwab] grouped request failures:")
         for detail, count in failure_counts.most_common():
@@ -364,20 +423,25 @@ def fetch(
         for detail, count in advisory_counts.most_common():
             print(f"[schwab]   {count} x {detail}")
 
-    return FetchResult("schwab", data_files, error_files, advisory_files)
-
-
 def fetch_many(
     symbols: Iterable[str],
     store: ParquetStore,
     *,
     profile: str = "continuation",
+    include_options: bool = True,
 ) -> dict[str, FetchResult]:
     """Fetch a watchlist while sharing Schwab's multi-symbol quote request."""
     clean_symbols = _normalize_symbols(symbols)
     if len(clean_symbols) == 1:
         symbol = clean_symbols[0]
-        return {symbol: fetch(symbol, store, profile=profile)}
+        return {
+            symbol: fetch(
+                symbol,
+                store,
+                profile=profile,
+                include_options=include_options,
+            )
+        }
 
     session = DataFetchingSchwabSession()
     provider = SchwabMarketDataProvider(session=session)
@@ -398,6 +462,7 @@ def fetch_many(
             session=session,
             provider=provider,
             prefetched_quote=prefetched_quotes.get(symbol),
+            include_options=include_options,
         )
         for symbol in clean_symbols
     }

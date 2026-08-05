@@ -100,9 +100,13 @@ Normalized Databento bars have this exact physical order:
 id, timestamp, open, high, low, close, volume
 ```
 
-`id` equals the readable UTC `timestamp`. The path supplies symbol, provider,
-timeframe, scope, and request context; those values are not duplicated as
-identifiers on every normalized row.
+New or repaired `id` values equal the readable UTC `timestamp`; an existing
+valid stored ID is preserved. Analytical readers can project only timestamp and
+OHLCV columns, so Loop B does not generate hundreds of thousands of IDs merely
+to discard them. Continuation remains based only on the maximum stored
+`timestamp`. The path supplies symbol, provider, timeframe, scope, and request
+context; those values are not duplicated as identifiers on every normalized
+row.
 
 ## Fetch commands
 
@@ -125,11 +129,15 @@ Refresh only official macro data:
 python -m datafetching.main NVDA --providers fred --datastore-target local
 ```
 
-Skip shared CME context:
+Use the compatibility inline CME writer for a controlled one-off run (the
+independent CME process must be stopped):
 
 ```powershell
-python -m datafetching.main NVDA --skip-cme --datastore-target local
+python -m datafetching.main NVDA --cme-mode inline --datastore-target local
 ```
+
+External CME and Options ownership is the default, so ordinary Loop A commands
+do not fetch either dataset.
 
 When no datastore argument is supplied, path selection uses
 `DUCKETS_DATASTORE_DIR`, then `DUCKETS_OHLCV_PARQUET_DIR`, then the configured
@@ -162,7 +170,8 @@ Each cycle:
 1. fetches the selected provider lanes across the watchlist, using one
    multi-symbol Databento request per shared continuation window, FMP batch
    quote/market-cap requests, and a Schwab batch quote request;
-2. fetches shared FRED, FMP commodity, and CME context once;
+2. fetches shared FRED and FMP commodity context once; CME and Schwab option
+   chains remain in their independent runtimes;
 3. persists raw and normalized provider data;
 4. recalculates point-in-time fundamentals;
 5. recalculates technical metrics;
@@ -187,7 +196,22 @@ shorter overlapping windows previously produced no additional consolidated bar
 coverage.
 
 Useful calculation skips are `--skip-fundamentals`, `--skip-technicals`, and
-`--skip-signals`. `--skip-cme` disables only shared CME fetching.
+`--skip-signals`. `--cme-mode inline` and `--options-mode inline` are explicit
+compatibility modes guarded by the same ownership locks as the independent
+writers.
+
+## Independent CME and Options runtimes
+
+```powershell
+python -m datafetching.cme_runtime --datastore-target local --once
+python -m datafetching.options_runtime --datastore-target local --symbols NVDA --once
+```
+
+CME stores exact nanosecond provider events in bounded partitions and advances
+the successful `queried_through` endpoint even when a range is quiet. Options
+publishes raw, normalized, and quality files through one checksum-verified
+receipt. Full operating instructions are in
+[`independent-runtime-orchestration.md`](../docs/datafetch-ml/independent-runtime-orchestration.md).
 
 ## Macro authorities and freshness
 

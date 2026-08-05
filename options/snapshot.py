@@ -15,10 +15,15 @@ from datafetching.ids import (
     without_internal_identity_columns,
 )
 from datafetching.layout import safe_token
+from datafetching.runtime_lock import exclusive_runtime_lock
 from options import OptionSnapshotOutput
 from options.features import (
     calculate_option_snapshot_features,
     load_realized_volatility_evidence,
+)
+from options.publication import (
+    option_writer_lock_path,
+    publish_option_snapshot,
 )
 
 OPTION_CHAIN_SCHEMA_VERSION = "1.1.0"
@@ -34,6 +39,43 @@ def persist_schwab_option_snapshot(
     clock: DecisionClock,
     fetched_at: datetime | pd.Timestamp | None = None,
     quote_cutoff_at: datetime | pd.Timestamp | None = None,
+    regime_available_not_after: datetime | pd.Timestamp | None = None,
+    acquire_writer_lock: bool = True,
+) -> OptionSnapshotOutput:
+    if acquire_writer_lock:
+        with exclusive_runtime_lock(
+            option_writer_lock_path(datastore_root),
+            process_name="Duckets Options writer",
+        ):
+            return _persist_schwab_option_snapshot(
+                datastore_root,
+                symbol=symbol,
+                payload=payload,
+                clock=clock,
+                fetched_at=fetched_at,
+                quote_cutoff_at=quote_cutoff_at,
+                regime_available_not_after=regime_available_not_after,
+            )
+    return _persist_schwab_option_snapshot(
+        datastore_root,
+        symbol=symbol,
+        payload=payload,
+        clock=clock,
+        fetched_at=fetched_at,
+        quote_cutoff_at=quote_cutoff_at,
+        regime_available_not_after=regime_available_not_after,
+    )
+
+
+def _persist_schwab_option_snapshot(
+    datastore_root: Path,
+    *,
+    symbol: str,
+    payload: Mapping[str, Any],
+    clock: DecisionClock,
+    fetched_at: datetime | pd.Timestamp | None = None,
+    quote_cutoff_at: datetime | pd.Timestamp | None = None,
+    regime_available_not_after: datetime | pd.Timestamp | None = None,
 ) -> OptionSnapshotOutput:
     observed_at = _as_utc_timestamp(fetched_at)
     cutoff_at = (
@@ -51,15 +93,21 @@ def persist_schwab_option_snapshot(
         quote_cutoff_at=cutoff_at,
     )
     _validate_receipt_keys(contracts, keys=_CONTRACT_KEY, label="input")
+    regime_cutoff = (
+        _as_utc_timestamp(regime_available_not_after)
+        if regime_available_not_after is not None
+        else cutoff_at
+    )
     volatility_evidence = load_realized_volatility_evidence(
         datastore_root,
         symbol=symbol,
-        as_of=cutoff_at,
+        as_of=regime_cutoff,
     )
     features = calculate_option_snapshot_features(
         contracts,
         realized_volatility_evidence=volatility_evidence,
     )
+    features["realized_volatility_evidence_cutoff_at"] = regime_cutoff
 
     snapshot_for = _as_utc_timestamp(clock.decision_timestamp)
     month = observed_at.strftime("%Y-%m")
@@ -80,6 +128,7 @@ def persist_schwab_option_snapshot(
                 "decision_timeframe": clock.timeframe,
                 "decision_source_file": str(clock.source_file),
                 "quote_cutoff_at": cutoff_at,
+                "realized_volatility_evidence_cutoff_at": regime_cutoff,
                 "underlying_quote_timestamp": _underlying_quote_timestamp(payload),
                 "fetched_at": observed_at,
                 "available_at": observed_at,
@@ -88,10 +137,27 @@ def persist_schwab_option_snapshot(
             }
         ]
     )
+    # The immutable receipt is the authoritative generation boundary.  Commit it
+    # before updating the legacy monthly mirrors so a first-ever publication can
+    # never expose a mixture of monthly files to receipt-aware readers.
+    committed = publish_option_snapshot(
+        datastore_root,
+        symbol=symbol,
+        raw=raw,
+        contracts=contracts,
+        features=features,
+    )
     _atomic_upsert(raw_path, raw, keys=_SNAPSHOT_KEY)
     _atomic_upsert(contracts_path, contracts, keys=_CONTRACT_KEY)
     _atomic_upsert(features_path, features, keys=_SNAPSHOT_KEY)
-    return OptionSnapshotOutput(contracts_path, features_path, raw_path, len(contracts))
+    return OptionSnapshotOutput(
+        contracts_path,
+        features_path,
+        raw_path,
+        len(contracts),
+        committed.receipt_path,
+        committed.directory,
+    )
 
 
 def normalize_schwab_option_chain(

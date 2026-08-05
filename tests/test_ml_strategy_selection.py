@@ -37,6 +37,7 @@ from ml.strategy_selection.registry import (
     validate_strategy_registry,
 )
 from ml.strategy_selection.runtime import run_strategy_selection
+from ml.strategy_selection.runtime import _samples_with_possible_receipts
 from options.features import (
     OPTION_FEATURE_SCHEMA_VERSION,
     OPTION_FEATURE_VERSION,
@@ -168,6 +169,146 @@ def test_entry_chain_receipt_uses_the_causal_interval_between_clocks() -> None:
     assert latest.surface["snapshot_for"] == decision + pd.Timedelta(minutes=25)
     assert latest.available_at == decision + pd.Timedelta(minutes=26)
     assert latest.contracts["available_at"].eq(latest.available_at).all()
+
+
+def test_indexed_receipt_and_contract_lookup_matches_full_frame_scan() -> None:
+    start = pd.Timestamp("2026-07-01T13:00:00Z")
+    receipt_times = [start + pd.Timedelta(minutes=15 * index) for index in range(120)]
+    contracts = pd.concat(
+        [
+            _contracts_for_receipt(
+                snapshot_for=snapshot,
+                available_at=snapshot + pd.Timedelta(minutes=2),
+                underlying=100.0 + index / 100.0,
+            )
+            for index, snapshot in enumerate(receipt_times)
+        ],
+        ignore_index=True,
+    ).sample(frac=1.0, random_state=17)
+    surfaces = pd.concat(
+        [
+            _surface_for_receipt(
+                snapshot_for=snapshot,
+                available_at=snapshot + pd.Timedelta(minutes=2),
+            )
+            for snapshot in receipt_times
+        ],
+        ignore_index=True,
+    ).sample(frac=1.0, random_state=23)
+    history = SchwabChainHistory(
+        symbol="GOOG",
+        contracts=contracts,
+        surfaces=surfaces,
+        quotes=pd.DataFrame(),
+        source_files=(),
+    )
+
+    for index in range(0, 135, 3):
+        information = start + pd.Timedelta(minutes=15 * index - 4)
+        target_start = information + pd.Timedelta(minutes=42)
+        minimum_snapshot = information - pd.Timedelta(minutes=20)
+        known_at = target_start - pd.Timedelta(minutes=1)
+        for choice in ("earliest", "latest"):
+            indexed = entry_chain_receipt(
+                history,
+                minimum_snapshot_for=minimum_snapshot,
+                information_available_at=information,
+                target_window_start=target_start,
+                known_at=known_at,
+                receipt_choice=choice,
+            )
+            scanned = _scanned_entry_receipt(
+                history,
+                minimum_snapshot=minimum_snapshot,
+                information=information,
+                target_start=target_start,
+                known_at=known_at,
+                choice=choice,
+            )
+            assert _receipt_identity(indexed) == scanned
+
+        target_end = information + pd.Timedelta(minutes=10)
+        indexed_exit = exit_chain_receipt(
+            history,
+            target_window_end=target_end,
+            maximum_delay=pd.Timedelta(minutes=35),
+        )
+        scanned_exit = _scanned_exit_receipt(
+            history,
+            target_end=target_end,
+            maximum_delay=pd.Timedelta(minutes=35),
+        )
+        assert _receipt_identity(indexed_exit) == scanned_exit
+
+
+def test_history_coverage_prefilter_only_skips_scan_proven_impossible_rows() -> None:
+    start = pd.Timestamp("2026-07-01T13:00:00Z")
+    receipt_times = [start + pd.Timedelta(hours=index) for index in range(8)]
+    history = SchwabChainHistory(
+        symbol="GOOG",
+        contracts=pd.concat(
+            [
+                _contracts_for_receipt(
+                    snapshot_for=value,
+                    available_at=value + pd.Timedelta(minutes=5),
+                    underlying=100.0,
+                )
+                for value in receipt_times
+            ],
+            ignore_index=True,
+        ),
+        surfaces=pd.concat(
+            [
+                _surface_for_receipt(
+                    snapshot_for=value,
+                    available_at=value + pd.Timedelta(minutes=5),
+                )
+                for value in receipt_times
+            ],
+            ignore_index=True,
+        ),
+        quotes=pd.DataFrame(),
+        source_files=(),
+    )
+    samples = pd.DataFrame(
+        [
+            {
+                "sample_key": index,
+                "symbol": "GOOG",
+                "horizon": "1h",
+                "bar_end_timestamp": decision,
+                "information_available_at": decision,
+                "target_window_start": decision + pd.Timedelta(minutes=40),
+                "target_window_end": decision + pd.Timedelta(hours=1),
+            }
+            for index, decision in enumerate(
+                pd.date_range(start - pd.Timedelta(hours=3), periods=15, freq="1h")
+            )
+        ]
+    )
+    retained, _failures = _samples_with_possible_receipts(
+        samples,
+        histories={"GOOG": history},
+        strictly_before=None,
+    )
+    skipped = samples.loc[~samples["sample_key"].isin(retained["sample_key"])]
+    assert not skipped.empty
+    for sample in skipped.to_dict("records"):
+        entry = _scanned_entry_receipt(
+            history,
+            minimum_snapshot=pd.Timestamp(sample["bar_end_timestamp"]),
+            information=pd.Timestamp(sample["information_available_at"]),
+            target_start=pd.Timestamp(sample["target_window_start"]),
+            known_at=pd.Timestamp(sample["target_window_start"])
+            - pd.Timedelta(nanoseconds=1),
+            choice="earliest",
+        )
+        exit_receipt = _scanned_exit_receipt(
+            history,
+            target_end=pd.Timestamp(sample["target_window_end"]),
+            maximum_delay=pd.Timedelta(hours=2),
+        )
+        assert entry is None or exit_receipt is None
 
 
 def test_registry_covers_the_complete_spreads_strategy_universe() -> None:
@@ -878,3 +1019,73 @@ def _model_outcomes() -> pd.DataFrame:
                 }
             )
     return pd.DataFrame(rows)
+
+
+def _scanned_entry_receipt(
+    history: SchwabChainHistory,
+    *,
+    minimum_snapshot: pd.Timestamp,
+    information: pd.Timestamp,
+    target_start: pd.Timestamp,
+    known_at: pd.Timestamp,
+    choice: str,
+) -> tuple[object, ...] | None:
+    cutoff = min(known_at, target_start - pd.Timedelta(nanoseconds=1))
+    frame = history.surfaces
+    eligible = frame.loc[
+        frame["available_at"].ge(information)
+        & frame["available_at"].le(cutoff)
+        & frame["snapshot_for"].ge(minimum_snapshot)
+        & frame["snapshot_for"].le(cutoff)
+    ].sort_values(["available_at", "snapshot_for"], kind="mergesort")
+    if eligible.empty:
+        return None
+    surface = eligible.iloc[0 if choice == "earliest" else -1]
+    return _scanned_identity(history, surface)
+
+
+def _scanned_exit_receipt(
+    history: SchwabChainHistory,
+    *,
+    target_end: pd.Timestamp,
+    maximum_delay: pd.Timedelta,
+) -> tuple[object, ...] | None:
+    upper = target_end + maximum_delay
+    frame = history.surfaces
+    eligible = frame.loc[
+        frame["available_at"].ge(target_end)
+        & frame["available_at"].le(upper)
+        & frame["snapshot_for"].ge(target_end)
+        & frame["snapshot_for"].le(upper)
+    ].sort_values(["available_at", "snapshot_for"], kind="mergesort")
+    if eligible.empty:
+        return None
+    return _scanned_identity(history, eligible.iloc[0])
+
+
+def _scanned_identity(
+    history: SchwabChainHistory,
+    surface: pd.Series,
+) -> tuple[object, ...]:
+    contracts = history.contracts.loc[
+        history.contracts["symbol"].astype("string").str.upper().eq(
+            str(surface["symbol"]).upper()
+        )
+        & history.contracts["snapshot_for"].eq(surface["snapshot_for"])
+        & history.contracts["available_at"].eq(surface["available_at"])
+    ]
+    return (
+        pd.Timestamp(surface["snapshot_for"]),
+        pd.Timestamp(surface["available_at"]),
+        tuple(sorted(contracts["contract_symbol"].astype(str))),
+    )
+
+
+def _receipt_identity(receipt: object | None) -> tuple[object, ...] | None:
+    if receipt is None:
+        return None
+    return (
+        pd.Timestamp(receipt.surface["snapshot_for"]),
+        pd.Timestamp(receipt.surface["available_at"]),
+        tuple(sorted(receipt.contracts["contract_symbol"].astype(str))),
+    )

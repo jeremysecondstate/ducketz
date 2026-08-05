@@ -1,14 +1,15 @@
-# Loop B options-strategy selection
+# Independent options-strategy selection
 
 ## Status and operating boundary
 
-Loop B contains a versioned options-strategy analytics subsystem. The
-`schwab-spreads-v1` policy runs in every Loop B cycle and reads immutable Loop A
-Schwab receipts. Loop B itself never calls Schwab, submits an order, or changes
-a directional-model partition. Its job is to publish the complete analytical
-surface. The separate Duckets Options Strategies screen combines that published
-surface with the current Schwab account snapshot and provides the operator-owned
-order ticket.
+`ml.strategy_runtime` owns the versioned options-strategy analytics subsystem.
+The `schwab-spreads-v1` policy runs only after directional Loop B has completed
+and published. It reads that exact Loop B run, checksum-verified independent
+Options receipts, and stock BBO evidence. Strategy never calls Schwab, submits
+an order, changes a directional-model partition, or mutates its source Loop B
+directory. The Duckets Options Strategies screen combines the separately
+published surface with the current Schwab account snapshot and provides the
+operator-owned order ticket.
 
 The account authorization represented by this policy is **Schwab Spreads**.
 That authorization is separate from:
@@ -28,7 +29,7 @@ constructible candidate and its measurements.
 
 | Responsibility | Identifier |
 | --- | --- |
-| Loop B strategy subsystem | `schwab-spreads-v1` |
+| Strategy runtime policy | `schwab-spreads-v1` |
 | 40-strategy registry | `schwab-spreads-strategy-registry-v1` |
 | Exact-chain candidate construction | `schwab-exact-chain-candidates-v3` |
 | Causal quote outcome | `observed-bbo-pseudo-outcome-v2` |
@@ -40,13 +41,13 @@ constructible candidate and its measurements.
 | Display-time Schwab position overlay | `current-schwab-position-fit-v1` |
 | UI-to-Schwab order draft | `schwab-strategy-order-draft-v1` |
 
-The first nine identifiers belong to Loop B artifacts and manifests. The last
+The first nine identifiers belong to Strategy artifacts and manifests. The last
 two belong to the UI boundary: neither current account state nor an order draft
 is persisted as a historical strategy-model feature.
 
 ## Research traceability
 
-The implementation carries a readable research trace in every Loop B
+The implementation carries a readable research trace in every Strategy
 run manifest and every strategy-model manifest. The machine-readable trace is
 versioned as `nyu-hu-uh-trace-v2`.
 
@@ -65,8 +66,8 @@ lifecycle behavior, and economic value after all costs.
 
 ```mermaid
 flowchart LR
-    A["Immutable Loop A exact-chain, surface, stock-quote, and audited feature receipts"] --> B["Point-in-time market state"]
-    P["Separate route directional probability"] --> B
+    A["Committed Options exact-chain and surface receipts plus stock BBO"] --> B["Point-in-time market state"]
+    P["Completed authoritative Loop B directional run"] --> B
     A --> C["40-strategy exact-leg construction"]
     B --> D["Exact-mechanics scenario prior"]
     C --> D
@@ -81,7 +82,7 @@ flowchart LR
     H --> I
     I --> J["Continuous exact-candidate ranking"]
     J --> K["strategy-candidates.parquet and strategy-audit.parquet"]
-    K --> L["Authoritative ml/latest/run.json publication boundary"]
+    K --> L["Authoritative ml/strategy-latest/run.json publication boundary"]
     L --> M["Options Strategies screen"]
     N["Fresh Schwab shares, options, working orders, and funds"] --> M
     M --> O["Select Exact legs to replace the ticket"]
@@ -89,13 +90,10 @@ flowchart LR
     Q --> R["Confirm and Submit Order through SchwabSession"]
 ```
 
-The real directional-model lockbox is removed before strategy processing.
-Loop B additionally passes every closed lockbox `target_window_start` to the
-strategy runtime as a forbidden set. Encountering one is a hard failure. The
-strategy model never reads, labels, predicts, scores, or selects against a real
-lockbox row. Historical exit-receipt selection is also capped strictly before
-the earliest real-lockbox boundary, so a pre-lockbox candidate cannot acquire
-an outcome from inside the lockbox period.
+The real directional-model lockbox is removed before Loop B publishes
+`samples.parquet`; the Strategy runtime can therefore never read, label,
+predict, score, or select a real lockbox row. Its manifest binds the exact
+redacted sample file and source Loop B publication receipt.
 
 ## Authorized strategy registry
 
@@ -262,7 +260,7 @@ assumptions and learned historical evidence.
 The current candidate pass always uses its exact matching canonical LIVE
 directional probability. Historical assembly uses an exact matching causal
 prediction when one is present in the supplied prediction frame. If one is not
-present, scenario signs receive neutral 0.5/0.5 weights; Loop B does not derive
+present, scenario signs receive neutral 0.5/0.5 weights; Strategy does not derive
 a historical forecast from the future directional label. The other causal
 market-state and exact-chain measurements remain available to the strategy
 estimators.
@@ -321,7 +319,7 @@ decision. Neither rule is a trade gate.
 
 ## Outputs and compatibility
 
-Every Loop B run writes two schema-bound artifacts:
+Every Strategy run writes two schema-bound artifacts:
 
 ```text
 strategy-candidates.parquet
@@ -450,18 +448,22 @@ publish the exact empty audit schema. Model artifacts live under:
 DATASTORE/ml/strategy-models/<horizon>/market-state-strategy-outcome/<timestamp>/
 ```
 
+Every artifact selected for a published run is also copied into that immutable
+`ml/strategy-runs/<timestamp>/model-artifacts/` directory.
+
 Compatibility includes the model, candidate, outcome, ranking,
 preprocessing, and research-trace policy versions; ordered numeric/categorical
 features; chronological row and decision counts; training-through time; policy
 settings; and immutable input-file inventory. A mismatch fits a new timestamped
 artifact rather than loading an incompatible model.
 
-Both Parquets are included in the run manifest, copied to predictable
-`ml/latest` mirrors, and committed together with the other run outputs through
-the single authoritative `ml/latest/run.json` pointer. Official readers verify
-that pointer, its receipt and manifest, and then open the named immutable run
-artifact. They do not choose a directory by modification time or read a mirror
-that may still be changing. The full natural-key and schema rules are in
+Both Parquets are included in the Strategy run manifest and committed through
+the separate authoritative `ml/strategy-latest/run.json` pointer. Official
+readers verify that pointer, its receipt and manifest, and then open the named
+immutable `ml/strategy-runs` artifact. The manifest also records the exact
+source Loop B publication, Options receipts, and stock BBO files. Readers do not
+choose a directory by modification time or read a multi-file generation before
+its receipt. The full natural-key and schema rules are in
 [Parquet ID contract](parquet-id-contract.md).
 
 ## Duckets display and Schwab order ticket
@@ -485,7 +487,7 @@ Schwab API constants.
 **Market probability** is the calibrated profitable-outcome probability when a
 compatible fitted model exists; otherwise it is the explicitly uncalibrated raw
 scenario prior. It is never the directional probability. **Expected return** is
-persisted expected return on risk. The persisted `candidate_rank` is the Loop B
+persisted expected return on risk. The persisted `candidate_rank` is the Strategy
 market rank; visible **Rank** is recalculated after the live portfolio overlay.
 The UI sorts descending by overall score, then the displayed market
 probability, then readable `candidate_key`, and numbers every displayed row 1
@@ -495,7 +497,7 @@ calibration exists.
 
 The model and exact-chain measurements remain in Parquet. Current holdings are
 intentionally joined at display time because shares, option positions, working
-orders, and available funds can change after Loop B publishes a candidate. The
+orders, and available funds can change after Strategy publishes a candidate. The
 screen fetches a fresh `sync_schwab_portfolio()` snapshot and derives, for the
 selected symbol, net equity shares, absolute option-contract count, working
 option-order count, and the first reported value among available funds, cash
@@ -588,7 +590,7 @@ There is no enable/disable profile and no action threshold. A fitted candidate
 row is labeled `MODEL_FIT`; a route without the required observations is
 labeled `MARKET_STATE_PRIOR` and remains fully ranked from causal market and
 exact-chain mechanics. The separate route model report records `MODEL_NOT_FIT`
-and the observed/required cluster counts. Loop B never converts a candidate
+and the observed/required cluster counts. Strategy never converts a candidate
 rank into a trading decision.
 
 The recorded operational GOOG chain history represented one independent market
@@ -615,12 +617,13 @@ The automated coverage verifies:
 - decision-cluster integrity and boundary purging;
 - training/calibration/assessment separation;
 - model and preprocessing policy persistence;
-- hard refusal of a forbidden real-lockbox cluster;
+- absence of redacted directional lockbox rows from Strategy inputs;
 - an offline end-to-end chain-history build, fit, calibration, assessment, and
   current-candidate ranking;
 - exact candidate/audit Arrow schemas and one readable natural `id`;
-- always-on Loop B publication of candidate and audit artifacts without a
-  recommendation receipt;
+- directional Loop B publication before Strategy processing, with no mutation
+  of the source run;
+- independent Strategy receipt/pointer publication and exact source lineage;
 - current shares, option positions, working orders, funds, and deterministic
   display-time portfolio fit;
 - successful order-draft conversion for all 40 registered strategies;

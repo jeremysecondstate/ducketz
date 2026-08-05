@@ -151,7 +151,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"Horizons: {', '.join(specifications)}")
     print(f"Feature profile: {config.feature_profile}")
     print(f"Model: {config.model_family}; calibration: {config.calibration_method}")
-    print("Options strategy analytics: schwab-spreads-v1")
+    print("Options strategy analytics: independent ml.strategy_runtime process")
     print(f"Interval: {args.interval_minutes} minutes")
     if not args.once:
         print(f"UTC phase: +{args.phase_offset_minutes} minutes")
@@ -204,8 +204,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         f"evaluations={result.evaluation_rows}; "
                         f"models_trained={result.models_trained}; "
                         f"models_reused={result.models_reused}; "
-                        "strategy_candidates="
-                        f"{getattr(result, 'strategy_candidate_rows', 0)}"
+                        "directional publication complete"
                     )
                     print(f"Run: {result.run_directory}")
                     print(f"Current: {result.latest_intelligence_path}")

@@ -54,14 +54,18 @@ Useful runtime choices are:
 --round-trip-cost RATE
 ```
 
-Every Loop B cycle runs the versioned `schwab-spreads-v1` options-strategy
-analytics stage. It consumes immutable Loop A Schwab chain receipts, constructs
-the complete reviewed Spreads strategy universe, fits against chronological
-pre-lockbox observed-BBO outcomes, and publishes every constructible candidate
-with continuous probabilities, expected-value fields, and a route rank. Quote
-quality and liquidity are published diagnostics rather than row-suppression
-rules. Loop B does not issue a trade/no-trade verdict. See
-[Loop B options-strategy selection](../docs/datafetch-ml/options-strategy-selection.md).
+Strategy selection is not a Loop B stage. `ml.strategy_runtime` consumes an
+already-published authoritative Loop B run, exact committed Schwab receipts,
+and stock BBO evidence, then publishes a separate immutable Strategy run. It
+can lag or retry without delaying directional predictions and never mutates the
+source Loop B directory:
+
+```powershell
+python -m ml.strategy_runtime --datastore C:\data\duckets --once
+```
+
+See [options-strategy selection](../docs/datafetch-ml/options-strategy-selection.md)
+and [independent runtime orchestration](../docs/datafetch-ml/independent-runtime-orchestration.md).
 
 For `4h`, the closed profile routes resolve to `technical-all-4h`,
 `technical-all-v2-4h`, and `loop-a-all-v1-4h`. The default set is an exact
@@ -132,7 +136,8 @@ One Loop B iteration:
 14. writes monitoring values and one current intelligence row per
     symbol/horizon;
 15. refreshes compatibility mirrors and atomically commits the authoritative
-    current-run pointer.
+    current-run pointer. Only after this point can the independent Strategy
+    runtime consume the run.
 
 The versioned intraday target contracts are
 `next-60-eligible-regular-minutes-open-close-v2` for `1h` and
@@ -265,6 +270,19 @@ DATASTORE/ml/
     ├── monitoring.parquet
     ├── intelligence.parquet
     └── run.json
+```
+
+Strategy uses a separate topology and authority:
+
+```text
+DATASTORE/ml/
+├── strategy-runs/<UTC timestamp>/
+│   ├── strategy-candidates.parquet
+│   ├── strategy-audit.parquet
+│   ├── strategy-model-reports.json
+│   ├── manifest.json
+│   └── publication.json
+└── strategy-latest/run.json
 ```
 
 Timestamp directory names use UTC, for example

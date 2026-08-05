@@ -28,7 +28,7 @@ from technicals.parquet_io import _schwab_history_file_sort_key
 SYMBOLS = tuple(f"S{index:02d}" for index in range(15))
 
 
-def test_default_watchlist_and_both_loop_commands_use_the_same_fifteen_symbols() -> None:
+def test_default_watchlist_and_runtime_commands_use_the_same_configured_symbols() -> None:
     root = Path(__file__).resolve().parents[1]
     watchlist = orchestrate.read_watchlist(root / "datafetching" / "watchlist.txt")
     loop_a_command = (root / "docs" / "datafetch-ml" / "current_start_command").read_text(
@@ -38,10 +38,13 @@ def test_default_watchlist_and_both_loop_commands_use_the_same_fifteen_symbols()
         root / "docs" / "datafetch-ml" / "current_prediction_command"
     ).read_text(encoding="utf-8")
 
-    assert len(watchlist) == 15
-    assert len(set(watchlist)) == 15
-    assert all(symbol in loop_a_command for symbol in watchlist)
+    assert watchlist
+    assert len(set(watchlist)) == len(watchlist)
+    assert "--watchlist datafetching\\watchlist.txt" in loop_a_command
+    assert "--cme-mode external" in loop_a_command
+    assert "--options-mode external" in loop_a_command
     assert all(symbol in loop_b_command for symbol in watchlist)
+    assert "python -m ml.strategy_runtime" in loop_b_command
 
 
 def test_databento_provider_splits_one_multi_symbol_response_by_ticker(

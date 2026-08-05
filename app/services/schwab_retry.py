@@ -6,6 +6,8 @@ from typing import TypeVar
 
 import requests
 
+from datafetching.observability import timed_stage
+
 _T = TypeVar("_T")
 
 SCHWAB_RETRY_DELAY_SECONDS = 5.0
@@ -33,6 +35,9 @@ def call_with_persistent_schwab_retry(
     max_attempts: int = SCHWAB_RETRY_MAX_ATTEMPTS,
     sleep: Callable[[float], None] = time.sleep,
     reporter: Callable[[str], None] | None = print,
+    symbol: str | None = None,
+    schema: str | None = None,
+    timing_reporter: Callable[[str], None] | None = None,
 ) -> _T:
     """Retry a transient Schwab market-data request at a fixed interval.
 
@@ -51,7 +56,18 @@ def call_with_persistent_schwab_retry(
 
     for attempt in range(1, max_attempts + 1):
         try:
-            result = operation()
+            with timed_stage(
+                "provider.request",
+                symbol=symbol,
+                provider="schwab",
+                schema=schema,
+                attempt=attempt,
+                reporter=timing_reporter,
+                extra={"operation_name": operation_name},
+            ) as timing:
+                result = operation()
+                row_count = len(result) if hasattr(result, "__len__") else None
+                timing.annotate(row_count=row_count, operation="fetched")
             if attempt > 1 and reporter is not None:
                 reporter(f"[Schwab] {operation_name} succeeded on attempt {attempt}.")
             return result
