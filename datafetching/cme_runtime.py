@@ -54,6 +54,11 @@ DEFAULT_CHUNK_MINUTES = {
     "bbo-1m": 60,
     "mbp-10": 5,
 }
+DEFAULT_RECORD_LIMITS = {
+    # MBP-10 records are 368 uncompressed bytes. This keeps one streaming
+    # response below 100 MB and saturated ranges are split before publication.
+    "mbp-10": 250_000,
+}
 REPOSITORY_ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
 
 
@@ -98,6 +103,7 @@ def run_cme_cycle(
     max_concurrency: int = 1,
     overlap_seconds: Mapping[str, int] | None = None,
     chunk_minutes: Mapping[str, int] | None = None,
+    record_limits: Mapping[str, int] | None = None,
     retry_attempts: int = 6,
     retry_delay_seconds: float = 4.0,
     now: Callable[[], datetime] | None = None,
@@ -125,6 +131,7 @@ def run_cme_cycle(
         timing.annotate(row_count=len(specs), operation="fetched")
     overlaps = {**DEFAULT_OVERLAP_SECONDS, **dict(overlap_seconds or {})}
     chunks = {**DEFAULT_CHUNK_MINUTES, **dict(chunk_minutes or {})}
+    limits = {**DEFAULT_RECORD_LIMITS, **dict(record_limits or {})}
     results: list[CmeSchemaResult] = []
     failures: list[tuple[DatabentoCmeContextSpec, Exception]] = []
 
@@ -135,6 +142,7 @@ def run_cme_cycle(
             spec=spec,
             overlap=timedelta(seconds=overlaps.get(spec.schema, 30)),
             chunk=timedelta(minutes=chunks.get(spec.schema, 60)),
+            record_limit=limits.get(spec.schema),
             retry_attempts=retry_attempts,
             retry_delay_seconds=retry_delay_seconds,
             now=clock,
@@ -285,6 +293,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=[],
         metavar="SCHEMA=MINUTES",
     )
+    parser.add_argument(
+        "--record-limit",
+        action="append",
+        default=[],
+        metavar="SCHEMA=ROWS",
+        help=(
+            "Maximum records per exact request; saturated ranges are split and "
+            "retried without advancing the cursor."
+        ),
+    )
     parser.add_argument("--max-concurrency", type=int, choices=(1, 2), default=1)
     parser.add_argument("--retry-attempts", type=int, default=6)
     parser.add_argument("--retry-delay-seconds", type=float, default=4.0)
@@ -304,21 +322,34 @@ def main(argv: Sequence[str] | None = None) -> int:
         **DEFAULT_CHUNK_MINUTES,
         **_parse_schema_values(args.chunk_minutes),
     }
+    record_limits = {
+        **DEFAULT_RECORD_LIMITS,
+        **_parse_schema_values(args.record_limit),
+    }
     if any(value < 1 for value in cadences.values()):
         parser.error("Every CME cadence must be at least one second")
     if any(value < 0 for value in phases.values()):
         parser.error("CME phase offsets cannot be negative")
+    if any(value < 1 for value in record_limits.values()):
+        parser.error("Every CME record limit must be at least one row")
     if args.retry_attempts < 1 or args.retry_delay_seconds < 0:
         parser.error("Retry attempts must be positive and delay non-negative")
     store = ParquetStore(args.datastore, target=args.datastore_target)
-    print("DUCKETS CME RUNTIME")
-    print("===================")
-    print(f"DATASTORE: {store.root_dir}")
-    print("Ownership: CME OHLCV, BBO, MBP-10, five-minute L2, and hourly context")
-    print("Collection: complete history after the successful queried_through cursor")
-    print(f"Cadences: {cadences}")
-    print(f"Max concurrency: {args.max_concurrency} (supported benchmark choices: 1 or 2)")
-    print("Stop: Ctrl+C")
+    schedule = " | ".join(
+        f"{schema} every {cadence}s at +{phases.get(schema, 0)}s"
+        for schema, cadence in cadences.items()
+    )
+    limits_text = ", ".join(
+        f"{schema}={limit:,}" for schema, limit in record_limits.items()
+    )
+    print("DUCKETS CME")
+    print("===========")
+    print(f"Datastore    {store.root_dir}")
+    print("Owns         OHLCV, BBO, MBP-10, 5-minute L2, hourly context")
+    print("Collection   complete history from successful queried_through cursors")
+    print(f"Schedule     {schedule}")
+    print(f"Requests     max {args.max_concurrency} concurrent; record caps {limits_text}")
+    print("Stop         Ctrl+C")
     print()
 
     with exclusive_runtime_lock(
@@ -332,6 +363,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     max_concurrency=args.max_concurrency,
                     overlap_seconds=overlaps,
                     chunk_minutes=chunk_values,
+                    record_limits=record_limits,
                     retry_attempts=args.retry_attempts,
                     retry_delay_seconds=args.retry_delay_seconds,
                 )
@@ -363,6 +395,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     max_concurrency=args.max_concurrency,
                     overlap_seconds=overlaps,
                     chunk_minutes=chunk_values,
+                    record_limits=record_limits,
                     retry_attempts=args.retry_attempts,
                     retry_delay_seconds=args.retry_delay_seconds,
                 )
@@ -386,6 +419,7 @@ def _collect_schema(
     spec: DatabentoCmeContextSpec,
     overlap: timedelta,
     chunk: timedelta,
+    record_limit: int | None,
     retry_attempts: int,
     retry_delay_seconds: float,
     now: Callable[[], datetime],
@@ -405,67 +439,99 @@ def _collect_schema(
     total_rows = 0
     partitions_written = 0
     partitions_reused = 0
+    request_count = 0
     latest_event: pd.Timestamp | None = cursor.last_event_at if cursor else None
     for start, end in ranges:
-        request_spec = replace(
+        initial_request = replace(
             spec,
             start=start.to_pydatetime(),
             end=end.to_pydatetime(),
-            limit=None,
+            limit=record_limit,
             initial_start=start.to_pydatetime(),
             initial_end=end.to_pydatetime(),
             limit_saturated=False,
             latest_window_shrink_count=0,
             empty_window_expansion_count=0,
         )
-        with timed_stage(
-            "cme.collect-range",
-            symbol=spec.output_symbol,
-            provider="databento",
-            schema=spec.schema,
-            request_start=start,
-            request_end=end,
-            reporter=reporter,
-            extra={"group_key": spec.group_key},
-        ) as timing:
-            rows, raw_frame, effective = call_with_persistent_databento_retry(
-                lambda request_spec=request_spec: provider.fetch_cme_context(
-                    request_spec
-                ),
-                operation_name=f"CME {spec.group_key}/{spec.schema}",
-                delay_seconds=retry_delay_seconds,
-                max_attempts=retry_attempts,
-                reporter=reporter,
+        pending = [initial_request]
+        while pending:
+            request_spec = pending.pop(0)
+            request_start = pd.Timestamp(request_spec.start)
+            request_end = pd.Timestamp(request_spec.end)
+            with timed_stage(
+                "cme.collect-range",
                 symbol=spec.output_symbol,
+                provider="databento",
                 schema=spec.schema,
-                request_start=start,
-                request_end=end,
-                timing_reporter=reporter,
-            )
-            persisted = persist_cme_event_history(
-                store.root_dir,
-                spec=effective,
-                normalized_rows=rows,
-                raw_frame=raw_frame,
-            )
-            event = _latest_event(rows)
-            if event is not None and (latest_event is None or event > latest_event):
-                latest_event = event
-            total_rows += persisted.rows
-            partitions_written += persisted.written
-            partitions_reused += persisted.reused
-            timing.annotate(
-                row_count=persisted.rows,
-                operation=(
-                    "wrote"
-                    if persisted.written
-                    else "reused"
-                    if persisted.reused
-                    else "fetched"
-                ),
-                partitions_written=persisted.written,
-                partitions_reused=persisted.reused,
-            )
+                request_start=request_start,
+                request_end=request_end,
+                reporter=reporter,
+                extra={
+                    "group_key": spec.group_key,
+                    "symbol_count": len(request_spec.symbols),
+                },
+            ) as timing:
+                fetch_exact = getattr(
+                    provider,
+                    "fetch_cme_context_exact",
+                    provider.fetch_cme_context,
+                )
+                rows, raw_frame, effective = call_with_persistent_databento_retry(
+                    lambda request_spec=request_spec: fetch_exact(request_spec),
+                    operation_name=f"CME {spec.group_key}/{spec.schema}",
+                    delay_seconds=retry_delay_seconds,
+                    max_attempts=retry_attempts,
+                    reporter=reporter,
+                    symbol=spec.output_symbol,
+                    schema=spec.schema,
+                    request_start=request_start,
+                    request_end=request_end,
+                    timing_reporter=reporter,
+                )
+                request_count += 1
+                if effective.limit_saturated:
+                    children = _split_saturated_request(request_spec)
+                    pending[0:0] = list(children)
+                    timing.annotate(
+                        row_count=len(raw_frame),
+                        operation="fetched",
+                        limit_saturated=True,
+                        next_action="split",
+                    )
+                    if reporter is not None:
+                        reporter(
+                            f"[CME] {spec.group_key}/{spec.schema} reached its "
+                            f"{request_spec.limit:,}-row cap; splitting into "
+                            f"{len(children)} exact requests."
+                        )
+                    continue
+                persisted = persist_cme_event_history(
+                    store.root_dir,
+                    spec=effective,
+                    normalized_rows=rows,
+                    raw_frame=raw_frame,
+                )
+                event = _latest_event(rows)
+                if event is not None and (
+                    latest_event is None or event > latest_event
+                ):
+                    latest_event = event
+                total_rows += persisted.rows
+                partitions_written += persisted.written
+                partitions_reused += persisted.reused
+                timing.annotate(
+                    row_count=persisted.rows,
+                    operation=(
+                        "wrote"
+                        if persisted.written
+                        else "reused"
+                        if persisted.reused
+                        else "fetched"
+                    ),
+                    partitions_written=persisted.written,
+                    partitions_reused=persisted.reused,
+                    limit_saturated=False,
+                )
     successful_at = now().astimezone(timezone.utc)
     published_cursor = publish_cme_cursor(
         store.root_dir,
@@ -484,8 +550,33 @@ def _collect_schema(
         total_rows,
         partitions_written,
         partitions_reused,
-        len(ranges),
+        request_count,
         published_cursor,
+    )
+
+
+def _split_saturated_request(
+    spec: DatabentoCmeContextSpec,
+) -> tuple[DatabentoCmeContextSpec, DatabentoCmeContextSpec]:
+    """Split a capped exact request without creating a history gap."""
+
+    if len(spec.symbols) > 1:
+        midpoint = len(spec.symbols) // 2
+        return (
+            replace(spec, symbols=spec.symbols[:midpoint], limit_saturated=False),
+            replace(spec, symbols=spec.symbols[midpoint:], limit_saturated=False),
+        )
+    midpoint = spec.start + (spec.end - spec.start) / 2
+    if midpoint <= spec.start or midpoint >= spec.end:
+        raise RuntimeError(
+            "A single-symbol CME request remained saturated at the minimum "
+            f"time resolution for {spec.group_key}/{spec.schema}; the cursor "
+            "was not advanced. Increase neither the cursor nor the record cap "
+            "until the range can be collected completely."
+        )
+    return (
+        replace(spec, end=midpoint, limit_saturated=False),
+        replace(spec, start=midpoint, limit_saturated=False),
     )
 
 

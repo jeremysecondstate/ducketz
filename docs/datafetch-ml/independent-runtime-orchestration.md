@@ -77,6 +77,21 @@ history from its `queried_through` cursor, with a safety overlap, while also
 publishing latest-state snapshots. It is not treated as a historical
 continuation window.
 
+Complete-history MBP streaming requests default to a 250,000-record safety cap
+(about 92 MB of uncompressed MBP-10 records). A response that reaches the cap
+is not treated as complete and is not allowed to advance the cursor. The
+runtime first splits its symbol set, then its exact time range, and retries
+until every child request is unsaturated. Override the cap only when needed:
+
+```powershell
+python -m datafetching.cme_runtime --datastore-target pc `
+  --record-limit mbp-10=250000
+```
+
+This preserves complete history while preventing Databento's provisional
+recent-data size estimate from turning a small recovery slice into a nominal
+greater-than-5-GB streaming request.
+
 Options default to every 15 minutes at UTC phase +2 minutes. Loop A defaults to
 15 minutes. Loop B defaults to phase +5 minutes, and Strategy defaults to hourly
 at phase +10 minutes. These offsets are operational defaults, not timestamp
@@ -168,6 +183,19 @@ python -m datafetching.orchestrate --datastore-target pc `
 Stop the independent CME and Options processes before using that command. The
 writer locks deliberately reject two owners. `--skip-cme` remains available,
 but is unnecessary in the recommended external mode.
+
+## Console timing output
+
+Structured timings use compact one-line `START` and `END` records by default.
+They omit null fields but retain the UTC correlation time, stage, symbol,
+provider/schema, request range, attempt, row count, operation, status, and
+elapsed milliseconds. For JSON Lines ingestion, set the format before starting
+a process:
+
+```powershell
+$env:DUCKETS_TIMING_FORMAT = "json"
+python -m datafetching.cme_runtime --datastore-target pc
+```
 
 ## Concurrency and performance check
 

@@ -174,6 +174,29 @@ class DatabentoCmeContextProvider:
             rows = [_no_current_rows_status_row(context_spec)]
         return rows, raw_frame, context_spec
 
+    def fetch_cme_context_exact(self, spec: DatabentoCmeContextSpec) -> tuple[list[dict[str, Any]], pd.DataFrame, DatabentoCmeContextSpec]:
+        """Fetch exactly one bounded range without latest-state window adjustment."""
+
+        prepared = replace(
+            spec,
+            initial_start=spec.initial_start or spec.start,
+            initial_end=spec.initial_end or spec.end,
+        )
+        frame = self._fetch_frame(self._client(), prepared)
+        raw_frame = _deduplicate_provider_rows(frame.reset_index())
+        effective = replace(
+            prepared,
+            limit_saturated=(
+                prepared.limit is not None and len(frame) >= prepared.limit
+            ),
+            latest_event_timestamp=_latest_event_timestamp(frame),
+            availability_status="NO CURRENT ROWS" if frame.empty else "CURRENT",
+        )
+        rows = _context_rows_from_frame(effective, raw_frame)
+        if not rows:
+            rows = [_no_current_rows_status_row(effective)]
+        return rows, raw_frame, effective
+
     def _fetch_latest_frame_for_spec(self, client: Any, spec: DatabentoCmeContextSpec) -> tuple[DatabentoCmeContextSpec, pd.DataFrame]:
         latest_spec = spec
         frame = self._fetch_frame(client, latest_spec)

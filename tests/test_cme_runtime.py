@@ -267,6 +267,45 @@ def test_large_recovery_gap_is_chunked_with_safety_overlap() -> None:
     assert all(left[1] == right[0] for left, right in zip(ranges, ranges[1:]))
 
 
+def test_saturated_cme_request_splits_without_advancing_past_missing_rows(
+    tmp_path: Path,
+) -> None:
+    spec = _spec(
+        start="2026-08-05T10:00:00Z",
+        end="2026-08-05T10:00:05Z",
+        symbols=("NQ.c.0", "ES.c.0"),
+    )
+    provider = _SaturatingExactProvider(spec)
+
+    result = run_cme_cycle(
+        ParquetStore(tmp_path),
+        provider=provider,
+        record_limits={"mbp-10": 2},
+        retry_attempts=1,
+        retry_delay_seconds=0,
+        now=lambda: datetime(2026, 8, 5, 10, 0, 6, tzinfo=UTC),
+        reporter=None,
+    )
+
+    assert result.schemas_succeeded == 1
+    assert result.event_rows == 2
+    assert [len(request.symbols) for request in provider.requests] == [2, 1, 1]
+    assert all(request.limit == 2 for request in provider.requests)
+    cursor = read_cme_cursor(tmp_path, group_key="context", schema="mbp-10")
+    assert cursor is not None
+    assert cursor.queried_through == pd.Timestamp(spec.end)
+    paths = cme_normalized_event_paths(
+        tmp_path,
+        group_key="context",
+        schema="mbp-10",
+    )
+    stored = pd.concat(
+        [pd.read_parquet(path) for path in paths],
+        ignore_index=True,
+    )
+    assert set(stored["provider_symbol"]) == {"NQ.c.0", "ES.c.0"}
+
+
 def test_cme_concurrency_two_is_bounded_and_faster_on_independent_requests(
     tmp_path: Path,
 ) -> None:
@@ -413,3 +452,59 @@ class _DelayedQuietProvider:
             with self._lock:
                 self.active -= 1
         return ([{"cme_row_kind": "schema_status"}], pd.DataFrame(), spec)
+
+
+class _SaturatingExactProvider:
+    def __init__(self, spec: DatabentoCmeContextSpec) -> None:
+        self.spec = spec
+        self.requests: list[DatabentoCmeContextSpec] = []
+
+    def specs(self) -> tuple[DatabentoCmeContextSpec, ...]:
+        return (self.spec,)
+
+    def fetch_cme_context(
+        self,
+        spec: DatabentoCmeContextSpec,
+    ) -> tuple[list[dict[str, object]], pd.DataFrame, DatabentoCmeContextSpec]:
+        raise AssertionError("The complete-history runtime must use the exact fetch path")
+
+    def fetch_cme_context_exact(
+        self,
+        spec: DatabentoCmeContextSpec,
+    ) -> tuple[list[dict[str, object]], pd.DataFrame, DatabentoCmeContextSpec]:
+        self.requests.append(spec)
+        timestamp = pd.Timestamp(spec.start) + pd.Timedelta(seconds=1)
+        if len(spec.symbols) > 1:
+            raw = pd.DataFrame(
+                {
+                    "symbol": list(spec.symbols),
+                    "ts_event": [timestamp] * len(spec.symbols),
+                    "sequence": range(1, len(spec.symbols) + 1),
+                }
+            )
+            return [], raw, replace(spec, limit_saturated=True)
+
+        symbol = spec.symbols[0]
+        sequence = 1 if symbol.startswith("NQ") else 2
+        row = _event(
+            symbol,
+            timestamp,
+            timestamp + pd.Timedelta(milliseconds=1),
+            sequence=sequence,
+            price=100.0 + sequence,
+        )
+        raw = pd.DataFrame(
+            [
+                {
+                    "symbol": symbol,
+                    "ts_event": timestamp,
+                    "sequence": sequence,
+                    "action": "M",
+                    "side": "B",
+                    "depth": 0,
+                    "price": 100.0 + sequence,
+                    "size": 10,
+                }
+            ]
+        )
+        return [row], raw, replace(spec, limit_saturated=False)
