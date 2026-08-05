@@ -172,6 +172,12 @@ class LoopBResult:
     models_reused: int
     route_errors: Mapping[str, str]
     latest_intelligence_path: Path
+    backtest_prediction_rows: int = 0
+    fresh_live_prediction_rows: int = 0
+    carried_active_live_prediction_rows: int = 0
+    retained_weekly_live_prediction_rows: int = 0
+    actionable_ordinary_routes: int = 0
+    in_progress_ordinary_routes: int = 0
     strategy_candidate_rows: int = 0
     strategy_audit_rows: int = 0
     strategy_models_trained: int = 0
@@ -483,12 +489,68 @@ def _run_loop_b_once(
                     f"[Loop B/{symbol} weekly snapshot] {route_errors[error_key]}",
                 )
 
-    predictions = (
+    current_run_predictions = (
         pd.concat(prediction_frames, ignore_index=True, sort=False)
         if prediction_frames
         else empty_frame(PREDICTION_SCHEMA)
     )
+    current_run_predictions = _project(
+        current_run_predictions,
+        PREDICTION_SCHEMA.names,
+    )
+    fresh_live_predictions = (
+        pd.concat(fresh_live_frames, ignore_index=True, sort=False)
+        if fresh_live_frames
+        else empty_frame(PREDICTION_SCHEMA)
+    )
+    fresh_live_predictions = _project(
+        fresh_live_predictions,
+        PREDICTION_SCHEMA.names,
+    )
+
+    # Keep evaluation time and the actual pre-promotion publication check
+    # distinct. Carry eligibility is decided at the latter so a forecast is
+    # never re-published at or beyond its target-window end.
+    evaluated_at = utc_timestamp(clock())
+    publication_checked_at = utc_timestamp(clock())
+    live_deadlines = pd.to_datetime(
+        fresh_live_predictions["actionable_until"],
+        utc=True,
+        errors="coerce",
+    )
+    enforce_live_target_deadline = bool(
+        enforce_publication_deadline and not live_deadlines.empty
+    )
+    if enforce_live_target_deadline and (
+        live_deadlines.isna().any()
+        or publication_checked_at >= live_deadlines.min()
+    ):
+        raise RuntimeError(
+            "Loop B publication deadline passed before atomic promotion; "
+            "the prior current files remain unchanged."
+        )
+
+    carried_active_live_predictions = (
+        _load_verified_active_prior_ordinary_forecasts(
+            root,
+            current_run=run_directory,
+            publication_time=publication_checked_at,
+            samples=samples,
+            current_predictions=current_run_predictions,
+            specifications=effective_specifications,
+            assumed_round_trip_cost=runtime.assumed_round_trip_cost,
+        )
+    )
+    predictions = pd.concat(
+        [current_run_predictions, carried_active_live_predictions],
+        ignore_index=True,
+        sort=False,
+    )
     predictions = _project(predictions, PREDICTION_SCHEMA.names)
+    if not predictions.empty:
+        predictions = predictions.drop_duplicates("id", keep="first").reset_index(
+            drop=True
+        )
     expected_routes = (
         {
             (symbol, horizon)
@@ -573,7 +635,6 @@ def _run_loop_b_once(
             ["symbol", "horizon", "decision_timestamp", "prediction_created_at"],
             keep="last",
         )
-    evaluated_at = utc_timestamp(clock())
     evaluations = _evaluation_frame(
         evaluation_predictions,
         # Verified prior-LIVE target starts were excluded from offline
@@ -587,7 +648,7 @@ def _run_loop_b_once(
     write_parquet_with_schema(evaluations, evaluations_path, EVALUATION_SCHEMA)
 
     monitoring = _monitoring_frame(
-        predictions,
+        current_run_predictions,
         evaluations,
         models=models,
         monitored_at=evaluated_at,
@@ -601,7 +662,8 @@ def _run_loop_b_once(
         predictions,
         evaluations,
         models=models,
-        created_at=evaluated_at,
+        created_at=publication_checked_at,
+        carried_predictions=carried_active_live_predictions,
     )
     intelligence_path = run_directory / "intelligence.parquet"
     write_parquet_with_schema(
@@ -610,31 +672,45 @@ def _run_loop_b_once(
         INTELLIGENCE_SCHEMA,
     )
 
-    fresh_live_predictions = (
-        pd.concat(fresh_live_frames, ignore_index=True, sort=False)
-        if fresh_live_frames
-        else empty_frame(PREDICTION_SCHEMA)
+    fresh_live_ids = set(
+        fresh_live_predictions["id"].dropna().astype(str)
     )
-    publication_checked_at = utc_timestamp(clock())
-    enforce_live_target_deadline = False
-    if enforce_publication_deadline:
-        live_deadlines = pd.to_datetime(
-            fresh_live_predictions["actionable_until"],
-            utc=True,
-            errors="coerce",
-        )
-        enforce_live_target_deadline = not live_deadlines.empty
-        if (
-            live_deadlines.isna().any()
-            or (
-                enforce_live_target_deadline
-                and publication_checked_at >= live_deadlines.min()
-            )
-        ):
-            raise RuntimeError(
-                "Loop B publication deadline passed before atomic promotion; "
-                "the prior current files remain unchanged."
-            )
+    backtest_prediction_rows = int(
+        current_run_predictions["prediction_mode"].eq("BACKTEST").sum()
+    )
+    fresh_live_prediction_rows = len(fresh_live_predictions)
+    carried_active_live_prediction_rows = len(
+        carried_active_live_predictions
+    )
+    retained_weekly_live_prediction_rows = int(
+        (
+            current_run_predictions["prediction_mode"].eq("LIVE")
+            & current_run_predictions["horizon"].isin(WEEKLY_HORIZON_ORDER)
+            & ~current_run_predictions["id"].astype(str).isin(fresh_live_ids)
+        ).sum()
+    )
+    ordinary_intelligence = intelligence.loc[
+        ~intelligence["horizon"].isin(WEEKLY_HORIZON_ORDER)
+    ]
+    actionable_ordinary_routes = int(
+        ordinary_intelligence["actionability_status"].eq("ACTIONABLE").sum()
+    )
+    in_progress_ordinary_routes = int(
+        ordinary_intelligence["intelligence_status"]
+        .eq("FORECAST_IN_PROGRESS")
+        .sum()
+    )
+    publication_counts = {
+        "total_prediction_rows": len(predictions),
+        "backtest_prediction_rows": backtest_prediction_rows,
+        "fresh_live_rows": fresh_live_prediction_rows,
+        "carried_active_live_rows": carried_active_live_prediction_rows,
+        "retained_frozen_weekly_live_rows": (
+            retained_weekly_live_prediction_rows
+        ),
+        "actionable_ordinary_routes": actionable_ordinary_routes,
+        "in_progress_ordinary_routes": in_progress_ordinary_routes,
+    }
 
     output_names = (
         "samples.parquet",
@@ -670,6 +746,7 @@ def _run_loop_b_once(
                 for horizon in effective_specifications
             },
             "route_errors": route_errors,
+            "publication_counts": publication_counts,
             "strategy_selection": {
                 "policy": STRATEGY_SELECTION_SCHWAB_SPREADS_V1,
                 "account_authorization": "SPREADS",
@@ -721,6 +798,18 @@ def _run_loop_b_once(
             if enforce_live_target_deadline
             else None
         ),
+        carried_target_window_end=(
+            pd.to_datetime(
+                carried_active_live_predictions["target_window_end"],
+                utc=True,
+                errors="coerce",
+            ).min()
+            if (
+                enforce_publication_deadline
+                and not carried_active_live_predictions.empty
+            )
+            else None
+        ),
     )
     authoritative_intelligence_path = resolve_current_output(
         root,
@@ -731,6 +820,16 @@ def _run_loop_b_once(
         run_directory=run_directory,
         sample_rows=len(published_samples),
         prediction_rows=len(predictions),
+        backtest_prediction_rows=backtest_prediction_rows,
+        fresh_live_prediction_rows=fresh_live_prediction_rows,
+        carried_active_live_prediction_rows=(
+            carried_active_live_prediction_rows
+        ),
+        retained_weekly_live_prediction_rows=(
+            retained_weekly_live_prediction_rows
+        ),
+        actionable_ordinary_routes=actionable_ordinary_routes,
+        in_progress_ordinary_routes=in_progress_ordinary_routes,
         evaluation_rows=len(evaluations),
         monitoring_rows=len(monitoring),
         intelligence_rows=len(intelligence),
@@ -751,6 +850,7 @@ def _promote_current_outputs(
     clock: Callable[[], object],
     enforce_target_deadline: bool,
     target_deadline: object | None,
+    carried_target_window_end: object | None = None,
 ) -> None:
     """Commit an immutable run through one authoritative atomic pointer.
 
@@ -817,6 +917,7 @@ def _promote_current_outputs(
             utc_timestamp(clock()),
             enforce_target_deadline=enforce_target_deadline,
             target_deadline=target_deadline,
+            carried_target_window_end=carried_target_window_end,
         )
         for stage, destination, backup in staged:
             _replace_staged_current_file(stage, destination)
@@ -825,12 +926,14 @@ def _promote_current_outputs(
                 utc_timestamp(clock()),
                 enforce_target_deadline=enforce_target_deadline,
                 target_deadline=target_deadline,
+                carried_target_window_end=carried_target_window_end,
             )
         promoted_at = utc_timestamp(clock())
         _enforce_promotion_deadlines(
             promoted_at,
             enforce_target_deadline=enforce_target_deadline,
             target_deadline=target_deadline,
+            carried_target_window_end=carried_target_window_end,
         )
         _write_publication_receipt(
             publication_receipt,
@@ -859,6 +962,7 @@ def _promote_current_outputs(
             utc_timestamp(clock()),
             enforce_target_deadline=enforce_target_deadline,
             target_deadline=target_deadline,
+            carried_target_window_end=carried_target_window_end,
         )
         current_pointer = (
             pointer_destination.read_bytes()
@@ -990,6 +1094,7 @@ def _enforce_promotion_deadlines(
     *,
     enforce_target_deadline: bool,
     target_deadline: object | None,
+    carried_target_window_end: object | None = None,
 ) -> None:
     if enforce_target_deadline:
         target_start = (
@@ -1001,6 +1106,17 @@ def _enforce_promotion_deadlines(
             raise RuntimeError(
                 "Loop B publication deadline passed during atomic promotion; "
                 "the prior current files remain unchanged."
+            )
+    if carried_target_window_end is not None:
+        target_end = (
+            utc_timestamp(carried_target_window_end)
+            if pd.notna(carried_target_window_end)
+            else None
+        )
+        if target_end is None or checked_at >= target_end:
+            raise RuntimeError(
+                "Loop B carried forecast target window ended during atomic "
+                "promotion; the prior current files remain unchanged."
             )
 
 
@@ -2205,6 +2321,264 @@ def _load_prior_live_predictions(
     ).reset_index(drop=True)
 
 
+def _load_verified_active_prior_ordinary_forecasts(
+    datastore_root: Path,
+    *,
+    current_run: Path,
+    publication_time: pd.Timestamp,
+    samples: pd.DataFrame,
+    current_predictions: pd.DataFrame,
+    specifications: Mapping[str, HorizonSpecification],
+    assumed_round_trip_cost: float,
+) -> pd.DataFrame:
+    """Select receipt-proven ordinary forecasts whose targets are in progress.
+
+    Only the run that originally issued a row can contribute it. A copy in a
+    later publication falls before that later manifest timestamp and is
+    rejected by ``_valid_archived_live_rows``. This preserves original
+    issuance lineage and prevents repeated publications from creating new
+    LIVE evidence.
+    """
+
+    ordinary_specifications = {
+        horizon: specification
+        for horizon, specification in specifications.items()
+        if not is_weekly_horizon(horizon)
+    }
+    if not ordinary_specifications or samples.empty:
+        return empty_frame(PREDICTION_SCHEMA)
+
+    published_at = utc_timestamp(publication_time)
+    try:
+        promoted_runs = authoritative_receipt_runs(datastore_root)
+    except CurrentPublicationError as exc:
+        raise RuntimeError(
+            "Authoritative current publication is invalid; active prior "
+            "forecasts cannot be carried safely."
+        ) from exc
+
+    frames: list[pd.DataFrame] = []
+    supported_horizons = frozenset(ordinary_specifications)
+    for run_directory, promoted_at in sorted(
+        promoted_runs.items(),
+        key=lambda item: (item[1], str(item[0])),
+    ):
+        if (
+            run_directory == current_run.resolve()
+            or promoted_at > published_at
+        ):
+            continue
+        try:
+            manifest = verify_manifest(run_directory)
+            outputs = manifest.get("output_files", {})
+            if (
+                publication_contract_kind(manifest) != "receipt"
+                or not isinstance(outputs, Mapping)
+                or not _RUN_OUTPUT_NAMES.issubset(outputs)
+            ):
+                continue
+            manifest_timestamp = pd.to_datetime(
+                manifest.get("run_timestamp"),
+                utc=True,
+                errors="coerce",
+            )
+            if (
+                pd.isna(manifest_timestamp)
+                or manifest_timestamp > published_at
+            ):
+                continue
+            archived = pd.read_parquet(
+                run_directory / "predictions.parquet"
+            )
+        except Exception:
+            # The authoritative-chain verifier has already rejected corrupt
+            # manifests and receipts. An incompatible prediction artifact is
+            # simply ineligible for carry-forward.
+            continue
+        if not set(PREDICTION_SCHEMA.names).issubset(archived.columns):
+            continue
+        valid = _valid_archived_live_rows(
+            _project(archived, PREDICTION_SCHEMA.names),
+            as_of=published_at,
+            supported_horizons=supported_horizons,
+            manifest_run=manifest_timestamp,
+            promoted_at=promoted_at,
+        )
+        compatible = [
+            _compatible_prospective_live_predictions(
+                valid,
+                specification=specification,
+                assumed_round_trip_cost=assumed_round_trip_cost,
+            )
+            for specification in ordinary_specifications.values()
+        ]
+        eligible = pd.concat(compatible, ignore_index=True, sort=False)
+        if eligible.empty:
+            continue
+        eligible["_source_promoted_at"] = promoted_at
+        eligible["_source_run"] = str(run_directory)
+        frames.append(eligible)
+
+    if not frames:
+        return empty_frame(PREDICTION_SCHEMA)
+
+    candidates = pd.concat(frames, ignore_index=True, sort=False)
+    target_start = pd.to_datetime(
+        candidates["target_window_start"], utc=True, errors="coerce"
+    )
+    target_end = pd.to_datetime(
+        candidates["target_window_end"], utc=True, errors="coerce"
+    )
+    candidates = candidates.loc[
+        target_start.le(published_at) & target_end.gt(published_at)
+    ].copy()
+    if candidates.empty:
+        return empty_frame(PREDICTION_SCHEMA)
+
+    current_window_keys = _current_ordinary_target_window_keys(
+        samples,
+        specifications=ordinary_specifications,
+        assumed_round_trip_cost=assumed_round_trip_cost,
+    )
+    candidates = candidates.loc[
+        [
+            _ordinary_target_window_key(row) in current_window_keys
+            for _, row in candidates.iterrows()
+        ]
+    ].copy()
+    if candidates.empty:
+        return empty_frame(PREDICTION_SCHEMA)
+
+    candidates["prediction_created_at"] = pd.to_datetime(
+        candidates["prediction_created_at"], utc=True, errors="coerce"
+    )
+    candidates["decision_timestamp"] = pd.to_datetime(
+        candidates["decision_timestamp"], utc=True, errors="coerce"
+    )
+    candidates = (
+        candidates.sort_values(
+            [
+                "symbol",
+                "horizon",
+                "prediction_created_at",
+                "_source_promoted_at",
+                "decision_timestamp",
+                "id",
+                "_source_run",
+            ],
+            kind="mergesort",
+        )
+        .groupby(["symbol", "horizon"], sort=False, as_index=False)
+        .tail(1)
+        .reset_index(drop=True)
+    )
+
+    current_valid = _valid_archived_live_rows(
+        current_predictions,
+        as_of=published_at,
+        supported_horizons=supported_horizons,
+    )
+    current_compatible_frames = [
+        _compatible_prospective_live_predictions(
+            current_valid,
+            specification=specification,
+            assumed_round_trip_cost=assumed_round_trip_cost,
+        )
+        for specification in ordinary_specifications.values()
+    ]
+    current_compatible = pd.concat(
+        current_compatible_frames,
+        ignore_index=True,
+        sort=False,
+    )
+    if not current_compatible.empty:
+        current_compatible["prediction_created_at"] = pd.to_datetime(
+            current_compatible["prediction_created_at"],
+            utc=True,
+            errors="coerce",
+        )
+        latest_current = (
+            current_compatible.groupby(["symbol", "horizon"])[
+                "prediction_created_at"
+            ]
+            .max()
+            .to_dict()
+        )
+
+        def current_is_not_newer(row: pd.Series) -> bool:
+            latest = latest_current.get(
+                (row["symbol"], row["horizon"]),
+                pd.NaT,
+            )
+            return pd.isna(latest) or latest <= row["prediction_created_at"]
+
+        candidates = candidates.loc[
+            candidates.apply(current_is_not_newer, axis=1)
+        ].copy()
+    if candidates.empty:
+        return empty_frame(PREDICTION_SCHEMA)
+    return _project(candidates, PREDICTION_SCHEMA.names).reset_index(drop=True)
+
+
+def _current_ordinary_target_window_keys(
+    samples: pd.DataFrame,
+    *,
+    specifications: Mapping[str, HorizonSpecification],
+    assumed_round_trip_cost: float,
+) -> set[tuple[object, ...]]:
+    required = {
+        "symbol",
+        "horizon",
+        "target_window_start",
+        "target_window_end",
+        "actionable_until",
+        "target_definition_version",
+        "target_specification",
+        "assumed_round_trip_cost",
+    }
+    if samples.empty or not required.issubset(samples.columns):
+        return set()
+    working = samples.copy()
+    costs = pd.to_numeric(
+        working["assumed_round_trip_cost"], errors="coerce"
+    )
+    cost_matches = np.isclose(
+        costs,
+        float(assumed_round_trip_cost),
+        rtol=0.0,
+        atol=1e-12,
+        equal_nan=False,
+    )
+    contract_matches = pd.Series(False, index=working.index)
+    for horizon, specification in specifications.items():
+        contract_matches |= (
+            working["horizon"].eq(horizon)
+            & working["target_definition_version"].eq(
+                specification.target_definition_version
+            )
+            & working["target_specification"].eq(
+                _canonical_target_specification(specification)
+            )
+        )
+    working = working.loc[cost_matches & contract_matches].copy()
+    return {
+        _ordinary_target_window_key(row)
+        for _, row in working.iterrows()
+    }
+
+
+def _ordinary_target_window_key(row: pd.Series) -> tuple[object, ...]:
+    return (
+        str(row["symbol"]).strip().upper(),
+        str(row["horizon"]).strip().lower(),
+        pd.to_datetime(row["target_window_start"], utc=True, errors="coerce"),
+        pd.to_datetime(row["target_window_end"], utc=True, errors="coerce"),
+        pd.to_datetime(row["actionable_until"], utc=True, errors="coerce"),
+        str(row["target_definition_version"]),
+        str(row["target_specification"]),
+    )
+
+
 def _manifest_target_metadata(
     manifest: Mapping[str, object],
     *,
@@ -3041,9 +3415,18 @@ def _intelligence_frame(
     *,
     models: Mapping[str, RuntimeModel],
     created_at: pd.Timestamp,
+    carried_predictions: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     rows: list[dict[str, object]] = []
     completed_live = _canonical_live_evaluations(evaluations)
+    carried_frame = (
+        carried_predictions
+        if carried_predictions is not None
+        else empty_frame(PREDICTION_SCHEMA)
+    )
+    carried_ids = set(
+        carried_frame["id"].dropna().astype(str)
+    )
     for route in materialization.routes:
         symbol = route.symbol
         horizon = route.horizon
@@ -3071,7 +3454,23 @@ def _intelligence_frame(
             if prediction is not None
                 else (sample["target_window_start"] if sample is not None else pd.NaT)
         )
+        target_end = (
+            prediction["target_window_end"]
+            if prediction is not None
+            else (sample["target_window_end"] if sample is not None else pd.NaT)
+        )
         weekly_snapshot = is_weekly_horizon(horizon) and prediction is not None
+        carried = (
+            prediction is not None
+            and str(prediction.get("id")) in carried_ids
+        )
+        in_progress = (
+            carried
+            and pd.notna(target_start)
+            and pd.notna(target_end)
+            and pd.Timestamp(target_start) <= created_at
+            and created_at < pd.Timestamp(target_end)
+        )
         actionable = (
             prediction is not None
             and pd.notna(target_start)
@@ -3104,10 +3503,15 @@ def _intelligence_frame(
                     else (
                         "no remaining-week snapshot"
                         if is_weekly_horizon(horizon)
-                        else "no actionable prediction"
+                        else "no current forecast"
                     )
                 ),
                 "remaining-week snapshot" if weekly_snapshot else None,
+                (
+                    "forecast in progress; entry window passed; not actionable"
+                    if in_progress
+                    else None
+                ),
                 "research support only; automated action is disabled",
             )
             if value
@@ -3115,6 +3519,7 @@ def _intelligence_frame(
         probability = (
             float(prediction["calibrated_probability"])
             if prediction is not None
+            and (weekly_snapshot or actionable or in_progress)
             else None
         )
         rows.append(
@@ -3138,13 +3543,7 @@ def _intelligence_frame(
                 ),
                 "target_window_start": target_start,
                 "target_window_end": (
-                    prediction["target_window_end"]
-                    if prediction is not None
-                    else (
-                        sample["target_window_end"]
-                        if sample is not None
-                        else pd.NaT
-                    )
+                    target_end
                 ),
                 "actionable_until": (
                     prediction["actionable_until"]
@@ -3171,11 +3570,16 @@ def _intelligence_frame(
                 "actionability_status": (
                     "FROZEN_WEEKLY_SNAPSHOT"
                     if weekly_snapshot
-                    else ("ACTIONABLE" if actionable else "NOT_ACTIONABLE")
+                    else (
+                        "TARGET_WINDOW_STARTED"
+                        if in_progress
+                        else ("ACTIONABLE" if actionable else "NOT_ACTIONABLE")
+                    )
                 ),
                 "operational_status": (
                     "OPERATIONALLY_CURRENT"
-                    if route.status == "READY" and (actionable or weekly_snapshot)
+                    if route.status == "READY"
+                    and (actionable or in_progress or weekly_snapshot)
                     else (
                         "OPERATIONALLY_STALE"
                         if route.status == "READY"
@@ -3192,9 +3596,13 @@ def _intelligence_frame(
                     current_evidence_status
                     if weekly_snapshot
                     else (
-                        "RISK_ANALYSIS_SUPPORT"
-                        if actionable
-                        else "NO_CURRENT_FORECAST"
+                        "FORECAST_IN_PROGRESS"
+                        if in_progress
+                        else (
+                            "RISK_ANALYSIS_SUPPORT"
+                            if actionable
+                            else "NO_CURRENT_FORECAST"
+                        )
                     )
                 ),
                 "model_name": (

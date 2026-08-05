@@ -581,7 +581,7 @@ class RollingForecastTab:
             justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(7, 0))
 
-        if route.is_actionable:
+        if route.is_actionable or route.is_in_progress:
             probability_text = (
                 "Probability up: "
                 f"{format_probability(route.probability_up)}\n"

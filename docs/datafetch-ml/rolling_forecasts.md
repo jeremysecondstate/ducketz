@@ -1,6 +1,6 @@
 # Rolling 1h, 4h, 1d, and dynamic remaining-week forecasts
 
-Implementation snapshot: 2026-08-01
+Implementation snapshot: 2026-08-05
 
 Loop B exposes four public selections in canonical order:
 
@@ -39,6 +39,21 @@ deadline equals target entry. For a remaining-week snapshot, aggregate `1w`
 and `d1` expire at the first remaining session close; each later component
 expires at its own session close. This permits a same-session forecast before
 the official close while still rejecting equality at the deadline.
+
+Actionability and visibility are separate after ordinary target entry. When a
+fresh forecast cannot be produced, Loop B may carry the latest original
+`LIVE`/`CREATED` forecast for a route only from the verified authoritative
+receipt chain. The original issuance and promotion must both precede its entry
+deadline, its current target contract/serialized specification/exact window and
+cost must still match, and the new publication time must be inside the target
+window. Current fresh rows supersede prior rows. Orphan, invalid-receipt,
+`BACKTEST`, post-entry, incompatible, and expired rows are rejected.
+
+The carried row retains its original `prediction_created_at` and is published
+as `TARGET_WINDOW_STARTED` plus `FORECAST_IN_PROGRESS`, with
+`automated_action_allowed = false`. It remains visible only until the strict
+`target_window_end`; it is never relabeled `ACTIONABLE`. Republishing the same
+original row does not create another issuance or increase live-evidence counts.
 
 Each sample also records:
 
@@ -688,9 +703,10 @@ the threshold.
 the chance reference. These values and live-evidence statuses support research
 and risk analysis; they do not enable automated action.
 
-For `1h`, `4h`, and `1d`, a route is `OPERATIONALLY_CURRENT` only while it has
-an actionable current prediction. A ready non-weekly route whose entry window
-has started and has no current forecast is `OPERATIONALLY_STALE`. A verified
+For `1h`, `4h`, and `1d`, a route is `OPERATIONALLY_CURRENT` while it has either
+an actionable fresh prediction or a verified, explicitly non-actionable carried
+forecast whose target is in progress. A ready non-weekly route with neither is
+`OPERATIONALLY_STALE`. A verified
 weekly route remains `OPERATIONALLY_CURRENT` while its coherent
 remaining-week snapshot is published. A newer completed daily decision
 supersedes the prior snapshot with a shorter target set.
@@ -770,8 +786,9 @@ weekly rows per symbol. This is a deterministic contract consequence, not a
 claim that a live 27-row publication has been deployed or observed.
 
 Within a successful run, a non-weekly route can still have assessment/backtest
-predictions but no eligible current live row. That route is published with null
-probability, `NOT_ACTIONABLE`, `OPERATIONALLY_STALE`, and a readable limitation.
+predictions but neither a fresh actionable row nor an eligible active carry.
+That route is published with null probability, `NOT_ACTIONABLE`,
+`OPERATIONALLY_STALE`, and a readable limitation.
 The UI verifies the exact current `one-id-v2` Arrow schema,
 orders the unchanged `1h`, `4h`, and `1d` cards and groups the current weekly
 aggregate and Day 1 prefix as one **remaining-week outlook**. That outlook

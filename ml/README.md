@@ -121,8 +121,10 @@ One Loop B iteration:
 7. reuses a compatible model or fits and calibrates a new model;
 8. writes the point-in-time sample view, including complete and not-yet-mature
    labels but omitting exact closed-lockbox rows;
-9. writes backtest and strictly pre-entry live predictions, preserving the
-   readable assumed round-trip cost on each prediction;
+9. writes backtest and strictly pre-entry fresh live predictions, then carries
+   at most one still-active ordinary forecast per route from the verified
+   authoritative receipt chain when no newer valid current-run forecast exists;
+   carried rows keep their original issuance and exact target/cost contract;
 10. reconciles predictions to matured targets by natural key, exact target
     window, and the same cost configuration;
 11. records `TARGET_WINDOW_MISMATCH`, `CONFIGURATION_MISMATCH`, or
@@ -134,7 +136,9 @@ One Loop B iteration:
     exist and separately counts completed LIVE forecasts for each
     symbol/horizon route against that route's horizon threshold;
 14. writes monitoring values and one current intelligence row per
-    symbol/horizon;
+    symbol/horizon; carried ordinary rows are `TARGET_WINDOW_STARTED` plus
+    `FORECAST_IN_PROGRESS`, never `ACTIONABLE`, and are excluded from fresh
+    prediction coverage while remaining in publication lineage;
 15. refreshes compatibility mirrors and atomically commits the authoritative
     current-run pointer. Only after this point can the independent Strategy
     runtime consume the run.
@@ -388,8 +392,10 @@ schema `one-id-v2`. Each row is unique by `symbol`, `horizon`, and
 route-specific live-evidence denominator; the visible card cleanup alone did
 not require or cause the schema change.
 For `1h`, `4h`, and `1d`, `OPERATIONALLY_CURRENT` means the route has an
-actionable current prediction. A ready non-weekly route whose forecast window
-has started is `OPERATIONALLY_STALE`. A verified remaining-week route remains
+actionable fresh prediction or a receipt-proven carried forecast whose target
+window is currently in progress. The latter retains its original probability
+and window but is explicitly non-actionable. A ready non-weekly route with
+neither state is `OPERATIONALLY_STALE`. A verified remaining-week route remains
 current for its published decision. Aggregate `1w` and `d1` use the first
 remaining session close as their deadline; later components use their own
 session closes.

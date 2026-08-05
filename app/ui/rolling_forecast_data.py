@@ -124,6 +124,15 @@ class ForecastRouteView:
         return self.actionability_status == ACTIONABLE_STATUS
 
     @property
+    def is_in_progress(self) -> bool:
+        return (
+            self.actionability_status == "TARGET_WINDOW_STARTED"
+            and self.intelligence_status == "FORECAST_IN_PROGRESS"
+            and self.probability_up is not None
+            and self.probability_down is not None
+        )
+
+    @property
     def is_weekly(self) -> bool:
         return self.horizon in WEEKLY_HORIZON_ORDER
 
@@ -330,7 +339,7 @@ def adapt_forecast_frame(
         for horizon in STANDARD_HORIZON_ORDER:
             row = route_rows.get((symbol, horizon))
             route = (
-                _route_view(symbol, horizon, row)
+                _route_view(symbol, horizon, row, as_of=loaded)
                 if row is not None
                 else _missing_route(symbol, horizon)
             )
@@ -340,6 +349,7 @@ def adapt_forecast_frame(
             symbol,
             route_rows,
             source_path=source_path,
+            as_of=loaded,
         )
         if weekly_outlook is None:
             weekly_aggregate = _missing_route(symbol, "1w")
@@ -509,6 +519,7 @@ def route_outcome_evidence_label(route: ForecastRouteView) -> str:
     labels = {
         "PENDING_EVIDENCE": "Pending evidence",
         "COMPLETED_EVIDENCE": "Completed evidence",
+        "FORECAST_IN_PROGRESS": "Forecast in progress",
     }
     return labels.get(
         route.intelligence_status,
@@ -583,6 +594,7 @@ def _weekly_outlook_view(
     route_rows: dict[tuple[str, str], dict[str, object]],
     *,
     source_path: Path,
+    as_of: datetime,
 ) -> WeeklyOutlookView | None:
     present = {
         horizon: route_rows[(symbol, horizon)]
@@ -623,7 +635,7 @@ def _weekly_outlook_view(
     horizons = ("1w", *component_horizons)
 
     routes = tuple(
-        _route_view(symbol, horizon, present[horizon])
+        _route_view(symbol, horizon, present[horizon], as_of=as_of)
         for horizon in horizons
     )
     for route in routes:
@@ -752,6 +764,8 @@ def _route_view(
     symbol: str,
     horizon: str,
     row: dict[str, object],
+    *,
+    as_of: datetime,
 ) -> ForecastRouteView:
     actionability_status = (
         _text(row.get("actionability_status")) or "STATUS_UNAVAILABLE"
@@ -763,22 +777,55 @@ def _route_view(
         and target_definition_version
         == _WEEKLY_TARGET_DEFINITION_VERSIONS[horizon]
     )
+    intelligence_status = (
+        _text(row.get("intelligence_status"))
+        or "INTELLIGENCE_STATUS_UNAVAILABLE"
+    )
+    target_window_start = _timestamp(row.get("target_window_start"))
+    target_window_end = _timestamp(row.get("target_window_end"))
+    actionable_until = _timestamp(row.get("actionable_until"))
+    forecast_created_at = _timestamp(row.get("forecast_created_at"))
+    automated_action_allowed = _boolean(
+        row.get("automated_action_allowed")
+    )
+    trusted_in_progress_probability = (
+        horizon in STANDARD_HORIZON_ORDER
+        and actionability_status == "TARGET_WINDOW_STARTED"
+        and intelligence_status == "FORECAST_IN_PROGRESS"
+        and automated_action_allowed is False
+        and forecast_created_at is not None
+        and actionable_until is not None
+        and target_window_start is not None
+        and target_window_end is not None
+        and forecast_created_at < actionable_until
+        and actionable_until <= target_window_start
+        and target_window_start <= as_of < target_window_end
+    )
     raw_probability_up = _number(row.get("probability_up"))
     raw_probability_down = _number(row.get("probability_down"))
     probability_up = (
         raw_probability_up
-        if actionability_status == ACTIONABLE_STATUS or frozen_weekly_probability
+        if (
+            actionability_status == ACTIONABLE_STATUS
+            or frozen_weekly_probability
+            or trusted_in_progress_probability
+        )
         else None
     )
     probability_down = (
         raw_probability_down
-        if actionability_status == ACTIONABLE_STATUS or frozen_weekly_probability
+        if (
+            actionability_status == ACTIONABLE_STATUS
+            or frozen_weekly_probability
+            or trusted_in_progress_probability
+        )
         else None
     )
     warnings: list[str] = []
     if (
         actionability_status != ACTIONABLE_STATUS
         and not frozen_weekly_probability
+        and not trusted_in_progress_probability
         and (
             raw_probability_up is not None
             or raw_probability_down is not None
@@ -789,7 +836,11 @@ def _route_view(
             "the dashboard suppressed it."
         )
     if (
-        (actionability_status == ACTIONABLE_STATUS or frozen_weekly_probability)
+        (
+            actionability_status == ACTIONABLE_STATUS
+            or frozen_weekly_probability
+            or trusted_in_progress_probability
+        )
         and (probability_up is None or probability_down is None)
     ):
         warnings.append(
@@ -843,13 +894,13 @@ def _route_view(
         horizon_label=HORIZON_LABELS[horizon],
         model_name=_text(row.get("model_name")),
         decision_timestamp=_timestamp(row.get("decision_timestamp")),
-        forecast_created_at=_timestamp(row.get("forecast_created_at")),
+        forecast_created_at=forecast_created_at,
         information_available_at=_timestamp(
             row.get("information_available_at")
         ),
-        target_window_start=_timestamp(row.get("target_window_start")),
-        target_window_end=_timestamp(row.get("target_window_end")),
-        actionable_until=_timestamp(row.get("actionable_until")),
+        target_window_start=target_window_start,
+        target_window_end=target_window_end,
+        actionable_until=actionable_until,
         target_definition_version=target_definition_version,
         probability_up=probability_up,
         probability_down=probability_down,
@@ -869,13 +920,8 @@ def _route_view(
             _text(row.get("operational_status"))
             or "OPERATIONAL_STATUS_UNAVAILABLE"
         ),
-        intelligence_status=(
-            _text(row.get("intelligence_status"))
-            or "INTELLIGENCE_STATUS_UNAVAILABLE"
-        ),
-        automated_action_allowed=_boolean(
-            row.get("automated_action_allowed")
-        ),
+        intelligence_status=intelligence_status,
+        automated_action_allowed=automated_action_allowed,
         limitation=_text(row.get("limitations")),
         is_missing=False,
         warnings=tuple(warnings),
@@ -1098,7 +1144,9 @@ def _empty_message(
 def _actionability_label(status: str) -> str:
     labels = {
         "ACTIONABLE": "Current forecast",
-        "TARGET_WINDOW_STARTED": "Forecast window has started",
+        "TARGET_WINDOW_STARTED": (
+            "Forecast in progress — entry window passed; not actionable"
+        ),
         "TARGET_WINDOW_PASSED": "Forecast window has passed",
         "ENTRY_WINDOW_PASSED": "Forecast window has passed",
         "NO_ACTIONABLE_CANDIDATE": "No current forecast",

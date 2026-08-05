@@ -34,6 +34,12 @@ def _result(root: Path) -> SimpleNamespace:
         status="SUCCESS",
         sample_rows=10,
         prediction_rows=4,
+        backtest_prediction_rows=3,
+        fresh_live_prediction_rows=0,
+        carried_active_live_prediction_rows=1,
+        retained_weekly_live_prediction_rows=0,
+        actionable_ordinary_routes=0,
+        in_progress_ordinary_routes=1,
         evaluation_rows=2,
         models_trained=0,
         models_reused=4,
@@ -81,6 +87,7 @@ def test_runtime_lock_rejects_a_second_process_and_cleans_up(
 def test_once_reads_only_a_complete_loop_a_cycle(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     _publish_complete_loop_a_cycle(tmp_path)
     observed: dict[str, object] = {}
@@ -156,6 +163,14 @@ def test_once_reads_only_a_complete_loop_a_cycle(
     )
     assert "required_live_decision_timestamp" not in observed
     assert "coordination_context" not in observed
+    output = capsys.readouterr().out
+    assert "backtest_prediction_rows=3" in output
+    assert "fresh_live_rows=0" in output
+    assert "carried_active_live_rows=1" in output
+    assert "retained_frozen_weekly_live_rows=0" in output
+    assert "actionable_ordinary_routes=0" in output
+    assert "in_progress_ordinary_routes=1" in output
+    assert "predictions=4;" not in output
 
 
 def test_once_without_a_complete_loop_a_cycle_fails_cleanly(

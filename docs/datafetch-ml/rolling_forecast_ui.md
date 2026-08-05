@@ -184,10 +184,24 @@ The weekly composite shows:
 - each route's pending/completed outcome-evidence status and accumulated
   live-evidence progress.
 
-For `1h`, `4h`, and `1d`, probabilities remain visible only when
-`actionability_status` is `ACTIONABLE`. A supplied stale probability is still
-suppressed and reported as a display safeguard. A validated remaining-week
-probability remains visible for its published snapshot; this exception requires
+For `1h`, `4h`, and `1d`, fresh probabilities remain visible when
+`actionability_status` is `ACTIONABLE`. A second, narrow display contract keeps
+a verified carried probability visible while its original target is underway:
+
+```text
+actionability_status = TARGET_WINDOW_STARTED
+intelligence_status = FORECAST_IN_PROGRESS
+automated_action_allowed = false
+target_window_start <= loaded_at < target_window_end
+```
+
+The card says **Forecast in progress — entry window passed; not actionable**,
+continues to show up/down probabilities and the original UTC/local target
+window, and never treats the row as actionable. At `target_window_end` the
+adapter suppresses the probability. A generic stale/non-actionable probability,
+including a `TARGET_WINDOW_STARTED` row without the paired trusted intelligence
+status and timing contract, remains suppressed and is reported as a display
+safeguard. A validated remaining-week probability remains visible for its published snapshot; this exception requires
 `actionability_status = FROZEN_WEEKLY_SNAPSHOT` and one of the six exact target
 versions above. It does not weaken ordinary route suppression.
 
@@ -196,11 +210,12 @@ values already published by Loop B. The UI does not load `model.joblib`, refit
 or reapply Platt calibration, or reproduce the aggregate `1w` calibration-range
 clipping policy; those operations belong to Loop B before publication.
 
-`PENDING_EVIDENCE` and `COMPLETED_EVIDENCE` come from the existing
-`intelligence_status` field. They describe the current route's outcome state.
+`PENDING_EVIDENCE`, `COMPLETED_EVIDENCE`, and `FORECAST_IN_PROGRESS` come from
+the existing `intelligence_status` field. They describe the current route's outcome state.
 `live_evidence_status` and `completed_decision_count` continue to describe the
 route's accumulated verified prospective evidence. The UI does not infer
-maturity from its own wall clock.
+evidence maturity from its own wall clock, and evidence thresholds do not gate
+an in-progress probability.
 
 A missing ordinary horizon gets an explicit "No current forecast" card. If no
 weekly routes are current, the full-width weekly card says that no current
@@ -234,16 +249,18 @@ The content canvas tracks the available width and keeps vertical scrolling.
 It does not introduce a horizontal scrollbar or require cards to extend beyond
 the visible canvas.
 
-The adapter trusts persisted operational and evidence statuses and does not
-recalculate them against the UI machine's wall clock. It independently verifies
-the remaining-week snapshot's structural timing invariants before rendering
-the badge.
+The adapter trusts persisted operational and evidence statuses. It does not
+recalculate evidence maturity, but it does compare a claimed ordinary
+`FORECAST_IN_PROGRESS` row with the load time so an ended target cannot remain
+visible. It independently verifies the remaining-week snapshot's structural
+timing invariants before rendering the badge.
 
 ### Operational status
 
-For `1h`, `4h`, and `1d`, `OPERATIONALLY_CURRENT` requires an actionable current
-prediction at publication. Successfully loading ready inputs and a model is not
-enough. A remaining-week route instead remains operationally current while its
+For `1h`, `4h`, and `1d`, `OPERATIONALLY_CURRENT` requires either an actionable
+fresh prediction or a verified carried forecast whose target window is still
+in progress at publication. The latter is explicitly non-actionable.
+Successfully loading ready inputs and a model is not enough. A remaining-week route instead remains operationally current while its
 verified snapshot is published. Its session-close deadline is persisted by
 Loop B, and a newer completed decision may replace it with the shorter current
 outlook.

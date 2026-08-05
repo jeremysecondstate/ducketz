@@ -26,13 +26,19 @@ from ml.feature_registry import DEFAULT_FEATURE_REGISTRY
 from ml.horizons import horizon_specification
 from ml.parquet_contracts import (
     CONTROL_PLANE_COLUMN_NAMES,
+    EVALUATION_SCHEMA,
     NON_PERSISTED_SAMPLE_WORKFLOW_COLUMNS,
     PREDICTION_SCHEMA,
+    empty_frame,
     forbidden_identity_columns,
     frame_with_readable_id,
     write_parquet_with_schema,
 )
 from ml.model_runtime import ModelPartitionConfig, partition_model_rows
+from ml.rolling_materialization import (
+    RollingMaterialization,
+    RouteMaterialization,
+)
 from ml.runtime_pipeline import (
     RuntimeConfig,
     _canonical_live_evaluations,
@@ -82,11 +88,26 @@ def test_loop_b_materializes_trains_predicts_and_persists_readable_ids(
     assert result.models_reused == 0
     assert result.sample_rows == len(source["bars"]) - _CONFIG.lockbox_clusters
     assert result.prediction_rows == _CONFIG.assessment_clusters + 1
+    assert result.backtest_prediction_rows == _CONFIG.assessment_clusters
+    assert result.fresh_live_prediction_rows == 1
+    assert result.carried_active_live_prediction_rows == 0
+    assert result.retained_weekly_live_prediction_rows == 0
+    assert result.actionable_ordinary_routes == 1
+    assert result.in_progress_ordinary_routes == 0
     assert result.evaluation_rows == result.prediction_rows
     assert result.monitoring_rows >= 20
     assert result.intelligence_rows == 1
     assert result.run_directory.name == "20240603T120000.000000Z"
     run_manifest = verify_manifest(result.run_directory)
+    assert run_manifest["configuration"]["publication_counts"] == {
+        "total_prediction_rows": _CONFIG.assessment_clusters + 1,
+        "backtest_prediction_rows": _CONFIG.assessment_clusters,
+        "fresh_live_rows": 1,
+        "carried_active_live_rows": 0,
+        "retained_frozen_weekly_live_rows": 0,
+        "actionable_ordinary_routes": 1,
+        "in_progress_ordinary_routes": 0,
+    }
     assert run_manifest["target_column"] == (
         "target_cost_adjusted_positive"
     )
@@ -297,6 +318,102 @@ def test_loop_b_materializes_trains_predicts_and_persists_readable_ids(
 
     for path in _all_parquets(tmp_path):
         _assert_one_readable_id(path)
+
+
+def test_loop_b_republishes_verified_active_forecast_with_truthful_counts(
+    tmp_path: Path,
+) -> None:
+    _write_synthetic_loop_a_outputs(tmp_path)
+    first = run_loop_b_once(
+        tmp_path,
+        symbols=("GOOG",),
+        config=_CONFIG,
+        specifications=_SPECIFICATIONS,
+        run_timestamp=_FIRST_RUN,
+        input_available_at=_FIRST_RUN,
+        reporter=None,
+    )
+    first_predictions = pd.read_parquet(
+        first.run_directory / "predictions.parquet"
+    )
+    original = first_predictions.loc[
+        first_predictions["prediction_mode"].eq("LIVE")
+    ].iloc[0]
+    active_publication = pd.Timestamp(original["target_window_start"]) + pd.Timedelta(
+        minutes=10
+    )
+
+    carried = run_loop_b_once(
+        tmp_path,
+        symbols=("GOOG",),
+        config=_CONFIG,
+        specifications=_SPECIFICATIONS,
+        run_timestamp=active_publication,
+        input_available_at=active_publication,
+        reporter=None,
+    )
+    carried_predictions = pd.read_parquet(
+        carried.run_directory / "predictions.parquet"
+    )
+    carried_live = carried_predictions.loc[
+        carried_predictions["prediction_mode"].eq("LIVE")
+    ]
+    carried_intelligence = pd.read_parquet(
+        carried.run_directory / "intelligence.parquet"
+    )
+    carried_monitoring = pd.read_parquet(
+        carried.run_directory / "monitoring.parquet"
+    )
+
+    assert len(carried_live) == 1
+    assert carried_live.iloc[0]["id"] == original["id"]
+    assert carried_live.iloc[0]["prediction_created_at"] == (
+        original["prediction_created_at"]
+    )
+    assert carried.backtest_prediction_rows == _CONFIG.assessment_clusters
+    assert carried.fresh_live_prediction_rows == 0
+    assert carried.carried_active_live_prediction_rows == 1
+    assert carried.actionable_ordinary_routes == 0
+    assert carried.in_progress_ordinary_routes == 1
+    assert carried_intelligence.loc[0, "actionability_status"] == (
+        "TARGET_WINDOW_STARTED"
+    )
+    assert carried_intelligence.loc[0, "intelligence_status"] == (
+        "FORECAST_IN_PROGRESS"
+    )
+    assert carried_intelligence.loc[0, "probability_up"] == (
+        original["calibrated_probability"]
+    )
+    assert not bool(
+        carried_intelligence.loc[0, "automated_action_allowed"]
+    )
+    coverage = carried_monitoring.loc[
+        carried_monitoring["metric_name"].eq("prediction_rows")
+    ].iloc[0]
+    assert coverage["observed_value"] == _CONFIG.assessment_clusters
+    assert coverage["evidence_row_count"] == _CONFIG.assessment_clusters
+    assert verify_manifest(carried.run_directory)["configuration"][
+        "publication_counts"
+    ]["carried_active_live_rows"] == 1
+
+    expired = run_loop_b_once(
+        tmp_path,
+        symbols=("GOOG",),
+        config=_CONFIG,
+        specifications=_SPECIFICATIONS,
+        run_timestamp=pd.Timestamp(original["target_window_end"]),
+        input_available_at=pd.Timestamp(original["target_window_end"]),
+        reporter=None,
+    )
+    expired_intelligence = pd.read_parquet(
+        expired.run_directory / "intelligence.parquet"
+    )
+    assert expired.carried_active_live_prediction_rows == 0
+    assert expired.in_progress_ordinary_routes == 0
+    assert pd.isna(expired_intelligence.loc[0, "probability_up"])
+    assert expired_intelligence.loc[0, "intelligence_status"] == (
+        "NO_CURRENT_FORECAST"
+    )
 
 
 def test_loop_b_publishes_directional_outputs_before_independent_strategy(
@@ -1291,6 +1408,311 @@ def test_archived_live_row_validation_rejects_invalid_or_future_rows(
     assert not_yet_promoted.empty
 
 
+def test_verified_active_ordinary_forecasts_are_carried_once_and_expire(
+    tmp_path: Path,
+) -> None:
+    specifications = {
+        horizon: horizon_specification(horizon)
+        for horizon in ("1h", "4h", "1d")
+    }
+    one_hour = _ordinary_live_prediction(
+        "GOOG",
+        "1h",
+        information_at="2026-08-05T15:05:00Z",
+        created_at="2026-08-05T15:42:00Z",
+        target_start="2026-08-05T16:00:00Z",
+        target_end="2026-08-05T17:00:00Z",
+        specifications=specifications,
+        probability=0.61,
+    )
+    older_one_hour = {
+        **one_hour,
+        "prediction_created_at": pd.Timestamp("2026-08-05T15:41:00Z"),
+        "calibrated_probability": 0.57,
+    }
+    four_hour = _ordinary_live_prediction(
+        "GOOG",
+        "4h",
+        information_at="2026-08-05T15:05:00Z",
+        created_at="2026-08-05T15:42:00Z",
+        target_start="2026-08-05T16:00:00Z",
+        target_end="2026-08-05T20:00:00Z",
+        specifications=specifications,
+        probability=0.58,
+    )
+    one_day = _ordinary_live_prediction(
+        "GOOG",
+        "1d",
+        information_at="2026-08-04T20:05:00Z",
+        created_at="2026-08-04T20:10:00Z",
+        target_start="2026-08-05T13:30:00Z",
+        target_end="2026-08-05T20:00:00Z",
+        specifications=specifications,
+        probability=0.55,
+    )
+    _publish_prediction_fixture_run(
+        tmp_path,
+        run_timestamp="2026-08-04T20:06:00Z",
+        promoted_at="2026-08-04T20:11:00Z",
+        rows=[one_day],
+    )
+    _publish_prediction_fixture_run(
+        tmp_path,
+        run_timestamp="2026-08-05T15:40:00Z",
+        promoted_at="2026-08-05T15:43:00Z",
+        rows=[older_one_hour, one_hour, four_hour],
+    )
+    # A later publication may contain the already-issued rows, but those
+    # copies are not new issuance evidence because they predate its manifest.
+    _publish_prediction_fixture_run(
+        tmp_path,
+        run_timestamp="2026-08-05T16:05:00Z",
+        promoted_at="2026-08-05T16:06:00Z",
+        rows=[one_day, one_hour, four_hour],
+    )
+    samples = pd.DataFrame(
+        [_sample_for_prediction(row) for row in (one_hour, four_hour, one_day)]
+    )
+    current_run = tmp_path / "ml" / "runs" / "20260805T161000.000000Z"
+
+    selected = runtime_module._load_verified_active_prior_ordinary_forecasts(
+        tmp_path,
+        current_run=current_run,
+        publication_time=pd.Timestamp("2026-08-05T16:10:00Z"),
+        samples=samples,
+        current_predictions=empty_frame(PREDICTION_SCHEMA),
+        specifications=specifications,
+        assumed_round_trip_cost=0.001,
+    ).sort_values("horizon")
+
+    assert list(selected["horizon"]) == ["1d", "1h", "4h"]
+    assert selected["prediction_mode"].eq("LIVE").all()
+    assert selected["prediction_status"].eq("CREATED").all()
+    assert selected["id"].is_unique
+    assert selected.loc[
+        selected["horizon"].eq("1h"), "prediction_created_at"
+    ].iloc[0] == pd.Timestamp("2026-08-05T15:42:00Z")
+    assert selected.loc[
+        selected["horizon"].eq("1h"), "calibrated_probability"
+    ].iloc[0] == 0.61
+    reconciled_history = runtime_module._load_prior_live_predictions(
+        tmp_path / "ml" / "runs",
+        current_run,
+        as_of=pd.Timestamp("2026-08-05T20:10:00Z"),
+        specifications=specifications,
+    )
+    history_id_counts = reconciled_history["id"].value_counts()
+    assert all(
+        history_id_counts.loc[prediction_id] == 1
+        for prediction_id in selected["id"]
+    )
+
+    materialization = RollingMaterialization(
+        samples=samples,
+        routes=tuple(
+            RouteMaterialization(
+                symbol="GOOG",
+                horizon=horizon,
+                status="READY",
+                samples=samples.loc[samples["horizon"].eq(horizon)].copy(),
+                source_files=(),
+            )
+            for horizon in ("1h", "4h", "1d")
+        ),
+        source_files=(),
+        datastore_root=tmp_path,
+    )
+    intelligence = runtime_module._intelligence_frame(
+        materialization,
+        samples,
+        selected,
+        empty_frame(EVALUATION_SCHEMA),
+        models={},
+        created_at=pd.Timestamp("2026-08-05T16:10:00Z"),
+        carried_predictions=selected,
+    )
+    assert intelligence["actionability_status"].eq(
+        "TARGET_WINDOW_STARTED"
+    ).all()
+    assert intelligence["intelligence_status"].eq(
+        "FORECAST_IN_PROGRESS"
+    ).all()
+    assert intelligence["probability_up"].notna().all()
+    assert intelligence["automated_action_allowed"].eq(False).all()
+    assert intelligence["completed_decision_count"].eq(0).all()
+    assert set(intelligence["minimum_live_decision_count"]) == {30, 60}
+
+    at_one_hour_end = (
+        runtime_module._load_verified_active_prior_ordinary_forecasts(
+            tmp_path,
+            current_run=current_run,
+            publication_time=pd.Timestamp("2026-08-05T17:00:00Z"),
+            samples=samples,
+            current_predictions=empty_frame(PREDICTION_SCHEMA),
+            specifications=specifications,
+            assumed_round_trip_cost=0.001,
+        )
+    )
+    assert set(at_one_hour_end["horizon"]) == {"4h", "1d"}
+    at_all_targets_end = (
+        runtime_module._load_verified_active_prior_ordinary_forecasts(
+            tmp_path,
+            current_run=current_run,
+            publication_time=pd.Timestamp("2026-08-05T20:00:00Z"),
+            samples=samples,
+            current_predictions=empty_frame(PREDICTION_SCHEMA),
+            specifications=specifications,
+            assumed_round_trip_cost=0.001,
+        )
+    )
+    assert at_all_targets_end.empty
+
+    newer_current = _prediction_frame_from_rows(
+        [
+            _ordinary_live_prediction(
+                "GOOG",
+                "1h",
+                information_at="2026-08-05T16:05:00Z",
+                created_at="2026-08-05T16:08:00Z",
+                target_start="2026-08-05T17:00:00Z",
+                target_end="2026-08-05T18:00:00Z",
+                specifications=specifications,
+                probability=0.63,
+            )
+        ]
+    )
+    without_superseded = (
+        runtime_module._load_verified_active_prior_ordinary_forecasts(
+            tmp_path,
+            current_run=current_run,
+            publication_time=pd.Timestamp("2026-08-05T16:10:00Z"),
+            samples=samples,
+            current_predictions=newer_current,
+            specifications=specifications,
+            assumed_round_trip_cost=0.001,
+        )
+    )
+    assert set(without_superseded["horizon"]) == {"4h", "1d"}
+
+
+def test_active_forecast_carry_rejects_untrusted_and_incompatible_rows(
+    tmp_path: Path,
+) -> None:
+    specifications = {"1h": horizon_specification("1h")}
+    valid = _ordinary_live_prediction(
+        "VALID",
+        "1h",
+        information_at="2026-08-05T15:05:00Z",
+        created_at="2026-08-05T15:42:00Z",
+        target_start="2026-08-05T16:00:00Z",
+        target_end="2026-08-05T17:00:00Z",
+        specifications=specifications,
+        probability=0.61,
+    )
+    rejected: list[dict[str, object]] = []
+    backtest = {**valid, "symbol": "BACKTEST", "prediction_mode": "BACKTEST"}
+    rejected.append(backtest)
+    post_entry = {
+        **valid,
+        "symbol": "POSTENTRY",
+        "prediction_created_at": pd.Timestamp("2026-08-05T16:00:00Z"),
+    }
+    rejected.append(post_entry)
+    wrong_definition = {
+        **valid,
+        "symbol": "BADDEFINITION",
+        "target_definition_version": "retired-v0",
+    }
+    rejected.append(wrong_definition)
+    wrong_specification = {
+        **valid,
+        "symbol": "BADSPECIFICATION",
+        "target_specification": '{"retired":true}',
+    }
+    rejected.append(wrong_specification)
+    wrong_cost = {
+        **valid,
+        "symbol": "BADCOST",
+        "assumed_round_trip_cost": 0.002,
+    }
+    rejected.append(wrong_cost)
+    wrong_window = {
+        **valid,
+        "symbol": "BADWINDOW",
+        "target_window_end": pd.Timestamp("2026-08-05T17:30:00Z"),
+    }
+    rejected.append(wrong_window)
+    _publish_prediction_fixture_run(
+        tmp_path,
+        run_timestamp="2026-08-05T15:40:00Z",
+        promoted_at="2026-08-05T15:43:00Z",
+        rows=[valid, *rejected],
+    )
+
+    orphan = {**valid, "symbol": "ORPHAN"}
+    orphan_run = tmp_path / "ml" / "runs" / "20260805T154100.000000Z"
+    orphan_run.mkdir(parents=True)
+    write_parquet_with_schema(
+        _prediction_frame_from_rows([orphan]),
+        orphan_run / "predictions.parquet",
+        PREDICTION_SCHEMA,
+    )
+
+    current_samples: list[dict[str, object]] = [
+        _sample_for_prediction(valid),
+        *(
+            _sample_for_prediction(
+                {
+                    **row,
+                    "target_definition_version": (
+                        specifications["1h"].target_definition_version
+                    ),
+                    "target_specification": (
+                        runtime_module._canonical_target_specification(
+                            specifications["1h"]
+                        )
+                    ),
+                    "assumed_round_trip_cost": 0.001,
+                    "target_window_end": pd.Timestamp(
+                        "2026-08-05T17:00:00Z"
+                    ),
+                }
+            )
+            for row in rejected
+        ),
+        _sample_for_prediction(orphan),
+    ]
+    selected = runtime_module._load_verified_active_prior_ordinary_forecasts(
+        tmp_path,
+        current_run=tmp_path / "ml" / "runs" / "current",
+        publication_time=pd.Timestamp("2026-08-05T16:10:00Z"),
+        samples=pd.DataFrame(current_samples),
+        current_predictions=empty_frame(PREDICTION_SCHEMA),
+        specifications=specifications,
+        assumed_round_trip_cost=0.001,
+    )
+    assert list(selected["symbol"]) == ["VALID"]
+
+    current = read_current_publication(tmp_path)
+    receipt_path = current.run_directory / "publication.json"
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    receipt["promoted_at"] = "2026-08-05T15:44:00Z"
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+    with pytest.raises(
+        RuntimeError,
+        match="active prior forecasts cannot be carried safely",
+    ):
+        runtime_module._load_verified_active_prior_ordinary_forecasts(
+            tmp_path,
+            current_run=tmp_path / "ml" / "runs" / "current",
+            publication_time=pd.Timestamp("2026-08-05T16:10:00Z"),
+            samples=pd.DataFrame(current_samples),
+            current_predictions=empty_frame(PREDICTION_SCHEMA),
+            specifications=specifications,
+            assumed_round_trip_cost=0.001,
+        )
+
+
 def test_model_partition_keeps_the_lockbox_closed_and_unread(
 ) -> None:
     decisions = pd.date_range(
@@ -1378,6 +1800,141 @@ def test_loop_b_rejects_stale_technical_split_adjustment_basis(
             input_available_at=_FIRST_RUN,
             reporter=None,
         )
+
+
+def _ordinary_live_prediction(
+    symbol: str,
+    horizon: str,
+    *,
+    information_at: object,
+    created_at: object,
+    target_start: object,
+    target_end: object,
+    specifications: dict[str, object],
+    probability: float,
+) -> dict[str, object]:
+    specification = specifications[horizon]
+    information = pd.Timestamp(information_at)
+    return {
+        "symbol": symbol,
+        "provider": "databento",
+        "horizon": horizon,
+        "decision_timestamp": information,
+        "information_available_at": information,
+        "target_window_start": pd.Timestamp(target_start),
+        "target_window_end": pd.Timestamp(target_end),
+        "actionable_until": pd.Timestamp(target_start),
+        "target_definition_version": (
+            specification.target_definition_version
+        ),
+        "target_specification": (
+            runtime_module._canonical_target_specification(specification)
+        ),
+        "prediction_created_at": pd.Timestamp(created_at),
+        "model_name": f"logistic-{horizon}",
+        "model_version": "verified-fixture-v1",
+        "calibration_method": "platt",
+        "prediction_mode": "LIVE",
+        "prediction_status": "CREATED",
+        "assumed_round_trip_cost": 0.001,
+        "raw_probability": probability,
+        "calibrated_probability": probability,
+    }
+
+
+def _prediction_frame_from_rows(
+    rows: list[dict[str, object]],
+) -> pd.DataFrame:
+    frame = frame_with_readable_id(
+        pd.DataFrame(rows).drop(columns="id", errors="ignore"),
+        key_columns=(
+            "symbol",
+            "horizon",
+            "decision_timestamp",
+            "prediction_created_at",
+        ),
+    )
+    return runtime_module._project(frame, PREDICTION_SCHEMA.names)
+
+
+def _sample_for_prediction(row: dict[str, object]) -> dict[str, object]:
+    return {
+        "symbol": row["symbol"],
+        "horizon": row["horizon"],
+        "decision_timestamp": row["decision_timestamp"],
+        "information_available_at": row["information_available_at"],
+        "target_window_start": row["target_window_start"],
+        "target_window_end": row["target_window_end"],
+        "actionable_until": row["actionable_until"],
+        "target_definition_version": row["target_definition_version"],
+        "target_specification": row["target_specification"],
+        "assumed_round_trip_cost": row["assumed_round_trip_cost"],
+        "label_status": "PENDING",
+    }
+
+
+def _publish_prediction_fixture_run(
+    root: Path,
+    *,
+    run_timestamp: object,
+    promoted_at: object,
+    rows: list[dict[str, object]],
+) -> Path:
+    timestamp = pd.Timestamp(run_timestamp)
+    run_directory = (
+        root
+        / "ml"
+        / "runs"
+        / timestamp.strftime("%Y%m%dT%H%M%S.%fZ")
+    )
+    run_directory.mkdir(parents=True)
+    output_names = (
+        "samples.parquet",
+        "predictions.parquet",
+        "evaluations.parquet",
+        "monitoring.parquet",
+        "intelligence.parquet",
+    )
+    write_parquet_with_schema(
+        _prediction_frame_from_rows(rows),
+        run_directory / "predictions.parquet",
+        PREDICTION_SCHEMA,
+    )
+    for name in output_names:
+        path = run_directory / name
+        if not path.exists():
+            path.write_bytes(f"fixture:{name}".encode())
+    write_manifest(
+        run_directory,
+        run_timestamp=timestamp,
+        input_files=(),
+        output_files=output_names,
+        configuration={
+            "publication_contract": {
+                "version": runtime_module._PUBLICATION_RECEIPT_VERSION,
+                "receipt": runtime_module._PUBLICATION_RECEIPT_NAME,
+                "required_for_live_evidence": True,
+                "authority": "ml/latest/run.json",
+            }
+        },
+        datastore_root=root,
+    )
+    runtime_module._promote_current_outputs(
+        run_directory=run_directory,
+        datastore_root=root,
+        output_names=output_names,
+        latest_root=root / "ml" / "latest",
+        latest_intelligence_path=(
+            root
+            / "ml-intelligence"
+            / "latest"
+            / "rolling-predictions.parquet"
+        ),
+        clock=lambda: pd.Timestamp(promoted_at),
+        enforce_target_deadline=False,
+        target_deadline=None,
+    )
+    return run_directory
 
 
 def _write_synthetic_loop_a_outputs(root: Path) -> dict[str, object]:

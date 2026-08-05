@@ -564,11 +564,32 @@ The manifest's separate `lockbox` block contains only its
 Loop B writes:
 
 - `BACKTEST` predictions for the assessment partition;
-- ordinary `LIVE` predictions for the latest actionable row per symbol and
+- fresh ordinary `LIVE` predictions for the latest actionable row per symbol and
   horizon, where `prediction_created_at < actionable_until <=
   target_window_start`; and
 - remaining-week `LIVE` predictions where `prediction_created_at <
   actionable_until <= target_window_end`.
+
+If a fresh ordinary row is no longer possible because entry has passed, Loop B
+may also carry the latest still-active ordinary forecast for that
+`symbol|horizon`. Carry-forward is fail-closed: the original issuance must be a
+`LIVE`/`CREATED` row from a verified receipt-era run reachable through the
+authoritative publication chain; it must have been created and originally
+promoted strictly before `actionable_until`; and its target-definition version,
+canonical serialized specification, exact start/end/deadline window, and
+round-trip cost must match the current materialized target. The current
+publication time must satisfy
+`target_window_start <= publication_time < target_window_end`. An orphan,
+invalid receipt, `BACKTEST`, post-entry, incompatible, or expired row is never
+carried. Selection is deterministic by latest eligible original issuance per
+route, and a newer valid fresh row from the current run supersedes it.
+
+A carried row keeps its original `prediction_created_at`, prediction ID,
+probability, model version, and target window. Its copy is included in the new
+`predictions.parquet` lineage, but receipt-bounded issuance validation excludes
+that copy from becoming a new LIVE event. Repeated publications therefore do
+not multiply live-evidence counts. Weekly frozen-snapshot reuse remains the
+separate policy described below.
 
 For the weekly family, each symbol's latest usable completed daily decision
 supplies aggregate `1w` and the contiguous Day 1 prefix whose targets remain in
@@ -776,7 +797,9 @@ in `evaluations.parquet` but do not multiply live evidence.
 
 ### 7. Calculate monitoring values
 
-`monitoring.parquet` starts with three global coverage/model rows:
+`monitoring.parquet` starts with three global coverage/model rows. Its
+`prediction_rows` value covers this cycle's model output and deliberately does
+not re-count carried active ordinary rows:
 
 ```text
 prediction_rows
@@ -893,10 +916,21 @@ These statuses describe research evidence only. They do not change
 actionability, promote a model, or authorize execution.
 `automated_action_allowed` remains `false`.
 
-For `1h`, `4h`, and `1d`, `operational_status` is `OPERATIONALLY_CURRENT` only
-when the route is ready and has an actionable current prediction. A ready
-non-weekly route with no current actionable prediction is
-`OPERATIONALLY_STALE`. A verified weekly route remains
+For `1h`, `4h`, and `1d`, a fresh pre-entry forecast is `ACTIONABLE` with
+`intelligence_status = RISK_ANALYSIS_SUPPORT`. A verified carried forecast
+whose target window is currently active is explicitly non-actionable:
+
+```text
+actionability_status = TARGET_WINDOW_STARTED
+intelligence_status = FORECAST_IN_PROGRESS
+operational_status = OPERATIONALLY_CURRENT
+automated_action_allowed = false
+```
+
+Its probability and original target window remain present until the strict
+target end. Evidence counts and their 60/30 thresholds do not gate this
+visibility. A ready non-weekly route with neither a fresh actionable forecast
+nor a verified active carried forecast is `OPERATIONALLY_STALE`. A verified weekly route remains
 `OPERATIONALLY_CURRENT` while its remaining-week snapshot is published. The
 snapshot's aggregate and component session-close deadlines remain explicit,
 and a newer completed daily decision may replace it with a shorter outlook.
@@ -991,10 +1025,15 @@ features. **Market probability** displays calibrated strategy probability when
 available and otherwise the raw scenario prior; it never substitutes the
 directional forecast.
 
-The run manifest may record run timestamp, input and output paths, file sizes and
-integrity checksums, feature columns, target column, model names, symbols,
-horizons, route errors, and configuration. It does not assign identities to any
-of those values.
+The run manifest records a `publication_counts` breakdown with total and
+backtest prediction rows, fresh LIVE rows, carried active LIVE rows, retained
+frozen-weekly LIVE rows, actionable ordinary routes, and in-progress ordinary
+routes. The console reports the same lifecycle categories instead of presenting
+one aggregate prediction count as if every current probability were freshly
+scored. The manifest may also record run timestamp, input and output paths,
+file sizes and integrity checksums, feature columns, target column, model names,
+symbols, horizons, route errors, and configuration. It does not assign
+identities to any of those values.
 
 For auditability, `1h`, `4h`, and weekly runs serialize the complete readable horizon
 specification, target version, target-price source and constituent policy,
@@ -1027,9 +1066,10 @@ failure can leave a timestamped working directory with partial artifacts, or
 even a complete manifest but no valid `publication.json` receipt. That
 directory is not current and is ignored by later reconciliation.
 
-There is one successful degradation case for an unchanged non-weekly route: it can have assessment/backtest
-predictions but no currently eligible live candidate. The completed run then
-publishes that route in `intelligence.parquet` with null probability,
+An unchanged non-weekly route with no fresh candidate first attempts the strict
+verified active-forecast carry described above. If none qualifies, it can still
+have assessment/backtest predictions but no current forecast. The completed run
+then publishes that route in `intelligence.parquet` with null probability,
 `NOT_ACTIONABLE`, `OPERATIONALLY_STALE`, and a readable limitation. This is
 different from a failed source or missing-prediction route, which aborts
 publication.

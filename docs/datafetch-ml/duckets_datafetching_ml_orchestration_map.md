@@ -253,8 +253,11 @@ source decisions are eligible.
 7. Reuse a compatible model or train and calibrate a new model. Under the
    default logistic/Platt configuration, aggregate `1w` uses the route-specific
    estimator and calibrator policy described below.
-8. Generate assessment predictions and currently actionable non-weekly
-   predictions. For public `1w`, use the latest completed daily decision to
+8. Generate assessment predictions and currently actionable fresh non-weekly
+   predictions. If entry has passed, carry at most one receipt-proven ordinary
+   forecast per route only while its exact current target window is in progress;
+   preserve its original issuance, mark it non-actionable, and let a newer valid
+   current-run forecast supersede it. For public `1w`, use the latest completed daily decision to
    issue aggregate `1w` plus the contiguous Day 1 prefix remaining in one
    exchange week. Reuse the exact verified rows for the same decision; replace
    them when a newer completed decision produces a shorter outlook.
@@ -298,7 +301,8 @@ source decisions are eligible.
     unique completed LIVE forecasts for each symbol/horizon route. Persist
     `monitoring.parquet`.
 17. Build and persist one `intelligence.parquet` row per symbol and horizon,
-    deriving its live-evidence status from the horizon threshold.
+    deriving its live-evidence status from the horizon threshold independently
+    of actionability or verified in-progress probability visibility.
 18. Add readable natural `id` values, enforce the explicit Arrow schemas, and
     persist `strategy-candidates.parquet` and `strategy-audit.parquet`. Empty
     results still use the exact schemas.
@@ -308,9 +312,11 @@ source decisions are eligible.
     `publication.json`, and atomically commit the authoritative
     `ml/latest/run.json` pointer.
 
-Loop B uses the real scoring clock for `prediction_created_at`, checks it
+Loop B uses the real scoring clock for fresh `prediction_created_at`, checks it
 against each corresponding target start, and checks the real publication clock
-again before committing the current pointer. Equality fails closed. A missing,
+again before committing the current pointer. A carried ordinary row is checked
+against its strict target-window end separately from fresh entry deadlines.
+Equality fails closed. A missing,
 malformed, stale, or otherwise invalid route leaves the prior authoritative
 pointer unchanged; the next scheduled Loop B cycle tries the latest complete
 Loop A state again. A repeated non-weekly run may legitimately publish the same

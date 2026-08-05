@@ -285,6 +285,127 @@ def test_non_actionable_probability_is_suppressed_as_stale(
     assert "dashboard suppressed it" in route.warnings[0]
 
 
+def test_trusted_active_window_forecasts_remain_visible_but_not_actionable(
+    tmp_path: Path,
+) -> None:
+    one_hour = _row(
+        horizon="1h",
+        probability_up=0.61,
+        actionability_status="TARGET_WINDOW_STARTED",
+        intelligence_status="FORECAST_IN_PROGRESS",
+        completed_count=0,
+        retain_probability=True,
+    )
+    one_hour.update(
+        {
+            "forecast_created_at": "2026-08-05T15:42:00Z",
+            "information_available_at": "2026-08-05T15:05:00Z",
+            "target_window_start": "2026-08-05T16:00:00Z",
+            "target_window_end": "2026-08-05T17:00:00Z",
+            "actionable_until": "2026-08-05T16:00:00Z",
+        }
+    )
+    four_hour = _row(
+        horizon="4h",
+        probability_up=0.58,
+        actionability_status="TARGET_WINDOW_STARTED",
+        intelligence_status="FORECAST_IN_PROGRESS",
+        completed_count=0,
+        retain_probability=True,
+    )
+    four_hour.update(
+        {
+            "forecast_created_at": "2026-08-05T15:42:00Z",
+            "information_available_at": "2026-08-05T15:05:00Z",
+            "target_window_start": "2026-08-05T16:00:00Z",
+            "target_window_end": "2026-08-05T20:00:00Z",
+            "actionable_until": "2026-08-05T16:00:00Z",
+        }
+    )
+    one_day = _row(
+        horizon="1d",
+        probability_up=0.55,
+        actionability_status="TARGET_WINDOW_STARTED",
+        intelligence_status="FORECAST_IN_PROGRESS",
+        completed_count=0,
+        retain_probability=True,
+    )
+    one_day.update(
+        {
+            "forecast_created_at": "2026-08-04T20:10:00Z",
+            "information_available_at": "2026-08-04T20:05:00Z",
+            "target_window_start": "2026-08-05T13:30:00Z",
+            "target_window_end": "2026-08-05T20:00:00Z",
+            "actionable_until": "2026-08-05T13:30:00Z",
+        }
+    )
+    path = _write(tmp_path, [one_hour, four_hour, one_day])
+
+    view = load_forecast_dashboard(
+        path,
+        loaded_at=datetime(2026, 8, 5, 16, 10, tzinfo=timezone.utc),
+    )
+    routes = {route.horizon: route for route in view.symbols[0].routes}
+
+    assert view.actionable_route_count == 0
+    assert [routes[horizon].probability_up for horizon in ("1h", "4h", "1d")] == [
+        0.61,
+        0.58,
+        0.55,
+    ]
+    assert all(
+        routes[horizon].is_in_progress
+        and not routes[horizon].is_actionable
+        and routes[horizon].automated_action_allowed is False
+        for horizon in ("1h", "4h", "1d")
+    )
+    assert route_accessible_status_labels(routes["1h"])[0] == (
+        "Actionability: Forecast in progress — entry window passed; "
+        "not actionable"
+    )
+    assert routes["1h"].live_evidence_label == (
+        "Awaiting first completed forecast (0 of 60)"
+    )
+    assert routes["1d"].live_evidence_label == (
+        "Awaiting first completed forecast (0 of 30)"
+    )
+    assert routes["1h"].target_window_start == datetime(
+        2026, 8, 5, 16, 0, tzinfo=timezone.utc
+    )
+    assert routes["1h"].target_window_end == datetime(
+        2026, 8, 5, 17, 0, tzinfo=timezone.utc
+    )
+
+
+def test_in_progress_probability_is_suppressed_at_target_window_end(
+    tmp_path: Path,
+) -> None:
+    row = _row(
+        horizon="1h",
+        probability_up=0.61,
+        actionability_status="TARGET_WINDOW_STARTED",
+        intelligence_status="FORECAST_IN_PROGRESS",
+        retain_probability=True,
+    )
+    row.update(
+        {
+            "forecast_created_at": "2026-08-05T15:42:00Z",
+            "target_window_start": "2026-08-05T16:00:00Z",
+            "target_window_end": "2026-08-05T17:00:00Z",
+            "actionable_until": "2026-08-05T16:00:00Z",
+        }
+    )
+    route = load_forecast_dashboard(
+        _write(tmp_path, [row]),
+        loaded_at=datetime(2026, 8, 5, 17, 0, tzinfo=timezone.utc),
+    ).symbols[0].routes[0]
+
+    assert route.probability_up is None
+    assert route.probability_down is None
+    assert not route.is_in_progress
+    assert "dashboard suppressed it" in route.warnings[0]
+
+
 def test_stale_data_uses_backend_operational_status(
     tmp_path: Path,
 ) -> None:
@@ -819,6 +940,7 @@ def test_route_card_has_no_model_status_row_or_unused_separator() -> None:
     assert "model_evidence" not in source
     assert "ttk.Separator" not in source
     assert "text=live_evidence" in source
+    assert "route.is_actionable or route.is_in_progress" in source
 
 
 def test_view_and_debug_output_use_the_readable_intelligence_fields(
