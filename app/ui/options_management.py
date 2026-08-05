@@ -12,6 +12,7 @@ from app.models.option_management import (
     ManagedOptionOrder,
     OptionPositionBook,
     OptionPositionLeg,
+    RollOrderDraft,
 )
 from app.models.portfolio import PortfolioSnapshot
 from app.services.schwab_option_management import (
@@ -22,9 +23,11 @@ from app.services.schwab_option_management import (
     option_position_book,
     submit_validated_closing_order,
 )
+from app.services.option_rolls import roll_action_disabled_reason
 from app.services.schwab_strategy_orders import DAY_ONLY, GOOD_UNTIL_CANCELED
 from app.ui.background_tasks import run_in_background
 from app.ui.option_exit_plans import ExitPlanBuilderDialog
+from app.ui.option_rolls import RollOrderReviewDialog, RollWorkspaceDialog
 from app.ui.schwab_order_messages import order_submitted_message
 from app.ui.theme import (
     ACCENT,
@@ -689,6 +692,7 @@ class OptionsManagementView:
         self.review_close_button: ttk.Button | None = None
         self.close_limit_entry: ttk.Entry | None = None
         self.exit_plan_button: ttk.Button | None = None
+        self.roll_button: ttk.Button | None = None
         self.close_duration_box: ttk.Combobox | None = None
         self.close_price_scale: tk.Scale | None = None
         self._scope_controls: dict[str, tuple[tk.Frame, tk.Radiobutton, tk.Label]] = {}
@@ -1009,12 +1013,15 @@ class OptionsManagementView:
         ttk.Button(actions, text="Close", style="ManagementActiveSegment.TButton").pack(
             side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 3)
         )
-        ttk.Button(
+        roll = ttk.Button(
             actions,
             text="Roll",
             state=tk.DISABLED,
             style="ManagementSegment.TButton",
-        ).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=3)
+            command=self._open_roll,
+        )
+        roll.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=3)
+        self.roll_button = roll
         exit_plan = ttk.Button(
             actions,
             text="Exit Plan",
@@ -1468,6 +1475,7 @@ class OptionsManagementView:
         if self.close_preview is not None:
             self.close_preview.set_legs(draft.legs)
         self._set_close_controls(True)
+        self._update_roll_control(scoped)
         self._configure_price_rail(draft)
         self._ticket_updating = False
 
@@ -1492,6 +1500,7 @@ class OptionsManagementView:
         if self.close_estimate_label is not None:
             self.close_estimate_label.configure(style="ManagementInsetBody.TLabel")
         self._set_close_controls(False)
+        self._update_roll_control(scoped)
 
     def _configure_price_rail(self, draft: ClosingOrderDraft) -> None:
         rail = _closing_price_rail(draft)
@@ -1595,6 +1604,19 @@ class OptionsManagementView:
             self.review_close_button.configure(state=state)
         if self.exit_plan_button is not None:
             self.exit_plan_button.configure(state=state)
+        if not enabled and self.roll_button is not None:
+            self.roll_button.configure(state=tk.DISABLED)
+
+    def _update_roll_control(self, scoped: tuple[OptionPositionLeg, ...]) -> None:
+        if self.roll_button is None or self.book is None or not scoped:
+            if self.roll_button is not None:
+                self.roll_button.configure(state=tk.DISABLED)
+            return
+        reason = roll_action_disabled_reason(
+            self.book,
+            (leg.symbol for leg in scoped),
+        )
+        self.roll_button.configure(state=tk.DISABLED if reason else tk.NORMAL)
 
     def _clear_manage_panel(self) -> None:
         self.management_title.set("Select exact option legs")
@@ -1654,6 +1676,40 @@ class OptionsManagementView:
             on_close_now=self._review_closing_order,
             on_show_orders=self.on_show_orders,
         )
+
+    def _open_roll(self) -> None:
+        if self.book is None:
+            return
+        scoped = self._scoped_position_rows()
+        if not scoped:
+            return
+        reason = roll_action_disabled_reason(
+            self.book,
+            (leg.symbol for leg in scoped),
+        )
+        if reason:
+            messagebox.showerror("Roll unavailable", reason)
+            return
+        underlying = scoped[0].underlying_symbol
+
+        def load_chain() -> object:
+            session = self.session_factory()
+            getter = getattr(session, "get_option_chain", None)
+            if not callable(getter):
+                raise TypeError("Schwab session does not provide get_option_chain.")
+            return getter(underlying, 100)
+
+        RollWorkspaceDialog(
+            root=self.root,
+            book=self.book,
+            position_symbols=tuple(leg.symbol for leg in scoped),
+            snapshot_loader=self.snapshot_loader,
+            chain_loader=load_chain,
+            on_review=self._review_roll,
+        )
+
+    def _review_roll(self, draft: RollOrderDraft) -> None:
+        RollOrderReviewDialog(root=self.root, draft=draft)
 
     def _review_exit_target(self, draft: ClosingOrderDraft) -> None:
         ClosingOrderReviewDialog(
