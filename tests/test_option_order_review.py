@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import pytest
 import requests
@@ -18,6 +19,10 @@ from app.models.option_management import (
 )
 from app.models.portfolio import PortfolioSnapshot
 from app.services.option_exit_plans import SINGLE_TARGET, TARGET_STOP, build_exit_plan_draft
+from app.services.option_time_exits import (
+    TIME_EXIT_CAPABILITY_REASON,
+    resolve_before_expiration_time_exit,
+)
 from app.services.option_order_review import (
     BROKER_PREVIEW,
     LOCAL_CALCULATION,
@@ -182,6 +187,76 @@ def test_single_target_is_placeable_while_linked_exit_uses_the_same_review_model
     assert metrics["Protected quantity"].after == "1"
     assert metrics["Active branches"].after == "2"
     assert metrics["Trigger relationship"].after == "OCO"
+
+
+def test_timed_exit_review_shows_schedule_and_coverage_without_duplicate_contracts() -> None:
+    book = option_position_book(_snapshot())
+    timed_rule = resolve_before_expiration_time_exit(
+        ("2026-09-18",),
+        sessions_before_expiration=1,
+        minutes_before_session_close=30,
+        now=NOW,
+    )
+    draft = build_exit_plan_draft(
+        book,
+        (LONG, SHORT),
+        template_id=SINGLE_TARGET,
+        time_exit_rule=timed_rule,
+        now=NOW,
+    )
+
+    review = exit_plan_review(
+        draft,
+        now=NOW,
+        local_timezone=ZoneInfo("America/Los_Angeles"),
+    )
+
+    assert review.placement_capability == OrderReviewPlacementCapability.REVIEW_ONLY
+    assert review.primary_action_label == "Finish timed-plan review"
+    assert review.placement_disabled_reason == TIME_EXIT_CAPABILITY_REASON
+    assert len(review.legs) == 2
+    assert {leg.symbol for leg in review.legs} == {LONG, SHORT}
+    metrics = {metric.label: metric for metric in review.metrics}
+    assert metrics["Active branches"].after == "2"
+    assert metrics["Trigger relationship"].after == "First completed exit wins"
+    assert metrics["Timed rule type"].after == "Before expiration"
+    assert "America/New_York" in metrics["Resolved trigger"].after
+    assert metrics["Trigger timezone"].after == "America/New_York"
+    assert metrics["Expiration basis"].after.endswith("Sep 18, 2026")
+    assert metrics["Timed coverage"].after == "Entire strategy"
+    assert TIME_EXIT_CAPABILITY_REASON in review.safety_copy
+    assert any("Local equivalent" in notice.detail for notice in review.notices)
+
+    controller = OptionOrderReviewController(review=review, draft=draft)
+    assert controller.can_place is False
+    controller.acknowledge(True)
+    assert controller.can_finish_review is True
+
+
+def test_elapsed_timed_exit_is_not_reviewable() -> None:
+    book = option_position_book(_snapshot())
+    valid_rule = resolve_before_expiration_time_exit(
+        ("2026-09-18",),
+        sessions_before_expiration=1,
+        now=NOW,
+    )
+    draft = build_exit_plan_draft(
+        book,
+        (LONG, SHORT),
+        template_id=SINGLE_TARGET,
+        time_exit_rule=valid_rule,
+        now=NOW,
+    )
+    elapsed = replace(
+        draft,
+        time_exit_rule=replace(valid_rule, trigger_at=NOW - timedelta(minutes=1)),
+    )
+
+    review = exit_plan_review(elapsed, now=NOW)
+
+    assert review.placement_capability == OrderReviewPlacementCapability.UNAVAILABLE
+    assert review.internal_valid is False
+    assert any(notice.title == "Timed exit is in the past" for notice in review.notices)
 
 
 def test_single_target_exit_uses_close_revalidation_and_exactly_once_submission() -> None:

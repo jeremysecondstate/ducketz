@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import tkinter as tk
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
 from tkinter import messagebox, simpledialog, ttk
+from zoneinfo import ZoneInfo
 
 from app.models.option_management import (
     ExitPlanDraft,
     ManagedOptionOrder,
     OptionPositionBook,
     SavedExitPlanTemplate,
+    TimeBasedExitRule,
 )
 from app.models.portfolio import PortfolioSnapshot
 from app.services.option_order_review import OptionOrderReviewController, exit_plan_review
@@ -23,6 +25,20 @@ from app.services.option_exit_plans import (
     save_exit_plan_template,
 )
 from app.services.schwab_strategy_orders import DAY_ONLY, GOOD_UNTIL_CANCELED
+from app.services.option_time_exits import (
+    BEFORE_EXPIRATION,
+    DEFAULT_MARKET_TIMEZONE,
+    DEFAULT_OPTION_CALENDAR,
+    MARKET_CLOSE_CHOICES,
+    SPECIFIC_DATE_TIME,
+    TIME_EXIT_CAPABILITY_REASON,
+    TIME_EXIT_HELP,
+    resolve_before_expiration_time_exit,
+    resolve_specific_time_exit,
+    saved_time_exit_from_rule,
+    system_local_timezone,
+    time_exit_presentation,
+)
 from app.ui.option_order_review import OptionOrderReviewDialog
 from app.ui.theme import (
     ACCENT,
@@ -45,6 +61,19 @@ _TEMPLATE_DETAILS = {
     TWO_TARGETS: ("2 targets", "Scale out in two steps", False),
     TRAILING_STOP: ("Trailing stop", "Follow price higher", False),
 }
+
+_TIME_EXIT_TYPE_LABELS = {
+    "Before expiration": BEFORE_EXPIRATION,
+    "Specific date and time": SPECIFIC_DATE_TIME,
+}
+_MARKET_CLOSE_OFFSETS = dict(MARKET_CLOSE_CHOICES)
+_TIMEZONE_CHOICES = (
+    DEFAULT_MARKET_TIMEZONE,
+    "America/Chicago",
+    "America/Denver",
+    "America/Los_Angeles",
+    "UTC",
+)
 
 
 class _ExitScrolledFrame(tk.Frame):
@@ -144,6 +173,8 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         session_factory: Callable[[], object],
         on_accepted: Callable[[], None] | None = None,
         on_unknown: Callable[[], None] | None = None,
+        now_provider: Callable[[], datetime] | None = None,
+        local_timezone: tzinfo | None = None,
     ) -> None:
         super().__init__(root)
         self.root = root
@@ -156,7 +187,10 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.session_factory = session_factory
         self.on_accepted = on_accepted
         self.on_unknown = on_unknown
+        self.now_provider = now_provider or (lambda: datetime.now(timezone.utc))
+        self.local_timezone = local_timezone or system_local_timezone()
         self.draft: ExitPlanDraft | None = None
+        self.time_exit_rule: TimeBasedExitRule | None = None
         self._template_cards: dict[str, tk.Frame] = {}
         self._template_badges: dict[str, tk.Canvas] = {}
         self._leg_buttons: dict[str, tk.Checkbutton] = {}
@@ -185,6 +219,35 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.target_scope = tk.StringVar(master=self, value="Close entire position")
         self.stop_scope = tk.StringVar(master=self, value="Close entire position")
         self.saved_choice = tk.StringVar(master=self, value="Saved templates")
+        self.time_exit_configured = False
+        self.time_exit_expanded = False
+        self.time_exit_calendar_name = DEFAULT_OPTION_CALENDAR
+        self.time_exit_type = tk.StringVar(master=self, value="Before expiration")
+        self.time_exit_sessions = tk.StringVar(master=self, value="1")
+        self.time_exit_close_choice = tk.StringVar(
+            master=self,
+            value="30 minutes before scheduled close",
+        )
+        self.time_exit_specific_date = tk.StringVar(
+            master=self,
+            value=self._earliest_initial_expiration(),
+        )
+        self.time_exit_specific_time = tk.StringVar(master=self, value="15:30")
+        self.time_exit_timezone = tk.StringVar(master=self, value=DEFAULT_MARKET_TIMEZONE)
+        self.time_exit_heading = tk.StringVar(master=self, value="Add time-based exit")
+        self.time_exit_detail = tk.StringVar(
+            master=self,
+            value="Close before expiration or at a specific time · Review only",
+        )
+        self.time_exit_resolved = tk.StringVar(master=self, value="Configure a rule to resolve its exact timestamp.")
+        self.time_exit_local = tk.StringVar(master=self, value="")
+        self.time_exit_basis = tk.StringVar(master=self, value="")
+        self.time_exit_validation = tk.StringVar(master=self, value="")
+        self.time_exit_glance = tk.StringVar(master=self, value="Not configured")
+        self.footer_note = tk.StringVar(
+            master=self,
+            value="Estimated fees if closed: shown during review",
+        )
         self.atomic_link = tk.BooleanVar(master=self, value=False)
         self.activate_after_accept = tk.BooleanVar(master=self, value=True)
         self.sync_quantities = tk.BooleanVar(master=self, value=True)
@@ -543,45 +606,252 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         relation.pack(anchor=tk.W, pady=(4, 10))
         self.link_relation_label = relation
 
-        time_exit = tk.Frame(
-            content,
+        self._build_time_exit(content)
+
+        self._build_quick_actions(content)
+
+    def _build_time_exit(self, parent: tk.Frame) -> None:
+        frame = tk.Frame(
+            parent,
             background=TABLE_FIELD,
             highlightbackground=MUTED_TEXT,
+            highlightcolor=ACCENT,
             highlightthickness=1,
         )
-        time_exit.pack(fill=tk.X)
-        tk.Label(
-            time_exit,
-            text="＋",
+        frame.pack(fill=tk.X)
+        header = tk.Frame(
+            frame,
             background=TABLE_FIELD,
-            foreground=MUTED_TEXT,
-            font=("Segoe UI", 13),
-        ).pack(side=tk.LEFT, padx=(10, 7), pady=7)
-        time_copy = tk.Frame(time_exit, background=TABLE_FIELD)
-        time_copy.pack(side=tk.LEFT, fill=tk.X, expand=True, pady=6)
-        tk.Label(
-            time_copy,
-            text="Add time-based exit",
+            cursor="hand2",
+            takefocus=True,
+        )
+        header.pack(fill=tk.X)
+        self.time_exit_add_icon = tk.StringVar(master=self, value="＋")
+        add_icon = tk.Label(
+            header,
+            textvariable=self.time_exit_add_icon,
+            background=TABLE_FIELD,
+            foreground=ACCENT,
+            font=("Segoe UI", 13, "bold"),
+        )
+        add_icon.pack(side=tk.LEFT, padx=(10, 7), pady=8)
+        copy = tk.Frame(header, background=TABLE_FIELD, cursor="hand2")
+        copy.pack(side=tk.LEFT, fill=tk.X, expand=True, pady=7)
+        heading = tk.Label(
+            copy,
+            textvariable=self.time_exit_heading,
             background=TABLE_FIELD,
             foreground=TEXT,
             font=("Segoe UI", 9, "bold"),
-        ).pack(anchor=tk.W)
-        tk.Label(
-            time_copy,
-            text="Close before expiration or at a specific time · Not yet supported",
+            anchor=tk.W,
+            justify=tk.LEFT,
+        )
+        heading.pack(anchor=tk.W, fill=tk.X)
+        detail = tk.Label(
+            copy,
+            textvariable=self.time_exit_detail,
             background=TABLE_FIELD,
             foreground=MUTED_TEXT,
             font=("Segoe UI", 8),
-        ).pack(anchor=tk.W, pady=(1, 0))
-        tk.Label(
-            time_exit,
-            text="⌄",
+            anchor=tk.W,
+            justify=tk.LEFT,
+            wraplength=810,
+        )
+        detail.pack(anchor=tk.W, fill=tk.X, pady=(1, 0))
+        self.time_exit_chevron = tk.StringVar(master=self, value="▶")
+        chevron = tk.Label(
+            header,
+            textvariable=self.time_exit_chevron,
             background=TABLE_FIELD,
-            foreground=MUTED_TEXT,
-            font=("Segoe UI", 11),
-        ).pack(side=tk.RIGHT, padx=10)
+            foreground=TEXT,
+            font=("Segoe UI", 10, "bold"),
+        )
+        chevron.pack(side=tk.RIGHT, padx=11)
 
-        self._build_quick_actions(content)
+        body = tk.Frame(frame, background=SURFACE_ALT, padx=12, pady=10)
+        ttk.Label(
+            body,
+            text=TIME_EXIT_HELP,
+            style="ManagementMuted.TLabel",
+            wraplength=920,
+            justify=tk.LEFT,
+        ).pack(anchor=tk.W, fill=tk.X, pady=(0, 9))
+
+        type_row = tk.Frame(body, background=SURFACE_ALT)
+        type_row.pack(fill=tk.X)
+        tk.Label(
+            type_row,
+            text="Exit when",
+            background=SURFACE_ALT,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 8),
+        ).pack(side=tk.LEFT, padx=(0, 8))
+        type_choice = ttk.Combobox(
+            type_row,
+            textvariable=self.time_exit_type,
+            values=tuple(_TIME_EXIT_TYPE_LABELS),
+            state="readonly",
+            width=26,
+        )
+        type_choice.pack(side=tk.LEFT)
+        type_choice.bind("<<ComboboxSelected>>", self._time_exit_type_changed)
+
+        relative = tk.Frame(body, background=SURFACE_ALT)
+        relative.pack(fill=tk.X, pady=(10, 0))
+        session_group = tk.Frame(relative, background=SURFACE_ALT)
+        session_group.pack(side=tk.LEFT, padx=(0, 18))
+        tk.Label(
+            session_group,
+            text="Trading sessions before earliest expiration",
+            background=SURFACE_ALT,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 8),
+        ).pack(anchor=tk.W, pady=(0, 2))
+        sessions_entry = ttk.Entry(
+            session_group,
+            textvariable=self.time_exit_sessions,
+            width=8,
+        )
+        sessions_entry.pack(anchor=tk.W)
+        sessions_entry.bind("<KeyRelease>", self._schedule_refresh)
+
+        close_group = tk.Frame(relative, background=SURFACE_ALT)
+        close_group.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        tk.Label(
+            close_group,
+            text="Market time (relative to official session close)",
+            background=SURFACE_ALT,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 8),
+        ).pack(anchor=tk.W, pady=(0, 2))
+        close_choice = ttk.Combobox(
+            close_group,
+            textvariable=self.time_exit_close_choice,
+            values=tuple(_MARKET_CLOSE_OFFSETS),
+            state="readonly",
+            width=39,
+        )
+        close_choice.pack(anchor=tk.W)
+        close_choice.bind("<<ComboboxSelected>>", self._schedule_refresh)
+
+        specific = tk.Frame(body, background=SURFACE_ALT)
+        for title, variable, width in (
+            ("Date (YYYY-MM-DD)", self.time_exit_specific_date, 14),
+            ("Time (HH:MM)", self.time_exit_specific_time, 10),
+        ):
+            group = tk.Frame(specific, background=SURFACE_ALT)
+            group.pack(side=tk.LEFT, padx=(0, 14))
+            tk.Label(
+                group,
+                text=title,
+                background=SURFACE_ALT,
+                foreground=MUTED_TEXT,
+                font=("Segoe UI", 8),
+            ).pack(anchor=tk.W, pady=(0, 2))
+            entry = ttk.Entry(group, textvariable=variable, width=width)
+            entry.pack(anchor=tk.W)
+            entry.bind("<KeyRelease>", self._schedule_refresh)
+        zone_group = tk.Frame(specific, background=SURFACE_ALT)
+        zone_group.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        tk.Label(
+            zone_group,
+            text="Timezone",
+            background=SURFACE_ALT,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 8),
+        ).pack(anchor=tk.W, pady=(0, 2))
+        zone_choice = ttk.Combobox(
+            zone_group,
+            textvariable=self.time_exit_timezone,
+            values=_TIMEZONE_CHOICES,
+            state=tk.NORMAL,
+            width=25,
+        )
+        zone_choice.pack(anchor=tk.W)
+        zone_choice.bind("<<ComboboxSelected>>", self._schedule_refresh)
+        zone_choice.bind("<KeyRelease>", self._schedule_refresh)
+
+        resolved = tk.Frame(body, background=TABLE_FIELD, padx=9, pady=7)
+        resolved.pack(fill=tk.X, pady=(10, 0))
+        tk.Label(
+            resolved,
+            text="Resolved trigger",
+            background=TABLE_FIELD,
+            foreground=TEXT,
+            font=("Segoe UI", 8, "bold"),
+        ).pack(anchor=tk.W)
+        for variable in (self.time_exit_resolved, self.time_exit_local, self.time_exit_basis):
+            tk.Label(
+                resolved,
+                textvariable=variable,
+                background=TABLE_FIELD,
+                foreground=MUTED_TEXT,
+                font=("Segoe UI", 8),
+                anchor=tk.W,
+                justify=tk.LEFT,
+                wraplength=900,
+            ).pack(anchor=tk.W, fill=tk.X, pady=(2, 0))
+        validation = tk.Label(
+            body,
+            textvariable=self.time_exit_validation,
+            background=SURFACE_ALT,
+            foreground=DANGER,
+            font=("Segoe UI", 8, "bold"),
+            justify=tk.LEFT,
+            wraplength=900,
+        )
+        validation.pack(anchor=tk.W, fill=tk.X, pady=(7, 0))
+        warning = tk.Label(
+            body,
+            text=TIME_EXIT_CAPABILITY_REASON,
+            background="#382a10",
+            foreground="#ffd58a",
+            highlightbackground=WARNING,
+            highlightthickness=1,
+            font=("Segoe UI", 8, "bold"),
+            justify=tk.LEFT,
+            wraplength=900,
+            padx=8,
+            pady=6,
+        )
+        warning.pack(fill=tk.X, pady=(8, 0))
+        actions = tk.Frame(body, background=SURFACE_ALT)
+        actions.pack(fill=tk.X, pady=(9, 0))
+        ttk.Button(
+            actions,
+            text="Remove / Disable",
+            command=self._remove_time_exit,
+        ).pack(side=tk.LEFT)
+        ttk.Button(
+            actions,
+            text="Collapse",
+            command=lambda: self._set_time_exit_expanded(False),
+        ).pack(side=tk.RIGHT)
+
+        def activate(_event: object = None) -> str:
+            header.focus_set()
+            self._toggle_time_exit()
+            return "break"
+
+        for widget in (header, add_icon, copy, heading, detail, chevron):
+            widget.bind("<Button-1>", activate)
+        header.bind("<Return>", activate)
+        header.bind("<KP_Enter>", activate)
+        header.bind("<space>", activate)
+        header.bind(
+            "<FocusIn>",
+            lambda _event: frame.configure(highlightbackground=ACCENT),
+        )
+        header.bind(
+            "<FocusOut>",
+            lambda _event: frame.configure(highlightbackground=MUTED_TEXT),
+        )
+        self.time_exit_frame = frame
+        self.time_exit_header = header
+        self.time_exit_body = body
+        self.time_exit_relative_frame = relative
+        self.time_exit_specific_frame = specific
+        self.time_exit_resolved_frame = resolved
 
     def _build_exit_row(self, parent: tk.Frame, kind: str) -> None:
         is_target = kind == "target"
@@ -823,6 +1093,24 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             cell.grid(row=0, column=column, sticky=tk.EW, padx=3)
             tk.Label(cell, text=title, background=SURFACE, foreground=MUTED_TEXT, font=("Segoe UI", 8)).pack()
             tk.Label(cell, textvariable=variable, background=SURFACE, foreground=color, font=("Segoe UI", 11, "bold")).pack(pady=(2, 0))
+        timed = tk.Frame(section, background=TABLE_FIELD, padx=8, pady=6)
+        timed.pack(fill=tk.X, padx=9, pady=(0, 9))
+        tk.Label(
+            timed,
+            text="⏱ Timed exit",
+            background=TABLE_FIELD,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 8, "bold"),
+        ).pack(side=tk.LEFT)
+        tk.Label(
+            timed,
+            textvariable=self.time_exit_glance,
+            background=TABLE_FIELD,
+            foreground=TEXT,
+            font=("Segoe UI", 8, "bold"),
+            justify=tk.RIGHT,
+            wraplength=390,
+        ).pack(side=tk.RIGHT, fill=tk.X, expand=True)
 
     def _build_safeguards(self, parent: tk.Frame) -> None:
         section = self._right_section(parent, "Safeguards", expand=True)
@@ -899,15 +1187,17 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         tk.Frame(footer_region, background=BORDER, height=1).pack(fill=tk.X, pady=(5, 0))
         footer = tk.Frame(footer_region, background=BACKGROUND)
         footer.pack(fill=tk.X, pady=(12, 2))
-        ttk.Button(
+        save_template = ttk.Button(
             footer,
             text="Save as template",
             command=self._save_template,
             width=26,
-        ).pack(side=tk.LEFT)
+        )
+        save_template.pack(side=tk.LEFT)
+        self.save_template_button = save_template
         tk.Label(
             footer,
-            text="Estimated fees if closed: shown during review",
+            textvariable=self.footer_note,
             background=BACKGROUND,
             foreground=TEXT,
             font=("Segoe UI", 9),
@@ -965,6 +1255,160 @@ class ExitPlanBuilderDialog(tk.Toplevel):
             for variable in self.leg_enabled.values():
                 variable.set(True)
         self._refresh()
+
+    def _earliest_initial_expiration(self) -> str:
+        expirations = sorted(
+            leg.expiration
+            for leg in self.book.legs
+            if leg.symbol in self.initial_symbols and leg.expiration
+        )
+        if expirations:
+            return expirations[0]
+        return (self.now_provider().astimezone().date() + timedelta(days=1)).isoformat()
+
+    def _toggle_time_exit(self) -> None:
+        if not self.time_exit_configured:
+            self.time_exit_configured = True
+            self._set_time_exit_expanded(True)
+            self._refresh()
+            return
+        self._set_time_exit_expanded(not self.time_exit_expanded)
+
+    def _set_time_exit_expanded(self, expanded: bool) -> None:
+        self.time_exit_expanded = bool(expanded and self.time_exit_configured)
+        if self.time_exit_expanded:
+            self._sync_time_exit_control_visibility()
+            self.time_exit_body.pack(fill=tk.X)
+        else:
+            self.time_exit_body.pack_forget()
+        self.time_exit_add_icon.set("" if self.time_exit_configured else "＋")
+        self.time_exit_chevron.set("▼" if self.time_exit_expanded else "▶")
+        scroll = getattr(self, "left_scroll", None)
+        if scroll is not None:
+            scroll._content_resized()
+            self.after_idle(scroll._content_resized)
+
+    def _remove_time_exit(self) -> None:
+        self.time_exit_configured = False
+        self.time_exit_rule = None
+        self.time_exit_calendar_name = DEFAULT_OPTION_CALENDAR
+        self.time_exit_validation.set("")
+        self._set_time_exit_expanded(False)
+        self._update_time_exit_presentation(None)
+        self._refresh()
+
+    def _time_exit_type_changed(self, _event: object = None) -> None:
+        self._sync_time_exit_control_visibility()
+        self._refresh()
+
+    def _sync_time_exit_control_visibility(self) -> None:
+        specific = _TIME_EXIT_TYPE_LABELS.get(self.time_exit_type.get()) == SPECIFIC_DATE_TIME
+        self.time_exit_relative_frame.pack_forget()
+        self.time_exit_specific_frame.pack_forget()
+        before = getattr(self, "time_exit_resolved_frame", None)
+        pack_options = {"fill": tk.X, "pady": (10, 0)}
+        if before is not None:
+            pack_options["before"] = before
+        if specific:
+            self.time_exit_specific_frame.pack(**pack_options)
+        else:
+            self.time_exit_relative_frame.pack(**pack_options)
+
+    def _resolve_time_exit(
+        self,
+        selected_symbols: tuple[str, ...],
+        *,
+        now: datetime,
+    ) -> TimeBasedExitRule:
+        expirations = tuple(
+            leg.expiration
+            for leg in self.book.legs
+            if leg.symbol in selected_symbols
+        )
+        rule_type = _TIME_EXIT_TYPE_LABELS.get(self.time_exit_type.get())
+        if rule_type == BEFORE_EXPIRATION:
+            return resolve_before_expiration_time_exit(
+                expirations,
+                sessions_before_expiration=self.time_exit_sessions.get(),
+                minutes_before_session_close=_MARKET_CLOSE_OFFSETS.get(
+                    self.time_exit_close_choice.get(),
+                    self.time_exit_close_choice.get(),
+                ),
+                now=now,
+                calendar_name=self.time_exit_calendar_name,
+            )
+        if rule_type == SPECIFIC_DATE_TIME:
+            return resolve_specific_time_exit(
+                expirations,
+                specific_date=self.time_exit_specific_date.get(),
+                specific_time=self.time_exit_specific_time.get(),
+                timezone_name=self.time_exit_timezone.get(),
+                now=now,
+                calendar_name=self.time_exit_calendar_name,
+            )
+        raise ValueError("Choose Before expiration or Specific date and time for the timed exit.")
+
+    def _update_time_exit_presentation(self, rule: TimeBasedExitRule | None) -> None:
+        if rule is None:
+            self.time_exit_heading.set("Add time-based exit")
+            self.time_exit_detail.set(
+                "Close before expiration or at a specific time · Review only"
+            )
+            self.time_exit_resolved.set("Configure a rule to resolve its exact timestamp.")
+            self.time_exit_local.set("")
+            self.time_exit_basis.set("")
+            self.time_exit_glance.set("Not configured")
+            self._sync_template_save_state()
+            return
+        presentation = time_exit_presentation(
+            rule,
+            local_timezone=self.local_timezone,
+        )
+        self.time_exit_heading.set(presentation.summary)
+        self.time_exit_detail.set(
+            "First completed exit wins; all other remaining conditions are disarmed."
+        )
+        self.time_exit_resolved.set(f"Scheduled: {presentation.resolved_time}")
+        self.time_exit_local.set(
+            f"Local equivalent: {presentation.local_equivalent}"
+            if presentation.local_equivalent
+            else "Local equivalent: same as the scheduled time"
+        )
+        self.time_exit_basis.set(presentation.expiration_basis or "Explicit absolute date and timezone")
+        self.time_exit_validation.set("")
+        scheduled = rule.trigger_at.astimezone(ZoneInfo(rule.timezone_name))
+        self.time_exit_glance.set(
+            f"{scheduled:%b} {scheduled.day} · "
+            f"{(scheduled.strftime('%I').lstrip('0') or '0')}:{scheduled:%M %p} "
+            "· Review only"
+        )
+        self._sync_template_save_state()
+
+    def _set_time_exit_error(self, message: str) -> None:
+        self.time_exit_rule = None
+        self.time_exit_heading.set("Time-based exit needs attention")
+        self.time_exit_detail.set(message)
+        self.time_exit_resolved.set("Resolved trigger unavailable")
+        self.time_exit_local.set("")
+        self.time_exit_basis.set("")
+        self.time_exit_validation.set(message)
+        self.time_exit_glance.set("Needs attention")
+        self._sync_template_save_state()
+
+    def _sync_template_save_state(self) -> None:
+        button = getattr(self, "save_template_button", None)
+        if button is None:
+            return
+        absolute = bool(
+            self.time_exit_configured
+            and _TIME_EXIT_TYPE_LABELS.get(self.time_exit_type.get()) == SPECIFIC_DATE_TIME
+        )
+        button.configure(state=tk.DISABLED if absolute else tk.NORMAL)
+        self.footer_note.set(
+            "Absolute timestamps cannot be saved as timeless templates."
+            if absolute
+            else "Relative policy defaults only · Estimated fees are shown during review"
+        )
 
     def _draw_oco_header(self) -> None:
         canvas = getattr(self, "oco_header", None)
@@ -1076,7 +1520,14 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         )
         self.stop_frame.configure(highlightbackground=DANGER if stop_enabled else BORDER)
         self.atomic_link.set(False)
+        current = self.now_provider()
+        self.time_exit_rule = None
         try:
+            if self.time_exit_configured:
+                self.time_exit_rule = self._resolve_time_exit(selected, now=current)
+                self._update_time_exit_presentation(self.time_exit_rule)
+            else:
+                self._update_time_exit_presentation(None)
             draft = build_exit_plan_draft(
                 self.book,
                 selected,
@@ -1087,9 +1538,13 @@ class ExitPlanBuilderDialog(tk.Toplevel):
                 stop_percent=self.stop_percent.get(),
                 limit_offset=self.limit_offset.get(),
                 duration=self.duration.get(),
+                time_exit_rule=self.time_exit_rule,
+                now=current,
             )
         except Exception as exc:
             self.draft = None
+            if self.time_exit_configured and self.time_exit_rule is None:
+                self._set_time_exit_error(str(exc))
             self.builder_message.set(str(exc))
             self._set_builder_message_tone(ready=False)
             self.current_mark.set("—")
@@ -1134,6 +1589,11 @@ class ExitPlanBuilderDialog(tk.Toplevel):
                 "Resolve working close order " + ", ".join(draft.conflicting_order_ids) + " before review."
             )
             self.review_button.configure(text="Resolve working order first", state=tk.DISABLED)
+        elif draft.time_exit_rule is not None:
+            self._set_builder_message_tone(ready=False)
+            self.status.set("Review only · timed execution unavailable")
+            self.builder_message.set(draft.capability_reason or TIME_EXIT_CAPABILITY_REASON)
+            self.review_button.configure(text="Review timed plan (no placement)", state=tk.NORMAL)
         elif draft.capability_reason:
             self._set_builder_message_tone(ready=False)
             self.status.set("Review only • linked broker placement unavailable")
@@ -1235,6 +1695,101 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         )
         target = draft.take_profit
         stop = draft.stop_loss
+        if draft.time_exit_rule is not None:
+            branch_specs: list[tuple[str, str, str]] = []
+            if target is not None:
+                branch_specs.append(
+                    (
+                        f"{target.trigger_operator}{target.trigger_percent:g}% Take profit",
+                        f"{self.target_scope.get()} · {_money(target.trigger_price)}",
+                        SUCCESS,
+                    )
+                )
+            if stop is not None:
+                branch_specs.append(
+                    (
+                        f"{stop.trigger_operator}{stop.trigger_percent:g}% Stop loss",
+                        f"{self.stop_scope.get()} · {_money(stop.trigger_price)}",
+                        DANGER,
+                    )
+                )
+            branch_specs.append(
+                (
+                    "⏱ Timed exit",
+                    _time_node_detail(draft.time_exit_rule),
+                    WARNING,
+                )
+            )
+            branch_gap = 16
+            branch_width = min(
+                190,
+                (diagram_width - branch_gap * (len(branch_specs) - 1)) / len(branch_specs),
+            )
+            total_width = branch_width * len(branch_specs) + branch_gap * (len(branch_specs) - 1)
+            first_center = center - total_width / 2 + branch_width / 2
+            centers = tuple(
+                first_center + index * (branch_width + branch_gap)
+                for index in range(len(branch_specs))
+            )
+            split_y = top + diagram_height * 0.45
+            label_y = top + diagram_height * 0.405
+            canvas.create_line(center, monitor_bottom, center, split_y, fill=MUTED_TEXT)
+            canvas.create_text(
+                center,
+                label_y,
+                text="FIRST EXIT WINS",
+                fill=TEXT,
+                font=("Segoe UI", 8, "bold"),
+            )
+            canvas.create_line(centers[0], split_y, centers[-1], split_y, fill=MUTED_TEXT)
+            for branch_center, (title, detail, color) in zip(
+                centers,
+                branch_specs,
+                strict=True,
+            ):
+                canvas.create_line(
+                    branch_center,
+                    split_y,
+                    branch_center,
+                    branch_top,
+                    fill=MUTED_TEXT,
+                    arrow=tk.LAST,
+                )
+                _canvas_node(
+                    canvas,
+                    branch_center - branch_width / 2,
+                    branch_top,
+                    branch_center + branch_width / 2,
+                    branch_bottom,
+                    title,
+                    detail,
+                    color,
+                    color,
+                )
+            merge_y = top + diagram_height * 0.80
+            for branch_center in centers:
+                canvas.create_line(
+                    branch_center,
+                    branch_bottom,
+                    branch_center,
+                    merge_y,
+                    center,
+                    merge_y,
+                    fill=MUTED_TEXT,
+                )
+            canvas.create_line(center, merge_y, center, closed_top, fill=MUTED_TEXT, arrow=tk.LAST)
+            _canvas_node(
+                canvas,
+                center - monitor_width * 0.42,
+                closed_top,
+                center + monitor_width * 0.42,
+                closed_bottom,
+                "Selected coverage closed",
+                "Other exits disarmed",
+                BORDER,
+                TEXT,
+            )
+            return
         if draft.relationship == "OCO" and target and stop:
             branch_gap = 34
             branch_width = min(220, (diagram_width - branch_gap) / 2)
@@ -1383,12 +1938,17 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         if draft is None or draft.conflicting_order_ids:
             return
         controller = OptionOrderReviewController(
-            review=exit_plan_review(draft, now=datetime.now(timezone.utc)),
+            review=exit_plan_review(
+                draft,
+                now=self.now_provider(),
+                local_timezone=self.local_timezone,
+            ),
             draft=draft,
             snapshot_loader=self.snapshot_loader if draft.placeable else None,
             session_factory=self.session_factory if draft.placeable else None,
             on_accepted=self.on_accepted,
             on_unknown=self.on_unknown,
+            now_provider=self.now_provider,
         )
         OptionOrderReviewDialog(root=self, controller=controller)
 
@@ -1412,6 +1972,17 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         if self.draft is None:
             messagebox.showerror("Template unavailable", "Fix the exit-plan values before saving.", parent=self)
             return
+        if (
+            self.time_exit_configured
+            and _TIME_EXIT_TYPE_LABELS.get(self.time_exit_type.get()) == SPECIFIC_DATE_TIME
+        ):
+            messagebox.showerror(
+                "Template unavailable",
+                "A specific absolute date and time cannot be saved as a timeless reusable "
+                "template. Remove it or switch to Before expiration.",
+                parent=self,
+            )
+            return
         name = simpledialog.askstring("Save exit-plan template", "Template name:", parent=self)
         if not name:
             return
@@ -1423,6 +1994,11 @@ class ExitPlanBuilderDialog(tk.Toplevel):
                 stop_percent=float(self.stop_percent.get()),
                 limit_offset=float(self.limit_offset.get()),
                 duration=self.duration.get(),
+                time_exit=(
+                    saved_time_exit_from_rule(self.draft.time_exit_rule)
+                    if self.draft.time_exit_rule is not None
+                    else None
+                ),
             )
             path = save_exit_plan_template(template)
         except Exception as exc:
@@ -1471,6 +2047,26 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.stop_percent.set(f"{template.stop_percent:g}")
         self.limit_offset.set(f"{template.limit_offset:.2f}")
         self.duration.set(template.duration)
+        if template.time_exit is not None:
+            self.time_exit_configured = True
+            self.time_exit_type.set("Before expiration")
+            self.time_exit_sessions.set(str(template.time_exit.sessions_before_expiration))
+            close_label = next(
+                (
+                    label
+                    for label, offset in MARKET_CLOSE_CHOICES
+                    if offset == template.time_exit.minutes_before_session_close
+                ),
+                str(template.time_exit.minutes_before_session_close),
+            )
+            self.time_exit_close_choice.set(close_label)
+            self.time_exit_calendar_name = template.time_exit.calendar_name
+            self._set_time_exit_expanded(False)
+        else:
+            self.time_exit_configured = False
+            self.time_exit_rule = None
+            self.time_exit_calendar_name = DEFAULT_OPTION_CALENDAR
+            self._set_time_exit_expanded(False)
         self._refresh()
 
     def _package_quantity(self) -> int:
@@ -1501,6 +2097,7 @@ def _canvas_node(
         fill=foreground,
         font=("Segoe UI", 9, "bold"),
         justify=tk.CENTER,
+        width=max(40, right - left - 8),
     )
     canvas.create_text(
         center_x,
@@ -1509,6 +2106,7 @@ def _canvas_node(
         fill=MUTED_TEXT,
         font=("Segoe UI", 8),
         justify=tk.CENTER,
+        width=max(40, right - left - 8),
     )
 
 
@@ -1521,6 +2119,15 @@ def _branch_estimate(branch: object) -> str:
         return "Unavailable"
     direction = "CREDIT" if closing_order.estimated_cash_effect >= 0 else "DEBIT"
     return f"{_money(price)} {direction}"
+
+
+def _time_node_detail(rule: TimeBasedExitRule) -> str:
+    scheduled = rule.trigger_at.astimezone(ZoneInfo(rule.timezone_name))
+    hour = scheduled.strftime("%I").lstrip("0") or "0"
+    return (
+        f"{scheduled:%b} {scheduled.day} · {hour}:{scheduled:%M %p} "
+        f"{scheduled.tzname() or rule.timezone_name}"
+    )
 
 
 def _money(value: float | None) -> str:

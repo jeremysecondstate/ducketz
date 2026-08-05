@@ -4,6 +4,7 @@ import json
 import math
 import os
 from dataclasses import asdict
+from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from typing import Iterable, Mapping, Sequence
@@ -14,6 +15,8 @@ from app.models.option_management import (
     ManagedOptionOrder,
     OptionPositionBook,
     SavedExitPlanTemplate,
+    SavedTimeBasedExitRule,
+    TimeBasedExitRule,
 )
 from app.models.portfolio import PortfolioSnapshot
 from app.services.schwab_option_management import (
@@ -24,6 +27,11 @@ from app.services.schwab_option_management import (
     validate_closing_position_drift,
 )
 from app.services.schwab_strategy_orders import DAY_ONLY, GOOD_UNTIL_CANCELED
+from app.services.option_time_exits import (
+    BEFORE_EXPIRATION,
+    TIME_EXIT_CAPABILITY_REASON,
+    validate_time_exit_rule,
+)
 
 
 TARGET_STOP = "target_stop"
@@ -31,7 +39,7 @@ SINGLE_TARGET = "single_target"
 TWO_TARGETS = "two_targets"
 TRAILING_STOP = "trailing_stop"
 EXIT_PLAN_TEMPLATE_IDS = (TARGET_STOP, SINGLE_TARGET, TWO_TARGETS, TRAILING_STOP)
-EXIT_TEMPLATE_SCHEMA_VERSION = 1
+EXIT_TEMPLATE_SCHEMA_VERSION = 2
 
 OCO_CAPABILITY_REASON = (
     "Schwab linked OCO/child option-order submission is not verified in this project. "
@@ -63,6 +71,8 @@ def build_exit_plan_draft(
     stop_percent: object = 12.0,
     limit_offset: object = 0.05,
     duration: str = GOOD_UNTIL_CANCELED,
+    time_exit_rule: TimeBasedExitRule | None = None,
+    now: datetime | None = None,
 ) -> ExitPlanDraft:
     if template_id not in EXIT_PLAN_TEMPLATE_IDS:
         raise ValueError(f"Unknown exit-plan template: {template_id or 'missing'}")
@@ -82,6 +92,12 @@ def build_exit_plan_draft(
         )
     )
     base_close = build_closing_order_draft(book, symbols, duration=duration)
+    if time_exit_rule is not None:
+        validate_time_exit_rule(
+            time_exit_rule,
+            selected_expirations=(leg.expiration for leg in base_close.legs),
+            now=now or datetime.now(timezone.utc),
+        )
     current_mark = base_close.limit_price
     cash_direction = 1.0 if base_close.estimated_cash_effect >= 0 else -1.0
     target_price = _resolved_price(
@@ -199,6 +215,16 @@ def build_exit_plan_draft(
         executable = False
         capability_reason = TRAILING_STOP_CAPABILITY_REASON
 
+    if time_exit_rule is not None:
+        executable = False
+        capability_reason = " ".join(
+            dict.fromkeys(
+                reason
+                for reason in (capability_reason, TIME_EXIT_CAPABILITY_REASON)
+                if reason
+            )
+        )
+
     warnings = [
         (
             f"Trigger percentages resolve from the current net position mark of ${current_mark:,.2f}; "
@@ -239,10 +265,13 @@ def build_exit_plan_draft(
         capability_reason=capability_reason,
         conflicting_order_ids=conflicts,
         warnings=tuple(warnings),
+        time_exit_rule=time_exit_rule,
     )
 
 
 def build_exit_plan_payload(draft: ExitPlanDraft) -> dict[str, object]:
+    if draft.time_exit_rule is not None:
+        raise ValueError(TIME_EXIT_CAPABILITY_REASON)
     if draft.conflicting_order_ids:
         raise ValueError(
             "Resolve conflicting working close order(s) before placement: "
@@ -264,6 +293,8 @@ def refresh_exit_plan_draft(
 ) -> ExitPlanDraft:
     """Rebuild a verified single-target plan from current option/account facts."""
 
+    if draft.time_exit_rule is not None:
+        raise ValueError(TIME_EXIT_CAPABILITY_REASON)
     if draft.template_id != SINGLE_TARGET or len(draft.branches) != 1:
         raise ValueError(draft.capability_reason or "Only a single-target exit can be refreshed for placement.")
     branch = draft.branches[0]
@@ -320,7 +351,7 @@ def load_exit_plan_templates(path: Path | None = None) -> tuple[SavedExitPlanTem
         rows = payload
     elif isinstance(payload, Mapping):
         version = payload.get("schema_version")
-        if version != EXIT_TEMPLATE_SCHEMA_VERSION:
+        if version not in {1, EXIT_TEMPLATE_SCHEMA_VERSION}:
             raise ValueError(f"Unsupported exit-plan template schema version: {version!r}")
         rows = payload.get("templates")
     else:
@@ -404,6 +435,46 @@ def _template_from_row(row: object) -> SavedExitPlanTemplate:
             "Saved stop-limit offset",
         ),
         duration=duration,
+        time_exit=_saved_time_exit_from_row(row.get("time_exit"), template_name=name),
+    )
+
+
+def _saved_time_exit_from_row(
+    value: object,
+    *,
+    template_name: str,
+) -> SavedTimeBasedExitRule | None:
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise ValueError(f"Saved template {template_name!r} has a malformed time-based exit.")
+    if value.get("trigger_at") is not None or value.get("specific_datetime") is not None:
+        raise ValueError(
+            f"Saved template {template_name!r} contains an unsafe absolute timestamp. "
+            "Only relative before-expiration time exits are reusable."
+        )
+    rule_type = str(value.get("rule_type") or "").strip()
+    if rule_type != BEFORE_EXPIRATION:
+        raise ValueError(
+            f"Saved template {template_name!r} has an unsupported time-based exit type. "
+            "Only Before expiration may be saved."
+        )
+    sessions = _positive_integer(
+        value.get("sessions_before_expiration"),
+        "Saved trading sessions before expiration",
+    )
+    close_offset = _nonnegative_integer(
+        value.get("minutes_before_session_close"),
+        "Saved minutes before scheduled close",
+    )
+    calendar_name = str(value.get("calendar_name") or "").strip().upper()
+    if not calendar_name or len(calendar_name) > 20:
+        raise ValueError(f"Saved template {template_name!r} has an invalid exchange calendar.")
+    return SavedTimeBasedExitRule(
+        rule_type=BEFORE_EXPIRATION,
+        sessions_before_expiration=sessions,
+        minutes_before_session_close=close_offset,
+        calendar_name=calendar_name,
     )
 
 
@@ -419,6 +490,33 @@ def _nonnegative_price(value: object, label: str) -> float:
     if number is None or number < 0:
         raise ValueError(f"{label} must be a nonnegative number.")
     return round(number, 2)
+
+
+def _positive_integer(value: object, label: str) -> int:
+    number = _integer(value, label)
+    if number < 1:
+        raise ValueError(f"{label} must be a positive whole number.")
+    return number
+
+
+def _nonnegative_integer(value: object, label: str) -> int:
+    number = _integer(value, label)
+    if number < 0:
+        raise ValueError(f"{label} cannot be negative.")
+    return number
+
+
+def _integer(value: object, label: str) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"{label} must be a whole number.")
+    text = str("" if value is None else value).strip()
+    try:
+        number = int(text)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{label} must be a whole number.") from exc
+    if text not in {str(number), f"+{number}"}:
+        raise ValueError(f"{label} must be a whole number.")
+    return number
 
 
 def _resolved_price(value: float, label: str) -> float:
@@ -442,6 +540,7 @@ __all__ = [
     "SINGLE_TARGET",
     "TARGET_STOP",
     "TEMPLATE_LABELS",
+    "TIME_EXIT_CAPABILITY_REASON",
     "TRAILING_STOP",
     "TWO_TARGETS",
     "build_exit_plan_draft",

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import threading
 import tkinter as tk
+from dataclasses import dataclass
 from datetime import datetime, tzinfo
 from pathlib import Path
 from tkinter import ttk
+from typing import Iterable, Mapping
 
 from app.ui.rolling_forecast_data import (
     ForecastDashboardView,
@@ -40,6 +42,64 @@ from app.ui.theme import (
 )
 
 
+@dataclass
+class _SymbolSectionWidgets:
+    symbol: str
+    section: ttk.Frame
+    header: tk.Button
+    body: ttk.Frame
+    cards: tuple[ttk.Frame, ...]
+    weekly_card: ttk.Frame
+    collapsed_summary: str
+
+
+def forecast_symbol_section_summary(
+    symbol: object,
+    *,
+    forecast_count: int,
+    remaining_week_available: bool,
+) -> str:
+    name = str(symbol or "").strip().upper()
+    if not name:
+        raise ValueError("A forecast symbol is required for its section summary.")
+    if forecast_count < 0:
+        raise ValueError("Forecast count cannot be negative.")
+    weekly = (
+        "Remaining-week snapshot available"
+        if remaining_week_available
+        else "No remaining-week snapshot"
+    )
+    return (
+        f"{name} · {forecast_count} forecast{'s' if forecast_count != 1 else ''} · {weekly}"
+    )
+
+
+def merge_symbol_expansion_state(
+    prior: Mapping[str, bool],
+    symbols: Iterable[object],
+) -> dict[str, bool]:
+    """Retain session state by symbol while defaulting newly encountered names open."""
+
+    merged = {str(symbol).strip().upper(): bool(expanded) for symbol, expanded in prior.items()}
+    for value in symbols:
+        symbol = str(value or "").strip().upper()
+        if symbol:
+            merged.setdefault(symbol, True)
+    return merged
+
+
+def forecast_symbol_header_text(
+    symbol: object,
+    *,
+    expanded: bool,
+    collapsed_summary: str,
+) -> str:
+    name = str(symbol or "").strip().upper()
+    if not name:
+        raise ValueError("A forecast symbol is required for its section header.")
+    return f"▼ {name}" if expanded else f"▶ {collapsed_summary}"
+
+
 class RollingForecastTab:
     def __init__(
         self,
@@ -66,14 +126,8 @@ class RollingForecastTab:
         self.content_frame: ttk.Frame | None = None
         self.source_label: ttk.Label | None = None
         self._summary_cards: list[ttk.Frame] = []
-        self._symbol_sections: list[
-            tuple[
-                ttk.Frame,
-                ttk.Label,
-                tuple[ttk.Frame, ...],
-                ttk.Frame,
-            ]
-        ] = []
+        self._symbol_sections: list[_SymbolSectionWidgets] = []
+        self._symbol_expanded: dict[str, bool] = {}
         self._layout_columns: int | None = None
         self._width = 1180
 
@@ -433,30 +487,95 @@ class RollingForecastTab:
                 justify=tk.LEFT,
             ).pack(anchor=tk.W, pady=(6, 0))
         else:
+            self._symbol_expanded = merge_symbol_expansion_state(
+                self._symbol_expanded,
+                (symbol.symbol for symbol in view.symbols),
+            )
+            controls = ttk.Frame(self.content_frame, style="Forecast.TFrame")
+            controls.pack(fill=tk.X, pady=(0, 7))
+            ttk.Button(
+                controls,
+                text="Expand all",
+                command=lambda: self._set_all_symbols_expanded(True),
+                width=12,
+            ).pack(side=tk.RIGHT)
+            ttk.Button(
+                controls,
+                text="Collapse all",
+                command=lambda: self._set_all_symbols_expanded(False),
+                width=12,
+            ).pack(side=tk.RIGHT, padx=(0, 6))
             for symbol in view.symbols:
+                symbol_name = str(symbol.symbol).strip().upper()
                 section = ttk.Frame(
                     self.content_frame,
-                    padding=12,
                     style="ForecastSurface.TFrame",
                 )
                 section.pack(fill=tk.X, pady=(0, 10))
-                title = ttk.Label(
+                body = ttk.Frame(
                     section,
-                    text=symbol.symbol,
-                    style="ForecastSection.TLabel",
+                    padding=(12, 0, 12, 12),
+                    style="ForecastCardBody.TFrame",
+                )
+                collapsed_summary = forecast_symbol_section_summary(
+                    symbol_name,
+                    forecast_count=sum(
+                        route.horizon in STANDARD_HORIZON_ORDER
+                        for route in symbol.routes
+                    ),
+                    remaining_week_available=symbol.weekly_outlook is not None,
+                )
+                header = tk.Button(
+                    section,
+                    command=lambda name=symbol_name: self._toggle_symbol(name),
+                    background=SURFACE,
+                    foreground=TEXT,
+                    activebackground=SURFACE_ALT,
+                    activeforeground=TEXT,
+                    font=("Segoe UI", 11, "bold"),
+                    anchor=tk.W,
+                    justify=tk.LEFT,
+                    relief=tk.FLAT,
+                    borderwidth=0,
+                    highlightthickness=1,
+                    highlightbackground=BORDER,
+                    highlightcolor=ACCENT,
+                    takefocus=True,
+                    cursor="hand2",
+                    padx=11,
+                    pady=8,
+                )
+                header.pack(fill=tk.X)
+                header.bind(
+                    "<Return>",
+                    lambda _event, name=symbol_name: self._toggle_symbol_from_key(name),
+                )
+                header.bind(
+                    "<KP_Enter>",
+                    lambda _event, name=symbol_name: self._toggle_symbol_from_key(name),
                 )
                 cards = tuple(
-                    self._build_route_card(section, route)
+                    self._build_route_card(body, route)
                     for route in symbol.routes
                     if route.horizon in STANDARD_HORIZON_ORDER
                 )
                 weekly_card = self._build_weekly_outlook_card(
-                    section,
+                    body,
                     symbol.weekly_outlook,
                 )
-                self._symbol_sections.append(
-                    (section, title, cards, weekly_card)
+                widgets = _SymbolSectionWidgets(
+                    symbol=symbol_name,
+                    section=section,
+                    header=header,
+                    body=body,
+                    cards=cards,
+                    weekly_card=weekly_card,
+                    collapsed_summary=collapsed_summary,
                 )
+                self._symbol_sections.append(widgets)
+                if self._symbol_expanded[symbol_name]:
+                    body.pack(fill=tk.X)
+                self._update_symbol_header(widgets)
         self._apply_responsive_layout(force=True)
         self._update_scroll_region()
 
@@ -828,6 +947,69 @@ class RollingForecastTab:
         self._symbol_sections.clear()
         self._layout_columns = None
 
+    def _toggle_symbol(self, symbol: str) -> None:
+        name = str(symbol or "").strip().upper()
+        self._set_symbol_expanded(
+            name,
+            not self._symbol_expanded.get(name, True),
+        )
+
+    def _toggle_symbol_from_key(self, symbol: str) -> str:
+        self._toggle_symbol(symbol)
+        return "break"
+
+    def _set_symbol_expanded(
+        self,
+        symbol: str,
+        expanded: bool,
+        *,
+        refresh_layout: bool = True,
+    ) -> None:
+        name = str(symbol or "").strip().upper()
+        if not name:
+            return
+        self._symbol_expanded[name] = bool(expanded)
+        widgets = next(
+            (item for item in self._symbol_sections if item.symbol == name),
+            None,
+        )
+        if widgets is None:
+            return
+        if expanded:
+            widgets.body.pack(fill=tk.X)
+        else:
+            widgets.body.pack_forget()
+        self._update_symbol_header(widgets)
+        if refresh_layout:
+            self._apply_responsive_layout(force=True)
+        else:
+            self._refresh_scroll_region()
+
+    def _set_all_symbols_expanded(self, expanded: bool) -> None:
+        for widgets in self._symbol_sections:
+            self._set_symbol_expanded(
+                widgets.symbol,
+                expanded,
+                refresh_layout=False,
+            )
+        self._apply_responsive_layout(force=True)
+
+    def _update_symbol_header(self, widgets: _SymbolSectionWidgets) -> None:
+        expanded = self._symbol_expanded.get(widgets.symbol, True)
+        widgets.header.configure(
+            text=forecast_symbol_header_text(
+                widgets.symbol,
+                expanded=expanded,
+                collapsed_summary=widgets.collapsed_summary,
+            )
+        )
+
+    def _refresh_scroll_region(self) -> None:
+        if self.content_frame is not None:
+            self.content_frame.update_idletasks()
+        self._update_scroll_region()
+        self.root.after_idle(self._update_scroll_region)
+
     def _on_resize(self, event: tk.Event[tk.Misc]) -> None:
         self._width = max(1, int(event.width))
         self._apply_responsive_layout()
@@ -838,6 +1020,7 @@ class RollingForecastTab:
                 self.canvas_window,
                 width=max(1, int(event.width)),
             )
+        self._refresh_scroll_region()
 
     def _apply_responsive_layout(self, *, force: bool = False) -> None:
         columns = dashboard_layout(self._width)
@@ -845,11 +1028,15 @@ class RollingForecastTab:
             return
         self._layout_columns = columns
         self._layout_summary()
-        for section, title, cards, weekly_card in self._symbol_sections:
+        for widgets in self._symbol_sections:
+            if not self._symbol_expanded.get(widgets.symbol, True):
+                continue
+            section = widgets.body
+            cards = widgets.cards
+            weekly_card = widgets.weekly_card
             for card in cards:
                 card.grid_forget()
             weekly_card.grid_forget()
-            title.grid_forget()
             for column in range(len(STANDARD_HORIZON_ORDER)):
                 section.grid_columnconfigure(
                     column,
@@ -860,17 +1047,10 @@ class RollingForecastTab:
                         else ""
                     ),
                 )
-            title.grid(
-                row=0,
-                column=0,
-                columnspan=columns,
-                sticky=tk.W,
-                pady=(0, 9),
-            )
             for index, card in enumerate(cards):
                 row, column = divmod(index, columns)
                 card.grid(
-                    row=row + 1,
+                    row=row,
                     column=column,
                     sticky=tk.NSEW,
                     padx=(0 if column == 0 else 5, 0),
@@ -878,12 +1058,13 @@ class RollingForecastTab:
                 )
             ordinary_rows = (len(cards) + columns - 1) // columns
             weekly_card.grid(
-                row=ordinary_rows + 1,
+                row=ordinary_rows,
                 column=0,
                 columnspan=columns,
                 sticky=tk.NSEW,
                 pady=(1, 7),
             )
+        self._refresh_scroll_region()
 
     def _layout_summary(self) -> None:
         if self.summary_frame is None:

@@ -5,7 +5,7 @@ import re
 import threading
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, tzinfo
 from decimal import Decimal, ROUND_HALF_UP
 import requests
 
@@ -31,6 +31,11 @@ from app.models.option_management import (
 )
 from app.models.portfolio import PortfolioSnapshot
 from app.services.option_exit_plans import refresh_exit_plan_draft
+from app.services.option_time_exits import (
+    BEFORE_EXPIRATION,
+    TIME_EXIT_CAPABILITY_REASON,
+    time_exit_presentation,
+)
 from app.services.schwab_option_management import (
     build_closing_order_draft,
     build_closing_order_payload,
@@ -524,6 +529,7 @@ def exit_plan_review(
     *,
     now: datetime | None = None,
     max_quote_age_seconds: float = DEFAULT_REVIEW_MAX_QUOTE_AGE_SECONDS,
+    local_timezone: tzinfo | None = None,
 ) -> OptionOrderReview:
     current = _aware(now or datetime.now(timezone.utc))
     review_legs: list[OptionOrderReviewLeg] = []
@@ -585,11 +591,45 @@ def exit_plan_review(
                 "Resolve the overlapping working closing order before activating another exit.",
             )
         )
-    if draft.capability_reason:
+    timed_rule = draft.time_exit_rule
+    timed_schedule_valid = bool(
+        timed_rule is None or _aware(timed_rule.trigger_at) > current
+    )
+    timed_presentation = (
+        time_exit_presentation(timed_rule, local_timezone=local_timezone)
+        if timed_rule is not None
+        else None
+    )
+    if timed_rule is not None and timed_presentation is not None:
+        schedule_parts = [timed_presentation.resolved_time]
+        if timed_presentation.local_equivalent:
+            schedule_parts.append(f"Local equivalent: {timed_presentation.local_equivalent}")
+        if timed_presentation.expiration_basis:
+            schedule_parts.append(timed_presentation.expiration_basis)
+        notices.append(
+            _warning(
+                "Planning only — timed execution unavailable",
+                (draft.capability_reason or TIME_EXIT_CAPABILITY_REASON)
+                + " "
+                + " ".join(schedule_parts),
+            )
+        )
+        if not timed_schedule_valid:
+            notices.append(
+                _blocking(
+                    "Timed exit is in the past",
+                    "Choose a future date or time in the exit-plan builder before reviewing this plan.",
+                )
+            )
+    elif draft.capability_reason:
         notices.append(_blocking("Broker placement unavailable", draft.capability_reason))
     placeable_close = _exit_plan_closing_draft(draft)
-    can_place = placeable_close is not None and draft.placeable
-    can_review = draft.executable and not draft.conflicting_order_ids
+    can_place = placeable_close is not None and draft.placeable and timed_schedule_valid
+    can_review = bool(
+        not draft.conflicting_order_ids
+        and timed_schedule_valid
+        and (draft.executable or timed_rule is not None)
+    )
     capability = (
         OrderReviewPlacementCapability.SUPPORTED
         if can_place
@@ -597,7 +637,7 @@ def exit_plan_review(
         if can_review
         else OrderReviewPlacementCapability.UNAVAILABLE
     )
-    active_branches = sum(1 for branch in draft.branches if branch.enabled)
+    active_branches = sum(1 for branch in draft.branches if branch.enabled) + int(timed_rule is not None)
     strategy = "Exact option position" if len(draft.position_symbols) == 1 else "Custom option strategy"
     durations = {branch.duration for branch in draft.branches if branch.enabled}
     duration = next(iter(durations)) if len(durations) == 1 else "Mixed"
@@ -605,6 +645,7 @@ def exit_plan_review(
         draft.position_symbols
         and draft.protected_quantity > 0
         and draft.branches
+        and timed_schedule_valid
         and (not can_place or placeable_close is not None)
     )
     if not internal_valid:
@@ -617,6 +658,68 @@ def exit_plan_review(
         if cash_effect is not None
         else OrderReviewCashDirection.REFERENCE
     )
+    metrics = [
+        OptionOrderReviewMetric("Protected quantity", "0", str(draft.protected_quantity), LOCAL_CALCULATION),
+        OptionOrderReviewMetric("Active branches", "0", str(active_branches), LOCAL_CALCULATION),
+        OptionOrderReviewMetric(
+            "Trigger relationship",
+            "None",
+            "First completed exit wins"
+            if timed_rule is not None
+            else draft.relationship
+            if draft.relationship.isupper()
+            else draft.relationship.replace("_", " ").title(),
+            "Exit-plan configuration",
+        ),
+        OptionOrderReviewMetric(
+            "Resulting coverage",
+            "Unprotected",
+            draft.coverage_label,
+            "Exit-plan configuration",
+        ),
+    ]
+    if timed_rule is not None and timed_presentation is not None:
+        metrics.extend(
+            (
+                OptionOrderReviewMetric(
+                    "Timed rule type",
+                    "None",
+                    "Before expiration"
+                    if timed_rule.rule_type == BEFORE_EXPIRATION
+                    else "Specific date and time",
+                    "Time-exit configuration",
+                ),
+                OptionOrderReviewMetric(
+                    "Resolved trigger",
+                    "Not scheduled",
+                    timed_presentation.resolved_time,
+                    "Exchange-calendar resolution"
+                    if timed_rule.rule_type == BEFORE_EXPIRATION
+                    else "Explicit timezone conversion",
+                ),
+                OptionOrderReviewMetric(
+                    "Trigger timezone",
+                    "None",
+                    timed_rule.timezone_name,
+                    "Time-exit configuration",
+                ),
+                OptionOrderReviewMetric(
+                    "Timed coverage",
+                    "None",
+                    draft.coverage_label,
+                    "Same exact selected coverage as price exits",
+                ),
+            )
+        )
+        if timed_presentation.expiration_basis:
+            metrics.append(
+                OptionOrderReviewMetric(
+                    "Expiration basis",
+                    "None",
+                    timed_presentation.expiration_basis,
+                    "Earliest selected-leg expiration",
+                )
+            )
     return OptionOrderReview(
         operation=OrderReviewOperation.EXIT_PLAN,
         title="Review exit plan",
@@ -626,12 +729,26 @@ def exit_plan_review(
         ),
         account_display_label=mask_account_label(draft.account_label),
         strategy_label=f"{draft.template_name} • {draft.coverage_label}",
-        instruction="Create linked closing instructions" if active_branches > 1 else "Create one planned closing instruction",
-        order_type=(draft.branches[0].order_type.replace("_", " ").title() if len(draft.branches) == 1 else f"{draft.relationship} linked exits"),
+        instruction=(
+            "Plan mutually exclusive price and timed closing conditions"
+            if timed_rule is not None
+            else "Create linked closing instructions"
+            if active_branches > 1
+            else "Create one planned closing instruction"
+        ),
+        order_type=(
+            f"{draft.relationship} price exits + timed branch"
+            if timed_rule is not None
+            else draft.branches[0].order_type.replace("_", " ").title()
+            if len(draft.branches) == 1
+            else f"{draft.relationship} linked exits"
+        ),
         duration=duration,
         execution_mode=(
             "Single exact-leg closing order"
             if can_place
+            else "Review only — timed execution is not verified"
+            if timed_rule is not None and can_review
             else "Review only"
             if can_review
             else "Placement unavailable"
@@ -657,17 +774,7 @@ def exit_plan_review(
         validation_quote_at=validation_quote_at,
         max_quote_age_seconds=max_quote_age_seconds,
         quote_state=freshness,
-        metrics=(
-            OptionOrderReviewMetric("Protected quantity", "0", str(draft.protected_quantity), LOCAL_CALCULATION),
-            OptionOrderReviewMetric("Active branches", "0", str(active_branches), LOCAL_CALCULATION),
-            OptionOrderReviewMetric(
-                "Trigger relationship",
-                "None",
-                draft.relationship if draft.relationship.isupper() else draft.relationship.replace("_", " ").title(),
-                "Exit-plan configuration",
-            ),
-            OptionOrderReviewMetric("Resulting coverage", "Unprotected", draft.coverage_label, "Exit-plan configuration"),
-        ),
+        metrics=tuple(metrics),
         costs=(
             OptionOrderReviewCost("Estimated fees", "Unavailable", UNAVAILABLE_UNTIL_BROKER_REVIEW),
             OptionOrderReviewCost(
@@ -688,7 +795,13 @@ def exit_plan_review(
         notices=_dedupe_notices(notices),
         acknowledgment_copy="I reviewed the protected contracts, branch actions, quantities, triggers, and warnings.",
         safety_copy=(
-            "This exit order only closes the reviewed option position; it does not open a new position."
+            (
+                TIME_EXIT_CAPABILITY_REASON
+                + " If another exit completes first, the timed rule is disarmed; if the scheduled "
+                "time is reached first, the remaining price exits would be disarmed."
+            )
+            if timed_rule is not None
+            else "This exit order only closes the reviewed option position; it does not open a new position."
             if can_place
             else "This exit plan creates closing instructions; no order is sent from this review."
         ),
@@ -696,6 +809,8 @@ def exit_plan_review(
         placement_disabled_reason=(
             None
             if can_place
+            else TIME_EXIT_CAPABILITY_REASON
+            if timed_rule is not None and can_review
             else "This exit-plan shape is review only."
             if can_review
             else draft.capability_reason or "Resolve blocking exit-plan conditions before placement."
@@ -703,6 +818,8 @@ def exit_plan_review(
         primary_action_label=(
             "Place exit order"
             if can_place
+            else "Finish timed-plan review"
+            if timed_rule is not None and can_review
             else "Finish exit-plan review"
             if can_review
             else "Placement unavailable"

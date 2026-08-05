@@ -28,7 +28,12 @@ from app.ui.rolling_forecast_data import (
     route_outcome_evidence_label,
     route_publication_summary,
 )
-from app.ui.rolling_forecasts import RollingForecastTab
+from app.ui.rolling_forecasts import (
+    RollingForecastTab,
+    forecast_symbol_header_text,
+    forecast_symbol_section_summary,
+    merge_symbol_expansion_state,
+)
 from ml.live_evidence import minimum_live_decisions
 from ml.parquet_contracts import (
     INTELLIGENCE_SCHEMA,
@@ -56,6 +61,45 @@ def test_supported_horizon_order_labels_and_subtitle_are_exact() -> None:
         "Read-only 1h, 4h, 1d, and dynamic remaining-week probability outlooks. "
         "Probabilities are not recommendations."
     )
+
+
+def test_collapsed_symbol_summary_and_header_copy_are_explicit() -> None:
+    summary = forecast_symbol_section_summary(
+        "aapl",
+        forecast_count=3,
+        remaining_week_available=True,
+    )
+
+    assert summary == "AAPL · 3 forecasts · Remaining-week snapshot available"
+    assert forecast_symbol_header_text(
+        "aapl",
+        expanded=True,
+        collapsed_summary=summary,
+    ) == "▼ AAPL"
+    assert forecast_symbol_header_text(
+        "aapl",
+        expanded=False,
+        collapsed_summary=summary,
+    ) == f"▶ {summary}"
+    assert forecast_symbol_section_summary(
+        "msft",
+        forecast_count=1,
+        remaining_week_available=False,
+    ) == "MSFT · 1 forecast · No remaining-week snapshot"
+
+
+def test_symbol_expansion_state_survives_refresh_and_new_symbols_default_open() -> None:
+    prior = {"AAPL": False, "REMOVED": False}
+
+    refreshed = merge_symbol_expansion_state(prior, ("AAPL", "MSFT"))
+
+    assert refreshed["AAPL"] is False
+    assert refreshed["MSFT"] is True
+    assert refreshed["REMOVED"] is False
+    second_refresh = merge_symbol_expansion_state(refreshed, ("MSFT", "NVDA"))
+    assert second_refresh["MSFT"] is True
+    assert second_refresh["NVDA"] is True
+    assert second_refresh["AAPL"] is False
 
 
 def test_three_standard_cards_and_complete_weekly_outlook_are_grouped(

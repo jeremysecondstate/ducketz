@@ -76,6 +76,13 @@ def option_template_workspace_rows(
                 f"{template.base_template_id.replace('_', ' ').title()} • "
                 f"target {template.target_percent:g}% • stop {template.stop_percent:g}% • "
                 f"offset ${template.limit_offset:.2f} • {template.duration}"
+                + (
+                    f" • timed {template.time_exit.sessions_before_expiration} session"
+                    f"{'s' if template.time_exit.sessions_before_expiration != 1 else ''} "
+                    f"before expiration, {template.time_exit.minutes_before_session_close} min before close"
+                    if template.time_exit is not None
+                    else ""
+                )
             ),
             "Apply from a selected position's Exit Plan workspace",
         )

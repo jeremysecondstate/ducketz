@@ -288,6 +288,24 @@ class ExitPlanBranch:
 
 
 @dataclass(frozen=True)
+class TimeBasedExitRule:
+    """One resolved, timezone-aware timed condition for an exit plan."""
+
+    rule_type: str
+    trigger_at: datetime
+    timezone_name: str
+    calendar_name: str | None
+    sessions_before_expiration: int | None
+    minutes_before_session_close: int | None
+    expiration_basis: str | None
+    selected_expirations: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if self.trigger_at.tzinfo is None or self.trigger_at.utcoffset() is None:
+            raise ValueError("A time-based exit trigger must be timezone-aware.")
+
+
+@dataclass(frozen=True)
 class ExitPlanDraft:
     template_id: str
     template_name: str
@@ -304,6 +322,7 @@ class ExitPlanDraft:
     capability_reason: str | None
     conflicting_order_ids: tuple[str, ...]
     warnings: tuple[str, ...]
+    time_exit_rule: TimeBasedExitRule | None = None
 
     @property
     def placeable(self) -> bool:
@@ -326,6 +345,17 @@ class SavedExitPlanTemplate:
     stop_percent: float
     limit_offset: float
     duration: str
+    time_exit: SavedTimeBasedExitRule | None = None
+
+
+@dataclass(frozen=True)
+class SavedTimeBasedExitRule:
+    """Reusable relative defaults; absolute timestamps are intentionally excluded."""
+
+    rule_type: str
+    sessions_before_expiration: int
+    minutes_before_session_close: int
+    calendar_name: str = "XNYS"
 
 
 @dataclass(frozen=True)
@@ -545,6 +575,8 @@ __all__ = [
     "RollPriceRail",
     "SavedExitPlanTemplate",
     "SavedRollTemplate",
+    "SavedTimeBasedExitRule",
+    "TimeBasedExitRule",
     "OrderReviewCashDirection",
     "OrderReviewNoticeSeverity",
     "OrderReviewOperation",

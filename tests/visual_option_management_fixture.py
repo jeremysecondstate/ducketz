@@ -67,6 +67,12 @@ def main() -> None:
     parser.add_argument("--size", default="1680x944", help="Root size as WIDTHxHEIGHT.")
     parser.add_argument("--capture", type=Path, help="Capture the active fixture window to a PNG and exit.")
     parser.add_argument("--single-target", action="store_true", help="Select the executable single-target exit.")
+    parser.add_argument("--time-exit", action="store_true", help="Expand and configure the relative timed exit.")
+    parser.add_argument(
+        "--specific-time-exit",
+        action="store_true",
+        help="Expand and configure the explicitly zoned date-and-time exit.",
+    )
     parser.add_argument("--scroll-bottom", action="store_true", help="Scroll a review body to its final controls.")
     parser.add_argument("--acknowledge", action="store_true", help="Acknowledge a universal review before capture.")
     parser.add_argument(
@@ -84,6 +90,10 @@ def main() -> None:
         raise SystemExit("--size must be at least 1080x720.")
     if args.single_target and mode != "exit":
         raise SystemExit("--single-target requires exit mode.")
+    if args.time_exit and mode != "exit":
+        raise SystemExit("--time-exit requires exit mode.")
+    if args.specific_time_exit and mode != "exit":
+        raise SystemExit("--specific-time-exit requires exit mode.")
     if args.acknowledge and mode != "review":
         raise SystemExit("--acknowledge requires review mode.")
     if args.refresh_fails and mode != "review":
@@ -169,6 +179,8 @@ def main() -> None:
                 root,
                 args.capture,
                 single_target=args.single_target,
+                time_exit=args.time_exit,
+                specific_time_exit=args.specific_time_exit,
                 scroll_bottom=args.scroll_bottom,
                 acknowledge=args.acknowledge,
             ),
@@ -181,6 +193,8 @@ def _stage_capture(
     path: Path,
     *,
     single_target: bool,
+    time_exit: bool,
+    specific_time_exit: bool,
     scroll_bottom: bool,
     acknowledge: bool,
 ) -> None:
@@ -195,6 +209,19 @@ def _stage_capture(
         if not callable(select_template):
             raise RuntimeError("The exit-plan dialog was not available for single-target capture.")
         select_template(SINGLE_TARGET)
+    if time_exit or specific_time_exit:
+        toggle_time_exit = getattr(target, "_toggle_time_exit", None)
+        if not callable(toggle_time_exit):
+            raise RuntimeError("The timed-exit accordion was not available for capture.")
+        toggle_time_exit()
+        if specific_time_exit:
+            target.time_exit_type.set("Specific date and time")
+            target._time_exit_type_changed()
+        left_scroll = getattr(target, "left_scroll", None)
+        canvas = getattr(left_scroll, "canvas", None)
+        if canvas is not None:
+            target.update_idletasks()
+            canvas.yview_moveto(1.0)
     if acknowledge:
         controller = getattr(target, "controller", None)
         acknowledge_review = getattr(controller, "acknowledge", None)
