@@ -654,24 +654,6 @@ class RollingForecastTab:
                 wraplength=1050,
                 justify=tk.LEFT,
             ).pack(fill=tk.X, pady=(0, 6))
-        limitation_text = "Overall limitations: " + " | ".join(
-            view.limitations
-        )
-        ttk.Label(
-            self.message_frame,
-            text=limitation_text,
-            style="ForecastBanner.TLabel",
-            wraplength=1050,
-            justify=tk.LEFT,
-        ).pack(fill=tk.X, pady=(0, 6))
-        if view.warnings:
-            ttk.Label(
-                self.message_frame,
-                text="Display safeguards: " + " | ".join(view.warnings),
-                style="ForecastBanner.TLabel",
-                wraplength=1050,
-                justify=tk.LEFT,
-            ).pack(fill=tk.X, pady=(0, 6))
 
     def _build_route_card(
         self,
