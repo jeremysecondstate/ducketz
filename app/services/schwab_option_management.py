@@ -306,9 +306,7 @@ def validate_closing_position_drift(
 ) -> None:
     latest = option_position_book(latest_snapshot)
     if latest.account_label != draft.account_label:
-        raise ValueError(
-            f"Reviewed account {draft.account_label} changed to {latest.account_label}; review the order again."
-        )
+        raise ValueError("The current Schwab account no longer matches the reviewed account; review the order again.")
     if latest.status == "UNAVAILABLE":
         raise ValueError("Current Schwab option positions are unavailable; the closing order was not submitted.")
     by_symbol = {leg.symbol: leg for leg in latest.legs}

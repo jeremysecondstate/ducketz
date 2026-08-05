@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import tkinter as tk
 from collections.abc import Callable
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from tkinter import messagebox, ttk
 
 from app.models.option_management import (
     ClosingOrderDraft,
     ClosingOrderLeg,
-    ClosingOrderSubmission,
     ManagedOptionOrder,
     OptionPositionBook,
     OptionPositionLeg,
@@ -21,14 +20,19 @@ from app.services.schwab_option_management import (
     option_orders_from_payload,
     option_orders_from_snapshot,
     option_position_book,
-    submit_validated_closing_order,
+)
+from app.services.option_order_review import (
+    OptionOrderReviewController,
+    closing_order_review,
+    closing_price_rail,
+    roll_order_review,
 )
 from app.services.option_rolls import roll_action_disabled_reason
 from app.services.schwab_strategy_orders import DAY_ONLY, GOOD_UNTIL_CANCELED
 from app.ui.background_tasks import run_in_background
 from app.ui.option_exit_plans import ExitPlanBuilderDialog
-from app.ui.option_rolls import RollOrderReviewDialog, RollWorkspaceDialog
-from app.ui.schwab_order_messages import order_submitted_message
+from app.ui.option_order_review import OptionOrderReviewDialog
+from app.ui.option_rolls import RollWorkspaceDialog
 from app.ui.theme import (
     ACCENT,
     BACKGROUND,
@@ -107,29 +111,9 @@ def _closing_scope_rows(
 
 
 def _closing_price_rail(draft: ClosingOrderDraft) -> tuple[float, float, float] | None:
-    """Return a synthetic bid/mid/ask rail for the draft's net limit price."""
-    low_cash = 0.0
-    high_cash = 0.0
-    for leg in draft.legs:
-        if leg.bid is None or leg.ask is None or leg.bid < 0 or leg.ask < leg.bid:
-            return None
-        ratio = leg.ratio_quantity
-        if leg.instruction.startswith("SELL"):
-            low_cash += leg.bid * ratio
-            high_cash += leg.ask * ratio
-        else:
-            low_cash -= leg.ask * ratio
-            high_cash -= leg.bid * ratio
-
-    if draft.api_order_type == "LIMIT":
-        price_sign = 1.0 if draft.legs[0].instruction.startswith("SELL") else -1.0
-    else:
-        price_sign = 1.0 if draft.api_order_type == "NET_CREDIT" else -1.0
-    prices = sorted((price_sign * low_cash, price_sign * high_cash))
-    if prices[0] <= 0:
-        return None
-    bid, ask = prices
-    return round(bid, 2), round((bid + ask) / 2.0, 2), round(ask, 2)
+    """Compatibility tuple around the shared review-domain price rail."""
+    rail = closing_price_rail(draft)
+    return None if rail is None else (rail.bid, rail.midpoint, rail.ask)
 
 
 class _ExactLegTable(tk.Frame):
@@ -1655,11 +1639,7 @@ class OptionsManagementView:
         except Exception as exc:
             messagebox.showerror("Closing order unavailable", str(exc))
             return
-        ClosingOrderReviewDialog(
-            root=self.root,
-            draft=draft,
-            on_place=self._place_closing_order,
-        )
+        self._open_universal_close_review(draft)
 
     def _open_exit_plan(self) -> None:
         if self.book is None:
@@ -1672,7 +1652,6 @@ class OptionsManagementView:
             book=self.book,
             selected_symbols=symbols,
             working_orders=self._working_orders,
-            on_review_single_target=self._review_exit_target,
             on_close_now=self._review_closing_order,
             on_show_orders=self.on_show_orders,
         )
@@ -1709,49 +1688,23 @@ class OptionsManagementView:
         )
 
     def _review_roll(self, draft: RollOrderDraft) -> None:
-        RollOrderReviewDialog(root=self.root, draft=draft)
-
-    def _review_exit_target(self, draft: ClosingOrderDraft) -> None:
-        ClosingOrderReviewDialog(
-            root=self.root,
+        controller = OptionOrderReviewController(
+            review=roll_order_review(draft, now=datetime.now(timezone.utc)),
             draft=draft,
-            on_place=self._place_closing_order,
         )
+        origin = self.root.grab_current() or self.root
+        OptionOrderReviewDialog(root=origin, controller=controller)
 
-    def _place_closing_order(
-        self,
-        dialog: ClosingOrderReviewDialog,
-        draft: ClosingOrderDraft,
-    ) -> None:
-        dialog.set_busy(True)
-
-        def succeeded(submission: ClosingOrderSubmission) -> None:
-            if dialog.winfo_exists():
-                dialog.destroy()
-            messagebox.showinfo(
-                "Closing order submitted",
-                order_submitted_message(submission.payload, submission.location),
-            )
-            self.on_refresh()
-
-        def failed(exc: Exception) -> None:
-            if dialog.winfo_exists():
-                dialog.set_busy(False)
-            messagebox.showerror(
-                "Closing order not submitted",
-                str(exc) or "The reviewed position could not be revalidated.",
-            )
-
-        run_in_background(
-            self.root,
-            lambda: submit_validated_closing_order(
-                draft,
-                snapshot_loader=self.snapshot_loader,
-                session_factory=self.session_factory,
-            ),
-            succeeded,
-            failed,
+    def _open_universal_close_review(self, draft: ClosingOrderDraft) -> None:
+        controller = OptionOrderReviewController(
+            review=closing_order_review(draft, now=datetime.now(timezone.utc)),
+            draft=draft,
+            snapshot_loader=self.snapshot_loader,
+            session_factory=self.session_factory,
+            on_accepted=lambda: self.root.after(0, self.on_refresh),
+            on_unknown=lambda: self.root.after(0, self._load_recent_orders),
         )
+        OptionOrderReviewDialog(root=self.root, controller=controller)
 
     def _show_working_orders(self) -> None:
         self.order_source_status.set("Working orders from the latest account refresh")
@@ -1891,207 +1844,6 @@ class OptionsManagementView:
         run_in_background(self.root, work, succeeded, failed)
 
 
-class ClosingOrderReviewDialog(tk.Toplevel):
-    def __init__(
-        self,
-        *,
-        root: tk.Tk,
-        draft: ClosingOrderDraft,
-        on_place: Callable[[ClosingOrderReviewDialog, ClosingOrderDraft], None],
-    ) -> None:
-        super().__init__(root)
-        self.draft = draft
-        self.on_place = on_place
-        self.acknowledged = tk.BooleanVar(master=self, value=False)
-        self.status = tk.StringVar(master=self, value="Confirmation required")
-        self.title("Review closing order")
-        self.geometry("930x660")
-        self.minsize(820, 580)
-        self.configure(background=BACKGROUND)
-        self.transient(root)
-        self.protocol("WM_DELETE_WINDOW", self.destroy)
-        self._build()
-        self.grab_set()
-        self.focus_set()
-
-    def _build(self) -> None:
-        outer = ttk.Frame(self, padding=(16, 14), style="ManagementPage.TFrame")
-        outer.pack(fill=tk.BOTH, expand=True)
-        header = ttk.Frame(outer, style="ManagementPage.TFrame")
-        header.pack(fill=tk.X, pady=(0, 10))
-        heading = ttk.Frame(header, style="ManagementPage.TFrame")
-        heading.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        ttk.Label(heading, text="Review closing order", style="StrategyTitle.TLabel").pack(anchor=tk.W)
-        ttk.Label(
-            heading,
-            text=f"{self.draft.scope_label} · {len(self.draft.legs)} exact leg{'s' if len(self.draft.legs) != 1 else ''}",
-            style="StrategySubtitle.TLabel",
-        ).pack(anchor=tk.W, pady=(2, 0))
-        ttk.Label(
-            header,
-            text=(
-                f"Position: {_timestamp(self.draft.reviewed_position_at)}\n"
-                f"Oldest quote: {_timestamp(self.draft.oldest_quote_at)}"
-            ),
-            style="StrategySubtitle.TLabel",
-            justify=tk.RIGHT,
-        ).pack(side=tk.RIGHT, anchor=tk.N)
-
-        body = ttk.PanedWindow(outer, orient=tk.HORIZONTAL)
-        body.pack(fill=tk.BOTH, expand=True)
-        summary = ttk.Frame(body, padding=(12, 10), style="ManagementCard.TFrame")
-        changes = ttk.Frame(body, padding=(12, 10), style="ManagementCard.TFrame")
-        body.add(summary, weight=3)
-        body.add(changes, weight=2)
-        self._build_summary(summary)
-        self._build_changes(changes)
-
-        footer = ttk.Frame(outer, style="ManagementPage.TFrame")
-        footer.pack(fill=tk.X, pady=(11, 0))
-        ttk.Label(
-            footer,
-            text="This order closes an existing position; it does not open a replacement position.",
-            style="StrategySubtitle.TLabel",
-        ).pack(side=tk.LEFT)
-        ttk.Button(footer, text="Back to edit", command=self.destroy).pack(side=tk.RIGHT, padx=(8, 0))
-        place = ttk.Button(
-            footer,
-            text="Place closing order",
-            style="ManagementPlace.TButton",
-            command=self._place,
-            state=tk.DISABLED,
-        )
-        place.pack(side=tk.RIGHT, padx=(8, 0))
-        self.place_button = place
-
-    def _build_summary(self, parent: ttk.Frame) -> None:
-        ttk.Label(parent, text="Order summary", style="ManagementSection.TLabel").pack(anchor=tk.W)
-        facts = ttk.Frame(parent, style="ManagementCard.TFrame")
-        facts.pack(fill=tk.X, pady=(7, 9))
-        for row, (label, value) in enumerate(
-            (
-                ("Account", self.draft.account_label),
-                ("Instruction", self.draft.scope_label),
-                ("Order type", self.draft.api_order_type.replace("_", " ").title()),
-                ("Time in force", self.draft.duration),
-            )
-        ):
-            ttk.Label(facts, text=label, style="ManagementMuted.TLabel").grid(
-                row=row, column=0, sticky=tk.W, padx=(0, 15), pady=3
-            )
-            ttk.Label(facts, text=value, style="ManagementBody.TLabel").grid(row=row, column=1, sticky=tk.W, pady=3)
-
-        legs = ttk.Treeview(
-            parent,
-            columns=("action", "qty", "contract", "bid", "ask", "mark"),
-            show="headings",
-            selectmode="none",
-            height=7,
-        )
-        for name, label, width, anchor in (
-            ("action", "Action", 105, tk.W),
-            ("qty", "Qty", 40, tk.E),
-            ("contract", "Exact OCC contract", 190, tk.W),
-            ("bid", "Bid", 52, tk.E),
-            ("ask", "Ask", 52, tk.E),
-            ("mark", "Mark", 55, tk.E),
-        ):
-            legs.heading(name, text=label)
-            legs.column(name, width=width, anchor=anchor, stretch=name == "contract")
-        legs.pack(fill=tk.BOTH, expand=True)
-        for leg in self.draft.legs:
-            legs.insert(
-                "",
-                tk.END,
-                values=(
-                    _human_instruction(leg.instruction),
-                    leg.quantity,
-                    leg.symbol,
-                    _money(leg.bid),
-                    _money(leg.ask),
-                    _money(leg.mark),
-                ),
-            )
-
-        price = ttk.Frame(parent, padding=(10, 8), style="ManagementCard.TFrame")
-        price.pack(fill=tk.X, pady=(9, 0))
-        ttk.Label(price, text="Net limit price", style="ManagementMuted.TLabel").pack(anchor=tk.W)
-        ttk.Label(
-            price,
-            text=f"{_money(self.draft.limit_price)} {self.draft.api_order_type.replace('NET_', '')}",
-            style="ManagementCardPositive.TLabel" if self.draft.estimated_cash_effect >= 0 else "ManagementCardNegative.TLabel",
-        ).pack(anchor=tk.W, pady=(3, 0))
-        effect_label = "Estimated proceeds" if self.draft.estimated_cash_effect >= 0 else "Estimated cost"
-        ttk.Label(
-            price,
-            text=f"{effect_label}: {_money(abs(self.draft.estimated_cash_effect))} · {self.draft.price_source}",
-            style="ManagementMuted.TLabel",
-            wraplength=500,
-            justify=tk.LEFT,
-        ).pack(anchor=tk.W, fill=tk.X, pady=(3, 0))
-
-    def _build_changes(self, parent: ttk.Frame) -> None:
-        ttk.Label(parent, text="What changes", style="ManagementSection.TLabel").pack(anchor=tk.W)
-        changes = ttk.Treeview(
-            parent,
-            columns=("contract", "before", "arrow", "after"),
-            show="headings",
-            selectmode="none",
-            height=6,
-        )
-        for name, label, width, anchor in (
-            ("contract", "Contract", 180, tk.W),
-            ("before", "Before", 60, tk.E),
-            ("arrow", "", 25, tk.CENTER),
-            ("after", "After", 60, tk.E),
-        ):
-            changes.heading(name, text=label)
-            changes.column(name, width=width, anchor=anchor, stretch=name == "contract")
-        changes.pack(fill=tk.X, pady=(7, 9))
-        for leg in self.draft.legs:
-            changes.insert(
-                "",
-                tk.END,
-                values=(leg.symbol, _number(leg.before_quantity), "→", _number(leg.after_quantity)),
-            )
-
-        ttk.Label(parent, text="Safety checks", style="ManagementSection.TLabel").pack(anchor=tk.W)
-        for warning in self.draft.warnings:
-            ttk.Label(
-                parent,
-                text=f"• {warning}",
-                style="ManagementWarning.TLabel",
-                wraplength=340,
-                justify=tk.LEFT,
-            ).pack(anchor=tk.W, fill=tk.X, pady=(4, 0))
-
-        acknowledge = ttk.Checkbutton(
-            parent,
-            text="I reviewed every contract, action, quantity, and price.",
-            variable=self.acknowledged,
-            command=self._acknowledgment_changed,
-        )
-        acknowledge.pack(anchor=tk.W, fill=tk.X, pady=(15, 4))
-        ttk.Label(parent, textvariable=self.status, style="ManagementMuted.TLabel").pack(anchor=tk.W)
-
-    def _acknowledgment_changed(self) -> None:
-        enabled = self.acknowledged.get()
-        self.place_button.configure(state=tk.NORMAL if enabled else tk.DISABLED)
-        self.status.set("Ready for final position revalidation" if enabled else "Confirmation required")
-
-    def _place(self) -> None:
-        if not self.acknowledged.get():
-            return
-        self.on_place(self, self.draft)
-
-    def set_busy(self, busy: bool) -> None:
-        if busy:
-            self.place_button.configure(state=tk.DISABLED)
-            self.status.set("Revalidating current positions and submitting…")
-        else:
-            self._acknowledgment_changed()
-
-
 def _clear_tree(table: ttk.Treeview | None) -> None:
     if table is None:
         return
@@ -2157,4 +1909,4 @@ def days_to_expiration(expiration: str, observed_at: datetime | None) -> int | N
     return (expiration_date - observed_date).days
 
 
-__all__ = ["ClosingOrderReviewDialog", "OptionsManagementView", "days_to_expiration"]
+__all__ = ["OptionsManagementView", "days_to_expiration"]

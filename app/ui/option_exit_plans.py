@@ -2,15 +2,16 @@ from __future__ import annotations
 
 import tkinter as tk
 from collections.abc import Callable
+from datetime import datetime, timezone
 from tkinter import messagebox, simpledialog, ttk
 
 from app.models.option_management import (
-    ClosingOrderDraft,
     ExitPlanDraft,
     ManagedOptionOrder,
     OptionPositionBook,
     SavedExitPlanTemplate,
 )
+from app.services.option_order_review import OptionOrderReviewController, exit_plan_review
 from app.services.option_exit_plans import (
     SINGLE_TARGET,
     TARGET_STOP,
@@ -21,6 +22,7 @@ from app.services.option_exit_plans import (
     save_exit_plan_template,
 )
 from app.services.schwab_strategy_orders import GOOD_UNTIL_CANCELED
+from app.ui.option_order_review import OptionOrderReviewDialog
 from app.ui.theme import (
     ACCENT,
     BACKGROUND,
@@ -52,7 +54,6 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         book: OptionPositionBook,
         selected_symbols: tuple[str, ...],
         working_orders: tuple[ManagedOptionOrder, ...],
-        on_review_single_target: Callable[[ClosingOrderDraft], None],
         on_close_now: Callable[[], None],
         on_show_orders: Callable[[], None],
     ) -> None:
@@ -61,7 +62,6 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         self.book = book
         self.initial_symbols = selected_symbols
         self.working_orders = working_orders
-        self.on_review_single_target = on_review_single_target
         self.on_close_now = on_close_now
         self.on_show_orders = on_show_orders
         self.draft: ExitPlanDraft | None = None
@@ -1256,16 +1256,11 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         draft = self.draft
         if draft is None or draft.conflicting_order_ids:
             return
-        if draft.placeable and draft.template_id == SINGLE_TARGET:
-            closing_order = draft.take_profit.closing_order if draft.take_profit else None
-            if closing_order is None:
-                messagebox.showerror("Exit plan unavailable", "The verified target close is missing.", parent=self)
-                return
-            self.grab_release()
-            self.destroy()
-            self.on_review_single_target(closing_order)
-            return
-        ExitPlanReviewDialog(root=self, draft=draft)
+        controller = OptionOrderReviewController(
+            review=exit_plan_review(draft, now=datetime.now(timezone.utc)),
+            draft=draft,
+        )
+        OptionOrderReviewDialog(root=self, controller=controller)
 
     def _close_now(self) -> None:
         self.grab_release()
@@ -1348,83 +1343,6 @@ class ExitPlanBuilderDialog(tk.Toplevel):
         return min(quantities, default=0)
 
 
-class ExitPlanReviewDialog(tk.Toplevel):
-    def __init__(self, *, root: tk.Misc, draft: ExitPlanDraft) -> None:
-        super().__init__(root)
-        self.draft = draft
-        self.title("Review exit plan")
-        self.geometry("780x560")
-        self.minsize(720, 520)
-        self.configure(background=BACKGROUND)
-        self.transient(root)
-        self.protocol("WM_DELETE_WINDOW", self.destroy)
-        self._build()
-        self.grab_set()
-        self.focus_set()
-
-    def _build(self) -> None:
-        outer = tk.Frame(self, background=BACKGROUND, padx=14, pady=12)
-        outer.pack(fill=tk.BOTH, expand=True)
-        tk.Label(outer, text="Review exit plan", background=BACKGROUND, foreground=TEXT, font=("Segoe UI", 17, "bold")).pack(anchor=tk.W)
-        tk.Label(
-            outer,
-            text=f"{self.draft.template_name} · {self.draft.coverage_label} · {self.draft.relationship}",
-            background=BACKGROUND,
-            foreground=MUTED_TEXT,
-            font=("Segoe UI", 9),
-        ).pack(anchor=tk.W, pady=(2, 8))
-        body = tk.Frame(outer, background=SURFACE, highlightbackground=BORDER, highlightthickness=1, padx=10, pady=8)
-        body.pack(fill=tk.BOTH, expand=True)
-        facts = (
-            ("Account", self.draft.account_label),
-            ("Underlying", self.draft.underlying_symbol),
-            ("Current net mark", _money(self.draft.position_mark)),
-            ("Protected quantity", str(self.draft.protected_quantity)),
-            ("Broker placement", "Available" if self.draft.placeable else "Unavailable"),
-        )
-        for row, (label, value) in enumerate(facts):
-            tk.Label(body, text=label, background=SURFACE, foreground=MUTED_TEXT, font=("Segoe UI", 8)).grid(row=row, column=0, sticky=tk.W, padx=(0, 18), pady=2)
-            tk.Label(body, text=value, background=SURFACE, foreground=TEXT, font=("Segoe UI", 9, "bold")).grid(row=row, column=1, sticky=tk.W, pady=2)
-        tk.Label(body, text="Exit branches", background=SURFACE, foreground=TEXT, font=("Segoe UI", 10, "bold")).grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(10, 4))
-        branches = ttk.Treeview(body, columns=("branch", "trigger", "order", "limit", "tif"), show="headings", height=4, selectmode="none")
-        for name, label, width in (
-            ("branch", "Branch", 120),
-            ("trigger", "Resolved trigger", 130),
-            ("order", "Order type", 105),
-            ("limit", "Limit", 90),
-            ("tif", "TIF", 110),
-        ):
-            branches.heading(name, text=label)
-            branches.column(name, width=width, stretch=name == "branch")
-        branches.grid(row=7, column=0, columnspan=2, sticky=tk.NSEW)
-        body.grid_columnconfigure(1, weight=1)
-        body.grid_rowconfigure(7, weight=1)
-        for branch in self.draft.branches:
-            branches.insert("", tk.END, values=(branch.label, _money(branch.trigger_price), branch.order_type.replace("_", " ").title(), _money(branch.limit_price), branch.duration))
-        warnings = tk.Frame(body, background="#382a10", highlightbackground=WARNING, highlightthickness=1)
-        warnings.grid(row=8, column=0, columnspan=2, sticky=tk.EW, pady=(9, 0))
-        tk.Label(
-            warnings,
-            text="\n".join(f"• {warning}" for warning in self.draft.warnings),
-            background="#382a10",
-            foreground="#ffd58a",
-            font=("Segoe UI", 8),
-            wraplength=700,
-            justify=tk.LEFT,
-        ).pack(anchor=tk.W, padx=9, pady=7)
-        footer = tk.Frame(outer, background=BACKGROUND)
-        footer.pack(fill=tk.X, pady=(9, 0))
-        tk.Label(
-            footer,
-            text="No broker order will be sent from this review.",
-            background=BACKGROUND,
-            foreground=WARNING,
-            font=("Segoe UI", 8, "bold"),
-        ).pack(side=tk.LEFT)
-        ttk.Button(footer, text="Back to edit", command=self.destroy).pack(side=tk.RIGHT)
-        ttk.Button(footer, text="Placement unavailable", state=tk.DISABLED).pack(side=tk.RIGHT, padx=(0, 7))
-
-
 def _canvas_node(
     canvas: tk.Canvas,
     left: float,
@@ -1473,4 +1391,4 @@ def _money(value: float | None) -> str:
     return "—" if value is None else f"${value:,.2f}"
 
 
-__all__ = ["ExitPlanBuilderDialog", "ExitPlanReviewDialog"]
+__all__ = ["ExitPlanBuilderDialog"]

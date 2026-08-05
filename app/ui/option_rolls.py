@@ -33,9 +33,11 @@ from app.services.option_rolls import (
     save_roll_template,
     suggest_replacement_contracts,
 )
+from app.services.option_order_review import OptionOrderReviewController, roll_order_review
 from app.services.schwab_option_management import option_position_book
 from app.services.schwab_strategy_orders import DAY_ONLY, GOOD_UNTIL_CANCELED
 from app.ui.background_tasks import run_in_background
+from app.ui.option_order_review import OptionOrderReviewDialog
 from app.ui.theme import (
     ACCENT,
     BACKGROUND,
@@ -347,9 +349,7 @@ class RollWorkspaceDialog(tk.Toplevel):
             fee_per_contract=fee_per_contract,
             now_provider=self.now_provider,
         )
-        self.on_review = on_review or (
-            lambda draft: RollOrderReviewDialog(root=self, draft=draft)
-        )
+        self.on_review = on_review or (lambda draft: _show_roll_review(self, draft, self.now_provider()))
         self._busy = False
         self._syncing = False
         self._step = 1
@@ -1516,185 +1516,12 @@ class RollWorkspaceDialog(tk.Toplevel):
         self._sync()
 
 
-class RollOrderReviewDialog(tk.Toplevel):
-    """A separate, non-submitting review adapter for exact roll drafts."""
-
-    def __init__(self, *, root: tk.Misc, draft: RollOrderDraft) -> None:
-        super().__init__(root)
-        self.draft = draft
-        self.acknowledged = tk.BooleanVar(master=self, value=False)
-        self.title("Review roll order")
-        self.geometry("1120x720")
-        self.minsize(900, 620)
-        self.configure(background=BACKGROUND)
-        self.transient(root)
-        self.protocol("WM_DELETE_WINDOW", self.destroy)
-        self._build()
-        self.grab_set()
-        self.focus_set()
-
-    def _build(self) -> None:
-        outer = tk.Frame(self, background=BACKGROUND, padx=13, pady=11)
-        outer.pack(fill=tk.BOTH, expand=True)
-        header = tk.Frame(outer, background=BACKGROUND)
-        header.pack(fill=tk.X, pady=(0, 9))
-        tk.Button(
-            header,
-            text="‹  Back to edit",
-            command=self.destroy,
-            background=BACKGROUND,
-            foreground=ACCENT,
-            activebackground=BACKGROUND,
-            activeforeground="#5db3ff",
-            borderwidth=0,
-            highlightthickness=0,
-            font=("Segoe UI", 10),
-        ).pack(side=tk.LEFT, anchor=tk.N, padx=(0, 14), pady=(3, 0))
-        title = tk.Frame(header, background=BACKGROUND)
-        title.pack(side=tk.LEFT)
-        tk.Label(title, text="Review roll order", background=BACKGROUND, foreground=TEXT, font=("Segoe UI", 18, "bold")).pack(anchor=tk.W)
-        tk.Label(
-            title,
-            text=f"{self.draft.scope_label} • refreshed {_timestamp(self.draft.oldest_quote_at)}",
-            background=BACKGROUND,
-            foreground=MUTED_TEXT,
-            font=("Segoe UI", 9),
-        ).pack(anchor=tk.W, pady=(1, 0))
-        steps = tk.Frame(header, background=BACKGROUND)
-        steps.pack(side=tk.RIGHT, pady=(5, 0))
-        for index, label in enumerate(("Configure", "Analyze", "Review"), start=1):
-            if index > 1:
-                tk.Frame(steps, width=24, height=1, background=BORDER).pack(side=tk.LEFT, padx=7)
-            canvas = tk.Canvas(steps, width=24, height=24, background=BACKGROUND, highlightthickness=0)
-            canvas.pack(side=tk.LEFT)
-            active = index == 3
-            canvas.create_oval(2, 2, 22, 22, fill=ACCENT if active else SURFACE_ALT, outline=ACCENT if active else BORDER)
-            canvas.create_text(12, 12, text=str(index), fill="#ffffff" if active else MUTED_TEXT, font=("Segoe UI", 8, "bold"))
-            tk.Label(steps, text=label, background=BACKGROUND, foreground=TEXT if active else MUTED_TEXT, font=("Segoe UI", 9, "bold" if active else "normal")).pack(side=tk.LEFT, padx=(4, 0))
-
-        panes = ttk.PanedWindow(outer, orient=tk.HORIZONTAL)
-        panes.pack(fill=tk.BOTH, expand=True)
-        order = tk.Frame(panes, background=SURFACE, highlightbackground=BORDER, highlightthickness=1, padx=11, pady=9)
-        effects = tk.Frame(panes, background=SURFACE, highlightbackground=BORDER, highlightthickness=1, padx=11, pady=9)
-        panes.add(order, weight=3)
-        panes.add(effects, weight=2)
-        self._build_order_review(order)
-        self._build_effect_review(effects)
-
-        footer = tk.Frame(outer, background=BACKGROUND)
-        footer.pack(fill=tk.X, pady=(10, 0))
-        tk.Label(
-            footer,
-            text="No broker order is transmitted from this review adapter.",
-            background=BACKGROUND,
-            foreground=WARNING,
-            font=("Segoe UI", 8, "bold"),
-        ).pack(side=tk.LEFT)
-        ttk.Button(footer, text="Back to edit", command=self.destroy).pack(side=tk.RIGHT)
-        finish = ttk.Button(
-            footer,
-            text="Finish review",
-            command=self.destroy,
-            style="Roll.Primary.TButton",
-            state=tk.DISABLED,
-            width=24,
-        )
-        finish.pack(side=tk.RIGHT, padx=(0, 8))
-        self.finish_button = finish
-
-    def _build_order_review(self, parent: tk.Frame) -> None:
-        tk.Label(parent, text="Exact roll legs", background=SURFACE, foreground=TEXT, font=("Segoe UI", 12, "bold")).pack(anchor=tk.W)
-        facts = tk.Frame(parent, background=SURFACE)
-        facts.pack(fill=tk.X, pady=(6, 8))
-        for row, (label, value) in enumerate(
-            (
-                ("Account", self.draft.account_label),
-                ("Underlying", self.draft.underlying_symbol),
-                ("Net terms", f"{_money(self.draft.limit_price)} {self.draft.api_order_type.replace('NET_', '')} • {self.draft.duration}"),
-                ("Execution", self.draft.execution_detail),
-            )
-        ):
-            tk.Label(facts, text=label, background=SURFACE, foreground=MUTED_TEXT, font=("Segoe UI", 8)).grid(row=row, column=0, sticky=tk.W, padx=(0, 14), pady=2)
-            tk.Label(facts, text=value, background=SURFACE, foreground=TEXT, font=("Segoe UI", 9, "bold"), wraplength=610, justify=tk.LEFT).grid(row=row, column=1, sticky=tk.W, pady=2)
-        table_frame = tk.Frame(parent, background=TABLE_FIELD, highlightbackground=BORDER, highlightthickness=1)
-        table_frame.pack(fill=tk.BOTH, expand=True)
-        columns = (
-            ("Role", 70, tk.W),
-            ("Action", 105, tk.W),
-            ("Qty", 45, tk.E),
-            ("Exact OCC contract", 230, tk.W),
-            ("Expiry", 85, tk.W),
-            ("Strike", 60, tk.E),
-            ("Mark", 60, tk.E),
-        )
-        table = ttk.Treeview(table_frame, columns=tuple(item[0] for item in columns), show="headings", selectmode="none", height=10)
-        for name, width, anchor in columns:
-            table.heading(name, text=name)
-            table.column(name, width=width, anchor=anchor, stretch=name == "Exact OCC contract")
-        vertical_scroll = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=table.yview)
-        horizontal_scroll = ttk.Scrollbar(table_frame, orient=tk.HORIZONTAL, command=table.xview)
-        table.configure(
-            yscrollcommand=vertical_scroll.set,
-            xscrollcommand=horizontal_scroll.set,
-        )
-        table_frame.grid_rowconfigure(0, weight=1)
-        table_frame.grid_columnconfigure(0, weight=1)
-        table.grid(row=0, column=0, sticky=tk.NSEW)
-        vertical_scroll.grid(row=0, column=1, sticky=tk.NS)
-        horizontal_scroll.grid(row=1, column=0, sticky=tk.EW)
-        for leg in self.draft.all_legs:
-            table.insert("", tk.END, values=(leg.role.title(), _human_instruction(leg.instruction), leg.quantity, leg.symbol, _short_date(leg.expiration), f"{leg.strike:g}", _money(leg.mark)))
-
-    def _build_effect_review(self, parent: tk.Frame) -> None:
-        tk.Label(parent, text="Effects and confirmation", background=SURFACE, foreground=TEXT, font=("Segoe UI", 12, "bold")).pack(anchor=tk.W)
-        summary = tk.Frame(parent, background=TABLE_FIELD, highlightbackground=BORDER, highlightthickness=1, padx=9, pady=7)
-        summary.pack(fill=tk.X, pady=(7, 8))
-        for row, (label, value, color) in enumerate(
-            (
-                ("Estimated net", _money(self.draft.estimated_cash_effect), SUCCESS if self.draft.estimated_cash_effect >= 0 else DANGER),
-                ("Realized P/L est.", _money(self.draft.analysis.estimated_realized_pnl), _value_color(self.draft.analysis.estimated_realized_pnl)),
-                ("Days extended", f"+{self.draft.analysis.days_extended}", TEXT),
-                ("Fees est.", _money(self.draft.analysis.estimated_fees), TEXT),
-                ("Buying power after", _money(self.draft.analysis.after_metrics.buying_power), TEXT),
-            )
-        ):
-            tk.Label(summary, text=label, background=TABLE_FIELD, foreground=MUTED_TEXT, font=("Segoe UI", 8)).grid(row=row, column=0, sticky=tk.W, padx=(0, 12), pady=3)
-            tk.Label(summary, text=value, background=TABLE_FIELD, foreground=color, font=("Segoe UI", 9, "bold")).grid(row=row, column=1, sticky=tk.E, pady=3)
-        summary.grid_columnconfigure(1, weight=1)
-        warning = tk.Frame(parent, background=SURFACE_ALT, highlightbackground=WARNING, highlightthickness=1)
-        warning.pack(fill=tk.BOTH, expand=True)
-        tk.Label(
-            warning,
-            text="\n".join(f"• {value}" for value in self.draft.warnings),
-            background=SURFACE_ALT,
-            foreground=WARNING,
-            font=("Segoe UI", 8),
-            wraplength=390,
-            justify=tk.LEFT,
-            anchor=tk.NW,
-            padx=9,
-            pady=8,
-        ).pack(fill=tk.BOTH, expand=True)
-        acknowledge = tk.Checkbutton(
-            parent,
-            text="I reviewed every exact contract, action, quantity, net term, and execution warning.",
-            variable=self.acknowledged,
-            command=self._acknowledgment_changed,
-            background=SURFACE,
-            foreground=TEXT,
-            activebackground=SURFACE,
-            activeforeground=TEXT,
-            selectcolor=SURFACE_ALT,
-            font=("Segoe UI", 9),
-            wraplength=410,
-            justify=tk.LEFT,
-            anchor=tk.W,
-            takefocus=True,
-        )
-        acknowledge.pack(fill=tk.X, pady=(10, 0))
-
-    def _acknowledgment_changed(self) -> None:
-        self.finish_button.configure(state=tk.NORMAL if self.acknowledged.get() else tk.DISABLED)
+def _show_roll_review(root: tk.Misc, draft: RollOrderDraft, now: datetime) -> None:
+    controller = OptionOrderReviewController(
+        review=roll_order_review(draft, now=now),
+        draft=draft,
+    )
+    OptionOrderReviewDialog(root=root, controller=controller)
 
 
 def _roll_title(legs: tuple[OptionPositionLeg, ...]) -> str:
@@ -1795,7 +1622,6 @@ def _timestamp(value: datetime) -> str:
 
 
 __all__ = [
-    "RollOrderReviewDialog",
     "RollWorkspaceController",
     "RollWorkspaceDialog",
 ]

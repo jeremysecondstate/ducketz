@@ -568,9 +568,7 @@ def validate_roll_position_drift(
 ) -> OptionPositionBook:
     book = option_position_book(latest) if isinstance(latest, PortfolioSnapshot) else latest
     if book.account_label != draft.account_label:
-        raise ValueError(
-            f"Reviewed account {draft.account_label} changed to {book.account_label}; review the roll again."
-        )
+        raise ValueError("The current Schwab account no longer matches the reviewed account; review the roll again.")
     if book.status != "CURRENT":
         raise ValueError("Current option positions are unavailable or stale; the roll review was stopped.")
     by_symbol = {leg.symbol: leg for leg in book.legs}

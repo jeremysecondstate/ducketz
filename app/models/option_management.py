@@ -2,6 +2,163 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
+
+
+class OrderReviewOperation(str, Enum):
+    CLOSE = "CLOSE"
+    ROLL = "ROLL"
+    EXIT_PLAN = "EXIT_PLAN"
+
+
+class OrderReviewCashDirection(str, Enum):
+    CREDIT = "CREDIT"
+    DEBIT = "DEBIT"
+    REFERENCE = "REFERENCE"
+    UNAVAILABLE = "UNAVAILABLE"
+
+
+class OrderReviewQuoteState(str, Enum):
+    LIVE = "LIVE"
+    AGING = "AGING"
+    STALE = "STALE"
+    UPDATING = "UPDATING"
+    UNAVAILABLE = "UNAVAILABLE"
+
+
+class OrderReviewNoticeSeverity(str, Enum):
+    INFORMATION = "INFORMATION"
+    WARNING = "WARNING"
+    BLOCKING = "BLOCKING"
+
+
+class OrderReviewPlacementCapability(str, Enum):
+    SUPPORTED = "SUPPORTED"
+    REVIEW_ONLY = "REVIEW_ONLY"
+    UNAVAILABLE = "UNAVAILABLE"
+
+
+class OrderReviewPlacementState(str, Enum):
+    READY = "READY"
+    REVALIDATING = "REVALIDATING"
+    PREVIEWING = "PREVIEWING"
+    FALLBACK = "FALLBACK"
+    SUBMITTING = "SUBMITTING"
+    ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
+    UNKNOWN = "UNKNOWN"
+
+
+class OrderReviewOutcomeStatus(str, Enum):
+    ACCEPTED = "ACCEPTED"
+    BLOCKED = "BLOCKED"
+    INVALIDATED = "INVALIDATED"
+    PREVIEW_REJECTED = "PREVIEW_REJECTED"
+    REJECTED = "REJECTED"
+    AUTHENTICATION_FAILED = "AUTHENTICATION_FAILED"
+    NETWORK_FAILED = "NETWORK_FAILED"
+    UNKNOWN = "UNKNOWN"
+    UNSUPPORTED = "UNSUPPORTED"
+
+
+@dataclass(frozen=True)
+class OptionOrderReviewLeg:
+    role: str
+    action: str
+    quantity: int | None
+    contract_label: str
+    symbol: str
+    bid: float | None
+    ask: float | None
+    mark: float | None
+    before_quantity: float | None
+    after_quantity: float | None
+    quote_observed_at: datetime | None
+
+
+@dataclass(frozen=True)
+class OptionOrderReviewPriceRail:
+    bid: float
+    midpoint: float
+    ask: float
+    selected: float
+
+
+@dataclass(frozen=True)
+class OptionOrderReviewMetric:
+    label: str
+    before: str
+    after: str
+    provenance: str
+    before_tone: str = "neutral"
+    after_tone: str = "neutral"
+
+
+@dataclass(frozen=True)
+class OptionOrderReviewCost:
+    label: str
+    value: str
+    provenance: str
+    tone: str = "neutral"
+    estimated: bool = False
+
+
+@dataclass(frozen=True)
+class OptionOrderReviewNotice:
+    severity: OrderReviewNoticeSeverity
+    title: str
+    detail: str
+    blocking: bool = False
+
+
+@dataclass(frozen=True)
+class OptionOrderReview:
+    operation: OrderReviewOperation
+    title: str
+    subtitle: str
+    account_display_label: str
+    strategy_label: str
+    instruction: str
+    order_type: str
+    duration: str
+    execution_mode: str
+    legs: tuple[OptionOrderReviewLeg, ...]
+    package_quantity: int
+    price_title: str
+    net_price: float | None
+    cash_direction: OrderReviewCashDirection
+    price_rail: OptionOrderReviewPriceRail | None
+    price_editable: bool
+    price_editor_explanation: str
+    estimated_cash_effect: float | None
+    estimated_cash_label: str
+    price_provenance: str
+    display_quote_at: datetime | None
+    validation_quote_at: datetime | None
+    max_quote_age_seconds: float
+    quote_state: OrderReviewQuoteState
+    metrics: tuple[OptionOrderReviewMetric, ...]
+    costs: tuple[OptionOrderReviewCost, ...]
+    notices: tuple[OptionOrderReviewNotice, ...]
+    acknowledgment_copy: str
+    safety_copy: str
+    placement_capability: OrderReviewPlacementCapability
+    placement_disabled_reason: str | None
+    primary_action_label: str
+    broker_preview_status: str
+    internal_valid: bool
+
+    @property
+    def has_blocking_notice(self) -> bool:
+        return any(notice.blocking for notice in self.notices)
+
+
+@dataclass(frozen=True)
+class OrderReviewPlacementOutcome:
+    status: OrderReviewOutcomeStatus
+    message: str
+    submission: ClosingOrderSubmission | None = None
+    retryable: bool = False
 
 
 @dataclass(frozen=True)
@@ -349,6 +506,12 @@ __all__ = [
     "ManagedOptionOrder",
     "ManagedOrderLeg",
     "OptionChainContract",
+    "OptionOrderReview",
+    "OptionOrderReviewCost",
+    "OptionOrderReviewLeg",
+    "OptionOrderReviewMetric",
+    "OptionOrderReviewNotice",
+    "OptionOrderReviewPriceRail",
     "OptionPositionBook",
     "OptionPositionLeg",
     "OptionPositionSummary",
@@ -362,4 +525,12 @@ __all__ = [
     "RollPriceRail",
     "SavedExitPlanTemplate",
     "SavedRollTemplate",
+    "OrderReviewCashDirection",
+    "OrderReviewNoticeSeverity",
+    "OrderReviewOperation",
+    "OrderReviewOutcomeStatus",
+    "OrderReviewPlacementCapability",
+    "OrderReviewPlacementOutcome",
+    "OrderReviewPlacementState",
+    "OrderReviewQuoteState",
 ]
