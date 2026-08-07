@@ -533,6 +533,8 @@ def test_strategy_partitioning_is_expanding_and_keeps_decisions_intact() -> None
         for strategy_index, strategy in enumerate(("long_call", "long_put", "iron_condor")):
             rows.append(
                 {
+                    "symbol": "GOOG",
+                    "horizon": "1d",
                     "candidate_key": f"{strategy}|w1",
                     "strategy_name": strategy,
                     "decision_timestamp": start - pd.Timedelta(hours=1),
@@ -557,6 +559,56 @@ def test_strategy_partitioning_is_expanding_and_keeps_decisions_intact() -> None
     assert partitions.calibration["target_window_end"].max() < partitions.assessment[
         "target_window_start"
     ].min()
+
+
+def test_strategy_partition_natural_key_accepts_two_symbols_and_keeps_shared_time_cluster() -> None:
+    rows: list[dict[str, object]] = []
+    for index in range(10):
+        start = pd.Timestamp("2026-02-01", tz="UTC") + pd.Timedelta(days=index)
+        for symbol in ("GOOG", "NVDA"):
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "horizon": "1d",
+                    "candidate_key": "long_call|w1",
+                    "strategy_name": "long_call",
+                    "decision_timestamp": start - pd.Timedelta(hours=1),
+                    "target_window_start": start,
+                    "target_window_end": start + pd.Timedelta(hours=6),
+                    "outcome_status": "COMPLETE",
+                    "profitable": int((index + (symbol == "NVDA")) % 2 == 0),
+                    "net_profit": 10.0,
+                    "return_on_risk": 0.1,
+                }
+            )
+
+    partitions = partition_strategy_outcomes(pd.DataFrame(rows), policy=_POLICY)
+
+    assert partitions.train_decisions == 6
+    assert partitions.calibration_decisions == 2
+    assert partitions.assessment_decisions == 2
+    for frame in (partitions.train, partitions.calibration, partitions.assessment):
+        assert frame.groupby("target_window_start").size().eq(2).all()
+        assert set(frame["symbol"]) == {"GOOG", "NVDA"}
+
+
+def test_strategy_partition_natural_key_rejects_exact_duplicate() -> None:
+    row = {
+        "symbol": "GOOG",
+        "horizon": "1d",
+        "candidate_key": "long_call|w1",
+        "strategy_name": "long_call",
+        "decision_timestamp": pd.Timestamp("2026-02-01T15:00:00Z"),
+        "target_window_start": pd.Timestamp("2026-02-01T16:00:00Z"),
+        "target_window_end": pd.Timestamp("2026-02-01T22:00:00Z"),
+        "outcome_status": "COMPLETE",
+        "profitable": 1,
+        "net_profit": 10.0,
+        "return_on_risk": 0.1,
+    }
+
+    with pytest.raises(ValueError, match="duplicate decision candidates"):
+        partition_strategy_outcomes(pd.DataFrame([row, dict(row)]), policy=_POLICY)
 
 
 def test_strategy_model_fits_only_training_and_calibration_partitions(

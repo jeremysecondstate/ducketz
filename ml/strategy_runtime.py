@@ -28,11 +28,16 @@ from ml.parquet_contracts import (
     frame_with_readable_id,
     write_parquet_with_schema,
 )
+from ml.option_pricing.strategy_shadow import (
+    STRATEGY_PRICING_MODES,
+    attach_strategy_pricing_shadow,
+)
 from ml.strategy_publication import (
     publish_strategy_run,
     read_current_strategy_publication,
 )
 from ml.strategy_selection import STRATEGY_SELECTION_SCHWAB_SPREADS_V1
+from ml.strategy_selection.contracts import StrategySelectionPolicy
 from ml.strategy_selection.research_trace import strategy_research_trace
 from ml.strategy_selection.runtime import run_strategy_selection
 
@@ -54,6 +59,7 @@ def run_strategy_once(
     run_timestamp: object | None = None,
     runtime_clock: Callable[[], object] | None = None,
     reporter: Callable[[str], None] | None = print,
+    pricing_mode: str = "off",
 ) -> StrategyRuntimeResult:
     """Consume one already-published Loop B run and publish a separate run."""
 
@@ -113,8 +119,16 @@ def run_strategy_once(
             audit_rows=len(selection.audit),
         )
 
-    candidates = _strategy_output_frame(
+    pricing_shadow = attach_strategy_pricing_shadow(
         selection.candidates,
+        datastore_root=root,
+        pricing_mode=pricing_mode,
+        available_not_after=created,
+        per_contract_fee=StrategySelectionPolicy().per_contract_fee,
+    )
+
+    candidates = _strategy_output_frame(
+        pricing_shadow.candidates,
         schema=STRATEGY_CANDIDATE_SCHEMA,
         key_columns=("symbol", "horizon", "decision_timestamp", "candidate_key"),
     )
@@ -154,6 +168,7 @@ def run_strategy_once(
         "model_reports": dict(selection.model_reports),
         "copied_model_artifacts": copied_models,
         "research_trace": strategy_research_trace(),
+        "pricing_shadow": dict(pricing_shadow.report),
     }
     (run_directory / reports_name).write_text(
         json.dumps(reports_payload, indent=2, sort_keys=True, default=str) + "\n",
@@ -190,12 +205,15 @@ def run_strategy_once(
                     predictions_path,
                     source.run_directory / "publication.json",
                     *selection.source_files,
+                    *pricing_shadow.source_files,
                 )
             )
         ),
         output_files=output_names,
         configuration={
             "policy": STRATEGY_SELECTION_SCHWAB_SPREADS_V1,
+            "pricing_mode": str(pricing_mode).strip().lower(),
+            "pricing_shadow_contract": dict(pricing_shadow.report),
             "source_loop_b": source_record,
             "source_loop_b_run": source.run_directory.relative_to(root).as_posix(),
             "source_loop_b_input_cutoff": input_cutoff.isoformat(),
@@ -241,6 +259,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--interval-minutes", type=int, default=60)
     parser.add_argument("--phase-offset-minutes", type=int, default=10)
     parser.add_argument("--once", action="store_true")
+    parser.add_argument(
+        "--pricing-mode",
+        choices=STRATEGY_PRICING_MODES,
+        default="off",
+        help=(
+            "off preserves current behavior; shadow persists verified pre-quote "
+            "Pricing diagnostics without changing ranks or order construction."
+        ),
+    )
     args = parser.parse_args(argv)
     if args.interval_minutes < 1:
         parser.error("--interval-minutes must be at least 1")
@@ -257,6 +284,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"DATASTORE: {root}")
     print("Input: already-published authoritative Loop B run")
     print("Authority: ml/strategy-latest/run.json")
+    print(f"Pricing diagnostics: {args.pricing_mode} (never changes candidate ranking)")
     print("Stop: Ctrl+C")
     print()
     lock = root / ".ducketz-strategy-runtime.lock"
@@ -277,12 +305,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                         )
                     )
                 try:
-                    if _current_source_already_processed(root):
+                    if _current_source_already_processed(root, pricing_mode=args.pricing_mode):
                         print("Strategy skipped: current Loop B run is already published.")
                         if args.once:
                             return 0
                         continue
-                    result = run_strategy_once(root)
+                    result = run_strategy_once(root, pricing_mode=args.pricing_mode)
                     print(
                         "Strategy published: "
                         f"candidates={result.candidate_rows}; audit={result.audit_rows}; "
@@ -315,7 +343,7 @@ def next_boundary(
     return anchor + timedelta(minutes=(count + 1) * interval_minutes)
 
 
-def _current_source_already_processed(root: Path) -> bool:
+def _current_source_already_processed(root: Path, *, pricing_mode: str = "off") -> bool:
     try:
         loop_b = read_current_publication(root)
         strategy = read_current_strategy_publication(root)
@@ -323,7 +351,18 @@ def _current_source_already_processed(root: Path) -> bool:
         return False
     source = strategy.receipt.get("source_loop_b")
     current = loop_b.pointer.get("current")
-    return isinstance(source, Mapping) and isinstance(current, Mapping) and dict(source) == dict(current)
+    configuration = strategy.manifest.get("configuration")
+    observed_mode = (
+        configuration.get("pricing_mode")
+        if isinstance(configuration, Mapping)
+        else None
+    )
+    return (
+        isinstance(source, Mapping)
+        and isinstance(current, Mapping)
+        and dict(source) == dict(current)
+        and observed_mode == str(pricing_mode).strip().lower()
+    )
 
 
 def _strategy_output_frame(

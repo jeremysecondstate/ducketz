@@ -869,6 +869,50 @@ AUDIT_CONTROL_SPECS = (
     ),
 )
 
+
+def _option_pricing_shadow(column: str) -> FeatureSpec:
+    return _candidate_feature(
+        f"opx__{column}",
+        source_column=column,
+        horizons=("1h", "4h", "1d", "1w"),
+        provider_policy="verified-option-pricing-publication-v1",
+        source_timeframe="completed-pricing-surface-publication",
+        source_grain="symbol-target-compact-surface-aggregate",
+        calculation_versions=("black-scholes-rbf-residual-v1",),
+        schema_versions=("option-pricing-compact-surface-v1",),
+        availability_rule="verified-receipt-and-row-available-no-later-than-decision",
+        availability_version="pricing-publication-causal-v1",
+        freshness=(
+            ("1h", "2-hours"),
+            ("4h", "4-hours"),
+            ("1d", "2-calendar-days"),
+            ("1w", "8-calendar-days"),
+        ),
+        missing_policy="explicit-shadow-route-unavailable-no-current-substitution-v1",
+        transform="training-median-robust-scale-v1",
+        coverage_policy="verified-compact-surface-only-v1",
+        classification=INSUFFICIENT_COVERAGE,
+        readiness_policy="pricing-shadow-feature-readiness-v1",
+    )
+
+
+OPTION_PRICING_SHADOW_FEATURES = tuple(
+    _option_pricing_shadow(column)
+    for column in (
+        "causal_coverage",
+        "median_normalized_residual",
+        "median_predictive_standard_deviation",
+        "median_model_edge_in_half_spreads",
+        "positive_edge_fraction",
+        "negative_edge_fraction",
+        "raw_arbitrage_violation_rate",
+        "constrained_arbitrage_violation_rate",
+        "interval_80_coverage",
+        "interval_95_coverage",
+        "median_relative_bid_ask_spread",
+    )
+)
+
 ALL_FEATURE_SPECS = (
     *TECHNICAL_ALL_FEATURES,
     *PHASE1_TECHNICAL_FEATURES,
@@ -877,6 +921,7 @@ ALL_FEATURE_SPECS = (
     *WEEKLY_FEATURES,
     *OPTION_FEATURES,
     *OPTION_EVIDENCE_FEATURES,
+    *OPTION_PRICING_SHADOW_FEATURES,
     *QUOTE_FEATURES,
     *CME_FEATURES,
     *LIFECYCLE_FEATURES,
@@ -939,6 +984,19 @@ LOOP_A_ALL_1W_FEATURES = (
     *_active_features_for_horizon(_LOOP_A_ADDITIONAL_FEATURES, "1w"),
 )
 
+LOOP_A_ALL_BSGP_SHADOW_1H_FEATURES = (
+    *LOOP_A_ALL_1H_FEATURES,
+    *_active_features_for_horizon(OPTION_PRICING_SHADOW_FEATURES, "1h"),
+)
+LOOP_A_ALL_BSGP_SHADOW_1D_FEATURES = (
+    *LOOP_A_ALL_1D_FEATURES,
+    *_active_features_for_horizon(OPTION_PRICING_SHADOW_FEATURES, "1d"),
+)
+LOOP_A_ALL_BSGP_SHADOW_1W_FEATURES = (
+    *LOOP_A_ALL_1W_FEATURES,
+    *_active_features_for_horizon(OPTION_PRICING_SHADOW_FEATURES, "1w"),
+)
+
 
 _FOUR_HOUR_FRESHNESS_BY_FAMILY = {
     "mr": "exact-decision",
@@ -986,6 +1044,10 @@ TECHNICAL_V2_4H_FEATURES = _clone_1h_features_for_4h(
 )
 LOOP_A_ALL_4H_FEATURES = _clone_1h_features_for_4h(
     LOOP_A_ALL_1H_FEATURES
+)
+LOOP_A_ALL_BSGP_SHADOW_4H_FEATURES = (
+    *LOOP_A_ALL_4H_FEATURES,
+    *_active_features_for_horizon(OPTION_PRICING_SHADOW_FEATURES, "4h"),
 )
 
 
@@ -1075,6 +1137,30 @@ class FeatureRegistry:
                 "loop-a-all-v1-1w",
                 LOOP_A_ALL_1W_FEATURES,
                 version="1.2.0",
+                applicable_horizons=("1w",),
+            ),
+            "loop-a-all-bsgp-shadow-v1-1h": FeatureSet(
+                "loop-a-all-bsgp-shadow-v1-1h",
+                LOOP_A_ALL_BSGP_SHADOW_1H_FEATURES,
+                version="1.0.0",
+                applicable_horizons=("1h",),
+            ),
+            "loop-a-all-bsgp-shadow-v1-4h": FeatureSet(
+                "loop-a-all-bsgp-shadow-v1-4h",
+                LOOP_A_ALL_BSGP_SHADOW_4H_FEATURES,
+                version="1.0.0",
+                applicable_horizons=("4h",),
+            ),
+            "loop-a-all-bsgp-shadow-v1-1d": FeatureSet(
+                "loop-a-all-bsgp-shadow-v1-1d",
+                LOOP_A_ALL_BSGP_SHADOW_1D_FEATURES,
+                version="1.0.0",
+                applicable_horizons=("1d",),
+            ),
+            "loop-a-all-bsgp-shadow-v1-1w": FeatureSet(
+                "loop-a-all-bsgp-shadow-v1-1w",
+                LOOP_A_ALL_BSGP_SHADOW_1W_FEATURES,
+                version="1.0.0",
                 applicable_horizons=("1w",),
             ),
             "bar-shape-candidate-v1": _quarantined_set(

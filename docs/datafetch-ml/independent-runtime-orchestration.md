@@ -1,8 +1,9 @@
 # Independent market-data and model runtimes
 
-The recommended deployment is five independent processes. CME/L2, Schwab
-options, and options-strategy work are deliberately outside the critical paths
-of Loop A and directional Loop B.
+The recommended topology is six independent processes. CME/L2, shadow option
+pricing, Schwab options, and options-strategy work are deliberately outside the
+critical paths of Loop A and directional Loop B. These commands document the
+topology; they do not claim that the Pricing supervisor has been deployed.
 
 ## Artifact ownership
 
@@ -11,6 +12,7 @@ of Loop A and directional Loop B.
 | `datafetching.cme_runtime` | `pools/cme/events/databento/**`, CME successful-query cursors, immutable five-minute L2 snapshots, and the existing hourly CME cross-asset feature artifact |
 | `datafetching.options_runtime` | Immutable Schwab raw-chain, normalized-contract, and option-quality snapshot directories and their pointer; it also maintains the legacy monthly option mirrors |
 | `datafetching.orchestrate` (Loop A) | Equity bars and quotes, non-CME shared macro data, fundamentals, technicals, and signals |
+| `ml.option_pricing_runtime` | Immutable shadow pricing samples, predictions, evaluations, compact surfaces, monitoring, reports, copied models, and `ml/option-pricing-latest/run.json` |
 | `ml.prediction_runtime` (Loop B) | Immutable directional sample, prediction, evaluation, monitoring, and intelligence runs plus `ml/latest/run.json` |
 | `ml.strategy_runtime` | Immutable strategy candidates, audits, reports, and copied model artifacts plus `ml/strategy-latest/run.json` |
 
@@ -34,18 +36,23 @@ python -m datafetching.orchestrate --datastore-target pc `
   --cme-mode external --options-mode external `
   --providers databento fmp fred schwab sec --interval-minutes 15
 
-# 3. Schwab options. It skips a symbol until a completed Databento 1m clock exists.
+# 3. Shadow Pricing. It skips rather than backdates when the target bar is not ready.
+python -m ml.option_pricing_runtime --datastore-target pc `
+  --symbols NVDA GOOG MU `
+  --interval-minutes 15 --phase-offset-minutes 1
+
+# 4. Schwab options. It skips a symbol until a completed Databento 1m clock exists.
 python -m datafetching.options_runtime --datastore-target pc `
   --watchlist datafetching\watchlist.txt `
   --interval-minutes 15 --phase-offset-minutes 2
 
-# 4. Directional Loop B. Start after Loop A has published one COMPLETE generation.
+# 5. Directional Loop B. Start after Loop A has published one COMPLETE generation.
 python -m ml.prediction_runtime --datastore-target pc --provider databento `
   --horizons 1h 4h 1d 1w --feature-profile loop-a-all-v1 `
   --model-family logistic --calibration platt --round-trip-cost 0.001 `
   --interval-minutes 15 --phase-offset-minutes 5
 
-# 5. Strategy processing. It consumes only an already-published Loop B run.
+# 6. Strategy processing. Pricing diagnostics remain off unless explicitly selected.
 python -m ml.strategy_runtime --datastore-target pc `
   --interval-minutes 60 --phase-offset-minutes 10
 ```
@@ -92,10 +99,12 @@ This preserves complete history while preventing Databento's provisional
 recent-data size estimate from turning a small recovery slice into a nominal
 greater-than-5-GB streaming request.
 
-Options default to every 15 minutes at UTC phase +2 minutes. Loop A defaults to
-15 minutes. Loop B defaults to phase +5 minutes, and Strategy defaults to hourly
-at phase +10 minutes. These offsets are operational defaults, not timestamp
-semantics.
+Pricing defaults to every 15 minutes at UTC phase +1 minute and must complete
+before Options defaults to phase +2 minutes. Loop A defaults to 15 minutes.
+Loop B defaults to phase +5 minutes, and Strategy defaults to hourly at phase
++10 minutes. If the completed target bar is unavailable at +1, Pricing skips
+that target; it never waits for Options or backdates a prediction. These offsets
+are operational defaults, not timestamp semantics.
 
 ## Three clocks and causal selection
 
@@ -146,9 +155,11 @@ without a receipt. The legacy monthly mirrors are compatibility outputs, not a
 commit signal.
 
 Loop B follows the same immutable-run plus receipt plus atomic-pointer pattern
-at `ml/latest/run.json`. Strategy has a separate authority at
-`ml/strategy-latest/run.json`. Directional publication completes before
-Strategy begins and remains valid if Strategy is slow or fails.
+at `ml/latest/run.json`. Pricing has its own receipt-chained authority at
+`ml/option-pricing-latest/run.json`, and Strategy has a separate authority at
+`ml/strategy-latest/run.json`. Pricing publication never advances either other
+pointer. Directional publication completes before Strategy begins and remains
+valid if Strategy is slow or fails.
 
 ## Restart and delay behavior
 

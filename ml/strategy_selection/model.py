@@ -116,6 +116,8 @@ def partition_strategy_outcomes(
     policy: StrategySelectionPolicy,
 ) -> StrategyPartitions:
     required = {
+        "symbol",
+        "horizon",
         "candidate_key",
         "decision_timestamp",
         "target_window_start",
@@ -138,10 +140,31 @@ def partition_strategy_outcomes(
     ).astype("Int8")
     if not eligible["profitable"].isin([0, 1]).all():
         raise ValueError("Strategy profitable target must contain only 0/1")
-    row_key = eligible["decision_timestamp"].astype("string") + "|" + eligible[
-        "candidate_key"
-    ].astype("string")
-    if row_key.duplicated().any():
+    natural_key = pd.DataFrame(
+        {
+            "symbol": eligible["symbol"]
+            .astype("string")
+            .str.strip()
+            .str.upper(),
+            "horizon": eligible["horizon"]
+            .astype("string")
+            .str.strip()
+            .str.lower(),
+            "decision_timestamp": eligible["decision_timestamp"],
+            "candidate_key": eligible["candidate_key"]
+            .astype("string")
+            .str.strip(),
+        },
+        index=eligible.index,
+    )
+    if (
+        natural_key.isna().any(axis=None)
+        or natural_key["symbol"].eq("").any()
+        or natural_key["horizon"].eq("").any()
+        or natural_key["candidate_key"].eq("").any()
+    ):
+        raise ValueError("Strategy outcomes contain incomplete natural keys")
+    if natural_key.duplicated().any():
         raise ValueError("Strategy outcomes contain duplicate decision candidates")
 
     clusters = pd.Index(

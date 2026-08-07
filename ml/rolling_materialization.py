@@ -43,7 +43,16 @@ from options.publication import (
     committed_option_snapshots,
     read_committed_option_surfaces,
 )
+from ml.option_pricing.consumers import read_verified_compact_pricing_features
 from technicals.parquet_io import BarDataset, discover_bar_datasets
+
+
+OPTION_PRICING_SHADOW_FRESHNESS = {
+    "1h": pd.Timedelta(hours=2),
+    "4h": pd.Timedelta(hours=4),
+    "1d": pd.Timedelta(days=2),
+    "1w": pd.Timedelta(days=8),
+}
 
 
 @dataclass(frozen=True)
@@ -622,6 +631,26 @@ def _attach_loop_a_features(
             value_columns=mapping,
             tie_breakers=("snapshot_for",),
             freshness=OPTION_FRESHNESS[feature_horizon],
+        )
+        source_files.extend(paths)
+
+    if mapping := _family_values(feature_set, "opx"):
+        cutoff = utc_timestamp(
+            input_available_at
+            if input_available_at is not None
+            else output["information_available_at"].max()
+        )
+        source, paths = read_verified_compact_pricing_features(
+            root,
+            available_not_after=cutoff,
+        )
+        output = _join_symbol_values(
+            output,
+            source,
+            family="opx",
+            value_columns=mapping,
+            tie_breakers=("target_snapshot_for",),
+            freshness=OPTION_PRICING_SHADOW_FRESHNESS[feature_horizon],
         )
         source_files.extend(paths)
 

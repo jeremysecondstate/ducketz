@@ -315,6 +315,13 @@ def _candidate_row(
                 "quote_staleness_seconds": float(
                     contract["quote_staleness_seconds"]
                 ),
+                "quote_timestamp": (
+                    _utc(contract["quote_timestamp"]).isoformat()
+                    if "quote_timestamp" in contract.index
+                    and pd.notna(contract["quote_timestamp"])
+                    else None
+                ),
+                "target_snapshot_for": _utc(surface["snapshot_for"]).isoformat(),
                 "available_at": _utc(surface["available_at"]).isoformat(),
             }
         )

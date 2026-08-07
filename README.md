@@ -23,7 +23,7 @@ If the answer is unclear, delete it.
 
 ## Independent runtimes
 
-Duckets has five long-running processes connected through causal Parquet and
+Duckets has six long-running processes connected through causal Parquet and
 atomic receipt contracts.
 
 - CME owns complete CME OHLCV/BBO/MBP history, five-minute L2 snapshots, and
@@ -32,6 +32,9 @@ atomic receipt contracts.
   option-quality surfaces.
 - Loop A owns equity/provider ingestion plus fundamentals, technicals, and
   signals. Its default external modes never fetch CME or option chains.
+- Pricing owns shadow-only Black-Scholes/finite-feature-GP artifacts and
+  `ml/option-pricing-latest/run.json`. It reads completed bars and verified
+  earlier Options receipts; it never calls Schwab.
 - Directional Loop B publishes samples, predictions, evaluations, monitoring,
   and intelligence without running strategy selection.
 - Strategy consumes an already-published Loop B run and publishes through its
@@ -40,11 +43,10 @@ atomic receipt contracts.
 No runtime starts another runtime, and writer locks prevent compatibility modes
 from targeting the same owned artifacts as an external process.
 
-Run one CME and Options cycle:
+Run one CME cycle:
 
 ```powershell
 python -m datafetching.cme_runtime --datastore C:\data\ducketz --once
-python -m datafetching.options_runtime --datastore C:\data\ducketz --symbols NVDA --once
 ```
 
 Run one Loop A cycle:
@@ -53,22 +55,41 @@ Run one Loop A cycle:
 python -m datafetching.orchestrate --datastore C:\data\ducketz --symbols NVDA --once
 ```
 
+Then run one shadow Pricing cycle before the Options target fetch:
+
+```powershell
+python -m ml.option_pricing_runtime --datastore C:\data\ducketz --symbols NVDA GOOG MU --once
+python -m datafetching.options_runtime --datastore C:\data\ducketz --symbols NVDA --once
+```
+
 Run one Loop B cycle:
 
 ```powershell
 python -m ml.prediction_runtime --datastore C:\data\ducketz --symbols NVDA GOOG MU --provider databento --horizons 1h 4h 1d 1w --once
 ```
 
-Run Strategy after Loop B has published:
+Run Strategy after Loop B has published (Pricing diagnostics remain off by default):
 
 ```powershell
 python -m ml.strategy_runtime --datastore C:\data\ducketz --once
+```
+
+The OPRA command is estimate-only unless an operator supplies both `--execute`
+and an explicit cost ceiling:
+
+```powershell
+python -m ml.option_pricing_opra --datastore C:\data\ducketz --symbols NVDA GOOG MU
 ```
 
 See
 [`docs/datafetch-ml/independent-runtime-orchestration.md`](docs/datafetch-ml/independent-runtime-orchestration.md)
 for ownership, startup order, cadences, causal cutoffs, recovery, stopping, and
 inline compatibility modes.
+
+See
+[`docs/datafetch-ml/option-pricing-shadow.md`](docs/datafetch-ml/option-pricing-shadow.md)
+for the causal pricing clock, model and publication contracts, explicit shadow
+profiles, OPRA safety, evidence gate, and current limitations.
 
 During the versioned-generation migration, keep Loop A read-only and place all
 Loop B artifacts under a separate root:
