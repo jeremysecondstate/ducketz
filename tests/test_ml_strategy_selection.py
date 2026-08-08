@@ -22,7 +22,15 @@ from ml.strategy_selection.chain import (
     entry_chain_receipt,
     exit_chain_receipt,
 )
-from ml.strategy_selection.contracts import StrategySelectionPolicy
+from ml.strategy_selection.contracts import (
+    CALIBRATED_MODEL_SCORE_BASIS,
+    SCENARIO_PRIOR_SCORE_BASIS,
+    STRATEGY_CANDIDATE_SCHEMA_VERSION,
+    STRATEGY_MODEL_POLICY_VERSION,
+    STRATEGY_RANKING_POLICY_VERSION,
+    StrategyModel,
+    StrategySelectionPolicy,
+)
 from ml.strategy_selection.market_state import (
     infer_market_state,
     score_market_state_prior,
@@ -449,7 +457,10 @@ def test_market_state_prior_scores_every_exact_candidate_without_fake_calibratio
     assert scored["calibrated_profit_probability"].isna().all()
     assert scored["expected_net_profit"].notna().all()
     assert scored["expected_return_on_risk"].notna().all()
-    assert scored["decision_score"].notna().all()
+    assert scored["decision_score"].equals(scored["raw_profit_probability"])
+    assert scored["decision_score"].between(0.0, 1.0).all()
+    assert scored["score_basis"].eq(SCENARIO_PRIOR_SCORE_BASIS).all()
+    assert scored["schema_version"].eq(STRATEGY_CANDIDATE_SCHEMA_VERSION).all()
     assert scored["candidate_rank"].tolist() == list(range(1, len(scored) + 1))
     assert scored["model_status"].eq("MARKET_STATE_PRIOR").all()
     assert scored["direction_probability_up"].eq(0.70).all()
@@ -629,23 +640,36 @@ def test_strategy_model_fits_only_training_and_calibration_partitions(
     evidence = model.offline_evaluation
     assert evidence["assessment_used_for_training"] is False
     assert evidence["assessment_used_for_calibration"] is False
+    assert evidence["assessment_used_for_ranking_policy_selection"] is False
     assert evidence["real_lockbox_used"] is False
     assert evidence["ranking_rule"] == (
-        "highest_expected_return_on_risk_then_calibrated_probability_per_decision"
+        "highest_calibrated_probability_then_expected_return_on_risk_"
+        "then_candidate_key_per_decision"
     )
     assert evidence["raw_model"]["log_loss"] >= 0.0
     assert evidence["calibrated_model"]["brier_score"] >= 0.0
     assert evidence["expected_return_model"]["mean_absolute_error"] >= 0.0
     assert evidence["assessment_decisions"] == _POLICY.assessment_decisions
-    assert evidence["top_ranked_assessment_decisions"] == (
-        _POLICY.assessment_decisions
-    )
+    policies = evidence["ranking_policy_assessment"]
+    assert set(policies) == {
+        "probability_first",
+        "expected_return_first_benchmark",
+    }
+    assert policies["probability_first"]["role"] == "ACTIVE"
+    assert policies["expected_return_first_benchmark"]["role"] == "BENCHMARK"
+    for policy_evidence in policies.values():
+        assert policy_evidence["decision_count"] == _POLICY.assessment_decisions
+        assert 0.0 <= policy_evidence["top_candidate_profitable_rate"] <= 1.0
+        assert np.isfinite(policy_evidence["mean_realized_return_on_risk"])
+        assert np.isfinite(policy_evidence["total_net_profit"])
+        assert policy_evidence["probability_calibration"]["log_loss"] >= 0.0
+        assert policy_evidence["probability_calibration"]["brier_score"] >= 0.0
     manifest = json.loads(
         (model.artifact_directory / "manifest.json").read_text(encoding="utf-8")
     )
-    assert manifest["model_policy_version"] == (
-        "market-state-hgb-platt-return-v3"
-    )
+    assert manifest["model_policy_version"] == STRATEGY_MODEL_POLICY_VERSION
+    assert manifest["ranking_policy_version"] == STRATEGY_RANKING_POLICY_VERSION
+    assert manifest["assessment_policy_selection"] == "fixed_before_assessment"
     assert manifest["preprocessing_policy_version"] == (
         "training-quantiles-0.25-99.75-v1"
     )
@@ -657,9 +681,48 @@ def test_strategy_model_fits_only_training_and_calibration_partitions(
     assert scored["raw_profit_probability"].between(0.0, 1.0).all()
     assert scored["calibrated_profit_probability"].between(0.0, 1.0).all()
     assert scored["direction_probability_up"].eq(0.70).all()
-    assert scored["decision_score"].notna().all()
+    assert scored["decision_score"].equals(
+        scored["calibrated_profit_probability"]
+    )
+    assert scored["decision_score"].between(0.0, 1.0).all()
+    assert scored["score_basis"].eq(CALIBRATED_MODEL_SCORE_BASIS).all()
     assert scored["candidate_rank"].tolist() == list(range(1, len(scored) + 1))
     assert "probability_threshold" not in scored
+
+
+def test_fitted_ranking_is_probability_first_and_stable() -> None:
+    model = StrategyModel(
+        horizon="1d",
+        estimator=_ColumnProbabilityEstimator(),
+        return_estimator=_ColumnReturnEstimator(),
+        calibrator=_IdentityProbabilityCalibrator(),
+        numeric_features=("test_probability", "test_return_residual"),
+        categorical_features=(),
+        artifact_directory=Path("fixture-model"),
+        offline_evaluation={},
+    )
+    candidates = pd.DataFrame(
+        [
+            _score_candidate("probability-first", probability=0.82, expected_return=0.04),
+            _score_candidate("lottery", probability=0.21, expected_return=0.90),
+            _score_candidate("tie-b", probability=0.60, expected_return=0.10),
+            _score_candidate("tie-a", probability=0.60, expected_return=0.10),
+        ]
+    )
+
+    ranked = score_strategy_candidates(model, candidates)
+    reranked = score_strategy_candidates(
+        model,
+        candidates.sample(frac=1.0, random_state=19).reset_index(drop=True),
+    )
+
+    expected = ["probability-first", "tie-a", "tie-b", "lottery"]
+    assert ranked["candidate_key"].tolist() == expected
+    assert reranked["candidate_key"].tolist() == expected
+    assert ranked.loc[0, "expected_return_on_risk"] < ranked.loc[3, "expected_return_on_risk"]
+    assert ranked["candidate_rank"].tolist() == [1, 2, 3, 4]
+    assert ranked["decision_score"].equals(ranked["calibrated_profit_probability"])
+    assert ranked["decision_score"].between(0.0, 1.0).all()
 
 
 def test_strategy_runtime_refuses_any_real_lockbox_cluster(tmp_path: Path) -> None:
@@ -735,7 +798,10 @@ def test_runtime_publishes_prior_rank_when_route_model_is_not_fit(
     assert result.candidates["raw_profit_probability"].notna().all()
     assert result.candidates["calibrated_profit_probability"].isna().all()
     assert result.candidates["expected_return_on_risk"].notna().all()
-    assert result.candidates["decision_score"].notna().all()
+    assert result.candidates["decision_score"].equals(
+        result.candidates["raw_profit_probability"]
+    )
+    assert result.candidates["score_basis"].eq(SCENARIO_PRIOR_SCORE_BASIS).all()
     assert result.candidates["candidate_rank"].tolist() == list(
         range(1, len(result.candidates) + 1)
     )
@@ -776,6 +842,10 @@ def test_offline_strategy_runtime_builds_trains_and_ranks_from_schwab_receipts(
         range(1, len(result.candidates) + 1)
     )
     assert result.candidates["model_status"].eq("MODEL_FIT").all()
+    assert result.candidates["decision_score"].equals(
+        result.candidates["calibrated_profit_probability"]
+    )
+    assert result.candidates["score_basis"].eq(CALIBRATED_MODEL_SCORE_BASIS).all()
     assert "recommendation_action" not in result.candidates
     assert result.source_files
 
@@ -1071,6 +1141,42 @@ def _model_outcomes() -> pd.DataFrame:
                 }
             )
     return pd.DataFrame(rows)
+
+
+def _score_candidate(
+    candidate_key: str,
+    *,
+    probability: float,
+    expected_return: float,
+) -> dict[str, object]:
+    return {
+        "candidate_key": candidate_key,
+        "test_probability": probability,
+        "test_return_residual": expected_return,
+        "strategy_prior__expected_return_on_risk": 0.0,
+        "capital_required": 100.0,
+        "max_loss": 100.0,
+        "max_profit": 1_000.0,
+    }
+
+
+class _ColumnProbabilityEstimator:
+    @staticmethod
+    def predict_proba(frame: pd.DataFrame) -> np.ndarray:
+        probability = frame["test_probability"].to_numpy(dtype=float)
+        return np.column_stack((1.0 - probability, probability))
+
+
+class _ColumnReturnEstimator:
+    @staticmethod
+    def predict(frame: pd.DataFrame) -> np.ndarray:
+        return frame["test_return_residual"].to_numpy(dtype=float)
+
+
+class _IdentityProbabilityCalibrator:
+    @staticmethod
+    def predict(probability: np.ndarray) -> np.ndarray:
+        return np.asarray(probability, dtype=float)
 
 
 def _scanned_entry_receipt(

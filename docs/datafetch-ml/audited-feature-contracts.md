@@ -602,9 +602,10 @@ compatibility/input inventory rather than copied as extra candidate columns.
 
 The Options Strategies UI loads current Schwab account facts after it resolves
 the immutable candidate publication. It derives applicable shares, absolute
-option-position count, working option-order count, and available funds, then
-applies `current-schwab-position-fit-v1` to presentation and overall score.
-These values can legitimately change after Loop B publishes.
+option-position count, working option-order count, and available funds. Policy
+`current-schwab-position-fit-v2` produces only feasibility/exposure text;
+it cannot change Predictive Score or the persisted market rank. These values
+can legitimately change after Loop B publishes.
 
 No account holding, buying-power value, working order, UI portfolio-fit value,
 or order-draft value is joined to a historical sample, supplied to the

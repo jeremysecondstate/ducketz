@@ -295,14 +295,15 @@ values supply trend-persistence and mean-reversion summaries, and direction
 entropy supplies uncertainty. None of these inputs comes from an exit receipt
 or a current Schwab account snapshot.
 
-Prior policy `greek-bbo-scenario-prior-v1` evaluates deterministic up/down
+Prior policy `greek-bbo-scenario-prior-v2` evaluates deterministic up/down
 scenarios with the exact candidate's delta, gamma, theta, holding time, BBO
 spread, modeled fees, and payoff bounds. It fills raw profit probability,
-expected net profit, expected return on risk, score, and rank even before an
+expected net profit, expected return on risk, a probability-valued score, and a
+probability-first rank even before an
 empirical model exists. The calibrated probability remains null in that state;
-the row is labeled `MARKET_STATE_PRIOR`, while the route model report records
-`MODEL_NOT_FIT`. This prevents a mechanics prior from being misrepresented as
-GOOG calibration.
+the row is labeled `MARKET_STATE_PRIOR` with `score_basis=SCENARIO_PRIOR`, while
+the route model report records `MODEL_NOT_FIT`. This prevents a mechanics prior
+from being misrepresented as GOOG calibration.
 
 For historical labels, the reader chooses the earliest future option surface
 whose `snapshot_for` and `available_at` are at or after the fixed
@@ -326,7 +327,7 @@ matching start is a hard error. Historical exit selection is capped strictly
 before the earliest lockbox boundary, so an earlier candidate cannot receive a
 label from inside the closed period.
 
-With sufficient evidence, `market-state-hgb-platt-return-v3` fits a nonlinear
+With sufficient evidence, `market-state-hgb-platt-return-v4` fits a nonlinear
 profitable-outcome classifier and a nonlinear return-on-risk residual regressor.
 The strategy model can use exact-chain and market-state measurements,
 `previous_period_direction`, and eligible numeric point-in-time sample context
@@ -340,8 +341,9 @@ training, and assessment is evidence only.
 Current account facts have a separate clock and owner. The Options Strategies
 screen fetches a fresh Schwab account snapshot when it loads and derives
 shares, option-position counts, working option-order counts, and available
-funds. Policy `current-schwab-position-fit-v1` applies that snapshot only to
-display-time portfolio fit and overall rank. Those mutable account facts never
+funds. Policy `current-schwab-position-fit-v2` applies that snapshot only to
+descriptive display-time Portfolio Fit. It cannot change Predictive Score or
+the persisted market rank. Those mutable account facts never
 enter historical sample assembly, strategy fitting, calibration, assessment,
 or either immutable strategy Parquet. See
 [Loop B options-strategy selection](options-strategy-selection.md) for the

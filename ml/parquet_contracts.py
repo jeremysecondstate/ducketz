@@ -299,6 +299,7 @@ STRATEGY_CANDIDATE_SCHEMA = _schema(
         ("expected_net_profit", FLOAT),
         ("expected_return_on_risk", FLOAT),
         ("decision_score", FLOAT),
+        ("score_basis", TEXT),
         ("candidate_rank", INTEGER),
         ("pricing_mode", TEXT),
         ("pricing_status", TEXT),
@@ -314,6 +315,7 @@ STRATEGY_CANDIDATE_SCHEMA = _schema(
         ("candidate_policy_version", TEXT),
         ("model_policy_version", TEXT),
         ("ranking_policy_version", TEXT),
+        ("schema_version", TEXT),
     )
 )
 

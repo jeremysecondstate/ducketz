@@ -248,7 +248,6 @@ def run_strategy_selection(
             model,  # type: ignore[arg-type]
             candidates,
         )
-        scored["model_status"] = "MODEL_FIT"
         candidate_frames.append(scored)
 
     candidates = (

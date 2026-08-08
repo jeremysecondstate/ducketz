@@ -29,9 +29,11 @@ from ml.parquet_contracts import (
     EVALUATION_SCHEMA,
     NON_PERSISTED_SAMPLE_WORKFLOW_COLUMNS,
     PREDICTION_SCHEMA,
+    STRATEGY_CANDIDATE_SCHEMA,
     empty_frame,
     forbidden_identity_columns,
     frame_with_readable_id,
+    verify_parquet_schema,
     write_parquet_with_schema,
 )
 from ml.model_runtime import ModelPartitionConfig, partition_model_rows
@@ -47,7 +49,16 @@ from ml.runtime_pipeline import (
     _valid_archived_live_rows,
     run_loop_b_once,
 )
-from ml.strategy_publication import read_current_strategy_publication
+from ml.strategy_publication import (
+    STRATEGY_POINTER_VERSION,
+    STRATEGY_PUBLICATION_VERSION,
+    read_current_strategy_publication,
+)
+from ml.strategy_selection.contracts import (
+    STRATEGY_CANDIDATE_SCHEMA_VERSION,
+    STRATEGY_MODEL_POLICY_VERSION,
+    STRATEGY_RANKING_POLICY_VERSION,
+)
 from ml.strategy_runtime import run_strategy_once
 from options.publication import option_writer_lock_path
 
@@ -445,7 +456,7 @@ def test_loop_b_publishes_directional_outputs_before_independent_strategy(
     assert strategy["real_lockbox_used"] is False
     assert strategy["mode"] == "independent-runtime"
     assert strategy["authority"] == "ml/strategy-latest/run.json"
-    assert strategy["research_trace"]["version"] == "nyu-hu-uh-trace-v2"
+    assert strategy["research_trace"]["version"] == "nyu-hu-uh-trace-v3"
 
 
 def test_directional_publication_does_not_wait_for_active_external_writers_and_strategy_is_separate(
@@ -514,6 +525,18 @@ def test_directional_publication_does_not_wait_for_active_external_writers_and_s
     assert strategy.audit_rows == 40
     assert strategy.run_directory.parent.name == "strategy-runs"
     assert (strategy.run_directory / "strategy-audit.parquet").is_file()
+    candidates_path = strategy.run_directory / "strategy-candidates.parquet"
+    verify_parquet_schema(candidates_path, STRATEGY_CANDIDATE_SCHEMA)
+    assert publication.receipt["schema_version"] == STRATEGY_PUBLICATION_VERSION
+    assert publication.pointer["schema_version"] == STRATEGY_POINTER_VERSION
+    assert publication.receipt["candidate_contract"] == {
+        "schema_version": STRATEGY_CANDIDATE_SCHEMA_VERSION,
+        "model_policy_version": STRATEGY_MODEL_POLICY_VERSION,
+        "ranking_policy_version": STRATEGY_RANKING_POLICY_VERSION,
+        "decision_score": "profitable_outcome_probability",
+        "fitted_score_basis": "CALIBRATED_MODEL",
+        "fallback_score_basis": "SCENARIO_PRIOR",
+    }
     assert source_checksums == {
         path.name: file_checksum(path)
         for path in loop_b.run_directory.iterdir()
@@ -522,6 +545,9 @@ def test_directional_publication_does_not_wait_for_active_external_writers_and_s
     manifest = verify_manifest(strategy.run_directory)
     assert manifest["configuration"]["source_loop_b_run"] == (
         loop_b.run_directory.relative_to(tmp_path).as_posix()
+    )
+    assert manifest["configuration"]["publication_contract"]["version"] == (
+        STRATEGY_PUBLICATION_VERSION
     )
 
 

@@ -483,13 +483,23 @@ direction_alignment:float64
 expected_net_profit:float64
 expected_return_on_risk:float64
 decision_score:float64
+score_basis:string
 candidate_rank:int64
+pricing_mode:string
+pricing_status:string
+pricing_leg_coverage:float64
+pricing_missing_reason:string
+pricing_candidate_edge:float64
+pricing_edge_to_friction:float64
+pricing_uncertainty:float64
+pricing_edge_minus_scenario_expected_profit:float64
 model_version:string
 model_status:string
 registry_version:string
 candidate_policy_version:string
 model_policy_version:string
 ranking_policy_version:string
+schema_version:string
 ```
 
 `ml.parquet_contracts.STRATEGY_AUDIT_SCHEMA` has this exact physical order:
@@ -512,11 +522,12 @@ candidate_policy_version:string
 ```
 
 All fields are nullable at the Arrow layer so an exact empty schema and
-explicitly unavailable measurements can be published. Prior-ranked rows carry
-the five market-state fields when their causal inputs are available and fill
-raw probability, expected profit/return, score, and rank; calibrated probability
-remains null until a compatible GOOG strategy model has been fitted and
-calibrated. The readable-ID
+explicitly unavailable measurements can be published. Candidate schema
+`strategy-candidate-v2` defines `decision_score` as a probability in `[0, 1]`.
+Prior-ranked rows carry `score_basis=SCENARIO_PRIOR`, fill raw probability,
+expected profit/return, score, and rank, and leave calibrated probability null.
+Fitted rows carry `score_basis=CALIBRATED_MODEL` and copy calibrated profitable-
+outcome probability to `decision_score`. The readable-ID
 validator still requires every `id` in a non-empty file to be present, unique,
 and non-opaque. `write_parquet_with_schema` rejects extra fields, fills omitted
 declared fields with null, coerces them to the exact Arrow types, and writes
@@ -597,12 +608,13 @@ The remaining-week outlook continues to use only `samples.parquet`,
 pointer, acknowledgement, or coordination record.
 
 The separate Options Strategies screen reads `strategy-candidates.parquet`.
-When the default predictable path is requested and `ml/latest/run.json` exists,
-the reader resolves that artifact through the authoritative pointer and the
-verified immutable run manifest. It does not select a directory still being
-written or treat the `ml/latest` mirror as a generation boundary. The fresh
-Schwab account snapshot and `current-schwab-position-fit-v1` overlay are not
-written back to Parquet.
+When the default predictable path is requested, the reader resolves the
+artifact through `ml/strategy-latest/run.json` under
+`strategy-pointer-v2`/`strategy-publication-v2` and the verified immutable run
+manifest. It does not select a directory still being written or treat a mirror
+as a generation boundary. The fresh Schwab account snapshot and descriptive
+`current-schwab-position-fit-v2` overlay are not written back to Parquet and do
+not alter score or rank.
 
 The physical `horizon` field is already a string, so aggregate `1w` and
 `1w-d1` through `1w-d5` require no schema change. Current intelligence is
@@ -678,9 +690,10 @@ DATASTORE/ml/strategy-models/
 
 Directory names never use content digests, generated publication values, or
 row IDs. `latest.json` is a readable model-path pointer.
-The corresponding model contract is `market-state-hgb-platt-return-v3`; the
+The corresponding model contract is `market-state-hgb-platt-return-v4`; the
 market-state and prior policies are `point-in-time-market-state-v1` and
-`greek-bbo-scenario-prior-v1`. These version strings are ordinary compatibility
+`greek-bbo-scenario-prior-v2`; ranking is `probability-first-ranking-v3`. These
+version strings are ordinary compatibility
 metadata, never identity columns.
 `ml/latest/run.json` is the single authoritative current-view commit pointer;
 official readers resolve all immutable current artifacts from its run path.

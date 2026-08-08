@@ -18,10 +18,14 @@ STRATEGY_REGISTRY_VERSION = "schwab-spreads-strategy-registry-v1"
 STRATEGY_CANDIDATE_POLICY_VERSION = "schwab-exact-chain-candidates-v3"
 STRATEGY_OUTCOME_POLICY_VERSION = "observed-bbo-pseudo-outcome-v2"
 MARKET_STATE_POLICY_VERSION = "point-in-time-market-state-v1"
-STRATEGY_PRIOR_POLICY_VERSION = "greek-bbo-scenario-prior-v1"
-STRATEGY_MODEL_POLICY_VERSION = "market-state-hgb-platt-return-v3"
-STRATEGY_RANKING_POLICY_VERSION = "continuous-market-state-ranking-v2"
-STRATEGY_RESEARCH_TRACE_VERSION = "nyu-hu-uh-trace-v2"
+STRATEGY_PRIOR_POLICY_VERSION = "greek-bbo-scenario-prior-v2"
+STRATEGY_MODEL_POLICY_VERSION = "market-state-hgb-platt-return-v4"
+STRATEGY_RANKING_POLICY_VERSION = "probability-first-ranking-v3"
+STRATEGY_CANDIDATE_SCHEMA_VERSION = "strategy-candidate-v2"
+STRATEGY_RESEARCH_TRACE_VERSION = "nyu-hu-uh-trace-v3"
+
+CALIBRATED_MODEL_SCORE_BASIS = "CALIBRATED_MODEL"
+SCENARIO_PRIOR_SCORE_BASIS = "SCENARIO_PRIOR"
 
 
 @dataclass(frozen=True)
@@ -166,12 +170,14 @@ class StrategySelectionRun:
 
 __all__ = [
     "AssetKind",
+    "CALIBRATED_MODEL_SCORE_BASIS",
     "ExpirationRole",
     "LegRule",
     "MARKET_STATE_POLICY_VERSION",
     "OptionType",
     "PositionSide",
     "STRATEGY_CANDIDATE_POLICY_VERSION",
+    "STRATEGY_CANDIDATE_SCHEMA_VERSION",
     "STRATEGY_MODEL_POLICY_VERSION",
     "STRATEGY_OUTCOME_POLICY_VERSION",
     "STRATEGY_PRIOR_POLICY_VERSION",
@@ -179,6 +185,7 @@ __all__ = [
     "STRATEGY_REGISTRY_VERSION",
     "STRATEGY_RESEARCH_TRACE_VERSION",
     "STRATEGY_SELECTION_SCHWAB_SPREADS_V1",
+    "SCENARIO_PRIOR_SCORE_BASIS",
     "StrategyDefinition",
     "StrategyModel",
     "StrategyPartitions",

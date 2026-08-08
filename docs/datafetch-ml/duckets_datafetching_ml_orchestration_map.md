@@ -270,7 +270,7 @@ source decisions are eligible.
     audited context under `point-in-time-market-state-v1`; use neutral sign
     weights when historical assembly has no matching forecast; build exact legs
     from the 40-strategy registry; score every candidate with
-    `greek-bbo-scenario-prior-v1`; and
+    `greek-bbo-scenario-prior-v2`; and
     create causal historical outcomes from future observed bid/ask receipts and
     modeled option fees. No theoretical option price substitutes for a missing
     receipt or historical label.
@@ -440,19 +440,19 @@ explicit operator actions.
 The sibling Options Strategies tab starts from the predictable path:
 
 ```text
-DATASTORE/ml/latest/strategy-candidates.parquet
+DATASTORE/ml/strategy-latest/run.json
 ```
 
-When `ml/latest/run.json` exists, the reader does not consume that mirror
-directly. It resolves and verifies the pointer/receipt/manifest chain and opens
+The reader resolves and verifies the Strategy pointer/receipt/manifest chain
+and opens
 `strategy-candidates.parquet` inside the selected immutable run. It then calls
 `sync_schwab_portfolio()` and calculates
-`current-schwab-position-fit-v1` from applicable shares, option-position count,
-working option-order count, and available funds. The persisted market score and
-live position adjustment remain separate; their sum is the displayed overall
-score. **Market probability** is calibrated strategy probability for fitted
-rows and the explicitly uncalibrated raw scenario prior for
-`MARKET_STATE_PRIOR` rows; neither is the Rolling Forecasts directional
+`current-schwab-position-fit-v2` from applicable shares, option-position count,
+working option-order count, and available funds. Portfolio Fit is descriptive
+and cannot change score or rank. **Predictive Score** is the calibrated strategy
+profitable-outcome probability on a 0–100 scale for fitted rows and the
+explicitly uncalibrated scenario prior for `MARKET_STATE_PRIOR` rows; **Score
+Basis** distinguishes them. Neither is the Rolling Forecasts directional
 probability.
 
 Selecting **Exact legs** fills or replaces a

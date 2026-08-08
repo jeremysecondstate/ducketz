@@ -45,6 +45,7 @@ from ml.option_pricing.publication import (
 )
 from ml.option_pricing.rates import rate_coverage_report
 from ml.option_pricing.strategy_outcomes import (
+    STRATEGY_OUTCOME_EVIDENCE_VERSION,
     StrategyOutcomeError,
     compare_strategy_outcomes,
     publish_strategy_outcome_evidence,
@@ -484,7 +485,7 @@ def test_fabricated_strategy_pass_cannot_be_published(tmp_path: Path) -> None:
         ]
     )
     forged = {
-        "schema_version": "option-pricing-strategy-outcome-evidence-v1",
+        "schema_version": STRATEGY_OUTCOME_EVIDENCE_VERSION,
         "status": "PASS",
         "evidence_kind": "REAL_RECEIPT_PROVEN",
         "evaluated_at": "2026-08-07T00:00:00Z",

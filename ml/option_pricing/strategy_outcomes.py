@@ -23,9 +23,9 @@ from ml.strategy_selection.chain import (
 from ml.strategy_selection.contracts import StrategySelectionPolicy
 
 
-STRATEGY_OUTCOME_EVIDENCE_VERSION = "option-pricing-strategy-outcome-evidence-v1"
-STRATEGY_OUTCOME_RECEIPT_VERSION = "option-pricing-strategy-outcome-receipt-v1"
-STRATEGY_OUTCOME_POINTER_VERSION = "option-pricing-strategy-outcome-pointer-v1"
+STRATEGY_OUTCOME_EVIDENCE_VERSION = "option-pricing-strategy-outcome-evidence-v2"
+STRATEGY_OUTCOME_RECEIPT_VERSION = "option-pricing-strategy-outcome-receipt-v2"
+STRATEGY_OUTCOME_POINTER_VERSION = "option-pricing-strategy-outcome-pointer-v2"
 
 _EXIT_DELAYS = {
     "1h": pd.Timedelta(hours=2),
@@ -50,6 +50,7 @@ _OBSERVATION_COLUMNS = (
     "candidate_key",
     "candidate_rank",
     "decision_score",
+    "score_basis",
     "legs_checksum_sha256",
     "option_contract_quantity",
     "round_trip_contract_fees_usd",
@@ -224,6 +225,7 @@ def build_strategy_outcome_evidence(
                     "candidate_key": natural_key[3],
                     "candidate_rank": candidate.get("candidate_rank"),
                     "decision_score": candidate.get("decision_score"),
+                    "score_basis": candidate.get("score_basis"),
                     "legs_checksum_sha256": legs_hash,
                     "option_contract_quantity": pair["option_contract_quantity"],
                     "round_trip_contract_fees_usd": pair[
@@ -537,6 +539,7 @@ def compare_strategy_outcomes(
         "paired_candidate_count": len(cohort),
         "distinct_sessions": sessions,
         "same_candidate_cohort": True,
+        "strategy_score_contract": "profitable_outcome_probability",
         "paired_metric": "scenario_absolute_error_minus_bsgp_absolute_error_usd",
         "effect_size_usd": inference.get("mean_difference"),
         "lower_confidence_bound_usd": lower,

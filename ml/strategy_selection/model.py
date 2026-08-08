@@ -33,8 +33,10 @@ from ml.preprocessing import (
     QuantileClipper,
 )
 from ml.strategy_selection.contracts import (
+    CALIBRATED_MODEL_SCORE_BASIS,
     MARKET_STATE_POLICY_VERSION,
     STRATEGY_CANDIDATE_POLICY_VERSION,
+    STRATEGY_CANDIDATE_SCHEMA_VERSION,
     STRATEGY_MODEL_POLICY_VERSION,
     STRATEGY_OUTCOME_POLICY_VERSION,
     STRATEGY_PRIOR_POLICY_VERSION,
@@ -317,9 +319,12 @@ def fit_or_reuse_strategy_model(
         return_residual,
         model__sample_weight=weights,
     )
-    calibration_raw = estimator.predict_proba(
-        _matrix(partitions.calibration, numeric, categorical)
-    )[:, 1]
+    calibration_raw = _validated_probability_array(
+        estimator.predict_proba(
+            _matrix(partitions.calibration, numeric, categorical)
+        )[:, 1],
+        label="Calibration raw model",
+    )
     calibration_target = partitions.calibration["profitable"].astype(int)
     calibrator: object
     if calibration_target.nunique() != 2:
@@ -398,7 +403,11 @@ def score_strategy_candidates(
         model.categorical_features,
     )
     raw = np.asarray(model.estimator.predict_proba(matrix)[:, 1], dtype=float)
-    calibrated = np.asarray(model.calibrator.predict(raw), dtype=float)
+    raw = _validated_probability_array(raw, label="Raw model")
+    calibrated = _validated_probability_array(
+        model.calibrator.predict(raw),
+        label="Calibrated model",
+    )
     output = candidates.copy()
     output["raw_profit_probability"] = raw
     output["calibrated_profit_probability"] = calibrated
@@ -410,12 +419,15 @@ def score_strategy_candidates(
     )
     output["expected_net_profit"] = expected_profit
     output["expected_return_on_risk"] = expected_return
-    output["decision_score"] = expected_return
+    output["decision_score"] = calibrated
+    output["score_basis"] = CALIBRATED_MODEL_SCORE_BASIS
+    output["schema_version"] = STRATEGY_CANDIDATE_SCHEMA_VERSION
     output["model_version"] = model.artifact_directory.name
     output["model_policy_version"] = STRATEGY_MODEL_POLICY_VERSION
     output["ranking_policy_version"] = STRATEGY_RANKING_POLICY_VERSION
+    output["model_status"] = "MODEL_FIT"
     output = output.sort_values(
-        ["decision_score", "calibrated_profit_probability", "candidate_key"],
+        ["decision_score", "expected_return_on_risk", "candidate_key"],
         ascending=[False, False, True],
         kind="mergesort",
     ).reset_index(drop=True)
@@ -575,12 +587,15 @@ def _bounded_expected_return(
     frame: pd.DataFrame,
     expected_return: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
+    predicted = np.asarray(expected_return, dtype=float)
+    if len(predicted) != len(frame) or not np.isfinite(predicted).all():
+        raise ValueError("Strategy expected-return predictions must be finite")
     capital = pd.to_numeric(frame["capital_required"], errors="coerce").to_numpy(
         dtype=float
     )
     if not np.isfinite(capital).all() or np.any(capital <= 0.0):
         raise ValueError("Strategy scoring requires finite positive capital")
-    profit = np.asarray(expected_return, dtype=float) * capital
+    profit = predicted * capital
     maximum_loss = pd.to_numeric(frame["max_loss"], errors="coerce").to_numpy(
         dtype=float
     )
@@ -610,11 +625,14 @@ def _offline_evaluation(
 ) -> dict[str, object]:
     assessment_target = partitions.assessment["profitable"].astype(int).to_numpy()
     assessment_matrix = _matrix(partitions.assessment, numeric, categorical)
-    raw = np.asarray(
+    raw = _validated_probability_array(
         estimator.predict_proba(assessment_matrix)[:, 1],
-        dtype=float,
+        label="Assessment raw model",
     )
-    calibrated = np.asarray(calibrator.predict(raw), dtype=float)
+    calibrated = _validated_probability_array(
+        calibrator.predict(raw),
+        label="Assessment calibrated model",
+    )
     expected_return, _expected_profit = _bounded_expected_return(
         partitions.assessment,
         _prior_return(partitions.assessment)
@@ -622,27 +640,44 @@ def _offline_evaluation(
     )
     support_min = float(np.min(calibration_raw))
     support_max = float(np.max(calibration_raw))
-    top_ranked = partitions.assessment.copy()
-    top_ranked["probability"] = calibrated
-    top_ranked["expected_return"] = expected_return
-    top_ranked = (
-        top_ranked.sort_values(
-            ["target_window_start", "expected_return", "probability"],
-            ascending=[True, False, False],
-            kind="mergesort",
-        )
-        .groupby("target_window_start", sort=False)
-        .head(1)
+    assessment = partitions.assessment.copy()
+    assessment["probability"] = calibrated
+    assessment["expected_return"] = expected_return
+    probability_first = _ranking_policy_evidence(
+        assessment,
+        primary="probability",
+        secondary="expected_return",
+        ranking_rule=(
+            "highest_calibrated_probability_then_expected_return_on_risk_"
+            "then_candidate_key_per_decision"
+        ),
+        role="ACTIVE",
+    )
+    expected_return_first = _ranking_policy_evidence(
+        assessment,
+        primary="expected_return",
+        secondary="probability",
+        ranking_rule=(
+            "highest_expected_return_on_risk_then_calibrated_probability_"
+            "then_candidate_key_per_decision"
+        ),
+        role="BENCHMARK",
     )
     return {
         "status": "OFFLINE_ASSESSMENT_COMPLETE",
         "assessment_used_for_training": False,
         "assessment_used_for_calibration": False,
+        "assessment_used_for_ranking_policy_selection": False,
         "real_lockbox_used": False,
         "fit_partition": "training",
         "calibration_partition": "calibration",
         "ranking_rule": (
-            "highest_expected_return_on_risk_then_calibrated_probability_per_decision"
+            "highest_calibrated_probability_then_expected_return_on_risk_"
+            "then_candidate_key_per_decision"
+        ),
+        "benchmark_ranking_rule": (
+            "highest_expected_return_on_risk_then_calibrated_probability_"
+            "then_candidate_key_per_decision"
         ),
         "training_rows": len(partitions.train),
         "training_decisions": partitions.train_decisions,
@@ -690,23 +725,85 @@ def _offline_evaluation(
             ).to_numpy(dtype=float),
             expected_return,
         ),
-        "top_ranked_assessment_decisions": len(top_ranked),
-        "top_ranked_profitable_rate": (
-            float(pd.to_numeric(top_ranked["profitable"], errors="coerce").mean())
-            if not top_ranked.empty
-            else None
+        "ranking_policy_assessment": {
+            "probability_first": probability_first,
+            "expected_return_first_benchmark": expected_return_first,
+        },
+    }
+
+
+def _ranking_policy_evidence(
+    assessment: pd.DataFrame,
+    *,
+    primary: str,
+    secondary: str,
+    ranking_rule: str,
+    role: str,
+) -> dict[str, object]:
+    top_ranked = (
+        assessment.sort_values(
+            ["target_window_start", primary, secondary, "candidate_key"],
+            ascending=[True, False, False, True],
+            kind="mergesort",
+        )
+        .groupby("target_window_start", sort=False)
+        .head(1)
+    )
+    profitable = pd.to_numeric(
+        top_ranked["profitable"], errors="coerce"
+    ).to_numpy(dtype=float)
+    realized_return = pd.to_numeric(
+        top_ranked["return_on_risk"], errors="coerce"
+    ).to_numpy(dtype=float)
+    net_profit = pd.to_numeric(
+        top_ranked["net_profit"], errors="coerce"
+    ).to_numpy(dtype=float)
+    probability = pd.to_numeric(
+        top_ranked["probability"], errors="coerce"
+    ).to_numpy(dtype=float)
+    if not all(
+        np.isfinite(values).all()
+        for values in (profitable, realized_return, net_profit, probability)
+    ):
+        raise ValueError("Top-candidate assessment values must be finite")
+    return {
+        "role": role,
+        "ranking_rule": ranking_rule,
+        "decision_count": len(top_ranked),
+        "top_candidate_profitable_rate": (
+            float(np.mean(profitable)) if len(top_ranked) else None
         ),
-        "top_ranked_mean_return_on_risk": (
-            float(pd.to_numeric(top_ranked["return_on_risk"], errors="coerce").mean())
-            if not top_ranked.empty
-            else None
+        "mean_realized_return_on_risk": (
+            float(np.mean(realized_return)) if len(top_ranked) else None
         ),
-        "top_ranked_total_net_profit": (
-            float(pd.to_numeric(top_ranked["net_profit"], errors="coerce").sum())
-            if not top_ranked.empty
+        "total_net_profit": (
+            float(np.sum(net_profit)) if len(top_ranked) else None
+        ),
+        "probability_calibration": (
+            _probability_metrics(
+                profitable.astype(int),
+                probability,
+            )
+            if len(top_ranked)
             else None
         ),
     }
+
+
+def _validated_probability_array(
+    values: object,
+    *,
+    label: str,
+) -> np.ndarray:
+    probability = np.asarray(values, dtype=float)
+    if (
+        probability.ndim != 1
+        or not np.isfinite(probability).all()
+        or np.any(probability < 0.0)
+        or np.any(probability > 1.0)
+    ):
+        raise ValueError(f"{label} probabilities must be a finite one-dimensional array in [0, 1]")
+    return probability
 
 
 def _probability_metrics(
@@ -801,6 +898,11 @@ def _model_configuration(
         "categorical_features": list(categorical_features),
         "probability_target_column": "profitable",
         "expected_return_target_column": "return_on_risk_residual_to_prior",
+        "decision_score_definition": (
+            "calibrated_probability_of_strictly_positive_net_profit"
+        ),
+        "fallback_score_definition": "scenario_prior_profit_probability",
+        "assessment_policy_selection": "fixed_before_assessment",
         "calibration_method": "platt",
         "policy": asdict(policy),
         "training_rows": len(partitions.train),

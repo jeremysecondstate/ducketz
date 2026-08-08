@@ -46,28 +46,28 @@ The sibling Options Strategies screen resolves the authoritative run's
 `strategy-candidates.parquet`, validates its separate exact schema, and joins a
 newly fetched Schwab account snapshot when it loads. It displays every
 candidate for the chosen symbol/horizon under the exact headings **Rank**,
-**Strategy**, **Exact legs**, **Market probability**, **Expected return**,
-**Portfolio fit**, and **Overall score**. Its market probability estimates the
-candidate's profitable observed-BBO outcome; it is not the Rolling Forecasts
-up probability. It uses calibrated strategy probability after a compatible
-GOOG route model exists and otherwise displays the explicitly uncalibrated raw
-market-state scenario prior. The prior also supplies expected return and the
-persisted market score, so constructible prior-only rows do not appear blank.
+**Strategy**, **Exact Legs**, **Predictive Score**, **Expected Return**,
+**Portfolio Fit**, and **Score Basis**. Predictive Score is 0 through 100 and
+estimates the candidate's profitable observed-BBO outcome; it is not the Rolling
+Forecasts up probability. Score Basis is **Calibrated ML** after a compatible
+route model exists and **Scenario Prior** for the explicitly uncalibrated
+fallback. Expected Return remains a separate payoff-magnitude estimate.
 
 Current shares, option-position counts, working option-order counts, and
 available funds affect display context and the versioned
-`current-schwab-position-fit-v1` overlay only. They do not rewrite Loop B
+`current-schwab-position-fit-v2` overlay only. The overlay is descriptive and
+cannot change Predictive Score or Rank. These facts do not rewrite Loop B
 Parquet or become historical training features. Selecting an entry in
 **Exact legs** fills or replaces the order ticket, whose visible fields are
 **Schwab order**, **Quantity**, **Order method**, **Limit price**, and
 **Duration**. Its leg table shows human-readable action, exact contract
 expiration/strike/type, quantity, bid, and ask.
 
-The Loop B market score is expected return on risk. The display-time portfolio
-fit adjustment is added to it to produce **Overall score**, after which visible
-**Rank** is recalculated. This ranking belongs only to Options Strategies;
-Rolling Forecasts retains its own persisted directional presentation and does
-not adopt strategy-market or account-overlay fields.
+Options Strategies preserves the complete persisted probability-first Rank.
+Current portfolio facts can change feasibility and exposure text, but having
+cash or shares is not treated as evidence of better market performance. Rolling
+Forecasts retains its own persisted directional presentation and does not adopt
+strategy-market or account-overlay fields.
 
 That separate screen has a direct **Submit Order** button. After a
 human-readable confirmation it uses the existing

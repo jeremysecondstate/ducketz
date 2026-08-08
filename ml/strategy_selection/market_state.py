@@ -11,6 +11,8 @@ import pandas as pd
 
 from ml.strategy_selection.contracts import (
     MARKET_STATE_POLICY_VERSION,
+    SCENARIO_PRIOR_SCORE_BASIS,
+    STRATEGY_CANDIDATE_SCHEMA_VERSION,
     STRATEGY_MODEL_POLICY_VERSION,
     STRATEGY_PRIOR_POLICY_VERSION,
     STRATEGY_RANKING_POLICY_VERSION,
@@ -121,7 +123,18 @@ def score_market_state_prior(
     output["strategy_prior__expected_return_on_risk"] = prior[
         "expected_return_on_risk"
     ]
-    output["raw_profit_probability"] = prior["probability"]
+    probability = pd.to_numeric(prior["probability"], errors="coerce")
+    expected_return = pd.to_numeric(
+        prior["expected_return_on_risk"], errors="coerce"
+    )
+    if (
+        not np.isfinite(probability.to_numpy(dtype=float)).all()
+        or not probability.between(0.0, 1.0).all()
+    ):
+        raise ValueError("Strategy scenario-prior probabilities must be finite in [0, 1]")
+    if not np.isfinite(expected_return.to_numpy(dtype=float)).all():
+        raise ValueError("Strategy scenario-prior expected returns must be finite")
+    output["raw_profit_probability"] = probability
     output["calibrated_profit_probability"] = np.nan
     probability_direction = state.effective_probability_up
     output["direction_probability_up"] = probability_direction
@@ -129,14 +142,16 @@ def score_market_state_prior(
         pd.to_numeric(output["net_delta"], errors="coerce").fillna(0.0)
     ) * (2.0 * probability_direction - 1.0)
     output["expected_net_profit"] = prior["expected_net_profit"]
-    output["expected_return_on_risk"] = prior["expected_return_on_risk"]
-    output["decision_score"] = prior["expected_return_on_risk"]
+    output["expected_return_on_risk"] = expected_return
+    output["decision_score"] = probability
+    output["score_basis"] = SCENARIO_PRIOR_SCORE_BASIS
+    output["schema_version"] = STRATEGY_CANDIDATE_SCHEMA_VERSION
     output["model_version"] = STRATEGY_PRIOR_POLICY_VERSION
     output["model_policy_version"] = STRATEGY_MODEL_POLICY_VERSION
     output["ranking_policy_version"] = STRATEGY_RANKING_POLICY_VERSION
     output["model_status"] = "MARKET_STATE_PRIOR"
     output = output.sort_values(
-        ["decision_score", "raw_profit_probability", "candidate_key"],
+        ["decision_score", "expected_return_on_risk", "candidate_key"],
         ascending=[False, False, True],
         kind="mergesort",
     ).reset_index(drop=True)

@@ -514,14 +514,16 @@ different targets and artifacts:
 | `market_expected_absolute_move`, `market_expected_realized_volatility`, `market_uncertainty`, `market_trend_persistence`, `market_mean_reversion_tendency` | Point-in-time market-state context shared with each exact candidate | `strategy-candidates.parquet` |
 | `raw_profit_probability` | Scenario-prior probability before a model is fit, or fitted classifier probability once sufficient history exists | `strategy-candidates.parquet` |
 | `calibrated_profit_probability` | Empirically calibrated probability that one exact candidate has positive observed-BBO net profit after modeled option fees; null for prior-only rows | `strategy-candidates.parquet` |
-| `decision_score` | Expected strategy return on risk from the scenario prior or fitted expected-return model | `strategy-candidates.parquet` |
-| display overall score | Persisted decision score plus the freshly calculated Schwab position-fit adjustment | Options Strategies UI only |
+| `decision_score` | Primary profitable-outcome probability: calibrated for fitted rows, scenario prior for fallback rows | `strategy-candidates.parquet` |
+| `score_basis` | `CALIBRATED_MODEL` or `SCENARIO_PRIOR`; identifies how `decision_score` was produced | `strategy-candidates.parquet` |
+| `expected_return_on_risk` | Separate payoff-magnitude estimate; secondary ranking key only | `strategy-candidates.parquet` |
+| portfolio fit | Freshly calculated feasibility/exposure description with no score or rank influence | Options Strategies UI only |
 
 The strategy stage runs after all required directional predictions succeed.
 `point-in-time-market-state-v1` combines the matching directional probability
 with causal exact-surface and audited route context to describe direction,
 expected move, expected realized volatility, uncertainty, trend persistence,
-and mean-reversion tendency. `greek-bbo-scenario-prior-v1` uses that state with
+and mean-reversion tendency. `greek-bbo-scenario-prior-v2` uses that state with
 each candidate's exact Greeks, holding time, BBO spread, fees, and payoff bounds
 to produce an immediate raw probability and expected return. Direction therefore
 influences the candidate through its market-state distribution, not through a

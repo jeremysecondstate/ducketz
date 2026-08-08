@@ -34,22 +34,24 @@ constructible candidate and its measurements.
 | Exact-chain candidate construction | `schwab-exact-chain-candidates-v3` |
 | Causal quote outcome | `observed-bbo-pseudo-outcome-v2` |
 | Point-in-time market state | `point-in-time-market-state-v1` |
-| Exact-mechanics scenario prior | `greek-bbo-scenario-prior-v1` |
-| Chronological strategy model | `market-state-hgb-platt-return-v3` |
-| Persisted market ranking | `continuous-market-state-ranking-v2` |
-| Research trace | `nyu-hu-uh-trace-v2` |
-| Display-time Schwab position overlay | `current-schwab-position-fit-v1` |
+| Exact-mechanics scenario prior | `greek-bbo-scenario-prior-v2` |
+| Chronological strategy model | `market-state-hgb-platt-return-v4` |
+| Persisted market ranking | `probability-first-ranking-v3` |
+| Candidate Parquet schema | `strategy-candidate-v2` |
+| Authoritative publication / pointer | `strategy-publication-v2` / `strategy-pointer-v2` |
+| Research trace | `nyu-hu-uh-trace-v3` |
+| Display-time Schwab position overlay | `current-schwab-position-fit-v2` |
 | UI-to-Schwab order draft | `schwab-strategy-order-draft-v1` |
 
-The first nine identifiers belong to Strategy artifacts and manifests. The last
-two belong to the UI boundary: neither current account state nor an order draft
-is persisted as a historical strategy-model feature.
+The Strategy identifiers through the research trace belong to artifacts and
+manifests. The last two belong to the UI boundary: neither current account
+state nor an order draft is persisted as a historical strategy-model feature.
 
 ## Research traceability
 
 The implementation carries a readable research trace in every Strategy
 run manifest and every strategy-model manifest. The machine-readable trace is
-versioned as `nyu-hu-uh-trace-v2`.
+versioned as `nyu-hu-uh-trace-v3`.
 
 | Source | Retained insight | Implemented consequence | Explicit boundary |
 |---|---|---|---|
@@ -217,7 +219,7 @@ can support action.
 
 ## Training, calibration, and assessment
 
-Model policy `market-state-hgb-platt-return-v3` is route-specific. Every exact
+Model policy `market-state-hgb-platt-return-v4` is route-specific. Every exact
 candidate from one `target_window_start` remains in the same partition.
 Target-window overlap is purged at both chronological boundaries.
 
@@ -248,7 +250,7 @@ to the probability model; neither calibration nor assessment outcomes fit the
 expected-return model.
 
 Before enough complete outcomes exist to fit those estimators,
-`greek-bbo-scenario-prior-v1` supplies a causal score for every constructible
+`greek-bbo-scenario-prior-v2` supplies a causal score for every constructible
 candidate. It evaluates 129 deterministic half-normal move magnitudes in each
 direction, weights the signs by the separate directional probability, and uses
 the candidate's aggregate delta, gamma, theta, holding time, exact BBO spread,
@@ -290,11 +292,16 @@ contain current account holdings.
 
 The assessment manifest records raw and calibrated log loss, Brier score, ROC
 AUC, accuracy at 0.5, target base rate, calibration support excursions,
-decision/row counts, boundary-purge counts, and the profitable rate, mean return
-on risk, and total net profit of the top-ranked candidate from every assessment
-decision. It also records expected-return mean absolute error and root mean
-squared error. The 0.5 cutoff is a reported classification metric, not a row
-filter.
+decision/row counts, boundary-purge counts, and expected-return mean absolute
+error and root mean squared error. It also evaluates two formulas fixed before
+assessment. `probability_first` is the active policy;
+`expected_return_first_benchmark` preserves the former policy only as a
+benchmark. Each reports decision count, top-candidate profitable rate, mean
+realized return on risk, total net profit, and top-candidate probability
+calibration metrics. The manifest states that assessment was used for neither
+training, calibration, nor ranking-policy selection. No assessment outcome
+tunes a weight or selects a formula. The 0.5 cutoff is a reported metric, not a
+row filter or trade gate.
 
 The existing Loop B directional probability is one causal input to the market
 state and scenario prior. It is not copied into the calibrated candidate
@@ -303,19 +310,28 @@ probability, and no fixed post-calibration directional bonus is added.
 Candidate profitable-outcome probability remains separately reported and is
 not mislabeled as a direction probability.
 
-For current candidates, `continuous-market-state-ranking-v2` computes:
+For current candidates, `probability-first-ranking-v3` computes:
 
 ```text
-decision_score
-    = expected_return_on_risk
+fitted decision_score
+    = calibrated_probability(strictly positive net profit)
+
+fallback decision_score
+    = scenario_prior_probability(strictly positive net profit)
 ```
 
-Prior-only rows sort by descending decision score, then raw scenario profit
-probability, then readable `candidate_key`. Fitted rows use calibrated
-profitable-outcome probability as the second key. `candidate_rank` is 1 through
-N with no threshold or missing rank. The assessment manifest's top-candidate
-diagnostic uses highest expected return and then calibrated probability per
-decision. Neither rule is a trade gate.
+The profitable event is `net_profit > 0` under
+`observed-bbo-pseudo-outcome-v2`: conservative bid/ask crossing, exact contract
+continuity, and modeled entry and exit option fees are already included. Fitted
+rows use `score_basis=CALIBRATED_MODEL`; fallback rows use
+`score_basis=SCENARIO_PRIOR` and are never described as calibrated ML.
+
+Both paths sort by descending `decision_score`, then descending
+`expected_return_on_risk`, then ascending readable `candidate_key` with a stable
+sort. `candidate_rank` is complete from 1 through N. Expected return remains a
+separate payoff-magnitude estimate and never becomes the primary score. Current
+account state is absent from both keys. There is no threshold, recommendation
+action, or trade gate.
 
 ## Outputs and compatibility
 
@@ -403,13 +419,23 @@ direction_alignment:float64
 expected_net_profit:float64
 expected_return_on_risk:float64
 decision_score:float64
+score_basis:string
 candidate_rank:int64
+pricing_mode:string
+pricing_status:string
+pricing_leg_coverage:float64
+pricing_missing_reason:string
+pricing_candidate_edge:float64
+pricing_edge_to_friction:float64
+pricing_uncertainty:float64
+pricing_edge_minus_scenario_expected_profit:float64
 model_version:string
 model_status:string
 registry_version:string
 candidate_policy_version:string
 model_policy_version:string
 ranking_policy_version:string
+schema_version:string
 ```
 
 The exact audit physical field order is:
@@ -432,12 +458,16 @@ candidate_policy_version:string
 ```
 
 The candidate output contains every constructible variant. Before a fitted
-model is available, each row has `model_status=MARKET_STATE_PRIOR`, a raw
-scenario profit probability, expected net profit, expected return on risk,
-decision score, and an uninterrupted route rank from 1 through N. Its
+model is available, each row has `model_status=MARKET_STATE_PRIOR`,
+`score_basis=SCENARIO_PRIOR`, a raw scenario profit probability, expected net
+profit, expected return on risk, probability-valued decision score, and an
+uninterrupted route rank from 1 through N. Its
 `calibrated_profit_probability` remains null because no GOOG calibration has
 occurred. A fitted model replaces the raw probability and expected-return
-values, fills calibrated probability, and uses `model_status=MODEL_FIT`. The
+values, fills calibrated probability, copies that probability to
+`decision_score`, and uses `model_status=MODEL_FIT` with
+`score_basis=CALIBRATED_MODEL`. Every row declares
+`schema_version=strategy-candidate-v2`. The
 audit has one row per attempted current concrete route and registry strategy,
 including
 non-constructible and lifecycle cases. A route with unavailable chain history
@@ -466,6 +496,13 @@ choose a directory by modification time or read a multi-file generation before
 its receipt. The full natural-key and schema rules are in
 [Parquet ID contract](parquet-id-contract.md).
 
+The downstream option-pricing strategy-outcome audit carries both
+`decision_score` and `score_basis`; its evidence, receipt, and pointer contracts
+are versioned `option-pricing-strategy-outcome-evidence-v2`,
+`option-pricing-strategy-outcome-receipt-v2`, and
+`option-pricing-strategy-outcome-pointer-v2`. It treats the score as an audited
+probability field and does not modify ranking or order behavior.
+
 ## Duckets display and Schwab order ticket
 
 **Options Strategies** is a sibling of **Rolling Forecasts**, not a replacement
@@ -479,21 +516,20 @@ The Duckets **Options Strategies** tab reads the authoritative published
 symbol and concrete horizon. The visible horizon choices are **1 hour**,
 **4 hour**, **1 day**, **Five session aggregate**, and **Week day 1** through
 **Week day 5**, limited to routes present for the selected symbol. The table's
-exact headings are **Rank**, **Strategy**, **Exact legs**, **Market
-probability**, **Expected return**, **Portfolio fit**, and **Overall score**.
+exact headings are **Rank**, **Strategy**, **Exact Legs**, **Predictive Score**,
+**Expected Return**, **Portfolio Fit**, and **Score Basis**.
 Strategy and order values are rendered as human language rather than schema or
 Schwab API constants.
 
-**Market probability** is the calibrated profitable-outcome probability when a
-compatible fitted model exists; otherwise it is the explicitly uncalibrated raw
-scenario prior. It is never the directional probability. **Expected return** is
-persisted expected return on risk. The persisted `candidate_rank` is the Strategy
-market rank; visible **Rank** is recalculated after the live portfolio overlay.
-The UI sorts descending by overall score, then the displayed market
-probability, then readable `candidate_key`, and numbers every displayed row 1
-through N. A prior-only route therefore displays populated market probability,
-expected return, portfolio fit, and overall score without pretending that GOOG
-calibration exists.
+**Predictive Score** is `100 × decision_score`, bounded from 0 through 100. It
+means the fitted calibrated probability of a strictly positive net outcome when
+**Score Basis** is **Calibrated ML**, and the mechanics-based scenario-prior
+profit probability when the basis is **Scenario Prior**. It is never the
+directional probability, and the same probability is not displayed under a
+second name. **Expected Return** is persisted expected return on risk. Visible
+**Rank** is the persisted `candidate_rank`; the UI validates that each route has
+exactly ranks 1 through N and sorts by that rank. It does not recalculate market
+rank from account state.
 
 The model and exact-chain measurements remain in Parquet. Current holdings are
 intentionally joined at display time because shares, option positions, working
@@ -506,34 +542,23 @@ working orders are shown with the current position. Available funds are shown
 in portfolio-fit detail when a strategy has a stock-purchase or cash-secured
 requirement.
 
-Policy `current-schwab-position-fit-v1` applies these exact score adjustments:
-
-- a strategy requiring existing shares gets `+0.05` when all required shares
-  are held; otherwise it gets
-  `-0.05 × (1 - clamped_share_coverage)`;
-- a protective strategy that can use existing or atomic shares gets `+0.05`
-  when the required shares are already held;
-- an atomic-share or cash-secured requirement gets `+0.03` when reported funds
-  cover the estimate and `-0.03` when they do not; unreported funds contribute
-  zero but remain explicit in the text;
-- when no share/fund requirement label applies, negative delta against held
-  shares receives up to `+0.03` in proportion to
-  `abs(net_delta) / held_shares`, near-neutral delta gets `+0.01`, additional
-  positive delta gets zero, and a strategy independent of shares gets zero.
+Policy `current-schwab-position-fit-v2` produces description only. It reports
+whether required shares are held, whether protection uses held or atomic
+shares, whether reported funds cover an estimated stock-purchase or
+cash-secured-put requirement, and whether candidate delta hedges, adds to, or
+balances existing share exposure. It has no numeric score, bonus, penalty, or
+sorting role. Having cash or held shares can change feasibility and exposure;
+it is not evidence of better market performance.
 
 For an atomic stock leg, the funding estimate uses `capital_required`. For a
 cash-secured short put, it uses exact strike × multiplier × quantity; when more
 than one estimate applies, the maximum is used. Current option counts and
-working-order counts provide context but do not add a hidden score term. The
-persisted market score is `decision_score`; the displayed overall score is:
-
-```text
-overall_score = persisted decision_score + live portfolio-fit adjustment
-```
-
-If the persisted market score is unavailable, overall score remains
-unavailable. The overlay never rewrites the immutable candidate artifact and
-never enters strategy fitting, calibration, or assessment.
+working-order counts provide context only. The overlay never rewrites the
+immutable candidate artifact, changes `decision_score` or `candidate_rank`, or
+enters strategy fitting, calibration, or assessment. Missing or non-finite
+scores, out-of-range probabilities, incomplete ranks, incompatible versions,
+and contradictory model-status/score-basis combinations fail loading rather
+than silently changing semantics.
 
 The order ticket remains empty until the user selects an entry in the
 **Exact legs** column; that selection replaces any previous ticket. The ticket

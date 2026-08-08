@@ -657,13 +657,13 @@ Before fitting, `point-in-time-market-state-v1` combines the separate route
 direction probability with causal exact-surface and audited sample context. It
 records expected absolute move, expected realized volatility, normalized
 uncertainty, trend persistence, and mean-reversion tendency. The exact-mechanics
-`greek-bbo-scenario-prior-v1` then evaluates every candidate over deterministic
+`greek-bbo-scenario-prior-v2` then evaluates every candidate over deterministic
 up/down move scenarios using its aggregate Greeks, holding time, exact BBO
 spread, modeled fees, and exact profit/loss bounds. This prior is available on
 the first constructible route; it is not an empirical GOOG calibration.
 
 After sufficient complete outcomes exist,
-`market-state-hgb-platt-return-v3` fits a nonlinear histogram-gradient-boosting
+`market-state-hgb-platt-return-v4` fits a nonlinear histogram-gradient-boosting
 classifier for profitable outcome and a separate histogram-gradient-boosting
 regressor for return-on-risk residual relative to that prior. Platt calibration
 is fit only on the calibration partition and only for the probability model.
@@ -682,18 +682,19 @@ boundary, ordered numeric and categorical features, preprocessing, model,
 candidate, outcome, ranking, registry, and research-trace policy versions.
 The principal identifiers are `schwab-spreads-strategy-registry-v1`,
 `schwab-exact-chain-candidates-v3`, `observed-bbo-pseudo-outcome-v2`,
-`point-in-time-market-state-v1`, `greek-bbo-scenario-prior-v1`,
-`market-state-hgb-platt-return-v3`, `continuous-market-state-ranking-v2`, and
-`nyu-hu-uh-trace-v2`.
+`point-in-time-market-state-v1`, `greek-bbo-scenario-prior-v2`,
+`market-state-hgb-platt-return-v4`, `probability-first-ranking-v3`,
+`strategy-candidate-v2`, and `nyu-hu-uh-trace-v3`.
 
 The current candidate pass uses the canonical live directional prediction for
 the matching symbol/horizon/decision and publishes every exact-chain variant
 that can be constructed from the latest eligible entry receipt. With a fitted
 strategy model it writes raw and calibrated profitable-outcome probability,
-expected net profit, expected return on risk, a continuous market score, and
-rank. Without a fitted model it publishes the same fields from the explicitly
-uncalibrated scenario prior, except that calibrated probability remains null,
-and labels the rows `MARKET_STATE_PRIOR`. Each attempted current route also gets
+expected net profit, expected return on risk, calibrated probability as the
+primary score, and a probability-first rank. Without a fitted model it uses the
+explicitly uncalibrated scenario-prior profit probability as the primary score,
+leaves calibrated probability null, and labels the score basis **Scenario
+Prior**. Each attempted current route also gets
 one audit row for each of the 40 registry strategies; missing history or
 construction failure is reported there. Even when there are no candidate or
 audit rows, the two exact empty schemas are published.
@@ -704,10 +705,11 @@ positive; the latter estimates the route's cost-adjusted underlying direction.
 Direction instead shapes the sign weights in the causal market-state prior and
 enters the fitted strategy model as context alongside move, volatility,
 uncertainty, trend, mean-reversion, exact-chain, and audited point-in-time
-features. The continuous ranking score is expected return on risk; no fixed
-post-calibration direction bonus is added. `direction_alignment` remains an
-auditable measurement. The stage does not change directional model inputs,
-targets, partitions, defaults, or artifacts.
+features. The primary ranking score is profitable-outcome probability; expected
+return on risk is a separate secondary key and payoff-magnitude estimate. No
+fixed post-calibration direction or account-state bonus is added.
+`direction_alignment` remains an auditable measurement. The stage does not
+change directional model inputs, targets, partitions, defaults, or artifacts.
 
 The stage writes `strategy-candidates.parquet` and
 `strategy-audit.parquet`. It publishes an analytical surface, not an order or
@@ -1021,9 +1023,11 @@ snapshot at display time. It can fill a user-editable ticket only from the
 selected **Exact legs** entry and can submit the confirmed component through
 `SchwabSession().submit_order(...)`. That UI action is separate from Loop B;
 it does not rewrite the immutable publication or turn live holdings into model
-features. **Market probability** displays calibrated strategy probability when
-available and otherwise the raw scenario prior; it never substitutes the
-directional forecast.
+features. **Predictive Score** displays the profitable-outcome probability on a
+0–100 scale, while **Score Basis** distinguishes **Calibrated ML** from
+**Scenario Prior**. It never substitutes the directional forecast. Expected
+Return and descriptive Portfolio Fit remain separate and cannot replace or
+adjust the published market rank.
 
 The run manifest records a `publication_counts` breakdown with total and
 backtest prediction rows, fresh LIVE rows, carried active LIVE rows, retained

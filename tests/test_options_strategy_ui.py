@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -26,6 +27,13 @@ from ml.parquet_contracts import (
     write_parquet_with_schema,
 )
 from ml.strategy_selection.registry import STRATEGY_REGISTRY
+from ml.strategy_selection.contracts import (
+    CALIBRATED_MODEL_SCORE_BASIS,
+    SCENARIO_PRIOR_SCORE_BASIS,
+    STRATEGY_CANDIDATE_SCHEMA_VERSION,
+    STRATEGY_MODEL_POLICY_VERSION,
+    STRATEGY_RANKING_POLICY_VERSION,
+)
 
 
 def test_position_context_reads_equity_options_cash_and_working_orders() -> None:
@@ -542,7 +550,7 @@ def test_strategy_loader_combines_model_output_with_current_position(
                 ask=1.30,
             ),
         ],
-        decision_score=0.10,
+        decision_score=0.62,
         calibrated_profit_probability=0.62,
         expected_return_on_risk=0.08,
         net_delta=-25.0,
@@ -579,7 +587,9 @@ def test_strategy_loader_combines_model_output_with_current_position(
     result = view.candidates[0]
     assert result.exact_legs == "Buy 1 $105 Put · Sell 1 $95 Put"
     assert result.portfolio_fit.label == "Downside Hedge"
-    assert result.overall_score == pytest.approx(0.1075)
+    assert result.predictive_score == pytest.approx(62.0)
+    assert 0.0 <= result.predictive_score <= 100.0
+    assert result.score_basis == "Calibrated ML"
     assert (
         result.order_draft.orders[0].complex_order_strategy_type
         == "VERTICAL"
@@ -606,9 +616,11 @@ def test_strategy_loader_uses_market_state_prior_until_calibration_exists(
         calibrated_profit_probability=float("nan"),
         expected_net_profit=12.0,
         expected_return_on_risk=0.04,
-        decision_score=0.04,
+        decision_score=0.57,
         candidate_rank=1,
         model_status="MARKET_STATE_PRIOR",
+        model_version="greek-bbo-scenario-prior-v2",
+        score_basis=SCENARIO_PRIOR_SCORE_BASIS,
     )
     path = tmp_path / "strategy-candidates.parquet"
     write_parquet_with_schema(
@@ -627,9 +639,10 @@ def test_strategy_loader_uses_market_state_prior_until_calibration_exists(
         ),
     )
 
-    assert view.candidates[0].market_probability == pytest.approx(0.57)
+    assert view.candidates[0].predictive_score == pytest.approx(57.0)
+    assert 0.0 <= view.candidates[0].predictive_score <= 100.0
     assert view.candidates[0].expected_return == pytest.approx(0.04)
-    assert view.candidates[0].overall_score == pytest.approx(0.04)
+    assert view.candidates[0].score_basis == "Scenario Prior"
 
 
 def test_exact_legs_match_whether_protective_stock_is_held_or_bought(
@@ -689,6 +702,144 @@ def test_exact_legs_match_whether_protective_stock_is_held_or_bought(
     ] == ["OPTION"]
 
 
+def test_portfolio_state_changes_fit_text_but_not_predictive_score_or_rank(
+    tmp_path: Path,
+) -> None:
+    candidate = _candidate(
+        strategy_name="covered_strangle",
+        strategy_display_name="Covered Strangle / Combination",
+        stock_requirement="EXISTING_100_SHARES",
+        cash_requirement="PUT_STRIKE_TIMES_MULTIPLIER",
+        legs=[
+            _stock_leg(bid=104.90, ask=105.10),
+            _option_leg(
+                side="SHORT",
+                option_type="PUT",
+                strike=95,
+                symbol="GOOG  260918P00095000",
+                bid=1.20,
+                ask=1.30,
+            ),
+            _option_leg(
+                side="SHORT",
+                option_type="CALL",
+                strike=110,
+                symbol="GOOG  260918C00110000",
+                bid=2.00,
+                ask=2.10,
+            ),
+        ],
+        decision_score=0.73,
+        calibrated_profit_probability=0.73,
+        candidate_rank=1,
+    )
+    path = tmp_path / "strategy-candidates.parquet"
+    write_parquet_with_schema(
+        pd.DataFrame([candidate]),
+        path,
+        STRATEGY_CANDIDATE_SCHEMA,
+    )
+    constrained = PortfolioSnapshot(
+        source="schwab",
+        account_label="Schwab",
+        account_facts={
+            "positions": {"items": []},
+            "account_values": {"available_funds": 5_000},
+        },
+    )
+    covered = PortfolioSnapshot(
+        source="schwab",
+        account_label="Schwab",
+        account_facts={
+            "positions": {
+                "items": [
+                    {
+                        "asset_type": "EQUITY",
+                        "symbol": "GOOG",
+                        "net_quantity": 100,
+                    }
+                ]
+            },
+            "account_values": {"available_funds": 15_000},
+        },
+    )
+
+    constrained_view = load_strategy_candidates(path, snapshot=constrained)
+    covered_view = load_strategy_candidates(path, snapshot=covered)
+    constrained_candidate = constrained_view.candidates[0]
+    covered_candidate = covered_view.candidates[0]
+
+    assert constrained_candidate.portfolio_fit.label != covered_candidate.portfolio_fit.label
+    assert constrained_candidate.predictive_score == covered_candidate.predictive_score == 73.0
+    assert constrained_candidate.rank == covered_candidate.rank == 1
+    assert constrained_candidate.row["candidate_rank"] == covered_candidate.row["candidate_rank"] == 1
+
+
+def test_strategy_loader_preserves_complete_deterministic_market_ranks(
+    tmp_path: Path,
+) -> None:
+    rank_two = _candidate(
+        strategy_name="long_put",
+        strategy_display_name="Long Put",
+        legs=[
+            _option_leg(
+                side="LONG",
+                option_type="PUT",
+                strike=95,
+                symbol="GOOG  260918P00095000",
+                bid=1.20,
+                ask=1.30,
+            )
+        ],
+        decision_score=0.40,
+        calibrated_profit_probability=0.40,
+        candidate_rank=2,
+    )
+    rank_one = _candidate(
+        strategy_name="long_call",
+        strategy_display_name="Long Call",
+        legs=[
+            _option_leg(
+                side="LONG",
+                option_type="CALL",
+                strike=105,
+                symbol="GOOG  260918C00105000",
+                bid=2.40,
+                ask=2.50,
+            )
+        ],
+        decision_score=0.80,
+        calibrated_profit_probability=0.80,
+        candidate_rank=1,
+    )
+    path = tmp_path / "strategy-candidates.parquet"
+    write_parquet_with_schema(
+        pd.DataFrame([rank_two, rank_one]),
+        path,
+        STRATEGY_CANDIDATE_SCHEMA,
+    )
+
+    view = load_strategy_candidates(
+        path,
+        snapshot=PortfolioSnapshot(
+            source="schwab",
+            account_label="Schwab",
+            account_facts={},
+        ),
+    )
+
+    assert [candidate.strategy_name for candidate in view.candidates] == [
+        "long_call",
+        "long_put",
+    ]
+    assert [candidate.rank for candidate in view.candidates] == [1, 2]
+    assert all(
+        math.isfinite(candidate.predictive_score)
+        and 0.0 <= candidate.predictive_score <= 100.0
+        for candidate in view.candidates
+    )
+
+
 def test_portfolio_fit_combines_held_shares_and_available_funds() -> None:
     candidate = _candidate(
         strategy_name="covered_strangle",
@@ -734,7 +885,6 @@ def test_portfolio_fit_combines_held_shares_and_available_funds() -> None:
     result = portfolio_fit(candidate, position=position)
 
     assert result.label == "Uses Shares and Funds"
-    assert result.score_adjustment == pytest.approx(0.08)
     assert "$15,000.00" in result.detail
     assert "$9,500.00" in result.detail
 
@@ -763,7 +913,6 @@ def test_portfolio_fit_reports_funds_below_cash_secured_estimate() -> None:
     result = portfolio_fit(candidate, position=position)
 
     assert result.label == "Funds Below Estimate"
-    assert result.score_adjustment == pytest.approx(-0.03)
     assert "$5,000.00" in result.detail
     assert "$9,500.00" in result.detail
 
@@ -946,14 +1095,16 @@ def _candidate(
         "direction_alignment": 0.0,
         "expected_net_profit": 10.0,
         "expected_return_on_risk": 0.07,
-        "decision_score": 0.07,
+        "decision_score": 0.61,
+        "score_basis": CALIBRATED_MODEL_SCORE_BASIS,
         "candidate_rank": 1,
         "model_version": "test-model",
         "model_status": "MODEL_FIT",
         "registry_version": "test-registry",
         "candidate_policy_version": "test-candidates",
-        "model_policy_version": "test-model-policy",
-        "ranking_policy_version": "test-ranking",
+        "model_policy_version": STRATEGY_MODEL_POLICY_VERSION,
+        "ranking_policy_version": STRATEGY_RANKING_POLICY_VERSION,
+        "schema_version": STRATEGY_CANDIDATE_SCHEMA_VERSION,
         **values,
     }
 

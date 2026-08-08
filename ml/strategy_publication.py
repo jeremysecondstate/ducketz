@@ -9,10 +9,15 @@ from typing import Mapping
 import pandas as pd
 
 from ml.artifacts import file_checksum, verify_manifest
+from ml.strategy_selection.contracts import (
+    STRATEGY_CANDIDATE_SCHEMA_VERSION,
+    STRATEGY_MODEL_POLICY_VERSION,
+    STRATEGY_RANKING_POLICY_VERSION,
+)
 
 
-STRATEGY_PUBLICATION_VERSION = "strategy-publication-v1"
-STRATEGY_POINTER_VERSION = "strategy-pointer-v1"
+STRATEGY_PUBLICATION_VERSION = "strategy-publication-v2"
+STRATEGY_POINTER_VERSION = "strategy-pointer-v2"
 STRATEGY_RECEIPT_NAME = "publication.json"
 
 
@@ -47,6 +52,7 @@ def publish_strategy_run(
             f"Strategy run is outside immutable strategy-runs: {run}"
         )
     manifest = verify_manifest(run)
+    candidate_contract = _candidate_contract(manifest)
     published = _utc(published_at, "published_at")
     receipt = {
         "schema_version": STRATEGY_PUBLICATION_VERSION,
@@ -57,6 +63,7 @@ def publish_strategy_run(
         "published_at": published.isoformat(),
         "manifest_checksum_sha256": file_checksum(run / "manifest.json"),
         "source_loop_b": dict(source_loop_b),
+        "candidate_contract": candidate_contract,
     }
     receipt_path = run / STRATEGY_RECEIPT_NAME
     _write_json_atomic(receipt_path, receipt)
@@ -122,6 +129,8 @@ def read_current_strategy_publication(datastore_root: Path) -> StrategyPublicati
         else None
     )
     receipt_source = receipt.get("source_loop_b")
+    manifest_candidate_contract = _candidate_contract(manifest)
+    receipt_candidate_contract = receipt.get("candidate_contract")
     if (
         receipt.get("schema_version") != STRATEGY_PUBLICATION_VERSION
         or receipt.get("run_path") != raw_path
@@ -131,11 +140,35 @@ def read_current_strategy_publication(datastore_root: Path) -> StrategyPublicati
         or not isinstance(manifest_source, Mapping)
         or not isinstance(receipt_source, Mapping)
         or dict(receipt_source) != dict(manifest_source)
+        or not isinstance(receipt_candidate_contract, Mapping)
+        or dict(receipt_candidate_contract) != manifest_candidate_contract
     ):
         raise StrategyPublicationError(
             f"Strategy pointer does not match its completed receipt: {run}"
         )
     return StrategyPublication(run, manifest, receipt, pointer)
+
+
+def _candidate_contract(manifest: Mapping[str, object]) -> dict[str, object]:
+    configuration = manifest.get("configuration")
+    observed = (
+        configuration.get("strategy_candidate_contract")
+        if isinstance(configuration, Mapping)
+        else None
+    )
+    expected: dict[str, object] = {
+        "schema_version": STRATEGY_CANDIDATE_SCHEMA_VERSION,
+        "model_policy_version": STRATEGY_MODEL_POLICY_VERSION,
+        "ranking_policy_version": STRATEGY_RANKING_POLICY_VERSION,
+        "decision_score": "profitable_outcome_probability",
+        "fitted_score_basis": "CALIBRATED_MODEL",
+        "fallback_score_basis": "SCENARIO_PRIOR",
+    }
+    if not isinstance(observed, Mapping) or dict(observed) != expected:
+        raise StrategyPublicationError(
+            "Strategy manifest candidate score contract is incompatible"
+        )
+    return expected
 
 
 def resolve_current_strategy_output(datastore_root: Path, name: str) -> Path:
@@ -173,6 +206,7 @@ def _utc(value: object, label: str) -> pd.Timestamp:
 
 
 __all__ = [
+    "STRATEGY_POINTER_VERSION",
     "STRATEGY_PUBLICATION_VERSION",
     "StrategyPublication",
     "StrategyPublicationError",

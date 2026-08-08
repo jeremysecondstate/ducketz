@@ -21,7 +21,7 @@ _TRACE: Mapping[str, object] = {
             "implemented_requirements": [
                 "immutable receipt-only inputs",
                 "decision-cluster chronological partitions",
-                "continuous probabilities and complete candidate rankings",
+                "probability-first scoring and complete deterministic rankings",
                 "quote-quality and liquidity diagnostics published as features",
                 "bid-ask and fee-aware outcome labels",
             ],
@@ -41,6 +41,7 @@ _TRACE: Mapping[str, object] = {
                 "exact Schwab-chain premium and liquidity features",
                 "future causal chain receipts for quote-based pseudo-outcome labels",
                 "calibrated profitable-outcome probability",
+                "expected return reported separately from ranking probability",
                 "full route ranking without an embedded trading verdict",
             ],
             "rejected_elements": [

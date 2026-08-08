@@ -23,6 +23,13 @@ from ml.parquet_contracts import (
     STRATEGY_CANDIDATE_SCHEMA,
     verify_parquet_schema,
 )
+from ml.strategy_selection.contracts import (
+    CALIBRATED_MODEL_SCORE_BASIS,
+    SCENARIO_PRIOR_SCORE_BASIS,
+    STRATEGY_CANDIDATE_SCHEMA_VERSION,
+    STRATEGY_MODEL_POLICY_VERSION,
+    STRATEGY_RANKING_POLICY_VERSION,
+)
 
 
 HORIZON_LABELS = {
@@ -37,14 +44,17 @@ HORIZON_LABELS = {
     "1w-d5": "Week Day 5",
 }
 HORIZON_ORDER = tuple(HORIZON_LABELS)
-PORTFOLIO_FIT_POLICY_VERSION = "current-schwab-position-fit-v1"
+PORTFOLIO_FIT_POLICY_VERSION = "current-schwab-position-fit-v2"
+_SCORE_BASIS_LABELS = {
+    CALIBRATED_MODEL_SCORE_BASIS: "Calibrated ML",
+    SCENARIO_PRIOR_SCORE_BASIS: "Scenario Prior",
+}
 
 
 @dataclass(frozen=True)
 class PortfolioFit:
     label: str
     detail: str
-    score_adjustment: float
     policy_version: str = PORTFOLIO_FIT_POLICY_VERSION
 
 
@@ -55,17 +65,14 @@ class StrategyCandidateView:
     horizon: str
     horizon_label: str
     rank: int
-    market_rank: int | None
     strategy_name: str
     strategy_display_name: str
     exact_legs: str
-    raw_probability: float | None
-    market_probability: float | None
+    predictive_score: float
     expected_net_profit: float | None
     expected_return: float | None
-    market_score: float | None
     portfolio_fit: PortfolioFit
-    overall_score: float | None
+    score_basis: str
     position: SchwabPositionContext
     order_draft: StrategyOrderDraft
     row: Mapping[str, object]
@@ -136,11 +143,21 @@ def _candidate_views(
         "id",
         "symbol",
         "horizon",
+        "decision_timestamp",
         "strategy_name",
         "strategy_display_name",
         "legs_json",
+        "raw_profit_probability",
+        "calibrated_profit_probability",
+        "expected_net_profit",
+        "expected_return_on_risk",
         "decision_score",
+        "score_basis",
         "candidate_rank",
+        "model_status",
+        "model_policy_version",
+        "ranking_policy_version",
+        "schema_version",
     }
     missing = sorted(required.difference(frame.columns))
     if missing:
@@ -152,10 +169,23 @@ def _candidate_views(
     for (symbol, horizon), route in frame.groupby(
         ["symbol", "horizon"], sort=False, dropna=False
     ):
+        if pd.isna(symbol) or pd.isna(horizon):
+            raise ValueError("Options strategy candidates contain a null route")
         clean_symbol = str(symbol).strip().upper()
         clean_horizon = str(horizon).strip().lower()
-        if not clean_symbol or clean_horizon not in HORIZON_LABELS:
-            continue
+        if not clean_symbol:
+            raise ValueError("Options strategy candidates contain a blank symbol")
+        if clean_horizon not in HORIZON_LABELS:
+            raise ValueError(
+                f"Options strategy candidates contain unsupported horizon: {horizon}"
+            )
+        decision_times = pd.to_datetime(
+            route["decision_timestamp"], utc=True, errors="coerce"
+        )
+        if decision_times.isna().any() or decision_times.nunique() != 1:
+            raise ValueError(
+                "Options strategy candidates must contain one valid decision per route"
+            )
         position = schwab_position_context(
             snapshot.account_facts,
             symbol=clean_symbol,
@@ -163,38 +193,101 @@ def _candidate_views(
         )
         route_rows: list[dict[str, object]] = []
         for row in route.to_dict("records"):
-            fit = portfolio_fit(row, position=position)
-            market_score = _number(row.get("decision_score"))
-            raw_probability = _number(row.get("raw_profit_probability"))
-            calibrated_probability = _number(
-                row.get("calibrated_profit_probability")
+            if row.get("schema_version") != STRATEGY_CANDIDATE_SCHEMA_VERSION:
+                raise ValueError(
+                    "Options strategy candidate schema version is incompatible"
+                )
+            if row.get("ranking_policy_version") != STRATEGY_RANKING_POLICY_VERSION:
+                raise ValueError(
+                    "Options strategy candidate ranking policy is incompatible"
+                )
+            if row.get("model_policy_version") != STRATEGY_MODEL_POLICY_VERSION:
+                raise ValueError(
+                    "Options strategy candidate model policy is incompatible"
+                )
+            candidate_key = str(row.get("candidate_key") or "").strip()
+            if not candidate_key:
+                raise ValueError("Options strategy candidate key is blank")
+            rank = _required_rank(row.get("candidate_rank"))
+            probability = _required_probability(
+                row.get("decision_score"),
+                label="Predictive score",
             )
+            basis_code = str(row.get("score_basis") or "").strip().upper()
+            basis_label = _SCORE_BASIS_LABELS.get(basis_code)
+            if basis_label is None:
+                raise ValueError(
+                    f"Options strategy candidate score basis is invalid: {basis_code or 'missing'}"
+                )
+            model_status = str(row.get("model_status") or "").strip().upper()
+            raw_probability = _required_probability(
+                row.get("raw_profit_probability"),
+                label="Raw profit probability",
+            )
+            backing_probability = (
+                _required_probability(
+                    row.get("calibrated_profit_probability"),
+                    label="Calibrated model probability",
+                )
+                if basis_code == CALIBRATED_MODEL_SCORE_BASIS
+                else raw_probability
+            )
+            expected_status = (
+                "MODEL_FIT"
+                if basis_code == CALIBRATED_MODEL_SCORE_BASIS
+                else "MARKET_STATE_PRIOR"
+            )
+            if model_status != expected_status:
+                raise ValueError(
+                    "Options strategy candidate model status does not match score basis"
+                )
+            if not math.isclose(probability, backing_probability, abs_tol=1e-12):
+                raise ValueError(
+                    "Options strategy predictive score does not match its score basis"
+                )
+            if (
+                basis_code == SCENARIO_PRIOR_SCORE_BASIS
+                and _number(row.get("calibrated_profit_probability")) is not None
+            ):
+                raise ValueError(
+                    "Scenario-prior candidate cannot claim a calibrated probability"
+                )
+            expected_net_profit = _required_finite(
+                row.get("expected_net_profit"),
+                label="Expected net profit",
+            )
+            expected_return = _required_finite(
+                row.get("expected_return_on_risk"),
+                label="Expected return on risk",
+            )
+            fit = portfolio_fit(row, position=position)
             route_rows.append(
                 {
                     "row": row,
                     "fit": fit,
-                    "market_score": market_score,
-                    "raw_probability": raw_probability,
-                    "market_probability": (
-                        calibrated_probability
-                        if calibrated_probability is not None
-                        else raw_probability
-                    ),
-                    "overall_score": (
-                        market_score + fit.score_adjustment
-                        if market_score is not None
-                        else None
-                    ),
+                    "rank": rank,
+                    "candidate_key": candidate_key,
+                    "predictive_score": probability * 100.0,
+                    "score_basis": basis_label,
+                    "expected_net_profit": expected_net_profit,
+                    "expected_return": expected_return,
                 }
             )
+        ranks = sorted(int(item["rank"]) for item in route_rows)
+        if ranks != list(range(1, len(route_rows) + 1)):
+            raise ValueError(
+                "Options strategy candidate ranks must be complete from 1 through N"
+            )
+        candidate_keys = [str(item["candidate_key"]) for item in route_rows]
+        if len(set(candidate_keys)) != len(candidate_keys):
+            raise ValueError("Options strategy candidate keys must be unique per route")
         route_rows.sort(
             key=lambda item: (
-                _descending(item["overall_score"]),
-                _descending(item["market_probability"]),
-                str(item["row"].get("candidate_key") or ""),
+                int(item["rank"]),
+                str(item["candidate_key"]),
             )
         )
-        for rank, item in enumerate(route_rows, start=1):
+        for item in route_rows:
             row = item["row"]
             draft = build_strategy_order_draft(row, position=position)
             output.append(
@@ -203,20 +296,15 @@ def _candidate_views(
                     symbol=clean_symbol,
                     horizon=clean_horizon,
                     horizon_label=HORIZON_LABELS[clean_horizon],
-                    rank=rank,
-                    market_rank=_integer(row.get("candidate_rank")),
+                    rank=int(item["rank"]),
                     strategy_name=str(row["strategy_name"]),
                     strategy_display_name=str(row["strategy_display_name"]),
                     exact_legs=_exact_legs(row, position=position),
-                    raw_probability=item["raw_probability"],
-                    market_probability=item["market_probability"],
-                    expected_net_profit=_number(row.get("expected_net_profit")),
-                    expected_return=_number(
-                        row.get("expected_return_on_risk")
-                    ),
-                    market_score=item["market_score"],
+                    predictive_score=float(item["predictive_score"]),
+                    expected_net_profit=float(item["expected_net_profit"]),
+                    expected_return=float(item["expected_return"]),
                     portfolio_fit=item["fit"],
-                    overall_score=item["overall_score"],
+                    score_basis=str(item["score_basis"]),
                     position=position,
                     order_draft=draft,
                     row=row,
@@ -235,7 +323,6 @@ def portfolio_fit(
     shares_needed = _candidate_stock_quantity(candidate)
     labels: list[str] = []
     details: list[str] = []
-    adjustment = 0.0
 
     if requirement == "EXISTING_100_SHARES":
         if position.shares >= shares_needed > 0.0:
@@ -244,19 +331,12 @@ def portfolio_fit(
                 f"Uses {shares_needed:g} of the {position.shares:g} "
                 f"{position.symbol} shares in the account."
             )
-            adjustment += 0.05
         else:
-            coverage = (
-                max(min(position.shares / shares_needed, 1.0), 0.0)
-                if shares_needed > 0.0
-                else 0.0
-            )
             labels.append("Share Coverage")
             details.append(
                 f"The strategy uses {shares_needed:g} shares; the account "
                 f"currently reports {position.shares:g}."
             )
-            adjustment -= 0.05 * (1.0 - coverage)
     elif (
         requirement == "EXISTING_OR_ATOMIC_100_SHARES"
         and position.shares >= shares_needed > 0.0
@@ -266,7 +346,6 @@ def portfolio_fit(
             f"Applies protection to {shares_needed:g} of the "
             f"{position.shares:g} shares held."
         )
-        adjustment += 0.05
 
     needs_atomic_shares = requirement == "BUY_100_SHARES_ATOMICALLY" or (
         requirement == "EXISTING_OR_ATOMIC_100_SHARES"
@@ -291,7 +370,6 @@ def portfolio_fit(
                 f"available against an estimated ${required_funds:,.2f} "
                 "requirement."
             )
-            adjustment += 0.03
         else:
             labels.append("Funds Below Estimate")
             details.append(
@@ -299,7 +377,6 @@ def portfolio_fit(
                 f"available against an estimated ${required_funds:,.2f} "
                 "requirement."
             )
-            adjustment -= 0.03
 
     if labels:
         if len(labels) == 2 and labels == [
@@ -312,19 +389,16 @@ def portfolio_fit(
         return PortfolioFit(
             label=label,
             detail=" ".join(details),
-            score_adjustment=adjustment,
         )
 
     net_delta = _number(candidate.get("net_delta")) or 0.0
     if position.shares > 0.0 and net_delta < 0.0:
-        hedge_fraction = min(abs(net_delta) / position.shares, 1.0)
         return PortfolioFit(
             label="Downside Hedge",
             detail=(
                 f"Adds negative delta alongside the {position.shares:g} "
                 f"{position.symbol} shares held."
             ),
-            score_adjustment=0.03 * hedge_fraction,
         )
     if position.shares > 0.0 and net_delta > 0.0:
         return PortfolioFit(
@@ -333,7 +407,6 @@ def portfolio_fit(
                 f"Adds positive delta alongside the {position.shares:g} "
                 f"{position.symbol} shares held."
             ),
-            score_adjustment=0.0,
         )
     if position.shares > 0.0:
         return PortfolioFit(
@@ -342,12 +415,10 @@ def portfolio_fit(
                 f"Has limited directional effect alongside the "
                 f"{position.shares:g} {position.symbol} shares held."
             ),
-            score_adjustment=0.01,
         )
     return PortfolioFit(
         label="Independent of Shares",
         detail="This strategy does not depend on an existing stock position.",
-        score_adjustment=0.0,
     )
 
 
@@ -471,17 +542,33 @@ def _resolve_authoritative_source(path: Path) -> Path:
     return candidate
 
 
-def _descending(value: object) -> float:
-    number = _number(value)
-    return -number if number is not None else math.inf
-
-
 def _number(value: object) -> float | None:
     try:
         number = float(value)
     except (TypeError, ValueError):
         return None
     return number if math.isfinite(number) else None
+
+
+def _required_probability(value: object, *, label: str) -> float:
+    number = _number(value)
+    if number is None or not 0.0 <= number <= 1.0:
+        raise ValueError(f"{label} must be finite and between 0 and 1")
+    return number
+
+
+def _required_finite(value: object, *, label: str) -> float:
+    number = _number(value)
+    if number is None:
+        raise ValueError(f"{label} must be finite")
+    return number
+
+
+def _required_rank(value: object) -> int:
+    number = _number(value)
+    if number is None or number < 1.0 or not number.is_integer():
+        raise ValueError("Options strategy candidate rank must be a positive integer")
+    return int(number)
 
 
 def _integer(value: object) -> int | None:

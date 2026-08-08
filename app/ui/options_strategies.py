@@ -306,10 +306,10 @@ class OptionsStrategiesTab:
                 "rank",
                 "strategy",
                 "exact_legs",
-                "probability",
+                "predictive_score",
                 "expected_return",
                 "portfolio_fit",
-                "overall_score",
+                "score_basis",
             ),
             show="headings",
             height=18,
@@ -318,10 +318,10 @@ class OptionsStrategiesTab:
             ("rank", "Rank", 58, tk.E),
             ("strategy", "Strategy", 160, tk.W),
             ("exact_legs", "Exact Legs", 330, tk.W),
-            ("probability", "Market Probability", 120, tk.E),
+            ("predictive_score", "Predictive Score", 110, tk.E),
             ("expected_return", "Expected Return", 110, tk.E),
             ("portfolio_fit", "Portfolio Fit", 125, tk.W),
-            ("overall_score", "Overall Score", 100, tk.E),
+            ("score_basis", "Score Basis", 105, tk.W),
         )
         for name, label, width, anchor in columns:
             table.heading(name, text=label)
@@ -622,10 +622,10 @@ class OptionsStrategiesTab:
                     candidate.rank,
                     candidate.strategy_display_name,
                     candidate.exact_legs,
-                    _percent(candidate.market_probability),
+                    _number(candidate.predictive_score, 2),
                     _percent(candidate.expected_return),
                     candidate.portfolio_fit.label,
-                    _number(candidate.overall_score, 4),
+                    candidate.score_basis,
                 ),
             )
         self.candidate_summary.set(

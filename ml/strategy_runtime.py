@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import shutil
 import time
 from dataclasses import dataclass
@@ -33,11 +34,19 @@ from ml.option_pricing.strategy_shadow import (
     attach_strategy_pricing_shadow,
 )
 from ml.strategy_publication import (
+    STRATEGY_PUBLICATION_VERSION,
     publish_strategy_run,
     read_current_strategy_publication,
 )
 from ml.strategy_selection import STRATEGY_SELECTION_SCHWAB_SPREADS_V1
-from ml.strategy_selection.contracts import StrategySelectionPolicy
+from ml.strategy_selection.contracts import (
+    CALIBRATED_MODEL_SCORE_BASIS,
+    SCENARIO_PRIOR_SCORE_BASIS,
+    STRATEGY_CANDIDATE_SCHEMA_VERSION,
+    STRATEGY_MODEL_POLICY_VERSION,
+    STRATEGY_RANKING_POLICY_VERSION,
+    StrategySelectionPolicy,
+)
 from ml.strategy_selection.research_trace import strategy_research_trace
 from ml.strategy_selection.runtime import run_strategy_selection
 
@@ -126,6 +135,7 @@ def run_strategy_once(
         available_not_after=created,
         per_contract_fee=StrategySelectionPolicy().per_contract_fee,
     )
+    _validate_strategy_candidate_rows(pricing_shadow.candidates)
 
     candidates = _strategy_output_frame(
         pricing_shadow.candidates,
@@ -169,6 +179,7 @@ def run_strategy_once(
         "copied_model_artifacts": copied_models,
         "research_trace": strategy_research_trace(),
         "pricing_shadow": dict(pricing_shadow.report),
+        "strategy_candidate_contract": _strategy_candidate_contract(),
     }
     (run_directory / reports_name).write_text(
         json.dumps(reports_payload, indent=2, sort_keys=True, default=str) + "\n",
@@ -219,8 +230,9 @@ def run_strategy_once(
             "source_loop_b_input_cutoff": input_cutoff.isoformat(),
             "option_snapshot_receipts": option_receipts,
             "stock_bbo_source_files": stock_bbo_files,
+            "strategy_candidate_contract": _strategy_candidate_contract(),
             "publication_contract": {
-                "version": "strategy-publication-v1",
+                "version": STRATEGY_PUBLICATION_VERSION,
                 "authority": "ml/strategy-latest/run.json",
                 "immutable_source_loop_b": True,
             },
@@ -375,6 +387,124 @@ def _strategy_output_frame(
         return empty_frame(schema)  # type: ignore[arg-type]
     identified = frame_with_readable_id(frame, key_columns=key_columns)
     return identified.loc[:, list(getattr(schema, "names"))].copy()
+
+
+def _strategy_candidate_contract() -> dict[str, object]:
+    return {
+        "schema_version": STRATEGY_CANDIDATE_SCHEMA_VERSION,
+        "model_policy_version": STRATEGY_MODEL_POLICY_VERSION,
+        "ranking_policy_version": STRATEGY_RANKING_POLICY_VERSION,
+        "decision_score": "profitable_outcome_probability",
+        "fitted_score_basis": CALIBRATED_MODEL_SCORE_BASIS,
+        "fallback_score_basis": SCENARIO_PRIOR_SCORE_BASIS,
+    }
+
+
+def _validate_strategy_candidate_rows(frame: pd.DataFrame) -> None:
+    if frame.empty:
+        return
+    required = {
+        "symbol",
+        "horizon",
+        "decision_timestamp",
+        "candidate_key",
+        "decision_score",
+        "score_basis",
+        "candidate_rank",
+        "raw_profit_probability",
+        "calibrated_profit_probability",
+        "expected_net_profit",
+        "expected_return_on_risk",
+        "model_status",
+        "model_policy_version",
+        "ranking_policy_version",
+        "schema_version",
+    }
+    missing = sorted(required.difference(frame.columns))
+    if missing:
+        raise ValueError(
+            "Strategy candidates are missing publication fields: "
+            + ", ".join(missing)
+        )
+    if not frame["schema_version"].eq(STRATEGY_CANDIDATE_SCHEMA_VERSION).all():
+        raise ValueError("Strategy candidate schema version is incompatible")
+    if not frame["model_policy_version"].eq(STRATEGY_MODEL_POLICY_VERSION).all():
+        raise ValueError("Strategy candidate model policy version is incompatible")
+    if not frame["ranking_policy_version"].eq(STRATEGY_RANKING_POLICY_VERSION).all():
+        raise ValueError("Strategy candidate ranking policy version is incompatible")
+
+    score = pd.to_numeric(frame["decision_score"], errors="coerce")
+    raw = pd.to_numeric(frame["raw_profit_probability"], errors="coerce")
+    calibrated = pd.to_numeric(
+        frame["calibrated_profit_probability"], errors="coerce"
+    )
+    for values, label in (
+        (score, "decision score"),
+        (raw, "raw profit probability"),
+    ):
+        if not values.map(math.isfinite).all() or not values.between(0.0, 1.0).all():
+            raise ValueError(f"Strategy candidate {label} must be finite in [0, 1]")
+    for column in ("expected_net_profit", "expected_return_on_risk"):
+        values = pd.to_numeric(frame[column], errors="coerce")
+        if not values.map(math.isfinite).all():
+            raise ValueError(f"Strategy candidate {column} must be finite")
+
+    fitted = frame["score_basis"].eq(CALIBRATED_MODEL_SCORE_BASIS)
+    prior = frame["score_basis"].eq(SCENARIO_PRIOR_SCORE_BASIS)
+    if not (fitted | prior).all():
+        raise ValueError("Strategy candidate score basis is invalid")
+    if (
+        not frame.loc[fitted, "model_status"].eq("MODEL_FIT").all()
+        or not calibrated.loc[fitted].map(math.isfinite).all()
+        or not calibrated.loc[fitted].between(0.0, 1.0).all()
+        or not score.loc[fitted].sub(calibrated.loc[fitted]).abs().le(1e-12).all()
+    ):
+        raise ValueError("Fitted Strategy candidate score contract is invalid")
+    if (
+        not frame.loc[prior, "model_status"].eq("MARKET_STATE_PRIOR").all()
+        or not calibrated.loc[prior].isna().all()
+        or not score.loc[prior].sub(raw.loc[prior]).abs().le(1e-12).all()
+    ):
+        raise ValueError("Scenario-prior Strategy candidate score contract is invalid")
+
+    ranks = pd.to_numeric(frame["candidate_rank"], errors="coerce")
+    if ranks.isna().any() or not ranks.ge(1).all() or not ranks.mod(1).eq(0).all():
+        raise ValueError("Strategy candidate ranks must be positive integers")
+    keys = frame["candidate_key"].astype("string")
+    if keys.isna().any() or keys.str.strip().eq("").any():
+        raise ValueError("Strategy candidate keys must be nonblank")
+    symbols = frame["symbol"].astype("string").str.strip().str.upper()
+    horizons = frame["horizon"].astype("string").str.strip().str.lower()
+    decisions = pd.to_datetime(
+        frame["decision_timestamp"], utc=True, errors="coerce"
+    )
+    if (
+        symbols.isna().any()
+        or symbols.eq("").any()
+        or horizons.isna().any()
+        or horizons.eq("").any()
+        or decisions.isna().any()
+    ):
+        raise ValueError("Strategy candidate route keys must be complete and valid")
+    validation = frame.assign(
+        __symbol=symbols,
+        __horizon=horizons,
+        __decision_timestamp=decisions,
+        __rank=ranks.astype(int),
+        __candidate_key=keys,
+    )
+    route_decisions = validation.groupby(
+        ["__symbol", "__horizon"], dropna=False, sort=False
+    )["__decision_timestamp"].nunique(dropna=False)
+    if not route_decisions.eq(1).all():
+        raise ValueError("Strategy publication requires one decision per route")
+    group_columns = ["__symbol", "__horizon", "__decision_timestamp"]
+    for _route, group in validation.groupby(group_columns, dropna=False, sort=False):
+        observed = sorted(group["__rank"].tolist())
+        if observed != list(range(1, len(group) + 1)):
+            raise ValueError("Strategy candidate ranks must be complete from 1 through N")
+        if group["__candidate_key"].duplicated().any():
+            raise ValueError("Strategy candidate keys must be unique per decision")
 
 
 def _copy_model_artifacts(
