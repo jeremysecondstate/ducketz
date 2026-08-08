@@ -348,6 +348,16 @@ def test_reconciliation_requires_exact_later_quote_and_canonicalizes_duplicates(
     assert evaluated.iloc[0]["evaluation_status"] == "COMPLETE"
     assert bool(evaluated.iloc[0]["prospective_eligible"]) is True
 
+    offline_provider = canonical.copy()
+    offline_provider["source_provider"] = "databento-opra"
+    ineligible = reconcile_predictions(
+        offline_provider,
+        snapshots_by_symbol={"NVDA": (snapshot,)},
+        evaluated_at="2026-01-03T16:02:00Z",
+    )
+    assert ineligible.iloc[0]["evaluation_status"] == "COMPLETE"
+    assert bool(ineligible.iloc[0]["prospective_eligible"]) is False
+
     target["quote_timestamp"] = pd.Timestamp("2026-01-03T16:01:00Z")
     target.to_parquet(contracts_path, index=False)
     stale = reconcile_predictions(

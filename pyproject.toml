@@ -1,7 +1,11 @@
+[build-system]
+requires = ["setuptools==83.0.0", "wheel==0.47.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "ducketz"
 version = "0.1.0"
-requires-python = ">=3.11"
+requires-python = ">=3.13,<3.14"
 dependencies = [
     "python-dotenv>=1.0.1",
     "requests>=2.32.3",
@@ -13,7 +17,14 @@ dependencies = [
     "pyarrow>=16.0.0",
     "exchange-calendars",
     "filelock>=3.16",
+    "databento>=0.81,<1",
 ]
+
+[project.scripts]
+ducketz-option-pricing = "ml.option_pricing_runtime:main"
+ducketz-option-pricing-opra = "ml.option_pricing_opra:main"
+ducketz-option-pricing-admin = "ml.option_pricing_admin:main"
+ducketz-option-pricing-lockbox = "ml.option_pricing_lockbox:main"
 
 [project.optional-dependencies]
 ml = [

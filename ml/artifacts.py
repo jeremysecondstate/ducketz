@@ -108,6 +108,7 @@ def input_inventory(
                 "status": "present",
                 "size": stat.st_size,
                 "modified_time_ns": stat.st_mtime_ns,
+                "checksum_sha256": file_checksum(path),
             }
         )
     return records

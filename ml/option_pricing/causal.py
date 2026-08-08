@@ -689,7 +689,9 @@ def _evaluation_row(
     half_spread = spread / 2.0 if spread is not None and spread > 0.0 else None
     complete = status == "COMPLETE"
     prospective = bool(
-        complete and str(prediction.get("prediction_mode", "")).upper() == "LIVE"
+        complete
+        and str(prediction.get("prediction_mode", "")).upper() == "LIVE"
+        and str(prediction.get("source_provider", "")).strip().lower() == "schwab"
     )
 
     def covered(lower_name: str, upper_name: str) -> bool | None:

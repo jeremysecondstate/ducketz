@@ -17,6 +17,7 @@ from sklearn.preprocessing import RobustScaler
 
 from ml.artifacts import create_timestamp_directory, file_checksum, utc_timestamp
 from ml.option_pricing.causal import model_feature_frame
+from ml.option_pricing.opra_materialization import ClosedOpraLockboxInventory
 from ml.option_pricing.policies import (
     BSGPModelPolicy,
     DERIVED_FEATURE_COLUMNS,
@@ -285,6 +286,171 @@ def partition_pricing_samples(
         first_training_cluster=first_training,
         lockbox_route_cluster_counts=lockbox_route_cluster_counts,
         lockbox_route_row_counts=lockbox_route_row_counts,
+    )
+
+
+def partition_pricing_samples_v2(
+    samples: pd.DataFrame,
+    *,
+    closed_lockbox: ClosedOpraLockboxInventory,
+    config: PricingPartitionConfig | None = None,
+) -> PricingPartitions:
+    """Partition pre-lockbox OPRA evidence without reading lockbox targets."""
+
+    policy = config or PricingPartitionConfig()
+    if closed_lockbox.target_values_read:
+        raise ValueError("Ordinary partitioning cannot consume opened lockbox targets")
+    if closed_lockbox.cluster_count < policy.lockbox_clusters:
+        raise ValueError(
+            "Insufficient closed-lockbox target clusters in verified request metadata: "
+            f"required {policy.lockbox_clusters}, observed {closed_lockbox.cluster_count}"
+        )
+    lockbox_start = closed_lockbox.start
+    lockbox_end = closed_lockbox.end
+    if lockbox_start is None or lockbox_end is None:
+        raise ValueError("Closed-lockbox boundaries are unavailable")
+    required = {
+        "symbol",
+        "source_provider",
+        "call_put",
+        "target_snapshot_for",
+        "source_snapshot_for",
+        "contract_symbol",
+        "observed_available_at",
+        "sample_status",
+        "normalized_residual",
+        "observed_mid",
+        "black_scholes_price",
+        "underlying_price",
+    }
+    if missing := sorted(required.difference(samples.columns)):
+        raise ValueError("Pricing samples are missing columns: " + ", ".join(missing))
+    eligible = samples.loc[samples["sample_status"].eq("AVAILABLE")].copy()
+    if eligible.empty:
+        raise ValueError("No complete pre-lockbox pricing samples are available")
+    providers = set(
+        eligible["source_provider"].astype("string").str.strip().str.lower().dropna()
+    )
+    if providers != {"databento-opra"}:
+        raise ValueError(
+            "Eligibility partitions require only real Databento OPRA evidence"
+        )
+    for column in (
+        "target_snapshot_for",
+        "source_snapshot_for",
+        "observed_available_at",
+    ):
+        eligible[column] = pd.to_datetime(eligible[column], utc=True, errors="coerce")
+    clocks = eligible[
+        ["target_snapshot_for", "source_snapshot_for", "observed_available_at"]
+    ]
+    if clocks.isna().any(axis=None):
+        raise ValueError("Pricing samples contain invalid causal timestamps")
+    if not eligible["source_snapshot_for"].lt(eligible["target_snapshot_for"]).all():
+        raise ValueError("Pricing samples contain a non-lagged option surface")
+    if not eligible["target_snapshot_for"].lt(lockbox_start).all():
+        raise ValueError("Decoded evidence overlaps the closed-lockbox boundary")
+    normalized_key = pd.DataFrame(
+        {
+            "symbol": eligible["symbol"].astype("string").str.strip().str.upper(),
+            "target_snapshot_for": eligible["target_snapshot_for"],
+            "contract_symbol": eligible["contract_symbol"]
+            .astype("string")
+            .str.strip(),
+        },
+        index=eligible.index,
+    )
+    if normalized_key.isna().any(axis=None) or normalized_key[
+        ["symbol", "contract_symbol"]
+    ].eq("").any(axis=None):
+        raise ValueError("Pricing samples contain incomplete natural keys")
+    if normalized_key.duplicated().any():
+        raise ValueError("Pricing samples contain duplicate natural contract targets")
+
+    assessment_candidates = eligible.loc[
+        eligible["target_snapshot_for"].lt(lockbox_start)
+        & eligible["observed_available_at"].lt(lockbox_start)
+    ]
+    assessment_values = pd.Index(
+        assessment_candidates["target_snapshot_for"].drop_duplicates().sort_values()
+    )[-policy.assessment_clusters :]
+    if len(assessment_values) < policy.assessment_clusters:
+        raise ValueError("Boundary purging left too few assessment clusters")
+    assessment_start = pd.Timestamp(assessment_values[0])
+    calibration_candidates = eligible.loc[
+        eligible["target_snapshot_for"].lt(assessment_start)
+        & eligible["observed_available_at"].lt(assessment_start)
+    ]
+    calibration_values = pd.Index(
+        calibration_candidates["target_snapshot_for"].drop_duplicates().sort_values()
+    )[-policy.calibration_clusters :]
+    if len(calibration_values) < policy.calibration_clusters:
+        raise ValueError("Boundary purging left too few calibration clusters")
+    calibration_start = pd.Timestamp(calibration_values[0])
+    train = eligible.loc[
+        eligible["target_snapshot_for"].lt(calibration_start)
+        & eligible["observed_available_at"].lt(calibration_start)
+    ].copy()
+    calibration = eligible.loc[
+        eligible["target_snapshot_for"].isin(calibration_values)
+        & eligible["observed_available_at"].lt(assessment_start)
+    ].copy()
+    assessment = eligible.loc[
+        eligible["target_snapshot_for"].isin(assessment_values)
+        & eligible["observed_available_at"].lt(lockbox_start)
+    ].copy()
+    counts = tuple(
+        int(frame["target_snapshot_for"].nunique())
+        for frame in (train, calibration, assessment)
+    )
+    minima = (
+        policy.minimum_train_clusters,
+        policy.calibration_clusters,
+        policy.assessment_clusters,
+    )
+    if any(observed < minimum for observed, minimum in zip(counts, minima, strict=True)):
+        raise ValueError(
+            "Boundary purging left too few pre-lockbox clusters: "
+            f"observed={counts}, required={minima}"
+        )
+    first_training = pd.Timestamp(train["target_snapshot_for"].min())
+    if (
+        policy.minimum_calendar_months
+        and lockbox_end < first_training + pd.DateOffset(months=policy.minimum_calendar_months)
+    ):
+        raise ValueError("Pricing evidence does not span the required calendar months")
+    for label, frame in (
+        ("training", train),
+        ("calibration", calibration),
+        ("assessment", assessment),
+    ):
+        _validate_model_values(frame, label=label)
+    used = set(train.index) | set(calibration.index) | set(assessment.index)
+    purged = len(eligible) - len(used)
+
+    def clean(frame: pd.DataFrame) -> pd.DataFrame:
+        return frame.sort_values(
+            ["target_snapshot_for", "symbol", "call_put", "contract_symbol"],
+            kind="mergesort",
+        ).reset_index(drop=True)
+
+    return PricingPartitions(
+        train=clean(train),
+        calibration=clean(calibration),
+        assessment=clean(assessment),
+        train_clusters=counts[0],
+        calibration_clusters=counts[1],
+        assessment_clusters=counts[2],
+        boundary_purged_rows=max(int(purged), 0),
+        lockbox_rows=sum(closed_lockbox.route_request_symbol_counts.values()),
+        lockbox_clusters=closed_lockbox.cluster_count,
+        lockbox_start=lockbox_start,
+        lockbox_end=lockbox_end,
+        first_training_cluster=first_training,
+        lockbox_route_cluster_counts=dict(closed_lockbox.route_cluster_counts),
+        lockbox_route_row_counts=dict(
+            closed_lockbox.route_request_symbol_counts
+        ),
     )
 
 
@@ -584,6 +750,34 @@ def compare_pricing_models(
             weights=weights,
         )
     )
+    paired = pd.DataFrame(
+        {
+            "target_snapshot_for": pd.to_datetime(
+                assessment["target_snapshot_for"], utc=True, errors="coerce"
+            ),
+            **{
+                f"{name}_normalized_squared_error": np.square(
+                    prediction - observed
+                )
+                for name, prediction in predictions.items()
+            },
+            "interval_80_coverage": covered80.astype(float),
+            "interval_95_coverage": covered95.astype(float),
+        }
+    )
+    paired_snapshot_losses = []
+    for target, group in paired.groupby("target_snapshot_for", sort=True):
+        paired_snapshot_losses.append(
+            {
+                "target_snapshot_for": pd.Timestamp(target).isoformat(),
+                **{
+                    column: float(group[column].mean())
+                    for column in paired.columns
+                    if column != "target_snapshot_for"
+                },
+                "contract_count": len(group),
+            }
+        )
     return {
         "status": "OFFLINE_ASSESSMENT_COMPLETE",
         "assessment_used_for_training": False,
@@ -592,6 +786,7 @@ def compare_pricing_models(
         "assessment_rows": len(assessment),
         "assessment_clusters": int(assessment["target_snapshot_for"].nunique()),
         "models": metrics,
+        "paired_snapshot_losses": paired_snapshot_losses,
         "beats_black_scholes_normalized_rmse": bool(
             metrics["bsgp"]["normalized_rmse"]
             < metrics["black_scholes"]["normalized_rmse"]

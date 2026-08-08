@@ -177,6 +177,12 @@ def test_empty_runtime_is_route_isolated_and_writes_only_pricing_authority(
     assert report["gate"]["gate_status"] == "NOT_PRODUCTION_ELIGIBLE"
     assert report["automated_action_allowed"] is False
     assert len(report["gate"]["gates"]) == 10
+    public_lockbox = report["closed_lockbox_inventory"]
+    assert public_lockbox["target_snapshot_fors_redacted"] is True
+    assert public_lockbox["target_output_paths_redacted"] is True
+    assert "target_snapshot_fors" not in public_lockbox
+    assert "outputs" not in public_lockbox
+    assert (result.run_directory / "closed-lockbox-inventory.json").is_file()
 
 
 def test_all_pricing_parquets_have_exact_schema_and_one_readable_id(tmp_path: Path) -> None:

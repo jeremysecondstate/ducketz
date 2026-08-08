@@ -6,6 +6,7 @@ import os
 import shutil
 import tempfile
 import time
+import tracemalloc
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -13,25 +14,49 @@ from typing import Callable, Mapping, Sequence
 
 import pandas as pd
 
-from datafetching.decision_time import latest_completed_bar_clock
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from datafetching.runtime_lock import exclusive_runtime_lock
-from ml.artifacts import utc_timestamp, write_manifest
+from ml.artifacts import file_checksum, utc_timestamp, write_manifest
 from ml.option_pricing.causal import (
-    build_causal_samples,
     build_live_prediction_inputs,
     canonicalize_predictions,
-    completed_bar_close,
     evaluate_offline_predictions,
     reconcile_predictions,
 )
 from ml.option_pricing.model import (
     PricingPartitions,
     fit_or_reuse_pricing_model,
-    partition_pricing_samples,
+    partition_pricing_samples_v2,
     route_partitions,
 )
-from ml.option_pricing.opra_materialization import materialize_committed_opra_history
+from ml.option_pricing.candidate import load_candidate_models, read_current_candidate
+from ml.option_pricing.eligibility import (
+    EligibilityPolicy,
+    EligibilityPolicyArtifact,
+    REQUIRED_SYMBOLS,
+    build_eligibility_report,
+    publish_eligibility_policy,
+    publish_eligibility_report,
+)
+from ml.option_pricing.lineage import (
+    verify_completed_option_pricing_lineage,
+    verify_staged_option_pricing_run,
+)
+from ml.option_pricing.lockbox import read_lockbox_result
+from ml.option_pricing.operations import (
+    EXIT_EVIDENCE,
+    RuntimeLimits,
+    build_runtime_health,
+    capacity_report,
+    enforce_runtime_limits,
+    publish_runtime_health,
+    read_current_operational_readiness,
+    read_current_runtime_health,
+)
+from ml.option_pricing.opra_materialization import (
+    ClosedOpraLockboxInventory,
+    materialize_committed_opra_history_v2,
+)
 from ml.option_pricing.policies import (
     BSGPModelPolicy,
     ContractSelectionPolicy,
@@ -41,16 +66,22 @@ from ml.option_pricing.policies import (
 )
 from ml.option_pricing.prediction import create_prediction_rows
 from ml.option_pricing.publication import (
+    OPTION_PRICING_POINTER_VERSION,
     OPTION_PRICING_PUBLICATION_VERSION,
     OPTION_PRICING_REPORT_NAME,
+    pricing_pointer_path,
     publish_option_pricing_run,
     receipt_proven_prediction_rows,
     read_current_option_pricing_publication,
 )
+from ml.option_pricing.rates import load_point_in_time_rate_observations
 from ml.option_pricing.reporting import (
     build_gate_report,
     build_monitoring_rows,
     build_pricing_surfaces,
+)
+from ml.option_pricing.strategy_outcomes import (
+    read_current_strategy_outcome_evidence,
 )
 from ml.parquet_contracts import (
     OPTION_PRICING_EVALUATION_SCHEMA,
@@ -77,6 +108,11 @@ class OptionPricingRuntimeResult:
     models_reused: int
     published_at: pd.Timestamp
     route_errors: Mapping[str, str]
+    eligibility_report_directory: Path
+    gate_status: str
+    health_path: Path
+    health_status: str
+    health_exit_code: int
 
 
 def run_option_pricing_once(
@@ -90,9 +126,44 @@ def run_option_pricing_once(
     contract_policy: ContractSelectionPolicy | None = None,
     projection_policy: ProjectionPolicy | None = None,
     rate_observations: pd.DataFrame | None = None,
+    runtime_limits: RuntimeLimits | None = None,
 ) -> OptionPricingRuntimeResult:
     """Publish one independent, shadow-only Pricing generation."""
 
+    tracing_started_here = not tracemalloc.is_tracing()
+    if tracing_started_here:
+        tracemalloc.start()
+    try:
+        return _run_option_pricing_once_impl(
+            datastore_root,
+            symbols=symbols,
+            run_timestamp=run_timestamp,
+            runtime_clock=runtime_clock,
+            partition_config=partition_config,
+            model_policy=model_policy,
+            contract_policy=contract_policy,
+            projection_policy=projection_policy,
+            rate_observations=rate_observations,
+            runtime_limits=runtime_limits,
+        )
+    finally:
+        if tracing_started_here:
+            tracemalloc.stop()
+
+
+def _run_option_pricing_once_impl(
+    datastore_root: Path,
+    *,
+    symbols: Sequence[str],
+    run_timestamp: object | None = None,
+    runtime_clock: Callable[[], object] | None = None,
+    partition_config: PricingPartitionConfig | None = None,
+    model_policy: BSGPModelPolicy | None = None,
+    contract_policy: ContractSelectionPolicy | None = None,
+    projection_policy: ProjectionPolicy | None = None,
+    rate_observations: pd.DataFrame | None = None,
+    runtime_limits: RuntimeLimits | None = None,
+) -> OptionPricingRuntimeResult:
     root = Path(datastore_root).resolve()
     clean_symbols = tuple(
         dict.fromkeys(str(value).strip().upper() for value in symbols if str(value).strip())
@@ -101,71 +172,143 @@ def run_option_pricing_once(
         raise ValueError("At least one Pricing symbol is required")
     created = utc_timestamp(run_timestamp)
     clock = runtime_clock or (lambda: utc_timestamp())
+    cycle_started = time.perf_counter()
     effective_partitions = partition_config or PricingPartitionConfig()
     effective_model = model_policy or BSGPModelPolicy()
     effective_contract = contract_policy or ContractSelectionPolicy()
     effective_projection = projection_policy or ProjectionPolicy()
+    limits = runtime_limits or RuntimeLimits()
+    eligibility_policy = EligibilityPolicy()
+    policy_artifact = publish_eligibility_policy(
+        root,
+        policy=eligibility_policy,
+        partition_config=effective_partitions,
+        model_policy=effective_model,
+        contract_policy=effective_contract,
+        projection_policy=effective_projection,
+        published_at=created,
+    )
+    initial_capacity = capacity_report(root, limits=limits)
+    if initial_capacity.get("status") != "PASS":
+        raise RuntimeError(
+            "Pricing preflight failed closed for disk capacity: "
+            + json.dumps(initial_capacity, sort_keys=True)
+        )
 
     prior_samples, prior_predictions, prior_lineage_files = _recover_prior_generation(root)
+    prior_samples = _evidence_lane(
+        prior_samples,
+        provider="schwab",
+        prediction_mode="LIVE",
+    )
+    prior_predictions = _evidence_lane(
+        prior_predictions,
+        provider="schwab",
+        prediction_mode="LIVE",
+    )
     prior_proven_live = (
         receipt_proven_prediction_rows(root)
         if not prior_predictions.empty
         else pd.DataFrame()
     )
-    source_files = list(prior_lineage_files)
+    source_files = [
+        *prior_lineage_files,
+        policy_artifact.directory / "policy.json",
+        policy_artifact.directory / "receipt.json",
+    ]
     model_input_files: list[Path] = []
     if rate_observations is None:
-        rate_observations, rate_files = _load_point_in_time_rate_observations(root)
+        rate_observations, rate_files = load_point_in_time_rate_observations(root)
         source_files.extend(rate_files)
         model_input_files.extend(rate_files)
     route_errors: dict[str, str] = {}
-    historical, historical_files, history_errors = _materialize_schwab_history(
-        root,
-        symbols=clean_symbols,
-        contract_policy=effective_contract,
-        rate_observations=rate_observations,
-    )
-    route_errors.update(history_errors)
-    source_files.extend(historical_files)
-    model_input_files.extend(historical_files)
-    opra_history, opra_files, opra_errors = materialize_committed_opra_history(
-        root,
-        symbols=clean_symbols,
-        rate_observations=rate_observations,
-        contract_policy=effective_contract,
-    )
-    route_errors.update(
-        {f"opra/{route}": error for route, error in opra_errors.items()}
-    )
-    source_files.extend(opra_files)
-    model_input_files.extend(opra_files)
-    combined_samples = _canonical_samples(prior_samples, historical, opra_history)
-
     models: dict[tuple[str, str], object] = {}
     model_reports: dict[str, dict[str, object]] = {}
     models_trained = models_reused = 0
     global_partitions: PricingPartitions | None = None
-    if not combined_samples.empty:
-        try:
-            global_partitions = partition_pricing_samples(
-                combined_samples,
-                config=effective_partitions,
-            )
-        except Exception as exc:
-            route_errors["global-partitions"] = f"{type(exc).__name__}: {exc}"
-    if global_partitions is not None:
-        routes = sorted(
-            {
-                (
-                    str(symbol).strip().upper(),
-                    str(call_put).strip().upper(),
-                )
-                for symbol, call_put in combined_samples[["symbol", "call_put"]].itertuples(
-                    index=False, name=None
-                )
-            }
+    sealed_lockbox_inventory: dict[str, object] = {}
+    candidate = read_current_candidate(root)
+    frozen_offline_predictions = pd.DataFrame()
+    frozen_offline_evaluations = pd.DataFrame()
+    if candidate is not None:
+        models = load_candidate_models(
+            root,
+            candidate=candidate,
+            required_routes=eligibility_policy.required_routes,
         )
-        for symbol, call_put in routes:
+        models_reused = len(models)
+        candidate_run = (root / str(candidate["pricing_run_path"])).resolve()
+        opra_history = _evidence_lane(
+            pd.read_parquet(candidate_run / "pricing-samples.parquet"),
+            provider="databento-opra",
+            prediction_mode="OFFLINE",
+        )
+        frozen_offline_predictions = _evidence_lane(
+            pd.read_parquet(candidate_run / "pricing-predictions.parquet"),
+            provider="databento-opra",
+            prediction_mode="OFFLINE",
+        )
+        frozen_offline_evaluations = _evidence_lane(
+            pd.read_parquet(candidate_run / "pricing-evaluations.parquet"),
+            provider="databento-opra",
+            prediction_mode="OFFLINE",
+        )
+        candidate_report = json.loads(
+            (candidate_run / OPTION_PRICING_REPORT_NAME).read_text(encoding="utf-8")
+        )
+        raw_reports = candidate_report.get("model_reports", {})
+        model_reports = {
+            str(name): dict(value)
+            for name, value in raw_reports.items()
+            if isinstance(value, Mapping)
+        } if isinstance(raw_reports, Mapping) else {}
+        sealed_lockbox_inventory = dict(candidate.get("closed_lockbox", {}))
+        closed_lockbox_report = _redacted_lockbox_inventory(
+            sealed_lockbox_inventory
+        )
+        candidate_directory = root / "ml" / "option-pricing-candidates" / str(
+            candidate["candidate_id"]
+        )
+        source_files.extend(
+            (
+                candidate_directory / "candidate.json",
+                candidate_directory / "receipt.json",
+                candidate_run / "manifest.json",
+                candidate_run / "publication.json",
+            )
+        )
+    else:
+        opra = materialize_committed_opra_history_v2(
+            root,
+            symbols=clean_symbols,
+            rate_observations=rate_observations,
+            closed_lockbox_clusters=effective_partitions.lockbox_clusters,
+            eligibility_policy_hash=policy_artifact.policy_hash,
+            contract_policy=effective_contract,
+        )
+        opra_history = opra.samples
+        sealed_lockbox_inventory = _closed_lockbox_inventory_report(
+            opra.closed_lockbox
+        )
+        closed_lockbox_report = _redacted_lockbox_inventory(
+            sealed_lockbox_inventory
+        )
+        route_errors.update(
+            {f"opra/{route}": error for route, error in opra.errors.items()}
+        )
+        source_files.extend(opra.source_files)
+        model_input_files.extend(opra.source_files)
+        if not opra_history.empty:
+            try:
+                global_partitions = partition_pricing_samples_v2(
+                    opra_history,
+                    closed_lockbox=opra.closed_lockbox,
+                    config=effective_partitions,
+                )
+            except Exception as exc:
+                route_errors["global-partitions"] = f"{type(exc).__name__}: {exc}"
+    if global_partitions is not None:
+        for symbol, call_put in eligibility_policy.required_routes:
             route_name = f"{symbol}/{call_put.lower()}"
             try:
                 partitions = route_partitions(
@@ -174,6 +317,11 @@ def run_option_pricing_once(
                     call_put=call_put,
                     config=effective_partitions,
                 )
+                if len(partitions.train) > limits.maximum_model_rows_per_route:
+                    raise RuntimeError(
+                        "route training rows exceed the predeclared runtime bound: "
+                        f"{len(partitions.train)} > {limits.maximum_model_rows_per_route}"
+                    )
                 model = fit_or_reuse_pricing_model(
                     root,
                     symbol=symbol,
@@ -197,6 +345,19 @@ def run_option_pricing_once(
                     "black_scholes_baseline_available_when_inputs_valid": True,
                     "automated_action_allowed": False,
                 }
+    for symbol, call_put in eligibility_policy.required_routes:
+        route_name = f"{symbol}/{call_put.lower()}"
+        if route_name not in model_reports:
+            reason = "required route has no frozen or fitted real OPRA model"
+            model_reports[route_name] = {
+                "status": "MODEL_NOT_FIT",
+                "reason": reason,
+                "source_provider": "databento-opra",
+                "evidence_kind": "REAL_RECEIPT_PROVEN",
+                "automated_action_allowed": False,
+            }
+
+    combined_samples = _canonical_samples(opra_history, prior_samples)
 
     live_samples: list[pd.DataFrame] = []
     live_source_files: list[Path] = []
@@ -245,10 +406,14 @@ def run_option_pricing_once(
         if not new_live_samples.empty
         else pd.DataFrame()
     )
-    offline_predictions = _assessment_predictions(
-        global_partitions,
-        models=models,
-        projection_policy=effective_projection,
+    offline_predictions = (
+        frozen_offline_predictions
+        if candidate is not None
+        else _assessment_predictions(
+            global_partitions,
+            models=models,
+            projection_policy=effective_projection,
+        )
     )
     predictions = canonicalize_predictions(
         _concat_frames(prior_predictions, offline_predictions, new_live_predictions)
@@ -270,11 +435,17 @@ def run_option_pricing_once(
         if not live_for_reconciliation.empty
         else pd.DataFrame()
     )
-    offline_evaluations = evaluate_offline_predictions(
-        predictions,
-        combined_samples,
-        evaluated_at=created,
-    ) if not predictions.empty and not combined_samples.empty else pd.DataFrame()
+    offline_evaluations = (
+        frozen_offline_evaluations
+        if candidate is not None
+        else evaluate_offline_predictions(
+            predictions,
+            opra_history,
+            evaluated_at=created,
+        )
+        if not predictions.empty and not opra_history.empty
+        else pd.DataFrame()
+    )
     evaluations = _concat_frames(offline_evaluations, live_evaluations)
     samples_for_publication = _concat_frames(combined_samples, new_live_samples)
     samples_for_publication = _redact_closed_lockbox(
@@ -298,7 +469,7 @@ def run_option_pricing_once(
         evaluations=evaluations,
         predictions=predictions,
         model_reports=preliminary_report,
-        lineage_verified=True,
+        lineage_verified=False,
     )
     monitoring = build_monitoring_rows(
         report=gate,
@@ -310,8 +481,35 @@ def run_option_pricing_once(
         **preliminary_report,
         "gate": gate,
         "closed_lockbox": _closed_lockbox_report(global_partitions),
+        "closed_lockbox_inventory": closed_lockbox_report,
+        "eligibility_policy": {
+            "policy_hash": policy_artifact.policy_hash,
+            "path": policy_artifact.directory.relative_to(root).as_posix(),
+        },
+        "frozen_candidate_id": candidate.get("candidate_id") if candidate else None,
         "paid_opra_download_performed_by_runtime": False,
         "automated_action_allowed": False,
+    }
+
+    elapsed_before_publication = time.perf_counter() - cycle_started
+    peak_memory_bytes = tracemalloc.get_traced_memory()[1]
+    enforce_runtime_limits(
+        samples=samples_for_publication,
+        predictions=predictions,
+        evaluations=evaluations,
+        surfaces=surfaces,
+        elapsed_seconds=elapsed_before_publication,
+        peak_memory_bytes=peak_memory_bytes,
+        limits=limits,
+    )
+    benchmark = {
+        "elapsed_seconds": elapsed_before_publication,
+        "peak_memory_bytes": peak_memory_bytes,
+        "sample_rows": len(samples_for_publication),
+        "prediction_rows": len(predictions),
+        "evaluation_rows": len(evaluations),
+        "surface_rows": len(surfaces),
+        "limits": asdict(limits),
     }
 
     run_directory = _write_and_publish_generation(
@@ -330,7 +528,82 @@ def run_option_pricing_once(
         model_policy=effective_model,
         contract_policy=effective_contract,
         projection_policy=effective_projection,
+        policy_artifact=policy_artifact,
+        runtime_benchmark=benchmark,
+        sealed_lockbox_inventory=sealed_lockbox_inventory,
     )
+    lineage = verify_completed_option_pricing_lineage(
+        root,
+        run_directory=run_directory,
+        policy_artifact=policy_artifact,
+    )
+    strategy_report = _read_optional_evidence(
+        lambda: read_current_strategy_outcome_evidence(root),
+        label="Strategy outcome evidence",
+        route_errors=route_errors,
+    )
+    operational_report = _read_optional_evidence(
+        lambda: read_current_operational_readiness(root),
+        label="operational readiness",
+        route_errors=route_errors,
+    )
+    lockbox_result = None
+    if candidate is not None:
+        lockbox_result = _read_optional_evidence(
+            lambda: read_lockbox_result(
+                root, candidate_id=str(candidate["candidate_id"])
+            ),
+            label="closed lockbox result",
+            route_errors=route_errors,
+        )
+    final_report = build_eligibility_report(
+        policy_artifact=policy_artifact,
+        policy=eligibility_policy,
+        evaluations=evaluations,
+        predictions=predictions,
+        model_reports=preliminary_report,
+        lineage_report=lineage,
+        strategy_report=strategy_report,
+        frozen_candidate=candidate,
+        lockbox_result=lockbox_result,
+        operational_report=operational_report,
+        generated_at=published_at,
+    )
+    final_report["closed_lockbox_inventory"] = closed_lockbox_report
+    eligibility_artifact = publish_eligibility_report(
+        root,
+        report=final_report,
+        pricing_run=run_directory,
+        published_at=published_at,
+    )
+    previous_health = _read_optional_evidence(
+        lambda: read_current_runtime_health(root),
+        label="prior runtime health",
+        route_errors=route_errors,
+    )
+    health = build_runtime_health(
+        pricing_run=run_directory,
+        eligibility_report=final_report,
+        lineage_report=lineage,
+        route_errors=route_errors,
+        live_routes=live_status,
+        elapsed_seconds=time.perf_counter() - cycle_started,
+        peak_memory_bytes=peak_memory_bytes,
+        capacity=capacity_report(root, limits=limits),
+        checked_at=published_at,
+        previous_prospective_count=(
+            int(previous_health.get("prospective_completed_count", 0))
+            if isinstance(previous_health, Mapping)
+            else None
+        ),
+        previous_prospective_checked_at=(
+            previous_health.get("prospective_last_increase_at")
+            if isinstance(previous_health, Mapping)
+            else None
+        ),
+        limits=limits,
+    )
+    health_path = publish_runtime_health(root, health=health)
     return OptionPricingRuntimeResult(
         run_directory=run_directory,
         sample_rows=len(samples_for_publication),
@@ -342,6 +615,11 @@ def run_option_pricing_once(
         models_reused=models_reused,
         published_at=published_at,
         route_errors=route_errors,
+        eligibility_report_directory=eligibility_artifact.directory,
+        gate_status=str(final_report["gate_status"]),
+        health_path=health_path,
+        health_status=str(health["status"]),
+        health_exit_code=int(health["actionable_exit_code"]),
     )
 
 
@@ -368,6 +646,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("--interval-minutes must be at least 1")
     if not 0 <= args.phase_offset_minutes < args.interval_minutes:
         parser.error("--phase-offset-minutes must satisfy 0 <= phase < interval-minutes")
+    configured_symbols = tuple(
+        dict.fromkeys(str(value).strip().upper() for value in args.symbols)
+    )
+    if len(configured_symbols) != len(REQUIRED_SYMBOLS) or set(
+        configured_symbols
+    ) != set(REQUIRED_SYMBOLS):
+        parser.error("production Pricing requires exactly NVDA, GOOG, and MU")
     root = resolve_datastore_dir(
         root_dir=args.datastore,
         target=None if args.datastore is not None else args.datastore_target,
@@ -401,11 +686,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                         f"samples={result.sample_rows}; predictions={result.prediction_rows}; "
                         f"evaluations={result.evaluation_rows}; surfaces={result.surface_rows}; "
                         f"models_trained={result.models_trained}; models_reused={result.models_reused}; "
+                        f"gate_status={result.gate_status}; health={result.health_status}; "
                         f"run={result.run_directory}"
                     )
                     for route, error in result.route_errors.items():
                         print(f"Route unavailable {route}: {error}")
-                    exit_code = 0
+                    exit_code = result.health_exit_code
                 except Exception as exc:
                     print(f"Pricing failed: {type(exc).__name__}: {exc}")
                     exit_code = 1
@@ -431,70 +717,6 @@ def next_boundary(
         return anchor
     count = int((current - anchor).total_seconds() // (interval_minutes * 60))
     return anchor + timedelta(minutes=(count + 1) * interval_minutes)
-
-
-def _materialize_schwab_history(
-    root: Path,
-    *,
-    symbols: Sequence[str],
-    contract_policy: ContractSelectionPolicy,
-    rate_observations: pd.DataFrame | None,
-) -> tuple[pd.DataFrame, list[Path], dict[str, str]]:
-    frames: list[pd.DataFrame] = []
-    source_files: list[Path] = []
-    errors: dict[str, str] = {}
-    for symbol in symbols:
-        snapshots = committed_option_snapshots(root, symbol=symbol)
-        for target in snapshots:
-            candidates = [
-                source
-                for source in snapshots
-                if source.snapshot_for < target.snapshot_for
-                and source.available_at < target.available_at
-            ]
-            if not candidates:
-                continue
-            source = max(candidates, key=lambda value: (value.snapshot_for, value.available_at))
-            route = f"{symbol}/history/{target.snapshot_for.isoformat()}"
-            try:
-                decision = latest_completed_bar_clock(
-                    root,
-                    symbol=symbol,
-                    as_of=target.snapshot_for,
-                )
-                if pd.Timestamp(decision.decision_timestamp) != target.snapshot_for:
-                    raise ValueError("No exact completed underlying bar at target snapshot")
-                underlying = completed_bar_close(decision)
-                frame = build_causal_samples(
-                    pd.read_parquet(source.contracts_path),
-                    target_contracts=pd.read_parquet(target.contracts_path),
-                    target_underlying_price=underlying,
-                    source_snapshot_for=source.snapshot_for,
-                    source_available_at=source.available_at,
-                    target_snapshot_for=target.snapshot_for,
-                    source_provider="schwab",
-                    prediction_mode="OFFLINE",
-                    observed_available_at=target.available_at,
-                    contract_policy=contract_policy,
-                    rate_observations=rate_observations,
-                )
-                frames.append(frame)
-                source_files.extend(
-                    (
-                        decision.source_file,
-                        source.contracts_path,
-                        source.receipt_path,
-                        target.contracts_path,
-                        target.receipt_path,
-                    )
-                )
-            except Exception as exc:
-                errors[route] = f"{type(exc).__name__}: {exc}"
-    return (
-        pd.concat(frames, ignore_index=True, sort=False) if frames else pd.DataFrame(),
-        source_files,
-        errors,
-    )
 
 
 def _assessment_predictions(
@@ -535,47 +757,6 @@ def _recover_prior_generation(root: Path) -> tuple[pd.DataFrame, pd.DataFrame, l
     ]
 
 
-def _load_point_in_time_rate_observations(
-    root: Path,
-) -> tuple[pd.DataFrame | None, list[Path]]:
-    paths = tuple(
-        sorted(
-            (
-                root
-                / "pools"
-                / "macro"
-                / "features"
-                / "release-context"
-                / "fred"
-            ).glob("*.parquet")
-        )
-    )
-    if not paths:
-        return None, []
-    frames = [pd.read_parquet(path) for path in paths]
-    combined = pd.concat(frames, ignore_index=True, sort=False)
-    required = {"fed_funds_available_at", "macro__fed_funds_level"}
-    if not required.issubset(combined.columns):
-        return None, list(paths)
-    output = pd.DataFrame(
-        {
-            "available_at": pd.to_datetime(
-                combined["fed_funds_available_at"], utc=True, errors="coerce"
-            ),
-            # FRED FEDFUNDS is quoted in percentage points.
-            "risk_free_rate": pd.to_numeric(
-                combined["macro__fed_funds_level"], errors="coerce"
-            )
-            / 100.0,
-        }
-    ).dropna()
-    output = output.loc[output["risk_free_rate"].between(-0.20, 1.0)]
-    output = output.sort_values("available_at").drop_duplicates(
-        "available_at", keep="last"
-    )
-    return (output.reset_index(drop=True) if not output.empty else None), list(paths)
-
-
 def _canonical_samples(*frames: pd.DataFrame) -> pd.DataFrame:
     combined = _concat_frames(*frames)
     if combined.empty:
@@ -599,6 +780,97 @@ def _canonical_samples(*frames: pd.DataFrame) -> pd.DataFrame:
         .drop(columns="_matured_target")
         .reset_index(drop=True)
     )
+
+
+def _evidence_lane(
+    frame: pd.DataFrame,
+    *,
+    provider: str,
+    prediction_mode: str,
+) -> pd.DataFrame:
+    if frame.empty:
+        return frame.drop(columns="id", errors="ignore").copy()
+    required = {"source_provider", "prediction_mode"}
+    if not required.issubset(frame.columns):
+        return pd.DataFrame()
+    selected = frame.loc[
+        frame["source_provider"]
+        .astype("string")
+        .str.strip()
+        .str.lower()
+        .eq(provider.lower())
+        & frame["prediction_mode"]
+        .astype("string")
+        .str.strip()
+        .str.upper()
+        .eq(prediction_mode.upper())
+    ]
+    return selected.drop(columns="id", errors="ignore").reset_index(drop=True)
+
+
+def _closed_lockbox_inventory_report(
+    inventory: ClosedOpraLockboxInventory,
+) -> dict[str, object]:
+    return {
+        "status": (
+            "CLOSED_UNTOUCHED_UNSCORED"
+            if inventory.cluster_count
+            else "CLOSED_UNTOUCHED_UNSCORED_NOT_YET_AVAILABLE"
+        ),
+        "target_values_read": inventory.target_values_read,
+        "cluster_count": inventory.cluster_count,
+        "start": inventory.start.isoformat() if inventory.start is not None else None,
+        "end": inventory.end.isoformat() if inventory.end is not None else None,
+        "target_snapshot_fors": [
+            value.isoformat() for value in inventory.target_snapshot_fors
+        ],
+        "route_cluster_counts": {
+            f"{symbol}/{call_put.lower()}": count
+            for (symbol, call_put), count in inventory.route_cluster_counts.items()
+        },
+        "route_request_symbol_counts": {
+            f"{symbol}/{call_put.lower()}": count
+            for (symbol, call_put), count in inventory.route_request_symbol_counts.items()
+        },
+        "output_count": inventory.output_count,
+        "outputs": [dict(value) for value in inventory.outputs],
+        "automated_action_allowed": False,
+    }
+
+
+def _redacted_lockbox_inventory(
+    inventory: Mapping[str, object],
+) -> dict[str, object]:
+    return {
+        "status": inventory.get(
+            "status", "CLOSED_UNTOUCHED_UNSCORED_NOT_YET_AVAILABLE"
+        ),
+        "target_values_read": inventory.get("target_values_read", False),
+        "cluster_count": int(inventory.get("cluster_count", 0)),
+        "start": inventory.get("start"),
+        "end": inventory.get("end"),
+        "route_cluster_counts": dict(inventory.get("route_cluster_counts", {})),
+        "route_request_symbol_counts": dict(
+            inventory.get("route_request_symbol_counts", {})
+        ),
+        "output_count": int(inventory.get("output_count", 0)),
+        "target_snapshot_fors_redacted": True,
+        "target_output_paths_redacted": True,
+        "automated_action_allowed": False,
+    }
+
+
+def _read_optional_evidence(
+    reader: Callable[[], Mapping[str, object] | None],
+    *,
+    label: str,
+    route_errors: dict[str, str],
+) -> Mapping[str, object] | None:
+    try:
+        return reader()
+    except Exception as exc:
+        route_errors[f"evidence/{label}"] = f"{type(exc).__name__}: {exc}"
+        return None
 
 
 def _redact_closed_lockbox(
@@ -643,6 +915,13 @@ def _model_report(model: object, partitions: PricingPartitions) -> dict[str, obj
     evaluation = dict(model.offline_evaluation)
     return {
         "status": "MODEL_FIT",
+        "source_provider": "databento-opra",
+        "evidence_kind": "REAL_RECEIPT_PROVEN",
+        "evidence_lanes": {
+            "train_calibration": "OFFLINE_TRAIN_CALIBRATION",
+            "assessment": "UNTOUCHED_OFFLINE_ASSESSMENT",
+            "lockbox": "CLOSED_LOCKBOX_METADATA_ONLY",
+        },
         "artifact_directory": str(model.artifact_directory),
         "reused": bool(model.reused),
         "assessment_metrics": evaluation,
@@ -680,6 +959,9 @@ def _write_and_publish_generation(
     model_policy: BSGPModelPolicy,
     contract_policy: ContractSelectionPolicy,
     projection_policy: ProjectionPolicy,
+    policy_artifact: EligibilityPolicyArtifact,
+    runtime_benchmark: Mapping[str, object],
+    sealed_lockbox_inventory: Mapping[str, object],
 ) -> Path:
     runs_root = root / "ml" / "option-pricing-runs"
     runs_root.mkdir(parents=True, exist_ok=True)
@@ -708,6 +990,18 @@ def _write_and_publish_generation(
             encoding="utf-8",
         )
         output_names.append(OPTION_PRICING_REPORT_NAME)
+        sealed_inventory_name = "closed-lockbox-inventory.json"
+        (staging / sealed_inventory_name).write_text(
+            json.dumps(
+                dict(sealed_lockbox_inventory),
+                indent=2,
+                sort_keys=True,
+                default=str,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        output_names.append(sealed_inventory_name)
         copied = _copy_model_artifacts(root, staging, models)
         output_names.extend(copied)
         write_manifest(
@@ -730,6 +1024,14 @@ def _write_and_publish_generation(
                 "model_policy": asdict(model_policy),
                 "contract_policy": asdict(contract_policy),
                 "projection_policy": asdict(projection_policy),
+                "eligibility_policy": {
+                    "policy_hash": policy_artifact.policy_hash,
+                    "path": policy_artifact.directory.relative_to(root).as_posix(),
+                    "receipt_checksum_sha256": file_checksum(
+                        policy_artifact.directory / "receipt.json"
+                    ),
+                },
+                "runtime_benchmark": dict(runtime_benchmark),
                 "prediction_available_at": published_at.isoformat(),
                 "publication_contract": {
                     "version": OPTION_PRICING_PUBLICATION_VERSION,
@@ -751,12 +1053,59 @@ def _write_and_publish_generation(
         # An interrupted staging directory is intentionally left unreachable;
         # it has no receipt and can never become authoritative by discovery.
         raise
+    staged_verification = verify_staged_option_pricing_run(
+        root,
+        run_directory=destination,
+        policy_artifact=policy_artifact,
+    )
+    if not staged_verification.get("verified"):
+        raise RuntimeError(
+            "Completed Pricing staging verification failed: "
+            + json.dumps(staged_verification, sort_keys=True, default=str)
+        )
     publication = publish_option_pricing_run(
         root,
         run_directory=destination,
         published_at=published_at,
     )
+    completed_verification = verify_completed_option_pricing_lineage(
+        root,
+        run_directory=destination,
+        policy_artifact=policy_artifact,
+    )
+    if not completed_verification.get("verified"):
+        previous = publication.receipt.get("previous_publication")
+        pointer = pricing_pointer_path(root)
+        if isinstance(previous, Mapping):
+            _write_runtime_json_atomic(
+                pointer,
+                {
+                    "schema_version": OPTION_PRICING_POINTER_VERSION,
+                    "current": dict(previous),
+                },
+            )
+            restored = read_current_option_pricing_publication(root)
+            if restored.run_directory == destination:
+                raise RuntimeError("Failed to restore prior Pricing authority")
+        else:
+            pointer.unlink(missing_ok=True)
+        raise RuntimeError(
+            "Final Pricing publication verification failed; authority was restored: "
+            + json.dumps(completed_verification, sort_keys=True, default=str)
+        )
     return publication.run_directory
+
+
+def _write_runtime_json_atomic(
+    path: Path, payload: Mapping[str, object]
+) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + f".tmp-{os.getpid()}")
+    temporary.write_text(
+        json.dumps(dict(payload), indent=2, sort_keys=True, default=str) + "\n",
+        encoding="utf-8",
+    )
+    temporary.replace(path)
 
 
 def _copy_model_artifacts(

@@ -1,5 +1,11 @@
 # Shadow option pricing: Black-Scholes plus a finite-feature GP
 
+Eligibility protocol v2, candidate/lockbox controls, continuous-runtime
+operations, rollback, and disaster recovery are specified in
+[`option-pricing-operations.md`](option-pricing-operations.md). Existing v1
+artifacts described below remain readable but cannot alone establish v2
+production eligibility.
+
 This document describes the implemented, independent Pricing runtime. It is a
 research and monitoring subsystem. It does not submit orders, change Strategy
 rankings, change the default directional feature profile, or authorize any
@@ -159,17 +165,24 @@ python -m ml.option_pricing_opra --datastore-target pc `
   --market-times 10:00 11:30 13:30 15:00
 ```
 
-The command resolves six historical months of eligible XNYS sessions with
-`exchange_calendars`, including holidays, early closes, and DST. It prints each
-exact dataset, schema, symbology, symbol list, UTC window, estimated cost, and
-ceiling. Definitions are estimated in whole-day windows. After a separately
-approved definition phase is present, eligible standard raw symbols are
-filtered point-in-time and CBBO is estimated in bounded ten-minute windows.
+The command resolves at least six historical months and exactly the required 504
+chronological clusters per symbol with `exchange_calendars`, including holidays,
+early closes, and DST. It prints each exact dataset, schema, symbology, symbol
+list, UTC window, estimated cost, billable bytes, storage preflight, and ceiling.
+Definitions are estimated in whole-day windows. After a separately approved
+definition phase is present, eligible standard raw symbols are filtered
+point-in-time and CBBO is estimated in bounded ten-minute windows. The CBBO plan
+must cover every scheduled target with both same-expiry/strike CALL and PUT raw
+symbols, an exact completed underlying bar, and strictly prior rate evidence.
 
-Paid access is impossible without both `--execute` and an explicit
-`--max-cost-usd`. Every proposed request first calls `metadata.get_cost`; a
-phase exceeding the aggregate ceiling aborts before `get_range`. Approved DBN
-responses stream directly to bounded `.dbn.zst` files in immutable
+Paid access is impossible without `--execute`, an explicit `--max-cost-usd`, and
+an operator-approved `--authorization-record` generated from the exact estimate.
+The record binds every request, per-request and aggregate estimates, billable
+bytes, eligibility-policy hash, storage requirement, one-attempt limit, and both
+spend and datastore-write authorization. Every proposed request first calls
+`metadata.get_cost`; a changed plan, incomplete authorization, insufficient
+disk, or phase exceeding the aggregate ceiling aborts before `get_range`.
+Approved DBN responses stream directly to bounded `.dbn.zst` files in immutable
 `ml/option-pricing-evidence/opra/<UTC>/` evidence. A verified matching import is
 resumed instead of downloaded again. Definition and CBBO are intentionally
 separate resumable phases so the eligible raw-symbol request set and its full
@@ -256,4 +269,3 @@ Important limitations:
   claim exists yet.
 - No paid OPRA download, model freeze, closed-lockbox score, or receipt-proven
   prospective collection was authorized in this build.
-

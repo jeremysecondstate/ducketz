@@ -1,0 +1,45 @@
+name: option-pricing-v2
+
+on:
+  push:
+    paths:
+      - "ml/option_pricing/**"
+      - "ml/option_pricing_runtime.py"
+      - "ml/option_pricing_opra.py"
+      - "ml/option_pricing_admin.py"
+      - "ml/option_pricing_lockbox.py"
+      - "tests/test_option_pricing_*.py"
+      - "pyproject.toml"
+      - "requirements-ml-runtime.lock"
+      - ".github/workflows/option-pricing.yml"
+  pull_request:
+    paths:
+      - "ml/option_pricing/**"
+      - "ml/option_pricing_runtime.py"
+      - "ml/option_pricing_opra.py"
+      - "ml/option_pricing_admin.py"
+      - "ml/option_pricing_lockbox.py"
+      - "tests/test_option_pricing_*.py"
+      - "pyproject.toml"
+      - "requirements-ml-runtime.lock"
+      - ".github/workflows/option-pricing.yml"
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: python -m pip install pip==26.2.1
+      - run: python -m pip install -r requirements-ml-runtime.lock
+      - run: python -m pip install -e . --no-deps
+      - run: python -m pip check
+      - run: python -m ml.option_pricing_runtime --help
+      - run: python -m ml.option_pricing_opra --help
+      - run: python -m ml.option_pricing_admin --help
+      - run: python -m ml.option_pricing_lockbox --help
+      - run: python -m pytest -q
