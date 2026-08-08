@@ -41,6 +41,8 @@ def test_default_watchlist_and_runtime_commands_use_the_same_configured_symbols(
     assert watchlist
     assert len(set(watchlist)) == len(watchlist)
     assert "--watchlist datafetching\\watchlist.txt" in loop_a_command
+    pricing_command = loop_a_command.split("python -m ml.option_pricing_runtime", 1)[1]
+    assert "--watchlist datafetching\\watchlist.txt" in pricing_command
     assert "--cme-mode external" in loop_a_command
     assert "--options-mode external" in loop_a_command
     assert all(symbol in loop_b_command for symbol in watchlist)

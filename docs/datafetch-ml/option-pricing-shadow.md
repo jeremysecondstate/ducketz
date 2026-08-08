@@ -231,7 +231,7 @@ Run one bounded Pricing cycle before the Options `+2` phase:
 ```powershell
 python -m ml.option_pricing_runtime `
   --datastore-target pc `
-  --symbols NVDA GOOG MU `
+  --watchlist datafetching\watchlist.txt `
   --interval-minutes 15 `
   --phase-offset-minutes 1 `
   --once

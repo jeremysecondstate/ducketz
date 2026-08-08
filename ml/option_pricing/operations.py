@@ -404,6 +404,7 @@ def build_runtime_health(
     lineage_report: Mapping[str, object],
     route_errors: Mapping[str, str],
     live_routes: Mapping[str, object],
+    live_symbols: Sequence[str] | None = None,
     elapsed_seconds: float,
     peak_memory_bytes: int,
     capacity: Mapping[str, object],
@@ -420,7 +421,14 @@ def build_runtime_health(
     for route, error in sorted(route_errors.items()):
         kind = "MISSED_PHASE" if route.endswith("/live") else "ROUTE_LOSS"
         alerts.append(_alert(kind, "ACTION_REQUIRED", {"route": route, "error": error}))
-    for symbol in REQUIRED_SYMBOLS:
+    expected_live_symbols = tuple(
+        dict.fromkeys(
+            str(value).strip().upper()
+            for value in (live_symbols or REQUIRED_SYMBOLS)
+            if str(value).strip()
+        )
+    )
+    for symbol in expected_live_symbols:
         status = live_routes.get(symbol)
         if not isinstance(status, Mapping) or status.get("status") not in {
             "READY",

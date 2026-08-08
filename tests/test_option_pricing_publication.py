@@ -15,7 +15,7 @@ from ml.option_pricing.publication import (
     publish_option_pricing_run,
     read_current_option_pricing_publication,
 )
-from ml.option_pricing_runtime import run_option_pricing_once
+from ml.option_pricing_runtime import resolve_pricing_symbols, run_option_pricing_once
 from ml.parquet_contracts import (
     OPTION_PRICING_EVALUATION_SCHEMA,
     OPTION_PRICING_MONITORING_SCHEMA,
@@ -159,12 +159,12 @@ def test_empty_runtime_is_route_isolated_and_writes_only_pricing_authority(
 ) -> None:
     result = run_option_pricing_once(
         tmp_path,
-        symbols=("NVDA", "GOOG"),
+        symbols=("NVDA", "GOOG", "AAPL"),
         run_timestamp="2026-07-06T14:01:00Z",
         runtime_clock=lambda: "2026-07-06T14:01:01Z",
     )
     assert result.run_directory.is_dir()
-    assert set(result.route_errors) == {"NVDA/live", "GOOG/live"}
+    assert set(result.route_errors) == {"NVDA/live", "GOOG/live", "AAPL/live"}
     assert read_current_option_pricing_publication(tmp_path).run_directory == result.run_directory
     assert pricing_pointer_path(tmp_path).is_file()
     assert not (tmp_path / "ml" / "latest" / "run.json").exists()
@@ -182,10 +182,17 @@ def test_empty_runtime_is_route_isolated_and_writes_only_pricing_authority(
         "requires_fitted_residual_model": False,
         "status": "READY_WHEN_CAUSAL_INPUTS_AVAILABLE",
     }
+    assert report["runtime_scope"] == {
+        "black_scholes_baseline_symbols": ["NVDA", "GOOG", "AAPL"],
+        "bsgp_eligibility_pilot_symbols": ["NVDA", "GOOG", "MU"],
+        "live_symbol_count": 3,
+        "live_symbols": ["NVDA", "GOOG", "AAPL"],
+        "source": "configured-watchlist-or-explicit-symbols",
+    }
     assert len(report["gate"]["gates"]) == 10
     monitoring = pd.read_parquet(result.run_directory / "pricing-monitoring.parquet")
     live_rows = monitoring.loc[monitoring["category"].eq("live_route")]
-    assert set(live_rows["scope_value"]) == {"NVDA", "GOOG"}
+    assert set(live_rows["scope_value"]) == {"NVDA", "GOOG", "AAPL"}
     assert live_rows["status"].eq("TARGET_BAR_NOT_READY").all()
     public_lockbox = report["closed_lockbox_inventory"]
     assert public_lockbox["target_snapshot_fors_redacted"] is True
@@ -193,6 +200,33 @@ def test_empty_runtime_is_route_isolated_and_writes_only_pricing_authority(
     assert "target_snapshot_fors" not in public_lockbox
     assert "outputs" not in public_lockbox
     assert (result.run_directory / "closed-lockbox-inventory.json").is_file()
+
+
+def test_pricing_cli_scope_defaults_to_watchlist_and_symbols_override(
+    tmp_path: Path,
+) -> None:
+    watchlist = tmp_path / "watchlist.txt"
+    watchlist.write_text(
+        "# active Pricing universe\nNVDA\nGOOG\nMU\nAAPL\nMSFT\n",
+        encoding="utf-8",
+    )
+
+    assert resolve_pricing_symbols(symbols=None, watchlist=watchlist) == (
+        "NVDA",
+        "GOOG",
+        "MU",
+        "AAPL",
+        "MSFT",
+    )
+    assert resolve_pricing_symbols(
+        symbols=("MU", "NVDA", "GOOG", "TSLA"),
+        watchlist=tmp_path / "not-read.txt",
+    ) == ("MU", "NVDA", "GOOG", "TSLA")
+    with pytest.raises(ValueError, match="pilot symbols: MU"):
+        resolve_pricing_symbols(
+            symbols=("NVDA", "GOOG", "AAPL"),
+            watchlist=watchlist,
+        )
 
 
 def test_all_pricing_parquets_have_exact_schema_and_one_readable_id(tmp_path: Path) -> None:

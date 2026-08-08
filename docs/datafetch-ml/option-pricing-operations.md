@@ -37,9 +37,12 @@ Running this against `C:\DATASTORE` is a write and requires explicit approval.
 
 ## Configuration and secrets
 
-The production symbol set is exactly `NVDA GOOG MU`; CALL and PUT are distinct
-routes. The continuous Pricing runtime reads already committed local inputs and
-does not need a provider credential. The guarded OPRA estimator/importer reads
+The continuous live Pricing scope comes from `datafetching/watchlist.txt` by
+default, with CALL and PUT priced independently for every active symbol. The
+frozen BSGP eligibility/OPRA pilot remains exactly `NVDA GOOG MU`; expanding the
+live Black-Scholes scope does not expand paid evidence or lockbox authority. The
+continuous Pricing runtime reads already committed local inputs and does not
+need a provider credential. The guarded OPRA estimator/importer reads
 `DATABENTO_API_KEY` from the environment and never renders it. Missing secrets
 are terminal for estimates/imports. Databento metadata calls have three bounded
 attempts and a 30-second endpoint timeout. Paid `get_range` has a 180-second
@@ -81,7 +84,8 @@ Start only one writer. The CLI owns
 normal command is:
 
 ```powershell
-ducketz-option-pricing --datastore C:\path\to\approved-datastore --symbols NVDA GOOG MU
+ducketz-option-pricing --datastore C:\path\to\approved-datastore `
+  --watchlist datafetching\watchlist.txt
 ```
 
 Before installing, restarting, or modifying a production supervisor, obtain the

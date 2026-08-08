@@ -22,7 +22,7 @@ python -m datafetching.orchestrate `
 # bar appears; the runtime never backdates a prediction into an observed target.
 python -m ml.option_pricing_runtime `
   --datastore-target pc `
-  --symbols NVDA GOOG MU `
+  --watchlist datafetching\watchlist.txt `
   --interval-minutes 15 `
   --phase-offset-minutes 1
 

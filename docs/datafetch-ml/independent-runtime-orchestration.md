@@ -38,7 +38,7 @@ python -m datafetching.orchestrate --datastore-target pc `
 
 # 3. Shadow Pricing. It skips rather than backdates when the target bar is not ready.
 python -m ml.option_pricing_runtime --datastore-target pc `
-  --symbols NVDA GOOG MU `
+  --watchlist datafetching\watchlist.txt `
   --interval-minutes 15 --phase-offset-minutes 1
 
 # 4. Schwab options. It skips a symbol until a completed Databento 1m clock exists.

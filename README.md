@@ -58,7 +58,7 @@ python -m datafetching.orchestrate --datastore C:\data\ducketz --symbols NVDA --
 Then run one shadow Pricing cycle before the Options target fetch:
 
 ```powershell
-python -m ml.option_pricing_runtime --datastore C:\data\ducketz --symbols NVDA GOOG MU --once
+python -m ml.option_pricing_runtime --datastore C:\data\ducketz --watchlist datafetching\watchlist.txt --once
 python -m datafetching.options_runtime --datastore C:\data\ducketz --symbols NVDA --once
 ```
 

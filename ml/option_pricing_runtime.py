@@ -14,6 +14,7 @@ from typing import Callable, Mapping, Sequence
 
 import pandas as pd
 
+from datafetching.orchestrate import DEFAULT_WATCHLIST, normalize_symbols, read_watchlist
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.artifacts import file_checksum, utc_timestamp, write_manifest
@@ -166,9 +167,7 @@ def _run_option_pricing_once_impl(
     runtime_limits: RuntimeLimits | None = None,
 ) -> OptionPricingRuntimeResult:
     root = Path(datastore_root).resolve()
-    clean_symbols = tuple(
-        dict.fromkeys(str(value).strip().upper() for value in symbols if str(value).strip())
-    )
+    clean_symbols = normalize_symbols(symbols)
     if not clean_symbols:
         raise ValueError("At least one Pricing symbol is required")
     created = utc_timestamp(run_timestamp)
@@ -281,7 +280,7 @@ def _run_option_pricing_once_impl(
     else:
         opra = materialize_committed_opra_history_v2(
             root,
-            symbols=clean_symbols,
+            symbols=eligibility_policy.required_symbols,
             rate_observations=rate_observations,
             closed_lockbox_clusters=effective_partitions.lockbox_clusters,
             eligibility_policy_hash=policy_artifact.policy_hash,
@@ -498,6 +497,15 @@ def _run_option_pricing_once_impl(
         cycle_status = "TARGET_INPUT_UNAVAILABLE"
     reports_payload = {
         **preliminary_report,
+        "runtime_scope": {
+            "live_symbols": list(clean_symbols),
+            "live_symbol_count": len(clean_symbols),
+            "source": "configured-watchlist-or-explicit-symbols",
+            "black_scholes_baseline_symbols": list(clean_symbols),
+            "bsgp_eligibility_pilot_symbols": list(
+                eligibility_policy.required_symbols
+            ),
+        },
         "cycle": {
             "status": cycle_status,
             "new_live_sample_rows": len(new_live_samples),
@@ -561,6 +569,7 @@ def _run_option_pricing_once_impl(
         policy_artifact=policy_artifact,
         runtime_benchmark=benchmark,
         sealed_lockbox_inventory=sealed_lockbox_inventory,
+        runtime_symbols=clean_symbols,
     )
     lineage = verify_completed_option_pricing_lineage(
         root,
@@ -617,6 +626,7 @@ def _run_option_pricing_once_impl(
         lineage_report=lineage,
         route_errors=route_errors,
         live_routes=live_status,
+        live_symbols=clean_symbols,
         elapsed_seconds=time.perf_counter() - cycle_started,
         peak_memory_bytes=peak_memory_bytes,
         capacity=capacity_report(root, limits=limits),
@@ -668,7 +678,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         choices=tuple(DATASTORE_TARGETS),
         default="pc",
     )
-    parser.add_argument("--symbols", nargs="+", default=("NVDA", "GOOG", "MU"))
+    parser.add_argument("--watchlist", type=Path, default=DEFAULT_WATCHLIST)
+    parser.add_argument(
+        "--symbols",
+        nargs="+",
+        default=None,
+        help="Explicit live Pricing symbols; overrides --watchlist.",
+    )
     parser.add_argument("--interval-minutes", type=int, default=15)
     parser.add_argument("--phase-offset-minutes", type=int, default=1)
     parser.add_argument("--once", action="store_true")
@@ -677,13 +693,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("--interval-minutes must be at least 1")
     if not 0 <= args.phase_offset_minutes < args.interval_minutes:
         parser.error("--phase-offset-minutes must satisfy 0 <= phase < interval-minutes")
-    configured_symbols = tuple(
-        dict.fromkeys(str(value).strip().upper() for value in args.symbols)
-    )
-    if len(configured_symbols) != len(REQUIRED_SYMBOLS) or set(
-        configured_symbols
-    ) != set(REQUIRED_SYMBOLS):
-        parser.error("production Pricing requires exactly NVDA, GOOG, and MU")
+    try:
+        configured_symbols = resolve_pricing_symbols(
+            symbols=args.symbols,
+            watchlist=args.watchlist,
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        parser.error(str(exc))
     root = resolve_datastore_dir(
         root_dir=args.datastore,
         target=None if args.datastore is not None else args.datastore_target,
@@ -691,7 +707,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     print("DUCKETS OPTION PRICING RUNTIME")
     print("==============================")
     print(f"DATASTORE: {root}")
-    print(f"Symbols: {', '.join(args.symbols)}")
+    print(f"Live symbols: {', '.join(configured_symbols)}")
+    print(
+        "Scope: Black-Scholes uses every live symbol; BSGP eligibility remains "
+        f"the {', '.join(REQUIRED_SYMBOLS)} pilot"
+    )
     print("Authority: ml/option-pricing-latest/run.json")
     print("Mode: shadow only; automated_action_allowed=false")
     print("Timing: completed quarter-hour bar -> Pricing receipt -> independent Options fetch")
@@ -711,7 +731,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     print(f"Next Pricing cycle: {boundary.isoformat()}")
                     time.sleep(max(0.0, (boundary - datetime.now(timezone.utc)).total_seconds()))
                 try:
-                    result = run_option_pricing_once(root, symbols=args.symbols)
+                    result = run_option_pricing_once(root, symbols=configured_symbols)
                     print(
                         "Pricing published: "
                         f"samples={result.sample_rows}; predictions={result.prediction_rows}; "
@@ -757,6 +777,25 @@ def next_boundary(
         return anchor
     count = int((current - anchor).total_seconds() // (interval_minutes * 60))
     return anchor + timedelta(minutes=(count + 1) * interval_minutes)
+
+
+def resolve_pricing_symbols(
+    *,
+    symbols: Sequence[str] | None,
+    watchlist: Path,
+) -> tuple[str, ...]:
+    configured = normalize_symbols(
+        symbols if symbols is not None else read_watchlist(Path(watchlist))
+    )
+    if not configured:
+        raise ValueError("No Pricing symbols were configured")
+    missing_pilot = [symbol for symbol in REQUIRED_SYMBOLS if symbol not in configured]
+    if missing_pilot:
+        raise ValueError(
+            "Pricing live scope must include the BSGP eligibility pilot symbols: "
+            + ", ".join(missing_pilot)
+        )
+    return configured
 
 
 def _assessment_predictions(
@@ -1002,6 +1041,7 @@ def _write_and_publish_generation(
     policy_artifact: EligibilityPolicyArtifact,
     runtime_benchmark: Mapping[str, object],
     sealed_lockbox_inventory: Mapping[str, object],
+    runtime_symbols: Sequence[str],
 ) -> Path:
     runs_root = root / "ml" / "option-pricing-runs"
     runs_root.mkdir(parents=True, exist_ok=True)
@@ -1072,6 +1112,12 @@ def _write_and_publish_generation(
                     ),
                 },
                 "runtime_benchmark": dict(runtime_benchmark),
+                "runtime_scope": {
+                    "live_symbols": list(runtime_symbols),
+                    "bsgp_eligibility_pilot_symbols": list(
+                        policy_artifact.policy.get("required_symbols", REQUIRED_SYMBOLS)
+                    ),
+                },
                 "prediction_available_at": published_at.isoformat(),
                 "publication_contract": {
                     "version": OPTION_PRICING_PUBLICATION_VERSION,
