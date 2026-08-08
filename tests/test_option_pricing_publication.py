@@ -176,7 +176,17 @@ def test_empty_runtime_is_route_isolated_and_writes_only_pricing_authority(
     )
     assert report["gate"]["gate_status"] == "NOT_PRODUCTION_ELIGIBLE"
     assert report["automated_action_allowed"] is False
+    assert report["cycle"]["status"] == "TARGET_INPUT_UNAVAILABLE"
+    assert report["black_scholes_baseline"] == {
+        "new_predictions_created": 0,
+        "requires_fitted_residual_model": False,
+        "status": "READY_WHEN_CAUSAL_INPUTS_AVAILABLE",
+    }
     assert len(report["gate"]["gates"]) == 10
+    monitoring = pd.read_parquet(result.run_directory / "pricing-monitoring.parquet")
+    live_rows = monitoring.loc[monitoring["category"].eq("live_route")]
+    assert set(live_rows["scope_value"]) == {"NVDA", "GOOG"}
+    assert live_rows["status"].eq("TARGET_BAR_NOT_READY").all()
     public_lockbox = report["closed_lockbox_inventory"]
     assert public_lockbox["target_snapshot_fors_redacted"] is True
     assert public_lockbox["target_output_paths_redacted"] is True

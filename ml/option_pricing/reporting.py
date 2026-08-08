@@ -326,6 +326,8 @@ def build_monitoring_rows(
     predictions: pd.DataFrame,
     evaluations: pd.DataFrame,
     monitored_at: object,
+    live_routes: Mapping[str, object] | None = None,
+    live_samples: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     timestamp = utc_timestamp(monitored_at)
     gate_rows = report.get("gates", [])
@@ -365,6 +367,51 @@ def build_monitoring_rows(
                 evidence_row_count=len(group),
                 details={"automated_action_allowed": False},
                 frame=group,
+            )
+        )
+    sample_frame = live_samples if live_samples is not None else pd.DataFrame()
+    for symbol, route_status in sorted((live_routes or {}).items()):
+        if not isinstance(route_status, Mapping):
+            continue
+        status = str(route_status.get("status", "UNKNOWN"))
+        symbol_samples = (
+            sample_frame.loc[
+                sample_frame.get(
+                    "symbol", pd.Series(index=sample_frame.index, dtype="string")
+                )
+                .astype("string")
+                .str.upper()
+                .eq(str(symbol).upper())
+            ]
+            if not sample_frame.empty
+            else pd.DataFrame()
+        )
+        target = pd.to_datetime(
+            route_status.get("target_snapshot_for"), utc=True, errors="coerce"
+        )
+        target_frame = (
+            pd.DataFrame({"target_snapshot_for": [target]})
+            if not pd.isna(target)
+            else pd.DataFrame()
+        )
+        output.append(
+            _monitoring_row(
+                timestamp,
+                category="live_route",
+                metric_name="causal_batch_ready",
+                scope_type="symbol",
+                scope_value=str(symbol),
+                status=status,
+                observed_value=1.0 if status == "READY" else 0.0,
+                reference_value=1.0,
+                unit="boolean",
+                evidence_row_count=len(symbol_samples),
+                details={
+                    "reason": route_status.get("reason", ""),
+                    "target_snapshot_for": route_status.get("target_snapshot_for"),
+                    "automated_action_allowed": False,
+                },
+                frame=target_frame,
             )
         )
     return pd.DataFrame(output)

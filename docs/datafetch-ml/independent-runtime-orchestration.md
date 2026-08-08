@@ -106,6 +106,14 @@ Loop B defaults to phase +5 minutes, and Strategy defaults to hourly at phase
 that target; it never waits for Options or backdates a prediction. These offsets
 are operational defaults, not timestamp semantics.
 
+After the regular session, the newest completed quarter-hour bar can remain the
+same while Options continues to publish receipts. Pricing then reports
+`TARGET_ALREADY_OBSERVED` and publishes monitoring-only output. This is an
+expected causal idle state, not a reason to manufacture or backdate a pricing
+sample. The first post-gap target can also be excluded by the 20-minute lagged
+quote freshness policy; normal Black-Scholes baseline rows begin once a fresh
+Options receipt exists strictly before a later, unobserved target.
+
 ## Three clocks and causal selection
 
 CME data keep three separate concepts:

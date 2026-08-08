@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from datafetching.decision_time import DecisionClock
 from ml.option_pricing.black_scholes import (
     american_option_bounds,
     black_scholes_price,
@@ -13,6 +14,7 @@ from ml.option_pricing.black_scholes import (
     target_years_to_expiration,
 )
 from ml.option_pricing.causal import (
+    build_live_prediction_inputs,
     build_causal_samples,
     canonicalize_predictions,
     interpolate_lagged_iv_surface,
@@ -62,6 +64,46 @@ def test_black_scholes_limits_invalid_inputs_and_numerical_tails() -> None:
         black_scholes_price(np.nan, 100.0, 0.01, 0.2, 1.0, 0.0, "CALL")
     with pytest.raises(ValueError, match="positive"):
         black_scholes_price(0.0, 100.0, 0.01, 0.2, 1.0, 0.0, "CALL")
+
+
+def test_live_target_requires_option_receipt_visible_before_prediction(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = pd.Timestamp("2026-07-06T14:00:00Z")
+    future_receipt = CommittedOptionSnapshot(
+        symbol="NVDA",
+        snapshot_for=target,
+        available_at=pd.Timestamp("2026-07-06T14:02:00Z"),
+        directory=tmp_path / "snapshot",
+        raw_path=tmp_path / "raw.parquet",
+        contracts_path=tmp_path / "contracts.parquet",
+        features_path=tmp_path / "features.parquet",
+        receipt_path=tmp_path / "receipt.json",
+        receipt={},
+    )
+    monkeypatch.setattr(
+        "ml.option_pricing.causal.latest_completed_bar_clock",
+        lambda *_args, **_kwargs: DecisionClock(
+            decision_timestamp=target,
+            bar_timestamp=target - pd.Timedelta(minutes=1),
+            provider="databento",
+            timeframe="1m",
+            source_file=tmp_path / "bars.parquet",
+        ),
+    )
+    monkeypatch.setattr(
+        "ml.option_pricing.causal.committed_option_snapshots",
+        lambda *_args, **_kwargs: (future_receipt,),
+    )
+
+    batch = build_live_prediction_inputs(
+        tmp_path,
+        symbol="NVDA",
+        prediction_created_at="2026-07-06T14:01:00Z",
+    )
+
+    assert batch.status == "SOURCE_SURFACE_UNAVAILABLE"
+    assert batch.target_snapshot_for == target
 
 
 def test_implied_volatility_round_trip_and_impossible_price_rejection() -> None:

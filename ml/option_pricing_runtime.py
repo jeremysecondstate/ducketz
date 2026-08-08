@@ -108,6 +108,7 @@ class OptionPricingRuntimeResult:
     models_reused: int
     published_at: pd.Timestamp
     route_errors: Mapping[str, str]
+    live_routes: Mapping[str, Mapping[str, object]]
     eligibility_report_directory: Path
     gate_status: str
     health_path: Path
@@ -354,6 +355,7 @@ def _run_option_pricing_once_impl(
                 "reason": reason,
                 "source_provider": "databento-opra",
                 "evidence_kind": "REAL_RECEIPT_PROVEN",
+                "black_scholes_baseline_available_when_inputs_valid": True,
                 "automated_action_allowed": False,
             }
 
@@ -476,9 +478,37 @@ def _run_option_pricing_once_impl(
         predictions=predictions,
         evaluations=evaluations,
         monitored_at=published_at,
+        live_routes=live_status,
+        live_samples=new_live_samples,
     )
+    new_live_prediction_count = len(new_live_predictions)
+    live_route_states = {
+        symbol: str(status.get("status", "UNKNOWN"))
+        for symbol, status in live_status.items()
+    }
+    if new_live_prediction_count:
+        cycle_status = "PREDICTIONS_CREATED"
+    elif live_route_states and all(
+        status == "TARGET_ALREADY_OBSERVED" for status in live_route_states.values()
+    ):
+        cycle_status = "WAITING_FOR_UNOBSERVED_TARGET"
+    elif any(status == "NO_ELIGIBLE_CONTRACTS" for status in live_route_states.values()):
+        cycle_status = "CAUSAL_INPUTS_EXCLUDED"
+    else:
+        cycle_status = "TARGET_INPUT_UNAVAILABLE"
     reports_payload = {
         **preliminary_report,
+        "cycle": {
+            "status": cycle_status,
+            "new_live_sample_rows": len(new_live_samples),
+            "new_live_prediction_rows": new_live_prediction_count,
+            "route_statuses": live_route_states,
+        },
+        "black_scholes_baseline": {
+            "status": "READY_WHEN_CAUSAL_INPUTS_AVAILABLE",
+            "requires_fitted_residual_model": False,
+            "new_predictions_created": new_live_prediction_count,
+        },
         "gate": gate,
         "closed_lockbox": _closed_lockbox_report(global_partitions),
         "closed_lockbox_inventory": closed_lockbox_report,
@@ -615,6 +645,7 @@ def _run_option_pricing_once_impl(
         models_reused=models_reused,
         published_at=published_at,
         route_errors=route_errors,
+        live_routes=live_status,
         eligibility_report_directory=eligibility_artifact.directory,
         gate_status=str(final_report["gate_status"]),
         health_path=health_path,
@@ -691,6 +722,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                     )
                     for route, error in result.route_errors.items():
                         print(f"Route unavailable {route}: {error}")
+                    for symbol, route in result.live_routes.items():
+                        target = route.get("target_snapshot_for")
+                        target_text = f"; target={target}" if target is not None else ""
+                        reason = str(route.get("reason", "")).strip()
+                        reason_text = f"; reason={reason}" if reason else ""
+                        print(
+                            f"Live route {symbol}: {route.get('status', 'UNKNOWN')}"
+                            f"{target_text}{reason_text}"
+                        )
                     exit_code = result.health_exit_code
                 except Exception as exc:
                     print(f"Pricing failed: {type(exc).__name__}: {exc}")

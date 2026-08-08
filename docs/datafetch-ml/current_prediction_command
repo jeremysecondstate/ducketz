@@ -1,7 +1,10 @@
-# Start directional Loop B after Loop A has one COMPLETE generation.
+# Start directional Loop B after Loop A has one COMPLETE generation. Pricing is
+# deliberately not added to this default feature profile. After Pricing has a
+# verified non-empty surface, its explicit shadow-only profile is
+# loop-a-all-bsgp-shadow-v1.
 python -m ml.prediction_runtime `
   --datastore-target pc `
-  --symbols NVDA GOOG MU AAPL MSFT AMZN META TSLA CAT SNDK SPCX `
+  --symbols NVDA GOOG MU AAPL MSFT AMZN META TSLA CAT SNDK `
   --provider databento `
   --horizons 1h 4h 1d 1w `
   --feature-profile loop-a-all-v1 `
@@ -12,6 +15,8 @@ python -m ml.prediction_runtime `
   --phase-offset-minutes 5
 
 # Strategy is a separate consumer and cannot delay or mutate the Loop B run.
+# Add --pricing-mode shadow only when Pricing diagnostics are intentionally
+# enabled; they never change candidate ranking or order construction.
 python -m ml.strategy_runtime `
   --datastore-target pc `
   --interval-minutes 15 `

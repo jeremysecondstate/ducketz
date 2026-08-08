@@ -77,10 +77,16 @@ def build_live_prediction_inputs(
     clock = latest_completed_bar_clock(root, symbol=clean_symbol, as_of=created)
     target = pd.Timestamp(clock.decision_timestamp)
     snapshots = committed_option_snapshots(root, symbol=clean_symbol)
-    if any(snapshot.snapshot_for == target for snapshot in snapshots):
+    observed_target = [
+        snapshot
+        for snapshot in snapshots
+        if snapshot.snapshot_for == target and snapshot.available_at < created
+    ]
+    if observed_target:
+        first_observation = min(observed_target, key=lambda snapshot: snapshot.available_at)
         return CausalSampleBatch(
             pd.DataFrame(),
-            (),
+            (first_observation.receipt_path,),
             "TARGET_ALREADY_OBSERVED",
             "A verified Options receipt for the target was visible before prediction.",
             target,

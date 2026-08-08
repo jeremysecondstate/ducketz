@@ -16,7 +16,17 @@ python -m datafetching.orchestrate `
   --options-mode external `
   --interval-minutes 15
 
-# 3. Independent Schwab option-chain owner. It skips symbols until Loop A has
+# 3. Pricing must run before Options captures the target quote,
+# or the prediction cannot count as prospective evidence.
+# Closed-market cycles can be monitor-only until a new completed quarter-hour
+# bar appears; the runtime never backdates a prediction into an observed target.
+python -m ml.option_pricing_runtime `
+  --datastore-target pc `
+  --symbols NVDA GOOG MU `
+  --interval-minutes 15 `
+  --phase-offset-minutes 1
+
+# 4. Independent Schwab option-chain owner. It skips symbols until Loop A has
 # produced a completed Databento 1m decision clock.
 python -m datafetching.options_runtime `
   --datastore-target pc `
