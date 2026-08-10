@@ -40,6 +40,7 @@ def persist_schwab_option_snapshot(
     fetched_at: datetime | pd.Timestamp | None = None,
     quote_cutoff_at: datetime | pd.Timestamp | None = None,
     regime_available_not_after: datetime | pd.Timestamp | None = None,
+    pricing_barrier: Mapping[str, object] | None = None,
     acquire_writer_lock: bool = True,
 ) -> OptionSnapshotOutput:
     if acquire_writer_lock:
@@ -55,6 +56,7 @@ def persist_schwab_option_snapshot(
                 fetched_at=fetched_at,
                 quote_cutoff_at=quote_cutoff_at,
                 regime_available_not_after=regime_available_not_after,
+                pricing_barrier=pricing_barrier,
             )
     return _persist_schwab_option_snapshot(
         datastore_root,
@@ -64,6 +66,7 @@ def persist_schwab_option_snapshot(
         fetched_at=fetched_at,
         quote_cutoff_at=quote_cutoff_at,
         regime_available_not_after=regime_available_not_after,
+        pricing_barrier=pricing_barrier,
     )
 
 
@@ -76,6 +79,7 @@ def _persist_schwab_option_snapshot(
     fetched_at: datetime | pd.Timestamp | None = None,
     quote_cutoff_at: datetime | pd.Timestamp | None = None,
     regime_available_not_after: datetime | pd.Timestamp | None = None,
+    pricing_barrier: Mapping[str, object] | None = None,
 ) -> OptionSnapshotOutput:
     observed_at = _as_utc_timestamp(fetched_at)
     cutoff_at = (
@@ -146,6 +150,8 @@ def _persist_schwab_option_snapshot(
         raw=raw,
         contracts=contracts,
         features=features,
+        request_started_at=cutoff_at,
+        pricing_barrier=pricing_barrier,
     )
     _atomic_upsert(raw_path, raw, keys=_SNAPSHOT_KEY)
     _atomic_upsert(contracts_path, contracts, keys=_CONTRACT_KEY)

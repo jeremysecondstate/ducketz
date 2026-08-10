@@ -40,6 +40,11 @@ _UUID = re.compile(
     r"[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
     re.IGNORECASE,
 )
+_OPAQUE_CANDIDATE = re.compile(
+    r"[0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-"
+    r"[89ab][0-9a-f]{3}-[0-9a-f]{12}",
+    re.IGNORECASE,
+)
 _IDENTITY_COLUMN_TERM = re.compile(
     r"(?:^|_)(?:hash|digest|fingerprint|checksum|sha(?:1|224|256|384|512)|"
     r"receipt|lineage|identity|content_address|uuid|guid)(?:_|$)",
@@ -257,7 +262,7 @@ def add_readable_id(
             "Readable ID natural columns are not unique: "
             + ", ".join(str(value) for value in duplicate_values[:5])
         )
-    if identifiers.map(is_opaque_identifier).any():
+    if contains_opaque_identifier(identifiers):
         if fallback_prefix is not None:
             output.insert(
                 0,
@@ -390,6 +395,17 @@ def _timestamp_column(column: str) -> bool:
         normalized in {"timestamp", "ts_event", "ts_recv", "datetime"}
         or normalized.endswith("_timestamp")
         or normalized.endswith("_at")
+    )
+
+
+def contains_opaque_identifier(values: pd.Series) -> bool:
+    """Check exact opaque-ID rules only for strings that can possibly match."""
+
+    strings = values.astype("string")
+    candidates = strings.str.contains(_OPAQUE_CANDIDATE, regex=True, na=True)
+    return bool(
+        candidates.any()
+        and strings.loc[candidates].map(is_opaque_identifier).any()
     )
 
 

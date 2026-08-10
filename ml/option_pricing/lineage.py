@@ -120,7 +120,7 @@ def verify_completed_option_pricing_lineage(
     errors = list(staged.get("errors", []))
     try:
         current = read_current_option_pricing_publication(root)
-        reachable = authoritative_option_pricing_runs(root)
+        reachable = authoritative_option_pricing_runs(root, current=current)
         checks["current_publication_verified"] = current.run_directory == run
         checks["publication_reachable"] = run in reachable
         checks["publication_chain_length"] = len(reachable)

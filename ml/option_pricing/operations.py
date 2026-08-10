@@ -434,6 +434,9 @@ def build_runtime_health(
             "READY",
             "AVAILABLE",
             "TARGET_BAR_NOT_READY",
+            "TARGET_ALREADY_OBSERVED",
+            "NO_ELIGIBLE_CONTRACTS",
+            "SOURCE_SURFACE_UNAVAILABLE",
         }:
             alerts.append(_alert("MISSED_PHASE", "ACTION_REQUIRED", {"symbol": symbol, "status": status}))
     generated = pd.to_datetime(
@@ -627,7 +630,7 @@ def _publication_preflight(root: Path, *, limits: RuntimeLimits) -> Mapping[str,
         }
     try:
         publication = read_current_option_pricing_publication(root)
-        reachable = authoritative_option_pricing_runs(root)
+        reachable = authoritative_option_pricing_runs(root, current=publication)
         metadata = {
             name: {
                 "rows": pq.ParquetFile(publication.run_directory / name).metadata.num_rows,

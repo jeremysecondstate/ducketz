@@ -11,6 +11,7 @@ import pandas as pd
 
 from datafetching.ids import add_readable_id
 from datafetching.layout import safe_token
+from datafetching.pricing_barrier import verify_pricing_barrier_metadata
 from ml.artifacts import file_checksum
 
 
@@ -40,6 +41,7 @@ class CommittedOptionSnapshot:
     features_path: Path
     receipt_path: Path
     receipt: Mapping[str, object]
+    receipt_published_at: pd.Timestamp | None = None
 
 
 def option_writer_lock_path(datastore_root: Path) -> Path:
@@ -75,6 +77,9 @@ def publish_option_snapshot(
     raw: pd.DataFrame,
     contracts: pd.DataFrame,
     features: pd.DataFrame,
+    request_started_at: object | None = None,
+    pricing_barrier: Mapping[str, object] | None = None,
+    receipt_published_at: object | None = None,
 ) -> CommittedOptionSnapshot:
     """Atomically expose three immutable files through one receipt and pointer."""
 
@@ -124,11 +129,27 @@ def publish_option_snapshot(
             }
             for name in OPTION_SNAPSHOT_OUTPUTS
         }
+        receipt_published = (
+            _utc(receipt_published_at, "receipt_published_at")
+            if receipt_published_at is not None
+            else pd.Timestamp.now(tz="UTC")
+        )
+        if receipt_published < available_at:
+            raise ValueError("Option receipt publication cannot predate response availability")
         manifest = {
             "schema_version": OPTION_SNAPSHOT_PUBLICATION_VERSION,
             "symbol": clean_symbol,
             "snapshot_for": snapshot_for.isoformat(),
             "available_at": available_at.isoformat(),
+            "receipt_published_at": receipt_published.isoformat(),
+            "request_started_at": (
+                _utc(request_started_at, "request_started_at").isoformat()
+                if request_started_at is not None
+                else None
+            ),
+            "pricing_barrier": (
+                dict(pricing_barrier) if pricing_barrier is not None else None
+            ),
             "outputs": output_inventory,
         }
         manifest_path = staging / "manifest.json"
@@ -138,6 +159,9 @@ def publish_option_snapshot(
             "symbol": clean_symbol,
             "snapshot_for": snapshot_for.isoformat(),
             "available_at": available_at.isoformat(),
+            "receipt_published_at": manifest["receipt_published_at"],
+            "request_started_at": manifest["request_started_at"],
+            "pricing_barrier": manifest["pricing_barrier"],
             "run_path": destination.relative_to(Path(datastore_root)).as_posix(),
             "manifest_checksum_sha256": file_checksum(manifest_path),
             "outputs": output_inventory,
@@ -179,16 +203,46 @@ def read_option_snapshot(directory: Path) -> CommittedOptionSnapshot:
     symbol = str(receipt.get("symbol") or "").strip().upper()
     snapshot_for = _utc(receipt.get("snapshot_for"), "snapshot_for")
     available_at = _utc(receipt.get("available_at"), "available_at")
+    receipt_published_at = (
+        _utc(receipt.get("receipt_published_at"), "receipt_published_at")
+        if receipt.get("receipt_published_at") is not None
+        else available_at
+    )
+    request_started_at = (
+        _utc(receipt.get("request_started_at"), "request_started_at")
+        if receipt.get("request_started_at") is not None
+        else None
+    )
     if (
         manifest.get("symbol") != symbol
         or _utc(manifest.get("snapshot_for"), "manifest snapshot_for")
         != snapshot_for
         or _utc(manifest.get("available_at"), "manifest available_at")
         != available_at
+        or manifest.get("request_started_at") != receipt.get("request_started_at")
+        or manifest.get("pricing_barrier") != receipt.get("pricing_barrier")
+        or manifest.get("receipt_published_at")
+        != receipt.get("receipt_published_at")
+        or receipt_published_at < available_at
     ):
         raise OptionSnapshotPublicationError(
             f"Option snapshot receipt disagrees with its manifest: {run}"
         )
+    if request_started_at is not None:
+        if request_started_at > available_at:
+            raise OptionSnapshotPublicationError(
+                f"Option snapshot request follows its availability: {run}"
+            )
+        try:
+            verify_pricing_barrier_metadata(
+                receipt.get("pricing_barrier"),
+                target_snapshot_for=snapshot_for,
+                request_started_at=request_started_at,
+            )
+        except Exception as exc:
+            raise OptionSnapshotPublicationError(
+                f"Option snapshot Pricing barrier proof is invalid: {run}"
+            ) from exc
     outputs = receipt.get("outputs")
     manifest_outputs = manifest.get("outputs")
     if (
@@ -224,6 +278,7 @@ def read_option_snapshot(directory: Path) -> CommittedOptionSnapshot:
         features_path=run / "option-quality.parquet",
         receipt_path=receipt_path,
         receipt=receipt,
+        receipt_published_at=receipt_published_at,
     )
 
 
@@ -327,6 +382,11 @@ def _publish_pointer(
         "symbol": snapshot.symbol,
         "snapshot_for": snapshot.snapshot_for.isoformat(),
         "available_at": snapshot.available_at.isoformat(),
+        "receipt_published_at": (
+            snapshot.receipt_published_at.isoformat()
+            if snapshot.receipt_published_at is not None
+            else snapshot.available_at.isoformat()
+        ),
         "run_path": snapshot.directory.relative_to(Path(datastore_root)).as_posix(),
         "receipt_checksum_sha256": file_checksum(snapshot.receipt_path),
     }

@@ -362,6 +362,11 @@ def test_reconciliation_requires_exact_later_quote_and_canonicalizes_duplicates(
     assert canonical.iloc[0]["prediction_created_at"] == pd.Timestamp(
         "2026-01-03T16:01:00Z"
     )
+    canonical["_pricing_outcome_run_path"] = "ml/option-pricing-target-outcomes/proven"
+    canonical["_pricing_outcome_receipt_checksum_sha256"] = "receipt-checksum"
+    canonical["_pricing_authority_published_at"] = pd.Timestamp(
+        "2026-01-03T16:01:05Z"
+    )
 
     target = _source_surface().iloc[:1].copy()
     target["bid"] = 2.0
@@ -371,6 +376,16 @@ def test_reconciliation_requires_exact_later_quote_and_canonicalizes_duplicates(
     target.to_parquet(contracts_path, index=False)
     receipt = tmp_path / "receipt.json"
     receipt.write_text("{}\n", encoding="utf-8")
+    request_started_at = "2026-01-03T16:01:05.500000Z"
+    barrier = {
+        "status": "VERIFIED",
+        "target_snapshot_for": "2026-01-03T16:00:00Z",
+        "observed_at": "2026-01-03T16:01:05.250000Z",
+        "pricing_published_at": "2026-01-03T16:01:05Z",
+        "pricing_run_path": "ml/option-pricing-target-outcomes/proven",
+        "pricing_receipt_checksum_sha256": "receipt-checksum",
+        "prospective_credit_allowed": True,
+    }
     snapshot = CommittedOptionSnapshot(
         symbol="NVDA",
         snapshot_for=pd.Timestamp("2026-01-03T16:00:00Z"),
@@ -380,7 +395,10 @@ def test_reconciliation_requires_exact_later_quote_and_canonicalizes_duplicates(
         contracts_path=contracts_path,
         features_path=contracts_path,
         receipt_path=receipt,
-        receipt={},
+        receipt={
+            "request_started_at": request_started_at,
+            "pricing_barrier": barrier,
+        },
     )
     evaluated = reconcile_predictions(
         canonical,

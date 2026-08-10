@@ -7,7 +7,7 @@ import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Iterable, Iterator
+from typing import Callable, Iterable, Iterator
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -23,6 +23,8 @@ from datafetching.main import (
     run_symbol_fetch,
     run_symbols_fetch,
 )
+from datafetching.bar_readiness import publish_bar_readiness
+from datafetching.decision_time import expected_quarter_hour_target
 from datafetching.observability import timed_stage
 from datafetching.parquet_store import DATASTORE_TARGETS, ParquetStore
 from fundamentals.main import main as run_fundamentals
@@ -172,6 +174,7 @@ def main(argv: list[str] | None = None) -> int:
                             run_fundamental_calculations=not args.skip_fundamentals,
                             run_signal_calculations=not args.skip_signals,
                             cycle_started_at=cycle_started_at,
+                            loop_a_generation=cycle.generation,
                         )
                     except BaseException:
                         finish_loop_a_cycle(
@@ -225,6 +228,8 @@ def run_cycle(
     run_fundamental_calculations: bool = True,
     run_signal_calculations: bool = True,
     cycle_started_at: datetime | None = None,
+    loop_a_generation: str | None = None,
+    bar_readiness_clock: Callable[[], object] | None = None,
 ) -> int:
     failures = 0
     providers_tuple = tuple(providers)
@@ -265,6 +270,35 @@ def run_cycle(
             include_fmp_macro=True,
             include_options=include_options,
         )
+
+    if "databento" in providers_tuple:
+        target = expected_quarter_hour_target(started_at)
+        try:
+            readiness = publish_bar_readiness(
+                store.root_dir,
+                target_snapshot_for=target,
+                symbols=symbols_tuple,
+                loop_a_generation=(
+                    loop_a_generation
+                    or f"standalone-{started_at.strftime('%Y%m%dT%H%M%S.%fZ')}"
+                ),
+                as_of=datetime.now(timezone.utc),
+                clock=bar_readiness_clock,
+            )
+            print(
+                "Loop A bars ready: "
+                f"target={readiness.target_snapshot_for.isoformat()}; "
+                f"ready_at={readiness.ready_at.isoformat()}; "
+                f"symbols={len(readiness.symbols)}"
+            )
+        except Exception as exc:
+            # Pricing publishes the authoritative TARGET_BAR_NOT_READY outcome.
+            # Loop A's existing provider failure count remains the cycle authority.
+            print(
+                "Loop A bars not ready: "
+                f"target={target.isoformat()}; "
+                f"reason={type(exc).__name__}: {exc}"
+            )
 
     for index, symbol in enumerate(symbols_tuple):
         symbol_providers = providers_tuple if index == 0 else tuple(

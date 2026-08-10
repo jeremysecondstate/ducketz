@@ -10,9 +10,9 @@ topology; they do not claim that the Pricing supervisor has been deployed.
 | Process | Sole authoritative writes |
 | --- | --- |
 | `datafetching.cme_runtime` | `pools/cme/events/databento/**`, CME successful-query cursors, immutable five-minute L2 snapshots, and the existing hourly CME cross-asset feature artifact |
-| `datafetching.options_runtime` | Immutable Schwab raw-chain, normalized-contract, and option-quality snapshot directories and their pointer; it also maintains the legacy monthly option mirrors |
-| `datafetching.orchestrate` (Loop A) | Equity bars and quotes, non-CME shared macro data, fundamentals, technicals, and signals |
-| `ml.option_pricing_runtime` | Immutable shadow pricing samples, predictions, evaluations, compact surfaces, monitoring, reports, copied models, and `ml/option-pricing-latest/run.json` |
+| `datafetching.options_runtime` | Immutable Schwab raw-chain, normalized-contract, and option-quality snapshot directories and their pointer; integrated receipts record their Pricing barrier proof, and the process also maintains the legacy monthly option mirrors |
+| `datafetching.orchestrate` (Loop A) | Equity bars and quotes, non-CME shared macro data, fundamentals, technicals, signals, and immutable all-symbol `loop-a/bar-readiness/**` receipts |
+| `ml.option_pricing_runtime` | Immutable shadow target outcomes, pricing samples, predictions, evaluations, compact surfaces, monitoring, reports, copied models, `ml/option-pricing-target-latest/run.json`, and `ml/option-pricing-latest/run.json` |
 | `ml.prediction_runtime` (Loop B) | Immutable directional sample, prediction, evaluation, monitoring, and intelligence runs plus `ml/latest/run.json` |
 | `ml.strategy_runtime` | Immutable strategy candidates, audits, reports, and copied model artifacts plus `ml/strategy-latest/run.json` |
 
@@ -39,12 +39,14 @@ python -m datafetching.orchestrate --datastore-target pc `
 # 3. Shadow Pricing. It skips rather than backdates when the target bar is not ready.
 python -m ml.option_pricing_runtime --datastore-target pc `
   --watchlist datafetching\watchlist.txt `
-  --interval-minutes 15 --phase-offset-minutes 1
+  --interval-minutes 15 --phase-offset-minutes 1 `
+  --bar-readiness-mode required
 
 # 4. Schwab options. It skips a symbol until a completed Databento 1m clock exists.
 python -m datafetching.options_runtime --datastore-target pc `
   --watchlist datafetching\watchlist.txt `
-  --interval-minutes 15 --phase-offset-minutes 2
+  --interval-minutes 15 --phase-offset-minutes 2 `
+  --pricing-barrier-timeout-seconds 45
 
 # 5. Directional Loop B. Start after Loop A has published one COMPLETE generation.
 python -m ml.prediction_runtime --datastore-target pc --provider databento `
@@ -99,12 +101,17 @@ This preserves complete history while preventing Databento's provisional
 recent-data size estimate from turning a small recovery slice into a nominal
 greater-than-5-GB streaming request.
 
-Pricing defaults to every 15 minutes at UTC phase +1 minute and must complete
-before Options defaults to phase +2 minutes. Loop A defaults to 15 minutes.
+Pricing defaults to every 15 minutes at UTC phase +1 minute and publishes its
+small target authority before Options defaults to phase +2 minutes. Loop A
+defaults to 15 minutes.
 Loop B defaults to phase +5 minutes, and Strategy defaults to hourly at phase
-+10 minutes. If the completed target bar is unavailable at +1, Pricing skips
-that target; it never waits for Options or backdates a prediction. These offsets
-are operational defaults, not timestamp semantics.
++10 minutes. If the completed target bar is unavailable at +1, Pricing publishes
+`TARGET_BAR_NOT_READY` for that exact target; it never substitutes the newest
+older bar, waits for Options, or backdates a prediction. Options waits for the
+verified receipt, not merely the +1/+2 offsets. Its default wait is bounded at
+45 seconds so the observed approximately 12-minute sequential Options inventory
+still fits inside the 15-minute cycle. A miss proceeds with collection and is
+recorded as `TIMED_OUT` (or `MISSING` for a zero-wait invocation).
 
 After the regular session, the newest completed quarter-hour bar can remain the
 same while Options continues to publish receipts. Pricing then reports
@@ -131,11 +138,19 @@ therefore cannot be inserted retroactively into an already immutable bucket.
 Snapshots record event age, receipt age, and quality status.
 
 An Options receipt also separates `snapshot_for` from `available_at`.
-`snapshot_for` is the latest completed Databento 1m decision boundary;
+`snapshot_for` is the cycle's exact expected completed Databento 1m boundary;
 `available_at` is when the local Schwab response completed. Realized-volatility
 context is capped at the last successfully committed Loop A generation. An
 active or failed Loop A cycle does not hide or replace that prior committed
 cutoff, and the Options process never waits for the active cycle.
+
+New receipts additionally separate `request_started_at` from
+`receipt_published_at`. The former is the causal quote cutoff; the latter is
+sampled in the atomic Options publication path. `pricing_barrier.observed_at`
+records when Options checksum-verified the exact Pricing target receipt.
+Prospective credit requires both Pricing publication and barrier observation no
+later than `request_started_at`; an embedded prediction timestamp cannot
+establish that ordering by itself.
 
 Directional Loop B uses its completed Loop A generation time as the causal
 input cutoff. It reads checksum-verified option receipts with
@@ -164,10 +179,85 @@ commit signal.
 
 Loop B follows the same immutable-run plus receipt plus atomic-pointer pattern
 at `ml/latest/run.json`. Pricing has its own receipt-chained authority at
-`ml/option-pricing-latest/run.json`, and Strategy has a separate authority at
+`ml/option-pricing-latest/run.json`, a fast target authority at
+`ml/option-pricing-target-latest/run.json`, and Strategy has a separate authority at
 `ml/strategy-latest/run.json`. Pricing publication never advances either other
 pointer. Directional publication completes before Strategy begins and remains
 valid if Strategy is slow or fails.
+
+## Target-scoped open-market state machine
+
+Every scheduled Pricing and Options cycle freezes one quarter-hour identity `T`
+before processing any symbol:
+
+1. Loop A finishes its batched provider fetch for the watchlist. It verifies the
+   exact completed Databento 1m bar ending at `T` for every symbol, freezes each
+   selected close and row checksum, and atomically publishes
+   `loop-a/bar-readiness/<T>/readiness.json` plus `receipt.json`. This occurs
+   before fundamentals, technicals, and signals, so it does not inherit Loop A's
+   observed 30-minute calculation tail. A partially updated watchlist never gets
+   a readiness receipt.
+2. Pricing consumes that immutable all-symbol receipt in integrated mode and
+   publishes one immutable target outcome containing causal samples, predictions,
+   and per-symbol terminal statuses. Valid outcomes include predictions,
+   `TARGET_ALREADY_OBSERVED`, `NO_ELIGIBLE_CONTRACTS`,
+   `TARGET_BAR_NOT_READY`, `PRICING_FAILED`, and mixed terminal results. The
+   target pointer is receipt-chained and checksum verified.
+3. Options waits up to its configured deadline for the same `T`. A verified
+   prediction, skip, or terminal failure satisfies the publication barrier, but
+   only prediction-bearing and mixed outcomes can set
+   `prospective_credit_allowed=true`. A missing, invalid, or timed-out phase does
+   not block Schwab collection; the Options receipt records the miss.
+4. Pricing continues its full immutable generation, lineage, eligibility, and
+   health work after the target authority. This shadow research tail does not
+   hold Options, Loop B, or Strategy open.
+
+The Pricing writer lock prevents overlapping cycles. If a complete tail ever
+runs across one or more later scheduled boundaries, the runtime publishes an
+empty, immutable `PRICING_TIMED_OUT` target outcome for each missed boundary
+before scheduling the next live cycle. Those late skip receipts are audit
+evidence only and can never create prospective credit or be replaced by a
+backfill.
+
+`TARGET_ALREADY_OBSERVED` remains the no-backfill guard: a target Options receipt
+was visible before prediction creation. `NO_ELIGIBLE_CONTRACTS` means a strictly
+earlier source receipt existed but every contract failed the unchanged causal
+feature contract. Neither is a crash. Source option snapshots and quotes remain
+strictly earlier than `T`, and all source/target receipts remain checksum
+verified.
+
+The narrow readiness boundary is an additional Loop A-owned artifact, not a
+replacement for Loop A completion. Loop B still locks and consumes the last
+COMPLETE Loop A generation. Strategy still consumes its existing Loop B cutoff
+and receipts. CME remains independently owned and is not consulted by the new
+barrier.
+
+## Publication clocks and health interpretation
+
+The runtime preserves distinct clocks for Loop A cycle start,
+`bar-readiness.ready_at`, Pricing computation start, target authority
+publication, full-generation authority publication, eligibility generation,
+eligibility publication, health checking, Options request start, Schwab response
+availability, and Options receipt publication.
+
+The target outcome receipt supplies prediction availability. The full generation
+retains and verifies that first authority rather than inventing an earlier time.
+Its report records `immutable_files_completed_at`; the later `publication.json`
+`published_at` is sampled inside the receipt/pointer publication path after
+staged verification. Eligibility `generated_at`, eligibility receipt
+`published_at`, and health `checked_at` are each sampled at their own event.
+For pre-barrier legacy generations, reconciliation uses the later immutable
+receipt-file availability as a conservative migration proof. New evidence also
+requires the exact target-outcome run path and receipt checksum recorded in the
+Options receipt.
+
+Console timing includes the target, readiness time, Pricing terminal outcome and
+authority time, Options barrier status/observation, request start, response, and
+receipt availability. Pricing health records stage timings for preflight, target
+authority, research preparation, generation publication/lineage, and the
+post-publication eligibility/health tail. `maximum_cycle_seconds=600` applies to
+the complete Pricing cycle; the 45-second Options barrier is a separate liveness
+budget.
 
 ## Restart and delay behavior
 
@@ -180,6 +270,13 @@ valid if Strategy is slow or fails.
 - An orphan CME or Options staging directory is not authoritative. The last
   valid pointer remains readable. A committed CME L2 directory whose pointer
   update was interrupted republishes that pointer on restart.
+- An orphan Loop A readiness or Pricing target staging directory is invisible.
+  A target outcome receipt without pointer reachability cannot satisfy Options.
+  Restart preserves the last verified pointer; a retry publishes a new immutable
+  directory while the orphan remains non-authoritative evidence.
+- Once a target outcome owns `T`, a repeated Pricing invocation returns that
+  authority instead of replacing or backfilling it. The Pricing runtime lock
+  prevents overlapping cycle owners.
 - Options retries or skips independently. Loop A continues with fundamentals,
   technicals, and signals, and Loop B reuses the newest causally eligible
   committed option receipt subject to the unchanged freshness limits.
@@ -202,6 +299,13 @@ python -m datafetching.orchestrate --datastore-target pc `
 Stop the independent CME and Options processes before using that command. The
 writer locks deliberately reject two owners. `--skip-cme` remains available,
 but is unnecessary in the recommended external mode.
+
+Pricing `--once` uses the safe all-symbol readiness receipt by default. For a
+controlled standalone compatibility run without a Loop A coordinator, pass
+`--bar-readiness-mode exact`; it still binds every symbol to one explicit `T`
+and fails closed instead of reusing an older quarter-hour. Options `--once`
+remains bounded and can use `--pricing-barrier-timeout-seconds 0` for immediate
+standalone fallback evidence.
 
 ## Console timing output
 

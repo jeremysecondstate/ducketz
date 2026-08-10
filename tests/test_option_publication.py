@@ -165,7 +165,7 @@ def test_options_runtime_uses_prior_committed_regime_cutoff_during_active_loop_a
 
     monkeypatch.setattr(
         options_runtime,
-        "latest_completed_bar_clock",
+        "completed_bar_clock_for_target",
         lambda *_args, **_kwargs: DecisionClock(
             decision_timestamp=pd.Timestamp("2026-08-05T10:15:00Z"),
             bar_timestamp=pd.Timestamp("2026-08-05T10:14:00Z"),

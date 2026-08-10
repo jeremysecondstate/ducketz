@@ -5,7 +5,6 @@ from typing import Mapping
 import numpy as np
 import pandas as pd
 
-from ml.option_pricing.black_scholes import american_option_bounds
 from ml.option_pricing.constraints import (
     ProjectionError,
     project_prediction_intervals,
@@ -92,15 +91,19 @@ def create_prediction_rows(
             underlying = float(row["underlying_price"])
             black_scholes = float(row["black_scholes_price"])
             raw_fair = black_scholes + residual_mean[position] * underlying
-            lower, upper = american_option_bounds(
-                underlying,
-                float(row["strike"]),
-                float(row["risk_free_rate"]),
-                float(row["lagged_implied_volatility"]),
-                float(row["target_years_to_expiration"]),
-                float(row["dividend_yield"]),
-                str(call_put),
+            # The sample's Black-Scholes value was computed from these exact
+            # causal inputs. Reuse it for the American lower bound instead of
+            # repeating the expensive normal-CDF calculation for every row.
+            strike = float(row["strike"])
+            intrinsic = max(
+                underlying - strike if str(call_put) == "CALL" else strike - underlying,
+                0.0,
             )
+            upper = underlying if str(call_put) == "CALL" else strike
+            lower = max(intrinsic, black_scholes)
+            if lower > upper + 1e-9:
+                raise ValueError("Configured American option bounds are inconsistent")
+            lower = min(lower, upper)
             has_uncertainty = model is not None
             records.append(
                 {
@@ -124,7 +127,7 @@ def create_prediction_rows(
                     ),
                     "model_status": "MODEL_FIT" if model is not None else "BASELINE_ONLY",
                     "underlying_price": underlying,
-                    "strike": row["strike"],
+                    "strike": strike,
                     "multiplier": row["multiplier"],
                     "risk_free_rate": row["risk_free_rate"],
                     "lagged_implied_volatility": row["lagged_implied_volatility"],

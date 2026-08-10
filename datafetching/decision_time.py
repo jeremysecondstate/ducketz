@@ -30,6 +30,15 @@ class DecisionClock:
     source_file: Path
 
 
+def expected_quarter_hour_target(
+    value: datetime | pd.Timestamp | None = None,
+) -> pd.Timestamp:
+    """Return the exact quarter-hour target owned by one scheduled cycle."""
+
+    observed = _as_utc_timestamp(value)
+    return observed.floor(f"{DECISION_BOUNDARY_MINUTES}min")
+
+
 def latest_completed_bar_clock(
     datastore_root: Path,
     *,
@@ -85,6 +94,70 @@ def latest_completed_bar_clock(
     return candidate
 
 
+def completed_bar_clock_for_target(
+    datastore_root: Path,
+    *,
+    symbol: str,
+    target_snapshot_for: datetime | pd.Timestamp,
+    as_of: datetime | pd.Timestamp | None = None,
+) -> DecisionClock:
+    """Resolve exactly ``target_snapshot_for``; never substitute an older bar."""
+
+    clean_symbol = symbol.strip().upper()
+    if not clean_symbol:
+        raise ValueError("Symbol is required.")
+    target = _as_utc_timestamp(target_snapshot_for)
+    if target != expected_quarter_hour_target(target):
+        raise ValueError("Decision target must be an exact quarter-hour boundary")
+    observed_at = _as_utc_timestamp(as_of)
+    if target > observed_at:
+        raise FileNotFoundError(
+            f"Target {target.isoformat()} is not complete by {observed_at.isoformat()}."
+        )
+    normalized_root = (
+        Path(datastore_root)
+        / "stocks"
+        / safe_token(clean_symbol)
+        / "bars"
+        / DECISION_SOURCE_TIMEFRAME
+        / DECISION_SOURCE_PROVIDER
+        / "normalized"
+    )
+    paths = (
+        sorted(normalized_root.glob("*.parquet"), key=normalized_bar_file_sort_key)
+        if normalized_root.is_dir()
+        else []
+    )
+    candidate = _clock_for_exact_target(
+        paths,
+        observed_at=observed_at,
+        target=target,
+    )
+    if candidate is None:
+        raise FileNotFoundError(
+            f"Exact completed Databento 1m target {target.isoformat()} was not "
+            f"available for {clean_symbol} by {observed_at.isoformat()}."
+        )
+    return candidate
+
+
+def completed_bar_close(clock: DecisionClock) -> float:
+    """Read the one canonical close selected by a verified decision clock."""
+
+    frame = pd.read_parquet(clock.source_file, columns=["timestamp", "close"])
+    timestamps = pd.to_datetime(frame["timestamp"], utc=True, errors="coerce")
+    selected = pd.to_numeric(
+        frame.loc[timestamps.eq(pd.Timestamp(clock.bar_timestamp)), "close"],
+        errors="coerce",
+    ).dropna()
+    if len(selected) != 1:
+        raise ValueError("Canonical target boundary did not resolve exactly one close")
+    value = float(selected.iloc[0])
+    if not pd.notna(value) or value <= 0.0:
+        raise ValueError("Canonical target close must be finite and positive")
+    return value
+
+
 def _latest_from_files(
     paths: list[Path],
     *,
@@ -138,6 +211,54 @@ def _latest_from_files(
         provider=DECISION_SOURCE_PROVIDER,
         timeframe=DECISION_SOURCE_TIMEFRAME,
         source_file=Path(str(frame.loc[latest_index, "_source_file"])),
+    )
+
+
+def _clock_for_exact_target(
+    paths: list[Path],
+    *,
+    observed_at: pd.Timestamp,
+    target: pd.Timestamp,
+) -> DecisionClock | None:
+    if not paths:
+        return None
+    frames: list[pd.DataFrame] = []
+    for file_order, path in enumerate(paths):
+        try:
+            frame, _physical_schema = read_bar_timestamp_and_completion(path)
+        except Exception as exc:
+            raise RuntimeError(
+                f"Could not read normalized bar parquet {path}: {exc}"
+            ) from exc
+        if frame.empty:
+            continue
+        frame["_source_file"] = str(path)
+        frame["_file_order"] = file_order
+        frames.append(frame)
+    if not frames:
+        return None
+    frame = (
+        pd.concat(frames, ignore_index=True, sort=False)
+        .sort_values(["timestamp", "_file_order"], kind="stable")
+        .drop_duplicates("timestamp", keep="last")
+        .reset_index(drop=True)
+    )
+    ends = bar_end_timestamps(frame["timestamp"], DECISION_SOURCE_TIMEFRAME)
+    valid = (
+        ends.eq(target)
+        & ends.le(observed_at)
+        & legacy_bar_completion_mask(frame)
+        & frame["timestamp"].notna()
+    )
+    if valid.sum() != 1:
+        return None
+    index = valid.loc[valid].index[0]
+    return DecisionClock(
+        decision_timestamp=target,
+        bar_timestamp=pd.Timestamp(frame.loc[index, "timestamp"]).tz_convert("UTC"),
+        provider=DECISION_SOURCE_PROVIDER,
+        timeframe=DECISION_SOURCE_TIMEFRAME,
+        source_file=Path(str(frame.loc[index, "_source_file"])),
     )
 
 

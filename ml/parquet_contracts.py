@@ -12,7 +12,7 @@ from datafetching.ids import (
     ID_COLUMN,
     PARQUET_CONTROL_PLANE_COLUMNS,
     add_readable_id,
-    is_opaque_identifier,
+    contains_opaque_identifier,
 )
 
 TEXT = pa.string()
@@ -652,8 +652,7 @@ def validate_readable_ids(frame: pd.DataFrame) -> None:
         raise ValueError("Persisted id values must be non-null and non-empty")
     if values.duplicated().any():
         raise ValueError("Persisted id values must be unique within each Parquet")
-    unreadable = values.map(is_opaque_identifier)
-    if unreadable.any():
+    if contains_opaque_identifier(values):
         raise ValueError("Persisted id values must be readable natural keys")
 
 

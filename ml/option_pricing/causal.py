@@ -8,7 +8,12 @@ from typing import Mapping, Sequence
 import numpy as np
 import pandas as pd
 
-from datafetching.decision_time import DecisionClock, latest_completed_bar_clock
+from datafetching.decision_time import (
+    DecisionClock,
+    completed_bar_clock_for_target,
+    completed_bar_close as read_completed_bar_close,
+    latest_completed_bar_clock,
+)
 from ml.option_pricing.black_scholes import (
     black_scholes_price,
     implied_volatility,
@@ -27,6 +32,7 @@ from ml.option_pricing.policies import (
     SEMANTIC_FEATURE_COLUMNS,
 )
 from options.publication import CommittedOptionSnapshot, committed_option_snapshots
+from ml.option_pricing.target_outcome import TARGET_OUTCOME_PROOF_COLUMNS
 
 
 @dataclass(frozen=True)
@@ -51,13 +57,17 @@ def select_strictly_earlier_snapshot(
     eligible = [
         snapshot
         for snapshot in snapshots
-        if snapshot.snapshot_for < target and snapshot.available_at < created
+        if snapshot.snapshot_for < target
+        and _snapshot_receipt_available_at(snapshot) < created
     ]
     if not eligible:
         return None
     return max(
         eligible,
-        key=lambda snapshot: (snapshot.snapshot_for, snapshot.available_at),
+        key=lambda snapshot: (
+            snapshot.snapshot_for,
+            _snapshot_receipt_available_at(snapshot),
+        ),
     )
 
 
@@ -66,6 +76,10 @@ def build_live_prediction_inputs(
     *,
     symbol: str,
     prediction_created_at: object,
+    target_snapshot_for: object | None = None,
+    decision_clock: DecisionClock | None = None,
+    target_underlying_price: float | None = None,
+    target_source_files: Sequence[Path] | None = None,
     contract_policy: ContractSelectionPolicy | None = None,
     rate_observations: pd.DataFrame | None = None,
 ) -> CausalSampleBatch:
@@ -74,16 +88,34 @@ def build_live_prediction_inputs(
     root = Path(datastore_root)
     clean_symbol = str(symbol).strip().upper()
     created = _utc(prediction_created_at, "prediction_created_at")
-    clock = latest_completed_bar_clock(root, symbol=clean_symbol, as_of=created)
+    if decision_clock is not None:
+        clock = decision_clock
+        if target_snapshot_for is not None and pd.Timestamp(
+            clock.decision_timestamp
+        ) != _utc(target_snapshot_for, "target_snapshot_for"):
+            raise ValueError("Provided decision clock does not match the cycle target")
+    elif target_snapshot_for is not None:
+        clock = completed_bar_clock_for_target(
+            root,
+            symbol=clean_symbol,
+            target_snapshot_for=target_snapshot_for,
+            as_of=created,
+        )
+    else:
+        clock = latest_completed_bar_clock(root, symbol=clean_symbol, as_of=created)
     target = pd.Timestamp(clock.decision_timestamp)
     snapshots = committed_option_snapshots(root, symbol=clean_symbol)
     observed_target = [
         snapshot
         for snapshot in snapshots
-        if snapshot.snapshot_for == target and snapshot.available_at < created
+        if snapshot.snapshot_for == target
+        and _snapshot_receipt_available_at(snapshot) < created
     ]
     if observed_target:
-        first_observation = min(observed_target, key=lambda snapshot: snapshot.available_at)
+        first_observation = min(
+            observed_target,
+            key=_snapshot_receipt_available_at,
+        )
         return CausalSampleBatch(
             pd.DataFrame(),
             (first_observation.receipt_path,),
@@ -104,14 +136,20 @@ def build_live_prediction_inputs(
             "No strictly earlier committed Schwab surface was available.",
             target,
         )
-    underlying = completed_bar_close(clock)
+    underlying = (
+        float(target_underlying_price)
+        if target_underlying_price is not None
+        else completed_bar_close(clock)
+    )
+    if not math.isfinite(underlying) or underlying <= 0.0:
+        raise ValueError("Target underlying price must be finite and positive")
     source_contracts = pd.read_parquet(source.contracts_path)
     samples = build_causal_samples(
         source_contracts,
         target_contracts=None,
         target_underlying_price=underlying,
         source_snapshot_for=source.snapshot_for,
-        source_available_at=source.available_at,
+        source_available_at=_snapshot_receipt_available_at(source),
         target_snapshot_for=target,
         source_provider="schwab",
         prediction_mode="LIVE",
@@ -120,7 +158,11 @@ def build_live_prediction_inputs(
     )
     return CausalSampleBatch(
         samples,
-        (clock.source_file, source.contracts_path, source.receipt_path),
+        (
+            *(tuple(target_source_files) if target_source_files is not None else (clock.source_file,)),
+            source.contracts_path,
+            source.receipt_path,
+        ),
         "READY" if samples["sample_status"].eq("AVAILABLE").any() else "NO_ELIGIBLE_CONTRACTS",
         "" if samples["sample_status"].eq("AVAILABLE").any() else "No contracts passed the causal feature contract.",
         target,
@@ -128,20 +170,7 @@ def build_live_prediction_inputs(
 
 
 def completed_bar_close(clock: DecisionClock) -> float:
-    frame = pd.read_parquet(clock.source_file)
-    if "timestamp" not in frame.columns or "close" not in frame.columns:
-        raise ValueError("Canonical target bar lacks timestamp or close")
-    timestamps = pd.to_datetime(frame["timestamp"], utc=True, errors="coerce")
-    selected = pd.to_numeric(
-        frame.loc[timestamps.eq(pd.Timestamp(clock.bar_timestamp)), "close"],
-        errors="coerce",
-    ).dropna()
-    if len(selected) != 1:
-        raise ValueError("Canonical target boundary did not resolve exactly one close")
-    value = float(selected.iloc[0])
-    if not math.isfinite(value) or value <= 0.0:
-        raise ValueError("Canonical target close must be finite and positive")
-    return value
+    return read_completed_bar_close(clock)
 
 
 def build_causal_samples(
@@ -528,22 +557,30 @@ def reconcile_predictions(
         target = _utc(prediction["target_snapshot_for"], "target_snapshot_for")
         created = _utc(prediction["prediction_created_at"], "prediction_created_at")
         available = _utc(prediction["prediction_available_at"], "prediction_available_at")
+        authority_proof_time = _timestamp_or_none(
+            prediction.get(TARGET_OUTCOME_PROOF_COLUMNS[2])
+        )
+        authority_available = (
+            authority_proof_time if authority_proof_time is not None else available
+        )
         matching = sorted(
             (
                 snapshot
                 for snapshot in snapshots_by_symbol.get(symbol, ())
                 if snapshot.snapshot_for == target
-                and snapshot.available_at > created
-                and snapshot.available_at > available
+                and _snapshot_receipt_available_at(snapshot) > created
+                and _snapshot_receipt_available_at(snapshot) > authority_available
             ),
-            key=lambda snapshot: snapshot.available_at,
+            key=_snapshot_receipt_available_at,
         )
         status = "PENDING_TARGET_RECEIPT"
         observed: Mapping[str, object] | None = None
         receipt_available: pd.Timestamp | None = None
+        authority_proven = False
         if matching:
             snapshot = matching[0]
-            receipt_available = snapshot.available_at
+            receipt_available = _snapshot_receipt_available_at(snapshot)
+            authority_proven = _prospective_authority_proven(prediction, snapshot)
             contracts = contract_cache.setdefault(
                 snapshot.contracts_path,
                 pd.read_parquet(snapshot.contracts_path),
@@ -562,7 +599,7 @@ def reconcile_predictions(
                 ask = _finite_or_none(observed.get("ask"))
                 if quote_time is None:
                     status = "TARGET_QUOTE_TIMESTAMP_MISSING"
-                elif quote_time <= created or quote_time <= available:
+                elif quote_time <= created or quote_time <= authority_available:
                     status = "STALE_PRE_PREDICTION_QUOTE"
                 elif bid is None or ask is None or ask < bid or (bid + ask) / 2.0 <= 0.0:
                     status = "TARGET_QUOTE_INVALID"
@@ -575,6 +612,7 @@ def reconcile_predictions(
                 observed_available_at=receipt_available,
                 evaluated_at=evaluated,
                 status=status,
+                prospective_authority_proven=authority_proven,
             )
         )
     return pd.DataFrame(rows)
@@ -666,6 +704,7 @@ def evaluate_offline_predictions(
                 observed_available_at=observed_available,
                 evaluated_at=evaluated,
                 status=status,
+                prospective_authority_proven=False,
             )
         )
     return pd.DataFrame(rows)
@@ -678,6 +717,7 @@ def _evaluation_row(
     observed_available_at: pd.Timestamp | None,
     evaluated_at: pd.Timestamp,
     status: str,
+    prospective_authority_proven: bool,
 ) -> dict[str, object]:
     bid = _finite_or_none(observed.get("bid")) if observed is not None else None
     ask = _finite_or_none(observed.get("ask")) if observed is not None else None
@@ -698,6 +738,7 @@ def _evaluation_row(
         complete
         and str(prediction.get("prediction_mode", "")).upper() == "LIVE"
         and str(prediction.get("source_provider", "")).strip().lower() == "schwab"
+        and prospective_authority_proven
     )
 
     def covered(lower_name: str, upper_name: str) -> bool | None:
@@ -773,6 +814,79 @@ def _evaluation_row(
         "timing_policy_version": OPTION_PRICING_TIMING_POLICY_VERSION,
         "schema_version": OPTION_PRICING_SCHEMA_VERSION,
     }
+
+
+def _prospective_authority_proven(
+    prediction: Mapping[str, object],
+    snapshot: CommittedOptionSnapshot,
+) -> bool:
+    barrier = snapshot.receipt.get("pricing_barrier")
+    if not isinstance(barrier, Mapping):
+        return _legacy_authority_ordering_proven(prediction, snapshot)
+    request = _timestamp_or_none(snapshot.receipt.get("request_started_at"))
+    observed = _timestamp_or_none(barrier.get("observed_at"))
+    published = _timestamp_or_none(barrier.get("pricing_published_at"))
+    prediction_available = _timestamp_or_none(prediction.get("prediction_available_at"))
+    target = _timestamp_or_none(barrier.get("target_snapshot_for"))
+    expected_target = _timestamp_or_none(prediction.get("target_snapshot_for"))
+    proof_run = str(prediction.get(TARGET_OUTCOME_PROOF_COLUMNS[0], ""))
+    proof_checksum = str(prediction.get(TARGET_OUTCOME_PROOF_COLUMNS[1], ""))
+    proof_published = _timestamp_or_none(
+        prediction.get(TARGET_OUTCOME_PROOF_COLUMNS[2])
+    )
+    return bool(
+        barrier.get("status") == "VERIFIED"
+        and barrier.get("prospective_credit_allowed") is True
+        and request is not None
+        and observed is not None
+        and published is not None
+        and prediction_available is not None
+        and target is not None
+        and expected_target is not None
+        and target == expected_target == snapshot.snapshot_for
+        and published == proof_published
+        and prediction_available <= proof_published
+        and observed <= request
+        and published <= request
+        and str(barrier.get("pricing_run_path", "")) == proof_run
+        and str(barrier.get("pricing_receipt_checksum_sha256", ""))
+        == proof_checksum
+    )
+
+
+def _legacy_authority_ordering_proven(
+    prediction: Mapping[str, object],
+    snapshot: CommittedOptionSnapshot,
+) -> bool:
+    """Conservative migration proof for pre-barrier immutable receipts."""
+
+    proof_run = str(prediction.get(TARGET_OUTCOME_PROOF_COLUMNS[0], ""))
+    if not proof_run.startswith("ml/option-pricing-runs/"):
+        return False
+    published = _timestamp_or_none(prediction.get(TARGET_OUTCOME_PROOF_COLUMNS[2]))
+    if published is None or not snapshot.raw_path.is_file():
+        return False
+    try:
+        raw = pd.read_parquet(snapshot.raw_path, columns=["quote_cutoff_at"])
+    except Exception:
+        return False
+    requests = pd.to_datetime(raw["quote_cutoff_at"], utc=True, errors="coerce").dropna()
+    if len(requests) != 1:
+        return False
+    request_started_at = pd.Timestamp(requests.iloc[0])
+    return bool(
+        published <= request_started_at < _snapshot_receipt_available_at(snapshot)
+    )
+
+
+def _snapshot_receipt_available_at(
+    snapshot: CommittedOptionSnapshot,
+) -> pd.Timestamp:
+    return (
+        snapshot.receipt_published_at
+        if snapshot.receipt_published_at is not None
+        else snapshot.available_at
+    )
 
 
 def _surface_rate(
@@ -858,21 +972,22 @@ def _source_implied_volatilities(
     risk_free_rate: float | None,
     dividend_yield: float | None,
 ) -> pd.Series:
-    output: list[float] = []
-    for row in source.to_dict("records"):
-        supplied = _finite_or_none(row.get("implied_volatility"))
-        if supplied is not None and 0.0 < supplied <= 5.0:
-            output.append(supplied)
-            continue
+    supplied = pd.to_numeric(
+        source.get("implied_volatility", pd.Series(index=source.index, dtype=float)),
+        errors="coerce",
+    )
+    valid_supplied = supplied.gt(0.0) & supplied.le(5.0) & np.isfinite(supplied)
+    output = supplied.where(valid_supplied, np.nan).astype("float64")
+    if valid_supplied.all():
+        return output
+    for index, row in source.loc[~valid_supplied].iterrows():
         if risk_free_rate is None or dividend_yield is None:
-            output.append(np.nan)
             continue
         bid = _finite_or_none(row.get("bid"))
         ask = _finite_or_none(row.get("ask"))
         spot = _finite_or_none(row.get("underlying_price"))
         strike = _finite_or_none(row.get("strike"))
         if bid is None or ask is None or ask < bid or spot is None or strike is None:
-            output.append(np.nan)
             continue
         years = target_years_to_expiration(source_snapshot_for, row.get("expiration_date"))
         try:
@@ -887,8 +1002,8 @@ def _source_implied_volatilities(
             )
         except ValueError:
             value = np.nan
-        output.append(value)
-    return pd.Series(output, index=source.index, dtype="float64")
+        output.loc[index] = value
+    return output
 
 
 def _source_contract_status(

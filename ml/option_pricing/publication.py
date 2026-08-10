@@ -4,7 +4,7 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping
+from typing import Callable, Mapping
 
 import pandas as pd
 
@@ -52,16 +52,13 @@ def publish_option_pricing_run(
     datastore_root: Path,
     *,
     run_directory: Path,
-    published_at: object,
+    published_at: object | None = None,
+    clock: Callable[[], object] | None = None,
 ) -> OptionPricingPublication:
     root = Path(datastore_root).resolve()
     run = _validate_run_location(root, run_directory)
     manifest = _verify_run(run)
     run_timestamp = _utc(manifest.get("run_timestamp"), "manifest run_timestamp")
-    published = _utc(published_at, "published_at")
-    if published < run_timestamp:
-        raise OptionPricingPublicationError("Pricing publication predates its run")
-
     pointer_path = pricing_pointer_path(root)
     previous: Mapping[str, object] | None = None
     if pointer_path.is_file():
@@ -71,6 +68,29 @@ def publish_option_pricing_run(
             return current
 
     receipt_path = run / OPTION_PRICING_RECEIPT_NAME
+    if receipt_path.is_file():
+        try:
+            existing = json.loads(receipt_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+            raise OptionPricingPublicationError(
+                f"Existing Pricing receipt is unreadable: {receipt_path}"
+            ) from exc
+        published = (
+            _utc(existing.get("published_at"), "orphan receipt published_at")
+            if isinstance(existing, Mapping)
+            else pd.NaT
+        )
+    else:
+        sampled = (
+            published_at
+            if published_at is not None
+            else (clock or (lambda: pd.Timestamp.now(tz="UTC")))()
+        )
+        published = _utc(sampled, "published_at")
+        existing = None
+    if pd.isna(published) or published < run_timestamp:
+        raise OptionPricingPublicationError("Pricing publication predates its run")
+
     desired_base = {
         "schema_version": OPTION_PRICING_PUBLICATION_VERSION,
         "run_path": run.relative_to(root).as_posix(),
@@ -79,13 +99,7 @@ def publish_option_pricing_run(
         "manifest_checksum_sha256": file_checksum(run / "manifest.json"),
         "previous_publication": dict(previous) if previous is not None else None,
     }
-    if receipt_path.is_file():
-        try:
-            existing = json.loads(receipt_path.read_text(encoding="utf-8"))
-        except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
-            raise OptionPricingPublicationError(
-                f"Existing Pricing receipt is unreadable: {receipt_path}"
-            ) from exc
+    if existing is not None:
         expected_without_publication_time = {
             key: value
             for key, value in desired_base.items()
@@ -100,17 +114,11 @@ def publish_option_pricing_run(
             if isinstance(existing, Mapping)
             else {}
         )
-        existing_published = (
-            _utc(existing.get("published_at"), "orphan receipt published_at")
-            if isinstance(existing, Mapping)
-            else pd.NaT
-        )
         if (
             not isinstance(existing, Mapping)
             or set(existing) != set(desired_base)
             or observed_without_publication_time != expected_without_publication_time
-            or pd.isna(existing_published)
-            or existing_published < run_timestamp
+            or published < run_timestamp
         ):
             raise OptionPricingPublicationError(
                 "Existing orphan Pricing receipt is incompatible with the current chain"
@@ -155,11 +163,13 @@ def read_current_option_pricing_publication(
 
 def authoritative_option_pricing_runs(
     datastore_root: Path,
+    *,
+    current: OptionPricingPublication | None = None,
 ) -> dict[Path, pd.Timestamp]:
     root = Path(datastore_root).resolve()
-    current = read_current_option_pricing_publication(root)
+    publication = current or read_current_option_pricing_publication(root)
     output: dict[Path, pd.Timestamp] = {}
-    record: object = current.pointer["current"]
+    record: object = publication.pointer["current"]
     seen: set[str] = set()
     while record is not None:
         _validate_record(record, label="Pricing chain record")
@@ -167,7 +177,12 @@ def authoritative_option_pricing_runs(
         if raw_path in seen:
             raise OptionPricingPublicationError("Pricing publication chain contains a cycle")
         seen.add(raw_path)
-        manifest, receipt = _verify_record(root, record)
+        _manifest, receipt = (
+            (publication.manifest, publication.receipt)
+            if str(record["run_path"])
+            == str(publication.pointer["current"]["run_path"])
+            else _verify_record_metadata(root, record)
+        )
         run = _run_from_record(root, record)
         output[run] = _utc(receipt.get("published_at"), "published_at")
         record = receipt.get("previous_publication")
@@ -194,21 +209,46 @@ def receipt_proven_prediction_rows(datastore_root: Path) -> pd.DataFrame:
     """Return earliest LIVE predictions whose first availability has a receipt."""
 
     root = Path(datastore_root).resolve()
-    reachable = authoritative_option_pricing_runs(root)
+    from ml.option_pricing.target_outcome import authoritative_target_outcomes
+
+    target_frames = [
+        publication.predictions()
+        for publication in authoritative_target_outcomes(root)
+    ]
+    if pricing_pointer_path(root).is_file():
+        current = read_current_option_pricing_publication(root)
+        reachable = authoritative_option_pricing_runs(root, current=current)
+    else:
+        reachable = {}
     frames: list[pd.DataFrame] = []
     for run, published in sorted(reachable.items(), key=lambda item: item[1]):
+        manifest = json.loads((run / "manifest.json").read_text(encoding="utf-8"))
+        _verify_manifest_output(run, manifest, "pricing-predictions.parquet")
         frame = pd.read_parquet(run / "pricing-predictions.parquet")
         if frame.empty:
             continue
-        available = pd.to_datetime(
-            frame["prediction_available_at"], utc=True, errors="coerce"
+        # Legacy generations assigned the field before files were complete.  The
+        # immutable receipt's filesystem availability is a conservative lower
+        # bound that cannot be made earlier by the embedded field.
+        receipt_available = max(
+            published,
+            pd.Timestamp((run / OPTION_PRICING_RECEIPT_NAME).stat().st_mtime_ns, tz="UTC"),
         )
+        available = pd.to_datetime(frame["prediction_available_at"], utc=True, errors="coerce")
         created = pd.to_datetime(
             frame["prediction_created_at"], utc=True, errors="coerce"
         )
         live = frame["prediction_mode"].astype("string").str.upper().eq("LIVE")
-        first_committed_here = live & available.eq(published) & created.le(available)
-        frames.append(frame.loc[first_committed_here].drop(columns="id", errors="ignore"))
+        first_committed_here = live & available.eq(published) & created.le(receipt_available)
+        proven = frame.loc[first_committed_here].drop(columns="id", errors="ignore").copy()
+        if not proven.empty:
+            proven["_pricing_outcome_run_path"] = run.relative_to(root).as_posix()
+            proven["_pricing_outcome_receipt_checksum_sha256"] = file_checksum(
+                run / OPTION_PRICING_RECEIPT_NAME
+            )
+            proven["_pricing_authority_published_at"] = receipt_available
+            frames.append(proven)
+    frames = [*target_frames, *frames]
     if not frames:
         return pd.DataFrame()
     combined = pd.concat(frames, ignore_index=True, sort=False)
@@ -243,7 +283,7 @@ def _verify_chain(
         if path in seen:
             raise OptionPricingPublicationError("Pricing publication chain contains a cycle")
         seen.add(path)
-        _, receipt = _verify_record(root, record)
+        _, receipt = _verify_record_metadata(root, record)
         published = _utc(receipt.get("published_at"), "published_at")
         if published > newer_published:
             raise OptionPricingPublicationError("Pricing publication chronology moves backwards")
@@ -288,6 +328,65 @@ def _verify_record(
             f"Pricing receipt does not match its run manifest: {run}"
         )
     return manifest, receipt
+
+
+def _verify_record_metadata(
+    root: Path,
+    record: Mapping[str, object],
+) -> tuple[Mapping[str, object], Mapping[str, object]]:
+    """Verify immutable chain metadata without rehashing every historical output."""
+
+    _validate_record(record, label="Pricing chain record")
+    run = _run_from_record(root, record)
+    receipt_path = run / OPTION_PRICING_RECEIPT_NAME
+    manifest_path = run / "manifest.json"
+    try:
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        raise OptionPricingPublicationError(
+            f"Pricing chain metadata is unreadable: {run}"
+        ) from exc
+    if not isinstance(receipt, Mapping) or not isinstance(manifest, Mapping):
+        raise OptionPricingPublicationError(f"Pricing chain metadata is malformed: {run}")
+    manifest_checksum = file_checksum(manifest_path)
+    receipt_checksum = file_checksum(receipt_path)
+    manifest_timestamp = _utc(manifest.get("run_timestamp"), "manifest run timestamp")
+    receipt_timestamp = _utc(receipt.get("run_timestamp"), "receipt run timestamp")
+    published = _utc(receipt.get("published_at"), "receipt published_at")
+    if (
+        record.get("manifest_checksum_sha256") != manifest_checksum
+        or record.get("receipt_checksum_sha256") != receipt_checksum
+        or receipt.get("schema_version") != OPTION_PRICING_PUBLICATION_VERSION
+        or receipt.get("run_path") != run.relative_to(root).as_posix()
+        or receipt.get("manifest_checksum_sha256") != manifest_checksum
+        or receipt_timestamp != manifest_timestamp
+        or published < manifest_timestamp
+        or _publication_record(root, run, receipt) != dict(record)
+    ):
+        raise OptionPricingPublicationError(
+            f"Pricing chain receipt does not match its immutable metadata: {run}"
+        )
+    return manifest, receipt
+
+
+def _verify_manifest_output(
+    run: Path,
+    manifest: Mapping[str, object],
+    name: str,
+) -> None:
+    outputs = manifest.get("output_files")
+    metadata = outputs.get(name) if isinstance(outputs, Mapping) else None
+    path = run / name
+    if (
+        not isinstance(metadata, Mapping)
+        or not path.is_file()
+        or int(metadata.get("size", -1)) != path.stat().st_size
+        or metadata.get("checksum_sha256") != file_checksum(path)
+    ):
+        raise OptionPricingPublicationError(
+            f"Pricing manifest output checksum mismatch: {path}"
+        )
 
 
 def _verify_run(run: Path) -> Mapping[str, object]:

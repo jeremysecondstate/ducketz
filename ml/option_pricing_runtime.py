@@ -14,6 +14,8 @@ from typing import Callable, Mapping, Sequence
 
 import pandas as pd
 
+from datafetching.bar_readiness import BarReadinessError, read_bar_readiness
+from datafetching.decision_time import expected_quarter_hour_target
 from datafetching.orchestrate import DEFAULT_WATCHLIST, normalize_symbols, read_watchlist
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from datafetching.runtime_lock import exclusive_runtime_lock
@@ -84,6 +86,11 @@ from ml.option_pricing.reporting import (
 from ml.option_pricing.strategy_outcomes import (
     read_current_strategy_outcome_evidence,
 )
+from ml.option_pricing.target_outcome import (
+    TargetOutcomePublication,
+    authoritative_target_outcomes,
+    publish_target_outcome,
+)
 from ml.parquet_contracts import (
     OPTION_PRICING_EVALUATION_SCHEMA,
     OPTION_PRICING_MONITORING_SCHEMA,
@@ -115,6 +122,11 @@ class OptionPricingRuntimeResult:
     health_path: Path
     health_status: str
     health_exit_code: int
+    target_snapshot_for: pd.Timestamp
+    target_outcome_directory: Path
+    target_outcome_status: str
+    target_published_at: pd.Timestamp
+    stage_timings: Mapping[str, float]
 
 
 def run_option_pricing_once(
@@ -129,6 +141,8 @@ def run_option_pricing_once(
     projection_policy: ProjectionPolicy | None = None,
     rate_observations: pd.DataFrame | None = None,
     runtime_limits: RuntimeLimits | None = None,
+    target_snapshot_for: object | None = None,
+    bar_readiness_mode: str = "exact",
 ) -> OptionPricingRuntimeResult:
     """Publish one independent, shadow-only Pricing generation."""
 
@@ -147,6 +161,8 @@ def run_option_pricing_once(
             projection_policy=projection_policy,
             rate_observations=rate_observations,
             runtime_limits=runtime_limits,
+            target_snapshot_for=target_snapshot_for,
+            bar_readiness_mode=bar_readiness_mode,
         )
     finally:
         if tracing_started_here:
@@ -165,14 +181,28 @@ def _run_option_pricing_once_impl(
     projection_policy: ProjectionPolicy | None = None,
     rate_observations: pd.DataFrame | None = None,
     runtime_limits: RuntimeLimits | None = None,
+    target_snapshot_for: object | None = None,
+    bar_readiness_mode: str = "exact",
 ) -> OptionPricingRuntimeResult:
     root = Path(datastore_root).resolve()
     clean_symbols = normalize_symbols(symbols)
     if not clean_symbols:
         raise ValueError("At least one Pricing symbol is required")
     created = utc_timestamp(run_timestamp)
+    target = (
+        utc_timestamp(target_snapshot_for)
+        if target_snapshot_for is not None
+        else expected_quarter_hour_target(created)
+    )
+    if target != expected_quarter_hour_target(target):
+        raise ValueError("Pricing target must be an exact quarter-hour boundary")
+    readiness_mode = str(bar_readiness_mode).strip().lower()
+    if readiness_mode not in {"required", "exact"}:
+        raise ValueError("bar_readiness_mode must be required or exact")
     clock = runtime_clock or (lambda: utc_timestamp())
     cycle_started = time.perf_counter()
+    stage_started = cycle_started
+    stage_timings: dict[str, float] = {}
     effective_partitions = partition_config or PricingPartitionConfig()
     effective_model = model_policy or BSGPModelPolicy()
     effective_contract = contract_policy or ContractSelectionPolicy()
@@ -194,8 +224,48 @@ def _run_option_pricing_once_impl(
             "Pricing preflight failed closed for disk capacity: "
             + json.dumps(initial_capacity, sort_keys=True)
         )
+    stage_timings["preflight_seconds"] = time.perf_counter() - stage_started
+    stage_started = time.perf_counter()
 
-    prior_samples, prior_predictions, prior_lineage_files = _recover_prior_generation(root)
+    source_files = [
+        policy_artifact.directory / "policy.json",
+        policy_artifact.directory / "receipt.json",
+    ]
+    model_input_files: list[Path] = []
+    if rate_observations is None:
+        rate_observations, rate_files = load_point_in_time_rate_observations(root)
+        source_files.extend(rate_files)
+        model_input_files.extend(rate_files)
+    target_publication, new_live_samples, new_live_predictions, live_status, target_inputs = (
+        _publish_fast_target_outcome(
+            root,
+            symbols=clean_symbols,
+            target_snapshot_for=target,
+            created_at=created,
+            runtime_clock=clock,
+            bar_readiness_mode=readiness_mode,
+            contract_policy=effective_contract,
+            projection_policy=effective_projection,
+            rate_observations=rate_observations,
+        )
+    )
+    source_files.extend(target_inputs)
+    source_files.extend(
+        (
+            target_publication.manifest_path,
+            target_publication.receipt_path,
+            target_publication.outcome_path,
+        )
+    )
+    stage_timings["target_authority_seconds"] = time.perf_counter() - stage_started
+    stage_started = time.perf_counter()
+
+    (
+        prior_samples,
+        prior_predictions,
+        prior_lineage_files,
+        prior_generation_published_at,
+    ) = _recover_prior_generation(root)
     prior_samples = _evidence_lane(
         prior_samples,
         provider="schwab",
@@ -206,21 +276,17 @@ def _run_option_pricing_once_impl(
         provider="schwab",
         prediction_mode="LIVE",
     )
-    prior_proven_live = (
-        receipt_proven_prediction_rows(root)
-        if not prior_predictions.empty
-        else pd.DataFrame()
+    prior_proven_live = receipt_proven_prediction_rows(root)
+    target_history = authoritative_target_outcomes(
+        root,
+        published_after=prior_generation_published_at,
     )
-    source_files = [
-        *prior_lineage_files,
-        policy_artifact.directory / "policy.json",
-        policy_artifact.directory / "receipt.json",
-    ]
-    model_input_files: list[Path] = []
-    if rate_observations is None:
-        rate_observations, rate_files = load_point_in_time_rate_observations(root)
-        source_files.extend(rate_files)
-        model_input_files.extend(rate_files)
+    target_history_samples = _concat_frames(
+        *(publication.samples() for publication in target_history)
+    )
+    for publication in target_history:
+        source_files.extend((publication.manifest_path, publication.receipt_path))
+    source_files.extend(prior_lineage_files)
     route_errors: dict[str, str] = {}
     models: dict[tuple[str, str], object] = {}
     model_reports: dict[str, dict[str, object]] = {}
@@ -358,55 +424,15 @@ def _run_option_pricing_once_impl(
                 "automated_action_allowed": False,
             }
 
-    combined_samples = _canonical_samples(opra_history, prior_samples)
-
-    live_samples: list[pd.DataFrame] = []
-    live_source_files: list[Path] = []
-    live_status: dict[str, Mapping[str, object]] = {}
-    for symbol in clean_symbols:
-        try:
-            batch = build_live_prediction_inputs(
-                root,
-                symbol=symbol,
-                prediction_created_at=created,
-                contract_policy=effective_contract,
-                rate_observations=rate_observations,
-            )
-            live_status[symbol] = {
-                "status": batch.status,
-                "reason": batch.reason,
-                "target_snapshot_for": batch.target_snapshot_for,
-            }
-            if not batch.samples.empty:
-                live_samples.append(batch.samples)
-            live_source_files.extend(batch.source_files)
-        except Exception as exc:
-            route_errors[f"{symbol}/live"] = f"{type(exc).__name__}: {exc}"
-            live_status[symbol] = {
-                "status": "TARGET_BAR_NOT_READY",
-                "reason": route_errors[f"{symbol}/live"],
-            }
-    source_files.extend(live_source_files)
-    new_live_samples = (
-        pd.concat(live_samples, ignore_index=True, sort=False)
-        if live_samples
-        else pd.DataFrame()
+    combined_samples = _canonical_samples(
+        opra_history,
+        prior_samples,
+        target_history_samples,
     )
 
-    # The timestamp written into every new prediction is the same receipt time
-    # passed to the publisher. Existing predictions retain their first receipt.
-    published_at = max(utc_timestamp(clock()), created)
-    new_live_predictions = (
-        create_prediction_rows(
-            new_live_samples,
-            prediction_created_at=created,
-            prediction_available_at=published_at,
-            models=models,
-            projection_policy=effective_projection,
-        )
-        if not new_live_samples.empty
-        else pd.DataFrame()
-    )
+    for symbol, status in live_status.items():
+        if status.get("status") == "TARGET_BAR_NOT_READY":
+            route_errors[f"{symbol}/live"] = str(status.get("reason", ""))
     offline_predictions = (
         frozen_offline_predictions
         if candidate is not None
@@ -417,7 +443,12 @@ def _run_option_pricing_once_impl(
         )
     )
     predictions = canonicalize_predictions(
-        _concat_frames(prior_predictions, offline_predictions, new_live_predictions)
+        _concat_frames(
+            prior_predictions,
+            prior_proven_live,
+            offline_predictions,
+            new_live_predictions,
+        )
     )
 
     snapshots_by_symbol = {
@@ -448,15 +479,16 @@ def _run_option_pricing_once_impl(
         else pd.DataFrame()
     )
     evaluations = _concat_frames(offline_evaluations, live_evaluations)
-    samples_for_publication = _concat_frames(combined_samples, new_live_samples)
+    samples_for_publication = _canonical_samples(combined_samples, new_live_samples)
     samples_for_publication = _redact_closed_lockbox(
         samples_for_publication,
         global_partitions,
     )
+    generation_prepared_at = max(utc_timestamp(clock()), target_publication.published_at)
     surfaces = build_pricing_surfaces(
         predictions,
         evaluations,
-        available_at=published_at,
+        available_at=generation_prepared_at,
     )
     preliminary_report = {
         "policy": OPTION_PRICING_POLICY_VERSION,
@@ -476,7 +508,7 @@ def _run_option_pricing_once_impl(
         report=gate,
         predictions=predictions,
         evaluations=evaluations,
-        monitored_at=published_at,
+        monitored_at=generation_prepared_at,
         live_routes=live_status,
         live_samples=new_live_samples,
     )
@@ -508,6 +540,17 @@ def _run_option_pricing_once_impl(
         },
         "cycle": {
             "status": cycle_status,
+            "target_snapshot_for": target.isoformat(),
+            "bar_ready_at": (
+                _bar_ready_at(target_publication)
+            ),
+            "pricing_started_at": created.isoformat(),
+            "target_authority_published_at": target_publication.published_at.isoformat(),
+            "target_outcome_status": target_publication.terminal_status,
+            "target_outcome_run_path": target_publication.directory.relative_to(root).as_posix(),
+            "target_outcome_receipt_checksum_sha256": (
+                target_publication.receipt_checksum_sha256
+            ),
             "new_live_sample_rows": len(new_live_samples),
             "new_live_prediction_rows": new_live_prediction_count,
             "route_statuses": live_route_states,
@@ -550,10 +593,14 @@ def _run_option_pricing_once_impl(
         "limits": asdict(limits),
     }
 
-    run_directory = _write_and_publish_generation(
+    stage_timings["research_and_generation_prepare_seconds"] = (
+        time.perf_counter() - stage_started
+    )
+    stage_started = time.perf_counter()
+    run_directory, published_at, lineage = _write_and_publish_generation(
         root,
         created=created,
-        published_at=published_at,
+        runtime_clock=clock,
         samples=samples_for_publication,
         predictions=predictions,
         evaluations=evaluations,
@@ -571,11 +618,10 @@ def _run_option_pricing_once_impl(
         sealed_lockbox_inventory=sealed_lockbox_inventory,
         runtime_symbols=clean_symbols,
     )
-    lineage = verify_completed_option_pricing_lineage(
-        root,
-        run_directory=run_directory,
-        policy_artifact=policy_artifact,
+    stage_timings["generation_publication_and_lineage_seconds"] = (
+        time.perf_counter() - stage_started
     )
+    stage_started = time.perf_counter()
     strategy_report = _read_optional_evidence(
         lambda: read_current_strategy_outcome_evidence(root),
         label="Strategy outcome evidence",
@@ -606,21 +652,23 @@ def _run_option_pricing_once_impl(
         frozen_candidate=candidate,
         lockbox_result=lockbox_result,
         operational_report=operational_report,
-        generated_at=published_at,
+        generated_at=utc_timestamp(clock()),
     )
     final_report["closed_lockbox_inventory"] = closed_lockbox_report
     eligibility_artifact = publish_eligibility_report(
         root,
         report=final_report,
         pricing_run=run_directory,
-        published_at=published_at,
+        published_at=utc_timestamp(clock()),
     )
     previous_health = _read_optional_evidence(
         lambda: read_current_runtime_health(root),
         label="prior runtime health",
         route_errors=route_errors,
     )
-    health = build_runtime_health(
+    final_capacity = capacity_report(root, limits=limits)
+    stage_timings["post_publication_tail_seconds"] = time.perf_counter() - stage_started
+    health = dict(build_runtime_health(
         pricing_run=run_directory,
         eligibility_report=final_report,
         lineage_report=lineage,
@@ -629,8 +677,8 @@ def _run_option_pricing_once_impl(
         live_symbols=clean_symbols,
         elapsed_seconds=time.perf_counter() - cycle_started,
         peak_memory_bytes=peak_memory_bytes,
-        capacity=capacity_report(root, limits=limits),
-        checked_at=published_at,
+        capacity=final_capacity,
+        checked_at=utc_timestamp(clock()),
         previous_prospective_count=(
             int(previous_health.get("prospective_completed_count", 0))
             if isinstance(previous_health, Mapping)
@@ -642,7 +690,8 @@ def _run_option_pricing_once_impl(
             else None
         ),
         limits=limits,
-    )
+    ))
+    health["stage_timings"] = dict(stage_timings)
     health_path = publish_runtime_health(root, health=health)
     return OptionPricingRuntimeResult(
         run_directory=run_directory,
@@ -661,7 +710,164 @@ def _run_option_pricing_once_impl(
         health_path=health_path,
         health_status=str(health["status"]),
         health_exit_code=int(health["actionable_exit_code"]),
+        target_snapshot_for=target,
+        target_outcome_directory=target_publication.directory,
+        target_outcome_status=target_publication.terminal_status,
+        target_published_at=target_publication.published_at,
+        stage_timings=dict(stage_timings),
     )
+
+
+def _publish_fast_target_outcome(
+    root: Path,
+    *,
+    symbols: Sequence[str],
+    target_snapshot_for: pd.Timestamp,
+    created_at: pd.Timestamp,
+    runtime_clock: Callable[[], object],
+    bar_readiness_mode: str,
+    contract_policy: ContractSelectionPolicy,
+    projection_policy: ProjectionPolicy,
+    rate_observations: pd.DataFrame | None,
+) -> tuple[
+    TargetOutcomePublication,
+    pd.DataFrame,
+    pd.DataFrame,
+    dict[str, Mapping[str, object]],
+    tuple[Path, ...],
+]:
+    readiness = None
+    readiness_error = ""
+    if bar_readiness_mode == "required":
+        try:
+            readiness = read_bar_readiness(
+                root,
+                target_snapshot_for=target_snapshot_for,
+                required_symbols=symbols,
+            )
+            if readiness.ready_at > created_at:
+                raise BarReadinessError(
+                    "Loop A bar readiness was not authoritative by Pricing start"
+                )
+        except BarReadinessError as exc:
+            readiness_error = f"{type(exc).__name__}: {exc}"
+
+    live_samples: list[pd.DataFrame] = []
+    live_status: dict[str, Mapping[str, object]] = {}
+    source_files: list[Path] = []
+    if readiness is not None:
+        source_files.extend(readiness.evidence_files)
+    for symbol in symbols:
+        if bar_readiness_mode == "required" and readiness is None:
+            live_status[symbol] = {
+                "status": "TARGET_BAR_NOT_READY",
+                "reason": readiness_error,
+                "target_snapshot_for": target_snapshot_for,
+            }
+            continue
+        try:
+            batch = build_live_prediction_inputs(
+                root,
+                symbol=symbol,
+                prediction_created_at=created_at,
+                target_snapshot_for=target_snapshot_for,
+                decision_clock=(readiness.decision_clock(symbol) if readiness else None),
+                target_underlying_price=(readiness.close(symbol) if readiness else None),
+                target_source_files=(readiness.evidence_files if readiness else None),
+                contract_policy=contract_policy,
+                rate_observations=rate_observations,
+            )
+            live_status[symbol] = {
+                "status": batch.status,
+                "reason": batch.reason,
+                "target_snapshot_for": target_snapshot_for,
+            }
+            if not batch.samples.empty:
+                live_samples.append(batch.samples)
+            source_files.extend(batch.source_files)
+        except FileNotFoundError as exc:
+            live_status[symbol] = {
+                "status": "TARGET_BAR_NOT_READY",
+                "reason": f"{type(exc).__name__}: {exc}",
+                "target_snapshot_for": target_snapshot_for,
+            }
+        except Exception as exc:
+            live_status[symbol] = {
+                "status": "PRICING_FAILED",
+                "reason": f"{type(exc).__name__}: {exc}",
+                "target_snapshot_for": target_snapshot_for,
+            }
+    samples = (
+        pd.concat(live_samples, ignore_index=True, sort=False)
+        if live_samples
+        else pd.DataFrame()
+    )
+    predictions = (
+        create_prediction_rows(
+            samples,
+            prediction_created_at=created_at,
+            # Replaced by publish_target_outcome inside the publication path.
+            prediction_available_at=created_at,
+            models={},
+            projection_policy=projection_policy,
+        )
+        if not samples.empty
+        else pd.DataFrame()
+    )
+    states = {str(value.get("status", "UNKNOWN")) for value in live_status.values()}
+    if not predictions.empty and states == {"READY"}:
+        terminal_status = "PREDICTIONS_PUBLISHED"
+    elif not predictions.empty:
+        terminal_status = "MIXED_TERMINAL"
+    elif len(states) == 1:
+        terminal_status = next(iter(states))
+    else:
+        terminal_status = "MIXED_TERMINAL"
+    readiness_reference = (
+        {
+            "run_path": readiness.directory.relative_to(root).as_posix(),
+            "receipt_checksum_sha256": readiness.receipt_checksum_sha256,
+            "ready_at": readiness.ready_at.isoformat(),
+            "loop_a_generation": readiness.loop_a_generation,
+        }
+        if readiness is not None
+        else None
+    )
+    publication = publish_target_outcome(
+        root,
+        target_snapshot_for=target_snapshot_for,
+        created_at=created_at,
+        symbols=symbols,
+        symbol_outcomes=live_status,
+        terminal_status=terminal_status,
+        samples=samples,
+        predictions=predictions,
+        bar_readiness=readiness_reference,
+        clock=runtime_clock,
+    )
+    # The immutable publication wins over any recomputation after a restart.
+    authoritative_samples = publication.samples()
+    authoritative_predictions = publication.predictions()
+    authoritative_status = {
+        symbol: dict(value)
+        for symbol, value in publication.symbol_outcomes.items()
+    }
+    return (
+        publication,
+        authoritative_samples,
+        authoritative_predictions,
+        authoritative_status,
+        tuple(dict.fromkeys(source_files)),
+    )
+
+
+def _bar_ready_at(publication: TargetOutcomePublication) -> object | None:
+    try:
+        payload = json.loads(publication.outcome_path.read_text(encoding="utf-8"))
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+        return None
+    readiness = payload.get("bar_readiness") if isinstance(payload, Mapping) else None
+    return readiness.get("ready_at") if isinstance(readiness, Mapping) else None
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -688,6 +894,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--interval-minutes", type=int, default=15)
     parser.add_argument("--phase-offset-minutes", type=int, default=1)
     parser.add_argument("--once", action="store_true")
+    parser.add_argument(
+        "--bar-readiness-mode",
+        choices=("required", "exact"),
+        default="required",
+        help=(
+            "Required consumes Loop A's atomic all-symbol receipt; exact is the "
+            "standalone compatibility mode and still rejects stale targets."
+        ),
+    )
     args = parser.parse_args(argv)
     if args.interval_minutes < 1:
         parser.error("--interval-minutes must be at least 1")
@@ -720,20 +935,52 @@ def main(argv: Sequence[str] | None = None) -> int:
     print()
     lock = root / ".ducketz-option-pricing-runtime.lock"
     with exclusive_runtime_lock(lock, process_name="Duckets Option Pricing runtime"):
+        previous_boundary: datetime | None = None
         try:
             while True:
+                cycle_anchor = datetime.now(timezone.utc)
                 if not args.once:
                     boundary = next_boundary(
-                        datetime.now(timezone.utc),
+                        cycle_anchor,
                         interval_minutes=args.interval_minutes,
                         phase_offset_minutes=args.phase_offset_minutes,
                     )
+                    if previous_boundary is not None:
+                        for missed_boundary in _missed_boundaries(
+                            previous_boundary,
+                            boundary,
+                            interval_minutes=args.interval_minutes,
+                        ):
+                            missed = _publish_missed_target_outcome(
+                                root,
+                                symbols=configured_symbols,
+                                target_snapshot_for=expected_quarter_hour_target(
+                                    missed_boundary
+                                ),
+                                detected_at=cycle_anchor,
+                            )
+                            print(
+                                "Pricing boundary missed: "
+                                f"scheduled_at={missed_boundary.isoformat()}; "
+                                f"target={missed.target_snapshot_for.isoformat()}; "
+                                f"outcome={missed.terminal_status}; "
+                                f"published_at={missed.published_at.isoformat()}"
+                            )
                     print(f"Next Pricing cycle: {boundary.isoformat()}")
                     time.sleep(max(0.0, (boundary - datetime.now(timezone.utc)).total_seconds()))
+                    cycle_anchor = boundary
                 try:
-                    result = run_option_pricing_once(root, symbols=configured_symbols)
+                    result = run_option_pricing_once(
+                        root,
+                        symbols=configured_symbols,
+                        target_snapshot_for=expected_quarter_hour_target(cycle_anchor),
+                        bar_readiness_mode=args.bar_readiness_mode,
+                    )
                     print(
                         "Pricing published: "
+                        f"target={result.target_snapshot_for.isoformat()}; "
+                        f"target_outcome={result.target_outcome_status}; "
+                        f"target_published_at={result.target_published_at.isoformat()}; "
                         f"samples={result.sample_rows}; predictions={result.prediction_rows}; "
                         f"evaluations={result.evaluation_rows}; surfaces={result.surface_rows}; "
                         f"models_trained={result.models_trained}; models_reused={result.models_reused}; "
@@ -755,6 +1002,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 except Exception as exc:
                     print(f"Pricing failed: {type(exc).__name__}: {exc}")
                     exit_code = 1
+                previous_boundary = cycle_anchor
                 if args.once:
                     return exit_code
         except KeyboardInterrupt:
@@ -777,6 +1025,53 @@ def next_boundary(
         return anchor
     count = int((current - anchor).total_seconds() // (interval_minutes * 60))
     return anchor + timedelta(minutes=(count + 1) * interval_minutes)
+
+
+def _missed_boundaries(
+    previous_boundary: datetime,
+    next_scheduled_boundary: datetime,
+    *,
+    interval_minutes: int,
+) -> tuple[datetime, ...]:
+    interval = timedelta(minutes=interval_minutes)
+    candidate = previous_boundary.astimezone(timezone.utc) + interval
+    stop = next_scheduled_boundary.astimezone(timezone.utc)
+    output: list[datetime] = []
+    while candidate < stop:
+        output.append(candidate)
+        candidate += interval
+    return tuple(output)
+
+
+def _publish_missed_target_outcome(
+    root: Path,
+    *,
+    symbols: Sequence[str],
+    target_snapshot_for: object,
+    detected_at: object,
+) -> TargetOutcomePublication:
+    target = utc_timestamp(target_snapshot_for)
+    detected = max(utc_timestamp(detected_at), target)
+    outcomes = {
+        symbol: {
+            "status": "PRICING_TIMED_OUT",
+            "reason": "The prior Pricing cycle was still running at this scheduled boundary.",
+            "target_snapshot_for": target,
+        }
+        for symbol in symbols
+    }
+    return publish_target_outcome(
+        root,
+        target_snapshot_for=target,
+        created_at=detected,
+        symbols=symbols,
+        symbol_outcomes=outcomes,
+        terminal_status="PRICING_TIMED_OUT",
+        samples=pd.DataFrame(),
+        predictions=pd.DataFrame(),
+        bar_readiness=None,
+        clock=lambda: detected,
+    )
 
 
 def resolve_pricing_symbols(
@@ -821,19 +1116,26 @@ def _assessment_predictions(
     return pd.concat(frames, ignore_index=True, sort=False) if frames else pd.DataFrame()
 
 
-def _recover_prior_generation(root: Path) -> tuple[pd.DataFrame, pd.DataFrame, list[Path]]:
+def _recover_prior_generation(
+    root: Path,
+) -> tuple[pd.DataFrame, pd.DataFrame, list[Path], pd.Timestamp | None]:
     try:
         publication = read_current_option_pricing_publication(root)
     except Exception:
         if (root / "ml" / "option-pricing-latest" / "run.json").exists():
             raise
-        return pd.DataFrame(), pd.DataFrame(), []
+        return pd.DataFrame(), pd.DataFrame(), [], None
     samples = pd.read_parquet(publication.run_directory / "pricing-samples.parquet")
     predictions = pd.read_parquet(publication.run_directory / "pricing-predictions.parquet")
-    return samples.drop(columns="id"), predictions.drop(columns="id"), [
-        publication.run_directory / "publication.json",
-        publication.run_directory / "manifest.json",
-    ]
+    return (
+        samples.drop(columns="id"),
+        predictions.drop(columns="id"),
+        [
+            publication.run_directory / "publication.json",
+            publication.run_directory / "manifest.json",
+        ],
+        utc_timestamp(publication.receipt.get("published_at")),
+    )
 
 
 def _canonical_samples(*frames: pd.DataFrame) -> pd.DataFrame:
@@ -1025,7 +1327,7 @@ def _write_and_publish_generation(
     root: Path,
     *,
     created: pd.Timestamp,
-    published_at: pd.Timestamp,
+    runtime_clock: Callable[[], object],
     samples: pd.DataFrame,
     predictions: pd.DataFrame,
     evaluations: pd.DataFrame,
@@ -1042,7 +1344,7 @@ def _write_and_publish_generation(
     runtime_benchmark: Mapping[str, object],
     sealed_lockbox_inventory: Mapping[str, object],
     runtime_symbols: Sequence[str],
-) -> Path:
+) -> tuple[Path, pd.Timestamp, Mapping[str, object]]:
     runs_root = root / "ml" / "option-pricing-runs"
     runs_root.mkdir(parents=True, exist_ok=True)
     base = created.strftime("%Y%m%dT%H%M%S.%fZ")
@@ -1052,24 +1354,17 @@ def _write_and_publish_generation(
         destination = runs_root / f"{base}-{suffix}"
         suffix += 1
     staging = Path(tempfile.mkdtemp(prefix=f".{destination.name}.tmp-{os.getpid()}-", dir=runs_root))
-    names_and_frames = (
+    timeless_frames = (
         ("pricing-samples.parquet", samples, OPTION_PRICING_SAMPLE_SCHEMA, ("symbol", "target_snapshot_for", "contract_symbol")),
         ("pricing-predictions.parquet", predictions, OPTION_PRICING_PREDICTION_SCHEMA, ("symbol", "target_snapshot_for", "contract_symbol", "prediction_created_at")),
         ("pricing-evaluations.parquet", evaluations, OPTION_PRICING_EVALUATION_SCHEMA, ("symbol", "target_snapshot_for", "contract_symbol", "prediction_created_at")),
-        ("pricing-surfaces.parquet", surfaces, OPTION_PRICING_SURFACE_SCHEMA, ("symbol", "target_snapshot_for", "call_put", "expiration_bucket", "moneyness_bucket")),
-        ("pricing-monitoring.parquet", monitoring, OPTION_PRICING_MONITORING_SCHEMA, ("metric_name", "scope_type", "scope_value", "monitored_at")),
     )
     output_names: list[str] = []
     try:
-        for name, frame, schema, keys in names_and_frames:
+        for name, frame, schema, keys in timeless_frames:
             output = _output_frame(frame, schema=schema, key_columns=keys)
             write_parquet_with_schema(output, staging / name, schema)
             output_names.append(name)
-        (staging / OPTION_PRICING_REPORT_NAME).write_text(
-            json.dumps(dict(reports), indent=2, sort_keys=True, default=str) + "\n",
-            encoding="utf-8",
-        )
-        output_names.append(OPTION_PRICING_REPORT_NAME)
         sealed_inventory_name = "closed-lockbox-inventory.json"
         (staging / sealed_inventory_name).write_text(
             json.dumps(
@@ -1084,6 +1379,35 @@ def _write_and_publish_generation(
         output_names.append(sealed_inventory_name)
         copied = _copy_model_artifacts(root, staging, models)
         output_names.extend(copied)
+
+        # Expensive immutable inputs are complete before this clock is sampled.
+        # Only the compact publication-bound outputs and manifest remain.
+        files_completed_at = max(utc_timestamp(runtime_clock()), created)
+        published_surfaces = surfaces.copy()
+        if not published_surfaces.empty:
+            published_surfaces["available_at"] = files_completed_at
+        published_monitoring = monitoring.copy()
+        if not published_monitoring.empty:
+            published_monitoring["monitored_at"] = files_completed_at
+        for name, frame, schema, keys in (
+            ("pricing-surfaces.parquet", published_surfaces, OPTION_PRICING_SURFACE_SCHEMA, ("symbol", "target_snapshot_for", "call_put", "expiration_bucket", "moneyness_bucket")),
+            ("pricing-monitoring.parquet", published_monitoring, OPTION_PRICING_MONITORING_SCHEMA, ("metric_name", "scope_type", "scope_value", "monitored_at")),
+        ):
+            output = _output_frame(frame, schema=schema, key_columns=keys)
+            write_parquet_with_schema(output, staging / name, schema)
+            output_names.append(name)
+        published_reports = dict(reports)
+        published_cycle = published_reports.get("cycle")
+        if isinstance(published_cycle, Mapping):
+            published_reports["cycle"] = {
+                **dict(published_cycle),
+                "immutable_files_completed_at": files_completed_at.isoformat(),
+            }
+        (staging / OPTION_PRICING_REPORT_NAME).write_text(
+            json.dumps(published_reports, indent=2, sort_keys=True, default=str) + "\n",
+            encoding="utf-8",
+        )
+        output_names.append(OPTION_PRICING_REPORT_NAME)
         write_manifest(
             staging,
             run_timestamp=created,
@@ -1118,7 +1442,7 @@ def _write_and_publish_generation(
                         policy_artifact.policy.get("required_symbols", REQUIRED_SYMBOLS)
                     ),
                 },
-                "prediction_available_at": published_at.isoformat(),
+                "immutable_files_completed_at": files_completed_at.isoformat(),
                 "publication_contract": {
                     "version": OPTION_PRICING_PUBLICATION_VERSION,
                     "authority": "ml/option-pricing-latest/run.json",
@@ -1152,7 +1476,7 @@ def _write_and_publish_generation(
     publication = publish_option_pricing_run(
         root,
         run_directory=destination,
-        published_at=published_at,
+        clock=runtime_clock,
     )
     completed_verification = verify_completed_option_pricing_lineage(
         root,
@@ -1179,7 +1503,9 @@ def _write_and_publish_generation(
             "Final Pricing publication verification failed; authority was restored: "
             + json.dumps(completed_verification, sort_keys=True, default=str)
         )
-    return publication.run_directory
+    return publication.run_directory, utc_timestamp(
+        publication.receipt["published_at"]
+    ), completed_verification
 
 
 def _write_runtime_json_atomic(
@@ -1226,7 +1552,10 @@ def _output_frame(
 ) -> pd.DataFrame:
     if frame.empty:
         return empty_frame(schema)  # type: ignore[arg-type]
-    clean = frame.drop(columns="id", errors="ignore")
+    internal_proof = [
+        column for column in frame.columns if str(column).startswith("_pricing_")
+    ]
+    clean = frame.drop(columns=["id", *internal_proof], errors="ignore")
     return frame_with_readable_id(clean, key_columns=key_columns)
 
 
