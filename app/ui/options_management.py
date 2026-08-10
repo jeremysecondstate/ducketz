@@ -2005,7 +2005,28 @@ class OptionsManagementView:
         self.order_table.see(iid)
         self._order_selection_changed()
 
-    def _load_recent_orders(self) -> None:
+    def show_related_orders(self, order_ids: tuple[str, ...]) -> None:
+        """Select Orders and focus a linked broker order, loading recent rows if needed."""
+
+        cleaned = tuple(
+            dict.fromkeys(
+                str(value).strip() for value in order_ids if str(value).strip()
+            )
+        )
+        self.on_show_orders()
+        if not cleaned:
+            self.order_detail.set("This position did not retain any broker order IDs.")
+            return
+        iid = _matching_order_iid(self._visible_order_by_iid, cleaned)
+        if iid is not None and self.order_table is not None:
+            self.order_table.selection_set(iid)
+            self.order_table.focus(iid)
+            self.order_table.see(iid)
+            self._order_selection_changed()
+            return
+        self._load_recent_orders(select_order_ids=cleaned)
+
+    def _load_recent_orders(self, select_order_ids: tuple[str, ...] = ()) -> None:
         if self.load_recent_button is not None:
             self.load_recent_button.configure(state=tk.DISABLED)
         self.order_source_status.set("Loading Recent Schwab Option Orders")
@@ -2024,6 +2045,17 @@ class OptionsManagementView:
                 f"Recent Option Orders · {len(orders)} Result{'s' if len(orders) != 1 else ''}"
             )
             self._render_orders(orders)
+            if select_order_ids and self.order_table is not None:
+                iid = _matching_order_iid(self._visible_order_by_iid, select_order_ids)
+                if iid is None:
+                    self.order_detail.set(
+                        "The related broker order IDs were not present in the recent Schwab window."
+                    )
+                else:
+                    self.order_table.selection_set(iid)
+                    self.order_table.focus(iid)
+                    self.order_table.see(iid)
+                    self._order_selection_changed()
 
         def failed(exc: Exception) -> None:
             if self.load_recent_button is not None:

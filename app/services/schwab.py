@@ -243,6 +243,33 @@ class SchwabSession:
         response.raise_for_status()
         return response.json()
 
+    def get_transactions(
+        self,
+        *,
+        start_date: datetime,
+        end_date: datetime,
+        transaction_types: str = "TRADE",
+        symbol: str | None = None,
+    ) -> Any:
+        """Return one bounded, read-only Schwab transaction-history window."""
+
+        account_hash = self._get_account_hash()
+        params = {
+            "startDate": start_date.astimezone(timezone.utc).isoformat(timespec="seconds"),
+            "endDate": end_date.astimezone(timezone.utc).isoformat(timespec="seconds"),
+            "types": transaction_types,
+        }
+        if symbol:
+            params["symbol"] = symbol.strip().upper()
+        response = requests.get(
+            f"{TRADER_BASE_URL}/accounts/{account_hash}/transactions",
+            headers=self._headers(),
+            params=params,
+            timeout=10,
+        )
+        response.raise_for_status()
+        return response.json()
+
     def get_option_chain(self, symbol: str, strikes: int) -> Any:
         cleaned_symbol = symbol.strip().upper()
         if not cleaned_symbol:

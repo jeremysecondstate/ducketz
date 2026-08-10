@@ -5,8 +5,10 @@ from collections.abc import Callable
 from pathlib import Path
 from tkinter import messagebox, ttk
 
+from app.models.past_positions import PastPositionsSnapshot
 from app.models.portfolio import PortfolioSnapshot
 from app.services.schwab import SchwabSession, sync_schwab_portfolio
+from app.services.schwab_past_positions import SchwabPastPositionsService
 from app.services.schwab_strategy_orders import (
     DAY_ONLY,
     GOOD_UNTIL_CANCELED,
@@ -23,6 +25,7 @@ from app.ui.options_strategy_data import (
 from app.ui.background_tasks import run_in_background
 from app.ui.options_management import OptionsManagementView
 from app.ui.option_templates import OptionsTemplatesView
+from app.ui.past_positions import PastPositionsView
 from app.ui.schwab_order_messages import (
     order_confirmation_message,
     order_submitted_message,
@@ -38,6 +41,15 @@ from app.ui.theme import (
 )
 
 
+OPTIONS_COMMAND_TABS = (
+    "Discover",
+    "Positions",
+    "Orders",
+    "Templates",
+    "Past Positions",
+)
+
+
 class OptionsStrategiesTab:
     def __init__(
         self,
@@ -47,14 +59,26 @@ class OptionsStrategiesTab:
         candidates_path: Path | None = None,
         snapshot_loader: Callable[[], PortfolioSnapshot] = sync_schwab_portfolio,
         session_factory: Callable[[], SchwabSession] = SchwabSession,
+        past_positions_loader: Callable[[], PastPositionsSnapshot] | None = None,
     ) -> None:
         self.root = root
         self.candidates_path = candidates_path
         self.snapshot_loader = snapshot_loader
         self.session_factory = session_factory
+        self._past_positions_service = (
+            None
+            if past_positions_loader is not None
+            else SchwabPastPositionsService(session_factory=session_factory)
+        )
+        self.past_positions_loader = (
+            past_positions_loader
+            if past_positions_loader is not None
+            else self._past_positions_service.load
+        )
         self.view: StrategyCandidatesView | None = None
         self.snapshot: PortfolioSnapshot | None = None
         self.management_view: OptionsManagementView | None = None
+        self.past_positions_view: PastPositionsView | None = None
         self.visible_candidates: tuple[StrategyCandidateView, ...] = ()
         self.selected_candidate: StrategyCandidateView | None = None
         self.selected_order_index = 0
@@ -194,10 +218,12 @@ class OptionsStrategiesTab:
         discover_frame = ttk.Frame(notebook, style="StrategyPage.TFrame")
         orders_frame = ttk.Frame(notebook, style="StrategyPage.TFrame")
         templates_frame = ttk.Frame(notebook, style="StrategyPage.TFrame")
+        past_positions_frame = ttk.Frame(notebook, style="StrategyPage.TFrame")
         notebook.add(discover_frame, text="Discover")
         notebook.add(positions_frame, text="Positions")
         notebook.add(orders_frame, text="Orders")
         notebook.add(templates_frame, text="Templates")
+        notebook.add(past_positions_frame, text="Past Positions")
         notebook.select(positions_frame)
         self._secondary_notebook = notebook
 
@@ -214,6 +240,13 @@ class OptionsStrategiesTab:
         self.templates_view = OptionsTemplatesView(
             root=self.root,
             parent=templates_frame,
+        )
+        self.past_positions_view = PastPositionsView(
+            root=self.root,
+            parent=past_positions_frame,
+            history_loader=self.past_positions_loader,
+            on_related_orders=self.management_view.show_related_orders,
+            autoload=False,
         )
 
     def _build_discover(self, parent: ttk.Frame) -> None:
@@ -515,6 +548,8 @@ class OptionsStrategiesTab:
         )
 
     def refresh(self) -> None:
+        if self.past_positions_view is not None:
+            self.past_positions_view.refresh()
         if self.refresh_button is not None:
             self.refresh_button.configure(state=tk.DISABLED)
         self.position_summary.set("Syncing Schwab Account")
@@ -862,4 +897,4 @@ def _money(value: float | None) -> str:
     return "—" if value is None else f"${value:,.2f}"
 
 
-__all__ = ["OptionsStrategiesTab"]
+__all__ = ["OPTIONS_COMMAND_TABS", "OptionsStrategiesTab"]

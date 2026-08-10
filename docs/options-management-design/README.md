@@ -10,12 +10,33 @@ Use one secondary navigation inside **Options Strategies**:
 2. **Positions** — grouped held strategies with contextual actions.
 3. **Orders** — working, filled, canceled, and rejected option orders.
 4. **Templates** — reusable exit-plan and order presets.
+5. **Past Positions** — execution-evidence reconstruction, filtered realized performance, and exact closed-position provenance.
 
 The recommended flow is:
 
 `Position → Close / Roll / Exit Plan / Exercise → Analyze → Review → Place`
 
 Keep positions and orders conceptually separate. A position can be closed, rolled, or exercised; a working order can be canceled or replaced.
+
+## Past Positions history contract
+
+Past Positions is read-only except for local CSV export. It loads Schwab order and
+transaction history in bounded windows and builds closed rows only from actual option
+execution fills. Matching is account-scoped FIFO by exact OCC contract. A multi-leg
+position is reconstructed only when Schwab supplies one broker package/order linkage
+and the opening and closing packages have the same normalized OCC leg set and ratios.
+
+Unmatched closing fills, still-open residual quantities, mixed open/close packages,
+incompatible ratios, missing exact identity, and other ambiguous evidence are omitted
+from performance totals and reported in the coverage status. Missing fees, close
+reasons, notes, lifecycle events, max profit, or max loss remain visibly unavailable;
+they are never rendered as zero or inferred from trading outcomes. Account identifiers
+are reduced to a masked display label.
+
+The production default is YTD through today. A failed refresh retains the last valid
+snapshot and marks it stale. Because Schwab history can omit older opening executions,
+positions opened before the queried range remain unmatched and are not included in
+realized totals.
 
 ## Concept A — Options Command Center
 
