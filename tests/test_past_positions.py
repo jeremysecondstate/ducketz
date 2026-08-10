@@ -32,6 +32,7 @@ OPENED = datetime(2025, 5, 2, 14, 14, tzinfo=UTC)
 CLOSED = datetime(2025, 5, 12, 15, 2, tzinfo=UTC)
 NVDA_120P = "NVDA  250516P00120000"
 NVDA_115P = "NVDA  250516P00115000"
+NVDA_125P = "NVDA  250516P00125000"
 
 
 def test_raw_order_and_transaction_normalization_uses_exact_execution_evidence() -> None:
@@ -55,6 +56,59 @@ def test_raw_order_and_transaction_normalization_uses_exact_execution_evidence()
     assert history.fills[0].contract.strike == 120.0
     assert history.fills[0].contract.multiplier == 100.0
     assert history.fills[1].executed_at == CLOSED
+
+
+def test_actual_schwab_transaction_shape_enriches_order_fill_with_multiplier_and_fees() -> None:
+    order = _single_order(
+        "10", "BUY_TO_OPEN", NVDA_120P, 1, 2.25, OPENED, "zz-order-execution"
+    )
+    instrument = order["orderLegCollection"][0]["instrument"]
+    instrument.pop("multiplier")
+    instrument["optionDeliverables"] = [{"symbol": "NVDA", "deliverableUnits": 100.0}]
+    transaction = {
+        "activityId": "trade-10",
+        "orderId": "10",
+        "type": "TRADE",
+        "time": OPENED.isoformat(),
+        "netAmount": -225.66,
+        "transferItems": [
+            {
+                "amount": 0.65,
+                "cost": -0.65,
+                "feeType": "COMMISSION",
+                "instrument": {"assetType": "CURRENCY", "symbol": "CURRENCY_USD"},
+            },
+            {
+                "amount": 0.01,
+                "cost": -0.01,
+                "feeType": "OPT_REG_FEE",
+                "instrument": {"assetType": "CURRENCY", "symbol": "CURRENCY_USD"},
+            },
+            {
+                "amount": 1.0,
+                "cost": -225.0,
+                "price": 2.25,
+                "positionEffect": "OPENING",
+                "instrument": {
+                    "assetType": "OPTION",
+                    "symbol": NVDA_120P,
+                    "optionPremiumMultiplier": 100,
+                },
+            },
+        ],
+    }
+
+    history = normalize_history([order], [transaction])
+
+    assert len(history.fills) == 1
+    assert history.coverage.invalid_execution_count == 0
+    assert history.coverage.duplicate_fill_count == 1
+    assert history.fills[0].instruction == "BUY_TO_OPEN"
+    assert history.fills[0].contract.multiplier == 100
+    assert history.fills[0].fees == pytest.approx(0.66)
+    assert history.fills[0].transaction_type == "TRADE"
+    assert history.fills[0].order_entered_at == OPENED - timedelta(minutes=4)
+    assert len(history.fills[0].provenance) == 2
 
 
 def test_non_option_records_and_non_execution_activities_are_filtered() -> None:
@@ -145,6 +199,38 @@ def test_exact_multi_leg_round_trip_preserves_package_and_derives_supported_stru
     assert position.max_loss == 385.0
     assert position.order_ids == ("20", "21")
     assert coverage.ambiguous_package_count == 0
+
+
+def test_per_contract_receive_and_deliver_rows_reassemble_expired_butterfly() -> None:
+    opening = _multi_order(
+        "20",
+        (
+            ("BUY_TO_OPEN", NVDA_115P, 1, 1.00),
+            ("SELL_TO_OPEN", NVDA_120P, 2, 2.00),
+            ("BUY_TO_OPEN", NVDA_125P, 1, 3.50),
+        ),
+        OPENED,
+        strategy="BUTTERFLY",
+    )
+    settled_at = datetime(2025, 5, 17, 7, 45, tzinfo=UTC)
+    settlements = [
+        _receive_and_deliver("expire-115", NVDA_115P, -1, settled_at),
+        _receive_and_deliver("expire-120", NVDA_120P, 2, settled_at + timedelta(seconds=10)),
+        _receive_and_deliver("expire-125", NVDA_125P, -1, settled_at + timedelta(seconds=20)),
+    ]
+
+    history = normalize_history([opening], settlements)
+    positions, coverage = reconstruct_closed_positions(history.fills)
+
+    assert len(positions) == 1
+    assert positions[0].strategy_label == "Butterfly"
+    assert positions[0].close_reason == "Expiration"
+    assert positions[0].closing_cash_flow == 0
+    assert positions[0].realized_pnl == -50
+    assert positions[0].order_ids == ("20",)
+    assert positions[0].timeline[-1].label == "Expired"
+    assert coverage.unmatched_open_quantity == 0
+    assert coverage.unmatched_close_quantity == 0
 
 
 def test_partial_execution_fills_aggregate_within_one_order_package() -> None:
@@ -355,6 +441,8 @@ def test_last_valid_snapshot_is_preserved_when_refresh_fails() -> None:
         _single_order("11", "SELL_TO_CLOSE", NVDA_120P, 1, 3, CLOSED, "close"),
     ]
 
+    requested_transaction_types: list[str] = []
+
     class Session:
         fail = False
 
@@ -363,7 +451,8 @@ def test_last_valid_snapshot_is_preserved_when_refresh_fails() -> None:
                 raise ConnectionError("offline")
             return orders
 
-        def get_transactions(self, **_kwargs: object) -> list[object]:
+        def get_transactions(self, **kwargs: object) -> list[object]:
+            requested_transaction_types.append(str(kwargs.get("transaction_types")))
             return []
 
     session = Session()
@@ -378,6 +467,8 @@ def test_last_valid_snapshot_is_preserved_when_refresh_fails() -> None:
     assert stale.positions == first.positions
     assert stale.stale is True
     assert stale.refresh_error == "ConnectionError: offline"
+    assert requested_transaction_types
+    assert set(requested_transaction_types) == {"TRADE,RECEIVE_AND_DELIVER"}
 
 
 def test_past_positions_tab_is_immediately_after_templates() -> None:
@@ -573,3 +664,30 @@ def _instrument(symbol: str, *, asset_type: str = "OPTION") -> dict[str, object]
     if asset_type == "OPTION":
         result["multiplier"] = 100
     return result
+
+
+def _receive_and_deliver(
+    activity_id: str,
+    symbol: str,
+    amount: float,
+    when: datetime,
+) -> dict[str, object]:
+    return {
+        "activityId": activity_id,
+        "type": "RECEIVE_AND_DELIVER",
+        "time": when.isoformat(),
+        "netAmount": 0.0,
+        "transferItems": [
+            {
+                "amount": amount,
+                "cost": 0.0,
+                "price": 0.0,
+                "positionEffect": "CLOSING",
+                "instrument": {
+                    "assetType": "OPTION",
+                    "symbol": symbol,
+                    "optionPremiumMultiplier": 100,
+                },
+            }
+        ],
+    }

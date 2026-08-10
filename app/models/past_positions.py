@@ -38,6 +38,7 @@ class ExecutionFill:
     package_leg_ratio: float
     order_entered_at: datetime | None
     provenance: tuple[str, ...]
+    transaction_type: str | None = None
 
     @property
     def gross_cash_flow(self) -> float:

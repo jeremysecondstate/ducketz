@@ -31,6 +31,7 @@ from app.services.schwab import SchwabSession
 
 HISTORY_WINDOW_DAYS = 60
 HISTORY_MAX_RESULTS = 3_000
+HISTORY_TRANSACTION_TYPES = "TRADE,RECEIVE_AND_DELIVER"
 OPTION_INSTRUCTIONS = {
     "BUY_TO_OPEN",
     "SELL_TO_OPEN",
@@ -78,6 +79,7 @@ class _ExecutionPackage:
     final_execution_at: datetime
     order_entered_at: datetime | None
     fills: tuple[ExecutionFill, ...]
+    transaction_type: str | None = None
 
     @property
     def cash_flow(self) -> float:
@@ -100,6 +102,12 @@ class _ExecutionPackage:
 class _OpenLot:
     package: _ExecutionPackage
     remaining_units: float
+
+
+@dataclass
+class _RemainingSettlement:
+    fill: ExecutionFill
+    remaining_quantity: float
 
 
 class SchwabPastPositionsService:
@@ -176,7 +184,7 @@ class SchwabPastPositionsService:
             raw_transactions = get_transactions(
                 start_date=window_start,
                 end_date=window_end,
-                transaction_types="TRADE",
+                transaction_types=HISTORY_TRANSACTION_TYPES,
             )
             if not isinstance(raw_orders, list):
                 raise RuntimeError("Schwab order-history window returned a non-list payload.")
@@ -254,21 +262,25 @@ def normalize_history(
 
     deduplicated: list[ExecutionFill] = []
     by_execution_id: set[str] = set()
-    by_fingerprint: dict[tuple[object, ...], str] = {}
+    by_fingerprint: dict[tuple[object, ...], tuple[str, int]] = {}
     duplicate_count = 0
     for fill in sorted(raw_fills, key=_execution_sort_key):
         fingerprint = _fill_fingerprint(fill)
         if fill.execution_id and fill.execution_id in by_execution_id:
             duplicate_count += 1
             continue
-        prior_source = by_fingerprint.get(fingerprint)
+        prior = by_fingerprint.get(fingerprint)
         source_kind = fill.provenance[0].split("[", 1)[0] if fill.provenance else ""
-        if prior_source is not None and prior_source != source_kind:
+        if prior is not None and prior[0] != source_kind:
             duplicate_count += 1
+            prior_index = prior[1]
+            deduplicated[prior_index] = _merge_duplicate_fill(deduplicated[prior_index], fill)
+            merged_source = deduplicated[prior_index].provenance[0].split("[", 1)[0]
+            by_fingerprint[fingerprint] = merged_source, prior_index
             continue
         if fill.execution_id:
             by_execution_id.add(fill.execution_id)
-        by_fingerprint[fingerprint] = source_kind
+        by_fingerprint[fingerprint] = source_kind, len(deduplicated)
         deduplicated.append(fill)
 
     return NormalizedHistory(
@@ -292,8 +304,31 @@ def reconstruct_closed_positions(
     inventory: dict[tuple[object, ...], deque[_OpenLot]] = defaultdict(deque)
     closed: list[ClosedPosition] = []
     unmatched_close = 0.0
+    delivery_packages = tuple(
+        package
+        for package in packages
+        if package.transaction_type == "RECEIVE_AND_DELIVER" and not package.opening
+    )
+    settlement_packages = tuple(
+        package
+        for package in delivery_packages
+        if all(
+            fill.executed_at.date() >= fill.contract.expiration
+            for fill in package.fills
+        )
+    )
+    non_expiration_delivery_count = len(delivery_packages) - len(settlement_packages)
+    if non_expiration_delivery_count:
+        ambiguous_count += non_expiration_delivery_count
+        package_messages = (
+            *package_messages,
+            f"{non_expiration_delivery_count} non-expiration option delivery package(s) "
+            "were excluded from realized performance.",
+        )
 
     for package in sorted(packages, key=lambda item: (item.final_execution_at, item.package_id)):
+        if package.transaction_type == "RECEIVE_AND_DELIVER" and not package.opening:
+            continue
         key = _package_inventory_key(package)
         if package.opening:
             inventory[key].append(_OpenLot(package=package, remaining_units=package.units))
@@ -311,6 +346,14 @@ def reconstruct_closed_positions(
         if remaining_close > 1e-9:
             unmatched_close += remaining_close * sum(leg.ratio for leg in package.legs)
 
+    settlement_closed, unmatched_settlement = _match_expiration_settlements(
+        inventory,
+        settlement_packages,
+        sequence_start=len(closed),
+    )
+    closed.extend(settlement_closed)
+    unmatched_close += unmatched_settlement
+
     unmatched_open = sum(
         lot.remaining_units * sum(leg.ratio for leg in lot.package.legs)
         for lots in inventory.values()
@@ -327,6 +370,147 @@ def reconstruct_closed_positions(
     return (
         tuple(sorted(closed, key=lambda item: (item.close_time or datetime.min.replace(tzinfo=timezone.utc), item.position_id), reverse=True)),
         coverage,
+    )
+
+
+def _match_expiration_settlements(
+    inventory: Mapping[tuple[object, ...], deque[_OpenLot]],
+    settlement_packages: Sequence[_ExecutionPackage],
+    *,
+    sequence_start: int,
+) -> tuple[list[ClosedPosition], float]:
+    """Reassemble per-contract Schwab expiration removals into opening packages."""
+
+    by_contract: dict[tuple[str, str, str], list[_RemainingSettlement]] = defaultdict(list)
+    for package in settlement_packages:
+        for fill in package.fills:
+            if not fill.is_closing:
+                continue
+            by_contract[
+                (fill.account_label, _occ_key(fill.contract.occ_symbol), fill.instruction)
+            ].append(_RemainingSettlement(fill=fill, remaining_quantity=fill.quantity))
+    for rows in by_contract.values():
+        rows.sort(key=lambda row: _execution_sort_key(row.fill))
+
+    lots = sorted(
+        (lot for queue in inventory.values() for lot in queue if lot.remaining_units > 1e-9),
+        key=lambda lot: (lot.package.first_execution_at, lot.package.package_id),
+    )
+    closed: list[ClosedPosition] = []
+    for lot in lots:
+        opening = lot.package
+        matchable_units = lot.remaining_units
+        leg_rows: list[tuple[_PackageLeg, list[_RemainingSettlement]]] = []
+        for leg in opening.legs:
+            closing_instruction = (
+                "SELL_TO_CLOSE" if leg.instruction == "BUY_TO_OPEN" else "BUY_TO_CLOSE"
+            )
+            candidates = by_contract.get(
+                (opening.account_label, _occ_key(leg.contract.occ_symbol), closing_instruction),
+                [],
+            )
+            available = sum(
+                row.remaining_quantity
+                for row in candidates
+                if row.remaining_quantity > 1e-9
+                and row.fill.executed_at >= opening.final_execution_at
+            )
+            matchable_units = min(matchable_units, available / leg.ratio)
+            leg_rows.append((leg, candidates))
+        if matchable_units <= 1e-9:
+            continue
+
+        allocated: list[ExecutionFill] = []
+        for leg, candidates in leg_rows:
+            needed = leg.ratio * matchable_units
+            for row in candidates:
+                if needed <= 1e-9:
+                    break
+                if (
+                    row.remaining_quantity <= 1e-9
+                    or row.fill.executed_at < opening.final_execution_at
+                ):
+                    continue
+                taken = min(needed, row.remaining_quantity)
+                fee_fraction = taken / row.fill.quantity
+                allocated.append(
+                    replace(
+                        row.fill,
+                        quantity=taken,
+                        fees=(row.fill.fees * fee_fraction if row.fill.fees is not None else None),
+                    )
+                )
+                row.remaining_quantity -= taken
+                needed -= taken
+
+        closing = _expiration_package(opening, allocated, matchable_units)
+        closed.append(
+            _closed_position(
+                opening,
+                closing,
+                matchable_units,
+                sequence_start + len(closed),
+            )
+        )
+        lot.remaining_units -= matchable_units
+
+    unmatched = sum(
+        row.remaining_quantity
+        for rows in by_contract.values()
+        for row in rows
+        if row.remaining_quantity > 1e-9
+    )
+    return closed, _rounded(unmatched, 8)
+
+
+def _expiration_package(
+    opening: _ExecutionPackage,
+    fills: Sequence[ExecutionFill],
+    units: float,
+) -> _ExecutionPackage:
+    by_contract: dict[tuple[str, str], list[ExecutionFill]] = defaultdict(list)
+    for fill in fills:
+        by_contract[(_occ_key(fill.contract.occ_symbol), fill.instruction)].append(fill)
+    legs: list[_PackageLeg] = []
+    for opening_leg in opening.legs:
+        closing_instruction = (
+            "SELL_TO_CLOSE"
+            if opening_leg.instruction == "BUY_TO_OPEN"
+            else "BUY_TO_CLOSE"
+        )
+        rows = by_contract[(_occ_key(opening_leg.contract.occ_symbol), closing_instruction)]
+        quantity = sum(fill.quantity for fill in rows)
+        legs.append(
+            _PackageLeg(
+                contract=opening_leg.contract,
+                instruction=closing_instruction,
+                ratio=opening_leg.ratio,
+                quantity=quantity,
+                weighted_price=(
+                    sum(fill.price * fill.quantity for fill in rows) / quantity
+                ),
+                gross_cash_flow=sum(fill.gross_cash_flow for fill in rows),
+                known_fees=sum(fill.fees or 0.0 for fill in rows),
+                has_reported_fee=all(fill.fees is not None for fill in rows),
+            )
+        )
+    ordered_fills = tuple(sorted(fills, key=_execution_sort_key))
+    digest = hashlib.sha256(
+        "|".join(fill.execution_id for fill in ordered_fills).encode("utf-8")
+    ).hexdigest()[:16]
+    return _ExecutionPackage(
+        package_id=f"expiration-{opening.package_id}-{digest}",
+        account_label=opening.account_label,
+        order_id="",
+        package_strategy=None,
+        opening=False,
+        units=units,
+        legs=tuple(sorted(legs, key=lambda leg: _occ_key(leg.contract.occ_symbol))),
+        first_execution_at=ordered_fills[0].executed_at,
+        final_execution_at=ordered_fills[-1].executed_at,
+        order_entered_at=None,
+        fills=ordered_fills,
+        transaction_type="RECEIVE_AND_DELIVER",
     )
 
 
@@ -653,6 +837,7 @@ def _normalize_order(
                     provenance=(
                         f"{source_ref}.orderActivityCollection[{activity_index}].executionLegs[{execution_index}]",
                     ),
+                    transaction_type=None,
                 )
             )
     return fills, counts, messages
@@ -670,6 +855,7 @@ def _normalize_transaction(
         or transaction.get("transaction_id")
     )
     order_id = _clean_text(transaction.get("orderId") or transaction.get("order_id"))
+    transaction_type = _clean_text(transaction.get("type")).upper() or None
     account_label = _account_label(
         transaction.get("accountNumber") or transaction.get("accountId")
     )
@@ -691,16 +877,29 @@ def _normalize_transaction(
     if package_strategy in {"NONE", "SINGLE"}:
         package_strategy = None
     parent_fee = _fee_total(transaction)
+    if parent_fee is None:
+        parent_fee = _transaction_fee_total(rows)
+    if (
+        parent_fee is None
+        and transaction_type == "RECEIVE_AND_DELIVER"
+        and math.isclose(_number(transaction.get("netAmount")) or 0.0, 0.0, abs_tol=1e-9)
+    ):
+        parent_fee = 0.0
     total_quantity = sum(
-        value
+        abs(value)
         for value in (
             _number(row.get("quantity") or row.get("amount"))
             for row in rows
             if isinstance(row, Mapping)
+            and _clean_text(
+                (row.get("instrument") or {}).get("assetType")
+                if isinstance(row.get("instrument"), Mapping)
+                else ""
+            ).upper()
+            == "OPTION"
         )
         if value is not None and abs(value) > 0
     )
-    total_quantity = abs(total_quantity)
     fills: list[ExecutionFill] = []
     for index, raw_item in enumerate(rows):
         if not isinstance(raw_item, Mapping):
@@ -710,9 +909,7 @@ def _normalize_transaction(
         if _clean_text(instrument.get("assetType") or instrument.get("asset_type")).upper() != "OPTION":
             counts["non_option"] += 1
             continue
-        instruction = _clean_text(
-            raw_item.get("instruction") or raw_item.get("positionEffect")
-        ).upper()
+        instruction = _transaction_instruction(raw_item)
         quantity = _number(raw_item.get("quantity") or raw_item.get("amount"))
         price = _number(raw_item.get("price"))
         item_time = _parse_datetime(raw_item.get("time")) or occurred_at
@@ -764,6 +961,7 @@ def _normalize_transaction(
                 package_leg_ratio=float(_number(raw_item.get("legRatio")) or 1.0),
                 order_entered_at=None,
                 provenance=(f"{source_ref}.transferItems[{index}]",),
+                transaction_type=transaction_type,
             )
         )
     return fills, counts, messages
@@ -842,6 +1040,10 @@ def _execution_packages(
                     default=None,
                 ),
                 fills=tuple(package_fills),
+                transaction_type=next(
+                    (fill.transaction_type for fill in package_fills if fill.transaction_type),
+                    None,
+                ),
             )
         )
     return tuple(packages), ambiguous, tuple(messages)
@@ -912,7 +1114,11 @@ def _closed_position(
         opening_cash,
     )
     timeline = _timeline(opening, closing)
-    order_ids = tuple(dict.fromkeys((opening.order_id, closing.order_id)))
+    order_ids = tuple(
+        order_id
+        for order_id in dict.fromkeys((opening.order_id, closing.order_id))
+        if order_id
+    )
     fees_complete = opening.fees_complete and closing.fees_complete
     known_fees = opening.known_fees * open_fraction + closing.known_fees * close_fraction
     digest = hashlib.sha256(
@@ -940,7 +1146,11 @@ def _closed_position(
         order_ids=order_ids,
         fees=_rounded(known_fees, 2) if known_fees or fees_complete else None,
         fees_complete=fees_complete,
-        close_reason=None,
+        close_reason=(
+            "Expiration"
+            if closing.transaction_type == "RECEIVE_AND_DELIVER"
+            else None
+        ),
         notes=None,
         max_profit=max_profit,
         max_loss=max_loss,
@@ -993,14 +1203,24 @@ def _timeline(
                 "Schwab order enteredTime",
             )
         )
-    events.append(
-        PositionTimelineEvent(
-            "Closed",
-            closing.final_execution_at,
-            "Final execution closing the displayed quantity",
-            "Schwab execution fill",
+    if closing.transaction_type == "RECEIVE_AND_DELIVER":
+        events.append(
+            PositionTimelineEvent(
+                "Expired",
+                closing.final_execution_at,
+                "Schwab removed every matched OCC leg at expiration",
+                "Schwab RECEIVE_AND_DELIVER transaction",
+            )
         )
-    )
+    else:
+        events.append(
+            PositionTimelineEvent(
+                "Closed",
+                closing.final_execution_at,
+                "Final execution closing the displayed quantity",
+                "Schwab execution fill",
+            )
+        )
     return tuple(sorted(events, key=lambda item: (item.occurred_at, item.label)))
 
 
@@ -1099,9 +1319,13 @@ def _option_contract(
     multiplier = _number(
         instrument.get("multiplier")
         or instrument.get("contractMultiplier")
+        or instrument.get("optionPremiumMultiplier")
         or fallback.get("multiplier")
         or fallback.get("contractMultiplier")
+        or fallback.get("optionPremiumMultiplier")
     )
+    if multiplier is None:
+        multiplier = _deliverable_multiplier(instrument) or _deliverable_multiplier(fallback)
     if match is None or multiplier is None or multiplier <= 0:
         return None
     try:
@@ -1121,6 +1345,59 @@ def _option_contract(
         option_type="CALL" if match.group("right") == "C" else "PUT",
         multiplier=multiplier,
     )
+
+
+def _deliverable_multiplier(row: Mapping[str, object]) -> float | None:
+    deliverables = row.get("optionDeliverables") or row.get("option_deliverables")
+    if not _is_sequence(deliverables) or len(deliverables) != 1:
+        return None
+    deliverable = deliverables[0]
+    if not isinstance(deliverable, Mapping):
+        return None
+    units = _number(
+        deliverable.get("deliverableUnits") or deliverable.get("deliverable_units")
+    )
+    if units is None or not math.isclose(units, 100.0, abs_tol=1e-9):
+        return None
+    return 100.0
+
+
+def _transaction_instruction(row: Mapping[str, object]) -> str:
+    direct = _clean_text(row.get("instruction")).upper()
+    if direct in OPTION_INSTRUCTIONS:
+        return direct
+    position_effect = _clean_text(
+        row.get("positionEffect") or row.get("position_effect")
+    ).upper()
+    amount = _number(row.get("quantity") or row.get("amount"))
+    if position_effect not in {"OPENING", "CLOSING"} or amount is None or amount == 0:
+        return direct or position_effect
+    side = "BUY" if amount > 0 else "SELL"
+    effect = "OPEN" if position_effect == "OPENING" else "CLOSE"
+    return f"{side}_TO_{effect}"
+
+
+def _transaction_fee_total(rows: Sequence[object]) -> float | None:
+    values: list[float] = []
+    explicit = False
+    for row in rows:
+        if not isinstance(row, Mapping) or not _clean_text(row.get("feeType")):
+            continue
+        instrument = row.get("instrument")
+        asset_type = (
+            _clean_text(instrument.get("assetType")).upper()
+            if isinstance(instrument, Mapping)
+            else ""
+        )
+        if asset_type != "CURRENCY":
+            continue
+        explicit = True
+        value = _number(row.get("cost"))
+        if value is None:
+            value = _number(row.get("amount"))
+        if value is not None:
+            values.append(abs(value))
+    return sum(values) if explicit else None
 
 
 def _fee_total(row: Mapping[str, object]) -> float | None:
@@ -1256,6 +1533,27 @@ def _fill_fingerprint(fill: ExecutionFill) -> tuple[object, ...]:
     )
 
 
+def _merge_duplicate_fill(primary: ExecutionFill, secondary: ExecutionFill) -> ExecutionFill:
+    """Keep order linkage while enriching it with transaction-only evidence."""
+
+    primary_is_order = bool(primary.provenance and primary.provenance[0].startswith("orders["))
+    secondary_is_order = bool(
+        secondary.provenance and secondary.provenance[0].startswith("orders[")
+    )
+    base, other = (
+        (secondary, primary)
+        if secondary_is_order and not primary_is_order
+        else (primary, secondary)
+    )
+    return replace(
+        base,
+        fees=base.fees if base.fees is not None else other.fees,
+        package_strategy=base.package_strategy or other.package_strategy,
+        transaction_type=base.transaction_type or other.transaction_type,
+        provenance=tuple(dict.fromkeys((*base.provenance, *other.provenance))),
+    )
+
+
 def _synthetic_execution_id(*parts: object) -> str:
     value = "|".join(str(part) for part in parts)
     return f"synthetic-{hashlib.sha256(value.encode('utf-8')).hexdigest()[:20]}"
@@ -1335,6 +1633,7 @@ __all__ = [
     "DATE_RANGE_CHOICES",
     "GROUP_BY_CHOICES",
     "HISTORY_MAX_RESULTS",
+    "HISTORY_TRANSACTION_TYPES",
     "HISTORY_WINDOW_DAYS",
     "NormalizedHistory",
     "SchwabPastPositionsService",

@@ -20,15 +20,19 @@ Keep positions and orders conceptually separate. A position can be closed, rolle
 
 ## Past Positions history contract
 
-Past Positions is read-only except for local CSV export. It loads Schwab order and
-transaction history in bounded windows and builds closed rows only from actual option
-execution fills. Matching is account-scoped FIFO by exact OCC contract. A multi-leg
-position is reconstructed only when Schwab supplies one broker package/order linkage
-and the opening and closing packages have the same normalized OCC leg set and ratios.
+Past Positions is read-only except for local CSV export. It loads Schwab order, trade,
+and receive-and-deliver history in bounded windows and builds closed rows only from
+actual option execution or expiration-settlement evidence. Matching is account-scoped
+FIFO by exact OCC contract. A multi-leg trade close is reconstructed only when Schwab
+supplies one broker package/order linkage and the opening and closing packages have the
+same normalized OCC leg set and ratios. Because Schwab reports expiration removals as
+separate per-contract records, those records are reassembled only when every OCC leg
+and ratio exactly covers one previously linked opening package.
 
-Unmatched closing fills, still-open residual quantities, mixed open/close packages,
-incompatible ratios, missing exact identity, and other ambiguous evidence are omitted
-from performance totals and reported in the coverage status. Missing fees, close
+Unmatched closing fills, non-expiration deliveries, still-open residual quantities,
+mixed open/close packages, incompatible ratios, missing exact identity, and other
+ambiguous evidence are omitted from performance totals and reported in the coverage
+status. Missing fees, close
 reasons, notes, lifecycle events, max profit, or max loss remain visibly unavailable;
 they are never rendered as zero or inferred from trading outcomes. Account identifiers
 are reduced to a masked display label.
