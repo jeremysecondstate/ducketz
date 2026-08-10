@@ -23,7 +23,9 @@ from app.ui.options_strategy_data import load_strategy_candidates, portfolio_fit
 from app.ui.options_strategies import OptionsStrategiesTab
 from app.ui.schwab_order_messages import order_confirmation_message
 from ml.parquet_contracts import (
+    STRATEGY_AUDIT_SCHEMA,
     STRATEGY_CANDIDATE_SCHEMA,
+    empty_frame,
     write_parquet_with_schema,
 )
 from ml.strategy_selection.registry import STRATEGY_REGISTRY
@@ -643,6 +645,79 @@ def test_strategy_loader_uses_market_state_prior_until_calibration_exists(
     assert 0.0 <= view.candidates[0].predictive_score <= 100.0
     assert view.candidates[0].expected_return == pytest.approx(0.04)
     assert view.candidates[0].score_basis == "Scenario Prior"
+
+
+def test_discover_empty_state_surfaces_matching_publication_audit_reason(
+    tmp_path: Path,
+) -> None:
+    candidates_path = tmp_path / "strategy-candidates.parquet"
+    audit_path = tmp_path / "strategy-audit.parquet"
+    write_parquet_with_schema(
+        empty_frame(STRATEGY_CANDIDATE_SCHEMA),
+        candidates_path,
+        STRATEGY_CANDIDATE_SCHEMA,
+    )
+    dominant_reason = (
+        "ValueError: No standard contracts contain a numerically usable BBO"
+    )
+    audit_rows = []
+    for index, reason in enumerate(
+        (dominant_reason, dominant_reason, "insufficient strike depth")
+    ):
+        strategy_name = f"strategy_{index}"
+        audit_rows.append(
+            {
+                "id": f"GOOG|1d|2026-08-01T15:00:00Z|{strategy_name}",
+                "symbol": "GOOG",
+                "horizon": "1d",
+                "decision_timestamp": pd.Timestamp("2026-08-01T15:00:00Z"),
+                "strategy_name": strategy_name,
+                "strategy_display_name": strategy_name.title(),
+                "strategy_family": "TEST",
+                "account_approval": "SPREADS",
+                "authorization_status": "AUTHORIZED_SPREADS",
+                "construction_status": "CANDIDATE_CONSTRUCTION_FAILED",
+                "candidate_count": 0,
+                "reason": reason,
+                "registry_version": "test-registry",
+                "candidate_policy_version": "test-candidates",
+            }
+        )
+    write_parquet_with_schema(
+        pd.DataFrame(audit_rows),
+        audit_path,
+        STRATEGY_AUDIT_SCHEMA,
+    )
+    view = load_strategy_candidates(
+        candidates_path,
+        snapshot=PortfolioSnapshot(
+            source="schwab",
+            account_label="Schwab",
+            account_facts={},
+        ),
+    )
+
+    assert view.audit_source_path == audit_path
+    assert view.symbols == ("GOOG",)
+    assert view.horizons_by_symbol == {"GOOG": ("1d",)}
+    assert view.route_diagnoses == {("GOOG", "1d"): dominant_reason}
+    assert view.empty_diagnosis == dominant_reason
+
+    tab = OptionsStrategiesTab.__new__(OptionsStrategiesTab)
+    tab.view = view
+    tab.candidate_table = object()
+    tab.symbol = _Value("GOOG")
+    tab.horizon_label = _Value("1 Day")
+    tab.position_summary = _Value("")
+    tab.candidate_summary = _Value("")
+    tab.visible_candidates = ()
+    tab._clear_table = lambda _table: None
+    tab._clear_ticket = lambda: None
+
+    tab._render_candidates()
+
+    assert tab.position_summary.get() == f"No candidates: {dominant_reason}"
+    assert tab.candidate_summary.get() == "0 Candidates"
 
 
 def test_exact_legs_match_whether_protective_stock_is_held_or_bought(

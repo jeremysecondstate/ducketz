@@ -427,6 +427,115 @@ def test_quality_diagnostics_do_not_suppress_usable_chain_values() -> None:
     assert audit["candidate_count"].eq(4).all()
 
 
+def test_missing_quote_timestamps_do_not_suppress_numerically_usable_bbos() -> None:
+    sample = _sample(0)
+    available_at = sample["decision_timestamp"] + pd.Timedelta(minutes=5)
+    contracts = _contracts_for_receipt(
+        snapshot_for=sample["decision_timestamp"],
+        available_at=available_at,
+        underlying=100.0,
+    )
+    contracts["quote_timestamp"] = pd.NaT
+    contracts["quote_staleness_seconds"] = np.nan
+    surface = _surface_for_receipt(
+        snapshot_for=sample["decision_timestamp"],
+        available_at=available_at,
+    ).iloc[0]
+
+    candidates, audit = construct_strategy_candidates(
+        sample,
+        contracts,
+        surface=surface,
+        stock_quote=_quote_for_receipt(
+            available_at=available_at,
+            underlying=100.0,
+        ).iloc[0],
+        policy=_POLICY,
+    )
+
+    assert len(candidates) == 4 * len(STRATEGY_REGISTRY)
+    assert audit["candidate_count"].eq(4).all()
+    assert candidates["maximum_quote_staleness_seconds"].isna().all()
+    assert not candidates["liquidity_policy_pass"].any()
+    for legs_text in candidates["legs_json"]:
+        assert "NaN" not in legs_text
+        for leg in json.loads(legs_text):
+            if leg["asset"] == "OPTION":
+                assert leg["quote_timestamp"] is None
+                assert leg["quote_staleness_seconds"] is None
+
+
+def test_missing_optional_liquidity_diagnostics_remain_null() -> None:
+    sample = _sample(0)
+    available_at = sample["decision_timestamp"] + pd.Timedelta(minutes=5)
+    contracts = _contracts_for_receipt(
+        snapshot_for=sample["decision_timestamp"],
+        available_at=available_at,
+        underlying=100.0,
+    )
+    contracts[
+        [
+            "relative_bid_ask_spread",
+            "open_interest",
+            "volume",
+            "delta",
+            "gamma",
+            "theta",
+            "vega",
+        ]
+    ] = np.nan
+    candidates, _audit = construct_strategy_candidates(
+        sample,
+        contracts,
+        surface=_surface_for_receipt(
+            snapshot_for=sample["decision_timestamp"],
+            available_at=available_at,
+        ).iloc[0],
+        stock_quote=_quote_for_receipt(
+            available_at=available_at,
+            underlying=100.0,
+        ).iloc[0],
+        policy=_POLICY,
+    )
+
+    assert not candidates.empty
+    assert candidates[
+        [
+            "mean_relative_spread",
+            "max_relative_spread",
+            "minimum_open_interest",
+            "total_volume",
+            "net_delta",
+            "net_gamma",
+            "net_theta",
+            "net_vega",
+        ]
+    ].isna().all(axis=None)
+    assert not candidates["liquidity_policy_pass"].any()
+    option_leg = next(
+        leg
+        for leg in json.loads(candidates.iloc[0]["legs_json"])
+        if leg["asset"] == "OPTION"
+    )
+    assert option_leg["relative_bid_ask_spread"] is None
+    assert option_leg["open_interest"] is None
+    assert option_leg["volume"] is None
+    assert option_leg["delta"] is None
+    scored = score_market_state_prior(
+        candidates,
+        state=infer_market_state(
+            sample,
+            surface=_surface_for_receipt(
+                snapshot_for=sample["decision_timestamp"],
+                available_at=available_at,
+            ).iloc[0],
+            probability_up=0.65,
+        ),
+        policy=_POLICY,
+    )
+    assert scored["decision_score"].map(np.isfinite).all()
+
+
 def test_market_state_prior_scores_every_exact_candidate_without_fake_calibration() -> None:
     sample = _sample(0)
     available_at = sample["decision_timestamp"] + pd.Timedelta(minutes=5)
@@ -674,10 +783,17 @@ def test_strategy_model_fits_only_training_and_calibration_partitions(
         "training-quantiles-0.25-99.75-v1"
     )
 
-    scored = score_strategy_candidates(
-        model,
-        partitions.assessment.head(6),
-    )
+    scoring_candidates = partitions.assessment.head(6).copy()
+    scoring_candidates[
+        [
+            "mean_relative_spread",
+            "max_relative_spread",
+            "minimum_open_interest",
+            "total_volume",
+            "maximum_quote_staleness_seconds",
+        ]
+    ] = np.nan
+    scored = score_strategy_candidates(model, scoring_candidates)
     assert scored["raw_profit_probability"].between(0.0, 1.0).all()
     assert scored["calibrated_profit_probability"].between(0.0, 1.0).all()
     assert scored["direction_probability_up"].eq(0.70).all()
@@ -771,12 +887,83 @@ def test_historical_exit_receipt_cannot_cross_real_lockbox_boundary() -> None:
     ) is None
 
 
-def test_runtime_publishes_prior_rank_when_route_model_is_not_fit(
+def test_runtime_publishes_prior_rank_with_missing_quote_age_diagnostics(
     tmp_path: Path,
 ) -> None:
     live = _sample(0)
     live["label_status"] = "PENDING"
     _write_chain_history(tmp_path, [live])
+    earlier_snapshot = live["decision_timestamp"] + pd.Timedelta(minutes=10)
+    earlier_available = live["decision_timestamp"] + pd.Timedelta(minutes=11)
+    latest_available = live["decision_timestamp"] + pd.Timedelta(minutes=16)
+    contracts_path = (
+        tmp_path
+        / "stocks"
+        / "GOOG"
+        / "options"
+        / "chains"
+        / "schwab"
+        / "normalized"
+        / "2026-07.parquet"
+    )
+    contracts = pd.concat(
+        [
+            _contracts_for_receipt(
+                snapshot_for=earlier_snapshot,
+                available_at=earlier_available,
+                underlying=99.5,
+            ),
+            pd.read_parquet(contracts_path),
+        ],
+        ignore_index=True,
+    )
+    contracts["quote_timestamp"] = contracts["available_at"] - pd.Timedelta(
+        seconds=5
+    )
+    latest_contracts = contracts["available_at"].eq(latest_available)
+    contracts.loc[latest_contracts, "quote_timestamp"] = pd.NaT
+    contracts.loc[latest_contracts, "quote_staleness_seconds"] = np.nan
+    contracts.to_parquet(contracts_path, index=False)
+    surface_path = (
+        tmp_path
+        / "stocks"
+        / "GOOG"
+        / "options"
+        / "features"
+        / "option-quality"
+        / "schwab"
+        / "2026-07.parquet"
+    )
+    pd.concat(
+        [
+            _surface_for_receipt(
+                snapshot_for=earlier_snapshot,
+                available_at=earlier_available,
+            ),
+            pd.read_parquet(surface_path),
+        ],
+        ignore_index=True,
+    ).to_parquet(surface_path, index=False)
+    quote_path = (
+        tmp_path
+        / "stocks"
+        / "GOOG"
+        / "quotes"
+        / "features"
+        / "quote-liquidity"
+        / "schwab"
+        / "2026-07.parquet"
+    )
+    pd.concat(
+        [
+            _quote_for_receipt(
+                available_at=earlier_available,
+                underlying=99.5,
+            ),
+            pd.read_parquet(quote_path),
+        ],
+        ignore_index=True,
+    ).to_parquet(quote_path, index=False)
 
     result = run_strategy_selection(
         tmp_path,
@@ -802,8 +989,17 @@ def test_runtime_publishes_prior_rank_when_route_model_is_not_fit(
         result.candidates["raw_profit_probability"]
     )
     assert result.candidates["score_basis"].eq(SCENARIO_PRIOR_SCORE_BASIS).all()
+    assert result.candidates["maximum_quote_staleness_seconds"].isna().all()
+    assert not result.candidates["liquidity_policy_pass"].any()
+    assert result.candidates["entry_available_at"].eq(latest_available).all()
     assert result.candidates["candidate_rank"].tolist() == list(
         range(1, len(result.candidates) + 1)
+    )
+    assert all(
+        leg["quote_staleness_seconds"] is None
+        for legs_text in result.candidates["legs_json"]
+        for leg in json.loads(legs_text)
+        if leg["asset"] == "OPTION"
     )
 
 

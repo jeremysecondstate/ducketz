@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 from collections import defaultdict
+from collections.abc import Callable
 from typing import Mapping
 
 import numpy as np
@@ -305,15 +306,17 @@ def _candidate_row(
                 "gamma": _finite_or_none(contract.get("gamma")),
                 "theta": _finite_or_none(contract.get("theta")),
                 "vega": _finite_or_none(contract.get("vega")),
-                "relative_bid_ask_spread": float(contract["relative_bid_ask_spread"]),
-                "open_interest": float(contract["open_interest"]),
+                "relative_bid_ask_spread": _finite_or_none(
+                    contract.get("relative_bid_ask_spread")
+                ),
+                "open_interest": _finite_or_none(contract.get("open_interest")),
                 "volume": _finite_or_none(contract.get("volume")),
                 "quote_valid": _scalar_true(contract.get("quote_valid", False)),
                 "liquidity_policy_pass": _scalar_true(
                     contract.get("__liquidity_policy_pass", False)
                 ),
-                "quote_staleness_seconds": float(
-                    contract["quote_staleness_seconds"]
+                "quote_staleness_seconds": _finite_or_none(
+                    contract.get("quote_staleness_seconds")
                 ),
                 "quote_timestamp": (
                     _utc(contract["quote_timestamp"]).isoformat()
@@ -334,9 +337,6 @@ def _candidate_row(
         multi_expiration=definition.expiration_structure == "MULTI",
     )
     option_legs = [leg for leg in selected_legs if leg["asset"] == "OPTION"]
-    relative_spreads = [float(leg["relative_bid_ask_spread"]) for leg in option_legs]
-    open_interest = [float(leg["open_interest"]) for leg in option_legs]
-    volumes = [float(leg["volume"] or 0.0) for leg in option_legs]
     stock_legs = [leg for leg in selected_legs if leg["asset"] == "STOCK"]
     surface_quality_pass = _scalar_true(
         surface.get("surface_quality_pass", False)
@@ -359,13 +359,7 @@ def _candidate_row(
         "stock_quote_quality_pass": stock_quote_quality_pass,
     }
     greeks = {
-        name: sum(
-            (1.0 if leg["side"] == "LONG" else -1.0)
-            * int(leg["quantity"])
-            * float(leg["multiplier"])
-            * float(leg.get(name) or 0.0)
-            for leg in option_legs
-        )
+        name: _nullable_signed_sum(option_legs, name)
         for name in ("delta", "gamma", "theta", "vega")
     }
     stock_delta = sum(
@@ -373,7 +367,11 @@ def _candidate_row(
         for leg in selected_legs
         if leg["asset"] == "STOCK"
     )
-    net_delta = greeks["delta"] + stock_delta
+    net_delta = (
+        greeks["delta"] + stock_delta
+        if math.isfinite(greeks["delta"])
+        else np.nan
+    )
     front_text = front_expiration.date().isoformat()
     back_text = back_expiration.date().isoformat() if back_expiration is not None else "none"
     candidate_key = (
@@ -427,7 +425,12 @@ def _candidate_row(
         / 3_600.0,
         "width_steps": width_steps,
         "leg_count": len(selected_legs),
-        "legs_json": json.dumps(selected_legs, sort_keys=True, separators=(",", ":")),
+        "legs_json": json.dumps(
+            selected_legs,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ),
         "underlying_price": underlying,
         "entry_cash_flow": entry_cash,
         "entry_fees": entry_fees,
@@ -441,10 +444,16 @@ def _candidate_row(
         "net_gamma": greeks["gamma"],
         "net_theta": greeks["theta"],
         "net_vega": greeks["vega"],
-        "mean_relative_spread": float(np.mean(relative_spreads)),
-        "max_relative_spread": float(np.max(relative_spreads)),
-        "minimum_open_interest": float(np.min(open_interest)),
-        "total_volume": float(np.sum(volumes)),
+        "mean_relative_spread": _nullable_aggregate(
+            option_legs, "relative_bid_ask_spread", np.mean
+        ),
+        "max_relative_spread": _nullable_aggregate(
+            option_legs, "relative_bid_ask_spread", np.max
+        ),
+        "minimum_open_interest": _nullable_aggregate(
+            option_legs, "open_interest", np.min
+        ),
+        "total_volume": _nullable_aggregate(option_legs, "volume", np.sum),
         "entry_debit_to_underlying": max(-entry_cash, 0.0) / (underlying * 100.0),
         "max_loss_to_underlying": capital / (underlying * 100.0),
         "net_delta_per_share": net_delta / 100.0,
@@ -452,8 +461,8 @@ def _candidate_row(
         "all_option_quotes_valid": all_option_quotes_valid,
         "liquidity_policy_pass": liquidity_policy_pass,
         "stock_quote_quality_pass": stock_quote_quality_pass,
-        "maximum_quote_staleness_seconds": float(
-            max(float(leg["quote_staleness_seconds"]) for leg in option_legs)
+        "maximum_quote_staleness_seconds": _nullable_aggregate(
+            option_legs, "quote_staleness_seconds", np.max
         ),
         "quality_observations_json": json.dumps(
             quality_observations, sort_keys=True, separators=(",", ":")
@@ -472,6 +481,13 @@ def _prepare_contracts(
     policy: StrategySelectionPolicy,
 ) -> pd.DataFrame:
     frame = contracts.copy()
+    for column in (
+        "relative_bid_ask_spread",
+        "open_interest",
+        "quote_staleness_seconds",
+    ):
+        if column not in frame:
+            frame[column] = np.nan
     for column in (
         "expiration_date",
         "strike",
@@ -499,21 +515,26 @@ def _prepare_contracts(
         & ~frame["non_standard"].fillna(True).astype(bool)
         & frame["multiplier"].eq(100.0)
         & frame["expiration_date"].notna()
+        & np.isfinite(frame["strike"])
         & frame["strike"].gt(0.0)
+        & np.isfinite(frame["bid"])
         & frame["bid"].ge(0.0)
+        & np.isfinite(frame["ask"])
         & frame["ask"].gt(0.0)
         & frame["ask"].ge(frame["bid"])
-        & frame["relative_bid_ask_spread"].ge(0.0)
-        & frame["open_interest"].ge(0.0)
-        & frame["quote_staleness_seconds"].ge(0.0)
     )
     result = frame.loc[structural].copy()
     if result.empty:
         raise ValueError("No standard contracts contain a numerically usable BBO")
     result["__liquidity_policy_pass"] = (
         result["quote_valid"].map(_scalar_true)
+        & np.isfinite(result["relative_bid_ask_spread"])
+        & result["relative_bid_ask_spread"].ge(0.0)
         & result["relative_bid_ask_spread"].le(maximum_spread)
+        & np.isfinite(result["open_interest"])
         & result["open_interest"].ge(minimum_open_interest)
+        & np.isfinite(result["quote_staleness_seconds"])
+        & result["quote_staleness_seconds"].ge(0.0)
         & result["quote_staleness_seconds"].le(
             policy.maximum_quote_staleness_seconds
         )
@@ -682,6 +703,35 @@ def _finite_or_none(value: object) -> float | None:
     except (TypeError, ValueError):
         return None
     return number if math.isfinite(number) else None
+
+
+def _nullable_aggregate(
+    legs: list[dict[str, object]],
+    field: str,
+    aggregate: Callable[[list[float]], object],
+) -> float:
+    values = [_finite_or_none(leg.get(field)) for leg in legs]
+    if not values or any(value is None for value in values):
+        return np.nan
+    return float(aggregate([float(value) for value in values if value is not None]))
+
+
+def _nullable_signed_sum(
+    legs: list[dict[str, object]],
+    field: str,
+) -> float:
+    values = [_finite_or_none(leg.get(field)) for leg in legs]
+    if not values or any(value is None for value in values):
+        return np.nan
+    return float(
+        sum(
+            (1.0 if leg["side"] == "LONG" else -1.0)
+            * int(leg["quantity"])
+            * float(leg["multiplier"])
+            * float(value)
+            for leg, value in zip(legs, values, strict=True)
+        )
+    )
 
 
 def _scalar_true(value: object) -> bool:

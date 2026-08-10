@@ -16,6 +16,12 @@ from datafetching.bar_schema import write_normalized_bar_parquet
 from datafetching.cme_history import cme_writer_lock_path
 from datafetching.ids import add_readable_id
 from datafetching.runtime_lock import exclusive_runtime_lock
+from datafetching.quote_liquidity import (
+    QUOTE_LIQUIDITY_CALCULATION,
+    QUOTE_LIQUIDITY_CALCULATION_VERSION,
+    QUOTE_LIQUIDITY_QUALITY_POLICY_VERSION,
+    QUOTE_LIQUIDITY_SCHEMA_VERSION,
+)
 from ml.artifacts import file_checksum, verify_manifest, write_manifest
 from ml.current_publication import (
     publication_contract_kind,
@@ -60,7 +66,14 @@ from ml.strategy_selection.contracts import (
     STRATEGY_RANKING_POLICY_VERSION,
 )
 from ml.strategy_runtime import run_strategy_once
+from options.features import (
+    OPTION_FEATURE_SCHEMA_VERSION,
+    OPTION_FEATURE_VERSION,
+    OPTION_SELECTION_POLICY_VERSION,
+    OPTION_SURFACE_QUALITY_POLICY_VERSION,
+)
 from options.publication import option_writer_lock_path
+from options.snapshot import OPTION_CHAIN_SCHEMA_VERSION
 
 
 _FIRST_RUN = pd.Timestamp("2024-06-03T12:00:00Z")
@@ -508,6 +521,14 @@ def test_directional_publication_does_not_wait_for_active_external_writers_and_s
         for thread in threads:
             thread.join(timeout=5)
 
+    live_sample = pd.read_parquet(
+        loop_b.run_directory / "samples.parquet"
+    ).loc[lambda frame: ~frame["label_status"].eq("COMPLETE")].iloc[-1]
+    _write_strategy_chain_fixture(
+        tmp_path,
+        sample=live_sample,
+        available_at=_FIRST_RUN,
+    )
     source_checksums = {
         path.name: file_checksum(path)
         for path in loop_b.run_directory.iterdir()
@@ -522,11 +543,23 @@ def test_directional_publication_does_not_wait_for_active_external_writers_and_s
     publication = read_current_strategy_publication(tmp_path)
     assert publication.run_directory == strategy.run_directory
     assert strategy.source_loop_b_directory == loop_b.run_directory
+    assert strategy.candidate_rows > 0
     assert strategy.audit_rows == 40
     assert strategy.run_directory.parent.name == "strategy-runs"
     assert (strategy.run_directory / "strategy-audit.parquet").is_file()
     candidates_path = strategy.run_directory / "strategy-candidates.parquet"
     verify_parquet_schema(candidates_path, STRATEGY_CANDIDATE_SCHEMA)
+    candidates = pd.read_parquet(candidates_path)
+    assert not candidates.empty
+    assert candidates["score_basis"].eq("SCENARIO_PRIOR").all()
+    assert candidates["maximum_quote_staleness_seconds"].isna().all()
+    assert not candidates["liquidity_policy_pass"].any()
+    assert all(
+        leg["quote_staleness_seconds"] is None
+        for legs_text in candidates["legs_json"]
+        for leg in json.loads(legs_text)
+        if leg["asset"] == "OPTION"
+    )
     assert publication.receipt["schema_version"] == STRATEGY_PUBLICATION_VERSION
     assert publication.pointer["schema_version"] == STRATEGY_POINTER_VERSION
     assert publication.receipt["candidate_contract"] == {
@@ -1961,6 +1994,146 @@ def _publish_prediction_fixture_run(
         target_deadline=None,
     )
     return run_directory
+
+
+def _write_strategy_chain_fixture(
+    root: Path,
+    *,
+    sample: pd.Series,
+    available_at: object,
+) -> None:
+    available = pd.Timestamp(available_at)
+    snapshot_for = pd.Timestamp(sample["bar_end_timestamp"])
+    target_end = pd.Timestamp(sample["target_window_end"])
+    underlying = 112.5
+    contracts: list[dict[str, object]] = []
+    for expiration in (
+        target_end.normalize() + pd.Timedelta(days=30),
+        target_end.normalize() + pd.Timedelta(days=60),
+        target_end.normalize() + pd.Timedelta(days=90),
+    ):
+        for strike in range(80, 146, 5):
+            for call_put in ("CALL", "PUT"):
+                intrinsic = max(
+                    underlying - strike
+                    if call_put == "CALL"
+                    else strike - underlying,
+                    0.0,
+                )
+                mid = intrinsic + 2.5 + abs(strike - underlying) * 0.01
+                bid = max(mid - 0.05, 0.01)
+                ask = mid + 0.05
+                contracts.append(
+                    {
+                        "symbol": "GOOG",
+                        "snapshot_for": snapshot_for,
+                        "available_at": available,
+                        "contract_symbol": (
+                            f"GOOG-{expiration.date()}-{call_put}-{strike}"
+                        ),
+                        "call_put": call_put,
+                        "expiration_date": expiration,
+                        "strike": float(strike),
+                        "underlying_price": underlying,
+                        "bid": bid,
+                        "ask": ask,
+                        "open_interest": 500.0,
+                        "volume": 100.0,
+                        "delta": 0.50 if call_put == "CALL" else -0.50,
+                        "gamma": 0.02,
+                        "theta": -0.03,
+                        "vega": 0.10,
+                        "multiplier": 100.0,
+                        "mini": False,
+                        "non_standard": False,
+                        "quote_valid": True,
+                        "relative_bid_ask_spread": (ask - bid) / mid,
+                        "quote_timestamp": pd.NaT,
+                        "quote_staleness_seconds": np.nan,
+                        "schema_version": OPTION_CHAIN_SCHEMA_VERSION,
+                    }
+                )
+    surface = pd.DataFrame(
+        [
+            {
+                "symbol": "GOOG",
+                "snapshot_for": snapshot_for,
+                "available_at": available,
+                "surface_quality_pass": True,
+                "atm_days_to_expiration": 30.0,
+                "atm_straddle_implied_move": 0.08,
+                "realized_expected_absolute_move_atm_horizon": 0.07,
+                "realized_volatility_20d": 0.30,
+                "surface_quality_policy_version": (
+                    OPTION_SURFACE_QUALITY_POLICY_VERSION
+                ),
+                "selection_policy_version": OPTION_SELECTION_POLICY_VERSION,
+                "calculation_version": OPTION_FEATURE_VERSION,
+                "schema_version": OPTION_FEATURE_SCHEMA_VERSION,
+            }
+        ]
+    )
+    quote = pd.DataFrame(
+        [
+            {
+                "symbol": "GOOG",
+                "source": "schwab",
+                "quote_event_at": available - pd.Timedelta(seconds=1),
+                "fetched_at": available,
+                "available_at": available,
+                "calculation": QUOTE_LIQUIDITY_CALCULATION,
+                "calculation_version": QUOTE_LIQUIDITY_CALCULATION_VERSION,
+                "schema_version": QUOTE_LIQUIDITY_SCHEMA_VERSION,
+                "quality_policy_version": (
+                    QUOTE_LIQUIDITY_QUALITY_POLICY_VERSION
+                ),
+                "bid": underlying - 0.05,
+                "ask": underlying + 0.05,
+                "mid": underlying,
+                "relative_bid_ask_spread": 0.001,
+                "quote_staleness_seconds": 1.0,
+                "quote_quality_pass": True,
+            }
+        ]
+    )
+    frames = (
+        (
+            pd.DataFrame(contracts),
+            root
+            / "stocks"
+            / "GOOG"
+            / "options"
+            / "chains"
+            / "schwab"
+            / "normalized"
+            / "fixture.parquet",
+        ),
+        (
+            surface,
+            root
+            / "stocks"
+            / "GOOG"
+            / "options"
+            / "features"
+            / "option-quality"
+            / "schwab"
+            / "fixture.parquet",
+        ),
+        (
+            quote,
+            root
+            / "stocks"
+            / "GOOG"
+            / "quotes"
+            / "features"
+            / "quote-liquidity"
+            / "schwab"
+            / "fixture.parquet",
+        ),
+    )
+    for frame, path in frames:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        frame.to_parquet(path, index=False)
 
 
 def _write_synthetic_loop_a_outputs(root: Path) -> dict[str, object]:

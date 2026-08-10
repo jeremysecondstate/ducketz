@@ -584,7 +584,9 @@ class OptionsStrategiesTab:
         if not view.symbols:
             self.symbol.set("")
             self.horizon_label.set("")
-            self.position_summary.set("No Strategy Candidates")
+            self.position_summary.set(
+                _empty_candidate_message(view.empty_diagnosis)
+            )
             self.candidate_summary.set("0 Candidates")
             self._render_candidates()
             return
@@ -670,7 +672,14 @@ class OptionsStrategiesTab:
             position = self.visible_candidates[0].position
             self.position_summary.set(_position_summary(position))
         else:
-            self.position_summary.set("No Candidates for This Route")
+            diagnosis = self.view.route_diagnoses.get(
+                (self.symbol.get(), horizon)
+            )
+            if not self.symbol.get() or not horizon:
+                diagnosis = diagnosis or self.view.empty_diagnosis
+            self.position_summary.set(
+                _empty_candidate_message(diagnosis)
+            )
 
     def _candidate_clicked(self, event: tk.Event[tk.Misc]) -> None:
         if self.candidate_table is None:
@@ -871,6 +880,10 @@ def _position_summary(position: object) -> str:
             f"{orders} working option order" + ("s" if orders != 1 else "")
         )
     return " · ".join(parts)
+
+
+def _empty_candidate_message(reason: str | None) -> str:
+    return f"No candidates: {reason}" if reason else "No Candidates for This Route"
 
 
 def _human_instruction(value: str) -> str:

@@ -152,6 +152,10 @@ Candidate policy `schwab-exact-chain-candidates-v3`:
   BBO that can be used arithmetically;
 - records upstream surface/quote validity, quote age, open interest, and spread
   checks on every candidate without suppressing a numerically usable row;
+- preserves omitted quote timestamps, quote age, open interest, volume, spread,
+  or Greek diagnostics as null values in leg evidence and nullable candidate
+  features; a missing input makes the applicable composite liquidity/quality
+  flag false rather than treating the input as passing;
 - reports route-specific liquidity comparisons: maximum relative spread of 10% for
   `1h`, 12% for `4h`, 20% for `1d` and `1w-d1` through `1w-d5`, and 25% for
   aggregate `1w`; minimum open interest is 25 for intraday routes and 10 for
@@ -176,6 +180,8 @@ bid, ask, 100-share multiplier, Greeks, relative spread, open interest,
 volume, quote-valid/liquidity flags, quote age, and receipt time; a stock leg
 carries symbol, side, quantity, BBO, multiplier, quality flag, and receipt
 time. It is order-draft input and audit evidence, not a second row identity.
+Missing leg diagnostics are JSON `null`, never non-standard `NaN`; missing quote
+age is not replaced with zero and is never described as a fresh quote.
 
 Same-expiration structures receive an expiration-payoff max-loss calculation.
 Multi-expiration structures receive a conservative assignment-notional capital

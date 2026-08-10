@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -20,6 +21,7 @@ from datafetching.parquet_store import resolve_datastore_dir
 from ml.current_publication import resolve_current_output
 from ml.strategy_publication import resolve_current_strategy_output
 from ml.parquet_contracts import (
+    STRATEGY_AUDIT_SCHEMA,
     STRATEGY_CANDIDATE_SCHEMA,
     verify_parquet_schema,
 )
@@ -81,10 +83,13 @@ class StrategyCandidateView:
 @dataclass(frozen=True)
 class StrategyCandidatesView:
     source_path: Path
+    audit_source_path: Path | None
     loaded_at: datetime
     candidates: tuple[StrategyCandidateView, ...]
     symbols: tuple[str, ...]
     horizons_by_symbol: Mapping[str, tuple[str, ...]]
+    route_diagnoses: Mapping[tuple[str, str], str]
+    empty_diagnosis: str | None
 
 
 def default_strategy_candidates_path() -> Path:
@@ -111,25 +116,82 @@ def load_strategy_candidates(
     verify_parquet_schema(source, STRATEGY_CANDIDATE_SCHEMA)
     frame = pd.read_parquet(source)
     candidates = _candidate_views(frame, snapshot=snapshot)
-    symbols = tuple(sorted({item.symbol for item in candidates}))
+    audit_source, audit = _load_matching_audit(source)
+    route_diagnoses = _route_diagnoses(audit)
+    routes = {(item.symbol, item.horizon) for item in candidates}
+    routes.update(route_diagnoses)
+    symbols = tuple(sorted({symbol for symbol, _horizon in routes}))
     horizons_by_symbol = {
         symbol: tuple(
             horizon
             for horizon in HORIZON_ORDER
-            if any(
-                item.symbol == symbol and item.horizon == horizon
-                for item in candidates
-            )
+            if (symbol, horizon) in routes
         )
         for symbol in symbols
     }
     return StrategyCandidatesView(
         source_path=source,
+        audit_source_path=audit_source,
         loaded_at=loaded_at or datetime.now(timezone.utc),
         candidates=candidates,
         symbols=symbols,
         horizons_by_symbol=horizons_by_symbol,
+        route_diagnoses=route_diagnoses,
+        empty_diagnosis=_dominant_audit_reason(audit),
     )
+
+
+def _load_matching_audit(
+    candidates_source: Path,
+) -> tuple[Path | None, pd.DataFrame]:
+    source = candidates_source.with_name("strategy-audit.parquet")
+    if not source.is_file():
+        return None, pd.DataFrame()
+    verify_parquet_schema(source, STRATEGY_AUDIT_SCHEMA)
+    return source, pd.read_parquet(source)
+
+
+def _route_diagnoses(frame: pd.DataFrame) -> dict[tuple[str, str], str]:
+    if frame.empty:
+        return {}
+    diagnoses: dict[tuple[str, str], str] = {}
+    for (symbol, horizon), route in frame.groupby(
+        ["symbol", "horizon"], sort=False, dropna=False
+    ):
+        if pd.isna(symbol) or pd.isna(horizon):
+            continue
+        clean_symbol = str(symbol).strip().upper()
+        clean_horizon = str(horizon).strip().lower()
+        if not clean_symbol or clean_horizon not in HORIZON_LABELS:
+            continue
+        reason = _dominant_audit_reason(route)
+        if reason:
+            diagnoses[(clean_symbol, clean_horizon)] = reason
+    return diagnoses
+
+
+def _dominant_audit_reason(frame: pd.DataFrame) -> str | None:
+    if frame.empty:
+        return None
+    counts = pd.to_numeric(frame["candidate_count"], errors="coerce")
+    failures = frame.loc[counts.fillna(0).le(0)]
+    reasons = [
+        str(value).strip()
+        for value in failures["reason"]
+        if pd.notna(value) and str(value).strip()
+    ]
+    if reasons:
+        frequencies = Counter(reasons)
+        return min(frequencies, key=lambda reason: (-frequencies[reason], reason))
+    statuses = [
+        str(value).strip().replace("_", " ").title()
+        for value in failures["construction_status"]
+        if pd.notna(value) and str(value).strip()
+    ]
+    if not statuses:
+        return None
+    frequencies = Counter(statuses)
+    return min(frequencies, key=lambda status: (-frequencies[status], status))
 
 
 def _candidate_views(
