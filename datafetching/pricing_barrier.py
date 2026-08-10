@@ -28,6 +28,7 @@ class PricingBarrierObservation:
     pricing_run_path: str | None = None
     pricing_receipt_checksum_sha256: str | None = None
     pricing_published_at: pd.Timestamp | None = None
+    pricing_prediction_rows: int = 0
     detail: str = ""
 
     @property
@@ -43,10 +44,11 @@ class PricingBarrierObservation:
             and self.pricing_published_at <= request
             and observed_before_request
         )
-        prediction_outcome = self.terminal_status in {
-            "PREDICTIONS_PUBLISHED",
-            "MIXED_TERMINAL",
-        }
+        prediction_outcome = bool(
+            self.pricing_prediction_rows > 0
+            and self.terminal_status
+            in {"PREDICTIONS_PUBLISHED", "MIXED_TERMINAL"}
+        )
         prospective_credit_allowed = bool(
             authority_before_request and prediction_outcome
         )
@@ -64,6 +66,7 @@ class PricingBarrierObservation:
                 if self.pricing_published_at is not None
                 else None
             ),
+            "pricing_prediction_rows": self.pricing_prediction_rows,
             "observed_before_request": observed_before_request,
             "authority_before_request": authority_before_request,
             "prospective_credit_allowed": prospective_credit_allowed,
@@ -109,6 +112,7 @@ def wait_for_pricing_barrier(
                 pricing_run_path=str(publication.receipt.get("run_path", "")),
                 pricing_receipt_checksum_sha256=publication.receipt_checksum_sha256,
                 pricing_published_at=publication.published_at,
+                pricing_prediction_rows=len(publication.predictions()),
             )
         except TargetOutcomeError as exc:
             last_error = f"{type(exc).__name__}: {exc}"
@@ -165,10 +169,15 @@ def verify_pricing_barrier_metadata(
     authority_before_request = bool(
         verified and published is not None and published <= request and observed <= request
     )
-    prediction_outcome = value.get("terminal_status") in {
-        "PREDICTIONS_PUBLISHED",
-        "MIXED_TERMINAL",
-    }
+    try:
+        prediction_rows = int(value.get("pricing_prediction_rows", 0))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Options Pricing barrier prediction count is invalid") from exc
+    prediction_outcome = bool(
+        prediction_rows > 0
+        and value.get("terminal_status")
+        in {"PREDICTIONS_PUBLISHED", "MIXED_TERMINAL"}
+    )
     prospective_credit_allowed = bool(
         authority_before_request and prediction_outcome
     )
@@ -178,6 +187,7 @@ def verify_pricing_barrier_metadata(
         or bool(value.get("authority_before_request")) != authority_before_request
         or bool(value.get("prospective_credit_allowed"))
         != prospective_credit_allowed
+        or prediction_rows < 0
     ):
         raise ValueError("Options Pricing barrier proof is incoherent")
     return dict(value)

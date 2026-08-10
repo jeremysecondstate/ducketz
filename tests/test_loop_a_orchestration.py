@@ -10,7 +10,10 @@ import pytest
 from datafetching import FetchResult
 from datafetching import orchestrate
 from datafetching.loop_a_cycle import read_loop_a_cycle
+from datafetching.bar_readiness import read_bar_readiness
+from datafetching.bar_schema import write_normalized_bar_parquet
 from datafetching.parquet_store import ParquetStore
+import pandas as pd
 
 
 def test_loop_a_stage_order_preserves_fetch_and_calculations(
@@ -107,6 +110,91 @@ def test_loop_a_batches_the_watchlist_across_every_configured_lane(
             True,
         )
     ]
+
+
+def test_databento_readiness_precedes_unrelated_provider_and_calculation_work(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    events: list[str] = []
+
+    def fetch(
+        symbols: tuple[str, ...],
+        _store: ParquetStore,
+        **kwargs: object,
+    ) -> dict[str, tuple[FetchResult, ...]]:
+        callback = kwargs["provider_completed"]
+        for symbol in symbols:
+            directory = (
+                tmp_path
+                / "stocks"
+                / symbol
+                / "bars"
+                / "1m"
+                / "databento"
+                / "normalized"
+            )
+            directory.mkdir(parents=True)
+            write_normalized_bar_parquet(
+                pd.DataFrame(
+                    {
+                        "timestamp": [target - pd.Timedelta(minutes=1)],
+                        "open": [199.0],
+                        "high": [201.0],
+                        "low": [198.0],
+                        "close": [200.0],
+                        "volume": [1000.0],
+                    }
+                ),
+                directory / "bars.parquet",
+            )
+        events.append("databento-complete")
+        callback(
+            "databento",
+            {symbol: FetchResult("databento", 1, 0) for symbol in symbols},
+        )
+        read_bar_readiness(
+            tmp_path,
+            target_snapshot_for=target,
+            required_symbols=symbols,
+        )
+        events.append("fmp-start")
+        return {
+            symbol: (
+                FetchResult("databento", 1, 0),
+                FetchResult("fmp", 0, 0),
+            )
+            for symbol in symbols
+        }
+
+    monkeypatch.setattr(orchestrate, "run_symbols_fetch", fetch)
+    monkeypatch.setattr(
+        orchestrate,
+        "run_fundamentals",
+        lambda _args: events.append("fundamentals") or 0,
+    )
+    monkeypatch.setattr(orchestrate, "run_technicals", lambda _args: 0)
+    monkeypatch.setattr(orchestrate, "run_signals", lambda _args: 0)
+
+    assert orchestrate.run_cycle(
+        ("GOOG", "NVDA"),
+        ParquetStore(tmp_path),
+        providers=("databento", "fmp"),
+        requested_profile="continuation",
+        include_cme=False,
+        include_options=False,
+        run_technical_calculations=False,
+        run_fundamental_calculations=True,
+        run_signal_calculations=False,
+        datastore_target=None,
+        datastore_path=tmp_path,
+        cycle_started_at=target + pd.Timedelta(seconds=20),
+        loop_a_generation="early-readiness",
+        bar_readiness_clock=lambda: target + pd.Timedelta(seconds=21),
+    ) == 0
+    assert events[:2] == ["databento-complete", "fmp-start"]
+    assert events.index("fmp-start") < events.index("fundamentals")
 
 
 def test_once_publishes_writing_then_complete_cycle(

@@ -405,6 +405,7 @@ def test_options_timeout_preserves_capture_and_one_target_across_boundary(
         target_snapshot_for=target,
         pricing_barrier_timeout_seconds=0.001,
         barrier_sleeper=lambda _seconds: None,
+        bar_readiness_mode="exact",
         reporter=None,
     )
     assert result.published == 2
@@ -455,6 +456,47 @@ def test_verified_pricing_failure_is_a_noncreditable_options_barrier(
     assert metadata["authority_before_request"] is True
     assert metadata["prospective_credit_allowed"] is False
     assert failure.predictions().empty
+
+
+def test_empty_mixed_terminal_cannot_claim_prospective_credit(tmp_path: Path) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    publication = publish_target_outcome(
+        tmp_path,
+        target_snapshot_for=target,
+        created_at=target + pd.Timedelta(minutes=1),
+        symbols=("GOOG", "NVDA"),
+        symbol_outcomes={
+            "GOOG": {
+                "status": "TARGET_ALREADY_OBSERVED",
+                "reason": "fixture",
+                "target_snapshot_for": target,
+            },
+            "NVDA": {
+                "status": "PRICING_FAILED",
+                "reason": "fixture",
+                "target_snapshot_for": target,
+            },
+        },
+        terminal_status="MIXED_TERMINAL",
+        samples=pd.DataFrame(),
+        predictions=pd.DataFrame(),
+        bar_readiness=None,
+        clock=lambda: target + pd.Timedelta(minutes=1, seconds=1),
+    )
+    barrier = wait_for_pricing_barrier(
+        tmp_path,
+        target_snapshot_for=target,
+        required_symbols=("GOOG", "NVDA"),
+        timeout_seconds=0,
+        clock=lambda: target + pd.Timedelta(minutes=1, seconds=2),
+    )
+    metadata = barrier.as_receipt_metadata(
+        request_started_at=target + pd.Timedelta(minutes=1, seconds=3)
+    )
+    assert publication.predictions().empty
+    assert barrier.status == "VERIFIED"
+    assert barrier.pricing_prediction_rows == 0
+    assert metadata["prospective_credit_allowed"] is False
 
 
 def test_consecutive_target_cycles_accumulate_prospective_evaluations(

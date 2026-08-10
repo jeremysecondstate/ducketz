@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Mapping
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -22,6 +22,7 @@ from datafetching.sec_fetch import fetch as fetch_sec
 
 PROVIDERS = ("databento", "fmp", "fred", "schwab", "sec")
 FETCH_PROFILES = ("continuation", "full", "incremental")
+ProviderCompleted = Callable[[str, Mapping[str, FetchResult]], None]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -136,6 +137,7 @@ def run_symbol_fetch(
     include_cme: bool = True,
     include_fmp_macro: bool = True,
     include_options: bool = True,
+    provider_completed: ProviderCompleted | None = None,
 ) -> tuple[FetchResult, ...]:
     effective_profile = normalize_fetch_profile(profile)
     results: list[FetchResult] = []
@@ -151,6 +153,8 @@ def run_symbol_fetch(
             include_options=include_options,
         )
         results.append(result)
+        if provider_completed is not None:
+            provider_completed(provider, {symbol: result})
     return tuple(results)
 
 
@@ -163,6 +167,7 @@ def run_symbols_fetch(
     include_cme: bool = True,
     include_fmp_macro: bool = True,
     include_options: bool = True,
+    provider_completed: ProviderCompleted | None = None,
 ) -> dict[str, tuple[FetchResult, ...]]:
     """Fetch a watchlist provider-by-provider, batching supported requests."""
     clean_symbols = tuple(
@@ -185,6 +190,7 @@ def run_symbols_fetch(
                 include_cme=include_cme,
                 include_fmp_macro=include_fmp_macro,
                 include_options=include_options,
+                provider_completed=provider_completed,
             )
         }
 
@@ -209,6 +215,11 @@ def run_symbols_fetch(
                     include_options=False,
                 )
             )
+            if provider_completed is not None:
+                provider_completed(
+                    provider,
+                    {first_symbol: results[first_symbol][-1]},
+                )
             continue
 
         print(
@@ -258,6 +269,16 @@ def run_symbols_fetch(
                     include_options=include_options,
                 )
             results[symbol].append(result)
+
+        if provider_completed is not None:
+            provider_completed(
+                provider,
+                {
+                    symbol: results[symbol][-1]
+                    for symbol in clean_symbols
+                    if results[symbol]
+                },
+            )
 
     return {
         symbol: tuple(symbol_results)

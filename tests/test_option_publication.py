@@ -167,8 +167,8 @@ def test_options_runtime_uses_prior_committed_regime_cutoff_during_active_loop_a
         options_runtime,
         "completed_bar_clock_for_target",
         lambda *_args, **_kwargs: DecisionClock(
-            decision_timestamp=pd.Timestamp("2026-08-05T10:15:00Z"),
-            bar_timestamp=pd.Timestamp("2026-08-05T10:14:00Z"),
+            decision_timestamp=pd.Timestamp("2026-08-05T17:15:00Z"),
+            bar_timestamp=pd.Timestamp("2026-08-05T17:14:00Z"),
             provider="databento",
             timeframe="1m",
             source_file=tmp_path / "bars.parquet",
@@ -191,7 +191,8 @@ def test_options_runtime_uses_prior_committed_regime_cutoff_during_active_loop_a
         ParquetStore(tmp_path),
         symbols=("GOOG",),
         session=Session(),  # type: ignore[arg-type]
-        clock=lambda: pd.Timestamp("2026-08-05T10:16:00Z").to_pydatetime(),
+        clock=lambda: pd.Timestamp("2026-08-05T17:16:00Z").to_pydatetime(),
+        bar_readiness_mode="exact",
         reporter=None,
     )
 

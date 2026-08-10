@@ -36,17 +36,19 @@ python -m datafetching.orchestrate --datastore-target pc `
   --cme-mode external --options-mode external `
   --providers databento fmp fred schwab sec --interval-minutes 15
 
-# 3. Shadow Pricing. It skips rather than backdates when the target bar is not ready.
+# 3. Shadow Pricing. Closed sessions are write-free monitor-only cycles.
 python -m ml.option_pricing_runtime --datastore-target pc `
   --watchlist datafetching\watchlist.txt `
   --interval-minutes 15 --phase-offset-minutes 1 `
-  --bar-readiness-mode required
+  --bar-readiness-mode required `
+  --bar-readiness-timeout-seconds 45
 
-# 4. Schwab options. It skips a symbol until a completed Databento 1m clock exists.
+# 4. Schwab options. It requires Loop A's exact all-symbol readiness receipt.
 python -m datafetching.options_runtime --datastore-target pc `
   --watchlist datafetching\watchlist.txt `
   --interval-minutes 15 --phase-offset-minutes 2 `
-  --pricing-barrier-timeout-seconds 45
+  --pricing-barrier-timeout-seconds 45 `
+  --bar-readiness-mode required
 
 # 5. Directional Loop B. Start after Loop A has published one COMPLETE generation.
 python -m ml.prediction_runtime --datastore-target pc --provider databento `
@@ -101,25 +103,35 @@ This preserves complete history while preventing Databento's provisional
 recent-data size estimate from turning a small recovery slice into a nominal
 greater-than-5-GB streaming request.
 
-Pricing defaults to every 15 minutes at UTC phase +1 minute and publishes its
-small target authority before Options defaults to phase +2 minutes. Loop A
-defaults to 15 minutes.
-Loop B defaults to phase +5 minutes, and Strategy defaults to hourly at phase
-+10 minutes. If the completed target bar is unavailable at +1, Pricing publishes
-`TARGET_BAR_NOT_READY` for that exact target; it never substitutes the newest
-older bar, waits for Options, or backdates a prediction. Options waits for the
-verified receipt, not merely the +1/+2 offsets. Its default wait is bounded at
-45 seconds so the observed approximately 12-minute sequential Options inventory
-still fits inside the 15-minute cycle. A miss proceeds with collection and is
-recorded as `TIMED_OUT` (or `MISSING` for a zero-wait invocation).
+Pricing defaults to every 15 minutes at UTC phase +1 minute and Options defaults
+to phase +2 minutes. Loop A defaults to 15 minutes; Loop B defaults to phase +5
+minutes, and Strategy defaults to hourly at phase +10 minutes. A shared XNYS
+calendar decision owns all three Loop A/Pricing/Options targets. Eligible targets
+are exact completed quarter-hours strictly after the regular open through the
+official regular close, inclusive. The first normal-session target is therefore
+09:45 America/New_York. Holidays, weekends, DST, and early closes come from
+`exchange_calendars`; unsupported extended hours never become prospective
+targets.
 
-After the regular session, the newest completed quarter-hour bar can remain the
-same while Options continues to publish receipts. Pricing then reports
-`TARGET_ALREADY_OBSERVED` and publishes monitoring-only output. This is an
-expected causal idle state, not a reason to manufacture or backdate a pricing
-sample. The first post-gap target can also be excluded by the 20-minute lagged
-quote freshness policy; normal Black-Scholes baseline rows begin once a fresh
-Options receipt exists strictly before a later, unobserved target.
+For an actionable target, Pricing waits monotonically up to 45 seconds for Loop
+A's exact all-symbol readiness receipt. Receipt arrival ends the wait immediately
+and the real readiness/observation clocks become the prediction clock. A deadline
+miss publishes immutable `TARGET_BAR_NOT_READY` exactly once; later readiness can
+never replace it or create a retroactive prediction. Options separately waits up
+to 45 seconds for the verified Pricing target authority. A Pricing miss remains a
+verified, noncreditable terminal outcome. A missing Pricing barrier is recorded as
+`TIMED_OUT` (or `MISSING` with zero wait), but Options still requires Loop A
+readiness and never infers bar readiness from Pricing.
+
+When no eligible target exists, Pricing and Options report
+`cycle_mode=MONITOR_ONLY` and `target_state=MARKET_CLOSED_IDLE`, explain the
+calendar reason, and print the next eligible phase time. Pricing does not append a
+target outcome or full research generation. Options does not authenticate to
+Schwab, request a chain, or write decision-clock errors. Thus repeated closed
+cycles do not grow the target chain or treat a closure as a lost evidence
+opportunity. `TARGET_ALREADY_OBSERVED` remains distinct: it means a verified
+Options receipt already owns an otherwise actionable target, such as after a
+runtime restart.
 
 ## Three clocks and causal selection
 
@@ -190,13 +202,14 @@ valid if Strategy is slow or fails.
 Every scheduled Pricing and Options cycle freezes one quarter-hour identity `T`
 before processing any symbol:
 
-1. Loop A finishes its batched provider fetch for the watchlist. It verifies the
-   exact completed Databento 1m bar ending at `T` for every symbol, freezes each
-   selected close and row checksum, and atomically publishes
+1. Loop A finishes the Databento watchlist lane first. Its provider-completion
+   callback verifies the exact completed Databento 1m bar ending at `T` for every
+   symbol, freezes each selected close and row checksum, and atomically publishes
    `loop-a/bar-readiness/<T>/readiness.json` plus `receipt.json`. This occurs
-   before fundamentals, technicals, and signals, so it does not inherit Loop A's
-   observed 30-minute calculation tail. A partially updated watchlist never gets
-   a readiness receipt.
+   before unrelated FMP/FRED/Schwab/SEC work and before fundamentals, technicals,
+   and signals, so it does not inherit Loop A's observed long calculation tail. A
+   partially updated watchlist never gets a readiness receipt. Loop A continues
+   the remaining lanes and separately publishes its full `COMPLETE` generation.
 2. Pricing consumes that immutable all-symbol receipt in integrated mode and
    publishes one immutable target outcome containing causal samples, predictions,
    and per-symbol terminal statuses. Valid outcomes include predictions,
@@ -213,11 +226,12 @@ before processing any symbol:
    hold Options, Loop B, or Strategy open.
 
 The Pricing writer lock prevents overlapping cycles. If a complete tail ever
-runs across one or more later scheduled boundaries, the runtime publishes an
-empty, immutable `PRICING_TIMED_OUT` target outcome for each missed boundary
-before scheduling the next live cycle. Those late skip receipts are audit
-evidence only and can never create prospective credit or be replaced by a
-backfill.
+runs across one or more later actionable boundaries, the runtime publishes an
+empty, immutable `PRICING_TIMED_OUT` target outcome for each missed eligible
+target before scheduling the next live cycle. Closed-session wall-clock
+boundaries are filtered by the same calendar decision and create no target
+artifacts. Late skip receipts are audit evidence only and can never create
+prospective credit or be replaced by a backfill.
 
 `TARGET_ALREADY_OBSERVED` remains the no-backfill guard: a target Options receipt
 was visible before prediction creation. `NO_ELIGIBLE_CONTRACTS` means a strictly
@@ -251,13 +265,23 @@ receipt-file availability as a conservative migration proof. New evidence also
 requires the exact target-outcome run path and receipt checksum recorded in the
 Options receipt.
 
-Console timing includes the target, readiness time, Pricing terminal outcome and
-authority time, Options barrier status/observation, request start, response, and
-receipt availability. Pricing health records stage timings for preflight, target
-authority, research preparation, generation publication/lineage, and the
-post-publication eligibility/health tail. `maximum_cycle_seconds=600` applies to
-the complete Pricing cycle; the 45-second Options barrier is a separate liveness
-budget.
+Console timing includes `cycle_mode`, target state, exact target or `NONE`, reason,
+next eligible cycle, readiness time, Pricing terminal outcome and authority time,
+Options barrier verification versus terminal outcome, whether Schwab was called,
+request start, response, and receipt availability. Pricing prints current-target
+rows and new prospective prediction/evaluation deltas separately from cumulative
+carried research inventory. Identical symbol outcomes are grouped unless
+`--per-symbol-detail` is selected.
+
+Pricing health records stage timings for preflight, target authority, research
+preparation, generation publication/lineage, and the post-publication
+eligibility/health tail. Evidence-stagnation time counts only eligible regular
+option-market windows, not nights, weekends, holidays, or post-close idle.
+Expected closure creates neither `MISSED_PHASE` nor stagnation alerts, while
+lineage, model, OPRA, partition, disk, latency, and other genuine problems remain
+actionable. `NOT_PRODUCTION_ELIGIBLE` and `automated_action_allowed=false` are
+unchanged. `maximum_cycle_seconds=600` applies to the complete Pricing cycle; the
+bar-readiness and Options barrier waits are separate bounded liveness budgets.
 
 ## Restart and delay behavior
 

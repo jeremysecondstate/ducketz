@@ -113,6 +113,11 @@ def publish_target_outcome(
         target=target,
         label="predictions",
     )
+    normalized_terminal = str(terminal_status).strip().upper()
+    if normalized_terminal == "PREDICTIONS_PUBLISHED" and prepared_predictions.empty:
+        raise ValueError(
+            "PREDICTIONS_PUBLISHED requires at least one verified target prediction"
+        )
     if not prepared_predictions.empty:
         modes = prepared_predictions["prediction_mode"].astype("string").str.upper()
         if not modes.eq("LIVE").all():
@@ -147,7 +152,7 @@ def publish_target_outcome(
         "schema_version": TARGET_OUTCOME_VERSION,
         "target_snapshot_for": target.isoformat(),
         "prediction_created_at": created.isoformat(),
-        "terminal_status": str(terminal_status).strip().upper(),
+        "terminal_status": normalized_terminal,
         "symbols": list(clean_symbols),
         "symbol_outcomes": {
             symbol: dict(symbol_outcomes[symbol]) for symbol in clean_symbols

@@ -64,10 +64,22 @@ Options artifact, and never writes either Loop B or Strategy authority.
 
 ## Pre-quote live sequence
 
-For each symbol, Pricing resolves the newest completed canonical Databento
-one-minute bar ending on `:00`, `:15`, `:30`, or `:45`. Its end is a prospective
-`target_snapshot_for` only if no verified Schwab Options receipt already exists
-for that target.
+Loop A, Pricing, and Options share one `exchange_calendars` XNYS target decision.
+An actionable target is an exact completed Databento one-minute bar ending on
+`:00`, `:15`, `:30`, or `:45`, strictly after the official regular open and no
+later than the official regular close. This makes 09:45 America/New_York the
+first normal-session target and includes the official close, including an early
+close. Weekends, holidays, DST, and early closes are calendar-owned; premarket and
+after-hours bars are unsupported prospective evidence.
+
+For each actionable target, integrated Pricing waits monotonically for Loop A's
+immutable all-symbol readiness receipt. The target is prospective only if no
+verified Schwab Options receipt already exists for it. A bounded readiness miss
+publishes immutable `TARGET_BAR_NOT_READY` once and remains noncreditable forever.
+When the calendar supplies no eligible target, Pricing is write-free
+`MARKET_CLOSED_IDLE`: it never substitutes the newest older bar, grows the target
+chain, or advances research eligibility health as though an opportunity was
+lost.
 
 Pricing then selects the latest committed source receipt satisfying both
 
@@ -234,6 +246,8 @@ python -m ml.option_pricing_runtime `
   --watchlist datafetching\watchlist.txt `
   --interval-minutes 15 `
   --phase-offset-minutes 1 `
+  --bar-readiness-mode required `
+  --bar-readiness-timeout-seconds 45 `
   --once
 ```
 

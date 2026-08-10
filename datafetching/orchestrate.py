@@ -7,7 +7,7 @@ import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Callable, Iterable, Iterator
+from typing import Callable, Iterable, Iterator, Mapping
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -24,7 +24,7 @@ from datafetching.main import (
     run_symbols_fetch,
 )
 from datafetching.bar_readiness import publish_bar_readiness
-from datafetching.decision_time import expected_quarter_hour_target
+from datafetching.decision_time import cycle_target_decision
 from datafetching.observability import timed_stage
 from datafetching.parquet_store import DATASTORE_TARGETS, ParquetStore
 from fundamentals.main import main as run_fundamentals
@@ -233,10 +233,25 @@ def run_cycle(
 ) -> int:
     failures = 0
     providers_tuple = tuple(providers)
+    fetch_providers_tuple = (
+        ("databento",)
+        + tuple(provider for provider in providers_tuple if provider != "databento")
+        if "databento" in providers_tuple
+        else providers_tuple
+    )
     symbols_tuple = tuple(symbols)
     started_at = cycle_started_at or datetime.now(timezone.utc)
+    target_decision = cycle_target_decision(started_at)
     print(f"CYCLE {started_at.isoformat()}")
     print("-" * 48)
+    print(
+        "Loop A target decision: "
+        f"cycle_mode={target_decision.cycle_mode}; "
+        f"target_state={target_decision.target_state.value}; "
+        f"target={target_decision.target_snapshot_for.isoformat() if target_decision.target_snapshot_for is not None else 'NONE'}; "
+        f"reason={target_decision.reason}; "
+        f"next_eligible_cycle={target_decision.next_eligible_cycle().isoformat()}"
+    )
     if not symbols_tuple:
         return 0
 
@@ -247,33 +262,33 @@ def run_cycle(
     for symbol in symbols_tuple:
         print(f"[{symbol}] fetch mode: {profiles[symbol]}")
 
-    if len(symbols_tuple) == 1:
-        symbol = symbols_tuple[0]
-        fetch_results = {
-            symbol: run_symbol_fetch(
-                symbol,
-                store,
-                providers=providers_tuple,
-                profile=profiles[symbol],
-                include_cme=include_cme,
-                include_fmp_macro=True,
-                include_options=include_options,
-            )
-        }
-    else:
-        fetch_results = run_symbols_fetch(
-            symbols_tuple,
-            store,
-            providers=providers_tuple,
-            profile=profiles[symbols_tuple[0]],
-            include_cme=include_cme,
-            include_fmp_macro=True,
-            include_options=include_options,
-        )
+    readiness_attempted = False
 
-    if "databento" in providers_tuple:
-        target = expected_quarter_hour_target(started_at)
+    def provider_completed(
+        provider: str,
+        _results: Mapping[str, object],
+    ) -> None:
+        nonlocal readiness_attempted
+        if provider != "databento" or readiness_attempted:
+            return
+        readiness_attempted = True
+        if not target_decision.actionable:
+            print(
+                "Loop A bar readiness idle: "
+                f"cycle_mode={target_decision.cycle_mode}; "
+                f"target_state={target_decision.target_state.value}; target=NONE; "
+                f"reason={target_decision.reason}; "
+                f"next_eligible_cycle={target_decision.next_eligible_cycle().isoformat()}"
+            )
+            return
+        target = target_decision.target_snapshot_for
+        assert target is not None
         try:
+            observed_at = (
+                bar_readiness_clock()
+                if bar_readiness_clock is not None
+                else datetime.now(timezone.utc)
+            )
             readiness = publish_bar_readiness(
                 store.root_dir,
                 target_snapshot_for=target,
@@ -282,23 +297,59 @@ def run_cycle(
                     loop_a_generation
                     or f"standalone-{started_at.strftime('%Y%m%dT%H%M%S.%fZ')}"
                 ),
-                as_of=datetime.now(timezone.utc),
-                clock=bar_readiness_clock,
+                as_of=observed_at,
+                clock=(lambda: observed_at),
             )
             print(
                 "Loop A bars ready: "
+                f"cycle_mode=ACTIONABLE; "
+                f"target_state=ACTIONABLE_EXACT_TARGET; "
                 f"target={readiness.target_snapshot_for.isoformat()}; "
                 f"ready_at={readiness.ready_at.isoformat()}; "
                 f"symbols={len(readiness.symbols)}"
             )
         except Exception as exc:
-            # Pricing publishes the authoritative TARGET_BAR_NOT_READY outcome.
-            # Loop A's existing provider failure count remains the cycle authority.
+            # Loop A completion remains provider-owned and independent. Pricing
+            # decides whether the bounded readiness deadline is later missed.
             print(
-                "Loop A bars not ready: "
+                "Loop A bars waiting: "
+                f"cycle_mode=ACTIONABLE; "
+                "target_state=WAITING_FOR_LOOP_A_READINESS; "
                 f"target={target.isoformat()}; "
                 f"reason={type(exc).__name__}: {exc}"
             )
+
+    if len(symbols_tuple) == 1:
+        symbol = symbols_tuple[0]
+        fetch_results = {
+            symbol: run_symbol_fetch(
+                symbol,
+                store,
+                providers=fetch_providers_tuple,
+                profile=profiles[symbol],
+                include_cme=include_cme,
+                include_fmp_macro=True,
+                include_options=include_options,
+                provider_completed=provider_completed,
+            )
+        }
+    else:
+        fetch_results = run_symbols_fetch(
+            symbols_tuple,
+            store,
+            providers=fetch_providers_tuple,
+            profile=profiles[symbols_tuple[0]],
+            include_cme=include_cme,
+            include_fmp_macro=True,
+            include_options=include_options,
+            provider_completed=provider_completed,
+        )
+
+    # Test doubles and older in-process callers may not expose the provider
+    # completion callback. The fallback preserves correctness, while the real
+    # provider loop publishes immediately after its Databento lane.
+    if "databento" in providers_tuple and not readiness_attempted:
+        provider_completed("databento", {})
 
     for index, symbol in enumerate(symbols_tuple):
         symbol_providers = providers_tuple if index == 0 else tuple(

@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import tempfile
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,6 +17,7 @@ from datafetching.decision_time import (
     completed_bar_clock_for_target,
     completed_bar_close,
     expected_quarter_hour_target,
+    is_eligible_option_target,
 )
 from ml.artifacts import file_checksum
 
@@ -68,6 +70,15 @@ class BarReadiness:
         return value
 
 
+@dataclass(frozen=True)
+class BarReadinessWait:
+    status: str
+    observed_at: pd.Timestamp
+    deadline_at: pd.Timestamp
+    readiness: BarReadiness | None = None
+    detail: str = ""
+
+
 def publish_bar_readiness(
     datastore_root: Path,
     *,
@@ -83,6 +94,10 @@ def publish_bar_readiness(
     target = _utc(target_snapshot_for, "target_snapshot_for")
     if target != expected_quarter_hour_target(target):
         raise ValueError("Bar readiness target must be a quarter-hour boundary")
+    if not is_eligible_option_target(target):
+        raise ValueError(
+            "Bar readiness target must be inside the regular XNYS option-market window"
+        )
     clean_symbols = tuple(
         dict.fromkeys(str(value).strip().upper() for value in symbols if str(value).strip())
     )
@@ -225,6 +240,61 @@ def read_bar_readiness(
         receipt_path=receipt_path,
         receipt_checksum_sha256=file_checksum(receipt_path),
     )
+
+
+def wait_for_bar_readiness(
+    datastore_root: Path,
+    *,
+    target_snapshot_for: object,
+    required_symbols: Sequence[str],
+    timeout_seconds: float,
+    clock: Callable[[], object] | None = None,
+    sleeper: Callable[[float], None] = time.sleep,
+    monotonic_clock: Callable[[], float] = time.monotonic,
+    poll_seconds: float = 0.25,
+) -> BarReadinessWait:
+    """Wait monotonically for one exact immutable all-symbol readiness receipt."""
+
+    if timeout_seconds < 0:
+        raise ValueError("Bar readiness timeout cannot be negative")
+    if poll_seconds <= 0:
+        raise ValueError("Bar readiness poll interval must be positive")
+    now = clock or _now
+    started_at = _utc(now(), "wait_started_at")
+    deadline_at = started_at + pd.Timedelta(seconds=float(timeout_seconds))
+    monotonic_deadline = monotonic_clock() + float(timeout_seconds)
+    last_error = ""
+    while True:
+        try:
+            readiness = read_bar_readiness(
+                datastore_root,
+                target_snapshot_for=target_snapshot_for,
+                required_symbols=required_symbols,
+            )
+            observed_at = max(_utc(now(), "observed_at"), readiness.ready_at)
+            if readiness.ready_at <= deadline_at and observed_at <= deadline_at:
+                return BarReadinessWait(
+                    status="READY",
+                    observed_at=observed_at,
+                    deadline_at=deadline_at,
+                    readiness=readiness,
+                )
+            last_error = (
+                "Verified Loop A readiness became authoritative after the Pricing "
+                f"deadline ({readiness.ready_at.isoformat()} > {deadline_at.isoformat()})."
+            )
+        except BarReadinessError as exc:
+            last_error = f"{type(exc).__name__}: {exc}"
+        remaining = monotonic_deadline - monotonic_clock()
+        if remaining <= 0:
+            observed_at = max(_utc(now(), "observed_at"), deadline_at)
+            return BarReadinessWait(
+                status="DEADLINE_MISSED",
+                observed_at=observed_at,
+                deadline_at=deadline_at,
+                detail=last_error,
+            )
+        sleeper(min(float(poll_seconds), remaining))
 
 
 def bar_readiness_pointer_path(datastore_root: Path) -> Path:

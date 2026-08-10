@@ -17,6 +17,7 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from ml.artifacts import file_checksum, utc_timestamp
+from datafetching.decision_time import eligible_option_market_seconds
 from ml.option_pricing.eligibility import REQUIRED_SYMBOLS, read_eligibility_policy
 from ml.option_pricing.lineage import verify_completed_option_pricing_lineage
 from ml.option_pricing.publication import (
@@ -411,6 +412,7 @@ def build_runtime_health(
     checked_at: object,
     previous_prospective_count: int | None = None,
     previous_prospective_checked_at: object | None = None,
+    eligible_collection_opportunity: bool = True,
     limits: RuntimeLimits | None = None,
 ) -> Mapping[str, object]:
     effective = limits or RuntimeLimits()
@@ -437,6 +439,7 @@ def build_runtime_health(
             "TARGET_ALREADY_OBSERVED",
             "NO_ELIGIBLE_CONTRACTS",
             "SOURCE_SURFACE_UNAVAILABLE",
+            "MARKET_CLOSED_IDLE",
         }:
             alerts.append(_alert("MISSED_PHASE", "ACTION_REQUIRED", {"symbol": symbol, "status": status}))
     generated = pd.to_datetime(
@@ -509,9 +512,10 @@ def build_runtime_health(
         )
         if not pd.isna(prior):
             last_increase_at = pd.Timestamp(prior)
-            if now - last_increase_at >= pd.Timedelta(
+            eligible_seconds = eligible_option_market_seconds(last_increase_at, now)
+            if eligible_collection_opportunity and eligible_seconds >= pd.Timedelta(
                 hours=effective.evidence_stagnation_alert_hours
-            ):
+            ).total_seconds():
                 alerts.append(
                     _alert(
                         "EVIDENCE_COUNT_STAGNATION",
@@ -520,6 +524,7 @@ def build_runtime_health(
                             "previous_count": previous_prospective_count,
                             "current_count": current_prospective,
                             "since": last_increase_at.isoformat(),
+                            "eligible_market_seconds": eligible_seconds,
                         },
                     )
                 )
@@ -536,6 +541,7 @@ def build_runtime_health(
         "runtime_limits": asdict(effective),
         "prospective_completed_count": current_prospective,
         "prospective_last_increase_at": last_increase_at.isoformat(),
+        "eligible_collection_opportunity": bool(eligible_collection_opportunity),
         "actionable_exit_code": EXIT_EVIDENCE if alerts else EXIT_OK,
         "automated_action_allowed": False,
     }

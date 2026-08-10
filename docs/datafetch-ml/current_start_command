@@ -24,15 +24,24 @@ python -m ml.option_pricing_runtime `
   --datastore-target pc `
   --watchlist datafetching\watchlist.txt `
   --interval-minutes 15 `
-  --phase-offset-minutes 1
+  --phase-offset-minutes 1 `
+  --bar-readiness-mode required `
+  --bar-readiness-timeout-seconds 45
 
-# 4. Independent Schwab option-chain owner. It skips symbols until Loop A has
-# produced a completed Databento 1m decision clock.
+# 4. Independent Schwab option-chain owner. It requires Loop A's immutable
+# exact all-symbol Databento 1m readiness receipt.
 python -m datafetching.options_runtime `
   --datastore-target pc `
   --watchlist datafetching\watchlist.txt `
   --interval-minutes 15 `
-  --phase-offset-minutes 2
+  --phase-offset-minutes 2 `
+  --pricing-barrier-timeout-seconds 45 `
+  --bar-readiness-mode required
 
 # Stop any process with Ctrl+C. See independent-runtime-orchestration.md for
 # ownership, restart, cadence, and compatibility details.
+
+# POWERSHELL COMMANDS
+cd C:\dev\ducketz
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1

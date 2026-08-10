@@ -329,7 +329,7 @@ def test_health_reports_stale_pointer_and_evidence_stagnation() -> None:
         elapsed_seconds=1.0,
         peak_memory_bytes=1_000,
         capacity={"status": "PASS"},
-        checked_at="2026-08-07T00:00:00Z",
+        checked_at="2026-08-17T21:00:00Z",
         previous_prospective_count=0,
         previous_prospective_checked_at="2026-08-01T00:00:00Z",
     )
@@ -337,6 +337,40 @@ def test_health_reports_stale_pointer_and_evidence_stagnation() -> None:
     assert {"STALE_POINTER", "EVIDENCE_COUNT_STAGNATION"}.issubset(kinds)
     assert health["status"] == "FAIL"
     assert health["actionable_exit_code"] == 6
+
+
+def test_market_closed_health_does_not_create_missed_phase_or_stagnation() -> None:
+    routes = {
+        f"{symbol}/{call_put}": {"partition": {"status": "PASS"}}
+        for symbol in ("NVDA", "GOOG", "MU")
+        for call_put in ("call", "put")
+    }
+    health = build_runtime_health(
+        pricing_run=Path("C:/test/run"),
+        eligibility_report={
+            "generated_at": "2026-08-10T21:46:00Z",
+            "gate_status": "NOT_PRODUCTION_ELIGIBLE",
+            "routes": routes,
+            "gates": [],
+        },
+        lineage_report={"verified": True},
+        route_errors={},
+        live_routes={
+            symbol: {"status": "MARKET_CLOSED_IDLE"}
+            for symbol in ("NVDA", "GOOG", "MU")
+        },
+        elapsed_seconds=1.0,
+        peak_memory_bytes=1_000,
+        capacity={"status": "PASS"},
+        checked_at="2026-08-10T21:46:00Z",
+        previous_prospective_count=0,
+        previous_prospective_checked_at="2026-08-01T00:00:00Z",
+        eligible_collection_opportunity=False,
+    )
+    kinds = {alert["kind"] for alert in health["alerts"]}
+    assert "MISSED_PHASE" not in kinds
+    assert "EVIDENCE_COUNT_STAGNATION" not in kinds
+    assert health["automated_action_allowed"] is False
 
 
 def test_degraded_health_is_actionable() -> None:
