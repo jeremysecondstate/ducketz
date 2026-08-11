@@ -53,6 +53,12 @@ from ml.option_pricing.lineage import (
     verify_completed_option_pricing_lineage,
     verify_staged_option_pricing_run,
 )
+from ml.option_pricing.loop_native_eligibility import (
+    build_loop_native_eligibility_report,
+    publish_loop_native_eligibility_policy,
+    publish_loop_native_eligibility_report,
+    verify_loop_native_capture_lineage,
+)
 from ml.option_pricing.lockbox import read_lockbox_result
 from ml.option_pricing.operations import (
     EXIT_EVIDENCE,
@@ -71,11 +77,24 @@ from ml.option_pricing.opra_materialization import (
 from ml.option_pricing.policies import (
     BSGPModelPolicy,
     ContractSelectionPolicy,
+    LOOP_NATIVE_SYMBOLS,
+    LoopNativeModelPolicy,
     OPTION_PRICING_POLICY_VERSION,
     PricingPartitionConfig,
     ProjectionPolicy,
 )
-from ml.option_pricing.prediction import create_prediction_rows
+from ml.option_pricing.prediction import create_bsgp_shadow_rows, create_prediction_rows
+from ml.option_pricing.schwab_materialization import (
+    read_current_loop_native_schwab_materialization,
+)
+from ml.option_pricing.shadow_model import (
+    LOOP_NATIVE_MODEL_FILE,
+    LOOP_NATIVE_MODEL_MANIFEST,
+    LOOP_NATIVE_MODEL_RECEIPT,
+    LoopNativeModelLoad,
+    load_prior_loop_native_model,
+)
+from ml.option_pricing_loop_native_worker import launch_loop_native_worker
 from ml.option_pricing.publication import (
     OPTION_PRICING_POINTER_VERSION,
     OPTION_PRICING_PUBLICATION_VERSION,
@@ -156,6 +175,7 @@ def run_option_pricing_once(
     runtime_clock: Callable[[], object] | None = None,
     partition_config: PricingPartitionConfig | None = None,
     model_policy: BSGPModelPolicy | None = None,
+    loop_native_model_policy: LoopNativeModelPolicy | None = None,
     contract_policy: ContractSelectionPolicy | None = None,
     projection_policy: ProjectionPolicy | None = None,
     rate_observations: pd.DataFrame | None = None,
@@ -180,6 +200,7 @@ def run_option_pricing_once(
             runtime_clock=runtime_clock,
             partition_config=partition_config,
             model_policy=model_policy,
+            loop_native_model_policy=loop_native_model_policy,
             contract_policy=contract_policy,
             projection_policy=projection_policy,
             rate_observations=rate_observations,
@@ -204,6 +225,7 @@ def _run_option_pricing_once_impl(
     runtime_clock: Callable[[], object] | None = None,
     partition_config: PricingPartitionConfig | None = None,
     model_policy: BSGPModelPolicy | None = None,
+    loop_native_model_policy: LoopNativeModelPolicy | None = None,
     contract_policy: ContractSelectionPolicy | None = None,
     projection_policy: ProjectionPolicy | None = None,
     rate_observations: pd.DataFrame | None = None,
@@ -248,9 +270,14 @@ def _run_option_pricing_once_impl(
     stage_timings: dict[str, float] = {}
     effective_partitions = partition_config or PricingPartitionConfig()
     effective_model = model_policy or BSGPModelPolicy()
+    effective_loop_native_model = loop_native_model_policy or LoopNativeModelPolicy()
     effective_contract = contract_policy or ContractSelectionPolicy()
     effective_projection = projection_policy or ProjectionPolicy()
     limits = runtime_limits or RuntimeLimits()
+    loop_native_scope = (
+        len(clean_symbols) == len(LOOP_NATIVE_SYMBOLS)
+        and frozenset(clean_symbols) == frozenset(LOOP_NATIVE_SYMBOLS)
+    )
     eligibility_policy = EligibilityPolicy()
     policy_artifact = publish_eligibility_policy(
         root,
@@ -260,6 +287,16 @@ def _run_option_pricing_once_impl(
         contract_policy=effective_contract,
         projection_policy=effective_projection,
         published_at=created,
+    )
+    loop_native_policy_artifact = (
+        publish_loop_native_eligibility_policy(
+            root,
+            model_policy=effective_loop_native_model,
+            contract_policy=effective_contract,
+            published_at=created,
+        )
+        if loop_native_scope
+        else None
     )
     initial_capacity = capacity_report(root, limits=limits)
     if initial_capacity.get("status") != "PASS":
@@ -274,11 +311,23 @@ def _run_option_pricing_once_impl(
         policy_artifact.directory / "policy.json",
         policy_artifact.directory / "receipt.json",
     ]
+    if loop_native_policy_artifact is not None:
+        source_files.extend(
+            (
+                loop_native_policy_artifact.directory / "policy.json",
+                loop_native_policy_artifact.directory / "receipt.json",
+            )
+        )
     model_input_files: list[Path] = []
     if rate_observations is None:
         rate_observations, rate_files = load_point_in_time_rate_observations(root)
         source_files.extend(rate_files)
         model_input_files.extend(rate_files)
+    earlier_shadow_model = (
+        load_prior_loop_native_model(root, prediction_created_at=created)
+        if loop_native_scope
+        else None
+    )
     (
         target_publication,
         target_live_samples,
@@ -302,6 +351,8 @@ def _run_option_pricing_once_impl(
             bar_readiness_timeout_seconds=bar_readiness_timeout_seconds,
             readiness_sleeper=readiness_sleeper,
             monotonic_clock=monotonic_clock,
+            loop_native_model_load=earlier_shadow_model,
+            loop_native_model_policy=effective_loop_native_model,
         )
     )
     new_live_samples = target_live_samples if target_published_now else pd.DataFrame()
@@ -318,6 +369,44 @@ def _run_option_pricing_once_impl(
     )
     stage_timings["target_authority_seconds"] = time.perf_counter() - stage_started
     stage_started = time.perf_counter()
+
+    loop_native_materialization = None
+    loop_native_generation = (
+        earlier_shadow_model.generation
+        if earlier_shadow_model is not None
+        else None
+    )
+    loop_native_stage_error = ""
+    loop_native_worker: Mapping[str, object] | None = None
+    if loop_native_scope:
+        try:
+            loop_native_materialization = (
+                read_current_loop_native_schwab_materialization(
+                    root,
+                    load_samples=False,
+                )
+            )
+        except Exception as exc:
+            latest_pointer = (
+                root
+                / "ml"
+                / "option-pricing-loop-native-materialization-latest"
+                / "run.json"
+            )
+            if latest_pointer.exists():
+                loop_native_stage_error = (
+                    "Existing Loop-native materialization failed verification: "
+                    f"{type(exc).__name__}: {exc}"
+                )
+        try:
+            loop_native_worker = launch_loop_native_worker(
+                root,
+                trainer_cutoff=target_publication.published_at,
+            )
+        except Exception as exc:
+            loop_native_stage_error = (
+                loop_native_stage_error + "; " if loop_native_stage_error else ""
+            ) + f"Worker launch failed: {type(exc).__name__}: {exc}"
 
     (
         prior_samples,
@@ -348,6 +437,25 @@ def _run_option_pricing_once_impl(
         source_files.extend((publication.manifest_path, publication.receipt_path))
     source_files.extend(prior_lineage_files)
     route_errors: dict[str, str] = {}
+    if loop_native_stage_error:
+        route_errors["loop-native/model-update"] = loop_native_stage_error
+    if loop_native_materialization is not None:
+        if loop_native_materialization.directory is not None:
+            source_files.extend(
+                (
+                    loop_native_materialization.directory / "manifest.json",
+                    loop_native_materialization.directory / "receipt.json",
+                    loop_native_materialization.directory
+                    / "materialization-report.json",
+                )
+            )
+    if loop_native_generation is not None:
+        source_files.extend(
+            (
+                loop_native_generation.directory / "manifest.json",
+                loop_native_generation.directory / "receipt.json",
+            )
+        )
     models: dict[tuple[str, str], object] = {}
     model_reports: dict[str, dict[str, object]] = {}
     models_trained = models_reused = 0
@@ -636,6 +744,49 @@ def _run_option_pricing_once_impl(
             "requires_fitted_residual_model": False,
             "new_predictions_created": new_live_prediction_count,
         },
+        "loop_native_bsgp_shadow": {
+            "scope_active": loop_native_scope,
+            "loaded_before_fast_publication_status": (
+                earlier_shadow_model.status
+                if earlier_shadow_model is not None
+                else "OUTSIDE_TEN_SYMBOL_SCOPE"
+            ),
+            "loaded_generation": (
+                earlier_shadow_model.generation.receipt.get("run_path")
+                if earlier_shadow_model is not None
+                and earlier_shadow_model.generation is not None
+                else None
+            ),
+            "target_sidecar_rows": len(target_publication.shadow_predictions()),
+            "post_publication_materialization": (
+                loop_native_materialization.directory.relative_to(root).as_posix()
+                if loop_native_materialization is not None
+                and loop_native_materialization.directory is not None
+                else None
+            ),
+            "current_verified_generation": (
+                loop_native_generation.receipt.get("run_path")
+                if loop_native_generation is not None
+                else None
+            ),
+            "post_publication_worker": (
+                dict(loop_native_worker)
+                if loop_native_worker is not None
+                else None
+            ),
+            "update_error": loop_native_stage_error or None,
+            "paid_opra_required": False,
+            "external_provider_requests": 0,
+            "automated_action_allowed": False,
+            "eligibility_policy": (
+                {
+                    "path": loop_native_policy_artifact.receipt.get("run_path"),
+                    "policy_hash_sha256": loop_native_policy_artifact.policy_hash,
+                }
+                if loop_native_policy_artifact is not None
+                else None
+            ),
+        },
         "gate": gate,
         "closed_lockbox": _closed_lockbox_report(global_partitions),
         "closed_lockbox_inventory": closed_lockbox_report,
@@ -737,6 +888,37 @@ def _run_option_pricing_once_impl(
         pricing_run=run_directory,
         published_at=utc_timestamp(clock()),
     )
+    if loop_native_policy_artifact is not None:
+        capture_lineage = verify_loop_native_capture_lineage(
+            policy_artifact=loop_native_policy_artifact,
+            target_publication=target_publication,
+            materialization=loop_native_materialization,
+            model_load=earlier_shadow_model,
+        )
+        capture_lineage_verified = capture_lineage.get("status") == "PASS"
+        loop_native_report = build_loop_native_eligibility_report(
+            policy_artifact=loop_native_policy_artifact,
+            materialization_report=(
+                loop_native_materialization.report
+                if loop_native_materialization is not None
+                else None
+            ),
+            model_manifest=(
+                loop_native_generation.manifest
+                if loop_native_generation is not None
+                else None
+            ),
+            operational_report=operational_report,
+            strategy_report=strategy_report,
+            generated_at=utc_timestamp(clock()),
+            capture_lineage_verified=capture_lineage_verified,
+        )
+        loop_native_report["capture_lineage"] = dict(capture_lineage)
+        publish_loop_native_eligibility_report(
+            root,
+            report=loop_native_report,
+            published_at=utc_timestamp(clock()),
+        )
     previous_health = _read_optional_evidence(
         lambda: read_current_runtime_health(root),
         label="prior runtime health",
@@ -820,6 +1002,8 @@ def _publish_fast_target_outcome(
     bar_readiness_timeout_seconds: float,
     readiness_sleeper: Callable[[float], None],
     monotonic_clock: Callable[[], float],
+    loop_native_model_load: LoopNativeModelLoad | None = None,
+    loop_native_model_policy: LoopNativeModelPolicy | None = None,
 ) -> tuple[
     TargetOutcomePublication,
     pd.DataFrame,
@@ -895,11 +1079,35 @@ def _publish_fast_target_outcome(
         readiness = wait.readiness
         readiness_error = wait.detail
 
+    effective_loop_native_model_load = loop_native_model_load
+    if (
+        loop_native_model_load is not None
+        and loop_native_model_load.generation is not None
+        and loop_native_model_load.generation.expires_at <= prediction_created_at
+    ):
+        effective_loop_native_model_load = LoopNativeModelLoad(
+            None,
+            "BASELINE_FALLBACK_STALE_MODEL",
+            "The verified model expired while Pricing waited for exact Loop A readiness.",
+        )
+
     live_samples: list[pd.DataFrame] = []
     live_status: dict[str, Mapping[str, object]] = {}
     source_files: list[Path] = []
     if readiness is not None:
         source_files.extend(readiness.evidence_files)
+    if (
+        effective_loop_native_model_load is not None
+        and effective_loop_native_model_load.generation is not None
+    ):
+        generation_directory = effective_loop_native_model_load.generation.directory
+        source_files.extend(
+            (
+                generation_directory / LOOP_NATIVE_MODEL_FILE,
+                generation_directory / LOOP_NATIVE_MODEL_MANIFEST,
+                generation_directory / LOOP_NATIVE_MODEL_RECEIPT,
+            )
+        )
     for symbol in symbols:
         if bar_readiness_mode == "required" and readiness is None:
             live_status[symbol] = {
@@ -919,6 +1127,9 @@ def _publish_fast_target_outcome(
                 target_source_files=(readiness.evidence_files if readiness else None),
                 contract_policy=contract_policy,
                 rate_observations=rate_observations,
+                allow_source_chain_carry_fallback=(
+                    loop_native_model_load is None
+                ),
             )
             live_status[symbol] = {
                 "status": batch.status,
@@ -957,6 +1168,32 @@ def _publish_fast_target_outcome(
         if not samples.empty
         else pd.DataFrame()
     )
+    shadow_predictions: pd.DataFrame | None = None
+    if effective_loop_native_model_load is not None:
+        try:
+            shadow_predictions = create_bsgp_shadow_rows(
+                samples,
+                predictions,
+                prediction_created_at=prediction_created_at,
+                prediction_available_at=prediction_created_at,
+                model_load=effective_loop_native_model_load,
+                model_policy=loop_native_model_policy,
+                projection_policy=projection_policy,
+            )
+        except Exception as exc:
+            shadow_predictions = create_bsgp_shadow_rows(
+                samples,
+                predictions,
+                prediction_created_at=prediction_created_at,
+                prediction_available_at=prediction_created_at,
+                model_load=LoopNativeModelLoad(
+                    None,
+                    "BASELINE_FALLBACK_NO_MODEL",
+                    f"Shadow inference failed closed: {type(exc).__name__}: {exc}",
+                ),
+                model_policy=loop_native_model_policy,
+                projection_policy=projection_policy,
+            )
     states = {str(value.get("status", "UNKNOWN")) for value in live_status.values()}
     if not predictions.empty and states == {"READY"}:
         terminal_status = "PREDICTIONS_PUBLISHED"
@@ -1005,7 +1242,9 @@ def _publish_fast_target_outcome(
         terminal_status=terminal_status,
         samples=samples,
         predictions=predictions,
+        shadow_predictions=shadow_predictions,
         bar_readiness=readiness_reference,
+        input_files=tuple(dict.fromkeys(source_files)),
         clock=runtime_clock,
     )
     # The immutable publication wins over any recomputation after a restart.

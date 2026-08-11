@@ -374,6 +374,7 @@ immutable append log.
 | SEC events | `stocks/<S>/corporate/sec-events/sec/YYYY.parquet` | Versioned extraction keyed by symbol, filing acceptance, event type, and availability |
 | CME context | `pools/cme/features/cross-asset-context/databento/1h.parquet` | Exact common NQ/ES/RTY/GC/CL hourly window plus BBO/MBP evidence; written only when the context passes |
 | Normalized FRED | `pools/macro/<GROUP>/<SERIES>/fred/normalized/*.parquet` | Current-revised CSV histories with local `fetched_at`; not an ALFRED vintage history |
+| Imported FRED/ALFRED vintages | `pools/macro-vintages/<SERIES>/fred/YYYY.parquet` plus immutable `ml/option-pricing-evidence/fred-alfred-vintages/<UTC>/` receipts | API real-time intervals only; provider date-precision availability is conservatively end-of-day America/Chicago and remains distinct from actual local `fetched_at`; current-revised rows fail closed |
 
 Option `snapshot_for` is the latest completed Databento one-minute bar ending
 on a wall-clock quarter hour. Options run in the provider stage before the

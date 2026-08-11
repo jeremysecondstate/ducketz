@@ -439,6 +439,65 @@ OPTION_PRICING_PREDICTION_SCHEMA = _schema(
     )
 )
 
+OPTION_PRICING_BSGP_SHADOW_SCHEMA = _schema(
+    (
+        ("id", TEXT),
+        ("symbol", TEXT),
+        ("source_provider", TEXT),
+        ("prediction_mode", TEXT),
+        ("call_put", TEXT),
+        ("contract_symbol", TEXT),
+        ("expiration_date", UTC_TIMESTAMP),
+        ("target_snapshot_for", UTC_TIMESTAMP),
+        ("source_snapshot_for", UTC_TIMESTAMP),
+        ("source_available_at", UTC_TIMESTAMP),
+        ("prediction_created_at", UTC_TIMESTAMP),
+        ("prediction_available_at", UTC_TIMESTAMP),
+        ("underlying_price", FLOAT),
+        ("strike", FLOAT),
+        ("multiplier", FLOAT),
+        ("black_scholes_price", FLOAT),
+        ("baseline_constrained_fair_value", FLOAT),
+        ("bsgp_shadow_fair_value_raw", FLOAT),
+        ("bsgp_shadow_fair_value_constrained", FLOAT),
+        ("bsgp_shadow_normalized_residual", FLOAT),
+        ("bsgp_shadow_predictive_standard_deviation", FLOAT),
+        ("bsgp_shadow_raw_interval_80_lower", FLOAT),
+        ("bsgp_shadow_raw_interval_80_upper", FLOAT),
+        ("bsgp_shadow_raw_interval_95_lower", FLOAT),
+        ("bsgp_shadow_raw_interval_95_upper", FLOAT),
+        ("bsgp_shadow_constrained_interval_80_lower", FLOAT),
+        ("bsgp_shadow_constrained_interval_80_upper", FLOAT),
+        ("bsgp_shadow_constrained_interval_95_lower", FLOAT),
+        ("bsgp_shadow_constrained_interval_95_upper", FLOAT),
+        ("bsgp_shadow_status", TEXT),
+        ("bsgp_shadow_reason", TEXT),
+        ("bsgp_shadow_model_generation_path", TEXT),
+        # Hash-like column names are deliberately forbidden in row artifacts;
+        # this value is the verified SHA-256 generation attestation while the
+        # complete receipt remains in the immutable control-plane artifact.
+        ("bsgp_shadow_model_generation_attestation", TEXT),
+        ("bsgp_shadow_model_published_at", UTC_TIMESTAMP),
+        ("bsgp_shadow_model_trained_through", UTC_TIMESTAMP),
+        ("bsgp_shadow_model_expires_at", UTC_TIMESTAMP),
+        ("bsgp_shadow_support_status", TEXT),
+        ("bsgp_shadow_support_distance", FLOAT),
+        ("bsgp_shadow_shrinkage", FLOAT),
+        ("bsgp_shadow_route_support_sessions", INTEGER),
+        ("bsgp_shadow_input_staleness_seconds", FLOAT),
+        ("bsgp_shadow_projection_correction", FLOAT),
+        ("bsgp_shadow_projection_status", TEXT),
+        ("bsgp_shadow_raw_bound_violation", BOOLEAN),
+        ("bsgp_shadow_raw_monotonicity_violation", BOOLEAN),
+        ("bsgp_shadow_raw_convexity_violation", BOOLEAN),
+        ("bsgp_shadow_constrained_bound_violation", BOOLEAN),
+        ("bsgp_shadow_constrained_monotonicity_violation", BOOLEAN),
+        ("bsgp_shadow_constrained_convexity_violation", BOOLEAN),
+        ("shadow_schema_version", TEXT),
+        ("automated_action_allowed", BOOLEAN),
+    )
+)
+
 OPTION_PRICING_EVALUATION_SCHEMA = _schema(
     (
         ("id", TEXT),

@@ -1,10 +1,21 @@
 # Option Pricing shadow operations
 
-This runbook applies to eligibility protocol v2. `PRODUCTION_ELIGIBLE` authorizes
+This runbook preserves eligibility protocol v2 as the readable legacy
+three-symbol/OPRA workflow and adds the separate Loop-native causal BSGP policy
+v3 for all ten watchlist symbols and both CALL/PUT routes. Paid OPRA is optional
+benchmark data under v3, never a prerequisite. `PRODUCTION_ELIGIBLE` authorizes
 only a separately approved canary; it never authorizes an order or automated
 action. Every Pricing artifact and report must retain
 `automated_action_allowed=false` until a distinct activation workflow is
 approved outside this runbook.
+
+The three conclusions are intentionally independent. `CAPTURE_READY` means the
+deployed Loop-native sidecar is publishing causally and fail-closed.
+`RESEARCH_GATE_ELIGIBLE` requires enough independent, session-blocked evidence
+for evaluation. `PRODUCTION_AUTHORIZED` additionally requires every gate,
+candidate, lockbox, operational, Strategy, and explicit operator authorization
+stage. Installing code or migrating policy can establish none of the latter two
+by itself.
 
 ## Installation contract
 
@@ -20,12 +31,14 @@ py -3.13 -m venv .venv-pricing
 .\.venv-pricing\Scripts\python.exe -m pip check
 .\.venv-pricing\Scripts\ducketz-option-pricing --help
 .\.venv-pricing\Scripts\ducketz-option-pricing-opra --help
+.\.venv-pricing\Scripts\ducketz-option-pricing-fred --help
+.\.venv-pricing\Scripts\ducketz-option-pricing-loop-native --help
 .\.venv-pricing\Scripts\ducketz-option-pricing-admin --help
 .\.venv-pricing\Scripts\ducketz-option-pricing-lockbox --help
 ```
 
 The operational preflight compares installed production imports to the exact
-lock, runs `pip check`, smoke-tests all four CLIs with bounded subprocess
+lock, runs `pip check`, smoke-tests all six CLIs with bounded subprocess
 timeouts, verifies capacity and receipt chains, and checks the last published
 runtime benchmark:
 
@@ -52,16 +65,69 @@ until all evidence gates pass.
 ## Configuration and secrets
 
 The continuous live Pricing scope comes from `datafetching/watchlist.txt` by
-default, with CALL and PUT priced independently for every active symbol. The
-frozen BSGP eligibility/OPRA pilot remains exactly `NVDA GOOG MU`; expanding the
-live Black-Scholes scope does not expand paid evidence or lockbox authority. The
-continuous Pricing runtime reads already committed local inputs and does not
-need a provider credential. The guarded OPRA estimator/importer reads
+default, with CALL and PUT priced independently for every active symbol. Legacy
+v2 eligibility/OPRA evidence remains exactly `NVDA GOOG MU`. Loop-native v3
+scope is independently frozen to
+`NVDA GOOG MU AAPL MSFT AMZN META TSLA CAT SNDK`, with all twenty symbol/side
+routes retained even when missing. Expanding either scope does not expand paid
+evidence or lockbox authority. The continuous Pricing runtime reads already
+committed local inputs and does not need a provider credential. The guarded
+OPRA estimator/importer reads
 `DATABENTO_API_KEY` from the environment and never renders it. Missing secrets
 are terminal for estimates/imports. Databento metadata calls have three bounded
 attempts and a 30-second endpoint timeout. Paid `get_range` has a 180-second
 endpoint timeout and one attempt so retry cost can never exceed the approved
 request list.
+
+The historical macro importer separately requires `FRED_API_KEY` in the process
+environment or repository `.env`. The key is used only in HTTPS requests to the
+official API, is never included in console output, manifests, receipts, raw
+provider-response files, or normalized Parquet, and is redacted from provider
+failures. Do not pass it as a command-line argument.
+
+## Historical FRED/ALFRED vintage import
+
+Historical rate evidence must come from an explicit FRED API real-time-period
+request, not the current-revised CSV history. All four bounds are mandatory so
+the operator can review the exact acquisition scope. For example:
+
+```powershell
+ducketz-option-pricing-fred --datastore C:\DATASTORE `
+  --series FEDFUNDS `
+  --realtime-start 2026-01-01 `
+  --realtime-end 2026-08-10 `
+  --observation-start 2025-01-01 `
+  --observation-end 2026-08-10
+```
+
+The importer uses FRED API v1 `fred/series/observations` with `output_type=1`
+and explicit `realtime_start`/`realtime_end`; each finite observation must carry
+its own `realtime_start` and `realtime_end`. It also receipts the official
+series metadata and `fred/series/vintagedates` response. The latter defines the
+dates on which new or revised series data were released. The FRED real-time
+period represents when information was known until it changed. See the official
+[real-time-period documentation](https://fred.stlouisfed.org/docs/api/fred/realtime_period.html),
+[observation endpoint](https://fred.stlouisfed.org/docs/api/fred/series_observations.html),
+and [vintage-date endpoint](https://fred.stlouisfed.org/docs/api/fred/series_vintagedates.html).
+
+FRED/ALFRED provides a provider date, not a guaranteed intraday availability
+timestamp. Policy
+`ALFRED_REALTIME_START_DATE_END_OF_DAY_AMERICA_CHICAGO_V1` therefore makes a
+vintage usable only at the next America/Chicago midnight. `release_at` and
+`available_at` record that conservative provider clock; `fetched_at` records the
+actual local acquisition clock. Neither overwrites the other. Re-fetching an
+existing provider vintage preserves its first local receipt, and conflicting
+content fails closed.
+
+Each acquisition commits checksummed provider responses, normalized Parquet,
+manifest, and receipt under
+`ml/option-pricing-evidence/fred-alfred-vintages/<UTC>/` before materializing
+append-only macro-vintage and rate-feature partitions. The receipt says
+`historical_coverage_status=NOT_EVALUATED`: successful import proves only its
+exact rows and clocks. Rerun the OPRA estimator's rate-coverage preflight before
+claiming that all scheduled targets are covered. A current observation, a
+current `last_updated` timestamp, or today's revised history never establishes
+historical availability.
 
 The default OPRA command only estimates. It prints every exact request boundary,
 raw eligible contract set, estimated cost, billable byte estimate, aggregate
@@ -88,10 +154,30 @@ and checksummed into the immutable import receipt.
 The approved scheduler order for each natural target is:
 
 1. wait for the exact completed underlying bar;
-2. run Pricing and commit its receipt;
+2. verify a strictly earlier Loop-native model generation, run Pricing, and
+   atomically commit the unchanged Black-Scholes rows plus the optional shadow
+   sidecar;
 3. only then fetch/publish the independent Options receipt;
 4. on a later Pricing cycle, reconcile the earliest committed prediction to the
-   first exact later quote.
+   first exact later quote; and
+5. after the fast publication, allow the bounded local worker to materialize
+   only already matured outcomes and publish a new generation that is eligible
+   no earlier than a future target.
+
+The helper is normally launched by the exact-ten-symbol Pricing runtime after
+its fast publication. It uses a separate interprocess lock and a minimum refresh
+interval so concurrent or repeated cycles cannot multiply training work. It can
+also be exercised explicitly for diagnosis:
+
+```powershell
+ducketz-option-pricing-loop-native --datastore C:\DATASTORE `
+  --trainer-cutoff 2026-08-11T08:00:00Z --dry-run
+```
+
+`--dry-run` performs no datastore write. Neither mode has a provider client or
+credential path. Training failure, insufficient sessions, stale support, or an
+invalid model leaves the next target on Black-Scholes with an explicit fallback
+status; it does not delay Options.
 
 Start only one writer. The CLI owns
 `.ducketz-option-pricing-runtime.lock`; another writer fails immediately. The

@@ -1,7 +1,10 @@
 # Shadow option pricing: Black-Scholes plus a finite-feature GP
 
-Eligibility protocol v2, candidate/lockbox controls, continuous-runtime
-operations, rollback, and disaster recovery are specified in
+Eligibility protocol v2 remains the readable three-symbol/OPRA legacy policy.
+The separate Loop-native causal policy is v3 and covers all ten configured
+symbols and both option sides without making paid OPRA a prerequisite.
+Candidate/lockbox controls, continuous-runtime operations, rollback, and
+disaster recovery are specified in
 [`option-pricing-operations.md`](option-pricing-operations.md). Existing v1
 artifacts described below remain readable but cannot alone establish v2
 production eligibility.
@@ -10,6 +13,76 @@ This document describes the implemented, independent Pricing runtime. It is a
 research and monitoring subsystem. It does not submit orders, change Strategy
 rankings, change the default directional feature profile, or authorize any
 automated action.
+
+## Loop-native causal BSGP lane (policy v3)
+
+The active fair-value control remains fail-closed Black-Scholes. A separate
+immutable sidecar publishes an optional finite-basis GP residual correction:
+
+```text
+shadow fair value = causal Black-Scholes value + S * predicted normalized residual
+```
+
+The natural Schwab snapshot key is `(symbol, snapshot_for)`. Materialization
+selects the earliest valid committed receipt for that key, retains every later
+publication as duplicate lineage, and gives each
+`(symbol, target_snapshot_for, call_put)` surface bounded total weight. It never
+treats contract rows or duplicate publications as independent sessions.
+Conflicting semantic duplicates, path escape, schema drift, checksum changes,
+or unverifiable clocks fail closed.
+
+Two pooled models are maintained, one for CALL and one for PUT, over exactly
+`NVDA GOOG MU AAPL MSFT AMZN META TSLA CAT SNDK`. Features implement the six
+research concepts using only causal transformations: source underlying price,
+log-moneyness, verified rate/discount, lagged source-chain IV, time to expiry,
+and verified carry/forward. Target midpoint and target IV are labels or later
+diagnostics only; neither can enter a feature. Current-revised macro history is
+not historical evidence. The Loop-native lane currently requires a causal
+provider-rate/carry receipt and disables the older weak source-chain American
+parity fallback.
+
+The fast Pricing phase verifies and loads only a model generation with
+`published_at < prediction_created_at`. It then publishes unchanged baseline
+rows plus `pricing-bsgp-shadow.parquet` before the Options receipt. Model fitting
+does not run on this path. After publication, a locked, bounded local worker may
+materialize already committed Schwab outcomes and publish a new immutable model
+generation for a later cycle. The worker has no provider client and makes no
+network request. A same-cycle outcome can therefore never train the generation
+used for that cycle.
+
+Shadow statuses are explicit: `BSGP_SHADOW_READY`,
+`BASELINE_FALLBACK_NO_MODEL`, `BASELINE_FALLBACK_STALE_MODEL`,
+`BASELINE_FALLBACK_OUT_OF_SUPPORT`,
+`BASELINE_FALLBACK_INPUT_UNAVAILABLE`, and
+`BASELINE_FALLBACK_UNCALIBRATED`. Every fallback copies the causal
+Black-Scholes value; it does not delay Pricing or Options. The sidecar records
+raw and constrained point estimates and 80/95 percent intervals, posterior
+standard deviation, support and shrinkage diagnostics, model-generation
+lineage, projection magnitudes, and `automated_action_allowed=false`.
+
+Existing Schwab history can contribute only to the explicitly labeled
+`OFFLINE_SCHWAB_BOOTSTRAP` lane when its real receipt, request, quote, underlying,
+rate/carry, and contract clocks prove the reconstruction. It never increments a
+prospective count and no backdated prediction receipt is manufactured.
+Prospective evidence continues to require the immutable Pricing publication to
+precede the exact later Options receipt and remains subject to twenty distinct
+sessions for every one of the twenty symbol/side routes.
+
+Legacy Pricing generations are not silently upgraded. A generation without a
+preserved input inventory, with an input checksum that no longer verifies, or
+without one exact completed-bar proof is reported and excluded from v3 source
+samples. Path escapes, malformed inventories, output tampering, and conflicting
+causal samples still terminate materialization. This permits later valid v3
+generations to mature without granting credit to unverifiable older lineage.
+
+The paper's SPY May-June 2019 result and one-week-ahead example are not assumed
+to transfer to ten equities in 2026. This implementation deliberately replaces
+contemporaneous IV with lagged source IV, uses chronological session-blocked
+partitions, equal surface weighting, explicit interval calibration, and future
+Loop evaluation. Millions of cross-sectional contract rows are not represented
+as millions of independent observations. An American approximation may be
+reported later as a comparator, but it does not replace Black-Scholes as the
+settled mean in this version.
 
 ## Research formula and production departure
 
@@ -38,7 +111,7 @@ forbidden. The implemented `bsgp` is an RBF finite-feature approximation:
 training-only robust scaling, deterministic scikit-learn `Nystroem`, and
 `BayesianRidge`. Calibration clusters set posterior scale and weighted 80% and
 95% residual quantiles. Component count, gamma grid, selected gamma, random
-state, feature order, policies, runtime versions, code checksums, partitions,
+state, feature order, policies, runtime versions, chronological partitions,
 and input checksums are in the model manifest.
 
 The same untouched assessment clusters compare four models under one feature
@@ -58,9 +131,12 @@ model is not an exact GP.
 | `ml.prediction_runtime` | Directional Loop B and `ml/latest/run.json` |
 | `ml.strategy_runtime` | Strategy candidates and `ml/strategy-latest/run.json` |
 
-No runtime starts another runtime. Pricing owns
-`.ducketz-option-pricing-runtime.lock`, never calls Schwab, never writes an
-Options artifact, and never writes either Loop B or Strategy authority.
+No runtime starts another market-data, trading, or decision runtime. Pricing
+owns `.ducketz-option-pricing-runtime.lock`, never calls Schwab, never writes an
+Options artifact, and never writes either Loop B or Strategy authority. After
+the fast target publication it may launch its own locked local-only
+Loop-native materialization/training helper; that helper reads committed
+artifacts and cannot delay the target publication.
 
 ## Pre-quote live sequence
 
@@ -106,14 +182,20 @@ A later Pricing cycle scores a prediction only against a verified receipt with
 the exact target and semantic contract, a receipt later than prediction
 creation/publication, and a normalized option quote strictly later than both.
 A stale pre-prediction quote remains an explicit unavailable evaluation and
-does not increment prospective evidence. Repeated cycles retain the earliest
-valid prediction once per symbol, target, and contract.
+does not increment prospective evidence. The earliest committed receipt for a
+natural `(symbol, snapshot_for)` target is authoritative; a later duplicate can
+never rescue a prediction created after that target was already observable.
+Repeated cycles retain the earliest valid prediction once per symbol, target,
+and contract.
 
 ## Evidence, bounds, and model contracts
 
 Pilot contracts are standard, non-mini, non-adjusted 100-share calls and puts,
 7–120 calendar days from expiration, with `abs(log(K/S)) <= 0.25`. A source BBO
 must be finite, uncrossed, positive, recent, and have a causal quote timestamp.
+The Loop-native materializer contract v2 applies the same 1,200-second maximum to the
+target receipt-to-quote delay, records the exact target spread and staleness,
+and preserves `TARGET_QUOTE_STALE` as an exclusion reason.
 Missing rate, dividend, or interpolation support makes a row unavailable;
 there is no silent zero or extrapolation.
 
@@ -172,7 +254,50 @@ coverage, residual, uncertainty, edge-in-half-spreads, raw/constrained shape
 violations, matured interval coverage, liquidity, staleness, and explicit
 surface quality by symbol, target, call/put, moneyness, and expiration bucket.
 
-## Historical OPRA estimate and import safety
+Loop-native artifacts use new identities rather than reinterpreting those
+legacy runs:
+
+```text
+DATASTORE/ml/
+|-- option-pricing-loop-native-materializations/<UTC>/
+|   |-- samples.parquet
+|   |-- manifest.json
+|   `-- publication.json
+|-- option-pricing-loop-native-materialization-latest/run.json
+|-- option-pricing-loop-native-models/generations/<UTC>/
+|   |-- model.joblib
+|   |-- manifest.json
+|   `-- publication.json
+|-- option-pricing-loop-native-models/latest.json
+|-- option-pricing-loop-native-policy-v3/<UTC>/...
+|-- option-pricing-loop-native-eligibility-v3/<UTC>/...
+`-- option-pricing-target-outcomes/<UTC>/
+    |-- pricing-predictions.parquet
+    |-- pricing-bsgp-shadow.parquet
+    |-- manifest.json
+    `-- publication.json
+```
+
+Each current pointer is atomic and checksummed. Verification walks the complete
+reachable chain, constrains every relative path to the datastore, and checks
+the exact schema and content checksum before a model or sidecar is usable. A
+model generation is append-only and cannot update in place.
+
+## Optional legacy OPRA benchmark and import safety
+
+Paid OPRA is not a prerequisite of Loop-native policy v3. The guarded v2 path
+below remains available only as a separately authorized external benchmark and
+preserves all historical evidence identities. Its materializer is not relabeled
+as Schwab evidence, and no OPRA purchase or download is implied by v3.
+
+Historical FEDFUNDS coverage is acquired separately with
+`python -m ml.option_pricing_fred`. That importer requires a securely configured
+`FRED_API_KEY`, explicit provider real-time and observation bounds, and exact
+ALFRED `realtime_start`/`realtime_end` interval fields. Date-precision vintage
+availability is conservative end-of-day America/Chicago; actual local
+acquisition remains `fetched_at`. A successful import remains
+`NOT_EVALUATED` for schedule coverage until the OPRA planner proves every
+target. Current-revised FRED history is never substituted.
 
 The separate command uses Databento `OPRA.PILLAR`, `definition`, and
 consolidated `cbbo-1m`. It never runs inside the Options runtime. The default is

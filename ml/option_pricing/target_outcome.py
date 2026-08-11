@@ -11,6 +11,7 @@ import pandas as pd
 
 from ml.artifacts import file_checksum, utc_timestamp
 from ml.parquet_contracts import (
+    OPTION_PRICING_BSGP_SHADOW_SCHEMA,
     OPTION_PRICING_PREDICTION_SCHEMA,
     OPTION_PRICING_SAMPLE_SCHEMA,
     empty_frame,
@@ -24,6 +25,10 @@ TARGET_OUTCOME_VERSION = "option-pricing-target-outcome-v1"
 TARGET_OUTCOME_RECEIPT_VERSION = "option-pricing-target-outcome-receipt-v1"
 TARGET_OUTCOME_POINTER_VERSION = "option-pricing-target-outcome-pointer-v1"
 TARGET_OUTCOME_MANIFEST_VERSION = "option-pricing-target-outcome-manifest-v1"
+TARGET_OUTCOME_V2 = "option-pricing-target-outcome-v2"
+TARGET_OUTCOME_RECEIPT_V2 = "option-pricing-target-outcome-receipt-v2"
+TARGET_OUTCOME_MANIFEST_V2 = "option-pricing-target-outcome-manifest-v2"
+TARGET_OUTCOME_SHADOW_NAME = "pricing-bsgp-shadow.parquet"
 TARGET_OUTCOME_PROOF_COLUMNS = (
     "_pricing_outcome_run_path",
     "_pricing_outcome_receipt_checksum_sha256",
@@ -46,6 +51,7 @@ class TargetOutcomePublication:
     directory: Path
     samples_path: Path
     predictions_path: Path
+    shadow_predictions_path: Path | None
     outcome_path: Path
     manifest_path: Path
     receipt_path: Path
@@ -69,6 +75,13 @@ class TargetOutcomePublication:
             frame[TARGET_OUTCOME_PROOF_COLUMNS[2]] = self.published_at
         return frame
 
+    def shadow_predictions(self) -> pd.DataFrame:
+        if self.shadow_predictions_path is None:
+            return pd.DataFrame()
+        return pd.read_parquet(self.shadow_predictions_path).drop(
+            columns="id", errors="ignore"
+        )
+
 
 def target_outcome_pointer_path(datastore_root: Path) -> Path:
     return Path(datastore_root) / "ml" / "option-pricing-target-latest" / "run.json"
@@ -84,7 +97,9 @@ def publish_target_outcome(
     terminal_status: str,
     samples: pd.DataFrame,
     predictions: pd.DataFrame,
+    shadow_predictions: pd.DataFrame | None = None,
     bar_readiness: Mapping[str, object] | None,
+    input_files: Sequence[Path] = (),
     clock: Callable[[], object] | None = None,
 ) -> TargetOutcomePublication:
     """Publish the small prediction-or-skip authority consumed by Options."""
@@ -113,6 +128,12 @@ def publish_target_outcome(
         target=target,
         label="predictions",
     )
+    shadow_requested = shadow_predictions is not None
+    prepared_shadow = _validate_target_frame(
+        shadow_predictions if shadow_predictions is not None else pd.DataFrame(),
+        target=target,
+        label="shadow predictions",
+    )
     normalized_terminal = str(terminal_status).strip().upper()
     if normalized_terminal == "PREDICTIONS_PUBLISHED" and prepared_predictions.empty:
         raise ValueError(
@@ -127,6 +148,28 @@ def publish_target_outcome(
         )
         if prediction_created.isna().any() or prediction_created.gt(created).any():
             raise ValueError("Target predictions have an invalid creation clock")
+    if shadow_requested:
+        if len(prepared_shadow) != len(prepared_predictions):
+            raise ValueError("Every baseline prediction requires one shadow sidecar row")
+        natural = [
+            "symbol",
+            "target_snapshot_for",
+            "call_put",
+            "contract_symbol",
+            "prediction_created_at",
+        ]
+        if not prepared_shadow.empty:
+            shadow_modes = prepared_shadow["prediction_mode"].astype("string").str.upper()
+            if not shadow_modes.eq("LIVE").all():
+                raise ValueError("Target authority may publish only LIVE shadow rows")
+            if prepared_shadow["automated_action_allowed"].fillna(True).astype(bool).any():
+                raise ValueError("Shadow rows may never authorize automated action")
+            baseline_keys = prepared_predictions.loc[:, natural].astype(str)
+            shadow_keys = prepared_shadow.loc[:, natural].astype(str)
+            if set(map(tuple, baseline_keys.to_numpy())) != set(
+                map(tuple, shadow_keys.to_numpy())
+            ):
+                raise ValueError("Shadow sidecar natural keys disagree with baseline")
 
     previous: Mapping[str, object] | None = None
     pointer_path = target_outcome_pointer_path(root)
@@ -145,11 +188,12 @@ def publish_target_outcome(
     )
     samples_path = staging / "pricing-samples.parquet"
     predictions_path = staging / "pricing-predictions.parquet"
+    shadow_path = staging / TARGET_OUTCOME_SHADOW_NAME
     outcome_path = staging / "outcome.json"
     manifest_path = staging / "manifest.json"
     receipt_path = staging / "receipt.json"
     outcome = {
-        "schema_version": TARGET_OUTCOME_VERSION,
+        "schema_version": TARGET_OUTCOME_V2 if shadow_requested else TARGET_OUTCOME_VERSION,
         "target_snapshot_for": target.isoformat(),
         "prediction_created_at": created.isoformat(),
         "terminal_status": normalized_terminal,
@@ -160,6 +204,7 @@ def publish_target_outcome(
         "bar_readiness": dict(bar_readiness) if bar_readiness is not None else None,
         "sample_rows": len(prepared_samples),
         "prediction_rows": len(prepared_predictions),
+        "shadow_prediction_rows": len(prepared_shadow) if shadow_requested else None,
         "automated_action_allowed": False,
     }
     try:
@@ -180,6 +225,9 @@ def publish_target_outcome(
         if not prepared_predictions.empty:
             prepared_predictions = prepared_predictions.copy()
             prepared_predictions["prediction_available_at"] = published
+        if shadow_requested and not prepared_shadow.empty:
+            prepared_shadow = prepared_shadow.copy()
+            prepared_shadow["prediction_available_at"] = published
         write_parquet_with_schema(
             _output_frame(
                 prepared_predictions,
@@ -194,22 +242,50 @@ def publish_target_outcome(
             predictions_path,
             OPTION_PRICING_PREDICTION_SCHEMA,
         )
+        if shadow_requested:
+            write_parquet_with_schema(
+                _output_frame(
+                    prepared_shadow,
+                    schema=OPTION_PRICING_BSGP_SHADOW_SCHEMA,
+                    keys=(
+                        "symbol",
+                        "target_snapshot_for",
+                        "contract_symbol",
+                        "prediction_created_at",
+                    ),
+                ),
+                shadow_path,
+                OPTION_PRICING_BSGP_SHADOW_SCHEMA,
+            )
+        output_paths = [samples_path, predictions_path, outcome_path]
+        if shadow_requested:
+            output_paths.append(shadow_path)
         outputs = {
             path.name: {
                 "size": path.stat().st_size,
                 "checksum_sha256": file_checksum(path),
             }
-            for path in (samples_path, predictions_path, outcome_path)
+            for path in output_paths
         }
         manifest = {
-            "schema_version": TARGET_OUTCOME_MANIFEST_VERSION,
+            "schema_version": (
+                TARGET_OUTCOME_MANIFEST_V2
+                if shadow_requested
+                else TARGET_OUTCOME_MANIFEST_VERSION
+            ),
             "target_snapshot_for": target.isoformat(),
             "created_at": created.isoformat(),
             "outputs": outputs,
         }
+        if shadow_requested:
+            manifest["input_files"] = _input_file_inventory(input_files, root=root)
         _write_json(manifest_path, manifest)
         receipt = {
-            "schema_version": TARGET_OUTCOME_RECEIPT_VERSION,
+            "schema_version": (
+                TARGET_OUTCOME_RECEIPT_V2
+                if shadow_requested
+                else TARGET_OUTCOME_RECEIPT_VERSION
+            ),
             "run_path": destination.relative_to(root).as_posix(),
             "target_snapshot_for": target.isoformat(),
             "created_at": created.isoformat(),
@@ -378,9 +454,24 @@ def _read_directory(root: Path, directory: Path) -> TargetOutcomePublication:
     outputs = manifest.get("outputs")
     if not isinstance(outputs, Mapping):
         raise TargetOutcomeError("Pricing target manifest output inventory is malformed")
-    expected_names = {"pricing-samples.parquet", "pricing-predictions.parquet", "outcome.json"}
+    receipt_version = receipt.get("schema_version")
+    has_shadow = receipt_version == TARGET_OUTCOME_RECEIPT_V2
+    if receipt_version not in {
+        TARGET_OUTCOME_RECEIPT_VERSION,
+        TARGET_OUTCOME_RECEIPT_V2,
+    }:
+        raise TargetOutcomeError("Pricing target receipt schema is unsupported")
+    expected_names = {
+        "pricing-samples.parquet",
+        "pricing-predictions.parquet",
+        "outcome.json",
+    }
+    if has_shadow:
+        expected_names.add(TARGET_OUTCOME_SHADOW_NAME)
     if set(outputs) != expected_names:
         raise TargetOutcomeError("Pricing target manifest output inventory is incomplete")
+    if has_shadow:
+        _verify_input_file_inventory(manifest.get("input_files"), root=root)
     for name in expected_names:
         path = directory / name
         metadata = outputs.get(name)
@@ -395,12 +486,61 @@ def _read_directory(root: Path, directory: Path) -> TargetOutcomePublication:
     verify_parquet_schema(
         directory / "pricing-predictions.parquet", OPTION_PRICING_PREDICTION_SCHEMA
     )
+    if has_shadow:
+        verify_parquet_schema(
+            directory / TARGET_OUTCOME_SHADOW_NAME,
+            OPTION_PRICING_BSGP_SHADOW_SCHEMA,
+        )
+        baseline_frame = pd.read_parquet(
+            directory / "pricing-predictions.parquet"
+        ).drop(columns="id", errors="ignore")
+        shadow_frame = pd.read_parquet(
+            directory / TARGET_OUTCOME_SHADOW_NAME
+        ).drop(columns="id", errors="ignore")
+        natural = [
+            "symbol",
+            "target_snapshot_for",
+            "call_put",
+            "contract_symbol",
+            "prediction_created_at",
+        ]
+        if (
+            len(shadow_frame) != len(baseline_frame)
+            or int(outcome.get("shadow_prediction_rows", -1)) != len(shadow_frame)
+            or shadow_frame["automated_action_allowed"]
+            .fillna(True)
+            .astype(bool)
+            .any()
+            or not pd.to_datetime(
+                shadow_frame["prediction_available_at"],
+                utc=True,
+                errors="coerce",
+            )
+            .eq(published)
+            .all()
+            or set(map(tuple, shadow_frame[natural].astype(str).to_numpy()))
+            != set(map(tuple, baseline_frame[natural].astype(str).to_numpy()))
+        ):
+            raise TargetOutcomeError("Pricing target shadow sidecar scope is invalid")
+        joined = baseline_frame[natural + ["black_scholes_price"]].merge(
+            shadow_frame[natural + ["black_scholes_price"]],
+            on=natural,
+            how="outer",
+            validate="one_to_one",
+            suffixes=("_baseline", "_shadow"),
+        )
+        if not joined["black_scholes_price_baseline"].equals(
+            joined["black_scholes_price_shadow"]
+        ):
+            raise TargetOutcomeError("Shadow sidecar changed Black-Scholes values")
+        _verify_shadow_model_lineage(shadow_frame, root=root)
     symbols = tuple(str(value).strip().upper() for value in outcome.get("symbols", ()))
     symbol_outcomes = outcome.get("symbol_outcomes")
     if (
-        receipt.get("schema_version") != TARGET_OUTCOME_RECEIPT_VERSION
-        or manifest.get("schema_version") != TARGET_OUTCOME_MANIFEST_VERSION
-        or outcome.get("schema_version") != TARGET_OUTCOME_VERSION
+        manifest.get("schema_version")
+        != (TARGET_OUTCOME_MANIFEST_V2 if has_shadow else TARGET_OUTCOME_MANIFEST_VERSION)
+        or outcome.get("schema_version")
+        != (TARGET_OUTCOME_V2 if has_shadow else TARGET_OUTCOME_VERSION)
         or receipt.get("run_path") != directory.relative_to(root).as_posix()
         or receipt.get("manifest_checksum_sha256") != file_checksum(manifest_path)
         or utc_timestamp(manifest.get("target_snapshot_for")) != target
@@ -435,6 +575,9 @@ def _read_directory(root: Path, directory: Path) -> TargetOutcomePublication:
         directory=directory,
         samples_path=directory / "pricing-samples.parquet",
         predictions_path=directory / "pricing-predictions.parquet",
+        shadow_predictions_path=(
+            directory / TARGET_OUTCOME_SHADOW_NAME if has_shadow else None
+        ),
         outcome_path=outcome_path,
         manifest_path=manifest_path,
         receipt_path=receipt_path,
@@ -495,7 +638,8 @@ def _read_record_metadata(
         raise TargetOutcomeError("Previous Pricing target receipt is malformed")
     published = utc_timestamp(receipt.get("published_at"))
     if (
-        receipt.get("schema_version") != TARGET_OUTCOME_RECEIPT_VERSION
+        receipt.get("schema_version")
+        not in {TARGET_OUTCOME_RECEIPT_VERSION, TARGET_OUTCOME_RECEIPT_V2}
         or receipt.get("run_path") != relative.as_posix()
         or record.get("manifest_checksum_sha256") != file_checksum(manifest_path)
         or record.get("receipt_checksum_sha256") != file_checksum(receipt_path)
@@ -536,6 +680,118 @@ def _output_frame(
     return frame_with_readable_id(frame.drop(columns="id", errors="ignore"), key_columns=keys)
 
 
+def _input_file_inventory(
+    files: Sequence[Path],
+    *,
+    root: Path,
+) -> list[dict[str, object]]:
+    inventory: list[dict[str, object]] = []
+    seen: set[Path] = set()
+    for raw in files:
+        path = Path(raw).resolve()
+        if path in seen:
+            continue
+        seen.add(path)
+        if root not in path.parents or not path.is_file():
+            raise TargetOutcomeError(
+                f"Pricing target input escapes or is missing: {path}"
+            )
+        inventory.append(
+            {
+                "path": path.relative_to(root).as_posix(),
+                "size": path.stat().st_size,
+                "checksum_sha256": file_checksum(path),
+            }
+        )
+    return sorted(inventory, key=lambda value: str(value["path"]))
+
+
+def _verify_input_file_inventory(raw: object, *, root: Path) -> None:
+    if not isinstance(raw, list):
+        raise TargetOutcomeError("Pricing target input inventory is malformed")
+    seen: set[str] = set()
+    for item in raw:
+        if not isinstance(item, Mapping) or set(item) != {
+            "path",
+            "size",
+            "checksum_sha256",
+        }:
+            raise TargetOutcomeError("Pricing target input inventory fields changed")
+        relative = Path(str(item.get("path", "")))
+        path = (root / relative).resolve()
+        normalized = relative.as_posix()
+        if (
+            normalized in seen
+            or relative.is_absolute()
+            or root not in path.parents
+            or not path.is_file()
+            or int(item.get("size", -1)) != path.stat().st_size
+            or item.get("checksum_sha256") != file_checksum(path)
+        ):
+            raise TargetOutcomeError(
+                f"Pricing target input failed verification: {path}"
+            )
+        seen.add(normalized)
+
+
+def _verify_shadow_model_lineage(frame: pd.DataFrame, *, root: Path) -> None:
+    if frame.empty:
+        return
+    raw_paths = frame["bsgp_shadow_model_generation_path"].astype("string").fillna("")
+    paths = {str(value).strip() for value in raw_paths if str(value).strip()}
+    attestation = (
+        frame["bsgp_shadow_model_generation_attestation"]
+        .astype("string")
+        .fillna("")
+    )
+    timestamp_columns = (
+        "bsgp_shadow_model_published_at",
+        "bsgp_shadow_model_trained_through",
+        "bsgp_shadow_model_expires_at",
+    )
+    if not paths:
+        if attestation.str.strip().ne("").any() or any(
+            pd.to_datetime(frame[column], utc=True, errors="coerce").notna().any()
+            for column in timestamp_columns
+        ):
+            raise TargetOutcomeError(
+                "Baseline fallback sidecar contains unverifiable model lineage"
+            )
+        return
+    if len(paths) != 1 or raw_paths.str.strip().eq("").any():
+        raise TargetOutcomeError("Pricing target mixes shadow model generations")
+    from ml.option_pricing.shadow_model import read_loop_native_model_generation
+
+    generation_path = (root / next(iter(paths))).resolve()
+    generation = read_loop_native_model_generation(
+        generation_path,
+        datastore_root=root,
+    )
+    if not attestation.eq(generation.generation_hash).all():
+        raise TargetOutcomeError("Shadow model generation attestation disagrees")
+    expected_times = {
+        "bsgp_shadow_model_published_at": generation.published_at,
+        "bsgp_shadow_model_trained_through": generation.trained_through,
+        "bsgp_shadow_model_expires_at": generation.expires_at,
+    }
+    for column, expected in expected_times.items():
+        observed = pd.to_datetime(frame[column], utc=True, errors="coerce")
+        if observed.isna().any() or not observed.eq(expected).all():
+            raise TargetOutcomeError("Shadow model generation clocks disagree")
+    created = pd.to_datetime(
+        frame["prediction_created_at"], utc=True, errors="coerce"
+    )
+    if (
+        created.isna().any()
+        or not created.gt(generation.published_at).all()
+        or not created.ge(generation.effective_from).all()
+        or not created.lt(generation.expires_at).all()
+    ):
+        raise TargetOutcomeError(
+            "Shadow model was not strictly earlier, effective, and unexpired at prediction creation"
+        )
+
+
 def _write_json(path: Path, payload: Mapping[str, object]) -> None:
     path.write_text(
         json.dumps(dict(payload), indent=2, sort_keys=True, default=str) + "\n",
@@ -555,7 +811,9 @@ def _write_json_atomic(path: Path, payload: Mapping[str, object]) -> None:
 
 __all__ = [
     "TARGET_OUTCOME_PROOF_COLUMNS",
+    "TARGET_OUTCOME_SHADOW_NAME",
     "TARGET_OUTCOME_VERSION",
+    "TARGET_OUTCOME_V2",
     "TargetOutcomeError",
     "TargetOutcomePublication",
     "authoritative_target_outcomes",

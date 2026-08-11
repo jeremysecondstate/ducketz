@@ -243,7 +243,9 @@ def operational_preflight_report(
         )
         for module in (
             "ml.option_pricing_runtime",
+            "ml.option_pricing_loop_native_worker",
             "ml.option_pricing_opra",
+            "ml.option_pricing_fred",
             "ml.option_pricing_admin",
             "ml.option_pricing_lockbox",
         )

@@ -276,7 +276,9 @@ def test_pricing_published_after_target_receipt_is_never_prospective(
         snapshots_by_symbol={"GOOG": (snapshot,)},
         evaluated_at=target + pd.Timedelta(minutes=2),
     )
-    assert evaluated["evaluation_status"].eq("PENDING_TARGET_RECEIPT").all()
+    assert evaluated["evaluation_status"].eq(
+        "TARGET_ALREADY_OBSERVED_BEFORE_PREDICTION"
+    ).all()
     assert evaluated["prospective_eligible"].eq(False).all()
 
 
@@ -1075,6 +1077,8 @@ def _publish_target_snapshot(
                 "expiration_date": row["expiration_date"],
                 "strike": row["strike"],
                 "multiplier": row["multiplier"],
+                "mini": False,
+                "non_standard": False,
                 "bid": 9.9,
                 "ask": 10.1,
                 "quote_timestamp": publication.published_at

@@ -13,6 +13,7 @@ topology; they do not claim that the Pricing supervisor has been deployed.
 | `datafetching.options_runtime` | Immutable Schwab raw-chain, normalized-contract, and option-quality snapshot directories and their pointer; integrated receipts record their Pricing barrier proof, and the process also maintains the legacy monthly option mirrors |
 | `datafetching.orchestrate` (Loop A) | Equity bars and quotes, non-CME shared macro data, fundamentals, technicals, signals, and immutable all-symbol `loop-a/bar-readiness/**` receipts |
 | `ml.option_pricing_runtime` | Immutable shadow target outcomes, pricing samples, predictions, evaluations, compact surfaces, monitoring, reports, copied models, `ml/option-pricing-target-latest/run.json`, and `ml/option-pricing-latest/run.json` |
+| `ml.option_pricing_fred` (bounded import) | Immutable FRED/ALFRED provider responses, vintage manifest/receipt, append-only macro-vintage rows, and derived point-in-time FEDFUNDS release features; never current-revised historical claims |
 | `ml.prediction_runtime` (Loop B) | Immutable directional sample, prediction, evaluation, monitoring, and intelligence runs plus `ml/latest/run.json` |
 | `ml.strategy_runtime` | Immutable strategy candidates, audits, reports, and copied model artifacts plus `ml/strategy-latest/run.json` |
 

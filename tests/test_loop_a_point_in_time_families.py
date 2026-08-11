@@ -312,7 +312,7 @@ def test_fred_vintage_replay_preserves_first_local_receipt(
     stored = pd.read_parquet(path)
     assert len(stored) == 1
     assert stored.iloc[0]["fetched_at"] == first.iloc[0]["fetched_at"]
-    assert stored.iloc[0]["schema_version"] == "fred-vintage-v1"
+    assert stored.iloc[0]["schema_version"] == "fred-vintage-v2"
 
 
 def test_macro_lag_requires_exact_calendar_cadence() -> None:

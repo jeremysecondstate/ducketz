@@ -8,7 +8,11 @@ import pandas as pd
 from datafetching.calculated_features import write_immutable_feature_partition
 from datafetching.layout import safe_token
 
-FRED_VINTAGE_SCHEMA_VERSION = "fred-vintage-v1"
+FRED_VINTAGE_SCHEMA_VERSION = "fred-vintage-v2"
+ALFRED_VINTAGE_AVAILABILITY_BASIS = (
+    "ALFRED_REALTIME_START_DATE_END_OF_DAY_AMERICA_CHICAGO_V1"
+)
+LOCAL_RECEIPT_AVAILABILITY_BASIS = "LOCAL_ACQUISITION_MAX_PROVIDER_V1"
 MACRO_CALCULATION = "macro-release-context"
 MACRO_CALCULATION_VERSION = "1.0.0"
 MACRO_SCHEMA_VERSION = "macro-release-context-v1"
@@ -21,8 +25,10 @@ FRED_VINTAGE_COLUMNS = (
     "realtime_start",
     "realtime_end",
     "release_at",
+    "release_time_precision",
     "fetched_at",
     "available_at",
+    "availability_basis",
     "value",
     "unit",
     "frequency",
@@ -114,10 +120,31 @@ def normalize_fred_vintage_rows(
     output["realtime_end"] = output["realtime_end"].fillna(
         pd.Timestamp.max.tz_localize("UTC")
     )
-    output["available_at"] = pd.concat(
+    default_available_at = pd.concat(
         [output["release_at"], output["fetched_at"]],
         axis=1,
     ).max(axis=1)
+    basis_source = (
+        frame["availability_basis"]
+        if "availability_basis" in frame
+        else pd.Series(LOCAL_RECEIPT_AVAILABILITY_BASIS, index=frame.index)
+    )
+    output["availability_basis"] = basis_source.astype("string").str.strip()
+    precision_source = (
+        frame["release_time_precision"]
+        if "release_time_precision" in frame
+        else pd.Series("TIMESTAMP", index=frame.index)
+    )
+    output["release_time_precision"] = (
+        precision_source.astype("string").str.strip().str.upper()
+    )
+    alfred_vintage = output["availability_basis"].eq(
+        ALFRED_VINTAGE_AVAILABILITY_BASIS
+    )
+    output["available_at"] = default_available_at
+    output.loc[alfred_vintage, "available_at"] = output.loc[
+        alfred_vintage, "release_at"
+    ]
     output["value"] = pd.to_numeric(frame["value"], errors="coerce")
     output["unit"] = (
         frame["unit"]
@@ -133,14 +160,40 @@ def normalize_fred_vintage_rows(
     )
     output["frequency"] = frequency_source.astype("string")
     output["schema_version"] = FRED_VINTAGE_SCHEMA_VERSION
+    supported_basis = {
+        ALFRED_VINTAGE_AVAILABILITY_BASIS,
+        LOCAL_RECEIPT_AVAILABILITY_BASIS,
+    }
+    unsupported_basis = sorted(
+        set(output["availability_basis"].dropna().astype(str)).difference(
+            supported_basis
+        )
+    )
+    if unsupported_basis:
+        raise ValueError(
+            "FRED vintage rows contain unsupported availability basis: "
+            + ", ".join(unsupported_basis)
+        )
+    if (
+        output.loc[alfred_vintage, "release_time_precision"].ne("DATE").any()
+        or output.loc[alfred_vintage, "fetched_at"].lt(
+            output.loc[alfred_vintage, "release_at"]
+        ).any()
+    ):
+        raise ValueError(
+            "ALFRED vintage rows require date-precision provider timing and "
+            "a later actual local acquisition"
+        )
     if output[
         [
             "series_name",
             "observation_date",
             "realtime_start",
             "release_at",
+            "release_time_precision",
             "fetched_at",
             "available_at",
+            "availability_basis",
             "value",
         ]
     ].isna().any().any():
@@ -374,6 +427,51 @@ def persist_current_fred_rate_receipt(
     )
 
 
+def derive_alfred_rate_release_features(
+    vintages: pd.DataFrame,
+) -> pd.DataFrame:
+    """Derive point-in-time FEDFUNDS levels from verified ALFRED vintages.
+
+    ``available_at`` is the conservative provider-vintage clock.  The distinct
+    local acquisition clock remains in the immutable vintage evidence and is
+    never rewritten as historical availability.
+    """
+
+    values = normalize_fred_vintage_rows(vintages)
+    values = values.loc[
+        values["series_name"].eq("FEDFUNDS")
+        & values["availability_basis"].eq(ALFRED_VINTAGE_AVAILABILITY_BASIS)
+    ].copy()
+    if values.empty:
+        raise ValueError("No verified ALFRED FEDFUNDS vintages are available")
+    rows: list[dict[str, object]] = []
+    for available_at in values["available_at"].drop_duplicates().sort_values():
+        known = _latest_vintage_by_observation(
+            values.loc[values["available_at"].le(available_at)]
+        )
+        rate, rate_available_at = _latest_value_with_availability(known)
+        if rate is None or rate_available_at is None:
+            continue
+        rows.append(
+            {
+                "context_name": "fred-alfred-vintage-rate",
+                "available_at": available_at,
+                "calculation": "macro-alfred-vintage-rate",
+                "calculation_version": MACRO_CALCULATION_VERSION,
+                "schema_version": MACRO_SCHEMA_VERSION,
+                "fed_funds_available_at": rate_available_at,
+                "cpi_available_at": pd.NaT,
+                "unemployment_available_at": pd.NaT,
+                "gdp_available_at": pd.NaT,
+                "macro__fed_funds_level": rate,
+                "macro__cpi_yoy": float("nan"),
+                "macro__unemployment_change": float("nan"),
+                "macro__gdp_yoy": float("nan"),
+            }
+        )
+    return pd.DataFrame(rows, columns=MACRO_FEATURE_COLUMNS)
+
+
 def materialize_current_fred_rate_receipt(
     datastore_root: Path,
 ) -> tuple[Path, ...]:
@@ -469,6 +567,8 @@ def _drop_replayed_vintages(
         )
     compare_columns = (
         "release_at",
+        "release_time_precision",
+        "availability_basis",
         "value",
         "unit",
         "frequency",

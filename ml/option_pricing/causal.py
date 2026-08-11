@@ -76,9 +76,22 @@ def _strictly_earlier_snapshots(
         if snapshot.snapshot_for < target
         and _snapshot_receipt_available_at(snapshot) < created
     ]
+    # A Schwab snapshot is identified by its natural market target, not by the
+    # number of times it was republished.  Later receipts remain useful
+    # lineage diagnostics, but they may neither replace the earliest causal
+    # source nor multiply its influence.
+    earliest_by_target: dict[pd.Timestamp, CommittedOptionSnapshot] = {}
+    for snapshot in eligible:
+        previous = earliest_by_target.get(snapshot.snapshot_for)
+        if previous is None or (
+            _snapshot_receipt_available_at(snapshot), snapshot.directory.as_posix()
+        ) < (
+            _snapshot_receipt_available_at(previous), previous.directory.as_posix()
+        ):
+            earliest_by_target[snapshot.snapshot_for] = snapshot
     return tuple(
         sorted(
-            eligible,
+            earliest_by_target.values(),
             key=lambda snapshot: (
                 snapshot.snapshot_for,
                 _snapshot_receipt_available_at(snapshot),
@@ -99,6 +112,7 @@ def build_live_prediction_inputs(
     target_source_files: Sequence[Path] | None = None,
     contract_policy: ContractSelectionPolicy | None = None,
     rate_observations: pd.DataFrame | None = None,
+    allow_source_chain_carry_fallback: bool = True,
 ) -> CausalSampleBatch:
     """Resolve a pre-quote target bar and materialize strictly lagged inputs."""
 
@@ -196,6 +210,7 @@ def build_live_prediction_inputs(
             prediction_mode="LIVE",
             contract_policy=policy,
             rate_observations=rate_observations,
+            allow_source_chain_carry_fallback=allow_source_chain_carry_fallback,
         )
         available = samples["sample_status"].eq("AVAILABLE").any()
         if available and source_index:
@@ -247,6 +262,7 @@ def build_live_prediction_inputs(
         prediction_mode="LIVE",
         contract_policy=policy,
         rate_observations=rate_observations,
+        allow_source_chain_carry_fallback=allow_source_chain_carry_fallback,
     )
     return CausalSampleBatch(
         samples,
@@ -274,6 +290,7 @@ def build_causal_samples(
     observed_available_at: object | None = None,
     contract_policy: ContractSelectionPolicy | None = None,
     rate_observations: pd.DataFrame | None = None,
+    allow_source_chain_carry_fallback: bool = True,
 ) -> pd.DataFrame:
     """Build the six-feature causal contract without target quote leakage."""
 
@@ -342,6 +359,7 @@ def build_causal_samples(
         risk_free_rate=resolved_rate,
         source_snapshot_for=source_time,
         source_available_at=source_available,
+        allow_source_chain_fallback=allow_source_chain_carry_fallback,
     )
     source["_resolved_rate"] = resolved_rate
     source["_resolved_dividend"] = resolved_dividend
@@ -418,10 +436,13 @@ def build_causal_samples(
                 if (
                     observed_bid is None
                     or observed_ask is None
-                    or observed_ask < observed_bid
-                    or (observed_bid + observed_ask) / 2.0 <= 0.0
+                    or observed_bid <= 0.0
+                    or observed_ask <= observed_bid
                 ):
-                    status, reason = "TARGET_QUOTE_INVALID", "Target NBBO is missing, crossed, or nonpositive."
+                    status, reason = (
+                        "TARGET_QUOTE_INVALID",
+                        "Target BBO is missing, locked, crossed, or nonpositive.",
+                    )
                 elif observed_at is None or observed_at <= target_time:
                     status, reason = (
                         "TARGET_AVAILABILITY_INVALID",
@@ -704,48 +725,66 @@ def reconcile_predictions(
         authority_available = (
             authority_proof_time if authority_proof_time is not None else available
         )
-        matching = sorted(
+        natural_receipts = sorted(
             (
                 snapshot
                 for snapshot in snapshots_by_symbol.get(symbol, ())
                 if snapshot.snapshot_for == target
-                and _snapshot_receipt_available_at(snapshot) > created
-                and _snapshot_receipt_available_at(snapshot) > authority_available
             ),
-            key=_snapshot_receipt_available_at,
+            key=lambda snapshot: (
+                _snapshot_receipt_available_at(snapshot),
+                snapshot.directory.as_posix(),
+            ),
         )
         status = "PENDING_TARGET_RECEIPT"
         observed: Mapping[str, object] | None = None
         receipt_available: pd.Timestamp | None = None
         authority_proven = False
-        if matching:
-            snapshot = matching[0]
+        if natural_receipts:
+            # The earliest immutable receipt is authoritative for the natural
+            # target.  A later duplicate can never rescue a prediction made
+            # after that target had already been observed.
+            snapshot = natural_receipts[0]
             receipt_available = _snapshot_receipt_available_at(snapshot)
-            authority_proven = _prospective_authority_proven(prediction, snapshot)
-            contracts = contract_cache.setdefault(
-                snapshot.contracts_path,
-                pd.read_parquet(snapshot.contracts_path),
-            )
-            exact = contracts.loc[
-                contracts["contract_symbol"].astype(str).eq(str(prediction["contract_symbol"]))
-            ]
-            if exact.empty:
-                status = "MISSING_TARGET_CONTRACT"
-            elif len(exact) != 1 or not _same_semantic_contract(prediction, exact.iloc[0]):
-                status = "TARGET_CONTRACT_MISMATCH"
+            if receipt_available <= created or receipt_available <= authority_available:
+                status = "TARGET_ALREADY_OBSERVED_BEFORE_PREDICTION"
             else:
-                observed = exact.iloc[0].to_dict()
-                quote_time = _timestamp_or_none(observed.get("quote_timestamp"))
-                bid = _finite_or_none(observed.get("bid"))
-                ask = _finite_or_none(observed.get("ask"))
-                if quote_time is None:
-                    status = "TARGET_QUOTE_TIMESTAMP_MISSING"
-                elif quote_time <= created or quote_time <= authority_available:
-                    status = "STALE_PRE_PREDICTION_QUOTE"
-                elif bid is None or ask is None or ask < bid or (bid + ask) / 2.0 <= 0.0:
-                    status = "TARGET_QUOTE_INVALID"
+                authority_proven = _prospective_authority_proven(
+                    prediction, snapshot
+                )
+                contracts = contract_cache.setdefault(
+                    snapshot.contracts_path,
+                    pd.read_parquet(snapshot.contracts_path),
+                )
+                exact = contracts.loc[
+                    contracts["contract_symbol"]
+                    .astype(str)
+                    .eq(str(prediction["contract_symbol"]))
+                ]
+                if exact.empty:
+                    status = "MISSING_TARGET_CONTRACT"
+                elif len(exact) != 1 or not _same_semantic_contract(
+                    prediction, exact.iloc[0]
+                ):
+                    status = "TARGET_CONTRACT_MISMATCH"
                 else:
-                    status = "COMPLETE"
+                    observed = exact.iloc[0].to_dict()
+                    quote_time = _timestamp_or_none(observed.get("quote_timestamp"))
+                    bid = _finite_or_none(observed.get("bid"))
+                    ask = _finite_or_none(observed.get("ask"))
+                    if quote_time is None:
+                        status = "TARGET_QUOTE_TIMESTAMP_MISSING"
+                    elif quote_time <= created or quote_time <= authority_available:
+                        status = "STALE_PRE_PREDICTION_QUOTE"
+                    elif (
+                        bid is None
+                        or ask is None
+                        or bid <= 0.0
+                        or ask <= bid
+                    ):
+                        status = "TARGET_QUOTE_INVALID"
+                    else:
+                        status = "COMPLETE"
         rows.append(
             _evaluation_row(
                 prediction,
@@ -834,7 +873,12 @@ def evaluate_offline_predictions(
                     status = "STALE_PRE_PREDICTION_QUOTE"
                 elif observed_available is None or observed_available <= available:
                     status = "TARGET_AVAILABILITY_INVALID"
-                elif bid is None or ask is None or ask < bid or (bid + ask) / 2.0 <= 0:
+                elif (
+                    bid is None
+                    or ask is None
+                    or bid <= 0.0
+                    or ask <= bid
+                ):
                     status = "TARGET_QUOTE_INVALID"
                 else:
                     status = "COMPLETE"
@@ -1068,11 +1112,17 @@ def _surface_dividend(
     risk_free_rate: float | None,
     source_snapshot_for: pd.Timestamp,
     source_available_at: pd.Timestamp,
+    allow_source_chain_fallback: bool = True,
 ) -> tuple[float | None, pd.Timestamp | None]:
     provider = pd.to_numeric(source.get("dividend_yield"), errors="coerce")
     provider = provider.loc[np.isfinite(provider) & provider.between(-0.20, 0.50)]
     if not provider.empty:
         return float(provider.median()), source_available_at
+    if not allow_source_chain_fallback:
+        # The Loop-native v1 lane excludes missing carry rather than relying on
+        # the legacy single-strike American parity approximation.  A future
+        # source-chain policy must be separately versioned and quality-gated.
+        return None, None
     if risk_free_rate is None:
         return None, None
     candidates: list[float] = []
@@ -1170,7 +1220,7 @@ def _source_contract_status(
         return "MONEYNESS_OUT_OF_RANGE", "Contract is outside the pilot log-moneyness range."
     bid = _finite_or_none(row.get("bid"))
     ask = _finite_or_none(row.get("ask"))
-    if bid is None or ask is None or ask <= bid or (bid + ask) / 2.0 <= 0.0:
+    if bid is None or ask is None or bid <= 0.0 or ask <= bid:
         return "SOURCE_QUOTE_INVALID", "Earlier BBO is missing, locked, crossed, or nonpositive."
     staleness = _finite_or_none(row.get("quote_staleness_seconds"))
     if staleness is None or staleness < 0.0 or staleness > policy.maximum_source_staleness_seconds:
@@ -1244,10 +1294,8 @@ def _source_contract_candidate_mask(
         )
         & moneyness.le(float(policy.maximum_absolute_log_moneyness))
         & np.isfinite(moneyness)
-        & bid.notna()
-        & ask.notna()
+        & bid.gt(0.0)
         & ask.gt(bid)
-        & bid.add(ask).div(2.0).gt(0.0)
         & staleness.between(
             0.0,
             float(policy.maximum_source_staleness_seconds),
@@ -1271,6 +1319,31 @@ def _same_semantic_contract(
                 float(observed["multiplier"]),
                 abs_tol=1e-9,
             )
+        observed_keys = set(
+            observed.index if isinstance(observed, pd.Series) else observed.keys()
+        )
+        expected_keys = set(
+            expected.index if isinstance(expected, pd.Series) else expected.keys()
+        )
+        observed_is_raw_contract = {
+            "bid",
+            "ask",
+            "quote_timestamp",
+        }.issubset(observed_keys)
+        standard_matches = True
+        if observed_is_raw_contract:
+            standard_matches = bool(
+                "mini" in observed_keys
+                and "non_standard" in observed_keys
+                and _explicit_bool(observed.get("mini")) is False
+                and _explicit_bool(observed.get("non_standard")) is False
+            )
+        if "mini" in expected_keys or "non_standard" in expected_keys:
+            standard_matches = bool(
+                standard_matches
+                and _explicit_bool(expected.get("mini")) is False
+                and _explicit_bool(expected.get("non_standard")) is False
+            )
         return bool(
             str(expected["contract_symbol"]) == str(observed["contract_symbol"])
             and str(expected["call_put"]).strip().upper()
@@ -1278,6 +1351,7 @@ def _same_semantic_contract(
             and math.isclose(float(expected["strike"]), float(observed["strike"]), abs_tol=1e-9)
             and expected_expiration == observed_expiration
             and multiplier_matches
+            and standard_matches
         )
     except (KeyError, TypeError, ValueError):
         return False

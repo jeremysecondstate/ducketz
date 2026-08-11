@@ -17,6 +17,11 @@ from ml.option_pricing.eligibility import (
     read_eligibility_policy,
 )
 from ml.option_pricing.lockbox import read_lockbox_result
+from ml.option_pricing.loop_native_eligibility import (
+    LOOP_NATIVE_ELIGIBILITY_PROTOCOL_VERSION,
+    read_current_loop_native_eligibility_policy,
+    read_current_loop_native_eligibility_report,
+)
 from ml.option_pricing.operations import (
     EXIT_EVIDENCE,
     EXIT_OK,
@@ -250,6 +255,7 @@ def _readiness(root: Path) -> int:
         next_rate_coverage=next_rate_coverage,
         next_live_rate_inputs=next_live_rate_inputs,
     )
+    summary["loop_native_v3"] = _loop_native_readiness_view(root)
     _print_json(summary)
     return (
         EXIT_OK
@@ -293,7 +299,8 @@ def build_readiness_summary(
         )
     if failed_numbers.intersection(range(2, 9)):
         actions.append(
-            "Complete the guarded real OPRA definition and CBBO evidence phases, "
+            "Legacy v2 only (optional benchmark under v3): complete the guarded real "
+            "OPRA definition and CBBO evidence phases, "
             "including exact underlying-bar and point-in-time rate coverage; fixtures "
             "and current-revised macro history are ineligible."
         )
@@ -391,6 +398,77 @@ def build_readiness_summary(
             ),
         },
         "recommended_next_actions": actions,
+    }
+
+
+def _loop_native_readiness_view(datastore_root: Path) -> dict[str, object]:
+    """Render v3 alongside, without mutating or reinterpreting legacy evidence."""
+
+    root = Path(datastore_root).resolve()
+    policy_pointer = (
+        root
+        / "ml"
+        / "option-pricing-loop-native-eligibility-policy-latest"
+        / "run.json"
+    )
+    report_pointer = (
+        root / "ml" / "option-pricing-loop-native-eligibility-latest" / "run.json"
+    )
+    try:
+        policy = read_current_loop_native_eligibility_policy(root)
+        policy_view: dict[str, object] = {
+            "status": "PASS",
+            "run_path": policy.receipt.get("run_path"),
+            "published_at": policy.receipt.get("published_at"),
+            "policy_hash_sha256": policy.policy_hash,
+        }
+    except Exception as exc:
+        policy_view = {
+            "status": "INVALID" if policy_pointer.exists() else "NOT_PUBLISHED",
+            "reason": f"{type(exc).__name__}: {exc}",
+        }
+    try:
+        report = read_current_loop_native_eligibility_report(root)
+        report_view: dict[str, object] = {
+            "status": "PASS",
+            "run_path": report.receipt.get("run_path"),
+            "published_at": report.receipt.get("published_at"),
+            "report_hash_sha256": report.policy_hash,
+            "gate_status": report.payload.get("gate_status"),
+            "gates": report.payload.get("gates"),
+            "routes": report.payload.get("routes"),
+            "capture_ready": report.payload.get("capture_ready") is True,
+            "research_gate_eligible": (
+                report.payload.get("research_gate_eligible") is True
+            ),
+            "production_authorized": (
+                report.payload.get("production_authorized") is True
+            ),
+        }
+    except Exception as exc:
+        report_view = {
+            "status": "INVALID" if report_pointer.exists() else "NOT_PUBLISHED",
+            "reason": f"{type(exc).__name__}: {exc}",
+            "capture_ready": False,
+            "research_gate_eligible": False,
+            "production_authorized": False,
+        }
+    return {
+        "protocol_version": LOOP_NATIVE_ELIGIBILITY_PROTOCOL_VERSION,
+        "policy": policy_view,
+        "report": report_view,
+        "paid_opra_required": False,
+        "paid_opra_role": "OPTIONAL_EXTERNAL_BENCHMARK_ONLY",
+        "required_symbol_side_routes": 20,
+        "automated_action_allowed": False,
+        "recommended_next_actions": [
+            "Deploy the verified Pricing and Options reader changes together only after "
+            "operator-approved process replacement.",
+            "Collect receipt-proven Schwab outcomes across all twenty routes; offline "
+            "bootstrap rows never increment prospective counts.",
+            "Do not freeze a candidate or open the lockbox until every prerequisite "
+            "passes and explicit authorization is recorded.",
+        ],
     }
 
 

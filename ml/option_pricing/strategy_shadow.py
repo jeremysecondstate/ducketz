@@ -18,6 +18,7 @@ from ml.option_pricing.publication import (
     authoritative_option_pricing_runs,
     receipt_proven_prediction_rows,
 )
+from ml.option_pricing.target_outcome import authoritative_target_outcomes
 
 
 STRATEGY_PRICING_SHADOW_VERSION = "strategy-option-pricing-shadow-v1"
@@ -65,38 +66,44 @@ def attach_strategy_pricing_shadow(
         )
 
     try:
-        run = _latest_reachable_run(
-            datastore_root,
-            available_not_after=available_not_after,
-        )
-        path = run / "pricing-predictions.parquet"
-        predictions = receipt_proven_prediction_rows(datastore_root)
         cutoff = utc_timestamp(available_not_after)
-        predictions = predictions.loc[
-            pd.to_datetime(
-                predictions.get("prediction_available_at"),
-                utc=True,
-                errors="coerce",
-            ).le(cutoff)
-        ].copy()
-        if predictions.empty:
-            raise FileNotFoundError("Verified Pricing publication has no predictions")
-        compatible = (
-            predictions["schema_version"].eq(OPTION_PRICING_SCHEMA_VERSION)
-            & predictions["pricing_policy_version"].eq(
-                OPTION_PRICING_POLICY_VERSION
-            )
-            & predictions["timing_policy_version"].eq(
-                OPTION_PRICING_TIMING_POLICY_VERSION
-            )
+        predictions, source_files = _loop_native_target_shadow_predictions(
+            datastore_root,
+            available_not_after=cutoff,
         )
-        if not compatible.all():
-            raise ValueError("Verified Pricing prediction policy/schema is incompatible")
-        predictions = predictions.loc[
-            predictions["prediction_status"].isin(("AVAILABLE", "CREATED"))
-            & predictions["projection_status"].eq("COMPLETE")
-            & ~predictions["automated_action_allowed"].fillna(True).astype(bool)
-        ].copy()
+        if predictions.empty:
+            run = _latest_reachable_run(
+                datastore_root,
+                available_not_after=available_not_after,
+            )
+            path = run / "pricing-predictions.parquet"
+            predictions = receipt_proven_prediction_rows(datastore_root)
+            predictions = predictions.loc[
+                pd.to_datetime(
+                    predictions.get("prediction_available_at"),
+                    utc=True,
+                    errors="coerce",
+                ).le(cutoff)
+            ].copy()
+            if predictions.empty:
+                raise FileNotFoundError("Verified Pricing publication has no predictions")
+            compatible = (
+                predictions["schema_version"].eq(OPTION_PRICING_SCHEMA_VERSION)
+                & predictions["pricing_policy_version"].eq(
+                    OPTION_PRICING_POLICY_VERSION
+                )
+                & predictions["timing_policy_version"].eq(
+                    OPTION_PRICING_TIMING_POLICY_VERSION
+                )
+            )
+            if not compatible.all():
+                raise ValueError("Verified Pricing prediction policy/schema is incompatible")
+            predictions = predictions.loc[
+                predictions["prediction_status"].isin(("AVAILABLE", "CREATED"))
+                & predictions["projection_status"].eq("COMPLETE")
+                & ~predictions["automated_action_allowed"].fillna(True).astype(bool)
+            ].copy()
+            source_files = (path, run / "manifest.json", run / "publication.json")
         if predictions.empty:
             raise FileNotFoundError("Verified Pricing publication has no usable shadow predictions")
         for column in (
@@ -106,7 +113,6 @@ def attach_strategy_pricing_shadow(
             "prediction_available_at",
         ):
             predictions[column] = pd.to_datetime(predictions[column], utc=True, errors="coerce")
-        source_files = (path, run / "manifest.json", run / "publication.json")
     except Exception as exc:
         reason = f"PRICING_EVIDENCE_UNAVAILABLE:{type(exc).__name__}:{exc}"
         output = _unavailable_columns(
@@ -136,6 +142,63 @@ def attach_strategy_pricing_shadow(
         output,
         source_files,
         _shadow_report(output, mode=mode, publication_error=None),
+    )
+
+
+def _loop_native_target_shadow_predictions(
+    datastore_root: Path,
+    *,
+    available_not_after: pd.Timestamp,
+) -> tuple[pd.DataFrame, tuple[Path, ...]]:
+    frames: list[pd.DataFrame] = []
+    files: list[Path] = []
+    for outcome in authoritative_target_outcomes(datastore_root):
+        if outcome.published_at > available_not_after:
+            continue
+        shadow = outcome.shadow_predictions()
+        if shadow.empty:
+            continue
+        available = pd.to_datetime(
+            shadow["prediction_available_at"], utc=True, errors="coerce"
+        )
+        shadow = shadow.loc[
+            available.le(available_not_after)
+            & ~shadow["automated_action_allowed"].fillna(True).astype(bool)
+            & shadow["bsgp_shadow_fair_value_constrained"].notna()
+            & shadow["bsgp_shadow_projection_status"].isin(
+                ("COMPLETE", "BASELINE_COPIED")
+            )
+        ].copy()
+        if shadow.empty:
+            continue
+        shadow["constrained_fair_value"] = shadow[
+            "bsgp_shadow_fair_value_constrained"
+        ]
+        shadow["constrained_interval_95_lower"] = shadow[
+            "bsgp_shadow_constrained_interval_95_lower"
+        ]
+        shadow["constrained_interval_95_upper"] = shadow[
+            "bsgp_shadow_constrained_interval_95_upper"
+        ]
+        frames.append(shadow)
+        files.extend(
+            (
+                outcome.shadow_predictions_path,
+                outcome.manifest_path,
+                outcome.receipt_path,
+            )
+        )
+    if not frames:
+        return pd.DataFrame(), ()
+    predictions = pd.concat(frames, ignore_index=True, sort=False)
+    predictions = predictions.sort_values(
+        ["prediction_available_at", "prediction_created_at"], kind="stable"
+    ).drop_duplicates(
+        ["symbol", "target_snapshot_for", "call_put", "contract_symbol"],
+        keep="first",
+    )
+    return predictions.reset_index(drop=True), tuple(
+        dict.fromkeys(path for path in files if path is not None)
     )
 
 

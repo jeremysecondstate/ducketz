@@ -16,6 +16,29 @@ OPTION_PRICING_PROJECTION_POLICY_VERSION = "weighted-shape-projection-v1"
 OPTION_PRICING_SCHEMA_VERSION = "option-pricing-shadow-v1"
 OPTION_PRICING_FEATURE_CONTRACT_VERSION = "bsgp-six-semantic-inputs-v1"
 
+LOOP_NATIVE_SYMBOLS = (
+    "NVDA",
+    "GOOG",
+    "MU",
+    "AAPL",
+    "MSFT",
+    "AMZN",
+    "META",
+    "TSLA",
+    "CAT",
+    "SNDK",
+)
+LOOP_NATIVE_CALL_PUTS = ("CALL", "PUT")
+LOOP_NATIVE_MATERIALIZATION_POLICY_VERSION = (
+    "loop-native-schwab-causal-residual-materialization-v2"
+)
+LOOP_NATIVE_MODEL_POLICY_VERSION = "loop-native-pooled-bsgp-shadow-v2"
+LOOP_NATIVE_SHADOW_SCHEMA_VERSION = "loop-native-bsgp-shadow-v1"
+LOOP_NATIVE_SURFACE_WEIGHTING_POLICY_VERSION = (
+    "equal-symbol-target-call-put-surface-weight-v1"
+)
+LOOP_NATIVE_CARRY_POLICY_VERSION = "source-chain-american-parity-quality-gated-v1"
+
 SEMANTIC_FEATURE_COLUMNS = (
     "underlying_price",
     "strike",
@@ -98,6 +121,55 @@ class BSGPModelPolicy:
 
 
 @dataclass(frozen=True)
+class LoopNativeModelPolicy:
+    """Bounded capture model policy; eligibility thresholds remain separate."""
+
+    component_count: int = 128
+    gamma_grid: tuple[float, ...] = (0.1, 0.3, 1.0, 3.0)
+    random_state: int = 271_828
+    maximum_training_rows: int = 250_000
+    minimum_fit_sessions: int = 3
+    minimum_calibration_sessions: int = 2
+    minimum_assessment_sessions: int = 1
+    minimum_calibrated_sessions: int = 15
+    minimum_route_support_sessions: int = 3
+    maximum_age_hours: int = 72
+    maximum_predictive_standard_deviation_normalized: float = 0.20
+    support_margin_fraction: float = 0.05
+    minimum_predictive_standard_deviation: float = 1e-6
+    offline_emulation_delay_seconds: int = 60
+
+    def __post_init__(self) -> None:
+        if self.component_count < 1:
+            raise ValueError("component_count must be positive")
+        if not self.gamma_grid or any(value <= 0.0 for value in self.gamma_grid):
+            raise ValueError("gamma_grid must contain positive values")
+        if len(set(self.gamma_grid)) != len(self.gamma_grid):
+            raise ValueError("gamma_grid values must be unique")
+        for name in (
+            "maximum_training_rows",
+            "minimum_fit_sessions",
+            "minimum_calibration_sessions",
+            "minimum_assessment_sessions",
+            "minimum_calibrated_sessions",
+            "minimum_route_support_sessions",
+            "maximum_age_hours",
+        ):
+            if int(getattr(self, name)) < 1:
+                raise ValueError(f"{name} must be positive")
+        if self.maximum_predictive_standard_deviation_normalized <= 0.0:
+            raise ValueError(
+                "maximum_predictive_standard_deviation_normalized must be positive"
+            )
+        if self.support_margin_fraction < 0.0:
+            raise ValueError("support_margin_fraction cannot be negative")
+        if self.minimum_predictive_standard_deviation <= 0.0:
+            raise ValueError("minimum_predictive_standard_deviation must be positive")
+        if self.offline_emulation_delay_seconds < 0:
+            raise ValueError("offline_emulation_delay_seconds cannot be negative")
+
+
+@dataclass(frozen=True)
 class ProjectionPolicy:
     tolerance: float = 1e-8
     maximum_iterations: int = 2_000
@@ -116,6 +188,14 @@ __all__ = [
     "BSGPModelPolicy",
     "ContractSelectionPolicy",
     "DERIVED_FEATURE_COLUMNS",
+    "LOOP_NATIVE_CALL_PUTS",
+    "LOOP_NATIVE_CARRY_POLICY_VERSION",
+    "LOOP_NATIVE_MATERIALIZATION_POLICY_VERSION",
+    "LOOP_NATIVE_MODEL_POLICY_VERSION",
+    "LOOP_NATIVE_SHADOW_SCHEMA_VERSION",
+    "LOOP_NATIVE_SURFACE_WEIGHTING_POLICY_VERSION",
+    "LOOP_NATIVE_SYMBOLS",
+    "LoopNativeModelPolicy",
     "OPTION_PRICING_CONTRACT_POLICY_VERSION",
     "OPTION_PRICING_DIVIDEND_POLICY_VERSION",
     "OPTION_PRICING_EXPIRATION_POLICY_VERSION",

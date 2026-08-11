@@ -408,6 +408,40 @@ def test_reconciliation_requires_exact_later_quote_and_canonicalizes_duplicates(
     assert evaluated.iloc[0]["evaluation_status"] == "COMPLETE"
     assert bool(evaluated.iloc[0]["prospective_eligible"]) is True
 
+    target["non_standard"] = True
+    target.to_parquet(contracts_path, index=False)
+    nonstandard = reconcile_predictions(
+        canonical,
+        snapshots_by_symbol={"NVDA": (snapshot,)},
+        evaluated_at="2026-01-03T16:02:00Z",
+    )
+    assert nonstandard.iloc[0]["evaluation_status"] == "TARGET_CONTRACT_MISMATCH"
+    assert bool(nonstandard.iloc[0]["prospective_eligible"]) is False
+    target["non_standard"] = False
+    target.to_parquet(contracts_path, index=False)
+
+    earlier_snapshot = CommittedOptionSnapshot(
+        symbol="NVDA",
+        snapshot_for=snapshot.snapshot_for,
+        available_at=pd.Timestamp("2026-01-03T16:00:59Z"),
+        directory=tmp_path / "earlier-natural-receipt",
+        raw_path=contracts_path,
+        contracts_path=contracts_path,
+        features_path=contracts_path,
+        receipt_path=receipt,
+        receipt={},
+    )
+    already_observed = reconcile_predictions(
+        canonical,
+        snapshots_by_symbol={"NVDA": (snapshot, earlier_snapshot)},
+        evaluated_at="2026-01-03T16:02:00Z",
+    )
+    assert (
+        already_observed.iloc[0]["evaluation_status"]
+        == "TARGET_ALREADY_OBSERVED_BEFORE_PREDICTION"
+    )
+    assert bool(already_observed.iloc[0]["prospective_eligible"]) is False
+
     offline_provider = canonical.copy()
     offline_provider["source_provider"] = "databento-opra"
     ineligible = reconcile_predictions(
