@@ -45,7 +45,11 @@ def test_default_watchlist_and_runtime_commands_use_the_same_configured_symbols(
     assert "--watchlist datafetching\\watchlist.txt" in pricing_command
     assert "--cme-mode external" in loop_a_command
     assert "--options-mode external" in loop_a_command
-    assert all(symbol in loop_b_command for symbol in watchlist)
+    prediction_command = loop_b_command.split(
+        "python -m ml.prediction_runtime", 1
+    )[1]
+    assert "--watchlist datafetching\\watchlist.txt" in prediction_command
+    assert "--symbols" not in prediction_command
     assert "python -m ml.strategy_runtime" in loop_b_command
     assert "--pricing-mode shadow" in loop_b_command
     assert "capture-current-rate" in loop_a_command

@@ -2,9 +2,11 @@
 # deliberately not added to this default feature profile. After Pricing has a
 # verified non-empty surface, its explicit shadow-only profile is
 # loop-a-all-bsgp-shadow-v1.
+# Loop B resolves this watchlist once at startup. After editing it, restart all
+# watchlist-backed runtimes together so every process uses the same fixed scope.
 python -m ml.prediction_runtime `
   --datastore-target pc `
-  --symbols NVDA GOOG MU AAPL MSFT AMZN META TSLA CAT SNDK `
+  --watchlist datafetching\watchlist.txt `
   --provider databento `
   --horizons 1h 4h 1d 1w `
   --feature-profile loop-a-all-v1 `

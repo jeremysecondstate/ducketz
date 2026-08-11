@@ -84,12 +84,48 @@ def test_runtime_lock_rejects_a_second_process_and_cleans_up(
     assert not lock.exists()
 
 
+def test_prediction_symbols_use_watchlist_and_explicit_symbols_override(
+    tmp_path: Path,
+) -> None:
+    watchlist = tmp_path / "watchlist.txt"
+    watchlist.write_text(
+        "# active Loop B universe\nnvda\nGOOG # primary\nNVDA\n",
+        encoding="utf-8",
+    )
+
+    assert prediction_runtime.resolve_prediction_symbols(
+        symbols=None,
+        watchlist=watchlist,
+        datastore_root=tmp_path,
+    ) == ("NVDA", "GOOG")
+    assert prediction_runtime.resolve_prediction_symbols(
+        symbols=("mu", "NVDA", "MU"),
+        watchlist=tmp_path / "not-read.txt",
+        datastore_root=tmp_path,
+    ) == ("MU", "NVDA")
+
+
+def test_prediction_symbols_still_discover_datastore_without_cli_scope(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "stocks" / "nvda").mkdir(parents=True)
+    (tmp_path / "stocks" / "GOOG").mkdir()
+
+    assert prediction_runtime.resolve_prediction_symbols(
+        symbols=None,
+        watchlist=None,
+        datastore_root=tmp_path,
+    ) == ("GOOG", "NVDA")
+
+
 def test_once_reads_only_a_complete_loop_a_cycle(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     _publish_complete_loop_a_cycle(tmp_path)
+    watchlist = tmp_path / "watchlist.txt"
+    watchlist.write_text("GOOG\n", encoding="utf-8")
     observed: dict[str, object] = {}
     lock_acquired = False
 
@@ -128,8 +164,8 @@ def test_once_reads_only_a_complete_loop_a_cycle(
         [
             "--datastore",
             str(tmp_path),
-            "--symbols",
-            "GOOG",
+            "--watchlist",
+            str(watchlist),
             "--provider",
             "databento",
             "--horizons",

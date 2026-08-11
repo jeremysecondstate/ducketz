@@ -57,7 +57,7 @@ Recurring supervisor:
 ```powershell
 python -m ml.prediction_runtime `
   --datastore C:\data\duckets `
-  --symbols NVDA GOOG `
+  --watchlist datafetching\watchlist.txt `
   --provider databento `
   --horizons 1h 4h 1d 1w `
   --interval-minutes 60
@@ -106,8 +106,10 @@ calendar day. When a cluster-count option is omitted, its value comes from the
 selected horizon's default. Supplying an option overrides that count for every
 selected horizon.
 
-If `--symbols` is omitted, Loop B discovers symbol directories under
-`DATASTORE/stocks`. Use either `--datastore PATH` or
+`--symbols` overrides `--watchlist`. If neither is supplied, Loop B preserves
+the legacy behavior of discovering symbol directories under `DATASTORE/stocks`.
+The selected symbols are resolved once before the recurring supervisor starts;
+restart Loop B after changing its watchlist. Use either `--datastore PATH` or
 `--datastore-target pc|local`.
 
 ## Supervisor behavior

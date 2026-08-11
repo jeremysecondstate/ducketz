@@ -66,6 +66,7 @@ python -m datafetching.options_runtime --datastore-target pc `
 
 # 5. Directional Loop B. Start after Loop A has published one COMPLETE generation.
 python -m ml.prediction_runtime --datastore-target pc --provider databento `
+  --watchlist datafetching\watchlist.txt `
   --horizons 1h 4h 1d 1w --feature-profile loop-a-all-v1 `
   --model-family logistic --calibration platt --round-trip-cost 0.001 `
   --interval-minutes 15 --phase-offset-minutes 5

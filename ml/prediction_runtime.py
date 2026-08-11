@@ -20,6 +20,7 @@ from ml.horizons import (
     horizon_specifications_for_profile,
 )
 from ml.runtime_pipeline import RuntimeConfig, discover_symbols, run_loop_b_once
+from ml.universe import read_watchlist
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -37,7 +38,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         choices=tuple(DATASTORE_TARGETS),
         default="pc",
     )
-    parser.add_argument("--symbols", nargs="+", default=None)
+    parser.add_argument(
+        "--watchlist",
+        type=Path,
+        default=None,
+        help=(
+            "Text file containing one equity symbol per line. --symbols "
+            "overrides this file. If neither option is supplied, Loop B "
+            "discovers datastore symbol directories."
+        ),
+    )
+    parser.add_argument(
+        "--symbols",
+        nargs="+",
+        default=None,
+        help="Explicit Loop B symbols; overrides --watchlist.",
+    )
     parser.add_argument("--provider", default="databento")
     parser.add_argument(
         "--horizons",
@@ -125,6 +141,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         root_dir=args.datastore,
         target=None if args.datastore is not None else args.datastore_target,
     )
+    try:
+        selected_symbols = resolve_prediction_symbols(
+            symbols=args.symbols,
+            watchlist=args.watchlist,
+            datastore_root=root,
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        parser.error(str(exc))
     specifications = horizon_specifications_for_profile(
         args.feature_profile,
         horizons=args.horizons,
@@ -142,11 +166,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         require_all_routes=args.require_all_routes,
         feature_profile=args.feature_profile,
     )
-    selected_symbols = tuple(args.symbols or discover_symbols(root))
-
     print("DUCKETS LOOP B")
     print("==============")
     print(f"DATASTORE: {root}")
+    print(f"Symbols: {', '.join(selected_symbols)}")
     print(f"Provider: {config.provider}")
     print(f"Horizons: {', '.join(specifications)}")
     print(f"Feature profile: {config.feature_profile}")
@@ -228,6 +251,38 @@ def main(argv: Sequence[str] | None = None) -> int:
         except KeyboardInterrupt:
             print("Loop B stopped.")
             return 0
+
+
+def resolve_prediction_symbols(
+    *,
+    symbols: Sequence[str] | None,
+    watchlist: Path | None,
+    datastore_root: Path,
+) -> tuple[str, ...]:
+    """Resolve one fixed Loop B scope before the recurring supervisor starts."""
+
+    if symbols is not None:
+        configured = _normalize_symbols(symbols)
+    elif watchlist is not None:
+        configured = read_watchlist(Path(watchlist))
+    else:
+        configured = discover_symbols(Path(datastore_root))
+    if not configured:
+        raise ValueError(
+            "No Loop B symbols were configured. Add symbols to --watchlist, "
+            "pass --symbols, or populate DATASTORE/stocks."
+        )
+    return configured
+
+
+def _normalize_symbols(values: Sequence[str]) -> tuple[str, ...]:
+    return tuple(
+        dict.fromkeys(
+            str(value).strip().upper()
+            for value in values
+            if str(value).strip()
+        )
+    )
 
 
 def next_boundary(
