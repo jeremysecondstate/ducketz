@@ -47,6 +47,11 @@ def test_default_watchlist_and_runtime_commands_use_the_same_configured_symbols(
     assert "--options-mode external" in loop_a_command
     assert all(symbol in loop_b_command for symbol in watchlist)
     assert "python -m ml.strategy_runtime" in loop_b_command
+    assert "--pricing-mode shadow" in loop_b_command
+    assert "capture-current-rate" in loop_a_command
+    assert "option_pricing_admin" in loop_a_command
+    assert "--bar-readiness-timeout-seconds 120" in loop_a_command
+    assert "--pricing-barrier-timeout-seconds 150" in loop_a_command
 
 
 def test_databento_provider_splits_one_multi_symbol_response_by_ticker(

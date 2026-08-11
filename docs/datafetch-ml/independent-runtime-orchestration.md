@@ -24,6 +24,19 @@ never displaced.
 
 ## Recommended startup
 
+Before the continuous processes, refresh the bounded operational proof and
+ensure a causal current-rate receipt exists. The second command uses the latest
+already-fetched FEDFUNDS value only for later targets; every subsequent Loop A
+FRED fetch refreshes it automatically.
+
+```powershell
+python -m ml.option_pricing_admin --datastore-target pc operational-preflight
+python -m ml.option_pricing_admin --datastore-target pc capture-current-rate
+python -m ml.option_pricing_admin --datastore-target pc readiness
+```
+
+`readiness` is read-only and exits 6 while evidence gates remain blocked.
+
 Open one PowerShell terminal for each continuous command:
 
 ```powershell
@@ -41,13 +54,13 @@ python -m ml.option_pricing_runtime --datastore-target pc `
   --watchlist datafetching\watchlist.txt `
   --interval-minutes 15 --phase-offset-minutes 1 `
   --bar-readiness-mode required `
-  --bar-readiness-timeout-seconds 45
+  --bar-readiness-timeout-seconds 120
 
 # 4. Schwab options. It requires Loop A's exact all-symbol readiness receipt.
 python -m datafetching.options_runtime --datastore-target pc `
   --watchlist datafetching\watchlist.txt `
   --interval-minutes 15 --phase-offset-minutes 2 `
-  --pricing-barrier-timeout-seconds 45 `
+  --pricing-barrier-timeout-seconds 150 `
   --bar-readiness-mode required
 
 # 5. Directional Loop B. Start after Loop A has published one COMPLETE generation.
@@ -56,9 +69,10 @@ python -m ml.prediction_runtime --datastore-target pc --provider databento `
   --model-family logistic --calibration platt --round-trip-cost 0.001 `
   --interval-minutes 15 --phase-offset-minutes 5
 
-# 6. Strategy processing. Pricing diagnostics remain off unless explicitly selected.
+# 6. Strategy processing. Shadow diagnostics never change ranks or orders.
 python -m ml.strategy_runtime --datastore-target pc `
-  --interval-minutes 60 --phase-offset-minutes 10
+  --interval-minutes 60 --phase-offset-minutes 10 `
+  --pricing-mode shadow
 ```
 
 Use `--datastore <temporary-path>` during development and migration tests. None
@@ -236,8 +250,10 @@ prospective credit or be replaced by a backfill.
 `TARGET_ALREADY_OBSERVED` remains the no-backfill guard: a target Options receipt
 was visible before prediction creation. `NO_ELIGIBLE_CONTRACTS` means a strictly
 earlier source receipt existed but every contract failed the unchanged causal
-feature contract. Neither is a crash. Source option snapshots and quotes remain
-strictly earlier than `T`, and all source/target receipts remain checksum
+feature contract. Newer all-stale source receipts are checked and retained in
+lineage but cannot mask an older causal receipt that passes that same contract.
+Neither state is a crash. Source option snapshots and quotes remain strictly
+earlier than `T`, and all consulted source/target receipts remain checksum
 verified.
 
 The narrow readiness boundary is an additional Loop A-owned artifact, not a

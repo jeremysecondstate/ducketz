@@ -350,6 +350,62 @@ def test_causal_exclusions_remain_distinct_and_successful(
     assert not excluded.samples["sample_status"].eq("AVAILABLE").any()
 
 
+def test_live_pricing_skips_newer_stale_surface_without_relaxing_contract(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    clock = DecisionClock(
+        decision_timestamp=target,
+        bar_timestamp=target - pd.Timedelta(minutes=1),
+        provider="databento",
+        timeframe="1m",
+        source_file=tmp_path / "bar.parquet",
+    )
+    pd.DataFrame(
+        {"timestamp": [clock.bar_timestamp], "close": [200.0]}
+    ).to_parquet(clock.source_file, index=False)
+    valid = _source_surface("GOOG", target=target)
+    older = _committed_stub(
+        tmp_path / "older-valid",
+        symbol="GOOG",
+        target=target - pd.Timedelta(minutes=30),
+        available=target - pd.Timedelta(minutes=29),
+        contracts=valid,
+    )
+    stale = valid.copy()
+    stale["quote_staleness_seconds"] = 10_000.0
+    newer = _committed_stub(
+        tmp_path / "newer-stale",
+        symbol="GOOG",
+        target=target - pd.Timedelta(minutes=15),
+        available=target - pd.Timedelta(minutes=14),
+        contracts=stale,
+    )
+    monkeypatch.setattr(
+        "ml.option_pricing.causal.completed_bar_clock_for_target",
+        lambda *_args, **_kwargs: clock,
+    )
+    monkeypatch.setattr(
+        "ml.option_pricing.causal.committed_option_snapshots",
+        lambda *_args, **_kwargs: (older, newer),
+    )
+
+    batch = build_live_prediction_inputs(
+        tmp_path,
+        symbol="GOOG",
+        prediction_created_at=target + pd.Timedelta(seconds=20),
+        target_snapshot_for=target,
+    )
+
+    assert batch.status == "READY"
+    assert batch.samples["sample_status"].eq("AVAILABLE").any()
+    assert batch.samples["source_snapshot_for"].eq(older.snapshot_for).all()
+    assert "Skipped 1 newer causal receipt" in batch.reason
+    assert newer.contracts_path in batch.source_files
+    assert older.contracts_path in batch.source_files
+
+
 def test_options_timeout_preserves_capture_and_one_target_across_boundary(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

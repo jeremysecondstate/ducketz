@@ -1349,6 +1349,7 @@ def report_pricing_result(
     reporter(
         "Pricing research state: "
         f"gate_status={result.gate_status}; health={result.health_status}; "
+        f"health_scope={'LAST_ACTIONABLE_GENERATION' if result.cycle_mode == 'MONITOR_ONLY' else 'CURRENT_ACTIONABLE_GENERATION'}; "
         "automated_action_allowed=false; "
         f"generation_run={result.run_directory or 'UNCHANGED'}"
     )

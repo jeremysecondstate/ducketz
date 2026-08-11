@@ -220,6 +220,7 @@ def test_pricing_console_separates_target_deltas_from_carried_inventory(
     assert "new_prospective_predictions=0" in joined
     assert "cumulative_predictions=0" in joined
     assert "automated_action_allowed=false" in joined
+    assert "health_scope=LAST_ACTIONABLE_GENERATION" in joined
 
 
 class _ReadinessSimulation:

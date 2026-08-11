@@ -6,7 +6,9 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from datafetching.decision_time import cycle_target_decision
 from ml.artifacts import file_checksum, write_manifest
+from ml.option_pricing_admin import build_readiness_summary
 from ml.option_pricing.candidate import (
     freeze_candidate,
     read_candidate,
@@ -371,6 +373,67 @@ def test_market_closed_health_does_not_create_missed_phase_or_stagnation() -> No
     assert "MISSED_PHASE" not in kinds
     assert "EVIDENCE_COUNT_STAGNATION" not in kinds
     assert health["automated_action_allowed"] is False
+
+
+def test_readiness_summary_separates_carried_health_from_current_market_state(
+    tmp_path: Path,
+) -> None:
+    summary = build_readiness_summary(
+        datastore_root=tmp_path,
+        eligibility={
+            "gate_status": "NOT_PRODUCTION_ELIGIBLE",
+            "gates": [
+                {"number": 1, "name": "lineage", "status": "PASS"},
+                {"number": 2, "name": "partitions", "status": "NOT_PROVEN"},
+                {"number": 9, "name": "strategy", "status": "NOT_PROVEN"},
+                {"number": 10, "name": "prospective", "status": "FAIL"},
+            ],
+            "prospective_summary": {
+                "earliest_possible_session_threshold_date": "2026-09-04"
+            },
+            "closed_lockbox": {"status": "NOT_PROVEN"},
+            "operational_promotion": {"status": "NOT_PROVEN"},
+        },
+        operational={"status": "PASS"},
+        strategy={"status": "NOT_PROVEN"},
+        candidate=None,
+        health={
+            "status": "DEGRADED",
+            "checked_at": "2026-08-10T23:20:00Z",
+            "alerts": [
+                {"kind": "ROUTE_LOSS"},
+                {"kind": "MISSED_PHASE"},
+                {"kind": "ROUTE_LOSS"},
+            ],
+        },
+        market_decision=cycle_target_decision("2026-08-11T03:00:00Z"),
+        next_rate_coverage={
+            "status": "PASS",
+            "target_count": 1,
+            "covered_target_count": 1,
+        },
+        next_live_rate_inputs={
+            "status": "PASS",
+            "symbol_count": 3,
+        },
+    )
+
+    assert summary["market"]["cycle_mode"] == "MONITOR_ONLY"
+    assert summary["health"]["scope"] == "LAST_ACTIONABLE_GENERATION"
+    assert summary["health"]["alert_kinds"] == ["MISSED_PHASE", "ROUTE_LOSS"]
+    assert summary["promotions"]["operational_artifact"] == "PASS"
+    assert summary["next_session_inputs"]["live_surface_rates"] == "PASS"
+    assert (
+        summary["next_session_inputs"][
+            "current_rate_receipt_for_future_surfaces"
+        ]
+        == "PASS"
+    )
+    assert summary["prospective"]["earliest_possible_session_threshold_date"] == (
+        "2026-09-04"
+    )
+    assert [item["number"] for item in summary["blocking_gates"]] == [2, 9, 10]
+    assert summary["automated_action_allowed"] is False
 
 
 def test_degraded_health_is_actionable() -> None:

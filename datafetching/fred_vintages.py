@@ -12,6 +12,8 @@ FRED_VINTAGE_SCHEMA_VERSION = "fred-vintage-v1"
 MACRO_CALCULATION = "macro-release-context"
 MACRO_CALCULATION_VERSION = "1.0.0"
 MACRO_SCHEMA_VERSION = "macro-release-context-v1"
+CURRENT_RATE_CONTEXT_NAME = "fred-current-receipt-rate"
+CURRENT_RATE_CALCULATION = "macro-current-receipt-rate"
 
 FRED_VINTAGE_COLUMNS = (
     "series_name",
@@ -275,6 +277,124 @@ def persist_macro_release_features(
             )
         )
     return tuple(paths)
+
+
+def derive_current_fred_rate_receipt(
+    rows: Sequence[Mapping[str, object]] | pd.DataFrame,
+) -> pd.DataFrame:
+    """Create one causal FEDFUNDS observation for decisions after this receipt.
+
+    This deliberately uses the local FRED fetch time as availability.  It makes
+    the current value usable for future live decisions, but it does not claim
+    that a current-revised history was available for any earlier backtest.
+    """
+
+    frame = rows.copy() if isinstance(rows, pd.DataFrame) else pd.DataFrame(rows)
+    series_column = next(
+        (
+            column
+            for column in ("series", "series_name", "provider_symbol")
+            if column in frame
+        ),
+        None,
+    )
+    required = {"fetched_at", "value"}
+    missing = sorted(required.difference(frame.columns))
+    if series_column is None:
+        missing.append("series")
+    observation_column = next(
+        (column for column in ("date", "observation_date") if column in frame),
+        None,
+    )
+    if observation_column is None:
+        missing.append("observation_date")
+    if missing:
+        raise ValueError(
+            "Current FRED rate receipt is missing: " + ", ".join(missing)
+        )
+    assert series_column is not None
+    assert observation_column is not None
+    values = frame.copy()
+    values["_series"] = values[series_column].astype("string").str.upper()
+    values = values.loc[values["_series"].eq("FEDFUNDS")].copy()
+    if "source" in values:
+        values = values.loc[
+            values["source"].astype("string").str.lower().eq("fred")
+        ]
+    values["_fetched_at"] = pd.to_datetime(
+        values["fetched_at"], utc=True, errors="coerce"
+    )
+    values["_observation_date"] = pd.to_datetime(
+        values[observation_column],
+        utc=True,
+        errors="coerce",
+    )
+    values["_value"] = pd.to_numeric(values["value"], errors="coerce")
+    values = values.dropna(
+        subset=["_fetched_at", "_observation_date", "_value"]
+    )
+    values = values.loc[values["_value"].between(-20.0, 100.0)]
+    if values.empty:
+        raise ValueError("No valid current FRED FEDFUNDS receipt is available")
+    latest = values.sort_values(
+        ["_observation_date", "_fetched_at"], kind="stable"
+    ).iloc[-1]
+    available_at = pd.Timestamp(latest["_fetched_at"])
+    return pd.DataFrame(
+        [
+            {
+                "context_name": CURRENT_RATE_CONTEXT_NAME,
+                "available_at": available_at,
+                "calculation": CURRENT_RATE_CALCULATION,
+                "calculation_version": MACRO_CALCULATION_VERSION,
+                "schema_version": MACRO_SCHEMA_VERSION,
+                "fed_funds_available_at": available_at,
+                "cpi_available_at": pd.NaT,
+                "unemployment_available_at": pd.NaT,
+                "gdp_available_at": pd.NaT,
+                "macro__fed_funds_level": float(latest["_value"]),
+                "macro__cpi_yoy": float("nan"),
+                "macro__unemployment_change": float("nan"),
+                "macro__gdp_yoy": float("nan"),
+            }
+        ],
+        columns=MACRO_FEATURE_COLUMNS,
+    )
+
+
+def persist_current_fred_rate_receipt(
+    datastore_root: Path,
+    rows: Sequence[Mapping[str, object]] | pd.DataFrame,
+) -> tuple[Path, ...]:
+    """Persist a current receipt without granting it historical availability."""
+
+    return persist_macro_release_features(
+        datastore_root,
+        derive_current_fred_rate_receipt(rows),
+    )
+
+
+def materialize_current_fred_rate_receipt(
+    datastore_root: Path,
+) -> tuple[Path, ...]:
+    """Bridge the latest normalized FEDFUNDS fetch into the causal rate lane."""
+
+    root = Path(datastore_root).resolve()
+    source = (
+        root
+        / "pools"
+        / "macro"
+        / "FEDERALFUNDS"
+        / "FEDFUNDS"
+        / "fred"
+        / "normalized"
+        / "FEDERALFUNDS_FEDFUNDS.parquet"
+    )
+    if not source.is_file():
+        raise FileNotFoundError(
+            "No normalized FRED FEDFUNDS receipt exists; run the FRED lane first"
+        )
+    return persist_current_fred_rate_receipt(root, pd.read_parquet(source))
 
 
 def _latest_vintage_by_observation(frame: pd.DataFrame) -> pd.DataFrame:

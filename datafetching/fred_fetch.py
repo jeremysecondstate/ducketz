@@ -9,6 +9,7 @@ from typing import Any
 import requests
 
 from datafetching import FetchResult
+from datafetching.fred_vintages import persist_current_fred_rate_receipt
 from datafetching.parquet_store import ParquetStore
 
 FRED_CSV_BASE_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv"
@@ -178,6 +179,13 @@ def fetch(_symbol: str, store: ParquetStore) -> FetchResult:
             pool="macro",
         ) is not None:
             data_files += 1
+
+        if spec.series_id == "FEDFUNDS":
+            # This is a current-receipt bridge, not a historical-vintage claim.
+            # Its local fetched_at clock makes it usable only by future decisions.
+            data_files += len(
+                persist_current_fred_rate_receipt(store.root_dir, rows)
+            )
 
     return FetchResult("fred", data_files, error_files)
 

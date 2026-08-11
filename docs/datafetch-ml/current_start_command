@@ -2,6 +2,25 @@
 # datastore through immutable/atomic contracts; CME and Options do not run in
 # Loop A's blocking path.
 
+# 0. Before the regular session, refresh the bounded operational proof. This
+# never authorizes trading and remains valid for at most 24 hours.
+python -m ml.option_pricing_admin `
+  --datastore-target pc `
+  operational-preflight
+
+# If the datastore predates the current-rate bridge, seed it from the latest
+# normalized FRED receipt. Loop A refreshes this automatically after each
+# successful FEDFUNDS fetch. It is causal only for later targets.
+python -m ml.option_pricing_admin `
+  --datastore-target pc `
+  capture-current-rate
+
+# Optional read-only blocker summary (exit 6 is expected until every evidence
+# gate passes):
+python -m ml.option_pricing_admin `
+  --datastore-target pc `
+  readiness
+
 # 1. Independent complete-history CME/L2 owner.
 python -m datafetching.cme_runtime `
   --datastore-target pc `
@@ -26,7 +45,7 @@ python -m ml.option_pricing_runtime `
   --interval-minutes 15 `
   --phase-offset-minutes 1 `
   --bar-readiness-mode required `
-  --bar-readiness-timeout-seconds 45
+  --bar-readiness-timeout-seconds 120
 
 # 4. Independent Schwab option-chain owner. It requires Loop A's immutable
 # exact all-symbol Databento 1m readiness receipt.
@@ -35,7 +54,7 @@ python -m datafetching.options_runtime `
   --watchlist datafetching\watchlist.txt `
   --interval-minutes 15 `
   --phase-offset-minutes 2 `
-  --pricing-barrier-timeout-seconds 45 `
+  --pricing-barrier-timeout-seconds 150 `
   --bar-readiness-mode required
 
 # Stop any process with Ctrl+C. See independent-runtime-orchestration.md for

@@ -15,12 +15,13 @@ python -m ml.prediction_runtime `
   --phase-offset-minutes 5
 
 # Strategy is a separate consumer and cannot delay or mutate the Loop B run.
-# Add --pricing-mode shadow only when Pricing diagnostics are intentionally
-# enabled; they never change candidate ranking or order construction.
+# This evidence-capture command intentionally enables Pricing diagnostics;
+# they never change candidate ranking or order construction.
 python -m ml.strategy_runtime `
   --datastore-target pc `
   --interval-minutes 15 `
-  --phase-offset-minutes 10
+  --phase-offset-minutes 10 `
+  --pricing-mode shadow
 
 # Both commands stop with Ctrl+C. Loop B publishes through ml/latest/run.json;
 # Strategy publishes independently through ml/strategy-latest/run.json.

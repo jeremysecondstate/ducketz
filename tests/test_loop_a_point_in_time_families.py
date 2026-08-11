@@ -8,8 +8,10 @@ import pytest
 from datafetching import sec_fetch
 from datafetching.calculated_features import write_immutable_feature_partition
 from datafetching.fred_vintages import (
+    derive_current_fred_rate_receipt,
     derive_macro_release_features,
     normalize_fred_vintage_rows,
+    persist_current_fred_rate_receipt,
     persist_fred_vintages,
 )
 from datafetching.parquet_store import ParquetStore
@@ -238,6 +240,37 @@ def test_current_revised_fred_rows_are_rejected_without_vintage_identity() -> No
                 }
             )
         )
+
+
+def test_current_fred_rate_receipt_is_causal_only_after_local_fetch(
+    tmp_path: Path,
+) -> None:
+    rows = pd.DataFrame(
+        {
+            "series": ["FEDFUNDS", "FEDFUNDS"],
+            "source": ["fred", "fred"],
+            "date": ["2026-06-01", "2026-07-01"],
+            "fetched_at": [
+                "2026-08-10T23:30:00Z",
+                "2026-08-10T23:30:00Z",
+            ],
+            "value": [3.65, 3.63],
+        }
+    )
+
+    derived = derive_current_fred_rate_receipt(rows)
+    assert derived.iloc[0]["available_at"] == pd.Timestamp(
+        "2026-08-10T23:30:00Z"
+    )
+    assert derived.iloc[0]["fed_funds_available_at"] == pd.Timestamp(
+        "2026-08-10T23:30:00Z"
+    )
+    assert derived.iloc[0]["macro__fed_funds_level"] == 3.63
+
+    path = persist_current_fred_rate_receipt(tmp_path, rows)[0]
+    stored = pd.read_parquet(path)
+    assert stored.iloc[0]["context_name"] == "fred-current-receipt-rate"
+    assert stored.iloc[0]["available_at"] > pd.Timestamp("2026-07-01T00:00:00Z")
 
 
 def test_fred_vintages_persist_and_derived_values_use_only_released_rows(

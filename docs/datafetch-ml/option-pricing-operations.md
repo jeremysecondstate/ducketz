@@ -35,6 +35,20 @@ ducketz-option-pricing-admin --datastore C:\path\to\approved-datastore operation
 
 Running this against `C:\DATASTORE` is a write and requires explicit approval.
 
+Before the next regular session, the operator view separates current-session
+inputs from historical eligibility blockers:
+
+```powershell
+ducketz-option-pricing-admin --datastore C:\DATASTORE capture-current-rate
+ducketz-option-pricing-admin --datastore C:\DATASTORE readiness
+```
+
+`capture-current-rate` copies the latest normalized FEDFUNDS receipt into the
+causal rate lane with its real local fetch time. It enables only later live
+targets and never claims historical coverage. Loop A performs the same bridge
+after every successful FEDFUNDS fetch. `readiness` is read-only and exits 6
+until all evidence gates pass.
+
 ## Configuration and secrets
 
 The continuous live Pricing scope comes from `datafetching/watchlist.txt` by

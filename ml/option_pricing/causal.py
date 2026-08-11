@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -54,20 +54,37 @@ def select_strictly_earlier_snapshot(
 
     target = _utc(target_snapshot_for, "target_snapshot_for")
     created = _utc(prediction_created_at, "prediction_created_at")
+    eligible = _strictly_earlier_snapshots(
+        snapshots,
+        target_snapshot_for=target,
+        prediction_created_at=created,
+    )
+    return eligible[0] if eligible else None
+
+
+def _strictly_earlier_snapshots(
+    snapshots: Sequence[CommittedOptionSnapshot],
+    *,
+    target_snapshot_for: object,
+    prediction_created_at: object,
+) -> tuple[CommittedOptionSnapshot, ...]:
+    target = _utc(target_snapshot_for, "target_snapshot_for")
+    created = _utc(prediction_created_at, "prediction_created_at")
     eligible = [
         snapshot
         for snapshot in snapshots
         if snapshot.snapshot_for < target
         and _snapshot_receipt_available_at(snapshot) < created
     ]
-    if not eligible:
-        return None
-    return max(
-        eligible,
-        key=lambda snapshot: (
-            snapshot.snapshot_for,
-            _snapshot_receipt_available_at(snapshot),
-        ),
+    return tuple(
+        sorted(
+            eligible,
+            key=lambda snapshot: (
+                snapshot.snapshot_for,
+                _snapshot_receipt_available_at(snapshot),
+            ),
+            reverse=True,
+        )
     )
 
 
@@ -123,12 +140,12 @@ def build_live_prediction_inputs(
             "A verified Options receipt for the target was visible before prediction.",
             target,
         )
-    source = select_strictly_earlier_snapshot(
+    sources = _strictly_earlier_snapshots(
         snapshots,
         target_snapshot_for=target,
         prediction_created_at=created,
     )
-    if source is None:
+    if not sources:
         return CausalSampleBatch(
             pd.DataFrame(),
             (),
@@ -143,28 +160,99 @@ def build_live_prediction_inputs(
     )
     if not math.isfinite(underlying) or underlying <= 0.0:
         raise ValueError("Target underlying price must be finite and positive")
-    source_contracts = pd.read_parquet(source.contracts_path)
+    policy = contract_policy or ContractSelectionPolicy()
+    first_materialized: CausalSampleBatch | None = None
+    newest_contracts: pd.DataFrame | None = None
+    target_files = (
+        tuple(target_source_files)
+        if target_source_files is not None
+        else (clock.source_file,)
+    )
+    consulted_source_files: list[Path] = []
+    maximum_candidates = 16
+    for source_index, source in enumerate(sources[:maximum_candidates]):
+        consulted_source_files.extend(
+            (source.contracts_path, source.receipt_path)
+        )
+        source_contracts = pd.read_parquet(source.contracts_path)
+        if source_index == 0:
+            newest_contracts = source_contracts
+        candidate_mask = _source_contract_candidate_mask(
+            source_contracts,
+            target_underlying_price=underlying,
+            target_snapshot_for=target,
+            policy=policy,
+        )
+        if not candidate_mask.any():
+            continue
+        samples = build_causal_samples(
+            source_contracts.loc[candidate_mask].reset_index(drop=True),
+            target_contracts=None,
+            target_underlying_price=underlying,
+            source_snapshot_for=source.snapshot_for,
+            source_available_at=_snapshot_receipt_available_at(source),
+            target_snapshot_for=target,
+            source_provider="schwab",
+            prediction_mode="LIVE",
+            contract_policy=policy,
+            rate_observations=rate_observations,
+        )
+        available = samples["sample_status"].eq("AVAILABLE").any()
+        if available and source_index:
+            reason = (
+                f"Skipped {source_index} newer causal receipt(s) with no usable "
+                "contract; selected the newest surface that passed the unchanged "
+                "source contract."
+            )
+        elif available:
+            reason = ""
+        else:
+            reason = "No contracts passed the causal feature contract."
+        batch = CausalSampleBatch(
+            samples,
+            tuple(dict.fromkeys((*target_files, *consulted_source_files))),
+            "READY" if available else "NO_ELIGIBLE_CONTRACTS",
+            reason,
+            target,
+        )
+        if available:
+            return batch
+        if first_materialized is None:
+            first_materialized = batch
+    if first_materialized is not None:
+        return replace(
+            first_materialized,
+            source_files=tuple(
+                dict.fromkeys((*target_files, *consulted_source_files))
+            ),
+        )
+
+    # Preserve detailed exclusion rows when every bounded candidate failed the
+    # cheap quote precheck. This keeps diagnostics honest while avoiding an
+    # expensive full materialization for every known-stale receipt.
+    newest = sources[0]
+    source_contracts = (
+        newest_contracts
+        if newest_contracts is not None
+        else pd.read_parquet(newest.contracts_path)
+    )
     samples = build_causal_samples(
         source_contracts,
         target_contracts=None,
         target_underlying_price=underlying,
-        source_snapshot_for=source.snapshot_for,
-        source_available_at=_snapshot_receipt_available_at(source),
+        source_snapshot_for=newest.snapshot_for,
+        source_available_at=_snapshot_receipt_available_at(newest),
         target_snapshot_for=target,
         source_provider="schwab",
         prediction_mode="LIVE",
-        contract_policy=contract_policy,
+        contract_policy=policy,
         rate_observations=rate_observations,
     )
     return CausalSampleBatch(
         samples,
-        (
-            *(tuple(target_source_files) if target_source_files is not None else (clock.source_file,)),
-            source.contracts_path,
-            source.receipt_path,
-        ),
-        "READY" if samples["sample_status"].eq("AVAILABLE").any() else "NO_ELIGIBLE_CONTRACTS",
-        "" if samples["sample_status"].eq("AVAILABLE").any() else "No contracts passed the causal feature contract.",
+        tuple(dict.fromkeys((*target_files, *consulted_source_files))),
+        "NO_ELIGIBLE_CONTRACTS",
+        "No contracts passed the causal feature contract.",
         target,
     )
 
@@ -291,10 +379,14 @@ def build_causal_samples(
             for row in target.to_dict("records")
         }
 
+    source_by_contract = {
+        str(row["contract_symbol"]): row
+        for row in source.to_dict("records")
+    }
     rows: list[dict[str, object]] = []
     for definition in target_definitions.to_dict("records"):
         contract_symbol = str(definition["contract_symbol"])
-        source_row = source.loc[source["contract_symbol"].astype(str).eq(contract_symbol)].iloc[0]
+        source_row = source_by_contract[contract_symbol]
         status, reason = _source_contract_status(
             source_row,
             target_underlying_price=float(target_underlying_price),
@@ -460,36 +552,85 @@ def interpolate_lagged_iv_surface(
                 collapsed["_iv"].to_numpy(dtype=float),
             )
         )
-    results: list[float] = []
-    for row in target_contracts.to_dict("records"):
-        strike = _finite_or_none(row.get("strike"))
-        underlying = _finite_or_none(row.get("underlying_price"))
-        if strike is None or underlying is None or strike <= 0.0 or underlying <= 0.0:
-            results.append(np.nan)
+    targets = target_contracts.copy()
+    target_strike = pd.to_numeric(targets["strike"], errors="coerce")
+    target_underlying = pd.to_numeric(
+        targets["underlying_price"], errors="coerce"
+    )
+    targets["_x"] = np.log(target_strike / target_underlying)
+    targets["_t"] = targets["expiration_date"].map(
+        lambda value: target_years_to_expiration(target_time, value)
+    )
+    results = pd.Series(np.nan, index=targets.index, dtype="float64")
+    surface_tenors = np.array([surface[0] for surface in surfaces], dtype=float)
+    for tenor, group in targets.groupby("_t", sort=False, dropna=False):
+        if not math.isfinite(float(tenor)) or float(tenor) <= 0.0:
             continue
-        x_target = math.log(strike / underlying)
-        t_target = target_years_to_expiration(target_time, row.get("expiration_date"))
-        tenor_values: list[tuple[float, float]] = []
-        for tenor, xs, ivs in surfaces:
-            if x_target < xs[0] - 1e-12 or x_target > xs[-1] + 1e-12:
-                continue
-            if len(xs) == 1 and not math.isclose(x_target, xs[0], abs_tol=1e-12):
-                continue
-            value = float(ivs[0]) if len(xs) == 1 else float(np.interp(x_target, xs, ivs))
-            tenor_values.append((tenor, value))
-        if not tenor_values:
-            results.append(np.nan)
+        exact_positions = np.flatnonzero(
+            np.isclose(surface_tenors, float(tenor), rtol=0.0, atol=1e-12)
+        )
+        if len(exact_positions):
+            _, xs, ivs = surfaces[int(exact_positions[0])]
+            target_x = pd.to_numeric(group["_x"], errors="coerce")
+            in_bounds = (
+                target_x.notna()
+                & np.isfinite(target_x)
+                & target_x.ge(xs[0] - 1e-12)
+                & target_x.le(xs[-1] + 1e-12)
+            )
+            if len(xs) == 1:
+                in_bounds &= target_x.sub(xs[0]).abs().le(1e-12)
+                results.loc[group.index[in_bounds]] = float(ivs[0])
+            elif in_bounds.any():
+                results.loc[group.index[in_bounds]] = np.interp(
+                    target_x.loc[in_bounds].to_numpy(dtype=float),
+                    xs,
+                    ivs,
+                )
             continue
-        tenor_values.sort()
-        tenors = np.array([value[0] for value in tenor_values], dtype=float)
-        ivs = np.array([value[1] for value in tenor_values], dtype=float)
-        if t_target < tenors[0] - 1e-12 or t_target > tenors[-1] + 1e-12:
-            results.append(np.nan)
-        elif len(tenors) == 1 and not math.isclose(t_target, tenors[0], abs_tol=1e-12):
-            results.append(np.nan)
-        else:
-            results.append(float(ivs[0]) if len(tenors) == 1 else float(np.interp(t_target, tenors, ivs)))
-    return pd.Series(results, index=target_contracts.index, dtype="float64")
+        for index, row in group.iterrows():
+            x_target = _finite_or_none(row.get("_x"))
+            if x_target is None:
+                continue
+            tenor_values: list[tuple[float, float]] = []
+            for source_tenor, xs, ivs in surfaces:
+                if x_target < xs[0] - 1e-12 or x_target > xs[-1] + 1e-12:
+                    continue
+                if len(xs) == 1 and not math.isclose(
+                    x_target, xs[0], abs_tol=1e-12
+                ):
+                    continue
+                value = (
+                    float(ivs[0])
+                    if len(xs) == 1
+                    else float(np.interp(x_target, xs, ivs))
+                )
+                tenor_values.append((source_tenor, value))
+            if not tenor_values:
+                continue
+            tenors = np.array(
+                [value[0] for value in tenor_values], dtype=float
+            )
+            tenor_ivs = np.array(
+                [value[1] for value in tenor_values], dtype=float
+            )
+            if (
+                float(tenor) < tenors[0] - 1e-12
+                or float(tenor) > tenors[-1] + 1e-12
+                or (
+                    len(tenors) == 1
+                    and not math.isclose(
+                        float(tenor), tenors[0], abs_tol=1e-12
+                    )
+                )
+            ):
+                continue
+            results.loc[index] = (
+                float(tenor_ivs[0])
+                if len(tenors) == 1
+                else float(np.interp(float(tenor), tenors, tenor_ivs))
+            )
+    return results
 
 
 def model_feature_frame(samples: pd.DataFrame) -> pd.DataFrame:
@@ -1007,7 +1148,7 @@ def _source_implied_volatilities(
 
 
 def _source_contract_status(
-    row: pd.Series,
+    row: Mapping[str, object] | pd.Series,
     *,
     target_underlying_price: float,
     target_snapshot_for: pd.Timestamp,
@@ -1038,6 +1179,82 @@ def _source_contract_status(
     if quote_time is None or quote_time >= target_snapshot_for:
         return "SOURCE_TIMING_INVALID", "Earlier option quote is not strictly before target."
     return "AVAILABLE", ""
+
+
+def _source_contract_candidate_mask(
+    frame: pd.DataFrame,
+    *,
+    target_underlying_price: float,
+    target_snapshot_for: pd.Timestamp,
+    policy: ContractSelectionPolicy,
+) -> pd.Series:
+    """Vectorize the unchanged source contract before expensive IV materialization."""
+
+    required = {
+        "expiration_date",
+        "strike",
+        "bid",
+        "ask",
+        "multiplier",
+        "mini",
+        "non_standard",
+        "quote_staleness_seconds",
+        "quote_timestamp",
+    }
+    if frame.empty or not required.issubset(frame.columns):
+        return pd.Series(False, index=frame.index, dtype=bool)
+    strike = pd.to_numeric(frame["strike"], errors="coerce")
+    bid = pd.to_numeric(frame["bid"], errors="coerce")
+    ask = pd.to_numeric(frame["ask"], errors="coerce")
+    multiplier = pd.to_numeric(frame["multiplier"], errors="coerce")
+    staleness = pd.to_numeric(
+        frame["quote_staleness_seconds"], errors="coerce"
+    )
+    quote_time = pd.to_datetime(
+        frame["quote_timestamp"], utc=True, errors="coerce"
+    )
+    expiration = pd.to_datetime(
+        frame["expiration_date"], utc=True, errors="coerce"
+    )
+    expiration_days = {
+        pd.Timestamp(value): (
+            target_years_to_expiration(target_snapshot_for, value) * 365.0
+        )
+        for value in expiration.dropna().unique()
+    }
+    days = expiration.map(expiration_days)
+    moneyness = np.log(strike / float(target_underlying_price)).abs()
+    standard = (
+        frame["mini"].map(_explicit_bool).eq(False)
+        & frame["non_standard"].map(_explicit_bool).eq(False)
+        & np.isclose(
+            multiplier,
+            float(policy.required_multiplier),
+            rtol=1e-9,
+            atol=0.0,
+        )
+    )
+    return (
+        standard
+        & strike.gt(0.0)
+        & np.isfinite(strike)
+        & days.between(
+            float(policy.minimum_days_to_expiration),
+            float(policy.maximum_days_to_expiration),
+        )
+        & moneyness.le(float(policy.maximum_absolute_log_moneyness))
+        & np.isfinite(moneyness)
+        & bid.notna()
+        & ask.notna()
+        & ask.gt(bid)
+        & bid.add(ask).div(2.0).gt(0.0)
+        & staleness.between(
+            0.0,
+            float(policy.maximum_source_staleness_seconds),
+        )
+        & quote_time.notna()
+        & quote_time.lt(target_snapshot_for)
+    )
 
 
 def _same_semantic_contract(

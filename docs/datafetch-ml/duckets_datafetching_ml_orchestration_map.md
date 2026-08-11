@@ -146,9 +146,11 @@ versions.
 | SEC events | `1.0.0` | Immutable filing-extraction events using `capital-structure-rules-v1` |
 
 The live FRED lane persists current-revised GDP, CPI, unemployment, and federal
-funds histories. `datafetching/fred_vintages.py` implements a true
-release/vintage path, but Loop A does not call it, so the current FRED ingestion
-must not be described as vintage-safe macro history.
+funds histories. It also copies the current FEDFUNDS value into the Pricing
+rate lane at the real local fetch time, so only later targets may consume it.
+`datafetching/fred_vintages.py` implements a true release/vintage path, but Loop
+A still does not fetch that archive; the current ingestion must not be
+described as vintage-safe historical macro coverage.
 
 ### Loop A storage boundary
 

@@ -3,8 +3,13 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Mapping, Sequence
+from typing import Callable, Mapping, Sequence
 
+import pandas as pd
+
+from datafetching.decision_time import CycleTargetDecision, cycle_target_decision
+from datafetching.fred_vintages import materialize_current_fred_rate_receipt
+from datafetching.orchestrate import DEFAULT_WATCHLIST, read_watchlist
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from ml.option_pricing.candidate import freeze_candidate, read_current_candidate
 from ml.option_pricing.eligibility import (
@@ -18,14 +23,20 @@ from ml.option_pricing.operations import (
     operational_preflight_report,
     publish_operational_readiness,
     read_current_operational_readiness,
+    read_current_runtime_health,
     rollback_option_pricing_pointer,
 )
 from ml.option_pricing.publication import read_current_option_pricing_publication
+from ml.option_pricing.rates import (
+    load_point_in_time_rate_observations,
+    rate_coverage_report,
+)
 from ml.option_pricing.strategy_outcomes import (
     build_strategy_outcome_evidence,
     publish_strategy_outcome_evidence,
     read_current_strategy_outcome_evidence,
 )
+from options.publication import committed_option_snapshots
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -39,6 +50,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("status", help="Verify and print current evidence status")
+    commands.add_parser(
+        "readiness",
+        help="Print a concise, read-only production-readiness plan",
+    )
+    commands.add_parser(
+        "capture-current-rate",
+        help="Persist the latest FRED receipt for future causal Pricing cycles",
+    )
     commands.add_parser(
         "strategy-evaluate",
         help="Publish a causal Strategy shadow outcome comparison",
@@ -63,6 +82,28 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     if args.command == "status":
         return _status(root)
+    if args.command == "readiness":
+        return _readiness(root)
+    if args.command == "capture-current-rate":
+        paths = materialize_current_fred_rate_receipt(root)
+        observations, _ = load_point_in_time_rate_observations(root)
+        latest = (
+            observations.iloc[-1].to_dict()
+            if observations is not None and not observations.empty
+            else {}
+        )
+        _print_json(
+            {
+                "status": "PASS" if paths and latest else "NOT_PROVEN",
+                "datastore": str(root),
+                "paths": [str(path) for path in paths],
+                "available_at": latest.get("available_at"),
+                "risk_free_rate": latest.get("risk_free_rate"),
+                "historical_coverage_claimed": False,
+                "automated_action_allowed": False,
+            }
+        )
+        return EXIT_OK if paths and latest else EXIT_EVIDENCE
     if args.command == "strategy-evaluate":
         observations, report, sources = build_strategy_outcome_evidence(root)
         published = publish_strategy_outcome_evidence(
@@ -159,6 +200,360 @@ def _status(root: Path) -> int:
         failures += 1
     _print_json(status)
     return EXIT_EVIDENCE if failures else EXIT_OK
+
+
+def _readiness(root: Path) -> int:
+    """Render current blockers without publishing or mutating evidence."""
+
+    try:
+        eligibility = read_current_eligibility_report(root).report
+    except Exception as exc:
+        _print_json(
+            {
+                "datastore": str(root),
+                "gate_status": "NOT_PRODUCTION_ELIGIBLE",
+                "reason": f"{type(exc).__name__}: {exc}",
+                "automated_action_allowed": False,
+            }
+        )
+        return EXIT_EVIDENCE
+
+    market_decision = cycle_target_decision()
+    rate_observations, _ = load_point_in_time_rate_observations(root)
+    next_pricing_cycle = market_decision.next_eligible_cycle(
+        phase_offset_minutes=1
+    )
+    next_target = next_pricing_cycle - pd.Timedelta(minutes=1)
+    next_rate_coverage = rate_coverage_report(
+        rate_observations,
+        target_snapshot_fors=(next_target,),
+    )
+    next_live_rate_inputs = _live_rate_input_report(
+        root,
+        symbols=read_watchlist(DEFAULT_WATCHLIST),
+        target_snapshot_for=next_target,
+        prediction_created_at=next_pricing_cycle,
+        rate_observations=rate_observations,
+    )
+    summary = build_readiness_summary(
+        datastore_root=root,
+        eligibility=eligibility,
+        operational=_optional_status(
+            lambda: read_current_operational_readiness(root)
+        ),
+        strategy=_optional_status(
+            lambda: read_current_strategy_outcome_evidence(root)
+        ),
+        candidate=_optional_status(lambda: read_current_candidate(root)),
+        health=_optional_status(lambda: read_current_runtime_health(root)),
+        market_decision=market_decision,
+        next_rate_coverage=next_rate_coverage,
+        next_live_rate_inputs=next_live_rate_inputs,
+    )
+    _print_json(summary)
+    return (
+        EXIT_OK
+        if summary.get("gate_status") == "PRODUCTION_ELIGIBLE"
+        else EXIT_EVIDENCE
+    )
+
+
+def build_readiness_summary(
+    *,
+    datastore_root: Path,
+    eligibility: Mapping[str, object],
+    operational: Mapping[str, object] | None,
+    strategy: Mapping[str, object] | None,
+    candidate: Mapping[str, object] | None,
+    health: Mapping[str, object] | None,
+    market_decision: CycleTargetDecision,
+    next_rate_coverage: Mapping[str, object] | None = None,
+    next_live_rate_inputs: Mapping[str, object] | None = None,
+) -> dict[str, object]:
+    """Build the compact operator view used by the read-only readiness command."""
+
+    gates = [
+        {
+            "number": int(gate.get("number", 0)),
+            "name": str(gate.get("name", "UNKNOWN")),
+            "status": str(gate.get("status", "NOT_PROVEN")),
+        }
+        for gate in eligibility.get("gates", ())
+        if isinstance(gate, Mapping)
+    ]
+    failed_gates = [gate for gate in gates if gate["status"] != "PASS"]
+    failed_numbers = {int(gate["number"]) for gate in failed_gates}
+    actions: list[str] = []
+    current_rate_status = _status_name(next_rate_coverage)
+    live_rate_status = _status_name(next_live_rate_inputs)
+    if live_rate_status != "PASS":
+        actions.append(
+            "Ensure each latest source option surface has a valid provider rate or "
+            "predates a captured FRED receipt before the next Black-Scholes target."
+        )
+    if failed_numbers.intersection(range(2, 9)):
+        actions.append(
+            "Complete the guarded real OPRA definition and CBBO evidence phases, "
+            "including exact underlying-bar and point-in-time rate coverage; fixtures "
+            "and current-revised macro history are ineligible."
+        )
+    if 9 in failed_numbers:
+        actions.append(
+            "Run Strategy with --pricing-mode shadow and periodically publish "
+            "strategy-evaluate evidence after outcomes mature."
+        )
+    if 10 in failed_numbers:
+        actions.append(
+            "Keep Loop A, Pricing, and Options running in regular sessions until every "
+            "pilot call/put route spans 20 distinct sessions; this causal evidence "
+            "cannot be backfilled."
+        )
+    operational_status = _status_name(operational)
+    if operational_status != "PASS":
+        actions.append(
+            "Run operational-preflight in the production Python environment and keep "
+            "the passing artifact less than 24 hours old at promotion time."
+        )
+    candidate_status = _status_name(candidate)
+    if candidate_status != "PASS":
+        actions.append(
+            "Freeze a candidate only after offline gates 1-8 pass; never freeze an "
+            "incomplete or fixture-backed model."
+        )
+    closed_lockbox = eligibility.get("closed_lockbox")
+    lockbox_status = _status_name(
+        closed_lockbox if isinstance(closed_lockbox, Mapping) else None
+    )
+    if lockbox_status != "PASS":
+        actions.append(
+            "Keep the lockbox closed until all prerequisite gates, candidate identity, "
+            "fresh operational evidence, and one-time operator authorization pass."
+        )
+
+    prospective = eligibility.get("prospective_summary")
+    prospective = prospective if isinstance(prospective, Mapping) else {}
+    latest_health_alerts = (
+        health.get("alerts", ()) if isinstance(health, Mapping) else ()
+    )
+    return {
+        "schema_version": "option-pricing-readiness-summary-v1",
+        "datastore": str(Path(datastore_root).resolve()),
+        "gate_status": str(
+            eligibility.get("gate_status", "NOT_PRODUCTION_ELIGIBLE")
+        ),
+        "automated_action_allowed": False,
+        "market": {
+            "cycle_mode": market_decision.cycle_mode,
+            "target_state": market_decision.target_state.value,
+            "target_snapshot_for": (
+                market_decision.target_snapshot_for.isoformat()
+                if market_decision.target_snapshot_for is not None
+                else None
+            ),
+            "next_eligible_pricing_cycle": market_decision.next_eligible_cycle(
+                phase_offset_minutes=1
+            ).isoformat(),
+        },
+        "gates": gates,
+        "blocking_gates": failed_gates,
+        "prospective": dict(prospective),
+        "next_session_inputs": {
+            "live_surface_rates": live_rate_status,
+            "live_surface_rate_report": dict(next_live_rate_inputs or {}),
+            "current_rate_receipt_for_future_surfaces": current_rate_status,
+            "current_rate_receipt_report": dict(next_rate_coverage or {}),
+        },
+        "promotions": {
+            "candidate": candidate_status,
+            "closed_lockbox": lockbox_status,
+            "operational_artifact": operational_status,
+            "strategy_artifact": _status_name(strategy),
+            "operational_status_in_current_eligibility_snapshot": _status_name(
+                eligibility.get("operational_promotion")
+                if isinstance(eligibility.get("operational_promotion"), Mapping)
+                else None
+            ),
+        },
+        "health": {
+            "status": _status_name(health, default="NOT_EVALUATED"),
+            "scope": (
+                "LAST_ACTIONABLE_GENERATION"
+                if market_decision.cycle_mode == "MONITOR_ONLY"
+                else "CURRENT_ACTIONABLE_GENERATION"
+            ),
+            "checked_at": health.get("checked_at") if health else None,
+            "alert_kinds": sorted(
+                {
+                    str(alert.get("kind", "UNKNOWN"))
+                    for alert in latest_health_alerts
+                    if isinstance(alert, Mapping)
+                }
+            ),
+        },
+        "recommended_next_actions": actions,
+    }
+
+
+def _optional_status(
+    reader: Callable[[], object],
+) -> Mapping[str, object] | None:
+    try:
+        value = reader()
+    except Exception as exc:
+        return {
+            "status": "INVALID",
+            "reason": f"{type(exc).__name__}: {exc}",
+        }
+    return value if isinstance(value, Mapping) else None
+
+
+def _live_rate_input_report(
+    datastore_root: Path,
+    *,
+    symbols: Sequence[str],
+    target_snapshot_for: object,
+    prediction_created_at: object,
+    rate_observations: pd.DataFrame | None,
+) -> dict[str, object]:
+    """Verify the actual rate route on each latest pre-target option surface."""
+
+    target = pd.Timestamp(pd.to_datetime(target_snapshot_for, utc=True))
+    created = pd.Timestamp(pd.to_datetime(prediction_created_at, utc=True))
+    observations = (
+        rate_observations.copy()
+        if rate_observations is not None
+        else pd.DataFrame()
+    )
+    if not observations.empty:
+        observations["available_at"] = pd.to_datetime(
+            observations.get("available_at"), utc=True, errors="coerce"
+        )
+        observations["risk_free_rate"] = pd.to_numeric(
+            observations.get("risk_free_rate"), errors="coerce"
+        )
+    routes: dict[str, dict[str, object]] = {}
+    for raw_symbol in symbols:
+        symbol = str(raw_symbol).strip().upper()
+        try:
+            eligible = [
+                snapshot
+                for snapshot in committed_option_snapshots(
+                    datastore_root, symbol=symbol
+                )
+                if snapshot.snapshot_for < target
+                and (
+                    snapshot.receipt_published_at or snapshot.available_at
+                )
+                < created
+            ]
+        except Exception as exc:
+            routes[symbol] = {
+                "status": "INVALID",
+                "reason": f"{type(exc).__name__}: {exc}",
+            }
+            continue
+        if not eligible:
+            routes[symbol] = {
+                "status": "NOT_PROVEN",
+                "reason": "No strictly earlier committed option surface exists.",
+            }
+            continue
+        surface = max(
+            eligible,
+            key=lambda snapshot: (
+                snapshot.snapshot_for,
+                snapshot.receipt_published_at or snapshot.available_at,
+            ),
+        )
+        available_at = surface.receipt_published_at or surface.available_at
+        try:
+            contracts = pd.read_parquet(surface.contracts_path)
+        except Exception as exc:
+            routes[symbol] = {
+                "status": "INVALID",
+                "reason": f"{type(exc).__name__}: {exc}",
+            }
+            continue
+        provider_source = (
+            contracts["interest_rate"]
+            if "interest_rate" in contracts
+            else pd.Series(dtype=float)
+        )
+        provider = pd.to_numeric(provider_source, errors="coerce").dropna()
+        provider = provider.loc[provider.between(-0.20, 1.0)]
+        if not provider.empty:
+            routes[symbol] = {
+                "status": "PASS",
+                "source": "OPTION_SURFACE_PROVIDER_RATE",
+                "source_snapshot_for": surface.snapshot_for.isoformat(),
+                "source_available_at": available_at.isoformat(),
+                "risk_free_rate": float(provider.median()),
+            }
+            continue
+        fallback = observations.loc[
+            observations.get(
+                "available_at",
+                pd.Series(dtype="datetime64[ns, UTC]"),
+            ).lt(available_at)
+            & observations.get(
+                "risk_free_rate", pd.Series(dtype=float)
+            ).between(-0.20, 1.0)
+        ].sort_values("available_at")
+        if fallback.empty:
+            routes[symbol] = {
+                "status": "NOT_PROVEN",
+                "reason": "Surface has no provider rate or strictly prior FRED receipt.",
+                "source_snapshot_for": surface.snapshot_for.isoformat(),
+                "source_available_at": available_at.isoformat(),
+            }
+        else:
+            row = fallback.iloc[-1]
+            routes[symbol] = {
+                "status": "PASS",
+                "source": "STRICTLY_PRIOR_FRED_RECEIPT",
+                "source_snapshot_for": surface.snapshot_for.isoformat(),
+                "source_available_at": available_at.isoformat(),
+                "rate_available_at": pd.Timestamp(
+                    row["available_at"]
+                ).isoformat(),
+                "risk_free_rate": float(row["risk_free_rate"]),
+            }
+    passing = {
+        symbol: route
+        for symbol, route in routes.items()
+        if route["status"] == "PASS"
+    }
+    source_counts: dict[str, int] = {}
+    for route in passing.values():
+        source = str(route.get("source", "UNKNOWN"))
+        source_counts[source] = source_counts.get(source, 0) + 1
+    blocking = {
+        symbol: route
+        for symbol, route in routes.items()
+        if route["status"] != "PASS"
+    }
+    return {
+        "status": (
+            "PASS"
+            if routes and len(passing) == len(routes)
+            else "NOT_PROVEN"
+        ),
+        "target_snapshot_for": target.isoformat(),
+        "symbol_count": len(routes),
+        "passing_symbol_count": len(passing),
+        "source_counts": source_counts,
+        "blocking_routes": blocking,
+    }
+
+
+def _status_name(
+    value: Mapping[str, object] | None,
+    *,
+    default: str = "NOT_PROVEN",
+) -> str:
+    if not isinstance(value, Mapping):
+        return default
+    return str(value.get("status", default))
 
 
 def _pricing_status(root: Path) -> Mapping[str, object]:

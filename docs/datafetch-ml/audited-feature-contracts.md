@@ -432,9 +432,11 @@ This strategy path does not change the four closed directional feature sets or
 their version. Active `loop-a-all-v1` remains `1.2.0` for `1h`, `4h`, `1d`,
 and weekly routes.
 
-The repository also contains FRED vintage and release-context writer code, but
-the active Loop A FRED lane does not call it. Do not treat those artifact
-contracts as live coverage.
+The active Loop A FRED lane writes a current FEDFUNDS receipt to the
+release-context path using the local fetch time. This is live coverage only for
+later decisions. The repository also contains true FRED vintage derivation
+code, but Loop A does not fetch that archive; do not treat the current-receipt
+row as historical coverage.
 
 Loop A files are atomically written one at a time. Cross-loop consistency comes
 from a datastore cycle lock rather than extra Parquet fields: Loop A marks the
@@ -686,8 +688,9 @@ new versioned feature set. It must not be silently folded into
 
 The current implementation is honest about these remaining differences:
 
-1. FRED vintage/release persistence exists in code but is not fed by live
-   Loop A; production macro uses a current-revised receipt snapshot.
+1. FRED vintage/release persistence exists in code but is not fed by a true
+   archive importer. Loop A supplies only a current-revised receipt snapshot;
+   its FEDFUNDS bridge is valid for future Pricing targets, not backtests.
 2. Legacy fundamental-technical lifecycle joins on `timestamp`, not an
    immutable calculation receipt. Historical rebuild timing is not preserved
    in the integrated join.

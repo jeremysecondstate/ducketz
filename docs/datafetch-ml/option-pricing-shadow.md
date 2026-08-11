@@ -81,12 +81,19 @@ When the calendar supplies no eligible target, Pricing is write-free
 chain, or advances research eligibility health as though an opportunity was
 lost.
 
-Pricing then selects the latest committed source receipt satisfying both
+Pricing orders committed source receipts newest-first and selects the newest
+one that satisfies both causal clocks and yields at least one contract under
+the unchanged source-quality contract:
 
 ```text
 source_snapshot_for < target_snapshot_for
 source_available_at < prediction_created_at
 ```
+
+A newer receipt whose entire surface is stale or otherwise unusable cannot
+poison a later target when an older causal receipt remains valid. Every skipped
+receipt consulted by this deterministic fallback is included in the Pricing
+lineage; no staleness, moneyness, timing, or quote threshold is relaxed.
 
 It uses the target bar close, earlier contract definitions, and only lagged
 rate/dividend/IV evidence. The immutable Pricing receipt is published at the
@@ -247,7 +254,7 @@ python -m ml.option_pricing_runtime `
   --interval-minutes 15 `
   --phase-offset-minutes 1 `
   --bar-readiness-mode required `
-  --bar-readiness-timeout-seconds 45 `
+  --bar-readiness-timeout-seconds 120 `
   --once
 ```
 
