@@ -1,0 +1,5 @@
+# Start the Duckets desktop UI from the repository root with the virtual
+# environment activated.
+python -m app.main ui
+
+# Close the application window to stop the UI process.
