@@ -589,6 +589,14 @@ OPTION_PRICING_SURFACE_SCHEMA = _schema(
     )
 )
 
+# Pricing publication v1 predates the explicit first-availability field.  Keep
+# its exact physical schema available to the publication-chain reader so a v2
+# writer can verify and advance an existing v1 authority without rewriting the
+# immutable historical artifact.
+LEGACY_OPTION_PRICING_SURFACE_SCHEMA = OPTION_PRICING_SURFACE_SCHEMA.remove(
+    OPTION_PRICING_SURFACE_SCHEMA.get_field_index("first_available_at")
+)
+
 OPTION_PRICING_MONITORING_SCHEMA = _schema(
     (
         ("id", TEXT),

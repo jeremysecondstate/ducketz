@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pandas as pd
+import pyarrow as pa
 import pytest
 
 from ml.artifacts import file_checksum, write_manifest
@@ -17,6 +18,7 @@ from ml.option_pricing.publication import (
 )
 from ml.option_pricing_runtime import resolve_pricing_symbols, run_option_pricing_once
 from ml.parquet_contracts import (
+    LEGACY_OPTION_PRICING_SURFACE_SCHEMA,
     OPTION_PRICING_EVALUATION_SCHEMA,
     OPTION_PRICING_MONITORING_SCHEMA,
     OPTION_PRICING_PREDICTION_SCHEMA,
@@ -37,9 +39,30 @@ _OUTPUTS = {
 
 
 def _prepared_run(root: Path, name: str, timestamp: str) -> Path:
+    return _prepared_versioned_run(
+        root,
+        name,
+        timestamp,
+        publication_version=OPTION_PRICING_PUBLICATION_VERSION,
+        surface_schema=OPTION_PRICING_SURFACE_SCHEMA,
+    )
+
+
+def _prepared_versioned_run(
+    root: Path,
+    name: str,
+    timestamp: str,
+    *,
+    publication_version: str,
+    surface_schema: pa.Schema,
+) -> Path:
     run = root / "ml" / "option-pricing-runs" / name
     run.mkdir(parents=True)
-    for output_name, schema in _OUTPUTS.items():
+    outputs = {
+        **_OUTPUTS,
+        "pricing-surfaces.parquet": surface_schema,
+    }
+    for output_name, schema in outputs.items():
         write_parquet_with_schema(empty_frame(schema), run / output_name, schema)
     report_name = "option-pricing-model-reports.json"
     (run / report_name).write_text(
@@ -50,16 +73,65 @@ def _prepared_run(root: Path, name: str, timestamp: str) -> Path:
         run,
         run_timestamp=timestamp,
         input_files=(),
-        output_files=(*_OUTPUTS, report_name),
+        output_files=(*outputs, report_name),
         configuration={
             "publication_contract": {
-                "version": OPTION_PRICING_PUBLICATION_VERSION,
+                "version": publication_version,
                 "authority": "ml/option-pricing-latest/run.json",
                 "schema_validation": True,
                 "automated_action_allowed": False,
             }
         },
         datastore_root=root,
+    )
+    return run
+
+
+def _install_legacy_current(root: Path) -> Path:
+    timestamp = "2026-07-06T14:01:00+00:00"
+    published_at = "2026-07-06T14:01:01+00:00"
+    run = _prepared_versioned_run(
+        root,
+        "20260706T140100.000000Z",
+        timestamp,
+        publication_version="option-pricing-publication-v1",
+        surface_schema=LEGACY_OPTION_PRICING_SURFACE_SCHEMA,
+    )
+    receipt = {
+        "schema_version": "option-pricing-publication-v1",
+        "run_path": run.relative_to(root).as_posix(),
+        "run_timestamp": timestamp,
+        "published_at": published_at,
+        "manifest_checksum_sha256": file_checksum(run / "manifest.json"),
+        "previous_publication": None,
+    }
+    (run / "publication.json").write_text(
+        json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    pointer = pricing_pointer_path(root)
+    pointer.parent.mkdir(parents=True)
+    pointer.write_text(
+        json.dumps(
+            {
+                "schema_version": "option-pricing-pointer-v1",
+                "current": {
+                    "run_path": receipt["run_path"],
+                    "run_timestamp": timestamp,
+                    "published_at": published_at,
+                    "manifest_checksum_sha256": receipt[
+                        "manifest_checksum_sha256"
+                    ],
+                    "receipt_checksum_sha256": file_checksum(
+                        run / "publication.json"
+                    ),
+                },
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
     )
     return run
 
@@ -85,6 +157,28 @@ def test_pricing_publication_is_atomic_and_receipt_chained(tmp_path: Path) -> No
     assert published_second.receipt["previous_publication"] == published_first.pointer["current"]
     reachable = authoritative_option_pricing_runs(tmp_path)
     assert set(reachable) == {first.resolve(), second.resolve()}
+
+
+def test_pricing_runtime_advances_a_legacy_v1_current_publication(
+    tmp_path: Path,
+) -> None:
+    legacy = _install_legacy_current(tmp_path)
+    assert read_current_option_pricing_publication(tmp_path).run_directory == legacy
+
+    result = run_option_pricing_once(
+        tmp_path,
+        symbols=("NVDA",),
+        run_timestamp="2026-07-06T14:16:00Z",
+        runtime_clock=lambda: "2026-07-06T14:16:01Z",
+    )
+
+    current = read_current_option_pricing_publication(tmp_path)
+    assert current.run_directory == result.run_directory
+    assert current.receipt["schema_version"] == OPTION_PRICING_PUBLICATION_VERSION
+    assert current.pointer["schema_version"] == "option-pricing-pointer-v2"
+    assert current.receipt["previous_publication"]["run_path"] == legacy.relative_to(
+        tmp_path
+    ).as_posix()
 
 
 def test_pricing_publication_recovers_receipt_after_interrupted_pointer_write(

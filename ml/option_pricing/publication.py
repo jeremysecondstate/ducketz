@@ -10,6 +10,7 @@ import pandas as pd
 
 from ml.artifacts import file_checksum, verify_manifest
 from ml.parquet_contracts import (
+    LEGACY_OPTION_PRICING_SURFACE_SCHEMA,
     OPTION_PRICING_EVALUATION_SCHEMA,
     OPTION_PRICING_MONITORING_SCHEMA,
     OPTION_PRICING_PREDICTION_SCHEMA,
@@ -21,7 +22,7 @@ from ml.parquet_contracts import (
 
 OPTION_PRICING_PUBLICATION_VERSION = "option-pricing-publication-v2"
 OPTION_PRICING_POINTER_VERSION = "option-pricing-pointer-v2"
-_LEGACY_OPTION_PRICING_PUBLICATION_VERSIONS = {"option-pricing-publication-v1"}
+_LEGACY_OPTION_PRICING_PUBLICATION_VERSION = "option-pricing-publication-v1"
 _LEGACY_OPTION_PRICING_POINTER_VERSIONS = {"option-pricing-pointer-v1"}
 OPTION_PRICING_RECEIPT_NAME = "publication.json"
 OPTION_PRICING_REQUIRED_OUTPUTS = {
@@ -30,6 +31,13 @@ OPTION_PRICING_REQUIRED_OUTPUTS = {
     "pricing-evaluations.parquet": OPTION_PRICING_EVALUATION_SCHEMA,
     "pricing-surfaces.parquet": OPTION_PRICING_SURFACE_SCHEMA,
     "pricing-monitoring.parquet": OPTION_PRICING_MONITORING_SCHEMA,
+}
+_OPTION_PRICING_REQUIRED_OUTPUTS_BY_VERSION = {
+    _LEGACY_OPTION_PRICING_PUBLICATION_VERSION: {
+        **OPTION_PRICING_REQUIRED_OUTPUTS,
+        "pricing-surfaces.parquet": LEGACY_OPTION_PRICING_SURFACE_SCHEMA,
+    },
+    OPTION_PRICING_PUBLICATION_VERSION: OPTION_PRICING_REQUIRED_OUTPUTS,
 }
 OPTION_PRICING_REPORT_NAME = "option-pricing-model-reports.json"
 
@@ -325,10 +333,7 @@ def _verify_record(
         _validate_record(previous, label="previous Pricing publication")
     if (
         receipt.get("schema_version")
-        not in {
-            OPTION_PRICING_PUBLICATION_VERSION,
-            *_LEGACY_OPTION_PRICING_PUBLICATION_VERSIONS,
-        }
+        not in _OPTION_PRICING_REQUIRED_OUTPUTS_BY_VERSION
         or receipt.get("run_path") != run.relative_to(root).as_posix()
         or receipt.get("manifest_checksum_sha256") != file_checksum(run / "manifest.json")
         or receipt_timestamp != manifest_timestamp
@@ -368,10 +373,7 @@ def _verify_record_metadata(
         record.get("manifest_checksum_sha256") != manifest_checksum
         or record.get("receipt_checksum_sha256") != receipt_checksum
         or receipt.get("schema_version")
-        not in {
-            OPTION_PRICING_PUBLICATION_VERSION,
-            *_LEGACY_OPTION_PRICING_PUBLICATION_VERSIONS,
-        }
+        not in _OPTION_PRICING_REQUIRED_OUTPUTS_BY_VERSION
         or receipt.get("run_path") != run.relative_to(root).as_posix()
         or receipt.get("manifest_checksum_sha256") != manifest_checksum
         or receipt_timestamp != manifest_timestamp
@@ -425,24 +427,9 @@ def _verify_run(run: Path) -> Mapping[str, object]:
         raise OptionPricingPublicationError(
             "Pricing run lacks required outputs: " + ", ".join(missing)
         )
-    configuration = manifest.get("configuration")
-    contract = (
-        configuration.get("publication_contract")
-        if isinstance(configuration, Mapping)
-        else None
-    )
-    if not isinstance(contract, Mapping) or (
-        contract.get("version")
-        not in {
-            OPTION_PRICING_PUBLICATION_VERSION,
-            *_LEGACY_OPTION_PRICING_PUBLICATION_VERSIONS,
-        }
-        or contract.get("authority") != "ml/option-pricing-latest/run.json"
-        or contract.get("schema_validation") is not True
-        or contract.get("automated_action_allowed") is not False
-    ):
-        raise OptionPricingPublicationError("Pricing manifest publication contract is incompatible")
-    for name, schema in OPTION_PRICING_REQUIRED_OUTPUTS.items():
+    publication_version = _publication_contract_version(manifest)
+    required_outputs = _OPTION_PRICING_REQUIRED_OUTPUTS_BY_VERSION[publication_version]
+    for name, schema in required_outputs.items():
         try:
             verify_parquet_schema(run / name, schema)
         except Exception as exc:
@@ -450,6 +437,26 @@ def _verify_run(run: Path) -> Mapping[str, object]:
                 f"Pricing Parquet contract is invalid: {run / name}"
             ) from exc
     return manifest
+
+
+def _publication_contract_version(manifest: Mapping[str, object]) -> str:
+    configuration = manifest.get("configuration")
+    contract = (
+        configuration.get("publication_contract")
+        if isinstance(configuration, Mapping)
+        else None
+    )
+    version = contract.get("version") if isinstance(contract, Mapping) else None
+    if not isinstance(contract, Mapping) or (
+        version not in _OPTION_PRICING_REQUIRED_OUTPUTS_BY_VERSION
+        or contract.get("authority") != "ml/option-pricing-latest/run.json"
+        or contract.get("schema_validation") is not True
+        or contract.get("automated_action_allowed") is not False
+    ):
+        raise OptionPricingPublicationError(
+            "Pricing manifest publication contract is incompatible"
+        )
+    return str(version)
 
 
 def _publication_record(
