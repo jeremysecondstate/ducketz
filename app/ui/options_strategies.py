@@ -348,13 +348,13 @@ class OptionsStrategiesTab:
             height=18,
         )
         columns = (
-            ("rank", "Rank", 58, tk.E),
-            ("strategy", "Strategy", 160, tk.W),
-            ("exact_legs", "Exact Legs", 330, tk.W),
+            ("rank", "Rank", 48, tk.E),
+            ("strategy", "Strategy", 135, tk.W),
+            ("exact_legs", "Exact Legs", 195, tk.W),
             ("predictive_score", "Predictive Score", 110, tk.E),
-            ("expected_return", "Expected Return", 110, tk.E),
-            ("portfolio_fit", "Portfolio Fit", 125, tk.W),
-            ("score_basis", "Score Basis", 105, tk.W),
+            ("expected_return", "Expected Return", 100, tk.E),
+            ("portfolio_fit", "Portfolio Fit", 95, tk.W),
+            ("score_basis", "Score Basis", 160, tk.W),
         )
         for name, label, width, anchor in columns:
             table.heading(name, text=label)

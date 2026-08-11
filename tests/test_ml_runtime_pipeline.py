@@ -551,7 +551,7 @@ def test_directional_publication_does_not_wait_for_active_external_writers_and_s
     verify_parquet_schema(candidates_path, STRATEGY_CANDIDATE_SCHEMA)
     candidates = pd.read_parquet(candidates_path)
     assert not candidates.empty
-    assert candidates["score_basis"].eq("SCENARIO_PRIOR").all()
+    assert candidates["score_basis"].eq("PRICING_SCENARIO_FALLBACK").all()
     assert candidates["maximum_quote_staleness_seconds"].isna().all()
     assert not candidates["liquidity_policy_pass"].any()
     assert all(
@@ -567,8 +567,12 @@ def test_directional_publication_does_not_wait_for_active_external_writers_and_s
         "model_policy_version": STRATEGY_MODEL_POLICY_VERSION,
         "ranking_policy_version": STRATEGY_RANKING_POLICY_VERSION,
         "decision_score": "profitable_outcome_probability",
-        "fitted_score_basis": "CALIBRATED_MODEL",
-        "fallback_score_basis": "SCENARIO_PRIOR",
+        "fitted_score_bases": [
+            "BSGP_CALIBRATED_MODEL",
+            "BLACK_SCHOLES_CALIBRATED_MODEL",
+        ],
+        "fallback_score_basis": "PRICING_SCENARIO_FALLBACK",
+        "pricing_evidence_before_probability": True,
     }
     assert source_checksums == {
         path.name: file_checksum(path)

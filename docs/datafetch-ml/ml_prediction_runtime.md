@@ -86,11 +86,12 @@ excludes the real lockbox, and publishes schema-bound candidate and
 per-strategy audit artifacts for every attempted current concrete route. Every
 numerically constructible candidate remains visible; quote quality, liquidity,
 model availability, and route rank are explicit columns. A route that cannot
-yet fit its 252/63/63 chronological strategy partitions still publishes
-exact-chain rows ranked by the causal market-state scenario prior. Those rows
-carry `MARKET_STATE_PRIOR`, a raw probability and expected-return measurements;
-the calibrated probability remains null until GOOG evidence supports fitting
-and calibration. The route model report separately records `MODEL_NOT_FIT`.
+yet fit its chronological strategy partitions still publishes exact-chain rows
+ranked by a pricing-informed scenario probability. Those rows carry
+`PRICING_SCENARIO_FALLBACK`, a raw profitable-outcome probability and separate
+expected-return measurements; the calibrated probability remains null until
+compatible pricing-enhanced evidence supports fitting and calibration. The
+route model report separately records `MODEL_NOT_FIT`.
 Unavailable chain history is recorded in the 40-strategy route audit rather
 than converted into a recommendation. Loop B analytics do not submit orders.
 The separate,
@@ -683,10 +684,12 @@ Compatibility covers the exact input inventory, decision counts and training
 boundary, ordered numeric and categorical features, preprocessing, model,
 candidate, outcome, ranking, registry, and research-trace policy versions.
 The principal identifiers are `schwab-spreads-strategy-registry-v1`,
-`schwab-exact-chain-candidates-v3`, `observed-bbo-pseudo-outcome-v2`,
-`point-in-time-market-state-v1`, `greek-bbo-scenario-prior-v2`,
-`market-state-hgb-platt-return-v4`, `probability-first-ranking-v3`,
-`strategy-candidate-v2`, and `nyu-hu-uh-trace-v3`.
+`schwab-exact-chain-pricing-candidates-v4`,
+`observed-bbo-pseudo-outcome-v2`, `point-in-time-market-state-pricing-v2`,
+`pricing-greek-bbo-scenario-prior-v3`,
+`pricing-market-state-hgb-platt-return-v5`,
+`post-pricing-probability-first-ranking-v4`, `strategy-candidate-v3`, and
+`nyu-hu-uh-trace-v3`.
 
 The current candidate pass uses the canonical live directional prediction for
 the matching symbol/horizon/decision and publishes every exact-chain variant
@@ -694,9 +697,9 @@ that can be constructed from the latest eligible entry receipt. With a fitted
 strategy model it writes raw and calibrated profitable-outcome probability,
 expected net profit, expected return on risk, calibrated probability as the
 primary score, and a probability-first rank. Without a fitted model it uses the
-explicitly uncalibrated scenario-prior profit probability as the primary score,
-leaves calibrated probability null, and labels the score basis **Scenario
-Prior**. Each attempted current route also gets
+pricing-informed scenario profitable-outcome probability as the primary score,
+leaves calibrated probability null, and labels the score basis **Pricing
+Scenario**. Each attempted current route also gets
 one audit row for each of the 40 registry strategies; missing history or
 construction failure is reported there. Even when there are no candidate or
 audit rows, the two exact empty schemas are published.

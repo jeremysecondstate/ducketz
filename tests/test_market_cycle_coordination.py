@@ -15,7 +15,11 @@ from datafetching.decision_time import (
 from datafetching.options_runtime import report_options_result, run_options_cycle
 from datafetching.parquet_store import ParquetStore
 from ml.option_pricing.target_outcome import read_target_outcome
-from ml.option_pricing_runtime import report_pricing_result, run_option_pricing_once
+from ml.option_pricing_runtime import (
+    RetryablePricingReadinessError,
+    report_pricing_result,
+    run_option_pricing_once,
+)
 from options.publication import publish_option_snapshot
 
 
@@ -118,7 +122,7 @@ def test_pricing_wait_accepts_readiness_before_deadline(tmp_path: Path) -> None:
     assert simulation.published is True
 
 
-def test_late_readiness_publishes_one_immutable_noncreditable_terminal(
+def test_late_readiness_remains_retryable_without_empty_terminal(
     tmp_path: Path,
 ) -> None:
     target = pd.Timestamp("2026-08-10T17:00:00Z")
@@ -130,23 +134,19 @@ def test_late_readiness_publishes_one_immutable_noncreditable_terminal(
         ready_offset_seconds=1.0,
     )
 
-    first = run_option_pricing_once(
-        tmp_path,
-        symbols=("GOOG",),
-        run_timestamp=target + pd.Timedelta(minutes=1),
-        runtime_clock=simulation.clock,
-        target_snapshot_for=target,
-        bar_readiness_mode="required",
-        bar_readiness_timeout_seconds=0.5,
-        readiness_sleeper=simulation.sleep,
-        monotonic_clock=simulation.monotonic,
-    )
-    authoritative = read_target_outcome(tmp_path, target_snapshot_for=target)
-    target_directories = tuple(
-        path
-        for path in (tmp_path / "ml" / "option-pricing-target-outcomes").iterdir()
-        if path.is_dir() and not path.name.startswith(".")
-    )
+    with pytest.raises(RetryablePricingReadinessError):
+        run_option_pricing_once(
+            tmp_path,
+            symbols=("GOOG",),
+            run_timestamp=target + pd.Timedelta(minutes=1),
+            runtime_clock=simulation.clock,
+            target_snapshot_for=target,
+            bar_readiness_mode="required",
+            bar_readiness_timeout_seconds=0.5,
+            readiness_sleeper=simulation.sleep,
+            monotonic_clock=simulation.monotonic,
+        )
+    assert not (tmp_path / "ml" / "option-pricing-target-latest" / "run.json").exists()
 
     second = run_option_pricing_once(
         tmp_path,
@@ -158,10 +158,15 @@ def test_late_readiness_publishes_one_immutable_noncreditable_terminal(
         bar_readiness_timeout_seconds=0,
     )
 
-    assert first.target_state == CycleTargetState.READINESS_DEADLINE_MISSED.value
-    assert first.target_outcome_status == "TARGET_BAR_NOT_READY"
-    assert authoritative.predictions().empty
+    authoritative = read_target_outcome(tmp_path, target_snapshot_for=target)
+    target_directories = tuple(
+        path
+        for path in (tmp_path / "ml" / "option-pricing-target-outcomes").iterdir()
+        if path.is_dir() and not path.name.startswith(".")
+    )
+    assert simulation.published is True
     assert second.target_outcome_directory == authoritative.directory
+    assert second.target_outcome_status != "TARGET_BAR_NOT_READY"
     assert len(target_directories) == 1
 
 

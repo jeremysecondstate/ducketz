@@ -23,6 +23,7 @@ from datafetching.sec_fetch import fetch as fetch_sec
 PROVIDERS = ("databento", "fmp", "fred", "schwab", "sec")
 FETCH_PROFILES = ("continuation", "full", "incremental")
 ProviderCompleted = Callable[[str, Mapping[str, FetchResult]], None]
+DatabentoMinuteBarsCompleted = Callable[[Mapping[str, FetchResult]], None]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -138,20 +139,30 @@ def run_symbol_fetch(
     include_fmp_macro: bool = True,
     include_options: bool = True,
     provider_completed: ProviderCompleted | None = None,
+    databento_minute_bars_completed: DatabentoMinuteBarsCompleted | None = None,
 ) -> tuple[FetchResult, ...]:
     effective_profile = normalize_fetch_profile(profile)
     results: list[FetchResult] = []
     for provider in providers:
         print(f"[{symbol}/{provider}] fetching...")
-        result = run_provider_fetch(
-            provider,
-            symbol,
-            store,
-            profile=effective_profile,
-            include_cme=include_cme,
-            include_fmp_macro=include_fmp_macro,
-            include_options=include_options,
-        )
+        if provider == "databento" and databento_minute_bars_completed is not None:
+            result = fetch_databento(
+                symbol,
+                store,
+                include_cme=include_cme,
+                profile=effective_profile,
+                minute_bars_completed=databento_minute_bars_completed,
+            )
+        else:
+            result = run_provider_fetch(
+                provider,
+                symbol,
+                store,
+                profile=effective_profile,
+                include_cme=include_cme,
+                include_fmp_macro=include_fmp_macro,
+                include_options=include_options,
+            )
         results.append(result)
         if provider_completed is not None:
             provider_completed(provider, {symbol: result})
@@ -168,6 +179,7 @@ def run_symbols_fetch(
     include_fmp_macro: bool = True,
     include_options: bool = True,
     provider_completed: ProviderCompleted | None = None,
+    databento_minute_bars_completed: DatabentoMinuteBarsCompleted | None = None,
 ) -> dict[str, tuple[FetchResult, ...]]:
     """Fetch a watchlist provider-by-provider, batching supported requests."""
     clean_symbols = tuple(
@@ -191,6 +203,7 @@ def run_symbols_fetch(
                 include_fmp_macro=include_fmp_macro,
                 include_options=include_options,
                 provider_completed=provider_completed,
+                databento_minute_bars_completed=databento_minute_bars_completed,
             )
         }
 
@@ -233,6 +246,7 @@ def run_symbols_fetch(
                     store,
                     include_cme=include_cme,
                     profile=effective_profile,
+                    minute_bars_completed=databento_minute_bars_completed,
                 )
             elif provider == "fmp":
                 batch_results = fetch_fmp_many(

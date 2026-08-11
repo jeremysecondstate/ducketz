@@ -312,7 +312,7 @@ def test_bsgp_is_deterministic_compares_four_models_and_reuses_only_compatible_a
     assert incompatible.reused is False
 
 
-def test_baseline_prediction_publishes_raw_and_constrained_values_without_uncertainty() -> None:
+def test_baseline_prediction_publishes_raw_constrained_values_and_fallback_uncertainty() -> None:
     samples = build_causal_samples(
         _source_surface().iloc[:5],
         target_contracts=None,
@@ -332,7 +332,13 @@ def test_baseline_prediction_publishes_raw_and_constrained_values_without_uncert
     assert predictions["model_status"].eq("BASELINE_ONLY").all()
     assert predictions["prediction_status"].eq("CREATED").all()
     assert predictions["constrained_fair_value"].notna().all()
-    assert predictions["predictive_standard_deviation"].isna().all()
+    assert predictions["predicted_normalized_residual"].eq(0.0).all()
+    assert predictions["raw_fair_value"].equals(
+        predictions["black_scholes_price"]
+    )
+    assert predictions["predictive_standard_deviation"].gt(0.0).all()
+    assert predictions["constrained_interval_95_lower"].notna().all()
+    assert predictions["constrained_interval_95_upper"].notna().all()
     assert predictions["automated_action_allowed"].eq(False).all()
 
 

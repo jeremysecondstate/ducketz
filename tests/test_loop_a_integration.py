@@ -31,7 +31,7 @@ def test_clean_datastore_runs_loop_a_once_and_writes_readable_ids(
     result, provider_calls = _run_loop_a_once(tmp_path, monkeypatch)
 
     assert result == 0
-    assert provider_calls == ["fmp", "databento"]
+    assert provider_calls == ["databento", "fmp"]
     assert not (tmp_path / ".ducketz-orchestration.lock").exists()
 
     stock_root = tmp_path / "stocks" / "NVDA"
@@ -201,12 +201,16 @@ def _run_loop_a_once(
         *,
         include_cme: bool,
         profile: str,
+        minute_bars_completed=None,
     ) -> FetchResult:
         assert not include_cme
         assert profile == "continuation"
         provider_calls.append("databento")
         changed = _seed_databento_daily_bars(store, symbol)
-        return FetchResult("databento", changed, 0)
+        result = FetchResult("databento", changed, 0)
+        if minute_bars_completed is not None:
+            minute_bars_completed({symbol: result})
+        return result
 
     monkeypatch.setattr(fetching_main, "fetch_fmp", fetch_fmp)
     monkeypatch.setattr(fetching_main, "fetch_databento", fetch_databento)

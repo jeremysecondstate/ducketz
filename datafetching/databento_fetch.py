@@ -4,7 +4,7 @@ import json
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable, Mapping
 
 import pandas as pd
 import pyarrow.parquet as pq
@@ -51,6 +51,7 @@ def fetch(
     *,
     include_cme: bool = True,
     profile: str = "continuation",
+    minute_bars_completed: Callable[[Mapping[str, FetchResult]], None] | None = None,
 ) -> FetchResult:
     """Fetch Databento data, continuing every native bar dataset from stored time.
 
@@ -60,7 +61,33 @@ def fetch(
     """
     provider = DatabentoMarketDataProvider()
     observed_at = datetime.now(timezone.utc)
-    native_results = list(_fetch_native_results(provider, symbol, profile, store))
+    minute_result: FetchResult | None = None
+
+    def on_spec_completed(spec: object, results: list[tuple]) -> None:
+        nonlocal minute_result
+        if getattr(spec, "frequency", None) != "1m":
+            return
+        minute_result = _persist_native_results(
+            symbol,
+            store,
+            provider=provider,
+            profile=profile,
+            observed_at=observed_at,
+            native_results=results,
+            run_derived=False,
+        )
+        if minute_bars_completed is not None:
+            minute_bars_completed({symbol: minute_result})
+
+    native_results = list(
+        _fetch_native_results(
+            provider,
+            symbol,
+            profile,
+            store,
+            spec_completed=on_spec_completed,
+        )
+    )
     result = _persist_native_results(
         symbol,
         store,
@@ -68,7 +95,12 @@ def fetch(
         profile=profile,
         observed_at=observed_at,
         native_results=native_results,
+        skip_native_frequencies=(
+            frozenset(("1m",)) if minute_result is not None else frozenset()
+        ),
     )
+    if minute_result is not None:
+        result = _combine_results(minute_result, result)
 
     if include_cme:
         result = _with_shared_cme_result(result, store)
@@ -81,6 +113,7 @@ def fetch_many(
     *,
     include_cme: bool = True,
     profile: str = "continuation",
+    minute_bars_completed: Callable[[Mapping[str, FetchResult]], None] | None = None,
 ) -> dict[str, FetchResult]:
     """Fetch Databento bars for a watchlist using multi-symbol requests."""
     requested_symbols = tuple(symbols)
@@ -98,6 +131,7 @@ def fetch_many(
             store,
             include_cme=include_cme,
             profile=profile,
+            minute_bars_completed=minute_bars_completed,
         )
         timing.annotate(row_count=len(results), operation="wrote")
         return results
@@ -109,6 +143,7 @@ def _fetch_many(
     *,
     include_cme: bool = True,
     profile: str = "continuation",
+    minute_bars_completed: Callable[[Mapping[str, FetchResult]], None] | None = None,
 ) -> dict[str, FetchResult]:
     clean_symbols = _normalize_symbols(symbols)
     if len(clean_symbols) == 1:
@@ -119,16 +154,40 @@ def _fetch_many(
                 store,
                 include_cme=include_cme,
                 profile=profile,
+                minute_bars_completed=minute_bars_completed,
             )
         }
 
     provider = DatabentoMarketDataProvider()
     observed_at = datetime.now(timezone.utc)
+    minute_results: dict[str, FetchResult] = {}
+
+    def on_spec_completed(
+        spec: object,
+        results: Mapping[str, list[tuple]],
+    ) -> None:
+        if getattr(spec, "frequency", None) != "1m":
+            return
+        for symbol in clean_symbols:
+            minute_results[symbol] = _persist_native_results(
+                symbol,
+                store,
+                provider=provider,
+                profile=profile,
+                observed_at=observed_at,
+                native_results=results[symbol],
+                batch_watchlist_symbol_count=len(clean_symbols),
+                run_derived=False,
+            )
+        if minute_bars_completed is not None:
+            minute_bars_completed(dict(minute_results))
+
     native_results = _fetch_native_results_many(
         provider,
         clean_symbols,
         profile,
         store,
+        spec_completed=on_spec_completed,
     )
     results = {
         symbol: _persist_native_results(
@@ -139,9 +198,16 @@ def _fetch_many(
             observed_at=observed_at,
             native_results=native_results[symbol],
             batch_watchlist_symbol_count=len(clean_symbols),
+            skip_native_frequencies=(
+                frozenset(("1m",))
+                if symbol in minute_results
+                else frozenset()
+            ),
         )
         for symbol in clean_symbols
     }
+    for symbol, minute_result in minute_results.items():
+        results[symbol] = _combine_results(minute_result, results[symbol])
     if include_cme:
         first_symbol = clean_symbols[0]
         results[first_symbol] = _with_shared_cme_result(
@@ -160,6 +226,8 @@ def _persist_native_results(
     observed_at: datetime,
     native_results: Iterable[tuple],
     batch_watchlist_symbol_count: int = 1,
+    skip_native_frequencies: frozenset[str] = frozenset(),
+    run_derived: bool = True,
 ) -> FetchResult:
     data_files = 0
     error_files = 0
@@ -190,6 +258,17 @@ def _persist_native_results(
                     "range_end": available_range.end.isoformat(),
                 }
             )
+
+        if spec.frequency in skip_native_frequencies:
+            if exc is None:
+                completed_bars = completed_market_bars(
+                    bars,
+                    timeframe=spec.frequency,
+                    as_of=observed_at,
+                )
+                source_bars_by_frequency[spec.frequency] = completed_bars
+                source_specs_by_frequency[spec.frequency] = spec
+            continue
 
         request_key = f"{spec.key}_{spec.schema}_{spec.frequency}"
         if exc is not None:
@@ -248,29 +327,30 @@ def _persist_native_results(
             as_of=observed_at,
         )
 
-    derived_files, derived_errors = _save_derived_intraday_bars(
-        symbol,
-        store,
-        provider=provider,
-        profile=profile,
-        source_bars=source_bars_by_frequency.get("1m", []),
-        source_spec=source_specs_by_frequency.get("1m"),
-        observed_at=observed_at,
-    )
-    data_files += derived_files
-    error_files += derived_errors
+    if run_derived:
+        derived_files, derived_errors = _save_derived_intraday_bars(
+            symbol,
+            store,
+            provider=provider,
+            profile=profile,
+            source_bars=source_bars_by_frequency.get("1m", []),
+            source_spec=source_specs_by_frequency.get("1m"),
+            observed_at=observed_at,
+        )
+        data_files += derived_files
+        error_files += derived_errors
 
-    daily_files, daily_errors = _save_derived_daily_bars(
-        symbol,
-        store,
-        provider=provider,
-        profile=profile,
-        minute_source_spec=source_specs_by_frequency.get("1m"),
-        daily_source_spec=declared_specs_by_frequency.get("1d"),
-        observed_at=observed_at,
-    )
-    data_files += daily_files
-    error_files += daily_errors
+        daily_files, daily_errors = _save_derived_daily_bars(
+            symbol,
+            store,
+            provider=provider,
+            profile=profile,
+            minute_source_spec=source_specs_by_frequency.get("1m"),
+            daily_source_spec=declared_specs_by_frequency.get("1d"),
+            observed_at=observed_at,
+        )
+        data_files += daily_files
+        error_files += daily_errors
 
     return FetchResult("databento", data_files, error_files, advisory_files)
 
@@ -510,6 +590,8 @@ def _fetch_native_results(
     symbol: str,
     profile: str,
     store: ParquetStore,
+    *,
+    spec_completed: Callable[[object, list[tuple]], None] | None = None,
 ):
     normalized_profile = profile.strip().lower()
     if normalized_profile not in {"continuation", "full", "incremental"}:
@@ -519,8 +601,12 @@ def _fetch_native_results(
         )
     # Every native schema is refreshed on every iteration from that request's own
     # latest persisted timestamp.
-    specs = provider.native_specs()
-
+    specs = tuple(
+        sorted(
+            provider.native_specs(),
+            key=lambda spec: (0 if spec.frequency == "1m" else 1),
+        )
+    )
     try:
         range_payload = call_with_persistent_databento_retry(
             provider.dataset_range,
@@ -529,7 +615,12 @@ def _fetch_native_results(
             timing_reporter=print,
         )
     except Exception as exc:
-        return [(spec, [], None, None, exc) for spec in specs]
+        failed = [(spec, [], None, None, exc) for spec in specs]
+        if spec_completed is not None:
+            minute = [row for row in failed if row[0].frequency == "1m"]
+            if minute:
+                spec_completed(minute[0][0], minute)
+        return failed
 
     results = []
     for spec in specs:
@@ -588,7 +679,18 @@ def _fetch_native_results(
             results.append((spec, bars, raw_frame, selected_range, None))
         except Exception as exc:
             results.append((spec, [], None, None, exc))
+        if spec_completed is not None:
+            spec_completed(spec, [results[-1]])
     return results
+
+
+def _combine_results(left: FetchResult, right: FetchResult) -> FetchResult:
+    return FetchResult(
+        "databento",
+        left.data_files + right.data_files,
+        left.error_files + right.error_files,
+        left.advisory_files + right.advisory_files,
+    )
 
 
 def _fetch_native_results_many(
@@ -596,6 +698,8 @@ def _fetch_native_results_many(
     symbols: tuple[str, ...],
     profile: str,
     store: ParquetStore,
+    *,
+    spec_completed: Callable[[object, Mapping[str, list[tuple]]], None] | None = None,
 ) -> dict[str, list[tuple]]:
     normalized_profile = profile.strip().lower()
     if normalized_profile not in {"continuation", "full", "incremental"}:
@@ -603,7 +707,12 @@ def _fetch_native_results_many(
             "Databento fetch mode must be continuation; legacy full/incremental "
             "aliases are also accepted."
         )
-    specs = provider.native_specs()
+    specs = tuple(
+        sorted(
+            provider.native_specs(),
+            key=lambda spec: (0 if spec.frequency == "1m" else 1),
+        )
+    )
     results: dict[str, list[tuple]] = {symbol: [] for symbol in symbols}
 
     try:
@@ -618,6 +727,24 @@ def _fetch_native_results_many(
             results[symbol].extend(
                 (spec, [], None, None, exc) for spec in specs
             )
+        if spec_completed is not None:
+            minute_spec = next(
+                (spec for spec in specs if spec.frequency == "1m"), None
+            )
+            if minute_spec is not None:
+                spec_completed(
+                    minute_spec,
+                    {
+                        symbol: [
+                            next(
+                                row
+                                for row in results[symbol]
+                                if row[0].frequency == "1m"
+                            )
+                        ]
+                        for symbol in symbols
+                    },
+                )
         return results
 
     for spec in specs:
@@ -630,6 +757,11 @@ def _fetch_native_results_many(
         except Exception as exc:
             for symbol in symbols:
                 results[symbol].append((spec, [], None, None, exc))
+            if spec_completed is not None:
+                spec_completed(
+                    spec,
+                    {symbol: [results[symbol][-1]] for symbol in symbols},
+                )
             continue
 
         symbols_by_start: dict[datetime, list[str]] = {}
@@ -723,6 +855,12 @@ def _fetch_native_results_many(
                     results[symbol].append(
                         (spec, bars, raw_frame, selected_range, None)
                     )
+
+        if spec_completed is not None:
+            spec_completed(
+                spec,
+                {symbol: [results[symbol][-1]] for symbol in symbols},
+            )
 
     return results
 

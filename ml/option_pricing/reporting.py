@@ -12,7 +12,7 @@ from ml.option_pricing.policies import OPTION_PRICING_POLICY_VERSION
 
 
 GATE_VERSION = "option-pricing-ten-part-gate-v1"
-SURFACE_VERSION = "option-pricing-compact-surface-v1"
+SURFACE_VERSION = "option-pricing-compact-surface-v2"
 EDGE_BUCKETS = (-math.inf, -2.0, -1.0, 0.0, 1.0, 2.0, math.inf)
 INTERVAL_80_TOLERANCE = (0.72, 0.88)
 INTERVAL_95_TOLERANCE = (0.90, 0.99)
@@ -74,6 +74,19 @@ def build_pricing_surfaces(
     ]
     output: list[dict[str, object]] = []
     for key, group in rows.groupby(group_columns, dropna=False, sort=True):
+        prediction_availability = pd.to_datetime(
+            group.get(
+                "prediction_available_at",
+                pd.Series(pd.NaT, index=group.index, dtype="datetime64[ns, UTC]"),
+            ),
+            utc=True,
+            errors="coerce",
+        ).dropna()
+        first_available_at = (
+            pd.Timestamp(prediction_availability.max())
+            if not prediction_availability.empty
+            else created
+        )
         valid = group["prediction_status"].isin(("AVAILABLE", "CREATED"))
         raw_violations = _any_violation(
             group,
@@ -103,7 +116,8 @@ def build_pricing_surfaces(
             {
                 "symbol": key[0],
                 "target_snapshot_for": key[1],
-                "available_at": created,
+                "available_at": first_available_at,
+                "first_available_at": first_available_at,
                 "call_put": key[2],
                 "expiration_bucket": key[3],
                 "moneyness_bucket": key[4],

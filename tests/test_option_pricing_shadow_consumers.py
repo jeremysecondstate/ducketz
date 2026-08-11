@@ -18,7 +18,17 @@ from ml.option_pricing.publication import (
     OPTION_PRICING_PUBLICATION_VERSION,
     publish_option_pricing_run,
 )
-from ml.option_pricing.strategy_shadow import attach_strategy_pricing_shadow
+from ml.option_pricing.policies import (
+    OPTION_PRICING_POLICY_VERSION,
+    OPTION_PRICING_SCHEMA_VERSION,
+)
+from ml.option_pricing.reporting import SURFACE_VERSION
+from ml.option_pricing.reporting import build_pricing_surfaces
+from ml.option_pricing.strategy_shadow import (
+    StrategyPricingEvidenceCatalog,
+    attach_strategy_pricing_evidence,
+    attach_strategy_pricing_shadow,
+)
 from ml.parquet_contracts import (
     OPTION_PRICING_EVALUATION_SCHEMA,
     OPTION_PRICING_MONITORING_SCHEMA,
@@ -29,6 +39,8 @@ from ml.parquet_contracts import (
     frame_with_readable_id,
     write_parquet_with_schema,
 )
+from ml.strategy_selection.contracts import StrategySelectionPolicy
+from ml.strategy_selection.market_state import MarketState, score_market_state_prior
 
 
 def _publish_pricing(root: Path) -> Path:
@@ -48,6 +60,7 @@ def _publish_pricing(root: Path) -> Path:
                 "source_available_at": pd.Timestamp("2026-07-06T13:46:00Z"),
                 "prediction_created_at": pd.Timestamp("2026-07-06T14:01:00Z"),
                 "prediction_available_at": pd.Timestamp("2026-07-06T14:01:01Z"),
+                "source_quote_staleness_seconds": 60.0,
                 "model_name": "bsgp",
                 "model_version": "fixture",
                 "model_status": "MODEL_FIT",
@@ -82,9 +95,9 @@ def _publish_pricing(root: Path) -> Path:
                 "projection_correction": 0.0,
                 "projection_status": "COMPLETE",
                 "prediction_status": "CREATED",
-                "pricing_policy_version": "black-scholes-rbf-residual-v1",
+                "pricing_policy_version": OPTION_PRICING_POLICY_VERSION,
                 "timing_policy_version": "pre-quote-quarter-hour-v1",
-                "schema_version": "option-pricing-shadow-v1",
+                "schema_version": OPTION_PRICING_SCHEMA_VERSION,
                 "automated_action_allowed": False,
             }
         ]
@@ -99,6 +112,7 @@ def _publish_pricing(root: Path) -> Path:
                 "symbol": "NVDA",
                 "target_snapshot_for": pd.Timestamp("2026-07-06T14:00:00Z"),
                 "available_at": pd.Timestamp("2026-07-06T14:01:01Z"),
+                "first_available_at": pd.Timestamp("2026-07-06T14:01:01Z"),
                 "call_put": "CALL",
                 "expiration_bucket": "31-60d",
                 "moneyness_bucket": "near-the-money",
@@ -120,8 +134,8 @@ def _publish_pricing(root: Path) -> Path:
                 "median_quote_staleness_seconds": 5.0,
                 "surface_quality_pass": True,
                 "surface_status": "AVAILABLE",
-                "pricing_policy_version": "black-scholes-rbf-residual-v1",
-                "schema_version": "option-pricing-compact-surface-v1",
+                "pricing_policy_version": OPTION_PRICING_POLICY_VERSION,
+                "schema_version": SURFACE_VERSION,
                 "automated_action_allowed": False,
             }
         ]
@@ -209,6 +223,15 @@ def test_directional_shadow_profile_is_explicit_and_default_is_unchanged() -> No
         horizon="1h",
     )
     assert any(name.startswith("opx__") for name in feature_set.names)
+    active_specs = horizon_specifications_for_profile(
+        "loop-a-all-bsgp-active-v2"
+    )
+    active_features = DEFAULT_FEATURE_REGISTRY.feature_set(
+        active_specs["1h"].feature_set,
+        require_active=True,
+        horizon="1h",
+    )
+    assert any(name.startswith("opx__") for name in active_features.names)
     default = horizon_specifications_for_profile()["1h"]
     assert not any(
         name.startswith("opx__")
@@ -262,11 +285,13 @@ def test_strategy_off_and_shadow_do_not_change_rank_legs_or_order_draft(tmp_path
         assert output.iloc[0]["decision_score"] == candidate.iloc[0]["decision_score"]
         assert output.iloc[0]["legs_json"] == candidate.iloc[0]["legs_json"]
         assert build_strategy_order_draft(output.iloc[0].to_dict(), position=position) == before
-    assert off.iloc[0]["pricing_status"] == "OFF"
-    assert shadow.iloc[0]["pricing_status"] == "COVERED"
+    assert off.iloc[0]["pricing_status"] == "Unavailable"
+    assert shadow.iloc[0]["pricing_status"] == "Active"
     assert shadow.iloc[0]["pricing_candidate_edge"] == pytest.approx(20.0)
-    assert shadow.iloc[0]["pricing_edge_to_friction"] == pytest.approx(20.0 / 20.65)
-    assert shadow.iloc[0]["pricing_uncertainty"] == pytest.approx(25.0)
+    assert shadow.iloc[0]["pricing_conservative_edge"] == pytest.approx(-5.0)
+    assert shadow.iloc[0]["pricing_edge_to_friction"] == pytest.approx(20.0 / 21.30)
+    assert shadow.iloc[0]["pricing_uncertainty"] == pytest.approx(10.0)
+    assert shadow.iloc[0]["pricing_source"] == "BSGP"
 
 
 def test_strategy_missing_or_tampered_pricing_falls_back_without_rank_change(
@@ -280,7 +305,7 @@ def test_strategy_missing_or_tampered_pricing_falls_back_without_rank_change(
         available_not_after="2026-07-06T14:03:00Z",
         per_contract_fee=0.65,
     ).candidates
-    assert missing.iloc[0]["pricing_status"] == "EVIDENCE_UNAVAILABLE"
+    assert missing.iloc[0]["pricing_status"] == "Delayed"
     assert missing.iloc[0]["candidate_rank"] == 1
 
     run = _publish_pricing(tmp_path)
@@ -293,5 +318,293 @@ def test_strategy_missing_or_tampered_pricing_falls_back_without_rank_change(
         available_not_after="2026-07-06T14:03:00Z",
         per_contract_fee=0.65,
     ).candidates
-    assert tampered.iloc[0]["pricing_status"] == "EVIDENCE_UNAVAILABLE"
+    assert tampered.iloc[0]["pricing_status"] == "Delayed"
     assert tampered.iloc[0]["candidate_rank"] == 1
+
+
+def test_exact_contract_matching_and_stale_fallback_are_isolated() -> None:
+    candidate = _candidate()
+    exact = _canonical_prediction(
+        contract_symbol="NVDA  260821C00100000",
+        fair_value=2.30,
+    )
+    matched = attach_strategy_pricing_evidence(
+        candidate,
+        catalog=StrategyPricingEvidenceCatalog(pd.DataFrame([exact]), ()),
+        pricing_mode="active",
+        per_contract_fee=0.65,
+        allow_offline_replay=False,
+    ).candidates.iloc[0]
+    assert matched["pricing_status"] == "Active"
+    assert matched["pricing_leg_coverage"] == 1.0
+
+    semantic_only = dict(exact)
+    semantic_only["contract_symbol"] = "DIFFERENT-CONTRACT"
+    rejected = attach_strategy_pricing_evidence(
+        candidate,
+        catalog=StrategyPricingEvidenceCatalog(
+            pd.DataFrame([semantic_only]), ()
+        ),
+        pricing_mode="active",
+        per_contract_fee=0.65,
+        allow_offline_replay=False,
+    ).candidates.iloc[0]
+    assert rejected["pricing_status"] == "Delayed"
+    assert rejected["pricing_leg_coverage"] == 0.0
+    assert pd.isna(rejected["pricing_candidate_edge"])
+
+    stale = dict(exact)
+    stale["input_staleness_seconds"] = 1_201.0
+    rejected_stale = attach_strategy_pricing_evidence(
+        candidate,
+        catalog=StrategyPricingEvidenceCatalog(pd.DataFrame([stale]), ()),
+        pricing_mode="active",
+        per_contract_fee=0.65,
+        allow_offline_replay=False,
+    ).candidates.iloc[0]
+    assert rejected_stale["pricing_status"] == "Unavailable"
+    assert rejected_stale["pricing_source"] == "UNAVAILABLE"
+    assert pd.isna(rejected_stale["pricing_candidate_edge"])
+
+    missing_age = dict(exact)
+    missing_age["input_staleness_seconds"] = float("nan")
+    rejected_missing_age = attach_strategy_pricing_evidence(
+        candidate,
+        catalog=StrategyPricingEvidenceCatalog(pd.DataFrame([missing_age]), ()),
+        pricing_mode="active",
+        per_contract_fee=0.65,
+        allow_offline_replay=False,
+    ).candidates.iloc[0]
+    assert rejected_missing_age["pricing_status"] == "Unavailable"
+    assert rejected_missing_age["pricing_source"] == "UNAVAILABLE"
+
+    offline_bsgp = dict(exact)
+    offline_bsgp["evidence_lane"] = "OFFLINE_SCHWAB_BOOTSTRAP"
+    rejected_offline = attach_strategy_pricing_evidence(
+        candidate,
+        catalog=StrategyPricingEvidenceCatalog(pd.DataFrame([offline_bsgp]), ()),
+        pricing_mode="active",
+        per_contract_fee=0.65,
+        allow_offline_replay=False,
+    ).candidates.iloc[0]
+    assert rejected_offline["pricing_status"] == "Delayed"
+    assert rejected_offline["pricing_source"] == "UNAVAILABLE"
+
+
+def test_long_short_multileg_edge_and_conservative_joint_uncertainty() -> None:
+    long_leg = json.loads(_candidate().iloc[0]["legs_json"])[0]
+    long_leg["quantity"] = 2
+    short_leg = {
+        **long_leg,
+        "contract_symbol": "NVDA  260821C00105000",
+        "side": "SHORT",
+        "quantity": 1,
+        "strike": 105.0,
+        "bid": 2.0,
+        "ask": 2.2,
+    }
+    stock_leg = {
+        "asset": "STOCK",
+        "contract_symbol": "NVDA",
+        "side": "LONG",
+        "quantity": 100,
+        "bid": 99.9,
+        "ask": 100.1,
+        "multiplier": 1.0,
+    }
+    candidate = _candidate()
+    candidate.loc[0, "legs_json"] = json.dumps(
+        [long_leg, short_leg, stock_leg], sort_keys=True, separators=(",", ":")
+    )
+    predictions = pd.DataFrame(
+        [
+            _canonical_prediction(
+                contract_symbol=str(long_leg["contract_symbol"]),
+                fair_value=3.0,
+                lower=2.5,
+                upper=3.5,
+                standard_deviation=0.2,
+            ),
+            _canonical_prediction(
+                contract_symbol=str(short_leg["contract_symbol"]),
+                strike=105.0,
+                fair_value=1.5,
+                lower=1.0,
+                upper=2.0,
+                standard_deviation=0.3,
+            ),
+        ]
+    )
+    row = attach_strategy_pricing_evidence(
+        candidate,
+        catalog=StrategyPricingEvidenceCatalog(predictions, ()),
+        pricing_mode="active",
+        per_contract_fee=0.65,
+        allow_offline_replay=False,
+    ).candidates.iloc[0]
+
+    # Long: 2*100*(3.0-2.1)=180. Short: 1*100*(2.0-1.5)=50.
+    assert row["pricing_candidate_edge"] == pytest.approx(230.0)
+    # Conservative long is 80; conservative short is zero.
+    assert row["pricing_conservative_edge"] == pytest.approx(80.0)
+    # Conservative L1 interval aggregation: 2*100*.2 + 1*100*.3.
+    assert row["pricing_uncertainty"] == pytest.approx(70.0)
+    assert row["pricing_leg_coverage"] == 1.0
+
+
+def test_pricing_evidence_changes_profit_probability_and_candidate_rank() -> None:
+    first = _candidate().iloc[0].to_dict()
+    second = _candidate().iloc[0].to_dict()
+    first["candidate_key"] = "candidate-a"
+    second["candidate_key"] = "candidate-b"
+    first_leg = json.loads(str(first["legs_json"]))[0]
+    second_leg = dict(first_leg)
+    second_leg["contract_symbol"] = "NVDA  260821C00105000"
+    second_leg["strike"] = 105.0
+    second["legs_json"] = json.dumps([second_leg])
+    candidates = pd.DataFrame([first, second])
+    for column, value in {
+        "underlying_price": 100.0,
+        "net_delta": 0.0,
+        "net_gamma": 0.0,
+        "net_theta": 0.0,
+        "max_loss": 1_000.0,
+        "max_profit": 1_000.0,
+        "capital_required": 1_000.0,
+    }.items():
+        candidates[column] = value
+
+    def score(fair_a: float, fair_b: float) -> pd.DataFrame:
+        catalog = StrategyPricingEvidenceCatalog(
+            pd.DataFrame(
+                [
+                    _canonical_prediction(
+                        contract_symbol=str(first_leg["contract_symbol"]),
+                        fair_value=fair_a,
+                        lower=fair_a - 0.2,
+                        upper=fair_a + 0.2,
+                    ),
+                    _canonical_prediction(
+                        contract_symbol=str(second_leg["contract_symbol"]),
+                        strike=105.0,
+                        fair_value=fair_b,
+                        lower=fair_b - 0.2,
+                        upper=fair_b + 0.2,
+                    ),
+                ]
+            ),
+            (),
+        )
+        enriched = attach_strategy_pricing_evidence(
+            candidates,
+            catalog=catalog,
+            pricing_mode="active",
+            per_contract_fee=0.65,
+            allow_offline_replay=False,
+        ).candidates
+        return score_market_state_prior(
+            enriched,
+            state=MarketState(0.5, 0.01, 0.2, 1.0, None, None, 1.0),
+            policy=StrategySelectionPolicy(
+                minimum_train_decisions=1,
+                calibration_decisions=1,
+                assessment_decisions=1,
+            ),
+        )
+
+    a_favored = score(3.0, 1.5)
+    b_favored = score(1.5, 3.0)
+    rank_a_first = dict(
+        zip(a_favored["candidate_key"], a_favored["candidate_rank"])
+    )
+    rank_b_first = dict(
+        zip(b_favored["candidate_key"], b_favored["candidate_rank"])
+    )
+    score_a_first = dict(
+        zip(a_favored["candidate_key"], a_favored["decision_score"])
+    )
+    score_b_first = dict(
+        zip(b_favored["candidate_key"], b_favored["decision_score"])
+    )
+    assert rank_a_first == {"candidate-a": 1, "candidate-b": 2}
+    assert rank_b_first == {"candidate-b": 1, "candidate-a": 2}
+    assert score_a_first["candidate-a"] > score_b_first["candidate-a"]
+    assert score_b_first["candidate-b"] > score_a_first["candidate-b"]
+    assert a_favored["decision_score"].between(0.0, 1.0).all()
+    print(
+        json.dumps(
+            {
+                "a_favored_ranks": rank_a_first,
+                "a_favored_scores": score_a_first,
+                "b_favored_ranks": rank_b_first,
+                "b_favored_scores": score_b_first,
+                "fixture": "controlled-pricing-evidence-rerank",
+            },
+            sort_keys=True,
+        )
+    )
+
+
+def test_republishing_surface_preserves_market_first_availability() -> None:
+    prediction = pd.DataFrame([_publishable_prediction_row()])
+    surface = build_pricing_surfaces(
+        prediction,
+        pd.DataFrame(),
+        available_at="2026-07-06T18:00:00Z",
+    )
+    expected = pd.Timestamp("2026-07-06T14:01:01Z")
+    assert surface["available_at"].eq(expected).all()
+    assert surface["first_available_at"].eq(expected).all()
+
+
+def _canonical_prediction(
+    *,
+    contract_symbol: str,
+    fair_value: float,
+    strike: float = 100.0,
+    lower: float | None = None,
+    upper: float | None = None,
+    standard_deviation: float = 0.10,
+) -> dict[str, object]:
+    return {
+        "symbol": "NVDA",
+        "target_snapshot_for": pd.Timestamp("2026-07-06T14:00:00Z"),
+        "source_snapshot_for": pd.Timestamp("2026-07-06T13:45:00Z"),
+        "expiration_date": pd.Timestamp("2026-08-21T00:00:00Z"),
+        "call_put": "CALL",
+        "contract_symbol": contract_symbol,
+        "strike": strike,
+        "multiplier": 100.0,
+        "prediction_created_at": pd.Timestamp("2026-07-06T14:01:00Z"),
+        "prediction_available_at": pd.Timestamp("2026-07-06T14:01:01Z"),
+        "model_published_at": pd.Timestamp("2026-07-06T13:50:00Z"),
+        "underlying_price": 100.0,
+        "fair_value": fair_value,
+        "fair_value_95_lower": fair_value - 0.25 if lower is None else lower,
+        "fair_value_95_upper": fair_value + 0.25 if upper is None else upper,
+        "predictive_standard_deviation": standard_deviation,
+        "residual_shrinkage": 0.8,
+        "pricing_source": "BSGP",
+        "input_staleness_seconds": 900.0,
+        "evidence_lane": "LIVE",
+    }
+
+
+def _publishable_prediction_row() -> dict[str, object]:
+    row = _canonical_prediction(
+        contract_symbol="NVDA  260821C00100000", fair_value=2.30
+    )
+    return {
+        **row,
+        "source_provider": "schwab",
+        "prediction_mode": "LIVE",
+        "target_years_to_expiration": 46 / 365,
+        "prediction_status": "CREATED",
+        "raw_bound_violation": False,
+        "raw_monotonicity_violation": False,
+        "raw_convexity_violation": False,
+        "constrained_bound_violation": False,
+        "constrained_monotonicity_violation": False,
+        "constrained_convexity_violation": False,
+        "automated_action_allowed": False,
+    }

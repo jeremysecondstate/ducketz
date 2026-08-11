@@ -1,10 +1,20 @@
 from __future__ import annotations
 
-from collections import Counter
+import hashlib
+import json
+from collections import Counter, OrderedDict
 from pathlib import Path
+from threading import RLock
 from typing import Mapping, Sequence
 
 import pandas as pd
+
+from ml.option_pricing.strategy_shadow import (
+    STRATEGY_PRICING_MODES,
+    StrategyPricingEvidenceCatalog,
+    attach_strategy_pricing_evidence,
+    load_strategy_pricing_evidence,
+)
 
 from ml.strategy_selection.candidates import (
     construct_strategy_candidates,
@@ -48,6 +58,12 @@ _EXIT_DELAYS = {
     "1w-d5": pd.Timedelta(days=2),
 }
 
+_HISTORICAL_OUTCOME_CACHE_LIMIT = 4_096
+_HISTORICAL_OUTCOME_CACHE: OrderedDict[
+    str, tuple[pd.DataFrame, int, Mapping[str, int]]
+] = OrderedDict()
+_HISTORICAL_OUTCOME_CACHE_LOCK = RLock()
+
 
 def run_strategy_selection(
     datastore_root: Path,
@@ -60,6 +76,8 @@ def run_strategy_selection(
     policy: StrategySelectionPolicy | None = None,
     sample_source_files: Sequence[Path] = (),
     history_available_not_after: object | None = None,
+    pricing_mode: str = "off",
+    pricing_catalog: StrategyPricingEvidenceCatalog | None = None,
 ) -> StrategySelectionRun:
     effective_policy = policy or StrategySelectionPolicy()
     _validate_inputs(samples, predictions)
@@ -69,9 +87,24 @@ def run_strategy_selection(
     )
     created = _utc(run_timestamp)
     input_cutoff = _utc(input_available_at)
+    mode = str(pricing_mode).strip().lower()
+    if mode not in STRATEGY_PRICING_MODES:
+        raise ValueError("pricing_mode must be off, shadow, or active")
+    catalog = pricing_catalog
+    if catalog is None:
+        catalog = (
+            load_strategy_pricing_evidence(
+                datastore_root,
+                available_not_after=created,
+                include_offline_replay=True,
+            )
+            if mode != "off"
+            else StrategyPricingEvidenceCatalog(pd.DataFrame(), ())
+        )
     prediction_probabilities = _prediction_probabilities(predictions)
     histories: dict[str, SchwabChainHistory] = {}
     source_files: list[Path] = []
+    source_files.extend(catalog.source_files)
     history_errors: dict[str, str] = {}
     for symbol in sorted(set(samples["symbol"].astype("string").str.upper())):
         try:
@@ -109,8 +142,30 @@ def run_strategy_selection(
             prediction_probabilities=prediction_probabilities,
             policy=effective_policy,
             strictly_before=lockbox_boundaries.get(horizon),
+            pricing_mode=mode,
+            pricing_catalog=catalog,
         )
-        if outcomes.empty:
+        model_outcomes = outcomes
+        if mode == "active" and not outcomes.empty:
+            pricing_eligible = (
+                outcomes["pricing_mode"].astype("string").str.upper().eq("ACTIVE")
+                & outcomes["pricing_source"]
+                .astype("string")
+                .str.upper()
+                .isin(("BSGP", "BLACK_SCHOLES"))
+                & pd.to_numeric(
+                    outcomes["pricing_leg_coverage"], errors="coerce"
+                ).ge(1.0 - 1e-12)
+            )
+            model_outcomes = outcomes.loc[pricing_eligible].reset_index(drop=True)
+            outcome_report = {
+                **outcome_report,
+                "pricing_eligible_outcome_rows": len(model_outcomes),
+                "pricing_excluded_outcome_rows": int(
+                    len(outcomes) - len(model_outcomes)
+                ),
+            }
+        if model_outcomes.empty:
             model_reports[horizon] = {
                 "status": "MODEL_NOT_FIT",
                 "reason": "No complete observed-BBO candidate outcomes were materialized.",
@@ -122,7 +177,7 @@ def run_strategy_selection(
             continue
         try:
             partitions = partition_strategy_outcomes(
-                outcomes,
+                model_outcomes,
                 policy=effective_policy,
             )
             model = fit_or_reuse_strategy_model(
@@ -142,7 +197,7 @@ def run_strategy_selection(
                 **outcome_report,
                 "complete_outcome_rows": len(outcomes),
                 "usable_decision_clusters": int(
-                    outcomes["target_window_start"].nunique()
+                    model_outcomes["target_window_start"].nunique()
                 ),
                 "required_decision_clusters": required_decisions,
                 "real_lockbox_used": False,
@@ -156,7 +211,7 @@ def run_strategy_selection(
             **outcome_report,
             "complete_outcome_rows": len(outcomes),
             "usable_decision_clusters": int(
-                outcomes["target_window_start"].nunique()
+                model_outcomes["target_window_start"].nunique()
             ),
             "required_decision_clusters": required_decisions,
             "artifact_directory": str(model.artifact_directory),
@@ -230,6 +285,14 @@ def run_strategy_selection(
         if candidates.empty:
             continue
         candidates = _attach_context(candidates, sample)
+        pricing = attach_strategy_pricing_evidence(
+            candidates,
+            catalog=catalog,
+            pricing_mode=mode,
+            per_contract_fee=effective_policy.per_contract_fee,
+            allow_offline_replay=False,
+        )
+        candidates = pricing.candidates
         state = infer_market_state(
             sample,
             surface=entry.surface,
@@ -244,10 +307,24 @@ def run_strategy_selection(
         if model is None:
             candidate_frames.append(candidates)
             continue
-        scored = score_strategy_candidates(
-            model,  # type: ignore[arg-type]
-            candidates,
-        )
+        if mode == "active":
+            eligible = _pricing_model_eligible(candidates)
+            scored_frames = [candidates.loc[~eligible].copy()]
+            if eligible.any():
+                scored_frames.append(
+                    score_strategy_candidates(
+                        model,  # type: ignore[arg-type]
+                        candidates.loc[eligible].copy(),
+                    )
+                )
+            scored = _rerank_candidates(
+                pd.concat(scored_frames, ignore_index=True, sort=False)
+            )
+        else:
+            scored = score_strategy_candidates(
+                model,  # type: ignore[arg-type]
+                candidates,
+            )
         candidate_frames.append(scored)
 
     candidates = (
@@ -267,6 +344,7 @@ def run_strategy_selection(
         model_reports=model_reports,
         models_trained=models_trained,
         models_reused=models_reused,
+        pricing_report=_pricing_report(candidates, mode=mode, catalog=catalog),
     )
 
 
@@ -279,10 +357,14 @@ def _historical_outcomes(
     ],
     policy: StrategySelectionPolicy,
     strictly_before: pd.Timestamp | None,
+    pricing_mode: str,
+    pricing_catalog: StrategyPricingEvidenceCatalog,
 ) -> tuple[pd.DataFrame, dict[str, object]]:
     outcome_frames: list[pd.DataFrame] = []
     failures: Counter[str] = Counter()
     candidate_rows = 0
+    cache_hits = 0
+    cache_misses = 0
     possible_samples, coverage_failures = _samples_with_possible_receipts(
         samples,
         histories=histories,
@@ -334,6 +416,30 @@ def _historical_outcomes(
             maximum_delay=maximum_delay,
             strictly_before=strictly_before,
         )
+        probability_up = prediction_probabilities.get(_prediction_key(sample))
+        cache_key = _historical_outcome_cache_key(
+            sample,
+            entry_contracts=entry.contracts,
+            entry_surface=entry.surface,
+            exit_contracts=exit_receipt.contracts,
+            exit_surface=exit_receipt.surface,
+            stock_entry=stock_entry,
+            stock_exit=stock_exit,
+            probability_up=probability_up,
+            pricing_mode=pricing_mode,
+            pricing_catalog=pricing_catalog,
+            policy=policy,
+        )
+        cached = _historical_outcome_cache_get(cache_key)
+        if cached is not None:
+            cached_frame, cached_candidate_rows, cached_failures = cached
+            outcome_frames.append(cached_frame)
+            candidate_rows += cached_candidate_rows
+            failures.update(cached_failures)
+            cache_hits += 1
+            continue
+        cache_misses += 1
+        observation_failures: Counter[str] = Counter()
         try:
             candidates, _audit = construct_strategy_candidates(
                 sample,
@@ -349,10 +455,18 @@ def _historical_outcomes(
             failures["no_constructible_candidate"] += 1
             continue
         candidates = _attach_context(candidates, sample)
+        pricing = attach_strategy_pricing_evidence(
+            candidates,
+            catalog=pricing_catalog,
+            pricing_mode=pricing_mode,
+            per_contract_fee=policy.per_contract_fee,
+            allow_offline_replay=True,
+        )
+        candidates = pricing.candidates
         state = infer_market_state(
             sample,
             surface=entry.surface,
-            probability_up=prediction_probabilities.get(_prediction_key(sample)),
+            probability_up=probability_up,
         )
         candidates = score_market_state_prior(
             candidates,
@@ -371,8 +485,16 @@ def _historical_outcomes(
             )
             evaluated.append({**candidate, **result})
             if result["outcome_status"] != "COMPLETE":
-                failures[str(result["outcome_status"]).lower()] += 1
-        outcome_frames.append(pd.DataFrame(evaluated))
+                observation_failures[str(result["outcome_status"]).lower()] += 1
+        evaluated_frame = pd.DataFrame(evaluated)
+        failures.update(observation_failures)
+        outcome_frames.append(evaluated_frame)
+        _historical_outcome_cache_put(
+            cache_key,
+            evaluated_frame,
+            candidate_rows=len(candidates),
+            failures=observation_failures,
+        )
     outcomes = (
         pd.concat(outcome_frames, ignore_index=True, sort=False)
         if outcome_frames
@@ -390,6 +512,171 @@ def _historical_outcomes(
         "candidate_rows_constructed": candidate_rows,
         "complete_outcome_rows": complete_rows,
         "failures": dict(sorted(failures.items())),
+        "incremental_outcome_cache_hits": cache_hits,
+        "incremental_outcome_cache_misses": cache_misses,
+    }
+
+
+def _historical_outcome_cache_key(
+    sample: Mapping[str, object],
+    *,
+    entry_contracts: pd.DataFrame,
+    entry_surface: pd.Series,
+    exit_contracts: pd.DataFrame,
+    exit_surface: pd.Series,
+    stock_entry: pd.Series | None,
+    stock_exit: pd.Series | None,
+    probability_up: float | None,
+    pricing_mode: str,
+    pricing_catalog: StrategyPricingEvidenceCatalog,
+    policy: StrategySelectionPolicy,
+) -> str:
+    """Fingerprint only immutable evidence used by one historical observation."""
+
+    digest = hashlib.sha256()
+    digest.update(repr(policy).encode("utf-8"))
+    digest.update(str(pricing_mode).encode("utf-8"))
+    digest.update(repr(probability_up).encode("utf-8"))
+    _update_frame_digest(digest, "sample", pd.DataFrame([sample]))
+    _update_frame_digest(digest, "entry-contracts", entry_contracts)
+    _update_frame_digest(digest, "entry-surface", entry_surface.to_frame().T)
+    _update_frame_digest(digest, "exit-contracts", exit_contracts)
+    _update_frame_digest(digest, "exit-surface", exit_surface.to_frame().T)
+    _update_frame_digest(
+        digest,
+        "stock-entry",
+        stock_entry.to_frame().T if stock_entry is not None else pd.DataFrame(),
+    )
+    _update_frame_digest(
+        digest,
+        "stock-exit",
+        stock_exit.to_frame().T if stock_exit is not None else pd.DataFrame(),
+    )
+    target = pd.Timestamp(entry_surface["snapshot_for"])
+    symbol = str(sample["symbol"]).strip().upper()
+    pricing = pricing_catalog.predictions
+    if not pricing.empty:
+        pricing_target = pd.to_datetime(
+            pricing["target_snapshot_for"], utc=True, errors="coerce"
+        )
+        pricing = pricing.loc[
+            pricing["symbol"].astype("string").str.upper().eq(symbol)
+            & pricing_target.eq(target)
+        ]
+    _update_frame_digest(digest, "pricing", pricing)
+    return digest.hexdigest()
+
+
+def _update_frame_digest(
+    digest: "hashlib._Hash",
+    label: str,
+    frame: pd.DataFrame,
+) -> None:
+    digest.update(label.encode("utf-8"))
+    if frame.empty:
+        digest.update(b"<empty>")
+        return
+    normalized = frame.reindex(sorted(frame.columns), axis=1).copy()
+    for column in normalized.columns:
+        normalized[column] = normalized[column].map(_stable_cache_value)
+    row_hashes = pd.util.hash_pandas_object(
+        normalized,
+        index=False,
+        categorize=True,
+    ).to_numpy(dtype="uint64", copy=True)
+    row_hashes.sort()
+    digest.update("\x1f".join(normalized.columns).encode("utf-8"))
+    digest.update(row_hashes.tobytes())
+
+
+def _stable_cache_value(value: object) -> str:
+    if value is None or value is pd.NA or value is pd.NaT:
+        return "<null>"
+    if isinstance(value, pd.Timestamp):
+        return value.isoformat()
+    if isinstance(value, (Mapping, list, tuple)):
+        return json.dumps(value, sort_keys=True, default=str, separators=(",", ":"))
+    try:
+        if pd.isna(value):
+            return "<null>"
+    except (TypeError, ValueError):
+        pass
+    return str(value)
+
+
+def _historical_outcome_cache_get(
+    key: str,
+) -> tuple[pd.DataFrame, int, Mapping[str, int]] | None:
+    with _HISTORICAL_OUTCOME_CACHE_LOCK:
+        cached = _HISTORICAL_OUTCOME_CACHE.get(key)
+        if cached is None:
+            return None
+        _HISTORICAL_OUTCOME_CACHE.move_to_end(key)
+        frame, candidate_rows, failures = cached
+        return frame.copy(deep=True), candidate_rows, dict(failures)
+
+
+def _historical_outcome_cache_put(
+    key: str,
+    frame: pd.DataFrame,
+    *,
+    candidate_rows: int,
+    failures: Mapping[str, int],
+) -> None:
+    with _HISTORICAL_OUTCOME_CACHE_LOCK:
+        _HISTORICAL_OUTCOME_CACHE[key] = (
+            frame.copy(deep=True),
+            int(candidate_rows),
+            dict(failures),
+        )
+        _HISTORICAL_OUTCOME_CACHE.move_to_end(key)
+        while len(_HISTORICAL_OUTCOME_CACHE) > _HISTORICAL_OUTCOME_CACHE_LIMIT:
+            _HISTORICAL_OUTCOME_CACHE.popitem(last=False)
+
+
+def _pricing_model_eligible(frame: pd.DataFrame) -> pd.Series:
+    return (
+        frame["pricing_mode"].astype("string").str.upper().eq("ACTIVE")
+        & frame["pricing_source"]
+        .astype("string")
+        .str.upper()
+        .isin(("BSGP", "BLACK_SCHOLES"))
+        & pd.to_numeric(frame["pricing_leg_coverage"], errors="coerce").ge(
+            1.0 - 1e-12
+        )
+    )
+
+
+def _rerank_candidates(frame: pd.DataFrame) -> pd.DataFrame:
+    if frame.empty:
+        return frame.copy()
+    output = frame.sort_values(
+        ["decision_score", "expected_return_on_risk", "candidate_key"],
+        ascending=[False, False, True],
+        kind="mergesort",
+    ).reset_index(drop=True)
+    output["candidate_rank"] = range(1, len(output) + 1)
+    return output
+
+
+def _pricing_report(
+    frame: pd.DataFrame,
+    *,
+    mode: str,
+    catalog: StrategyPricingEvidenceCatalog,
+) -> dict[str, object]:
+    status = frame.get(
+        "pricing_status", pd.Series("", index=frame.index, dtype="string")
+    ).astype("string")
+    return {
+        "mode": mode,
+        "candidate_rows": len(frame),
+        "status_counts": {
+            str(key): int(value) for key, value in status.value_counts().items()
+        },
+        "prediction_rows_loaded": len(catalog.predictions),
+        "load_errors": list(catalog.errors),
+        "attached_before_training_and_scoring": True,
     }
 
 

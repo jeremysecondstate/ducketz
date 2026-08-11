@@ -15,17 +15,24 @@ ExpirationRole = Literal["FRONT", "BACK"]
 STRATEGY_SELECTION_SCHWAB_SPREADS_V1 = "schwab-spreads-v1"
 
 STRATEGY_REGISTRY_VERSION = "schwab-spreads-strategy-registry-v1"
-STRATEGY_CANDIDATE_POLICY_VERSION = "schwab-exact-chain-candidates-v3"
+STRATEGY_CANDIDATE_POLICY_VERSION = "schwab-exact-chain-pricing-candidates-v4"
 STRATEGY_OUTCOME_POLICY_VERSION = "observed-bbo-pseudo-outcome-v2"
-MARKET_STATE_POLICY_VERSION = "point-in-time-market-state-v1"
-STRATEGY_PRIOR_POLICY_VERSION = "greek-bbo-scenario-prior-v2"
-STRATEGY_MODEL_POLICY_VERSION = "market-state-hgb-platt-return-v4"
-STRATEGY_RANKING_POLICY_VERSION = "probability-first-ranking-v3"
-STRATEGY_CANDIDATE_SCHEMA_VERSION = "strategy-candidate-v2"
+MARKET_STATE_POLICY_VERSION = "point-in-time-market-state-pricing-v2"
+STRATEGY_PRIOR_POLICY_VERSION = "pricing-greek-bbo-scenario-prior-v3"
+STRATEGY_MODEL_POLICY_VERSION = "pricing-market-state-hgb-platt-return-v5"
+STRATEGY_RANKING_POLICY_VERSION = "post-pricing-probability-first-ranking-v4"
+STRATEGY_CANDIDATE_SCHEMA_VERSION = "strategy-candidate-v3"
 STRATEGY_RESEARCH_TRACE_VERSION = "nyu-hu-uh-trace-v3"
 
-CALIBRATED_MODEL_SCORE_BASIS = "CALIBRATED_MODEL"
-SCENARIO_PRIOR_SCORE_BASIS = "SCENARIO_PRIOR"
+BSGP_CALIBRATED_MODEL_SCORE_BASIS = "BSGP_CALIBRATED_MODEL"
+BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS = (
+    "BLACK_SCHOLES_CALIBRATED_MODEL"
+)
+PRICING_SCENARIO_FALLBACK_SCORE_BASIS = "PRICING_SCENARIO_FALLBACK"
+# Import-compatible names for downstream code while persisted rows use only the
+# three pricing-aware bases above.
+CALIBRATED_MODEL_SCORE_BASIS = BSGP_CALIBRATED_MODEL_SCORE_BASIS
+SCENARIO_PRIOR_SCORE_BASIS = PRICING_SCENARIO_FALLBACK_SCORE_BASIS
 
 
 @dataclass(frozen=True)
@@ -166,16 +173,20 @@ class StrategySelectionRun:
     model_reports: Mapping[str, Mapping[str, object]] = field(default_factory=dict)
     models_trained: int = 0
     models_reused: int = 0
+    pricing_report: Mapping[str, object] = field(default_factory=dict)
 
 
 __all__ = [
     "AssetKind",
+    "BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS",
+    "BSGP_CALIBRATED_MODEL_SCORE_BASIS",
     "CALIBRATED_MODEL_SCORE_BASIS",
     "ExpirationRole",
     "LegRule",
     "MARKET_STATE_POLICY_VERSION",
     "OptionType",
     "PositionSide",
+    "PRICING_SCENARIO_FALLBACK_SCORE_BASIS",
     "STRATEGY_CANDIDATE_POLICY_VERSION",
     "STRATEGY_CANDIDATE_SCHEMA_VERSION",
     "STRATEGY_MODEL_POLICY_VERSION",

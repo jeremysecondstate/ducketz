@@ -84,6 +84,26 @@ class FiniteBasisGP:
             raise ValueError("Finite-basis GP produced non-finite predictions")
         return mean, standard_deviation
 
+    def predict_joint(self, rows: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+        """Return posterior mean and same-model contract covariance.
+
+        CALL and PUT models remain separate. Consumers that combine sides must
+        use a documented zero-covariance or conservative interval-bound policy.
+        """
+
+        matrix = derived_feature_matrix(rows)
+        transformed = self.basis.transform(self.scaler.transform(matrix))
+        mean = np.asarray(self.regression.predict(transformed), dtype=float)
+        posterior = np.asarray(self.regression.sigma_, dtype=float)
+        covariance = transformed @ posterior @ transformed.T
+        noise_precision = float(self.regression.alpha_)
+        if math.isfinite(noise_precision) and noise_precision > 0.0:
+            covariance = covariance + np.eye(len(transformed)) / noise_precision
+        covariance = (covariance + covariance.T) / 2.0
+        if not np.isfinite(mean).all() or not np.isfinite(covariance).all():
+            raise ValueError("Finite-basis GP produced a non-finite joint posterior")
+        return mean, covariance
+
 
 @dataclass(frozen=True)
 class PricingRouteModel:

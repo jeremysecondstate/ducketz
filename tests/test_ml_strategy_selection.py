@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 
 import numpy as np
@@ -23,6 +24,7 @@ from ml.strategy_selection.chain import (
     exit_chain_receipt,
 )
 from ml.strategy_selection.contracts import (
+    BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
     CALIBRATED_MODEL_SCORE_BASIS,
     SCENARIO_PRIOR_SCORE_BASIS,
     STRATEGY_CANDIDATE_SCHEMA_VERSION,
@@ -31,11 +33,13 @@ from ml.strategy_selection.contracts import (
     StrategyModel,
     StrategySelectionPolicy,
 )
+from ml.option_pricing.strategy_shadow import StrategyPricingEvidenceCatalog
 from ml.strategy_selection.market_state import (
     infer_market_state,
     score_market_state_prior,
 )
 from ml.strategy_selection.model import (
+    PRICING_NUMERIC_FEATURES,
     fit_or_reuse_strategy_model,
     partition_strategy_outcomes,
     score_strategy_candidates,
@@ -571,7 +575,7 @@ def test_market_state_prior_scores_every_exact_candidate_without_fake_calibratio
     assert scored["score_basis"].eq(SCENARIO_PRIOR_SCORE_BASIS).all()
     assert scored["schema_version"].eq(STRATEGY_CANDIDATE_SCHEMA_VERSION).all()
     assert scored["candidate_rank"].tolist() == list(range(1, len(scored) + 1))
-    assert scored["model_status"].eq("MARKET_STATE_PRIOR").all()
+    assert scored["model_status"].eq("PRICING_SCENARIO").all()
     assert scored["direction_probability_up"].eq(0.70).all()
     assert scored["market_expected_absolute_move"].gt(0.0).all()
 
@@ -747,6 +751,8 @@ def test_strategy_model_fits_only_training_and_calibration_partitions(
     )
 
     evidence = model.offline_evaluation
+    assert set(PRICING_NUMERIC_FEATURES).issubset(model.numeric_features)
+    assert "pricing_source" in model.categorical_features
     assert evidence["assessment_used_for_training"] is False
     assert evidence["assessment_used_for_calibration"] is False
     assert evidence["assessment_used_for_ranking_policy_selection"] is False
@@ -965,6 +971,7 @@ def test_runtime_publishes_prior_rank_with_missing_quote_age_diagnostics(
         ignore_index=True,
     ).to_parquet(quote_path, index=False)
 
+    full_rebuild_started = time.perf_counter()
     result = run_strategy_selection(
         tmp_path,
         samples=pd.DataFrame([live]),
@@ -981,7 +988,7 @@ def test_runtime_publishes_prior_rank_with_missing_quote_age_diagnostics(
 
     assert result.model_reports["1d"]["status"] == "MODEL_NOT_FIT"
     assert len(result.candidates) == 4 * len(STRATEGY_REGISTRY)
-    assert result.candidates["model_status"].eq("MARKET_STATE_PRIOR").all()
+    assert result.candidates["model_status"].eq("PRICING_SCENARIO").all()
     assert result.candidates["raw_profit_probability"].notna().all()
     assert result.candidates["calibrated_profit_probability"].isna().all()
     assert result.candidates["expected_return_on_risk"].notna().all()
@@ -1012,7 +1019,9 @@ def test_offline_strategy_runtime_builds_trains_and_ranks_from_schwab_receipts(
         sample["label_status"] = "COMPLETE"
     live["label_status"] = "PENDING"
     _write_chain_history(tmp_path, [*samples, live])
+    pricing_catalog = _pricing_catalog_for_samples([*samples, live])
 
+    full_rebuild_started = time.perf_counter()
     result = run_strategy_selection(
         tmp_path,
         samples=pd.DataFrame([*samples, live]),
@@ -1025,8 +1034,11 @@ def test_offline_strategy_runtime_builds_trains_and_ranks_from_schwab_receipts(
             live["decision_timestamp"] + pd.Timedelta(minutes=20)
         ),
         policy=_POLICY,
+        pricing_mode="active",
+        pricing_catalog=pricing_catalog,
     )
 
+    full_rebuild_seconds = time.perf_counter() - full_rebuild_started
     assert result.models_trained == 1
     assert result.models_reused == 0
     assert result.model_reports["1d"]["status"] == "MODEL_FIT"
@@ -1041,9 +1053,53 @@ def test_offline_strategy_runtime_builds_trains_and_ranks_from_schwab_receipts(
     assert result.candidates["decision_score"].equals(
         result.candidates["calibrated_profit_probability"]
     )
-    assert result.candidates["score_basis"].eq(CALIBRATED_MODEL_SCORE_BASIS).all()
+    assert result.candidates["score_basis"].eq(
+        BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS
+    ).all()
+    assert result.candidates["pricing_mode"].eq("ACTIVE").all()
+    assert result.candidates["pricing_status"].eq(
+        "Black-Scholes fallback"
+    ).all()
+    assert result.candidates["pricing_leg_coverage"].eq(1.0).all()
     assert "recommendation_action" not in result.candidates
     assert result.source_files
+    assert full_rebuild_seconds < 300.0
+
+    incremental_started = time.perf_counter()
+    incremental = run_strategy_selection(
+        tmp_path,
+        samples=pd.DataFrame([*samples, live]),
+        predictions=pd.DataFrame([_prediction_for_sample(live)]),
+        forbidden_target_starts={
+            "1d": [live["target_window_start"] + pd.Timedelta(days=100)]
+        },
+        run_timestamp=live["decision_timestamp"] + pd.Timedelta(minutes=21),
+        input_available_at=live["decision_timestamp"] + pd.Timedelta(minutes=21),
+        policy=_POLICY,
+        pricing_mode="active",
+        pricing_catalog=pricing_catalog,
+    )
+    incremental_seconds = time.perf_counter() - incremental_started
+    assert incremental.models_trained == 0
+    assert incremental.models_reused == 1
+    assert (
+        incremental.model_reports["1d"]["incremental_outcome_cache_hits"]
+        == len(samples)
+    )
+    assert incremental.model_reports["1d"]["incremental_outcome_cache_misses"] == 0
+    assert incremental_seconds < 60.0
+    print(
+        json.dumps(
+            {
+                "fixture": "temporary-datastore-active-pricing-strategy",
+                "full_rebuild_seconds": full_rebuild_seconds,
+                "historical_observations": len(samples),
+                "incremental_seconds": incremental_seconds,
+                "live_candidate_rows": len(result.candidates),
+            },
+            sort_keys=True,
+        )
+    )
 
 
 def _sample(index: int) -> dict[str, object]:
@@ -1135,6 +1191,7 @@ def _contracts_for_receipt(
                         "quote_valid": True,
                         "relative_bid_ask_spread": (ask - bid) / mid,
                         "quote_staleness_seconds": 5.0,
+                        "quote_timestamp": available_at - pd.Timedelta(seconds=1),
                         "schema_version": OPTION_CHAIN_SCHEMA_VERSION,
                     }
                 )
@@ -1283,6 +1340,55 @@ def _write_chain_history(
     pd.concat(quotes, ignore_index=True).to_parquet(quote_path, index=False)
 
 
+def _pricing_catalog_for_samples(
+    samples: list[dict[str, object]],
+) -> StrategyPricingEvidenceCatalog:
+    rows: list[dict[str, object]] = []
+    for index, sample in enumerate(samples):
+        target = pd.Timestamp(sample["decision_timestamp"]) + pd.Timedelta(minutes=15)
+        available_at = target + pd.Timedelta(seconds=30)
+        underlying = 100.0 + index * 0.5
+        source = "BLACK_SCHOLES"
+        contracts = _contracts_for_receipt(
+            snapshot_for=target,
+            available_at=target + pd.Timedelta(minutes=1),
+            underlying=underlying,
+        )
+        for contract in contracts.to_dict("records"):
+            fair = (float(contract["bid"]) + float(contract["ask"])) / 2.0
+            rows.append(
+                {
+                    "symbol": contract["symbol"],
+                    "target_snapshot_for": target,
+                    "contract_symbol": contract["contract_symbol"],
+                    "call_put": contract["call_put"],
+                    "expiration_date": contract["expiration_date"],
+                    "strike": contract["strike"],
+                    "multiplier": contract["multiplier"],
+                    "underlying_price": underlying,
+                    "source_snapshot_for": target - pd.Timedelta(minutes=15),
+                    "source_available_at": target - pd.Timedelta(minutes=14),
+                    "prediction_created_at": available_at,
+                    "prediction_available_at": available_at,
+                    "model_published_at": pd.NaT,
+                    "fair_value": fair,
+                    "fair_value_95_lower": max(0.0, fair - 1.0),
+                    "fair_value_95_upper": fair + 1.0,
+                    "predictive_standard_deviation": 0.50,
+                    "residual_shrinkage": 0.0,
+                    "pricing_source": source,
+                    "pricing_evidence_status": "BASELINE_COPIED",
+                    "input_staleness_seconds": 5.0,
+                    "evidence_lane": (
+                        "OFFLINE_SCHWAB_BOOTSTRAP"
+                        if sample["label_status"] == "COMPLETE"
+                        else "LIVE"
+                    ),
+                }
+            )
+    return StrategyPricingEvidenceCatalog(pd.DataFrame(rows), ())
+
+
 def _model_outcomes() -> pd.DataFrame:
     rows: list[dict[str, object]] = []
     strategies = ("long_call", "long_put", "iron_condor")
@@ -1334,6 +1440,16 @@ def _model_outcomes() -> pd.DataFrame:
                     "direction_alignment": (
                         np.sign(50.0 - strategy_index * 50.0) * 0.40
                     ),
+                    "pricing_leg_coverage": 1.0,
+                    "pricing_candidate_edge": 5.0 + strategy_index,
+                    "pricing_conservative_edge": -2.0,
+                    "pricing_edge_to_friction": 0.5,
+                    "pricing_uncertainty": 10.0,
+                    "pricing_probability_favorable": 0.65,
+                    "pricing_relative_edge": 0.0005,
+                    "pricing_model_age_seconds": 60.0,
+                    "pricing_residual_shrinkage": 0.75,
+                    "pricing_source": "BSGP",
                 }
             )
     return pd.DataFrame(rows)

@@ -35,6 +35,7 @@ def create_prediction_rows(
     prediction_available_at: object,
     models: Mapping[tuple[str, str], PricingRouteModel] | None = None,
     projection_policy: ProjectionPolicy | None = None,
+    fallback_standard_deviation_normalized: float | None = None,
 ) -> pd.DataFrame:
     """Price every available causal row and shape-project each expiration surface."""
 
@@ -77,6 +78,13 @@ def create_prediction_rows(
     if eligible.loc[live, "target_snapshot_for"].ge(created).any():
         raise ValueError("A live prediction requires a completed target bar")
     route_models = models or {}
+    fallback_standard_deviation = (
+        LoopNativeModelPolicy().black_scholes_fallback_standard_deviation_normalized
+        if fallback_standard_deviation_normalized is None
+        else float(fallback_standard_deviation_normalized)
+    )
+    if not np.isfinite(fallback_standard_deviation) or fallback_standard_deviation <= 0.0:
+        raise ValueError("Black-Scholes fallback uncertainty must be finite and positive")
     records: list[dict[str, object]] = []
     for (symbol, call_put), route in eligible.groupby(
         [
@@ -88,9 +96,11 @@ def create_prediction_rows(
         model = route_models.get((str(symbol), str(call_put)))
         if model is None:
             residual_mean = np.zeros(len(route), dtype=float)
-            standard_deviation = width80 = width95 = np.full(
-                len(route), np.nan, dtype=float
+            standard_deviation = np.full(
+                len(route), fallback_standard_deviation, dtype=float
             )
+            width80 = standard_deviation * 1.2815515655446004
+            width95 = standard_deviation * 1.959963984540054
         else:
             residual_mean, standard_deviation, width80, width95 = (
                 model.predict_residual(route)
@@ -112,7 +122,7 @@ def create_prediction_rows(
             if lower > upper + 1e-9:
                 raise ValueError("Configured American option bounds are inconsistent")
             lower = min(lower, upper)
-            has_uncertainty = model is not None
+            has_uncertainty = True
             records.append(
                 {
                     "symbol": str(symbol),
@@ -146,10 +156,8 @@ def create_prediction_rows(
                     "raw_fair_value": raw_fair,
                     "point_lower_bound": lower,
                     "point_upper_bound": upper,
-                    "predictive_standard_deviation": (
-                        float(standard_deviation[position] * underlying)
-                        if has_uncertainty
-                        else None
+                    "predictive_standard_deviation": float(
+                        standard_deviation[position] * underlying
                     ),
                     "raw_interval_80_lower": (
                         float(raw_fair - width80[position] * underlying)
@@ -268,9 +276,10 @@ def create_bsgp_shadow_rows(
     if generation is None:
         diagnostics = pd.DataFrame(index=eligible.index)
         diagnostics["normalized_residual"] = 0.0
-        diagnostics["predictive_standard_deviation_normalized"] = np.nan
-        diagnostics["width_80_normalized"] = np.nan
-        diagnostics["width_95_normalized"] = np.nan
+        fallback_std = policy.black_scholes_fallback_standard_deviation_normalized
+        diagnostics["predictive_standard_deviation_normalized"] = fallback_std
+        diagnostics["width_80_normalized"] = fallback_std * 1.2815515655446004
+        diagnostics["width_95_normalized"] = fallback_std * 1.959963984540054
         diagnostics["status"] = model_load.status
         diagnostics["reason"] = model_load.reason
         diagnostics["support_status"] = "MODEL_UNAVAILABLE"
@@ -279,18 +288,6 @@ def create_bsgp_shadow_rows(
         diagnostics["route_support_sessions"] = 0
         shadow_priced = baseline.copy()
         shadow_priced["raw_fair_value"] = shadow_priced["black_scholes_price"]
-        for column in (
-            "predictive_standard_deviation",
-            "raw_interval_80_lower",
-            "raw_interval_80_upper",
-            "raw_interval_95_lower",
-            "raw_interval_95_upper",
-            "constrained_interval_80_lower",
-            "constrained_interval_80_upper",
-            "constrained_interval_95_lower",
-            "constrained_interval_95_upper",
-        ):
-            shadow_priced[column] = np.nan
     else:
         diagnostics = predict_loop_native_residuals(
             generation,
@@ -514,17 +511,17 @@ def create_bsgp_shadow_rows(
         "call_put",
         "expiration_date",
     )
-    interval_columns = (
-        "bsgp_shadow_predictive_standard_deviation",
-        "bsgp_shadow_raw_interval_80_lower",
-        "bsgp_shadow_raw_interval_80_upper",
-        "bsgp_shadow_raw_interval_95_lower",
-        "bsgp_shadow_raw_interval_95_upper",
-        "bsgp_shadow_constrained_interval_80_lower",
-        "bsgp_shadow_constrained_interval_80_upper",
-        "bsgp_shadow_constrained_interval_95_lower",
-        "bsgp_shadow_constrained_interval_95_upper",
-    )
+    interval_columns = {
+        "bsgp_shadow_predictive_standard_deviation": "predictive_standard_deviation_baseline",
+        "bsgp_shadow_raw_interval_80_lower": "raw_interval_80_lower_baseline",
+        "bsgp_shadow_raw_interval_80_upper": "raw_interval_80_upper_baseline",
+        "bsgp_shadow_raw_interval_95_lower": "raw_interval_95_lower_baseline",
+        "bsgp_shadow_raw_interval_95_upper": "raw_interval_95_upper_baseline",
+        "bsgp_shadow_constrained_interval_80_lower": "constrained_interval_80_lower_baseline",
+        "bsgp_shadow_constrained_interval_80_upper": "constrained_interval_80_upper_baseline",
+        "bsgp_shadow_constrained_interval_95_lower": "constrained_interval_95_lower_baseline",
+        "bsgp_shadow_constrained_interval_95_upper": "constrained_interval_95_upper_baseline",
+    }
     violation_columns = {
         "bsgp_shadow_raw_bound_violation": "raw_bound_violation_baseline",
         "bsgp_shadow_raw_monotonicity_violation": (
@@ -568,7 +565,10 @@ def create_bsgp_shadow_rows(
             index, "baseline_constrained_fair_value"
         ].to_numpy()
         output.loc[index, "bsgp_shadow_normalized_residual"] = 0.0
-        output.loc[index, list(interval_columns)] = np.nan
+        for output_column, baseline_column in interval_columns.items():
+            output.loc[index, output_column] = merged.loc[
+                index, baseline_column
+            ].to_numpy()
         output.loc[index, "bsgp_shadow_status"] = fallback_status
         output.loc[index, "bsgp_shadow_reason"] = (
             "Complete expiration surface copied from baseline because a coupled "

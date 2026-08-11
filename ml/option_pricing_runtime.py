@@ -4,9 +4,9 @@ import argparse
 import json
 import os
 import shutil
+import sys
 import tempfile
 import time
-import tracemalloc
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -133,6 +133,10 @@ from ml.parquet_contracts import (
 from options.publication import committed_option_snapshots
 
 
+class RetryablePricingReadinessError(RuntimeError):
+    """Loop A readiness is not yet committed; no target artifact was published."""
+
+
 @dataclass(frozen=True)
 class OptionPricingRuntimeResult:
     run_directory: Path | None
@@ -187,34 +191,27 @@ def run_option_pricing_once(
     monotonic_clock: Callable[[], float] = time.monotonic,
     phase_offset_minutes: int = 1,
 ) -> OptionPricingRuntimeResult:
-    """Publish one independent, shadow-only Pricing generation."""
+    """Publish one independent active Pricing generation with safe fallbacks."""
 
-    tracing_started_here = not tracemalloc.is_tracing()
-    if tracing_started_here:
-        tracemalloc.start()
-    try:
-        return _run_option_pricing_once_impl(
-            datastore_root,
-            symbols=symbols,
-            run_timestamp=run_timestamp,
-            runtime_clock=runtime_clock,
-            partition_config=partition_config,
-            model_policy=model_policy,
-            loop_native_model_policy=loop_native_model_policy,
-            contract_policy=contract_policy,
-            projection_policy=projection_policy,
-            rate_observations=rate_observations,
-            runtime_limits=runtime_limits,
-            target_snapshot_for=target_snapshot_for,
-            bar_readiness_mode=bar_readiness_mode,
-            bar_readiness_timeout_seconds=bar_readiness_timeout_seconds,
-            readiness_sleeper=readiness_sleeper,
-            monotonic_clock=monotonic_clock,
-            phase_offset_minutes=phase_offset_minutes,
-        )
-    finally:
-        if tracing_started_here:
-            tracemalloc.stop()
+    return _run_option_pricing_once_impl(
+        datastore_root,
+        symbols=symbols,
+        run_timestamp=run_timestamp,
+        runtime_clock=runtime_clock,
+        partition_config=partition_config,
+        model_policy=model_policy,
+        loop_native_model_policy=loop_native_model_policy,
+        contract_policy=contract_policy,
+        projection_policy=projection_policy,
+        rate_observations=rate_observations,
+        runtime_limits=runtime_limits,
+        target_snapshot_for=target_snapshot_for,
+        bar_readiness_mode=bar_readiness_mode,
+        bar_readiness_timeout_seconds=bar_readiness_timeout_seconds,
+        readiness_sleeper=readiness_sleeper,
+        monotonic_clock=monotonic_clock,
+        phase_offset_minutes=phase_offset_minutes,
+    )
 
 
 def _run_option_pricing_once_impl(
@@ -278,46 +275,7 @@ def _run_option_pricing_once_impl(
         len(clean_symbols) == len(LOOP_NATIVE_SYMBOLS)
         and frozenset(clean_symbols) == frozenset(LOOP_NATIVE_SYMBOLS)
     )
-    eligibility_policy = EligibilityPolicy()
-    policy_artifact = publish_eligibility_policy(
-        root,
-        policy=eligibility_policy,
-        partition_config=effective_partitions,
-        model_policy=effective_model,
-        contract_policy=effective_contract,
-        projection_policy=effective_projection,
-        published_at=created,
-    )
-    loop_native_policy_artifact = (
-        publish_loop_native_eligibility_policy(
-            root,
-            model_policy=effective_loop_native_model,
-            contract_policy=effective_contract,
-            published_at=created,
-        )
-        if loop_native_scope
-        else None
-    )
-    initial_capacity = capacity_report(root, limits=limits)
-    if initial_capacity.get("status") != "PASS":
-        raise RuntimeError(
-            "Pricing preflight failed closed for disk capacity: "
-            + json.dumps(initial_capacity, sort_keys=True)
-        )
-    stage_timings["preflight_seconds"] = time.perf_counter() - stage_started
-    stage_started = time.perf_counter()
-
-    source_files = [
-        policy_artifact.directory / "policy.json",
-        policy_artifact.directory / "receipt.json",
-    ]
-    if loop_native_policy_artifact is not None:
-        source_files.extend(
-            (
-                loop_native_policy_artifact.directory / "policy.json",
-                loop_native_policy_artifact.directory / "receipt.json",
-            )
-        )
+    source_files: list[Path] = []
     model_input_files: list[Path] = []
     if rate_observations is None:
         rate_observations, rate_files = load_point_in_time_rate_observations(root)
@@ -368,6 +326,57 @@ def _run_option_pricing_once_impl(
         )
     )
     stage_timings["target_authority_seconds"] = time.perf_counter() - stage_started
+    stage_started = time.perf_counter()
+
+    # Research eligibility and quality reporting monitor the already-published
+    # production target. They cannot prevent a valid Black-Scholes fallback
+    # from reaching Options.
+    eligibility_policy = EligibilityPolicy()
+    monitoring_policy_published_at = max(
+        utc_timestamp(clock()), target_publication.published_at
+    )
+    policy_artifact = publish_eligibility_policy(
+        root,
+        policy=eligibility_policy,
+        partition_config=effective_partitions,
+        model_policy=effective_model,
+        contract_policy=effective_contract,
+        projection_policy=effective_projection,
+        published_at=monitoring_policy_published_at,
+    )
+    loop_native_policy_artifact = (
+        publish_loop_native_eligibility_policy(
+            root,
+            model_policy=effective_loop_native_model,
+            contract_policy=effective_contract,
+            published_at=max(
+                utc_timestamp(clock()), monitoring_policy_published_at
+            ),
+        )
+        if loop_native_scope
+        else None
+    )
+    source_files.extend(
+        (
+            policy_artifact.directory / "policy.json",
+            policy_artifact.directory / "receipt.json",
+        )
+    )
+    if loop_native_policy_artifact is not None:
+        source_files.extend(
+            (
+                loop_native_policy_artifact.directory / "policy.json",
+                loop_native_policy_artifact.directory / "receipt.json",
+            )
+        )
+    initial_capacity = capacity_report(root, limits=limits)
+    if initial_capacity.get("status") != "PASS":
+        raise RuntimeError(
+            "Pricing monitoring preflight failed for disk capacity after target "
+            "publication: "
+            + json.dumps(initial_capacity, sort_keys=True)
+        )
+    stage_timings["preflight_seconds"] = time.perf_counter() - stage_started
     stage_started = time.perf_counter()
 
     loop_native_materialization = None
@@ -800,7 +809,7 @@ def _run_option_pricing_once_impl(
     }
 
     elapsed_before_publication = time.perf_counter() - cycle_started
-    peak_memory_bytes = tracemalloc.get_traced_memory()[1]
+    peak_memory_bytes = _peak_process_memory_bytes()
     enforce_runtime_limits(
         samples=samples_for_publication,
         predictions=predictions,
@@ -1014,6 +1023,7 @@ def _publish_fast_target_outcome(
     CycleTargetDecision,
 ]:
     existing = None
+    supersede_retryable = False
     try:
         existing = read_target_outcome(
             root,
@@ -1031,36 +1041,36 @@ def _publish_fast_target_outcome(
         }
         reason = _grouped_live_reason(existing.symbol_outcomes)
         if existing.terminal_status == "TARGET_BAR_NOT_READY":
-            final_decision = replace(
-                cycle_decision,
-                observed_at=max(cycle_decision.observed_at, existing.published_at),
-            ).with_runtime_state(
-                readiness_available=False,
-                deadline_at=existing.published_at,
-                reason=reason,
-            )
-        elif states == {"TARGET_ALREADY_OBSERVED"}:
-            final_decision = cycle_decision.with_runtime_state(
-                target_observed=True,
-                reason=reason,
+            supersede_retryable = True
+            created_at = max(
+                created_at,
+                existing.published_at + pd.Timedelta(nanoseconds=1),
             )
         else:
-            final_decision = cycle_decision.with_runtime_state(
-                readiness_available=True,
-                reason=reason or "Existing immutable Pricing target authority verified.",
+            if states == {"TARGET_ALREADY_OBSERVED"}:
+                final_decision = cycle_decision.with_runtime_state(
+                    target_observed=True,
+                    reason=reason,
+                )
+            else:
+                final_decision = cycle_decision.with_runtime_state(
+                    readiness_available=True,
+                    reason=(
+                        reason or "Existing immutable Pricing target authority verified."
+                    ),
+                )
+            return (
+                existing,
+                existing.samples(),
+                existing.predictions(),
+                {
+                    symbol: dict(value)
+                    for symbol, value in existing.symbol_outcomes.items()
+                },
+                (existing.manifest_path, existing.receipt_path, existing.outcome_path),
+                False,
+                final_decision,
             )
-        return (
-            existing,
-            existing.samples(),
-            existing.predictions(),
-            {
-                symbol: dict(value)
-                for symbol, value in existing.symbol_outcomes.items()
-            },
-            (existing.manifest_path, existing.receipt_path, existing.outcome_path),
-            False,
-            final_decision,
-        )
 
     readiness = None
     readiness_error = ""
@@ -1078,6 +1088,12 @@ def _publish_fast_target_outcome(
         prediction_created_at = max(created_at, wait.observed_at)
         readiness = wait.readiness
         readiness_error = wait.detail
+        if readiness is None:
+            raise RetryablePricingReadinessError(
+                "Exact all-symbol 1-minute readiness has not been published yet; "
+                "the target remains retryable and no terminal Pricing artifact was "
+                f"created. {readiness_error}"
+            )
 
     effective_loop_native_model_load = loop_native_model_load
     if (
@@ -1203,6 +1219,14 @@ def _publish_fast_target_outcome(
         terminal_status = next(iter(states))
     else:
         terminal_status = "MIXED_TERMINAL"
+    if (
+        terminal_status == "TARGET_BAR_NOT_READY"
+        and bar_readiness_mode == "required"
+    ):
+        raise RetryablePricingReadinessError(
+            "Target bars became temporarily unreadable after readiness; the target "
+            "remains retryable and no empty terminal artifact was created."
+        )
     readiness_reference = (
         {
             "run_path": readiness.directory.relative_to(root).as_posix(),
@@ -1246,6 +1270,7 @@ def _publish_fast_target_outcome(
         bar_readiness=readiness_reference,
         input_files=tuple(dict.fromkeys(source_files)),
         clock=runtime_clock,
+        supersede_retryable=supersede_retryable,
     )
     # The immutable publication wins over any recomputation after a restart.
     authoritative_samples = publication.samples()
@@ -1389,7 +1414,7 @@ def _grouped_live_reason(statuses: Mapping[str, Mapping[str, object]]) -> str:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Run independent shadow-only Black-Scholes/RBF finite-feature GP "
+            "Run active Black-Scholes/RBF finite-feature GP "
             "option pricing before the Options snapshot phase."
         )
     )
@@ -1424,8 +1449,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         type=float,
         default=45.0,
         help=(
-            "Monotonic bounded wait for exact Loop A readiness before publishing "
-            "the immutable noncreditable terminal outcome."
+            "Monotonic bounded wait for exact Loop A readiness. A timeout remains "
+            "retryable and never publishes an empty terminal artifact."
         ),
     )
     parser.add_argument(
@@ -1455,12 +1480,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     print("==============================")
     print(f"DATASTORE: {root}")
     print(f"Live symbols: {', '.join(configured_symbols)}")
-    print(
-        "Scope: Black-Scholes uses every live symbol; BSGP eligibility remains "
-        f"the {', '.join(REQUIRED_SYMBOLS)} pilot"
-    )
+    print(f"Scope: pooled CALL/PUT BSGP and Black-Scholes fallback for {len(configured_symbols)} symbols")
     print("Authority: ml/option-pricing-latest/run.json")
-    print("Mode: shadow only; automated_action_allowed=false")
+    print("Mode: active pricing evidence; order automation remains disabled")
     print("Timing: completed quarter-hour bar -> Pricing receipt -> independent Options fetch")
     print("A missing completed target bar is skipped; predictions are never backdated.")
     print("Stop: Ctrl+C")
@@ -1517,7 +1539,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                             f"target={starting_decision.target_snapshot_for.isoformat()}; "
                             f"deadline_seconds={args.bar_readiness_timeout_seconds:g}"
                         )
-                    result = run_option_pricing_once(
+                    result = _run_pricing_until_ready(
                         root,
                         symbols=configured_symbols,
                         target_snapshot_for=expected_quarter_hour_target(cycle_anchor),
@@ -1526,6 +1548,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                             args.bar_readiness_timeout_seconds
                         ),
                         phase_offset_minutes=args.phase_offset_minutes,
+                        once=args.once,
                     )
                     report_pricing_result(
                         result,
@@ -1542,6 +1565,41 @@ def main(argv: Sequence[str] | None = None) -> int:
         except KeyboardInterrupt:
             print("Option Pricing runtime stopped.")
             return 0
+
+
+def _run_pricing_until_ready(
+    root: Path,
+    *,
+    symbols: Sequence[str],
+    target_snapshot_for: object,
+    bar_readiness_mode: str,
+    bar_readiness_timeout_seconds: float,
+    phase_offset_minutes: int,
+    once: bool,
+) -> OptionPricingRuntimeResult:
+    target = utc_timestamp(target_snapshot_for)
+    deadline = target + pd.Timedelta(
+        seconds=ContractSelectionPolicy().maximum_source_staleness_seconds
+    )
+    while True:
+        try:
+            return run_option_pricing_once(
+                root,
+                symbols=symbols,
+                target_snapshot_for=target,
+                bar_readiness_mode=bar_readiness_mode,
+                bar_readiness_timeout_seconds=bar_readiness_timeout_seconds,
+                phase_offset_minutes=phase_offset_minutes,
+            )
+        except RetryablePricingReadinessError:
+            now = utc_timestamp()
+            if once or now >= deadline:
+                raise
+            print(
+                "Pricing delayed: waiting on the exact readiness pointer; "
+                "Options capture remains independent."
+            )
+            time.sleep(min(2.0, max((deadline - now).total_seconds(), 0.0)))
 
 
 def report_pricing_result(
@@ -2044,8 +2102,6 @@ def _write_and_publish_generation(
         # Only the compact publication-bound outputs and manifest remain.
         files_completed_at = max(utc_timestamp(runtime_clock()), created)
         published_surfaces = surfaces.copy()
-        if not published_surfaces.empty:
-            published_surfaces["available_at"] = files_completed_at
         published_monitoring = monitoring.copy()
         if not published_monitoring.empty:
             published_monitoring["monitored_at"] = files_completed_at
@@ -2202,6 +2258,58 @@ def _copy_model_artifacts(
             if path.is_file()
         )
     return output
+
+
+def _peak_process_memory_bytes() -> int:
+    """Return native process peak RSS without tracing every Python allocation."""
+
+    if os.name == "nt":
+        try:
+            import ctypes
+            from ctypes import wintypes
+
+            class ProcessMemoryCountersEx(ctypes.Structure):
+                _fields_ = (
+                    ("cb", wintypes.DWORD),
+                    ("PageFaultCount", wintypes.DWORD),
+                    ("PeakWorkingSetSize", ctypes.c_size_t),
+                    ("WorkingSetSize", ctypes.c_size_t),
+                    ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+                    ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                    ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                    ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                    ("PagefileUsage", ctypes.c_size_t),
+                    ("PeakPagefileUsage", ctypes.c_size_t),
+                    ("PrivateUsage", ctypes.c_size_t),
+                )
+
+            counters = ProcessMemoryCountersEx()
+            counters.cb = ctypes.sizeof(counters)
+            kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+            psapi = ctypes.WinDLL("psapi", use_last_error=True)
+            kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+            psapi.GetProcessMemoryInfo.argtypes = (
+                wintypes.HANDLE,
+                ctypes.POINTER(ProcessMemoryCountersEx),
+                wintypes.DWORD,
+            )
+            psapi.GetProcessMemoryInfo.restype = wintypes.BOOL
+            handle = kernel32.GetCurrentProcess()
+            if psapi.GetProcessMemoryInfo(
+                handle,
+                ctypes.byref(counters),
+                counters.cb,
+            ):
+                return int(counters.PeakWorkingSetSize)
+        except (AttributeError, OSError, TypeError, ValueError):
+            pass
+    try:
+        import resource
+
+        peak = int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+        return peak if sys.platform == "darwin" else peak * 1024
+    except (ImportError, OSError, TypeError, ValueError):
+        return 0
 
 
 def _output_frame(

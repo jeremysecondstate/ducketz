@@ -46,7 +46,9 @@ from options.publication import committed_option_snapshots
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Audit and publish shadow-only Option Pricing evidence artifacts."
+        description=(
+            "Audit Option Pricing research evidence and production diagnostic artifacts."
+        )
     )
     datastore = parser.add_mutually_exclusive_group()
     datastore.add_argument("--datastore", type=Path, default=None)
@@ -306,8 +308,9 @@ def build_readiness_summary(
         )
     if 9 in failed_numbers:
         actions.append(
-            "Run Strategy with --pricing-mode shadow and periodically publish "
-            "strategy-evaluate evidence after outcomes mature."
+            "Keep Strategy in --pricing-mode active for production decisions and "
+            "periodically publish strategy-evaluate research evidence after outcomes "
+            "mature."
         )
     if 10 in failed_numbers:
         actions.append(

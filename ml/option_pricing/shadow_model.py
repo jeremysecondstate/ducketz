@@ -1253,10 +1253,13 @@ def predict_loop_native_residuals(
             "Shadow inference rows are missing: " + ", ".join(missing)
         )
     output = pd.DataFrame(index=rows.index)
+    fallback_std = (
+        effective.black_scholes_fallback_standard_deviation_normalized
+    )
     output["normalized_residual"] = 0.0
-    output["predictive_standard_deviation_normalized"] = np.nan
-    output["width_80_normalized"] = np.nan
-    output["width_95_normalized"] = np.nan
+    output["predictive_standard_deviation_normalized"] = fallback_std
+    output["width_80_normalized"] = fallback_std * 1.2815515655446004
+    output["width_95_normalized"] = fallback_std * 1.959963984540054
     output["status"] = "BASELINE_FALLBACK_INPUT_UNAVAILABLE"
     output["reason"] = "Causal BSGP features are unavailable."
     output["support_status"] = "INPUT_UNAVAILABLE"
@@ -1307,17 +1310,23 @@ def predict_loop_native_residuals(
         ready = within_support & uncertainty_ok & model.calibrated & (route_sessions > 0)
         shrinkage = np.where(ready, route_shrinkage, 0.0)
         residual = (raw_mean + route_intercepts * route_shrinkage) * shrinkage
+        uncertainty_floor = fallback_std * (1.0 - shrinkage)
+        effective_std = np.maximum(calibrated_std, uncertainty_floor)
+        effective_width_80 = np.maximum(
+            calibrated_std * model.interval_calibration.quantile_80,
+            uncertainty_floor * 1.2815515655446004,
+        )
+        effective_width_95 = np.maximum(
+            calibrated_std * model.interval_calibration.quantile_95,
+            uncertainty_floor * 1.959963984540054,
+        )
         side_index = side_rows.index
         output.loc[side_index, "normalized_residual"] = residual
         output.loc[
             side_index, "predictive_standard_deviation_normalized"
-        ] = calibrated_std
-        output.loc[side_index, "width_80_normalized"] = (
-            calibrated_std * model.interval_calibration.quantile_80
-        )
-        output.loc[side_index, "width_95_normalized"] = (
-            calibrated_std * model.interval_calibration.quantile_95
-        )
+        ] = effective_std
+        output.loc[side_index, "width_80_normalized"] = effective_width_80
+        output.loc[side_index, "width_95_normalized"] = effective_width_95
         output.loc[side_index, "support_distance"] = distances
         output.loc[side_index, "shrinkage"] = shrinkage
         output.loc[side_index, "route_support_sessions"] = route_sessions.to_numpy()

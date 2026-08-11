@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
@@ -45,17 +46,94 @@ def test_default_watchlist_and_runtime_commands_use_the_same_configured_symbols(
     assert "--watchlist datafetching\\watchlist.txt" in pricing_command
     assert "--cme-mode external" in loop_a_command
     assert "--options-mode external" in loop_a_command
-    prediction_command = loop_b_command.split(
+    prediction_command = loop_a_command.split(
         "python -m ml.prediction_runtime", 1
     )[1]
     assert "--watchlist datafetching\\watchlist.txt" in prediction_command
     assert "--symbols" not in prediction_command
-    assert "python -m ml.strategy_runtime" in loop_b_command
-    assert "--pricing-mode shadow" in loop_b_command
+    assert "python -m ml.strategy_runtime" in loop_a_command
+    assert "--pricing-mode active" in loop_a_command
+    assert "loop-a-all-bsgp-active-v2" in loop_a_command
+    assert "current_start_command" in loop_b_command
+    assert "python -m" not in loop_b_command
     assert "capture-current-rate" in loop_a_command
     assert "option_pricing_admin" in loop_a_command
-    assert "--bar-readiness-timeout-seconds 120" in loop_a_command
-    assert "--pricing-barrier-timeout-seconds 150" in loop_a_command
+    assert "--bar-readiness-timeout-seconds 30" in loop_a_command
+    assert "--pricing-barrier-timeout-seconds 45" in loop_a_command
+
+
+def test_databento_minute_fast_lane_persists_all_symbols_before_callback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[str] = []
+    minute = SimpleNamespace(frequency="1m")
+    slow = SimpleNamespace(frequency="1s")
+    symbols = ("GOOG", "NVDA")
+    rows = {
+        symbol: [
+            (minute, [], None, None, None),
+            (slow, [], None, None, None),
+        ]
+        for symbol in symbols
+    }
+
+    def fetch_native(
+        _provider: object,
+        requested: tuple[str, ...],
+        _profile: str,
+        _store: ParquetStore,
+        *,
+        spec_completed: object,
+    ) -> dict[str, list[tuple[object, ...]]]:
+        assert requested == symbols
+        spec_completed(
+            minute,
+            {symbol: [rows[symbol][0]] for symbol in symbols},
+        )
+        events.append("slow-fetch-started")
+        spec_completed(
+            slow,
+            {symbol: [rows[symbol][1]] for symbol in symbols},
+        )
+        return rows
+
+    def persist(
+        symbol: str,
+        _store: ParquetStore,
+        **kwargs: object,
+    ) -> FetchResult:
+        events.append(
+            f"persist-{symbol}-"
+            + ("minute" if kwargs.get("run_derived") is False else "full")
+        )
+        return FetchResult("databento", 1, 0)
+
+    monkeypatch.setattr(
+        databento_fetch, "DatabentoMarketDataProvider", lambda: object()
+    )
+    monkeypatch.setattr(
+        databento_fetch, "_fetch_native_results_many", fetch_native
+    )
+    monkeypatch.setattr(databento_fetch, "_persist_native_results", persist)
+
+    result = databento_fetch._fetch_many(
+        symbols,
+        ParquetStore(tmp_path),
+        include_cme=False,
+        minute_bars_completed=lambda _results: events.append(
+            "readiness-callback"
+        ),
+    )
+
+    assert events[:4] == [
+        "persist-GOOG-minute",
+        "persist-NVDA-minute",
+        "readiness-callback",
+        "slow-fetch-started",
+    ]
+    assert events[-2:] == ["persist-GOOG-full", "persist-NVDA-full"]
+    assert set(result) == set(symbols)
 
 
 def test_databento_provider_splits_one_multi_symbol_response_by_ticker(

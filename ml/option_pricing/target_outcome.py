@@ -28,6 +28,9 @@ TARGET_OUTCOME_MANIFEST_VERSION = "option-pricing-target-outcome-manifest-v1"
 TARGET_OUTCOME_V2 = "option-pricing-target-outcome-v2"
 TARGET_OUTCOME_RECEIPT_V2 = "option-pricing-target-outcome-receipt-v2"
 TARGET_OUTCOME_MANIFEST_V2 = "option-pricing-target-outcome-manifest-v2"
+TARGET_OUTCOME_V3 = "option-pricing-target-outcome-v3"
+TARGET_OUTCOME_RECEIPT_V3 = "option-pricing-target-outcome-receipt-v3"
+TARGET_OUTCOME_MANIFEST_V3 = "option-pricing-target-outcome-manifest-v3"
 TARGET_OUTCOME_SHADOW_NAME = "pricing-bsgp-shadow.parquet"
 TARGET_OUTCOME_PROOF_COLUMNS = (
     "_pricing_outcome_run_path",
@@ -101,6 +104,7 @@ def publish_target_outcome(
     bar_readiness: Mapping[str, object] | None,
     input_files: Sequence[Path] = (),
     clock: Callable[[], object] | None = None,
+    supersede_retryable: bool = False,
 ) -> TargetOutcomePublication:
     """Publish the small prediction-or-skip authority consumed by Options."""
 
@@ -120,7 +124,17 @@ def publish_target_outcome(
             raise TargetOutcomeError(
                 "An authoritative outcome already owns this target with another scope"
             )
-        return existing
+        if not (
+            supersede_retryable
+            and existing.terminal_status == "TARGET_BAR_NOT_READY"
+            and str(terminal_status).strip().upper() != "TARGET_BAR_NOT_READY"
+        ):
+            return existing
+        # Older runtimes could publish an empty terminal artifact before the
+        # readiness deadline. Preserve it in the receipt chain, but allow one
+        # later non-transient generation to become authoritative for this same
+        # natural target.
+        created = max(created, existing.published_at + pd.Timedelta(nanoseconds=1))
 
     prepared_samples = _validate_target_frame(samples, target=target, label="samples")
     prepared_predictions = _validate_target_frame(
@@ -193,7 +207,7 @@ def publish_target_outcome(
     manifest_path = staging / "manifest.json"
     receipt_path = staging / "receipt.json"
     outcome = {
-        "schema_version": TARGET_OUTCOME_V2 if shadow_requested else TARGET_OUTCOME_VERSION,
+        "schema_version": TARGET_OUTCOME_V3 if shadow_requested else TARGET_OUTCOME_VERSION,
         "target_snapshot_for": target.isoformat(),
         "prediction_created_at": created.isoformat(),
         "terminal_status": normalized_terminal,
@@ -269,7 +283,7 @@ def publish_target_outcome(
         }
         manifest = {
             "schema_version": (
-                TARGET_OUTCOME_MANIFEST_V2
+                TARGET_OUTCOME_MANIFEST_V3
                 if shadow_requested
                 else TARGET_OUTCOME_MANIFEST_VERSION
             ),
@@ -282,7 +296,7 @@ def publish_target_outcome(
         _write_json(manifest_path, manifest)
         receipt = {
             "schema_version": (
-                TARGET_OUTCOME_RECEIPT_V2
+                TARGET_OUTCOME_RECEIPT_V3
                 if shadow_requested
                 else TARGET_OUTCOME_RECEIPT_VERSION
             ),
@@ -455,10 +469,14 @@ def _read_directory(root: Path, directory: Path) -> TargetOutcomePublication:
     if not isinstance(outputs, Mapping):
         raise TargetOutcomeError("Pricing target manifest output inventory is malformed")
     receipt_version = receipt.get("schema_version")
-    has_shadow = receipt_version == TARGET_OUTCOME_RECEIPT_V2
+    has_shadow = receipt_version in {
+        TARGET_OUTCOME_RECEIPT_V2,
+        TARGET_OUTCOME_RECEIPT_V3,
+    }
     if receipt_version not in {
         TARGET_OUTCOME_RECEIPT_VERSION,
         TARGET_OUTCOME_RECEIPT_V2,
+        TARGET_OUTCOME_RECEIPT_V3,
     }:
         raise TargetOutcomeError("Pricing target receipt schema is unsupported")
     expected_names = {
@@ -540,11 +558,21 @@ def _read_directory(root: Path, directory: Path) -> TargetOutcomePublication:
         _verify_shadow_model_lineage(shadow_frame, root=root)
     symbols = tuple(str(value).strip().upper() for value in outcome.get("symbols", ()))
     symbol_outcomes = outcome.get("symbol_outcomes")
+    shadow_manifest_version = (
+        TARGET_OUTCOME_MANIFEST_V3
+        if receipt_version == TARGET_OUTCOME_RECEIPT_V3
+        else TARGET_OUTCOME_MANIFEST_V2
+    )
+    shadow_outcome_version = (
+        TARGET_OUTCOME_V3
+        if receipt_version == TARGET_OUTCOME_RECEIPT_V3
+        else TARGET_OUTCOME_V2
+    )
     if (
         manifest.get("schema_version")
-        != (TARGET_OUTCOME_MANIFEST_V2 if has_shadow else TARGET_OUTCOME_MANIFEST_VERSION)
+        != (shadow_manifest_version if has_shadow else TARGET_OUTCOME_MANIFEST_VERSION)
         or outcome.get("schema_version")
-        != (TARGET_OUTCOME_V2 if has_shadow else TARGET_OUTCOME_VERSION)
+        != (shadow_outcome_version if has_shadow else TARGET_OUTCOME_VERSION)
         or receipt.get("run_path") != directory.relative_to(root).as_posix()
         or receipt.get("manifest_checksum_sha256") != file_checksum(manifest_path)
         or utc_timestamp(manifest.get("target_snapshot_for")) != target
@@ -643,7 +671,11 @@ def _read_record_metadata(
     published = utc_timestamp(receipt.get("published_at"))
     if (
         receipt.get("schema_version")
-        not in {TARGET_OUTCOME_RECEIPT_VERSION, TARGET_OUTCOME_RECEIPT_V2}
+        not in {
+            TARGET_OUTCOME_RECEIPT_VERSION,
+            TARGET_OUTCOME_RECEIPT_V2,
+            TARGET_OUTCOME_RECEIPT_V3,
+        }
         or receipt.get("run_path") != relative.as_posix()
         or record.get("manifest_checksum_sha256") != file_checksum(manifest_path)
         or record.get("receipt_checksum_sha256") != file_checksum(receipt_path)
@@ -815,9 +847,11 @@ def _write_json_atomic(path: Path, payload: Mapping[str, object]) -> None:
 
 __all__ = [
     "TARGET_OUTCOME_PROOF_COLUMNS",
+    "TARGET_OUTCOME_RECEIPT_V3",
     "TARGET_OUTCOME_SHADOW_NAME",
     "TARGET_OUTCOME_VERSION",
     "TARGET_OUTCOME_V2",
+    "TARGET_OUTCOME_V3",
     "TargetOutcomeError",
     "TargetOutcomePublication",
     "authoritative_target_outcomes",

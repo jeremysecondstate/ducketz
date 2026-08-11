@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from bisect import bisect_left, bisect_right
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import Iterable, Mapping
 
@@ -111,9 +112,17 @@ def load_schwab_chain_history(
         symbol=clean_symbol,
         available_not_after=available_not_after,
     )
+    committed = _deduplicate_natural_targets(committed)
     if all_committed:
-        contract_paths = tuple(snapshot.contracts_path for snapshot in committed)
-        surface_paths = tuple(snapshot.features_path for snapshot in committed)
+        # Monthly immutable-history views are referenced by many target receipts.
+        # Open each physical Parquet once; receipt files remain fully preserved in
+        # lineage below.
+        contract_paths = tuple(
+            dict.fromkeys(snapshot.contracts_path for snapshot in committed)
+        )
+        surface_paths = tuple(
+            dict.fromkeys(snapshot.features_path for snapshot in committed)
+        )
         receipt_paths = tuple(snapshot.receipt_path for snapshot in committed)
     else:
         contract_paths = tuple(
@@ -404,8 +413,63 @@ def _validate_quotes(frame: pd.DataFrame, *, symbol: str) -> None:
 
 
 def _read_many(paths: Iterable[Path]) -> pd.DataFrame:
-    frames = [pd.read_parquet(path) for path in paths]
+    frames = [_read_verified_immutable_parquet(Path(path)) for path in paths]
     return pd.concat(frames, ignore_index=True, sort=False)
+
+
+def _deduplicate_natural_targets(snapshots: Iterable[object]) -> tuple[object, ...]:
+    selected: dict[tuple[str, pd.Timestamp], object] = {}
+    for snapshot in snapshots:
+        key = (
+            str(getattr(snapshot, "symbol")).strip().upper(),
+            pd.Timestamp(getattr(snapshot, "snapshot_for")),
+        )
+        previous = selected.get(key)
+        candidate_order = (
+            pd.Timestamp(
+                getattr(snapshot, "receipt_published_at", None)
+                or getattr(snapshot, "available_at")
+            ),
+            Path(getattr(snapshot, "directory")).as_posix(),
+        )
+        if previous is None:
+            selected[key] = snapshot
+            continue
+        previous_order = (
+            pd.Timestamp(
+                getattr(previous, "receipt_published_at", None)
+                or getattr(previous, "available_at")
+            ),
+            Path(getattr(previous, "directory")).as_posix(),
+        )
+        if candidate_order < previous_order:
+            selected[key] = snapshot
+    return tuple(
+        sorted(
+            selected.values(),
+            key=lambda snapshot: (
+                pd.Timestamp(getattr(snapshot, "snapshot_for")),
+                pd.Timestamp(getattr(snapshot, "available_at")),
+            ),
+        )
+    )
+
+
+def _read_verified_immutable_parquet(path: Path) -> pd.DataFrame:
+    resolved = path.resolve()
+    stat = resolved.stat()
+    return _cached_parquet(
+        str(resolved), int(stat.st_size), int(stat.st_mtime_ns)
+    ).copy()
+
+
+@lru_cache(maxsize=2_048)
+def _cached_parquet(path: str, size: int, modified_ns: int) -> pd.DataFrame:
+    resolved = Path(path)
+    stat = resolved.stat()
+    if stat.st_size != size or stat.st_mtime_ns != modified_ns:
+        raise RuntimeError("Immutable Strategy history changed during verified read")
+    return pd.read_parquet(resolved)
 
 
 def _normalize_times(frame: pd.DataFrame, columns: Iterable[str]) -> None:

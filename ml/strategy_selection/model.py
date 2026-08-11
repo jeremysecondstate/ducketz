@@ -33,7 +33,8 @@ from ml.preprocessing import (
     QuantileClipper,
 )
 from ml.strategy_selection.contracts import (
-    CALIBRATED_MODEL_SCORE_BASIS,
+    BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
+    BSGP_CALIBRATED_MODEL_SCORE_BASIS,
     MARKET_STATE_POLICY_VERSION,
     STRATEGY_CANDIDATE_POLICY_VERSION,
     STRATEGY_CANDIDATE_SCHEMA_VERSION,
@@ -84,6 +85,26 @@ CANDIDATE_NUMERIC_FEATURES = (
     "market_mean_reversion_tendency",
     "strategy_prior__profit_probability",
     "strategy_prior__expected_return_on_risk",
+    "pricing_leg_coverage",
+    "pricing_candidate_edge",
+    "pricing_conservative_edge",
+    "pricing_edge_to_friction",
+    "pricing_uncertainty",
+    "pricing_probability_favorable",
+    "pricing_relative_edge",
+    "pricing_model_age_seconds",
+    "pricing_residual_shrinkage",
+)
+PRICING_NUMERIC_FEATURES = (
+    "pricing_leg_coverage",
+    "pricing_candidate_edge",
+    "pricing_conservative_edge",
+    "pricing_edge_to_friction",
+    "pricing_uncertainty",
+    "pricing_probability_favorable",
+    "pricing_relative_edge",
+    "pricing_model_age_seconds",
+    "pricing_residual_shrinkage",
 )
 CANDIDATE_CATEGORICAL_FEATURES = (
     "strategy_name",
@@ -92,6 +113,7 @@ CANDIDATE_CATEGORICAL_FEATURES = (
     "expiration_structure",
     "stock_requirement",
     "cash_requirement",
+    "pricing_source",
 )
 _CONTEXT_PREFIXES = (
     "technical__",
@@ -261,6 +283,14 @@ def fit_or_reuse_strategy_model(
     trained_at: object,
 ) -> StrategyModel:
     created = utc_timestamp(trained_at)
+    missing_pricing = sorted(
+        set(PRICING_NUMERIC_FEATURES).difference(partitions.train.columns)
+    )
+    if missing_pricing or "pricing_source" not in partitions.train:
+        raise ValueError(
+            "Strategy model training requires pricing evidence features: "
+            + ", ".join((*missing_pricing, *(() if "pricing_source" in partitions.train else ("pricing_source",))))
+        )
     numeric = _numeric_features(partitions.train)
     categorical = tuple(
         column
@@ -420,7 +450,14 @@ def score_strategy_candidates(
     output["expected_net_profit"] = expected_profit
     output["expected_return_on_risk"] = expected_return
     output["decision_score"] = calibrated
-    output["score_basis"] = CALIBRATED_MODEL_SCORE_BASIS
+    pricing_source = output.get(
+        "pricing_source", pd.Series("BLACK_SCHOLES", index=output.index)
+    ).astype("string").str.upper()
+    output["score_basis"] = np.where(
+        pricing_source.eq("BSGP"),
+        BSGP_CALIBRATED_MODEL_SCORE_BASIS,
+        BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
+    )
     output["schema_version"] = STRATEGY_CANDIDATE_SCHEMA_VERSION
     output["model_version"] = model.artifact_directory.name
     output["model_policy_version"] = STRATEGY_MODEL_POLICY_VERSION
@@ -881,7 +918,7 @@ def _model_configuration(
     input_files: Sequence[Path],
     datastore_root: Path,
 ) -> dict[str, object]:
-    return {
+    configuration = {
         "model_name": "market-state-strategy-outcome",
         "model_family": "hist-gradient-classifier-regressor",
         "horizon": horizon,
@@ -901,7 +938,9 @@ def _model_configuration(
         "decision_score_definition": (
             "calibrated_probability_of_strictly_positive_net_profit"
         ),
-        "fallback_score_definition": "scenario_prior_profit_probability",
+        "fallback_score_definition": (
+            "pricing_informed_scenario_probability_of_strictly_positive_net_profit"
+        ),
         "assessment_policy_selection": "fixed_before_assessment",
         "calibration_method": "platt",
         "policy": asdict(policy),
@@ -916,6 +955,10 @@ def _model_configuration(
         ).max().isoformat(),
         "input_files": input_inventory(input_files, relative_to=datastore_root),
     }
+    # Manifests pass through JSON, which turns policy tuples into lists. Return
+    # the same canonical representation before comparing a live configuration
+    # with an existing generation; otherwise every run needlessly refits.
+    return json.loads(json.dumps(configuration, sort_keys=True, default=str))
 
 
 def _load_compatible_model(
@@ -967,6 +1010,7 @@ def _write_json(path: Path, payload: Mapping[str, object]) -> None:
 __all__ = [
     "CANDIDATE_CATEGORICAL_FEATURES",
     "CANDIDATE_NUMERIC_FEATURES",
+    "PRICING_NUMERIC_FEATURES",
     "fit_or_reuse_strategy_model",
     "partition_strategy_outcomes",
     "score_strategy_candidates",

@@ -16,8 +16,8 @@ from ml.strategy_selection.contracts import (
 )
 
 
-STRATEGY_PUBLICATION_VERSION = "strategy-publication-v2"
-STRATEGY_POINTER_VERSION = "strategy-pointer-v2"
+STRATEGY_PUBLICATION_VERSION = "strategy-publication-v3"
+STRATEGY_POINTER_VERSION = "strategy-pointer-v3"
 STRATEGY_RECEIPT_NAME = "publication.json"
 
 
@@ -161,8 +161,12 @@ def _candidate_contract(manifest: Mapping[str, object]) -> dict[str, object]:
         "model_policy_version": STRATEGY_MODEL_POLICY_VERSION,
         "ranking_policy_version": STRATEGY_RANKING_POLICY_VERSION,
         "decision_score": "profitable_outcome_probability",
-        "fitted_score_basis": "CALIBRATED_MODEL",
-        "fallback_score_basis": "SCENARIO_PRIOR",
+        "fitted_score_bases": [
+            "BSGP_CALIBRATED_MODEL",
+            "BLACK_SCHOLES_CALIBRATED_MODEL",
+        ],
+        "fallback_score_basis": "PRICING_SCENARIO_FALLBACK",
+        "pricing_evidence_before_probability": True,
     }
     if not isinstance(observed, Mapping) or dict(observed) != expected:
         raise StrategyPublicationError(

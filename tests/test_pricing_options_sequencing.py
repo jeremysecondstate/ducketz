@@ -29,6 +29,7 @@ from ml.option_pricing.causal import (
     reconcile_predictions,
 )
 from ml.option_pricing.prediction import create_prediction_rows
+from ml.option_pricing.policies import LOOP_NATIVE_SYMBOLS
 from ml.option_pricing.publication import receipt_proven_prediction_rows
 from ml.option_pricing.publication import (
     OPTION_PRICING_PUBLICATION_VERSION,
@@ -41,6 +42,7 @@ from ml.option_pricing.target_outcome import (
     read_target_outcome,
 )
 from ml.option_pricing_runtime import (
+    RetryablePricingReadinessError,
     _missed_boundaries,
     _publish_missed_target_outcome,
     run_option_pricing_once,
@@ -61,27 +63,44 @@ from options.publication import publish_option_snapshot, read_option_snapshot
 
 def test_loop_a_readiness_is_atomic_all_symbol_and_exact_target(tmp_path: Path) -> None:
     target = pd.Timestamp("2026-08-10T17:00:00Z")
-    for symbol, close in (("GOOG", 201.0), ("NVDA", 181.0)):
+    closes = {
+        symbol: 180.0 + index
+        for index, symbol in enumerate(LOOP_NATIVE_SYMBOLS)
+    }
+    for symbol, close in closes.items():
         _write_bar(tmp_path, symbol=symbol, target=target, close=close)
 
+    started = time.perf_counter()
     readiness = publish_bar_readiness(
         tmp_path,
         target_snapshot_for=target,
-        symbols=("GOOG", "NVDA"),
+        symbols=LOOP_NATIVE_SYMBOLS,
         loop_a_generation="loop-a-1",
         as_of=target + pd.Timedelta(seconds=20),
         clock=lambda: target + pd.Timedelta(seconds=21),
     )
+    readiness_seconds = time.perf_counter() - started
 
     verified = read_bar_readiness(
         tmp_path,
         target_snapshot_for=target,
-        required_symbols=("NVDA", "GOOG"),
+        required_symbols=tuple(reversed(LOOP_NATIVE_SYMBOLS)),
     )
     assert verified.ready_at == target + pd.Timedelta(seconds=21)
-    assert verified.close("GOOG") == 201.0
-    assert verified.close("NVDA") == 181.0
+    assert verified.close("GOOG") == closes["GOOG"]
+    assert verified.close("NVDA") == closes["NVDA"]
     assert verified.receipt_checksum_sha256 == readiness.receipt_checksum_sha256
+    assert readiness_seconds < 5.0
+    print(
+        json.dumps(
+            {
+                "fixture": "all-symbol-1m-readiness",
+                "readiness_seconds": readiness_seconds,
+                "symbols": len(LOOP_NATIVE_SYMBOLS),
+            },
+            sort_keys=True,
+        )
+    )
 
     stale_target = target + pd.Timedelta(minutes=15)
     with pytest.raises(FileNotFoundError, match="Exact completed"):
@@ -93,6 +112,133 @@ def test_loop_a_readiness_is_atomic_all_symbol_and_exact_target(tmp_path: Path) 
         )
     with pytest.raises(BarReadinessError, match="No verified"):
         read_bar_readiness(tmp_path, target_snapshot_for=stale_target)
+
+
+def test_missing_readiness_stays_retryable_without_empty_target_artifact(
+    tmp_path: Path,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    _write_bar(tmp_path, symbol="GOOG", target=target, close=200.0)
+    _publish_source_snapshot(tmp_path, symbol="GOOG", target=target)
+
+    with pytest.raises(RetryablePricingReadinessError, match="retryable"):
+        run_option_pricing_once(
+            tmp_path,
+            symbols=("GOOG",),
+            run_timestamp=target + pd.Timedelta(minutes=1),
+            target_snapshot_for=target,
+            runtime_clock=lambda: target + pd.Timedelta(minutes=1, seconds=1),
+            bar_readiness_mode="required",
+            bar_readiness_timeout_seconds=0.0,
+            readiness_sleeper=lambda _seconds: None,
+        )
+    assert not (
+        tmp_path / "ml" / "option-pricing-target-latest" / "run.json"
+    ).exists()
+
+    publish_bar_readiness(
+        tmp_path,
+        target_snapshot_for=target,
+        symbols=("GOOG",),
+        loop_a_generation="retry-fixture",
+        as_of=target + pd.Timedelta(seconds=20),
+        clock=lambda: target + pd.Timedelta(seconds=21),
+    )
+    result = run_option_pricing_once(
+        tmp_path,
+        symbols=("GOOG",),
+        run_timestamp=target + pd.Timedelta(minutes=1),
+        target_snapshot_for=target,
+        runtime_clock=lambda: target + pd.Timedelta(minutes=1, seconds=2),
+        bar_readiness_mode="required",
+        bar_readiness_timeout_seconds=0.0,
+        readiness_sleeper=lambda _seconds: None,
+    )
+    assert result.target_outcome_status == "PREDICTIONS_PUBLISHED"
+
+
+def test_legacy_empty_readiness_artifact_can_be_superseded_before_deadline(
+    tmp_path: Path,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    _write_bar(tmp_path, symbol="GOOG", target=target, close=200.0)
+    _publish_source_snapshot(tmp_path, symbol="GOOG", target=target)
+    legacy = publish_target_outcome(
+        tmp_path,
+        target_snapshot_for=target,
+        created_at=target + pd.Timedelta(seconds=30),
+        symbols=("GOOG",),
+        symbol_outcomes={
+            "GOOG": {
+                "status": "TARGET_BAR_NOT_READY",
+                "reason": "legacy early timeout",
+            }
+        },
+        terminal_status="TARGET_BAR_NOT_READY",
+        samples=empty_frame(OPTION_PRICING_SAMPLE_SCHEMA),
+        predictions=empty_frame(OPTION_PRICING_PREDICTION_SCHEMA),
+        bar_readiness=None,
+        clock=lambda: target + pd.Timedelta(seconds=31),
+    )
+    publish_bar_readiness(
+        tmp_path,
+        target_snapshot_for=target,
+        symbols=("GOOG",),
+        loop_a_generation="legacy-retry-fixture",
+        as_of=target + pd.Timedelta(seconds=40),
+        clock=lambda: target + pd.Timedelta(seconds=41),
+    )
+
+    result = run_option_pricing_once(
+        tmp_path,
+        symbols=("GOOG",),
+        run_timestamp=target + pd.Timedelta(minutes=1),
+        target_snapshot_for=target,
+        runtime_clock=lambda: target + pd.Timedelta(minutes=1, seconds=2),
+        bar_readiness_mode="required",
+        bar_readiness_timeout_seconds=0.0,
+        readiness_sleeper=lambda _seconds: None,
+    )
+
+    current = read_target_outcome(tmp_path, target_snapshot_for=target)
+    assert result.target_outcome_status == "PREDICTIONS_PUBLISHED"
+    assert current.terminal_status == "PREDICTIONS_PUBLISHED"
+    assert current.directory != legacy.directory
+    assert current.receipt["previous_outcome"]["run_path"] == legacy.receipt["run_path"]
+
+
+def test_one_unavailable_pricing_symbol_does_not_block_other_symbols(
+    tmp_path: Path,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    for symbol in ("GOOG", "NVDA"):
+        _write_bar(tmp_path, symbol=symbol, target=target, close=200.0)
+    _publish_source_snapshot(tmp_path, symbol="GOOG", target=target)
+    publish_bar_readiness(
+        tmp_path,
+        target_snapshot_for=target,
+        symbols=("GOOG", "NVDA"),
+        loop_a_generation="partial-route-fixture",
+        as_of=target + pd.Timedelta(seconds=20),
+        clock=lambda: target + pd.Timedelta(seconds=21),
+    )
+
+    result = run_option_pricing_once(
+        tmp_path,
+        symbols=("GOOG", "NVDA"),
+        run_timestamp=target + pd.Timedelta(minutes=1),
+        target_snapshot_for=target,
+        runtime_clock=lambda: target + pd.Timedelta(minutes=1, seconds=2),
+        bar_readiness_mode="required",
+        bar_readiness_timeout_seconds=0.0,
+    )
+    publication = read_target_outcome(tmp_path, target_snapshot_for=target)
+    assert result.target_outcome_status == "MIXED_TERMINAL"
+    assert publication.symbol_outcomes["GOOG"]["status"] == "READY"
+    assert publication.symbol_outcomes["NVDA"]["status"] == (
+        "SOURCE_SURFACE_UNAVAILABLE"
+    )
+    assert set(publication.predictions()["symbol"]) == {"GOOG"}
 
 
 def test_target_outcome_is_invisible_until_verified_pointer_and_restart_is_safe(
@@ -638,6 +784,10 @@ def test_missed_pricing_boundaries_publish_explicit_terminal_outcomes(
 def test_runtime_event_clocks_are_distinct_and_complete_cycle_is_bounded(
     tmp_path: Path,
 ) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    _write_bar(tmp_path, symbol="NVDA", target=target, close=200.0)
+    _publish_source_snapshot(tmp_path, symbol="NVDA", target=target)
+
     class IncrementingClock:
         def __init__(self) -> None:
             self.value = pd.Timestamp("2026-08-10T17:01:01Z")
@@ -652,7 +802,7 @@ def test_runtime_event_clocks_are_distinct_and_complete_cycle_is_bounded(
         tmp_path,
         symbols=("NVDA",),
         run_timestamp="2026-08-10T17:01:00Z",
-        target_snapshot_for="2026-08-10T17:00:00Z",
+        target_snapshot_for=target,
         runtime_clock=IncrementingClock(),
         bar_readiness_mode="exact",
     )
@@ -690,6 +840,9 @@ def test_runtime_event_clocks_are_distinct_and_complete_cycle_is_bounded(
     assert clocks == sorted(clocks)
     assert len(set(clocks)) == len(clocks)
     assert health["elapsed_seconds"] < health["runtime_limits"]["maximum_cycle_seconds"]
+    assert 0 < health["peak_memory_bytes"] < health["runtime_limits"][
+        "maximum_peak_memory_bytes"
+    ]
     assert elapsed < 30.0
     assert set(health["stage_timings"]) == {
         "preflight_seconds",
@@ -707,18 +860,7 @@ def test_representative_open_market_inventory_meets_runtime_budget(
     tmp_path: Path,
 ) -> None:
     target = pd.Timestamp("2026-08-10T17:00:00Z")
-    symbols = (
-        "AAPL",
-        "AMD",
-        "AMZN",
-        "GOOG",
-        "META",
-        "MSFT",
-        "NVDA",
-        "SNDK",
-        "TSLA",
-        "TSM",
-    )
+    symbols = LOOP_NATIVE_SYMBOLS
     source_snapshot_for = target - pd.Timedelta(minutes=15)
     source_available_at = target - pd.Timedelta(minutes=14)
     for symbol in symbols:
@@ -755,9 +897,22 @@ def test_representative_open_market_inventory_meets_runtime_budget(
     assert result.sample_rows == 14_000
     assert result.prediction_rows == 14_000
     assert result.target_outcome_status == "PREDICTIONS_PUBLISHED"
-    assert result.stage_timings["target_authority_seconds"] < 45.0
+    assert result.stage_timings["target_authority_seconds"] < 30.0
     assert health["elapsed_seconds"] < health["runtime_limits"]["maximum_cycle_seconds"]
     assert elapsed < 120.0
+    print(
+        json.dumps(
+            {
+                "fixture": "ten-symbol-pricing-inference",
+                "contract_rows": result.prediction_rows,
+                "end_to_end_seconds": elapsed,
+                "target_authority_seconds": result.stage_timings[
+                    "target_authority_seconds"
+                ],
+            },
+            sort_keys=True,
+        )
+    )
 
 
 def test_cross_loop_target_ordering_from_loop_a_through_options(
@@ -853,7 +1008,7 @@ def test_cross_loop_target_ordering_from_loop_a_through_options(
                 target + pd.Timedelta(minutes=1, seconds=2),
                 target + pd.Timedelta(minutes=1, seconds=2, milliseconds=50),
                 target + pd.Timedelta(minutes=1, seconds=2, milliseconds=100),
-                target + pd.Timedelta(minutes=1, seconds=10),
+                target + pd.Timedelta(minutes=1, seconds=2, milliseconds=150),
             )
             value = values[min(self.calls, len(values) - 1)]
             self.calls += 1
@@ -870,6 +1025,26 @@ def test_cross_loop_target_ordering_from_loop_a_through_options(
     )
     assert options.published == 1
     assert options.pricing_barrier_status == "VERIFIED"
+    options_receipt = published_snapshots[0]
+    receipt_payload = json.loads(
+        options_receipt.receipt_path.read_text(encoding="utf-8")
+    )
+    assert (
+        pd.Timestamp(receipt_payload["request_started_at"])
+        - target_publication.published_at
+    ).total_seconds() <= 5.0
+    print(
+        json.dumps(
+            {
+                "fixture": "pricing-to-options-handoff",
+                "handoff_seconds": (
+                    pd.Timestamp(receipt_payload["request_started_at"])
+                    - target_publication.published_at
+                ).total_seconds(),
+            },
+            sort_keys=True,
+        )
+    )
     proven = receipt_proven_prediction_rows(tmp_path)
     evaluated = reconcile_predictions(
         proven,

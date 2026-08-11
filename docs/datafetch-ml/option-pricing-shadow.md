@@ -1,4 +1,4 @@
-# Shadow option pricing: Black-Scholes plus a finite-feature GP
+# Active option pricing: Black-Scholes plus a finite-feature GP
 
 Eligibility protocol v2 remains the readable three-symbol/OPRA legacy policy.
 The separate Loop-native causal policy is v3 and covers all ten configured
@@ -9,18 +9,20 @@ disaster recovery are specified in
 artifacts described below remain readable but cannot alone establish v2
 production eligibility.
 
-This document describes the implemented, independent Pricing runtime. It is a
-research and monitoring subsystem. It does not submit orders, change Strategy
-rankings, change the default directional feature profile, or authorize any
-automated action.
+This document describes the implemented, independent Pricing runtime. Pricing
+is now an active input to Options Strategy profitable-outcome probabilities and
+post-score ranking. It still does not submit orders or authorize automated
+action. Eligibility and quality reports remain monitoring outputs; they are not
+gates in front of a valid Black-Scholes fallback.
 
 ## Loop-native causal BSGP lane (policy v3)
 
-The active fair-value control remains fail-closed Black-Scholes. A separate
-immutable sidecar publishes an optional finite-basis GP residual correction:
+The active fair-value path starts from fail-safe Black-Scholes. The immutable
+`pricing-bsgp-shadow.parquet` transport name is retained for compatibility, but
+its finite-basis GP residual correction is now consumed by Strategy:
 
 ```text
-shadow fair value = causal Black-Scholes value + S * predicted normalized residual
+fair value = causal Black-Scholes value + S * predicted normalized residual
 ```
 
 The natural Schwab snapshot key is `(symbol, snapshot_for)`. Materialization
@@ -55,7 +57,9 @@ Shadow statuses are explicit: `BSGP_SHADOW_READY`,
 `BASELINE_FALLBACK_OUT_OF_SUPPORT`,
 `BASELINE_FALLBACK_INPUT_UNAVAILABLE`, and
 `BASELINE_FALLBACK_UNCALIBRATED`. Every fallback copies the causal
-Black-Scholes value; it does not delay Pricing or Options. The sidecar records
+Black-Scholes value and publishes a conservative nonzero uncertainty interval;
+sparse route support shrinks the residual toward zero while widening toward
+that interval. It does not delay Pricing or Options. The sidecar records
 raw and constrained point estimates and 80/95 percent intervals, posterior
 standard deviation, support and shrinkage diagnostics, model-generation
 lineage, projection magnitudes, and `automated_action_allowed=false`.
@@ -151,7 +155,9 @@ after-hours bars are unsupported prospective evidence.
 For each actionable target, integrated Pricing waits monotonically for Loop A's
 immutable all-symbol readiness receipt. The target is prospective only if no
 verified Schwab Options receipt already exists for it. A bounded readiness miss
-publishes immutable `TARGET_BAR_NOT_READY` once and remains noncreditable forever.
+publishes no target artifact: the target remains retryable until the pricing
+input-freshness deadline. Legacy empty `TARGET_BAR_NOT_READY` artifacts are
+never reused as current evidence.
 When the calendar supplies no eligible target, Pricing is write-free
 `MARKET_CLOSED_IDLE`: it never substitutes the newest older bar, grows the target
 chain, or advances research eligibility health as though an opportunity was
@@ -342,67 +348,59 @@ prospective evidence.
 
 No paid OPRA request was executed as part of this implementation.
 
-## Shadow consumers and fallback
+## Active consumers and fallback
 
-Directional Loop B's default remains `loop-a-all-v1`. The explicit
-`loop-a-all-bsgp-shadow-v1` profile adds `opx__` compact-surface features:
+Historical Strategy bootstrap uses the same exact-leg pricing contract through
+an explicitly offline replay lane. Each replay row is sourced from an earlier
+verified Schwab snapshot and point-in-time underlying/rate/dividend/volatility
+inputs. When the current pooled model generation is tied to that exact immutable
+materialization, only its untouched assessment sessions may receive BSGP
+cross-fit predictions: every train and calibration availability timestamp must
+strictly precede the emulated decision. Earlier or unsupported observations use
+the causal Black-Scholes replay with zero learned residual and wider fallback
+uncertainty. The evidence lane remains `OFFLINE`; it never increments prospective
+counts or claims live availability.
 
-```powershell
-python -m ml.prediction_runtime --datastore-target pc `
-  --symbols NVDA GOOG MU --horizons 1h 4h 1d 1w `
-  --feature-profile loop-a-all-bsgp-shadow-v1 --once
-```
+The production directional profile is `loop-a-all-bsgp-active-v2`. Its `opx__`
+join verifies the reachable Pricing receipt chain, preserves each surface's
+first availability, and expires a value against both first availability and
+the underlying market target. Republishing a cumulative artifact cannot make
+an old surface fresh. Missing, late, incompatible, empty, or tampered evidence
+stays missing; no current value is substituted.
 
-The join first verifies the reachable Pricing receipt chain, then uses only a
-publication and row with availability no later than the directional decision
-cutoff. Missing, late, incompatible, empty, or tampered evidence makes this
-explicit optional route unavailable. It never causes the default profile to
-read Pricing or substitute a current value.
+Strategy defaults to `--pricing-mode active`. Before either historical fitting
+or live scoring, every option leg must match symbol, target, exact contract
+symbol, call/put, expiration, strike, and multiplier. Both prediction creation
+and immutable publication must be strictly earlier than the executable quote;
+the source surface and target are also subject to the 1,200-second freshness
+contract. Stock legs receive no option-pricing edge.
 
-Strategy defaults to `--pricing-mode off`. `--pricing-mode shadow` matches each
-option leg to an exact target and semantic contract and requires the Pricing
-receipt before that leg's quote. It records leg coverage, missing reasons,
-long `fair - ask`, short `bid - fair`, quantity/multiplier-weighted candidate
-edge, spread-and-fee friction, edge-to-friction, conservative summed interval
-uncertainty, and comparison to the existing scenario expected profit. These
-columns are diagnostics only: `decision_score`, `candidate_rank`, `legs_json`,
-UI ordering, order drafting, and submission behavior are unchanged.
+For long legs, edge is `quantity * multiplier * (fair - ask)`; for short legs it
+is `quantity * multiplier * (bid - fair)`. The conservative edge uses the 95%
+lower bound for longs and 95% upper bound for shorts. Candidate uncertainty is
+the conservative sum of absolute leg posterior exposures. This is an interval
+bound, not an invented CALL/PUT correlation assumption.
 
-## Run commands
+The fields are attached before the scenario prior and before the
+horizon-specific classifier. A compatible classifier emits calibrated
+`BSGP_CALIBRATED_MODEL` or `BLACK_SCHOLES_CALIBRATED_MODEL`; otherwise the same
+pricing distribution is convolved with the executable-spread/fee scenarios and
+emits `PRICING_SCENARIO_FALLBACK`. Ranking occurs only after this probability is
+final. Order drafting and submission behavior are unchanged.
 
-Run one bounded Pricing cycle before the Options `+2` phase:
-
-```powershell
-python -m ml.option_pricing_runtime `
-  --datastore-target pc `
-  --watchlist datafetching\watchlist.txt `
-  --interval-minutes 15 `
-  --phase-offset-minutes 1 `
-  --bar-readiness-mode required `
-  --bar-readiness-timeout-seconds 120 `
-  --once
-```
-
-Enable Strategy diagnostics explicitly:
-
-```powershell
-python -m ml.strategy_runtime --datastore-target pc `
-  --pricing-mode shadow --once
-```
-
-These are operating examples, not a deployment record. Installing this code,
-starting or restarting supervisors, approving OPRA spend, and freezing an
-operational model remain explicit operator actions.
+The one authoritative production command list is
+[`current_start_command`](current_start_command). Installing the code and
+restarting the six runtime owners remain explicit operator actions.
 
 ## Ten-part evidence gate and limitations
 
 The JSON report exposes ten separate statuses for lineage/timing/schema,
 partitions/lockbox, three comparator wins, interval calibration, constrained
 shape/projection magnitude, edge after spread and bucket monotonicity, Strategy
-shadow improvement, and 60 prospective predictions over at least 20 sessions
-per symbol. Any unproven or failed item keeps
-`gate_status=NOT_PRODUCTION_ELIGIBLE`. `automated_action_allowed` is always
-false, even if fixture tests pass.
+evidence improvement, and 60 prospective predictions over at least 20 sessions
+per symbol. Any unproven or failed item keeps the research gate unproven, but
+does not block the production Black-Scholes fallback.
+`automated_action_allowed` is always false, even if fixture tests pass.
 
 Important limitations:
 

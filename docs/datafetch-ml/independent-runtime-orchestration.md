@@ -1,9 +1,8 @@
 # Independent market-data and model runtimes
 
-The recommended topology is six independent processes. CME/L2, shadow option
-pricing, Schwab options, and options-strategy work are deliberately outside the
-critical paths of Loop A and directional Loop B. These commands document the
-topology; they do not claim that the Pricing supervisor has been deployed.
+The production topology is six independent processes. CME/L2, active option
+pricing, Schwab options, and options-strategy work have independent owners and
+coordinate through verified pointers rather than assumed minute offsets.
 
 ## Artifact ownership
 
@@ -12,7 +11,7 @@ topology; they do not claim that the Pricing supervisor has been deployed.
 | `datafetching.cme_runtime` | `pools/cme/events/databento/**`, CME successful-query cursors, immutable five-minute L2 snapshots, and the existing hourly CME cross-asset feature artifact |
 | `datafetching.options_runtime` | Immutable Schwab raw-chain, normalized-contract, and option-quality snapshot directories and their pointer; integrated receipts record their Pricing barrier proof, and the process also maintains the legacy monthly option mirrors |
 | `datafetching.orchestrate` (Loop A) | Equity bars and quotes, non-CME shared macro data, fundamentals, technicals, signals, and immutable all-symbol `loop-a/bar-readiness/**` receipts |
-| `ml.option_pricing_runtime` | Immutable shadow target outcomes, pricing samples, predictions, evaluations, compact surfaces, monitoring, reports, copied models, `ml/option-pricing-target-latest/run.json`, and `ml/option-pricing-latest/run.json` |
+| `ml.option_pricing_runtime` | Immutable target outcomes, Black-Scholes/BSGP pricing samples and predictions, evaluations, compact surfaces, monitoring, reports, copied models, `ml/option-pricing-target-latest/run.json`, and `ml/option-pricing-latest/run.json` |
 | `ml.option_pricing_fred` (bounded import) | Immutable FRED/ALFRED provider responses, vintage manifest/receipt, append-only macro-vintage rows, and derived point-in-time FEDFUNDS release features; never current-revised historical claims |
 | `ml.prediction_runtime` (Loop B) | Immutable directional sample, prediction, evaluation, monitoring, and intelligence runs plus `ml/latest/run.json` |
 | `ml.strategy_runtime` | Immutable strategy candidates, audits, reports, and copied model artifacts plus `ml/strategy-latest/run.json` |
@@ -23,59 +22,14 @@ lock rejects that configuration before an inline request can write an owned
 artifact. Dead-process lock files are reclaimed on restart; a live owner is
 never displaced.
 
-## Recommended startup
+## Production startup
 
-Before the continuous processes, refresh the bounded operational proof and
-ensure a causal current-rate receipt exists. The second command uses the latest
-already-fetched FEDFUNDS value only for later targets; every subsequent Loop A
-FRED fetch refreshes it automatically.
-
-```powershell
-python -m ml.option_pricing_admin --datastore-target pc operational-preflight
-python -m ml.option_pricing_admin --datastore-target pc capture-current-rate
-python -m ml.option_pricing_admin --datastore-target pc readiness
-```
-
-`readiness` is read-only and exits 6 while evidence gates remain blocked.
-
-Open one PowerShell terminal for each continuous command:
-
-```powershell
-# 1. Complete-history CME collection. One request at a time is the conservative default.
-python -m datafetching.cme_runtime --datastore-target pc --max-concurrency 1
-
-# 2. Loop A. CME and option-chain work stay external by default.
-python -m datafetching.orchestrate --datastore-target pc `
-  --watchlist datafetching\watchlist.txt `
-  --cme-mode external --options-mode external `
-  --providers databento fmp fred schwab sec --interval-minutes 15
-
-# 3. Shadow Pricing. Closed sessions are write-free monitor-only cycles.
-python -m ml.option_pricing_runtime --datastore-target pc `
-  --watchlist datafetching\watchlist.txt `
-  --interval-minutes 15 --phase-offset-minutes 1 `
-  --bar-readiness-mode required `
-  --bar-readiness-timeout-seconds 120
-
-# 4. Schwab options. It requires Loop A's exact all-symbol readiness receipt.
-python -m datafetching.options_runtime --datastore-target pc `
-  --watchlist datafetching\watchlist.txt `
-  --interval-minutes 15 --phase-offset-minutes 2 `
-  --pricing-barrier-timeout-seconds 150 `
-  --bar-readiness-mode required
-
-# 5. Directional Loop B. Start after Loop A has published one COMPLETE generation.
-python -m ml.prediction_runtime --datastore-target pc --provider databento `
-  --watchlist datafetching\watchlist.txt `
-  --horizons 1h 4h 1d 1w --feature-profile loop-a-all-v1 `
-  --model-family logistic --calibration platt --round-trip-cost 0.001 `
-  --interval-minutes 15 --phase-offset-minutes 5
-
-# 6. Strategy processing. Shadow diagnostics never change ranks or orders.
-python -m ml.strategy_runtime --datastore-target pc `
-  --interval-minutes 60 --phase-offset-minutes 10 `
-  --pricing-mode shadow
-```
+There is deliberately no second command list in this document. The sole
+operator command source is `docs/datafetch-ml/current_start_command`; it defines
+the all-ten-symbol readiness fast lane, active Pricing, independent Options
+capture, the active directional feature profile, and pricing-active Strategy.
+Research preflight and eligibility reports remain optional monitors and are not
+startup gates.
 
 Use `--datastore <temporary-path>` during development and migration tests. None
 of these commands requires deleting, resetting, or bootstrapping an existing
@@ -119,9 +73,10 @@ This preserves complete history while preventing Databento's provisional
 recent-data size estimate from turning a small recovery slice into a nominal
 greater-than-5-GB streaming request.
 
-Pricing defaults to every 15 minutes at UTC phase +1 minute and Options defaults
-to phase +2 minutes. Loop A defaults to 15 minutes; Loop B defaults to phase +5
-minutes, and Strategy defaults to hourly at phase +10 minutes. A shared XNYS
+Pricing and Options both start every 15 minutes at UTC phase +1 minute; Options
+then waits on the exact Pricing pointer rather than a guessed later phase. Loop A
+defaults to 15 minutes, Loop B to phase +5 minutes, and Strategy to phase +10
+minutes every 15 minutes. A shared XNYS
 calendar decision owns all three Loop A/Pricing/Options targets. Eligible targets
 are exact completed quarter-hours strictly after the regular open through the
 official regular close, inclusive. The first normal-session target is therefore
@@ -129,15 +84,14 @@ official regular close, inclusive. The first normal-session target is therefore
 `exchange_calendars`; unsupported extended hours never become prospective
 targets.
 
-For an actionable target, Pricing waits monotonically up to 45 seconds for Loop
-A's exact all-symbol readiness receipt. Receipt arrival ends the wait immediately
-and the real readiness/observation clocks become the prediction clock. A deadline
-miss publishes immutable `TARGET_BAR_NOT_READY` exactly once; later readiness can
-never replace it or create a retroactive prediction. Options separately waits up
-to 45 seconds for the verified Pricing target authority. A Pricing miss remains a
-verified, noncreditable terminal outcome. A missing Pricing barrier is recorded as
-`TIMED_OUT` (or `MISSING` with zero wait), but Options still requires Loop A
-readiness and never infers bar readiness from Pricing.
+For an actionable target, Pricing waits monotonically for Loop A's exact
+all-symbol readiness receipt. Receipt arrival ends the wait immediately and the
+real readiness/observation clocks become the prediction clock. A transient miss
+creates no empty terminal artifact and remains retryable until the target's
+freshness deadline. Options separately waits up to 45 seconds for the verified
+Pricing target authority. A Pricing failure or missing barrier is recorded as
+`TIMED_OUT` (or `MISSING` with zero wait), but capture still proceeds; Options
+never infers bar readiness from Pricing.
 
 When no eligible target exists, Pricing and Options report
 `cycle_mode=MONITOR_ONLY` and `target_state=MARKET_CLOSED_IDLE`, explain the
@@ -260,9 +214,9 @@ verified.
 
 The narrow readiness boundary is an additional Loop A-owned artifact, not a
 replacement for Loop A completion. Loop B still locks and consumes the last
-COMPLETE Loop A generation. Strategy still consumes its existing Loop B cutoff
-and receipts. CME remains independently owned and is not consulted by the new
-barrier.
+COMPLETE Loop A generation. Strategy consumes its Loop B cutoff plus exact
+receipt-verified Pricing evidence before scoring. CME remains independently
+owned and is not consulted by the new barrier.
 
 ## Publication clocks and health interpretation
 
@@ -297,9 +251,11 @@ eligibility/health tail. Evidence-stagnation time counts only eligible regular
 option-market windows, not nights, weekends, holidays, or post-close idle.
 Expected closure creates neither `MISSED_PHASE` nor stagnation alerts, while
 lineage, model, OPRA, partition, disk, latency, and other genuine problems remain
-actionable. `NOT_PRODUCTION_ELIGIBLE` and `automated_action_allowed=false` are
-unchanged. `maximum_cycle_seconds=600` applies to the complete Pricing cycle; the
-bar-readiness and Options barrier waits are separate bounded liveness budgets.
+actionable. Research `NOT_PRODUCTION_ELIGIBLE` and
+`automated_action_allowed=false` states remain monitoring facts, not gates on the
+active Black-Scholes fallback. `maximum_cycle_seconds=600` applies to the complete
+Pricing cycle; the bar-readiness and Options barrier waits are separate bounded
+liveness budgets.
 
 ## Restart and delay behavior
 
@@ -316,12 +272,14 @@ bar-readiness and Options barrier waits are separate bounded liveness budgets.
   A target outcome receipt without pointer reachability cannot satisfy Options.
   Restart preserves the last verified pointer; a retry publishes a new immutable
   directory while the orphan remains non-authoritative evidence.
-- Once a target outcome owns `T`, a repeated Pricing invocation returns that
-  authority instead of replacing or backfilling it. The Pricing runtime lock
-  prevents overlapping cycle owners.
+- Once a non-transient target outcome owns `T`, a repeated Pricing invocation
+  returns that authority instead of replacing or backfilling it. Legacy empty
+  readiness artifacts alone may be superseded before the freshness deadline.
+  The Pricing runtime lock prevents overlapping cycle owners.
 - Options retries or skips independently. Loop A continues with fundamentals,
   technicals, and signals, and Loop B reuses the newest causally eligible
-  committed option receipt subject to the unchanged freshness limits.
+  committed option receipt subject to the target/event and first-availability
+  freshness limits.
 - Strategy retries the current Loop B source until it publishes a matching
   Strategy receipt. A slow Strategy run cannot hold directional predictions
   open.

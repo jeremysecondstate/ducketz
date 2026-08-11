@@ -31,14 +31,14 @@ constructible candidate and its measurements.
 | --- | --- |
 | Strategy runtime policy | `schwab-spreads-v1` |
 | 40-strategy registry | `schwab-spreads-strategy-registry-v1` |
-| Exact-chain candidate construction | `schwab-exact-chain-candidates-v3` |
+| Exact-chain candidate construction | `schwab-exact-chain-pricing-candidates-v4` |
 | Causal quote outcome | `observed-bbo-pseudo-outcome-v2` |
-| Point-in-time market state | `point-in-time-market-state-v1` |
-| Exact-mechanics scenario prior | `greek-bbo-scenario-prior-v2` |
-| Chronological strategy model | `market-state-hgb-platt-return-v4` |
-| Persisted market ranking | `probability-first-ranking-v3` |
-| Candidate Parquet schema | `strategy-candidate-v2` |
-| Authoritative publication / pointer | `strategy-publication-v2` / `strategy-pointer-v2` |
+| Point-in-time market state | `point-in-time-market-state-pricing-v2` |
+| Exact-mechanics scenario prior | `pricing-greek-bbo-scenario-prior-v3` |
+| Chronological strategy model | `pricing-market-state-hgb-platt-return-v5` |
+| Persisted market ranking | `post-pricing-probability-first-ranking-v4` |
+| Candidate Parquet schema | `strategy-candidate-v3` |
+| Authoritative publication / pointer | `strategy-publication-v3` / `strategy-pointer-v3` |
 | Research trace | `nyu-hu-uh-trace-v3` |
 | Display-time Schwab position overlay | `current-schwab-position-fit-v2` |
 | UI-to-Schwab order draft | `schwab-strategy-order-draft-v1` |
@@ -46,6 +46,23 @@ constructible candidate and its measurements.
 The Strategy identifiers through the research trace belong to artifacts and
 manifests. The last two belong to the UI boundary: neither current account
 state nor an order draft is persisted as a historical strategy-model feature.
+
+The production score contract is:
+
+```text
+Predictive Score = 100 * decision_score
+decision_score = P(strategy net profit after executable spreads and fees > 0
+                   over the selected horizon)
+```
+
+Contract-level pricing is joined before either probability path runs. Each
+option leg must match the symbol, decision target, contract symbol and semantic
+contract identity, call/put side, expiration, strike, and multiplier, and its
+pricing publication must precede the executable quote. The joined fair-value
+distribution contributes to the scenario probability and to the numeric and
+categorical inputs of the horizon classifier. It is never added to a finished
+probability as a bonus. Expected Return remains a separate payoff-magnitude
+estimate.
 
 ## Research traceability
 
@@ -71,16 +88,18 @@ flowchart LR
     A["Committed Options exact-chain and surface receipts plus stock BBO"] --> B["Point-in-time market state"]
     P["Completed authoritative Loop B directional run"] --> B
     A --> C["40-strategy exact-leg construction"]
-    B --> D["Exact-mechanics scenario prior"]
-    C --> D
+    Q["Causal Black-Scholes or BSGP contract predictions"] --> K["Exact-leg pricing enrichment"]
+    C --> K
+    B --> D["Pricing-informed exact-mechanics scenario prior"]
+    K --> D
     C --> E["Pre-lockbox causal future-BBO outcomes by target cluster"]
-    D --> F["Training: probability and expected-return models"]
+    D --> F["Training: pricing-enhanced probability and expected-return models"]
     E --> F
     X["Real 126-cluster lockbox: redacted and forbidden"] -.->|blocks| E
     F --> G["Calibration: weighted Platt fit on probability only"]
     E --> H["Assessment: evidence only"]
     G --> H
-    D --> I["Prior score, or fitted probability and return residual"]
+    D --> I["Pricing scenario score, or fitted probability and return residual"]
     H --> I
     I --> J["Continuous exact-candidate ranking"]
     J --> K["strategy-candidates.parquet and strategy-audit.parquet"]
@@ -316,21 +335,26 @@ probability, and no fixed post-calibration directional bonus is added.
 Candidate profitable-outcome probability remains separately reported and is
 not mislabeled as a direction probability.
 
-For current candidates, `probability-first-ranking-v3` computes:
+For current candidates, `post-pricing-probability-first-ranking-v4` computes:
 
 ```text
 fitted decision_score
     = calibrated_probability(strictly positive net profit)
 
 fallback decision_score
-    = scenario_prior_probability(strictly positive net profit)
+    = pricing_informed_scenario_probability(strictly positive net profit)
 ```
 
 The profitable event is `net_profit > 0` under
 `observed-bbo-pseudo-outcome-v2`: conservative bid/ask crossing, exact contract
-continuity, and modeled entry and exit option fees are already included. Fitted
-rows use `score_basis=CALIBRATED_MODEL`; fallback rows use
-`score_basis=SCENARIO_PRIOR` and are never described as calibrated ML.
+continuity, and modeled entry and exit option fees are already included. A
+compatible fitted row uses `score_basis=BSGP_CALIBRATED_MODEL` when the exact
+legs carry learned residual evidence, or
+`score_basis=BLACK_SCHOLES_CALIBRATED_MODEL` when they carry the causal
+Black-Scholes fallback. A row without a compatible calibrated classifier uses
+`score_basis=PRICING_SCENARIO_FALLBACK`. The fallback is a probability obtained
+by integrating the pricing distribution with the executable-payoff scenarios;
+it is not described as calibrated ML and receives no fixed score bonus.
 
 Both paths sort by descending `decision_score`, then descending
 `expected_return_on_risk`, then ascending readable `candidate_key` with a stable
@@ -432,9 +456,14 @@ pricing_status:string
 pricing_leg_coverage:float64
 pricing_missing_reason:string
 pricing_candidate_edge:float64
+pricing_conservative_edge:float64
 pricing_edge_to_friction:float64
 pricing_uncertainty:float64
-pricing_edge_minus_scenario_expected_profit:float64
+pricing_probability_favorable:float64
+pricing_relative_edge:float64
+pricing_model_age_seconds:float64
+pricing_residual_shrinkage:float64
+pricing_source:string
 model_version:string
 model_status:string
 registry_version:string
@@ -463,17 +492,16 @@ registry_version:string
 candidate_policy_version:string
 ```
 
-The candidate output contains every constructible variant. Before a fitted
-model is available, each row has `model_status=MARKET_STATE_PRIOR`,
-`score_basis=SCENARIO_PRIOR`, a raw scenario profit probability, expected net
-profit, expected return on risk, probability-valued decision score, and an
-uninterrupted route rank from 1 through N. Its
-`calibrated_profit_probability` remains null because no GOOG calibration has
-occurred. A fitted model replaces the raw probability and expected-return
-values, fills calibrated probability, copies that probability to
-`decision_score`, and uses `model_status=MODEL_FIT` with
-`score_basis=CALIBRATED_MODEL`. Every row declares
-`schema_version=strategy-candidate-v2`. The
+The candidate output contains every constructible variant. Before a compatible
+fitted model is available, each row has `model_status=PRICING_SCENARIO`,
+`score_basis=PRICING_SCENARIO_FALLBACK`, a raw pricing-informed scenario profit
+probability, expected net profit, expected return on risk, probability-valued
+decision score, and an uninterrupted route rank from 1 through N. Its
+`calibrated_profit_probability` remains null. A compatible fitted model replaces
+the raw probability and expected-return values, fills calibrated probability,
+copies that probability to `decision_score`, and uses `model_status=MODEL_FIT`
+with the BSGP or Black-Scholes calibrated score basis described above. Every row
+declares `schema_version=strategy-candidate-v3`. The
 audit has one row per attempted current concrete route and registry strategy,
 including
 non-constructible and lifecycle cases. A route with unavailable chain history
@@ -617,24 +645,22 @@ is represented as an invented five- or six-leg atomic Schwab request.
 
 ## Runtime behavior and present data
 
-There is no enable/disable profile and no action threshold. A fitted candidate
-row is labeled `MODEL_FIT`; a route without the required observations is
-labeled `MARKET_STATE_PRIOR` and remains fully ranked from causal market and
-exact-chain mechanics. The separate route model report records `MODEL_NOT_FIT`
-and the observed/required cluster counts. Strategy never converts a candidate
-rank into a trading decision.
+Production runs use `--pricing-mode active` and have no action threshold. A
+compatible fitted candidate is labeled `MODEL_FIT` and receives one of the two
+calibrated pricing bases. A route without sufficient compatible observations is
+labeled `PRICING_SCENARIO`, remains fully ranked from causal market,
+exact-chain, and pricing-distribution mechanics, and receives
+`PRICING_SCENARIO_FALLBACK`. The route report records `MODEL_NOT_FIT` and the
+observed/required cluster counts. Strategy never converts a candidate rank into
+a trading decision.
 
-The recorded operational GOOG chain history represented one independent market
-decision. Its surface-quality results, quote age, spread, and open-interest
-values are published rather than used to erase candidates. One independent
-target decision cannot fit the configured 252/63/63 chronological model; that
-observed count and the required counts are written to the model report without
-issuing a verdict.
-
-All present strategy evidence is GOOG-only. The loaders and schemas can carry
-additional symbols, but that architectural capacity is not evidence that
-calibration, ranking quality, fills, or economic performance transfer. Another
-symbol requires its own causal receipts and route-level assessment.
+The immutable replay lane can bootstrap all configured symbols from existing
+Schwab receipts. It marks assessment-time BSGP rows as offline causal cross-fit
+evidence only when the fitted train/calibration boundary strictly precedes the
+emulated decision; otherwise the row uses the exact Black-Scholes replay. No
+offline row is relabeled as a prospective prediction, and fixture or replay
+coverage is not a claim that live calibration, fills, or economic performance
+transfer across symbols.
 
 ## Verification
 

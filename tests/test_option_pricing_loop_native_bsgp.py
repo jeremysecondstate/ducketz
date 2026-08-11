@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -51,6 +52,7 @@ from ml.option_pricing.schwab_materialization import (
     read_current_loop_native_schwab_materialization,
     read_loop_native_schwab_materialization,
 )
+from ml.option_pricing.strategy_shadow import load_strategy_pricing_evidence
 from ml.option_pricing.shadow_model import (
     LoopNativeModelError,
     LoopNativeModelLoad,
@@ -61,6 +63,7 @@ from ml.option_pricing.shadow_model import (
     train_loop_native_shadow_generation,
 )
 from ml.option_pricing.target_outcome import (
+    TARGET_OUTCOME_RECEIPT_V3,
     TargetOutcomeError,
     publish_target_outcome,
     read_current_target_outcome,
@@ -96,7 +99,7 @@ def test_empty_terminal_shadow_publication_advances_verified_pointer(
 
     current = read_current_target_outcome(tmp_path)
     assert current.directory == publication.directory
-    assert current.receipt["schema_version"] == "option-pricing-target-outcome-receipt-v2"
+    assert current.receipt["schema_version"] == TARGET_OUTCOME_RECEIPT_V3
     assert current.predictions().empty
     assert current.shadow_predictions().empty
     assert current.terminal_status == "TARGET_BAR_NOT_READY"
@@ -328,6 +331,61 @@ def test_model_publication_must_follow_immutable_materialization(
     ).exists()
 
 
+def test_offline_assessment_replay_uses_only_causal_bsgp_crossfit(
+    tmp_path: Path,
+) -> None:
+    generation, _policy = _model_generation(tmp_path)
+
+    catalog = load_strategy_pricing_evidence(
+        tmp_path,
+        available_not_after=generation.published_at + pd.Timedelta(seconds=1),
+        include_offline_replay=True,
+    )
+    replay = catalog.predictions.loc[
+        catalog.predictions["evidence_lane"].eq(OFFLINE_SCHWAB_BOOTSTRAP)
+    ].copy()
+    sessions = (
+        pd.to_datetime(replay["target_snapshot_for"], utc=True)
+        .dt.tz_convert("America/New_York")
+        .dt.strftime("%Y-%m-%d")
+    )
+    assessment_sessions = set(
+        generation.manifest["chronological_session_partitions"]["assessment"]
+    )
+    assessment = replay.loc[sessions.isin(assessment_sessions)]
+    earlier = replay.loc[~sessions.isin(assessment_sessions)]
+
+    assert not assessment.empty
+    assert assessment["pricing_source"].eq("BSGP").all()
+    assert assessment["pricing_evidence_status"].eq(
+        "OFFLINE_CAUSAL_CROSSFIT_BSGP"
+    ).all()
+    assert earlier["pricing_source"].eq("BLACK_SCHOLES").all()
+    assert pd.to_datetime(assessment["prediction_created_at"], utc=True).lt(
+        pd.to_datetime(assessment["target_snapshot_for"], utc=True)
+        + pd.Timedelta(minutes=1)
+    ).all()
+    np.testing.assert_allclose(
+        assessment["bsgp_shadow_fair_value_raw"].to_numpy(dtype=float),
+        assessment["black_scholes_price"].to_numpy(dtype=float)
+        + assessment["underlying_price"].to_numpy(dtype=float)
+        * assessment["bsgp_shadow_normalized_residual"].to_numpy(dtype=float),
+        rtol=0.0,
+        atol=1e-10,
+    )
+    print(
+        json.dumps(
+            {
+                "assessment_bsgp_rows": len(assessment),
+                "earlier_black_scholes_rows": len(earlier),
+                "fixture": "immutable-schwab-offline-causal-crossfit",
+                "replay_rows": len(replay),
+            },
+            sort_keys=True,
+        )
+    )
+
+
 def test_target_time_volatility_clock_cannot_train() -> None:
     samples = _training_samples(session_count=3)
     samples["volatility_source_at"] = samples["observed_quote_timestamp"]
@@ -551,12 +609,30 @@ def test_out_of_support_and_missing_input_shrink_to_baseline(tmp_path: Path) -> 
     diagnostics = predict_loop_native_residuals(generation, rows, policy=policy)
     assert diagnostics.iloc[0]["status"] == "BASELINE_FALLBACK_OUT_OF_SUPPORT"
     assert diagnostics.iloc[0]["normalized_residual"] == 0.0
+    assert diagnostics.iloc[0]["predictive_standard_deviation_normalized"] >= (
+        policy.black_scholes_fallback_standard_deviation_normalized
+    )
 
     missing = rows.iloc[[1]].copy()
     missing["lagged_implied_volatility"] = np.nan
     diagnostics = predict_loop_native_residuals(generation, missing, policy=policy)
     assert diagnostics.iloc[0]["status"] == "BASELINE_FALLBACK_INPUT_UNAVAILABLE"
     assert diagnostics.iloc[0]["normalized_residual"] == 0.0
+    assert diagnostics.iloc[0]["predictive_standard_deviation_normalized"] == (
+        policy.black_scholes_fallback_standard_deviation_normalized
+    )
+
+    sparse_policy = replace(policy, minimum_route_support_sessions=10)
+    sparse = predict_loop_native_residuals(
+        generation,
+        _live_samples().iloc[[0]],
+        policy=sparse_policy,
+    ).iloc[0]
+    assert 0.0 < sparse["shrinkage"] < 1.0
+    assert sparse["predictive_standard_deviation_normalized"] >= (
+        sparse_policy.black_scholes_fallback_standard_deviation_normalized
+        * (1.0 - sparse["shrinkage"])
+    )
 
 
 def test_mixed_support_surface_falls_back_to_constrained_baseline(
@@ -644,6 +720,14 @@ def test_valid_earlier_model_publishes_separate_shadow_before_options_receipt(
         publication.predictions(include_proof=False)["black_scholes_price"]
     )
     assert observed["automated_action_allowed"].eq(False).all()
+    assert np.allclose(
+        observed["bsgp_shadow_fair_value_raw"],
+        observed["black_scholes_price"]
+        + observed["underlying_price"]
+        * observed["bsgp_shadow_normalized_residual"],
+        rtol=0.0,
+        atol=1e-12,
+    )
     policy_artifact = publish_loop_native_eligibility_policy(
         tmp_path,
         published_at="2026-01-09T15:59:00Z",

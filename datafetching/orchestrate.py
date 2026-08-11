@@ -271,8 +271,8 @@ def run_cycle(
         nonlocal readiness_attempted
         if provider != "databento" or readiness_attempted:
             return
-        readiness_attempted = True
         if not target_decision.actionable:
+            readiness_attempted = True
             print(
                 "Loop A bar readiness idle: "
                 f"cycle_mode={target_decision.cycle_mode}; "
@@ -300,6 +300,7 @@ def run_cycle(
                 as_of=observed_at,
                 clock=(lambda: observed_at),
             )
+            readiness_attempted = True
             print(
                 "Loop A bars ready: "
                 f"cycle_mode=ACTIONABLE; "
@@ -319,6 +320,9 @@ def run_cycle(
                 f"reason={type(exc).__name__}: {exc}"
             )
 
+    def minute_bars_completed(_results: Mapping[str, object]) -> None:
+        provider_completed("databento", _results)
+
     if len(symbols_tuple) == 1:
         symbol = symbols_tuple[0]
         fetch_results = {
@@ -331,6 +335,7 @@ def run_cycle(
                 include_fmp_macro=True,
                 include_options=include_options,
                 provider_completed=provider_completed,
+                databento_minute_bars_completed=minute_bars_completed,
             )
         }
     else:
@@ -343,6 +348,7 @@ def run_cycle(
             include_fmp_macro=True,
             include_options=include_options,
             provider_completed=provider_completed,
+            databento_minute_bars_completed=minute_bars_completed,
         )
 
     # Test doubles and older in-process callers may not expose the provider

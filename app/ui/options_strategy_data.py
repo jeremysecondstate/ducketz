@@ -26,8 +26,9 @@ from ml.parquet_contracts import (
     verify_parquet_schema,
 )
 from ml.strategy_selection.contracts import (
-    CALIBRATED_MODEL_SCORE_BASIS,
-    SCENARIO_PRIOR_SCORE_BASIS,
+    BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
+    BSGP_CALIBRATED_MODEL_SCORE_BASIS,
+    PRICING_SCENARIO_FALLBACK_SCORE_BASIS,
     STRATEGY_CANDIDATE_SCHEMA_VERSION,
     STRATEGY_MODEL_POLICY_VERSION,
     STRATEGY_RANKING_POLICY_VERSION,
@@ -48,8 +49,9 @@ HORIZON_LABELS = {
 HORIZON_ORDER = tuple(HORIZON_LABELS)
 PORTFOLIO_FIT_POLICY_VERSION = "current-schwab-position-fit-v2"
 _SCORE_BASIS_LABELS = {
-    CALIBRATED_MODEL_SCORE_BASIS: "Calibrated ML",
-    SCENARIO_PRIOR_SCORE_BASIS: "Scenario Prior",
+    BSGP_CALIBRATED_MODEL_SCORE_BASIS: "BSGP + Strategy ML",
+    BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS: "Black-Scholes + ML",
+    PRICING_SCENARIO_FALLBACK_SCORE_BASIS: "Pricing Scenario",
 }
 
 
@@ -216,6 +218,8 @@ def _candidate_views(
         "decision_score",
         "score_basis",
         "candidate_rank",
+        "pricing_status",
+        "pricing_source",
         "model_status",
         "model_policy_version",
         "ranking_policy_version",
@@ -291,24 +295,53 @@ def _candidate_views(
                     row.get("calibrated_profit_probability"),
                     label="Calibrated model probability",
                 )
-                if basis_code == CALIBRATED_MODEL_SCORE_BASIS
+                if basis_code
+                in {
+                    BSGP_CALIBRATED_MODEL_SCORE_BASIS,
+                    BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
+                }
                 else raw_probability
             )
             expected_status = (
                 "MODEL_FIT"
-                if basis_code == CALIBRATED_MODEL_SCORE_BASIS
-                else "MARKET_STATE_PRIOR"
+                if basis_code
+                in {
+                    BSGP_CALIBRATED_MODEL_SCORE_BASIS,
+                    BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
+                }
+                else "PRICING_SCENARIO"
             )
             if model_status != expected_status:
                 raise ValueError(
                     "Options strategy candidate model status does not match score basis"
+                )
+            pricing_source = str(row.get("pricing_source") or "").strip().upper()
+            pricing_status = str(row.get("pricing_status") or "").strip()
+            if pricing_status not in {
+                "Active",
+                "Black-Scholes fallback",
+                "Delayed",
+                "Unavailable",
+            }:
+                raise ValueError(
+                    "Options strategy candidate pricing status is not user-facing"
+                )
+            if (
+                basis_code == BSGP_CALIBRATED_MODEL_SCORE_BASIS
+                and pricing_source != "BSGP"
+            ) or (
+                basis_code == BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS
+                and pricing_source != "BLACK_SCHOLES"
+            ):
+                raise ValueError(
+                    "Options strategy score basis does not match its pricing source"
                 )
             if not math.isclose(probability, backing_probability, abs_tol=1e-12):
                 raise ValueError(
                     "Options strategy predictive score does not match its score basis"
                 )
             if (
-                basis_code == SCENARIO_PRIOR_SCORE_BASIS
+                basis_code == PRICING_SCENARIO_FALLBACK_SCORE_BASIS
                 and _number(row.get("calibrated_profit_probability")) is not None
             ):
                 raise ValueError(

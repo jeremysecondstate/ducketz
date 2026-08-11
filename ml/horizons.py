@@ -329,6 +329,7 @@ DEFAULT_FEATURE_PROFILE: Final = "loop-a-all-v1"
 PRODUCTION_FEATURE_PROFILE: Final = "production-v1"
 PHASE1_V2_FEATURE_PROFILE: Final = "technical-all-v2"
 OPTION_PRICING_SHADOW_FEATURE_PROFILE: Final = "loop-a-all-bsgp-shadow-v1"
+OPTION_PRICING_ACTIVE_FEATURE_PROFILE: Final = "loop-a-all-bsgp-active-v2"
 FEATURE_PROFILES: Final[Mapping[str, Mapping[str, str]]] = {
     DEFAULT_FEATURE_PROFILE: {
         "1h": "loop-a-all-v1-1h",
@@ -353,6 +354,12 @@ FEATURE_PROFILES: Final[Mapping[str, Mapping[str, str]]] = {
         "4h": "loop-a-all-bsgp-shadow-v1-4h",
         "1d": "loop-a-all-bsgp-shadow-v1-1d",
         "1w": "loop-a-all-bsgp-shadow-v1-1w",
+    },
+    OPTION_PRICING_ACTIVE_FEATURE_PROFILE: {
+        "1h": "loop-a-all-bsgp-active-v2-1h",
+        "4h": "loop-a-all-bsgp-active-v2-4h",
+        "1d": "loop-a-all-bsgp-active-v2-1d",
+        "1w": "loop-a-all-bsgp-active-v2-1w",
     },
 }
 

@@ -30,12 +30,88 @@ from ml.parquet_contracts import (
 )
 from ml.strategy_selection.registry import STRATEGY_REGISTRY
 from ml.strategy_selection.contracts import (
+    BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
+    BSGP_CALIBRATED_MODEL_SCORE_BASIS,
     CALIBRATED_MODEL_SCORE_BASIS,
     SCENARIO_PRIOR_SCORE_BASIS,
     STRATEGY_CANDIDATE_SCHEMA_VERSION,
     STRATEGY_MODEL_POLICY_VERSION,
     STRATEGY_RANKING_POLICY_VERSION,
 )
+
+
+@pytest.mark.parametrize(
+    ("basis", "model_status", "pricing_source", "calibrated", "label"),
+    (
+        (
+            BSGP_CALIBRATED_MODEL_SCORE_BASIS,
+            "MODEL_FIT",
+            "BSGP",
+            0.61,
+            "BSGP + Strategy ML",
+        ),
+        (
+            BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
+            "MODEL_FIT",
+            "BLACK_SCHOLES",
+            0.61,
+            "Black-Scholes + ML",
+        ),
+        (
+            SCENARIO_PRIOR_SCORE_BASIS,
+            "PRICING_SCENARIO",
+            "BLACK_SCHOLES",
+            float("nan"),
+            "Pricing Scenario",
+        ),
+    ),
+)
+def test_strategy_loader_displays_every_pricing_score_basis(
+    tmp_path: Path,
+    basis: str,
+    model_status: str,
+    pricing_source: str,
+    calibrated: float,
+    label: str,
+) -> None:
+    candidate = _candidate(
+        strategy_name="long_call",
+        strategy_display_name="Long Call",
+        legs=[
+            _option_leg(
+                side="LONG",
+                option_type="CALL",
+                strike=105,
+                symbol="GOOG  260918C00105000",
+                bid=2.40,
+                ask=2.50,
+            )
+        ],
+        score_basis=basis,
+        model_status=model_status,
+        pricing_source=pricing_source,
+        calibrated_profit_probability=calibrated,
+        raw_profit_probability=0.61,
+        decision_score=0.61,
+        pricing_status=(
+            "Active" if pricing_source == "BSGP" else "Black-Scholes fallback"
+        ),
+    )
+    path = tmp_path / f"{basis}.parquet"
+    write_parquet_with_schema(
+        pd.DataFrame([candidate]), path, STRATEGY_CANDIDATE_SCHEMA
+    )
+    view = load_strategy_candidates(
+        path,
+        snapshot=PortfolioSnapshot(
+            source="schwab",
+            account_label="Schwab",
+            synced_at=datetime(2026, 8, 1, 15, 0, tzinfo=timezone.utc),
+            account_facts={},
+        ),
+    )
+    assert view.candidates[0].score_basis == label
+    assert view.candidates[0].predictive_score == pytest.approx(61.0)
 
 
 def test_position_context_reads_equity_options_cash_and_working_orders() -> None:
@@ -591,7 +667,7 @@ def test_strategy_loader_combines_model_output_with_current_position(
     assert result.portfolio_fit.label == "Downside Hedge"
     assert result.predictive_score == pytest.approx(62.0)
     assert 0.0 <= result.predictive_score <= 100.0
-    assert result.score_basis == "Calibrated ML"
+    assert result.score_basis == "BSGP + Strategy ML"
     assert (
         result.order_draft.orders[0].complex_order_strategy_type
         == "VERTICAL"
@@ -620,8 +696,8 @@ def test_strategy_loader_uses_market_state_prior_until_calibration_exists(
         expected_return_on_risk=0.04,
         decision_score=0.57,
         candidate_rank=1,
-        model_status="MARKET_STATE_PRIOR",
-        model_version="greek-bbo-scenario-prior-v2",
+        model_status="PRICING_SCENARIO",
+        model_version="pricing-greek-bbo-scenario-prior-v3",
         score_basis=SCENARIO_PRIOR_SCORE_BASIS,
     )
     path = tmp_path / "strategy-candidates.parquet"
@@ -644,7 +720,7 @@ def test_strategy_loader_uses_market_state_prior_until_calibration_exists(
     assert view.candidates[0].predictive_score == pytest.approx(57.0)
     assert 0.0 <= view.candidates[0].predictive_score <= 100.0
     assert view.candidates[0].expected_return == pytest.approx(0.04)
-    assert view.candidates[0].score_basis == "Scenario Prior"
+    assert view.candidates[0].score_basis == "Pricing Scenario"
 
 
 def test_discover_empty_state_surfaces_matching_publication_audit_reason(
@@ -1171,8 +1247,21 @@ def _candidate(
         "expected_net_profit": 10.0,
         "expected_return_on_risk": 0.07,
         "decision_score": 0.61,
-        "score_basis": CALIBRATED_MODEL_SCORE_BASIS,
+        "score_basis": BSGP_CALIBRATED_MODEL_SCORE_BASIS,
         "candidate_rank": 1,
+        "pricing_mode": "ACTIVE",
+        "pricing_status": "Active",
+        "pricing_leg_coverage": 1.0,
+        "pricing_missing_reason": "",
+        "pricing_candidate_edge": 10.0,
+        "pricing_conservative_edge": 2.0,
+        "pricing_edge_to_friction": 0.5,
+        "pricing_uncertainty": 12.0,
+        "pricing_probability_favorable": 0.70,
+        "pricing_relative_edge": 0.001,
+        "pricing_model_age_seconds": 30.0,
+        "pricing_residual_shrinkage": 0.8,
+        "pricing_source": "BSGP",
         "model_version": "test-model",
         "model_status": "MODEL_FIT",
         "registry_version": "test-registry",

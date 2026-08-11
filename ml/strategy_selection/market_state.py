@@ -11,7 +11,7 @@ import pandas as pd
 
 from ml.strategy_selection.contracts import (
     MARKET_STATE_POLICY_VERSION,
-    SCENARIO_PRIOR_SCORE_BASIS,
+    PRICING_SCENARIO_FALLBACK_SCORE_BASIS,
     STRATEGY_CANDIDATE_SCHEMA_VERSION,
     STRATEGY_MODEL_POLICY_VERSION,
     STRATEGY_PRIOR_POLICY_VERSION,
@@ -105,6 +105,7 @@ def score_market_state_prior(
     if candidates.empty:
         return candidates.copy()
     output = candidates.copy()
+    output = _ensure_pricing_columns(output)
     output["market_expected_absolute_move"] = state.expected_absolute_move
     output["market_expected_realized_volatility"] = (
         state.expected_realized_volatility
@@ -144,12 +145,12 @@ def score_market_state_prior(
     output["expected_net_profit"] = prior["expected_net_profit"]
     output["expected_return_on_risk"] = expected_return
     output["decision_score"] = probability
-    output["score_basis"] = SCENARIO_PRIOR_SCORE_BASIS
+    output["score_basis"] = PRICING_SCENARIO_FALLBACK_SCORE_BASIS
     output["schema_version"] = STRATEGY_CANDIDATE_SCHEMA_VERSION
     output["model_version"] = STRATEGY_PRIOR_POLICY_VERSION
     output["model_policy_version"] = STRATEGY_MODEL_POLICY_VERSION
     output["ranking_policy_version"] = STRATEGY_RANKING_POLICY_VERSION
-    output["model_status"] = "MARKET_STATE_PRIOR"
+    output["model_status"] = "PRICING_SCENARIO"
     output = output.sort_values(
         ["decision_score", "expected_return_on_risk", "candidate_key"],
         ascending=[False, False, True],
@@ -180,12 +181,14 @@ def _candidate_prior(
     gamma = _finite_or_default(candidate.get("net_gamma"))
     theta = _finite_or_default(candidate.get("net_theta"))
     friction = _round_trip_friction(candidate, policy=policy)
-    profit = (
+    base_profit = (
         delta * underlying_change
         + 0.5 * gamma * np.square(underlying_change)
         + theta * state.holding_days
         - friction
     )
+    pricing_edge, pricing_uncertainty = _pricing_distribution(candidate)
+    profit = base_profit + pricing_edge
     maximum_loss = _required_finite(candidate.get("max_loss"), "maximum loss")
     profit = np.maximum(profit, -maximum_loss)
     maximum_profit = _finite(candidate.get("max_profit"))
@@ -195,11 +198,57 @@ def _candidate_prior(
     capital = _required_finite(candidate.get("capital_required"), "capital")
     if capital <= 0.0:
         raise ValueError("Strategy prior requires positive capital")
+    if pricing_uncertainty > 0.0:
+        scenario_probability = np.asarray(
+            [_NORMAL.cdf(float(value) / pricing_uncertainty) for value in profit],
+            dtype=float,
+        )
+    else:
+        scenario_probability = (profit > 0.0).astype(float)
     return {
-        "probability": float(np.sum(weights * (profit > 0.0))),
+        "probability": float(np.sum(weights * scenario_probability)),
         "expected_net_profit": expected_net_profit,
         "expected_return_on_risk": expected_net_profit / capital,
     }
+
+
+def _pricing_distribution(candidate: Mapping[str, object]) -> tuple[float, float]:
+    if str(candidate.get("pricing_mode") or "").upper() != "ACTIVE":
+        return 0.0, 0.0
+    if str(candidate.get("pricing_source") or "").upper() not in {
+        "BSGP",
+        "BLACK_SCHOLES",
+    }:
+        return 0.0, 0.0
+    coverage = _finite(candidate.get("pricing_leg_coverage"))
+    edge = _finite(candidate.get("pricing_candidate_edge"))
+    uncertainty = _finite(candidate.get("pricing_uncertainty"))
+    if coverage is None or coverage < 1.0 - 1e-12 or edge is None:
+        return 0.0, 0.0
+    return edge, max(uncertainty or 0.0, 0.0)
+
+
+def _ensure_pricing_columns(frame: pd.DataFrame) -> pd.DataFrame:
+    output = frame.copy()
+    defaults: dict[str, object] = {
+        "pricing_mode": "OFF",
+        "pricing_status": "Unavailable",
+        "pricing_leg_coverage": 0.0,
+        "pricing_missing_reason": "PRICING_EVIDENCE_NOT_ATTACHED",
+        "pricing_candidate_edge": np.nan,
+        "pricing_conservative_edge": np.nan,
+        "pricing_edge_to_friction": np.nan,
+        "pricing_uncertainty": np.nan,
+        "pricing_probability_favorable": np.nan,
+        "pricing_relative_edge": np.nan,
+        "pricing_model_age_seconds": np.nan,
+        "pricing_residual_shrinkage": 0.0,
+        "pricing_source": "UNAVAILABLE",
+    }
+    for column, value in defaults.items():
+        if column not in output:
+            output[column] = value
+    return output
 
 
 def _round_trip_friction(

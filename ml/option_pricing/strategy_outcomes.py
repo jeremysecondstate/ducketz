@@ -23,9 +23,9 @@ from ml.strategy_selection.chain import (
 from ml.strategy_selection.contracts import StrategySelectionPolicy
 
 
-STRATEGY_OUTCOME_EVIDENCE_VERSION = "option-pricing-strategy-outcome-evidence-v2"
-STRATEGY_OUTCOME_RECEIPT_VERSION = "option-pricing-strategy-outcome-receipt-v2"
-STRATEGY_OUTCOME_POINTER_VERSION = "option-pricing-strategy-outcome-pointer-v2"
+STRATEGY_OUTCOME_EVIDENCE_VERSION = "option-pricing-strategy-outcome-evidence-v3"
+STRATEGY_OUTCOME_RECEIPT_VERSION = "option-pricing-strategy-outcome-receipt-v3"
+STRATEGY_OUTCOME_POINTER_VERSION = "option-pricing-strategy-outcome-pointer-v3"
 
 _EXIT_DELAYS = {
     "1h": pd.Timedelta(hours=2),
@@ -105,9 +105,14 @@ def build_strategy_outcome_evidence(
             if str(candidate.get("symbol", "")).strip().upper() not in effective.required_symbols:
                 exclusions["symbol_not_configured"] += 1
                 continue
+            pricing_mode = str(candidate.get("pricing_mode", "")).upper()
+            pricing_status = str(candidate.get("pricing_status", "")).upper()
+            pricing_source = str(candidate.get("pricing_source", "")).upper()
             if (
-                str(candidate.get("pricing_mode", "")).upper() != "SHADOW"
-                or str(candidate.get("pricing_status", "")).upper() != "COVERED"
+                pricing_mode not in {"ACTIVE", "SHADOW"}
+                or pricing_status
+                not in {"ACTIVE", "BLACK-SCHOLES FALLBACK", "COVERED"}
+                or pricing_source not in {"BSGP", "BLACK_SCHOLES"}
                 or _finite(candidate.get("pricing_leg_coverage")) != 1.0
             ):
                 exclusions["pricing_diagnostic_not_exactly_covered"] += 1

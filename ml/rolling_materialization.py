@@ -651,6 +651,7 @@ def _attach_loop_a_features(
             value_columns=mapping,
             tie_breakers=("target_snapshot_for",),
             freshness=OPTION_PRICING_SHADOW_FRESHNESS[feature_horizon],
+            event_column="target_snapshot_for",
         )
         source_files.extend(paths)
 
@@ -809,6 +810,7 @@ def _join_symbol_values(
     available_column: str = "available_at",
     tie_breakers: Sequence[str] = (),
     freshness: pd.Timedelta | None = None,
+    event_column: str | None = None,
 ) -> pd.DataFrame:
     required = {"symbol", available_column, *value_columns.values()}
     missing = sorted(required.difference(source.columns))
@@ -825,6 +827,29 @@ def _join_symbol_values(
         errors="coerce",
     )
     prepared = prepared.dropna(subset=["symbol", "available_at"])
+    valid_until_column = None
+    if event_column is not None:
+        if freshness is None:
+            raise MLContractError(
+                f"{family} event freshness requires a configured duration"
+            )
+        if event_column not in prepared:
+            raise MLContractError(
+                f"{family} source is missing event clock: {event_column}"
+            )
+        event_at = pd.to_datetime(
+            prepared[event_column], utc=True, errors="coerce"
+        )
+        if event_at.isna().any():
+            raise MLContractError(f"{family} source has an invalid event clock")
+        valid_until_column = "__event_and_availability_valid_until"
+        prepared[valid_until_column] = pd.concat(
+            (
+                prepared["available_at"] + freshness,
+                event_at + freshness,
+            ),
+            axis=1,
+        ).min(axis=1)
     requested_symbols = {
         str(symbol).strip().upper()
         for symbol in decisions["symbol"].dropna()
@@ -858,6 +883,7 @@ def _join_symbol_values(
         value_columns=value_columns,
         freshness=freshness,
         natural_key_columns=("symbol", "available_at"),
+        valid_until_column=valid_until_column,
     )
 
 

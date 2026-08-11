@@ -29,10 +29,7 @@ from ml.parquet_contracts import (
     frame_with_readable_id,
     write_parquet_with_schema,
 )
-from ml.option_pricing.strategy_shadow import (
-    STRATEGY_PRICING_MODES,
-    attach_strategy_pricing_shadow,
-)
+from ml.option_pricing.strategy_shadow import STRATEGY_PRICING_MODES
 from ml.strategy_publication import (
     STRATEGY_PUBLICATION_VERSION,
     publish_strategy_run,
@@ -40,12 +37,12 @@ from ml.strategy_publication import (
 )
 from ml.strategy_selection import STRATEGY_SELECTION_SCHWAB_SPREADS_V1
 from ml.strategy_selection.contracts import (
-    CALIBRATED_MODEL_SCORE_BASIS,
-    SCENARIO_PRIOR_SCORE_BASIS,
+    BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
+    BSGP_CALIBRATED_MODEL_SCORE_BASIS,
+    PRICING_SCENARIO_FALLBACK_SCORE_BASIS,
     STRATEGY_CANDIDATE_SCHEMA_VERSION,
     STRATEGY_MODEL_POLICY_VERSION,
     STRATEGY_RANKING_POLICY_VERSION,
-    StrategySelectionPolicy,
 )
 from ml.strategy_selection.research_trace import strategy_research_trace
 from ml.strategy_selection.runtime import run_strategy_selection
@@ -68,7 +65,7 @@ def run_strategy_once(
     run_timestamp: object | None = None,
     runtime_clock: Callable[[], object] | None = None,
     reporter: Callable[[str], None] | None = print,
-    pricing_mode: str = "off",
+    pricing_mode: str = "active",
 ) -> StrategyRuntimeResult:
     """Consume one already-published Loop B run and publish a separate run."""
 
@@ -121,6 +118,7 @@ def run_strategy_once(
                 source.run_directory / "publication.json",
             ),
             history_available_not_after=created,
+            pricing_mode=pricing_mode,
         )
         timing.annotate(
             row_count=len(selection.candidates),
@@ -128,17 +126,10 @@ def run_strategy_once(
             audit_rows=len(selection.audit),
         )
 
-    pricing_shadow = attach_strategy_pricing_shadow(
-        selection.candidates,
-        datastore_root=root,
-        pricing_mode=pricing_mode,
-        available_not_after=created,
-        per_contract_fee=StrategySelectionPolicy().per_contract_fee,
-    )
-    _validate_strategy_candidate_rows(pricing_shadow.candidates)
+    _validate_strategy_candidate_rows(selection.candidates)
 
     candidates = _strategy_output_frame(
-        pricing_shadow.candidates,
+        selection.candidates,
         schema=STRATEGY_CANDIDATE_SCHEMA,
         key_columns=("symbol", "horizon", "decision_timestamp", "candidate_key"),
     )
@@ -178,7 +169,7 @@ def run_strategy_once(
         "model_reports": dict(selection.model_reports),
         "copied_model_artifacts": copied_models,
         "research_trace": strategy_research_trace(),
-        "pricing_shadow": dict(pricing_shadow.report),
+        "pricing_evidence": dict(selection.pricing_report),
         "strategy_candidate_contract": _strategy_candidate_contract(),
     }
     (run_directory / reports_name).write_text(
@@ -216,7 +207,6 @@ def run_strategy_once(
                     predictions_path,
                     source.run_directory / "publication.json",
                     *selection.source_files,
-                    *pricing_shadow.source_files,
                 )
             )
         ),
@@ -224,7 +214,7 @@ def run_strategy_once(
         configuration={
             "policy": STRATEGY_SELECTION_SCHWAB_SPREADS_V1,
             "pricing_mode": str(pricing_mode).strip().lower(),
-            "pricing_shadow_contract": dict(pricing_shadow.report),
+            "pricing_evidence_contract": dict(selection.pricing_report),
             "source_loop_b": source_record,
             "source_loop_b_run": source.run_directory.relative_to(root).as_posix(),
             "source_loop_b_input_cutoff": input_cutoff.isoformat(),
@@ -274,10 +264,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--pricing-mode",
         choices=STRATEGY_PRICING_MODES,
-        default="off",
+        default="active",
         help=(
-            "off preserves current behavior; shadow persists verified pre-quote "
-            "Pricing diagnostics without changing ranks or order construction."
+            "Use verified option-pricing evidence before Strategy scoring; active "
+            "is the production path and shadow remains diagnostic-only."
         ),
     )
     args = parser.parse_args(argv)
@@ -296,7 +286,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"DATASTORE: {root}")
     print("Input: already-published authoritative Loop B run")
     print("Authority: ml/strategy-latest/run.json")
-    print(f"Pricing diagnostics: {args.pricing_mode} (never changes candidate ranking)")
+    print(f"Pricing evidence: {args.pricing_mode}")
     print("Stop: Ctrl+C")
     print()
     lock = root / ".ducketz-strategy-runtime.lock"
@@ -355,7 +345,7 @@ def next_boundary(
     return anchor + timedelta(minutes=(count + 1) * interval_minutes)
 
 
-def _current_source_already_processed(root: Path, *, pricing_mode: str = "off") -> bool:
+def _current_source_already_processed(root: Path, *, pricing_mode: str = "active") -> bool:
     try:
         loop_b = read_current_publication(root)
         strategy = read_current_strategy_publication(root)
@@ -395,8 +385,12 @@ def _strategy_candidate_contract() -> dict[str, object]:
         "model_policy_version": STRATEGY_MODEL_POLICY_VERSION,
         "ranking_policy_version": STRATEGY_RANKING_POLICY_VERSION,
         "decision_score": "profitable_outcome_probability",
-        "fitted_score_basis": CALIBRATED_MODEL_SCORE_BASIS,
-        "fallback_score_basis": SCENARIO_PRIOR_SCORE_BASIS,
+        "fitted_score_bases": [
+            BSGP_CALIBRATED_MODEL_SCORE_BASIS,
+            BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
+        ],
+        "fallback_score_basis": PRICING_SCENARIO_FALLBACK_SCORE_BASIS,
+        "pricing_evidence_before_probability": True,
     }
 
 
@@ -449,8 +443,16 @@ def _validate_strategy_candidate_rows(frame: pd.DataFrame) -> None:
         if not values.map(math.isfinite).all():
             raise ValueError(f"Strategy candidate {column} must be finite")
 
-    fitted = frame["score_basis"].eq(CALIBRATED_MODEL_SCORE_BASIS)
-    prior = frame["score_basis"].eq(SCENARIO_PRIOR_SCORE_BASIS)
+    bsgp_fitted = frame["score_basis"].eq(
+        BSGP_CALIBRATED_MODEL_SCORE_BASIS
+    )
+    black_scholes_fitted = frame["score_basis"].eq(
+        BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS
+    )
+    fitted = bsgp_fitted | black_scholes_fitted
+    prior = frame["score_basis"].eq(
+        PRICING_SCENARIO_FALLBACK_SCORE_BASIS
+    )
     if not (fitted | prior).all():
         raise ValueError("Strategy candidate score basis is invalid")
     if (
@@ -460,8 +462,27 @@ def _validate_strategy_candidate_rows(frame: pd.DataFrame) -> None:
         or not score.loc[fitted].sub(calibrated.loc[fitted]).abs().le(1e-12).all()
     ):
         raise ValueError("Fitted Strategy candidate score contract is invalid")
+    pricing_source = frame.get(
+        "pricing_source", pd.Series("", index=frame.index)
+    ).astype("string").str.upper()
+    pricing_status = frame.get(
+        "pricing_status", pd.Series("", index=frame.index)
+    ).astype("string")
+    if not pricing_status.isin(
+        ("Active", "Black-Scholes fallback", "Delayed", "Unavailable")
+    ).all():
+        raise ValueError("Strategy candidate pricing status is not user-facing")
     if (
-        not frame.loc[prior, "model_status"].eq("MARKET_STATE_PRIOR").all()
+        not pricing_source.loc[bsgp_fitted].eq("BSGP").all()
+        or not pricing_source.loc[black_scholes_fitted]
+        .eq("BLACK_SCHOLES")
+        .all()
+    ):
+        raise ValueError(
+            "Calibrated Strategy score basis does not match pricing source"
+        )
+    if (
+        not frame.loc[prior, "model_status"].eq("PRICING_SCENARIO").all()
         or not calibrated.loc[prior].isna().all()
         or not score.loc[prior].sub(raw.loc[prior]).abs().le(1e-12).all()
     ):

@@ -64,6 +64,7 @@ def read_verified_compact_pricing_features(
         "symbol",
         "target_snapshot_for",
         "available_at",
+        "first_available_at",
         "contract_count",
         "surface_quality_pass",
         "automated_action_allowed",
@@ -72,7 +73,7 @@ def read_verified_compact_pricing_features(
     if missing := sorted(required.difference(source.columns)):
         raise ValueError("Compact Pricing surface is missing: " + ", ".join(missing))
     if source["automated_action_allowed"].fillna(True).astype(bool).any():
-        raise ValueError("Shadow Pricing surface unexpectedly authorizes automation")
+        raise ValueError("Pricing surface unexpectedly authorizes automation")
     if (
         not source["schema_version"].eq(SURFACE_VERSION).all()
         or not source["pricing_policy_version"].eq(
@@ -85,6 +86,17 @@ def read_verified_compact_pricing_features(
         source["target_snapshot_for"], utc=True, errors="coerce"
     )
     source["available_at"] = pd.to_datetime(source["available_at"], utc=True)
+    source["first_available_at"] = pd.to_datetime(
+        source["first_available_at"], utc=True, errors="coerce"
+    )
+    if (
+        source["first_available_at"].isna().any()
+        or not source["available_at"].eq(source["first_available_at"]).all()
+        or not source["target_snapshot_for"].lt(source["first_available_at"]).all()
+    ):
+        raise ValueError(
+            "Compact Pricing surface first availability or target clock is invalid"
+        )
     rows: list[dict[str, object]] = []
     for key, group in source.groupby(
         ["symbol", "target_snapshot_for", "available_at"], sort=True
@@ -96,6 +108,7 @@ def read_verified_compact_pricing_features(
             "symbol": str(key[0]).strip().upper(),
             "target_snapshot_for": key[1],
             "available_at": key[2],
+            "first_available_at": key[2],
         }
         for column in OPX_VALUE_COLUMNS:
             values = pd.to_numeric(group[column], errors="coerce")

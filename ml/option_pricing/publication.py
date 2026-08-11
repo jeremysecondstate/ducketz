@@ -19,8 +19,10 @@ from ml.parquet_contracts import (
 )
 
 
-OPTION_PRICING_PUBLICATION_VERSION = "option-pricing-publication-v1"
-OPTION_PRICING_POINTER_VERSION = "option-pricing-pointer-v1"
+OPTION_PRICING_PUBLICATION_VERSION = "option-pricing-publication-v2"
+OPTION_PRICING_POINTER_VERSION = "option-pricing-pointer-v2"
+_LEGACY_OPTION_PRICING_PUBLICATION_VERSIONS = {"option-pricing-publication-v1"}
+_LEGACY_OPTION_PRICING_POINTER_VERSIONS = {"option-pricing-pointer-v1"}
 OPTION_PRICING_RECEIPT_NAME = "publication.json"
 OPTION_PRICING_REQUIRED_OUTPUTS = {
     "pricing-samples.parquet": OPTION_PRICING_SAMPLE_SCHEMA,
@@ -150,7 +152,11 @@ def read_current_option_pricing_publication(
         ) from exc
     if (
         not isinstance(pointer, Mapping)
-        or pointer.get("schema_version") != OPTION_PRICING_POINTER_VERSION
+        or pointer.get("schema_version")
+        not in {
+            OPTION_PRICING_POINTER_VERSION,
+            *_LEGACY_OPTION_PRICING_POINTER_VERSIONS,
+        }
     ):
         raise OptionPricingPublicationError(f"Pricing pointer is invalid: {pointer_path}")
     current = pointer.get("current")
@@ -318,7 +324,11 @@ def _verify_record(
     if previous is not None:
         _validate_record(previous, label="previous Pricing publication")
     if (
-        receipt.get("schema_version") != OPTION_PRICING_PUBLICATION_VERSION
+        receipt.get("schema_version")
+        not in {
+            OPTION_PRICING_PUBLICATION_VERSION,
+            *_LEGACY_OPTION_PRICING_PUBLICATION_VERSIONS,
+        }
         or receipt.get("run_path") != run.relative_to(root).as_posix()
         or receipt.get("manifest_checksum_sha256") != file_checksum(run / "manifest.json")
         or receipt_timestamp != manifest_timestamp
@@ -357,7 +367,11 @@ def _verify_record_metadata(
     if (
         record.get("manifest_checksum_sha256") != manifest_checksum
         or record.get("receipt_checksum_sha256") != receipt_checksum
-        or receipt.get("schema_version") != OPTION_PRICING_PUBLICATION_VERSION
+        or receipt.get("schema_version")
+        not in {
+            OPTION_PRICING_PUBLICATION_VERSION,
+            *_LEGACY_OPTION_PRICING_PUBLICATION_VERSIONS,
+        }
         or receipt.get("run_path") != run.relative_to(root).as_posix()
         or receipt.get("manifest_checksum_sha256") != manifest_checksum
         or receipt_timestamp != manifest_timestamp
@@ -418,7 +432,11 @@ def _verify_run(run: Path) -> Mapping[str, object]:
         else None
     )
     if not isinstance(contract, Mapping) or (
-        contract.get("version") != OPTION_PRICING_PUBLICATION_VERSION
+        contract.get("version")
+        not in {
+            OPTION_PRICING_PUBLICATION_VERSION,
+            *_LEGACY_OPTION_PRICING_PUBLICATION_VERSIONS,
+        }
         or contract.get("authority") != "ml/option-pricing-latest/run.json"
         or contract.get("schema_validation") is not True
         or contract.get("automated_action_allowed") is not False

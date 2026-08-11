@@ -282,12 +282,14 @@ source decisions are eligible.
     regressor; fit weighted Platt calibration for the classifier on the next 63;
     and reserve the next 63 for assessment. Assessment and the real lockbox
     affect neither estimator fit nor calibration.
-12. Match current exact-chain candidates to the canonical LIVE directional
-    prediction. Publish fitted probability/expected-return/market-rank fields
-    when a compatible model exists. Otherwise publish raw scenario probability,
-    expected return, score, and rank as `MARKET_STATE_PRIOR`, leaving only the
-    calibrated probability null. Build one audit row per attempted route and
-    each of the 40 registry strategies.
+12. Attach exact receipt-verified Black-Scholes/BSGP contract evidence to both
+    historical and current candidates before fitting or scoring. Then match the
+    current candidates to the canonical LIVE directional prediction. Publish
+    fitted profitable-outcome probability, expected-return, and post-pricing rank
+    when a compatible model exists. Otherwise publish the pricing-informed
+    scenario probability as `PRICING_SCENARIO_FALLBACK`, leaving only the
+    calibrated probability null. Build one audit row per attempted route and each
+    of the 40 registry strategies.
 13. Persist `samples.parquet` without closed-lockbox rows, then persist
     `predictions.parquet`.
 14. Join predictions to matured sample targets by readable natural columns,
@@ -451,11 +453,11 @@ and opens
 `sync_schwab_portfolio()` and calculates
 `current-schwab-position-fit-v2` from applicable shares, option-position count,
 working option-order count, and available funds. Portfolio Fit is descriptive
-and cannot change score or rank. **Predictive Score** is the calibrated strategy
-profitable-outcome probability on a 0–100 scale for fitted rows and the
-explicitly uncalibrated scenario prior for `MARKET_STATE_PRIOR` rows; **Score
-Basis** distinguishes them. Neither is the Rolling Forecasts directional
-probability.
+and cannot change score or rank. **Predictive Score** is the persisted strategy
+probability of net profit after executable spreads and fees, multiplied by 100.
+Its basis is **BSGP + Strategy ML**, **Black-Scholes + ML**, or **Pricing
+Scenario**. The reader neither recomputes nor reranks it, and it is never the
+Rolling Forecasts directional probability.
 
 Selecting **Exact legs** fills or replaces a
 `schwab-strategy-order-draft-v1` ticket. Most candidates map to one complete

@@ -490,9 +490,14 @@ pricing_status:string
 pricing_leg_coverage:float64
 pricing_missing_reason:string
 pricing_candidate_edge:float64
+pricing_conservative_edge:float64
 pricing_edge_to_friction:float64
 pricing_uncertainty:float64
-pricing_edge_minus_scenario_expected_profit:float64
+pricing_probability_favorable:float64
+pricing_relative_edge:float64
+pricing_model_age_seconds:float64
+pricing_residual_shrinkage:float64
+pricing_source:string
 model_version:string
 model_status:string
 registry_version:string
@@ -523,11 +528,14 @@ candidate_policy_version:string
 
 All fields are nullable at the Arrow layer so an exact empty schema and
 explicitly unavailable measurements can be published. Candidate schema
-`strategy-candidate-v2` defines `decision_score` as a probability in `[0, 1]`.
-Prior-ranked rows carry `score_basis=SCENARIO_PRIOR`, fill raw probability,
-expected profit/return, score, and rank, and leave calibrated probability null.
-Fitted rows carry `score_basis=CALIBRATED_MODEL` and copy calibrated profitable-
-outcome probability to `decision_score`. The readable-ID
+`strategy-candidate-v3` defines `decision_score` as a probability in `[0, 1]`.
+Fallback-ranked rows carry `score_basis=PRICING_SCENARIO_FALLBACK`, fill the
+pricing-informed raw probability, expected profit/return, score, and rank, and
+leave calibrated probability null. Fitted rows carry
+`score_basis=BSGP_CALIBRATED_MODEL` or
+`score_basis=BLACK_SCHOLES_CALIBRATED_MODEL` and copy the compatible calibrated
+profitable-outcome probability to `decision_score`. Exact-leg pricing evidence
+is joined before either probability path. The readable-ID
 validator still requires every `id` in a non-empty file to be present, unique,
 and non-opaque. `write_parquet_with_schema` rejects extra fields, fills omitted
 declared fields with null, coerces them to the exact Arrow types, and writes
@@ -610,7 +618,7 @@ pointer, acknowledgement, or coordination record.
 The separate Options Strategies screen reads `strategy-candidates.parquet`.
 When the default predictable path is requested, the reader resolves the
 artifact through `ml/strategy-latest/run.json` under
-`strategy-pointer-v2`/`strategy-publication-v2` and the verified immutable run
+`strategy-pointer-v3`/`strategy-publication-v3` and the verified immutable run
 manifest. It does not select a directory still being written or treat a mirror
 as a generation boundary. The fresh Schwab account snapshot and descriptive
 `current-schwab-position-fit-v2` overlay are not written back to Parquet and do

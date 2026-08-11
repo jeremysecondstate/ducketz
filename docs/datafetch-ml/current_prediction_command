@@ -1,29 +1,9 @@
-# Start directional Loop B after Loop A has one COMPLETE generation. Pricing is
-# deliberately not added to this default feature profile. After Pricing has a
-# verified non-empty surface, its explicit shadow-only profile is
-# loop-a-all-bsgp-shadow-v1.
-# Loop B resolves this watchlist once at startup. After editing it, restart all
-# watchlist-backed runtimes together so every process uses the same fixed scope.
-python -m ml.prediction_runtime `
-  --datastore-target pc `
-  --watchlist datafetching\watchlist.txt `
-  --provider databento `
-  --horizons 1h 4h 1d 1w `
-  --feature-profile loop-a-all-v1 `
-  --model-family logistic `
-  --calibration platt `
-  --round-trip-cost 0.001 `
-  --interval-minutes 15 `
-  --phase-offset-minutes 5
+# Compatibility pointer
 
-# Strategy is a separate consumer and cannot delay or mutate the Loop B run.
-# This evidence-capture command intentionally enables Pricing diagnostics;
-# they never change candidate ranking or order construction.
-python -m ml.strategy_runtime `
-  --datastore-target pc `
-  --interval-minutes 15 `
-  --phase-offset-minutes 10 `
-  --pricing-mode shadow
+The authoritative commands for Loop A, active Pricing, independent Options
+capture, directional Loop B, and pricing-active Strategy now live in
+`docs/datafetch-ml/current_start_command`.
 
-# Both commands stop with Ctrl+C. Loop B publishes through ml/latest/run.json;
-# Strategy publishes independently through ml/strategy-latest/run.json.
+Do not maintain or execute a second command list from this file. Consolidating
+the startup sequence prevents phase, watchlist, feature-profile, and pricing
+mode drift.
