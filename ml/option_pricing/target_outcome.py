@@ -522,17 +522,21 @@ def _read_directory(root: Path, directory: Path) -> TargetOutcomePublication:
             != set(map(tuple, baseline_frame[natural].astype(str).to_numpy()))
         ):
             raise TargetOutcomeError("Pricing target shadow sidecar scope is invalid")
-        joined = baseline_frame[natural + ["black_scholes_price"]].merge(
-            shadow_frame[natural + ["black_scholes_price"]],
-            on=natural,
-            how="outer",
-            validate="one_to_one",
-            suffixes=("_baseline", "_shadow"),
-        )
-        if not joined["black_scholes_price_baseline"].equals(
-            joined["black_scholes_price_shadow"]
-        ):
-            raise TargetOutcomeError("Shadow sidecar changed Black-Scholes values")
+        # Arrow-backed empty columns have no concrete merge type.  The scope
+        # checks above already prove that both sides are empty, so there are no
+        # Black-Scholes values to compare in a terminal no-row publication.
+        if not baseline_frame.empty:
+            joined = baseline_frame[natural + ["black_scholes_price"]].merge(
+                shadow_frame[natural + ["black_scholes_price"]],
+                on=natural,
+                how="outer",
+                validate="one_to_one",
+                suffixes=("_baseline", "_shadow"),
+            )
+            if not joined["black_scholes_price_baseline"].equals(
+                joined["black_scholes_price_shadow"]
+            ):
+                raise TargetOutcomeError("Shadow sidecar changed Black-Scholes values")
         _verify_shadow_model_lineage(shadow_frame, root=root)
     symbols = tuple(str(value).strip().upper() for value in outcome.get("symbols", ()))
     symbol_outcomes = outcome.get("symbol_outcomes")

@@ -175,9 +175,49 @@ inference was identically
 The separate shadow canonical JSON hash was
 `788a3f984bcb0d44996544944792e260832f0fc5c16fcc100b6b51279c54a175`.
 
+## Live restart follow-up
+
+With explicit operator approval, all six runtime roles were restarted on
+2026-08-11 during the regular session, preserving their prior arguments. Logs
+are under
+`C:\DATASTORE\runtime-logs\loop-native-restart-20260811T160228.2069648Z`.
+
+The first v2 terminal publication for target `2026-08-11T16:15:00Z` exposed an
+empty-frame verifier defect: pandas/pyarrow could not merge two empty
+Arrow-backed Black-Scholes columns. The immutable directory was completed, but
+verification failed before its atomic pointer write, so it remained unreachable
+and Options could not treat it as authority. The verifier now skips the
+value-comparison merge only when both already scope-verified frames are empty;
+a regression test covers this terminal no-row case.
+
+After recycling only the compatible Pricing/Options pair, target
+`2026-08-11T16:30:00Z` published a verified empty v2 shadow sidecar at
+`2026-08-11T16:31:46.398802Z`. Its authoritative path is
+`ml/option-pricing-target-outcomes/1786465800000000000-1786465905857701000`,
+manifest checksum is
+`29adf1f85a0b802832c0bfd5aaecb78d6ad7ca804c65153a9ef8b65f46123667`,
+and receipt checksum is
+`f7ae3a478bbdeb9b367ca6fd08f1138d20b8748aaed42a27f560f978e7b343f5`.
+Its terminal status is `TARGET_BAR_NOT_READY`, both baseline and shadow row
+counts are zero, and `automated_action_allowed=false`. Options verified that
+terminal barrier and granted no prospective credit.
+
+The full Pricing publication committed at `2026-08-11T16:35:01.115253Z` under
+`ml/option-pricing-runs/20260811T163100.160478Z`. It recorded
+`BASELINE_FALLBACK_NO_MODEL`, zero sidecar rows, no OPRA requirement, zero
+external provider requests, and a post-publication local worker cutoff of
+`2026-08-11T16:31:46.398802Z`. The worker was still running at handoff and had
+not published a materialization or model pointer.
+
+This restart proves the fail-closed v2 publisher/reader and nonblocking worker
+ordering live, but not a valid prediction sequence. Loop A's last verified
+readiness target was `2026-08-11T16:00:00Z`, ready at
+`2026-08-11T16:14:28.540903Z`; no exact readiness receipt existed for the later
+Pricing targets. No prediction or prospective session was manufactured.
+
 ## Verification and conclusions
 
-The combined audited suite passed 129 tests. Python compilation, CLI help,
+The combined audited suite passed 130 tests. Python compilation, CLI help,
 `pip check`, `git diff --check`, causal artifact verification, readiness,
 operational preflight, Strategy evaluation, actual-datastore dry-run, and the
 generation chronology simulation passed their applicable checks. The only
@@ -185,9 +225,11 @@ warnings were preexisting line-ending notices and NumPy/joblib deprecation
 warnings.
 
 - **Capture-ready:** not yet established on the live processes. The code and
-  policy are ready, but current Pricing and Options processes have not been
-  replaced with the new compatible publisher/reader pair, and no live v3
-  sidecar/materialization chain exists.
+  policy are ready and the compatible Pricing/Options publisher-reader pair is
+  running, but the restart observed only a fail-closed terminal publication
+  because exact Loop A readiness had not advanced to the Pricing target. No
+  live nonterminal prediction-to-Options sequence or v3 materialization/model
+  chain has completed yet.
 - **Research-gate eligible:** no. No legacy prospective row survives the v3
   readiness/input-lineage contract, all twenty routes have zero v3 sessions,
   offline bootstrap has zero causal rows, and comparator/calibration evidence

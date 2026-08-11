@@ -63,10 +63,43 @@ from ml.option_pricing.shadow_model import (
 from ml.option_pricing.target_outcome import (
     TargetOutcomeError,
     publish_target_outcome,
+    read_current_target_outcome,
     read_target_outcome,
 )
 from ml.option_pricing_runtime import _run_option_pricing_once_impl
 from options.publication import publish_option_snapshot
+
+
+def test_empty_terminal_shadow_publication_advances_verified_pointer(
+    tmp_path: Path,
+) -> None:
+    target = pd.Timestamp("2026-08-11T16:15:00Z")
+    publication = publish_target_outcome(
+        tmp_path,
+        target_snapshot_for=target,
+        created_at=target + pd.Timedelta(minutes=1, seconds=45),
+        symbols=("NVDA",),
+        symbol_outcomes={
+            "NVDA": {
+                "status": "TARGET_BAR_NOT_READY",
+                "reason": "Exact Loop A readiness did not arrive before timeout",
+                "target_snapshot_for": target,
+            }
+        },
+        terminal_status="TARGET_BAR_NOT_READY",
+        samples=pd.DataFrame(),
+        predictions=pd.DataFrame(),
+        shadow_predictions=pd.DataFrame(),
+        bar_readiness=None,
+        clock=lambda: target + pd.Timedelta(minutes=1, seconds=46),
+    )
+
+    current = read_current_target_outcome(tmp_path)
+    assert current.directory == publication.directory
+    assert current.receipt["schema_version"] == "option-pricing-target-outcome-receipt-v2"
+    assert current.predictions().empty
+    assert current.shadow_predictions().empty
+    assert current.terminal_status == "TARGET_BAR_NOT_READY"
 
 
 def test_duplicate_schwab_publications_collapse_to_earliest_valid_receipt(
