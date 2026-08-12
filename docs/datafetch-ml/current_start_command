@@ -13,7 +13,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\.venv\Scripts\Activate.ps1
 ```
 
-The checked-in watchlist is the authoritative ten-symbol scope:
+The checked-in watchlist is the authoritative seven-symbol scope:
 `NVDA GOOG MU AAPL AMZN CAT SNDK`.
 
 For a datastore created before the point-in-time rate bridge, perform this
@@ -63,22 +63,24 @@ python -m ml.option_pricing_runtime `
   --bar-readiness-timeout-seconds 30
 ```
 
-4. Independent Options capture. It starts on the same phase as Pricing and
-waits briefly on the target pointer, but neither missing Pricing nor delayed
-Loop A readiness prevents the one Schwab request for an actionable target.
+4. Independent Options capture. It starts after Loop B's +5 information clock
+and waits briefly on the target pointer, but neither missing Pricing nor delayed
+Loop A readiness prevents the Schwab request for an actionable target.
 Without exact readiness the raw response is checksum-sealed under the separate
 non-production `options/pending-captures/schwab` authority. The runtime polls
 that authority while waiting for later boundaries, reconciles it through the
 ordinary committed snapshot contract when readiness arrives inside 1,200
-seconds, and never backdates availability. Closed-market cycles make no new
-Schwab request but may reconcile an already captured response:
+seconds, and never backdates availability. Closed-market cycles continue to
+refresh the fetchable Schwab chain against the latest real regular-session
+target so Discover can rank contracts without inventing overnight pricing
+targets:
 
 ```powershell
 python -m datafetching.options_runtime `
   --datastore-target pc `
   --watchlist datafetching\watchlist.txt `
   --interval-minutes 15 `
-  --phase-offset-minutes 1 `
+  --phase-offset-minutes 6 `
   --pricing-barrier-timeout-seconds 45 `
   --bar-readiness-mode required
 ```

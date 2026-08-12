@@ -35,6 +35,7 @@ from ml.strategy_selection.contracts import (
 )
 from ml.option_pricing.strategy_shadow import StrategyPricingEvidenceCatalog
 from ml.strategy_selection.market_state import (
+    _candidate_prior,
     infer_market_state,
     score_market_state_prior,
 )
@@ -578,6 +579,46 @@ def test_market_state_prior_scores_every_exact_candidate_without_fake_calibratio
     assert scored["model_status"].eq("PRICING_SCENARIO").all()
     assert scored["direction_probability_up"].eq(0.70).all()
     assert scored["market_expected_absolute_move"].gt(0.0).all()
+
+
+def test_scenario_prior_clamps_only_floating_point_probability_residue() -> None:
+    sample = _sample(0)
+    state = infer_market_state(
+        sample,
+        surface={},
+        probability_up=0.5156449255489672,
+    )
+    prior = _candidate_prior(
+        {
+            "underlying_price": 100.0,
+            "net_delta": 0.0,
+            "net_gamma": 0.0,
+            "net_theta": 0.0,
+            "max_loss": 100.0,
+            "max_profit": 100.0,
+            "capital_required": 100.0,
+            "pricing_mode": "ACTIVE",
+            "pricing_source": "BSGP",
+            "pricing_leg_coverage": 1.0,
+            "pricing_candidate_edge": 100.0,
+            "pricing_uncertainty": 0.01,
+            "legs_json": json.dumps(
+                [
+                    {
+                        "asset": "OPTION",
+                        "quantity": 1.0,
+                        "multiplier": 100.0,
+                        "bid": 1.0,
+                        "ask": 1.0,
+                    }
+                ]
+            ),
+        },
+        state=state,
+        policy=_POLICY,
+    )
+
+    assert prior["probability"] == 1.0
 
 
 def test_outcomes_use_conservative_exit_bbo_and_do_not_fake_lifecycle_labels() -> None:

@@ -14,6 +14,7 @@ from datafetching.decision_time import (
     completed_bar_clock_for_target,
     cycle_target_decision,
     expected_quarter_hour_target,
+    latest_eligible_option_target,
 )
 from datafetching.loop_a_cycle import read_latest_complete_loop_a_cycle
 from datafetching.observability import timed_stage
@@ -22,7 +23,6 @@ from datafetching.parquet_store import DATASTORE_TARGETS, ParquetStore
 from datafetching.pricing_barrier import wait_for_pricing_barrier
 from datafetching.runtime_lock import exclusive_runtime_lock
 from datafetching.schwab_fetch import DataFetchingSchwabSession
-from ml.option_pricing.consumers import describe_verified_compact_pricing_features
 from options.publication import committed_option_snapshots, option_writer_lock_path
 from options.pending_capture import (
     PendingOptionCaptureError,
@@ -58,6 +58,12 @@ class OptionsCycleResult:
     pricing_surface_diagnostics: dict[str, object] | None = None
 
 
+DISCOVERY_CYCLE_MODE = "DISCOVERY_REFRESH"
+DISCOVERY_TARGET_STATE = "DISCOVERY_CHAIN_TARGET"
+DISCOVERY_ALREADY_REFRESHED_STATE = "DISCOVERY_CHAIN_ALREADY_REFRESHED"
+DISCOVERY_PENDING_STATE = "DISCOVERY_CHAIN_PENDING_READINESS"
+
+
 def run_options_cycle(
     store: ParquetStore,
     *,
@@ -71,9 +77,9 @@ def run_options_cycle(
     barrier_sleeper: Callable[[float], None] = time.sleep,
     bar_readiness_mode: str = "required",
     per_symbol_detail: bool = False,
-    phase_offset_minutes: int = 2,
+    phase_offset_minutes: int = 6,
 ) -> OptionsCycleResult:
-    """Fetch once near target; quarantine responses until exact readiness exists."""
+    """Fetch one chain per cycle, including closed-market discovery refreshes."""
 
     clean_symbols = normalize_symbols(symbols)
     now = clock or (lambda: datetime.now(timezone.utc))
@@ -97,61 +103,51 @@ def run_options_cycle(
         if target_snapshot_for is not None
         else None
     )
-    if not decision.actionable:
-        pricing_diagnostics = describe_verified_compact_pricing_features(
-            store.root_dir,
-            available_not_after=cycle_started_at,
-        )
-        if reporter is not None:
-            reporter(
-                "Options cycle idle: "
-                f"cycle_mode={decision.cycle_mode}; "
-                f"target_state={decision.target_state.value}; target=NONE; "
-                f"reason={decision.reason}; "
-                f"next_eligible_cycle={decision.next_eligible_cycle(phase_offset_minutes=phase_offset_minutes).isoformat()}; "
-                "schwab_called=false; "
-                f"pending_captures={inventory.pending}; "
-                f"reconciled_captures={inventory.reconciled}; "
-                f"expired_captures={inventory.expired}"
-            )
-        return OptionsCycleResult(
-            published=reconciled_this_cycle,
-            failed=0,
-            skipped=0,
-            target_snapshot_for=None,
-            pricing_barrier_status="NOT_APPLICABLE",
-            pricing_terminal_status=None,
-            cycle_mode=decision.cycle_mode,
-            target_state=decision.target_state.value,
-            reason=decision.reason,
-            next_eligible_cycle=decision.next_eligible_cycle(
-                phase_offset_minutes=phase_offset_minutes
-            ),
-            pending_captures=inventory.pending,
-            reconciled_captures=inventory.reconciled,
-            expired_captures=inventory.expired,
-            failed_captures=inventory.failed,
-            pricing_surface_diagnostics=pricing_diagnostics,
-        )
-    target = decision.target_snapshot_for
+    discovery_refresh = not decision.actionable
+    target = (
+        latest_eligible_option_target(cycle_started_at)
+        if discovery_refresh
+        else decision.target_snapshot_for
+    )
     assert target is not None
-    if supplied_target is not None and supplied_target != target:
+    if (
+        not discovery_refresh
+        and supplied_target is not None
+        and supplied_target != target
+    ):
         raise ValueError(
             "Options target must match the calendar-owned target for cycle start; "
             "older targets cannot be replayed"
         )
+
+    cycle_boundary = expected_quarter_hour_target(cycle_started_at)
+    next_cycle = (
+        cycle_boundary + timedelta(minutes=15 + phase_offset_minutes)
+        if discovery_refresh
+        else decision.next_eligible_cycle(
+            phase_offset_minutes=phase_offset_minutes
+        )
+    )
+    discovery_reason = (
+        "The regular option market is closed; Schwab chain discovery is being "
+        f"refreshed against the latest eligible target {target.isoformat()}."
+    )
 
     observed_symbols = {
         symbol
         for symbol in clean_symbols
         if any(
             snapshot.snapshot_for == target
+            and (
+                not discovery_refresh
+                or snapshot.available_at >= cycle_boundary
+            )
             for snapshot in committed_option_snapshots(store.root_dir, symbol=symbol)
         )
     }
     claimed_symbols: set[str] = set()
     for symbol in clean_symbols:
-        if symbol in observed_symbols:
+        if symbol in observed_symbols or discovery_refresh:
             continue
         directory = pending_option_capture_directory(
             store.root_dir,
@@ -177,6 +173,32 @@ def run_options_cycle(
     if not fetch_symbols:
         inventory = pending_option_capture_counts(store.root_dir)
         all_observed = len(observed_symbols) == len(clean_symbols)
+        if discovery_refresh:
+            return OptionsCycleResult(
+                published=reconciled_this_cycle,
+                failed=0,
+                skipped=len(clean_symbols),
+                target_snapshot_for=target,
+                pricing_barrier_status=(
+                    "ALREADY_RECORDED" if all_observed else "PENDING_READINESS"
+                ),
+                cycle_mode=DISCOVERY_CYCLE_MODE,
+                target_state=(
+                    DISCOVERY_ALREADY_REFRESHED_STATE
+                    if all_observed
+                    else DISCOVERY_PENDING_STATE
+                ),
+                reason=(
+                    discovery_reason
+                    if all_observed
+                    else "A durable discovery response is pending exact Loop A readiness."
+                ),
+                next_eligible_cycle=next_cycle,
+                pending_captures=inventory.pending,
+                reconciled_captures=inventory.reconciled,
+                expired_captures=inventory.expired,
+                failed_captures=inventory.failed,
+            )
         final_decision = (
             decision.with_runtime_state(target_observed=True)
             if all_observed
@@ -197,9 +219,7 @@ def run_options_cycle(
             cycle_mode=final_decision.cycle_mode,
             target_state=final_decision.target_state.value,
             reason=final_decision.reason,
-            next_eligible_cycle=decision.next_eligible_cycle(
-                phase_offset_minutes=phase_offset_minutes
-            ),
+            next_eligible_cycle=next_cycle,
             pending_captures=inventory.pending,
             reconciled_captures=inventory.reconciled,
             expired_captures=inventory.expired,
@@ -241,6 +261,28 @@ def run_options_cycle(
             }
         except BarReadinessError as exc:
             readiness_error = f"{type(exc).__name__}: {exc}"
+            if discovery_refresh:
+                exact_errors: dict[str, str] = {}
+                for symbol in fetch_symbols:
+                    try:
+                        decision_clocks[symbol] = completed_bar_clock_for_target(
+                            store.root_dir,
+                            symbol=symbol,
+                            target_snapshot_for=target,
+                            as_of=cycle_started_at,
+                        )
+                    except Exception as exact_exc:
+                        exact_errors[symbol] = (
+                            f"{type(exact_exc).__name__}: {exact_exc}"
+                        )
+                if exact_errors:
+                    readiness_error += (
+                        " | exact discovery clocks unavailable: "
+                        + "; ".join(
+                            f"{symbol}={detail}"
+                            for symbol, detail in exact_errors.items()
+                        )
+                    )
     else:
         exact_errors: dict[str, str] = {}
         for symbol in fetch_symbols:
@@ -281,7 +323,7 @@ def run_options_cycle(
             barrier_metadata = barrier.as_receipt_metadata(
                 request_started_at=request_started_at
             )
-            if not readiness_complete:
+            if symbol not in decision_clocks:
                 pending_request, created = begin_pending_option_request(
                     store.root_dir,
                     symbol=symbol,
@@ -344,6 +386,15 @@ def run_options_cycle(
                     quote_cutoff_at=request_started_at,
                     regime_available_not_after=regime_cutoff,
                     pricing_barrier=barrier_metadata,
+                    capture_provenance=(
+                        {
+                            "capture_mode": DISCOVERY_CYCLE_MODE,
+                            "response_received_at": fetched_at,
+                        }
+                        if discovery_refresh
+                        else None
+                    ),
+                    update_legacy_monthly_mirrors=not discovery_refresh,
                     acquire_writer_lock=not writer_lock_held,
                 )
                 timing.annotate(
@@ -397,18 +448,35 @@ def run_options_cycle(
             )
             if per_symbol_detail:
                 reporter(f"Options failure symbols: {', '.join(affected)}")
-    final_decision = (
-        decision
-        if readiness_complete
-        else decision.with_runtime_state(
-            readiness_available=False,
-            deadline_at=target + timedelta(seconds=1_200),
-            reason=(
-                "Schwab responses are quarantined as PENDING_READINESS; "
-                + (readiness_error or "exact Loop A readiness is unavailable.")
-            ),
+    if discovery_refresh:
+        cycle_mode = DISCOVERY_CYCLE_MODE
+        target_state = (
+            DISCOVERY_TARGET_STATE if readiness_complete else DISCOVERY_PENDING_STATE
         )
-    )
+        reason = (
+            discovery_reason
+            if readiness_complete
+            else (
+                "Schwab discovery responses are quarantined as PENDING_READINESS; "
+                + (readiness_error or "exact Loop A readiness is unavailable.")
+            )
+        )
+    else:
+        final_decision = (
+            decision
+            if readiness_complete
+            else decision.with_runtime_state(
+                readiness_available=False,
+                deadline_at=target + timedelta(seconds=1_200),
+                reason=(
+                    "Schwab responses are quarantined as PENDING_READINESS; "
+                    + (readiness_error or "exact Loop A readiness is unavailable.")
+                ),
+            )
+        )
+        cycle_mode = final_decision.cycle_mode
+        target_state = final_decision.target_state.value
+        reason = final_decision.reason
     return OptionsCycleResult(
         published=published,
         failed=failed,
@@ -416,12 +484,10 @@ def run_options_cycle(
         target_snapshot_for=target,
         pricing_barrier_status=barrier.status,
         pricing_terminal_status=barrier.terminal_status,
-        cycle_mode=final_decision.cycle_mode,
-        target_state=final_decision.target_state.value,
-        reason=final_decision.reason,
-        next_eligible_cycle=decision.next_eligible_cycle(
-            phase_offset_minutes=phase_offset_minutes
-        ),
+        cycle_mode=cycle_mode,
+        target_state=target_state,
+        reason=reason,
+        next_eligible_cycle=next_cycle,
         schwab_called=schwab_requests > 0,
         schwab_requests=schwab_requests,
         pending_captures=inventory.pending,
@@ -438,7 +504,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--watchlist", type=Path, default=DEFAULT_WATCHLIST)
     parser.add_argument("--symbols", nargs="+", default=None)
     parser.add_argument("--interval-minutes", type=int, default=15)
-    parser.add_argument("--phase-offset-minutes", type=int, default=2)
+    parser.add_argument("--phase-offset-minutes", type=int, default=6)
     parser.add_argument("--once", action="store_true")
     parser.add_argument(
         "--pricing-barrier-timeout-seconds",

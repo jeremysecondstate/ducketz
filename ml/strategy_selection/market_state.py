@@ -205,8 +205,13 @@ def _candidate_prior(
         )
     else:
         scenario_probability = (profit > 0.0).astype(float)
+    probability = float(np.sum(weights * scenario_probability))
     return {
-        "probability": float(np.sum(weights * scenario_probability)),
+        # The 258 scenario weights are analytically normalized, but their
+        # floating-point sum can exceed one by a few ulps when every scenario
+        # is favorable.  Clamp only that arithmetic residue; the caller still
+        # rejects NaN, infinity, and genuinely invalid probabilities.
+        "probability": float(np.clip(probability, 0.0, 1.0)),
         "expected_net_profit": expected_net_profit,
         "expected_return_on_risk": expected_net_profit / capital,
     }

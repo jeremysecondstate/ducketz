@@ -65,14 +65,18 @@ from ml.strategy_selection.contracts import (
     STRATEGY_MODEL_POLICY_VERSION,
     STRATEGY_RANKING_POLICY_VERSION,
 )
-from ml.strategy_runtime import run_strategy_once
+from ml.strategy_runtime import (
+    _configured_symbols,
+    _current_source_already_processed,
+    run_strategy_once,
+)
 from options.features import (
     OPTION_FEATURE_SCHEMA_VERSION,
     OPTION_FEATURE_VERSION,
     OPTION_SELECTION_POLICY_VERSION,
     OPTION_SURFACE_QUALITY_POLICY_VERSION,
 )
-from options.publication import option_writer_lock_path
+from options.publication import option_snapshot_pointer_path, option_writer_lock_path
 from options.snapshot import OPTION_CHAIN_SCHEMA_VERSION
 
 
@@ -89,6 +93,13 @@ _CONFIG = RuntimeConfig(
     assessment_clusters=10,
     lockbox_clusters=5,
 )
+
+
+def test_strategy_uses_normalized_current_loop_b_symbol_scope() -> None:
+    assert _configured_symbols(
+        {"symbols": ["nvda", " GOOG ", "NVDA", "", None]}
+    ) == ("NVDA", "GOOG")
+    assert _configured_symbols({}) == ()
 
 
 def test_loop_b_materializes_trains_predicts_and_persists_readable_ids(
@@ -527,7 +538,7 @@ def test_directional_publication_does_not_wait_for_active_external_writers_and_s
     _write_strategy_chain_fixture(
         tmp_path,
         sample=live_sample,
-        available_at=_FIRST_RUN,
+        available_at=_FIRST_RUN + pd.Timedelta(minutes=2),
     )
     source_checksums = {
         path.name: file_checksum(path)
@@ -583,9 +594,30 @@ def test_directional_publication_does_not_wait_for_active_external_writers_and_s
     assert manifest["configuration"]["source_loop_b_run"] == (
         loop_b.run_directory.relative_to(tmp_path).as_posix()
     )
+    assert manifest["configuration"]["source_loop_b_input_cutoff"] == (
+        _FIRST_RUN.isoformat()
+    )
+    assert manifest["configuration"]["strategy_evidence_cutoff"] == (
+        (_FIRST_RUN + pd.Timedelta(minutes=5)).isoformat()
+    )
     assert manifest["configuration"]["publication_contract"]["version"] == (
         STRATEGY_PUBLICATION_VERSION
     )
+    assert _current_source_already_processed(tmp_path) is True
+    option_pointer = option_snapshot_pointer_path(tmp_path, symbol="GOOG")
+    option_pointer.parent.mkdir(parents=True, exist_ok=True)
+    option_pointer.write_text(
+        json.dumps(
+            {
+                "available_at": (
+                    _FIRST_RUN + pd.Timedelta(minutes=3)
+                ).isoformat(),
+                "receipt_checksum_sha256": "new-discovery-receipt",
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert _current_source_already_processed(tmp_path) is False
 
 
 def test_loop_b_reuses_model_then_reconciles_matured_live_predictions(

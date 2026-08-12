@@ -46,6 +46,7 @@ from ml.strategy_selection.contracts import (
 )
 from ml.strategy_selection.research_trace import strategy_research_trace
 from ml.strategy_selection.runtime import run_strategy_selection
+from options.publication import option_snapshot_pointer_path
 
 
 @dataclass(frozen=True)
@@ -105,13 +106,29 @@ def run_strategy_once(
     ) as timing:
         samples = pd.read_parquet(samples_path)
         predictions = pd.read_parquet(predictions_path)
+        configured_symbols = _configured_symbols(configuration)
+        if configured_symbols:
+            sample_symbols = samples["symbol"].astype("string").str.upper()
+            prediction_symbols = predictions["symbol"].astype("string").str.upper()
+            samples = samples.loc[sample_symbols.isin(configured_symbols)].copy()
+            predictions = predictions.loc[
+                prediction_symbols.isin(configured_symbols)
+            ].copy()
+        evidence_symbols = configured_symbols or tuple(
+            sorted(samples["symbol"].astype("string").str.upper().unique())
+        )
+        option_snapshot_heads = _option_snapshot_heads(
+            root,
+            evidence_symbols,
+            available_not_after=created,
+        )
         selection = run_strategy_selection(
             root,
             samples=samples,
             predictions=predictions,
             forbidden_target_starts={},
             run_timestamp=created,
-            input_available_at=input_cutoff,
+            input_available_at=created,
             sample_source_files=(
                 samples_path,
                 predictions_path,
@@ -218,6 +235,9 @@ def run_strategy_once(
             "source_loop_b": source_record,
             "source_loop_b_run": source.run_directory.relative_to(root).as_posix(),
             "source_loop_b_input_cutoff": input_cutoff.isoformat(),
+            "strategy_evidence_cutoff": created.isoformat(),
+            "source_loop_b_symbols": list(configured_symbols),
+            "option_snapshot_heads": option_snapshot_heads,
             "option_snapshot_receipts": option_receipts,
             "stock_bbo_source_files": stock_bbo_files,
             "strategy_candidate_contract": _strategy_candidate_contract(),
@@ -245,6 +265,52 @@ def run_strategy_once(
         models_reused=selection.models_reused,
         published_at=published_at,
     )
+
+
+def _configured_symbols(configuration: Mapping[str, object]) -> tuple[str, ...]:
+    raw = configuration.get("symbols")
+    if not isinstance(raw, (list, tuple)):
+        return ()
+    return tuple(
+        dict.fromkeys(
+            str(value).strip().upper()
+            for value in raw
+            if value is not None and str(value).strip()
+        )
+    )
+
+
+def _option_snapshot_heads(
+    root: Path,
+    symbols: Sequence[str],
+    *,
+    available_not_after: object | None = None,
+) -> dict[str, str]:
+    cutoff = (
+        utc_timestamp(available_not_after)
+        if available_not_after is not None
+        else None
+    )
+    heads: dict[str, str] = {}
+    clean_symbols = tuple(
+        dict.fromkeys(str(value).strip().upper() for value in symbols)
+    )
+    for symbol in clean_symbols:
+        pointer = option_snapshot_pointer_path(root, symbol=symbol)
+        if not pointer.is_file():
+            heads[symbol] = "MISSING"
+            continue
+        try:
+            payload = json.loads(pointer.read_text(encoding="utf-8"))
+            available_at = utc_timestamp(payload["available_at"])
+            heads[symbol] = (
+                "FUTURE"
+                if cutoff is not None and available_at > cutoff
+                else file_checksum(pointer)
+            )
+        except Exception:
+            heads[symbol] = "INVALID"
+    return heads
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -359,11 +425,26 @@ def _current_source_already_processed(root: Path, *, pricing_mode: str = "active
         if isinstance(configuration, Mapping)
         else None
     )
+    loop_b_configuration = loop_b.manifest.get("configuration")
+    loop_b_configuration = (
+        loop_b_configuration
+        if isinstance(loop_b_configuration, Mapping)
+        else {}
+    )
+    symbols = _configured_symbols(loop_b_configuration)
+    observed_heads = (
+        configuration.get("option_snapshot_heads")
+        if isinstance(configuration, Mapping)
+        else None
+    )
+    current_heads = _option_snapshot_heads(root, symbols)
     return (
         isinstance(source, Mapping)
         and isinstance(current, Mapping)
         and dict(source) == dict(current)
         and observed_mode == str(pricing_mode).strip().lower()
+        and isinstance(observed_heads, Mapping)
+        and dict(observed_heads) == current_heads
     )
 
 

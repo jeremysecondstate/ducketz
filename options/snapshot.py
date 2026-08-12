@@ -43,6 +43,7 @@ def persist_schwab_option_snapshot(
     pricing_barrier: Mapping[str, object] | None = None,
     receipt_published_at: datetime | pd.Timestamp | None = None,
     capture_provenance: Mapping[str, object] | None = None,
+    update_legacy_monthly_mirrors: bool = True,
     acquire_writer_lock: bool = True,
 ) -> OptionSnapshotOutput:
     if acquire_writer_lock:
@@ -61,6 +62,7 @@ def persist_schwab_option_snapshot(
                 pricing_barrier=pricing_barrier,
                 receipt_published_at=receipt_published_at,
                 capture_provenance=capture_provenance,
+                update_legacy_monthly_mirrors=update_legacy_monthly_mirrors,
             )
     return _persist_schwab_option_snapshot(
         datastore_root,
@@ -73,6 +75,7 @@ def persist_schwab_option_snapshot(
         pricing_barrier=pricing_barrier,
         receipt_published_at=receipt_published_at,
         capture_provenance=capture_provenance,
+        update_legacy_monthly_mirrors=update_legacy_monthly_mirrors,
     )
 
 
@@ -88,6 +91,7 @@ def _persist_schwab_option_snapshot(
     pricing_barrier: Mapping[str, object] | None = None,
     receipt_published_at: datetime | pd.Timestamp | None = None,
     capture_provenance: Mapping[str, object] | None = None,
+    update_legacy_monthly_mirrors: bool = True,
 ) -> OptionSnapshotOutput:
     observed_at = _as_utc_timestamp(fetched_at)
     cutoff_at = (
@@ -177,9 +181,10 @@ def _persist_schwab_option_snapshot(
         pricing_barrier=pricing_barrier,
         receipt_published_at=receipt_published_at,
     )
-    _atomic_upsert(raw_path, raw, keys=_SNAPSHOT_KEY)
-    _atomic_upsert(contracts_path, contracts, keys=_CONTRACT_KEY)
-    _atomic_upsert(features_path, features, keys=_SNAPSHOT_KEY)
+    if update_legacy_monthly_mirrors:
+        _atomic_upsert(raw_path, raw, keys=_SNAPSHOT_KEY)
+        _atomic_upsert(contracts_path, contracts, keys=_CONTRACT_KEY)
+        _atomic_upsert(features_path, features, keys=_SNAPSHOT_KEY)
     return OptionSnapshotOutput(
         contracts_path,
         features_path,

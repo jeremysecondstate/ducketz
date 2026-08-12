@@ -11,6 +11,7 @@ from datafetching.bar_schema import write_normalized_bar_parquet
 from datafetching.decision_time import (
     CycleTargetState,
     cycle_target_decision,
+    latest_eligible_option_target,
 )
 from datafetching.options_runtime import report_options_result, run_options_cycle
 from datafetching.parquet_store import ParquetStore
@@ -59,18 +60,25 @@ def test_first_completed_target_and_early_close_are_calendar_owned() -> None:
     assert early_close.session_close == pd.Timestamp("2026-11-27T18:00:00Z")
 
 
-def test_repeated_closed_cycles_do_not_grow_targets_or_call_schwab(
+@pytest.mark.parametrize(
+    ("observed", "expected"),
+    (
+        ("2026-08-10T21:46:00Z", "2026-08-10T20:00:00Z"),
+        ("2026-08-11T02:00:00Z", "2026-08-10T20:00:00Z"),
+        ("2026-08-15T17:01:00Z", "2026-08-14T20:00:00Z"),
+        ("2026-11-27T18:16:00Z", "2026-11-27T18:00:00Z"),
+    ),
+)
+def test_latest_eligible_option_target_binds_discovery_to_real_session(
+    observed: str,
+    expected: str,
+) -> None:
+    assert latest_eligible_option_target(observed) == pd.Timestamp(expected)
+
+
+def test_repeated_closed_pricing_cycles_do_not_grow_targets(
     tmp_path: Path,
 ) -> None:
-    calls = 0
-    output: list[str] = []
-
-    class Session:
-        def get_option_chain_snapshot(self, *_args: object, **_kwargs: object):
-            nonlocal calls
-            calls += 1
-            return {"unexpected": True}
-
     for minute in (46, 1, 16):
         now = pd.Timestamp(f"2026-08-10T2{1 + int(minute < 30)}:{minute:02d}:00Z")
         pricing = run_option_pricing_once(
@@ -79,21 +87,9 @@ def test_repeated_closed_cycles_do_not_grow_targets_or_call_schwab(
             run_timestamp=now,
         )
         assert pricing.cycle_mode == "MONITOR_ONLY"
-        options = run_options_cycle(
-            ParquetStore(tmp_path),
-            symbols=("GOOG",),
-            session=Session(),  # type: ignore[arg-type]
-            clock=lambda now=now: now.to_pydatetime(),
-            reporter=output.append,
-        )
-        assert options.target_snapshot_for is None
-        assert options.schwab_called is False
 
-    assert calls == 0
     assert not (tmp_path / "ml" / "option-pricing-target-outcomes").exists()
     assert not list(tmp_path.rglob("*error*.parquet"))
-    assert any("cycle_mode=MONITOR_ONLY" in line for line in output)
-    assert any("schwab_called=false" in line for line in output)
 
 
 def test_pricing_wait_accepts_readiness_before_deadline(tmp_path: Path) -> None:

@@ -117,6 +117,38 @@ def expected_quarter_hour_target(
     return observed.floor(f"{DECISION_BOUNDARY_MINUTES}min")
 
 
+def latest_eligible_option_target(
+    value: datetime | pd.Timestamp | None = None,
+) -> pd.Timestamp:
+    """Return the newest regular-session target available by ``value``.
+
+    Pricing remains calendar-gated because it creates prospective market
+    evidence.  The independent Schwab chain owner can nevertheless refresh a
+    chain while the market is closed.  Those refreshes stay bound to the newest
+    real option-market target rather than inventing an overnight target.
+    """
+
+    observed = _as_utc_timestamp(value)
+    candidate = expected_quarter_hour_target(observed)
+    calendar = _xnys_calendar(
+        observed - pd.Timedelta(days=31),
+        observed + pd.Timedelta(days=1),
+    )
+    latest: pd.Timestamp | None = None
+    for session in calendar.sessions:
+        opened = pd.Timestamp(calendar.session_open(session)).tz_convert("UTC")
+        closed = pd.Timestamp(calendar.session_close(session)).tz_convert("UTC")
+        upper = min(candidate, closed)
+        target = upper.floor(f"{DECISION_BOUNDARY_MINUTES}min")
+        if opened < target <= closed and target <= observed:
+            latest = target if latest is None else max(latest, target)
+    if latest is None:
+        raise RuntimeError(
+            "XNYS calendar horizon did not contain a prior eligible target"
+        )
+    return latest
+
+
 def cycle_target_decision(
     value: datetime | pd.Timestamp | None = None,
     *,

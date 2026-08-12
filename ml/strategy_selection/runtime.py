@@ -247,7 +247,7 @@ def run_strategy_selection(
         if entry is None:
             reason = (
                 "No causally eligible exact Schwab chain receipt was available "
-                "by the completed Loop A cycle cutoff and before the target window."
+                "by the Strategy run cutoff and before the target window."
             )
             audit_frames.append(
                 _failed_route_audit(

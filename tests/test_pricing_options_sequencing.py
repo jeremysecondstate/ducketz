@@ -740,7 +740,7 @@ def test_pending_capture_reconciles_or_expires_without_another_schwab_request(
     assert Session.calls == 1
 
 
-def test_closed_market_cycle_reconciles_pending_without_calling_schwab(
+def test_closed_market_cycle_reconciles_pending_as_discovery_refresh(
     tmp_path: Path,
 ) -> None:
     target = pd.Timestamp("2026-08-10T20:00:00Z")
@@ -776,9 +776,14 @@ def test_closed_market_cycle_reconciles_pending_without_calling_schwab(
     )
 
     class ClosedSession:
-        @staticmethod
-        def get_option_chain_snapshot(*_args: object, **_kwargs: object):
-            raise AssertionError("Closed reconciliation must not call Schwab")
+        calls = 0
+
+        @classmethod
+        def get_option_chain_snapshot(
+            cls, *_args: object, **_kwargs: object
+        ) -> dict[str, object]:
+            cls.calls += 1
+            return _pending_option_payload(target)
 
     closed = run_options_cycle(
         ParquetStore(tmp_path),
@@ -788,15 +793,87 @@ def test_closed_market_cycle_reconciles_pending_without_calling_schwab(
         reporter=None,
     )
 
-    assert closed.target_state == "MARKET_CLOSED_IDLE"
+    assert closed.cycle_mode == "DISCOVERY_REFRESH"
+    assert closed.target_state == "DISCOVERY_CHAIN_ALREADY_REFRESHED"
+    assert closed.target_snapshot_for == target
     assert closed.schwab_called is False
+    assert closed.schwab_requests == 0
     assert closed.published == 1
     assert closed.reconciled_captures == 1
     assert CaptureSession.calls == 1
+    assert ClosedSession.calls == 0
     assert len(committed_option_snapshots(tmp_path, symbol="GOOG")) == 1
     counts = pending_option_capture_counts(tmp_path)
     assert counts.pending == 0
     assert counts.reconciled == 1
+
+    repeated = run_options_cycle(
+        ParquetStore(tmp_path),
+        symbols=("GOOG",),
+        session=ClosedSession(),  # type: ignore[arg-type]
+        clock=lambda: (target + pd.Timedelta(minutes=16, seconds=30)).to_pydatetime(),
+        reporter=None,
+    )
+    assert repeated.target_state == "DISCOVERY_CHAIN_ALREADY_REFRESHED"
+    assert repeated.schwab_called is False
+    assert ClosedSession.calls == 0
+
+
+def test_closed_market_cycle_fetches_chain_once_per_discovery_interval(
+    tmp_path: Path,
+) -> None:
+    target = pd.Timestamp("2026-08-10T20:00:00Z")
+    _write_bar(tmp_path, symbol="GOOG", target=target, close=100.0)
+
+    class Session:
+        calls = 0
+
+        @classmethod
+        def get_option_chain_snapshot(
+            cls, *_args: object, **_kwargs: object
+        ) -> dict[str, object]:
+            cls.calls += 1
+            return _pending_option_payload(target)
+
+    observed = target + pd.Timedelta(hours=1, minutes=16)
+    first = run_options_cycle(
+        ParquetStore(tmp_path),
+        symbols=("GOOG",),
+        session=Session(),  # type: ignore[arg-type]
+        clock=lambda: observed.to_pydatetime(),
+        reporter=None,
+    )
+    repeated = run_options_cycle(
+        ParquetStore(tmp_path),
+        symbols=("GOOG",),
+        session=Session(),  # type: ignore[arg-type]
+        clock=lambda: (observed + pd.Timedelta(seconds=30)).to_pydatetime(),
+        reporter=None,
+    )
+
+    assert first.cycle_mode == "DISCOVERY_REFRESH"
+    assert first.target_state == "DISCOVERY_CHAIN_TARGET"
+    assert first.target_snapshot_for == target
+    assert first.schwab_called is True
+    assert first.published == 1
+    assert repeated.target_state == "DISCOVERY_CHAIN_ALREADY_REFRESHED"
+    assert repeated.schwab_called is False
+    assert Session.calls == 1
+    snapshots = committed_option_snapshots(tmp_path, symbol="GOOG")
+    assert len(snapshots) == 1
+    raw = pd.read_parquet(snapshots[0].raw_path)
+    provenance = json.loads(str(raw.iloc[0]["capture_provenance_json"]))
+    assert provenance["capture_mode"] == "DISCOVERY_REFRESH"
+    assert not (
+        tmp_path
+        / "stocks"
+        / "GOOG"
+        / "options"
+        / "chains"
+        / "schwab"
+        / "normalized"
+        / "2026-08.parquet"
+    ).exists()
 
 
 def test_delayed_readiness_does_not_skip_the_next_quarter_hour_capture(
