@@ -23,6 +23,7 @@ from datafetching.decision_time import (
     CycleTargetState,
     cycle_target_decision,
     expected_quarter_hour_target,
+    is_eligible_option_target,
 )
 from datafetching.orchestrate import DEFAULT_WATCHLIST, normalize_symbols, read_watchlist
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
@@ -69,6 +70,9 @@ from ml.option_pricing.operations import (
     publish_runtime_health,
     read_current_operational_readiness,
     read_current_runtime_health,
+)
+from ml.option_pricing.consumers import (
+    describe_verified_compact_pricing_features,
 )
 from ml.option_pricing.opra_materialization import (
     ClosedOpraLockboxInventory,
@@ -131,6 +135,7 @@ from ml.parquet_contracts import (
     write_parquet_with_schema,
 )
 from options.publication import committed_option_snapshots
+from options.pending_capture import pending_option_capture_counts
 
 
 class RetryablePricingReadinessError(RuntimeError):
@@ -169,6 +174,7 @@ class OptionPricingRuntimeResult:
     current_target_evaluation_rows: int = 0
     new_prospective_prediction_rows: int = 0
     new_prospective_evaluation_rows: int = 0
+    authority_diagnostics: Mapping[str, object] | None = None
 
 
 def run_option_pricing_once(
@@ -239,10 +245,32 @@ def _run_option_pricing_once_impl(
     if not clean_symbols:
         raise ValueError("At least one Pricing symbol is required")
     created = utc_timestamp(run_timestamp)
-    decision = cycle_target_decision(created)
+    effective_contract = contract_policy or ContractSelectionPolicy()
+    observed_decision = cycle_target_decision(created)
     supplied_target = (
         utc_timestamp(target_snapshot_for) if target_snapshot_for is not None else None
     )
+    if supplied_target is not None and is_eligible_option_target(supplied_target):
+        if created < supplied_target:
+            raise ValueError("Pricing target cannot follow the real run clock")
+        if created > supplied_target + pd.Timedelta(
+            seconds=effective_contract.maximum_source_staleness_seconds
+        ):
+            raise ValueError(
+                "Pricing target is outside the 1,200-second causal source window"
+            )
+        decision = replace(
+            cycle_target_decision(supplied_target),
+            observed_at=created,
+            reason=(
+                "The exact calendar target remains inside its causal source window; "
+                "prediction clocks use the real delayed readiness time."
+                if created.floor("15min") != supplied_target
+                else cycle_target_decision(supplied_target).reason
+            ),
+        )
+    else:
+        decision = observed_decision
     if not decision.actionable:
         return _idle_pricing_result(
             root,
@@ -268,7 +296,6 @@ def _run_option_pricing_once_impl(
     effective_partitions = partition_config or PricingPartitionConfig()
     effective_model = model_policy or BSGPModelPolicy()
     effective_loop_native_model = loop_native_model_policy or LoopNativeModelPolicy()
-    effective_contract = contract_policy or ContractSelectionPolicy()
     effective_projection = projection_policy or ProjectionPolicy()
     limits = runtime_limits or RuntimeLimits()
     loop_native_scope = (
@@ -1094,6 +1121,14 @@ def _publish_fast_target_outcome(
                 "the target remains retryable and no terminal Pricing artifact was "
                 f"created. {readiness_error}"
             )
+    causal_deadline = target_snapshot_for + pd.Timedelta(
+        seconds=contract_policy.maximum_source_staleness_seconds
+    )
+    if prediction_created_at > causal_deadline:
+        raise ValueError(
+            "Exact Loop A readiness arrived outside the 1,200-second Pricing "
+            "causal window"
+        )
 
     effective_loop_native_model_load = loop_native_model_load
     if (
@@ -1317,36 +1352,48 @@ def _idle_pricing_result(
         "monitoring": 0,
     }
     gate_status = "NOT_PRODUCTION_ELIGIBLE"
-    try:
-        publication = read_current_option_pricing_publication(root)
-    except Exception:
-        if pricing_pointer_path(root).exists():
-            raise
-    else:
-        run_directory = publication.run_directory
-        published_at = utc_timestamp(publication.receipt.get("published_at"))
-        names = {
-            "samples": "pricing-samples.parquet",
-            "predictions": "pricing-predictions.parquet",
-            "evaluations": "pricing-evaluations.parquet",
-            "surfaces": "pricing-surfaces.parquet",
-            "monitoring": "pricing-monitoring.parquet",
-        }
-        counts = {
-            key: int(pq.ParquetFile(publication.run_directory / name).metadata.num_rows)
-            for key, name in names.items()
-        }
-        try:
-            report = json.loads(
-                (publication.run_directory / OPTION_PRICING_REPORT_NAME).read_text(
-                    encoding="utf-8"
-                )
+    authority_diagnostics: dict[str, object] = {
+        "authority_path": None,
+        "publication_version": None,
+        "surface_version": None,
+        "published_at": None,
+        "publication_age_seconds": None,
+        "legacy_normalization_used": False,
+        "fresh_horizons": (),
+    }
+    if pricing_pointer_path(root).is_file():
+        authority_diagnostics.update(
+            describe_verified_compact_pricing_features(
+                root,
+                available_not_after=decision.observed_at,
             )
-        except (OSError, TypeError, ValueError, json.JSONDecodeError):
-            report = {}
-        gate = report.get("gate") if isinstance(report, Mapping) else None
-        if isinstance(gate, Mapping):
-            gate_status = str(gate.get("gate_status", gate_status))
+        )
+        authority_path = authority_diagnostics.get("authority_path")
+        if isinstance(authority_path, str) and authority_path:
+            run_directory = (root / Path(authority_path)).resolve()
+            published_at = utc_timestamp(authority_diagnostics["published_at"])
+            names = {
+                "samples": "pricing-samples.parquet",
+                "predictions": "pricing-predictions.parquet",
+                "evaluations": "pricing-evaluations.parquet",
+                "surfaces": "pricing-surfaces.parquet",
+                "monitoring": "pricing-monitoring.parquet",
+            }
+            counts = {
+                key: int(pq.ParquetFile(run_directory / name).metadata.num_rows)
+                for key, name in names.items()
+            }
+            try:
+                report = json.loads(
+                    (run_directory / OPTION_PRICING_REPORT_NAME).read_text(
+                        encoding="utf-8"
+                    )
+                )
+            except (OSError, TypeError, ValueError, json.JSONDecodeError):
+                report = {}
+            gate = report.get("gate") if isinstance(report, Mapping) else None
+            if isinstance(gate, Mapping):
+                gate_status = str(gate.get("gate_status", gate_status))
 
     health_path = root / "ml" / "option-pricing-health" / "latest.json"
     previous_health = read_current_runtime_health(root)
@@ -1361,6 +1408,14 @@ def _idle_pricing_result(
         else 0
     )
     idle_route_errors: dict[str, str] = {}
+    pending_counts = pending_option_capture_counts(root)
+    authority_diagnostics.update(
+        {
+            "pending_option_captures": pending_counts.pending,
+            "reconciled_option_captures": pending_counts.reconciled,
+            "expired_option_captures": pending_counts.expired,
+        }
+    )
     idle_capacity = capacity_report(root)
     if idle_capacity.get("status") != "PASS":
         health_status = "FAIL"
@@ -1394,6 +1449,7 @@ def _idle_pricing_result(
         next_eligible_cycle=decision.next_eligible_cycle(
             phase_offset_minutes=phase_offset_minutes
         ),
+        authority_diagnostics=authority_diagnostics,
     )
 
 
@@ -1500,13 +1556,36 @@ def main(argv: Sequence[str] | None = None) -> int:
                         phase_offset_minutes=args.phase_offset_minutes,
                     )
                     if previous_boundary is not None:
-                        for missed_boundary in _missed_boundaries(
+                        due_boundaries = _missed_boundaries(
                             previous_boundary,
                             boundary,
                             interval_minutes=args.interval_minutes,
-                        ):
+                        )
+                        recoverable = tuple(
+                            candidate
+                            for candidate in due_boundaries
+                            if _pricing_boundary_is_recoverable(
+                                candidate,
+                                observed_at=cycle_anchor,
+                            )
+                        )
+                        if recoverable:
+                            # Protect the newest still-causal target first.  A
+                            # slow prior research generation cannot label this
+                            # boundary missed merely because it occupied the
+                            # supervisor past the nominal phase.
+                            boundary = recoverable[-1]
+                        for missed_boundary in due_boundaries:
+                            if missed_boundary >= boundary:
+                                continue
                             missed_decision = cycle_target_decision(missed_boundary)
                             if not missed_decision.actionable:
+                                continue
+                            missed_target = missed_decision.target_snapshot_for
+                            assert missed_target is not None
+                            if cycle_anchor <= missed_target + pd.Timedelta(
+                                seconds=ContractSelectionPolicy().maximum_source_staleness_seconds
+                            ):
                                 continue
                             missed = _publish_missed_target_outcome(
                                 root,
@@ -1650,6 +1729,22 @@ def report_pricing_result(
         "automated_action_allowed=false; "
         f"generation_run={result.run_directory or 'UNCHANGED'}"
     )
+    if result.cycle_mode == "MONITOR_ONLY" and result.authority_diagnostics:
+        diagnostic = result.authority_diagnostics
+        fresh = diagnostic.get("fresh_horizons") or ()
+        reporter(
+            "Pricing carried authority: "
+            f"path={diagnostic.get('authority_path') or 'NONE'}; "
+            f"publication_version={diagnostic.get('publication_version') or 'NONE'}; "
+            f"surface_version={diagnostic.get('surface_version') or 'NONE'}; "
+            f"published_at={diagnostic.get('published_at') or 'NONE'}; "
+            f"publication_age_seconds={diagnostic.get('publication_age_seconds') if diagnostic.get('publication_age_seconds') is not None else 'UNKNOWN'}; "
+            f"legacy_normalization_used={str(bool(diagnostic.get('legacy_normalization_used'))).lower()}; "
+            f"fresh_horizons={','.join(str(value) for value in fresh) or 'NONE'}; "
+            f"pending_option_captures={diagnostic.get('pending_option_captures', 0)}; "
+            f"reconciled_option_captures={diagnostic.get('reconciled_option_captures', 0)}; "
+            f"expired_option_captures={diagnostic.get('expired_option_captures', 0)}"
+        )
 
     grouped: dict[tuple[str, str], list[str]] = {}
     for symbol, route in result.live_routes.items():
@@ -1715,6 +1810,22 @@ def _missed_boundaries(
         output.append(candidate)
         candidate += interval
     return tuple(output)
+
+
+def _pricing_boundary_is_recoverable(
+    scheduled_boundary: datetime,
+    *,
+    observed_at: object,
+) -> bool:
+    """Return whether a delayed scheduled phase still owns a causal target."""
+
+    decision = cycle_target_decision(scheduled_boundary)
+    if not decision.actionable or decision.target_snapshot_for is None:
+        return False
+    observed = utc_timestamp(observed_at)
+    return observed <= decision.target_snapshot_for + pd.Timedelta(
+        seconds=ContractSelectionPolicy().maximum_source_staleness_seconds
+    )
 
 
 def _publish_missed_target_outcome(

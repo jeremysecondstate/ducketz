@@ -97,6 +97,7 @@ class SemanticFeatureTransformer(TransformerMixin, BaseEstimator):
             "signed-log-return-robust-v1",
             "signed-log-return-v1",
             "training-cap-robust-v1",
+            "training-median-robust-scale-v1",
             "training-winsor-bounded-ratio-v1",
         }
     )

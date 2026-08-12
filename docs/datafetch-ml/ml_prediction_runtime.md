@@ -158,6 +158,8 @@ For each symbol and selected horizon, Loop B reads:
 - FMP fundamental-direction and point-in-time fundamentals;
 - fundamental-technical lifecycle signals;
 - Schwab quote-liquidity and option-quality/realized-volatility evidence;
+- receipt-verified compact Pricing surfaces when the active-v2 profile is
+  selected;
 - FMP energy, FRED macro, SEC event, and Databento CME context.
 
 The default feature and decision-source timeframes are:
@@ -200,6 +202,16 @@ legacy technical-only profiles remain selectable for compatibility. Family
 contracts are in
 [`audited-feature-contracts.md`](audited-feature-contracts.md).
 
+The production command selects `loop-a-all-bsgp-active-v2`, which adds the same
+11 ordered `opx__` columns to every horizon without changing or substituting the
+rest of the feature contract. Its v2 surface reader is strict. An exact
+receipt-, manifest-, checksum-, and physical-schema-verified legacy v1 surface
+with policy `black-scholes-rbf-residual-v1` is the only compatibility case:
+Loop B derives canonical availability as
+`max(row.available_at, publication.published_at)` in memory and records the
+source publication/surface versions and normalization policy. It never rewrites
+the legacy authority.
+
 `loop-a-all-v1-4h` is a horizon-scoped clone of
 `loop-a-all-v1-1h`: exactly the same ordered 69 model values and family
 composition. The `4h` technical and bar values keep their existing exact
@@ -217,14 +229,23 @@ family applicable to the selected profile must have its required non-empty
 Parquet input and required columns. Families routed through the generic adapters
 must also contain at least one populated numeric family value. A missing or
 structurally empty input makes the affected materialization route non-ready; the
-supervisor then rejects the entire cycle.
+supervisor then rejects the entire cycle. The `opx__` family is the deliberate
+exception for valid unavailability: no causal publication, no coverage, an
+empty verified surface, staleness, or a failed surface-quality row produces
+null `opx__` values rather than destroying an otherwise viable route.
+Malformed clocks, mixed or unknown versions, checksum or physical-schema
+failure, and automation-enabled Pricing rows remain fatal to the complete
+publication.
 
 Presence is not the same as per-row completeness. A source can be present while
 a particular decision has no publication at or before its decision time, its
 latest publication is stale, or a specialized loader rejects that row's quality.
 In that case the family columns for that decision remain null. The feature
 columns still exist in the sample schema, and the model's training-fitted
-imputation and missing indicators handle those nulls.
+imputation and missing indicators handle those nulls. For `opx__`, the manifest
+also records per-route join-status counts, missing-row counts, source status,
+publication/surface versions, authority path/time, and legacy normalization
+policy.
 
 Operational point-in-time wiring has three levels:
 
@@ -233,7 +254,11 @@ Operational point-in-time wiring has three levels:
 - technical lifecycle, fundamental direction, point-in-time fundamentals,
   fundamental-technical lifecycle, quotes, and options use the generic
   symbol-scoped backward-as-of adapter; energy, macro, and CME use the generic
-  shared-context backward-as-of adapter.
+  shared-context backward-as-of adapter. Pricing uses the symbol-scoped adapter
+  with `valid_until` equal to the earlier of canonical first availability plus
+  horizon freshness and original `target_snapshot_for` plus the same freshness.
+  Republishing a cumulative surface therefore cannot renew an old market
+  target.
 
 The generic adapters require `available_at <= decision_timestamp`, apply the
 configured freshness rule where one exists, and deterministically keep the last

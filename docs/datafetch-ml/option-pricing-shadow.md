@@ -180,9 +180,14 @@ lineage; no staleness, moneyness, timing, or quote threshold is relaxed.
 It uses the target bar close, earlier contract definitions, and only lagged
 rate/dividend/IV evidence. The immutable Pricing receipt is published at the
 same `prediction_available_at` recorded in new prediction rows. The independent
-Options runtime may then fetch the target chain. If the completed target bar is
-not ready before the Pricing phase, that symbol is skipped; the runtime never
-backdates a prediction.
+Options runtime may then fetch the target chain. If exact Loop A readiness is
+late, Options still makes the target/symbol request once near schedule and
+checksum-seals the response in the non-production pending-capture authority.
+It can become an ordinary committed snapshot only after the exact all-symbol
+readiness receipt arrives inside the unchanged 1,200-second causal window; its
+availability is the maximum of the response, readiness, reconciliation, and
+receipt clocks, never the original target. Pricing predictions are never
+backdated.
 
 A later Pricing cycle scores a prediction only against a verified receipt with
 the exact target and semantic contract, a receipt later than prediction
@@ -362,11 +367,24 @@ uncertainty. The evidence lane remains `OFFLINE`; it never increments prospectiv
 counts or claims live availability.
 
 The production directional profile is `loop-a-all-bsgp-active-v2`. Its `opx__`
-join verifies the reachable Pricing receipt chain, preserves each surface's
-first availability, and expires a value against both first availability and
-the underlying market target. Republishing a cumulative artifact cannot make
-an old surface fresh. Missing, late, incompatible, empty, or tampered evidence
-stays missing; no current value is substituted.
+join verifies the current authority and reachable receipt chain before choosing
+the newest publication causal by the Loop B cutoff. A native v2 publication is
+strict: `first_available_at` and the v2 Pricing policy are mandatory. An exact
+verified v1 publication carrying the legacy `black-scholes-rbf-residual-v1`
+policy is normalized in memory only with canonical first availability
+`max(row.available_at, publication.published_at)`; its Parquet, manifest,
+receipt, and pointer remain untouched. The join expires every value at the
+earlier of first availability plus horizon freshness and original target plus
+horizon freshness, so a cumulative publication cannot renew an old target.
+
+A valid absent, empty, stale, uncovered, or quality-rejected Pricing row leaves
+the corresponding `opx__` values null, with join/source/provenance counts in the
+Loop B manifest. The active-v2 estimator retains its declared feature profile
+and handles those nulls through its existing train-fitted median imputation and
+missing indicators. Checksum failure, malformed clocks, mixed or unsupported
+versions, incompatible physical schema, or `automated_action_allowed=true`
+remains fatal to the whole Loop B publication; no older authority, zero fill,
+stale value, alternate feature profile, or partial route is substituted.
 
 Strategy defaults to `--pricing-mode active`. Before either historical fitting
 or live scoring, every option leg must match symbol, target, exact contract

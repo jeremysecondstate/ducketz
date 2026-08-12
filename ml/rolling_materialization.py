@@ -44,6 +44,12 @@ from options.publication import (
     read_committed_option_surfaces,
 )
 from ml.option_pricing.consumers import read_verified_compact_pricing_features
+from ml.option_pricing.consumers import (
+    OPX_VALUE_COLUMNS,
+    PricingEvidenceContractError,
+    PricingEvidenceUnavailable,
+)
+from ml.option_pricing.publication import OptionPricingPublicationError
 from technicals.parquet_io import BarDataset, discover_bar_datasets
 
 
@@ -307,6 +313,11 @@ def _materialize_rolling_samples(
                     f"[rolling {horizon}] {symbol}: {status}; "
                     f"samples={len(samples)}",
                 )
+            except (OptionPricingPublicationError, PricingEvidenceContractError):
+                # A shared Pricing authority violation invalidates the complete
+                # materialization.  It must never be converted into a partial
+                # route publication or confused with optional missing evidence.
+                raise
             except Exception as exc:
                 route = RouteMaterialization(
                     symbol=symbol,
@@ -640,10 +651,35 @@ def _attach_loop_a_features(
             if input_available_at is not None
             else output["information_available_at"].max()
         )
-        source, paths = read_verified_compact_pricing_features(
-            root,
-            available_not_after=cutoff,
-        )
+        pricing_source_status = "VERIFIED"
+        pricing_source_detail = ""
+        try:
+            source, paths = read_verified_compact_pricing_features(
+                root,
+                available_not_after=cutoff,
+            )
+        except PricingEvidenceUnavailable as exc:
+            pricing_source_status = "UNAVAILABLE"
+            pricing_source_detail = str(exc)
+            paths = ()
+            source = pd.DataFrame(
+                columns=(
+                    "symbol",
+                    "target_snapshot_for",
+                    "available_at",
+                    "first_available_at",
+                    "_pricing_original_available_at",
+                    "surface_quality_pass",
+                    *OPX_VALUE_COLUMNS,
+                    "_pricing_source_publication_version",
+                    "_pricing_source_surface_version",
+                    "_pricing_source_policy_version",
+                    "_pricing_normalization_policy",
+                    "_pricing_legacy_normalized",
+                    "_pricing_authority_published_at",
+                    "_pricing_authority_run_path",
+                )
+            )
         output = _join_symbol_values(
             output,
             source,
@@ -652,7 +688,22 @@ def _attach_loop_a_features(
             tie_breakers=("target_snapshot_for",),
             freshness=OPTION_PRICING_SHADOW_FRESHNESS[feature_horizon],
             event_column="target_snapshot_for",
+            audit_columns={
+                "opx__source_publication_version": "_pricing_source_publication_version",
+                "opx__source_surface_version": "_pricing_source_surface_version",
+                "opx__source_policy_version": "_pricing_source_policy_version",
+                "opx__source_target_snapshot_for": "target_snapshot_for",
+                "opx__source_original_available_at": "_pricing_original_available_at",
+                "opx__normalization_policy": "_pricing_normalization_policy",
+                "opx__legacy_normalized": "_pricing_legacy_normalized",
+                "opx__authority_published_at": "_pricing_authority_published_at",
+                "opx__authority_run_path": "_pricing_authority_run_path",
+            },
+            quality_columns=("surface_quality_pass",),
+            require_populated_values=False,
         )
+        output["opx__source_status"] = pricing_source_status
+        output["opx__source_detail"] = pricing_source_detail
         source_files.extend(paths)
 
     if mapping := _family_values(feature_set, "energy"):
@@ -811,8 +862,17 @@ def _join_symbol_values(
     tie_breakers: Sequence[str] = (),
     freshness: pd.Timedelta | None = None,
     event_column: str | None = None,
+    audit_columns: Mapping[str, str] | None = None,
+    quality_columns: Sequence[str] = (),
+    require_populated_values: bool = True,
 ) -> pd.DataFrame:
-    required = {"symbol", available_column, *value_columns.values()}
+    required = {
+        "symbol",
+        available_column,
+        *value_columns.values(),
+        *(audit_columns or {}).values(),
+        *quality_columns,
+    }
     missing = sorted(required.difference(source.columns))
     if missing:
         raise MLContractError(
@@ -871,11 +931,12 @@ def _join_symbol_values(
         .drop_duplicates(["symbol", "available_at"], keep="last")
         .reset_index(drop=True)
     )
-    _require_family_value(
-        prepared,
-        value_columns=value_columns,
-        family=family,
-    )
+    if require_populated_values:
+        _require_family_value(
+            prepared,
+            value_columns=value_columns,
+            family=family,
+        )
     return backward_asof_by_symbol(
         decisions,
         prepared,
@@ -884,6 +945,8 @@ def _join_symbol_values(
         freshness=freshness,
         natural_key_columns=("symbol", "available_at"),
         valid_until_column=valid_until_column,
+        audit_columns=audit_columns,
+        quality_columns=quality_columns,
     )
 
 

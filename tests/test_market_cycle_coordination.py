@@ -17,6 +17,7 @@ from datafetching.parquet_store import ParquetStore
 from ml.option_pricing.target_outcome import read_target_outcome
 from ml.option_pricing_runtime import (
     RetryablePricingReadinessError,
+    _pricing_boundary_is_recoverable,
     report_pricing_result,
     run_option_pricing_once,
 )
@@ -168,6 +169,85 @@ def test_late_readiness_remains_retryable_without_empty_terminal(
     assert second.target_outcome_directory == authoritative.directory
     assert second.target_outcome_status != "TARGET_BAR_NOT_READY"
     assert len(target_directories) == 1
+
+
+@pytest.mark.parametrize(
+    ("delay_minutes", "recoverable"),
+    ((13, True), (19, True), (22, False)),
+)
+def test_pricing_scheduler_preserves_only_still_causal_delayed_boundaries(
+    delay_minutes: int,
+    recoverable: bool,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    scheduled_phase = target + pd.Timedelta(minutes=1)
+
+    assert _pricing_boundary_is_recoverable(
+        scheduled_phase.to_pydatetime(),
+        observed_at=target + pd.Timedelta(minutes=delay_minutes),
+    ) is recoverable
+
+
+@pytest.mark.parametrize("delay_minutes", (13, 19))
+def test_pricing_accepts_delayed_exact_readiness_inside_causal_window(
+    tmp_path: Path,
+    delay_minutes: int,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    ready_at = target + pd.Timedelta(minutes=delay_minutes)
+    _write_bar(tmp_path, symbol="GOOG", target=target)
+    publish_bar_readiness(
+        tmp_path,
+        target_snapshot_for=target,
+        symbols=("GOOG",),
+        loop_a_generation=f"delayed-{delay_minutes}",
+        as_of=ready_at,
+        clock=lambda: ready_at,
+    )
+
+    result = run_option_pricing_once(
+        tmp_path,
+        symbols=("GOOG",),
+        run_timestamp=ready_at,
+        runtime_clock=lambda: ready_at + pd.Timedelta(seconds=1),
+        target_snapshot_for=target,
+        bar_readiness_mode="required",
+        bar_readiness_timeout_seconds=0,
+    )
+
+    assert result.target_snapshot_for == target
+    assert result.target_state == CycleTargetState.ACTIONABLE_EXACT_TARGET.value
+    assert result.target_published_at is not None
+    assert result.target_published_at >= ready_at
+
+
+def test_pricing_never_promotes_readiness_observed_after_causal_window(
+    tmp_path: Path,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    _write_bar(tmp_path, symbol="GOOG", target=target)
+    simulation = _ReadinessSimulation(
+        tmp_path,
+        target=target,
+        publish_after_seconds=1.5,
+        ready_offset_seconds=1.0,
+    )
+    simulation.wall = target + pd.Timedelta(minutes=19, seconds=59)
+
+    with pytest.raises(ValueError, match="outside the 1,200-second"):
+        run_option_pricing_once(
+            tmp_path,
+            symbols=("GOOG",),
+            run_timestamp=simulation.wall,
+            runtime_clock=simulation.clock,
+            target_snapshot_for=target,
+            bar_readiness_mode="required",
+            bar_readiness_timeout_seconds=2,
+            readiness_sleeper=simulation.sleep,
+            monotonic_clock=simulation.monotonic,
+        )
+
+    assert not (tmp_path / "ml" / "option-pricing-target-latest" / "run.json").exists()
 
 
 def test_options_restart_for_observed_target_is_request_free(tmp_path: Path) -> None:

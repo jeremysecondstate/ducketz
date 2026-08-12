@@ -746,6 +746,10 @@ def _run_loop_b_once(
                 for horizon in effective_specifications
             },
             "route_errors": route_errors,
+            "pricing_evidence": _pricing_evidence_manifest(
+                materialization,
+                feature_columns=feature_columns,
+            ),
             "publication_counts": publication_counts,
             "strategy_selection": {
                 "policy": STRATEGY_SELECTION_SCHWAB_SPREADS_V1,
@@ -2008,6 +2012,72 @@ def _horizon_source_files(
             for path in route.source_files
         )
     )
+
+
+def _pricing_evidence_manifest(
+    materialization: RollingMaterialization,
+    *,
+    feature_columns: Sequence[str],
+) -> dict[str, object]:
+    """Summarize Pricing missingness and provenance in the control plane."""
+
+    model_columns = tuple(
+        column for column in feature_columns if str(column).startswith("opx__")
+    )
+    if not model_columns:
+        return {"enabled": False, "routes": {}}
+    routes: dict[str, object] = {}
+    audit_names = (
+        "opx__source_status",
+        "opx__source_detail",
+        "opx__source_publication_version",
+        "opx__source_surface_version",
+        "opx__source_policy_version",
+        "opx__source_target_snapshot_for",
+        "opx__source_original_available_at",
+        "opx__normalization_policy",
+        "opx__legacy_normalized",
+        "opx__authority_published_at",
+        "opx__authority_run_path",
+    )
+    for route in materialization.routes:
+        frame = route.samples
+        route_key = f"{route.symbol}|{route.horizon}"
+        joined = (
+            frame["opx__join_status"].astype("string").value_counts(dropna=False)
+            if "opx__join_status" in frame
+            else pd.Series(dtype="int64")
+        )
+        available_model_columns = [
+            column for column in model_columns if column in frame.columns
+        ]
+        missing_rows = (
+            int(frame.loc[:, available_model_columns].isna().all(axis=1).sum())
+            if available_model_columns
+            else len(frame)
+        )
+        audit: dict[str, object] = {}
+        for name in audit_names:
+            if name not in frame:
+                continue
+            values = tuple(
+                dict.fromkeys(
+                    str(value)
+                    for value in frame[name].dropna()
+                    if str(value).strip()
+                )
+            )
+            audit[name] = list(values)
+        routes[route_key] = {
+            "route_status": route.status,
+            "sample_rows": len(frame),
+            "all_pricing_values_missing_rows": missing_rows,
+            "join_status_counts": {
+                str(key): int(value) for key, value in joined.items()
+            },
+            "audit": audit,
+        }
+    return {"enabled": True, "routes": routes}
 
 
 def _project_samples(

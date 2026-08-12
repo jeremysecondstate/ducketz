@@ -49,7 +49,9 @@ python -m datafetching.orchestrate `
 3. Active Pricing. Each readiness target is handled idempotently. Missing GP
 support uses the causal Black-Scholes mean with a wider interval. A transient
 missing readiness pointer remains retryable and creates no empty terminal
-target artifact:
+target artifact. If Loop A readiness arrives late, the exact target remains
+eligible only through its unchanged 1,200-second causal window; a slow research
+tail cannot mark a newer still-recoverable boundary as missed:
 
 ```powershell
 python -m ml.option_pricing_runtime `
@@ -62,9 +64,14 @@ python -m ml.option_pricing_runtime `
 ```
 
 4. Independent Options capture. It starts on the same phase as Pricing and
-waits on the target pointer. A verified Pricing receipt releases it
-immediately; timeout or Pricing failure still captures the Schwab chain, which
-is required for the next observation:
+waits briefly on the target pointer, but neither missing Pricing nor delayed
+Loop A readiness prevents the one Schwab request for an actionable target.
+Without exact readiness the raw response is checksum-sealed under the separate
+non-production `options/pending-captures/schwab` authority. The runtime polls
+that authority while waiting for later boundaries, reconciles it through the
+ordinary committed snapshot contract when readiness arrives inside 1,200
+seconds, and never backdates availability. Closed-market cycles make no new
+Schwab request but may reconcile an already captured response:
 
 ```powershell
 python -m datafetching.options_runtime `
@@ -76,9 +83,13 @@ python -m datafetching.options_runtime `
   --bar-readiness-mode required
 ```
 
-5. Directional Loop B. The active v2 profile consumes only receipt-verified
-compact pricing surfaces and enforces freshness from both the market target
-and the first publication time:
+5. Directional Loop B. The active v2 feature profile consumes receipt-verified
+v2 compact Pricing surfaces strictly and normalizes an exact verified legacy
+v1 surface in memory only. It enforces freshness from both the original market
+target and canonical first availability. Valid missing, stale, or uncovered
+Pricing rows remain audited null `opx__` inputs for the existing imputer;
+corruption, unsupported contracts, and automation-enabled evidence abort the
+whole Loop B publication:
 
 ```powershell
 python -m ml.prediction_runtime `

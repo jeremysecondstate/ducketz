@@ -41,6 +41,8 @@ def persist_schwab_option_snapshot(
     quote_cutoff_at: datetime | pd.Timestamp | None = None,
     regime_available_not_after: datetime | pd.Timestamp | None = None,
     pricing_barrier: Mapping[str, object] | None = None,
+    receipt_published_at: datetime | pd.Timestamp | None = None,
+    capture_provenance: Mapping[str, object] | None = None,
     acquire_writer_lock: bool = True,
 ) -> OptionSnapshotOutput:
     if acquire_writer_lock:
@@ -57,6 +59,8 @@ def persist_schwab_option_snapshot(
                 quote_cutoff_at=quote_cutoff_at,
                 regime_available_not_after=regime_available_not_after,
                 pricing_barrier=pricing_barrier,
+                receipt_published_at=receipt_published_at,
+                capture_provenance=capture_provenance,
             )
     return _persist_schwab_option_snapshot(
         datastore_root,
@@ -67,6 +71,8 @@ def persist_schwab_option_snapshot(
         quote_cutoff_at=quote_cutoff_at,
         regime_available_not_after=regime_available_not_after,
         pricing_barrier=pricing_barrier,
+        receipt_published_at=receipt_published_at,
+        capture_provenance=capture_provenance,
     )
 
 
@@ -80,6 +86,8 @@ def _persist_schwab_option_snapshot(
     quote_cutoff_at: datetime | pd.Timestamp | None = None,
     regime_available_not_after: datetime | pd.Timestamp | None = None,
     pricing_barrier: Mapping[str, object] | None = None,
+    receipt_published_at: datetime | pd.Timestamp | None = None,
+    capture_provenance: Mapping[str, object] | None = None,
 ) -> OptionSnapshotOutput:
     observed_at = _as_utc_timestamp(fetched_at)
     cutoff_at = (
@@ -137,6 +145,21 @@ def _persist_schwab_option_snapshot(
                 "fetched_at": observed_at,
                 "available_at": observed_at,
                 "payload_json": json.dumps(payload, default=str, sort_keys=True),
+                "capture_provenance_json": (
+                    json.dumps(
+                        dict(capture_provenance),
+                        default=str,
+                        sort_keys=True,
+                    )
+                    if capture_provenance is not None
+                    else None
+                ),
+                "response_received_at": (
+                    _as_utc_timestamp(capture_provenance["response_received_at"])
+                    if capture_provenance is not None
+                    and capture_provenance.get("response_received_at") is not None
+                    else observed_at
+                ),
                 "schema_version": OPTION_CHAIN_SCHEMA_VERSION,
             }
         ]
@@ -152,6 +175,7 @@ def _persist_schwab_option_snapshot(
         features=features,
         request_started_at=cutoff_at,
         pricing_barrier=pricing_barrier,
+        receipt_published_at=receipt_published_at,
     )
     _atomic_upsert(raw_path, raw, keys=_SNAPSHOT_KEY)
     _atomic_upsert(contracts_path, contracts, keys=_CONTRACT_KEY)

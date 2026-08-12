@@ -22,7 +22,7 @@ from ml.parquet_contracts import (
 
 OPTION_PRICING_PUBLICATION_VERSION = "option-pricing-publication-v2"
 OPTION_PRICING_POINTER_VERSION = "option-pricing-pointer-v2"
-_LEGACY_OPTION_PRICING_PUBLICATION_VERSION = "option-pricing-publication-v1"
+LEGACY_OPTION_PRICING_PUBLICATION_VERSION = "option-pricing-publication-v1"
 _LEGACY_OPTION_PRICING_POINTER_VERSIONS = {"option-pricing-pointer-v1"}
 OPTION_PRICING_RECEIPT_NAME = "publication.json"
 OPTION_PRICING_REQUIRED_OUTPUTS = {
@@ -33,7 +33,7 @@ OPTION_PRICING_REQUIRED_OUTPUTS = {
     "pricing-monitoring.parquet": OPTION_PRICING_MONITORING_SCHEMA,
 }
 _OPTION_PRICING_REQUIRED_OUTPUTS_BY_VERSION = {
-    _LEGACY_OPTION_PRICING_PUBLICATION_VERSION: {
+    LEGACY_OPTION_PRICING_PUBLICATION_VERSION: {
         **OPTION_PRICING_REQUIRED_OUTPUTS,
         "pricing-surfaces.parquet": LEGACY_OPTION_PRICING_SURFACE_SCHEMA,
     },
@@ -203,6 +203,46 @@ def authoritative_option_pricing_runs(
     return output
 
 
+def read_option_pricing_publication_at(
+    datastore_root: Path,
+    *,
+    available_not_after: object,
+) -> OptionPricingPublication:
+    """Return the newest fully verified publication causal by ``available_not_after``.
+
+    The current authority and its complete receipt chain are verified before a
+    cutoff is applied.  The selected historical run is then verified with its
+    full manifest, output checksums, and physical Parquet contracts.  This is
+    deliberately not a recovery search: corruption in the current authority or
+    selected run is fatal and never causes an older run to be substituted.
+    """
+
+    root = Path(datastore_root).resolve()
+    cutoff = _utc(available_not_after, "available_not_after")
+    current = read_current_option_pricing_publication(root)
+    record: object = current.pointer["current"]
+    while record is not None:
+        _validate_record(record, label="Pricing chain record")
+        published = _utc(record.get("published_at"), "published_at")
+        if published <= cutoff:
+            if str(record["run_path"]) == str(
+                current.pointer["current"]["run_path"]
+            ):
+                return current
+            manifest, receipt = _verify_record(root, record)
+            return OptionPricingPublication(
+                _run_from_record(root, record),
+                manifest,
+                receipt,
+                current.pointer,
+            )
+        _manifest, receipt = _verify_record_metadata(root, record)
+        record = receipt.get("previous_publication")
+    raise FileNotFoundError(
+        "No verified reachable Pricing publication was available by the causal cutoff"
+    )
+
+
 def resolve_current_option_pricing_output(
     datastore_root: Path,
     name: str,
@@ -325,6 +365,7 @@ def _verify_record(
         raise OptionPricingPublicationError(
             f"Pricing pointer/chain record does not match receipt: {run}"
         )
+    manifest_version = _publication_contract_version(manifest)
     manifest_timestamp = _utc(manifest.get("run_timestamp"), "manifest run timestamp")
     receipt_timestamp = _utc(receipt.get("run_timestamp"), "receipt run timestamp")
     published = _utc(receipt.get("published_at"), "receipt published_at")
@@ -332,8 +373,7 @@ def _verify_record(
     if previous is not None:
         _validate_record(previous, label="previous Pricing publication")
     if (
-        receipt.get("schema_version")
-        not in _OPTION_PRICING_REQUIRED_OUTPUTS_BY_VERSION
+        receipt.get("schema_version") != manifest_version
         or receipt.get("run_path") != run.relative_to(root).as_posix()
         or receipt.get("manifest_checksum_sha256") != file_checksum(run / "manifest.json")
         or receipt_timestamp != manifest_timestamp
@@ -535,6 +575,7 @@ def _utc(value: object, label: str) -> pd.Timestamp:
 
 
 __all__ = [
+    "LEGACY_OPTION_PRICING_PUBLICATION_VERSION",
     "OPTION_PRICING_PUBLICATION_VERSION",
     "OPTION_PRICING_RECEIPT_NAME",
     "OPTION_PRICING_REPORT_NAME",
@@ -544,6 +585,7 @@ __all__ = [
     "pricing_pointer_path",
     "publish_option_pricing_run",
     "read_current_option_pricing_publication",
+    "read_option_pricing_publication_at",
     "receipt_proven_prediction_rows",
     "resolve_current_option_pricing_output",
 ]

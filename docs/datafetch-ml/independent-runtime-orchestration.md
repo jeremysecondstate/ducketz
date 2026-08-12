@@ -91,17 +91,23 @@ creates no empty terminal artifact and remains retryable until the target's
 freshness deadline. Options separately waits up to 45 seconds for the verified
 Pricing target authority. A Pricing failure or missing barrier is recorded as
 `TIMED_OUT` (or `MISSING` with zero wait), but capture still proceeds; Options
-never infers bar readiness from Pricing.
+never infers bar readiness from Pricing. If exact Loop A readiness is not yet
+available, Options first writes an immutable request claim, fetches that
+target/symbol once, and checksum-seals the response under
+`options/pending-captures/schwab`. That authority is non-production and is not
+visible to committed-snapshot readers.
 
 When no eligible target exists, Pricing and Options report
 `cycle_mode=MONITOR_ONLY` and `target_state=MARKET_CLOSED_IDLE`, explain the
 calendar reason, and print the next eligible phase time. Pricing does not append a
 target outcome or full research generation. Options does not authenticate to
-Schwab, request a chain, or write decision-clock errors. Thus repeated closed
-cycles do not grow the target chain or treat a closure as a lost evidence
-opportunity. `TARGET_ALREADY_OBSERVED` remains distinct: it means a verified
-Options receipt already owns an otherwise actionable target, such as after a
-runtime restart.
+Schwab, request a new chain, or create a new calendar target. It does first
+verify and reconcile earlier pending captures; a still-causal capture may
+therefore produce one ordinary committed receipt during a closed-market cycle.
+Expired captures remain explicitly non-production. Thus repeated closed cycles
+do not grow the target chain or treat a closure as a lost evidence opportunity.
+`TARGET_ALREADY_OBSERVED` remains distinct: it means a verified Options receipt
+already owns an otherwise actionable target, such as after a runtime restart.
 
 ## Three clocks and causal selection
 
@@ -121,7 +127,11 @@ Snapshots record event age, receipt age, and quality status.
 
 An Options receipt also separates `snapshot_for` from `available_at`.
 `snapshot_for` is the cycle's exact expected completed Databento 1m boundary;
-`available_at` is when the local Schwab response completed. Realized-volatility
+for an immediately ready capture, `available_at` is when the local Schwab
+response completed. A reconciled pending capture preserves request, response,
+and provider quote clocks separately and sets canonical `available_at` no
+earlier than response receipt, exact Loop A readiness, reconciliation, and
+receipt publication. It is never reset to `snapshot_for`. Realized-volatility
 context is capped at the last successfully committed Loop A generation. An
 active or failed Loop A cycle does not hide or replace that prior committed
 cutoff, and the Options process never waits for the active cycle.
@@ -195,13 +205,14 @@ before processing any symbol:
    health work after the target authority. This shadow research tail does not
    hold Options, Loop B, or Strategy open.
 
-The Pricing writer lock prevents overlapping cycles. If a complete tail ever
-runs across one or more later actionable boundaries, the runtime publishes an
-empty, immutable `PRICING_TIMED_OUT` target outcome for each missed eligible
-target before scheduling the next live cycle. Closed-session wall-clock
-boundaries are filtered by the same calendar decision and create no target
-artifacts. Late skip receipts are audit evidence only and can never create
-prospective credit or be replaced by a backfill.
+The Pricing writer lock prevents overlapping cycles. If a complete tail runs
+across later actionable boundaries, the scheduler protects the newest exact
+boundary that is still inside the unchanged 1,200-second causal window and runs
+it immediately. Only truly expired intervening targets receive an empty,
+immutable `PRICING_TIMED_OUT` outcome. Closed-session wall-clock boundaries are
+filtered by the same calendar decision and create no target artifacts. Late
+skip receipts are audit evidence only and can never create prospective credit
+or be replaced by a backfill.
 
 `TARGET_ALREADY_OBSERVED` remains the no-backfill guard: a target Options receipt
 was visible before prediction creation. `NO_ELIGIBLE_CONTRACTS` means a strictly
@@ -243,7 +254,10 @@ Options barrier verification versus terminal outcome, whether Schwab was called,
 request start, response, and receipt availability. Pricing prints current-target
 rows and new prospective prediction/evaluation deltas separately from cumulative
 carried research inventory. Identical symbol outcomes are grouped unless
-`--per-symbol-detail` is selected.
+`--per-symbol-detail` is selected. Closed cycles also report the last verified
+Pricing authority path, publication and compact-surface versions, publication
+time and age, whether legacy normalization is required, horizons still fresh
+under both clocks, and pending/reconciled/expired Options capture counts.
 
 Pricing health records stage timings for preflight, target authority, research
 preparation, generation publication/lineage, and the post-publication
@@ -276,10 +290,16 @@ liveness budgets.
   returns that authority instead of replacing or backfilling it. Legacy empty
   readiness artifacts alone may be superseded before the freshness deadline.
   The Pricing runtime lock prevents overlapping cycle owners.
-- Options retries or skips independently. Loop A continues with fundamentals,
-  technicals, and signals, and Loop B reuses the newest causally eligible
-  committed option receipt subject to the target/event and first-availability
-  freshness limits.
+- A pending Options request is the durable at-most-once request claim. Restart
+  verifies its identity and checksum, never calls Schwab again for that
+  target/symbol, and either reconciles the exact response once or terminally
+  expires it. A crash after ordinary snapshot publication but before the
+  reconciliation marker is recovered only when the committed raw provenance
+  matches the pending capture checksum.
+- Loop A continues with fundamentals, technicals, and signals, and Loop B
+  reuses the newest causally eligible committed option receipt subject to the
+  target/event and first-availability freshness limits. Pending captures are
+  never discoverable by Loop B or Strategy.
 - Strategy retries the current Loop B source until it publishes a matching
   Strategy receipt. A slow Strategy run cannot hold directional predictions
   open.

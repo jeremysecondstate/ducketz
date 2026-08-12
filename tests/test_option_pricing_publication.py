@@ -15,6 +15,7 @@ from ml.option_pricing.publication import (
     pricing_pointer_path,
     publish_option_pricing_run,
     read_current_option_pricing_publication,
+    read_option_pricing_publication_at,
 )
 from ml.option_pricing_runtime import resolve_pricing_symbols, run_option_pricing_once
 from ml.parquet_contracts import (
@@ -224,6 +225,39 @@ def test_pricing_publication_detects_output_tampering(tmp_path: Path) -> None:
         handle.write(b"tamper")
     with pytest.raises(OptionPricingPublicationError, match="manifest is invalid"):
         read_current_option_pricing_publication(tmp_path)
+
+
+def test_causal_publication_selection_never_hides_newer_corruption(
+    tmp_path: Path,
+) -> None:
+    first = _prepared_run(
+        tmp_path,
+        "20260706T140100.000000Z",
+        "2026-07-06T14:01:00Z",
+    )
+    publish_option_pricing_run(
+        tmp_path,
+        run_directory=first,
+        published_at="2026-07-06T14:01:01Z",
+    )
+    second = _prepared_run(
+        tmp_path,
+        "20260706T141600.000000Z",
+        "2026-07-06T14:16:00Z",
+    )
+    publish_option_pricing_run(
+        tmp_path,
+        run_directory=second,
+        published_at="2026-07-06T14:16:01Z",
+    )
+    with (second / "pricing-surfaces.parquet").open("ab") as handle:
+        handle.write(b"tamper")
+
+    with pytest.raises(OptionPricingPublicationError, match="manifest is invalid"):
+        read_option_pricing_publication_at(
+            tmp_path,
+            available_not_after="2026-07-06T14:05:00Z",
+        )
 
 
 def test_pricing_publication_rejects_path_escape(tmp_path: Path) -> None:

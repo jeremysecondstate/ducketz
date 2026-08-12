@@ -58,7 +58,19 @@ from ml.parquet_contracts import (
     write_parquet_with_schema,
 )
 from options import OptionSnapshotOutput
-from options.publication import publish_option_snapshot, read_option_snapshot
+from options.pending_capture import (
+    PendingOptionCaptureError,
+    pending_option_capture_counts,
+    pending_option_capture_directory,
+    read_pending_option_capture,
+    reconcile_pending_option_captures,
+)
+from options.publication import (
+    committed_option_snapshots,
+    publish_option_snapshot,
+    read_option_snapshot,
+)
+from options.snapshot import persist_schwab_option_snapshot
 
 
 def test_loop_a_readiness_is_atomic_all_symbol_and_exact_target(tmp_path: Path) -> None:
@@ -623,6 +635,280 @@ def test_options_timeout_preserves_capture_and_one_target_across_boundary(
     )
 
 
+@pytest.mark.parametrize(
+    ("readiness_delay_minutes", "expected_status"),
+    ((13, "RECONCILED"), (19, "RECONCILED"), (22, "EXPIRED")),
+)
+def test_pending_capture_reconciles_or_expires_without_another_schwab_request(
+    tmp_path: Path,
+    readiness_delay_minutes: int,
+    expected_status: str,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    _write_bar(tmp_path, symbol="GOOG", target=target, close=100.0)
+
+    class Session:
+        calls = 0
+
+        @classmethod
+        def get_option_chain_snapshot(
+            cls, *_args: object, **_kwargs: object
+        ) -> dict[str, object]:
+            cls.calls += 1
+            return _pending_option_payload(target)
+
+    captured = run_options_cycle(
+        ParquetStore(tmp_path),
+        symbols=("GOOG",),
+        session=Session(),  # type: ignore[arg-type]
+        clock=lambda: (target + pd.Timedelta(minutes=1)).to_pydatetime(),
+        target_snapshot_for=target,
+        pricing_barrier_timeout_seconds=0,
+        bar_readiness_mode="required",
+        reporter=None,
+    )
+    restarted = run_options_cycle(
+        ParquetStore(tmp_path),
+        symbols=("GOOG",),
+        session=Session(),  # type: ignore[arg-type]
+        clock=lambda: (target + pd.Timedelta(minutes=2)).to_pydatetime(),
+        target_snapshot_for=target,
+        pricing_barrier_timeout_seconds=0,
+        bar_readiness_mode="required",
+        reporter=None,
+    )
+
+    assert captured.pending_captures == 1
+    assert restarted.pending_captures == 1
+    assert Session.calls == 1
+    assert committed_option_snapshots(tmp_path, symbol="GOOG") == ()
+    pending_directory = pending_option_capture_directory(
+        tmp_path,
+        symbol="GOOG",
+        target_snapshot_for=target,
+    )
+    pending_capture = read_pending_option_capture(pending_directory)
+    pending_envelope = json.loads(
+        pending_capture.capture_path.read_text(encoding="utf-8")
+    )
+    assert pending_capture.response_received_at == target + pd.Timedelta(minutes=1)
+    assert pending_capture.fetched_at == pending_capture.response_received_at
+    assert pending_capture.provider_quote_timestamps == (
+        target + pd.Timedelta(seconds=30),
+    )
+    assert pending_envelope["status"] == "PENDING_READINESS"
+    assert pending_envelope["automated_action_allowed"] is False
+    assert pending_envelope["pricing_barrier"]["status"] == "MISSING"
+    ready_at = target + pd.Timedelta(minutes=readiness_delay_minutes)
+    publish_bar_readiness(
+        tmp_path,
+        target_snapshot_for=target,
+        symbols=("GOOG",),
+        loop_a_generation="delayed-loop-a",
+        as_of=ready_at,
+        clock=lambda: ready_at,
+    )
+    reconciled_at = ready_at + pd.Timedelta(seconds=1)
+    summary = reconcile_pending_option_captures(
+        tmp_path,
+        reconciled_at=reconciled_at,
+        persist=persist_schwab_option_snapshot,
+    )
+    repeated = reconcile_pending_option_captures(
+        tmp_path,
+        reconciled_at=reconciled_at + pd.Timedelta(seconds=1),
+        persist=persist_schwab_option_snapshot,
+    )
+
+    snapshots = committed_option_snapshots(tmp_path, symbol="GOOG")
+    if expected_status == "RECONCILED":
+        assert summary.newly_reconciled == 1
+        assert repeated.newly_reconciled == 0
+        assert len(snapshots) == 1
+        assert snapshots[0].available_at == reconciled_at
+        raw = pd.read_parquet(snapshots[0].raw_path)
+        assert pd.Timestamp(raw.iloc[0]["response_received_at"]) == target + pd.Timedelta(
+            minutes=1
+        )
+        assert snapshots[0].receipt["request_started_at"] == (
+            target + pd.Timedelta(minutes=1)
+        ).isoformat()
+    else:
+        assert summary.expired == 1
+        assert repeated.expired == 1
+        assert not snapshots
+    assert Session.calls == 1
+
+
+def test_closed_market_cycle_reconciles_pending_without_calling_schwab(
+    tmp_path: Path,
+) -> None:
+    target = pd.Timestamp("2026-08-10T20:00:00Z")
+    _write_bar(tmp_path, symbol="GOOG", target=target, close=100.0)
+
+    class CaptureSession:
+        calls = 0
+
+        @classmethod
+        def get_option_chain_snapshot(
+            cls, *_args: object, **_kwargs: object
+        ) -> dict[str, object]:
+            cls.calls += 1
+            return _pending_option_payload(target)
+
+    run_options_cycle(
+        ParquetStore(tmp_path),
+        symbols=("GOOG",),
+        session=CaptureSession(),  # type: ignore[arg-type]
+        clock=lambda: (target + pd.Timedelta(minutes=1)).to_pydatetime(),
+        target_snapshot_for=target,
+        pricing_barrier_timeout_seconds=0,
+        reporter=None,
+    )
+    ready_at = target + pd.Timedelta(minutes=13)
+    publish_bar_readiness(
+        tmp_path,
+        target_snapshot_for=target,
+        symbols=("GOOG",),
+        loop_a_generation="delayed-close-loop-a",
+        as_of=ready_at,
+        clock=lambda: ready_at,
+    )
+
+    class ClosedSession:
+        @staticmethod
+        def get_option_chain_snapshot(*_args: object, **_kwargs: object):
+            raise AssertionError("Closed reconciliation must not call Schwab")
+
+    closed = run_options_cycle(
+        ParquetStore(tmp_path),
+        symbols=("GOOG",),
+        session=ClosedSession(),  # type: ignore[arg-type]
+        clock=lambda: (target + pd.Timedelta(minutes=16)).to_pydatetime(),
+        reporter=None,
+    )
+
+    assert closed.target_state == "MARKET_CLOSED_IDLE"
+    assert closed.schwab_called is False
+    assert closed.published == 1
+    assert closed.reconciled_captures == 1
+    assert CaptureSession.calls == 1
+    assert len(committed_option_snapshots(tmp_path, symbol="GOOG")) == 1
+    counts = pending_option_capture_counts(tmp_path)
+    assert counts.pending == 0
+    assert counts.reconciled == 1
+
+
+def test_delayed_readiness_does_not_skip_the_next_quarter_hour_capture(
+    tmp_path: Path,
+) -> None:
+    first_target = pd.Timestamp("2026-08-10T17:00:00Z")
+    second_target = first_target + pd.Timedelta(minutes=15)
+    _write_bar(tmp_path, symbol="GOOG", target=first_target, close=100.0)
+    bar_directory = (
+        tmp_path
+        / "stocks"
+        / "GOOG"
+        / "bars"
+        / "1m"
+        / "databento"
+        / "normalized"
+    )
+    (bar_directory / "bars.parquet").replace(bar_directory / "first.parquet")
+    _write_bar(tmp_path, symbol="GOOG", target=second_target, close=100.0)
+
+    class Session:
+        calls = 0
+
+        @classmethod
+        def get_option_chain_snapshot(
+            cls, *_args: object, **_kwargs: object
+        ) -> dict[str, object]:
+            cls.calls += 1
+            return _pending_option_payload(first_target)
+
+    for target in (first_target, second_target):
+        result = run_options_cycle(
+            ParquetStore(tmp_path),
+            symbols=("GOOG",),
+            session=Session(),  # type: ignore[arg-type]
+            clock=lambda target=target: (
+                target + pd.Timedelta(minutes=1)
+            ).to_pydatetime(),
+            target_snapshot_for=target,
+            pricing_barrier_timeout_seconds=0,
+            reporter=None,
+        )
+        assert result.schwab_requests == 1
+
+    assert Session.calls == 2
+    assert pending_option_capture_counts(tmp_path).pending == 2
+    ready_at = first_target + pd.Timedelta(minutes=19)
+    publish_bar_readiness(
+        tmp_path,
+        target_snapshot_for=first_target,
+        symbols=("GOOG",),
+        loop_a_generation="delayed-first-target",
+        as_of=ready_at,
+        clock=lambda: ready_at,
+    )
+    summary = reconcile_pending_option_captures(
+        tmp_path,
+        reconciled_at=ready_at + pd.Timedelta(seconds=1),
+        persist=persist_schwab_option_snapshot,
+    )
+
+    assert summary.newly_reconciled == 1
+    assert summary.pending == 1
+    assert Session.calls == 2
+    snapshots = committed_option_snapshots(tmp_path, symbol="GOOG")
+    assert [snapshot.snapshot_for for snapshot in snapshots] == [first_target]
+
+
+def test_pending_payload_tampering_is_fatal_and_never_promoted(
+    tmp_path: Path,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    _write_bar(tmp_path, symbol="GOOG", target=target, close=100.0)
+
+    class Session:
+        @staticmethod
+        def get_option_chain_snapshot(
+            *_args: object, **_kwargs: object
+        ) -> dict[str, object]:
+            return _pending_option_payload(target)
+
+    run_options_cycle(
+        ParquetStore(tmp_path),
+        symbols=("GOOG",),
+        session=Session(),  # type: ignore[arg-type]
+        clock=lambda: (target + pd.Timedelta(minutes=1)).to_pydatetime(),
+        target_snapshot_for=target,
+        pricing_barrier_timeout_seconds=0,
+        reporter=None,
+    )
+    directory = pending_option_capture_directory(
+        tmp_path,
+        symbol="GOOG",
+        target_snapshot_for=target,
+    )
+    capture = read_pending_option_capture(directory)
+    envelope = json.loads(capture.capture_path.read_text(encoding="utf-8"))
+    envelope["raw_payload"]["symbol"] = "NVDA"
+    capture.capture_path.write_text(
+        json.dumps(envelope, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(PendingOptionCaptureError, match="checksum"):
+        reconcile_pending_option_captures(
+            tmp_path,
+            reconciled_at=target + pd.Timedelta(minutes=2),
+            persist=persist_schwab_option_snapshot,
+        )
+    assert committed_option_snapshots(tmp_path, symbol="GOOG") == ()
+
+
 def test_verified_pricing_failure_is_a_noncreditable_options_barrier(
     tmp_path: Path,
 ) -> None:
@@ -1180,6 +1466,51 @@ def _write_bar(root: Path, *, symbol: str, target: pd.Timestamp, close: float) -
         ),
         directory / "bars.parquet",
     )
+
+
+def _pending_option_payload(target: pd.Timestamp) -> dict[str, object]:
+    quote_at = target + pd.Timedelta(seconds=30)
+    quote_ms = int(quote_at.timestamp() * 1000)
+    return {
+        "symbol": "GOOG",
+        "underlyingPrice": 100.0,
+        "interestRate": 4.0,
+        "dividendYield": 0.5,
+        "underlying": {
+            "symbol": "GOOG",
+            "mark": 100.0,
+            "quoteTime": quote_ms,
+        },
+        "callExpDateMap": {
+            "2026-09-18:39": {
+                "100.0": [
+                    {
+                        "symbol": "GOOG-C100",
+                        "strikePrice": 100.0,
+                        "expirationDate": "2026-09-18T20:00:00Z",
+                        "daysToExpiration": 39,
+                        "underlyingPrice": 100.0,
+                        "bid": 1.0,
+                        "ask": 1.2,
+                        "mark": 1.1,
+                        "last": 1.1,
+                        "totalVolume": 100,
+                        "openInterest": 1_000,
+                        "volatility": 25.0,
+                        "delta": 0.5,
+                        "gamma": 0.03,
+                        "theta": -0.04,
+                        "vega": 0.12,
+                        "rho": 0.02,
+                        "quoteTimeInLong": quote_ms,
+                        "tradeTimeInLong": quote_ms,
+                        "multiplier": 100,
+                    }
+                ]
+            }
+        },
+        "putExpDateMap": {},
+    }
 
 
 def _publish_prediction(
