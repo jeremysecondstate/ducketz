@@ -14,7 +14,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```
 
 The checked-in watchlist is the authoritative ten-symbol scope:
-`NVDA GOOG MU AAPL MSFT AMZN META TSLA CAT SNDK`.
+`NVDA GOOG MU AAPL AMZN CAT SNDK`.
 
 For a datastore created before the point-in-time rate bridge, perform this
 one-time causal seed before starting the runtimes. Loop A maintains it after
