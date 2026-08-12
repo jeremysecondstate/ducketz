@@ -62,7 +62,7 @@ python -m ml.option_pricing_runtime `
   --interval-minutes 15 `
   --phase-offset-minutes 1 `
   --bar-readiness-mode required `
-  --bar-readiness-timeout-seconds 30
+  --bar-readiness-timeout-seconds 300
 ```
 
 4. Independent Options capture. It starts after Loop B's +5 information clock
@@ -83,7 +83,7 @@ python -m datafetching.options_runtime `
   --watchlist datafetching\watchlist.txt `
   --interval-minutes 15 `
   --phase-offset-minutes 6 `
-  --pricing-barrier-timeout-seconds 45 `
+  --pricing-barrier-timeout-seconds 315 `
   --bar-readiness-mode required
 ```
 
