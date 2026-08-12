@@ -47,11 +47,13 @@ python -m datafetching.orchestrate `
 ```
 
 3. Active Pricing. Each readiness target is handled idempotently. Missing GP
-support uses the causal Black-Scholes mean with a wider interval. A transient
-missing readiness pointer remains retryable and creates no empty terminal
-target artifact. If Loop A readiness arrives late, the exact target remains
-eligible only through its unchanged 1,200-second causal window; a slow research
-tail cannot mark a newer still-recoverable boundary as missed:
+support uses the causal Black-Scholes mean with a wider interval. Pricing waits
+once for the configured exact Loop A readiness deadline. If it expires, Pricing
+skips that target, leaves the current Pricing authority unchanged, and advances
+to the next eligible target without creating an empty terminal artifact. The
+separate 1,200-second causal window still rejects stale sources and backdated
+predictions; a slow research tail cannot mark a newer still-recoverable boundary
+as missed:
 
 ```powershell
 python -m ml.option_pricing_runtime `

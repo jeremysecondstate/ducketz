@@ -1505,8 +1505,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         type=float,
         default=45.0,
         help=(
-            "Monotonic bounded wait for exact Loop A readiness. A timeout remains "
-            "retryable and never publishes an empty terminal artifact."
+            "Monotonic bounded wait for exact Loop A readiness. A timeout skips "
+            "that target and never publishes an empty terminal artifact."
         ),
     )
     parser.add_argument(
@@ -1627,7 +1627,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                             args.bar_readiness_timeout_seconds
                         ),
                         phase_offset_minutes=args.phase_offset_minutes,
-                        once=args.once,
                     )
                     report_pricing_result(
                         result,
@@ -1654,31 +1653,100 @@ def _run_pricing_until_ready(
     bar_readiness_mode: str,
     bar_readiness_timeout_seconds: float,
     phase_offset_minutes: int,
-    once: bool,
+    runtime_clock: Callable[[], object] | None = None,
+    readiness_sleeper: Callable[[float], None] = time.sleep,
+    monotonic_clock: Callable[[], float] = time.monotonic,
 ) -> OptionPricingRuntimeResult:
+    if bar_readiness_timeout_seconds < 0:
+        raise ValueError("bar_readiness_timeout_seconds cannot be negative")
     target = utc_timestamp(target_snapshot_for)
-    deadline = target + pd.Timedelta(
-        seconds=ContractSelectionPolicy().maximum_source_staleness_seconds
-    )
+    clock = runtime_clock or utc_timestamp
+    wait_started_at = utc_timestamp(clock())
+    monotonic_deadline = monotonic_clock() + float(bar_readiness_timeout_seconds)
+    last_error = ""
     while True:
+        remaining = max(0.0, monotonic_deadline - monotonic_clock())
         try:
             return run_option_pricing_once(
                 root,
                 symbols=symbols,
+                run_timestamp=clock(),
+                runtime_clock=clock,
                 target_snapshot_for=target,
                 bar_readiness_mode=bar_readiness_mode,
-                bar_readiness_timeout_seconds=bar_readiness_timeout_seconds,
+                bar_readiness_timeout_seconds=remaining,
+                readiness_sleeper=readiness_sleeper,
+                monotonic_clock=monotonic_clock,
                 phase_offset_minutes=phase_offset_minutes,
             )
-        except RetryablePricingReadinessError:
-            now = utc_timestamp()
-            if once or now >= deadline:
-                raise
-            print(
-                "Pricing delayed: waiting on the exact readiness pointer; "
-                "Options capture remains independent."
-            )
-            time.sleep(min(2.0, max((deadline - now).total_seconds(), 0.0)))
+        except RetryablePricingReadinessError as exc:
+            last_error = str(exc)
+            remaining = monotonic_deadline - monotonic_clock()
+            if remaining <= 0:
+                break
+            readiness_sleeper(min(0.25, remaining))
+
+    observed_at = max(
+        utc_timestamp(clock()),
+        wait_started_at + pd.Timedelta(seconds=float(bar_readiness_timeout_seconds)),
+    )
+    decision = replace(
+        cycle_target_decision(target),
+        observed_at=observed_at,
+    ).with_runtime_state(
+        readiness_available=False,
+        deadline_at=observed_at,
+        reason=(
+            "Exact all-symbol Loop A readiness did not arrive within the configured "
+            f"{bar_readiness_timeout_seconds:g}-second deadline; this target was "
+            "skipped without changing the current Pricing authority."
+            + (f" Last readiness error: {last_error}" if last_error else "")
+        ),
+    )
+    return _readiness_deadline_missed_result(
+        decision=decision,
+        target_snapshot_for=target,
+        phase_offset_minutes=phase_offset_minutes,
+    )
+
+
+def _readiness_deadline_missed_result(
+    *,
+    decision: CycleTargetDecision,
+    target_snapshot_for: pd.Timestamp,
+    phase_offset_minutes: int,
+) -> OptionPricingRuntimeResult:
+    """Return a write-free skip result; prior Pricing authority stays untouched."""
+
+    return OptionPricingRuntimeResult(
+        run_directory=None,
+        sample_rows=0,
+        prediction_rows=0,
+        evaluation_rows=0,
+        surface_rows=0,
+        monitoring_rows=0,
+        models_trained=0,
+        models_reused=0,
+        published_at=None,
+        route_errors={},
+        live_routes={},
+        eligibility_report_directory=None,
+        gate_status="NOT_EVALUATED",
+        health_path=None,
+        health_status="UNCHANGED",
+        health_exit_code=0,
+        target_snapshot_for=target_snapshot_for,
+        target_outcome_directory=None,
+        target_outcome_status="SKIPPED_READINESS_DEADLINE",
+        target_published_at=None,
+        stage_timings={},
+        cycle_mode=decision.cycle_mode,
+        target_state=decision.target_state.value,
+        reason=decision.reason,
+        next_eligible_cycle=decision.next_eligible_cycle(
+            phase_offset_minutes=phase_offset_minutes
+        ),
+    )
 
 
 def report_pricing_result(
@@ -1697,6 +1765,14 @@ def report_pricing_result(
         if result.next_eligible_cycle is not None
         else "UNKNOWN"
     )
+    if result.target_state == CycleTargetState.READINESS_DEADLINE_MISSED.value:
+        reporter(
+            "Pricing target skipped: "
+            f"target_state={result.target_state}; target={target}; "
+            f"reason={result.reason}; next_eligible_cycle={next_cycle}; "
+            "pricing_authority=UNCHANGED; options_capture=INDEPENDENT"
+        )
+        return
     reporter(
         "Pricing cycle: "
         f"cycle_mode={result.cycle_mode}; target_state={result.target_state}; "

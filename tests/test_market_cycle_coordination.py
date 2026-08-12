@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -18,7 +19,10 @@ from datafetching.parquet_store import ParquetStore
 from ml.option_pricing.target_outcome import read_target_outcome
 from ml.option_pricing_runtime import (
     RetryablePricingReadinessError,
+    _missed_boundaries,
     _pricing_boundary_is_recoverable,
+    _run_pricing_until_ready,
+    next_boundary,
     report_pricing_result,
     run_option_pricing_once,
 )
@@ -102,14 +106,14 @@ def test_pricing_wait_accepts_readiness_before_deadline(tmp_path: Path) -> None:
         ready_offset_seconds=0.5,
     )
 
-    result = run_option_pricing_once(
+    result = _run_pricing_until_ready(
         tmp_path,
         symbols=("GOOG",),
-        run_timestamp=target + pd.Timedelta(minutes=1),
-        runtime_clock=simulation.clock,
         target_snapshot_for=target,
         bar_readiness_mode="required",
         bar_readiness_timeout_seconds=2.0,
+        phase_offset_minutes=1,
+        runtime_clock=simulation.clock,
         readiness_sleeper=simulation.sleep,
         monotonic_clock=simulation.monotonic,
     )
@@ -117,6 +121,116 @@ def test_pricing_wait_accepts_readiness_before_deadline(tmp_path: Path) -> None:
     assert result.target_state == CycleTargetState.ACTIONABLE_EXACT_TARGET.value
     assert result.target_outcome_status != "TARGET_BAR_NOT_READY"
     assert simulation.published is True
+    assert (tmp_path / "ml" / "option-pricing-latest" / "run.json").is_file()
+
+
+def test_pricing_coordinator_rejects_stale_readiness_pointer(
+    tmp_path: Path,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    stale_target = target - pd.Timedelta(minutes=15)
+    _write_bar(tmp_path, symbol="GOOG", target=stale_target)
+    publish_bar_readiness(
+        tmp_path,
+        target_snapshot_for=stale_target,
+        symbols=("GOOG",),
+        loop_a_generation="stale-loop-a",
+        as_of=stale_target + pd.Timedelta(seconds=20),
+        clock=lambda: stale_target + pd.Timedelta(seconds=21),
+    )
+    pricing_pointer = tmp_path / "ml" / "option-pricing-latest" / "run.json"
+    pricing_pointer.parent.mkdir(parents=True)
+    unchanged_pointer = b'{"sentinel":"prior-pricing-authority"}\n'
+    pricing_pointer.write_bytes(unchanged_pointer)
+
+    result = _run_pricing_until_ready(
+        tmp_path,
+        symbols=("GOOG",),
+        target_snapshot_for=target,
+        bar_readiness_mode="required",
+        bar_readiness_timeout_seconds=0,
+        phase_offset_minutes=1,
+        runtime_clock=lambda: target + pd.Timedelta(minutes=1),
+        readiness_sleeper=lambda _seconds: None,
+        monotonic_clock=lambda: 0.0,
+    )
+
+    readiness_pointer = json.loads(
+        (tmp_path / "loop-a" / "bar-readiness-latest" / "run.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert readiness_pointer["current"]["target_snapshot_for"] == stale_target.isoformat()
+    assert result.target_state == CycleTargetState.READINESS_DEADLINE_MISSED.value
+    assert result.target_snapshot_for == target
+    assert result.target_outcome_directory is None
+    assert pricing_pointer.read_bytes() == unchanged_pointer
+    assert not (tmp_path / "ml" / "option-pricing-target-latest" / "run.json").exists()
+
+
+def test_pricing_readiness_deadline_expires_once_without_log_spam(
+    tmp_path: Path,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    simulation = _ReadinessSimulation(
+        tmp_path,
+        target=target,
+        publish_after_seconds=10.0,
+        ready_offset_seconds=10.0,
+    )
+
+    result = _run_pricing_until_ready(
+        tmp_path,
+        symbols=("GOOG",),
+        target_snapshot_for=target,
+        bar_readiness_mode="required",
+        bar_readiness_timeout_seconds=2.0,
+        phase_offset_minutes=1,
+        runtime_clock=simulation.clock,
+        readiness_sleeper=simulation.sleep,
+        monotonic_clock=simulation.monotonic,
+    )
+    output: list[str] = []
+    report_pricing_result(result, reporter=output.append)
+
+    assert simulation.elapsed == pytest.approx(2.0)
+    assert simulation.published is False
+    assert result.target_state == CycleTargetState.READINESS_DEADLINE_MISSED.value
+    assert result.target_outcome_status == "SKIPPED_READINESS_DEADLINE"
+    assert len(output) == 1
+    assert "Pricing target skipped" in output[0]
+    assert "pricing_authority=UNCHANGED" in output[0]
+    assert "options_capture=INDEPENDENT" in output[0]
+
+
+def test_readiness_deadline_skip_advances_to_next_target(tmp_path: Path) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    scheduled_boundary = (target + pd.Timedelta(minutes=1)).to_pydatetime()
+
+    result = _run_pricing_until_ready(
+        tmp_path,
+        symbols=("GOOG",),
+        target_snapshot_for=target,
+        bar_readiness_mode="required",
+        bar_readiness_timeout_seconds=0,
+        phase_offset_minutes=1,
+        runtime_clock=lambda: target + pd.Timedelta(minutes=1),
+        readiness_sleeper=lambda _seconds: None,
+        monotonic_clock=lambda: 0.0,
+    )
+    following_boundary = next_boundary(
+        (target + pd.Timedelta(minutes=1, seconds=1)).to_pydatetime(),
+        interval_minutes=15,
+        phase_offset_minutes=1,
+    )
+
+    assert result.next_eligible_cycle == target + pd.Timedelta(minutes=16)
+    assert following_boundary == result.next_eligible_cycle.to_pydatetime()
+    assert _missed_boundaries(
+        scheduled_boundary,
+        following_boundary,
+        interval_minutes=15,
+    ) == ()
 
 
 def test_late_readiness_remains_retryable_without_empty_terminal(
