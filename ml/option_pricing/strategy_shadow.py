@@ -464,6 +464,8 @@ def _cached_offline_replay_predictions(
     if stat.st_size != size or stat.st_mtime_ns != modified_ns:
         raise RuntimeError("Immutable pricing replay changed during cached read")
     samples = pd.read_parquet(path).drop(columns="id", errors="ignore")
+    if samples.empty:
+        return pd.DataFrame()
     lane = samples.get(
         "evidence_lane", pd.Series("", index=samples.index, dtype="string")
     ).astype("string")

@@ -49,6 +49,7 @@ from ml.option_pricing.schwab_materialization import (
     _route_report,
     _verified_manifest_input_paths,
     collapse_schwab_publications,
+    materialize_loop_native_schwab_history,
     read_current_loop_native_schwab_materialization,
     read_loop_native_schwab_materialization,
 )
@@ -384,6 +385,27 @@ def test_offline_assessment_replay_uses_only_causal_bsgp_crossfit(
             sort_keys=True,
         )
     )
+
+
+def test_empty_materialization_is_a_valid_empty_offline_replay(
+    tmp_path: Path,
+) -> None:
+    materialization = materialize_loop_native_schwab_history(
+        tmp_path,
+        trainer_cutoff="2026-01-09T00:00:00Z",
+        published_at="2026-01-09T00:00:01Z",
+    )
+    sample_path = materialization.directory / "causal-residual-samples.parquet"
+    assert pd.read_parquet(sample_path).columns.tolist() == ["id"]
+
+    catalog = load_strategy_pricing_evidence(
+        tmp_path,
+        available_not_after="2026-01-09T00:00:02Z",
+        include_offline_replay=True,
+    )
+
+    assert catalog.predictions.empty
+    assert not any(error.startswith("offline_replay:") for error in catalog.errors)
 
 
 def test_target_time_volatility_clock_cannot_train() -> None:
