@@ -30,7 +30,7 @@ _DISPATCH_BY_SOURCE_FAMILY = {
     "quote": {"Schwab quote-liquidity"},
     "opt": {"Schwab option-quality"},
     "energy": {"FMP energy-context"},
-    "macro": {"FRED macro"},
+    "macro": set(),
     "sec": {"SEC event"},
     "cme": {
         "Databento CME cme_context_ohlcv-1m",
@@ -94,10 +94,6 @@ def test_loop_a_all_profile_dispatches_and_projects_every_ordered_feature(
             attached.add(model_name)
         return output
 
-    def derive_fred(_: pd.DataFrame) -> pd.DataFrame:
-        derived.append("macro")
-        return pd.DataFrame({"derived": ["macro"]})
-
     def derive_cme(*_: pd.DataFrame) -> pd.DataFrame:
         derived.append("cme")
         return pd.DataFrame({"derived": ["cme"]})
@@ -144,8 +140,18 @@ def test_loop_a_all_profile_dispatches_and_projects_every_ordered_feature(
     )
     monkeypatch.setattr(
         rolling_materialization,
-        "_derive_current_fred_context",
-        derive_fred,
+        "read_verified_macro_evidence",
+        lambda _root: rolling_materialization.VerifiedMacroEvidence(
+            release_context=pd.DataFrame({"derived": ["macro"]}),
+            vintages=pd.DataFrame({"fixture": [1.0]}),
+            source_files=(tmp_path / "source-fixtures" / "alfred.parquet",),
+            readiness=None,  # type: ignore[arg-type]
+        ),
+    )
+    monkeypatch.setattr(
+        rolling_materialization,
+        "load_macro_features",
+        append_values,
     )
     monkeypatch.setattr(
         rolling_materialization,
@@ -182,9 +188,7 @@ def test_loop_a_all_profile_dispatches_and_projects_every_ordered_feature(
     assert attached == expected_attached
     assert set(dispatched) == expected_dispatches
     assert set(derived) == {
-        family
-        for family in ("macro", "cme")
-        if feature_set.for_family(family)
+        family for family in ("cme",) if feature_set.for_family(family)
     }
     assert source_files
     assert list(assembled.loc[:, feature_set.names].columns) == list(

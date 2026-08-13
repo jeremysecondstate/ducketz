@@ -53,7 +53,9 @@ def test_default_watchlist_and_runtime_commands_use_the_same_configured_symbols(
     assert "--symbols" not in prediction_command
     assert "python -m ml.strategy_runtime" in loop_a_command
     assert "--pricing-mode active" in loop_a_command
-    assert "loop-a-all-bsgp-active-v2" in loop_a_command
+    assert "loop-a-all-bsgp-active-v3" in loop_a_command
+    assert "datafetching.fred_alfred_runtime" in loop_a_command
+    assert "ml.option_pricing_fred --datastore-target pc --backfill" in loop_a_command
     assert "current_start_command" in loop_b_command
     assert "python -m" not in loop_b_command
     assert "capture-current-rate" in loop_a_command

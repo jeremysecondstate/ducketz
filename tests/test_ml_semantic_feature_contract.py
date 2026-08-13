@@ -127,6 +127,53 @@ def test_obsolete_v1_subset_feature_sets_are_removed() -> None:
     assert TechnicalDatasetConfig().feature_set == "technical-all"
 
 
+def test_production_v3_uses_verified_alfred_only_for_daily_and_weekly() -> None:
+    selected = horizon_specifications_for_profile(
+        "loop-a-all-bsgp-active-v3"
+    )
+    assert selected["1h"].feature_set == "loop-a-all-bsgp-active-v2-1h"
+    assert selected["4h"].feature_set == "loop-a-all-bsgp-active-v2-4h"
+    assert selected["1d"].feature_set == "loop-a-all-bsgp-active-v3-1d"
+    assert selected["1w"].feature_set == "loop-a-all-bsgp-active-v3-1w"
+
+    macro_names = {
+        "macro__fed_funds_level",
+        "macro__cpi_yoy",
+        "macro__unemployment_change",
+        "macro__gdp_yoy",
+    }
+    for horizon in ("1h", "4h"):
+        feature_set = DEFAULT_FEATURE_REGISTRY.feature_set(
+            selected[horizon].feature_set
+        )
+        assert macro_names.isdisjoint(feature_set.names)
+    for horizon in ("1d", "1w"):
+        feature_set = DEFAULT_FEATURE_REGISTRY.feature_set(
+            selected[horizon].feature_set,
+            require_active=True,
+            horizon=horizon,
+        )
+        assert macro_names.issubset(feature_set.names)
+        for feature in feature_set.for_family("macro"):
+            assert feature.provider_policy == "fred-alfred-api-v1-immutable-vintages"
+            assert feature.required_calculation_versions == ("2.0.0",)
+            assert feature.required_schema_versions == (
+                "macro-alfred-release-context-v2",
+            )
+            assert feature.readiness_policy_version == (
+                "fred-alfred-readiness-receipt-v1"
+            )
+
+    assert (
+        DEFAULT_FEATURE_REGISTRY.feature_set(
+            "loop-a-all-bsgp-active-v3-1d"
+        ).semantic_fingerprint
+        != DEFAULT_FEATURE_REGISTRY.feature_set(
+            "loop-a-all-bsgp-active-v2-1d"
+        ).semantic_fingerprint
+    )
+
+
 @pytest.mark.parametrize(
     ("field", "replacement"),
     (

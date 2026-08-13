@@ -153,10 +153,16 @@ def _exclusive_partition_writer(target: Path) -> Iterator[None]:
 
 
 def _prepare(frame: pd.DataFrame, *, columns: tuple[str, ...]) -> pd.DataFrame:
+    raw_values = frame.drop(columns=[ID_COLUMN], errors="ignore").copy()
     values = without_internal_identity_columns(frame).drop(
         columns=[ID_COLUMN],
         errors="ignore",
     )
+    # This is an explicit provider revision key in the declared ALFRED schema,
+    # not an internal opaque identifier.  Preserve it when a caller names it
+    # in the immutable payload contract.
+    if "revision_identity" in columns and "revision_identity" in raw_values:
+        values["revision_identity"] = raw_values["revision_identity"]
     missing = sorted(set(columns).difference(values.columns))
     if missing and not values.empty:
         raise ValueError(
@@ -166,12 +172,16 @@ def _prepare(frame: pd.DataFrame, *, columns: tuple[str, ...]) -> pd.DataFrame:
     values = values.reindex(columns=columns).copy()
     for column in columns:
         normalized = column.strip().lower()
-        if normalized.endswith(_TEMPORAL_SUFFIXES) or normalized in {
+        if normalized == "realtime_end":
+            # ALFRED uses 9999-12-31 as its open-ended provider interval.
+            # Preserve that exact identity instead of coercing it outside
+            # pandas' nanosecond timestamp range and silently producing NaT.
+            values[column] = values[column].astype("string")
+        elif normalized.endswith(_TEMPORAL_SUFFIXES) or normalized in {
             "window_start",
             "window_end",
             "observation_date",
             "realtime_start",
-            "realtime_end",
             "period_end_date",
         }:
             values[column] = pd.to_datetime(

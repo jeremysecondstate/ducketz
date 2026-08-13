@@ -1,6 +1,6 @@
 # Authoritative production startup order
 
-This is the single authoritative command list for the six independent Duckets
+This is the single authoritative command list for the seven independent Duckets
 runtime owners. Start each numbered command in its own PowerShell terminal and
 in this order. The runtimes coordinate through verified atomic pointers; do not
 replace these commands with guessed per-minute sleeps.
@@ -14,11 +14,21 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```
 
 The checked-in watchlist is the authoritative seven-symbol scope:
-`NVDA GOOG MU AAPL AMZN CAT SNDK`.
+`NVDA GOOG MU AAPL AMZN SNDK`.
 
-For a datastore created before the point-in-time rate bridge, perform this
-one-time causal seed before starting the runtimes. Loop A maintains it after
-successful FEDFUNDS receipts:
+Before first v3 startup, run the one-time complete ALFRED backfill. The command
+derives its observation and real-time bounds from the earliest eligible 1-day
+or weekly decision, all configured lags, and feature freshness. It preserves
+the sealed importer receipt and immediately publishes the separate readiness
+receipt only after causal coverage and integrity pass:
+
+```powershell
+python -m ml.option_pricing_fred --datastore-target pc --backfill
+```
+
+The current/revised FRED files remain a monitoring and prospective-rate lane;
+they are not historical Loop B evidence. For a datastore created before that
+prospective rate bridge, its optional one-time seed remains:
 
 ```powershell
 python -m ml.option_pricing_admin --datastore-target pc capture-current-rate
@@ -46,7 +56,18 @@ python -m datafetching.orchestrate `
   --interval-minutes 15
 ```
 
-3. Active Pricing. Each readiness target is handled idempotently. Missing GP
+3. Independent daily ALFRED owner. It runs the complete four-series update at
+most once per UTC date under the shared ALFRED writer lock, uses bounded
+overlap, and republishes verified readiness. It is not part of Loop A's
+per-symbol or 15-minute cycle:
+
+```powershell
+python -m datafetching.fred_alfred_runtime `
+  --datastore-target pc `
+  --utc-hour 7
+```
+
+4. Active Pricing. Each readiness target is handled idempotently. Missing GP
 support uses the causal Black-Scholes mean with a wider interval. Pricing waits
 once for the configured exact Loop A readiness deadline. If it expires, Pricing
 skips that target, leaves the current Pricing authority unchanged, and advances
@@ -65,7 +86,7 @@ python -m ml.option_pricing_runtime `
   --bar-readiness-timeout-seconds 30
 ```
 
-4. Independent Options capture. It starts after Loop B's +5 information clock
+5. Independent Options capture. It starts after Loop B's +5 information clock
 and waits briefly on the target pointer, but neither missing Pricing nor delayed
 Loop A readiness prevents the Schwab request for an actionable target.
 Without exact readiness the raw response is checksum-sealed under the separate
@@ -87,13 +108,13 @@ python -m datafetching.options_runtime `
   --bar-readiness-mode required
 ```
 
-5. Directional Loop B. The active v2 feature profile consumes receipt-verified
-v2 compact Pricing surfaces strictly and normalizes an exact verified legacy
-v1 surface in memory only. It enforces freshness from both the original market
-target and canonical first availability. Valid missing, stale, or uncovered
-Pricing rows remain audited null `opx__` inputs for the existing imputer;
-corruption, unsupported contracts, and automation-enabled evidence abort the
-whole Loop B publication:
+6. Directional Loop B. The active v3 feature profile consumes receipt-verified
+v2 compact Pricing surfaces and verified ALFRED-vintage macro evidence. Macro
+features are active only for 1-day and weekly contracts, with independent
+component clocks and freshness. Valid missing, stale, or uncovered Pricing
+rows remain audited null `opx__` inputs for the existing imputer; corruption,
+unsupported contracts, automation-enabled evidence, or an invalid ALFRED
+readiness receipt aborts the whole Loop B publication:
 
 ```powershell
 python -m ml.prediction_runtime `
@@ -101,7 +122,7 @@ python -m ml.prediction_runtime `
   --watchlist datafetching\watchlist.txt `
   --provider databento `
   --horizons 1h 4h 1d 1w `
-  --feature-profile loop-a-all-bsgp-active-v2 `
+  --feature-profile loop-a-all-bsgp-active-v3 `
   --model-family logistic `
   --calibration platt `
   --round-trip-cost 0.001 `
@@ -109,7 +130,7 @@ python -m ml.prediction_runtime `
   --phase-offset-minutes 5
 ```
 
-6. Strategy. Exact contract pricing is attached to historical and live
+7. Strategy. Exact contract pricing is attached to historical and live
 candidates before the profitable-outcome classifier is fit or scored. The
 persisted probability is then ranked and displayed by Options Strategies:
 

@@ -383,7 +383,7 @@ def test_directional_shadow_profile_is_explicit_and_default_is_unchanged() -> No
     )
     assert any(name.startswith("opx__") for name in feature_set.names)
     active_specs = horizon_specifications_for_profile(
-        "loop-a-all-bsgp-active-v2"
+        "loop-a-all-bsgp-active-v3"
     )
     active_features = DEFAULT_FEATURE_REGISTRY.feature_set(
         active_specs["1h"].feature_set,
@@ -658,7 +658,7 @@ def test_active_v2_loop_b_feature_materialization_uses_verified_v1_authority(
         row_available_at="2026-07-06T14:01:01Z",
     )
     specification = horizon_specifications_for_profile(
-        "loop-a-all-bsgp-active-v2",
+        "loop-a-all-bsgp-active-v3",
         horizons=("1d",),
     )["1d"]
     feature_set = DEFAULT_FEATURE_REGISTRY.feature_set(
@@ -772,8 +772,18 @@ def test_active_v2_loop_b_feature_materialization_uses_verified_v1_authority(
     monkeypatch.setattr(rolling_materialization, "_join_shared_values", fill_values)
     monkeypatch.setattr(
         rolling_materialization,
-        "_derive_current_fred_context",
-        lambda _source: pd.DataFrame({"fixture": [1.0]}),
+        "read_verified_macro_evidence",
+        lambda _root: rolling_materialization.VerifiedMacroEvidence(
+            release_context=pd.DataFrame({"fixture": [1.0]}),
+            vintages=pd.DataFrame({"fixture": [1.0]}),
+            source_files=(dummy_path,),
+            readiness=None,  # type: ignore[arg-type]
+        ),
+    )
+    monkeypatch.setattr(
+        rolling_materialization,
+        "load_macro_features",
+        fill_values,
     )
     monkeypatch.setattr(
         rolling_materialization,
@@ -866,7 +876,7 @@ def test_fatal_pricing_contract_violation_cannot_partially_promote_loop_b(
         run_loop_b_once(
             tmp_path,
             symbols=("NVDA",),
-            config=RuntimeConfig(feature_profile="loop-a-all-bsgp-active-v2"),
+            config=RuntimeConfig(feature_profile="loop-a-all-bsgp-active-v3"),
             run_timestamp="2026-07-06T14:06:00Z",
             input_available_at="2026-07-06T14:06:00Z",
             reporter=None,

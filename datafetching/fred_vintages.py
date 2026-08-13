@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -8,19 +9,21 @@ import pandas as pd
 from datafetching.calculated_features import write_immutable_feature_partition
 from datafetching.layout import safe_token
 
-FRED_VINTAGE_SCHEMA_VERSION = "fred-vintage-v2"
+FRED_VINTAGE_SCHEMA_VERSION = "fred-vintage-v3"
 ALFRED_VINTAGE_AVAILABILITY_BASIS = (
     "ALFRED_REALTIME_START_DATE_END_OF_DAY_AMERICA_CHICAGO_V1"
 )
 LOCAL_RECEIPT_AVAILABILITY_BASIS = "LOCAL_ACQUISITION_MAX_PROVIDER_V1"
-MACRO_CALCULATION = "macro-release-context"
-MACRO_CALCULATION_VERSION = "1.0.0"
-MACRO_SCHEMA_VERSION = "macro-release-context-v1"
+MACRO_CALCULATION = "macro-alfred-vintage-release-context"
+MACRO_CALCULATION_VERSION = "2.0.0"
+MACRO_SCHEMA_VERSION = "macro-alfred-release-context-v2"
+ALFRED_RELEASE_CONTEXT_NAME = "fred-alfred-vintage-release-context"
 CURRENT_RATE_CONTEXT_NAME = "fred-current-receipt-rate"
 CURRENT_RATE_CALCULATION = "macro-current-receipt-rate"
 
 FRED_VINTAGE_COLUMNS = (
     "series_name",
+    "revision_identity",
     "observation_date",
     "realtime_start",
     "realtime_end",
@@ -38,13 +41,16 @@ FRED_VINTAGE_NATURAL_KEY = (
     "series_name",
     "observation_date",
     "realtime_start",
+    "realtime_end",
 )
 MACRO_FEATURE_COLUMNS = (
     "context_name",
     "available_at",
+    "availability_basis",
     "calculation",
     "calculation_version",
     "schema_version",
+    "vintage_schema_version",
     "fed_funds_available_at",
     "cpi_available_at",
     "unemployment_available_at",
@@ -91,6 +97,7 @@ def normalize_fred_vintage_rows(
         "series_name",
         "observation_date",
         "realtime_start",
+        "realtime_end",
         "release_at",
         "fetched_at",
         "value",
@@ -107,7 +114,6 @@ def normalize_fred_vintage_rows(
     for column in (
         "observation_date",
         "realtime_start",
-        "realtime_end",
         "release_at",
         "fetched_at",
     ):
@@ -117,9 +123,9 @@ def normalize_fred_vintage_rows(
             else pd.Series(pd.NaT, index=frame.index)
         )
         output[column] = pd.to_datetime(source, utc=True, errors="coerce")
-    output["realtime_end"] = output["realtime_end"].fillna(
-        pd.Timestamp.max.tz_localize("UTC")
-    )
+    output["realtime_end"] = frame["realtime_end"].map(
+        lambda value: _iso_provider_date(value, label="realtime_end")
+    ).astype("string")
     default_available_at = pd.concat(
         [output["release_at"], output["fetched_at"]],
         axis=1,
@@ -160,6 +166,30 @@ def normalize_fred_vintage_rows(
     )
     output["frequency"] = frequency_source.astype("string")
     output["schema_version"] = FRED_VINTAGE_SCHEMA_VERSION
+    expected_revision_identity = pd.Series(
+        (
+            _revision_identity(
+                series_name=series_name,
+                observation_date=observation_date,
+                realtime_start=realtime_start,
+                realtime_end=realtime_end,
+            )
+            for series_name, observation_date, realtime_start, realtime_end in zip(
+                output["series_name"],
+                output["observation_date"],
+                output["realtime_start"],
+                output["realtime_end"],
+                strict=True,
+            )
+        ),
+        index=output.index,
+        dtype="string",
+    )
+    if "revision_identity" in frame:
+        supplied_identity = frame["revision_identity"].astype("string").str.strip()
+        if supplied_identity.ne(expected_revision_identity).any():
+            raise ValueError("FRED vintage revision_identity is inconsistent")
+    output["revision_identity"] = expected_revision_identity
     supported_basis = {
         ALFRED_VINTAGE_AVAILABILITY_BASIS,
         LOCAL_RECEIPT_AVAILABILITY_BASIS,
@@ -184,9 +214,30 @@ def normalize_fred_vintage_rows(
             "ALFRED vintage rows require date-precision provider timing and "
             "a later actual local acquisition"
         )
+    expected_alfred_release = output.loc[
+        alfred_vintage, "realtime_start"
+    ].map(alfred_provider_available_at)
+    if output.loc[alfred_vintage, "release_at"].ne(
+        expected_alfred_release
+    ).any():
+        raise ValueError(
+            "ALFRED release_at does not match the conservative provider-date clock"
+        )
+    realtime_start_dates = output["realtime_start"].dt.date
+    realtime_end_dates = output["realtime_end"].map(date.fromisoformat)
+    if any(
+        end < start
+        for start, end in zip(
+            realtime_start_dates,
+            realtime_end_dates,
+            strict=True,
+        )
+    ):
+        raise ValueError("FRED vintage real-time intervals move backwards")
     if output[
         [
             "series_name",
+            "revision_identity",
             "observation_date",
             "realtime_start",
             "release_at",
@@ -242,17 +293,31 @@ def persist_fred_vintages(
 
 def derive_macro_release_features(vintages: pd.DataFrame) -> pd.DataFrame:
     values = normalize_fred_vintage_rows(vintages)
-    required_series = {"GDP", "CPIAUCSL", "UNRATE", "FEDFUNDS"}
-    if not required_series.issubset(set(values["series_name"])):
-        missing = sorted(required_series.difference(values["series_name"]))
+    values = values.loc[
+        values["availability_basis"].eq(ALFRED_VINTAGE_AVAILABILITY_BASIS)
+    ].copy()
+    required_series = ("FEDFUNDS", "CPIAUCSL", "UNRATE", "GDP")
+    if not set(required_series).issubset(set(values["series_name"])):
+        missing = sorted(set(required_series).difference(values["series_name"]))
         raise ValueError("Macro derivation is missing series: " + ", ".join(missing))
 
     rows: list[dict[str, object]] = []
     for available_at in values["available_at"].drop_duplicates().sort_values():
         known = values.loc[values["available_at"].le(available_at)].copy()
+        provider_date = max(
+            pd.to_datetime(
+                known.loc[
+                    known["available_at"].eq(available_at),
+                    "realtime_start",
+                ],
+                utc=True,
+                errors="coerce",
+            ).dt.date
+        )
         by_series = {
-            series: _latest_vintage_by_observation(
-                known.loc[known["series_name"].eq(series)]
+            series: _vintage_snapshot(
+                known.loc[known["series_name"].eq(series)],
+                provider_date=provider_date,
             )
             for series in required_series
         }
@@ -276,11 +341,13 @@ def derive_macro_release_features(vintages: pd.DataFrame) -> pd.DataFrame:
         )
         rows.append(
             {
-                "context_name": "fred-release-context",
+                "context_name": ALFRED_RELEASE_CONTEXT_NAME,
                 "available_at": available_at,
+                "availability_basis": ALFRED_VINTAGE_AVAILABILITY_BASIS,
                 "calculation": MACRO_CALCULATION,
                 "calculation_version": MACRO_CALCULATION_VERSION,
                 "schema_version": MACRO_SCHEMA_VERSION,
+                "vintage_schema_version": FRED_VINTAGE_SCHEMA_VERSION,
                 "fed_funds_available_at": fed_funds_available,
                 "cpi_available_at": cpi_available,
                 "unemployment_available_at": unemployment_available,
@@ -301,6 +368,15 @@ def persist_macro_release_features(
     if frame.empty:
         return ()
     values = frame.copy()
+    bases = set(values["availability_basis"].dropna().astype(str))
+    if len(bases) != 1:
+        raise ValueError("Macro release persistence requires one availability basis")
+    availability_basis = next(iter(bases))
+    context_directory = (
+        "alfred-release-context"
+        if availability_basis == ALFRED_VINTAGE_AVAILABILITY_BASIS
+        else "prospective-release-context"
+    )
     values["available_at"] = pd.to_datetime(
         values["available_at"], utc=True, errors="coerce"
     )
@@ -313,7 +389,7 @@ def persist_macro_release_features(
             / "pools"
             / "macro"
             / "features"
-            / "release-context"
+            / context_directory
             / "fred"
             / f"{int(year):04d}.parquet"
         )
@@ -330,6 +406,51 @@ def persist_macro_release_features(
             )
         )
     return tuple(paths)
+
+
+def read_persisted_fred_vintages(
+    datastore_root: Path,
+    *,
+    series_ids: Sequence[str] | None = None,
+) -> tuple[pd.DataFrame, tuple[Path, ...]]:
+    """Read and validate the append-only canonical ALFRED partitions."""
+
+    root = Path(datastore_root)
+    requested = tuple(
+        dict.fromkeys(
+            _canonical_series(value)
+            for value in (
+                series_ids
+                if series_ids is not None
+                else ("FEDFUNDS", "CPIAUCSL", "UNRATE", "GDP")
+            )
+        )
+    )
+    paths = tuple(
+        path
+        for series in requested
+        for path in sorted(
+            (
+                root
+                / "pools"
+                / "macro-vintages"
+                / safe_token(series)
+                / "fred"
+            ).glob("*.parquet")
+        )
+    )
+    if not paths:
+        return pd.DataFrame(columns=FRED_VINTAGE_COLUMNS), ()
+    frames = [
+        pd.read_parquet(path).drop(columns=["id"], errors="ignore")
+        for path in paths
+    ]
+    values = normalize_fred_vintage_rows(
+        pd.concat(frames, ignore_index=True, sort=False)
+    )
+    if values.duplicated(list(FRED_VINTAGE_NATURAL_KEY)).any():
+        raise ValueError("Persisted FRED vintage identities are duplicated")
+    return values, paths
 
 
 def derive_current_fred_rate_receipt(
@@ -398,9 +519,11 @@ def derive_current_fred_rate_receipt(
             {
                 "context_name": CURRENT_RATE_CONTEXT_NAME,
                 "available_at": available_at,
+                "availability_basis": LOCAL_RECEIPT_AVAILABILITY_BASIS,
                 "calculation": CURRENT_RATE_CALCULATION,
                 "calculation_version": MACRO_CALCULATION_VERSION,
                 "schema_version": MACRO_SCHEMA_VERSION,
+                "vintage_schema_version": FRED_VINTAGE_SCHEMA_VERSION,
                 "fed_funds_available_at": available_at,
                 "cpi_available_at": pd.NaT,
                 "unemployment_available_at": pd.NaT,
@@ -456,9 +579,11 @@ def derive_alfred_rate_release_features(
             {
                 "context_name": "fred-alfred-vintage-rate",
                 "available_at": available_at,
+                "availability_basis": ALFRED_VINTAGE_AVAILABILITY_BASIS,
                 "calculation": "macro-alfred-vintage-rate",
                 "calculation_version": MACRO_CALCULATION_VERSION,
                 "schema_version": MACRO_SCHEMA_VERSION,
+                "vintage_schema_version": FRED_VINTAGE_SCHEMA_VERSION,
                 "fed_funds_available_at": rate_available_at,
                 "cpi_available_at": pd.NaT,
                 "unemployment_available_at": pd.NaT,
@@ -497,11 +622,38 @@ def materialize_current_fred_rate_receipt(
 
 def _latest_vintage_by_observation(frame: pd.DataFrame) -> pd.DataFrame:
     return (
-        frame.sort_values(["observation_date", "realtime_start", "available_at"])
+        frame.sort_values(
+            [
+                "observation_date",
+                "realtime_start",
+                "realtime_end",
+                "revision_identity",
+            ],
+            kind="stable",
+        )
         .drop_duplicates("observation_date", keep="last")
         .sort_values("observation_date")
         .reset_index(drop=True)
     )
+
+
+def _vintage_snapshot(
+    frame: pd.DataFrame,
+    *,
+    provider_date: date,
+) -> pd.DataFrame:
+    """Select intervals that were active on one provider real-time date."""
+
+    if frame.empty:
+        return frame
+    realtime_start = pd.to_datetime(
+        frame["realtime_start"], utc=True, errors="coerce"
+    ).dt.date
+    realtime_end = frame["realtime_end"].map(date.fromisoformat)
+    active = frame.loc[
+        realtime_start.le(provider_date) & realtime_end.ge(provider_date)
+    ]
+    return _latest_vintage_by_observation(active)
 
 
 def _latest_value_with_availability(
@@ -547,7 +699,7 @@ def _lag_change(
         return (
             (None, None)
             if prior == 0
-            else (current / abs(prior) - 1.0, availability)
+            else (current / prior - 1.0, availability)
         )
     return current - prior, availability
 
@@ -580,6 +732,7 @@ def _drop_replayed_vintages(
             existing["series_name"].astype(str).eq(str(row["series_name"]))
             & existing["observation_date"].eq(row["observation_date"])
             & existing["realtime_start"].eq(row["realtime_start"])
+            & existing["realtime_end"].astype(str).eq(str(row["realtime_end"]))
         ]
         if matches.empty:
             keep.append(True)
@@ -595,6 +748,42 @@ def _drop_replayed_vintages(
             )
         keep.append(False)
     return incoming.loc[keep].reset_index(drop=True)
+
+
+def _revision_identity(
+    *,
+    series_name: object,
+    observation_date: object,
+    realtime_start: object,
+    realtime_end: object,
+) -> str:
+    observation = pd.Timestamp(observation_date).date().isoformat()
+    realtime = pd.Timestamp(realtime_start).date().isoformat()
+    return "|".join(
+        (str(series_name), observation, realtime, str(realtime_end))
+    )
+
+
+def alfred_provider_available_at(value: object) -> pd.Timestamp:
+    """Conservatively expose a date-precision ALFRED vintage next midnight."""
+
+    provider_date = date.fromisoformat(
+        pd.Timestamp(value).date().isoformat()
+        if not isinstance(value, str)
+        else value.strip()[:10]
+    )
+    next_midnight = pd.Timestamp(provider_date) + pd.Timedelta(days=1)
+    return next_midnight.tz_localize("America/Chicago").tz_convert("UTC")
+
+
+def _iso_provider_date(value: object, *, label: str) -> str:
+    if value is None or pd.isna(value):
+        return "9999-12-31"
+    try:
+        rendered = str(value).strip()[:10]
+        return date.fromisoformat(rendered).isoformat()
+    except (TypeError, ValueError):
+        raise ValueError(f"FRED vintage contains invalid {label}") from None
 
 
 def _equal(left: object, right: object) -> bool:

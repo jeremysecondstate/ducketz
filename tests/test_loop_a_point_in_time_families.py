@@ -8,6 +8,8 @@ import pytest
 from datafetching import sec_fetch
 from datafetching.calculated_features import write_immutable_feature_partition
 from datafetching.fred_vintages import (
+    ALFRED_VINTAGE_AVAILABILITY_BASIS,
+    alfred_provider_available_at,
     derive_current_fred_rate_receipt,
     derive_macro_release_features,
     normalize_fred_vintage_rows,
@@ -312,7 +314,8 @@ def test_fred_vintage_replay_preserves_first_local_receipt(
     stored = pd.read_parquet(path)
     assert len(stored) == 1
     assert stored.iloc[0]["fetched_at"] == first.iloc[0]["fetched_at"]
-    assert stored.iloc[0]["schema_version"] == "fred-vintage-v2"
+    assert stored.iloc[0]["schema_version"] == "fred-vintage-v3"
+    assert stored.iloc[0]["revision_identity"]
 
 
 def test_macro_lag_requires_exact_calendar_cadence() -> None:
@@ -566,18 +569,21 @@ def _fred_vintage_rows() -> list[dict[str, object]]:
         for index, observation in enumerate(
             pd.date_range("2023-01-01", periods=periods, freq=frequency, tz="UTC")
         ):
-            release = pd.Timestamp("2025-01-01T12:00:00Z") + pd.Timedelta(
+            provider_date = pd.Timestamp("2025-01-01T00:00:00Z") + pd.Timedelta(
                 days=release_counter
             )
+            release = alfred_provider_available_at(provider_date)
             release_counter += 1
             rows.append(
                 {
                     "series_name": series,
                     "observation_date": observation,
-                    "realtime_start": release.normalize(),
+                    "realtime_start": provider_date,
                     "realtime_end": None,
                     "release_at": release,
+                    "release_time_precision": "DATE",
                     "fetched_at": release + pd.Timedelta(minutes=1),
+                    "availability_basis": ALFRED_VINTAGE_AVAILABILITY_BASIS,
                     "value": base + index,
                     "unit": "test",
                     "frequency": frequency,

@@ -5,6 +5,14 @@ from collections.abc import Mapping, Sequence
 import numpy as np
 import pandas as pd
 
+from datafetching.fred_vintages import (
+    ALFRED_RELEASE_CONTEXT_NAME,
+    ALFRED_VINTAGE_AVAILABILITY_BASIS,
+    FRED_VINTAGE_SCHEMA_VERSION,
+    MACRO_CALCULATION,
+    MACRO_CALCULATION_VERSION,
+    MACRO_SCHEMA_VERSION,
+)
 from ml.contracts import MLContractError
 from ml.datasets.point_in_time import (
     backward_asof_by_symbol,
@@ -86,7 +94,7 @@ MACRO_LINEAGE = {
     "macro__unemployment_change": (
         "unemployment_available_at",
         "UNRATE",
-        pd.Timedelta(days=45),
+        pd.Timedelta(days=56),
     ),
     "macro__gdp_yoy": (
         "gdp_available_at",
@@ -779,7 +787,7 @@ def load_macro_features(
     source: pd.DataFrame,
     *,
     value_columns: Mapping[str, str] = MACRO_VALUES,
-    freshness: pd.Timedelta | str = pd.Timedelta(days=120),
+    freshness: pd.Timedelta | str | None = None,
     vintage_source: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """Load FRED-derived values with feature-level vintage lineage.
@@ -796,8 +804,12 @@ def load_macro_features(
         "realtime_start",
         "realtime_end",
         "release_at",
+        "release_time_precision",
         "fetched_at",
         "available_at",
+        "availability_basis",
+        "revision_identity",
+        "schema_version",
     }
     _require(vintage_evidence, required_vintage, label="macro vintage")
     vintage = vintage_evidence.copy()
@@ -838,16 +850,35 @@ def load_macro_features(
             "Current revised FRED history without realtime vintage identity "
             "is not eligible"
         )
-    safe_vintage_availability = vintage[
-        ["release_at", "fetched_at"]
-    ].max(axis=1)
-    if vintage["available_at"].lt(safe_vintage_availability).any():
+    if not vintage["availability_basis"].astype(str).eq(
+        ALFRED_VINTAGE_AVAILABILITY_BASIS
+    ).all():
         raise MLContractError(
-            "Macro vintage available_at precedes release or receipt"
+            "Current-revised or local-receipt FRED rows cannot be used as "
+            "historical macro evidence"
         )
-    natural = ["series_name", "observation_date", "realtime_start"]
+    if not vintage["release_time_precision"].astype(str).eq("DATE").all():
+        raise MLContractError("ALFRED macro vintages require DATE release precision")
+    if not vintage["schema_version"].astype(str).eq(
+        FRED_VINTAGE_SCHEMA_VERSION
+    ).all():
+        raise MLContractError("Macro vintage schema is not the verified ALFRED contract")
+    if vintage["available_at"].ne(vintage["release_at"]).any():
+        raise MLContractError(
+            "ALFRED macro available_at must equal its conservative provider clock"
+        )
+    if vintage["fetched_at"].lt(vintage["release_at"]).any():
+        raise MLContractError("Macro vintage local receipt precedes provider release")
+    natural = [
+        "series_name",
+        "observation_date",
+        "realtime_start",
+        "realtime_end",
+    ]
     if vintage.duplicated(natural).any():
         raise MLContractError("Macro vintage natural keys must be unique")
+    if vintage["revision_identity"].astype(str).duplicated().any():
+        raise MLContractError("Macro vintage revision identities must be unique")
     selected_values = _require_value_mapping(
         source,
         value_columns,
@@ -865,10 +896,37 @@ def load_macro_features(
     }
     _require(
         source,
-        {"available_at", *lineage_columns.values()},
+        {
+            "context_name",
+            "available_at",
+            "availability_basis",
+            "calculation",
+            "calculation_version",
+            "schema_version",
+            "vintage_schema_version",
+            *lineage_columns.values(),
+        },
         label="macro derived context",
     )
     prepared = source.copy()
+    valid_context = (
+        prepared["context_name"].astype(str).eq(ALFRED_RELEASE_CONTEXT_NAME)
+        & prepared["availability_basis"].astype(str).eq(
+            ALFRED_VINTAGE_AVAILABILITY_BASIS
+        )
+        & prepared["calculation"].astype(str).eq(MACRO_CALCULATION)
+        & prepared["calculation_version"].astype(str).eq(
+            MACRO_CALCULATION_VERSION
+        )
+        & prepared["schema_version"].astype(str).eq(MACRO_SCHEMA_VERSION)
+        & prepared["vintage_schema_version"].astype(str).eq(
+            FRED_VINTAGE_SCHEMA_VERSION
+        )
+    )
+    if not valid_context.all():
+        raise MLContractError(
+            "Macro derived context is not verified ALFRED-vintage evidence"
+        )
     context_available = pd.to_datetime(
         prepared["available_at"],
         utc=True,
@@ -947,10 +1005,14 @@ def load_macro_features(
                 "macro",
                 (
                     "context_name",
+                    "availability_basis",
+                    "calculation",
                     "fetched_at",
                     "calculated_at",
                     "calculation_completed_at",
                     "calculation_version",
+                    "schema_version",
+                    "vintage_schema_version",
                 ),
             ),
             **lineage_audit_columns,

@@ -211,13 +211,13 @@ def test_readiness_prefers_feature_lineage_clock_and_staleness() -> None:
         source_frames={
             "macro": pd.DataFrame(
                 {
-                    "context_name": ["macro-release-context"],
+                    "context_name": ["fred-alfred-vintage-release-context"],
                     "available_at": pd.to_datetime(
                         ["2026-07-29T10:00:00Z"],
                         utc=True,
                     ),
-                    "schema_version": ["macro-release-context-v1"],
-                    "calculation_version": ["1.0.0"],
+                    "schema_version": ["macro-alfred-release-context-v2"],
+                    "calculation_version": ["2.0.0"],
                 }
             )
         },

@@ -1,0 +1,23 @@
+{
+  "active": false,
+  "automated_action_allowed": false,
+  "explicit_operator_approval_received": false,
+  "policy": {
+    "bbo_alternative": {
+      "separate_cost_authorization_required": true,
+      "status": "PROPOSED_SEPARATE"
+    },
+    "exact_rule": {
+      "required_completed_minute": "target-minus-one-minute",
+      "status": "CURRENT_ACTIVE_RULE_REMAINS_UNCHANGED"
+    },
+    "gap_rule": {
+      "maximum_staleness_seconds": 60,
+      "next_interval_fallback_forbidden": true,
+      "status": "PROPOSED_INACTIVE"
+    },
+    "version": "opra-underlying-gap-policy-v2"
+  },
+  "policy_hash_sha256": "aee61198a60fd1bfcb1c8bc005c7bc82a3849a6a6dc62e6de82b26fbe30b8f34",
+  "status": "PROPOSED_NOT_APPROVED"
+}

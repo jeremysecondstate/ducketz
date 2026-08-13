@@ -16,10 +16,6 @@ from datafetching.fred_vintage_import import (
     read_fred_alfred_vintage_import,
 )
 from ml import option_pricing_fred
-from ml.option_pricing.rates import (
-    load_point_in_time_rate_observations,
-    rate_coverage_report,
-)
 
 _TEST_KEY = "a" * 32
 
@@ -110,7 +106,9 @@ def test_alfred_import_separates_provider_and_local_clocks_and_proves_rate(
     assert result.row_count == 2
     assert result.series_count == 1
     assert result.vintage_partition_paths
-    assert result.rate_feature_paths
+    # Partial low-level imports remain valid immutable evidence, but only the
+    # complete four-series contract may publish macro release features.
+    assert not result.release_feature_paths
     verified = read_fred_alfred_vintage_import(
         result.evidence_directory,
         datastore_root=tmp_path,
@@ -123,15 +121,6 @@ def test_alfred_import_separates_provider_and_local_clocks_and_proves_rate(
     assert first["available_at"] == first["release_at"]
     assert first["fetched_at"] == pd.Timestamp("2026-08-11T04:30:00Z")
     assert first["available_at"] < first["fetched_at"]
-
-    observations, paths = load_point_in_time_rate_observations(tmp_path)
-    assert paths
-    coverage = rate_coverage_report(
-        observations,
-        target_snapshot_fors=("2026-02-10T13:45:00Z",),
-    )
-    assert coverage["status"] == "PASS"
-    assert coverage["covered_target_count"] == 1
 
     manifest = json.loads(
         (result.evidence_directory / FRED_ALFRED_MANIFEST_NAME).read_text(

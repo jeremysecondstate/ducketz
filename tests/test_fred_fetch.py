@@ -74,7 +74,9 @@ def test_current_period_dated_fred_set_returns_no_provider_errors(
     assert result.data_files == 9
     assert tuple(tmp_path.glob("**/errors/fred/macro/*.parquet")) == ()
     rate_paths = tuple(
-        tmp_path.glob("pools/macro/features/release-context/fred/*.parquet")
+        tmp_path.glob(
+            "pools/macro/features/prospective-release-context/fred/*.parquet"
+        )
     )
     assert len(rate_paths) == 1
     rate = pd.read_parquet(rate_paths[0]).iloc[-1]

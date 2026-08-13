@@ -740,6 +740,62 @@ def test_pending_capture_reconciles_or_expires_without_another_schwab_request(
     assert Session.calls == 1
 
 
+def test_pending_reconciliation_defers_readiness_published_after_observation(
+    tmp_path: Path,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    observed_at = target + pd.Timedelta(minutes=4)
+    ready_at = observed_at + pd.Timedelta(seconds=1)
+    _write_bar(tmp_path, symbol="GOOG", target=target, close=100.0)
+
+    class Session:
+        calls = 0
+
+        @classmethod
+        def get_option_chain_snapshot(
+            cls, *_args: object, **_kwargs: object
+        ) -> dict[str, object]:
+            cls.calls += 1
+            return _pending_option_payload(target)
+
+    captured = run_options_cycle(
+        ParquetStore(tmp_path),
+        symbols=("GOOG",),
+        session=Session(),  # type: ignore[arg-type]
+        clock=lambda: (target + pd.Timedelta(minutes=1)).to_pydatetime(),
+        target_snapshot_for=target,
+        pricing_barrier_timeout_seconds=0,
+        bar_readiness_mode="required",
+        reporter=None,
+    )
+    publish_bar_readiness(
+        tmp_path,
+        target_snapshot_for=target,
+        symbols=("GOOG",),
+        loop_a_generation="published-during-reconciliation-scan",
+        as_of=ready_at,
+        clock=lambda: ready_at,
+    )
+
+    deferred = reconcile_pending_option_captures(
+        tmp_path,
+        reconciled_at=observed_at,
+        persist=persist_schwab_option_snapshot,
+    )
+    reconciled = reconcile_pending_option_captures(
+        tmp_path,
+        reconciled_at=ready_at + pd.Timedelta(seconds=1),
+        persist=persist_schwab_option_snapshot,
+    )
+
+    assert captured.pending_captures == 1
+    assert deferred.pending == 1
+    assert deferred.newly_reconciled == 0
+    assert reconciled.newly_reconciled == 1
+    assert Session.calls == 1
+    assert len(committed_option_snapshots(tmp_path, symbol="GOOG")) == 1
+
+
 def test_closed_market_cycle_reconciles_pending_as_discovery_refresh(
     tmp_path: Path,
 ) -> None:

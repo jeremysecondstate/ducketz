@@ -8,6 +8,11 @@ from typing import Callable, Mapping, Sequence
 
 import pandas as pd
 
+from datafetching.fred_alfred_readiness import (
+    FredAlfredReadinessError,
+    VerifiedMacroEvidence,
+    read_verified_macro_evidence,
+)
 from datafetching.fmp_energy_context import fmp_energy_context_path
 from datafetching.observability import timed_stage
 from ml.contracts import FeatureSet, MLContractError
@@ -18,6 +23,7 @@ from ml.datasets.families import (
     OPTION_FRESHNESS,
     QUOTE_FRESHNESS,
     load_bar_shape_features,
+    load_macro_features,
     load_sec_event_features,
     load_weekly_context_features,
 )
@@ -174,7 +180,7 @@ def _materialize_rolling_samples(
     ] = {}
     price_frame_cache: dict[tuple[str, str], pd.DataFrame] = {}
     parquet_cache: dict[tuple[Path, ...], pd.DataFrame] = {}
-    derived_cache: dict[str, pd.DataFrame] = {}
+    derived_cache: dict[str, object] = {}
     committed_option_cache: dict[
         tuple[tuple[str, ...], int], tuple[pd.DataFrame, tuple[Path, ...]]
     ] = {}
@@ -313,7 +319,11 @@ def _materialize_rolling_samples(
                     f"[rolling {horizon}] {symbol}: {status}; "
                     f"samples={len(samples)}",
                 )
-            except (OptionPricingPublicationError, PricingEvidenceContractError):
+            except (
+                FredAlfredReadinessError,
+                OptionPricingPublicationError,
+                PricingEvidenceContractError,
+            ):
                 # A shared Pricing authority violation invalidates the complete
                 # materialization.  It must never be converted into a partial
                 # route publication or confused with optional missing evidence.
@@ -422,7 +432,7 @@ def _attach_loop_a_features(
     provider: str,
     feature_set_name: str,
     parquet_cache: dict[tuple[Path, ...], pd.DataFrame],
-    derived_cache: dict[str, pd.DataFrame],
+    derived_cache: dict[str, object],
     input_available_at: object | None = None,
     committed_option_cache: dict[
         tuple[tuple[str, ...], int], tuple[pd.DataFrame, tuple[Path, ...]]
@@ -723,23 +733,27 @@ def _attach_loop_a_features(
         source_files.append(path)
 
     if mapping := _family_values(feature_set, "macro"):
-        paths = _fred_source_paths(root)
-        cache_key = "fred-current-context"
+        cache_key = "fred-alfred-verified-context"
         if cache_key not in derived_cache:
-            sources = _read_required_sources(
-                paths,
-                family="FRED macro",
-                cache=parquet_cache,
+            derived_cache[cache_key] = read_verified_macro_evidence(root)
+        evidence = derived_cache[cache_key]
+        if not isinstance(evidence, VerifiedMacroEvidence):
+            raise FredAlfredReadinessError(
+                "Cached ALFRED macro authority has an invalid type"
             )
-            derived_cache[cache_key] = _derive_current_fred_context(sources)
-        output = _join_shared_values(
-            output,
-            derived_cache[cache_key],
-            family="macro",
-            value_columns=mapping,
-            freshness=pd.Timedelta(days=120),
-        )
-        source_files.extend(paths)
+        try:
+            output = load_macro_features(
+                output,
+                evidence.release_context,
+                value_columns=mapping,
+                freshness=None,
+                vintage_source=evidence.vintages,
+            )
+        except MLContractError as exc:
+            raise FredAlfredReadinessError(
+                f"Verified ALFRED macro evidence failed its loader contract: {exc}"
+            ) from exc
+        source_files.extend(evidence.source_files)
 
     if mapping := _family_values(feature_set, "sec"):
         paths = _stock_glob_paths(
@@ -1039,6 +1053,12 @@ def _stock_glob_paths(
 
 
 def _fred_source_paths(root: Path) -> tuple[Path, ...]:
+    """Return monitoring-only current/revised FRED snapshots.
+
+    These paths are retained for prospective monitoring and must never be fed
+    into historical rolling materialization.
+    """
+
     locations = (
         ("FEDERALFUNDS", "FEDFUNDS", "FEDERALFUNDS_FEDFUNDS.parquet"),
         ("CPI", "CPIAUCSL", "CPI_CPIAUCSL.parquet"),
@@ -1059,6 +1079,12 @@ def _fred_source_paths(root: Path) -> tuple[Path, ...]:
 
 
 def _derive_current_fred_context(source: pd.DataFrame) -> pd.DataFrame:
+    """Build an explicitly prospective context from current revised snapshots.
+
+    This compatibility fallback is only valid after the shared local receipt
+    clock.  Historical Loop B materialization deliberately does not call it.
+    """
+
     required = {"series", "date", "value", "fetched_at"}
     missing = sorted(required.difference(source.columns))
     if missing:

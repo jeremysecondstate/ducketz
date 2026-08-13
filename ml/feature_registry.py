@@ -775,7 +775,7 @@ FUNDAMENTAL_DIRECTION_FEATURES = (
 )
 
 
-def _macro(name: str, column: str, freshness: str) -> FeatureSpec:
+def _legacy_macro(name: str, column: str, freshness: str) -> FeatureSpec:
     return _candidate_feature(
         name,
         source_column=column,
@@ -796,13 +796,49 @@ def _macro(name: str, column: str, freshness: str) -> FeatureSpec:
     )
 
 
+LEGACY_MACRO_FEATURES = (
+    _legacy_macro("macro__fed_funds_level", "macro__fed_funds_level", "45-days"),
+    _legacy_macro("macro__cpi_yoy", "macro__cpi_yoy", "45-days"),
+    _legacy_macro(
+        "macro__unemployment_change",
+        "macro__unemployment_change",
+        "45-days",
+    ),
+    _legacy_macro("macro__gdp_yoy", "macro__gdp_yoy", "120-days"),
+)
+
+
+def _macro(name: str, column: str, freshness: str) -> FeatureSpec:
+    return _candidate_feature(
+        name,
+        source_column=column,
+        horizons=("1d", "1w"),
+        provider_policy="fred-alfred-api-v1-immutable-vintages",
+        source_timeframe="provider-real-time-interval-history",
+        source_grain="series-observation-revision-interval",
+        calculation_versions=("2.0.0",),
+        schema_versions=("macro-alfred-release-context-v2",),
+        availability_rule=(
+            "feature-component-provider-realtime-start-next-"
+            "america-chicago-midnight"
+        ),
+        availability_version="fred-alfred-date-precision-v1",
+        freshness=(("1d", freshness), ("1w", freshness)),
+        missing_policy="no-value-before-provider-availability-or-after-freshness-v2",
+        transform="identity-v1",
+        coverage_policy="verified-causal-eligible-decision-coverage-95pct-v1",
+        classification=USABLE_NOW,
+        readiness_policy="fred-alfred-readiness-receipt-v1",
+    )
+
+
 MACRO_FEATURES = (
     _macro("macro__fed_funds_level", "macro__fed_funds_level", "45-days"),
     _macro("macro__cpi_yoy", "macro__cpi_yoy", "45-days"),
     _macro(
         "macro__unemployment_change",
         "macro__unemployment_change",
-        "45-days",
+        "56-days",
     ),
     _macro("macro__gdp_yoy", "macro__gdp_yoy", "120-days"),
 )
@@ -945,7 +981,7 @@ _LOOP_A_ADDITIONAL_FEATURES = (
     *OPTION_FEATURES,
     *OPTION_EVIDENCE_FEATURES,
     *ENERGY_FEATURES,
-    *MACRO_FEATURES,
+    *LEGACY_MACRO_FEATURES,
     *SEC_FEATURES,
     *CME_FEATURES,
 )
@@ -995,6 +1031,26 @@ LOOP_A_ALL_BSGP_SHADOW_1D_FEATURES = (
 LOOP_A_ALL_BSGP_SHADOW_1W_FEATURES = (
     *LOOP_A_ALL_1W_FEATURES,
     *_active_features_for_horizon(OPTION_PRICING_SHADOW_FEATURES, "1w"),
+)
+
+
+def _with_verified_alfred_macro(
+    features: tuple[FeatureSpec, ...],
+) -> tuple[FeatureSpec, ...]:
+    replacements = {feature.name: feature for feature in MACRO_FEATURES}
+    return tuple(
+        replace(replacements[feature.name], activation_status=ACTIVE)
+        if feature.name in replacements
+        else feature
+        for feature in features
+    )
+
+
+LOOP_A_ALL_BSGP_ACTIVE_V3_1D_FEATURES = _with_verified_alfred_macro(
+    LOOP_A_ALL_BSGP_SHADOW_1D_FEATURES
+)
+LOOP_A_ALL_BSGP_ACTIVE_V3_1W_FEATURES = _with_verified_alfred_macro(
+    LOOP_A_ALL_BSGP_SHADOW_1W_FEATURES
 )
 
 
@@ -1187,6 +1243,18 @@ class FeatureRegistry:
                 version="2.0.0",
                 applicable_horizons=("1w",),
             ),
+            "loop-a-all-bsgp-active-v3-1d": FeatureSet(
+                "loop-a-all-bsgp-active-v3-1d",
+                LOOP_A_ALL_BSGP_ACTIVE_V3_1D_FEATURES,
+                version="3.0.0",
+                applicable_horizons=("1d",),
+            ),
+            "loop-a-all-bsgp-active-v3-1w": FeatureSet(
+                "loop-a-all-bsgp-active-v3-1w",
+                LOOP_A_ALL_BSGP_ACTIVE_V3_1W_FEATURES,
+                version="3.0.0",
+                applicable_horizons=("1w",),
+            ),
             "bar-shape-candidate-v1": _quarantined_set(
                 "bar-shape-candidate-v1",
                 BAR_SHAPE_FEATURES,
@@ -1239,7 +1307,10 @@ class FeatureRegistry:
                 "macro-candidate-v1",
                 MACRO_FEATURES,
                 horizons=("1d", "1w"),
-                reason="real FRED release/vintage history is not persisted",
+                reason=(
+                    "standalone candidate selection is disabled; verified ALFRED "
+                    "macros are active through the production v3 profile"
+                ),
             ),
             "energy-candidate-v1": _quarantined_set(
                 "energy-candidate-v1",

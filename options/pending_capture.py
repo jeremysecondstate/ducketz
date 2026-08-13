@@ -610,9 +610,12 @@ def _reconciliation_clock(
             ) from exc
         return None, None, None
     if readiness.ready_at > observed_at:
-        raise PendingOptionCaptureError(
-            "Loop A readiness carries a future availability clock"
-        )
+        # The receipt can be published after the caller captures ``observed_at``
+        # but before this scan reaches the request.  It is valid evidence, just
+        # not evidence that was available as of this reconciliation pass.  Keep
+        # the capture pending so the next poll can observe it without bringing
+        # down the long-running Options process.
+        return None, None, None
     return readiness.decision_clock(request.symbol), {
         "mode": "required",
         "run_path": readiness.directory.relative_to(root).as_posix(),

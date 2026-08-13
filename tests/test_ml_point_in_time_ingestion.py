@@ -3,6 +3,14 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
+from datafetching.fred_vintages import (
+    ALFRED_RELEASE_CONTEXT_NAME,
+    ALFRED_VINTAGE_AVAILABILITY_BASIS,
+    FRED_VINTAGE_SCHEMA_VERSION,
+    MACRO_CALCULATION,
+    MACRO_CALCULATION_VERSION,
+    MACRO_SCHEMA_VERSION,
+)
 from ml.contracts import MLContractError
 from ml.datasets.families import (
     load_bar_shape_features,
@@ -529,16 +537,20 @@ def test_macro_context_cannot_precede_its_feature_vintage_lineage() -> None:
     )
     derived = pd.DataFrame(
         {
-            "context_name": ["macro-release-context"],
+            "context_name": [ALFRED_RELEASE_CONTEXT_NAME],
             "available_at": pd.to_datetime(
-                ["2026-07-15T12:00:00Z"],
+                ["2026-07-15T05:00:00Z"],
                 utc=True,
             ),
+            "availability_basis": [ALFRED_VINTAGE_AVAILABILITY_BASIS],
+            "calculation": [MACRO_CALCULATION],
             "cpi_available_at": pd.to_datetime(
-                ["2026-07-15T12:01:00Z"],
+                ["2026-07-15T05:01:00Z"],
                 utc=True,
             ),
-            "calculation_version": ["1.0.0"],
+            "calculation_version": [MACRO_CALCULATION_VERSION],
+            "schema_version": [MACRO_SCHEMA_VERSION],
+            "vintage_schema_version": [FRED_VINTAGE_SCHEMA_VERSION],
             "macro__cpi_yoy": [0.025],
         }
     )
@@ -546,20 +558,26 @@ def test_macro_context_cannot_precede_its_feature_vintage_lineage() -> None:
         {
             "series_name": ["CPIAUCSL"],
             "observation_date": ["2026-06-01"],
-            "realtime_start": ["2026-07-15"],
+            "realtime_start": ["2026-07-14"],
             "realtime_end": ["9999-12-31"],
+            "revision_identity": [
+                "CPIAUCSL|2026-06-01|2026-07-14|9999-12-31"
+            ],
             "release_at": pd.to_datetime(
-                ["2026-07-15T12:00:00Z"],
+                ["2026-07-15T05:00:00Z"],
                 utc=True,
             ),
+            "release_time_precision": ["DATE"],
             "fetched_at": pd.to_datetime(
-                ["2026-07-15T12:01:00Z"],
+                ["2026-07-15T05:01:00Z"],
                 utc=True,
             ),
             "available_at": pd.to_datetime(
-                ["2026-07-15T12:01:00Z"],
+                ["2026-07-15T05:00:00Z"],
                 utc=True,
             ),
+            "availability_basis": [ALFRED_VINTAGE_AVAILABILITY_BASIS],
+            "schema_version": [FRED_VINTAGE_SCHEMA_VERSION],
         }
     )
     with pytest.raises(MLContractError, match="exceeds macro context"):
@@ -572,9 +590,9 @@ def test_macro_context_cannot_precede_its_feature_vintage_lineage() -> None:
 
 
 def test_macro_freshness_uses_each_feature_vintage_clock() -> None:
-    cpi_available = pd.Timestamp("2026-06-15T12:00:00Z")
-    gdp_available = pd.Timestamp("2026-04-01T12:00:00Z")
-    boundary = pd.Timestamp("2026-07-30T12:00:00Z")
+    cpi_available = pd.Timestamp("2026-06-15T05:00:00Z")
+    gdp_available = pd.Timestamp("2026-04-01T05:00:00Z")
+    boundary = pd.Timestamp("2026-07-30T05:00:00Z")
     decisions = pd.DataFrame(
         {
             "decision_timestamp": [
@@ -585,9 +603,13 @@ def test_macro_freshness_uses_each_feature_vintage_clock() -> None:
     )
     derived = pd.DataFrame(
         {
-            "context_name": ["macro-release-context"],
+            "context_name": [ALFRED_RELEASE_CONTEXT_NAME],
             "available_at": [cpi_available],
-            "calculation_version": ["1.0.0"],
+            "availability_basis": [ALFRED_VINTAGE_AVAILABILITY_BASIS],
+            "calculation": [MACRO_CALCULATION],
+            "calculation_version": [MACRO_CALCULATION_VERSION],
+            "schema_version": [MACRO_SCHEMA_VERSION],
+            "vintage_schema_version": [FRED_VINTAGE_SCHEMA_VERSION],
             "cpi_available_at": [cpi_available],
             "gdp_available_at": [gdp_available],
             "macro__cpi_yoy": [0.025],
@@ -598,14 +620,27 @@ def test_macro_freshness_uses_each_feature_vintage_clock() -> None:
         {
             "series_name": ["CPIAUCSL", "GDP"],
             "observation_date": ["2026-05-01", "2026-01-01"],
-            "realtime_start": ["2026-06-15", "2026-04-01"],
+            "realtime_start": ["2026-06-14", "2026-03-31"],
             "realtime_end": ["9999-12-31", "9999-12-31"],
-            "release_at": [
-                cpi_available - pd.Timedelta(minutes=1),
-                gdp_available - pd.Timedelta(minutes=1),
+            "revision_identity": [
+                "CPIAUCSL|2026-05-01|2026-06-14|9999-12-31",
+                "GDP|2026-01-01|2026-03-31|9999-12-31",
             ],
-            "fetched_at": [cpi_available, gdp_available],
+            "release_at": [cpi_available, gdp_available],
+            "release_time_precision": ["DATE", "DATE"],
+            "fetched_at": [
+                cpi_available + pd.Timedelta(minutes=1),
+                gdp_available + pd.Timedelta(minutes=1),
+            ],
             "available_at": [cpi_available, gdp_available],
+            "availability_basis": [
+                ALFRED_VINTAGE_AVAILABILITY_BASIS,
+                ALFRED_VINTAGE_AVAILABILITY_BASIS,
+            ],
+            "schema_version": [
+                FRED_VINTAGE_SCHEMA_VERSION,
+                FRED_VINTAGE_SCHEMA_VERSION,
+            ],
         }
     )
 

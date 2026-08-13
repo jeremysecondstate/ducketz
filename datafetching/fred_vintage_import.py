@@ -18,16 +18,18 @@ from datafetching.fred_vintages import (
     ALFRED_VINTAGE_AVAILABILITY_BASIS,
     FRED_VINTAGE_COLUMNS,
     FRED_VINTAGE_NATURAL_KEY,
-    derive_alfred_rate_release_features,
+    alfred_provider_available_at,
+    derive_macro_release_features,
     normalize_fred_vintage_rows,
     persist_fred_vintages,
     persist_macro_release_features,
+    read_persisted_fred_vintages,
 )
 from datafetching.ids import add_readable_id
 from ml.artifacts import file_checksum, file_inventory, utc_timestamp
 
 FRED_API_BASE_URL = "https://api.stlouisfed.org/fred"
-FRED_ALFRED_IMPORT_VERSION = "fred-alfred-vintage-import-v1"
+FRED_ALFRED_IMPORT_VERSION = "fred-alfred-vintage-import-v2"
 FRED_ALFRED_RECEIPT_NAME = "receipt.json"
 FRED_ALFRED_MANIFEST_NAME = "manifest.json"
 FRED_ALFRED_RAW_NAME = "provider-responses.json"
@@ -52,7 +54,13 @@ class FredVintageImportResult:
     row_count: int
     series_count: int
     vintage_partition_paths: tuple[Path, ...]
-    rate_feature_paths: tuple[Path, ...]
+    release_feature_paths: tuple[Path, ...]
+
+    @property
+    def rate_feature_paths(self) -> tuple[Path, ...]:
+        """Compatibility alias for callers predating four-series derivation."""
+
+        return self.release_feature_paths
 
 
 class FredAlfredClient:
@@ -159,11 +167,31 @@ def import_fred_alfred_vintages(
         observation_end=observation_end,
         acquired_at=acquired,
     )
+    prior_vintages, _ = read_persisted_fred_vintages(
+        root,
+        series_ids=tuple(request["series"]),
+    )
     vintages, provider_responses, provider_summary = _fetch_vintages(
         client,
         request=request,
         acquired_at=acquired,
     )
+    vintages, reconstructed_starts = _restore_clipped_realtime_starts(
+        vintages,
+        prior_vintages,
+        request_start=request["realtime_start"],
+    )
+    provider_summary = {
+        **provider_summary,
+        "request_boundary_realtime_start_reconstruction_count": (
+            reconstructed_starts
+        ),
+        "request_boundary_realtime_start_policy": (
+            "output_type=1 request-boundary clipping is restored only when "
+            "an identical prior immutable interval was active; exact provider "
+            "responses remain sealed in provider-responses.json"
+        ),
+    }
     parent = root / "ml" / "option-pricing-evidence" / "fred-alfred-vintages"
     parent.mkdir(parents=True, exist_ok=True)
     destination = _unused_timestamp_directory(parent, acquired)
@@ -237,18 +265,24 @@ def import_fred_alfred_vintages(
     if not isinstance(verified_vintages, pd.DataFrame):
         raise FredVintageImportError("Verified ALFRED vintage frame is invalid")
     vintage_paths = persist_fred_vintages(root, verified_vintages)
-    rate_paths: tuple[Path, ...] = ()
-    if "FEDFUNDS" in set(verified_vintages["series_name"].astype(str)):
-        rate_paths = persist_macro_release_features(
+    all_vintages, _ = read_persisted_fred_vintages(
+        root,
+        series_ids=FRED_ALFRED_SUPPORTED_SERIES,
+    )
+    release_paths: tuple[Path, ...] = ()
+    if set(FRED_ALFRED_SUPPORTED_SERIES).issubset(
+        set(all_vintages["series_name"].astype(str))
+    ):
+        release_paths = persist_macro_release_features(
             root,
-            derive_alfred_rate_release_features(verified_vintages),
+            derive_macro_release_features(all_vintages),
         )
     return FredVintageImportResult(
         evidence_directory=destination,
         row_count=len(verified_vintages),
         series_count=len(set(verified_vintages["series_name"].astype(str))),
         vintage_partition_paths=vintage_paths,
-        rate_feature_paths=rate_paths,
+        release_feature_paths=release_paths,
     )
 
 
@@ -437,6 +471,23 @@ def _fetch_vintages(
                     "Current-revised FRED observations cannot be imported as "
                     f"ALFRED vintages for {series}"
                 )
+            interval_start = _iso_date(
+                raw["realtime_start"], label="observation realtime_start"
+            )
+            interval_end = _iso_date(
+                raw["realtime_end"], label="observation realtime_end"
+            )
+            request_start = _iso_date(
+                request["realtime_start"], label="request realtime_start"
+            )
+            request_end = _iso_date(
+                request["realtime_end"], label="request realtime_end"
+            )
+            if interval_end < request_start or interval_start > request_end:
+                raise FredVintageImportError(
+                    "FRED observation real-time interval does not overlap "
+                    f"the request for {series}"
+                )
             value = pd.to_numeric(pd.Series([raw["value"]]), errors="coerce").iloc[0]
             if pd.isna(value):
                 missing_value_count += 1
@@ -577,9 +628,79 @@ def _validated_request(
 
 
 def _conservative_provider_available_at(value: object) -> pd.Timestamp:
-    provider_date = _iso_date(value, label="realtime_start")
-    next_midnight = pd.Timestamp(provider_date) + pd.Timedelta(days=1)
-    return next_midnight.tz_localize("America/Chicago").tz_convert("UTC")
+    try:
+        return alfred_provider_available_at(value)
+    except (TypeError, ValueError):
+        raise FredVintageImportError(
+            "FRED/ALFRED realtime_start must be an ISO calendar date"
+        ) from None
+
+
+def _restore_clipped_realtime_starts(
+    incoming: pd.DataFrame,
+    existing: pd.DataFrame,
+    *,
+    request_start: object,
+) -> tuple[pd.DataFrame, int]:
+    """Undo ALFRED output-type-1 clipping at an incremental request boundary.
+
+    ALFRED returns ``max(actual_realtime_start, request_start)``.  Treating that
+    clipped date as a new release would refresh every unchanged series at every
+    incremental run.  A boundary row is linked back only when the prior sealed
+    evidence contains the same series/observation/value interval active on the
+    boundary.  The unmodified provider response remains in the raw import.
+    """
+
+    if incoming.empty or existing.empty:
+        return incoming, 0
+    boundary_date = _iso_date(request_start, label="realtime_start")
+    boundary = pd.Timestamp(boundary_date, tz="UTC")
+    prior = existing.copy()
+    prior_start = pd.to_datetime(
+        prior["realtime_start"], utc=True, errors="coerce"
+    )
+    prior_end = prior["realtime_end"].map(
+        lambda value: _iso_date(value, label="persisted realtime_end")
+    )
+    result = incoming.copy()
+    incoming_start = pd.to_datetime(
+        result["realtime_start"], utc=True, errors="coerce"
+    )
+    reconstructed = 0
+    for index in result.index[incoming_start.dt.date.eq(boundary_date)]:
+        row = result.loc[index]
+        same_identity = (
+            prior["series_name"].astype(str).eq(str(row["series_name"]))
+            & prior["observation_date"].eq(row["observation_date"])
+            & prior_start.lt(boundary)
+            & prior_end.ge(boundary_date)
+        )
+        same_value = prior["value"].map(lambda value: _equal(value, row["value"]))
+        candidates = prior.loc[same_identity & same_value].copy()
+        if candidates.empty:
+            continue
+        candidates["_start"] = pd.to_datetime(
+            candidates["realtime_start"], utc=True, errors="coerce"
+        )
+        candidates = candidates.sort_values(
+            ["_start", "realtime_end"], kind="stable"
+        )
+        restored_start = candidates.iloc[-1]["realtime_start"]
+        restored_release = alfred_provider_available_at(restored_start)
+        result.at[index, "realtime_start"] = restored_start
+        result.at[index, "release_at"] = restored_release
+        result.at[index, "available_at"] = restored_release
+        reconstructed += 1
+    if reconstructed:
+        result = result.drop(columns=["revision_identity"], errors="ignore")
+        try:
+            result = normalize_fred_vintage_rows(result)
+        except Exception as exc:
+            raise FredVintageImportError(
+                "FRED/ALFRED boundary interval reconstruction failed: "
+                f"{type(exc).__name__}: {exc}"
+            ) from exc
+    return result, reconstructed
 
 
 def _iso_date(value: object, *, label: str) -> date:
@@ -591,6 +712,12 @@ def _iso_date(value: object, *, label: str) -> date:
             f"FRED/ALFRED {label} must be an ISO calendar date"
         ) from None
     return parsed
+
+
+def _equal(left: object, right: object) -> bool:
+    if pd.isna(left) and pd.isna(right):
+        return True
+    return bool(left == right)
 
 
 def _unused_timestamp_directory(parent: Path, timestamp: pd.Timestamp) -> Path:

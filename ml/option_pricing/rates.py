@@ -15,13 +15,19 @@ def load_point_in_time_rate_observations(
 
     root = Path(datastore_root).resolve()
     paths = tuple(
-        sorted(
+        path
+        for context_name in (
+            "alfred-release-context",
+            "prospective-release-context",
+            "release-context",
+        )
+        for path in sorted(
             (
                 root
                 / "pools"
                 / "macro"
                 / "features"
-                / "release-context"
+                / context_name
                 / "fred"
             ).glob("*.parquet")
         )
