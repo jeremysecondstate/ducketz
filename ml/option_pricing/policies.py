@@ -21,11 +21,7 @@ LOOP_NATIVE_SYMBOLS = (
     "GOOG",
     "MU",
     "AAPL",
-    "MSFT",
     "AMZN",
-    "META",
-    "TSLA",
-    "CAT",
     "SNDK",
 )
 LOOP_NATIVE_CALL_PUTS = ("CALL", "PUT")

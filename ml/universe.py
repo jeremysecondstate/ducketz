@@ -20,18 +20,9 @@ class ResearchInstrument:
 
 
 INITIAL_RESEARCH_INSTRUMENTS: tuple[ResearchInstrument, ...] = (
-    ResearchInstrument("DE", "NYSE", "USD", "XNYS"),
-    ResearchInstrument("CAT", "NYSE", "USD", "XNYS"),
     ResearchInstrument("AAPL", "NASDAQ", "USD", "XNAS"),
-    ResearchInstrument("MSFT", "NASDAQ", "USD", "XNAS"),
     ResearchInstrument("AMZN", "NASDAQ", "USD", "XNAS"),
-    ResearchInstrument("META", "NASDAQ", "USD", "XNAS"),
-    ResearchInstrument("AVGO", "NASDAQ", "USD", "XNAS"),
-    ResearchInstrument("AMD", "NASDAQ", "USD", "XNAS"),
-    ResearchInstrument("TSLA", "NASDAQ", "USD", "XNAS"),
-    ResearchInstrument("QCOM", "NASDAQ", "USD", "XNAS"),
     ResearchInstrument("SNDK", "NASDAQ", "USD", "XNAS"),
-    ResearchInstrument("PLAB", "NASDAQ", "USD", "XNAS"),
     ResearchInstrument("MU", "NASDAQ", "USD", "XNAS"),
     ResearchInstrument("GOOG", "NASDAQ", "USD", "XNAS"),
     ResearchInstrument("NVDA", "NASDAQ", "USD", "XNAS"),

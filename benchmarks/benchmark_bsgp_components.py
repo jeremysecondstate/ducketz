@@ -16,7 +16,7 @@ from ml.option_pricing.shadow_model import (
 )
 
 
-SYMBOLS = ("NVDA", "GOOG", "MU", "AAPL", "MSFT", "AMZN", "META", "TSLA", "CAT", "SNDK")
+SYMBOLS = ("NVDA", "GOOG", "MU", "AAPL", "AMZN", "SNDK")
 COMPONENT_COUNTS = (128, 256)
 
 
