@@ -7,6 +7,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, Sequence
 
+import pandas as pd
+
 from app.services.schwab_retry import call_with_persistent_schwab_retry
 from datafetching.bar_readiness import BarReadinessError, read_bar_readiness
 from datafetching.decision_time import (
@@ -24,6 +26,10 @@ from datafetching.pricing_barrier import wait_for_pricing_barrier
 from datafetching.runtime_lock import exclusive_runtime_lock
 from datafetching.schwab_fetch import DataFetchingSchwabSession
 from options.publication import committed_option_snapshots, option_writer_lock_path
+from options.providers import (
+    OptionMarketDataAdapter,
+    validate_canonical_opra_adapter,
+)
 from options.pending_capture import (
     PendingOptionCaptureError,
     begin_pending_option_request,
@@ -34,7 +40,12 @@ from options.pending_capture import (
     reconcile_pending_option_captures,
     record_pending_request_failure,
 )
-from options.snapshot import persist_schwab_option_snapshot
+from options.snapshot import (
+    normalize_databento_opra_option_snapshot,
+    persist_provider_option_snapshot,
+    persist_schwab_option_snapshot,
+)
+from ml.universe import canonical_production_option_symbols
 
 
 @dataclass(frozen=True)
@@ -51,6 +62,9 @@ class OptionsCycleResult:
     next_eligible_cycle: object | None = None
     schwab_called: bool = False
     schwab_requests: int = 0
+    opra_called: bool = False
+    opra_requests: int = 0
+    schwab_fallbacks: int = 0
     pending_captures: int = 0
     reconciled_captures: int = 0
     expired_captures: int = 0
@@ -78,10 +92,13 @@ def run_options_cycle(
     bar_readiness_mode: str = "required",
     per_symbol_detail: bool = False,
     phase_offset_minutes: int = 6,
+    canonical_market_adapter: OptionMarketDataAdapter | None = None,
 ) -> OptionsCycleResult:
     """Fetch one chain per cycle, including closed-market discovery refreshes."""
 
     clean_symbols = normalize_symbols(symbols)
+    if canonical_market_adapter is not None:
+        validate_canonical_opra_adapter(canonical_market_adapter)
     now = clock or (lambda: datetime.now(timezone.utc))
     cycle_started_at = now().astimezone(timezone.utc)
     readiness_mode = str(bar_readiness_mode).strip().lower()
@@ -133,16 +150,20 @@ def run_options_cycle(
         f"refreshed against the latest eligible target {target.isoformat()}."
     )
 
+    committed_providers = (
+        ("databento-opra", "schwab")
+        if canonical_market_adapter is not None
+        else ("schwab",)
+    )
     observed_symbols = {
         symbol
         for symbol in clean_symbols
         if any(
             snapshot.snapshot_for == target
-            and (
-                not discovery_refresh
-                or snapshot.available_at >= cycle_boundary
+            for provider in committed_providers
+            for snapshot in committed_option_snapshots(
+                store.root_dir, symbol=symbol, provider=provider
             )
-            for snapshot in committed_option_snapshots(store.root_dir, symbol=symbol)
         )
     }
     claimed_symbols: set[str] = set()
@@ -308,6 +329,8 @@ def run_options_cycle(
     published = reconciled_this_cycle
     failed = 0
     schwab_requests = 0
+    opra_requests = 0
+    schwab_fallbacks = 0
     provider_session = session
     completed_loop_a = read_latest_complete_loop_a_cycle(store.root_dir)
     regime_cutoff = (
@@ -336,6 +359,57 @@ def run_options_cycle(
                 )
                 if not created:
                     continue
+            if canonical_market_adapter is not None and symbol in decision_clocks:
+                try:
+                    opra_requests += 1
+                    evidence = canonical_market_adapter.fetch_snapshot(
+                        symbol=symbol,
+                        target_snapshot_for=pd.Timestamp(target),
+                        requested_at=pd.Timestamp(request_started_at),
+                    )
+                    if (
+                        str(evidence.provider).strip().lower() != "databento-opra"
+                        or str(evidence.dataset).strip().upper() != "OPRA.PILLAR"
+                        or str(evidence.schema).strip().lower() != "cbbo-1s"
+                        or str(evidence.symbol).strip().upper() != symbol
+                        or pd.Timestamp(evidence.target_snapshot_for) != pd.Timestamp(target)
+                    ):
+                        raise ValueError(
+                            "Canonical adapter returned evidence outside the requested OPRA target"
+                        )
+                    normalized = normalize_databento_opra_option_snapshot(
+                        evidence.quotes,
+                        evidence.definitions,
+                        symbol=symbol,
+                        target_snapshot_for=target,
+                        received_at=evidence.received_at,
+                        dataset=evidence.dataset,
+                        schema=evidence.schema,
+                    )
+                    persist_provider_option_snapshot(
+                        store.root_dir,
+                        provider="databento-opra",
+                        dataset=evidence.dataset,
+                        symbol=symbol,
+                        raw=normalized,
+                        contracts=normalized,
+                        features=normalized,
+                        request_started_at=request_started_at,
+                        pricing_barrier=barrier_metadata,
+                        receipt_published_at=evidence.received_at,
+                        acquire_writer_lock=not writer_lock_held,
+                    )
+                    published += 1
+                    continue
+                except Exception as exc:
+                    # Fallback is explicit and remains labeled Schwab in its own
+                    # immutable provider path. OPRA is never fabricated.
+                    schwab_fallbacks += 1
+                    if reporter is not None:
+                        reporter(
+                            "Canonical OPRA capture unavailable; using explicit "
+                            f"Schwab fallback for {symbol}: {type(exc).__name__}: {exc}"
+                        )
             if provider_session is None:
                 provider_session = DataFetchingSchwabSession()
             with timed_stage(
@@ -490,6 +564,9 @@ def run_options_cycle(
         next_eligible_cycle=next_cycle,
         schwab_called=schwab_requests > 0,
         schwab_requests=schwab_requests,
+        opra_called=opra_requests > 0,
+        opra_requests=opra_requests,
+        schwab_fallbacks=schwab_fallbacks,
         pending_captures=inventory.pending,
         reconciled_captures=inventory.reconciled,
         expired_captures=inventory.expired,
@@ -542,9 +619,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     if args.pricing_barrier_timeout_seconds < 0:
         parser.error("--pricing-barrier-timeout-seconds cannot be negative")
-    symbols = normalize_symbols(args.symbols or read_watchlist(args.watchlist))
-    if not symbols:
-        parser.error("No symbols were configured")
+    try:
+        symbols = canonical_production_option_symbols(
+            normalize_symbols(args.symbols or read_watchlist(args.watchlist)),
+            label="Options Capture production watchlist",
+        )
+    except Exception as exc:
+        parser.error(str(exc))
     store = ParquetStore(args.datastore, target=args.datastore_target)
 
     print("DUCKETS OPTIONS RUNTIME")
@@ -552,7 +633,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"DATASTORE: {store.root_dir}")
     print(f"Watchlist: {', '.join(symbols)}")
     print(f"Interval: {args.interval_minutes} minutes; UTC phase +{args.phase_offset_minutes}")
-    print("Ownership: Schwab raw chains, normalized contracts, and option-quality surfaces")
+    print(
+        "Ownership: provider-neutral immutable option evidence; Schwab broker lane "
+        "is captured by this command"
+    )
     print("Stop: Ctrl+C")
     print()
 
@@ -612,6 +696,9 @@ def report_options_result(
         f"pricing_terminal_outcome={result.pricing_terminal_status or 'NONE'}; "
         f"schwab_called={str(result.schwab_called).lower()}; "
         f"schwab_requests={result.schwab_requests}; "
+        f"opra_called={str(result.opra_called).lower()}; "
+        f"opra_requests={result.opra_requests}; "
+        f"schwab_fallbacks={result.schwab_fallbacks}; "
         f"published={result.published}; failed={result.failed}; "
         f"skipped={result.skipped}; "
         f"pending_captures={result.pending_captures}; "

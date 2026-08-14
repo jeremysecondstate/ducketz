@@ -90,6 +90,32 @@ _LEGACY_TARGET_DEFINITION_VERSIONS: Mapping[str, str] = {
     "1d": "next-session-open-close-v1",
     "1w": "weekly-context-next-session-open-close-v2",
 }
+OPTION_PRICING_LOOP_B_GATE_POLICY_VERSION = (
+    "option-pricing-loop-b-family-coverage-freshness-gate-v1"
+)
+OPTION_PRICING_LOOP_B_MINIMUM_COVERAGE = 0.80
+OPTION_PRICING_LOOP_B_MINIMUM_DISTINCT_TARGETS = 20
+_OPTION_PRICING_FEATURE_GROUPS: Mapping[str, tuple[str, ...]] = {
+    "fair_value": (
+        "opx__causal_coverage",
+        "opx__median_normalized_residual",
+    ),
+    "uncertainty": ("opx__median_predictive_standard_deviation",),
+    "edge": (
+        "opx__median_model_edge_in_half_spreads",
+        "opx__positive_edge_fraction",
+        "opx__negative_edge_fraction",
+    ),
+    "constraints": (
+        "opx__raw_arbitrage_violation_rate",
+        "opx__constrained_arbitrage_violation_rate",
+    ),
+    "interval_calibration": (
+        "opx__interval_80_coverage",
+        "opx__interval_95_coverage",
+    ),
+    "liquidity": ("opx__median_relative_bid_ask_spread",),
+}
 
 
 @dataclass(frozen=True)
@@ -382,6 +408,24 @@ def _run_loop_b_once(
             route_errors[f"model|{horizon}"] = "No materialized samples"
             continue
         try:
+            horizon_features = DEFAULT_FEATURE_REGISTRY.feature_set(
+                specification.feature_set,
+                require_active=True,
+                horizon=feature_contract_horizon(horizon),
+            ).names
+            pricing_gate = _pricing_family_gate(
+                route_samples,
+                feature_columns=horizon_features,
+            )
+            if (
+                pricing_gate["enabled"]
+                and not pricing_gate["downstream_training_eligible"]
+            ):
+                failed = ", ".join(pricing_gate["failed_routes"])
+                raise RuntimeError(
+                    "Option Pricing family coverage/freshness gate is not "
+                    f"satisfied ({failed})"
+                )
             partitions = partition_model_rows(
                 route_samples,
                 config=runtime.partition_for(horizon),
@@ -2025,7 +2069,12 @@ def _pricing_evidence_manifest(
         column for column in feature_columns if str(column).startswith("opx__")
     )
     if not model_columns:
-        return {"enabled": False, "routes": {}}
+        return {
+            "enabled": False,
+            "policy_version": OPTION_PRICING_LOOP_B_GATE_POLICY_VERSION,
+            "downstream_training_eligible": False,
+            "routes": {},
+        }
     routes: dict[str, object] = {}
     audit_names = (
         "opx__source_status",
@@ -2076,8 +2125,150 @@ def _pricing_evidence_manifest(
                 str(key): int(value) for key, value in joined.items()
             },
             "audit": audit,
+            "family_gate": _pricing_route_family_gate(
+                frame,
+                feature_columns=model_columns,
+            ),
         }
-    return {"enabled": True, "routes": routes}
+    gate = _pricing_family_gate(
+        materialization.samples,
+        feature_columns=model_columns,
+    )
+    return {
+        **gate,
+        "routes": routes,
+    }
+
+
+def _pricing_family_gate(
+    frame: pd.DataFrame,
+    *,
+    feature_columns: Sequence[str],
+) -> dict[str, object]:
+    """Fail closed until every selected Pricing subfamily is fresh and covered."""
+
+    selected = tuple(
+        str(column)
+        for column in feature_columns
+        if str(column).startswith("opx__")
+    )
+    if not selected:
+        return {
+            "enabled": False,
+            "policy_version": OPTION_PRICING_LOOP_B_GATE_POLICY_VERSION,
+            "downstream_training_eligible": False,
+            "failed_routes": [],
+            "thresholds": {
+                "minimum_complete_row_fraction": (
+                    OPTION_PRICING_LOOP_B_MINIMUM_COVERAGE
+                ),
+                "minimum_fresh_joined_row_fraction": (
+                    OPTION_PRICING_LOOP_B_MINIMUM_COVERAGE
+                ),
+                "minimum_distinct_surface_targets": (
+                    OPTION_PRICING_LOOP_B_MINIMUM_DISTINCT_TARGETS
+                ),
+            },
+            "route_gates": {},
+        }
+    route_gates: dict[str, object] = {}
+    if frame.empty or not {"symbol", "horizon"}.issubset(frame.columns):
+        route_gates["<no-route>"] = _pricing_route_family_gate(
+            frame,
+            feature_columns=selected,
+        )
+    else:
+        for (symbol, horizon), route in frame.groupby(
+            ["symbol", "horizon"], sort=True, dropna=False
+        ):
+            route_gates[f"{symbol}|{horizon}"] = _pricing_route_family_gate(
+                route,
+                feature_columns=selected,
+            )
+    failed = [
+        route
+        for route, report in route_gates.items()
+        if not bool(report.get("pass"))
+    ]
+    return {
+        "enabled": True,
+        "policy_version": OPTION_PRICING_LOOP_B_GATE_POLICY_VERSION,
+        "downstream_training_eligible": bool(route_gates) and not failed,
+        "failed_routes": failed,
+        "thresholds": {
+            "minimum_complete_row_fraction": (
+                OPTION_PRICING_LOOP_B_MINIMUM_COVERAGE
+            ),
+            "minimum_fresh_joined_row_fraction": (
+                OPTION_PRICING_LOOP_B_MINIMUM_COVERAGE
+            ),
+            "minimum_distinct_surface_targets": (
+                OPTION_PRICING_LOOP_B_MINIMUM_DISTINCT_TARGETS
+            ),
+        },
+        "route_gates": route_gates,
+    }
+
+
+def _pricing_route_family_gate(
+    frame: pd.DataFrame,
+    *,
+    feature_columns: Sequence[str],
+) -> dict[str, object]:
+    row_count = len(frame)
+    joined = (
+        frame["opx__join_status"].astype("string").eq("JOINED")
+        if "opx__join_status" in frame
+        else pd.Series(False, index=frame.index, dtype=bool)
+    )
+    target_column = (
+        "opx__source_target_snapshot_for"
+        if "opx__source_target_snapshot_for" in frame
+        else "decision_timestamp"
+        if "decision_timestamp" in frame
+        else None
+    )
+    targets = (
+        pd.to_datetime(frame[target_column], utc=True, errors="coerce")
+        if target_column is not None
+        else pd.Series(pd.NaT, index=frame.index)
+    )
+    groups: dict[str, object] = {}
+    for name, declared in _OPTION_PRICING_FEATURE_GROUPS.items():
+        columns = tuple(
+            column
+            for column in declared
+            if column in feature_columns and column in frame.columns
+        )
+        if not columns:
+            continue
+        complete = frame.loc[:, columns].notna().all(axis=1)
+        fresh_complete = complete & joined
+        distinct_targets = int(targets.loc[fresh_complete].nunique())
+        complete_fraction = float(complete.mean()) if row_count else 0.0
+        fresh_fraction = float(fresh_complete.mean()) if row_count else 0.0
+        passed = bool(
+            complete_fraction >= OPTION_PRICING_LOOP_B_MINIMUM_COVERAGE
+            and fresh_fraction >= OPTION_PRICING_LOOP_B_MINIMUM_COVERAGE
+            and distinct_targets
+            >= OPTION_PRICING_LOOP_B_MINIMUM_DISTINCT_TARGETS
+        )
+        groups[name] = {
+            "columns": list(columns),
+            "complete_rows": int(complete.sum()),
+            "fresh_joined_rows": int(fresh_complete.sum()),
+            "sample_rows": row_count,
+            "complete_row_fraction": complete_fraction,
+            "fresh_joined_row_fraction": fresh_fraction,
+            "distinct_surface_targets": distinct_targets,
+            "pass": passed,
+        }
+    return {
+        "pass": bool(groups) and all(
+            bool(report.get("pass")) for report in groups.values()
+        ),
+        "groups": groups,
+    }
 
 
 def _project_samples(

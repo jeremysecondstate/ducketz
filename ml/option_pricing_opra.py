@@ -14,9 +14,12 @@ from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.option_pricing.opra import (
     DEFAULT_MARKET_TIMES,
     DEFAULT_SYMBOLS,
+    RESEARCH_BENCHMARK_SYMBOLS,
     configure_historical_client_timeouts,
     normalize_definition_records,
+    opra_storage_capacity_report,
     read_opra_import,
+    research_benchmark_schedule_report,
     resolve_market_schedule,
     run_import_phase,
     schedule_contract_report,
@@ -44,7 +47,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         choices=tuple(DATASTORE_TARGETS),
         default="pc",
     )
-    parser.add_argument("--symbols", nargs="+", default=list(DEFAULT_SYMBOLS))
+    parser.add_argument(
+        "--symbols",
+        nargs="+",
+        default=None,
+        help=(
+            "Exact scope override. Production accepts the authoritative six symbols; "
+            "--research-benchmark accepts SPY only."
+        ),
+    )
+    parser.add_argument(
+        "--research-benchmark",
+        action="store_true",
+        help=(
+            "Plan the separate SPY methodology benchmark. This scope is permanently "
+            "research-only and cannot satisfy a production route."
+        ),
+    )
     parser.add_argument(
         "--start-date",
         default=None,
@@ -122,14 +141,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     today_ny = pd.Timestamp.now(tz="America/New_York").date()
     end = pd.Timestamp(args.end_date).date() if args.end_date else today_ny - pd.Timedelta(days=1)
-    normalized_symbols = tuple(
-        dict.fromkeys(str(value).strip().upper() for value in args.symbols)
+    expected_symbols = (
+        tuple(RESEARCH_BENCHMARK_SYMBOLS)
+        if args.research_benchmark
+        else tuple(DEFAULT_SYMBOLS)
     )
-    if len(normalized_symbols) != len(DEFAULT_SYMBOLS) or set(normalized_symbols) != set(
-        DEFAULT_SYMBOLS
+    supplied_symbols = args.symbols if args.symbols is not None else expected_symbols
+    normalized_symbols = tuple(
+        dict.fromkeys(str(value).strip().upper() for value in supplied_symbols)
+    )
+    if (
+        len(normalized_symbols) != len(expected_symbols)
+        or set(normalized_symbols) != set(expected_symbols)
     ):
-        parser.error("Eligibility OPRA scope requires exactly: NVDA GOOG MU")
-    normalized_symbols = tuple(DEFAULT_SYMBOLS)
+        scope_name = "research benchmark" if args.research_benchmark else "production eligibility"
+        parser.error(
+            f"OPRA {scope_name} scope requires exactly: {' '.join(expected_symbols)}"
+        )
+    normalized_symbols = expected_symbols
     if tuple(args.market_times) != tuple(DEFAULT_MARKET_TIMES):
         parser.error(
             "Eligibility OPRA timing requires exactly: 10:00 11:30 13:30 15:00"
@@ -151,14 +180,26 @@ def main(argv: Sequence[str] | None = None) -> int:
                 end_date=end,
                 market_times=args.market_times,
             )
-            if schedule_contract_report(schedule).get("status") == "PASS":
+            report = (
+                research_benchmark_schedule_report(schedule)
+                if args.research_benchmark
+                else schedule_contract_report(schedule)
+            )
+            if report.get("status") == "PASS":
                 break
             start = (pd.Timestamp(start) - pd.Timedelta(days=1)).date()
         else:
-            parser.error("Could not resolve the mandatory 504-cluster OPRA schedule")
+            parser.error(
+                "Could not resolve the derived minimum-cluster, six-calendar-month "
+                "OPRA schedule"
+            )
     if not schedule:
         parser.error("The requested scope resolves to no eligible XNYS market times")
-    schedule_contract = schedule_contract_report(schedule)
+    schedule_contract = (
+        research_benchmark_schedule_report(schedule)
+        if args.research_benchmark
+        else schedule_contract_report(schedule)
+    )
     if schedule_contract.get("status") != "PASS":
         parser.error(
             "The requested OPRA schedule does not satisfy the production eligibility "
@@ -175,7 +216,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     definition_directory = None
     reference_underlyings: dict[tuple[str, str], float] = {}
     if not args.definitions_only:
-        definition_directory = args.definition_evidence or _latest_definition_import(root)
+        definition_directory = args.definition_evidence or _latest_definition_import(
+            root,
+            required_symbols=normalized_symbols,
+        )
         if definition_directory is not None:
             definitions = _load_definition_evidence(
                 definition_directory,
@@ -219,7 +263,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     print("=================================")
     print(f"DATASTORE: {root}")
     print("Dataset: OPRA.PILLAR")
-    print(f"Symbols: {', '.join(dict.fromkeys(value.upper() for value in args.symbols))}")
+    print(
+        "Scope: RESEARCH_BENCHMARK_ONLY (never production eligible)"
+        if args.research_benchmark
+        else "Scope: PRODUCTION_ELIGIBILITY"
+    )
+    print(f"Symbols: {', '.join(normalized_symbols)}")
     print(f"Sessions: {start} through {end}")
     print(f"America/New_York times: {', '.join(args.market_times)}")
     print(f"Resolved symbol-time observations: {len(schedule)}")
@@ -236,7 +285,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         f"status={rate_coverage['status']} "
         f"targets={rate_coverage['covered_target_count']}/{rate_coverage['target_count']}"
     )
-    print("Dividend input policy: lagged provider value, then causal put-call parity")
+    print(
+        "Dividend input policy: declared FMP events, causal recurring estimate, "
+        "put-call parity fallback, then zero-no-known-dividend"
+    )
     print("Mode: PAID EXECUTION" if args.execute else "Mode: ESTIMATE ONLY (no get_range)")
     if definition_directory is not None:
         print(f"Definition evidence: {definition_directory}")
@@ -264,6 +316,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 reference_underlyings=reference_underlyings,
                 eligibility_policy_artifact=policy_artifact,
                 authorization_record=args.authorization_record,
+                eligibility_scope=not args.research_benchmark,
+                research_benchmark_scope=args.research_benchmark,
             )
     else:
         result = run_import_phase(
@@ -275,6 +329,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             normalized_definitions=definitions,
             reference_underlyings=reference_underlyings,
             authorization_template_path=args.write_authorization_template,
+            eligibility_scope=not args.research_benchmark,
+            research_benchmark_scope=args.research_benchmark,
         )
     print()
     print(
@@ -283,6 +339,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         f"billable_size_bytes={result.estimated_billable_size_bytes}; "
         f"downloaded={result.downloaded_count}"
     )
+    storage = opra_storage_capacity_report(
+        root,
+        estimated_billable_size_bytes=result.estimated_billable_size_bytes,
+    )
+    print(
+        "Storage plan: "
+        f"status={storage['status']}; "
+        f"estimated_download_bytes={storage['estimated_billable_size_bytes']}; "
+        f"estimated_expanded_bytes={storage['estimated_expanded_bytes']}; "
+        f"required_free_bytes={storage['required_free_bytes']}; "
+        f"available_free_bytes={storage['available_free_bytes']}"
+    )
+    print(
+        "Resumability: immutable per-request checksums and attempt receipts under "
+        f"{root / 'ml' / 'option-pricing-evidence' / 'opra'}; verified completed "
+        "plans return ALREADY_COMMITTED"
+    )
     if result.evidence_directory is not None:
         print(f"Immutable evidence: {result.evidence_directory}")
     if result.phase == "definitions" and result.status in {"IMPORTED", "ALREADY_COMMITTED"}:
@@ -290,7 +363,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 0
 
 
-def _latest_definition_import(datastore_root: Path) -> Path | None:
+def _latest_definition_import(
+    datastore_root: Path,
+    *,
+    required_symbols: Sequence[str],
+) -> Path | None:
     evidence = Path(datastore_root) / "ml" / "option-pricing-evidence" / "opra"
     for receipt in sorted(evidence.glob("*/receipt.json"), reverse=True):
         try:
@@ -298,7 +375,15 @@ def _latest_definition_import(datastore_root: Path) -> Path | None:
         except Exception:
             continue
         manifest = payload["manifest"]
-        if manifest.get("phase") == "definitions":
+        schedule_symbols = {
+            str(item.get("symbol", "")).strip().upper()
+            for item in manifest.get("schedule", ())
+            if isinstance(item, dict)
+        }
+        if (
+            manifest.get("phase") == "definitions"
+            and schedule_symbols == set(required_symbols)
+        ):
             return receipt.parent
     return None
 

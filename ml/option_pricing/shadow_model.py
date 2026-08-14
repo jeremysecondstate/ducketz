@@ -26,6 +26,7 @@ from ml.option_pricing.model import (
 )
 from ml.option_pricing.policies import (
     DERIVED_FEATURE_COLUMNS,
+    FINITE_BASIS_RESIDUAL_MODEL_NAME,
     LOOP_NATIVE_CALL_PUTS,
     LOOP_NATIVE_MATERIALIZATION_POLICY_VERSION,
     LOOP_NATIVE_MODEL_POLICY_VERSION,
@@ -36,7 +37,9 @@ from ml.option_pricing.policies import (
     SEMANTIC_FEATURE_COLUMNS,
 )
 from ml.option_pricing.schwab_materialization import (
+    OFFLINE_OPRA_BACKFILL,
     OFFLINE_SCHWAB_BOOTSTRAP,
+    PROSPECTIVE_OPRA,
     PROSPECTIVE_SCHWAB,
     SCHWAB_MATERIALIZATION_SAMPLE_NAME,
     SchwabMaterialization,
@@ -44,9 +47,9 @@ from ml.option_pricing.schwab_materialization import (
 )
 
 
-LOOP_NATIVE_MODEL_GENERATION_SCHEMA_VERSION = "loop-native-bsgp-generation-v2"
-LOOP_NATIVE_MODEL_RECEIPT_VERSION = "loop-native-bsgp-generation-receipt-v2"
-LOOP_NATIVE_MODEL_POINTER_VERSION = "loop-native-bsgp-generation-pointer-v2"
+LOOP_NATIVE_MODEL_GENERATION_SCHEMA_VERSION = "loop-native-finite-basis-generation-v3"
+LOOP_NATIVE_MODEL_RECEIPT_VERSION = "loop-native-finite-basis-generation-receipt-v3"
+LOOP_NATIVE_MODEL_POINTER_VERSION = "loop-native-finite-basis-generation-pointer-v3"
 LOOP_NATIVE_MODEL_FILE = "pooled-call-put-model.joblib"
 LOOP_NATIVE_MODEL_MANIFEST = "manifest.json"
 LOOP_NATIVE_MODEL_RECEIPT = "receipt.json"
@@ -105,35 +108,11 @@ class LoopNativeModelLoad:
 
 
 def surface_weights(frame: pd.DataFrame) -> np.ndarray:
-    """Give every symbol/target/side surface total objective weight one."""
+    """Preserve one unit per surface while distributing it by causal liquidity."""
 
-    required = {"symbol", "target_snapshot_for", "call_put"}
-    if missing := sorted(required.difference(frame.columns)):
-        raise ValueError("Surface weights require: " + ", ".join(missing))
-    keys = pd.DataFrame(
-        {
-            "symbol": frame["symbol"].astype("string").str.strip().str.upper(),
-            "target_snapshot_for": pd.to_datetime(
-                frame["target_snapshot_for"], utc=True, errors="coerce"
-            ),
-            "call_put": frame["call_put"]
-            .astype("string")
-            .str.strip()
-            .str.upper(),
-        },
-        index=frame.index,
-    )
-    if keys.isna().any(axis=None) or keys[["symbol", "call_put"]].eq("").any(
-        axis=None
-    ):
-        raise ValueError("Surface weights received incomplete keys")
-    sizes = keys.groupby(list(required), sort=False, dropna=False)[
-        "symbol"
-    ].transform("size")
-    weights = 1.0 / sizes.to_numpy(dtype=float)
-    if not np.isfinite(weights).all() or np.any(weights <= 0.0):
-        raise ValueError("Surface weights are invalid")
-    return weights
+    from ml.option_pricing.weighting import liquidity_weights
+
+    return liquidity_weights(frame)
 
 
 def partition_loop_native_samples(
@@ -189,7 +168,9 @@ def partition_loop_native_samples(
         eligible["call_put"].astype("string").str.strip().str.upper()
     )
     if not set(eligible["symbol"]).issubset(LOOP_NATIVE_SYMBOLS):
-        raise LoopNativeModelError("Training samples escape the ten-symbol scope")
+        raise LoopNativeModelError(
+            f"Training samples escape the {len(LOOP_NATIVE_SYMBOLS)}-symbol production scope"
+        )
     if not set(eligible["call_put"]).issubset(LOOP_NATIVE_CALL_PUTS):
         raise LoopNativeModelError("Training samples contain an invalid option side")
     for column in (
@@ -233,10 +214,17 @@ def partition_loop_native_samples(
             "Only outcomes whose receipts strictly predate the trainer cutoff may train"
         )
     lanes = set(eligible["evidence_lane"].astype("string"))
-    if not lanes.issubset({OFFLINE_SCHWAB_BOOTSTRAP, PROSPECTIVE_SCHWAB}):
+    if not lanes.issubset(
+        {
+            OFFLINE_OPRA_BACKFILL,
+            OFFLINE_SCHWAB_BOOTSTRAP,
+            PROSPECTIVE_OPRA,
+            PROSPECTIVE_SCHWAB,
+        }
+    ):
         raise LoopNativeModelError("Training samples contain an unauthorized evidence lane")
-    offline = eligible["evidence_lane"].astype("string").eq(
-        OFFLINE_SCHWAB_BOOTSTRAP
+    offline = eligible["evidence_lane"].astype("string").isin(
+        {OFFLINE_OPRA_BACKFILL, OFFLINE_SCHWAB_BOOTSTRAP}
     )
     prediction_cutoff = eligible["prediction_created_at"].where(
         ~offline,
@@ -513,6 +501,15 @@ def train_loop_native_shadow_generation(
     )
     manifest_base: dict[str, object] = {
         "schema_version": LOOP_NATIVE_MODEL_GENERATION_SCHEMA_VERSION,
+        "model_name": FINITE_BASIS_RESIDUAL_MODEL_NAME,
+        "model_kind": (
+            "finite-nystroem-rbf-basis-with-bayesian-ridge-posterior"
+        ),
+        "exact_gaussian_process": False,
+        "legacy_serialization_aliases": {
+            "bsgp": "finite_basis_residual",
+            "standard_gp": "finite_basis_price_comparator",
+        },
         "policy_version": LOOP_NATIVE_MODEL_POLICY_VERSION,
         "shadow_schema_version": LOOP_NATIVE_SHADOW_SCHEMA_VERSION,
         "materialization_policy_version": LOOP_NATIVE_MATERIALIZATION_POLICY_VERSION,
@@ -568,7 +565,9 @@ def train_loop_native_shadow_generation(
         "side_models": side_reports,
         "evidence_counts": _evidence_counts(used),
         "library_versions": _library_versions(),
-        "paid_opra_used": False,
+        "paid_opra_used": bool(
+            verified_materialization.report.get("paid_opra_used", False)
+        ),
         "external_provider_requests": 0,
         "automated_action_allowed": False,
     }
@@ -1476,13 +1475,18 @@ def _route_statistics(frame: pd.DataFrame) -> Mapping[str, object]:
 
 def _evidence_counts(frame: pd.DataFrame) -> Mapping[str, object]:
     output: dict[str, object] = {}
-    for lane in (OFFLINE_SCHWAB_BOOTSTRAP, PROSPECTIVE_SCHWAB):
+    for lane in (
+        OFFLINE_OPRA_BACKFILL,
+        OFFLINE_SCHWAB_BOOTSTRAP,
+        PROSPECTIVE_OPRA,
+        PROSPECTIVE_SCHWAB,
+    ):
         selected = frame.loc[frame["evidence_lane"].astype("string").eq(lane)]
         output[lane] = {
             "rows": len(selected),
             "surfaces": _surface_count(selected),
             "sessions": _distinct_sessions(selected),
-            "increments_prospective_count": lane == PROSPECTIVE_SCHWAB,
+            "increments_prospective_count": lane == PROSPECTIVE_OPRA,
         }
     return output
 

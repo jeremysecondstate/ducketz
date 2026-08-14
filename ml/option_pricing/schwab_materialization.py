@@ -23,6 +23,7 @@ from ml.artifacts import file_checksum, semantic_metadata_fingerprint, utc_times
 from ml.option_pricing.causal import build_causal_samples, reconcile_predictions
 from ml.option_pricing.policies import (
     ContractSelectionPolicy,
+    LEGACY_LOOP_NATIVE_MATERIALIZATION_POLICY_VERSION,
     LOOP_NATIVE_CALL_PUTS,
     LOOP_NATIVE_MATERIALIZATION_POLICY_VERSION,
     LOOP_NATIVE_SYMBOLS,
@@ -40,14 +41,25 @@ from ml.option_pricing.publication import (
     receipt_proven_prediction_rows,
 )
 from ml.option_pricing.target_outcome import authoritative_target_outcomes
-from options.publication import CommittedOptionSnapshot, committed_option_snapshots
+from options.publication import (
+    CommittedOptionSnapshot,
+    canonical_option_snapshots,
+    committed_option_snapshots,
+)
 
 
-SCHWAB_MATERIALIZATION_SCHEMA_VERSION = "loop-native-schwab-materialization-v2"
+LEGACY_SCHWAB_MATERIALIZATION_SCHEMA_VERSION = "loop-native-schwab-materialization-v2"
+SCHWAB_MATERIALIZATION_SCHEMA_VERSION = "loop-native-provider-materialization-v3"
 SCHWAB_MATERIALIZATION_RECEIPT_VERSION = (
+    "loop-native-provider-materialization-receipt-v3"
+)
+LEGACY_SCHWAB_MATERIALIZATION_RECEIPT_VERSION = (
     "loop-native-schwab-materialization-receipt-v2"
 )
 SCHWAB_MATERIALIZATION_POINTER_VERSION = (
+    "loop-native-provider-materialization-pointer-v3"
+)
+LEGACY_SCHWAB_MATERIALIZATION_POINTER_VERSION = (
     "loop-native-schwab-materialization-pointer-v2"
 )
 SCHWAB_MATERIALIZATION_SAMPLE_NAME = "causal-residual-samples.parquet"
@@ -56,6 +68,8 @@ SCHWAB_MATERIALIZATION_MANIFEST_NAME = "manifest.json"
 SCHWAB_MATERIALIZATION_RECEIPT_NAME = "receipt.json"
 OFFLINE_SCHWAB_BOOTSTRAP = "OFFLINE_SCHWAB_BOOTSTRAP"
 PROSPECTIVE_SCHWAB = "PROSPECTIVE_SCHWAB"
+OFFLINE_OPRA_BACKFILL = "OFFLINE_OPRA_BACKFILL"
+PROSPECTIVE_OPRA = "PROSPECTIVE_OPRA"
 
 _SEMANTIC_COLUMNS = (
     "symbol",
@@ -102,8 +116,10 @@ def materialize_loop_native_schwab_history(
     offline_emulation_delay_seconds: int = 60,
     dry_run: bool = False,
     published_at: object | None = None,
+    opra_samples: pd.DataFrame | None = None,
+    opra_source_files: Sequence[Path] = (),
 ) -> SchwabMaterialization:
-    """Build causal local-only residual evidence without any provider request."""
+    """Build OPRA-primary evidence with Schwab fallback, without provider calls."""
 
     root = Path(datastore_root).resolve()
     cutoff = utc_timestamp(trainer_cutoff)
@@ -112,7 +128,7 @@ def materialize_loop_native_schwab_history(
     )
     if clean_symbols != LOOP_NATIVE_SYMBOLS:
         raise SchwabMaterializationError(
-            "Loop-native materialization requires the exact ten-symbol watchlist"
+            f"Loop-native materialization requires the exact {len(LOOP_NATIVE_SYMBOLS)}-symbol production universe"
         )
     if offline_emulation_delay_seconds < 0:
         raise ValueError("offline_emulation_delay_seconds cannot be negative")
@@ -126,6 +142,19 @@ def materialize_loop_native_schwab_history(
             symbol: committed_option_snapshots(root, symbol=symbol)
             for symbol in clean_symbols
         }
+        opra_snapshots_by_symbol: dict[
+            str, tuple[CommittedOptionSnapshot, ...]
+        ] = {}
+        opra_snapshot_reports: dict[str, Mapping[str, object]] = {}
+        for symbol in clean_symbols:
+            snapshots, snapshot_report = canonical_option_snapshots(
+                root,
+                symbol=symbol,
+                provider="databento-opra",
+                available_not_after=cutoff,
+            )
+            opra_snapshots_by_symbol[symbol] = snapshots
+            opra_snapshot_reports[symbol] = snapshot_report
         collapsed = collapse_schwab_publications(
             snapshots_by_symbol,
             datastore_root=root,
@@ -139,15 +168,40 @@ def materialize_loop_native_schwab_history(
             contract_policy=policy,
             emulation_delay_seconds=offline_emulation_delay_seconds,
         )
+        prospective_snapshots_by_symbol = {
+            symbol: tuple(
+                sorted(
+                    (
+                        *opra_snapshots_by_symbol.get(symbol, ()),
+                        *collapsed.eligible.get(symbol, ()),
+                    ),
+                    key=lambda value: (
+                        value.snapshot_for,
+                        0 if value.provider == "databento-opra" else 1,
+                        _receipt_time(value),
+                    ),
+                )
+            )
+            for symbol in clean_symbols
+        }
         prospective, prospective_report, prospective_files = _prospective_samples(
             root,
-            snapshots_by_symbol=collapsed.eligible,
+            snapshots_by_symbol=prospective_snapshots_by_symbol,
             trainer_cutoff=cutoff,
             rate_observations=rate_observations,
             contract_policy=policy,
         )
-        samples = _canonical_materialized_samples(bootstrap, prospective)
-        _validate_available_sample_causality(samples, trainer_cutoff=cutoff, root=root)
+        schwab_samples = _canonical_materialized_samples(bootstrap, prospective)
+        _validate_available_sample_causality(
+            schwab_samples, trainer_cutoff=cutoff, root=root
+        )
+        prepared_opra = _prepare_opra_samples(
+            opra_samples,
+            trainer_cutoff=cutoff,
+        )
+        _validate_opra_sample_causality(prepared_opra, trainer_cutoff=cutoff)
+        disagreement = _provider_disagreement_report(prepared_opra, schwab_samples)
+        samples = _canonical_provider_samples(prepared_opra, schwab_samples)
         route_report = _route_report(samples, symbols=clean_symbols)
         elapsed = time.perf_counter() - started
         peak_memory = tracemalloc.get_traced_memory()[1]
@@ -165,8 +219,24 @@ def materialize_loop_native_schwab_history(
                 ],
             },
             "snapshot_collapse": dict(collapsed.report),
+            "opra_snapshot_canonicalization": opra_snapshot_reports,
             "offline_bootstrap": bootstrap_report,
             "prospective": prospective_report,
+            "opra": {
+                "evidence_lane": OFFLINE_OPRA_BACKFILL,
+                "sample_rows": len(prepared_opra),
+                "available_rows": int(
+                    prepared_opra.get(
+                        "sample_status", pd.Series(dtype="string")
+                    ).astype("string").eq("AVAILABLE").sum()
+                ),
+                "prospective_count_increment": 0,
+                "prospective_snapshot_count": sum(
+                    len(value) for value in opra_snapshots_by_symbol.values()
+                ),
+            },
+            "provider_precedence": ["databento-opra", "schwab"],
+            "provider_disagreement": disagreement,
             "routes": route_report,
             "input_coverage": _input_coverage_report(samples),
             "sample_rows": len(samples),
@@ -181,12 +251,14 @@ def materialize_loop_native_schwab_history(
                 "peak_memory_bytes": peak_memory,
             },
             "external_provider_requests": 0,
-            "paid_opra_used": False,
+            "paid_opra_used": not prepared_opra.empty,
             "current_revised_rate_history_used_for_historical_targets": False,
             "automated_action_allowed": False,
         }
         source_files = tuple(
-            dict.fromkeys((*bootstrap_files, *prospective_files))
+            dict.fromkeys(
+                (*map(Path, opra_source_files), *bootstrap_files, *prospective_files)
+            )
         )
         manifest_base = {
             "schema_version": SCHWAB_MATERIALIZATION_SCHEMA_VERSION,
@@ -206,6 +278,8 @@ def materialize_loop_native_schwab_history(
                 "underlying_rule": "immutable-loop-a-readiness-strictly-before-prediction",
                 "target_snapshot_allowed_as_feature": False,
                 "target_time_iv_allowed_as_feature": False,
+                "provider_precedence": "databento-opra-then-schwab",
+                "offline_opra_prospective_credit_allowed": False,
                 "current_revised_rate_history_used": False,
             },
             "consulted_receipt_count": collapsed.report["consulted_receipt_count"],
@@ -426,17 +500,52 @@ def read_loop_native_schwab_materialization(
             for call_put in LOOP_NATIVE_CALL_PUTS
         ],
     }
+    legacy_symbols = (
+        "NVDA",
+        "GOOG",
+        "MU",
+        "AAPL",
+        "MSFT",
+        "AMZN",
+        "META",
+        "TSLA",
+        "CAT",
+        "SNDK",
+    )
+    legacy_scope = {
+        "symbols": list(legacy_symbols),
+        "call_puts": list(LOOP_NATIVE_CALL_PUTS),
+        "routes": [
+            {"symbol": symbol, "call_put": call_put}
+            for symbol in legacy_symbols
+            for call_put in LOOP_NATIVE_CALL_PUTS
+        ],
+    }
     published = utc_timestamp(receipt.get("published_at"))
     trainer_cutoff = utc_timestamp(manifest.get("trainer_cutoff"))
+    schema_version = manifest.get("schema_version")
+    legacy = schema_version == LEGACY_SCHWAB_MATERIALIZATION_SCHEMA_VERSION
+    expected_policy = (
+        LEGACY_LOOP_NATIVE_MATERIALIZATION_POLICY_VERSION
+        if legacy
+        else LOOP_NATIVE_MATERIALIZATION_POLICY_VERSION
+    )
+    expected_receipt = (
+        LEGACY_SCHWAB_MATERIALIZATION_RECEIPT_VERSION
+        if legacy
+        else SCHWAB_MATERIALIZATION_RECEIPT_VERSION
+    )
     if (
-        manifest.get("schema_version") != SCHWAB_MATERIALIZATION_SCHEMA_VERSION
-        or manifest.get("policy_version")
-        != LOOP_NATIVE_MATERIALIZATION_POLICY_VERSION
-        or manifest.get("scope") != expected_scope
-        or report.get("schema_version") != SCHWAB_MATERIALIZATION_SCHEMA_VERSION
-        or report.get("policy_version")
-        != LOOP_NATIVE_MATERIALIZATION_POLICY_VERSION
-        or receipt.get("schema_version") != SCHWAB_MATERIALIZATION_RECEIPT_VERSION
+        schema_version
+        not in {
+            LEGACY_SCHWAB_MATERIALIZATION_SCHEMA_VERSION,
+            SCHWAB_MATERIALIZATION_SCHEMA_VERSION,
+        }
+        or manifest.get("policy_version") != expected_policy
+        or manifest.get("scope") != (legacy_scope if legacy else expected_scope)
+        or report.get("schema_version") != schema_version
+        or report.get("policy_version") != expected_policy
+        or receipt.get("schema_version") != expected_receipt
         or receipt.get("run_path") != run.relative_to(root).as_posix()
         or manifest.get("published_at") != published.isoformat()
         or receipt.get("trainer_cutoff") != trainer_cutoff.isoformat()
@@ -548,7 +657,11 @@ def read_current_loop_native_schwab_materialization(
         ) from exc
     if (
         not isinstance(pointer, Mapping)
-        or pointer.get("schema_version") != SCHWAB_MATERIALIZATION_POINTER_VERSION
+        or pointer.get("schema_version")
+        not in {
+            LEGACY_SCHWAB_MATERIALIZATION_POINTER_VERSION,
+            SCHWAB_MATERIALIZATION_POINTER_VERSION,
+        }
         or not isinstance(pointer.get("current"), Mapping)
     ):
         raise SchwabMaterializationError("Materialization pointer is malformed")
@@ -688,8 +801,14 @@ def _bootstrap_samples(
                     source_provider="schwab",
                     prediction_mode="OFFLINE",
                     observed_available_at=_receipt_time(target_snapshot),
+                    prediction_created_at=target,
+                    prediction_available_at=emulated,
+                    provider_ingested_at=_receipt_time(target_snapshot),
+                    evidence_lane=OFFLINE_SCHWAB_BOOTSTRAP,
+                    fallback_used=True,
                     contract_policy=contract_policy,
                     rate_observations=rate_observations,
+                    datastore_root=root,
                     allow_source_chain_carry_fallback=False,
                 )
             except SchwabMaterializationError as exc:
@@ -896,7 +1015,7 @@ def _prospective_samples(
         return (
             pd.DataFrame(),
             {
-                "evidence_lane": PROSPECTIVE_SCHWAB,
+                "evidence_lanes": [PROSPECTIVE_OPRA, PROSPECTIVE_SCHWAB],
                 "sample_rows": 0,
                 "distinct_sessions": 0,
                 "receipt_cutoff": trainer_cutoff.isoformat(),
@@ -921,7 +1040,10 @@ def _prospective_samples(
         created.lt(trainer_cutoff)
         & available.lt(trainer_cutoff)
         & predictions["prediction_mode"].astype("string").str.upper().eq("LIVE")
-        & predictions["source_provider"].astype("string").str.lower().eq("schwab")
+        & predictions["source_provider"]
+        .astype("string")
+        .str.lower()
+        .isin(("databento-opra", "schwab"))
     ].copy()
     cutoff_snapshots = {
         symbol: tuple(
@@ -970,7 +1092,7 @@ def _prospective_samples(
         return (
             pd.DataFrame(),
             {
-                "evidence_lane": PROSPECTIVE_SCHWAB,
+                "evidence_lanes": [PROSPECTIVE_OPRA, PROSPECTIVE_SCHWAB],
                 "sample_rows": 0,
                 "distinct_sessions": 0,
                 "receipt_cutoff": trainer_cutoff.isoformat(),
@@ -1012,6 +1134,7 @@ def _prospective_samples(
             rejection_counts["PREDICTION_LOOKUP_MISSING"] += 1
             continue
         source_key = (
+            str(prediction["source_provider"]).strip().lower(),
             str(prediction["symbol"]).strip().upper(),
             utc_timestamp(prediction["target_snapshot_for"]),
             str(prediction["contract_symbol"]),
@@ -1025,30 +1148,26 @@ def _prospective_samples(
         source_snapshot_matches = sorted(
             (
                 snapshot
-                for snapshot in snapshots_by_symbol.get(source_key[0], ())
-                if snapshot.snapshot_for == source_target
+                for snapshot in snapshots_by_symbol.get(source_key[1], ())
+                if snapshot.provider == source_key[0]
+                and snapshot.snapshot_for == source_target
                 and _receipt_time(snapshot) == source_available
             ),
             key=lambda value: value.directory.as_posix(),
         )
         if not source_snapshot_matches:
-            rejection_counts["SOURCE_SCHWAB_RECEIPT_MISSING"] += 1
+            rejection_counts["SOURCE_PROVIDER_RECEIPT_MISSING"] += 1
             continue
         source_snapshot = source_snapshot_matches[0]
         source_contracts = source_contract_cache.get(source_snapshot.contracts_path)
         if source_contracts is None:
-            source_contracts = pd.read_parquet(
-                source_snapshot.contracts_path,
-                columns=[
-                    "contract_symbol",
-                    "interest_rate",
-                    "dividend_yield",
-                    "quote_timestamp",
-                ],
-            )
+            source_contracts = pd.read_parquet(source_snapshot.contracts_path)
+            for optional in ("interest_rate", "dividend_yield"):
+                if optional not in source_contracts:
+                    source_contracts[optional] = np.nan
             source_contract_cache[source_snapshot.contracts_path] = source_contracts
         source_contract = source_contracts.loc[
-            source_contracts["contract_symbol"].astype(str).eq(source_key[2])
+            source_contracts["contract_symbol"].astype(str).eq(source_key[3])
         ]
         if len(source_contract) != 1:
             raise SchwabMaterializationError(
@@ -1059,7 +1178,7 @@ def _prospective_samples(
             source_sample.get("source_quote_timestamp")
         ):
             raise SchwabMaterializationError(
-                "Prospective source quote clock disagrees with Schwab contract receipt"
+                "Prospective source quote clock disagrees with provider contract receipt"
             )
         if (
             str(source_sample.get("call_put", "")).strip().upper()
@@ -1095,7 +1214,9 @@ def _prospective_samples(
         matching = [
             snapshot
             for snapshot in cutoff_snapshots.get(str(prediction["symbol"]), ())
-            if snapshot.snapshot_for == target
+            if snapshot.provider
+            == str(evaluation.get("outcome_provider", "")).strip().lower()
+            and snapshot.snapshot_for == target
             and _receipt_time(snapshot)
             == utc_timestamp(evaluation["observed_available_at"])
         ]
@@ -1146,7 +1267,8 @@ def _prospective_samples(
         rows.append(
             {
                 "symbol": prediction["symbol"],
-                "source_provider": "schwab",
+                "source_provider": prediction["source_provider"],
+                "outcome_provider": evaluation["outcome_provider"],
                 "prediction_mode": "LIVE",
                 "call_put": prediction["call_put"],
                 "contract_symbol": prediction["contract_symbol"],
@@ -1201,7 +1323,11 @@ def _prospective_samples(
                 "volatility_policy_version": OPTION_PRICING_VOLATILITY_POLICY_VERSION,
                 "contract_policy_version": OPTION_PRICING_CONTRACT_POLICY_VERSION,
                 "schema_version": OPTION_PRICING_SCHEMA_VERSION,
-                "evidence_lane": PROSPECTIVE_SCHWAB,
+                "evidence_lane": evaluation["evidence_lane"],
+                "fallback_used": str(prediction["source_provider"])
+                .strip()
+                .lower()
+                == "schwab",
                 "offline_emulated_prediction_at": pd.NaT,
                 "prospective_eligible": True,
                 "source_receipt_path": source_snapshot.receipt_path.relative_to(
@@ -1258,7 +1384,15 @@ def _prospective_samples(
     return (
         frame,
         {
-            "evidence_lane": PROSPECTIVE_SCHWAB,
+            "evidence_lanes": {
+                lane: int(
+                    frame.get("evidence_lane", pd.Series(dtype="string"))
+                    .astype("string")
+                    .eq(lane)
+                    .sum()
+                )
+                for lane in (PROSPECTIVE_OPRA, PROSPECTIVE_SCHWAB)
+            },
             "sample_rows": len(frame),
             "distinct_sessions": _distinct_sessions(frame),
             "receipt_cutoff": trainer_cutoff.isoformat(),
@@ -1277,11 +1411,11 @@ def _receipt_proven_live_source_samples(
     *,
     trainer_cutoff: pd.Timestamp,
 ) -> tuple[
-    dict[tuple[str, pd.Timestamp, str], Mapping[str, object]],
+    dict[tuple[str, str, pd.Timestamp, str], Mapping[str, object]],
     tuple[Path, ...],
     Mapping[str, int],
 ]:
-    selected: dict[tuple[str, pd.Timestamp, str], Mapping[str, object]] = {}
+    selected: dict[tuple[str, str, pd.Timestamp, str], Mapping[str, object]] = {}
     files: list[Path] = []
     rejection_counts: Counter[str] = Counter()
 
@@ -1308,10 +1442,11 @@ def _receipt_proven_live_source_samples(
             )
             .astype("string")
             .str.lower()
-            .eq("schwab")
+            .isin(("databento-opra", "schwab"))
         ]
         for row in available.to_dict("records"):
             key = (
+                str(row.get("source_provider", "")).strip().lower(),
                 str(row.get("symbol", "")).strip().upper(),
                 utc_timestamp(row.get("target_snapshot_for")),
                 str(row.get("contract_symbol", "")),
@@ -1460,7 +1595,11 @@ def _canonical_materialized_samples(*frames: pd.DataFrame) -> pd.DataFrame:
     output["source_available_at"] = pd.to_datetime(
         output["source_available_at"], utc=True, errors="coerce"
     )
-    order = {PROSPECTIVE_SCHWAB: 0, OFFLINE_SCHWAB_BOOTSTRAP: 1}
+    order = {
+        PROSPECTIVE_OPRA: 0,
+        PROSPECTIVE_SCHWAB: 1,
+        OFFLINE_SCHWAB_BOOTSTRAP: 2,
+    }
     output["_lane_order"] = output["evidence_lane"].map(order).fillna(99)
     return (
         output.sort_values(
@@ -1481,6 +1620,204 @@ def _canonical_materialized_samples(*frames: pd.DataFrame) -> pd.DataFrame:
         .drop(columns="_lane_order")
         .reset_index(drop=True)
     )
+
+
+def _prepare_opra_samples(
+    samples: pd.DataFrame | None,
+    *,
+    trainer_cutoff: pd.Timestamp,
+) -> pd.DataFrame:
+    if samples is None or samples.empty:
+        return pd.DataFrame()
+    output = samples.drop(columns="id", errors="ignore").copy()
+    output["source_provider"] = "databento-opra"
+    output["prediction_mode"] = "OFFLINE"
+    output["evidence_lane"] = OFFLINE_OPRA_BACKFILL
+    output["fallback_used"] = False
+    output["prospective_eligible"] = False
+    output["offline_emulated_prediction_at"] = pd.to_datetime(
+        output.get("prediction_available_at"), utc=True, errors="coerce"
+    )
+    output["dollar_residual"] = (
+        pd.to_numeric(output.get("normalized_residual"), errors="coerce")
+        * pd.to_numeric(output.get("underlying_price"), errors="coerce")
+    )
+    outcome_quote = pd.to_datetime(
+        output.get("observed_quote_timestamp"), utc=True, errors="coerce"
+    )
+    outcome_available = pd.to_datetime(
+        output.get("observed_available_at"), utc=True, errors="coerce"
+    )
+    output["observed_quote_staleness_seconds"] = (
+        outcome_available - outcome_quote
+    ).dt.total_seconds()
+    source_available = pd.to_datetime(
+        output.get("source_available_at"), utc=True, errors="coerce"
+    )
+    output["rate_source_at"] = pd.to_datetime(
+        output.get("rate_source_at"), utc=True, errors="coerce"
+    ).fillna(source_available)
+    output["volatility_source_at"] = pd.to_datetime(
+        output.get("volatility_source_at"), utc=True, errors="coerce"
+    ).fillna(source_available)
+    output["dividend_source_at"] = pd.to_datetime(
+        output.get("dividend_source_at"), utc=True, errors="coerce"
+    ).fillna(source_available)
+    output["underlying_readiness_ready_at"] = source_available
+    output["underlying_readiness_path"] = "OPRA_OFFLINE_LOOP_A_BAR_PROOF"
+    output["underlying_readiness_receipt_path"] = "OPRA_IMPORT_MANIFEST_PROOF"
+    output["underlying_bar_timestamp"] = pd.to_datetime(
+        output.get("target_snapshot_for"), utc=True, errors="coerce"
+    )
+    output["underlying_bar_path"] = "OPRA_OFFLINE_LOOP_A_BAR_PROOF"
+    for column in (
+        "source_receipt_path",
+        "source_receipt_checksum_sha256",
+        "prediction_receipt_path",
+        "prediction_receipt_checksum_sha256",
+        "target_receipt_path",
+        "target_receipt_checksum_sha256",
+    ):
+        if column not in output:
+            output[column] = "VERIFIED_IN_MATERIALIZATION_MANIFEST"
+    output["rate_input_kind"] = output.get(
+        "rate_source", pd.Series("FMP_OR_ALFRED", index=output.index)
+    )
+    output["carry_input_kind"] = output.get(
+        "dividend_confidence", pd.Series("EXPLICIT_FALLBACK", index=output.index)
+    )
+    ingested = pd.to_datetime(
+        output.get("provider_ingested_at"), utc=True, errors="coerce"
+    )
+    late_import = ingested.isna() | ingested.ge(trainer_cutoff)
+    formerly_available = output["sample_status"].astype("string").eq("AVAILABLE")
+    output.loc[formerly_available & late_import, "sample_status"] = (
+        "IMPORT_NOT_AVAILABLE_BY_TRAINER"
+    )
+    output.loc[formerly_available & late_import, "exclusion_reason"] = (
+        "Present-day historical import receipt did not predate the trainer cutoff."
+    )
+    return output.reset_index(drop=True)
+
+
+def _validate_opra_sample_causality(
+    samples: pd.DataFrame,
+    *,
+    trainer_cutoff: pd.Timestamp,
+) -> None:
+    if samples.empty:
+        return
+    available = samples.loc[
+        samples["sample_status"].astype("string").eq("AVAILABLE")
+    ].copy()
+    if available.empty:
+        return
+    required = {
+        "source_snapshot_for",
+        "source_quote_timestamp",
+        "source_available_at",
+        "prediction_created_at",
+        "prediction_available_at",
+        "observed_quote_timestamp",
+        "observed_available_at",
+        "provider_ingested_at",
+        "evidence_lane",
+        "prospective_eligible",
+    }
+    if missing := sorted(required.difference(available.columns)):
+        raise SchwabMaterializationError(
+            "OPRA materialization lacks causal proof columns: " + ", ".join(missing)
+        )
+    for column in required.difference({"evidence_lane", "prospective_eligible"}):
+        available[column] = pd.to_datetime(
+            available[column], utc=True, errors="coerce"
+        )
+    if available[list(required.difference({"evidence_lane", "prospective_eligible"}))].isna().any(axis=None):
+        raise SchwabMaterializationError("OPRA materialization has invalid causal clocks")
+    valid = (
+        available["source_quote_timestamp"].lt(available["prediction_created_at"])
+        & available["source_available_at"].lt(available["prediction_created_at"])
+        & available["prediction_created_at"].le(available["prediction_available_at"])
+        & available["observed_quote_timestamp"].gt(available["prediction_available_at"])
+        & available["observed_available_at"].gt(available["prediction_available_at"])
+        & available["provider_ingested_at"].lt(trainer_cutoff)
+        & available["observed_available_at"].lt(trainer_cutoff)
+    )
+    if not valid.all():
+        raise SchwabMaterializationError("OPRA materialization violates causal clocks")
+    if (
+        not available["evidence_lane"].astype("string").eq(OFFLINE_OPRA_BACKFILL).all()
+        or available["prospective_eligible"].fillna(True).astype(bool).any()
+    ):
+        raise SchwabMaterializationError(
+            "Offline OPRA evidence was incorrectly marked prospective"
+        )
+
+
+def _canonical_provider_samples(
+    opra: pd.DataFrame,
+    schwab: pd.DataFrame,
+) -> pd.DataFrame:
+    frames = [frame for frame in (opra, schwab) if not frame.empty]
+    if not frames:
+        return pd.DataFrame()
+    output = pd.concat(frames, ignore_index=True, sort=False)
+    output["_provider_order"] = np.where(
+        output["source_provider"].astype("string").str.lower().eq("databento-opra"),
+        0,
+        1,
+    )
+    output["_available_order"] = np.where(
+        output["sample_status"].astype("string").eq("AVAILABLE"), 0, 1
+    )
+    natural = ["symbol", "target_snapshot_for", "contract_symbol"]
+    output = output.sort_values(
+        [*natural, "_available_order", "_provider_order", "source_available_at"],
+        kind="stable",
+    ).drop_duplicates(natural, keep="first")
+    output["fallback_used"] = output["source_provider"].astype("string").str.lower().eq(
+        "schwab"
+    )
+    return output.drop(columns=["_provider_order", "_available_order"]).reset_index(
+        drop=True
+    )
+
+
+def _provider_disagreement_report(
+    opra: pd.DataFrame,
+    schwab: pd.DataFrame,
+) -> Mapping[str, object]:
+    if opra.empty or schwab.empty:
+        return {
+            "overlap_rows": 0,
+            "median_absolute_midpoint_difference": None,
+            "median_difference_in_opra_half_spreads": None,
+        }
+    keys = ["symbol", "target_snapshot_for", "contract_symbol"]
+    left = opra.loc[opra["sample_status"].astype("string").eq("AVAILABLE"), [*keys, "observed_mid", "bid_ask_spread"]]
+    right = schwab.loc[schwab["sample_status"].astype("string").eq("AVAILABLE"), [*keys, "observed_mid"]]
+    overlap = left.merge(right, on=keys, suffixes=("_opra", "_schwab"))
+    if overlap.empty:
+        return {
+            "overlap_rows": 0,
+            "median_absolute_midpoint_difference": None,
+            "median_difference_in_opra_half_spreads": None,
+        }
+    difference = (
+        pd.to_numeric(overlap["observed_mid_opra"], errors="coerce")
+        - pd.to_numeric(overlap["observed_mid_schwab"], errors="coerce")
+    ).abs()
+    half_spread = pd.to_numeric(
+        overlap["bid_ask_spread"], errors="coerce"
+    ) / 2.0
+    normalized = difference / half_spread.where(half_spread.gt(0.0))
+    return {
+        "overlap_rows": len(overlap),
+        "median_absolute_midpoint_difference": float(difference.median()),
+        "median_difference_in_opra_half_spreads": (
+            float(normalized.median()) if normalized.notna().any() else None
+        ),
+    }
 
 
 def _validate_available_sample_causality(
@@ -1555,8 +1892,8 @@ def _validate_available_sample_causality(
     offline = available["evidence_lane"].astype("string").eq(
         OFFLINE_SCHWAB_BOOTSTRAP
     )
-    prospective = available["evidence_lane"].astype("string").eq(
-        PROSPECTIVE_SCHWAB
+    prospective = available["evidence_lane"].astype("string").isin(
+        (PROSPECTIVE_OPRA, PROSPECTIVE_SCHWAB)
     )
     if not (offline | prospective).all():
         raise SchwabMaterializationError("Available samples contain an unknown evidence lane")
@@ -1607,9 +1944,17 @@ def _validate_available_sample_causality(
         )
     allowed_rate_kinds = {
         "SOURCE_SCHWAB_CHAIN_FIELD",
+        "SOURCE_PROVIDER_COMPARISON_FALLBACK",
+        "CAUSAL_FMP_TREASURY_CURVE",
         "POINT_IN_TIME_VERIFIED_RATE_RECEIPT",
     }
-    allowed_carry_kinds = {"SOURCE_SCHWAB_CHAIN_FIELD"}
+    allowed_carry_kinds = {
+        "SOURCE_SCHWAB_CHAIN_FIELD",
+        "DECLARED_FMP",
+        "CAUSAL_RECURRING_ESTIMATE",
+        "PUT_CALL_PARITY_FALLBACK",
+        "ZERO_NO_KNOWN_DIVIDEND",
+    }
     if (
         not set(available["rate_input_kind"].astype(str)).issubset(
             allowed_rate_kinds
@@ -2265,7 +2610,7 @@ def _live_available_source_rows(frame: pd.DataFrame) -> pd.DataFrame:
         )
         .astype("string")
         .str.lower()
-        .eq("schwab")
+        .isin(("databento-opra", "schwab"))
     ].copy()
 
 
@@ -2356,13 +2701,22 @@ def _prospective_rate_input_kind(
             "Prospective risk-free input lacks a causal source clock"
         )
     expected = float(prediction.get("risk_free_rate"))
+    declared_source = str(source_sample.get("rate_source", "")).strip().upper()
+    if declared_source == "FMP_TREASURY_CURVE":
+        return "CAUSAL_FMP_TREASURY_CURVE"
+    if declared_source in {"ALFRED_FEDFUNDS_FALLBACK", "FRED_FEDFUNDS_FALLBACK"}:
+        return "POINT_IN_TIME_VERIFIED_RATE_RECEIPT"
     provider = pd.to_numeric(
         pd.Series([source_contract.get("interest_rate")]), errors="coerce"
     ).iloc[0]
     if pd.notna(provider) and np.isclose(
         float(provider), expected, rtol=0.0, atol=1e-12
     ):
-        return "SOURCE_SCHWAB_CHAIN_FIELD"
+        return (
+            "SOURCE_SCHWAB_CHAIN_FIELD"
+            if str(prediction.get("source_provider", "")).strip().lower() == "schwab"
+            else "SOURCE_PROVIDER_COMPARISON_FALLBACK"
+        )
     observations = (
         rate_observations.copy()
         if rate_observations is not None
@@ -2398,6 +2752,14 @@ def _prospective_carry_input_kind(
             "Prospective carry input lacks a causal source clock"
         )
     expected = float(prediction.get("dividend_yield"))
+    confidence = str(source_sample.get("dividend_confidence", "")).strip().upper()
+    if confidence in {
+        "DECLARED_FMP",
+        "CAUSAL_RECURRING_ESTIMATE",
+        "PUT_CALL_PARITY_FALLBACK",
+        "ZERO_NO_KNOWN_DIVIDEND",
+    }:
+        return confidence
     provider = pd.to_numeric(
         pd.Series([source_contract.get("dividend_yield")]), errors="coerce"
     ).iloc[0]
@@ -2474,6 +2836,18 @@ def _route_report(
                 "prospective_rows": int(
                     available.get("evidence_lane", pd.Series(dtype="string"))
                     .astype("string")
+                    .isin((PROSPECTIVE_OPRA, PROSPECTIVE_SCHWAB))
+                    .sum()
+                ),
+                "prospective_opra_rows": int(
+                    available.get("evidence_lane", pd.Series(dtype="string"))
+                    .astype("string")
+                    .eq(PROSPECTIVE_OPRA)
+                    .sum()
+                ),
+                "prospective_schwab_rows": int(
+                    available.get("evidence_lane", pd.Series(dtype="string"))
+                    .astype("string")
                     .eq(PROSPECTIVE_SCHWAB)
                     .sum()
                 ),
@@ -2494,7 +2868,7 @@ def _route_report(
                             pd.Series("", index=available.index, dtype="string"),
                         )
                         .astype("string")
-                        .eq(PROSPECTIVE_SCHWAB)
+                        .isin((PROSPECTIVE_OPRA, PROSPECTIVE_SCHWAB))
                     ]
                 ),
             }
@@ -2613,7 +2987,9 @@ def _write_json_atomic(path: Path, payload: object) -> None:
 
 
 __all__ = [
+    "OFFLINE_OPRA_BACKFILL",
     "OFFLINE_SCHWAB_BOOTSTRAP",
+    "PROSPECTIVE_OPRA",
     "PROSPECTIVE_SCHWAB",
     "SCHWAB_MATERIALIZATION_SCHEMA_VERSION",
     "SchwabMaterialization",

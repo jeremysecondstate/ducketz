@@ -11,8 +11,16 @@ from typing import Mapping, Sequence
 import pandas as pd
 
 from datafetching.runtime_lock import exclusive_runtime_lock
-from ml.artifacts import utc_timestamp
-from ml.option_pricing.policies import LOOP_NATIVE_SYMBOLS, LoopNativeModelPolicy
+from ml.artifacts import semantic_metadata_fingerprint, utc_timestamp
+from ml.option_pricing.eligibility import eligibility_policy_payload
+from ml.option_pricing.opra_materialization import (
+    materialize_committed_opra_history_v2,
+)
+from ml.option_pricing.policies import (
+    LOOP_NATIVE_SYMBOLS,
+    LoopNativeModelPolicy,
+    PricingPartitionConfig,
+)
 from ml.option_pricing.rates import load_point_in_time_rate_observations
 from ml.option_pricing.schwab_materialization import (
     materialize_loop_native_schwab_history,
@@ -23,7 +31,8 @@ from ml.option_pricing.shadow_model import (
 )
 
 
-LOOP_NATIVE_WORKER_STATUS_VERSION = "loop-native-bsgp-worker-status-v1"
+LOOP_NATIVE_WORKER_STATUS_VERSION = "loop-native-opra-first-worker-status-v2"
+LEGACY_LOOP_NATIVE_WORKER_STATUS_VERSION = "loop-native-bsgp-worker-status-v1"
 
 
 def run_loop_native_worker_once(
@@ -40,9 +49,19 @@ def run_loop_native_worker_once(
     policy = model_policy or LoopNativeModelPolicy()
     with exclusive_runtime_lock(
         loop_native_worker_lock_path(root),
-        process_name="Loop-native BSGP worker",
+        process_name="Loop-native finite-basis residual worker",
     ):
         rates, _rate_files = load_point_in_time_rate_observations(root)
+        eligibility_hash = semantic_metadata_fingerprint(
+            eligibility_policy_payload()
+        )
+        opra = materialize_committed_opra_history_v2(
+            root,
+            symbols=LOOP_NATIVE_SYMBOLS,
+            rate_observations=rates,
+            closed_lockbox_clusters=PricingPartitionConfig().lockbox_clusters,
+            eligibility_policy_hash=eligibility_hash,
+        )
         materialization = materialize_loop_native_schwab_history(
             root,
             symbols=LOOP_NATIVE_SYMBOLS,
@@ -50,6 +69,8 @@ def run_loop_native_worker_once(
             rate_observations=rates,
             offline_emulation_delay_seconds=policy.offline_emulation_delay_seconds,
             dry_run=dry_run,
+            opra_samples=opra.samples,
+            opra_source_files=opra.source_files,
         )
         generation = None
         model_status = "DRY_RUN_NOT_PUBLISHED" if dry_run else "MODEL_NOT_FIT"
@@ -92,6 +113,9 @@ def run_loop_native_worker_once(
             "materialization_available_rows": int(
                 materialization.report.get("available_sample_rows", 0)
             ),
+            "opra_materialization_rows": len(opra.samples),
+            "opra_materialization_errors": dict(opra.errors),
+            "provider_precedence": ["databento-opra", "schwab"],
             "model_status": model_status,
             "model_reason": model_reason,
             "model_generation": (
@@ -100,7 +124,7 @@ def run_loop_native_worker_once(
                 else None
             ),
             "external_provider_requests": 0,
-            "paid_opra_used": False,
+            "paid_opra_used": not opra.samples.empty,
             "automated_action_allowed": False,
         }
         if not dry_run:
@@ -201,7 +225,11 @@ def _read_optional_worker_status(root: Path) -> Mapping[str, object] | None:
         return None
     if (
         not isinstance(payload, Mapping)
-        or payload.get("schema_version") != LOOP_NATIVE_WORKER_STATUS_VERSION
+        or payload.get("schema_version")
+        not in {
+            LEGACY_LOOP_NATIVE_WORKER_STATUS_VERSION,
+            LOOP_NATIVE_WORKER_STATUS_VERSION,
+        }
         or payload.get("automated_action_allowed") is not False
     ):
         return None
@@ -225,8 +253,9 @@ def _write_json_atomic(path: Path, payload: Mapping[str, object]) -> None:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Materialize receipt-proven Schwab residual evidence and optionally "
-            "publish a future-only pooled BSGP generation. No provider request is made."
+            "Materialize receipt-proven OPRA-primary residual evidence with explicit "
+            "Schwab fallback and optionally publish a future-only finite-basis "
+            "generation. No provider request is made."
         )
     )
     parser.add_argument("--datastore", required=True, type=Path)
@@ -252,6 +281,7 @@ if __name__ == "__main__":  # pragma: no cover - CLI boundary
 
 __all__ = [
     "LOOP_NATIVE_WORKER_STATUS_VERSION",
+    "LEGACY_LOOP_NATIVE_WORKER_STATUS_VERSION",
     "launch_loop_native_worker",
     "loop_native_worker_lock_path",
     "loop_native_worker_status_path",

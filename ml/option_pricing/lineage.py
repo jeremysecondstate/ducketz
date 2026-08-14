@@ -85,9 +85,14 @@ def verify_staged_option_pricing_run(
     declared_contract = (
         declared_contract if isinstance(declared_contract, Mapping) else {}
     )
+    finite_basis_key = (
+        "finite_basis_nystroem_rbf_bayesian_ridge"
+        if "finite_basis_nystroem_rbf_bayesian_ridge" in declared_contract
+        else "bsgp"
+    )
     manifest_contract = {
         "partitions": configuration.get("partition_config"),
-        "bsgp": configuration.get("model_policy"),
+        finite_basis_key: configuration.get("model_policy"),
         "contract_selection": configuration.get("contract_policy"),
         "projection": configuration.get("projection_policy"),
     }

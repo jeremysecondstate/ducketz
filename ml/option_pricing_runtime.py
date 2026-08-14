@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
+import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 
@@ -134,7 +135,8 @@ from ml.parquet_contracts import (
     frame_with_readable_id,
     write_parquet_with_schema,
 )
-from options.publication import committed_option_snapshots
+from ml.universe import canonical_production_option_symbols
+from options.publication import canonical_option_snapshots
 from options.pending_capture import pending_option_capture_counts
 
 
@@ -656,7 +658,15 @@ def _run_option_pricing_once_impl(
     )
 
     snapshots_by_symbol = {
-        symbol: committed_option_snapshots(root, symbol=symbol)
+        symbol: tuple(
+            snapshot
+            for provider in ("databento-opra", "schwab")
+            for snapshot in canonical_option_snapshots(
+                root,
+                symbol=symbol,
+                provider=provider,
+            )[0]
+        )
         for symbol in clean_symbols
     }
     live_for_reconciliation = canonicalize_predictions(
@@ -743,7 +753,7 @@ def _run_option_pricing_once_impl(
             "live_symbol_count": len(clean_symbols),
             "source": "configured-watchlist-or-explicit-symbols",
             "black_scholes_baseline_symbols": list(clean_symbols),
-            "bsgp_eligibility_pilot_symbols": list(
+            "finite_basis_eligibility_symbols": list(
                 eligibility_policy.required_symbols
             ),
         },
@@ -780,12 +790,12 @@ def _run_option_pricing_once_impl(
             "requires_fitted_residual_model": False,
             "new_predictions_created": new_live_prediction_count,
         },
-        "loop_native_bsgp_shadow": {
+        "loop_native_finite_basis_shadow": {
             "scope_active": loop_native_scope,
             "loaded_before_fast_publication_status": (
                 earlier_shadow_model.status
                 if earlier_shadow_model is not None
-                else "OUTSIDE_TEN_SYMBOL_SCOPE"
+                else "OUTSIDE_PRODUCTION_OPTION_UNIVERSE"
             ),
             "loaded_generation": (
                 earlier_shadow_model.generation.receipt.get("run_path")
@@ -1536,7 +1546,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     print("==============================")
     print(f"DATASTORE: {root}")
     print(f"Live symbols: {', '.join(configured_symbols)}")
-    print(f"Scope: pooled CALL/PUT BSGP and Black-Scholes fallback for {len(configured_symbols)} symbols")
+    print(
+        "Scope: pooled CALL/PUT 128-component Nystroem RBF residual model "
+        f"with Bayesian ridge posterior and Black-Scholes fallback for "
+        f"{len(configured_symbols)} symbols"
+    )
     print("Authority: ml/option-pricing-latest/run.json")
     print("Mode: active pricing evidence; order automation remains disabled")
     print("Timing: completed quarter-hour bar -> Pricing receipt -> independent Options fetch")
@@ -1943,18 +1957,12 @@ def resolve_pricing_symbols(
     symbols: Sequence[str] | None,
     watchlist: Path,
 ) -> tuple[str, ...]:
-    configured = normalize_symbols(
-        symbols if symbols is not None else read_watchlist(Path(watchlist))
+    return canonical_production_option_symbols(
+        normalize_symbols(
+            symbols if symbols is not None else read_watchlist(Path(watchlist))
+        ),
+        label="Active Pricing production watchlist",
     )
-    if not configured:
-        raise ValueError("No Pricing symbols were configured")
-    missing_pilot = [symbol for symbol in REQUIRED_SYMBOLS if symbol not in configured]
-    if missing_pilot:
-        raise ValueError(
-            "Pricing live scope must include the BSGP eligibility pilot symbols: "
-            + ", ".join(missing_pilot)
-        )
-    return configured
 
 
 def _assessment_predictions(
@@ -2289,7 +2297,28 @@ def _write_and_publish_generation(
         # Only the compact publication-bound outputs and manifest remain.
         files_completed_at = max(utc_timestamp(runtime_clock()), created)
         published_surfaces = surfaces.copy()
+        previous_generation = None
+        if pricing_pointer_path(root).is_file():
+            previous_generation = read_current_option_pricing_publication(
+                root
+            ).run_directory.name
         published_monitoring = monitoring.copy()
+        if not published_surfaces.empty:
+            published_surfaces["model_generation"] = destination.name
+            published_surfaces["supersedes_generation"] = previous_generation
+            published_surfaces["quality_decision"] = np.where(
+                published_surfaces["surface_quality_pass"].fillna(False),
+                "PASS",
+                "REJECT",
+            )
+            first_available = pd.to_datetime(
+                published_surfaces["first_available_at"],
+                utc=True,
+                errors="coerce",
+            )
+            published_surfaces["fresh_until"] = first_available + pd.Timedelta(
+                hours=2
+            )
         if not published_monitoring.empty:
             published_monitoring["monitored_at"] = files_completed_at
         for name, frame, schema, keys in (
@@ -2341,7 +2370,7 @@ def _write_and_publish_generation(
                 "runtime_benchmark": dict(runtime_benchmark),
                 "runtime_scope": {
                     "live_symbols": list(runtime_symbols),
-                    "bsgp_eligibility_pilot_symbols": list(
+                    "finite_basis_eligibility_symbols": list(
                         policy_artifact.policy.get("required_symbols", REQUIRED_SYMBOLS)
                     ),
                 },

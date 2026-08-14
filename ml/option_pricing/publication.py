@@ -11,19 +11,27 @@ import pandas as pd
 from ml.artifacts import file_checksum, verify_manifest
 from ml.parquet_contracts import (
     LEGACY_OPTION_PRICING_SURFACE_SCHEMA,
+    LEGACY_OPTION_PRICING_EVALUATION_SCHEMA,
+    LEGACY_OPTION_PRICING_PREDICTION_SCHEMA,
+    LEGACY_OPTION_PRICING_SAMPLE_SCHEMA,
     OPTION_PRICING_EVALUATION_SCHEMA,
     OPTION_PRICING_MONITORING_SCHEMA,
     OPTION_PRICING_PREDICTION_SCHEMA,
     OPTION_PRICING_SAMPLE_SCHEMA,
     OPTION_PRICING_SURFACE_SCHEMA,
+    V2_OPTION_PRICING_SURFACE_SCHEMA,
     verify_parquet_schema,
 )
 
 
-OPTION_PRICING_PUBLICATION_VERSION = "option-pricing-publication-v2"
-OPTION_PRICING_POINTER_VERSION = "option-pricing-pointer-v2"
+OPTION_PRICING_PUBLICATION_VERSION = "option-pricing-publication-v3"
+OPTION_PRICING_POINTER_VERSION = "option-pricing-pointer-v3"
 LEGACY_OPTION_PRICING_PUBLICATION_VERSION = "option-pricing-publication-v1"
-_LEGACY_OPTION_PRICING_POINTER_VERSIONS = {"option-pricing-pointer-v1"}
+V2_OPTION_PRICING_PUBLICATION_VERSION = "option-pricing-publication-v2"
+_LEGACY_OPTION_PRICING_POINTER_VERSIONS = {
+    "option-pricing-pointer-v1",
+    "option-pricing-pointer-v2",
+}
 OPTION_PRICING_RECEIPT_NAME = "publication.json"
 OPTION_PRICING_REQUIRED_OUTPUTS = {
     "pricing-samples.parquet": OPTION_PRICING_SAMPLE_SCHEMA,
@@ -34,12 +42,26 @@ OPTION_PRICING_REQUIRED_OUTPUTS = {
 }
 _OPTION_PRICING_REQUIRED_OUTPUTS_BY_VERSION = {
     LEGACY_OPTION_PRICING_PUBLICATION_VERSION: {
-        **OPTION_PRICING_REQUIRED_OUTPUTS,
+        "pricing-samples.parquet": LEGACY_OPTION_PRICING_SAMPLE_SCHEMA,
+        "pricing-predictions.parquet": LEGACY_OPTION_PRICING_PREDICTION_SCHEMA,
+        "pricing-evaluations.parquet": LEGACY_OPTION_PRICING_EVALUATION_SCHEMA,
         "pricing-surfaces.parquet": LEGACY_OPTION_PRICING_SURFACE_SCHEMA,
+        "pricing-monitoring.parquet": OPTION_PRICING_MONITORING_SCHEMA,
+    },
+    V2_OPTION_PRICING_PUBLICATION_VERSION: {
+        "pricing-samples.parquet": LEGACY_OPTION_PRICING_SAMPLE_SCHEMA,
+        "pricing-predictions.parquet": LEGACY_OPTION_PRICING_PREDICTION_SCHEMA,
+        "pricing-evaluations.parquet": LEGACY_OPTION_PRICING_EVALUATION_SCHEMA,
+        "pricing-surfaces.parquet": V2_OPTION_PRICING_SURFACE_SCHEMA,
+        "pricing-monitoring.parquet": OPTION_PRICING_MONITORING_SCHEMA,
     },
     OPTION_PRICING_PUBLICATION_VERSION: OPTION_PRICING_REQUIRED_OUTPUTS,
 }
 OPTION_PRICING_REPORT_NAME = "option-pricing-model-reports.json"
+OPTION_PRICING_RECOVERY_AUTHORIZATION_VERSION = (
+    "option-pricing-orphan-recovery-authorization-v1"
+)
+OPTION_PRICING_RECOVERY_RECEIPT_VERSION = "option-pricing-orphan-recovery-v1"
 
 
 class OptionPricingPublicationError(RuntimeError):
@@ -76,19 +98,30 @@ def publish_option_pricing_run(
         previous = current.pointer["current"]
         if current.run_directory == run:
             return current
+        current_run_timestamp = _utc(
+            current.receipt.get("run_timestamp"), "current run_timestamp"
+        )
+        current_published = _utc(
+            current.receipt.get("published_at"), "current published_at"
+        )
+        if run_timestamp <= current_run_timestamp:
+            raise OptionPricingPublicationError(
+                "Ordinary Pricing publication cannot move the authority to an older run"
+            )
+        verified_orphans = _verified_newer_orphans(root, current=current)
+        if verified_orphans:
+            raise OptionPricingPublicationError(
+                "A newer verified orphan Pricing publication exists; diagnose and "
+                "recover it explicitly before publishing another generation"
+            )
+    else:
+        current_published = None
 
     receipt_path = run / OPTION_PRICING_RECEIPT_NAME
     if receipt_path.is_file():
-        try:
-            existing = json.loads(receipt_path.read_text(encoding="utf-8"))
-        except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
-            raise OptionPricingPublicationError(
-                f"Existing Pricing receipt is unreadable: {receipt_path}"
-            ) from exc
-        published = (
-            _utc(existing.get("published_at"), "orphan receipt published_at")
-            if isinstance(existing, Mapping)
-            else pd.NaT
+        raise OptionPricingPublicationError(
+            "Ordinary publication cannot silently adopt an orphan Pricing receipt; "
+            "use separately authorized recovery tooling"
         )
     else:
         sampled = (
@@ -100,6 +133,10 @@ def publish_option_pricing_run(
         existing = None
     if pd.isna(published) or published < run_timestamp:
         raise OptionPricingPublicationError("Pricing publication predates its run")
+    if current_published is not None and published <= current_published:
+        raise OptionPricingPublicationError(
+            "Ordinary Pricing publication must advance publication availability"
+        )
 
     desired_base = {
         "schema_version": OPTION_PRICING_PUBLICATION_VERSION,
@@ -109,34 +146,8 @@ def publish_option_pricing_run(
         "manifest_checksum_sha256": file_checksum(run / "manifest.json"),
         "previous_publication": dict(previous) if previous is not None else None,
     }
-    if existing is not None:
-        expected_without_publication_time = {
-            key: value
-            for key, value in desired_base.items()
-            if key != "published_at"
-        }
-        observed_without_publication_time = (
-            {
-                key: value
-                for key, value in existing.items()
-                if key != "published_at"
-            }
-            if isinstance(existing, Mapping)
-            else {}
-        )
-        if (
-            not isinstance(existing, Mapping)
-            or set(existing) != set(desired_base)
-            or observed_without_publication_time != expected_without_publication_time
-            or published < run_timestamp
-        ):
-            raise OptionPricingPublicationError(
-                "Existing orphan Pricing receipt is incompatible with the current chain"
-            )
-        receipt = existing
-    else:
-        _write_json_atomic(receipt_path, desired_base)
-        receipt = desired_base
+    _write_json_atomic(receipt_path, desired_base)
+    receipt = desired_base
 
     record = _publication_record(root, run, receipt)
     pointer = {
@@ -145,6 +156,217 @@ def publish_option_pricing_run(
     }
     _write_json_atomic(pointer_path, pointer)
     return read_current_option_pricing_publication(root)
+
+
+def diagnose_option_pricing_publications(datastore_root: Path) -> Mapping[str, object]:
+    """Read and verify pointer divergence without changing any authority."""
+
+    root = Path(datastore_root).resolve()
+    pointer = pricing_pointer_path(root)
+    current: OptionPricingPublication | None = None
+    current_error: str | None = None
+    reachable: set[Path] = set()
+    if pointer.is_file():
+        try:
+            current = read_current_option_pricing_publication(root)
+            reachable = set(authoritative_option_pricing_runs(root, current=current))
+        except Exception as exc:
+            current_error = f"{type(exc).__name__}: {exc}"
+    records: list[dict[str, object]] = []
+    runs_root = root / "ml" / "option-pricing-runs"
+    for receipt_path in sorted(runs_root.glob(f"*/{OPTION_PRICING_RECEIPT_NAME}")):
+        run = receipt_path.parent.resolve()
+        record: dict[str, object] = {
+            "run_path": run.relative_to(root).as_posix(),
+            "reachable": run in reachable,
+            "verified": False,
+            "orphan": run not in reachable,
+        }
+        try:
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            if not isinstance(receipt, Mapping):
+                raise OptionPricingPublicationError("receipt is not an object")
+            immutable_record = _publication_record(root, run, receipt)
+            _verify_record(root, immutable_record)
+            record.update(
+                {
+                    "verified": True,
+                    "published_at": immutable_record["published_at"],
+                    "run_timestamp": immutable_record["run_timestamp"],
+                    "attaches_to_current": bool(
+                        current is not None
+                        and receipt.get("previous_publication")
+                        == current.pointer.get("current")
+                    ),
+                }
+            )
+        except Exception as exc:
+            record["error"] = f"{type(exc).__name__}: {exc}"
+        records.append(record)
+    verified_orphans = [
+        record for record in records if record["orphan"] and record["verified"]
+    ]
+    newer_orphans = []
+    if current is not None:
+        current_published = _utc(current.receipt.get("published_at"), "published_at")
+        newer_orphans = [
+            record
+            for record in verified_orphans
+            if _utc(record.get("published_at"), "orphan published_at")
+            > current_published
+        ]
+    return {
+        "schema_version": "option-pricing-publication-diagnosis-v1",
+        "pointer_path": pointer.relative_to(root).as_posix(),
+        "pointer_status": (
+            "INVALID" if current_error else "VERIFIED" if current is not None else "MISSING"
+        ),
+        "pointer_error": current_error,
+        "current_run_path": (
+            current.run_directory.relative_to(root).as_posix()
+            if current is not None
+            else None
+        ),
+        "reachable_publication_count": len(reachable),
+        "verified_orphan_count": len(verified_orphans),
+        "newer_verified_orphan_count": len(newer_orphans),
+        "newer_verified_orphans": newer_orphans,
+        "runs": records,
+        "mutation_performed": False,
+        "automated_action_allowed": False,
+    }
+
+
+def recover_option_pricing_orphan(
+    datastore_root: Path,
+    *,
+    run_directory: Path,
+    authorization_record: Path,
+    recovered_at: object | None = None,
+) -> OptionPricingPublication:
+    """Promote one verified child orphan using a separately recorded approval."""
+
+    root = Path(datastore_root).resolve()
+    current = read_current_option_pricing_publication(root)
+    run = _validate_run_location(root, run_directory)
+    if run == current.run_directory:
+        return current
+    receipt_path = run / OPTION_PRICING_RECEIPT_NAME
+    try:
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        raise OptionPricingPublicationError(
+            f"Orphan Pricing receipt is unreadable: {receipt_path}"
+        ) from exc
+    if not isinstance(receipt, Mapping):
+        raise OptionPricingPublicationError("Orphan Pricing receipt is malformed")
+    record = _publication_record(root, run, receipt)
+    _verify_record(root, record)
+    _verify_chain(root, receipt.get("previous_publication"), newer=receipt)
+    if receipt.get("previous_publication") != current.pointer.get("current"):
+        raise OptionPricingPublicationError(
+            "Recovery only permits a verified orphan that directly extends current"
+        )
+    if _utc(receipt.get("published_at"), "orphan published_at") <= _utc(
+        current.receipt.get("published_at"), "current published_at"
+    ):
+        raise OptionPricingPublicationError("Recovery cannot roll the pointer backward")
+    authorization_path = Path(authorization_record).resolve()
+    authorization = _read_recovery_authorization(authorization_path)
+    expected_run = run.relative_to(root).as_posix()
+    expected_current = current.run_directory.relative_to(root).as_posix()
+    if (
+        authorization.get("action") != "PROMOTE_VERIFIED_OPTION_PRICING_ORPHAN"
+        or authorization.get("approved") is not True
+        or authorization.get("run_path") != expected_run
+        or authorization.get("current_run_path") != expected_current
+        or authorization.get("orphan_receipt_checksum_sha256")
+        != file_checksum(receipt_path)
+        or authorization.get("automated_action_allowed") is not False
+        or not str(authorization.get("approved_by", "")).strip()
+    ):
+        raise OptionPricingPublicationError(
+            "Recovery authorization does not match the exact pointer transition"
+        )
+    authorized_at = _utc(authorization.get("authorized_at"), "authorized_at")
+    recovered = _utc(
+        recovered_at if recovered_at is not None else pd.Timestamp.now(tz="UTC"),
+        "recovered_at",
+    )
+    if recovered < authorized_at:
+        raise OptionPricingPublicationError("Recovery predates its authorization")
+    recovery_root = root / "ml" / "option-pricing-recoveries"
+    recovery_directory = recovery_root / recovered.strftime("%Y%m%dT%H%M%S.%fZ")
+    if recovery_directory.exists():
+        raise OptionPricingPublicationError("Recovery receipt identity already exists")
+    recovery_directory.mkdir(parents=True)
+    authorization_copy = recovery_directory / "authorization.json"
+    authorization_copy.write_text(
+        json.dumps(dict(authorization), indent=2, sort_keys=True, default=str) + "\n",
+        encoding="utf-8",
+    )
+    recovery_receipt = {
+        "schema_version": OPTION_PRICING_RECOVERY_RECEIPT_VERSION,
+        "recovered_at": recovered.isoformat(),
+        "from_run_path": expected_current,
+        "to_run_path": expected_run,
+        "authorization_checksum_sha256": file_checksum(authorization_copy),
+        "orphan_receipt_checksum_sha256": file_checksum(receipt_path),
+        "automated_action_allowed": False,
+    }
+    _write_json_atomic(recovery_directory / "recovery.json", recovery_receipt)
+    _write_json_atomic(
+        pricing_pointer_path(root),
+        {"schema_version": OPTION_PRICING_POINTER_VERSION, "current": record},
+    )
+    publication = read_current_option_pricing_publication(root)
+    if publication.run_directory != run:
+        raise OptionPricingPublicationError("Recovered pointer failed verification")
+    return publication
+
+
+def _verified_newer_orphans(
+    root: Path, *, current: OptionPricingPublication
+) -> list[Path]:
+    reachable = set(authoritative_option_pricing_runs(root, current=current))
+    current_published = _utc(current.receipt.get("published_at"), "published_at")
+    output: list[Path] = []
+    for receipt_path in sorted(
+        (root / "ml" / "option-pricing-runs").glob(
+            f"*/{OPTION_PRICING_RECEIPT_NAME}"
+        )
+    ):
+        run = receipt_path.parent.resolve()
+        if run in reachable:
+            continue
+        try:
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            if not isinstance(receipt, Mapping):
+                continue
+            record = _publication_record(root, run, receipt)
+            if _utc(record["published_at"], "published_at") <= current_published:
+                continue
+            _verify_record(root, record)
+        except Exception:
+            continue
+        output.append(run)
+    return output
+
+
+def _read_recovery_authorization(path: Path) -> Mapping[str, object]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        raise OptionPricingPublicationError(
+            f"Recovery authorization is unreadable: {path}"
+        ) from exc
+    if (
+        not isinstance(value, Mapping)
+        or value.get("schema_version")
+        != OPTION_PRICING_RECOVERY_AUTHORIZATION_VERSION
+    ):
+        raise OptionPricingPublicationError("Recovery authorization is invalid")
+    return value
 
 
 def read_current_option_pricing_publication(
@@ -201,6 +423,45 @@ def authoritative_option_pricing_runs(
         output[run] = _utc(receipt.get("published_at"), "published_at")
         record = receipt.get("previous_publication")
     return output
+
+
+def verified_option_pricing_history(
+    datastore_root: Path,
+    *,
+    available_not_after: object | None = None,
+) -> tuple[OptionPricingPublication, ...]:
+    """Return every reachable generation, fully verified, oldest to newest."""
+
+    root = Path(datastore_root).resolve()
+    cutoff = (
+        _utc(available_not_after, "available_not_after")
+        if available_not_after is not None
+        else None
+    )
+    current = read_current_option_pricing_publication(root)
+    history: list[OptionPricingPublication] = []
+    record: object = current.pointer["current"]
+    seen: set[str] = set()
+    while record is not None:
+        _validate_record(record, label="Pricing history record")
+        raw_path = str(record["run_path"])
+        if raw_path in seen:
+            raise OptionPricingPublicationError("Pricing history contains a cycle")
+        seen.add(raw_path)
+        published = _utc(record.get("published_at"), "published_at")
+        manifest, receipt = _verify_record(root, record)
+        if cutoff is None or published <= cutoff:
+            history.append(
+                OptionPricingPublication(
+                    _run_from_record(root, record),
+                    manifest,
+                    receipt,
+                    current.pointer,
+                )
+            )
+        record = receipt.get("previous_publication")
+    history.reverse()
+    return tuple(history)
 
 
 def read_option_pricing_publication_at(
@@ -578,14 +839,19 @@ __all__ = [
     "LEGACY_OPTION_PRICING_PUBLICATION_VERSION",
     "OPTION_PRICING_PUBLICATION_VERSION",
     "OPTION_PRICING_RECEIPT_NAME",
+    "OPTION_PRICING_RECOVERY_AUTHORIZATION_VERSION",
+    "OPTION_PRICING_RECOVERY_RECEIPT_VERSION",
     "OPTION_PRICING_REPORT_NAME",
     "OptionPricingPublication",
     "OptionPricingPublicationError",
     "authoritative_option_pricing_runs",
+    "diagnose_option_pricing_publications",
     "pricing_pointer_path",
     "publish_option_pricing_run",
     "read_current_option_pricing_publication",
     "read_option_pricing_publication_at",
+    "recover_option_pricing_orphan",
     "receipt_proven_prediction_rows",
     "resolve_current_option_pricing_output",
+    "verified_option_pricing_history",
 ]

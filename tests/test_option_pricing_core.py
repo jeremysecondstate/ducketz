@@ -92,8 +92,12 @@ def test_live_target_requires_option_receipt_visible_before_prediction(
         ),
     )
     monkeypatch.setattr(
-        "ml.option_pricing.causal.committed_option_snapshots",
-        lambda *_args, **_kwargs: (future_receipt,),
+        "ml.option_pricing.causal.canonical_option_snapshots",
+        lambda *_args, **kwargs: (
+            ((future_receipt,), {})
+            if kwargs.get("provider") == "schwab"
+            else ((), {})
+        ),
     )
 
     batch = build_live_prediction_inputs(
@@ -283,12 +287,14 @@ def test_bsgp_is_deterministic_compares_four_models_and_reuses_only_compatible_a
     assert first.reused is False
     assert second.reused is True
     assert set(first.offline_evaluation["models"]) == {
-        "bsgp",
+        "finite_basis_residual",
         "black_scholes",
         "constant_residual",
-        "standard_gp",
+        "finite_basis_price_comparator",
     }
-    assert first.offline_evaluation["models"]["bsgp"]["normalized_rmse"] < (
+    assert first.offline_evaluation["models"]["finite_basis_residual"][
+        "normalized_rmse"
+    ] < (
         first.offline_evaluation["models"]["black_scholes"]["normalized_rmse"]
     )
     first_mean = first.predict_residual(partitions.assessment)[0]
@@ -312,7 +318,7 @@ def test_bsgp_is_deterministic_compares_four_models_and_reuses_only_compatible_a
     assert incompatible.reused is False
 
 
-def test_baseline_prediction_publishes_raw_constrained_values_and_fallback_uncertainty() -> None:
+def test_baseline_prediction_keeps_uncertainty_null_without_a_verified_model() -> None:
     samples = build_causal_samples(
         _source_surface().iloc[:5],
         target_contracts=None,
@@ -336,9 +342,11 @@ def test_baseline_prediction_publishes_raw_constrained_values_and_fallback_uncer
     assert predictions["raw_fair_value"].equals(
         predictions["black_scholes_price"]
     )
-    assert predictions["predictive_standard_deviation"].gt(0.0).all()
-    assert predictions["constrained_interval_95_lower"].notna().all()
-    assert predictions["constrained_interval_95_upper"].notna().all()
+    assert predictions["predictive_standard_deviation"].isna().all()
+    assert predictions["raw_interval_80_lower"].isna().all()
+    assert predictions["raw_interval_95_upper"].isna().all()
+    assert predictions["constrained_interval_95_lower"].isna().all()
+    assert predictions["constrained_interval_95_upper"].isna().all()
     assert predictions["automated_action_allowed"].eq(False).all()
 
 
@@ -450,6 +458,8 @@ def test_reconciliation_requires_exact_later_quote_and_canonicalizes_duplicates(
 
     offline_provider = canonical.copy()
     offline_provider["source_provider"] = "databento-opra"
+    offline_provider["prediction_mode"] = "OFFLINE"
+    offline_provider["evidence_lane"] = "OFFLINE_OPRA_BACKFILL"
     ineligible = reconcile_predictions(
         offline_provider,
         snapshots_by_symbol={"NVDA": (snapshot,)},
@@ -478,6 +488,37 @@ def test_reconciliation_requires_exact_later_quote_and_canonicalizes_duplicates(
     assert missing.iloc[0]["evaluation_status"] == "MISSING_TARGET_CONTRACT"
     assert bool(missing.iloc[0]["prospective_eligible"]) is False
 
+
+def test_outcome_quote_after_target_but_before_prediction_availability_is_rejected() -> None:
+    source = _source_surface().iloc[:1].copy()
+    target = source.copy()
+    market_target = pd.Timestamp("2026-01-03T16:00:00Z")
+    prediction_available = pd.Timestamp("2026-01-03T16:01:05Z")
+    target["bid"] = 2.0
+    target["ask"] = 2.2
+    target["quote_timestamp"] = market_target + pd.Timedelta(seconds=30)
+    target["available_at"] = prediction_available + pd.Timedelta(seconds=1)
+    samples = build_causal_samples(
+        source,
+        target_contracts=target,
+        target_underlying_price=100.0,
+        source_snapshot_for="2026-01-02T16:00:00Z",
+        source_available_at="2026-01-02T16:01:00Z",
+        target_snapshot_for=market_target,
+        source_provider="databento-opra",
+        prediction_mode="OFFLINE",
+        observed_available_at=prediction_available + pd.Timedelta(seconds=1),
+        prediction_created_at=market_target,
+        prediction_available_at=prediction_available,
+        provider_ingested_at="2026-08-01T00:00:00Z",
+        evidence_lane="OFFLINE_OPRA_BACKFILL",
+    )
+    assert samples.iloc[0]["sample_status"] == "TARGET_TIMING_INVALID"
+    assert pd.isna(samples.iloc[0]["observed_mid"])
+    assert samples.iloc[0]["outcome_quote_timestamp"] == market_target + pd.Timedelta(
+        seconds=30
+    )
+    assert samples.iloc[0]["prediction_available_at"] == prediction_available
 
 def _source_surface() -> pd.DataFrame:
     rows: list[dict[str, object]] = []

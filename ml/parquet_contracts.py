@@ -343,7 +343,7 @@ STRATEGY_AUDIT_SCHEMA = _schema(
     )
 )
 
-OPTION_PRICING_SAMPLE_SCHEMA = _schema(
+LEGACY_OPTION_PRICING_SAMPLE_SCHEMA = _schema(
     (
         ("id", TEXT),
         ("symbol", TEXT),
@@ -388,7 +388,45 @@ OPTION_PRICING_SAMPLE_SCHEMA = _schema(
     )
 )
 
-OPTION_PRICING_PREDICTION_SCHEMA = _schema(
+OPTION_PRICING_SAMPLE_SCHEMA = _schema(
+    (
+        *((field.name, field.type) for field in LEGACY_OPTION_PRICING_SAMPLE_SCHEMA),
+        ("market_target_at", UTC_TIMESTAMP),
+        ("source_evidence_available_at", UTC_TIMESTAMP),
+        ("prediction_created_at", UTC_TIMESTAMP),
+        ("prediction_available_at", UTC_TIMESTAMP),
+        ("outcome_quote_timestamp", UTC_TIMESTAMP),
+        ("outcome_evidence_available_at", UTC_TIMESTAMP),
+        ("provider_ingested_at", UTC_TIMESTAMP),
+        ("outcome_provider", TEXT),
+        ("evidence_lane", TEXT),
+        ("fallback_used", BOOLEAN),
+        ("rate_source", TEXT),
+        ("known_dividend_pv", FLOAT),
+        ("equivalent_dividend_yield", FLOAT),
+        ("dividend_event_count", INTEGER),
+        ("next_ex_dividend_date", UTC_TIMESTAMP),
+        ("dividend_source_available_at", UTC_TIMESTAMP),
+        ("dividend_confidence", TEXT),
+        ("contract_definition_as_of", UTC_TIMESTAMP),
+        ("exercise_style", TEXT),
+        ("settlement_type", TEXT),
+        ("settlement_reference", TEXT),
+        ("relative_bid_ask_spread", FLOAT),
+        ("quality_spread_score", FLOAT),
+        ("quality_staleness_score", FLOAT),
+        ("quality_volume_score", FLOAT),
+        ("quality_open_interest_score", FLOAT),
+        ("quality_quote_status_score", FLOAT),
+        ("raw_observation_weight", FLOAT),
+        ("surface_normalization_factor", FLOAT),
+        ("final_row_weight", FLOAT),
+        ("quality_missingness_count", INTEGER),
+        ("weighting_policy_version", TEXT),
+    )
+)
+
+LEGACY_OPTION_PRICING_PREDICTION_SCHEMA = _schema(
     (
         ("id", TEXT),
         ("symbol", TEXT),
@@ -441,6 +479,17 @@ OPTION_PRICING_PREDICTION_SCHEMA = _schema(
         ("timing_policy_version", TEXT),
         ("schema_version", TEXT),
         ("automated_action_allowed", BOOLEAN),
+    )
+)
+
+OPTION_PRICING_PREDICTION_SCHEMA = _schema(
+    (
+        *((field.name, field.type) for field in LEGACY_OPTION_PRICING_PREDICTION_SCHEMA),
+        ("source_quote_timestamp", UTC_TIMESTAMP),
+        ("source_evidence_available_at", UTC_TIMESTAMP),
+        ("provider_ingested_at", UTC_TIMESTAMP),
+        ("evidence_lane", TEXT),
+        ("fallback_used", BOOLEAN),
     )
 )
 
@@ -503,7 +552,7 @@ OPTION_PRICING_BSGP_SHADOW_SCHEMA = _schema(
     )
 )
 
-OPTION_PRICING_EVALUATION_SCHEMA = _schema(
+LEGACY_OPTION_PRICING_EVALUATION_SCHEMA = _schema(
     (
         ("id", TEXT),
         ("symbol", TEXT),
@@ -555,7 +604,19 @@ OPTION_PRICING_EVALUATION_SCHEMA = _schema(
     )
 )
 
-OPTION_PRICING_SURFACE_SCHEMA = _schema(
+OPTION_PRICING_EVALUATION_SCHEMA = _schema(
+    (
+        *((field.name, field.type) for field in LEGACY_OPTION_PRICING_EVALUATION_SCHEMA),
+        ("outcome_quote_timestamp", UTC_TIMESTAMP),
+        ("outcome_evidence_available_at", UTC_TIMESTAMP),
+        ("provider_ingested_at", UTC_TIMESTAMP),
+        ("outcome_provider", TEXT),
+        ("evidence_lane", TEXT),
+        ("fallback_used", BOOLEAN),
+    )
+)
+
+V2_OPTION_PRICING_SURFACE_SCHEMA = _schema(
     (
         ("id", TEXT),
         ("symbol", TEXT),
@@ -593,8 +654,20 @@ OPTION_PRICING_SURFACE_SCHEMA = _schema(
 # its exact physical schema available to the publication-chain reader so a v2
 # writer can verify and advance an existing v1 authority without rewriting the
 # immutable historical artifact.
-LEGACY_OPTION_PRICING_SURFACE_SCHEMA = OPTION_PRICING_SURFACE_SCHEMA.remove(
-    OPTION_PRICING_SURFACE_SCHEMA.get_field_index("first_available_at")
+LEGACY_OPTION_PRICING_SURFACE_SCHEMA = V2_OPTION_PRICING_SURFACE_SCHEMA.remove(
+    V2_OPTION_PRICING_SURFACE_SCHEMA.get_field_index("first_available_at")
+)
+
+OPTION_PRICING_SURFACE_SCHEMA = _schema(
+    (
+        *((field.name, field.type) for field in V2_OPTION_PRICING_SURFACE_SCHEMA),
+        ("model_generation", TEXT),
+        ("evidence_lane", TEXT),
+        ("fallback_used", BOOLEAN),
+        ("quality_decision", TEXT),
+        ("fresh_until", UTC_TIMESTAMP),
+        ("supersedes_generation", TEXT),
+    )
 )
 
 OPTION_PRICING_MONITORING_SCHEMA = _schema(

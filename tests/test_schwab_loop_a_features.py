@@ -21,6 +21,7 @@ from datafetching.quote_liquidity import (
 )
 from datafetching import schwab_fetch
 from options import OptionSnapshotOutput
+from options.publication import OptionSnapshotPublicationError
 from options.features import (
     OPTION_FEATURE_VERSION,
     OPTION_SELECTION_POLICY_VERSION,
@@ -284,7 +285,7 @@ def test_quote_liquidity_rejects_noncausal_or_invalid_quotes(
         calculate_quote_liquidity(MarketQuote(**values))
 
 
-def test_option_receipts_use_snapshot_and_availability_natural_key(
+def test_option_receipts_use_provider_symbol_and_target_natural_key(
     tmp_path: Path,
 ) -> None:
     payload = _option_payload()
@@ -298,7 +299,7 @@ def test_option_receipts_use_snapshot_and_availability_natural_key(
         quote_cutoff_at=QUOTE_CUTOFF_AT,
         fetched_at=AVAILABLE_AT,
     )
-    persist_schwab_option_snapshot(
+    identical = persist_schwab_option_snapshot(
         tmp_path,
         symbol="goog",
         payload=payload,
@@ -306,16 +307,17 @@ def test_option_receipts_use_snapshot_and_availability_natural_key(
         quote_cutoff_at=QUOTE_CUTOFF_AT,
         fetched_at=AVAILABLE_AT,
     )
-    second = persist_schwab_option_snapshot(
-        tmp_path,
-        symbol="goog",
-        payload=payload,
-        clock=clock,
-        quote_cutoff_at=QUOTE_CUTOFF_AT,
-        fetched_at=AVAILABLE_AT + pd.Timedelta(minutes=1),
-    )
+    with pytest.raises(OptionSnapshotPublicationError, match="Divergent duplicate"):
+        persist_schwab_option_snapshot(
+            tmp_path,
+            symbol="goog",
+            payload=payload,
+            clock=clock,
+            quote_cutoff_at=QUOTE_CUTOFF_AT,
+            fetched_at=AVAILABLE_AT + pd.Timedelta(minutes=1),
+        )
 
-    assert first == second
+    assert first == identical
     raw = pd.read_parquet(first.raw_path)
     contracts = pd.read_parquet(first.contracts_path)
     features = pd.read_parquet(first.features_path)
@@ -326,11 +328,11 @@ def test_option_receipts_use_snapshot_and_availability_natural_key(
         assert set(("symbol", "snapshot_for", "available_at")).issubset(frame)
         assert "timestamp" not in frame
 
-    assert len(raw) == 2
-    assert len(features) == 2
-    assert len(contracts) == 12
+    assert len(raw) == 1
+    assert len(features) == 1
+    assert len(contracts) == 6
     assert raw["snapshot_for"].nunique() == 1
-    assert raw["available_at"].nunique() == 2
+    assert raw["available_at"].nunique() == 1
     assert raw["schema_version"].eq(OPTION_CHAIN_SCHEMA_VERSION).all()
     assert features["calculation_version"].eq(OPTION_FEATURE_VERSION).all()
     assert features["selection_policy_version"].eq(

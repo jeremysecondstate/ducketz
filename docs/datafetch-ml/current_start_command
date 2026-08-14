@@ -13,8 +13,10 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\.venv\Scripts\Activate.ps1
 ```
 
-The checked-in watchlist is the authoritative seven-symbol scope:
-`NVDA GOOG MU AAPL AMZN SNDK`.
+The checked-in watchlist is the authoritative six-symbol production scope:
+`AAPL AMZN GOOG MU NVDA SNDK`. CALL and PUT are derived for all six symbols,
+so the option-pricing acceptance scope is exactly 12 routes. `SPY` is a
+separate research-only benchmark and must not be added to this watchlist.
 
 Before first v3 startup, run the one-time complete ALFRED backfill. The command
 derives its observation and real-time bounds from the earliest eligible 1-day
@@ -42,7 +44,7 @@ python -m datafetching.cme_runtime `
   --max-concurrency 1
 ```
 
-2. Loop A. Its Databento 1-minute fast lane persists all ten symbols and
+2. Loop A. Its Databento 1-minute fast lane persists all six symbols and
 publishes the exact readiness receipt before 1-second history, derived bars,
 technicals, FMP, FRED, SEC, or other slower work finishes:
 
@@ -67,8 +69,12 @@ python -m datafetching.fred_alfred_runtime `
   --utc-hour 7
 ```
 
-4. Active Pricing. Each readiness target is handled idempotently. Missing GP
-support uses the causal Black-Scholes mean with a wider interval. Pricing waits
+4. Active Pricing (logical Loop 3). Each readiness target is handled
+idempotently. The supported residual model is a 128-component Nyström RBF
+finite-basis approximation with a Bayesian ridge posterior; it is not an exact
+GP. Missing model support uses the causal Black-Scholes mean with a wider
+interval. OPRA is the canonical surface when verified and causally available;
+Schwab is recorded as explicit fallback. Pricing waits
 once for the configured exact Loop A readiness deadline. If it expires, Pricing
 skips that target, leaves the current Pricing authority unchanged, and advances
 to the next eligible target without creating an empty terminal artifact. The
@@ -86,17 +92,19 @@ python -m ml.option_pricing_runtime `
   --bar-readiness-timeout-seconds 30
 ```
 
-5. Independent Options capture. It starts after Loop B's +5 information clock
-and waits briefly on the target pointer, but neither missing Pricing nor delayed
-Loop A readiness prevents the Schwab request for an actionable target.
+5. Independent Options Capture (logical Loop 4). It starts after Loop B's +5
+information clock and waits briefly on the target pointer. Its v2 publication
+identity is `(provider, symbol, target_snapshot_for)`: a committed target is
+reused without another provider call, and divergent duplicate content fails
+closed. An injected OPRA adapter is canonical when configured; Schwab remains
+explicit broker/fallback evidence. Neither missing Pricing nor delayed Loop A
+readiness prevents the allowed fallback request for an actionable target.
 Without exact readiness the raw response is checksum-sealed under the separate
 non-production `options/pending-captures/schwab` authority. The runtime polls
 that authority while waiting for later boundaries, reconciles it through the
 ordinary committed snapshot contract when readiness arrives inside 1,200
-seconds, and never backdates availability. Closed-market cycles continue to
-refresh the fetchable Schwab chain against the latest real regular-session
-target so Discover can rank contracts without inventing overnight pricing
-targets:
+seconds, and never backdates availability. Closed-market discovery does not
+refetch or republish an already committed natural target:
 
 ```powershell
 python -m datafetching.options_runtime `
@@ -109,10 +117,13 @@ python -m datafetching.options_runtime `
 ```
 
 6. Directional Loop B. The active v3 feature profile consumes receipt-verified
-v2 compact Pricing surfaces and verified ALFRED-vintage macro evidence. Macro
+append-only v3 compact Pricing history and verified ALFRED-vintage macro
+evidence. Macro
 features are active only for 1-day and weekly contracts, with independent
 component clocks and freshness. Valid missing, stale, or uncovered Pricing
-rows remain audited null `opx__` inputs for the existing imputer; corruption,
+rows remain audited null `opx__` inputs. Per-family coverage/freshness gates
+must pass before the Pricing family may enter fitting; a column's existence is
+not activation. Corruption,
 unsupported contracts, automation-enabled evidence, or an invalid ALFRED
 readiness receipt aborts the whole Loop B publication:
 
@@ -148,8 +159,22 @@ Black-Scholes fallback. To inspect them without changing decision flow:
 
 ```powershell
 python -m ml.option_pricing_admin --datastore-target pc readiness
+python -m ml.option_pricing_admin --datastore-target pc diagnose-publications
 ```
 
+Historical OPRA planning is also maintenance, not startup. These commands are
+estimate-only, perform no paid `get_range`, derive request/cluster counts from
+the XNYS calendar, and report cost, bytes, storage, and resumability:
+
+```powershell
+python -m ml.option_pricing_opra --datastore-target pc
+python -m ml.option_pricing_opra --datastore-target pc --research-benchmark
+```
+
+Paid execution is prohibited unless the operator separately supplies
+`--execute`, an explicit `--max-cost-usd`, sufficient capacity, and an exact
+approved authorization record. Startup does not imply that authorization.
+
 Stop a runtime with Ctrl+C. Never start a second owner for the same lock.
-Migration and restart order are documented in
-`loop-native-bsgp-implementation-report.md`.
+Provider, migration, recovery, and rollout contracts are documented in
+`options/README.md` and the Loop 3/4 audit pages.

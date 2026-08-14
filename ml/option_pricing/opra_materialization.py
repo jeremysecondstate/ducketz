@@ -10,6 +10,7 @@ import pandas as pd
 from datafetching.decision_time import latest_completed_bar_clock
 from ml.option_pricing.causal import build_causal_samples, completed_bar_close
 from ml.option_pricing.opra import (
+    DEFAULT_EMULATED_PREDICTION_LATENCY_SECONDS,
     OPRA_RECEIPT_NAME,
     normalize_cbbo_records,
     normalize_definition_records,
@@ -146,9 +147,13 @@ def materialize_committed_opra_history(
                 continue
             try:
                 cbbo = normalize_cbbo_records(_read_dbn(path))
+                emulated_prediction_available_at = target + pd.Timedelta(
+                    seconds=DEFAULT_EMULATED_PREDICTION_LATENCY_SECONDS
+                )
                 source_quotes, target_quotes = select_historical_source_target(
                     cbbo,
                     target_snapshot_for=target,
+                    prediction_available_at=emulated_prediction_available_at,
                 )
                 if source_quotes.empty or target_quotes.empty:
                     raise ValueError("Required backward source or forward target CBBO is missing")
@@ -190,8 +195,14 @@ def materialize_committed_opra_history(
                     source_provider="databento-opra",
                     prediction_mode="OFFLINE",
                     observed_available_at=target_observed_at,
+                    prediction_created_at=target,
+                    prediction_available_at=emulated_prediction_available_at,
+                    provider_ingested_at=manifest.get("imported_at"),
+                    evidence_lane="OFFLINE_OPRA_BACKFILL",
+                    fallback_used=False,
                     contract_policy=contract_policy,
                     rate_observations=rate_observations,
+                    datastore_root=root,
                 )
                 samples.append(frame)
                 source_files.extend((path, source_clock.source_file, target_clock.source_file))
@@ -243,6 +254,7 @@ def materialize_committed_opra_history_v2(
             str,
             pd.Timestamp,
             Mapping[str, object],
+            pd.Timestamp,
         ]
     ] = []
     errors: dict[str, str] = {}
@@ -306,13 +318,14 @@ def materialize_committed_opra_history_v2(
                             symbol,
                             target,
                             output_metadata,
+                            pd.Timestamp(manifest.get("imported_at")),
                         )
                     )
         except Exception as exc:
             errors[str(receipt_path.parent)] = f"{type(exc).__name__}: {exc}"
 
     all_targets = tuple(
-        sorted({target for _, _, _, _, target, _ in cbbo_outputs})
+        sorted({target for _, _, _, _, target, _, _ in cbbo_outputs})
     )
     locked_targets = tuple(all_targets[-int(closed_lockbox_clusters) :])
     locked_set = set(locked_targets)
@@ -320,7 +333,15 @@ def materialize_committed_opra_history_v2(
     route_symbols: dict[tuple[str, str], int] = {}
     locked_output_count = 0
     locked_outputs: list[Mapping[str, object]] = []
-    for directory, name, request, symbol, target, output_metadata in cbbo_outputs:
+    for (
+        directory,
+        name,
+        request,
+        symbol,
+        target,
+        output_metadata,
+        _imported_at,
+    ) in cbbo_outputs:
         if target not in locked_set:
             continue
         locked_output_count += 1
@@ -370,7 +391,15 @@ def materialize_committed_opra_history_v2(
     definition_frame = pd.concat(definitions, ignore_index=True, sort=False)
     samples: list[pd.DataFrame] = []
     consumed_files = [*metadata_files, *definition_files]
-    for directory, name, request, symbol, target, _ in cbbo_outputs:
+    for (
+        directory,
+        name,
+        request,
+        symbol,
+        target,
+        _output_metadata,
+        imported_at,
+    ) in cbbo_outputs:
         # This conditional is deliberately before _read_dbn. Locked target
         # values cannot enter fitting, calibration, assessment, or reporting.
         if target in locked_set:
@@ -379,9 +408,13 @@ def materialize_committed_opra_history_v2(
         path = directory / name
         try:
             cbbo = normalize_cbbo_records(_read_dbn(path))
+            emulated_prediction_available_at = target + pd.Timedelta(
+                seconds=DEFAULT_EMULATED_PREDICTION_LATENCY_SECONDS
+            )
             source_quotes, target_quotes = select_historical_source_target(
                 cbbo,
                 target_snapshot_for=target,
+                prediction_available_at=emulated_prediction_available_at,
             )
             if source_quotes.empty or target_quotes.empty:
                 raise ValueError(
@@ -430,8 +463,14 @@ def materialize_committed_opra_history_v2(
                 source_provider="databento-opra",
                 prediction_mode="OFFLINE",
                 observed_available_at=target_observed_at,
+                prediction_created_at=target,
+                prediction_available_at=emulated_prediction_available_at,
+                provider_ingested_at=imported_at,
+                evidence_lane="OFFLINE_OPRA_BACKFILL",
+                fallback_used=False,
                 contract_policy=contract_policy,
                 rate_observations=rate_observations,
+                datastore_root=root,
             )
             samples.append(frame)
             consumed_files.extend((path, source_clock.source_file, target_clock.source_file))
@@ -474,10 +513,18 @@ def _opra_contract_frame(
             "multiplier": merged["multiplier"],
             "mini": False,
             "non_standard": ~merged["standard_contract"].fillna(False).astype(bool),
+            "definition_as_of": merged["definition_effective_at"],
+            "exercise_style": merged.get("exercise_style", "AMBIGUOUS"),
+            "settlement_type": merged.get("settlement_type", "AMBIGUOUS"),
+            "settlement_reference": merged.get("settlement_reference", ""),
             "interest_rate": float("nan"),
             "dividend_yield": float("nan"),
             "implied_volatility": float("nan"),
             "quote_timestamp": merged["quote_timestamp"],
+            # Historical CBBO availability is emulated from the interval
+            # receipt timestamp; the present-day import receipt remains a
+            # separate provider_ingested_at clock.
+            "available_at": merged["quote_timestamp"],
             "quote_staleness_seconds": (
                 target_snapshot_for
                 - pd.to_datetime(merged["quote_timestamp"], utc=True, errors="coerce")

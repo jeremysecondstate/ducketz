@@ -9,6 +9,8 @@ import pandas as pd
 import pytest
 
 from ml.option_pricing.opra import (
+    DEFAULT_EMULATED_PREDICTION_LATENCY_SECONDS,
+    DEFAULT_SYMBOLS,
     OPRA_METADATA_TIMEOUT_SECONDS,
     OPRA_PRICE_SCALE,
     OPRA_TIMESERIES_TIMEOUT_SECONDS,
@@ -22,12 +24,15 @@ from ml.option_pricing.opra import (
     normalize_definition_records,
     point_in_time_definition_asof,
     read_opra_import,
+    research_benchmark_schedule_report,
+    required_eligibility_clusters_per_symbol,
     resolve_market_schedule,
     run_import_phase,
     schedule_contract_report,
     select_historical_source_target,
 )
 from ml.option_pricing.eligibility import publish_eligibility_policy
+from ml.option_pricing.research_benchmark import run_spy_exact_gp_benchmark
 
 
 class _Metadata:
@@ -127,25 +132,90 @@ def test_opra_default_is_cost_only_and_never_calls_get_range(tmp_path: Path) -> 
     assert request["symbols"] == ["NVDA.OPT"]
 
 
-def test_production_schedule_requires_all_504_clusters_per_symbol() -> None:
+def test_production_schedule_uses_all_six_symbols_and_derived_cluster_count() -> None:
     short = resolve_market_schedule(
-        symbols=("NVDA", "GOOG", "MU"),
+        symbols=DEFAULT_SYMBOLS,
         start_date="2026-02-06",
         end_date="2026-08-06",
     )
     complete = resolve_market_schedule(
-        symbols=("NVDA", "GOOG", "MU"),
+        symbols=DEFAULT_SYMBOLS,
         start_date="2026-02-05",
         end_date="2026-08-06",
     )
     assert schedule_contract_report(short)["status"] == "NOT_PROVEN"
     complete_report = schedule_contract_report(complete)
     assert complete_report["status"] == "PASS"
+    required = required_eligibility_clusters_per_symbol()
+    assert complete_report["required_symbols"] == list(DEFAULT_SYMBOLS)
     assert complete_report["clusters_per_symbol"] == {
-        "NVDA": 504,
-        "GOOG": 504,
-        "MU": 504,
+        symbol: required for symbol in DEFAULT_SYMBOLS
     }
+    assert complete_report["required_clusters_per_symbol"] == required
+
+
+def test_spy_schedule_is_separate_and_research_only() -> None:
+    schedule = resolve_market_schedule(
+        symbols=("SPY",),
+        start_date="2026-02-05",
+        end_date="2026-08-06",
+    )
+    report = research_benchmark_schedule_report(schedule)
+    assert report["status"] == "PASS"
+    assert report["scope"] == "RESEARCH_BENCHMARK_ONLY"
+    assert report["production_eligible"] is False
+    assert report["required_symbols"] == ["SPY"]
+    assert definition_requests(schedule)[0].symbols == ("SPY.OPT",)
+    assert schedule_contract_report(schedule)["status"] == "NOT_PROVEN"
+
+
+def test_spy_exact_gp_benchmark_is_bounded_and_research_only() -> None:
+    rows: list[dict[str, object]] = []
+    for session_index in range(4):
+        target = pd.Timestamp("2026-07-06T14:00:00Z") + pd.Timedelta(
+            days=session_index
+        )
+        for call_put in ("CALL", "PUT"):
+            for contract_index in range(6):
+                underlying = 600.0 + session_index
+                black_scholes = 4.0 + 0.1 * contract_index
+                residual = 0.0002 * (contract_index - 2) + 0.00005 * session_index
+                rows.append(
+                    {
+                        "symbol": "SPY",
+                        "call_put": call_put,
+                        "contract_symbol": (
+                            f"SPY-{session_index}-{call_put}-{contract_index}"
+                        ),
+                        "target_snapshot_for": target,
+                        "observed_mid": black_scholes + residual * underlying,
+                        "black_scholes_price": black_scholes,
+                        "normalized_residual": residual,
+                        "underlying_price": underlying,
+                        "strike": 590.0 + 4.0 * contract_index,
+                        "risk_free_rate": 0.04,
+                        "lagged_implied_volatility": 0.20 + 0.002 * contract_index,
+                        "target_years_to_expiration": 30.0 / 365.0,
+                        "dividend_yield": 0.012,
+                        "sample_status": "AVAILABLE",
+                        "volume": 10 + contract_index,
+                    }
+                )
+    result = run_spy_exact_gp_benchmark(
+        pd.DataFrame(rows),
+        maximum_rows=100,
+        maximum_runtime_seconds=30.0,
+    )
+    assert result.report["research_only"] is True
+    assert result.report["production_eligible"] is False
+    assert result.report["paper_may_june_2019_experiment_claimed"] is False
+    assert set(result.report["routes"]) == {"CALL", "PUT"}
+    assert {value["status"] for value in result.report["routes"].values()} == {
+        "COMPLETE"
+    }
+    assert not result.predictions.empty
+    assert result.predictions["symbol"].eq("SPY").all()
+    assert result.predictions["exact_residual_gp_standard_deviation"].ge(0.0).all()
 
 
 def test_cbbo_plan_requires_call_and_put_for_every_scheduled_point() -> None:
@@ -156,7 +226,11 @@ def test_cbbo_plan_requires_call_and_put_for_every_scheduled_point() -> None:
         "schema": "cbbo-1m",
         "stype_in": "raw_symbol",
         "start": (target - pd.Timedelta(minutes=5)).isoformat(),
-        "end": (target + pd.Timedelta(minutes=5)).isoformat(),
+        "end": (
+            target
+            + pd.Timedelta(seconds=DEFAULT_EMULATED_PREDICTION_LATENCY_SECONDS)
+            + pd.Timedelta(minutes=5)
+        ).isoformat(),
         "purpose": f"SOURCE_BACKWARD_TARGET_FORWARD:NVDA:{target.isoformat()}",
         "output_name": "cbbo-NVDA-test.dbn.zst",
     }
@@ -174,10 +248,6 @@ def test_cbbo_plan_requires_call_and_put_for_every_scheduled_point() -> None:
     assert report["route_point_counts"] == {
         "NVDA/call": 1,
         "NVDA/put": 1,
-        "GOOG/call": 0,
-        "GOOG/put": 0,
-        "MU/call": 0,
-        "MU/put": 0,
     }
 
 
@@ -392,6 +462,34 @@ def test_opra_price_scale_definition_asof_expiration_and_interval_semantics() ->
     )
     assert source.iloc[0]["quote_timestamp"] == pd.Timestamp("2026-07-06T13:59:00Z")
     assert target.iloc[0]["quote_timestamp"] == pd.Timestamp("2026-07-06T14:01:00Z")
+
+
+def test_offline_outcome_must_follow_emulated_prediction_availability() -> None:
+    cbbo = normalize_cbbo_records(
+        pd.DataFrame(
+            {
+                "raw_symbol": ["NVDA   260821C00100000"] * 3,
+                "ts_recv": [
+                    "2026-07-06T13:59:00Z",
+                    "2026-07-06T14:00:30Z",
+                    "2026-07-06T14:01:01Z",
+                ],
+                "bid_px_00": [1_900_000_000, 2_000_000_000, 2_100_000_000],
+                "ask_px_00": [2_000_000_000, 2_100_000_000, 2_200_000_000],
+            }
+        )
+    )
+    _source, outcome = select_historical_source_target(
+        cbbo,
+        target_snapshot_for="2026-07-06T14:00:00Z",
+        prediction_available_at="2026-07-06T14:01:00Z",
+    )
+    assert outcome.iloc[0]["quote_timestamp"] == pd.Timestamp(
+        "2026-07-06T14:01:01Z"
+    )
+    assert not outcome["quote_timestamp"].eq(
+        pd.Timestamp("2026-07-06T14:00:30Z")
+    ).any()
 
 
 def test_schedule_uses_dst_and_excludes_post_close_early_close_times() -> None:

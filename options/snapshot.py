@@ -26,7 +26,8 @@ from options.publication import (
     publish_option_snapshot,
 )
 
-OPTION_CHAIN_SCHEMA_VERSION = "1.1.0"
+LEGACY_OPTION_CHAIN_SCHEMA_VERSION = "1.1.0"
+OPTION_CHAIN_SCHEMA_VERSION = "option-market-evidence-v2"
 _SNAPSHOT_KEY = ("symbol", "snapshot_for", "available_at")
 _CONTRACT_KEY = (*_SNAPSHOT_KEY, "contract_symbol")
 
@@ -77,6 +78,205 @@ def persist_schwab_option_snapshot(
         capture_provenance=capture_provenance,
         update_legacy_monthly_mirrors=update_legacy_monthly_mirrors,
     )
+
+
+def persist_provider_option_snapshot(
+    datastore_root: Path,
+    *,
+    provider: str,
+    dataset: str,
+    symbol: str,
+    raw: pd.DataFrame,
+    contracts: pd.DataFrame,
+    features: pd.DataFrame,
+    request_started_at: datetime | pd.Timestamp | None = None,
+    pricing_barrier: Mapping[str, object] | None = None,
+    receipt_published_at: datetime | pd.Timestamp | None = None,
+    acquire_writer_lock: bool = True,
+):
+    """Commit already-normalized OPRA or Schwab evidence through one contract."""
+
+    def commit():
+        return publish_option_snapshot(
+            datastore_root,
+            provider=provider,
+            dataset=dataset,
+            symbol=symbol,
+            raw=raw,
+            contracts=contracts,
+            features=features,
+            request_started_at=request_started_at,
+            pricing_barrier=pricing_barrier,
+            receipt_published_at=receipt_published_at,
+        )
+
+    if not acquire_writer_lock:
+        return commit()
+    with exclusive_runtime_lock(
+        option_writer_lock_path(datastore_root),
+        process_name="Duckets Options writer",
+    ):
+        return commit()
+
+
+def normalize_databento_opra_option_snapshot(
+    quotes: pd.DataFrame,
+    definitions: pd.DataFrame,
+    *,
+    symbol: str,
+    target_snapshot_for: object,
+    received_at: object,
+    dataset: str = "OPRA.PILLAR",
+    schema: str = "cbbo-1s",
+) -> pd.DataFrame:
+    """Normalize injected OPRA L1 rows without making a provider request."""
+
+    clean_symbol = str(symbol).strip().upper()
+    target = _as_utc_timestamp(pd.Timestamp(target_snapshot_for))
+    available = _as_utc_timestamp(pd.Timestamp(received_at))
+    if available < target:
+        raise ValueError("OPRA receipt cannot predate its target")
+    required_quotes = {"contract_symbol", "quote_timestamp", "bid", "ask"}
+    required_definitions = {
+        "contract_symbol",
+        "symbol",
+        "expiration_date",
+        "call_put",
+        "strike",
+        "multiplier",
+        "standard_contract",
+        "definition_effective_at",
+    }
+    if missing := sorted(required_quotes.difference(quotes.columns)):
+        raise ValueError("OPRA quotes are missing: " + ", ".join(missing))
+    if missing := sorted(required_definitions.difference(definitions.columns)):
+        raise ValueError("OPRA definitions are missing: " + ", ".join(missing))
+    definition_rows = definitions.loc[
+        definitions["symbol"].astype("string").str.upper().eq(clean_symbol)
+    ].copy()
+    definition_rows["definition_effective_at"] = pd.to_datetime(
+        definition_rows["definition_effective_at"], utc=True, errors="coerce"
+    )
+    definition_rows = (
+        definition_rows.loc[
+            definition_rows["definition_effective_at"].notna()
+            & definition_rows["definition_effective_at"].le(target)
+        ]
+        .sort_values("definition_effective_at", kind="stable")
+        .drop_duplicates("contract_symbol", keep="last")
+    )
+    merged = quotes.merge(
+        definition_rows,
+        on="contract_symbol",
+        how="inner",
+        validate="many_to_one",
+        suffixes=("", "_definition"),
+    )
+    merged["quote_timestamp"] = pd.to_datetime(
+        merged["quote_timestamp"], utc=True, errors="coerce"
+    )
+    bid = pd.to_numeric(merged["bid"], errors="coerce")
+    ask = pd.to_numeric(merged["ask"], errors="coerce")
+    valid = bid.ge(0.0) & ask.gt(bid)
+    merged = (
+        merged.loc[
+            merged["quote_timestamp"].notna()
+            & merged["quote_timestamp"].lt(target)
+            & valid
+        ]
+        .sort_values("quote_timestamp", kind="stable")
+        .drop_duplicates("contract_symbol", keep="last")
+    )
+    bid = pd.to_numeric(merged["bid"], errors="coerce")
+    ask = pd.to_numeric(merged["ask"], errors="coerce")
+    valid = bid.ge(0.0) & ask.gt(bid)
+    definition_at = pd.to_datetime(
+        merged.get("definition_effective_at"), utc=True, errors="coerce"
+    )
+    exercise = merged.get(
+        "exercise_style", pd.Series(pd.NA, index=merged.index, dtype="string")
+    )
+    output = pd.DataFrame(
+        {
+            "provider": "databento-opra",
+            "dataset": dataset,
+            "source_schema": schema,
+            "source": "databento-opra",
+            "symbol": clean_symbol,
+            "underlying_symbol": clean_symbol,
+            "contract_symbol": merged["contract_symbol"].astype("string"),
+            "target_snapshot_for": target,
+            "snapshot_for": target,
+            "first_available_at": available,
+            "available_at": available,
+            "fetched_at": available,
+            "provider_ingested_at": available,
+            "event_timestamp": merged["quote_timestamp"],
+            "quote_timestamp": merged["quote_timestamp"],
+            "bid": bid,
+            "ask": ask,
+            "midpoint": (bid + ask) / 2.0,
+            "bid_size": pd.to_numeric(merged.get("bid_size"), errors="coerce"),
+            "ask_size": pd.to_numeric(merged.get("ask_size"), errors="coerce"),
+            "trade_price": pd.to_numeric(
+                merged.get("trade_price"), errors="coerce"
+            ),
+            "trade_size": pd.to_numeric(
+                merged.get("trade_size"), errors="coerce"
+            ),
+            "underlying_price": pd.to_numeric(
+                merged.get("underlying_price"), errors="coerce"
+            ),
+            "interest_rate": pd.to_numeric(
+                merged.get("interest_rate"), errors="coerce"
+            ),
+            "dividend_yield": pd.to_numeric(
+                merged.get("dividend_yield"), errors="coerce"
+            ),
+            "implied_volatility": pd.to_numeric(
+                merged.get("implied_volatility"), errors="coerce"
+            ),
+            "volume": pd.to_numeric(merged.get("volume"), errors="coerce"),
+            "open_interest": pd.to_numeric(
+                merged.get("open_interest"), errors="coerce"
+            ),
+            "strike": pd.to_numeric(merged["strike"], errors="coerce"),
+            "expiration_date": pd.to_datetime(
+                merged["expiration_date"], utc=True, errors="coerce"
+            ),
+            "call_put": merged["call_put"].astype("string").str.upper(),
+            "multiplier": pd.to_numeric(merged["multiplier"], errors="coerce"),
+            "standard_contract": merged["standard_contract"].fillna(False).astype(bool),
+            "mini": False,
+            "non_standard": ~merged["standard_contract"].fillna(False).astype(bool),
+            "adjusted": ~merged["standard_contract"].fillna(False).astype(bool),
+            "publisher_id": merged.get("publisher_id"),
+            "venue": merged.get("venue"),
+            "quote_staleness_seconds": (
+                target - merged["quote_timestamp"]
+            ).dt.total_seconds(),
+            "quote_valid": valid,
+            "quote_quality_status": valid.map(
+                {True: "VALID", False: "REJECTED"}
+            ),
+            "definition_as_of": definition_at,
+            "exercise_style": exercise,
+            "exercise_style_status": exercise.notna().map(
+                {True: "POINT_IN_TIME_REFERENCE", False: "AMBIGUOUS_UNVERIFIED"}
+            ),
+            "settlement_type": merged.get("settlement_type"),
+            "settlement_reference": merged.get("settlement_reference"),
+            "evidence_lane": "PROSPECTIVE_OPRA",
+            "fallback_used": False,
+            "source_file": merged.get("source_file"),
+            "source_checksum_sha256": merged.get("source_checksum_sha256"),
+            "schema_version": OPTION_CHAIN_SCHEMA_VERSION,
+            "policy_version": "provider-neutral-option-snapshot-v2",
+        }
+    )
+    if output.empty:
+        raise RuntimeError(f"OPRA snapshot returned no contracts for {clean_symbol}")
+    return output.reset_index(drop=True)
 
 
 def _persist_schwab_option_snapshot(
@@ -137,7 +337,10 @@ def _persist_schwab_option_snapshot(
             {
                 "symbol": symbol.strip().upper(),
                 "source": "schwab",
+                "provider": "schwab",
+                "dataset": "SCHWAB_CHAIN",
                 "snapshot_for": snapshot_for,
+                "target_snapshot_for": snapshot_for,
                 "decision_timestamp": snapshot_for,
                 "decision_bar_timestamp": _as_utc_timestamp(clock.bar_timestamp),
                 "decision_provider": clock.provider,
@@ -148,6 +351,8 @@ def _persist_schwab_option_snapshot(
                 "underlying_quote_timestamp": _underlying_quote_timestamp(payload),
                 "fetched_at": observed_at,
                 "available_at": observed_at,
+                "first_available_at": observed_at,
+                "provider_ingested_at": observed_at,
                 "payload_json": json.dumps(payload, default=str, sort_keys=True),
                 "capture_provenance_json": (
                     json.dumps(
@@ -165,6 +370,7 @@ def _persist_schwab_option_snapshot(
                     else observed_at
                 ),
                 "schema_version": OPTION_CHAIN_SCHEMA_VERSION,
+                "policy_version": "provider-neutral-option-snapshot-v2",
             }
         ]
     )
@@ -177,6 +383,8 @@ def _persist_schwab_option_snapshot(
         raw=raw,
         contracts=contracts,
         features=features,
+        provider="schwab",
+        dataset="SCHWAB_CHAIN",
         request_started_at=cutoff_at,
         pricing_barrier=pricing_barrier,
         receipt_published_at=receipt_published_at,
@@ -288,7 +496,11 @@ def normalize_schwab_option_chain(
                         {
                             "symbol": clean_symbol,
                             "source": "schwab",
+                            "provider": "schwab",
+                            "dataset": "SCHWAB_CHAIN",
+                            "underlying_symbol": clean_symbol,
                             "snapshot_for": snapshot_for,
+                            "target_snapshot_for": snapshot_for,
                             "decision_timestamp": snapshot_for,
                             "decision_bar_timestamp": _as_utc_timestamp(clock.bar_timestamp),
                             "decision_provider": clock.provider,
@@ -298,6 +510,8 @@ def normalize_schwab_option_chain(
                             "underlying_quote_timestamp": underlying_quote_timestamp,
                             "fetched_at": observed_at,
                             "available_at": observed_at,
+                            "first_available_at": observed_at,
+                            "provider_ingested_at": observed_at,
                             "decision_lag_seconds": max(
                                 0.0,
                                 (observed_at - snapshot_for).total_seconds(),
@@ -311,8 +525,13 @@ def normalize_schwab_option_chain(
                             "underlying_price": contract_underlying,
                             "bid": bid,
                             "ask": ask,
+                            "midpoint": quote_mid,
                             "mark": mark,
                             "last": _number(contract.get("last")),
+                            "trade_price": _number(contract.get("last")),
+                            "trade_size": _number(
+                                contract.get("lastSize") or contract.get("tradeSize")
+                            ),
                             "bid_size": _number(contract.get("bidSize")),
                             "ask_size": _number(contract.get("askSize")),
                             "volume": _number(contract.get("totalVolume") or contract.get("volume")),
@@ -331,12 +550,31 @@ def normalize_schwab_option_chain(
                             "in_the_money": _boolean(contract.get("inTheMoney")),
                             "mini": _boolean(contract.get("mini")),
                             "non_standard": _boolean(contract.get("nonStandard")),
+                            "adjusted": _boolean(contract.get("nonStandard")),
+                            "standard_contract": not bool(
+                                _boolean(contract.get("mini"))
+                                or _boolean(contract.get("nonStandard"))
+                            ),
                             "multiplier": _number(contract.get("multiplier")) or 100.0,
+                            "exercise_style": str(
+                                contract.get("exerciseStyle") or ""
+                            ).strip().upper()
+                            or None,
+                            "exercise_style_status": (
+                                "POINT_IN_TIME_REFERENCE"
+                                if contract.get("exerciseStyle")
+                                else "AMBIGUOUS_UNVERIFIED"
+                            ),
                             "settlement_type": str(contract.get("settlementType") or "").strip(),
+                            "settlement_reference": str(
+                                contract.get("settlementReference") or ""
+                            ).strip()
+                            or None,
                             "expiration_type": str(contract.get("expirationType") or "").strip(),
                             "interest_rate": interest_rate,
                             "dividend_yield": dividend_yield,
                             "quote_timestamp": quote_timestamp,
+                            "event_timestamp": quote_timestamp,
                             "trade_timestamp": trade_timestamp,
                             "quote_staleness_seconds": _staleness(observed_at, quote_timestamp),
                             "quote_after_cutoff": quote_after_cutoff,
@@ -356,8 +594,27 @@ def normalize_schwab_option_chain(
                                 and not quote_locked
                                 and not quote_after_cutoff
                             ),
+                            "quote_quality_status": (
+                                "VALID"
+                                if bid is not None
+                                and ask is not None
+                                and quote_mid is not None
+                                and quote_mid > 0
+                                and not quote_crossed
+                                and not quote_locked
+                                and not quote_after_cutoff
+                                else "REJECTED"
+                            ),
+                            "definition_as_of": quote_timestamp,
+                            "publisher_id": None,
+                            "venue": "SCHWAB_AGGREGATED",
+                            "evidence_lane": "PROSPECTIVE_SCHWAB",
+                            "fallback_used": True,
+                            "source_file": None,
+                            "source_checksum_sha256": None,
                             "relative_bid_ask_spread": _relative_spread(bid, ask),
                             "schema_version": OPTION_CHAIN_SCHEMA_VERSION,
+                            "policy_version": "provider-neutral-option-snapshot-v2",
                         }
                     )
 

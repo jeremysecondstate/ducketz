@@ -911,13 +911,15 @@ def _option_pricing_shadow(column: str) -> FeatureSpec:
         f"opx__{column}",
         source_column=column,
         horizons=("1h", "4h", "1d", "1w"),
-        provider_policy="verified-option-pricing-publication-v2",
+        provider_policy="verified-option-pricing-publication-v3-opra-first",
         source_timeframe="completed-pricing-surface-publication",
         source_grain="symbol-target-compact-surface-aggregate",
-        calculation_versions=("black-scholes-rbf-residual-v2",),
-        schema_versions=("option-pricing-compact-surface-v2",),
+        calculation_versions=(
+            "black-scholes-nystroem-rbf-bayesian-ridge-residual-v3",
+        ),
+        schema_versions=("option-pricing-compact-surface-v3",),
         availability_rule="verified-receipt-and-row-available-no-later-than-decision",
-        availability_version="pricing-publication-causal-first-availability-v2",
+        availability_version="pricing-append-history-causal-first-availability-v3",
         freshness=(
             ("1h", "2-hours"),
             ("4h", "4-hours"),
@@ -926,9 +928,9 @@ def _option_pricing_shadow(column: str) -> FeatureSpec:
         ),
         missing_policy="explicit-active-route-unavailable-no-current-substitution-v2",
         transform="training-median-robust-scale-v1",
-        coverage_policy="verified-compact-surface-only-v1",
+        coverage_policy="pricing-family-coverage-freshness-gate-v1",
         classification=INSUFFICIENT_COVERAGE,
-        readiness_policy="pricing-active-feature-readiness-v2",
+        readiness_policy="pricing-active-feature-readiness-v3",
     )
 
 

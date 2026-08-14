@@ -16,6 +16,7 @@ from ml.option_pricing.model import PricingRouteModel
 from ml.option_pricing.policies import (
     LOOP_NATIVE_SHADOW_SCHEMA_VERSION,
     LoopNativeModelPolicy,
+    FINITE_BASIS_RESIDUAL_MODEL_NAME,
     OPTION_PRICING_POLICY_VERSION,
     OPTION_PRICING_SCHEMA_VERSION,
     OPTION_PRICING_TIMING_POLICY_VERSION,
@@ -96,11 +97,9 @@ def create_prediction_rows(
         model = route_models.get((str(symbol), str(call_put)))
         if model is None:
             residual_mean = np.zeros(len(route), dtype=float)
-            standard_deviation = np.full(
-                len(route), fallback_standard_deviation, dtype=float
-            )
-            width80 = standard_deviation * 1.2815515655446004
-            width95 = standard_deviation * 1.959963984540054
+            standard_deviation = np.full(len(route), np.nan, dtype=float)
+            width80 = np.full(len(route), np.nan, dtype=float)
+            width95 = np.full(len(route), np.nan, dtype=float)
         else:
             residual_mean, standard_deviation, width80, width95 = (
                 model.predict_residual(route)
@@ -122,7 +121,7 @@ def create_prediction_rows(
             if lower > upper + 1e-9:
                 raise ValueError("Configured American option bounds are inconsistent")
             lower = min(lower, upper)
-            has_uncertainty = True
+            has_uncertainty = model is not None
             records.append(
                 {
                     "symbol": str(symbol),
@@ -134,12 +133,23 @@ def create_prediction_rows(
                     "target_snapshot_for": row["target_snapshot_for"],
                     "source_snapshot_for": row["source_snapshot_for"],
                     "source_available_at": row["source_available_at"],
+                    "source_quote_timestamp": row.get("source_quote_timestamp"),
+                    "source_evidence_available_at": row.get(
+                        "source_evidence_available_at", row["source_available_at"]
+                    ),
+                    "provider_ingested_at": row.get("provider_ingested_at"),
+                    "evidence_lane": row.get("evidence_lane"),
+                    "fallback_used": row.get("fallback_used"),
                     "source_quote_staleness_seconds": row.get(
                         "source_quote_staleness_seconds"
                     ),
                     "prediction_created_at": created,
                     "prediction_available_at": available,
-                    "model_name": "bsgp" if model is not None else "black_scholes",
+                    "model_name": (
+                        FINITE_BASIS_RESIDUAL_MODEL_NAME
+                        if model is not None
+                        else "black_scholes"
+                    ),
                     "model_version": (
                         model.model_version if model is not None else OPTION_PRICING_POLICY_VERSION
                     ),
@@ -158,7 +168,7 @@ def create_prediction_rows(
                     "point_upper_bound": upper,
                     "predictive_standard_deviation": float(
                         standard_deviation[position] * underlying
-                    ),
+                    ) if has_uncertainty else None,
                     "raw_interval_80_lower": (
                         float(raw_fair - width80[position] * underlying)
                         if has_uncertainty
@@ -566,9 +576,12 @@ def create_bsgp_shadow_rows(
         ].to_numpy()
         output.loc[index, "bsgp_shadow_normalized_residual"] = 0.0
         for output_column, baseline_column in interval_columns.items():
-            output.loc[index, output_column] = merged.loc[
-                index, baseline_column
-            ].to_numpy()
+            # Baseline uncertainty is intentionally unavailable. Preserve it
+            # as numeric NaN so pandas cannot coerce a float prediction column
+            # through an object array of Python ``None`` values.
+            output.loc[index, output_column] = pd.to_numeric(
+                merged.loc[index, baseline_column], errors="coerce"
+            ).to_numpy(dtype=float)
         output.loc[index, "bsgp_shadow_status"] = fallback_status
         output.loc[index, "bsgp_shadow_reason"] = (
             "Complete expiration surface copied from baseline because a coupled "

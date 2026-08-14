@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import shutil
 from dataclasses import replace
 from pathlib import Path
 
@@ -71,7 +72,7 @@ from ml.option_pricing.target_outcome import (
     read_target_outcome,
 )
 from ml.option_pricing_runtime import _run_option_pricing_once_impl
-from options.publication import publish_option_snapshot
+from options.publication import publish_option_snapshot, read_option_snapshot
 
 
 def test_empty_terminal_shadow_publication_advances_verified_pointer(
@@ -116,7 +117,14 @@ def test_duplicate_schwab_publications_collapse_to_earliest_valid_receipt(
         target=target,
         available=target + pd.Timedelta(minutes=2),
     )
-    second = _publish_snapshot(
+    retry = _publish_snapshot(
+        tmp_path,
+        symbol="NVDA",
+        target=target,
+        available=target + pd.Timedelta(minutes=3),
+    )
+    assert retry.directory == first.directory
+    second = _install_legacy_duplicate(
         tmp_path,
         symbol="NVDA",
         target=target,
@@ -147,7 +155,7 @@ def test_conflicting_duplicate_schwab_receipts_fail_closed(tmp_path: Path) -> No
         target=target,
         available=target + pd.Timedelta(minutes=2),
     )
-    second = _publish_snapshot(
+    second = _install_legacy_duplicate(
         tmp_path,
         symbol="NVDA",
         target=target,
@@ -174,7 +182,7 @@ def test_later_source_publication_is_diagnostic_only_and_cutoff_is_reported(
         target=source_target,
         available=source_target + pd.Timedelta(minutes=2),
     )
-    duplicate = _publish_snapshot(
+    duplicate = _install_legacy_duplicate(
         tmp_path,
         symbol="NVDA",
         target=source_target,
@@ -807,15 +815,16 @@ def test_black_scholes_baseline_is_identical_with_or_without_shadow_model(
     )
 
 
-def test_loop_native_policy_retains_all_twenty_routes_and_keeps_opra_optional(
+def test_loop_native_policy_uses_twelve_routes_and_requires_bounded_opra(
     tmp_path: Path,
 ) -> None:
     payload = loop_native_eligibility_policy_payload()
     routes = payload["required_universe"]["routes"]
-    assert len(routes) == 20
+    assert len(routes) == 12
     assert {row["symbol"] for row in routes} == set(LOOP_NATIVE_SYMBOLS)
     assert {row["call_put"] for row in routes} == set(LOOP_NATIVE_CALL_PUTS)
-    assert payload["historical_evidence"]["paid_opra_prerequisite"] is False
+    assert payload["historical_evidence"]["paid_opra_prerequisite"] is True
+    assert payload["historical_evidence"]["offline_increments_prospective_counts"] is False
     assert payload["automated_action_allowed"] is False
 
     artifact = publish_loop_native_eligibility_policy(
@@ -831,7 +840,7 @@ def test_loop_native_policy_retains_all_twenty_routes_and_keeps_opra_optional(
         generated_at="2026-01-09T00:00:01Z",
         capture_lineage_verified=True,
     )
-    assert len(report["routes"]) == 20
+    assert len(report["routes"]) == 12
     assert report["gates"]["1"]["status"] == "PASS"
     assert all(
         report["gates"][str(number)]["status"] == "NOT_PROVEN"
@@ -1047,8 +1056,8 @@ def test_policy_and_shadow_sidecar_tamper_fail_closed(tmp_path: Path) -> None:
     policy_path = policy.directory / "policy.json"
     policy_path.write_text(
         policy_path.read_text(encoding="utf-8").replace(
-            '"paid_opra_prerequisite": false',
             '"paid_opra_prerequisite": true',
+            '"paid_opra_prerequisite": false',
         ),
         encoding="utf-8",
     )
@@ -1135,6 +1144,45 @@ def _publish_snapshot(
         features=features,
         receipt_published_at=available,
     )
+
+
+def _install_legacy_duplicate(
+    root: Path,
+    *,
+    symbol: str,
+    target: pd.Timestamp,
+    available: pd.Timestamp,
+    strike: float = 100.0,
+):
+    """Install an immutable pre-natural-key duplicate fixture read-only code can consume."""
+
+    source_root = root / f"legacy-source-{available.value}-{strike:g}"
+    source = _publish_snapshot(
+        source_root,
+        symbol=symbol,
+        target=target,
+        available=available,
+        strike=strike,
+    )
+    destination = (
+        root
+        / "stocks"
+        / symbol
+        / "options"
+        / "snapshots"
+        / "schwab"
+        / f"legacy-{target.value}-{available.value}-{strike:g}"
+    )
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(source.directory, destination)
+    receipt_path = destination / "receipt.json"
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    receipt["run_path"] = destination.relative_to(root).as_posix()
+    receipt_path.write_text(
+        json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return read_option_snapshot(destination)
 
 
 def _source_contracts() -> pd.DataFrame:

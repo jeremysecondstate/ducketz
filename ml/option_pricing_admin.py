@@ -31,7 +31,11 @@ from ml.option_pricing.operations import (
     read_current_runtime_health,
     rollback_option_pricing_pointer,
 )
-from ml.option_pricing.publication import read_current_option_pricing_publication
+from ml.option_pricing.publication import (
+    diagnose_option_pricing_publications,
+    read_current_option_pricing_publication,
+    recover_option_pricing_orphan,
+)
 from ml.option_pricing.rates import (
     load_point_in_time_rate_observations,
     rate_coverage_report,
@@ -42,6 +46,7 @@ from ml.option_pricing.strategy_outcomes import (
     read_current_strategy_outcome_evidence,
 )
 from options.publication import committed_option_snapshots
+from ml.universe import PRODUCTION_OPTION_ROUTE_COUNT
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -82,6 +87,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Restore the immediately prior verified Pricing pointer",
     )
     rollback.add_argument("--authorization-record", type=Path, required=True)
+    commands.add_parser(
+        "diagnose-publications",
+        help="Read-only verification of pointer divergence and orphan runs",
+    )
+    recover = commands.add_parser(
+        "recover-orphan",
+        help="Promote one verified child orphan with a separate authorization record",
+    )
+    recover.add_argument("--run-directory", type=Path, required=True)
+    recover.add_argument("--authorization-record", type=Path, required=True)
     args = parser.parse_args(argv)
     root = resolve_datastore_dir(
         root_dir=args.datastore,
@@ -151,6 +166,29 @@ def main(argv: Sequence[str] | None = None) -> int:
             authorization_path=args.authorization_record,
         )
         _print_json(receipt)
+        return EXIT_OK
+    if args.command == "diagnose-publications":
+        diagnosis = diagnose_option_pricing_publications(root)
+        _print_json(diagnosis)
+        return (
+            EXIT_OK
+            if diagnosis.get("pointer_status") in {"VERIFIED", "MISSING"}
+            else EXIT_EVIDENCE
+        )
+    if args.command == "recover-orphan":
+        publication = recover_option_pricing_orphan(
+            root,
+            run_directory=args.run_directory,
+            authorization_record=args.authorization_record,
+        )
+        _print_json(
+            {
+                "status": "RECOVERED",
+                "run_path": publication.run_directory.relative_to(root).as_posix(),
+                "published_at": publication.receipt.get("published_at"),
+                "automated_action_allowed": False,
+            }
+        )
         return EXIT_OK
     parser.error("unsupported command")
     return 2
@@ -460,15 +498,17 @@ def _loop_native_readiness_view(datastore_root: Path) -> dict[str, object]:
         "protocol_version": LOOP_NATIVE_ELIGIBILITY_PROTOCOL_VERSION,
         "policy": policy_view,
         "report": report_view,
-        "paid_opra_required": False,
-        "paid_opra_role": "OPTIONAL_EXTERNAL_BENCHMARK_ONLY",
-        "required_symbol_side_routes": 20,
+        "paid_opra_required": True,
+        "paid_opra_role": "CANONICAL_HISTORICAL_AND_PROSPECTIVE_MARKET_EVIDENCE",
+        "required_symbol_side_routes": PRODUCTION_OPTION_ROUTE_COUNT,
         "automated_action_allowed": False,
         "recommended_next_actions": [
             "Deploy the verified Pricing and Options reader changes together only after "
             "operator-approved process replacement.",
-            "Collect receipt-proven Schwab outcomes across all twenty routes; offline "
-            "bootstrap rows never increment prospective counts.",
+            f"Collect at least 20 receipt-proven prospective OPRA sessions across all "
+            f"{PRODUCTION_OPTION_ROUTE_COUNT} production routes; offline backfill rows "
+            "never increment prospective counts. Retain Schwab as explicit fallback, "
+            "enrichment, disagreement, and execution evidence.",
             "Do not freeze a candidate or open the lockbox until every prerequisite "
             "passes and explicit authorization is recorded.",
         ],

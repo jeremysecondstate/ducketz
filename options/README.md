@@ -1,160 +1,188 @@
-# Duckets option snapshots and features
+# Ducketz provider-neutral option evidence
 
-The option layer turns Schwab option-chain responses into point-in-time contract
-evidence and a compact deterministic feature row.
+The option layer persists point-in-time OPRA and Schwab evidence behind one
+normalized, immutable publication contract.
 
-## Decision timestamp
+## Universe
 
-Option data have two clocks:
-
-- `available_at` and `fetched_at`: when Duckets received the Schwab response;
-- `snapshot_for` and `decision_timestamp`: the newest completed Databento one-minute
-  bar end that lands on `:00`, `:15`, `:30`, or `:45`.
-
-The clock reads only:
+`ml/universe.py` is the only production option-universe authority:
 
 ```text
-DATASTORE/stocks/<SYMBOL>/bars/1m/databento/normalized/*.parquet
+AAPL AMZN GOOG MU NVDA SNDK
 ```
 
-Derived 5m, 10m, 15m, and 30m Parquets are not consulted:
+CALL and PUT are derived for each symbol, so readiness and eligibility require
+exactly 12 routes. `SPY` is declared separately as a research benchmark and is
+never part of Loop A, Loop B, Strategy, production readiness, or those routes.
+
+## Provider roles
+
+- `databento-opra` is canonical market evidence for historical training,
+  prospective fair-value inputs/outcomes, uncertainty calibration, and model
+  quality.
+- `schwab` is broker enrichment, explicit causal fallback, provider
+  disagreement, execution/fill validation, and execution-model evidence.
+
+Schwab rows are never labeled as OPRA. Every normalized row and downstream
+report carries provider, evidence lane, and `fallback_used`.
+
+`options/providers.py` is the injected adapter boundary for prospective OPRA.
+Tests use fake adapters and never make provider requests. A live adapter and
+credentials are an explicit rollout dependency, not an implicit fallback.
+
+## Clocks
+
+The schema keeps these concepts separate:
+
+- market target (`target_snapshot_for`);
+- source quote event;
+- source evidence availability;
+- prediction creation;
+- prediction publication/availability;
+- outcome quote event;
+- outcome evidence availability;
+- provider ingestion/local receipt.
+
+The target is aligned to the newest completed Databento one-minute bar ending
+on `:00`, `:15`, `:30`, or `:45`. Derived bars do not move this clock. Strict
+consumers use receipt availability, not a provider event timestamp, for causal
+visibility.
+
+The source quote must be the last valid NBBO strictly before prediction cutoff.
+An outcome must be the first valid exact-contract NBBO for which both its quote
+event and evidence availability are strictly after prediction availability.
+Being later than the market target alone is insufficient.
+
+Offline OPRA replay uses a versioned 60-second emulated prediction latency and
+stores present-day import receipt separately. It is permanently ineligible for
+prospective counts.
+
+## Immutable storage and identity
+
+The natural key is:
 
 ```text
-1m timestamp:          10:14:00
-1m bar_end_timestamp:  10:15:00
-option timestamp:      10:15:00
-decision_timeframe:    1m
+(provider, symbol, target_snapshot_for)
 ```
-
-A later `10:15:00 → 10:16:00` row does not move the option snapshot clock. The
-next eligible boundary is `10:30:00`.
-
-`decision_bar_timestamp`, `decision_provider`, `decision_timeframe`, and
-`decision_source_file` describe the readable source context. They are not IDs.
-Strict point-in-time consumers must enforce `available_at <= decision_time`
-because the option response arrives after its alignment boundary.
-
-If a sparse session has no one-minute row ending on the newest quarter-hour, the
-clock remains at the most recent qualifying boundary.
-
-## Storage and readable IDs
-
-The authoritative generation is an immutable three-file receipt:
 
 ```text
 DATASTORE/stocks/<SYMBOL>/options/
-├── snapshots/schwab/<available-ns>-<snapshot-ns>/
-│   ├── raw.parquet
-│   ├── contracts.parquet
-│   ├── option-quality.parquet
-│   ├── manifest.json
-│   └── receipt.json
-└── latest/schwab.json
+|-- snapshots/
+|   |-- databento-opra/<target_ns>/
+|   |   |-- raw.parquet
+|   |   |-- contracts.parquet
+|   |   |-- option-quality.parquet
+|   |   |-- manifest.json
+|   |   `-- receipt.json
+|   `-- schwab/<target_ns>/...
+`-- latest/
+    |-- databento-opra.json
+    `-- schwab.json
 ```
 
-The pointer changes only after all three Parquets and the receipt validate.
-Directories without a receipt are invisible to official readers. Monthly
-partitions remain compatibility mirrors:
+Publication is staged, checksummed, verified, and atomically committed. An
+identical retry returns the existing earliest verified publication without a
+provider call. Divergent content for an existing natural key fails closed and
+is never overwritten.
+
+Successfully committed closed-market targets are reused across discovery
+intervals. Legacy Schwab v1 paths and monthly mirrors remain readable:
 
 ```text
-DATASTORE/stocks/<SYMBOL>/options/
-├── chains/schwab/raw/YYYY-MM.parquet
-├── chains/schwab/normalized/YYYY-MM.parquet
-└── features/option-quality/schwab/YYYY-MM.parquet
+chains/schwab/{raw,normalized}/YYYY-MM.parquet
+features/option-quality/schwab/YYYY-MM.parquet
 ```
 
-Every file has one Duckets-generated `id`:
+Legacy duplicates remain immutable. Canonical readers choose the earliest
+verified receipt, diagnose duplicates/conflicts, and prevent repeated evidence
+from increasing weight or session counts.
 
-| Parquet | Natural ID recipe |
-| --- | --- |
-| raw response | `symbol\|snapshot_for\|available_at` |
-| normalized contracts | `symbol\|snapshot_for\|available_at\|contract_symbol` |
-| option-quality features | `symbol\|snapshot_for\|available_at` |
+## Normalized option snapshot v2
 
-No contract, snapshot, feature-set, source, or calculation ID is generated.
-`contract_symbol` remains a readable provider value and is not renamed.
+At minimum, normalized contracts contain:
 
-Writes upsert on those same natural columns and atomically replace the monthly
-file.
+- provider, dataset, underlying symbol, and contract symbol;
+- quote event, target, first availability, and provider receipt;
+- bid/ask/midpoint and bid/ask sizes;
+- trade price/size when available;
+- strike, expiration, CALL/PUT, multiplier, and standard/mini/adjusted flags;
+- OPRA publisher/venue lineage;
+- quote staleness and quality status;
+- point-in-time definition timestamp;
+- exercise style and settlement/reference attributes when available;
+- source files/checksums plus schema and policy versions.
 
-## Contract evidence
+OPRA definition rows must be effective no later than the target. OPRA L1 uses
+the final valid BBO strictly before that target. Because OPRA does not itself
+provide the equity spot, live pricing binds the surface to the exact
+receipt-visible Loop A close for the source target. Unsupported or ambiguous
+contract reference is excluded or explicitly stratified.
 
-The normalized chain retains prices, sizes, volume, open interest, implied
-volatility, Greeks, intrinsic/time value, contract metadata, provider quote and
-trade times, underlying price, rate/dividend inputs, relative spread, and quote
-staleness.
+Optional OPRA statistics/open interest, volume, status/halts, and trade/TBBO
+fields retain their own availability clocks. Trades/TBBO are execution evidence,
+not fair-value labels. `cmbp-1` remains research-only.
 
-## Option-quality features
+## Rate and dividend authorities
 
-The feature set is transparent and model-independent:
+Already-fetched FMP Treasury responses are published under:
 
 ```text
-relative_bid_ask_spread
-atm_relative_bid_ask_spread
-atm_straddle_implied_move
-realized_expected_absolute_move_atm_horizon
-atm_straddle_move_excess
-atm_straddle_move_richness
-iv_minus_realized_volatility
-front_iv_minus_back_iv
-put_25d_iv_minus_call_25d_iv
-smile_curvature
-open_interest_concentration
-volume_to_open_interest
-call_put_volume_ratio
-call_put_open_interest_ratio
-put_call_parity_residual
-atm_put_call_parity_residual
-intrinsic_value_violation
-intrinsic_value_violation_rate
-quote_staleness_seconds
+pools/rates/treasury-curve/fmp/<receipt>/
 ```
 
-### ATM straddle move richness
+Resolution selects only a fully available causal curve, defaults to the prior
+fully available business-day curve during an XNYS session, interpolates log
+discount factors, and derives a continuous maturity-matched rate. ALFRED/FRED is
+validation and explicit fallback; broker/provider rate fields are comparison or
+last resort.
 
-`atm_straddle_move_richness` compares the executable ATM straddle ask, as a
-fraction of underlying price, with recent expected absolute movement over the
-same horizon:
+Already-fetched FMP dividend histories are published under:
 
 ```text
-realized_expected_absolute_move_atm_horizon
-    = realized_volatility_20d
-    × sqrt(2 / pi)
-    × sqrt(atm_days_to_expiration / 365)
-
-atm_straddle_move_richness
-    = atm_straddle_implied_move
-    / realized_expected_absolute_move_atm_horizon
+stocks/<SYMBOL>/corporate-actions/dividends/fmp/<receipt>/
 ```
 
-The `sqrt(2 / pi)` factor converts a zero-drift normal standard deviation into
-an expected absolute move.
+Only knowable declarations with ex-dates in `(as_of, expiration]` are used. The
+model input is computed from known cash-dividend PV:
 
-- above `1.0`: the ATM straddle ask is rich relative to recent movement;
-- near `1.0`: the priced move is near the recent baseline;
-- below `1.0`: the ATM straddle ask is cheap relative to recent movement.
+```text
+q = -ln((S - PV(dividends)) / S) / T
+```
 
-`atm_straddle_move_excess` expresses the same comparison as a difference.
-Coverage columns prevent downstream models from treating absent provider values
-as valid zeros.
+FMP's supplied yield is not used directly and future declarations are excluded.
 
-Twenty-day realized volatility is calculated only from split-adjusted daily
-market-regime rows available by the last successfully committed Loop A
-generation. An active or failed Loop A cycle does not make newer partial
-evidence eligible and does not make the Options runtime wait. Dependent features
-remain null when that committed prerequisite is unavailable.
+## Historical OPRA planning
 
-## Fetch scope
-
-The independent runtime requests calls and puts, 100 strikes around the
-underlying, underlying quote context, and expirations through 200 calendar
-days:
+The default dry run plans six calendar months, four declared intraday XNYS
+targets per eligible session, the six production parent symbols (`<SYMBOL>.OPT`),
+point-in-time definitions, and `cbbo-1m`. Request/cluster counts are derived
+from actual sessions, targets, and symbols. It reports date coverage, request
+count, estimated billable bytes/cost, expanded storage, capacity, and resumable
+receipts without calling `get_range`:
 
 ```powershell
-python -m datafetching.options_runtime --datastore-target pc `
-  --watchlist datafetching\watchlist.txt --interval-minutes 15 `
-  --phase-offset-minutes 2
+python -m ml.option_pricing_opra --datastore-target pc
+python -m ml.option_pricing_opra --datastore-target pc --research-benchmark
 ```
 
-Loop A uses external Options mode by default. See
-[`independent-runtime-orchestration.md`](../docs/datafetch-ml/independent-runtime-orchestration.md).
+Prospective L1 defaults to `cbbo-1s`. Paid execution additionally requires all
+of `--execute`, an explicit `--max-cost-usd`, sufficient capacity, and an exact
+operator-approved `opra-paid-execution-authorization-v1` record. Never run the
+paid phase as a migration or test.
+
+## Pricing model and rollout
+
+The fair-value residual model is the **128-component Nyström RBF residual model
+with Bayesian ridge posterior**, with Black-Scholes as its mean. It is not an
+exact GP. Historical identifiers containing `bsgp` are compatibility aliases
+for immutable artifacts only.
+
+Liquidity weights use causal spread, staleness, volume/open interest, and quote
+quality, then normalize each target surface to equal total weight. The separate
+SPY exact-GP benchmark is bounded and research-only.
+
+Eligibility requires six offline OPRA months, the SPY benchmark, 20 independent
+prospective OPRA sessions for every one of the 12 routes, calibration and
+comparator evidence, no-arbitrage/liquidity and operational gates, provider
+disagreement, shadow strategy/execution results, a closed lockbox, and separate
+operator authorization. `automated_action_allowed=false` remains in force.

@@ -27,6 +27,7 @@ from ml.option_pricing.model import compare_pricing_models
 from ml.option_pricing.opra_materialization import materialize_committed_opra_history
 from ml.option_pricing.policies import ContractSelectionPolicy, ProjectionPolicy
 from ml.option_pricing.prediction import create_prediction_rows
+from ml.universe import PRODUCTION_OPTION_SYMBOLS
 
 
 LOCKBOX_AUTHORIZATION_VERSION = "option-pricing-lockbox-authorization-v1"
@@ -394,7 +395,7 @@ def _materialize_candidate_lockbox(
             definition_paths.append(path)
     samples, _, errors = materialize_committed_opra_history(
         root,
-        symbols=("NVDA", "GOOG", "MU"),
+        symbols=PRODUCTION_OPTION_SYMBOLS,
         rate_observations=_load_frozen_rate_observations(root, candidate),
         contract_policy=contract_policy,
         target_snapshot_fors=targets,

@@ -52,20 +52,20 @@ python -m datafetching.cme_runtime --datastore C:\data\ducketz --once
 Run one Loop A cycle:
 
 ```powershell
-python -m datafetching.orchestrate --datastore C:\data\ducketz --symbols NVDA --once
+python -m datafetching.orchestrate --datastore C:\data\ducketz --watchlist datafetching\watchlist.txt --once
 ```
 
 Then run one shadow Pricing cycle before the Options target fetch:
 
 ```powershell
 python -m ml.option_pricing_runtime --datastore C:\data\ducketz --watchlist datafetching\watchlist.txt --once
-python -m datafetching.options_runtime --datastore C:\data\ducketz --symbols NVDA --once
+python -m datafetching.options_runtime --datastore C:\data\ducketz --watchlist datafetching\watchlist.txt --once
 ```
 
 Run one Loop B cycle:
 
 ```powershell
-python -m ml.prediction_runtime --datastore C:\data\ducketz --symbols NVDA GOOG MU --provider databento --horizons 1h 4h 1d 1w --once
+python -m ml.prediction_runtime --datastore C:\data\ducketz --symbols AAPL AMZN GOOG MU NVDA SNDK --provider databento --horizons 1h 4h 1d 1w --once
 ```
 
 Run Strategy after Loop B has published (Pricing diagnostics remain off by default):
@@ -74,11 +74,12 @@ Run Strategy after Loop B has published (Pricing diagnostics remain off by defau
 python -m ml.strategy_runtime --datastore C:\data\ducketz --once
 ```
 
-The OPRA command is estimate-only unless an operator supplies both `--execute`
-and an explicit cost ceiling:
+The OPRA command is estimate-only unless an operator supplies `--execute`, an
+explicit cost ceiling, sufficient capacity, and an exact approved authorization
+record:
 
 ```powershell
-python -m ml.option_pricing_opra --datastore C:\data\ducketz --symbols NVDA GOOG MU
+python -m ml.option_pricing_opra --datastore C:\data\ducketz --symbols AAPL AMZN GOOG MU NVDA SNDK
 ```
 
 See
@@ -86,16 +87,15 @@ See
 for ownership, startup order, cadences, causal cutoffs, recovery, stopping, and
 inline compatibility modes.
 
-See
-[`docs/datafetch-ml/option-pricing-shadow.md`](docs/datafetch-ml/option-pricing-shadow.md)
-for the causal pricing clock, model and publication contracts, explicit shadow
-profiles, OPRA safety, evidence gate, and current limitations.
+See [`options/README.md`](options/README.md) for the provider-neutral schema,
+strict causal clocks, actual finite-basis model, OPRA safety gates, immutable
+history, compatibility behavior, and explicit non-activation status.
 
 During the versioned-generation migration, keep Loop A read-only and place all
 Loop B artifacts under a separate root:
 
 ```powershell
-python -m ml.prediction_runtime --loop-a-root C:\data\ducketz-data --loop-a-format generation --loop-a-namespace loop-a-shadow --loop-b-output-root C:\data\ducketz-loop-b-shadow --feature-profile loop-a-generation-v2 --symbols NVDA GOOG MU --once
+python -m ml.prediction_runtime --loop-a-root C:\data\ducketz-data --loop-a-format generation --loop-a-namespace loop-a-shadow --loop-b-output-root C:\data\ducketz-loop-b-shadow --feature-profile loop-a-generation-v2 --symbols AAPL AMZN GOOG MU NVDA SNDK --once
 ```
 
 The generation reader validates pointer/manifest structure eagerly, then

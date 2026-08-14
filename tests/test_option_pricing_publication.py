@@ -10,15 +10,21 @@ import pytest
 from ml.artifacts import file_checksum, write_manifest
 from ml.option_pricing.publication import (
     OPTION_PRICING_PUBLICATION_VERSION,
+    OPTION_PRICING_RECOVERY_AUTHORIZATION_VERSION,
     OptionPricingPublicationError,
     authoritative_option_pricing_runs,
+    diagnose_option_pricing_publications,
     pricing_pointer_path,
     publish_option_pricing_run,
+    recover_option_pricing_orphan,
     read_current_option_pricing_publication,
     read_option_pricing_publication_at,
 )
 from ml.option_pricing_runtime import resolve_pricing_symbols, run_option_pricing_once
 from ml.parquet_contracts import (
+    LEGACY_OPTION_PRICING_EVALUATION_SCHEMA,
+    LEGACY_OPTION_PRICING_PREDICTION_SCHEMA,
+    LEGACY_OPTION_PRICING_SAMPLE_SCHEMA,
     LEGACY_OPTION_PRICING_SURFACE_SCHEMA,
     OPTION_PRICING_EVALUATION_SCHEMA,
     OPTION_PRICING_MONITORING_SCHEMA,
@@ -60,7 +66,16 @@ def _prepared_versioned_run(
     run = root / "ml" / "option-pricing-runs" / name
     run.mkdir(parents=True)
     outputs = {
-        **_OUTPUTS,
+        **(
+            _OUTPUTS
+            if publication_version == OPTION_PRICING_PUBLICATION_VERSION
+            else {
+                "pricing-samples.parquet": LEGACY_OPTION_PRICING_SAMPLE_SCHEMA,
+                "pricing-predictions.parquet": LEGACY_OPTION_PRICING_PREDICTION_SCHEMA,
+                "pricing-evaluations.parquet": LEGACY_OPTION_PRICING_EVALUATION_SCHEMA,
+                "pricing-monitoring.parquet": OPTION_PRICING_MONITORING_SCHEMA,
+            }
+        ),
         "pricing-surfaces.parquet": surface_schema,
     }
     for output_name, schema in outputs.items():
@@ -176,13 +191,13 @@ def test_pricing_runtime_advances_a_legacy_v1_current_publication(
     current = read_current_option_pricing_publication(tmp_path)
     assert current.run_directory == result.run_directory
     assert current.receipt["schema_version"] == OPTION_PRICING_PUBLICATION_VERSION
-    assert current.pointer["schema_version"] == "option-pricing-pointer-v2"
+    assert current.pointer["schema_version"] == "option-pricing-pointer-v3"
     assert current.receipt["previous_publication"]["run_path"] == legacy.relative_to(
         tmp_path
     ).as_posix()
 
 
-def test_pricing_publication_recovers_receipt_after_interrupted_pointer_write(
+def test_pricing_publication_requires_explicit_authorized_orphan_recovery(
     tmp_path: Path,
 ) -> None:
     first = _prepared_run(tmp_path, "20260706T140100.000000Z", "2026-07-06T14:01:00Z")
@@ -204,11 +219,42 @@ def test_pricing_publication_recovers_receipt_after_interrupted_pointer_write(
         json.dumps(orphan_receipt, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    recovered = publish_option_pricing_run(
+    with pytest.raises(OptionPricingPublicationError, match="verified orphan"):
+        publish_option_pricing_run(
+            tmp_path,
+            run_directory=second,
+            published_at="2026-07-06T14:17:00Z",
+        )
+    diagnosis = diagnose_option_pricing_publications(tmp_path)
+    assert diagnosis["mutation_performed"] is False
+    assert diagnosis["newer_verified_orphan_count"] == 1
+    authorization = tmp_path / "orphan-recovery-authorization.json"
+    authorization.write_text(
+        json.dumps(
+            {
+                "schema_version": OPTION_PRICING_RECOVERY_AUTHORIZATION_VERSION,
+                "action": "PROMOTE_VERIFIED_OPTION_PRICING_ORPHAN",
+                "approved": True,
+                "run_path": second.relative_to(tmp_path).as_posix(),
+                "current_run_path": first.relative_to(tmp_path).as_posix(),
+                "orphan_receipt_checksum_sha256": file_checksum(
+                    second / "publication.json"
+                ),
+                "approved_by": "pytest-operator",
+                "authorized_at": "2026-07-06T14:16:30+00:00",
+                "automated_action_allowed": False,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    recovered = recover_option_pricing_orphan(
         tmp_path,
         run_directory=second,
-        # A restart has a new wall clock, but preserves the first receipt time.
-        published_at="2026-07-06T14:17:00Z",
+        authorization_record=authorization,
+        recovered_at="2026-07-06T14:17:00Z",
     )
     assert recovered.run_directory == second
     assert recovered.receipt["published_at"] == "2026-07-06T14:16:01+00:00"
@@ -312,7 +358,14 @@ def test_empty_runtime_is_route_isolated_and_writes_only_pricing_authority(
     }
     assert report["runtime_scope"] == {
         "black_scholes_baseline_symbols": ["NVDA", "GOOG", "AAPL"],
-        "bsgp_eligibility_pilot_symbols": ["NVDA", "GOOG", "MU"],
+        "finite_basis_eligibility_symbols": [
+            "AAPL",
+            "AMZN",
+            "GOOG",
+            "MU",
+            "NVDA",
+            "SNDK",
+        ],
         "live_symbol_count": 3,
         "live_symbols": ["NVDA", "GOOG", "AAPL"],
         "source": "configured-watchlist-or-explicit-symbols",
@@ -335,22 +388,23 @@ def test_pricing_cli_scope_defaults_to_watchlist_and_symbols_override(
 ) -> None:
     watchlist = tmp_path / "watchlist.txt"
     watchlist.write_text(
-        "# active Pricing universe\nNVDA\nGOOG\nMU\nAAPL\nMSFT\n",
+        "# active Pricing universe\nNVDA\nGOOG\nMU\nAAPL\nSNDK\nAMZN\n",
         encoding="utf-8",
     )
 
     assert resolve_pricing_symbols(symbols=None, watchlist=watchlist) == (
-        "NVDA",
+        "AAPL",
+        "AMZN",
         "GOOG",
         "MU",
-        "AAPL",
-        "MSFT",
+        "NVDA",
+        "SNDK",
     )
     assert resolve_pricing_symbols(
-        symbols=("MU", "NVDA", "GOOG", "TSLA"),
+        symbols=("MU", "NVDA", "GOOG", "SNDK", "AAPL", "AMZN"),
         watchlist=tmp_path / "not-read.txt",
-    ) == ("MU", "NVDA", "GOOG", "TSLA")
-    with pytest.raises(ValueError, match="pilot symbols: MU"):
+    ) == ("AAPL", "AMZN", "GOOG", "MU", "NVDA", "SNDK")
+    with pytest.raises(ValueError, match="must contain exactly"):
         resolve_pricing_symbols(
             symbols=("NVDA", "GOOG", "AAPL"),
             watchlist=watchlist,

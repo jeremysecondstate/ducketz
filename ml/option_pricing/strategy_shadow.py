@@ -14,6 +14,7 @@ import pandas as pd
 from ml.artifacts import utc_timestamp
 from ml.option_pricing.policies import (
     ContractSelectionPolicy,
+    FINITE_BASIS_RESIDUAL_MODEL_NAME,
     LOOP_NATIVE_SHADOW_SCHEMA_VERSION,
     LoopNativeModelPolicy,
     OPTION_PRICING_POLICY_VERSION,
@@ -357,13 +358,16 @@ def _legacy_verified_predictions(
     predictions["fair_value_95_upper"] = predictions[
         "constrained_interval_95_upper"
     ]
+    finite_basis = predictions["model_name"].astype("string").str.lower().isin(
+        {"bsgp", FINITE_BASIS_RESIDUAL_MODEL_NAME.lower()}
+    )
     predictions["residual_shrinkage"] = np.where(
-        predictions["model_name"].astype("string").str.lower().eq("bsgp"),
+        finite_basis,
         1.0,
         0.0,
     )
     predictions["pricing_source"] = np.where(
-        predictions["model_name"].astype("string").str.lower().eq("bsgp"),
+        finite_basis,
         "BSGP",
         "BLACK_SCHOLES",
     )

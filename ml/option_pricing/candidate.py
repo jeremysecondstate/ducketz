@@ -18,6 +18,7 @@ from ml.option_pricing.eligibility import (
 from ml.option_pricing.lineage import verify_completed_option_pricing_lineage
 from ml.option_pricing.model import PricingRouteModel
 from ml.option_pricing.publication import read_current_option_pricing_publication
+from ml.universe import production_option_routes
 
 
 CANDIDATE_SCHEMA_VERSION = "option-pricing-frozen-candidate-v1"
@@ -405,9 +406,8 @@ def _production_offline_evidence_verified(
     routes = report.get("routes")
     routes = routes if isinstance(routes, Mapping) else {}
     required_routes = {
-        f"{symbol}/{call_put}"
-        for symbol in ("NVDA", "GOOG", "MU")
-        for call_put in ("call", "put")
+        f"{symbol}/{call_put.lower()}"
+        for symbol, call_put in production_option_routes()
     }
     required_components = {
         "partition",

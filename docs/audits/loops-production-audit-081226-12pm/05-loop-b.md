@@ -1,103 +1,72 @@
-# Directional Loop B
+# Directional Loop B (owner 5)
 
-Audited commit: `3fdeca189feffb1d8167f67845503fe7cfb183e1`
+Audited baseline commit: `3fdeca189feffb1d8167f67845503fe7cfb183e1`
 
-Production entrypoint: `python -m ml.prediction_runtime` at the 15-minute `+5` phase, using the `databento` persisted namespace, active v2 feature profile, logistic models, and Platt calibration (`docs/datafetch-ml/current_start_command:90-110`; `ml/prediction_runtime.py:26-223`).
+OPRA-first implementation update: 2026-08-14
 
-## Python files
+Production entrypoint: `python -m ml.prediction_runtime` at the 15-minute `+5`
+phase. Loop B remains owner 5; the Active Pricing and Options Capture changes do
+not renumber or alter the other owners.
 
-- app/models/market_data.py
-- datafetching/bar_readiness.py
-- datafetching/bar_schema.py
-- datafetching/bar_timing.py
-- datafetching/calculated_features.py
-- datafetching/decision_time.py
-- datafetching/fmp_energy_context.py
-- datafetching/ids.py
-- datafetching/layout.py
-- datafetching/loop_a_cycle.py
-- datafetching/observability.py
-- datafetching/parquet_store.py
-- datafetching/pricing_barrier.py
-- datafetching/quote_liquidity.py
-- datafetching/runtime_lock.py
-- fundamentals/join.py
-- fundamentals/parquet_io.py
-- ml/artifacts.py
-- ml/calendars.py
-- ml/calibration.py
-- ml/contracts.py
-- ml/current_publication.py
-- ml/datasets/families.py
-- ml/datasets/point_in_time.py
-- ml/datasets/technical.py
-- ml/feature_registry.py
-- ml/horizons.py
-- ml/live_evidence.py
-- ml/model_features.py
-- ml/model_runtime.py
-- ml/models/registry.py
-- ml/option_pricing/consumers.py
-- ml/option_pricing/publication.py
-- ml/parquet_contracts.py
-- ml/prediction_runtime.py
-- ml/preprocessing.py
-- ml/rolling_materialization.py
-- ml/rolling_samples.py
-- ml/runtime_pipeline.py
-- ml/strategy_selection/contracts.py
-- ml/strategy_selection/registry.py
-- ml/strategy_selection/research_trace.py
-- ml/timing.py
-- ml/universe.py
-- options/__init__.py
-- options/features.py
-- options/publication.py
-- options/snapshot.py
-- technicals/calculations/bar_shape.py
-- technicals/calculations/breakout_pressure.py
-- technicals/calculations/market_regime.py
-- technicals/calculations/session_aware_breakout.py
-- technicals/calculations/weekly_context.py
-- technicals/parquet_io.py
-- technicals/split_adjustments.py
+## Inputs and preserved joins
 
-## Data providers
+Loop B still waits for the completed Loop A authority and causally joins bars,
+technicals, fundamentals, lifecycle signals, quote liquidity, energy, SEC, CME,
+and ALFRED vintage macro data. The working ALFRED GDP, CPI, unemployment, and
+FEDFUNDS coverage is preserved. SEC and derived CME activation/diagnostics are
+unchanged by this update.
 
-This runtime makes no direct external-provider request. Its `--provider databento` argument selects persisted Loop A bar paths; it does not cause an outbound Databento call (`ml/prediction_runtime.py:26-168`; `ml/rolling_samples.py:367-438`).
+Options Capture supplies verified provider-neutral `opt__` quality evidence.
+Active Pricing supplies append-only `opx__` history. Loop B no longer treats one
+selected current Pricing generation as the complete evidence set: it verifies
+the reachable receipt chain, reads all eligible generations, deduplicates by the
+declared natural surface key, and chooses the newest generation whose first
+availability is no later than the decision cutoff.
 
-## Purpose and functionality
+## Pricing feature contract
 
-Directional Loop B waits for a complete Loop A cycle, materializes point-in-time rolling samples for `1h`, `4h`, `1d`, and the expanded weekly horizons, fits/reuses per-horizon directional classifiers, applies calibration, creates live and evaluated predictions, and publishes samples, predictions, evaluations, monitoring, and intelligence as one immutable generation (`ml/prediction_runtime.py:185-223`; `ml/runtime_pipeline.py:250-674`, `ml/runtime_pipeline.py:715-821`).
+The joined columns are:
 
-It owns immutable runs under `ml/runs/<timestamp>/`, the atomic `ml/latest/run.json` authority, and the legacy current intelligence mirror at `ml-intelligence/latest/rolling-predictions.parquet` (`ml/runtime_pipeline.py:788-821`, `ml/runtime_pipeline.py:847-1019`).
+- `opx__causal_coverage`
+- `opx__median_normalized_residual`
+- `opx__median_predictive_standard_deviation`
+- `opx__median_model_edge_in_half_spreads`
+- `opx__positive_edge_fraction`
+- `opx__negative_edge_fraction`
+- `opx__raw_arbitrage_violation_rate`
+- `opx__constrained_arbitrage_violation_rate`
+- `opx__interval_80_coverage`
+- `opx__interval_95_coverage`
+- `opx__median_relative_bid_ask_spread`
 
-## Inputs from other Loops
+A publication is invisible before verified first availability, after freshness
+expiry, after quality rejection, or when its receipt/checksum fails. A joined
+zero is preserved as observed data; it is not converted to missing. Uncertainty
+stays null until a supported verified model supplies it. Interval coverage stays
+null until at least 20 genuinely published out-of-sample outcomes have matured
+after their prediction availability; hindsight replay cannot populate it.
 
-- **Producer:** Loop A.
-  - **Artifact/data:** Complete-cycle authority.
-  - **Location:** `.ducketz-loop-a-complete.json`.
-  - **Use:** Required before materialization/training can begin (`ml/prediction_runtime.py:205-223`).
-- **Producer:** Loop A.
-  - **Artifact/data:** Normalized Databento bars, technical features, FMP fundamentals, lifecycle signals, Schwab quote-liquidity, FMP energy context, FRED macro context, and SEC event features.
-  - **Location:** The Loop A stock/pool paths enumerated in `02-loop-a.md`.
-  - **Use:** Joined causally by feature family and horizon into the model matrix (`ml/rolling_materialization.py:415-598`, `ml/rolling_materialization.py:709-761`).
-- **Producer:** CME/L2.
-  - **Artifact/data:** Hourly cross-asset CME context.
-  - **Location:** `pools/cme/features/cross-asset-context/databento/1h.parquet`.
-  - **Use:** Joined as the active profile's `cme__` feature family; normalized CME sources are only a fallback when the derived file is absent (`ml/rolling_materialization.py:763-806`).
-- **Producer:** Options Capture.
-  - **Artifact/data:** Receipt-verified committed Schwab option-quality snapshots.
-  - **Location:** `stocks/<SYMBOL>/options/snapshots/schwab/<snapshot>/`, selected through committed receipts/pointers.
-  - **Use:** Joined as the `opt__` feature family at each causal cutoff (`ml/rolling_materialization.py:600-647`).
-- **Producer:** Active Pricing.
-  - **Artifact/data:** Receipt-verified compact pricing surfaces.
-  - **Location:** `ml/option-pricing-runs/<timestamp>/pricing-surfaces.parquet`, selected by `ml/option-pricing-latest/run.json`.
-  - **Use:** Joined as `opx__` features with target-time, first-availability, freshness, schema, and automation checks (`ml/rolling_materialization.py:648-707`; `ml/option_pricing/consumers.py:58-175`).
+## Family activation gates
 
-## Outputs for other Loops
+`option-pricing-loop-b-family-coverage-freshness-gate-v1` independently gates:
 
-- **Artifact/data:** Current immutable Loop B samples, predictions, evaluations, monitoring, intelligence, manifest, and publication receipt.
-  - **Consumer:** Strategy.
-  - **Location:** `ml/runs/<timestamp>/` selected by `ml/latest/run.json`.
-  - **Use:** Strategy reads the exact published `samples.parquet` and `predictions.parquet`, limits the universe from the manifest configuration, and preserves the Loop B receipt in its source lineage (`ml/strategy_runtime.py:63-139`).
+- fair value;
+- uncertainty;
+- edge;
+- constraints;
+- interval calibration;
+- liquidity.
+
+Each family requires at least 80% populated coverage, 80% fresh verified joins,
+and 20 distinct target surfaces. A column's presence alone cannot activate
+training. Until the selected `opx__` profile passes every required family gate,
+downstream fitting fails closed while audited nulls remain distinguishable from
+real zeros.
+
+## Publication and non-activation
+
+Loop B continues to publish one immutable run under `ml/runs/<timestamp>/` and
+advances `ml/latest/run.json` atomically. Strategy consumes that verified run.
+No OPRA offline row can be converted into a prospective Loop B observation, and
+no automated trading permission is created by the availability of these
+features.

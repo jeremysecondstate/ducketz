@@ -364,6 +364,79 @@ def test_options_barrier_and_real_authority_order_control_prospective_credit(
     ] == publication.receipt_checksum_sha256
 
 
+def test_live_outcome_prefers_opra_and_labels_schwab_fallback(
+    tmp_path: Path,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    publication = _publish_prediction(tmp_path, symbol="GOOG", target=target)
+    barrier = wait_for_pricing_barrier(
+        tmp_path,
+        target_snapshot_for=target,
+        required_symbols=("GOOG",),
+        timeout_seconds=0,
+        clock=lambda: publication.published_at + pd.Timedelta(milliseconds=250),
+    )
+    request = publication.published_at + pd.Timedelta(milliseconds=500)
+    opra = _publish_target_snapshot(
+        tmp_path,
+        publication=publication,
+        barrier_metadata=barrier.as_receipt_metadata(request_started_at=request),
+        request_started_at=request,
+        available_at=publication.published_at + pd.Timedelta(seconds=8),
+        provider="databento-opra",
+        bid=9.8,
+        ask=10.0,
+    )
+    schwab = _publish_target_snapshot(
+        tmp_path,
+        publication=publication,
+        barrier_metadata=barrier.as_receipt_metadata(request_started_at=request),
+        request_started_at=request,
+        available_at=publication.published_at + pd.Timedelta(seconds=7),
+        provider="schwab",
+        bid=10.8,
+        ask=11.0,
+    )
+    prediction = publication.predictions()
+    evaluated = reconcile_predictions(
+        prediction,
+        # Deliberately put the earlier Schwab receipt first. Provider precedence,
+        # not caller ordering or receipt ordering, selects the fair-value label.
+        snapshots_by_symbol={"GOOG": (schwab, opra)},
+        evaluated_at=publication.published_at + pd.Timedelta(seconds=20),
+    )
+    assert evaluated["evaluation_status"].eq("COMPLETE").all()
+    assert evaluated["outcome_provider"].eq("databento-opra").all()
+    assert evaluated["evidence_lane"].eq("PROSPECTIVE_OPRA").all()
+    assert evaluated["fallback_used"].eq(False).all()
+    assert evaluated["observed_mid"].eq(9.9).all()
+
+    invalid_opra_contracts = pd.read_parquet(opra.contracts_path).copy()
+    invalid_opra_contracts["contract_symbol"] = (
+        invalid_opra_contracts["contract_symbol"].astype(str) + "-MISSING"
+    )
+    invalid_opra = _committed_stub(
+        tmp_path / "invalid-opra",
+        symbol="GOOG",
+        target=target,
+        available=opra.available_at,
+        contracts=invalid_opra_contracts,
+        provider="databento-opra",
+        receipt=opra.receipt,
+        receipt_published_at=opra.receipt_published_at,
+    )
+    fallback = reconcile_predictions(
+        prediction,
+        snapshots_by_symbol={"GOOG": (invalid_opra, schwab)},
+        evaluated_at=publication.published_at + pd.Timedelta(seconds=20),
+    )
+    assert fallback["evaluation_status"].eq("COMPLETE").all()
+    assert fallback["outcome_provider"].eq("schwab").all()
+    assert fallback["evidence_lane"].eq("PROSPECTIVE_SCHWAB").all()
+    assert fallback["fallback_used"].eq(True).all()
+    assert fallback["observed_mid"].eq(10.9).all()
+
+
 def test_late_pricing_cannot_gain_credit_from_an_earlier_embedded_timestamp(
     tmp_path: Path,
 ) -> None:
@@ -475,8 +548,12 @@ def test_causal_exclusions_remain_distinct_and_successful(
         lambda *_args, **_kwargs: clock,
     )
     monkeypatch.setattr(
-        "ml.option_pricing.causal.committed_option_snapshots",
-        lambda *_args, **_kwargs: (source_snapshot, observed),
+        "ml.option_pricing.causal.canonical_option_snapshots",
+        lambda *_args, **kwargs: (
+            ((source_snapshot, observed), {})
+            if kwargs.get("provider") == "schwab"
+            else ((), {})
+        ),
     )
     already = build_live_prediction_inputs(
         tmp_path,
@@ -496,8 +573,12 @@ def test_causal_exclusions_remain_distinct_and_successful(
         contracts=stale_source,
     )
     monkeypatch.setattr(
-        "ml.option_pricing.causal.committed_option_snapshots",
-        lambda *_args, **_kwargs: (excluded_snapshot,),
+        "ml.option_pricing.causal.canonical_option_snapshots",
+        lambda *_args, **kwargs: (
+            ((excluded_snapshot,), {})
+            if kwargs.get("provider") == "schwab"
+            else ((), {})
+        ),
     )
     excluded = build_live_prediction_inputs(
         tmp_path,
@@ -508,6 +589,76 @@ def test_causal_exclusions_remain_distinct_and_successful(
     assert excluded.status == "NO_ELIGIBLE_CONTRACTS"
     assert not excluded.samples.empty
     assert not excluded.samples["sample_status"].eq("AVAILABLE").any()
+
+
+def test_live_source_uses_opra_before_explicit_schwab_fallback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    clock = DecisionClock(
+        decision_timestamp=target,
+        bar_timestamp=target - pd.Timedelta(minutes=1),
+        provider="databento",
+        timeframe="1m",
+        source_file=tmp_path / "bar.parquet",
+    )
+    pd.DataFrame(
+        {"timestamp": [clock.bar_timestamp], "close": [200.0]}
+    ).to_parquet(clock.source_file, index=False)
+    surface = _source_surface("GOOG", target=target)
+    source_target = target - pd.Timedelta(minutes=15)
+    source_available = target - pd.Timedelta(minutes=14)
+    opra = _committed_stub(
+        tmp_path / "opra-source",
+        symbol="GOOG",
+        target=source_target,
+        available=source_available,
+        contracts=surface,
+        provider="databento-opra",
+    )
+    schwab = _committed_stub(
+        tmp_path / "schwab-source",
+        symbol="GOOG",
+        target=source_target,
+        available=source_available,
+        contracts=surface,
+        provider="schwab",
+    )
+    monkeypatch.setattr(
+        "ml.option_pricing.causal.completed_bar_clock_for_target",
+        lambda *_args, **_kwargs: clock,
+    )
+    provider_rows = {
+        "databento-opra": (opra,),
+        "schwab": (schwab,),
+    }
+    monkeypatch.setattr(
+        "ml.option_pricing.causal.canonical_option_snapshots",
+        lambda *_args, **kwargs: (provider_rows[kwargs["provider"]], {}),
+    )
+    canonical = build_live_prediction_inputs(
+        tmp_path,
+        symbol="GOOG",
+        prediction_created_at=target + pd.Timedelta(seconds=20),
+        target_snapshot_for=target,
+    )
+    assert canonical.status == "READY"
+    assert canonical.samples["source_provider"].eq("databento-opra").all()
+    assert canonical.samples["evidence_lane"].eq("PROSPECTIVE_OPRA").all()
+    assert canonical.samples["fallback_used"].eq(False).all()
+
+    provider_rows["databento-opra"] = ()
+    fallback = build_live_prediction_inputs(
+        tmp_path,
+        symbol="GOOG",
+        prediction_created_at=target + pd.Timedelta(seconds=20),
+        target_snapshot_for=target,
+    )
+    assert fallback.status == "READY"
+    assert fallback.samples["source_provider"].eq("schwab").all()
+    assert fallback.samples["evidence_lane"].eq("PROSPECTIVE_SCHWAB").all()
+    assert fallback.samples["fallback_used"].eq(True).all()
 
 
 def test_live_pricing_skips_newer_stale_surface_without_relaxing_contract(
@@ -547,8 +698,12 @@ def test_live_pricing_skips_newer_stale_surface_without_relaxing_contract(
         lambda *_args, **_kwargs: clock,
     )
     monkeypatch.setattr(
-        "ml.option_pricing.causal.committed_option_snapshots",
-        lambda *_args, **_kwargs: (older, newer),
+        "ml.option_pricing.causal.canonical_option_snapshots",
+        lambda *_args, **kwargs: (
+            ((older, newer), {})
+            if kwargs.get("provider") == "schwab"
+            else ((), {})
+        ),
     )
 
     batch = build_live_prediction_inputs(
@@ -561,7 +716,7 @@ def test_live_pricing_skips_newer_stale_surface_without_relaxing_contract(
     assert batch.status == "READY"
     assert batch.samples["sample_status"].eq("AVAILABLE").any()
     assert batch.samples["source_snapshot_for"].eq(older.snapshot_for).all()
-    assert "Skipped 1 newer causal receipt" in batch.reason
+    assert "Skipped 1 newer causal schwab receipt" in batch.reason
     assert newer.contracts_path in batch.source_files
     assert older.contracts_path in batch.source_files
 
@@ -1313,8 +1468,9 @@ def test_representative_open_market_inventory_meets_runtime_budget(
     elapsed = time.perf_counter() - started
 
     health = json.loads(result.health_path.read_text(encoding="utf-8"))
-    assert result.sample_rows == 14_000
-    assert result.prediction_rows == 14_000
+    expected_rows = len(symbols) * 7 * 2 * 100
+    assert result.sample_rows == expected_rows
+    assert result.prediction_rows == expected_rows
     assert result.target_outcome_status == "PREDICTIONS_PUBLISHED"
     assert result.stage_timings["target_authority_seconds"] < 30.0
     assert health["elapsed_seconds"] < health["runtime_limits"]["maximum_cycle_seconds"]
@@ -1322,7 +1478,7 @@ def test_representative_open_market_inventory_meets_runtime_budget(
     print(
         json.dumps(
             {
-                "fixture": "ten-symbol-pricing-inference",
+                "fixture": "authoritative-six-symbol-pricing-inference",
                 "contract_rows": result.prediction_rows,
                 "end_to_end_seconds": elapsed,
                 "target_authority_seconds": result.stage_timings[
@@ -1697,6 +1853,9 @@ def _publish_target_snapshot(
     barrier_metadata: dict[str, object],
     request_started_at: pd.Timestamp,
     available_at: pd.Timestamp,
+    provider: str = "schwab",
+    bid: float = 9.9,
+    ask: float = 10.1,
 ):
     predictions = publication.predictions()
     prediction = predictions.iloc[0]
@@ -1718,8 +1877,12 @@ def _publish_target_snapshot(
                 "multiplier": row["multiplier"],
                 "mini": False,
                 "non_standard": False,
-                "bid": 9.9,
-                "ask": 10.1,
+                "exercise_style": "AMERICAN",
+                "settlement_type": "PHYSICAL",
+                "settlement_reference": "UNDERLYING_SHARES",
+                "definition_as_of": target - pd.Timedelta(days=1),
+                "bid": bid,
+                "ask": ask,
                 "quote_timestamp": publication.published_at
                 + pd.Timedelta(seconds=1),
             }
@@ -1733,6 +1896,7 @@ def _publish_target_snapshot(
         raw=raw,
         contracts=contracts,
         features=features,
+        provider=provider,
         request_started_at=request_started_at,
         pricing_barrier=barrier_metadata,
         receipt_published_at=available_at,
@@ -1782,6 +1946,10 @@ def _source_surface(symbol: str, *, target: pd.Timestamp) -> pd.DataFrame:
                 "multiplier": 100.0,
                 "mini": False,
                 "non_standard": False,
+                "exercise_style": "AMERICAN",
+                "settlement_type": "PHYSICAL",
+                "settlement_reference": "UNDERLYING_SHARES",
+                "definition_as_of": target - pd.Timedelta(days=1),
                 "interest_rate": 0.04,
                 "dividend_yield": 0.01,
                 "implied_volatility": 0.28,
@@ -1818,6 +1986,10 @@ def _representative_source_surface(
                         "multiplier": 100.0,
                         "mini": False,
                         "non_standard": False,
+                        "exercise_style": "AMERICAN",
+                        "settlement_type": "PHYSICAL",
+                        "settlement_reference": "UNDERLYING_SHARES",
+                        "definition_as_of": target - pd.Timedelta(days=1),
                         "interest_rate": 0.04,
                         "dividend_yield": 0.01,
                         "implied_volatility": 0.28,
@@ -1835,14 +2007,20 @@ def _committed_stub(
     target: pd.Timestamp,
     available: pd.Timestamp,
     contracts: pd.DataFrame,
+    provider: str = "schwab",
+    receipt: dict[str, object] | None = None,
+    receipt_published_at: pd.Timestamp | None = None,
 ):
     from options.publication import CommittedOptionSnapshot
 
     directory.mkdir(parents=True)
     contracts_path = directory / "contracts.parquet"
     contracts.to_parquet(contracts_path, index=False)
-    receipt = directory / "receipt.json"
-    receipt.write_text("{}\n", encoding="utf-8")
+    receipt_path = directory / "receipt.json"
+    receipt_payload = receipt or {}
+    receipt_path.write_text(
+        json.dumps(receipt_payload, sort_keys=True) + "\n", encoding="utf-8"
+    )
     return CommittedOptionSnapshot(
         symbol=symbol,
         snapshot_for=target,
@@ -1851,6 +2029,8 @@ def _committed_stub(
         raw_path=contracts_path,
         contracts_path=contracts_path,
         features_path=contracts_path,
-        receipt_path=receipt,
-        receipt={},
+        receipt_path=receipt_path,
+        receipt=receipt_payload,
+        provider=provider,
+        receipt_published_at=receipt_published_at,
     )

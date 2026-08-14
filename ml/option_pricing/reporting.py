@@ -12,7 +12,8 @@ from ml.option_pricing.policies import OPTION_PRICING_POLICY_VERSION
 
 
 GATE_VERSION = "option-pricing-ten-part-gate-v1"
-SURFACE_VERSION = "option-pricing-compact-surface-v2"
+SURFACE_VERSION = "option-pricing-compact-surface-v3"
+MINIMUM_INTERVAL_COVERAGE_OUTCOMES = 20
 EDGE_BUCKETS = (-math.inf, -2.0, -1.0, 0.0, 1.0, 2.0, math.inf)
 INTERVAL_80_TOLERANCE = (0.72, 0.88)
 INTERVAL_95_TOLERANCE = (0.90, 0.99)
@@ -51,6 +52,8 @@ def build_pricing_surfaces(
             "bid_ask_spread",
             "observed_quote_staleness_seconds",
             "evaluation_status",
+            "observed_quote_timestamp",
+            "observed_available_at",
         ]
         available = [name for name in evaluation_columns if name in evaluations]
         rows = rows.merge(
@@ -103,9 +106,39 @@ def build_pricing_surfaces(
         edge = _numeric(group, "model_edge_in_half_spreads")
         spread = _numeric(group, "bid_ask_spread")
         relative_spread = spread / _numeric(group, "underlying_price").replace(0, np.nan)
-        matured = group.get(
+        evaluation_status = group.get(
             "evaluation_status", pd.Series(index=group.index, dtype="string")
         ).isin(("EVALUATED", "COMPLETE"))
+        prediction_available = pd.to_datetime(
+            group.get(
+                "prediction_available_at",
+                pd.Series(pd.NaT, index=group.index, dtype="datetime64[ns, UTC]"),
+            ),
+            utc=True,
+            errors="coerce",
+        )
+        outcome_quote = pd.to_datetime(
+            group.get(
+                "observed_quote_timestamp",
+                pd.Series(pd.NaT, index=group.index, dtype="datetime64[ns, UTC]"),
+            ),
+            utc=True,
+            errors="coerce",
+        )
+        outcome_available = pd.to_datetime(
+            group.get(
+                "observed_available_at",
+                pd.Series(pd.NaT, index=group.index, dtype="datetime64[ns, UTC]"),
+            ),
+            utc=True,
+            errors="coerce",
+        )
+        matured = (
+            evaluation_status
+            & outcome_quote.gt(prediction_available)
+            & outcome_available.gt(prediction_available)
+        )
+        interval_mature = int(matured.sum()) >= MINIMUM_INTERVAL_COVERAGE_OUTCOMES
         causal_coverage = float(valid.mean()) if len(group) else 0.0
         constrained_rate = _mean_bool(constrained_violations)
         quality = bool(
@@ -140,19 +173,29 @@ def build_pricing_surfaces(
                     group.loc[matured, "interval_80_covered"]
                     if "interval_80_covered" in group
                     else pd.Series(dtype="boolean")
-                ),
+                ) if interval_mature else float("nan"),
                 "interval_95_coverage": _mean_bool(
                     group.loc[matured, "interval_95_covered"]
                     if "interval_95_covered" in group
                     else pd.Series(dtype="boolean")
-                ),
+                ) if interval_mature else float("nan"),
                 "median_bid_ask_spread": _median(spread),
                 "median_relative_bid_ask_spread": _median(relative_spread),
                 "median_quote_staleness_seconds": _median(
                     _numeric(group, "observed_quote_staleness_seconds")
                 ),
                 "surface_quality_pass": quality,
+                "quality_decision": "PASS" if quality else "REJECT",
                 "surface_status": "AVAILABLE" if quality else "LIMITED_EVIDENCE",
+                "model_generation": None,
+                "evidence_lane": _one_or_mixed(group, "evidence_lane"),
+                "fallback_used": bool(
+                    group.get(
+                        "fallback_used", pd.Series(False, index=group.index)
+                    ).fillna(False).astype(bool).any()
+                ),
+                "fresh_until": first_available_at + pd.Timedelta(hours=2),
+                "supersedes_generation": None,
                 "pricing_policy_version": OPTION_PRICING_POLICY_VERSION,
                 "schema_version": SURFACE_VERSION,
                 "automated_action_allowed": False,
@@ -309,9 +352,9 @@ def build_gate_report(
     gates = [
         _gate(1, "lineage_timing_schema_publication", lineage_verified, "Verified immutable source and publication chain."),
         _gate(2, "chronological_partitions_and_closed_lockbox", partitions.get("pass"), partitions.get("detail")),
-        _gate(3, "bsgp_beats_black_scholes", comparison.get("beats_black_scholes"), comparison.get("detail")),
-        _gate(4, "bsgp_beats_constant_residual", comparison.get("beats_constant_residual"), comparison.get("detail")),
-        _gate(5, "bsgp_beats_standard_gp", comparison.get("beats_standard_gp"), comparison.get("detail")),
+        _gate(3, "finite_basis_residual_beats_black_scholes", comparison.get("beats_black_scholes"), comparison.get("detail")),
+        _gate(4, "finite_basis_residual_beats_constant_residual", comparison.get("beats_constant_residual"), comparison.get("detail")),
+        _gate(5, "finite_basis_residual_beats_price_comparator", comparison.get("beats_price_comparator"), comparison.get("detail")),
         _gate(6, "interval_coverage", interval_pass if coverage80 is not None else None, {"observed_80": coverage80, "observed_95": coverage95, "tolerance_80": INTERVAL_80_TOLERANCE, "tolerance_95": INTERVAL_95_TOLERANCE}),
         _gate(7, "constraints_and_projection", projection.get("pass"), projection),
         _gate(8, "edge_after_spread_and_monotonicity", metrics.get("edge_bucket_monotonic"), {"edge_bucket_monotonic": metrics.get("edge_bucket_monotonic")}),
@@ -506,20 +549,39 @@ def _comparison_evidence(reports: Mapping[str, object]) -> dict[str, object]:
     for report in _route_reports(reports):
         assessment = report.get("assessment_metrics")
         metrics = assessment.get("models") if isinstance(assessment, Mapping) else None
-        if not isinstance(metrics, Mapping) or "bsgp" not in metrics:
+        if not isinstance(metrics, Mapping):
             continue
-        values.append(metrics)
+        primary = (
+            "finite_basis_residual"
+            if "finite_basis_residual" in metrics
+            else "bsgp"
+            if "bsgp" in metrics
+            else None
+        )
+        comparator = (
+            "finite_basis_price_comparator"
+            if "finite_basis_price_comparator" in metrics
+            else "standard_gp"
+            if "standard_gp" in metrics
+            else None
+        )
+        if primary is not None and comparator is not None:
+            values.append((metrics, primary, comparator))
     if not values:
         return {"detail": "No untouched assessment comparator metrics."}
     def beats(name: str) -> bool:
         return all(
-            _metric_value(value, "bsgp") < _metric_value(value, name)
-            for value in values
+            _metric_value(value, primary)
+            < _metric_value(
+                value,
+                comparator if name == "price_comparator" else name,
+            )
+            for value, primary, comparator in values
         )
     return {
         "beats_black_scholes": beats("black_scholes"),
         "beats_constant_residual": beats("constant_residual"),
-        "beats_standard_gp": beats("standard_gp"),
+        "beats_price_comparator": beats("price_comparator"),
         "detail": f"Comparator evidence across {len(values)} fitted routes.",
     }
 
@@ -706,6 +768,7 @@ def _as_float(value: object) -> float | None:
 __all__ = [
     "GATE_VERSION",
     "SURFACE_VERSION",
+    "MINIMUM_INTERVAL_COVERAGE_OUTCOMES",
     "assessment_metrics",
     "build_gate_report",
     "build_monitoring_rows",

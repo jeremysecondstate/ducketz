@@ -2,34 +2,38 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ml.universe import OPTION_CALL_PUTS, PRODUCTION_OPTION_SYMBOLS
 
-OPTION_PRICING_POLICY_VERSION = "black-scholes-rbf-residual-v2"
-OPTION_PRICING_TIMING_POLICY_VERSION = "pre-quote-quarter-hour-v1"
-OPTION_PRICING_RATE_POLICY_VERSION = "lagged-provider-then-point-in-time-v1"
-OPTION_PRICING_DIVIDEND_POLICY_VERSION = "lagged-provider-then-parity-v1"
+
+OPTION_PRICING_POLICY_VERSION = "black-scholes-nystroem-rbf-bayesian-ridge-residual-v3"
+OPTION_PRICING_TIMING_POLICY_VERSION = "strict-prediction-availability-outcome-clock-v2"
+OPTION_PRICING_RATE_POLICY_VERSION = "causal-fmp-log-discount-curve-then-alfred-v2"
+OPTION_PRICING_DIVIDEND_POLICY_VERSION = "causal-fmp-cash-dividends-then-explicit-fallback-v2"
 OPTION_PRICING_VOLATILITY_POLICY_VERSION = "strict-earlier-surface-interpolation-v1"
 OPTION_PRICING_EXPIRATION_POLICY_VERSION = "us-equity-option-ny-1600-act365-v1"
 OPTION_PRICING_CONTRACT_POLICY_VERSION = "standard-100-share-7-120d-logm25-v1"
-OPTION_PRICING_WEIGHTING_POLICY_VERSION = "equal-target-snapshot-weight-v1"
+OPTION_PRICING_WEIGHTING_POLICY_VERSION = "liquidity-within-equal-target-surface-v2"
 OPTION_PRICING_UNCERTAINTY_POLICY_VERSION = "cluster-weighted-80-95-bs-fallback-v2"
 OPTION_PRICING_PROJECTION_POLICY_VERSION = "weighted-shape-projection-v1"
-OPTION_PRICING_SCHEMA_VERSION = "option-pricing-v2"
-OPTION_PRICING_FEATURE_CONTRACT_VERSION = "bsgp-six-semantic-inputs-v1"
+OPTION_PRICING_SCHEMA_VERSION = "option-pricing-v3"
+OPTION_PRICING_FEATURE_CONTRACT_VERSION = "finite-basis-residual-six-semantic-inputs-v2"
 
-LOOP_NATIVE_SYMBOLS = (
-    "NVDA",
-    "GOOG",
-    "MU",
-    "AAPL",
-    "AMZN",
-    "SNDK",
+FINITE_BASIS_RESIDUAL_MODEL_NAME = (
+    "128-component Nystroem RBF residual model with Bayesian ridge posterior"
 )
-LOOP_NATIVE_CALL_PUTS = ("CALL", "PUT")
-LOOP_NATIVE_MATERIALIZATION_POLICY_VERSION = (
+
+LOOP_NATIVE_SYMBOLS = PRODUCTION_OPTION_SYMBOLS
+LOOP_NATIVE_CALL_PUTS = OPTION_CALL_PUTS
+LEGACY_LOOP_NATIVE_MATERIALIZATION_POLICY_VERSION = (
     "loop-native-schwab-causal-residual-materialization-v2"
 )
-LOOP_NATIVE_MODEL_POLICY_VERSION = "loop-native-pooled-bsgp-active-v3"
-LOOP_NATIVE_SHADOW_SCHEMA_VERSION = "loop-native-bsgp-active-v2"
+LOOP_NATIVE_MATERIALIZATION_POLICY_VERSION = (
+    "loop-native-opra-primary-schwab-fallback-materialization-v3"
+)
+LOOP_NATIVE_MODEL_POLICY_VERSION = (
+    "loop-native-pooled-nystroem-rbf-bayesian-ridge-active-v4"
+)
+LOOP_NATIVE_SHADOW_SCHEMA_VERSION = "loop-native-finite-basis-active-v3"
 LOOP_NATIVE_SURFACE_WEIGHTING_POLICY_VERSION = (
     "equal-symbol-target-call-put-surface-weight-v1"
 )
@@ -97,7 +101,7 @@ class PricingPartitionConfig:
 
 
 @dataclass(frozen=True)
-class BSGPModelPolicy:
+class FiniteBasisResidualModelPolicy:
     component_count: int = 128
     gamma_grid: tuple[float, ...] = (0.1, 0.3, 1.0, 3.0)
     random_state: int = 1729
@@ -114,6 +118,10 @@ class BSGPModelPolicy:
             raise ValueError(
                 "minimum_predictive_standard_deviation must be positive"
             )
+
+
+# Compatibility alias for immutable v1/v2 manifests and external imports.
+BSGPModelPolicy = FiniteBasisResidualModelPolicy
 
 
 @dataclass(frozen=True)
@@ -194,9 +202,12 @@ __all__ = [
     "BSGPModelPolicy",
     "ContractSelectionPolicy",
     "DERIVED_FEATURE_COLUMNS",
+    "FINITE_BASIS_RESIDUAL_MODEL_NAME",
+    "FiniteBasisResidualModelPolicy",
     "LOOP_NATIVE_CALL_PUTS",
     "LOOP_NATIVE_CARRY_POLICY_VERSION",
     "LOOP_NATIVE_MATERIALIZATION_POLICY_VERSION",
+    "LEGACY_LOOP_NATIVE_MATERIALIZATION_POLICY_VERSION",
     "LOOP_NATIVE_MODEL_POLICY_VERSION",
     "LOOP_NATIVE_SHADOW_SCHEMA_VERSION",
     "LOOP_NATIVE_SURFACE_WEIGHTING_POLICY_VERSION",

@@ -37,22 +37,29 @@ from ml.option_pricing.policies import (
     PricingPartitionConfig,
     ProjectionPolicy,
 )
+from ml.universe import OPTION_CALL_PUTS, PRODUCTION_OPTION_SYMBOLS
 
 
-ELIGIBILITY_PROTOCOL_VERSION = "option-pricing-eligibility-v2"
-ELIGIBILITY_POLICY_VERSION = "option-pricing-eligibility-policy-v2"
+LEGACY_ELIGIBILITY_PROTOCOL_VERSION = "option-pricing-eligibility-v2"
+LEGACY_ELIGIBILITY_POLICY_VERSION = "option-pricing-eligibility-policy-v2"
+LEGACY_ELIGIBILITY_REPORT_VERSION = "option-pricing-eligibility-report-v2"
+V3_ELIGIBILITY_PROTOCOL_VERSION = "option-pricing-eligibility-v3"
+V3_ELIGIBILITY_POLICY_VERSION = "option-pricing-eligibility-policy-v3"
+V3_ELIGIBILITY_REPORT_VERSION = "option-pricing-eligibility-report-v3"
+ELIGIBILITY_PROTOCOL_VERSION = "option-pricing-eligibility-v4"
+ELIGIBILITY_POLICY_VERSION = "option-pricing-eligibility-policy-v4"
 ELIGIBILITY_POLICY_RECEIPT_VERSION = "option-pricing-eligibility-policy-receipt-v1"
-ELIGIBILITY_REPORT_VERSION = "option-pricing-eligibility-report-v2"
+ELIGIBILITY_REPORT_VERSION = "option-pricing-eligibility-report-v4"
 ELIGIBILITY_REPORT_RECEIPT_VERSION = "option-pricing-eligibility-report-receipt-v1"
 ELIGIBILITY_REPORT_POINTER_VERSION = "option-pricing-eligibility-report-pointer-v1"
 
-REQUIRED_SYMBOLS = ("NVDA", "GOOG", "MU")
-REQUIRED_CALL_PUTS = ("CALL", "PUT")
+REQUIRED_SYMBOLS = PRODUCTION_OPTION_SYMBOLS
+REQUIRED_CALL_PUTS = OPTION_CALL_PUTS
 EVIDENCE_LANES = (
-    "OFFLINE_TRAIN_CALIBRATION",
-    "UNTOUCHED_OFFLINE_ASSESSMENT",
-    "CLOSED_LOCKBOX",
+    "OFFLINE_OPRA_BACKFILL",
+    "PROSPECTIVE_OPRA",
     "PROSPECTIVE_SCHWAB",
+    "CLOSED_LOCKBOX",
     "STRATEGY_SHADOW_OUTCOMES",
     "FIXTURE_TEST_ONLY",
 )
@@ -118,7 +125,9 @@ class EligibilityPolicy:
         symbols = tuple(str(value).strip().upper() for value in self.required_symbols)
         call_puts = tuple(str(value).strip().upper() for value in self.required_call_puts)
         if symbols != REQUIRED_SYMBOLS:
-            raise ValueError("Eligibility v2 requires exactly NVDA, GOOG, and MU")
+            raise ValueError(
+                "Eligibility v3 requires exactly " + ", ".join(REQUIRED_SYMBOLS)
+            )
         if call_puts != REQUIRED_CALL_PUTS:
             raise ValueError("Eligibility v2 requires independent CALL and PUT routes")
         for name in (
@@ -303,16 +312,25 @@ def eligibility_policy_payload(
             "early_close_points_after_session_close_removed": True,
             "definition_request_boundary": "whole UTC day",
             "cbbo_source_backward_minutes": 5,
-            "cbbo_target_forward_minutes": 5,
+            "outcome_window_rule": (
+                "first-valid-NBBO-with-quote-and-evidence-availability-strictly-"
+                "after-versioned-emulated-prediction-availability"
+            ),
             "raw_symbol_filtering_before_paid_cbbo_request": True,
             "exact_completed_underlying_bar_required": True,
-            "point_in_time_rate_required": True,
-            "lagged_dividend_then_causal_put_call_parity": True,
+            "point_in_time_maturity_matched_treasury_curve_required": True,
+            "declared_causal_dividend_cash_flows_preferred": True,
+            "put_call_parity_is_explicit_fallback_only": True,
             "missing_input_behavior": "NOT_PROVEN_NO_REQUEST_WIDENING",
         },
         "thresholds": {
             "comparators": {
-                "required": ["black_scholes", "constant_residual", "standard_gp"],
+                "required": [
+                    "black_scholes",
+                    "constant_residual",
+                    "finite_basis_price_comparator",
+                    "separate_exact_gp_spy_research_benchmark",
+                ],
                 "minimum_snapshots_per_route": effective.minimum_comparison_snapshots,
                 "minimum_sessions_per_route": effective.minimum_comparison_sessions,
                 "required_mean_paired_improvement": ">0",
@@ -404,10 +422,21 @@ def eligibility_policy_payload(
             "lanes": list(EVIDENCE_LANES),
             "offline_train_calibration_provider": "databento-opra",
             "untouched_assessment_provider": "databento-opra",
-            "prospective_provider": "schwab",
+            "prospective_primary_provider": "databento-opra",
+            "prospective_fallback_provider": "schwab",
+            "prospective_fallback_rule": (
+                "Schwab rows remain explicit fallback/disagreement/execution evidence "
+                "and cannot satisfy required prospective OPRA session counts"
+            ),
             "fixture_rule": "FIXTURE_TEST_ONLY can never satisfy a production gate",
             "mixed_lane_rule": "mixed providers within one evidence lane are NOT_PROVEN",
-            "opra_rule": "OPRA is always OFFLINE and never increments prospective counts",
+            "offline_rule": (
+                "OFFLINE_OPRA_BACKFILL never increments prospective counts"
+            ),
+            "opra_rule": (
+                "Only genuinely published PROSPECTIVE_OPRA outcomes may increment "
+                "the required prospective route counts"
+            ),
         },
         "lockbox": {
             "initial_status": "CLOSED_UNTOUCHED_UNSCORED",
@@ -442,7 +471,9 @@ def eligibility_policy_payload(
         },
         "model_contract": {
             "partitions": _json_safe(asdict(effective_partitions)),
-            "bsgp": _json_safe(asdict(effective_model)),
+            "finite_basis_nystroem_rbf_bayesian_ridge": _json_safe(
+                asdict(effective_model)
+            ),
             "contract_selection": _json_safe(asdict(effective_contract)),
             "projection": _json_safe(asdict(effective_projection)),
         },
@@ -524,7 +555,12 @@ def read_eligibility_policy(
     expected_policy_path = (resolved.relative_to(root) / "policy.json").as_posix()
     published = pd.to_datetime(receipt.get("published_at"), utc=True, errors="coerce")
     if (
-        policy.get("schema_version") != ELIGIBILITY_POLICY_VERSION
+        policy.get("schema_version")
+        not in {
+            ELIGIBILITY_POLICY_VERSION,
+            V3_ELIGIBILITY_POLICY_VERSION,
+            LEGACY_ELIGIBILITY_POLICY_VERSION,
+        }
         or receipt.get("schema_version") != ELIGIBILITY_POLICY_RECEIPT_VERSION
         or observed_hash != resolved.name
         or receipt.get("policy_hash") != observed_hash
@@ -652,14 +688,19 @@ def build_eligibility_report(
             routes,
             "partition",
         ),
-        _gate_from_routes(3, "bsgp_beats_black_scholes", routes, "black_scholes"),
+        _gate_from_routes(3, "finite_basis_residual_beats_black_scholes", routes, "black_scholes"),
         _gate_from_routes(
             4,
-            "bsgp_beats_constant_residual",
+            "finite_basis_residual_beats_constant_residual",
             routes,
             "constant_residual",
         ),
-        _gate_from_routes(5, "bsgp_beats_standard_gp", routes, "standard_gp"),
+        _gate_from_routes(
+            5,
+            "finite_basis_residual_beats_price_comparator",
+            routes,
+            "finite_basis_price_comparator",
+        ),
         _gate_from_routes(6, "interval_coverage", routes, "intervals"),
         _gate_from_routes(7, "constraints_and_projection", routes, "constraints"),
         _gate_from_routes(
@@ -796,7 +837,7 @@ def evaluate_required_route_performance(
     include_partitions: bool,
     include_prospective: bool,
 ) -> dict[str, dict[str, object]]:
-    """Evaluate the fixed six-route cohort without dropping absent routes."""
+    """Evaluate all derived production call/put routes without dropping gaps."""
 
     routes: dict[str, dict[str, object]] = {}
     route_reports = model_reports.get("model_reports", model_reports)
@@ -812,8 +853,8 @@ def evaluate_required_route_performance(
             "constant_residual": _route_comparator_evidence(
                 report, "constant_residual", policy
             ),
-            "standard_gp": _route_comparator_evidence(
-                report, "standard_gp", policy
+            "finite_basis_price_comparator": _route_comparator_evidence(
+                report, "finite_basis_price_comparator", policy
             ),
             "intervals": _route_interval_evidence(report, policy),
             "constraints": _route_constraint_evidence(
@@ -1050,7 +1091,12 @@ def read_current_eligibility_report(datastore_root: Path) -> EligibilityReportAr
     if (
         not isinstance(report, Mapping)
         or not isinstance(receipt, Mapping)
-        or report.get("schema_version") != ELIGIBILITY_REPORT_VERSION
+        or report.get("schema_version")
+        not in {
+            ELIGIBILITY_REPORT_VERSION,
+            V3_ELIGIBILITY_REPORT_VERSION,
+            LEGACY_ELIGIBILITY_REPORT_VERSION,
+        }
         or receipt.get("schema_version") != ELIGIBILITY_REPORT_RECEIPT_VERSION
         or dict(current) != expected_current
         or receipt.get("report_checksum_sha256") != file_checksum(report_path)
@@ -1114,14 +1160,24 @@ def _route_comparator_evidence(
     for record in records:
         if not isinstance(record, Mapping):
             continue
-        bsgp = _finite(record.get("bsgp_normalized_squared_error"))
-        other = _finite(record.get(f"{comparator}_normalized_squared_error"))
-        if bsgp is None or other is None:
+        primary = _finite(
+            record.get("finite_basis_residual_normalized_squared_error")
+        )
+        if primary is None:
+            primary = _finite(record.get("bsgp_normalized_squared_error"))
+        comparator_key = comparator
+        if (
+            comparator == "finite_basis_price_comparator"
+            and f"{comparator}_normalized_squared_error" not in record
+        ):
+            comparator_key = "standard_gp"
+        other = _finite(record.get(f"{comparator_key}_normalized_squared_error"))
+        if primary is None or other is None:
             continue
         rows.append(
             {
                 "target_snapshot_for": record.get("target_snapshot_for"),
-                "paired_improvement": other - bsgp,
+                "paired_improvement": other - primary,
             }
         )
     inference = paired_session_inference(
@@ -1544,7 +1600,19 @@ def _route_prospective_evidence(
         )
         .astype("string")
         .str.lower()
-        .eq("schwab")
+        .eq("databento-opra")
+        & evaluations.get(
+            "outcome_provider", pd.Series(index=evaluations.index, dtype="string")
+        )
+        .astype("string")
+        .str.lower()
+        .eq("databento-opra")
+        & evaluations.get(
+            "evidence_lane", pd.Series(index=evaluations.index, dtype="string")
+        )
+        .astype("string")
+        .str.upper()
+        .eq("PROSPECTIVE_OPRA")
         & evaluations.get(
             "prediction_mode", pd.Series(index=evaluations.index, dtype="string")
         )
@@ -1676,7 +1744,9 @@ def _evidence_lane_guard(
         offline.update(provider_values.loc[modes.eq("OFFLINE")].dropna().unique())
         prospective.update(provider_values.loc[modes.eq("LIVE")].dropna().unique())
     offline_pass = not offline or offline == {"databento-opra"}
-    prospective_pass = not prospective or prospective == {"schwab"}
+    prospective_pass = not prospective or prospective.issubset(
+        {"databento-opra", "schwab"}
+    )
     passed = not fixtures and not report_fixture and offline_pass and prospective_pass
     return {
         "pass": passed,
@@ -1700,9 +1770,18 @@ def _evidence_lane_guard(
                 ),
                 "counted_elsewhere": False,
             },
-            "PROSPECTIVE_SCHWAB": {
-                "providers": sorted(prospective),
+            "PROSPECTIVE_OPRA": {
+                "providers": sorted(
+                    prospective.intersection({"databento-opra"})
+                ),
                 "isolated": prospective_pass,
+                "required_for_route_session_counts": True,
+            },
+            "PROSPECTIVE_SCHWAB": {
+                "providers": sorted(prospective.intersection({"schwab"})),
+                "isolated": prospective_pass,
+                "required_for_route_session_counts": False,
+                "role": "fallback-disagreement-and-execution-validation",
             },
             "STRATEGY_SHADOW_OUTCOMES": {
                 "verified_separately": strategy_report is not None,

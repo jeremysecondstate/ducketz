@@ -21,6 +21,7 @@ from ml.option_pricing.opra_materialization import ClosedOpraLockboxInventory
 from ml.option_pricing.policies import (
     BSGPModelPolicy,
     DERIVED_FEATURE_COLUMNS,
+    FINITE_BASIS_RESIDUAL_MODEL_NAME,
     OPTION_PRICING_CONTRACT_POLICY_VERSION,
     OPTION_PRICING_DIVIDEND_POLICY_VERSION,
     OPTION_PRICING_EXPIRATION_POLICY_VERSION,
@@ -64,7 +65,7 @@ class IntervalCalibration:
 
 
 @dataclass(frozen=True)
-class FiniteBasisGP:
+class NystroemRbfBayesianRidgeResidualModel:
     scaler: RobustScaler
     basis: Nystroem
     regression: BayesianRidge
@@ -74,14 +75,26 @@ class FiniteBasisGP:
     def predict(self, rows: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
         matrix = derived_feature_matrix(rows)
         transformed = self.basis.transform(self.scaler.transform(matrix))
-        mean, standard_deviation = self.regression.predict(
+        mean = np.asarray(self.regression.predict(transformed), dtype=float)
+        # sklearn's convenience return_std path can take sqrt of a tiny
+        # negative round-off term when a weighted surface has nearly zero
+        # residual noise. Compute the same posterior variance explicitly and
+        # clamp only numerical negatives to zero.
+        posterior = np.asarray(self.regression.sigma_, dtype=float)
+        posterior = (posterior + posterior.T) / 2.0
+        variance = np.einsum(
+            "ij,jk,ik->i",
             transformed,
-            return_std=True,
+            posterior,
+            transformed,
+            optimize=True,
         )
-        mean = np.asarray(mean, dtype=float)
-        standard_deviation = np.asarray(standard_deviation, dtype=float)
+        noise_precision = float(self.regression.alpha_)
+        if math.isfinite(noise_precision) and noise_precision > 0.0:
+            variance = variance + 1.0 / noise_precision
+        standard_deviation = np.sqrt(np.maximum(variance, 0.0))
         if not np.isfinite(mean).all() or not np.isfinite(standard_deviation).all():
-            raise ValueError("Finite-basis GP produced non-finite predictions")
+            raise ValueError("Finite-basis residual model produced non-finite predictions")
         return mean, standard_deviation
 
     def predict_joint(self, rows: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
@@ -101,8 +114,15 @@ class FiniteBasisGP:
             covariance = covariance + np.eye(len(transformed)) / noise_precision
         covariance = (covariance + covariance.T) / 2.0
         if not np.isfinite(mean).all() or not np.isfinite(covariance).all():
-            raise ValueError("Finite-basis GP produced a non-finite joint posterior")
+            raise ValueError(
+                "Finite-basis residual model produced a non-finite joint posterior"
+            )
         return mean, covariance
+
+
+# Canonical name for new code and artifacts. The old class name remains an
+# import-compatible alias because immutable joblib generations may reference it.
+FiniteBasisGP = NystroemRbfBayesianRidgeResidualModel
 
 
 @dataclass(frozen=True)
@@ -539,18 +559,11 @@ def route_partitions(
 
 
 def snapshot_weights(frame: pd.DataFrame) -> np.ndarray:
-    """Give every complete target snapshot total weight one."""
+    """Preserve one unit per surface while distributing it by causal liquidity."""
 
-    if "target_snapshot_for" not in frame:
-        raise ValueError("Snapshot weights require target_snapshot_for")
-    clusters = pd.to_datetime(frame["target_snapshot_for"], utc=True, errors="coerce")
-    if clusters.isna().any():
-        raise ValueError("Snapshot weights received invalid target timestamps")
-    counts = clusters.groupby(clusters).transform("count")
-    weights = 1.0 / counts.to_numpy(dtype=float)
-    if not np.isfinite(weights).all() or np.any(weights <= 0.0):
-        raise ValueError("Snapshot weights are invalid")
-    return weights
+    from ml.option_pricing.weighting import liquidity_weights
+
+    return liquidity_weights(frame)
 
 
 def derived_feature_matrix(rows: pd.DataFrame) -> np.ndarray:
@@ -608,11 +621,18 @@ def fit_or_reuse_pricing_model(
     )
     existing = _load_compatible_model(model_root, expected=expected)
     if existing is not None:
+        residual_model = existing.get("finite_basis_residual", existing.get("bsgp"))
+        price_comparator = existing.get(
+            "finite_basis_price_comparator", existing.get("standard_gp")
+        )
+        if residual_model is None or price_comparator is None:
+            existing = None
+    if existing is not None:
         return PricingRouteModel(
             symbol=clean_symbol,
             call_put=clean_call_put,
-            bsgp=existing["bsgp"],
-            standard_gp=existing["standard_gp"],
+            bsgp=residual_model,
+            standard_gp=price_comparator,
             interval_calibration=existing["interval_calibration"],
             constant_residual=float(existing["constant_residual"]),
             artifact_directory=existing["artifact_directory"],
@@ -663,8 +683,8 @@ def fit_or_reuse_pricing_model(
     temporary = model_path.with_suffix(".joblib.tmp")
     joblib.dump(
         {
-            "bsgp": bsgp,
-            "standard_gp": standard_gp,
+            "finite_basis_residual": bsgp,
+            "finite_basis_price_comparator": standard_gp,
             "interval_calibration": interval_calibration,
             "constant_residual": constant_residual,
         },
@@ -675,12 +695,12 @@ def fit_or_reuse_pricing_model(
         **expected,
         "trained_at": created.isoformat(),
         "selected_gamma": {
-            "bsgp": bsgp.gamma,
-            "standard_gp": standard_gp.gamma,
+            "finite_basis_residual": bsgp.gamma,
+            "finite_basis_price_comparator": standard_gp.gamma,
         },
         "gamma_calibration_scores": {
-            "bsgp": bsgp_scores,
-            "standard_gp": standard_scores,
+            "finite_basis_residual": bsgp_scores,
+            "finite_basis_price_comparator": standard_scores,
         },
         "uncertainty_calibration": asdict(interval_calibration),
         "constant_residual": constant_residual,
@@ -728,10 +748,10 @@ def compare_pricing_models(
     )
     weights = snapshot_weights(assessment)
     predictions = {
-        "bsgp": black_scholes + residual_mean,
+        "finite_basis_residual": black_scholes + residual_mean,
         "black_scholes": black_scholes,
         "constant_residual": black_scholes + constant_residual,
-        "standard_gp": standard_mean,
+        "finite_basis_price_comparator": standard_mean,
     }
     metrics = {
         name: _pricing_metrics(
@@ -742,19 +762,21 @@ def compare_pricing_models(
         )
         for name, prediction in predictions.items()
     }
-    absolute_standardized = np.abs(observed - predictions["bsgp"]) / np.maximum(
+    absolute_standardized = np.abs(
+        observed - predictions["finite_basis_residual"]
+    ) / np.maximum(
         calibrated_standard_deviation,
         1e-12,
     )
     covered80 = absolute_standardized <= interval_calibration.quantile_80
     covered95 = absolute_standardized <= interval_calibration.quantile_95
-    metrics["bsgp"]["interval_80_coverage"] = float(
+    metrics["finite_basis_residual"]["interval_80_coverage"] = float(
         np.average(covered80, weights=weights)
     )
-    metrics["bsgp"]["interval_95_coverage"] = float(
+    metrics["finite_basis_residual"]["interval_95_coverage"] = float(
         np.average(covered95, weights=weights)
     )
-    metrics["bsgp"]["average_interval_80_width_normalized"] = float(
+    metrics["finite_basis_residual"]["average_interval_80_width_normalized"] = float(
         np.average(
             2.0
             * calibrated_standard_deviation
@@ -762,7 +784,7 @@ def compare_pricing_models(
             weights=weights,
         )
     )
-    metrics["bsgp"]["average_interval_95_width_normalized"] = float(
+    metrics["finite_basis_residual"]["average_interval_95_width_normalized"] = float(
         np.average(
             2.0
             * calibrated_standard_deviation
@@ -808,16 +830,16 @@ def compare_pricing_models(
         "models": metrics,
         "paired_snapshot_losses": paired_snapshot_losses,
         "beats_black_scholes_normalized_rmse": bool(
-            metrics["bsgp"]["normalized_rmse"]
+            metrics["finite_basis_residual"]["normalized_rmse"]
             < metrics["black_scholes"]["normalized_rmse"]
         ),
         "beats_constant_residual_normalized_rmse": bool(
-            metrics["bsgp"]["normalized_rmse"]
+            metrics["finite_basis_residual"]["normalized_rmse"]
             < metrics["constant_residual"]["normalized_rmse"]
         ),
-        "beats_standard_gp_normalized_rmse": bool(
-            metrics["bsgp"]["normalized_rmse"]
-            < metrics["standard_gp"]["normalized_rmse"]
+        "beats_finite_basis_price_comparator_normalized_rmse": bool(
+            metrics["finite_basis_residual"]["normalized_rmse"]
+            < metrics["finite_basis_price_comparator"]["normalized_rmse"]
         ),
     }
 
@@ -981,8 +1003,8 @@ def _model_configuration(
     projection_policy: ProjectionPolicy,
 ) -> dict[str, object]:
     return {
-        "model_name": "black-scholes-rbf-residual",
-        "model_kind": "rbf-finite-feature-gp-approximation",
+        "model_name": FINITE_BASIS_RESIDUAL_MODEL_NAME,
+        "model_kind": "finite-nystroem-rbf-basis-with-bayesian-ridge-posterior",
         "route": {"symbol": symbol, "call_put": call_put},
         "model_policy_version": OPTION_PRICING_POLICY_VERSION,
         "semantic_feature_contract_version": OPTION_PRICING_FEATURE_CONTRACT_VERSION,

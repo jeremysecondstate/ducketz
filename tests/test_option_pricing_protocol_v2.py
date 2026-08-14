@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import pandas as pd
@@ -45,7 +46,18 @@ from ml.option_pricing.publication import (
     publish_option_pricing_run,
     read_current_option_pricing_publication,
 )
-from ml.option_pricing.rates import rate_coverage_report
+from ml.option_pricing.rates import (
+    load_verified_fmp_treasury_curves,
+    publish_fmp_treasury_curve,
+    rate_coverage_report,
+    resolve_rate_for_expiration,
+)
+from ml.option_pricing.dividends import (
+    load_verified_fmp_dividend_history,
+    publish_fmp_dividend_history,
+    resolve_dividend_for_expiration,
+)
+from ml.option_pricing.weighting import attach_liquidity_weights
 from ml.option_pricing.strategy_outcomes import (
     STRATEGY_OUTCOME_EVIDENCE_VERSION,
     StrategyOutcomeError,
@@ -63,6 +75,7 @@ from ml.parquet_contracts import (
     empty_frame,
     write_parquet_with_schema,
 )
+from ml.universe import PRODUCTION_OPTION_ROUTES, PRODUCTION_OPTION_SYMBOLS
 
 
 _OUTPUTS = {
@@ -72,6 +85,121 @@ _OUTPUTS = {
     "pricing-surfaces.parquet": OPTION_PRICING_SURFACE_SCHEMA,
     "pricing-monitoring.parquet": OPTION_PRICING_MONITORING_SCHEMA,
 }
+
+
+def test_treasury_curve_selection_is_causal_and_maturity_matched(
+    tmp_path: Path,
+) -> None:
+    publish_fmp_treasury_curve(
+        tmp_path,
+        [{"date": "2026-07-06", "year1": 4.0, "year2": 6.0}],
+        received_at="2026-07-07T13:00:00Z",
+    )
+    # A same-day observation and a later revised receipt are both ineligible at
+    # the decision cutoff.
+    publish_fmp_treasury_curve(
+        tmp_path,
+        [{"date": "2026-07-07", "year1": 20.0, "year2": 20.0}],
+        received_at="2026-07-07T13:30:00Z",
+    )
+    publish_fmp_treasury_curve(
+        tmp_path,
+        [{"date": "2026-07-06", "year1": 10.0, "year2": 10.0}],
+        received_at="2026-07-07T15:00:00Z",
+    )
+    as_of = pd.Timestamp("2026-07-07T14:00:00Z")
+    resolution = resolve_rate_for_expiration(
+        as_of,
+        as_of + pd.Timedelta(days=365 * 1.5),
+        curve_nodes=load_verified_fmp_treasury_curves(tmp_path),
+    )
+    # Linear interpolation of log discounts: D(1)=-.04, D(2)=-.12,
+    # D(1.5)=-.08, hence r_cc=.08/1.5.
+    assert resolution.rate == pytest.approx(0.08 / 1.5)
+    assert resolution.observation_date == "2026-07-06"
+    assert resolution.source_available_at == pd.Timestamp("2026-07-07T13:00:00Z")
+    assert resolution.lower_node_years == 1.0
+    assert resolution.upper_node_years == 2.0
+
+
+def test_dividend_resolution_excludes_future_declarations_and_computes_pv_q(
+    tmp_path: Path,
+) -> None:
+    publish_fmp_dividend_history(
+        tmp_path,
+        "AAPL",
+        [
+            {
+                "date": "2026-07-20",
+                "declarationDate": "2026-07-01",
+                "adjDividend": 2.0,
+                "yield": 99.0,
+            },
+            {
+                "date": "2026-07-25",
+                "declarationDate": "2026-07-08",
+                "adjDividend": 9.0,
+            },
+        ],
+        received_at="2026-07-06T20:00:00Z",
+    )
+    as_of = pd.Timestamp("2026-07-07T14:00:00Z")
+    expiration = pd.Timestamp("2026-08-07T14:00:00Z")
+    resolved = resolve_dividend_for_expiration(
+        "AAPL",
+        as_of,
+        expiration,
+        100.0,
+        events=load_verified_fmp_dividend_history(tmp_path, "AAPL"),
+        risk_free_rate=0.0,
+    )
+    horizon = (expiration - as_of).total_seconds() / (365.0 * 24.0 * 3600.0)
+    assert resolved.known_dividend_pv == pytest.approx(2.0)
+    assert resolved.equivalent_dividend_yield == pytest.approx(
+        -math.log(0.98) / horizon
+    )
+    assert resolved.dividend_event_count == 1
+    assert resolved.next_ex_dividend_date == "2026-07-20"
+    assert resolved.dividend_confidence == "DECLARED_FMP"
+
+    zero = resolve_dividend_for_expiration(
+        "SNDK",
+        as_of,
+        expiration,
+        100.0,
+        events=pd.DataFrame(),
+    )
+    assert zero.known_dividend_pv == 0.0
+    assert zero.equivalent_dividend_yield == 0.0
+    assert zero.dividend_confidence == "ZERO_NO_KNOWN_DIVIDEND"
+
+
+def test_liquidity_weights_preserve_one_unit_per_surface() -> None:
+    rows: list[dict[str, object]] = []
+    for target, count in (("2026-07-06T14:00:00Z", 2), ("2026-07-06T15:00:00Z", 4)):
+        for index in range(count):
+            rows.append(
+                {
+                    "symbol": "AAPL",
+                    "target_snapshot_for": target,
+                    "call_put": "CALL",
+                    "observed_bid": 1.0,
+                    "observed_ask": 1.1 + 0.05 * index,
+                    "observed_mid": 1.05 + 0.025 * index,
+                    "source_quote_staleness_seconds": 10.0 + index,
+                    "volume": index * 10,
+                    "open_interest": index * 100,
+                    "quote_quality_status": "VALID",
+                }
+            )
+    weighted = attach_liquidity_weights(pd.DataFrame(rows))
+    totals = weighted.groupby(
+        ["symbol", "target_snapshot_for", "call_put"]
+    )["final_row_weight"].sum()
+    assert totals.tolist() == pytest.approx([1.0, 1.0])
+    assert weighted["raw_observation_weight"].gt(0.0).all()
+    assert weighted["surface_normalization_factor"].gt(0.0).all()
+    assert weighted["weighting_policy_version"].notna().all()
 
 
 def test_lineage_is_derived_from_receipts_and_input_checksums(tmp_path: Path) -> None:
@@ -311,7 +439,7 @@ def test_corrupt_receipt_fails_and_authorized_rollback_preserves_evidence(
 def test_health_reports_stale_pointer_and_evidence_stagnation() -> None:
     routes = {
         f"{symbol}/{call_put}": {"partition": {"status": "PASS"}}
-        for symbol in ("NVDA", "GOOG", "MU")
+        for symbol in PRODUCTION_OPTION_SYMBOLS
         for call_put in ("call", "put")
     }
     health = build_runtime_health(
@@ -326,7 +454,7 @@ def test_health_reports_stale_pointer_and_evidence_stagnation() -> None:
         route_errors={},
         live_routes={
             symbol: {"status": "TARGET_BAR_NOT_READY"}
-            for symbol in ("NVDA", "GOOG", "MU")
+            for symbol in PRODUCTION_OPTION_SYMBOLS
         },
         elapsed_seconds=1.0,
         peak_memory_bytes=1_000,
@@ -344,7 +472,7 @@ def test_health_reports_stale_pointer_and_evidence_stagnation() -> None:
 def test_market_closed_health_does_not_create_missed_phase_or_stagnation() -> None:
     routes = {
         f"{symbol}/{call_put}": {"partition": {"status": "PASS"}}
-        for symbol in ("NVDA", "GOOG", "MU")
+        for symbol in PRODUCTION_OPTION_SYMBOLS
         for call_put in ("call", "put")
     }
     health = build_runtime_health(
@@ -359,7 +487,7 @@ def test_market_closed_health_does_not_create_missed_phase_or_stagnation() -> No
         route_errors={},
         live_routes={
             symbol: {"status": "MARKET_CLOSED_IDLE"}
-            for symbol in ("NVDA", "GOOG", "MU")
+            for symbol in PRODUCTION_OPTION_SYMBOLS
         },
         elapsed_seconds=1.0,
         peak_memory_bytes=1_000,
@@ -439,7 +567,7 @@ def test_readiness_summary_separates_carried_health_from_current_market_state(
 def test_degraded_health_is_actionable() -> None:
     routes = {
         f"{symbol}/{call_put}": {"partition": {"status": "PASS"}}
-        for symbol in ("NVDA", "GOOG", "MU")
+        for symbol in PRODUCTION_OPTION_SYMBOLS
         for call_put in ("call", "put")
     }
     health = build_runtime_health(
@@ -452,7 +580,10 @@ def test_degraded_health_is_actionable() -> None:
         },
         lineage_report={"verified": True},
         route_errors={"NVDA": "target quote not yet available"},
-        live_routes={symbol: {"status": "READY"} for symbol in ("NVDA", "GOOG", "MU")},
+        live_routes={
+            symbol: {"status": "READY"}
+            for symbol in PRODUCTION_OPTION_SYMBOLS
+        },
         elapsed_seconds=1.0,
         peak_memory_bytes=1_000,
         capacity={"status": "PASS"},
@@ -531,7 +662,7 @@ def test_strategy_pair_is_exact_fee_aware_and_session_blocked() -> None:
                 "total_bid_ask_spread_usd": 22.0,
                 "exact_candidate_cohort": True,
             }
-            for symbol in ("NVDA", "GOOG", "MU")
+            for symbol in PRODUCTION_OPTION_SYMBOLS
             for call_put in ("CALL", "PUT")
             for index in range(60)
         ]
@@ -544,17 +675,13 @@ def test_strategy_pair_is_exact_fee_aware_and_session_blocked() -> None:
         evaluated_at="2026-08-07T00:00:00Z",
     )
     assert report["status"] == "PASS"
-    assert report["paired_candidate_count"] == 360
+    assert report["paired_candidate_count"] == len(PRODUCTION_OPTION_ROUTES) * 60
     assert report["distinct_sessions"] == 20
     assert report["uncertainty_coverage"] == pytest.approx(0.95)
     assert report["lower_confidence_bound_usd"] > 0.0
     assert set(report["routes"]) == {
-        "NVDA/call",
-        "NVDA/put",
-        "GOOG/call",
-        "GOOG/put",
-        "MU/call",
-        "MU/put",
+        f"{symbol}/{call_put.lower()}"
+        for symbol, call_put in PRODUCTION_OPTION_ROUTES
     }
     assert all(route["status"] == "PASS" for route in report["routes"].values())
     assert report["rankings_changed"] is False
@@ -782,7 +909,9 @@ def _prepared_candidate_run(tmp_path: Path, policy: object) -> Path:
                 "automated_action_allowed": False,
             },
             "partition_config": policy.policy["model_contract"]["partitions"],
-            "model_policy": policy.policy["model_contract"]["bsgp"],
+            "model_policy": policy.policy["model_contract"][
+                "finite_basis_nystroem_rbf_bayesian_ridge"
+            ],
             "contract_policy": policy.policy["model_contract"]["contract_selection"],
             "projection_policy": policy.policy["model_contract"]["projection"],
         },

@@ -18,7 +18,11 @@ import exchange_calendars as xcals
 import pandas as pd
 
 from ml.artifacts import file_checksum, semantic_metadata_fingerprint, utc_timestamp
-from ml.option_pricing.policies import ContractSelectionPolicy
+from ml.option_pricing.policies import ContractSelectionPolicy, PricingPartitionConfig
+from ml.universe import (
+    PRODUCTION_OPTION_SYMBOLS,
+    RESEARCH_OPTION_BENCHMARK_SYMBOLS,
+)
 
 if TYPE_CHECKING:
     from ml.option_pricing.eligibility import EligibilityPolicyArtifact
@@ -27,8 +31,11 @@ if TYPE_CHECKING:
 OPRA_DATASET = "OPRA.PILLAR"
 OPRA_DEFINITION_SCHEMA = "definition"
 OPRA_CBBO_SCHEMA = "cbbo-1m"
-OPRA_IMPORT_VERSION = "opra-pillar-causal-import-v2"
-OPRA_LEGACY_IMPORT_VERSION = "opra-pillar-causal-import-v1"
+OPRA_IMPORT_VERSION = "opra-pillar-causal-import-v3"
+OPRA_LEGACY_IMPORT_VERSIONS = {
+    "opra-pillar-causal-import-v1",
+    "opra-pillar-causal-import-v2",
+}
 OPRA_RECEIPT_NAME = "receipt.json"
 OPRA_REQUEST_RECEIPT_VERSION = "opra-pillar-request-receipt-v1"
 OPRA_ATTEMPT_VERSION = "opra-pillar-resumable-attempt-v1"
@@ -36,8 +43,28 @@ OPRA_AUTHORIZATION_VERSION = "opra-paid-execution-authorization-v1"
 OPRA_AUTHORIZATION_ACTION = "databento.timeseries.get_range"
 OPRA_PRICE_SCALE = 1_000_000_000
 DEFAULT_MARKET_TIMES = ("10:00", "11:30", "13:30", "15:00")
-DEFAULT_SYMBOLS = ("NVDA", "GOOG", "MU")
-REQUIRED_ELIGIBILITY_CLUSTERS_PER_SYMBOL = 252 + 63 + 63 + 126
+DEFAULT_SYMBOLS = PRODUCTION_OPTION_SYMBOLS
+RESEARCH_BENCHMARK_SYMBOLS = RESEARCH_OPTION_BENCHMARK_SYMBOLS
+
+
+def required_eligibility_clusters_per_symbol(
+    config: PricingPartitionConfig | None = None,
+) -> int:
+    """Derive the partition requirement rather than embedding the value 504."""
+
+    effective = config or PricingPartitionConfig()
+    return sum(
+        int(getattr(effective, name))
+        for name in (
+            "minimum_train_clusters",
+            "calibration_clusters",
+            "assessment_clusters",
+            "lockbox_clusters",
+        )
+    )
+
+
+REQUIRED_ELIGIBILITY_CLUSTERS_PER_SYMBOL = required_eligibility_clusters_per_symbol()
 MINIMUM_ELIGIBILITY_CALENDAR_MONTHS = 6
 OPRA_METADATA_TIMEOUT_SECONDS = 30
 OPRA_TIMESERIES_TIMEOUT_SECONDS = 180
@@ -46,6 +73,8 @@ OPRA_METADATA_MAX_WORKERS = 8
 OPRA_PAID_DOWNLOAD_MAX_ATTEMPTS = 1
 OPRA_STORAGE_EXPANSION_FACTOR = 2.0
 OPRA_STORAGE_RESERVE_BYTES = 5 * 1024**3
+DEFAULT_EMULATED_PREDICTION_LATENCY_SECONDS = 60
+DEFAULT_OUTCOME_FORWARD_MINUTES = 5
 _NEW_YORK = ZoneInfo("America/New_York")
 
 
@@ -153,7 +182,34 @@ def schedule_contract_report(
 ) -> dict[str, object]:
     """Prove the fixed universe, cluster count, uniqueness, and calendar span."""
 
-    expected_symbols = set(DEFAULT_SYMBOLS)
+    return _schedule_contract_report_for_symbols(
+        schedule,
+        required_symbols=DEFAULT_SYMBOLS,
+        scope="PRODUCTION_ELIGIBILITY",
+    )
+
+
+def research_benchmark_schedule_report(
+    schedule: Sequence[OpraSchedulePoint],
+) -> dict[str, object]:
+    """Prove the separate, research-only SPY historical benchmark scope."""
+
+    return _schedule_contract_report_for_symbols(
+        schedule,
+        required_symbols=RESEARCH_BENCHMARK_SYMBOLS,
+        scope="RESEARCH_BENCHMARK_ONLY",
+    )
+
+
+def _schedule_contract_report_for_symbols(
+    schedule: Sequence[OpraSchedulePoint],
+    *,
+    required_symbols: Sequence[str],
+    scope: str,
+) -> dict[str, object]:
+    required = tuple(required_symbols)
+
+    expected_symbols = set(required)
     observed_symbols = {point.symbol for point in schedule}
     counts = {
         symbol: len(
@@ -163,7 +219,7 @@ def schedule_contract_report(
                 if point.symbol == symbol
             }
         )
-        for symbol in DEFAULT_SYMBOLS
+        for symbol in required
     }
     natural_keys = [
         (point.symbol, point.target_snapshot_for) for point in schedule
@@ -195,7 +251,9 @@ def schedule_contract_report(
     )
     return {
         "status": "PASS" if passed else "NOT_PROVEN",
-        "required_symbols": list(DEFAULT_SYMBOLS),
+        "scope": scope,
+        "production_eligible": scope == "PRODUCTION_ELIGIBILITY",
+        "required_symbols": list(required),
         "observed_symbols": sorted(observed_symbols),
         "clusters_per_symbol": counts,
         "required_clusters_per_symbol": REQUIRED_ELIGIBILITY_CLUSTERS_PER_SYMBOL,
@@ -242,7 +300,10 @@ def cbbo_request_coverage_report(
             or request.schema != OPRA_CBBO_SCHEMA
             or request.stype_in != "raw_symbol"
             or start != target - pd.Timedelta(minutes=5)
-            or end != target + pd.Timedelta(minutes=5)
+            or end
+            != target
+            + pd.Timedelta(seconds=DEFAULT_EMULATED_PREDICTION_LATENCY_SECONDS)
+            + pd.Timedelta(minutes=DEFAULT_OUTCOME_FORWARD_MINUTES)
             or not request.symbols
         ):
             invalid_requests.append(f"{request.output_name}: request boundary/contract")
@@ -280,13 +341,14 @@ def cbbo_request_coverage_report(
         or duplicate_outputs
         or invalid_requests
     )
+    route_symbols = tuple(sorted({point.symbol for point in schedule}))
     route_counts = {
         f"{symbol}/{call_put}": sum(
             call_put in observed.get((point.symbol, utc_timestamp(point.target_snapshot_for).isoformat()), set())
             for point in schedule
             if point.symbol == symbol
         )
-        for symbol in DEFAULT_SYMBOLS
+        for symbol in route_symbols
         for call_put in ("call", "put")
     }
     return {
@@ -339,10 +401,18 @@ def cbbo_requests(
     *,
     contract_policy: ContractSelectionPolicy | None = None,
     reference_underlyings: Mapping[tuple[str, str], float] | None = None,
+    emulated_prediction_latency_seconds: int = (
+        DEFAULT_EMULATED_PREDICTION_LATENCY_SECONDS
+    ),
+    outcome_forward_minutes: int = DEFAULT_OUTCOME_FORWARD_MINUTES,
 ) -> tuple[OpraRequest, ...]:
     """Build raw-symbol ten-minute requests after point-in-time filtering."""
 
     policy = contract_policy or ContractSelectionPolicy()
+    if emulated_prediction_latency_seconds < 0:
+        raise ValueError("Emulated prediction latency cannot be negative")
+    if outcome_forward_minutes < 1:
+        raise ValueError("Outcome forward window must be positive")
     reference_underlyings = reference_underlyings or {}
     required = {
         "symbol",
@@ -396,11 +466,15 @@ def cbbo_requests(
         )
         if not raw_symbols:
             continue
-        # One bounded request includes a five-minute backward source allowance
-        # and a five-minute forward target observation allowance. It is exactly
-        # ten minutes, which keeps metadata estimates in the documented unit.
+        # Extend beyond the emulated publication boundary so a quote after the
+        # market target but before prediction availability can never become the
+        # label merely because the paid window ended too early.
         start = target - pd.Timedelta(minutes=5)
-        end = target + pd.Timedelta(minutes=5)
+        end = (
+            target
+            + pd.Timedelta(seconds=emulated_prediction_latency_seconds)
+            + pd.Timedelta(minutes=outcome_forward_minutes)
+        )
         token = target.strftime("%Y%m%dT%H%M%SZ")
         symbol_chunks = tuple(
             raw_symbols[index : index + 2_000]
@@ -658,6 +732,7 @@ def run_import_phase(
     imported_at: object | None = None,
     eligibility_policy_artifact: EligibilityPolicyArtifact | None = None,
     eligibility_scope: bool = True,
+    research_benchmark_scope: bool = False,
     authorization_record: Path | None = None,
     authorization_template_path: Path | None = None,
 ) -> OpraImportResult:
@@ -669,6 +744,10 @@ def run_import_phase(
     known and keeps every paid phase bounded by an explicit operator ceiling.
     """
 
+    if eligibility_scope and research_benchmark_scope:
+        raise ValueError(
+            "An OPRA import cannot be both production eligibility and research benchmark"
+        )
     if execute and max_cost_usd is None:
         raise OpraImportError("--execute requires an explicit --max-cost-usd")
     if execute and authorization_template_path is not None:
@@ -723,19 +802,24 @@ def run_import_phase(
             normalized_definitions,
             reference_underlyings=reference_underlyings,
         )
-    schedule_contract = schedule_contract_report(schedule)
+    schedule_contract = (
+        research_benchmark_schedule_report(schedule)
+        if research_benchmark_scope
+        else schedule_contract_report(schedule)
+    )
     cbbo_coverage = (
         cbbo_request_coverage_report(schedule, requests)
         if phase == "cbbo"
         else None
     )
-    if eligibility_scope and schedule_contract.get("status") != "PASS":
+    verified_scope = eligibility_scope or research_benchmark_scope
+    if verified_scope and schedule_contract.get("status") != "PASS":
         raise OpraImportError(
             "OPRA schedule does not satisfy eligibility scope: "
             + json.dumps(schedule_contract, sort_keys=True)
         )
     if (
-        eligibility_scope
+        verified_scope
         and isinstance(cbbo_coverage, Mapping)
         and cbbo_coverage.get("status") != "PASS"
     ):
@@ -839,6 +923,7 @@ def run_import_phase(
         estimates,
         schedule,
         eligibility_scope=eligibility_scope,
+        research_benchmark_scope=research_benchmark_scope,
         schedule_contract=schedule_contract,
         cbbo_coverage=cbbo_coverage,
         eligibility_policy=policy_reference,
@@ -883,6 +968,7 @@ def run_import_phase(
         "schedule": [asdict(point) for point in schedule],
         "requests": [_request_semantics(item.request) for item in estimates],
         "eligibility_scope_verified": bool(eligibility_scope),
+        "research_benchmark_scope_verified": bool(research_benchmark_scope),
         "schedule_contract": schedule_contract,
         "cbbo_request_coverage": cbbo_coverage,
         "eligibility_policy": policy_reference,
@@ -1016,6 +1102,7 @@ def run_import_phase(
             attempt_id=attempt_id,
             eligibility_policy=policy_reference,
             eligibility_scope=eligibility_scope,
+            research_benchmark_scope=research_benchmark_scope,
             schedule_contract=schedule_contract,
             cbbo_coverage=cbbo_coverage,
             paid_execution_authorization=authorization_reference,
@@ -1037,10 +1124,12 @@ def run_import_phase(
             "paid_download_maximum_attempts": OPRA_PAID_DOWNLOAD_MAX_ATTEMPTS,
             "eligibility_policy": policy_reference,
             "paid_execution_authorization": authorization_reference,
-            "evidence_kind": (
-                "REAL_RECEIPT_PROVEN" if eligibility_scope else "FIXTURE_TEST_ONLY"
+            "evidence_kind": _opra_evidence_kind(
+                eligibility_scope=eligibility_scope,
+                research_benchmark_scope=research_benchmark_scope,
             ),
             "eligibility_scope_verified": bool(eligibility_scope),
+            "research_benchmark_scope_verified": bool(research_benchmark_scope),
         }
         _write_json(staging / OPRA_RECEIPT_NAME, receipt)
         staging.replace(destination)
@@ -1075,7 +1164,7 @@ def read_opra_import(directory: Path, *, datastore_root: Path) -> Mapping[str, o
         raise OpraImportError("OPRA evidence metadata is malformed")
     artifact_version = manifest.get("schema_version")
     if (
-        artifact_version not in {OPRA_IMPORT_VERSION, OPRA_LEGACY_IMPORT_VERSION}
+        artifact_version not in ({OPRA_IMPORT_VERSION} | OPRA_LEGACY_IMPORT_VERSIONS)
         or receipt.get("schema_version") != artifact_version
         or receipt.get("run_path") != run.relative_to(root).as_posix()
         or receipt.get("manifest_checksum_sha256") != file_checksum(run / "manifest.json")
@@ -1101,6 +1190,9 @@ def read_opra_import(directory: Path, *, datastore_root: Path) -> Mapping[str, o
         estimated = _finite_cost(manifest.get("estimated_cost_usd"))
         evidence_kind = manifest.get("evidence_kind")
         eligibility_scope = manifest.get("eligibility_scope_verified")
+        research_benchmark_scope = manifest.get(
+            "research_benchmark_scope_verified"
+        )
         schedule_contract = manifest.get("schedule_contract")
         cbbo_coverage = manifest.get("cbbo_request_coverage")
         if (
@@ -1109,18 +1201,29 @@ def read_opra_import(directory: Path, *, datastore_root: Path) -> Mapping[str, o
             or estimated > ceiling + 1e-12
             or manifest.get("paid_cost_ceiling_respected") is not True
             or manifest.get("paid_download_maximum_attempts") != 1
-            or evidence_kind not in {"REAL_RECEIPT_PROVEN", "FIXTURE_TEST_ONLY"}
+            or evidence_kind
+            not in {
+                "PRODUCTION_ELIGIBILITY_RECEIPT_PROVEN",
+                "RESEARCH_BENCHMARK_RECEIPT_PROVEN",
+                "FIXTURE_TEST_ONLY",
+            }
             or not isinstance(eligibility_scope, bool)
-            or eligibility_scope != (evidence_kind == "REAL_RECEIPT_PROVEN")
+            or not isinstance(research_benchmark_scope, bool)
+            or eligibility_scope
+            != (evidence_kind == "PRODUCTION_ELIGIBILITY_RECEIPT_PROVEN")
+            or research_benchmark_scope
+            != (evidence_kind == "RESEARCH_BENCHMARK_RECEIPT_PROVEN")
             or receipt.get("evidence_kind") != evidence_kind
             or receipt.get("eligibility_scope_verified") is not eligibility_scope
+            or receipt.get("research_benchmark_scope_verified")
+            is not research_benchmark_scope
             or not isinstance(schedule_contract, Mapping)
             or (
-                eligibility_scope
+                (eligibility_scope or research_benchmark_scope)
                 and schedule_contract.get("status") != "PASS"
             )
             or (
-                eligibility_scope
+                (eligibility_scope or research_benchmark_scope)
                 and manifest.get("phase") == "cbbo"
                 and (
                     not isinstance(cbbo_coverage, Mapping)
@@ -1269,6 +1372,7 @@ def read_opra_import(directory: Path, *, datastore_root: Path) -> Mapping[str, o
                 if isinstance(raw, Mapping)
             ],
             "eligibility_scope_verified": eligibility_scope,
+            "research_benchmark_scope_verified": research_benchmark_scope,
             "schedule_contract": schedule_contract,
             "cbbo_request_coverage": cbbo_coverage,
             "eligibility_policy": manifest.get("eligibility_policy"),
@@ -1362,6 +1466,9 @@ def normalize_definition_records(records: pd.DataFrame) -> pd.DataFrame:
                 "strike",
                 "multiplier",
                 "standard_contract",
+                "exercise_style",
+                "settlement_type",
+                "settlement_reference",
             )
         )
     raw_symbol_column = _first_column(records, "raw_symbol", "symbol")
@@ -1397,6 +1504,30 @@ def normalize_definition_records(records: pd.DataFrame) -> pd.DataFrame:
         & output["call_put"].isin(("call", "put"))
         & occ_root.eq(output["symbol"])
         & occ_root.str.fullmatch(r"[A-Z.]{1,6}", na=False)
+    )
+    exercise_column = _optional_column(
+        records, "exercise_style", "exerciseStyle", "exercise"
+    )
+    settlement_column = _optional_column(
+        records, "settlement_type", "settlementType", "settlement"
+    )
+    settlement_reference_column = _optional_column(
+        records, "settlement_reference", "settlementReference"
+    )
+    output["exercise_style"] = (
+        records[exercise_column].astype("string").str.strip().str.upper()
+        if exercise_column is not None
+        else "AMBIGUOUS"
+    )
+    output["settlement_type"] = (
+        records[settlement_column].astype("string").str.strip().str.upper()
+        if settlement_column is not None
+        else "AMBIGUOUS"
+    )
+    output["settlement_reference"] = (
+        records[settlement_reference_column].astype("string").str.strip()
+        if settlement_reference_column is not None
+        else ""
     )
     return output.reset_index(drop=True)
 
@@ -1469,12 +1600,20 @@ def select_historical_source_target(
     cbbo: pd.DataFrame,
     *,
     target_snapshot_for: object,
+    prediction_available_at: object | None = None,
     source_staleness: pd.Timedelta = pd.Timedelta(minutes=5),
     target_forward_window: pd.Timedelta = pd.Timedelta(minutes=5),
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Select backward-only source rows and forward-only target rows."""
+    """Select the last source before cutoff and first outcome after availability."""
 
     target = utc_timestamp(target_snapshot_for)
+    outcome_boundary = (
+        utc_timestamp(prediction_available_at)
+        if prediction_available_at is not None
+        else target
+    )
+    if outcome_boundary < target:
+        raise ValueError("Prediction availability cannot precede the market target")
     timestamps = pd.to_datetime(cbbo["quote_timestamp"], utc=True, errors="coerce")
     source = cbbo.loc[
         timestamps.lt(target) & timestamps.ge(target - source_staleness)
@@ -1486,7 +1625,8 @@ def select_historical_source_target(
         .reset_index(drop=True)
     )
     observed = cbbo.loc[
-        timestamps.gt(target) & timestamps.le(target + target_forward_window)
+        timestamps.gt(outcome_boundary)
+        & timestamps.le(outcome_boundary + target_forward_window)
     ].copy()
     observed["quote_timestamp"] = pd.to_datetime(observed["quote_timestamp"], utc=True)
     observed = (
@@ -1495,6 +1635,20 @@ def select_historical_source_target(
         .reset_index(drop=True)
     )
     return source, observed
+
+
+def _opra_evidence_kind(
+    *,
+    eligibility_scope: bool,
+    research_benchmark_scope: bool,
+) -> str:
+    if eligibility_scope and research_benchmark_scope:
+        raise ValueError("OPRA evidence scopes are mutually exclusive")
+    if eligibility_scope:
+        return "PRODUCTION_ELIGIBILITY_RECEIPT_PROVEN"
+    if research_benchmark_scope:
+        return "RESEARCH_BENCHMARK_RECEIPT_PROVEN"
+    return "FIXTURE_TEST_ONLY"
 
 
 def _import_manifest(
@@ -1508,6 +1662,7 @@ def _import_manifest(
     attempt_id: str,
     eligibility_policy: Mapping[str, object] | None,
     eligibility_scope: bool,
+    research_benchmark_scope: bool,
     schedule_contract: Mapping[str, object],
     cbbo_coverage: Mapping[str, object] | None,
     paid_execution_authorization: Mapping[str, object],
@@ -1528,10 +1683,12 @@ def _import_manifest(
         "phase": phase,
         "imported_at": timestamp.isoformat(),
         "prediction_mode": "OFFLINE",
-        "evidence_kind": (
-            "REAL_RECEIPT_PROVEN" if eligibility_scope else "FIXTURE_TEST_ONLY"
+        "evidence_kind": _opra_evidence_kind(
+            eligibility_scope=eligibility_scope,
+            research_benchmark_scope=research_benchmark_scope,
         ),
         "eligibility_scope_verified": bool(eligibility_scope),
+        "research_benchmark_scope_verified": bool(research_benchmark_scope),
         "schedule_contract": dict(schedule_contract),
         "cbbo_request_coverage": (
             dict(cbbo_coverage) if isinstance(cbbo_coverage, Mapping) else None
@@ -1593,6 +1750,7 @@ def _matching_completed_import(
     schedule: Sequence[OpraSchedulePoint],
     *,
     eligibility_scope: bool,
+    research_benchmark_scope: bool,
     schedule_contract: Mapping[str, object],
     cbbo_coverage: Mapping[str, object] | None,
     eligibility_policy: Mapping[str, object] | None,
@@ -1604,6 +1762,7 @@ def _matching_completed_import(
         "schedule": [asdict(point) for point in schedule],
         "requests": [_request_semantics(item.request) for item in estimates],
         "eligibility_scope_verified": bool(eligibility_scope),
+        "research_benchmark_scope_verified": bool(research_benchmark_scope),
         "schedule_contract": dict(schedule_contract),
         "cbbo_request_coverage": (
             dict(cbbo_coverage) if isinstance(cbbo_coverage, Mapping) else None
@@ -1638,6 +1797,9 @@ def _matching_completed_import(
             "requests": observed_requests,
             "eligibility_scope_verified": manifest.get(
                 "eligibility_scope_verified"
+            ),
+            "research_benchmark_scope_verified": manifest.get(
+                "research_benchmark_scope_verified"
             ),
             "schedule_contract": manifest.get("schedule_contract"),
             "cbbo_request_coverage": manifest.get("cbbo_request_coverage"),
@@ -1825,6 +1987,7 @@ def _write_json_atomic(path: Path, payload: Mapping[str, object]) -> None:
 __all__ = [
     "DEFAULT_MARKET_TIMES",
     "DEFAULT_SYMBOLS",
+    "RESEARCH_BENCHMARK_SYMBOLS",
     "OPRA_CBBO_SCHEMA",
     "OPRA_AUTHORIZATION_ACTION",
     "OPRA_AUTHORIZATION_VERSION",
@@ -1854,6 +2017,7 @@ __all__ = [
     "opra_storage_capacity_report",
     "point_in_time_definition_asof",
     "read_opra_import",
+    "research_benchmark_schedule_report",
     "resolve_market_schedule",
     "run_import_phase",
     "schedule_contract_report",

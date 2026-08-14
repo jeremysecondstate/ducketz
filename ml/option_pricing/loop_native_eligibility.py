@@ -21,11 +21,18 @@ from ml.option_pricing.policies import (
     ContractSelectionPolicy,
     LoopNativeModelPolicy,
 )
+from ml.universe import PRODUCTION_OPTION_ROUTE_COUNT
 
 
-LOOP_NATIVE_ELIGIBILITY_PROTOCOL_VERSION = "option-pricing-loop-native-eligibility-v3"
-LOOP_NATIVE_ELIGIBILITY_POLICY_VERSION = (
+LEGACY_LOOP_NATIVE_ELIGIBILITY_PROTOCOL_VERSION = (
+    "option-pricing-loop-native-eligibility-v3"
+)
+LEGACY_LOOP_NATIVE_ELIGIBILITY_POLICY_VERSION = (
     "option-pricing-loop-native-eligibility-policy-v3"
+)
+LOOP_NATIVE_ELIGIBILITY_PROTOCOL_VERSION = "option-pricing-loop-native-eligibility-v4"
+LOOP_NATIVE_ELIGIBILITY_POLICY_VERSION = (
+    "option-pricing-loop-native-eligibility-policy-v4"
 )
 LOOP_NATIVE_ELIGIBILITY_POLICY_RECEIPT_VERSION = (
     "option-pricing-loop-native-eligibility-policy-receipt-v1"
@@ -45,7 +52,7 @@ LOOP_NATIVE_ELIGIBILITY_REPORT_POINTER_VERSION = (
 
 
 class LoopNativeEligibilityError(RuntimeError):
-    """A v3 Loop-native eligibility artifact failed closed."""
+    """A Loop-native eligibility artifact failed closed."""
 
 
 @dataclass(frozen=True)
@@ -68,9 +75,11 @@ class LoopNativeEligibilityPolicy:
 
     def __post_init__(self) -> None:
         if tuple(self.required_symbols) != LOOP_NATIVE_SYMBOLS:
-            raise ValueError("Eligibility v3 requires the exact ten-symbol watchlist")
+            raise ValueError(
+                "Eligibility v4 requires exactly " + ", ".join(LOOP_NATIVE_SYMBOLS)
+            )
         if tuple(self.required_call_puts) != LOOP_NATIVE_CALL_PUTS:
-            raise ValueError("Eligibility v3 requires CALL and PUT for every symbol")
+            raise ValueError("Eligibility v4 requires CALL and PUT for every symbol")
         minimums = {
             "minimum_training_sessions": 60,
             "minimum_calibration_sessions": 15,
@@ -90,13 +99,13 @@ class LoopNativeEligibilityPolicy:
         ]
         if weakened:
             raise ValueError(
-                "Eligibility v3 thresholds cannot be weakened: "
+                "Eligibility v4 thresholds cannot be weakened: "
                 + ", ".join(weakened)
             )
         if self.per_contract_fee_usd < 0.65:
-            raise ValueError("Eligibility v3 contract friction cannot be weakened")
+            raise ValueError("Eligibility v4 contract friction cannot be weakened")
         if self.maximum_constrained_violation_rate != 0.0:
-            raise ValueError("Eligibility v3 permits no constrained violations")
+            raise ValueError("Eligibility v4 permits no constrained violations")
         if self.maximum_operational_readiness_age_hours > 24:
             raise ValueError("Operational evidence cannot be older than 24 hours")
 
@@ -137,13 +146,17 @@ def loop_native_eligibility_policy_payload(
             "symbols": list(effective.required_symbols),
             "call_puts": list(effective.required_call_puts),
             "routes": routes,
-            "required_route_count": 20,
+            "required_route_count": len(routes),
             "missing_route_behavior": "NOT_PROVEN_AND_EXPLICITLY_RETAINED",
         },
         "architecture": {
             "control_model": "causal-black-scholes",
-            "shadow_model": "pooled-call-put-nystroem-bayesian-ridge-gp-residual",
-            "equation": "american_option_shadow=causal_black_scholes+gp_residual",
+            "shadow_model": (
+                "128-component-nystroem-rbf-residual-model-with-bayesian-ridge-posterior"
+            ),
+            "equation": (
+                "american_option_shadow=causal_black_scholes+finite_basis_residual"
+            ),
             "baseline_constrained_fair_value_behavior_changed": False,
             "strategy_rankings_changed": False,
             "order_construction_changed": False,
@@ -157,14 +170,18 @@ def loop_native_eligibility_policy_payload(
             "surface_weighting": LOOP_NATIVE_SURFACE_WEIGHTING_POLICY_VERSION,
         },
         "historical_evidence": {
-            "required_provider": "schwab-committed-local-receipts",
-            "natural_snapshot_key": ["symbol", "snapshot_for"],
+            "required_provider": "databento-opra",
+            "natural_snapshot_key": ["provider", "symbol", "target_snapshot_for"],
             "duplicate_policy": "earliest-valid-receipt-per-natural-target",
-            "offline_lane": "OFFLINE_SCHWAB_BOOTSTRAP",
+            "offline_lane": "OFFLINE_OPRA_BACKFILL",
             "offline_increments_prospective_counts": False,
-            "prospective_lane": "PROSPECTIVE_SCHWAB",
-            "paid_opra": "OPTIONAL_EXTERNAL_BENCHMARK_ONLY",
-            "paid_opra_prerequisite": False,
+            "prospective_lanes": ["PROSPECTIVE_OPRA", "PROSPECTIVE_SCHWAB"],
+            "canonical_fair_value_provider": "databento-opra",
+            "schwab_role": (
+                "broker-enrichment-fallback-disagreement-and-execution-validation"
+            ),
+            "paid_opra": "REQUIRED_BOUNDED_OFFLINE_EVIDENCE",
+            "paid_opra_prerequisite": True,
             "runtime_provider_requests_for_training": 0,
             "current_revised_rate_history_for_historical_targets": "REJECTED",
         },
@@ -207,7 +224,8 @@ def loop_native_eligibility_policy_payload(
         "required_comparators": [
             "black_scholes",
             "constant_residual",
-            "standard_gp",
+            "finite_basis_price_comparator",
+            "exact_gp_spy_research_benchmark",
         ],
         "thresholds": {
             "minimum_comparison_sessions_per_route": (
@@ -237,10 +255,10 @@ def loop_native_eligibility_policy_payload(
         },
         "gates": {
             "1": "complete immutable causal lineage and timing",
-            "2": "real non-fixture Schwab source and target receipt coverage",
-            "3": "session-blocked BSGP improvement over all comparators",
+            "2": "bounded offline OPRA and prospective OPRA route coverage",
+            "3": "session-blocked finite-basis improvement over all comparators",
             "4": "interval calibration and constraint compliance",
-            "5": "liquidity coverage and all twenty routes retained",
+            "5": f"liquidity coverage and all {len(routes)} routes retained",
             "6": "operational latency capacity and failure recovery",
             "7": "Strategy shadow outcomes net of fees and spread",
             "8": "twenty distinct prospective sessions per required route",
@@ -248,8 +266,11 @@ def loop_native_eligibility_policy_payload(
             "10": "explicit operator production authorization",
         },
         "research_caveats": {
-            "paper_universe_period": "SPY May-June 2019",
-            "paper_mse_transferable_to_2026_ten_equities": False,
+            "paper_reference_universe_period": "SPY May-June 2019",
+            "current_exact_gp_benchmark_symbol": "SPY",
+            "current_exact_gp_benchmark_is_research_only": True,
+            "claim_of_paper_period_replication": False,
+            "paper_mse_transferable_to_current_production_equities": False,
             "paper_one_week_example_is_production_horizon_proof": False,
             "cross_sectional_rows_are_independent_sessions": False,
             "deviations": [
@@ -347,7 +368,11 @@ def read_loop_native_eligibility_policy(
         raise LoopNativeEligibilityError("Eligibility policy metadata is malformed")
     policy_hash = semantic_metadata_fingerprint(payload)
     if (
-        payload.get("schema_version") != LOOP_NATIVE_ELIGIBILITY_POLICY_VERSION
+        payload.get("schema_version")
+        not in {
+            LOOP_NATIVE_ELIGIBILITY_POLICY_VERSION,
+            LEGACY_LOOP_NATIVE_ELIGIBILITY_POLICY_VERSION,
+        }
         or payload.get("automated_action_allowed") is not False
         or receipt.get("schema_version")
         != LOOP_NATIVE_ELIGIBILITY_POLICY_RECEIPT_VERSION
@@ -363,7 +388,7 @@ def read_loop_native_eligibility_policy(
 def read_current_loop_native_eligibility_policy(
     datastore_root: Path,
 ) -> LoopNativeEligibilityArtifact:
-    """Read the atomic v3 policy pointer and verify its complete target."""
+    """Read the atomic policy pointer and verify v3 or v4 immutable evidence."""
 
     root = Path(datastore_root).resolve()
     pointer_path = (
@@ -467,7 +492,7 @@ def build_loop_native_eligibility_report(
         }
     }
     names = {
-        "2": "real-schwab-source-target-coverage",
+        "2": "offline-and-prospective-opra-coverage",
         "3": "session-blocked-comparator-improvement",
         "4": "calibrated-uncertainty-and-constraints",
         "5": "liquidity-coverage-and-route-retention",
@@ -493,7 +518,7 @@ def build_loop_native_eligibility_report(
             "run_path": policy_artifact.receipt.get("run_path"),
             "policy_hash_sha256": policy_artifact.policy_hash,
         },
-        "required_route_count": 20,
+        "required_route_count": PRODUCTION_OPTION_ROUTE_COUNT,
         "routes": routes,
         "gates": gates,
         "gate_status": (
@@ -504,8 +529,8 @@ def build_loop_native_eligibility_report(
         "production_authorized": False,
         "candidate_frozen": False,
         "lockbox_open": False,
-        "paid_opra_required": False,
-        "paid_opra_used": False,
+        "paid_opra_required": True,
+        "paid_opra_used": bool(materialization.get("paid_opra_used", False)),
         "operational_evidence_present": operational_report is not None,
         "strategy_evidence_present": strategy_report is not None,
         "automated_action_allowed": False,
@@ -546,7 +571,7 @@ def verify_loop_native_capture_lineage(
     )
     if (
         materialization_report.get("external_provider_requests") != 0
-        or materialization_report.get("paid_opra_used") is not False
+        or not isinstance(materialization_report.get("paid_opra_used"), bool)
         or materialization_report.get("automated_action_allowed") is not False
     ):
         errors.append("MATERIALIZATION_GUARDS_INVALID")
@@ -577,7 +602,7 @@ def verify_loop_native_capture_lineage(
         "model_generation": (
             generation.receipt.get("run_path") if generation is not None else None
         ),
-        "paid_opra_used": False,
+        "paid_opra_used": bool(materialization_report.get("paid_opra_used", False)),
         "automated_action_allowed": False,
     }
 

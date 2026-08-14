@@ -1,10 +1,9 @@
 # One equity symbol per line. Loop A batches this watchlist by provider while
 # preserving separate per-symbol Parquet outputs.
 
-# SPCX
-NVDA
-GOOG
-MU
 AAPL
 AMZN
+GOOG
+MU
+NVDA
 SNDK

@@ -10,18 +10,22 @@ from ml.option_pricing.policies import OPTION_PRICING_POLICY_VERSION
 from ml.option_pricing.publication import (
     LEGACY_OPTION_PRICING_PUBLICATION_VERSION,
     OPTION_PRICING_PUBLICATION_VERSION,
+    V2_OPTION_PRICING_PUBLICATION_VERSION,
     pricing_pointer_path,
     read_option_pricing_publication_at,
+    verified_option_pricing_history,
 )
 from ml.option_pricing.reporting import SURFACE_VERSION
 
 
 LEGACY_SURFACE_VERSION = "option-pricing-compact-surface-v1"
+V2_SURFACE_VERSION = "option-pricing-compact-surface-v2"
 LEGACY_PRICING_POLICY_VERSION = "black-scholes-rbf-residual-v1"
 LEGACY_NORMALIZATION_POLICY = (
     "legacy-v1-max-row-available-and-verified-publication-v1"
 )
-NATIVE_NORMALIZATION_POLICY = "native-v2-first-availability-strict-v1"
+NATIVE_NORMALIZATION_POLICY = "receipt-bounded-first-availability-v2"
+V2_PRICING_POLICY_VERSION = "black-scholes-rbf-residual-v2"
 
 OPX_VALUE_COLUMNS = (
     "causal_coverage",
@@ -46,10 +50,21 @@ class PricingEvidenceContractError(RuntimeError):
     """Verified Pricing authority contains incompatible or malformed evidence."""
 
 
-def read_verified_compact_pricing_features(
+def _one_or_mixed(frame: pd.DataFrame, column: str) -> object:
+    if column not in frame:
+        return pd.NA
+    values = frame[column].dropna().astype("string").str.strip()
+    values = values.loc[values.ne("")].drop_duplicates()
+    if len(values) == 1:
+        return values.iloc[0]
+    return "MIXED" if len(values) else pd.NA
+
+
+def _read_latest_verified_compact_pricing_features(
     datastore_root: Path,
     *,
     available_not_after: object,
+    _publication: object | None = None,
 ) -> tuple[pd.DataFrame, tuple[Path, ...]]:
     """Return verified compact Pricing rows with a canonical availability clock.
 
@@ -65,13 +80,16 @@ def read_verified_compact_pricing_features(
         raise PricingEvidenceUnavailable(
             "No Pricing publication authority exists at the causal cutoff"
         )
-    try:
-        publication = read_option_pricing_publication_at(
-            root,
-            available_not_after=cutoff,
-        )
-    except FileNotFoundError as exc:
-        raise PricingEvidenceUnavailable(str(exc)) from exc
+    if _publication is None:
+        try:
+            publication = read_option_pricing_publication_at(
+                root,
+                available_not_after=cutoff,
+            )
+        except FileNotFoundError as exc:
+            raise PricingEvidenceUnavailable(str(exc)) from exc
+    else:
+        publication = _publication
 
     run = publication.run_directory
     published = utc_timestamp(publication.receipt.get("published_at"))
@@ -100,10 +118,21 @@ def read_verified_compact_pricing_features(
         *OPX_VALUE_COLUMNS,
     }
     required = set(common_required)
-    if publication_version == OPTION_PRICING_PUBLICATION_VERSION:
+    if publication_version in {
+        OPTION_PRICING_PUBLICATION_VERSION,
+        V2_OPTION_PRICING_PUBLICATION_VERSION,
+    }:
         required.add("first_available_at")
-        expected_surface_version = SURFACE_VERSION
-        expected_policy_version = OPTION_PRICING_POLICY_VERSION
+        expected_surface_version = (
+            SURFACE_VERSION
+            if publication_version == OPTION_PRICING_PUBLICATION_VERSION
+            else V2_SURFACE_VERSION
+        )
+        expected_policy_version = (
+            OPTION_PRICING_POLICY_VERSION
+            if publication_version == OPTION_PRICING_PUBLICATION_VERSION
+            else V2_PRICING_POLICY_VERSION
+        )
         normalization_policy = NATIVE_NORMALIZATION_POLICY
         legacy_normalized = False
     elif publication_version == LEGACY_OPTION_PRICING_PUBLICATION_VERSION:
@@ -181,7 +210,9 @@ def read_verified_compact_pricing_features(
             raise PricingEvidenceContractError(
                 "Compact Pricing surface first availability is invalid"
             )
-        canonical_available = first_available
+        canonical_available = first_available.where(
+            first_available.ge(published), published
+        )
     if not target.lt(canonical_available).all():
         raise PricingEvidenceContractError(
             "Compact Pricing surface target must precede canonical first availability"
@@ -245,6 +276,7 @@ def read_verified_compact_pricing_features(
             "surface_quality_pass": bool(
                 group["surface_quality_pass"].eq(True).all()
             ),
+            "source_provider": _one_or_mixed(group, "source_provider"),
         }
         for column in OPX_VALUE_COLUMNS:
             values = pd.to_numeric(group[column], errors="coerce")
@@ -269,6 +301,125 @@ def read_verified_compact_pricing_features(
         run / "manifest.json",
         run / "publication.json",
     )
+
+
+def read_verified_compact_pricing_features(
+    datastore_root: Path,
+    *,
+    available_not_after: object,
+) -> tuple[pd.DataFrame, tuple[Path, ...]]:
+    """Read append-only verified surface history and select causal generations.
+
+    Every reachable generation is checksum-verified. Repeated natural surfaces
+    are resolved to the newest generation whose receipt-bounded first
+    availability is no later than the requested cutoff. Immutable prior
+    generations remain readable and are never rewritten.
+    """
+
+    root = Path(datastore_root).resolve()
+    cutoff = utc_timestamp(available_not_after)
+    if not pricing_pointer_path(root).is_file():
+        raise PricingEvidenceUnavailable(
+            "No Pricing publication authority exists at the causal cutoff"
+        )
+    history = verified_option_pricing_history(
+        root, available_not_after=cutoff
+    )
+    if not history:
+        raise PricingEvidenceUnavailable(
+            "No verified Pricing generation was available by the causal cutoff"
+        )
+    frames: list[pd.DataFrame] = []
+    sources: list[Path] = []
+    for generation_order, publication in enumerate(history):
+        published = utc_timestamp(publication.receipt.get("published_at"))
+        try:
+            frame, frame_sources = _read_latest_verified_compact_pricing_features(
+                root,
+                # The generation receipt is already bounded by ``history``.
+                # Legacy v1 rows may carry a later row-level availability clock;
+                # retain them once that clock, too, is inside the caller's cutoff.
+                available_not_after=cutoff,
+                _publication=publication,
+            )
+        except PricingEvidenceUnavailable:
+            continue
+        frame = frame.copy()
+        frame["model_generation"] = publication.run_directory.name
+        frame["_pricing_generation_order"] = generation_order
+        frame["_pricing_generation_published_at"] = published
+        if "source_provider" not in frame:
+            frame["source_provider"] = pd.NA
+        frame["evidence_lane"] = frame["source_provider"].map(
+            lambda value: (
+                "PROSPECTIVE_OPRA"
+                if str(value).strip().lower() == "databento-opra"
+                else "PROSPECTIVE_SCHWAB"
+                if str(value).strip().lower() == "schwab"
+                else "MIXED_OR_LEGACY"
+            )
+        )
+        frame["fallback_used"] = frame["source_provider"].map(
+            lambda value: str(value).strip().lower() == "schwab"
+        )
+        frames.append(frame)
+        sources.extend(frame_sources)
+    if not frames:
+        raise PricingEvidenceUnavailable(
+            "Verified Pricing history has no compact surface rows"
+        )
+    combined = pd.concat(frames, ignore_index=True, sort=False)
+    available = pd.to_datetime(
+        combined["first_available_at"], utc=True, errors="coerce"
+    )
+    combined = combined.loc[available.le(cutoff)].copy()
+    if combined.empty:
+        raise PricingEvidenceUnavailable(
+            "No verified Pricing surface was causal by the cutoff"
+        )
+    # Loop B consumes a symbol/target compact surface. A later immutable model
+    # generation supersedes the same natural target without deleting history.
+    combined = (
+        combined.sort_values(
+            [
+                "symbol",
+                "target_snapshot_for",
+                "_pricing_generation_order",
+                "_pricing_generation_published_at",
+            ],
+            kind="stable",
+        )
+        .drop_duplicates(["symbol", "target_snapshot_for"], keep="last")
+        .sort_values(["target_snapshot_for", "symbol"], kind="stable")
+        .reset_index(drop=True)
+    )
+    provenance_columns = {
+        "source_publication_version": "_pricing_source_publication_version",
+        "source_surface_version": "_pricing_source_surface_version",
+        "source_policy_version": "_pricing_source_policy_version",
+        "normalization_policy": "_pricing_normalization_policy",
+        "legacy_normalized": "_pricing_legacy_normalized",
+        "authority_published_at": "_pricing_authority_published_at",
+        "authority_run_path": "_pricing_authority_run_path",
+    }
+    provenance: dict[str, object] = {}
+    for public_name, column in provenance_columns.items():
+        values = combined[column].drop_duplicates() if column in combined else pd.Series(dtype="object")
+        if len(values) == 1:
+            value = values.iloc[0]
+            provenance[public_name] = (
+                value.isoformat() if isinstance(value, pd.Timestamp) else value
+            )
+        elif len(values) > 1:
+            provenance[public_name] = "MIXED"
+    combined.attrs["pricing_evidence"] = {
+        **provenance,
+        "history_policy": "append-only-newest-causal-generation-v1",
+        "verified_generation_count": len(history),
+        "selected_natural_surface_count": len(combined),
+        "available_not_after": cutoff.isoformat(),
+    }
+    return combined, tuple(dict.fromkeys(sources))
 
 
 def describe_verified_compact_pricing_features(

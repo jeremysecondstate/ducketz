@@ -34,6 +34,7 @@ from ml.option_pricing.publication import (
 from ml.option_pricing.policies import (
     OPTION_PRICING_POLICY_VERSION,
     OPTION_PRICING_SCHEMA_VERSION,
+    OPTION_PRICING_TIMING_POLICY_VERSION,
 )
 from ml.option_pricing.reporting import SURFACE_VERSION
 from ml.option_pricing.reporting import build_pricing_surfaces
@@ -44,6 +45,9 @@ from ml.option_pricing.strategy_shadow import (
 )
 from ml.parquet_contracts import (
     LEGACY_OPTION_PRICING_SURFACE_SCHEMA,
+    LEGACY_OPTION_PRICING_EVALUATION_SCHEMA,
+    LEGACY_OPTION_PRICING_PREDICTION_SCHEMA,
+    LEGACY_OPTION_PRICING_SAMPLE_SCHEMA,
     OPTION_PRICING_EVALUATION_SCHEMA,
     OPTION_PRICING_MONITORING_SCHEMA,
     OPTION_PRICING_PREDICTION_SCHEMA,
@@ -58,7 +62,12 @@ from ml.rolling_materialization import (
     RouteMaterialization,
     _join_symbol_values,
 )
-from ml.runtime_pipeline import RuntimeConfig, _pricing_evidence_manifest, run_loop_b_once
+from ml.runtime_pipeline import (
+    RuntimeConfig,
+    _pricing_evidence_manifest,
+    _pricing_family_gate,
+    run_loop_b_once,
+)
 from ml.models.registry import ModelSpec, build_estimator
 from ml.strategy_selection.contracts import StrategySelectionPolicy
 from ml.strategy_selection.market_state import MarketState, score_market_state_prior
@@ -128,7 +137,11 @@ def _publish_pricing(
                     if legacy
                     else OPTION_PRICING_POLICY_VERSION
                 ),
-                "timing_policy_version": "pre-quote-quarter-hour-v1",
+                "timing_policy_version": (
+                    "pre-quote-quarter-hour-v1"
+                    if legacy
+                    else OPTION_PRICING_TIMING_POLICY_VERSION
+                ),
                 "schema_version": OPTION_PRICING_SCHEMA_VERSION,
                 "automated_action_allowed": False,
             }
@@ -189,10 +202,25 @@ def _publish_pricing(
     )
     if legacy:
         surface = surface.drop(columns="first_available_at")
+    sample_schema = (
+        LEGACY_OPTION_PRICING_SAMPLE_SCHEMA
+        if legacy
+        else OPTION_PRICING_SAMPLE_SCHEMA
+    )
+    prediction_schema = (
+        LEGACY_OPTION_PRICING_PREDICTION_SCHEMA
+        if legacy
+        else OPTION_PRICING_PREDICTION_SCHEMA
+    )
+    evaluation_schema = (
+        LEGACY_OPTION_PRICING_EVALUATION_SCHEMA
+        if legacy
+        else OPTION_PRICING_EVALUATION_SCHEMA
+    )
     outputs = {
-        "pricing-samples.parquet": (empty_frame(OPTION_PRICING_SAMPLE_SCHEMA), OPTION_PRICING_SAMPLE_SCHEMA),
-        "pricing-predictions.parquet": (prediction, OPTION_PRICING_PREDICTION_SCHEMA),
-        "pricing-evaluations.parquet": (empty_frame(OPTION_PRICING_EVALUATION_SCHEMA), OPTION_PRICING_EVALUATION_SCHEMA),
+        "pricing-samples.parquet": (empty_frame(sample_schema), sample_schema),
+        "pricing-predictions.parquet": (prediction, prediction_schema),
+        "pricing-evaluations.parquet": (empty_frame(evaluation_schema), evaluation_schema),
         "pricing-surfaces.parquet": (surface, surface_schema),
         "pricing-monitoring.parquet": (empty_frame(OPTION_PRICING_MONITORING_SCHEMA), OPTION_PRICING_MONITORING_SCHEMA),
     }
@@ -450,7 +478,7 @@ def test_verified_v1_surface_is_normalized_in_memory_without_mutation(
     assert frame["_pricing_original_available_at"].eq(
         pd.Timestamp("2026-07-06T14:01:01Z")
     ).all()
-    assert frame.attrs["pricing_evidence"] == {
+    expected_provenance = {
         "source_publication_version": "option-pricing-publication-v1",
         "source_surface_version": "option-pricing-compact-surface-v1",
         "source_policy_version": LEGACY_PRICING_POLICY_VERSION,
@@ -459,6 +487,13 @@ def test_verified_v1_surface_is_normalized_in_memory_without_mutation(
         "authority_published_at": canonical.isoformat(),
         "authority_run_path": run.relative_to(tmp_path).as_posix(),
     }
+    assert {
+        key: frame.attrs["pricing_evidence"][key]
+        for key in expected_provenance
+    } == expected_provenance
+    assert frame.attrs["pricing_evidence"]["history_policy"] == (
+        "append-only-newest-causal-generation-v1"
+    )
     assert sources[0] == run / "pricing-surfaces.parquet"
     assert immutable == {
         path: hashlib.sha256(path.read_bytes()).hexdigest() for path in immutable
@@ -545,6 +580,7 @@ def test_verified_v2_surface_missing_first_availability_still_fails_closed(
     surface = pd.read_parquet(run / "pricing-surfaces.parquet").drop(
         columns="first_available_at"
     )
+    surface = surface.loc[:, LEGACY_OPTION_PRICING_SURFACE_SCHEMA.names]
     _reseal_pricing_surface(
         tmp_path,
         run,
@@ -644,6 +680,44 @@ def test_active_v2_model_contract_predicts_with_missing_pricing_family() -> None
 
     assert probabilities.shape == (8, 2)
     assert np.isfinite(probabilities).all()
+
+
+def test_pricing_family_gate_requires_coverage_freshness_and_mature_intervals() -> None:
+    feature_set = DEFAULT_FEATURE_REGISTRY.feature_set(
+        "loop-a-all-bsgp-active-v3-1d",
+        require_active=True,
+        horizon="1d",
+    )
+    opx_columns = tuple(
+        name for name in feature_set.names if name.startswith("opx__")
+    )
+    targets = pd.date_range("2026-06-01T17:00:00Z", periods=20, freq="D")
+    frame = pd.DataFrame(
+        {
+            "symbol": "NVDA",
+            "horizon": "1d",
+            "decision_timestamp": targets + pd.Timedelta(minutes=2),
+            "opx__source_target_snapshot_for": targets,
+            "opx__join_status": "JOINED",
+            **{column: 0.0 for column in opx_columns},
+        }
+    )
+
+    passed = _pricing_family_gate(frame, feature_columns=opx_columns)
+    assert passed["downstream_training_eligible"] is True
+
+    immature = frame.copy()
+    immature["opx__interval_80_coverage"] = np.nan
+    immature["opx__interval_95_coverage"] = np.nan
+    assert _pricing_family_gate(
+        immature, feature_columns=opx_columns
+    )["downstream_training_eligible"] is False
+
+    stale = frame.copy()
+    stale["opx__join_status"] = "STALE"
+    assert _pricing_family_gate(
+        stale, feature_columns=opx_columns
+    )["downstream_training_eligible"] is False
 
 
 def test_active_v2_loop_b_feature_materialization_uses_verified_v1_authority(

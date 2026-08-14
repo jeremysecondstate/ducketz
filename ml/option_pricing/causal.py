@@ -31,7 +31,10 @@ from ml.option_pricing.policies import (
     OPTION_PRICING_VOLATILITY_POLICY_VERSION,
     SEMANTIC_FEATURE_COLUMNS,
 )
-from options.publication import CommittedOptionSnapshot, committed_option_snapshots
+from options.publication import (
+    CommittedOptionSnapshot,
+    canonical_option_snapshots,
+)
 from ml.option_pricing.target_outcome import TARGET_OUTCOME_PROOF_COLUMNS
 
 
@@ -135,7 +138,19 @@ def build_live_prediction_inputs(
     else:
         clock = latest_completed_bar_clock(root, symbol=clean_symbol, as_of=created)
     target = pd.Timestamp(clock.decision_timestamp)
-    snapshots = committed_option_snapshots(root, symbol=clean_symbol)
+    snapshots_by_provider = {
+        provider: canonical_option_snapshots(
+            root,
+            symbol=clean_symbol,
+            provider=provider,
+        )[0]
+        for provider in ("databento-opra", "schwab")
+    }
+    snapshots = tuple(
+        snapshot
+        for provider in ("databento-opra", "schwab")
+        for snapshot in snapshots_by_provider[provider]
+    )
     observed_target = [
         snapshot
         for snapshot in snapshots
@@ -154,17 +169,23 @@ def build_live_prediction_inputs(
             "A verified Options receipt for the target was visible before prediction.",
             target,
         )
-    sources = _strictly_earlier_snapshots(
-        snapshots,
-        target_snapshot_for=target,
-        prediction_created_at=created,
+    provider_sources = tuple(
+        (
+            provider,
+            _strictly_earlier_snapshots(
+                snapshots_by_provider[provider],
+                target_snapshot_for=target,
+                prediction_created_at=created,
+            ),
+        )
+        for provider in ("databento-opra", "schwab")
     )
-    if not sources:
+    if not any(sources for _provider, sources in provider_sources):
         return CausalSampleBatch(
             pd.DataFrame(),
             (),
             "SOURCE_SURFACE_UNAVAILABLE",
-            "No strictly earlier committed Schwab surface was available.",
+            "No strictly earlier committed OPRA or Schwab surface was available.",
             target,
         )
     underlying = (
@@ -176,7 +197,6 @@ def build_live_prediction_inputs(
         raise ValueError("Target underlying price must be finite and positive")
     policy = contract_policy or ContractSelectionPolicy()
     first_materialized: CausalSampleBatch | None = None
-    newest_contracts: pd.DataFrame | None = None
     target_files = (
         tuple(target_source_files)
         if target_source_files is not None
@@ -184,56 +204,91 @@ def build_live_prediction_inputs(
     )
     consulted_source_files: list[Path] = []
     maximum_candidates = 16
-    for source_index, source in enumerate(sources[:maximum_candidates]):
-        consulted_source_files.extend(
-            (source.contracts_path, source.receipt_path)
-        )
-        source_contracts = pd.read_parquet(source.contracts_path)
-        if source_index == 0:
-            newest_contracts = source_contracts
-        candidate_mask = _source_contract_candidate_mask(
-            source_contracts,
-            target_underlying_price=underlying,
-            target_snapshot_for=target,
-            policy=policy,
-        )
-        if not candidate_mask.any():
-            continue
-        samples = build_causal_samples(
-            source_contracts.loc[candidate_mask].reset_index(drop=True),
-            target_contracts=None,
-            target_underlying_price=underlying,
-            source_snapshot_for=source.snapshot_for,
-            source_available_at=_snapshot_receipt_available_at(source),
-            target_snapshot_for=target,
-            source_provider="schwab",
-            prediction_mode="LIVE",
-            contract_policy=policy,
-            rate_observations=rate_observations,
-            allow_source_chain_carry_fallback=allow_source_chain_carry_fallback,
-        )
-        available = samples["sample_status"].eq("AVAILABLE").any()
-        if available and source_index:
-            reason = (
-                f"Skipped {source_index} newer causal receipt(s) with no usable "
-                "contract; selected the newest surface that passed the unchanged "
-                "source contract."
+    for provider, sources in provider_sources:
+        for source_index, source in enumerate(sources[:maximum_candidates]):
+            consulted_source_files.extend(
+                (source.contracts_path, source.receipt_path)
             )
-        elif available:
-            reason = ""
-        else:
-            reason = "No contracts passed the causal feature contract."
-        batch = CausalSampleBatch(
-            samples,
-            tuple(dict.fromkeys((*target_files, *consulted_source_files))),
-            "READY" if available else "NO_ELIGIBLE_CONTRACTS",
-            reason,
-            target,
-        )
-        if available:
-            return batch
-        if first_materialized is None:
-            first_materialized = batch
+            source_contracts = pd.read_parquet(source.contracts_path)
+            if provider == "databento-opra":
+                source_spot = pd.to_numeric(
+                    source_contracts.get("underlying_price"), errors="coerce"
+                )
+                if source_spot is None or not np.isfinite(source_spot).any():
+                    # OPRA quotes do not carry the equity spot. Bind the option
+                    # surface to the exact receipt-visible Loop A bar for the
+                    # source target instead of borrowing the later target spot.
+                    try:
+                        source_clock = completed_bar_clock_for_target(
+                            root,
+                            symbol=clean_symbol,
+                            target_snapshot_for=source.snapshot_for,
+                            as_of=_snapshot_receipt_available_at(source),
+                        )
+                        source_contracts["underlying_price"] = completed_bar_close(
+                            source_clock
+                        )
+                        consulted_source_files.append(source_clock.source_file)
+                    except (FileNotFoundError, RuntimeError, ValueError):
+                        continue
+            candidate_mask = _source_contract_candidate_mask(
+                source_contracts,
+                target_underlying_price=underlying,
+                target_snapshot_for=target,
+                policy=policy,
+            )
+            if not candidate_mask.any():
+                continue
+            samples = build_causal_samples(
+                source_contracts.loc[candidate_mask].reset_index(drop=True),
+                target_contracts=None,
+                target_underlying_price=underlying,
+                source_snapshot_for=source.snapshot_for,
+                source_available_at=_snapshot_receipt_available_at(source),
+                target_snapshot_for=target,
+                source_provider=provider,
+                prediction_mode="LIVE",
+                prediction_created_at=created,
+                prediction_available_at=created,
+                provider_ingested_at=_snapshot_receipt_available_at(source),
+                evidence_lane=(
+                    "PROSPECTIVE_OPRA"
+                    if provider == "databento-opra"
+                    else "PROSPECTIVE_SCHWAB"
+                ),
+                fallback_used=provider == "schwab",
+                datastore_root=root,
+                contract_policy=policy,
+                rate_observations=rate_observations,
+                allow_source_chain_carry_fallback=allow_source_chain_carry_fallback,
+            )
+            available = samples["sample_status"].eq("AVAILABLE").any()
+            if available and source_index:
+                reason = (
+                    f"Skipped {source_index} newer causal {provider} receipt(s) "
+                    "with no usable contract; selected the newest surface that "
+                    "passed the unchanged source contract."
+                )
+            elif available and provider == "schwab":
+                reason = (
+                    "Canonical OPRA evidence was unavailable or ineligible; "
+                    "selected explicit causal Schwab fallback."
+                )
+            elif available:
+                reason = "Selected canonical OPRA market evidence."
+            else:
+                reason = f"No {provider} contracts passed the causal feature contract."
+            batch = CausalSampleBatch(
+                samples,
+                tuple(dict.fromkeys((*target_files, *consulted_source_files))),
+                "READY" if available else "NO_ELIGIBLE_CONTRACTS",
+                reason,
+                target,
+            )
+            if available:
+                return batch
+            if first_materialized is None:
+                first_materialized = batch
     if first_materialized is not None:
         return replace(
             first_materialized,
@@ -245,12 +300,13 @@ def build_live_prediction_inputs(
     # Preserve detailed exclusion rows when every bounded candidate failed the
     # cheap quote precheck. This keeps diagnostics honest while avoiding an
     # expensive full materialization for every known-stale receipt.
-    newest = sources[0]
-    source_contracts = (
-        newest_contracts
-        if newest_contracts is not None
-        else pd.read_parquet(newest.contracts_path)
+    diagnostic_provider, diagnostic_sources = next(
+        (provider, sources)
+        for provider, sources in provider_sources
+        if sources
     )
+    newest = diagnostic_sources[0]
+    source_contracts = pd.read_parquet(newest.contracts_path)
     samples = build_causal_samples(
         source_contracts,
         target_contracts=None,
@@ -258,8 +314,18 @@ def build_live_prediction_inputs(
         source_snapshot_for=newest.snapshot_for,
         source_available_at=_snapshot_receipt_available_at(newest),
         target_snapshot_for=target,
-        source_provider="schwab",
+        source_provider=diagnostic_provider,
         prediction_mode="LIVE",
+        prediction_created_at=created,
+        prediction_available_at=created,
+        provider_ingested_at=_snapshot_receipt_available_at(newest),
+        evidence_lane=(
+            "PROSPECTIVE_OPRA"
+            if diagnostic_provider == "databento-opra"
+            else "PROSPECTIVE_SCHWAB"
+        ),
+        fallback_used=diagnostic_provider == "schwab",
+        datastore_root=root,
         contract_policy=policy,
         rate_observations=rate_observations,
         allow_source_chain_carry_fallback=allow_source_chain_carry_fallback,
@@ -288,6 +354,12 @@ def build_causal_samples(
     source_provider: str,
     prediction_mode: str,
     observed_available_at: object | None = None,
+    prediction_created_at: object | None = None,
+    prediction_available_at: object | None = None,
+    provider_ingested_at: object | None = None,
+    evidence_lane: str | None = None,
+    fallback_used: bool | None = None,
+    datastore_root: Path | None = None,
     contract_policy: ContractSelectionPolicy | None = None,
     rate_observations: pd.DataFrame | None = None,
     allow_source_chain_carry_fallback: bool = True,
@@ -298,11 +370,30 @@ def build_causal_samples(
     source_time = _utc(source_snapshot_for, "source_snapshot_for")
     source_available = _utc(source_available_at, "source_available_at")
     target_time = _utc(target_snapshot_for, "target_snapshot_for")
+    prediction_created = (
+        _utc(prediction_created_at, "prediction_created_at")
+        if prediction_created_at is not None
+        else target_time
+    )
+    prediction_available = (
+        _utc(prediction_available_at, "prediction_available_at")
+        if prediction_available_at is not None
+        else prediction_created
+    )
+    ingested_at = (
+        _utc(provider_ingested_at, "provider_ingested_at")
+        if provider_ingested_at is not None
+        else None
+    )
     mode = str(prediction_mode).strip().upper()
     if mode not in {"LIVE", "OFFLINE"}:
         raise ValueError("prediction_mode must be LIVE or OFFLINE")
     if not source_time < target_time:
         raise ValueError("Source option surface must be strictly earlier than target")
+    if prediction_created < target_time:
+        raise ValueError("Prediction creation cannot precede the market target")
+    if prediction_available < prediction_created:
+        raise ValueError("Prediction availability cannot precede creation")
     if not math.isfinite(float(target_underlying_price)) or target_underlying_price <= 0.0:
         raise ValueError("Target underlying price must be finite and positive")
     required = {
@@ -361,8 +452,69 @@ def build_causal_samples(
         source_available_at=source_available,
         allow_source_chain_fallback=allow_source_chain_carry_fallback,
     )
-    source["_resolved_rate"] = resolved_rate
-    source["_resolved_dividend"] = resolved_dividend
+    rate_by_expiration: dict[pd.Timestamp, object] = {}
+    dividend_by_expiration: dict[pd.Timestamp, object] = {}
+    if datastore_root is not None:
+        from ml.option_pricing.dividends import (
+            load_verified_fmp_dividend_history,
+            resolve_dividend_for_expiration,
+        )
+        from ml.option_pricing.rates import (
+            load_verified_fmp_treasury_curves,
+            resolve_rate_for_expiration,
+        )
+
+        curve_nodes = load_verified_fmp_treasury_curves(Path(datastore_root))
+        source_symbols = source["symbol"].astype("string").str.upper().dropna().unique()
+        dividend_history = {
+            str(symbol): load_verified_fmp_dividend_history(
+                Path(datastore_root), str(symbol)
+            )
+            for symbol in source_symbols
+        }
+        spot = float(target_underlying_price)
+        symbol = str(source_symbols[0]) if len(source_symbols) else ""
+        for raw_expiration in source["expiration_date"].dropna().unique():
+            expiration = pd.Timestamp(raw_expiration)
+            try:
+                rate_resolution = resolve_rate_for_expiration(
+                    prediction_created,
+                    expiration,
+                    curve_nodes=curve_nodes,
+                    fallback_observations=rate_observations,
+                )
+            except LookupError:
+                continue
+            dividend_resolution = resolve_dividend_for_expiration(
+                symbol,
+                prediction_created,
+                expiration,
+                spot,
+                events=dividend_history.get(symbol),
+                risk_free_rate=rate_resolution.rate,
+                parity_fallback_yield=(
+                    resolved_dividend
+                    if resolved_dividend is not None
+                    and allow_source_chain_carry_fallback
+                    else None
+                ),
+            )
+            rate_by_expiration[expiration] = rate_resolution
+            dividend_by_expiration[expiration] = dividend_resolution
+    source["_resolved_rate"] = source["expiration_date"].map(
+        lambda value: (
+            rate_by_expiration[pd.Timestamp(value)].rate
+            if pd.Timestamp(value) in rate_by_expiration
+            else resolved_rate
+        )
+    )
+    source["_resolved_dividend"] = source["expiration_date"].map(
+        lambda value: (
+            dividend_by_expiration[pd.Timestamp(value)].equivalent_dividend_yield
+            if pd.Timestamp(value) in dividend_by_expiration
+            else resolved_dividend
+        )
+    )
     source["_resolved_iv"] = _source_implied_volatilities(
         source,
         source_snapshot_for=source_time,
@@ -371,7 +523,14 @@ def build_causal_samples(
     )
     target_definitions = source.loc[
         :,
-        ["contract_symbol", "strike", "expiration_date", "call_put"],
+        [
+            "contract_symbol",
+            "strike",
+            "expiration_date",
+            "call_put",
+            "_resolved_rate",
+            "_resolved_dividend",
+        ],
     ].copy()
     target_definitions["underlying_price"] = float(target_underlying_price)
     target_definitions["lagged_implied_volatility"] = interpolate_lagged_iv_surface(
@@ -412,9 +571,17 @@ def build_causal_samples(
             policy=policy,
         )
         lagged_iv = _finite_or_none(definition["lagged_implied_volatility"])
-        if status == "AVAILABLE" and resolved_rate is None:
+        contract_rate = _finite_or_none(definition.get("_resolved_rate"))
+        contract_dividend = _finite_or_none(definition.get("_resolved_dividend"))
+        rate_resolution = rate_by_expiration.get(
+            pd.Timestamp(definition["expiration_date"])
+        )
+        dividend_resolution = dividend_by_expiration.get(
+            pd.Timestamp(definition["expiration_date"])
+        )
+        if status == "AVAILABLE" and contract_rate is None:
             status, reason = "RATE_UNAVAILABLE", "No causal lagged rate observation was available."
-        if status == "AVAILABLE" and resolved_dividend is None:
+        if status == "AVAILABLE" and contract_dividend is None:
             status, reason = "DIVIDEND_UNAVAILABLE", "No causal lagged dividend policy resolved."
         if status == "AVAILABLE" and lagged_iv is None:
             status, reason = "VOLATILITY_UNAVAILABLE", "Earlier IV surface cannot interpolate without extrapolation."
@@ -423,6 +590,7 @@ def build_causal_samples(
             status, reason = "EXPIRED", "Contract expires no later than the target boundary."
 
         observed_bid = observed_ask = observed_mid = observed_quote = None
+        contract_observed_at = observed_at
         if target_contracts is not None:
             observed = target_by_contract.get(contract_symbol)
             if observed is None:
@@ -433,6 +601,9 @@ def build_causal_samples(
                 observed_bid = _finite_or_none(observed.get("bid"))
                 observed_ask = _finite_or_none(observed.get("ask"))
                 observed_quote = _timestamp_or_none(observed.get("quote_timestamp"))
+                contract_observed_at = (
+                    _timestamp_or_none(observed.get("available_at")) or observed_at
+                )
                 if (
                     observed_bid is None
                     or observed_ask is None
@@ -443,12 +614,15 @@ def build_causal_samples(
                         "TARGET_QUOTE_INVALID",
                         "Target BBO is missing, locked, crossed, or nonpositive.",
                     )
-                elif observed_at is None or observed_at <= target_time:
+                elif (
+                    contract_observed_at is None
+                    or contract_observed_at <= prediction_available
+                ):
                     status, reason = (
                         "TARGET_AVAILABILITY_INVALID",
                         "Target evidence was not available strictly after the emulated prediction boundary.",
                     )
-                elif observed_quote is None or observed_quote <= target_time:
+                elif observed_quote is None or observed_quote <= prediction_available:
                     status, reason = (
                         "TARGET_TIMING_INVALID",
                         "Target quote is not strictly later than the emulated prediction boundary.",
@@ -461,10 +635,10 @@ def build_causal_samples(
             black_scholes = black_scholes_price(
                 float(target_underlying_price),
                 float(definition["strike"]),
-                float(resolved_rate),
+                float(contract_rate),
                 float(lagged_iv),
                 years,
-                float(resolved_dividend),
+                float(contract_dividend),
                 str(definition["call_put"]),
             )
             if observed_mid is not None:
@@ -485,24 +659,100 @@ def build_causal_samples(
                 "contract_symbol": contract_symbol,
                 "expiration_date": definition["expiration_date"],
                 "target_snapshot_for": target_time,
+                "market_target_at": target_time,
                 "source_snapshot_for": source_time,
                 "source_available_at": source_available,
+                "source_evidence_available_at": source_available,
                 "source_quote_timestamp": _timestamp_or_none(source_row.get("quote_timestamp")),
                 "source_quote_staleness_seconds": _finite_or_none(
                     source_row.get("quote_staleness_seconds")
                 ),
                 "observed_quote_timestamp": observed_quote,
-                "observed_available_at": observed_at,
+                "observed_available_at": contract_observed_at,
+                "outcome_quote_timestamp": observed_quote,
+                "outcome_evidence_available_at": contract_observed_at,
+                "prediction_created_at": prediction_created,
+                "prediction_available_at": prediction_available,
+                "provider_ingested_at": ingested_at,
+                "outcome_provider": str(source_provider).strip().lower(),
+                "evidence_lane": (
+                    str(evidence_lane).strip().upper()
+                    if evidence_lane is not None
+                    else (
+                        "OFFLINE_OPRA_BACKFILL"
+                        if mode == "OFFLINE"
+                        and str(source_provider).strip().lower() == "databento-opra"
+                        else "PROSPECTIVE_OPRA"
+                        if str(source_provider).strip().lower() == "databento-opra"
+                        else "PROSPECTIVE_SCHWAB"
+                        if mode == "LIVE"
+                        else "OFFLINE_SCHWAB_BOOTSTRAP"
+                    )
+                ),
+                "fallback_used": (
+                    bool(fallback_used)
+                    if fallback_used is not None
+                    else str(source_provider).strip().lower() == "schwab"
+                ),
                 "underlying_price": float(target_underlying_price),
                 "strike": float(definition["strike"]),
                 "multiplier": _finite_or_none(source_row.get("multiplier")),
-                "risk_free_rate": resolved_rate,
-                "rate_source_at": rate_source_at,
+                "risk_free_rate": contract_rate,
+                "rate_source_at": (
+                    rate_resolution.source_available_at
+                    if rate_resolution is not None
+                    else rate_source_at
+                ),
+                "rate_source": (
+                    rate_resolution.source
+                    if rate_resolution is not None
+                    else "PROVIDER_OR_ALFRED_FALLBACK"
+                ),
                 "lagged_implied_volatility": lagged_iv,
                 "volatility_source_at": _timestamp_or_none(source_row.get("quote_timestamp")) or source_available,
                 "target_years_to_expiration": years,
-                "dividend_yield": resolved_dividend,
-                "dividend_source_at": dividend_source_at,
+                "dividend_yield": contract_dividend,
+                "dividend_source_at": (
+                    dividend_resolution.dividend_source_available_at
+                    if dividend_resolution is not None
+                    and dividend_resolution.dividend_source_available_at is not None
+                    else dividend_source_at
+                ),
+                "known_dividend_pv": (
+                    dividend_resolution.known_dividend_pv
+                    if dividend_resolution is not None
+                    else None
+                ),
+                "equivalent_dividend_yield": contract_dividend,
+                "dividend_event_count": (
+                    dividend_resolution.dividend_event_count
+                    if dividend_resolution is not None
+                    else None
+                ),
+                "next_ex_dividend_date": (
+                    pd.Timestamp(dividend_resolution.next_ex_dividend_date, tz="UTC")
+                    if dividend_resolution is not None
+                    and dividend_resolution.next_ex_dividend_date is not None
+                    else None
+                ),
+                "dividend_source_available_at": (
+                    dividend_resolution.dividend_source_available_at
+                    if dividend_resolution is not None
+                    else dividend_source_at
+                ),
+                "dividend_confidence": (
+                    dividend_resolution.dividend_confidence
+                    if dividend_resolution is not None
+                    else "PUT_CALL_PARITY_FALLBACK"
+                    if contract_dividend is not None
+                    else None
+                ),
+                "contract_definition_as_of": _timestamp_or_none(
+                    source_row.get("definition_as_of")
+                ),
+                "exercise_style": source_row.get("exercise_style"),
+                "settlement_type": source_row.get("settlement_type"),
+                "settlement_reference": source_row.get("settlement_reference"),
                 "source_mid": source_mid,
                 "observed_bid": observed_bid,
                 "observed_ask": observed_ask,
@@ -525,7 +775,9 @@ def build_causal_samples(
                 "schema_version": OPTION_PRICING_SCHEMA_VERSION,
             }
         )
-    return pd.DataFrame(rows)
+    from ml.option_pricing.weighting import attach_liquidity_weights
+
+    return attach_liquidity_weights(pd.DataFrame(rows))
 
 
 def interpolate_lagged_iv_surface(
@@ -725,66 +977,96 @@ def reconcile_predictions(
         authority_available = (
             authority_proof_time if authority_proof_time is not None else available
         )
-        natural_receipts = sorted(
-            (
-                snapshot
-                for snapshot in snapshots_by_symbol.get(symbol, ())
-                if snapshot.snapshot_for == target
-            ),
-            key=lambda snapshot: (
+        natural_receipts = [
+            snapshot
+            for snapshot in snapshots_by_symbol.get(symbol, ())
+            if snapshot.snapshot_for == target
+        ]
+        earliest_by_provider: dict[str, CommittedOptionSnapshot] = {}
+        for snapshot in natural_receipts:
+            prior = earliest_by_provider.get(snapshot.provider)
+            if prior is None or (
                 _snapshot_receipt_available_at(snapshot),
                 snapshot.directory.as_posix(),
-            ),
-        )
+            ) < (
+                _snapshot_receipt_available_at(prior),
+                prior.directory.as_posix(),
+            ):
+                earliest_by_provider[snapshot.provider] = snapshot
+        natural_receipts = list(earliest_by_provider.values())
         status = "PENDING_TARGET_RECEIPT"
         observed: Mapping[str, object] | None = None
         receipt_available: pd.Timestamp | None = None
         authority_proven = False
         if natural_receipts:
-            # The earliest immutable receipt is authoritative for the natural
-            # target.  A later duplicate can never rescue a prediction made
-            # after that target had already been observed.
-            snapshot = natural_receipts[0]
-            receipt_available = _snapshot_receipt_available_at(snapshot)
-            if receipt_available <= created or receipt_available <= authority_available:
+            # Knowledge from either provider contaminates a prediction. A
+            # later OPRA or Schwab receipt can never rescue a target that was
+            # already visible before the prediction publication boundary.
+            earliest_receipt = min(
+                _snapshot_receipt_available_at(snapshot)
+                for snapshot in natural_receipts
+            )
+            if earliest_receipt <= created or earliest_receipt <= authority_available:
+                receipt_available = earliest_receipt
                 status = "TARGET_ALREADY_OBSERVED_BEFORE_PREDICTION"
             else:
-                authority_proven = _prospective_authority_proven(
-                    prediction, snapshot
+                # Canonical OPRA is evaluated first regardless of provider
+                # receipt ordering. Schwab is used only when OPRA has no valid
+                # exact semantic outcome, and the chosen provider is persisted.
+                candidates = sorted(
+                    natural_receipts,
+                    key=lambda snapshot: (
+                        0 if snapshot.provider == "databento-opra" else 1,
+                        _snapshot_receipt_available_at(snapshot),
+                        snapshot.directory.as_posix(),
+                    ),
                 )
-                contracts = contract_cache.setdefault(
-                    snapshot.contracts_path,
-                    pd.read_parquet(snapshot.contracts_path),
-                )
-                exact = contracts.loc[
-                    contracts["contract_symbol"]
-                    .astype(str)
-                    .eq(str(prediction["contract_symbol"]))
-                ]
-                if exact.empty:
-                    status = "MISSING_TARGET_CONTRACT"
-                elif len(exact) != 1 or not _same_semantic_contract(
-                    prediction, exact.iloc[0]
-                ):
-                    status = "TARGET_CONTRACT_MISMATCH"
-                else:
-                    observed = exact.iloc[0].to_dict()
-                    quote_time = _timestamp_or_none(observed.get("quote_timestamp"))
-                    bid = _finite_or_none(observed.get("bid"))
-                    ask = _finite_or_none(observed.get("ask"))
+                for snapshot in candidates:
+                    candidate_available = _snapshot_receipt_available_at(snapshot)
+                    candidate_authority = _prospective_authority_proven(
+                        prediction, snapshot
+                    )
+                    contracts = contract_cache.setdefault(
+                        snapshot.contracts_path,
+                        pd.read_parquet(snapshot.contracts_path),
+                    )
+                    exact = contracts.loc[
+                        contracts["contract_symbol"]
+                        .astype(str)
+                        .eq(str(prediction["contract_symbol"]))
+                    ]
+                    if exact.empty:
+                        status = "MISSING_TARGET_CONTRACT"
+                        continue
+                    if len(exact) != 1 or not _same_semantic_contract(
+                        prediction, exact.iloc[0]
+                    ):
+                        status = "TARGET_CONTRACT_MISMATCH"
+                        continue
+                    candidate_observed = exact.iloc[0].to_dict()
+                    quote_time = _timestamp_or_none(
+                        candidate_observed.get("quote_timestamp")
+                    )
+                    bid = _finite_or_none(candidate_observed.get("bid"))
+                    ask = _finite_or_none(candidate_observed.get("ask"))
                     if quote_time is None:
                         status = "TARGET_QUOTE_TIMESTAMP_MISSING"
-                    elif quote_time <= created or quote_time <= authority_available:
+                        continue
+                    if quote_time <= created or quote_time <= authority_available:
                         status = "STALE_PRE_PREDICTION_QUOTE"
-                    elif (
-                        bid is None
-                        or ask is None
-                        or bid <= 0.0
-                        or ask <= bid
-                    ):
+                        continue
+                    if bid is None or ask is None or bid <= 0.0 or ask <= bid:
                         status = "TARGET_QUOTE_INVALID"
-                    else:
-                        status = "COMPLETE"
+                        continue
+                    observed = {
+                        **candidate_observed,
+                        "provider": snapshot.provider,
+                        "provider_ingested_at": candidate_available,
+                    }
+                    receipt_available = candidate_available
+                    authority_proven = candidate_authority
+                    status = "COMPLETE"
+                    break
         rows.append(
             _evaluation_row(
                 prediction,
@@ -922,8 +1204,31 @@ def _evaluation_row(
     prospective = bool(
         complete
         and str(prediction.get("prediction_mode", "")).upper() == "LIVE"
-        and str(prediction.get("source_provider", "")).strip().lower() == "schwab"
+        and str(prediction.get("source_provider", "")).strip().lower()
+        in {"databento-opra", "schwab"}
         and prospective_authority_proven
+    )
+    outcome_quote = (
+        _timestamp_or_none(observed.get("quote_timestamp"))
+        if observed is not None
+        else None
+    )
+    outcome_provider = (
+        observed.get("provider") if observed is not None else None
+    ) or prediction.get("source_provider")
+    normalized_outcome_provider = str(outcome_provider or "").strip().lower()
+    prediction_mode = str(prediction.get("prediction_mode", "")).strip().upper()
+    outcome_lane = (
+        "OFFLINE_OPRA_BACKFILL"
+        if prediction_mode == "OFFLINE"
+        else "PROSPECTIVE_OPRA"
+        if normalized_outcome_provider == "databento-opra"
+        else "PROSPECTIVE_SCHWAB"
+        if normalized_outcome_provider == "schwab"
+        else prediction.get("evidence_lane")
+    )
+    outcome_fallback = bool(
+        prediction_mode == "LIVE" and normalized_outcome_provider == "schwab"
     )
 
     def covered(lower_name: str, upper_name: str) -> bool | None:
@@ -946,9 +1251,19 @@ def _evaluation_row(
         "prediction_created_at": prediction.get("prediction_created_at"),
         "prediction_available_at": prediction.get("prediction_available_at"),
         "observed_quote_timestamp": (
-            _timestamp_or_none(observed.get("quote_timestamp")) if observed is not None else None
+            outcome_quote
         ),
         "observed_available_at": observed_available_at,
+        "outcome_quote_timestamp": outcome_quote,
+        "outcome_evidence_available_at": observed_available_at,
+        "provider_ingested_at": (
+            observed.get("provider_ingested_at")
+            if observed is not None
+            else prediction.get("provider_ingested_at")
+        ),
+        "outcome_provider": outcome_provider,
+        "evidence_lane": outcome_lane,
+        "fallback_used": outcome_fallback,
         "evaluated_at": evaluated_at,
         "model_name": prediction.get("model_name"),
         "model_version": prediction.get("model_version"),
@@ -1172,7 +1487,13 @@ def _source_implied_volatilities(
     if valid_supplied.all():
         return output
     for index, row in source.loc[~valid_supplied].iterrows():
-        if risk_free_rate is None or dividend_yield is None:
+        row_rate = _finite_or_none(row.get("_resolved_rate"))
+        row_dividend = _finite_or_none(row.get("_resolved_dividend"))
+        if row_rate is None:
+            row_rate = risk_free_rate
+        if row_dividend is None:
+            row_dividend = dividend_yield
+        if row_rate is None or row_dividend is None:
             continue
         bid = _finite_or_none(row.get("bid"))
         ask = _finite_or_none(row.get("ask"))
@@ -1186,9 +1507,9 @@ def _source_implied_volatilities(
                 (bid + ask) / 2.0,
                 spot,
                 strike,
-                risk_free_rate,
+                row_rate,
                 years,
-                dividend_yield,
+                row_dividend,
                 str(row.get("call_put")),
             )
         except ValueError:
@@ -1209,6 +1530,13 @@ def _source_contract_status(
     nonstandard = _explicit_bool(row.get("non_standard"))
     if mini is not False or nonstandard is not False or multiplier is None or not math.isclose(multiplier, policy.required_multiplier):
         return "NONSTANDARD_CONTRACT", "Contract is mini, adjusted, nonstandard, or not a 100-share contract."
+    if "exercise_style" in row:
+        exercise_style = str(row.get("exercise_style") or "").strip().upper()
+        if exercise_style not in {"AMERICAN", "EUROPEAN"}:
+            return (
+                "EXERCISE_STYLE_AMBIGUOUS",
+                "Point-in-time contract reference lacks a supported exercise style.",
+            )
     strike = _finite_or_none(row.get("strike"))
     if strike is None or strike <= 0.0:
         return "INVALID_STRIKE", "Strike must be finite and positive."

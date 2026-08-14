@@ -58,10 +58,10 @@ def _assessment_records() -> list[dict[str, object]]:
             "target_snapshot_for": (
                 start + pd.Timedelta(days=index // 3, minutes=index % 3)
             ).isoformat(),
-            "bsgp_normalized_squared_error": 0.01,
+            "finite_basis_residual_normalized_squared_error": 0.01,
             "black_scholes_normalized_squared_error": 0.04,
             "constant_residual_normalized_squared_error": 0.03,
-            "standard_gp_normalized_squared_error": 0.02,
+            "finite_basis_price_comparator_normalized_squared_error": 0.02,
             "interval_80_coverage": float(index < 51),
             "interval_95_coverage": float(index < 60),
             "contract_count": 5,
@@ -164,7 +164,9 @@ def _passing_inputs(
                     "target_snapshot_for": target,
                     "prediction_created_at": target + pd.Timedelta(seconds=1),
                     "prediction_mode": "LIVE",
-                    "source_provider": "schwab",
+                    "source_provider": "databento-opra",
+                    "outcome_provider": "databento-opra",
+                    "evidence_lane": "PROSPECTIVE_OPRA",
                     "evaluation_status": "COMPLETE",
                     "prospective_eligible": True,
                 }
@@ -237,7 +239,7 @@ def _build(
     )
 
 
-def test_only_complete_real_six_route_evidence_can_be_production_eligible(
+def test_only_complete_real_twelve_route_evidence_can_be_production_eligible(
     tmp_path: Path,
 ) -> None:
     model_reports, predictions, evaluations = _passing_inputs()
@@ -249,7 +251,7 @@ def test_only_complete_real_six_route_evidence_can_be_production_eligible(
     )
     assert report["gate_status"] == "PRODUCTION_ELIGIBLE"
     assert report["automated_action_allowed"] is False
-    assert len(report["routes"]) == 6
+    assert len(report["routes"]) == 12
     assert all(gate["status"] == "PASS" for gate in report["gates"])
     assert all(
         route["prospective"]["completed_predictions"] == 60

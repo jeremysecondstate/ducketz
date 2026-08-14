@@ -1,88 +1,150 @@
-# Active Pricing
+# Active Pricing (logical Loop 3)
 
-Audited commit: `3fdeca189feffb1d8167f67845503fe7cfb183e1`
+Audited baseline commit: `3fdeca189feffb1d8167f67845503fe7cfb183e1`
 
-Production entrypoint: `python -m ml.option_pricing_runtime` at the 15-minute `+1` phase with exact Loop A readiness required (`docs/datafetch-ml/current_start_command:49-66`; `ml/option_pricing_runtime.py:1470-1709`).
+OPRA-first implementation update: 2026-08-14
 
-## Python files
+Production entrypoint: `python -m ml.option_pricing_runtime` at the 15-minute
+`+1` phase with exact Loop A readiness required. The owner number and cadence
+are unchanged.
 
-- app/models/market_data.py
-- datafetching/bar_readiness.py
-- datafetching/bar_schema.py
-- datafetching/bar_timing.py
-- datafetching/decision_time.py
-- datafetching/ids.py
-- datafetching/layout.py
-- datafetching/observability.py
-- datafetching/orchestrate.py
-- datafetching/parquet_store.py
-- datafetching/runtime_lock.py
-- ml/artifacts.py
-- ml/current_publication.py
-- ml/option_pricing/black_scholes.py
-- ml/option_pricing/candidate.py
-- ml/option_pricing/causal.py
-- ml/option_pricing/constraints.py
-- ml/option_pricing/consumers.py
-- ml/option_pricing/eligibility.py
-- ml/option_pricing/lineage.py
-- ml/option_pricing/lockbox.py
-- ml/option_pricing/loop_native_eligibility.py
-- ml/option_pricing/model.py
-- ml/option_pricing/operations.py
-- ml/option_pricing/opra.py
-- ml/option_pricing/opra_materialization.py
-- ml/option_pricing/policies.py
-- ml/option_pricing/prediction.py
-- ml/option_pricing/publication.py
-- ml/option_pricing/rates.py
-- ml/option_pricing/reporting.py
-- ml/option_pricing/schwab_materialization.py
-- ml/option_pricing/shadow_model.py
-- ml/option_pricing/strategy_outcomes.py
-- ml/option_pricing/target_outcome.py
-- ml/option_pricing_loop_native_worker.py
-- ml/option_pricing_runtime.py
-- ml/parquet_contracts.py
-- options/features.py
-- options/pending_capture.py
-- options/publication.py
-- options/snapshot.py
+## Scope
 
-## Data providers
+The single authority in `ml/universe.py` defines exactly six production option
+symbols (`AAPL, AMZN, GOOG, MU, NVDA, SNDK`) and derives CALL/PUT routes, so
+production acceptance is exactly 12 routes. `SPY` is declared separately and
+is accepted only by the bounded research-benchmark path.
 
-This runtime makes no direct external-provider request. It reads receipt-verified Loop A bars/rates, committed Schwab option snapshots produced by Options Capture, and locally persisted OPRA evidence when present. The loop-native worker explicitly records zero external-provider requests (`ml/option_pricing_loop_native_worker.py:29-104`).
+The active code is primarily in:
 
-## Purpose and functionality
+- `ml/universe.py`
+- `ml/option_pricing/{causal,dividends,model,opra,opra_materialization}.py`
+- `ml/option_pricing/{policies,prediction,publication,rates,reporting}.py`
+- `ml/option_pricing/{research_benchmark,schwab_materialization,shadow_model,weighting}.py`
+- `ml/option_pricing/{consumers,eligibility,loop_native_eligibility}.py`
+- `ml/option_pricing_runtime.py`
+- `ml/option_pricing_loop_native_worker.py`
+- `ml/option_pricing_admin.py`
 
-Active Pricing produces target-causal option valuations before Options Capture. For each eligible boundary it waits once for the exact Loop A readiness receipt, constructs live stock/rate inputs, publishes Black-Scholes/BSGP target outcomes, and then performs the broader research/model/evaluation/surface generation under an exclusive owner lock (`ml/option_pricing_runtime.py:223-355`, `ml/option_pricing_runtime.py:1026-1325`, `ml/option_pricing_runtime.py:1547-1709`). The code enforces a separate 1,200-second causal source window (`ml/option_pricing_runtime.py:249-291`, `ml/option_pricing_runtime.py:1124-1131`).
+## Provider and evidence roles
 
-It owns immutable target outcomes plus `ml/option-pricing-target-latest/run.json`, full immutable generations under `ml/option-pricing-runs/<timestamp>/`, and `ml/option-pricing-latest/run.json` (`ml/option_pricing/target_outcome.py:90-192`; `ml/option_pricing_runtime.py:2231-2411`). A child Python worker, launched by this owner, materializes committed Schwab history and trains/reuses the loop-native shadow model locally; it remains part of Active Pricing rather than an independent production runtime (`ml/option_pricing_runtime.py:417-445`; `ml/option_pricing_loop_native_worker.py:29-108`, `ml/option_pricing_loop_native_worker.py:111-190`).
+Fair-value precedence is:
 
-## Inputs from other Loops
+1. `databento-opra` — canonical historical and prospective market evidence.
+2. `schwab` — causal fallback when OPRA is unavailable or ineligible.
 
-- **Producer:** Loop A.
-  - **Artifact/data:** Exact bar-readiness receipt and named completed bar files.
-  - **Location:** `loop-a/bar-readiness/<target_ns>/` selected by `loop-a/bar-readiness-latest/run.json`.
-  - **Use:** Gates target publication and supplies target-causal stock/volatility inputs (`ml/option_pricing_runtime.py:1102-1204`).
-- **Producer:** Loop A.
-  - **Artifact/data:** Point-in-time `FEDFUNDS` observations.
-  - **Location:** FRED current/vintage persisted rate files.
-  - **Use:** Supplies the causal risk-free rate used by Black-Scholes and subsequent pricing routes (`ml/option_pricing_runtime.py:307-310`, `ml/option_pricing/rates.py:11-52`).
-- **Producer:** Options Capture.
-  - **Artifact/data:** Committed Schwab option chain, option-quality features, receipt, and snapshot pointer/history.
-  - **Location:** `stocks/<SYMBOL>/options/snapshots/schwab/<snapshot>/` and `stocks/<SYMBOL>/options/latest/schwab.json`, with legacy monthly mirrors under `stocks/<SYMBOL>/options/chains/...` and `features/option-quality/...`.
-  - **Use:** Supplies contract state, lagged implied-volatility evidence, evaluation/reconciliation inputs, and the child worker's causal residual samples (`ml/option_pricing_runtime.py:358-445`; `ml/option_pricing/schwab_materialization.py:395-525`; `options/publication.py:51-177`).
+The persisted lanes are `OFFLINE_OPRA_BACKFILL`, `PROSPECTIVE_OPRA`, and
+`PROSPECTIVE_SCHWAB`. Provider and fallback status are stored on every sample,
+prediction/evaluation, surface, and report. Offline imports never increment a
+prospective-session count. Schwab also supplies broker enrichment, provider
+disagreement, execution/fill validation, and the separate execution-model
+target; execution labels are not blended into the OPRA-midpoint fair-value
+target.
 
-Locally persisted OPRA evidence can also feed research/model routes, but it is not produced by one of the six runtime owners and no outbound OPRA request occurs here (`ml/option_pricing_runtime.py:814-835`).
+The child worker performs no provider call. It materializes verified OPRA
+imports plus provider-neutral prospective snapshot history and then trains or
+reuses the local model. Paid OPRA acquisition remains a separately gated
+operator action.
 
-## Outputs for other Loops
+## Causal pricing contract
 
-- **Artifact/data:** Verified per-target pricing outcome, predictions, manifest, and receipt.
-  - **Consumers:** Options Capture and Strategy.
-  - **Location:** `ml/option-pricing-target-outcomes/<target-generation>/` selected by `ml/option-pricing-target-latest/run.json`.
-  - **Use:** Options waits briefly on this exact target as a coordination barrier; Strategy uses receipt-proven pricing evidence when projecting contracts (`datafetching/options_runtime.py:229-243`; `ml/option_pricing/target_outcome.py:90-192`; `ml/option_pricing/strategy_shadow.py:73-163`).
-- **Artifact/data:** Verified compact option-pricing surfaces and full pricing predictions/evaluations.
-  - **Consumers:** Directional Loop B and Strategy.
-  - **Location:** `ml/option-pricing-runs/<timestamp>/pricing-surfaces.parquet` and companion files, selected atomically by `ml/option-pricing-latest/run.json`.
-  - **Use:** Loop B joins compact `opx__` features point-in-time; Strategy loads receipt-verified live/legacy pricing evidence for exact-contract projection (`ml/rolling_materialization.py:648-707`; `ml/option_pricing/consumers.py:58-175`; `ml/option_pricing/strategy_shadow.py:73-163`).
+The semantic inputs remain `S, K, r, sigma, T, q`, and the target remains
+`(observed_midpoint - BlackScholes) / underlying_price`. Black-Scholes is the
+mean/baseline.
+
+Each row preserves distinct clocks for market target, source quote event,
+source evidence availability, prediction creation, prediction publication,
+outcome quote event, outcome evidence availability, and provider receipt. The
+source is the last valid NBBO strictly before the prediction cutoff. The label
+is the first exact-semantic-contract NBBO satisfying both:
+
+```text
+outcome_quote_timestamp > prediction_available_at
+outcome_available_at     > prediction_available_at
+```
+
+Offline replay uses the versioned 60-second emulated latency and retains the
+present-day import receipt separately. A quote after the target but before
+emulated prediction availability is rejected.
+
+## Rates, dividends, and contract reference
+
+The primary rate authority is immutable FMP daily Treasury evidence under
+`pools/rates/treasury-curve/fmp/<receipt>/`. Only curves received before the
+decision are eligible; during an XNYS session, the previous fully available
+business-day curve is the default. Rates are interpolated in log-discount space
+and converted to a continuously compounded maturity-matched rate. ALFRED/FRED
+is the validation and explicit fallback; provider rate fields are comparison or
+last-resort provenance.
+
+Declared FMP dividend history lives under
+`stocks/<SYMBOL>/corporate-actions/dividends/fmp/<receipt>/`. Resolution uses
+only declarations and receipts knowable at the decision and ex-dates in
+`(as_of, expiration]`. It persists dividend PV, equivalent continuous `q`, event
+count, next ex-date, availability, and one of `DECLARED_FMP`,
+`CAUSAL_RECURRING_ESTIMATE`, `PUT_CALL_PARITY_FALLBACK`, or
+`ZERO_NO_KNOWN_DIVIDEND`. FMP's supplied yield is never used directly.
+
+Point-in-time exercise/settlement reference is retained. Ambiguous,
+non-standard, mini, adjusted, or otherwise unsupported contracts are excluded
+or explicitly stratified; they are not silently treated as ordinary European
+contracts.
+
+## Model and weighting
+
+The active residual model is accurately named:
+
+> 128-component Nyström RBF residual model with Bayesian ridge posterior
+
+It is a finite-basis approximation, not an exact Gaussian Process. New policy,
+manifest, and model names use “finite-basis”/“Nyström”. Historical Python and
+Parquet names containing `bsgp` remain read aliases so immutable v1/v2/v3
+artifacts continue to load; those aliases do not assert exact-GP semantics.
+
+Rows receive causal liquidity weights from relative spread, staleness,
+volume/open interest, and quote quality. Weights are normalized so every
+symbol/target/CALL-or-PUT surface contributes one total unit. Raw components,
+missingness, final weight, normalization factor, and policy version are
+persisted.
+
+A separate bounded `SPY` exact-GP benchmark implements calls and puts, volume
+filtering, chronological partitions, Black-Scholes mean, residual GP,
+uncertainty, and comparators. It does not claim to reproduce the paper's
+May–June 2019 experiment unless those exact data are supplied.
+
+## Append-only publication and recovery
+
+Pricing v3 publications form an append-only verified receipt chain. Ordinary
+publish cannot move the pointer backward, conceal a newer verified generation,
+adopt an orphan, or form a broken/cyclic chain. Compact history spans every
+reachable generation and records natural surface key, model generation,
+provider/lane, target/availability, publication checksum, quality,
+supersession, uncertainty, residual, spread, edge, constraints, and coverage.
+
+Read-only diagnosis:
+
+```powershell
+python -m ml.option_pricing_admin --datastore-target pc diagnose-publications
+```
+
+Recovery is a separate exact-child operation and requires a matching immutable
+`option-pricing-orphan-recovery-authorization-v1` record:
+
+```powershell
+python -m ml.option_pricing_admin --datastore-target pc recover-orphan `
+  --run-directory <verified-child-run> `
+  --authorization-record <approved-json>
+```
+
+Recovery never silently promotes an orphan and never rolls the pointer back.
+
+## Eligibility and non-activation
+
+Eligibility v4 derives 12 routes. It requires six bounded offline OPRA months,
+the separate SPY benchmark, at least 20 independent `PROSPECTIVE_OPRA` sessions
+per route, calibrated uncertainty, comparator/no-arbitrage/liquidity gates,
+provider disagreement, capacity/latency evidence, fair-value and execution
+shadow results, a closed lockbox, and explicit operator authorization.
+
+`automated_action_allowed=false` remains mandatory. This implementation does
+not activate automated trading or establish production eligibility.
