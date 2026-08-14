@@ -174,6 +174,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"Horizons: {', '.join(specifications)}")
     print(f"Feature profile: {config.feature_profile}")
     print(f"Model: {config.model_family}; calibration: {config.calibration_method}")
+    print(
+        "Option Pricing features: independent ml.option_pricing_runtime; "
+        "coverage-gated"
+    )
     print("Options strategy analytics: independent ml.strategy_runtime process")
     print(f"Interval: {args.interval_minutes} minutes")
     if not args.once:

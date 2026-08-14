@@ -207,6 +207,10 @@ def test_once_reads_only_a_complete_loop_a_cycle(
     assert "actionable_ordinary_routes=0" in output
     assert "in_progress_ordinary_routes=1" in output
     assert "predictions=4;" not in output
+    assert (
+        "Option Pricing features: independent ml.option_pricing_runtime; "
+        "coverage-gated"
+    ) in output
 
 
 def test_once_without_a_complete_loop_a_cycle_fails_cleanly(

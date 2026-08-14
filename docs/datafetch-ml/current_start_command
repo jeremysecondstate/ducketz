@@ -122,8 +122,9 @@ evidence. Macro
 features are active only for 1-day and weekly contracts, with independent
 component clocks and freshness. Valid missing, stale, or uncovered Pricing
 rows remain audited null `opx__` inputs. Per-family coverage/freshness gates
-must pass before the Pricing family may enter fitting; a column's existence is
-not activation. Corruption,
+must pass before the Pricing family may enter fitting; until then Loop B fits
+the corresponding versioned non-Pricing baseline while retaining the failed
+gate in its manifest. A column's existence is not activation. Corruption,
 unsupported contracts, automation-enabled evidence, or an invalid ALFRED
 readiness receipt aborts the whole Loop B publication:
 

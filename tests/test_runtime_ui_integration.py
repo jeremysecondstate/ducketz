@@ -86,6 +86,103 @@ def test_runtime_intelligence_evidence_is_rendered_by_dashboard_loader(
     )
 
 
+def test_stale_pricing_is_quarantined_without_blocking_directional_models(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    created = pd.Timestamp("2026-02-02T13:00:00Z")
+    specifications = {
+        "1d": horizon_specifications_for_profile(
+            "loop-a-all-bsgp-active-v3",
+            horizons=("1d",),
+        )["1d"]
+    }
+    materialization = _synthetic_materialization(
+        tmp_path,
+        symbols=("NVDA",),
+        specifications=specifications,
+        created_at=created,
+    )
+    samples = materialization.samples.copy()
+    pricing_columns = [
+        column for column in samples if column.startswith("opx__")
+    ]
+    samples.loc[:, pricing_columns] = float("nan")
+    samples["opx__join_status"] = "STALE"
+    samples["opx__source_status"] = "VERIFIED"
+    samples["opx__source_target_snapshot_for"] = (
+        pd.to_datetime(samples["decision_timestamp"], utc=True)
+        - pd.Timedelta(days=3)
+    )
+    stale_materialization = RollingMaterialization(
+        samples=samples,
+        routes=(
+            RouteMaterialization(
+                symbol="NVDA",
+                horizon="1d",
+                status="READY",
+                samples=samples.copy(),
+                source_files=(),
+            ),
+        ),
+        source_files=(),
+        datastore_root=tmp_path,
+    )
+    monkeypatch.setattr(
+        runtime_module,
+        "materialize_rolling_samples",
+        lambda *_args, **_kwargs: stale_materialization,
+    )
+    reports: list[str] = []
+
+    result = run_loop_b_once(
+        tmp_path,
+        symbols=("NVDA",),
+        config=RuntimeConfig(
+            feature_profile="loop-a-all-bsgp-active-v3",
+            minimum_train_clusters=4,
+            calibration_clusters=2,
+            assessment_clusters=2,
+            lockbox_clusters=2,
+        ),
+        specifications=specifications,
+        run_timestamp=created,
+        input_available_at=created,
+        reporter=reports.append,
+    )
+
+    assert result.status == "COMPLETED"
+    assert result.route_errors == {}
+    assert result.models_trained == 1
+    assert any("Option Pricing family quarantined" in line for line in reports)
+    manifest = verify_manifest(result.run_directory)
+    assert manifest["configuration"]["model_feature_sets"] == {
+        "1d": "loop-a-all-v3-1d"
+    }
+    pricing = manifest["configuration"]["pricing_evidence"]
+    assert pricing["downstream_training_eligible"] is False
+    assert pricing["model_admission_by_horizon"]["1d"] == {
+        "policy_version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+        "pricing_family_selected": True,
+        "pricing_family_admitted": False,
+        "requested_feature_set": "loop-a-all-bsgp-active-v3-1d",
+        "effective_model_feature_set": "loop-a-all-v3-1d",
+        "failed_routes": ["NVDA|1d"],
+    }
+    model_manifest_path = next(
+        (tmp_path / "ml" / "models" / "1d" / "logistic-1d").glob(
+            "*/manifest.json"
+        )
+    )
+    model_manifest = json.loads(model_manifest_path.read_text(encoding="utf-8"))
+    assert model_manifest["feature_set_name"] == "loop-a-all-v3-1d"
+    assert not any(
+        column.startswith("opx__")
+        for column in model_manifest["feature_columns"]
+    )
+    assert "macro__fed_funds_level" in model_manifest["feature_columns"]
+
+
 def test_ui_canonical_current_path_resolves_authoritative_pointer(
     tmp_path: Path,
 ) -> None:

@@ -1048,6 +1048,12 @@ def _with_verified_alfred_macro(
     )
 
 
+LOOP_A_ALL_ACTIVE_V3_1D_FEATURES = _with_verified_alfred_macro(
+    LOOP_A_ALL_1D_FEATURES
+)
+LOOP_A_ALL_ACTIVE_V3_1W_FEATURES = _with_verified_alfred_macro(
+    LOOP_A_ALL_1W_FEATURES
+)
 LOOP_A_ALL_BSGP_ACTIVE_V3_1D_FEATURES = _with_verified_alfred_macro(
     LOOP_A_ALL_BSGP_SHADOW_1D_FEATURES
 )
@@ -1243,6 +1249,18 @@ class FeatureRegistry:
                 "loop-a-all-bsgp-active-v2-1w",
                 LOOP_A_ALL_BSGP_SHADOW_1W_FEATURES,
                 version="2.0.0",
+                applicable_horizons=("1w",),
+            ),
+            "loop-a-all-v3-1d": FeatureSet(
+                "loop-a-all-v3-1d",
+                LOOP_A_ALL_ACTIVE_V3_1D_FEATURES,
+                version="3.0.0",
+                applicable_horizons=("1d",),
+            ),
+            "loop-a-all-v3-1w": FeatureSet(
+                "loop-a-all-v3-1w",
+                LOOP_A_ALL_ACTIVE_V3_1W_FEATURES,
+                version="3.0.0",
                 applicable_horizons=("1w",),
             ),
             "loop-a-all-bsgp-active-v3-1d": FeatureSet(

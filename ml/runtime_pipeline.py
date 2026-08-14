@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
@@ -115,6 +115,18 @@ _OPTION_PRICING_FEATURE_GROUPS: Mapping[str, tuple[str, ...]] = {
         "opx__interval_95_coverage",
     ),
     "liquidity": ("opx__median_relative_bid_ask_spread",),
+}
+_OPTION_PRICING_BASELINE_FEATURE_SETS: Mapping[str, str] = {
+    "loop-a-all-bsgp-shadow-v1-1h": "loop-a-all-v1-1h",
+    "loop-a-all-bsgp-shadow-v1-4h": "loop-a-all-v1-4h",
+    "loop-a-all-bsgp-shadow-v1-1d": "loop-a-all-v1-1d",
+    "loop-a-all-bsgp-shadow-v1-1w": "loop-a-all-v1-1w",
+    "loop-a-all-bsgp-active-v2-1h": "loop-a-all-v1-1h",
+    "loop-a-all-bsgp-active-v2-4h": "loop-a-all-v1-4h",
+    "loop-a-all-bsgp-active-v2-1d": "loop-a-all-v1-1d",
+    "loop-a-all-bsgp-active-v2-1w": "loop-a-all-v1-1w",
+    "loop-a-all-bsgp-active-v3-1d": "loop-a-all-v3-1d",
+    "loop-a-all-bsgp-active-v3-1w": "loop-a-all-v3-1w",
 }
 
 
@@ -394,6 +406,7 @@ def _run_loop_b_once(
     fresh_live_frames: list[pd.DataFrame] = []
     models: dict[str, RuntimeModel] = {}
     partitions_by_horizon: dict[str, ModelPartitions] = {}
+    pricing_model_admission: dict[str, dict[str, object]] = {}
 
     route_errors: dict[str, str] = {
         f"{route.symbol}|{route.horizon}": (
@@ -408,23 +421,45 @@ def _run_loop_b_once(
             route_errors[f"model|{horizon}"] = "No materialized samples"
             continue
         try:
-            horizon_features = DEFAULT_FEATURE_REGISTRY.feature_set(
+            requested_feature_set = DEFAULT_FEATURE_REGISTRY.feature_set(
                 specification.feature_set,
                 require_active=True,
                 horizon=feature_contract_horizon(horizon),
-            ).names
-            pricing_gate = _pricing_family_gate(
-                route_samples,
-                feature_columns=horizon_features,
             )
-            if (
-                pricing_gate["enabled"]
-                and not pricing_gate["downstream_training_eligible"]
-            ):
+            pricing_evidence_rows = materialization.samples.loc[
+                materialization.samples["horizon"].eq(horizon)
+            ].copy()
+            pricing_gate = _pricing_family_gate(
+                pricing_evidence_rows,
+                feature_columns=requested_feature_set.names,
+            )
+            model_specification = _specification_for_pricing_gate(
+                specification,
+                gate=pricing_gate,
+            )
+            pricing_admitted = (
+                model_specification.feature_set == specification.feature_set
+            )
+            pricing_model_admission[horizon] = {
+                "policy_version": OPTION_PRICING_LOOP_B_GATE_POLICY_VERSION,
+                "pricing_family_selected": bool(pricing_gate["enabled"]),
+                "pricing_family_admitted": bool(
+                    pricing_gate["enabled"] and pricing_admitted
+                ),
+                "requested_feature_set": specification.feature_set,
+                "effective_model_feature_set": (
+                    model_specification.feature_set
+                ),
+                "failed_routes": list(pricing_gate["failed_routes"]),
+            }
+            if pricing_gate["enabled"] and not pricing_admitted:
                 failed = ", ".join(pricing_gate["failed_routes"])
-                raise RuntimeError(
-                    "Option Pricing family coverage/freshness gate is not "
-                    f"satisfied ({failed})"
+                _report(
+                    reporter,
+                    f"[Loop B/{horizon}] Option Pricing family quarantined; "
+                    f"fitting {model_specification.feature_set} until the "
+                    "coverage/freshness gate passes"
+                    + (f" ({failed})" if failed else ""),
                 )
             partitions = partition_model_rows(
                 route_samples,
@@ -445,13 +480,13 @@ def _run_loop_b_once(
             model = fit_or_reuse_model(
                 root,
                 horizon=horizon,
-                feature_set_name=specification.feature_set,
+                feature_set_name=model_specification.feature_set,
                 family=runtime.model_family,
                 calibration_method=runtime.calibration_method,
                 class_weight=runtime.class_weight,
                 partitions=partitions,
                 input_files=_horizon_source_files(materialization, horizon),
-                specification=specification,
+                specification=model_specification,
                 assumed_round_trip_cost=runtime.assumed_round_trip_cost,
                 trained_at=created,
             )
@@ -785,6 +820,10 @@ def _run_loop_b_once(
             "models": {
                 horizon: model.model_name for horizon, model in models.items()
             },
+            "model_feature_sets": {
+                horizon: model.feature_set.name
+                for horizon, model in models.items()
+            },
             "partition_configuration_by_horizon": {
                 horizon: asdict(runtime.partition_for(horizon))
                 for horizon in effective_specifications
@@ -793,6 +832,7 @@ def _run_loop_b_once(
             "pricing_evidence": _pricing_evidence_manifest(
                 materialization,
                 feature_columns=feature_columns,
+                model_admission_by_horizon=pricing_model_admission,
             ),
             "publication_counts": publication_counts,
             "strategy_selection": {
@@ -2062,6 +2102,7 @@ def _pricing_evidence_manifest(
     materialization: RollingMaterialization,
     *,
     feature_columns: Sequence[str],
+    model_admission_by_horizon: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
     """Summarize Pricing missingness and provenance in the control plane."""
 
@@ -2073,6 +2114,9 @@ def _pricing_evidence_manifest(
             "enabled": False,
             "policy_version": OPTION_PRICING_LOOP_B_GATE_POLICY_VERSION,
             "downstream_training_eligible": False,
+            "model_admission_by_horizon": dict(
+                model_admission_by_horizon or {}
+            ),
             "routes": {},
         }
     routes: dict[str, object] = {}
@@ -2136,8 +2180,55 @@ def _pricing_evidence_manifest(
     )
     return {
         **gate,
+        "model_admission_by_horizon": dict(
+            model_admission_by_horizon or {}
+        ),
         "routes": routes,
     }
+
+
+def _specification_for_pricing_gate(
+    specification: HorizonSpecification,
+    *,
+    gate: Mapping[str, object],
+) -> HorizonSpecification:
+    """Select the enriched contract only after its Pricing gate passes."""
+
+    if not bool(gate.get("enabled")) or bool(
+        gate.get("downstream_training_eligible")
+    ):
+        return specification
+    try:
+        baseline_name = _OPTION_PRICING_BASELINE_FEATURE_SETS[
+            specification.feature_set
+        ]
+    except KeyError as exc:
+        raise RuntimeError(
+            "No baseline feature contract is registered for gated Option "
+            f"Pricing feature set {specification.feature_set!r}"
+        ) from exc
+    horizon = feature_contract_horizon(specification.horizon)
+    requested = DEFAULT_FEATURE_REGISTRY.feature_set(
+        specification.feature_set,
+        require_active=True,
+        horizon=horizon,
+    )
+    baseline = DEFAULT_FEATURE_REGISTRY.feature_set(
+        baseline_name,
+        require_active=True,
+        horizon=horizon,
+    )
+    expected = tuple(
+        feature.name
+        for feature in requested.features
+        if feature.source_family != "opx"
+    )
+    if baseline.names != expected:
+        raise RuntimeError(
+            "Option Pricing baseline contract does not exactly preserve the "
+            f"non-Pricing features for {specification.feature_set!r}"
+        )
+    return replace(specification, feature_set=baseline.name)
 
 
 def _pricing_family_gate(

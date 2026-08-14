@@ -66,6 +66,7 @@ from ml.runtime_pipeline import (
     RuntimeConfig,
     _pricing_evidence_manifest,
     _pricing_family_gate,
+    _specification_for_pricing_gate,
     run_loop_b_once,
 )
 from ml.models.registry import ModelSpec, build_estimator
@@ -705,6 +706,17 @@ def test_pricing_family_gate_requires_coverage_freshness_and_mature_intervals() 
 
     passed = _pricing_family_gate(frame, feature_columns=opx_columns)
     assert passed["downstream_training_eligible"] is True
+    specification = horizon_specifications_for_profile(
+        "loop-a-all-bsgp-active-v3",
+        horizons=("1d",),
+    )["1d"]
+    assert (
+        _specification_for_pricing_gate(
+            specification,
+            gate=passed,
+        ).feature_set
+        == "loop-a-all-bsgp-active-v3-1d"
+    )
 
     immature = frame.copy()
     immature["opx__interval_80_coverage"] = np.nan
@@ -715,9 +727,22 @@ def test_pricing_family_gate_requires_coverage_freshness_and_mature_intervals() 
 
     stale = frame.copy()
     stale["opx__join_status"] = "STALE"
-    assert _pricing_family_gate(
+    stale_gate = _pricing_family_gate(
         stale, feature_columns=opx_columns
-    )["downstream_training_eligible"] is False
+    )
+    assert stale_gate["downstream_training_eligible"] is False
+    gated = _specification_for_pricing_gate(
+        specification,
+        gate=stale_gate,
+    )
+    assert gated.feature_set == "loop-a-all-v3-1d"
+    baseline = DEFAULT_FEATURE_REGISTRY.feature_set(
+        gated.feature_set,
+        require_active=True,
+        horizon="1d",
+    )
+    assert not baseline.for_family("opx")
+    assert baseline.for_family("macro")
 
 
 def test_active_v2_loop_b_feature_materialization_uses_verified_v1_authority(

@@ -353,6 +353,10 @@ def _materialize_rolling_samples(
             horizon: index
             for index, horizon in enumerate(INTERNAL_HORIZON_ORDER)
         }
+        # Per-family joins intentionally build this wide frame in stages.
+        # Consolidate it before adding the temporary sort key so pandas does
+        # not warn about a fragmented frame on every Loop B cycle.
+        samples = samples.copy()
         samples["__horizon_order"] = samples["horizon"].map(order)
         if samples["__horizon_order"].isna().any():
             unknown = sorted(
