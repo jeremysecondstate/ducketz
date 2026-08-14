@@ -625,26 +625,27 @@ def _attach_loop_a_features(
                 available_not_after=cutoff,
             )
         source, paths = option_cache[cache_key]
-        any_committed = any(
-            committed_option_snapshots(root, symbol=symbol)
-            for symbol in clean_symbols
-        )
-        if source.empty and not any_committed:
-            paths = _stock_glob_paths(
-                root,
-                clean_symbols,
-                ("options", "features", "option-quality", "schwab"),
+        if source.empty:
+            any_committed = any(
+                committed_option_snapshots(root, symbol=symbol)
+                for symbol in clean_symbols
             )
-            source = _read_required_sources(
-                paths,
-                family="Schwab option-quality",
-                cache=parquet_cache,
-            )
-        elif source.empty:
-            raise FileNotFoundError(
-                "No fully committed Schwab option-quality receipt was available "
-                f"by the causal input cutoff {cutoff.isoformat()}"
-            )
+            if not any_committed:
+                paths = _stock_glob_paths(
+                    root,
+                    clean_symbols,
+                    ("options", "features", "option-quality", "schwab"),
+                )
+                source = _read_required_sources(
+                    paths,
+                    family="Schwab option-quality",
+                    cache=parquet_cache,
+                )
+            else:
+                raise FileNotFoundError(
+                    "No fully committed Schwab option-quality receipt was available "
+                    f"by the causal input cutoff {cutoff.isoformat()}"
+                )
         output = _join_symbol_values(
             output,
             source,

@@ -22,6 +22,7 @@ from ml.option_pricing.opra import (
     estimate_requests,
     normalize_cbbo_records,
     normalize_definition_records,
+    opra_storage_capacity_report,
     point_in_time_definition_asof,
     read_opra_import,
     research_benchmark_schedule_report,
@@ -130,6 +131,31 @@ def test_opra_default_is_cost_only_and_never_calls_get_range(tmp_path: Path) -> 
     assert request["schema"] == "definition"
     assert request["stype_in"] == "parent"
     assert request["symbols"] == ["NVDA.OPT"]
+
+
+def test_storage_report_includes_expanded_materialization_size(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "ml.option_pricing.opra.shutil.disk_usage",
+        lambda _path: SimpleNamespace(
+            total=20_000_000_000,
+            used=0,
+            free=20_000_000_000,
+        ),
+    )
+
+    report = opra_storage_capacity_report(
+        tmp_path,
+        estimated_billable_size_bytes=1_024,
+    )
+
+    assert report["estimated_expanded_bytes"] == 2_048
+    assert report["required_free_bytes"] == (
+        report["estimated_expanded_bytes"] + report["immutable_reserve_bytes"]
+    )
+    assert report["status"] == "PASS"
 
 
 def test_production_schedule_uses_all_six_symbols_and_derived_cluster_count() -> None:

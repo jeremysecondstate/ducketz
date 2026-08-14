@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import pandas as pd
@@ -15,6 +16,7 @@ from options import OptionSnapshotOutput
 from options.publication import (
     LEGACY_OPTION_SNAPSHOT_PUBLICATION_VERSION,
     OptionSnapshotPublicationError,
+    canonical_option_snapshots,
     committed_option_snapshots,
     option_snapshot_pointer_path,
     option_snapshot_root,
@@ -303,6 +305,84 @@ def test_legacy_schwab_v1_snapshot_remains_readable(tmp_path: Path) -> None:
     assert legacy.schema_version == LEGACY_OPTION_SNAPSHOT_PUBLICATION_VERSION
 
 
+def test_legacy_v1_later_capture_divergence_is_diagnostic_only(
+    tmp_path: Path,
+) -> None:
+    target = "2026-08-05T17:15:00Z"
+    first = _publish(
+        tmp_path,
+        snapshot_for=target,
+        available_at="2026-08-05T17:16:00Z",
+        score=1.0,
+    )
+    _rewrite_snapshot_capture(
+        first.directory,
+        available_at="2026-08-05T17:16:00Z",
+        score=1.0,
+        schema_version=LEGACY_OPTION_SNAPSHOT_PUBLICATION_VERSION,
+    )
+    first = read_option_snapshot(first.directory)
+    later_directory = first.directory.with_name(f"{first.directory.name}-later-v1")
+    shutil.copytree(first.directory, later_directory)
+    _rewrite_snapshot_capture(
+        later_directory,
+        available_at="2026-08-05T17:31:00Z",
+        score=2.0,
+        schema_version=LEGACY_OPTION_SNAPSHOT_PUBLICATION_VERSION,
+    )
+
+    selected, report = canonical_option_snapshots(tmp_path, symbol="GOOG")
+
+    assert [snapshot.directory for snapshot in selected] == [first.directory]
+    assert report["duplicate_publication_count"] == 1
+    assert report["legacy_divergent_publication_count"] == 1
+    surfaces, _sources = read_committed_option_surfaces(
+        tmp_path,
+        symbols=("GOOG",),
+        available_not_after="2026-08-05T17:32:00Z",
+    )
+    assert surfaces["score"].tolist() == [1.0]
+
+    raw, contracts, features = _frames(
+        snapshot_for=target,
+        available_at="2026-08-05T17:46:00Z",
+        score=1.0,
+    )
+    retry = publish_option_snapshot(
+        tmp_path,
+        symbol="GOOG",
+        raw=raw,
+        contracts=contracts,
+        features=features,
+    )
+    assert retry.directory == first.directory
+
+
+def test_v2_committed_divergence_still_fails_closed(tmp_path: Path) -> None:
+    first = _publish(
+        tmp_path,
+        snapshot_for="2026-08-05T17:15:00Z",
+        available_at="2026-08-05T17:16:00Z",
+        score=1.0,
+    )
+    duplicate_directory = first.directory.with_name(
+        f"{first.directory.name}-divergent-v2"
+    )
+    shutil.copytree(first.directory, duplicate_directory)
+    _rewrite_snapshot_capture(
+        duplicate_directory,
+        available_at="2026-08-05T17:31:00Z",
+        score=2.0,
+        schema_version=first.schema_version,
+    )
+
+    with pytest.raises(
+        OptionSnapshotPublicationError,
+        match="Conflicting duplicate option evidence",
+    ):
+        canonical_option_snapshots(tmp_path, symbol="GOOG")
+
+
 def test_injected_opra_adapter_is_primary_and_same_target_skips_provider_call(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -435,3 +515,62 @@ def _frames(
     )
     features = pd.DataFrame([{**key, "score": score}])
     return raw, contracts, features
+
+
+def _rewrite_snapshot_capture(
+    directory: Path,
+    *,
+    available_at: str,
+    score: float,
+    schema_version: str,
+) -> None:
+    from ml.artifacts import file_checksum
+
+    available = pd.Timestamp(available_at)
+    for name in ("raw.parquet", "contracts.parquet", "option-quality.parquet"):
+        path = directory / name
+        frame = pd.read_parquet(path)
+        for column in ("available_at", "first_available_at"):
+            if column in frame.columns:
+                frame[column] = available
+        if name == "option-quality.parquet":
+            frame["score"] = score
+        frame.to_parquet(path, index=False)
+    outputs = {
+        name: {
+            "rows": len(pd.read_parquet(directory / name)),
+            "size": (directory / name).stat().st_size,
+            "checksum_sha256": file_checksum(directory / name),
+        }
+        for name in ("raw.parquet", "contracts.parquet", "option-quality.parquet")
+    }
+    manifest_path = directory / "manifest.json"
+    receipt_path = directory / "receipt.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    for payload in (manifest, receipt):
+        payload["schema_version"] = schema_version
+        payload["available_at"] = available.isoformat()
+        payload["outputs"] = outputs
+        if schema_version == LEGACY_OPTION_SNAPSHOT_PUBLICATION_VERSION:
+            for key in (
+                "provider",
+                "dataset",
+                "normalized_schema_version",
+                "target_snapshot_for",
+                "first_available_at",
+                "receipt_published_at",
+            ):
+                payload.pop(key, None)
+        else:
+            payload["first_available_at"] = available.isoformat()
+            payload["receipt_published_at"] = available.isoformat()
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    receipt["manifest_checksum_sha256"] = file_checksum(manifest_path)
+    receipt_path.write_text(
+        json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )

@@ -486,11 +486,13 @@ def canonical_option_snapshots(
     provider: str = "schwab",
     available_not_after: object | None = None,
 ) -> tuple[tuple[CommittedOptionSnapshot, ...], Mapping[str, object]]:
-    """Collapse legacy duplicates to the earliest verified receipt.
+    """Collapse publications to the earliest verified receipt per target.
 
-    Duplicate publications remain immutable and readable.  They are excluded
-    from prospective/session/training weight, and conflicting market or
-    contract content fails closed.
+    V1 used ``available_at`` as part of its natural key, so repeated captures
+    of one target were legal and can contain different market observations.
+    Those later captures remain immutable and readable but are diagnostic-only
+    after the v2 target-key migration.  Divergent v2 publications, and
+    divergent v1 publications with the same legacy key, still fail closed.
     """
 
     snapshots = committed_option_snapshots(
@@ -504,22 +506,18 @@ def canonical_option_snapshots(
         groups.setdefault(snapshot.snapshot_for, []).append(snapshot)
     selected: list[CommittedOptionSnapshot] = []
     duplicate_count = 0
+    legacy_divergent_count = 0
     for target, group in sorted(groups.items()):
-        group.sort(
-            key=lambda item: (
-                _receipt_availability(item),
-                item.directory.as_posix(),
-            )
+        chosen, legacy_divergent = _canonical_snapshot_group(
+            group,
+            conflict_message=(
+                "Conflicting duplicate option evidence for "
+                f"{provider}/{symbol}/{target.isoformat()}"
+            ),
         )
-        reference = _semantic_output_hashes(group[0])
-        for duplicate in group[1:]:
-            if _semantic_output_hashes(duplicate) != reference:
-                raise OptionSnapshotPublicationError(
-                    "Conflicting duplicate option evidence for "
-                    f"{provider}/{symbol}/{target.isoformat()}"
-                )
-        selected.append(group[0])
+        selected.append(chosen)
         duplicate_count += max(0, len(group) - 1)
+        legacy_divergent_count += legacy_divergent
     return tuple(selected), {
         "natural_key": ["provider", "symbol", "target_snapshot_for"],
         "provider": _provider(provider),
@@ -528,7 +526,8 @@ def canonical_option_snapshots(
         "selected_natural_target_count": len(selected),
         "duplicate_publication_count": duplicate_count,
         "conflicting_publication_count": 0,
-        "selection_policy": "earliest-verified-receipt-v2",
+        "legacy_divergent_publication_count": legacy_divergent_count,
+        "selection_policy": "earliest-verified-receipt-version-aware-v3",
     }
 
 
@@ -550,15 +549,49 @@ def _existing_natural_snapshot(
     ]
     if not matches:
         return None
-    matches.sort(
-        key=lambda item: (_receipt_availability(item), item.directory.as_posix())
-    )
-    reference = _semantic_output_hashes(matches[0])
-    if any(_semantic_output_hashes(item) != reference for item in matches[1:]):
-        raise OptionSnapshotPublicationError(
+    selected, _legacy_divergent = _canonical_snapshot_group(
+        matches,
+        conflict_message=(
             "Existing option natural target contains divergent immutable evidence"
-        )
-    return matches[0]
+        ),
+    )
+    return selected
+
+
+def _canonical_snapshot_group(
+    snapshots: Sequence[CommittedOptionSnapshot],
+    *,
+    conflict_message: str,
+) -> tuple[CommittedOptionSnapshot, int]:
+    """Select one target while preserving the distinct v1 natural-key rule."""
+
+    ordered = sorted(
+        snapshots,
+        key=lambda item: (_receipt_availability(item), item.directory.as_posix()),
+    )
+    selected = ordered[0]
+    selected_hashes = _semantic_output_hashes(selected)
+    legacy_hashes_by_availability: dict[
+        pd.Timestamp, tuple[str, str, str]
+    ] = {}
+    if selected.schema_version == LEGACY_OPTION_SNAPSHOT_PUBLICATION_VERSION:
+        legacy_hashes_by_availability[selected.available_at] = selected_hashes
+    legacy_divergent_count = 0
+    for candidate in ordered[1:]:
+        candidate_hashes = _semantic_output_hashes(candidate)
+        if candidate.schema_version == LEGACY_OPTION_SNAPSHOT_PUBLICATION_VERSION:
+            legacy_reference = legacy_hashes_by_availability.setdefault(
+                candidate.available_at,
+                candidate_hashes,
+            )
+            if candidate_hashes != legacy_reference:
+                raise OptionSnapshotPublicationError(conflict_message)
+            if candidate_hashes != selected_hashes:
+                legacy_divergent_count += 1
+            continue
+        if candidate_hashes != selected_hashes:
+            raise OptionSnapshotPublicationError(conflict_message)
+    return selected, legacy_divergent_count
 
 
 def _verify_semantically_identical_retry(

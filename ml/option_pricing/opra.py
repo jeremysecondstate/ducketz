@@ -586,10 +586,14 @@ def opra_storage_capacity_report(
         if estimated_billable_size_bytes is not None
         else None
     )
-    required = (
+    estimated_expanded = (
         math.ceil(estimated * OPRA_STORAGE_EXPANSION_FACTOR)
-        + OPRA_STORAGE_RESERVE_BYTES
         if estimated is not None and estimated >= 0
+        else None
+    )
+    required = (
+        estimated_expanded + OPRA_STORAGE_RESERVE_BYTES
+        if estimated_expanded is not None
         else None
     )
     status = (
@@ -603,6 +607,7 @@ def opra_storage_capacity_report(
         "status": status,
         "anchor": str(anchor),
         "estimated_billable_size_bytes": estimated,
+        "estimated_expanded_bytes": estimated_expanded,
         "materialization_expansion_factor": OPRA_STORAGE_EXPANSION_FACTOR,
         "immutable_reserve_bytes": OPRA_STORAGE_RESERVE_BYTES,
         "required_free_bytes": required,

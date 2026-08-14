@@ -762,6 +762,12 @@ def test_active_v2_loop_b_feature_materialization_uses_verified_v1_authority(
     def read_sources(*_args: object, **_kwargs: object) -> pd.DataFrame:
         return pd.DataFrame({"fixture": [1.0]})
 
+    def fail_redundant_snapshot_scan(
+        *_args: object,
+        **_kwargs: object,
+    ) -> tuple[object, ...]:
+        raise AssertionError("nonempty cached option evidence must not be rescanned")
+
     def fill_values(
         frame: pd.DataFrame,
         _source: pd.DataFrame,
@@ -820,12 +826,15 @@ def test_active_v2_loop_b_feature_materialization_uses_verified_v1_authority(
     monkeypatch.setattr(
         rolling_materialization,
         "read_committed_option_surfaces",
-        lambda *_args, **_kwargs: (pd.DataFrame(), ()),
+        lambda *_args, **_kwargs: (
+            pd.DataFrame({"fixture": [1.0]}),
+            (dummy_path,),
+        ),
     )
     monkeypatch.setattr(
         rolling_materialization,
         "committed_option_snapshots",
-        lambda *_args, **_kwargs: (),
+        fail_redundant_snapshot_scan,
     )
     monkeypatch.setattr(
         rolling_materialization,
