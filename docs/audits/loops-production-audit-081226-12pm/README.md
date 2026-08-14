@@ -13,7 +13,4 @@
 - [Options Capture](04-options-capture.md)
 - [Directional Loop B](05-loop-b.md)
 - [Strategy](06-strategy.md)
-- [Confirmed errors](confirmed-errors.md)
 - [Loops system map](loops-system-map.md)
-- [Recommendations](recommendations.md)
-
