@@ -48,8 +48,10 @@ Two receipts have intentionally separate authority:
 - `ml/macro-readiness/fred-alfred/.../receipt.json` authorizes Loop B only after
   source checksums, revision uniqueness, lineage, per-feature freshness,
   lookahead, and at least 95% eligible coverage pass for 1-day and every weekly
-  route. No waiting period or operator approval is part of this correctness
-  gate.
+  route. Because macro evidence is shared across symbols, coverage is measured
+  once per horizon decision clock; symbol count and unequal symbol history do
+  not reweight the gate. No waiting period or operator approval is part of this
+  correctness gate.
 
 Production Loop B must use `loop-a-all-bsgp-active-v3`. Its intraday contracts
 remain the v2 sets; only the 1-day and 1-week sets include macro features. The

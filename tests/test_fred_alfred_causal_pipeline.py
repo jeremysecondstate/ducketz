@@ -347,6 +347,83 @@ def test_backfill_and_incremental_bounds_come_from_decisions_lags_and_receipts(
     assert incremental.observation_start == backfill.observation_start
 
 
+def test_macro_readiness_coverage_is_invariant_to_symbol_multiplicity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    covered_at = pd.Timestamp("2024-01-02T21:05:00Z")
+    uncovered_at = pd.Timestamp("2024-01-03T21:05:00Z")
+    decisions = pd.DataFrame(
+        [
+            {
+                "symbol": symbol,
+                "horizon": horizon,
+                "decision_timestamp": decision_at,
+            }
+            for horizon in FRED_ALFRED_MODEL_HORIZONS
+            for symbol, decision_at in (
+                ("AAPL", covered_at),
+                ("AAPL", uncovered_at),
+                ("NVDA", uncovered_at),
+            )
+        ]
+    )
+    release_context = pd.DataFrame(
+        {
+            "available_at": [covered_at],
+            **{
+                source_column: [1.0]
+                for source_column in MACRO_VALUES.values()
+            },
+            **{
+                lineage_column: [covered_at]
+                for lineage_column, _series, _freshness in (
+                    readiness_module.MACRO_LINEAGE.values()
+                )
+            },
+        }
+    )
+
+    def load_shared_macro(
+        route_decisions: pd.DataFrame,
+        _source: pd.DataFrame,
+        **_kwargs: object,
+    ) -> pd.DataFrame:
+        output = route_decisions.copy()
+        covered = output["decision_timestamp"].eq(covered_at)
+        for feature in MACRO_VALUES:
+            output[feature] = 1.0
+            output[f"{feature}__available_at"] = output["decision_timestamp"]
+        output.loc[~covered, "macro__unemployment_change"] = float("nan")
+        output.loc[
+            ~covered, "macro__unemployment_change__available_at"
+        ] = pd.NaT
+        return output
+
+    monkeypatch.setattr(
+        readiness_module,
+        "load_macro_features",
+        load_shared_macro,
+    )
+    coverage = readiness_module._coverage_report(
+        decisions,
+        release_context=release_context,
+        vintages=pd.DataFrame(),
+        minimum_coverage=0.5,
+    )
+
+    assert coverage["status"] == "PASS"
+    for horizon in FRED_ALFRED_MODEL_HORIZONS:
+        horizon_coverage = coverage["horizons"][horizon]
+        assert horizon_coverage["decision_count"] == 3
+        assert horizon_coverage["shared_decision_clock_count"] == 2
+        unemployment = horizon_coverage["features"][
+            "macro__unemployment_change"
+        ]
+        assert unemployment["eligible_decision_count"] == 2
+        assert unemployment["covered_decision_count"] == 1
+        assert unemployment["coverage"] == pytest.approx(0.5)
+
+
 def test_current_revised_receipt_basis_is_rejected_as_historical_evidence() -> None:
     vintages = normalize_fred_vintage_rows(_normalized_rows())
     release = derive_macro_release_features(vintages)

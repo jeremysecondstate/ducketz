@@ -531,9 +531,17 @@ def _coverage_report(
     total_lookahead = 0
     all_pass = True
     for horizon in FRED_ALFRED_MODEL_HORIZONS:
-        horizon_decisions = decisions.loc[
+        route_decisions = decisions.loc[
             decisions["horizon"].astype(str).eq(horizon)
         ].copy()
+        # Macro evidence is shared across symbols.  Measure its causal coverage
+        # once per decision clock so adding, removing, or backfilling a symbol
+        # cannot change readiness merely by reweighting identical timestamps.
+        horizon_decisions = (
+            route_decisions.sort_values("decision_timestamp", kind="stable")
+            .drop_duplicates("decision_timestamp")
+            .reset_index(drop=True)
+        )
         joined = load_macro_features(
             horizon_decisions,
             release_context,
@@ -593,7 +601,8 @@ def _coverage_report(
                 "lookahead_or_freshness_violation_count": violations,
             }
         rows[horizon] = {
-            "decision_count": int(len(horizon_decisions)),
+            "decision_count": int(len(route_decisions)),
+            "shared_decision_clock_count": int(len(horizon_decisions)),
             "features": feature_rows,
         }
     return {
