@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Iterable, Mapping, Sequence
 
 import pandas as pd
 import pyarrow as pa
@@ -93,6 +93,24 @@ def _schema(fields: Iterable[tuple[str, pa.DataType]]) -> pa.Schema:
             + ", ".join(workflow_only)
         )
     return schema
+
+
+def _schema_fields_with_insertions(
+    schema: pa.Schema,
+    *,
+    before: Mapping[str, Sequence[tuple[str, pa.DataType]]],
+) -> tuple[tuple[str, pa.DataType], ...]:
+    unknown = sorted(set(before).difference(schema.names))
+    if unknown:
+        raise ValueError(
+            "Cannot insert schema fields before missing columns: "
+            + ", ".join(unknown)
+        )
+    return tuple(
+        pair
+        for field in schema
+        for pair in (*before.get(field.name, ()), (field.name, field.type))
+    )
 
 
 SAMPLE_BASE_SCHEMA = _schema(
@@ -426,6 +444,8 @@ OPTION_PRICING_SAMPLE_SCHEMA = _schema(
     )
 )
 
+# Pricing publication v1/v2 predates the explicit dollar-residual column.
+# Keep this declaration frozen; current-only fields are inserted below.
 LEGACY_OPTION_PRICING_PREDICTION_SCHEMA = _schema(
     (
         ("id", TEXT),
@@ -453,7 +473,6 @@ LEGACY_OPTION_PRICING_PREDICTION_SCHEMA = _schema(
         ("dividend_yield", FLOAT),
         ("black_scholes_price", FLOAT),
         ("predicted_normalized_residual", FLOAT),
-        ("predicted_dollar_residual", FLOAT),
         ("raw_fair_value", FLOAT),
         ("point_lower_bound", FLOAT),
         ("point_upper_bound", FLOAT),
@@ -485,7 +504,12 @@ LEGACY_OPTION_PRICING_PREDICTION_SCHEMA = _schema(
 
 OPTION_PRICING_PREDICTION_SCHEMA = _schema(
     (
-        *((field.name, field.type) for field in LEGACY_OPTION_PRICING_PREDICTION_SCHEMA),
+        *_schema_fields_with_insertions(
+            LEGACY_OPTION_PRICING_PREDICTION_SCHEMA,
+            before={
+                "raw_fair_value": (("predicted_dollar_residual", FLOAT),),
+            },
+        ),
         ("source_quote_timestamp", UTC_TIMESTAMP),
         ("source_evidence_available_at", UTC_TIMESTAMP),
         ("provider_ingested_at", UTC_TIMESTAMP),
@@ -554,6 +578,8 @@ OPTION_PRICING_BSGP_SHADOW_SCHEMA = _schema(
     )
 )
 
+# Pricing publication v1/v2 evaluations likewise predate the two explicit
+# dollar-residual columns inserted into the current contract below.
 LEGACY_OPTION_PRICING_EVALUATION_SCHEMA = _schema(
     (
         ("id", TEXT),
@@ -583,9 +609,7 @@ LEGACY_OPTION_PRICING_EVALUATION_SCHEMA = _schema(
         ("bid_ask_spread", FLOAT),
         ("black_scholes_price", FLOAT),
         ("predicted_normalized_residual", FLOAT),
-        ("predicted_dollar_residual", FLOAT),
         ("observed_normalized_residual", FLOAT),
-        ("observed_dollar_residual", FLOAT),
         ("raw_fair_value", FLOAT),
         ("constrained_fair_value", FLOAT),
         ("predictive_standard_deviation", FLOAT),
@@ -610,7 +634,15 @@ LEGACY_OPTION_PRICING_EVALUATION_SCHEMA = _schema(
 
 OPTION_PRICING_EVALUATION_SCHEMA = _schema(
     (
-        *((field.name, field.type) for field in LEGACY_OPTION_PRICING_EVALUATION_SCHEMA),
+        *_schema_fields_with_insertions(
+            LEGACY_OPTION_PRICING_EVALUATION_SCHEMA,
+            before={
+                "observed_normalized_residual": (
+                    ("predicted_dollar_residual", FLOAT),
+                ),
+                "raw_fair_value": (("observed_dollar_residual", FLOAT),),
+            },
+        ),
         ("outcome_quote_timestamp", UTC_TIMESTAMP),
         ("outcome_evidence_available_at", UTC_TIMESTAMP),
         ("provider_ingested_at", UTC_TIMESTAMP),

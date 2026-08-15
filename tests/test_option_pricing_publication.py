@@ -45,6 +45,21 @@ _OUTPUTS = {
 }
 
 
+def test_legacy_pricing_schemas_remain_exact_when_current_contract_grows() -> None:
+    assert "predicted_dollar_residual" not in (
+        LEGACY_OPTION_PRICING_PREDICTION_SCHEMA.names
+    )
+    assert "predicted_dollar_residual" in OPTION_PRICING_PREDICTION_SCHEMA.names
+    assert {
+        "predicted_dollar_residual",
+        "observed_dollar_residual",
+    }.isdisjoint(LEGACY_OPTION_PRICING_EVALUATION_SCHEMA.names)
+    assert {
+        "predicted_dollar_residual",
+        "observed_dollar_residual",
+    }.issubset(OPTION_PRICING_EVALUATION_SCHEMA.names)
+
+
 def _prepared_run(root: Path, name: str, timestamp: str) -> Path:
     return _prepared_versioned_run(
         root,
