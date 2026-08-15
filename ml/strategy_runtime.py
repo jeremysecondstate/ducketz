@@ -35,7 +35,7 @@ from ml.strategy_publication import (
     publish_strategy_run,
     read_current_strategy_publication,
 )
-from ml.strategy_selection import STRATEGY_SELECTION_SCHWAB_SPREADS_V1
+from ml.strategy_selection import STRATEGY_SELECTION_OPRA_FIRST_SPREADS_V2
 from ml.strategy_selection.contracts import (
     BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
     BSGP_CALIBRATED_MODEL_SCORE_BASIS,
@@ -99,8 +99,8 @@ def run_strategy_once(
 
     with timed_stage(
         "strategy.select",
-        provider="schwab",
-        schema="normalized-options-and-stock-bbo",
+        provider="databento-opra-first/schwab-fallback",
+        schema="provider-neutral-options-and-stock-bbo",
         reporter=reporter,
         extra={"source_loop_b_run": str(source.run_directory)},
     ) as timing:
@@ -180,7 +180,7 @@ def run_strategy_once(
     )
     reports_name = "strategy-model-reports.json"
     reports_payload = {
-        "policy": STRATEGY_SELECTION_SCHWAB_SPREADS_V1,
+        "policy": STRATEGY_SELECTION_OPRA_FIRST_SPREADS_V2,
         "models_trained": selection.models_trained,
         "models_reused": selection.models_reused,
         "model_reports": dict(selection.model_reports),
@@ -229,7 +229,7 @@ def run_strategy_once(
         ),
         output_files=output_names,
         configuration={
-            "policy": STRATEGY_SELECTION_SCHWAB_SPREADS_V1,
+            "policy": STRATEGY_SELECTION_OPRA_FIRST_SPREADS_V2,
             "pricing_mode": str(pricing_mode).strip().lower(),
             "pricing_evidence_contract": dict(selection.pricing_report),
             "source_loop_b": source_record,

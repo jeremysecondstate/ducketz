@@ -12,7 +12,7 @@ import pandas as pd
 
 from datafetching.bar_schema import read_normalized_bar_parquet
 from datafetching.parquet_store import _time_keyed_upsert, _upsert
-from ml.strategy_selection.chain import SchwabChainHistory, entry_chain_receipt
+from ml.strategy_selection.chain import OptionChainHistory, entry_chain_receipt
 
 
 def main() -> int:
@@ -143,7 +143,7 @@ def _benchmark_strategy_lookup() -> dict[str, float]:
             for leg in range(6)
         ]
     )
-    history = SchwabChainHistory(
+    history = OptionChainHistory(
         symbol="GOOG",
         contracts=contracts,
         surfaces=surfaces,
@@ -181,7 +181,7 @@ def _benchmark_strategy_lookup() -> dict[str, float]:
 
 
 def _legacy_receipt(
-    history: SchwabChainHistory,
+    history: OptionChainHistory,
     query: pd.Timestamp,
 ) -> tuple[int, int]:
     cutoff = query + pd.Timedelta(minutes=59)

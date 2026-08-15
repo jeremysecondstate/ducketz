@@ -38,7 +38,7 @@ _TRACE: Mapping[str, object] = {
                 "evaluate performance as estimated edge changes",
             ],
             "implemented_requirements": [
-                "exact Schwab-chain premium and liquidity features",
+                "point-in-time OPRA-first option premium and liquidity features",
                 "future causal chain receipts for quote-based pseudo-outcome labels",
                 "calibrated profitable-outcome probability",
                 "expected return reported separately from ranking probability",

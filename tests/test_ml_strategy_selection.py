@@ -19,7 +19,7 @@ from ml.strategy_selection.candidates import (
     evaluate_candidate_outcome,
 )
 from ml.strategy_selection.chain import (
-    SchwabChainHistory,
+    OptionChainHistory,
     entry_chain_receipt,
     exit_chain_receipt,
 )
@@ -118,7 +118,7 @@ def test_entry_chain_receipt_uses_the_causal_interval_between_clocks() -> None:
         (decision + pd.Timedelta(minutes=25), decision + pd.Timedelta(minutes=26)),
         (decision + pd.Timedelta(minutes=40), decision + pd.Timedelta(minutes=41)),
     )
-    history = SchwabChainHistory(
+    history = OptionChainHistory(
         symbol="GOOG",
         contracts=pd.concat(
             [
@@ -208,7 +208,7 @@ def test_indexed_receipt_and_contract_lookup_matches_full_frame_scan() -> None:
         ],
         ignore_index=True,
     ).sample(frac=1.0, random_state=23)
-    history = SchwabChainHistory(
+    history = OptionChainHistory(
         symbol="GOOG",
         contracts=contracts,
         surfaces=surfaces,
@@ -257,7 +257,7 @@ def test_indexed_receipt_and_contract_lookup_matches_full_frame_scan() -> None:
 def test_history_coverage_prefilter_only_skips_scan_proven_impossible_rows() -> None:
     start = pd.Timestamp("2026-07-01T13:00:00Z")
     receipt_times = [start + pd.Timedelta(hours=index) for index in range(8)]
-    history = SchwabChainHistory(
+    history = OptionChainHistory(
         symbol="GOOG",
         contracts=pd.concat(
             [
@@ -918,7 +918,7 @@ def test_historical_exit_receipt_cannot_cross_real_lockbox_boundary() -> None:
         snapshot_for=target_end,
         available_at=available_at,
     )
-    history = SchwabChainHistory(
+    history = OptionChainHistory(
         symbol="GOOG",
         contracts=contracts,
         surfaces=surfaces,
@@ -1533,7 +1533,7 @@ class _IdentityProbabilityCalibrator:
 
 
 def _scanned_entry_receipt(
-    history: SchwabChainHistory,
+    history: OptionChainHistory,
     *,
     minimum_snapshot: pd.Timestamp,
     information: pd.Timestamp,
@@ -1556,7 +1556,7 @@ def _scanned_entry_receipt(
 
 
 def _scanned_exit_receipt(
-    history: SchwabChainHistory,
+    history: OptionChainHistory,
     *,
     target_end: pd.Timestamp,
     maximum_delay: pd.Timedelta,
@@ -1575,7 +1575,7 @@ def _scanned_exit_receipt(
 
 
 def _scanned_identity(
-    history: SchwabChainHistory,
+    history: OptionChainHistory,
     surface: pd.Series,
 ) -> tuple[object, ...]:
     contracts = history.contracts.loc[

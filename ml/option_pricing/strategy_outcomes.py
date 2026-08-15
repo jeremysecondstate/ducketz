@@ -18,7 +18,7 @@ from ml.strategy_selection.candidates import evaluate_candidate_outcome
 from ml.strategy_selection.chain import (
     exit_chain_receipt,
     exit_stock_quote,
-    load_schwab_chain_history,
+    load_option_chain_history,
 )
 from ml.strategy_selection.contracts import StrategySelectionPolicy
 
@@ -156,7 +156,7 @@ def build_strategy_outcome_evidence(
             try:
                 history = histories.get(symbol)
                 if history is None:
-                    history = load_schwab_chain_history(
+                    history = load_option_chain_history(
                         root,
                         symbol=symbol,
                         available_not_after=cutoff,

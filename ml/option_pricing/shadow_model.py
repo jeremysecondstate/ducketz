@@ -565,8 +565,8 @@ def train_loop_native_shadow_generation(
         "side_models": side_reports,
         "evidence_counts": _evidence_counts(used),
         "library_versions": _library_versions(),
-        "paid_opra_used": bool(
-            verified_materialization.report.get("paid_opra_used", False)
+        "historical_opra_used": bool(
+            verified_materialization.report.get("historical_opra_used", False)
         ),
         "external_provider_requests": 0,
         "automated_action_allowed": False,

@@ -11,7 +11,7 @@ from typing import Mapping, Sequence
 import numpy as np
 import pandas as pd
 
-from ml.artifacts import utc_timestamp
+from ml.artifacts import file_checksum, utc_timestamp
 from ml.option_pricing.policies import (
     ContractSelectionPolicy,
     FINITE_BASIS_RESIDUAL_MODEL_NAME,
@@ -386,6 +386,13 @@ def _offline_replay_predictions(
     *,
     available_not_after: pd.Timestamp,
 ) -> tuple[pd.DataFrame, tuple[Path, ...]]:
+    opra, opra_files = _canonical_opra_replay_predictions(
+        datastore_root,
+        available_not_after=available_not_after,
+    )
+    if not opra.empty:
+        return opra, opra_files
+
     materialization = read_current_loop_native_schwab_materialization(
         datastore_root,
         load_samples=False,
@@ -451,6 +458,105 @@ def _offline_replay_predictions(
         )
     )
     return projected, source_files
+
+
+def _canonical_opra_replay_predictions(
+    datastore_root: Path,
+    *,
+    available_not_after: pd.Timestamp,
+) -> tuple[pd.DataFrame, tuple[Path, ...]]:
+    """Read a receipt-verified OPRA causal replay as the offline-first lane."""
+
+    root = Path(datastore_root).resolve()
+    pointer_path = root / "ml" / "option-pricing-opra-replay-latest" / "run.json"
+    if not pointer_path.is_file():
+        return pd.DataFrame(), ()
+    pointer = json.loads(pointer_path.read_text(encoding="utf-8"))
+    current = pointer.get("current")
+    if (
+        pointer.get("schema_version") != "option-pricing-opra-causal-replay-pointer-v1"
+        or not isinstance(current, Mapping)
+    ):
+        raise RuntimeError("Canonical OPRA replay pointer is invalid")
+    run = (root / str(current.get("run_path") or "")).resolve()
+    if root not in run.parents:
+        raise RuntimeError("Canonical OPRA replay pointer escapes the datastore")
+    receipt_path = run / "receipt.json"
+    manifest_path = run / "manifest.json"
+    predictions_path = run / "pricing-predictions.parquet"
+    if file_checksum(receipt_path) != str(
+        current.get("receipt_checksum_sha256") or ""
+    ):
+        raise RuntimeError("Canonical OPRA replay receipt checksum mismatch")
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    if (
+        receipt.get("schema_version")
+        != "option-pricing-opra-causal-replay-receipt-v1"
+        or receipt.get("provider") != "databento-opra"
+        or utc_timestamp(receipt.get("published_at")) > available_not_after
+        or file_checksum(manifest_path)
+        != str(receipt.get("manifest_checksum_sha256") or "")
+    ):
+        raise RuntimeError("Canonical OPRA replay receipt is not valid at the cutoff")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    outputs = manifest.get("outputs")
+    prediction_metadata = (
+        outputs.get("pricing-predictions.parquet")
+        if isinstance(outputs, Mapping)
+        else None
+    )
+    if (
+        manifest.get("schema_version") != "option-pricing-opra-causal-replay-v1"
+        or manifest.get("provider") != "databento-opra"
+        or not isinstance(prediction_metadata, Mapping)
+        or int(prediction_metadata.get("row_count") or 0) < 1
+        or file_checksum(predictions_path)
+        != str(prediction_metadata.get("checksum_sha256") or "")
+    ):
+        raise RuntimeError("Canonical OPRA replay prediction artifact is invalid")
+    source_files: list[Path] = [
+        pointer_path,
+        receipt_path,
+        manifest_path,
+        predictions_path,
+    ]
+    inputs = manifest.get("input_files")
+    if not isinstance(inputs, Sequence) or isinstance(inputs, (str, bytes)):
+        raise RuntimeError("Canonical OPRA replay has no immutable input inventory")
+    for item in inputs:
+        if not isinstance(item, Mapping):
+            raise RuntimeError("Canonical OPRA replay input inventory is invalid")
+        path = (root / str(item.get("path") or "")).resolve()
+        if root not in path.parents or file_checksum(path) != str(
+            item.get("checksum_sha256") or ""
+        ):
+            raise RuntimeError(f"Canonical OPRA replay input failed verification: {path}")
+        source_files.append(path)
+    predictions = pd.read_parquet(predictions_path)
+    if len(predictions) != int(prediction_metadata["row_count"]):
+        raise RuntimeError("Canonical OPRA replay prediction row count mismatch")
+    provider = predictions.get(
+        "source_provider", pd.Series("", index=predictions.index, dtype="string")
+    ).astype("string")
+    if not provider.eq("databento-opra").all():
+        raise RuntimeError("Canonical OPRA replay contains non-OPRA provider rows")
+    predictions["fair_value"] = pd.to_numeric(
+        predictions["constrained_fair_value"], errors="coerce"
+    )
+    predictions["fair_value_95_lower"] = pd.to_numeric(
+        predictions["constrained_interval_95_lower"], errors="coerce"
+    )
+    predictions["fair_value_95_upper"] = pd.to_numeric(
+        predictions["constrained_interval_95_upper"], errors="coerce"
+    )
+    predictions["residual_shrinkage"] = 0.0
+    predictions["pricing_source"] = "BLACK_SCHOLES"
+    predictions["pricing_evidence_status"] = predictions["model_status"]
+    predictions["model_published_at"] = utc_timestamp(receipt["published_at"])
+    predictions["input_staleness_seconds"] = pd.to_numeric(
+        predictions["source_quote_staleness_seconds"], errors="coerce"
+    )
+    return predictions, tuple(dict.fromkeys(source_files))
 
 
 @lru_cache(maxsize=8)

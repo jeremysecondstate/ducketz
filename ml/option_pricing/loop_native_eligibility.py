@@ -180,8 +180,8 @@ def loop_native_eligibility_policy_payload(
             "schwab_role": (
                 "broker-enrichment-fallback-disagreement-and-execution-validation"
             ),
-            "paid_opra": "REQUIRED_BOUNDED_OFFLINE_EVIDENCE",
-            "paid_opra_prerequisite": True,
+            "historical_opra": "REQUIRED_VERIFIED_STANDARD_HISTORY",
+            "historical_opra_prerequisite": True,
             "runtime_provider_requests_for_training": 0,
             "current_revised_rate_history_for_historical_targets": "REJECTED",
         },
@@ -529,8 +529,8 @@ def build_loop_native_eligibility_report(
         "production_authorized": False,
         "candidate_frozen": False,
         "lockbox_open": False,
-        "paid_opra_required": True,
-        "paid_opra_used": bool(materialization.get("paid_opra_used", False)),
+        "historical_opra_required": True,
+        "historical_opra_used": bool(materialization.get("historical_opra_used", False)),
         "operational_evidence_present": operational_report is not None,
         "strategy_evidence_present": strategy_report is not None,
         "automated_action_allowed": False,
@@ -571,7 +571,7 @@ def verify_loop_native_capture_lineage(
     )
     if (
         materialization_report.get("external_provider_requests") != 0
-        or not isinstance(materialization_report.get("paid_opra_used"), bool)
+        or not isinstance(materialization_report.get("historical_opra_used"), bool)
         or materialization_report.get("automated_action_allowed") is not False
     ):
         errors.append("MATERIALIZATION_GUARDS_INVALID")
@@ -602,7 +602,9 @@ def verify_loop_native_capture_lineage(
         "model_generation": (
             generation.receipt.get("run_path") if generation is not None else None
         ),
-        "paid_opra_used": bool(materialization_report.get("paid_opra_used", False)),
+        "historical_opra_used": bool(
+            materialization_report.get("historical_opra_used", False)
+        ),
         "automated_action_allowed": False,
     }
 

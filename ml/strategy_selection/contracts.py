@@ -12,10 +12,12 @@ PositionSide = Literal["LONG", "SHORT"]
 OptionType = Literal["CALL", "PUT"]
 ExpirationRole = Literal["FRONT", "BACK"]
 
-STRATEGY_SELECTION_SCHWAB_SPREADS_V1 = "schwab-spreads-v1"
+STRATEGY_SELECTION_OPRA_FIRST_SPREADS_V2 = "opra-first-spreads-v2"
 
-STRATEGY_REGISTRY_VERSION = "schwab-spreads-strategy-registry-v1"
-STRATEGY_CANDIDATE_POLICY_VERSION = "schwab-exact-chain-pricing-candidates-v4"
+STRATEGY_REGISTRY_VERSION = "opra-first-spreads-strategy-registry-v2"
+STRATEGY_CANDIDATE_POLICY_VERSION = (
+    "provider-neutral-opra-first-chain-pricing-candidates-v5"
+)
 STRATEGY_OUTCOME_POLICY_VERSION = "observed-bbo-pseudo-outcome-v2"
 MARKET_STATE_POLICY_VERSION = "point-in-time-market-state-pricing-v2"
 STRATEGY_PRIOR_POLICY_VERSION = "pricing-greek-bbo-scenario-prior-v3"
@@ -97,7 +99,7 @@ class StrategyDefinition:
 
 @dataclass(frozen=True)
 class StrategySelectionPolicy:
-    policy_id: str = STRATEGY_SELECTION_SCHWAB_SPREADS_V1
+    policy_id: str = STRATEGY_SELECTION_OPRA_FIRST_SPREADS_V2
     account_approval: str = "SPREADS"
     minimum_train_decisions: int = 252
     calibration_decisions: int = 63
@@ -115,8 +117,10 @@ class StrategySelectionPolicy:
     random_state: int = 20260801
 
     def __post_init__(self) -> None:
-        if self.policy_id != STRATEGY_SELECTION_SCHWAB_SPREADS_V1:
-            raise ValueError("StrategySelectionPolicy requires schwab-spreads-v1")
+        if self.policy_id != STRATEGY_SELECTION_OPRA_FIRST_SPREADS_V2:
+            raise ValueError(
+                "StrategySelectionPolicy requires opra-first-spreads-v2"
+            )
         if self.account_approval != "SPREADS":
             raise ValueError("This policy is scoped to Schwab SPREADS approval")
         for name in (
@@ -195,7 +199,7 @@ __all__ = [
     "STRATEGY_RANKING_POLICY_VERSION",
     "STRATEGY_REGISTRY_VERSION",
     "STRATEGY_RESEARCH_TRACE_VERSION",
-    "STRATEGY_SELECTION_SCHWAB_SPREADS_V1",
+    "STRATEGY_SELECTION_OPRA_FIRST_SPREADS_V2",
     "SCENARIO_PRIOR_SCORE_BASIS",
     "StrategyDefinition",
     "StrategyModel",

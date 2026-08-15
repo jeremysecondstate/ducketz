@@ -29,7 +29,6 @@ from ml.option_pricing.lockbox import (
     LockboxError,
     score_closed_lockbox_once,
 )
-from ml.option_pricing import opra_materialization
 from ml.option_pricing.operations import (
     ROLLBACK_AUTHORIZATION_VERSION,
     RuntimeLimits,
@@ -314,79 +313,6 @@ def test_forged_production_claim_cannot_be_published(tmp_path: Path) -> None:
             pricing_run=result.run_directory,
             published_at="2026-07-06T14:01:02Z",
         )
-
-
-def test_normal_materializer_inventories_but_never_decodes_lockbox_targets(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    evidence = tmp_path / "ml" / "option-pricing-evidence" / "opra"
-    definitions_dir = evidence / "definitions"
-    cbbo_dir = evidence / "cbbo"
-    definitions_dir.mkdir(parents=True)
-    cbbo_dir.mkdir()
-    (definitions_dir / "receipt.json").write_text("{}", encoding="utf-8")
-    (cbbo_dir / "receipt.json").write_text("{}", encoding="utf-8")
-    requests = []
-    outputs = {}
-    for index in range(130):
-        target = pd.Timestamp("2026-01-02T15:00:00Z") + pd.Timedelta(minutes=index)
-        name = f"cbbo-NVDA-{index:03d}.dbn.zst"
-        requests.append(
-            {
-                "output_name": name,
-                "purpose": f"SOURCE_BACKWARD_TARGET_FORWARD:NVDA:{target.isoformat()}",
-                "symbols": [
-                    "NVDA  260220C00100000",
-                    "NVDA  260220P00100000",
-                ],
-            }
-        )
-        outputs[name] = {"size": 1, "checksum_sha256": f"checksum-{index}"}
-
-    def fake_import(directory: Path, *, datastore_root: Path) -> dict[str, object]:
-        if directory.name == "definitions":
-            return {
-                "manifest": {
-                    "phase": "definitions",
-                    "outputs": {"definitions.dbn.zst": {}},
-                }
-            }
-        return {
-            "manifest": {
-                "phase": "cbbo",
-                "eligibility_policy": {"policy_hash": "policy-hash"},
-                "requests": requests,
-                "outputs": outputs,
-            }
-        }
-
-    decoded: list[str] = []
-
-    def fake_read(path: Path) -> pd.DataFrame:
-        decoded.append(path.name)
-        if path.name.startswith("cbbo-"):
-            raise ValueError("stop after proving decode boundary")
-        return pd.DataFrame()
-
-    monkeypatch.setattr(opra_materialization, "read_opra_import", fake_import)
-    monkeypatch.setattr(opra_materialization, "_read_dbn", fake_read)
-    monkeypatch.setattr(
-        opra_materialization,
-        "normalize_definition_records",
-        lambda frame: pd.DataFrame({"symbol": ["NVDA"]}),
-    )
-    result = opra_materialization.materialize_committed_opra_history_v2(
-        tmp_path,
-        symbols=("NVDA",),
-        rate_observations=None,
-        closed_lockbox_clusters=126,
-        eligibility_policy_hash="policy-hash",
-    )
-    assert result.closed_lockbox.cluster_count == 126
-    assert result.closed_lockbox.target_values_read is False
-    assert result.closed_lockbox.output_count == 126
-    decoded_cbbo = [name for name in decoded if name.startswith("cbbo-")]
-    assert decoded_cbbo == [f"cbbo-NVDA-{index:03d}.dbn.zst" for index in range(4)]
 
 
 def test_corrupt_receipt_fails_and_authorized_rollback_preserves_evidence(

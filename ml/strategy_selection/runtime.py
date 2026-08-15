@@ -21,12 +21,12 @@ from ml.strategy_selection.candidates import (
     evaluate_candidate_outcome,
 )
 from ml.strategy_selection.chain import (
-    SchwabChainHistory,
+    OptionChainHistory,
     entry_chain_receipt,
     entry_stock_quote,
     exit_chain_receipt,
     exit_stock_quote,
-    load_schwab_chain_history,
+    load_option_chain_history,
 )
 from ml.strategy_selection.contracts import (
     STRATEGY_CANDIDATE_POLICY_VERSION,
@@ -102,13 +102,13 @@ def run_strategy_selection(
             else StrategyPricingEvidenceCatalog(pd.DataFrame(), ())
         )
     prediction_probabilities = _prediction_probabilities(predictions)
-    histories: dict[str, SchwabChainHistory] = {}
+    histories: dict[str, OptionChainHistory] = {}
     source_files: list[Path] = []
     source_files.extend(catalog.source_files)
     history_errors: dict[str, str] = {}
     for symbol in sorted(set(samples["symbol"].astype("string").str.upper())):
         try:
-            history = load_schwab_chain_history(
+            history = load_option_chain_history(
                 datastore_root,
                 symbol=str(symbol),
                 available_not_after=history_available_not_after,
@@ -228,7 +228,9 @@ def run_strategy_selection(
         sample = _matching_sample(samples, prediction)
         history = histories.get(symbol)
         if history is None:
-            reason = history_errors.get(symbol, "Schwab chain history unavailable")
+            reason = history_errors.get(
+                symbol, "OPRA-first provider-neutral chain history unavailable"
+            )
             audit_frames.append(
                 _failed_route_audit(
                     sample,
@@ -246,7 +248,7 @@ def run_strategy_selection(
         )
         if entry is None:
             reason = (
-                "No causally eligible exact Schwab chain receipt was available "
+                "No causally eligible point-in-time option-chain receipt was available "
                 "by the Strategy run cutoff and before the target window."
             )
             audit_frames.append(
@@ -351,7 +353,7 @@ def run_strategy_selection(
 def _historical_outcomes(
     samples: pd.DataFrame,
     *,
-    histories: Mapping[str, SchwabChainHistory],
+    histories: Mapping[str, OptionChainHistory],
     prediction_probabilities: Mapping[
         tuple[str, str, pd.Timestamp, pd.Timestamp, pd.Timestamp], float
     ],
@@ -683,7 +685,7 @@ def _pricing_report(
 def _samples_with_possible_receipts(
     samples: pd.DataFrame,
     *,
-    histories: Mapping[str, SchwabChainHistory],
+    histories: Mapping[str, OptionChainHistory],
     strictly_before: pd.Timestamp | None,
 ) -> tuple[pd.DataFrame, Counter[str]]:
     """Remove only samples proven impossible by actual receipt coverage."""

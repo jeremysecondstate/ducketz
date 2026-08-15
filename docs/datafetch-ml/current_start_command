@@ -172,18 +172,17 @@ python -m ml.option_pricing_admin --datastore-target pc readiness
 python -m ml.option_pricing_admin --datastore-target pc diagnose-publications
 ```
 
-Historical OPRA planning is also maintenance, not startup. These commands are
-estimate-only, perform no paid `get_range`, derive request/cluster counts from
-the XNYS calendar, and report cost, bytes, storage, and resumability:
+Historical OPRA backfill is resumable maintenance. The default command discovers
+the live Standard entitlement, refuses nonzero-cost ranges, preflights capacity,
+and synchronizes the full included schema/universe scope:
 
 ```powershell
 python -m ml.option_pricing_opra --datastore-target pc
-python -m ml.option_pricing_opra --datastore-target pc --research-benchmark
 ```
 
-Paid execution is prohibited unless the operator separately supplies
-`--execute`, an explicit `--max-cost-usd`, sufficient capacity, and an exact
-approved authorization record. Startup does not imply that authorization.
+Options Capture owns the recurring three-day incremental catch-up. Verified raw
+DBN, normalized Parquet, manifests, receipts, cursors, and health are published
+below `market-data/databento-opra/OPRA.PILLAR`.
 
 To open all seven owners in authoritative order from one PowerShell terminal,
 run the checked-in launcher. It opens visible child windows and uses the same

@@ -251,7 +251,7 @@ def materialize_loop_native_schwab_history(
                 "peak_memory_bytes": peak_memory,
             },
             "external_provider_requests": 0,
-            "paid_opra_used": not prepared_opra.empty,
+            "historical_opra_used": not prepared_opra.empty,
             "current_revised_rate_history_used_for_historical_targets": False,
             "automated_action_allowed": False,
         }

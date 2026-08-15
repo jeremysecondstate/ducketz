@@ -1,21 +1,22 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Sequence
 
 import pandas as pd
 
+from datafetching.databento_opra_history import (
+    iter_verified_partitions,
+    record_consumer_usage,
+)
 from datafetching.decision_time import latest_completed_bar_clock
 from ml.option_pricing.causal import build_causal_samples, completed_bar_close
 from ml.option_pricing.opra import (
     DEFAULT_EMULATED_PREDICTION_LATENCY_SECONDS,
-    OPRA_RECEIPT_NAME,
     normalize_cbbo_records,
     normalize_definition_records,
     point_in_time_definition_asof,
-    read_opra_import,
     select_historical_source_target,
 )
 from ml.option_pricing.policies import ContractSelectionPolicy
@@ -23,8 +24,6 @@ from ml.option_pricing.policies import ContractSelectionPolicy
 
 @dataclass(frozen=True)
 class ClosedOpraLockboxInventory:
-    """Receipt-derived lockbox metadata that contains no target quote values."""
-
     target_snapshot_fors: tuple[pd.Timestamp, ...]
     route_cluster_counts: Mapping[tuple[str, str], int]
     route_request_symbol_counts: Mapping[tuple[str, str], int]
@@ -63,156 +62,17 @@ def materialize_committed_opra_history(
     allowed_cbbo_paths: Sequence[Path] | None = None,
     allowed_definition_paths: Sequence[Path] | None = None,
 ) -> tuple[pd.DataFrame, tuple[Path, ...], Mapping[str, str]]:
-    """Materialize verified OPRA evidence as explicitly OFFLINE causal rows."""
-
-    root = Path(datastore_root).resolve()
-    evidence_root = root / "ml" / "option-pricing-evidence" / "opra"
-    clean_symbols = {
-        str(value).strip().upper() for value in symbols if str(value).strip()
-    }
-    selected_targets = (
-        {
-            pd.Timestamp(value).tz_localize("UTC")
-            if pd.Timestamp(value).tzinfo is None
-            else pd.Timestamp(value).tz_convert("UTC")
-            for value in target_snapshot_fors
-        }
-        if target_snapshot_fors is not None
-        else None
+    materialized = _materialize(
+        datastore_root,
+        symbols=symbols,
+        rate_observations=rate_observations,
+        contract_policy=contract_policy,
+        locked_targets=(),
+        selected_targets=target_snapshot_fors,
+        allowed_cbbo_paths=allowed_cbbo_paths,
+        allowed_definition_paths=allowed_definition_paths,
     )
-    selected_cbbo = (
-        {Path(path).resolve() for path in allowed_cbbo_paths}
-        if allowed_cbbo_paths is not None
-        else None
-    )
-    selected_definitions = (
-        {Path(path).resolve() for path in allowed_definition_paths}
-        if allowed_definition_paths is not None
-        else None
-    )
-    if not evidence_root.is_dir():
-        return pd.DataFrame(), (), {}
-    definitions: list[pd.DataFrame] = []
-    cbbo_imports: list[tuple[Path, Mapping[str, object]]] = []
-    source_files: list[Path] = []
-    errors: dict[str, str] = {}
-    for receipt_path in sorted(evidence_root.glob(f"*/{OPRA_RECEIPT_NAME}")):
-        try:
-            verified = read_opra_import(receipt_path.parent, datastore_root=root)
-            manifest = verified["manifest"]
-            phase = str(manifest.get("phase"))
-            if phase == "definitions":
-                for name in manifest.get("outputs", {}):
-                    path = receipt_path.parent / str(name)
-                    if (
-                        selected_definitions is not None
-                        and path.resolve() not in selected_definitions
-                    ):
-                        continue
-                    definitions.append(normalize_definition_records(_read_dbn(path)))
-                    source_files.append(path)
-            elif phase == "cbbo":
-                cbbo_imports.append((receipt_path.parent, manifest))
-            source_files.extend((receipt_path.parent / "manifest.json", receipt_path))
-        except Exception as exc:
-            errors[str(receipt_path.parent)] = f"{type(exc).__name__}: {exc}"
-    if not definitions or not cbbo_imports:
-        return pd.DataFrame(), tuple(dict.fromkeys(source_files)), errors
-    definition_frame = pd.concat(definitions, ignore_index=True, sort=False)
-
-    samples: list[pd.DataFrame] = []
-    for directory, manifest in cbbo_imports:
-        request_by_output = {
-            str(request.get("output_name")): request
-            for request in manifest.get("requests", [])
-            if isinstance(request, Mapping)
-        }
-        for name in manifest.get("outputs", {}):
-            request = request_by_output.get(str(name))
-            route_name = f"{directory.name}/{name}"
-            if request is None:
-                errors[route_name] = "OpraImportError: CBBO output has no request metadata"
-                continue
-            parsed = _request_target(request)
-            if parsed is None:
-                errors[route_name] = "OpraImportError: CBBO request purpose has no target"
-                continue
-            symbol, target = parsed
-            if symbol not in clean_symbols:
-                continue
-            path = directory / str(name)
-            if selected_targets is not None and target not in selected_targets:
-                continue
-            if selected_cbbo is not None and path.resolve() not in selected_cbbo:
-                continue
-            try:
-                cbbo = normalize_cbbo_records(_read_dbn(path))
-                emulated_prediction_available_at = target + pd.Timedelta(
-                    seconds=DEFAULT_EMULATED_PREDICTION_LATENCY_SECONDS
-                )
-                source_quotes, target_quotes = select_historical_source_target(
-                    cbbo,
-                    target_snapshot_for=target,
-                    prediction_available_at=emulated_prediction_available_at,
-                )
-                if source_quotes.empty or target_quotes.empty:
-                    raise ValueError("Required backward source or forward target CBBO is missing")
-                source_time = pd.Timestamp(source_quotes["quote_timestamp"].max())
-                target_observed_at = pd.Timestamp(target_quotes["quote_timestamp"].max())
-                definitions_asof = point_in_time_definition_asof(
-                    definition_frame.loc[
-                        definition_frame["symbol"].astype("string").str.upper().eq(symbol)
-                    ],
-                    source_time,
-                )
-                if definitions_asof.empty:
-                    raise ValueError("No point-in-time definition existed by source surface")
-                source_clock = latest_completed_bar_clock(root, symbol=symbol, as_of=source_time)
-                target_clock = latest_completed_bar_clock(root, symbol=symbol, as_of=target)
-                if pd.Timestamp(target_clock.decision_timestamp) != target:
-                    raise ValueError("No exact completed underlying bar at OPRA target")
-                source_underlying = completed_bar_close(source_clock)
-                target_underlying = completed_bar_close(target_clock)
-                source_contracts = _opra_contract_frame(
-                    source_quotes,
-                    definitions_asof,
-                    underlying_price=source_underlying,
-                    target_snapshot_for=target,
-                )
-                target_contracts = _opra_contract_frame(
-                    target_quotes,
-                    definitions_asof,
-                    underlying_price=target_underlying,
-                    target_snapshot_for=target,
-                )
-                frame = build_causal_samples(
-                    source_contracts,
-                    target_contracts=target_contracts,
-                    target_underlying_price=target_underlying,
-                    source_snapshot_for=source_time,
-                    source_available_at=source_time,
-                    target_snapshot_for=target,
-                    source_provider="databento-opra",
-                    prediction_mode="OFFLINE",
-                    observed_available_at=target_observed_at,
-                    prediction_created_at=target,
-                    prediction_available_at=emulated_prediction_available_at,
-                    provider_ingested_at=manifest.get("imported_at"),
-                    evidence_lane="OFFLINE_OPRA_BACKFILL",
-                    fallback_used=False,
-                    contract_policy=contract_policy,
-                    rate_observations=rate_observations,
-                    datastore_root=root,
-                )
-                samples.append(frame)
-                source_files.extend((path, source_clock.source_file, target_clock.source_file))
-            except Exception as exc:
-                errors[route_name] = f"{type(exc).__name__}: {exc}"
-    return (
-        pd.concat(samples, ignore_index=True, sort=False) if samples else pd.DataFrame(),
-        tuple(dict.fromkeys(source_files)),
-        errors,
-    )
+    return materialized.samples, materialized.source_files, materialized.errors
 
 
 def materialize_committed_opra_history_v2(
@@ -221,268 +81,283 @@ def materialize_committed_opra_history_v2(
     symbols: Sequence[str],
     rate_observations: pd.DataFrame | None,
     closed_lockbox_clusters: int,
-    eligibility_policy_hash: str,
     contract_policy: ContractSelectionPolicy | None = None,
 ) -> OpraMaterialization:
-    """Materialize only pre-lockbox OPRA targets.
+    """Build causal pricing rows from verified canonical OPRA partitions.
 
-    The final configured target clusters are selected exclusively from verified
-    import request metadata. Their DBN payloads are never decoded by this path.
-    This lets the normal runtime prove that a lockbox exists while keeping target
-    quotes inaccessible until the separately authorized one-time evaluator runs.
+    The last configured target clusters remain unread as the evaluation lockbox.
+    Provider receipt clocks and event clocks remain separate, and target quotes
+    are selected strictly after prediction availability.
     """
 
     if int(closed_lockbox_clusters) < 1:
         raise ValueError("closed_lockbox_clusters must be positive")
+    inventory = _canonical_inventory(datastore_root, symbols=symbols)
+    targets = _scheduled_targets(inventory["cbbo"])
+    locked = tuple(targets[-int(closed_lockbox_clusters) :])
+    return _materialize(
+        datastore_root,
+        symbols=symbols,
+        rate_observations=rate_observations,
+        contract_policy=contract_policy,
+        locked_targets=locked,
+        inventory=inventory,
+    )
+
+
+def _materialize(
+    datastore_root: Path,
+    *,
+    symbols: Sequence[str],
+    rate_observations: pd.DataFrame | None,
+    contract_policy: ContractSelectionPolicy | None,
+    locked_targets: Sequence[pd.Timestamp],
+    selected_targets: Sequence[object] | None = None,
+    allowed_cbbo_paths: Sequence[Path] | None = None,
+    allowed_definition_paths: Sequence[Path] | None = None,
+    inventory: Mapping[str, object] | None = None,
+) -> OpraMaterialization:
     root = Path(datastore_root).resolve()
-    evidence_root = root / "ml" / "option-pricing-evidence" / "opra"
-    clean_symbols = {
-        str(value).strip().upper() for value in symbols if str(value).strip()
-    }
-    empty_lockbox = ClosedOpraLockboxInventory((), {}, {}, 0)
-    if not evidence_root.is_dir():
-        return OpraMaterialization(pd.DataFrame(), (), {}, empty_lockbox)
-
-    definitions: list[pd.DataFrame] = []
-    definition_files: list[Path] = []
-    metadata_files: list[Path] = []
-    cbbo_outputs: list[
-        tuple[
-            Path,
-            str,
-            Mapping[str, object],
-            str,
-            pd.Timestamp,
-            Mapping[str, object],
-            pd.Timestamp,
-        ]
-    ] = []
-    errors: dict[str, str] = {}
-    for receipt_path in sorted(evidence_root.glob(f"*/{OPRA_RECEIPT_NAME}")):
-        try:
-            verified = read_opra_import(receipt_path.parent, datastore_root=root)
-            manifest = verified["manifest"]
-            phase = str(manifest.get("phase"))
-            if phase == "definitions":
-                metadata_files.extend(
-                    (receipt_path.parent / "manifest.json", receipt_path)
-                )
-                for name in manifest.get("outputs", {}):
-                    path = receipt_path.parent / str(name)
-                    definitions.append(normalize_definition_records(_read_dbn(path)))
-                    definition_files.append(path)
-                continue
-            if phase != "cbbo":
-                continue
-            policy_reference = manifest.get("eligibility_policy")
-            policy_reference = (
-                policy_reference if isinstance(policy_reference, Mapping) else {}
-            )
-            if policy_reference.get("policy_hash") != eligibility_policy_hash:
-                continue
-            metadata_files.extend(
-                (receipt_path.parent / "manifest.json", receipt_path)
-            )
-            request_by_output = {
-                str(request.get("output_name")): request
-                for request in manifest.get("requests", [])
-                if isinstance(request, Mapping)
-            }
-            for name in manifest.get("outputs", {}):
-                request = request_by_output.get(str(name))
-                route_name = f"{receipt_path.parent.name}/{name}"
-                if request is None:
-                    errors[route_name] = (
-                        "OpraImportError: CBBO output has no request metadata"
-                    )
-                    continue
-                parsed = _request_target(request)
-                if parsed is None:
-                    errors[route_name] = (
-                        "OpraImportError: CBBO request purpose has no target"
-                    )
-                    continue
-                symbol, target = parsed
-                if symbol in clean_symbols:
-                    output_metadata = manifest.get("outputs", {}).get(str(name), {})
-                    output_metadata = (
-                        output_metadata
-                        if isinstance(output_metadata, Mapping)
-                        else {}
-                    )
-                    cbbo_outputs.append(
-                        (
-                            receipt_path.parent,
-                            str(name),
-                            request,
-                            symbol,
-                            target,
-                            output_metadata,
-                            pd.Timestamp(manifest.get("imported_at")),
-                        )
-                    )
-        except Exception as exc:
-            errors[str(receipt_path.parent)] = f"{type(exc).__name__}: {exc}"
-
-    all_targets = tuple(
-        sorted({target for _, _, _, _, target, _, _ in cbbo_outputs})
+    clean_symbols = tuple(
+        dict.fromkeys(str(value).strip().upper() for value in symbols if str(value).strip())
     )
-    locked_targets = tuple(all_targets[-int(closed_lockbox_clusters) :])
-    locked_set = set(locked_targets)
-    route_targets: dict[tuple[str, str], set[pd.Timestamp]] = {}
-    route_symbols: dict[tuple[str, str], int] = {}
-    locked_output_count = 0
-    locked_outputs: list[Mapping[str, object]] = []
-    for (
-        directory,
-        name,
-        request,
-        symbol,
-        target,
-        output_metadata,
-        _imported_at,
-    ) in cbbo_outputs:
-        if target not in locked_set:
-            continue
-        locked_output_count += 1
-        call_puts = _request_call_puts(request)
-        locked_outputs.append(
-            {
-                "path": (directory / name).relative_to(root).as_posix(),
-                "size": output_metadata.get("size"),
-                "checksum_sha256": output_metadata.get("checksum_sha256"),
-                "symbol": symbol,
-                "target_snapshot_for": target.isoformat(),
-                "call_put_routes": sorted(call_puts),
-                "request": dict(request),
-                "import_manifest_path": (
-                    directory / "manifest.json"
-                ).relative_to(root).as_posix(),
-                "import_receipt_path": (
-                    directory / OPRA_RECEIPT_NAME
-                ).relative_to(root).as_posix(),
-            }
-        )
-        for call_put in call_puts:
-            route = (symbol, call_put)
-            route_targets.setdefault(route, set()).add(target)
-            route_symbols[route] = route_symbols.get(route, 0) + sum(
-                1
-                for raw in request.get("symbols", ())
-                if _raw_symbol_call_put(raw) == call_put
-            )
-    lockbox = ClosedOpraLockboxInventory(
-        target_snapshot_fors=locked_targets,
-        route_cluster_counts={
-            route: len(targets) for route, targets in sorted(route_targets.items())
-        },
-        route_request_symbol_counts=dict(sorted(route_symbols.items())),
-        output_count=locked_output_count,
-        outputs=tuple(locked_outputs),
+    loaded = inventory or _canonical_inventory(
+        root,
+        symbols=clean_symbols,
+        allowed_cbbo_paths=allowed_cbbo_paths,
+        allowed_definition_paths=allowed_definition_paths,
     )
-
-    if not definitions:
+    definitions = loaded["definitions"]
+    cbbo = loaded["cbbo"]
+    source_files = tuple(loaded["source_files"])
+    errors = dict(loaded["errors"])
+    if definitions.empty or cbbo.empty:
         return OpraMaterialization(
             pd.DataFrame(),
-            tuple(dict.fromkeys(metadata_files)),
+            source_files,
             errors,
-            lockbox,
+            _lockbox_inventory(cbbo, locked_targets, source_files),
         )
-    definition_frame = pd.concat(definitions, ignore_index=True, sort=False)
+
+    targets = _scheduled_targets(cbbo)
+    if selected_targets is not None:
+        selected = {_utc(value) for value in selected_targets}
+        targets = tuple(value for value in targets if value in selected)
+    locked = set(locked_targets)
     samples: list[pd.DataFrame] = []
-    consumed_files = [*metadata_files, *definition_files]
-    for (
-        directory,
-        name,
-        request,
-        symbol,
-        target,
-        _output_metadata,
-        imported_at,
-    ) in cbbo_outputs:
-        # This conditional is deliberately before _read_dbn. Locked target
-        # values cannot enter fitting, calibration, assessment, or reporting.
-        if target in locked_set:
+    consumed = list(source_files)
+    for target in targets:
+        if target in locked:
             continue
-        route_name = f"{directory.name}/{name}"
-        path = directory / name
-        try:
-            cbbo = normalize_cbbo_records(_read_dbn(path))
-            emulated_prediction_available_at = target + pd.Timedelta(
-                seconds=DEFAULT_EMULATED_PREDICTION_LATENCY_SECONDS
-            )
-            source_quotes, target_quotes = select_historical_source_target(
-                cbbo,
-                target_snapshot_for=target,
-                prediction_available_at=emulated_prediction_available_at,
-            )
-            if source_quotes.empty or target_quotes.empty:
-                raise ValueError(
-                    "Required backward source or forward target CBBO is missing"
+        for symbol in clean_symbols:
+            route = f"{symbol}@{target.isoformat()}"
+            try:
+                symbol_quotes = cbbo.loc[
+                    cbbo["underlying_symbol"].eq(symbol)
+                ]
+                prediction_available = target + pd.Timedelta(
+                    seconds=DEFAULT_EMULATED_PREDICTION_LATENCY_SECONDS
                 )
-            source_time = pd.Timestamp(source_quotes["quote_timestamp"].max())
-            target_observed_at = pd.Timestamp(target_quotes["quote_timestamp"].max())
-            definitions_asof = point_in_time_definition_asof(
-                definition_frame.loc[
-                    definition_frame["symbol"]
-                    .astype("string")
-                    .str.upper()
-                    .eq(symbol)
-                ],
-                source_time,
-            )
-            if definitions_asof.empty:
-                raise ValueError("No point-in-time definition existed by source surface")
-            source_clock = latest_completed_bar_clock(
-                root, symbol=symbol, as_of=source_time
-            )
-            target_clock = latest_completed_bar_clock(root, symbol=symbol, as_of=target)
-            if pd.Timestamp(target_clock.decision_timestamp) != target:
-                raise ValueError("No exact completed underlying bar at OPRA target")
-            source_underlying = completed_bar_close(source_clock)
-            target_underlying = completed_bar_close(target_clock)
-            source_contracts = _opra_contract_frame(
-                source_quotes,
-                definitions_asof,
-                underlying_price=source_underlying,
-                target_snapshot_for=target,
-            )
-            target_contracts = _opra_contract_frame(
-                target_quotes,
-                definitions_asof,
-                underlying_price=target_underlying,
-                target_snapshot_for=target,
-            )
-            frame = build_causal_samples(
-                source_contracts,
-                target_contracts=target_contracts,
-                target_underlying_price=target_underlying,
-                source_snapshot_for=source_time,
-                source_available_at=source_time,
-                target_snapshot_for=target,
-                source_provider="databento-opra",
-                prediction_mode="OFFLINE",
-                observed_available_at=target_observed_at,
-                prediction_created_at=target,
-                prediction_available_at=emulated_prediction_available_at,
-                provider_ingested_at=imported_at,
-                evidence_lane="OFFLINE_OPRA_BACKFILL",
-                fallback_used=False,
-                contract_policy=contract_policy,
-                rate_observations=rate_observations,
-                datastore_root=root,
-            )
-            samples.append(frame)
-            consumed_files.extend((path, source_clock.source_file, target_clock.source_file))
-        except Exception as exc:
-            errors[route_name] = f"{type(exc).__name__}: {exc}"
+                source_quotes, target_quotes = select_historical_source_target(
+                    symbol_quotes,
+                    target_snapshot_for=target,
+                    prediction_available_at=prediction_available,
+                )
+                if source_quotes.empty or target_quotes.empty:
+                    raise ValueError("Required backward source or forward outcome CBBO is missing")
+                source_time = pd.Timestamp(source_quotes["quote_timestamp"].max())
+                target_observed_at = pd.Timestamp(target_quotes["quote_timestamp"].max())
+                definitions_asof = point_in_time_definition_asof(
+                    definitions.loc[definitions["symbol"].astype("string").str.upper().eq(symbol)],
+                    source_time,
+                )
+                if definitions_asof.empty:
+                    raise ValueError("No point-in-time definition existed by source surface")
+                source_clock = latest_completed_bar_clock(root, symbol=symbol, as_of=source_time)
+                target_clock = latest_completed_bar_clock(root, symbol=symbol, as_of=target)
+                if pd.Timestamp(target_clock.decision_timestamp) != target:
+                    raise ValueError("No exact completed underlying bar at OPRA target")
+                source_contracts = _opra_contract_frame(
+                    source_quotes,
+                    definitions_asof,
+                    underlying_price=completed_bar_close(source_clock),
+                    target_snapshot_for=target,
+                )
+                target_contracts = _opra_contract_frame(
+                    target_quotes,
+                    definitions_asof,
+                    underlying_price=completed_bar_close(target_clock),
+                    target_snapshot_for=target,
+                )
+                frame = build_causal_samples(
+                    source_contracts,
+                    target_contracts=target_contracts,
+                    target_underlying_price=completed_bar_close(target_clock),
+                    source_snapshot_for=source_time,
+                    source_available_at=source_time,
+                    target_snapshot_for=target,
+                    source_provider="databento-opra",
+                    prediction_mode="OFFLINE",
+                    observed_available_at=target_observed_at,
+                    prediction_created_at=target,
+                    prediction_available_at=prediction_available,
+                    provider_ingested_at=loaded.get("latest_published_at"),
+                    evidence_lane="OFFLINE_OPRA_STANDARD_HISTORY",
+                    fallback_used=False,
+                    contract_policy=contract_policy,
+                    rate_observations=rate_observations,
+                    datastore_root=root,
+                )
+                if not frame.empty:
+                    samples.append(frame)
+                    consumed.extend((source_clock.source_file, target_clock.source_file))
+            except Exception as exc:
+                errors[route] = f"{type(exc).__name__}: {exc}"
+    output = pd.concat(samples, ignore_index=True, sort=False) if samples else pd.DataFrame()
+    unique_files = tuple(dict.fromkeys(Path(value) for value in consumed))
+    if not output.empty:
+        record_consumer_usage(
+            root,
+            consumer="active-pricing",
+            schemas=("definition", str(loaded["cbbo_schema"])),
+            rows=len(output),
+            source_files=source_files,
+        )
     return OpraMaterialization(
-        pd.concat(samples, ignore_index=True, sort=False)
-        if samples
-        else pd.DataFrame(),
-        tuple(dict.fromkeys(consumed_files)),
+        output,
+        unique_files,
         errors,
-        lockbox,
+        _lockbox_inventory(cbbo, locked_targets, source_files),
+    )
+
+
+def _canonical_inventory(
+    datastore_root: Path,
+    *,
+    symbols: Sequence[str],
+    allowed_cbbo_paths: Sequence[Path] | None = None,
+    allowed_definition_paths: Sequence[Path] | None = None,
+) -> Mapping[str, object]:
+    root = Path(datastore_root).resolve()
+    clean_symbols = {str(value).strip().upper() for value in symbols if str(value).strip()}
+    selected_cbbo = {Path(value).resolve() for value in allowed_cbbo_paths or ()}
+    selected_definitions = {Path(value).resolve() for value in allowed_definition_paths or ()}
+    definitions: list[pd.DataFrame] = []
+    cbbo_by_schema: dict[str, list[pd.DataFrame]] = {"cbbo-1m": [], "cbbo-1s": []}
+    files_by_schema: dict[str, list[Path]] = {"definition": [], "cbbo-1m": [], "cbbo-1s": []}
+    metadata_files: list[Path] = []
+    errors: dict[str, str] = {}
+    published: list[pd.Timestamp] = []
+    for verified in iter_verified_partitions(
+        root, schemas=("definition", "cbbo-1m", "cbbo-1s")
+    ):
+        manifest = verified["manifest"]
+        schema = str(manifest["schema"])
+        directory = (
+            root
+            / "market-data"
+            / "databento-opra"
+            / "OPRA.PILLAR"
+            / f"schema={schema}"
+            / f"date={manifest['partition_date']}"
+            / f"bucket={manifest['symbol_bucket']}"
+        )
+        parquet = directory / str(manifest["normalized"]["path"])
+        if schema == "definition" and selected_definitions and parquet.resolve() not in selected_definitions:
+            continue
+        if schema.startswith("cbbo-") and selected_cbbo and parquet.resolve() not in selected_cbbo:
+            continue
+        try:
+            raw = pd.read_parquet(parquet)
+            if schema == "definition":
+                frame = normalize_definition_records(raw)
+                frame = frame.loc[frame["symbol"].astype("string").str.upper().isin(clean_symbols)]
+                definitions.append(frame)
+            else:
+                frame = normalize_cbbo_records(raw)
+                frame = frame.loc[
+                    frame["contract_symbol"].astype("string").map(_underlying).isin(clean_symbols)
+                ]
+                cbbo_by_schema[schema].append(frame)
+            files_by_schema[schema].append(parquet)
+            metadata_files.extend((directory / "manifest.json", directory / "receipt.json"))
+            published.append(pd.Timestamp(manifest["published_at"]))
+        except Exception as exc:
+            errors[str(parquet)] = f"{type(exc).__name__}: {exc}"
+    cbbo_schema = "cbbo-1m" if cbbo_by_schema["cbbo-1m"] else "cbbo-1s"
+    cbbo_frames = cbbo_by_schema[cbbo_schema]
+    definition_frame = (
+        pd.concat(definitions, ignore_index=True, sort=False)
+        .sort_values("definition_effective_at", kind="stable")
+        .drop_duplicates(["contract_symbol", "definition_effective_at"], keep="last")
+        .reset_index(drop=True)
+        if definitions
+        else pd.DataFrame()
+    )
+    cbbo_frame = (
+        pd.concat(cbbo_frames, ignore_index=True, sort=False)
+        .sort_values(["quote_timestamp", "contract_symbol"], kind="stable")
+        .drop_duplicates(["quote_timestamp", "contract_symbol"], keep="last")
+        .reset_index(drop=True)
+        if cbbo_frames
+        else pd.DataFrame()
+    )
+    if not cbbo_frame.empty:
+        cbbo_frame["underlying_symbol"] = (
+            cbbo_frame["contract_symbol"].astype("string").map(_underlying)
+        )
+    source_files = tuple(
+        dict.fromkeys(
+            (*files_by_schema["definition"], *files_by_schema[cbbo_schema], *metadata_files)
+        )
+    )
+    return {
+        "definitions": definition_frame,
+        "cbbo": cbbo_frame,
+        "cbbo_schema": cbbo_schema,
+        "source_files": source_files,
+        "errors": errors,
+        "latest_published_at": max(published).isoformat() if published else None,
+    }
+
+
+def _scheduled_targets(cbbo: pd.DataFrame) -> tuple[pd.Timestamp, ...]:
+    if cbbo.empty:
+        return ()
+    timestamps = pd.to_datetime(cbbo["quote_timestamp"], utc=True, errors="coerce").dropna()
+    local = timestamps.dt.tz_convert("America/New_York")
+    mask = local.dt.strftime("%H:%M").isin(("10:00", "11:30", "13:30", "15:00"))
+    return tuple(sorted({pd.Timestamp(value) for value in timestamps.loc[mask]}))
+
+
+def _lockbox_inventory(
+    cbbo: pd.DataFrame,
+    locked_targets: Sequence[pd.Timestamp],
+    source_files: Sequence[Path],
+) -> ClosedOpraLockboxInventory:
+    locked = tuple(sorted({_utc(value) for value in locked_targets}))
+    counts: dict[tuple[str, str], int] = {}
+    symbol_counts: dict[tuple[str, str], int] = {}
+    for target in locked:
+        target_rows = cbbo.loc[pd.to_datetime(cbbo["quote_timestamp"], utc=True).eq(target)]
+        routes = {
+            (_underlying(contract), "CALL" if _call_put(contract) == "C" else "PUT")
+            for contract in target_rows.get("contract_symbol", pd.Series(dtype="string"))
+            if _underlying(contract) and _call_put(contract)
+        }
+        for route in routes:
+            counts[route] = counts.get(route, 0) + 1
+            symbol_counts[route] = symbol_counts.get(route, 0) + int(
+                target_rows["contract_symbol"].astype("string").map(
+                    lambda value: _underlying(value) == route[0] and _call_put(value) == route[1][0]
+                ).sum()
+            )
+    return ClosedOpraLockboxInventory(
+        target_snapshot_fors=locked,
+        route_cluster_counts=counts,
+        route_request_symbol_counts=symbol_counts,
+        output_count=len(source_files),
+        outputs=tuple({"path": Path(value).as_posix()} for value in source_files),
     )
 
 
@@ -521,9 +396,6 @@ def _opra_contract_frame(
             "dividend_yield": float("nan"),
             "implied_volatility": float("nan"),
             "quote_timestamp": merged["quote_timestamp"],
-            # Historical CBBO availability is emulated from the interval
-            # receipt timestamp; the present-day import receipt remains a
-            # separate provider_ingested_at clock.
             "available_at": merged["quote_timestamp"],
             "quote_staleness_seconds": (
                 target_snapshot_for
@@ -531,45 +403,37 @@ def _opra_contract_frame(
             ).dt.total_seconds().clip(lower=0),
         }
     )
-    return output
-
-
-def _request_target(request: Mapping[str, object]) -> tuple[str, pd.Timestamp] | None:
-    purpose = str(request.get("purpose") or "")
-    parts = purpose.split(":", 2)
-    if len(parts) != 3 or parts[0] != "SOURCE_BACKWARD_TARGET_FORWARD":
-        return None
-    timestamp = pd.to_datetime(parts[2], utc=True, errors="coerce")
-    if pd.isna(timestamp):
-        return None
-    return parts[1].strip().upper(), pd.Timestamp(timestamp)
-
-
-def _raw_symbol_call_put(raw_symbol: object) -> str | None:
-    match = re.match(
-        r"^[A-Z.]{1,6}\s*\d{6}([CP])", str(raw_symbol).strip().upper()
+    expiration = pd.to_datetime(output["expiration_date"], utc=True, errors="coerce")
+    valid = (
+        expiration.gt(target_snapshot_for.normalize())
+        & output["strike"].gt(0)
+        & output["multiplier"].eq(100)
+        & ~output["non_standard"]
+        & output["ask"].ge(output["bid"])
+        & output["ask"].gt(0)
     )
-    if match is None:
-        return None
-    return "CALL" if match.group(1) == "C" else "PUT"
+    return output.loc[valid].reset_index(drop=True)
 
 
-def _request_call_puts(request: Mapping[str, object]) -> set[str]:
-    return {
-        value
-        for value in (_raw_symbol_call_put(raw) for raw in request.get("symbols", ()))
-        if value is not None
-    }
+def _underlying(value: object) -> str:
+    import re
+
+    match = re.match(r"^([A-Z.]{1,6})\s*\d{6}[CP]", str(value).strip().upper())
+    return match.group(1) if match else ""
 
 
-def _read_dbn(path: Path) -> pd.DataFrame:
-    import databento as db
+def _call_put(value: object) -> str:
+    import re
 
-    return db.DBNStore.from_file(path).to_df(
-        price_type="fixed",
-        pretty_ts=False,
-        map_symbols=True,
-    ).reset_index()
+    match = re.match(r"^[A-Z.]{1,6}\s*\d{6}([CP])", str(value).strip().upper())
+    return match.group(1) if match else ""
+
+
+def _utc(value: object) -> pd.Timestamp:
+    timestamp = pd.to_datetime(value, utc=True, errors="coerce")
+    if pd.isna(timestamp):
+        raise ValueError("Invalid OPRA timestamp")
+    return pd.Timestamp(timestamp)
 
 
 __all__ = [

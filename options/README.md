@@ -170,24 +170,34 @@ q = -ln((S - PV(dividends)) / S) / T
 
 FMP's supplied yield is not used directly and future declarations are excluded.
 
-## Historical OPRA planning
+## Historical OPRA synchronization
 
-The default dry run plans six calendar months, four declared intraday XNYS
-targets per eligible session, the six production parent symbols (`<SYMBOL>.OPT`),
-point-in-time definitions, and `cbbo-1m`. Request/cluster counts are derived
-from actual sessions, targets, and symbols. It reports date coverage, request
-count, estimated billable bytes/cost, expanded storage, capacity, and resumable
-receipts without calling `get_range`:
+The canonical command discovers the account's Standard entitlement from
+Databento metadata, refuses any nonzero-cost range, performs a storage preflight,
+and synchronizes every included schema over the full OPRA universe by default:
 
 ```powershell
 python -m ml.option_pricing_opra --datastore-target pc
-python -m ml.option_pricing_opra --datastore-target pc --research-benchmark
 ```
 
-Prospective L1 defaults to `cbbo-1s`. Paid execution additionally requires all
-of `--execute`, an explicit `--max-cost-usd`, sufficient capacity, and an exact
-operator-approved `opra-paid-execution-authorization-v1` record. Never run the
-paid phase as a migration or test.
+Resumable maintenance batches can use `--schemas`, `--start`, `--end`,
+`--symbols`, and `--max-partitions`; these flags never expand provider-confirmed
+bounds. Provider-native DBN, normalized Parquet, immutable manifests, and receipts
+are stored below:
+
+```text
+market-data/databento-opra/OPRA.PILLAR/
+  schema=<schema>/date=<YYYY-MM-DD>/bucket=<scope>/
+    provider.dbn.zst
+    normalized.parquet
+    manifest.json
+    receipt.json
+```
+
+Options Capture owns the daily incremental catch-up. Prospective L1 continues to
+default to `cbbo-1s`; Strategy and Active Pricing read verified historical
+`cbbo-1m` first, use `cbbo-1s` when it is the only verified CBBO schema, and keep
+Schwab explicitly labeled as fallback/broker evidence.
 
 ## Prospective OPRA startup and fallback
 
@@ -216,10 +226,9 @@ provider makes no second provider request. The explicit
 `--provider-mode schwab-only-compatibility` mode disables OPRA and is not the
 production command.
 
-The live receiver, callbacks, reconnect bookkeeping, and bounded buffers are
-owned by the Options Capture process and close with it. They are not an eighth
-loop. The startup replay is limited to current intraday live recovery; the
-separately authorized historical importer is never launched by ordinary startup.
+The live receiver, callbacks, reconnect bookkeeping, bounded buffers, and daily
+historical catch-up are owned by the Options Capture process and close with it.
+They are not an eighth loop.
 
 ## Supplied Standard-plan evidence
 

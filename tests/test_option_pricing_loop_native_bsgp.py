@@ -853,7 +853,7 @@ def test_loop_native_policy_uses_twelve_routes_and_requires_bounded_opra(
     assert len(routes) == 12
     assert {row["symbol"] for row in routes} == set(LOOP_NATIVE_SYMBOLS)
     assert {row["call_put"] for row in routes} == set(LOOP_NATIVE_CALL_PUTS)
-    assert payload["historical_evidence"]["paid_opra_prerequisite"] is True
+    assert payload["historical_evidence"]["historical_opra_prerequisite"] is True
     assert payload["historical_evidence"]["offline_increments_prospective_counts"] is False
     assert payload["automated_action_allowed"] is False
 
@@ -1086,8 +1086,8 @@ def test_policy_and_shadow_sidecar_tamper_fail_closed(tmp_path: Path) -> None:
     policy_path = policy.directory / "policy.json"
     policy_path.write_text(
         policy_path.read_text(encoding="utf-8").replace(
-            '"paid_opra_prerequisite": true',
-            '"paid_opra_prerequisite": false',
+            '"historical_opra_prerequisite": true',
+            '"historical_opra_prerequisite": false',
         ),
         encoding="utf-8",
     )
@@ -1359,7 +1359,7 @@ def _materialization(root: Path):
         "schema_version": SCHWAB_MATERIALIZATION_SCHEMA_VERSION,
         "policy_version": LOOP_NATIVE_MATERIALIZATION_POLICY_VERSION,
         "routes": _route_report(samples, symbols=LOOP_NATIVE_SYMBOLS),
-        "paid_opra_used": False,
+        "historical_opra_used": False,
         "external_provider_requests": 0,
         "automated_action_allowed": False,
     }

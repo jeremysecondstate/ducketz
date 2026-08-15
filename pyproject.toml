@@ -22,7 +22,8 @@ dependencies = [
 
 [project.scripts]
 ducketz-option-pricing = "ml.option_pricing_runtime:main"
-ducketz-option-pricing-opra = "ml.option_pricing_opra:main"
+ducketz-opra-sync = "ml.option_pricing_opra:main"
+ducketz-opra-pricing-replay = "ml.option_pricing_opra_replay:main"
 ducketz-option-pricing-fred = "ml.option_pricing_fred:main"
 ducketz-fred-alfred-runtime = "datafetching.fred_alfred_runtime:main"
 ducketz-macro-ablation = "ml.macro_ablation:main"

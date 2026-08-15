@@ -20,6 +20,12 @@ from datafetching.decision_time import (
     expected_quarter_hour_target,
     latest_eligible_option_target,
 )
+from datafetching.databento_opra_history import (
+    OpraCapacityError,
+    SyncScope,
+    discover_standard_entitlement,
+    synchronize,
+)
 from datafetching.loop_a_cycle import read_latest_complete_loop_a_cycle
 from datafetching.observability import timed_stage
 from datafetching.orchestrate import DEFAULT_WATCHLIST, normalize_symbols, read_watchlist
@@ -677,6 +683,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="Print per-symbol skip/failure detail in addition to grouped diagnostics.",
     )
+    parser.add_argument(
+        "--skip-historical-catchup",
+        action="store_true",
+        help="Disable the Options-owned daily OPRA Standard incremental catch-up.",
+    )
     datastore = parser.add_mutually_exclusive_group()
     datastore.add_argument("--datastore", type=Path, default=None)
     datastore.add_argument(
@@ -745,8 +756,22 @@ def main(argv: Sequence[str] | None = None) -> int:
             print("Stop: Ctrl+C")
             print()
 
+            last_catchup_date = None
+
             while True:
                 cycle_anchor = datetime.now(timezone.utc)
+                catchup_date = cycle_anchor.date()
+                if (
+                    canonical_adapter is not None
+                    and not args.skip_historical_catchup
+                    and catchup_date != last_catchup_date
+                ):
+                    _run_historical_catchup(
+                        store,
+                        api_key=api_key,
+                        reporter=print,
+                    )
+                    last_catchup_date = catchup_date
                 if not args.once:
                     boundary = next_boundary(
                         cycle_anchor,
@@ -782,6 +807,51 @@ def main(argv: Sequence[str] | None = None) -> int:
         finally:
             if canonical_adapter is not None:
                 canonical_adapter.close()
+
+
+def _run_historical_catchup(
+    store: ParquetStore,
+    *,
+    api_key: str,
+    reporter: Callable[[str], None] | None,
+) -> None:
+    """Keep rolling Standard history current under Options Capture ownership."""
+
+    import databento as db
+
+    client = db.Historical(api_key)
+    try:
+        entitlement = discover_standard_entitlement(
+            client, datastore_root=store.root_dir
+        )
+        end = max(
+            str(item["entitled_end"])
+            for item in entitlement["entitlements"].values()
+        )
+        start = (pd.Timestamp(end) - pd.Timedelta(days=3)).date().isoformat()
+        result = synchronize(
+            client,
+            datastore_root=store.root_dir,
+            entitlement=entitlement,
+            scope=SyncScope(start=start, end=end),
+            reporter=reporter,
+        )
+        if reporter is not None:
+            reporter(
+                "OPRA historical catch-up: "
+                f"status={result.status}; completed={result.completed_partitions}; "
+                f"verified_existing={result.skipped_partitions}; rows={result.completed_rows}; "
+                f"health={result.health_path}"
+            )
+    except OpraCapacityError as exc:
+        if reporter is not None:
+            reporter(f"OPRA historical catch-up capacity blocked: {exc}")
+    except Exception as exc:
+        if reporter is not None:
+            reporter(
+                "OPRA historical catch-up failed: "
+                f"{type(exc).__name__}: {exc}"
+            )
 
 
 def report_options_result(

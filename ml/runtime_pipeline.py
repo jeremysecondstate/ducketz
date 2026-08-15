@@ -69,7 +69,7 @@ from ml.parquet_contracts import (
 )
 from ml.rolling_materialization import RollingMaterialization, materialize_rolling_samples
 from ml.strategy_selection import (
-    STRATEGY_SELECTION_SCHWAB_SPREADS_V1,
+    STRATEGY_SELECTION_OPRA_FIRST_SPREADS_V2,
 )
 from ml.strategy_selection.research_trace import strategy_research_trace
 
@@ -836,7 +836,7 @@ def _run_loop_b_once(
             ),
             "publication_counts": publication_counts,
             "strategy_selection": {
-                "policy": STRATEGY_SELECTION_SCHWAB_SPREADS_V1,
+                "policy": STRATEGY_SELECTION_OPRA_FIRST_SPREADS_V2,
                 "account_authorization": "SPREADS",
                 "real_lockbox_used": False,
                 "mode": "independent-runtime",

@@ -474,7 +474,7 @@ def test_loop_b_publishes_directional_outputs_before_independent_strategy(
     assert not (result.run_directory / "strategy-recommendations.parquet").exists()
     manifest = verify_manifest(result.run_directory)
     strategy = manifest["configuration"]["strategy_selection"]
-    assert strategy["policy"] == "schwab-spreads-v1"
+    assert strategy["policy"] == "opra-first-spreads-v2"
     assert strategy["account_authorization"] == "SPREADS"
     assert "automated_action_allowed" not in strategy
     assert strategy["real_lockbox_used"] is False

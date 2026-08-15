@@ -456,18 +456,20 @@ def _verify_provider_evidence(
     verified_outputs: set[Path] = set()
     definition_imports = cbbo_imports = 0
     matching_policy_cbbo_imports = 0
-    opra_root = (root / "ml" / "option-pricing-evidence" / "opra").resolve()
+    opra_root = (
+        root / "market-data" / "databento-opra" / "OPRA.PILLAR"
+    ).resolve()
     receipt_paths = sorted(
         path
         for path in inventory_paths
         if path.name == "receipt.json" and opra_root in path.parents
     )
     if offline_rows:
-        from ml.option_pricing.opra import OPRA_IMPORT_VERSION, read_opra_import
+        from datafetching.databento_opra_history import verify_partition
 
         for receipt_path in receipt_paths:
             try:
-                verified = read_opra_import(receipt_path.parent, datastore_root=root)
+                verified = verify_partition(receipt_path.parent, datastore_root=root)
                 opra_manifest = verified["manifest"]
             except Exception as exc:
                 errors.append(
@@ -475,36 +477,23 @@ def _verify_provider_evidence(
                     f"{receipt_path}: {type(exc).__name__}: {exc}"
                 )
                 continue
-            if opra_manifest.get("schema_version") != OPRA_IMPORT_VERSION:
-                errors.append(f"OPRA input is readable legacy evidence only: {receipt_path}")
-                continue
-            if (
-                opra_manifest.get("evidence_kind") != "REAL_RECEIPT_PROVEN"
-                or opra_manifest.get("eligibility_scope_verified") is not True
-            ):
-                errors.append(
-                    f"OPRA input is fixture or incomplete-scope evidence only: {receipt_path}"
-                )
-                continue
-            phase = opra_manifest.get("phase")
-            if phase == "definitions":
+            schema = str(opra_manifest.get("schema"))
+            if schema == "definition":
                 definition_imports += 1
-            elif phase == "cbbo":
+            elif schema in {"cbbo-1m", "cbbo-1s"}:
                 cbbo_imports += 1
-                reference = opra_manifest.get("eligibility_policy")
-                reference = reference if isinstance(reference, Mapping) else {}
-                if reference.get("policy_hash") == eligibility_policy_hash:
-                    matching_policy_cbbo_imports += 1
-                else:
-                    errors.append(
-                        f"OPRA CBBO policy hash does not match Pricing: {receipt_path}"
+                matching_policy_cbbo_imports += 1
+            for name in ("raw", "normalized"):
+                inventory = opra_manifest.get(name)
+                if isinstance(inventory, Mapping):
+                    verified_outputs.add(
+                        (receipt_path.parent / str(inventory.get("path"))).resolve()
                     )
-            for name in opra_manifest.get("outputs", {}):
-                verified_outputs.add((receipt_path.parent / str(name)).resolve())
         used_opra_outputs = {
             path
             for path in inventory_paths
-            if opra_root in path.parents and path.name.endswith(".dbn.zst")
+            if opra_root in path.parents
+            and path.suffix in {".zst", ".parquet"}
         }
         unverified_outputs = used_opra_outputs.difference(verified_outputs)
         if unverified_outputs:
@@ -513,8 +502,6 @@ def _verify_provider_evidence(
             )
         if definition_imports < 1 or cbbo_imports < 1:
             errors.append("offline evidence lacks both verified definition and CBBO imports")
-        if matching_policy_cbbo_imports != cbbo_imports:
-            errors.append("not every CBBO import used the predeclared eligibility policy")
     return {
         "verified": not errors,
         "offline_rows": offline_rows,

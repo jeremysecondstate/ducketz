@@ -11,8 +11,7 @@ from typing import Mapping, Sequence
 import pandas as pd
 
 from datafetching.runtime_lock import exclusive_runtime_lock
-from ml.artifacts import semantic_metadata_fingerprint, utc_timestamp
-from ml.option_pricing.eligibility import eligibility_policy_payload
+from ml.artifacts import utc_timestamp
 from ml.option_pricing.opra_materialization import (
     materialize_committed_opra_history_v2,
 )
@@ -32,7 +31,6 @@ from ml.option_pricing.shadow_model import (
 
 
 LOOP_NATIVE_WORKER_STATUS_VERSION = "loop-native-opra-first-worker-status-v2"
-LEGACY_LOOP_NATIVE_WORKER_STATUS_VERSION = "loop-native-bsgp-worker-status-v1"
 
 
 def run_loop_native_worker_once(
@@ -52,15 +50,11 @@ def run_loop_native_worker_once(
         process_name="Loop-native finite-basis residual worker",
     ):
         rates, _rate_files = load_point_in_time_rate_observations(root)
-        eligibility_hash = semantic_metadata_fingerprint(
-            eligibility_policy_payload()
-        )
         opra = materialize_committed_opra_history_v2(
             root,
             symbols=LOOP_NATIVE_SYMBOLS,
             rate_observations=rates,
             closed_lockbox_clusters=PricingPartitionConfig().lockbox_clusters,
-            eligibility_policy_hash=eligibility_hash,
         )
         materialization = materialize_loop_native_schwab_history(
             root,
@@ -124,7 +118,7 @@ def run_loop_native_worker_once(
                 else None
             ),
             "external_provider_requests": 0,
-            "paid_opra_used": not opra.samples.empty,
+            "historical_opra_used": not opra.samples.empty,
             "automated_action_allowed": False,
         }
         if not dry_run:
@@ -197,7 +191,7 @@ def launch_loop_native_worker(
         "trainer_cutoff": cutoff.isoformat(),
         "log_path": log_path.relative_to(root).as_posix(),
         "external_provider_requests": 0,
-        "paid_opra_used": False,
+        "historical_opra_used": False,
         "automated_action_allowed": False,
     }
 
@@ -225,11 +219,7 @@ def _read_optional_worker_status(root: Path) -> Mapping[str, object] | None:
         return None
     if (
         not isinstance(payload, Mapping)
-        or payload.get("schema_version")
-        not in {
-            LEGACY_LOOP_NATIVE_WORKER_STATUS_VERSION,
-            LOOP_NATIVE_WORKER_STATUS_VERSION,
-        }
+        or payload.get("schema_version") != LOOP_NATIVE_WORKER_STATUS_VERSION
         or payload.get("automated_action_allowed") is not False
     ):
         return None
@@ -281,7 +271,6 @@ if __name__ == "__main__":  # pragma: no cover - CLI boundary
 
 __all__ = [
     "LOOP_NATIVE_WORKER_STATUS_VERSION",
-    "LEGACY_LOOP_NATIVE_WORKER_STATUS_VERSION",
     "launch_loop_native_worker",
     "loop_native_worker_lock_path",
     "loop_native_worker_status_path",

@@ -498,8 +498,8 @@ def _loop_native_readiness_view(datastore_root: Path) -> dict[str, object]:
         "protocol_version": LOOP_NATIVE_ELIGIBILITY_PROTOCOL_VERSION,
         "policy": policy_view,
         "report": report_view,
-        "paid_opra_required": True,
-        "paid_opra_role": "CANONICAL_HISTORICAL_AND_PROSPECTIVE_MARKET_EVIDENCE",
+        "historical_opra_required": True,
+        "historical_opra_role": "CANONICAL_HISTORICAL_AND_PROSPECTIVE_MARKET_EVIDENCE",
         "required_symbol_side_routes": PRODUCTION_OPTION_ROUTE_COUNT,
         "automated_action_allowed": False,
         "recommended_next_actions": [

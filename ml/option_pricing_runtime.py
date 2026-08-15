@@ -555,7 +555,6 @@ def _run_option_pricing_once_impl(
             symbols=eligibility_policy.required_symbols,
             rate_observations=rate_observations,
             closed_lockbox_clusters=effective_partitions.lockbox_clusters,
-            eligibility_policy_hash=policy_artifact.policy_hash,
             contract_policy=effective_contract,
         )
         opra_history = opra.samples
@@ -821,7 +820,7 @@ def _run_option_pricing_once_impl(
                 else None
             ),
             "update_error": loop_native_stage_error or None,
-            "paid_opra_required": False,
+            "historical_opra_required": False,
             "external_provider_requests": 0,
             "automated_action_allowed": False,
             "eligibility_policy": (
@@ -841,7 +840,7 @@ def _run_option_pricing_once_impl(
             "path": policy_artifact.directory.relative_to(root).as_posix(),
         },
         "frozen_candidate_id": candidate.get("candidate_id") if candidate else None,
-        "paid_opra_download_performed_by_runtime": False,
+        "historical_opra_download_performed_by_pricing_runtime": False,
         "automated_action_allowed": False,
     }
 

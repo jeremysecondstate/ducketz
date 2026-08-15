@@ -19,18 +19,28 @@ from options.features import (
 )
 from options.snapshot import OPTION_CHAIN_SCHEMA_VERSION
 from options.publication import committed_option_snapshots
+from datafetching.databento_opra_history import (
+    canonical_root,
+    iter_verified_partitions,
+    record_consumer_usage,
+)
+from ml.option_pricing.opra import (
+    normalize_cbbo_records,
+    normalize_definition_records,
+)
 
 
 _SNAPSHOT_KEY = ("symbol", "snapshot_for", "available_at")
 
 
 @dataclass(frozen=True)
-class SchwabChainHistory:
+class OptionChainHistory:
     symbol: str
     contracts: pd.DataFrame
     surfaces: pd.DataFrame
     quotes: pd.DataFrame
     source_files: tuple[Path, ...]
+    provider: str = "schwab"
     contract_lookup: Mapping[
         tuple[str, pd.Timestamp, pd.Timestamp], pd.DataFrame
     ] = field(default_factory=dict, compare=False, repr=False)
@@ -94,14 +104,21 @@ class ChainReceipt:
         return pd.Timestamp(self.surface["available_at"])
 
 
-def load_schwab_chain_history(
+def load_option_chain_history(
     datastore_root: Path,
     *,
     symbol: str,
     available_not_after: object | None = None,
-) -> SchwabChainHistory:
+) -> OptionChainHistory:
     root = Path(datastore_root)
     clean_symbol = str(symbol).strip().upper()
+    opra = _load_opra_chain_history(
+        root,
+        symbol=clean_symbol,
+        available_not_after=available_not_after,
+    )
+    if opra is not None:
+        return opra
     stock_root = root / "stocks" / clean_symbol
     all_committed = committed_option_snapshots(
         root,
@@ -196,8 +213,9 @@ def load_schwab_chain_history(
     contracts["__surface_quality"] = (
         contracts["__surface_quality"].fillna(False).astype(bool)
     )
-    return SchwabChainHistory(
+    return OptionChainHistory(
         symbol=clean_symbol,
+        provider="schwab",
         contracts=contracts,
         surfaces=surfaces,
         quotes=quotes,
@@ -207,8 +225,172 @@ def load_schwab_chain_history(
     )
 
 
+def _load_opra_chain_history(
+    datastore_root: Path,
+    *,
+    symbol: str,
+    available_not_after: object | None,
+) -> OptionChainHistory | None:
+    root = Path(datastore_root).resolve()
+    definition_frames: list[pd.DataFrame] = []
+    cbbo_frames: dict[str, list[pd.DataFrame]] = {"cbbo-1m": [], "cbbo-1s": []}
+    files: dict[str, list[Path]] = {"definition": [], "cbbo-1m": [], "cbbo-1s": []}
+    metadata_files: list[Path] = []
+    opra_root = canonical_root(root)
+    for verified in iter_verified_partitions(
+        root, schemas=("definition", "cbbo-1m", "cbbo-1s")
+    ):
+        manifest = verified["manifest"]
+        schema = str(manifest["schema"])
+        directory = (
+            opra_root
+            / f"schema={schema}"
+            / f"date={manifest['partition_date']}"
+            / f"bucket={manifest['symbol_bucket']}"
+        )
+        path = directory / str(manifest["normalized"]["path"])
+        raw = pd.read_parquet(path)
+        if schema == "definition":
+            normalized = normalize_definition_records(raw)
+            normalized = normalized.loc[
+                normalized["symbol"].astype("string").str.upper().eq(symbol)
+            ]
+            if not normalized.empty:
+                definition_frames.append(normalized)
+                files[schema].append(path)
+        else:
+            normalized = normalize_cbbo_records(raw)
+            normalized = normalized.loc[
+                normalized["contract_symbol"].astype("string").map(_occ_underlying).eq(symbol)
+            ]
+            if available_not_after is not None:
+                normalized = normalized.loc[
+                    pd.to_datetime(normalized["quote_timestamp"], utc=True, errors="coerce")
+                    .le(_utc(available_not_after))
+                ]
+            if not normalized.empty:
+                cbbo_frames[schema].append(normalized)
+                files[schema].append(path)
+        metadata_files.extend((directory / "manifest.json", directory / "receipt.json"))
+    cbbo_schema = "cbbo-1m" if cbbo_frames["cbbo-1m"] else "cbbo-1s"
+    if not definition_frames or not cbbo_frames[cbbo_schema]:
+        return None
+    definitions = (
+        pd.concat(definition_frames, ignore_index=True, sort=False)
+        .sort_values(["definition_effective_at", "contract_symbol"], kind="mergesort")
+        .drop_duplicates(["contract_symbol", "definition_effective_at"], keep="last")
+    )
+    cbbo = (
+        pd.concat(cbbo_frames[cbbo_schema], ignore_index=True, sort=False)
+        .sort_values(["quote_timestamp", "contract_symbol"], kind="mergesort")
+        .drop_duplicates(["contract_symbol", "quote_timestamp"], keep="last")
+    )
+    merged = pd.merge_asof(
+        cbbo.sort_values(["quote_timestamp", "contract_symbol"], kind="mergesort"),
+        definitions.sort_values(
+            ["definition_effective_at", "contract_symbol"], kind="mergesort"
+        ),
+        left_on="quote_timestamp",
+        right_on="definition_effective_at",
+        by="contract_symbol",
+        direction="backward",
+        allow_exact_matches=True,
+    )
+    merged = merged.loc[
+        merged["expiration_date"].notna()
+        & merged["call_put"].isin(("call", "put"))
+        & merged["strike"].notna()
+    ].copy()
+    if merged.empty:
+        return None
+    snapshot_for = pd.to_datetime(merged["quote_timestamp"], utc=True, errors="coerce")
+    contracts = pd.DataFrame(
+        {
+            "symbol": symbol,
+            "snapshot_for": snapshot_for,
+            "available_at": snapshot_for,
+            "contract_symbol": merged["contract_symbol"].astype("string"),
+            "call_put": merged["call_put"].astype("string").str.upper(),
+            "expiration_date": merged["expiration_date"],
+            "strike": pd.to_numeric(merged["strike"], errors="coerce"),
+            "underlying_price": float("nan"),
+            "bid": pd.to_numeric(merged["bid"], errors="coerce"),
+            "ask": pd.to_numeric(merged["ask"], errors="coerce"),
+            "open_interest": float("nan"),
+            "volume": float("nan"),
+            "delta": float("nan"),
+            "gamma": float("nan"),
+            "theta": float("nan"),
+            "vega": float("nan"),
+            "multiplier": pd.to_numeric(merged["multiplier"], errors="coerce"),
+            "mini": False,
+            "non_standard": ~merged["standard_contract"].fillna(False).astype(bool),
+            "quote_valid": merged["ask"].ge(merged["bid"]) & merged["ask"].gt(0),
+            "relative_bid_ask_spread": (
+                (merged["ask"] - merged["bid"])
+                / ((merged["ask"] + merged["bid"]) / 2.0).replace(0, pd.NA)
+            ),
+            "quote_staleness_seconds": 0.0,
+            "source_provider": "databento-opra",
+            "fallback_used": False,
+            "schema_version": OPTION_CHAIN_SCHEMA_VERSION,
+        }
+    )
+    surfaces = (
+        contracts.groupby(["symbol", "snapshot_for", "available_at"], as_index=False)
+        .agg(surface_quality_pass=("quote_valid", "any"))
+        .assign(
+            source_provider="databento-opra",
+            fallback_used=False,
+            surface_quality_policy_version=OPTION_SURFACE_QUALITY_POLICY_VERSION,
+            calculation_version=OPTION_FEATURE_VERSION,
+            schema_version=OPTION_FEATURE_SCHEMA_VERSION,
+        )
+    )
+    quote_paths = tuple(
+        sorted(
+            (
+                root
+                / "stocks"
+                / symbol
+                / "quotes"
+                / "features"
+                / "quote-liquidity"
+                / "schwab"
+            ).glob("*.parquet")
+        )
+    )
+    quotes = _read_many(quote_paths) if quote_paths else pd.DataFrame()
+    if available_not_after is not None and not quotes.empty:
+        quotes = quotes.loc[
+            pd.to_datetime(quotes["available_at"], utc=True, errors="coerce").le(
+                _utc(available_not_after)
+            )
+        ].copy()
+    if not quotes.empty:
+        _validate_quotes(quotes, symbol=symbol)
+    source_files = tuple(
+        dict.fromkeys((*files["definition"], *files[cbbo_schema], *metadata_files, *quote_paths))
+    )
+    record_consumer_usage(
+        root,
+        consumer="options-strategy-history",
+        schemas=("definition", cbbo_schema),
+        rows=len(contracts),
+        source_files=source_files,
+    )
+    return OptionChainHistory(
+        symbol=symbol,
+        provider="databento-opra",
+        contracts=contracts,
+        surfaces=surfaces,
+        quotes=quotes,
+        source_files=source_files,
+    )
+
+
 def entry_chain_receipt(
-    history: SchwabChainHistory,
+    history: OptionChainHistory,
     *,
     minimum_snapshot_for: object,
     information_available_at: object,
@@ -234,7 +416,7 @@ def entry_chain_receipt(
 
 
 def exit_chain_receipt(
-    history: SchwabChainHistory,
+    history: OptionChainHistory,
     *,
     target_window_end: object,
     maximum_delay: pd.Timedelta,
@@ -256,7 +438,7 @@ def exit_chain_receipt(
 
 
 def entry_stock_quote(
-    history: SchwabChainHistory,
+    history: OptionChainHistory,
     *,
     information_available_at: object,
     target_window_start: object,
@@ -277,7 +459,7 @@ def entry_stock_quote(
 
 
 def exit_stock_quote(
-    history: SchwabChainHistory,
+    history: OptionChainHistory,
     *,
     target_window_end: object,
     maximum_delay: pd.Timedelta,
@@ -296,7 +478,7 @@ def exit_stock_quote(
 
 
 def _receipt_for_surface(
-    history: SchwabChainHistory,
+    history: OptionChainHistory,
     surface: pd.Series,
 ) -> ChainReceipt:
     key = (
@@ -311,7 +493,7 @@ def _receipt_for_surface(
 
 
 def _surface_available_slice(
-    history: SchwabChainHistory,
+    history: OptionChainHistory,
     lower: pd.Timestamp,
     upper: pd.Timestamp,
 ) -> pd.DataFrame:
@@ -321,7 +503,7 @@ def _surface_available_slice(
 
 
 def _quote_available_slice(
-    history: SchwabChainHistory,
+    history: OptionChainHistory,
     lower: pd.Timestamp,
     upper: pd.Timestamp,
 ) -> pd.DataFrame:
@@ -492,12 +674,19 @@ def _utc(value: object) -> pd.Timestamp:
     return pd.Timestamp(timestamp)
 
 
+def _occ_underlying(value: object) -> str:
+    import re
+
+    match = re.match(r"^([A-Z.]{1,6})\s*\d{6}[CP]", str(value).strip().upper())
+    return match.group(1) if match else ""
+
+
 __all__ = [
     "ChainReceipt",
-    "SchwabChainHistory",
+    "OptionChainHistory",
     "entry_chain_receipt",
     "entry_stock_quote",
     "exit_chain_receipt",
     "exit_stock_quote",
-    "load_schwab_chain_history",
+    "load_option_chain_history",
 ]
