@@ -1,0 +1,111 @@
+# CME/L2 runtime
+
+## Identity
+
+- Canonical name: CME/L2 runtime
+- Logical aliases or numbering: startup owner 1; independent CME/L2 owner
+- Runtime entry point: `python -m datafetching.cme_runtime`
+- Owning package: `datafetching`
+- Classification: Independent production loop
+- Scheduling mechanism: one supervisor computes the next due slot per schema
+- Cadence and phase: `mbp-10` every 5 seconds at +0 seconds; `bbo-1m` every 15 seconds at +2 seconds; `ohlcv-1m` every 60 seconds at +1 second
+- Lock or single-writer mechanism: `.ducketz-cme-writer.lock` via the stale-owner-aware exclusive runtime lock
+- Primary code evidence: **Confirmed.** `datafetching/cme_runtime.py:37`, `datafetching/cme_runtime.py:355`, `datafetching/cme_runtime.py:382`, `datafetching/cme_history.py:22`
+
+## Purpose
+
+**Confirmed:** this loop independently acquires high-frequency continuous-futures evidence, preserves event history and successful query positions, publishes a causally bounded current L2 snapshot, and derives hourly cross-asset features for Directional Loop B. It exists outside Loop A so CME cadence, high-volume MBP recovery, and writer ownership do not delay the equity/provider cycle. `datafetching/cme_runtime.py:98`, `datafetching/cme_runtime.py:171`, `datafetching/cme_runtime.py:192`, `docs/datafetch-ml/current_start_command:39`
+
+**Confirmed non-ownership:** it does not fetch equity Loop A data, build horizon targets, fit models, publish option valuations, capture equity option chains, or publish strategy ranks.
+
+## Inputs
+
+| Input or dataset | Producer/source | Physical path or interface | Key fields and semantic values | Clock/freshness/causality rules | Required or optional | Evidence |
+|---|---|---|---|---|---|---|
+| CME continuous-futures OHLCV | Databento Historical API | provider `fetch_cme_context_exact`; schema `ohlcv-1m` | NQ, ES, RTY, GC, CL one-minute open/high/low/close/volume plus provider event/receive and local receipt clocks | Exact query ranges; 120-second overlap; daily partitions; common context needs 60 identical minute timestamps | Required for hourly context; individual fetch failures isolated by schema | **Confirmed.** `datafetching/cme_runtime.py:37`, `datafetching/cme_runtime.py:47`, `datafetching/cme_runtime.py:479`, `datafetching/cme_cross_asset_context.py:103` |
+| CME BBO | Databento Historical API | schema `bbo-1m` | best bid/ask state, symbols, event/receive/receipt timestamps | 15-second cadence/overlap; hourly partitions; newest observation for all five roots must be no more than 15 minutes old for context | Required for relative-spread context and BBO portion of L2; otherwise derived stage skips/fails | **Confirmed.** `datafetching/cme_runtime.py:39`, `datafetching/cme_cross_asset_context.py:78`, `datafetching/cme_history.py:366` |
+| CME MBP-10 | Databento Historical API | schema `mbp-10` | depth price/size, side, action, sequence, instrument/symbol and event clocks | 5-second cadence; 2-second overlap; five-minute chunks; 250,000-row cap; saturated ranges split before persistence | Required for book imbalance/current book; otherwise source fetch or derived stage fails independently | **Confirmed.** `datafetching/cme_runtime.py:40`, `datafetching/cme_runtime.py:55`, `datafetching/cme_runtime.py:57`, `datafetching/cme_runtime.py:492` |
+| Successful query cursor | This loop’s prior cycle | `pools/cme/runtime/cursors/<group>__<schema>.json` | dataset/group/schema/symbols, `queried_through`, `successful_at`, optional `last_event_at`, row count | Read before query planning; only advanced after all chunks in that schema complete | Optional on first run; required if present and must match path identity/schema | **Confirmed.** `datafetching/cme_history.py:81`, `datafetching/cme_history.py:114`, `datafetching/cme_runtime.py:428`, `datafetching/cme_runtime.py:535` |
+| Previously persisted event partitions | This loop’s prior cycles | `pools/cme/events/databento/<group>/<schema>/{raw,normalized}/.../events.parquet` | exact event rows keyed adaptively by symbol/instrument, event time, sequence, action, side, depth and price | Idempotent overlap upsert; day partition for OHLCV, hour for book/quote events | Optional on bootstrap; reused for overlap, hourly derivation and L2 | **Confirmed.** `datafetching/cme_history.py:173`, `datafetching/cme_history.py:207`, `datafetching/cme_history.py:256`, `datafetching/cme_history.py:654` |
+
+## Processing and decisions
+
+1. **Confirmed:** discover requested Databento CME specs and enforce maximum concurrency of one or two. `datafetching/cme_runtime.py:114`, `datafetching/cme_runtime.py:126`
+2. **Confirmed:** for each schema, read its cursor, build bounded overlapping chunks, and call the provider with persistent bounded retry. `datafetching/cme_runtime.py:428`, `datafetching/cme_runtime.py:433`, `datafetching/cme_runtime.py:479`
+3. **Confirmed:** if a response hits its record limit, split the exact request and do not persist/advance past the missing range. `datafetching/cme_runtime.py:492`
+4. **Confirmed:** persist normalized and raw events into bounded partitions, deduplicating by stable event identity rather than volatile fetch metadata. `datafetching/cme_history.py:207`, `datafetching/cme_history.py:654`
+5. **Confirmed:** after every planned range for a schema succeeds, atomically publish the cursor. Schema failures are recorded and do not prevent other schemas from running. `datafetching/cme_runtime.py:168`, `datafetching/cme_runtime.py:535`
+6. **Confirmed:** derive every unseen completed common one-hour window. It requires the same 60 OHLCV minutes for all roots, recent BBO/MBP for all roots, rejects limit saturation/future evidence, and records `available_at` as the maximum relevant clock. `datafetching/cme_cross_asset_context.py:76`, `datafetching/cme_cross_asset_context.py:96`, `datafetching/cme_cross_asset_context.py:168`, `datafetching/cme_cross_asset_context.py:174`
+7. **Confirmed:** publish the latest five-minute L2 state using only events causally available by the boundary; classify MBP/MBO older than 60 seconds and BBO older than 300 seconds as `STALE`. `datafetching/cme_history.py:288`, `datafetching/cme_history.py:336`, `datafetching/cme_history.py:366`
+
+No additional owned worker exists. Query splitting is an internal queue, not a production loop.
+
+## Outputs
+
+| Output | Consumer(s) | Physical path or interface | Key output values and meanings | Publication/authority rules | Evidence |
+|---|---|---|---|---|---|
+| Raw and normalized CME event history | This loop’s derivations; possible read-only/research consumers | `pools/cme/events/databento/.../events.parquet` | OHLCV/BBO/MBP records; provider event/receive and local receipt clocks; normalized IDs | Bounded immutable/idempotent partitions; saturated parent request is never published as complete | **Confirmed.** `datafetching/cme_history.py:173`, `datafetching/cme_runtime.py:492`, `datafetching/cme_runtime.py:508` |
+| Per-schema successful cursor | This loop | `pools/cme/runtime/cursors/*.json` | queried-through boundary, last event, success time and row count | Atomic JSON; only after the schema’s exact ranges succeed | **Confirmed.** `datafetching/cme_history.py:131`, `datafetching/cme_history.py:162`, `datafetching/cme_runtime.py:535` |
+| Hourly cross-asset context | Directional Loop B; indirectly Strategy | `pools/cme/features/cross-asset-context/databento/1h.parquet` | NQ/ES/gold/crude returns; small-cap and tech breadth; relative spread; book imbalance; completeness/staleness and availability | Immutable natural key `(context_name, window_end, calculation_version)`; only complete causal windows | **Confirmed.** `datafetching/cme_cross_asset_context.py:24`, `datafetching/cme_cross_asset_context.py:181`, `datafetching/cme_cross_asset_context.py:221`, `datafetching/cme_cross_asset_context.py:277` |
+| Five-minute L2 snapshot, manifest, receipt and pointer | No production-loop consumer located; supporting/current-state artifact | `pools/cme/snapshots/l2/databento/5m/<target_ns>/` plus current pointer | latest causal book/BBO rows; event/receipt ages; `FRESH`/`STALE`; cursor lineage | Immutable target directory and checksum receipt, then atomic pointer; exact existing target is reused | **Confirmed.** `datafetching/cme_history.py:295`, `datafetching/cme_history.py:306`, `datafetching/cme_history.py:418`, `datafetching/cme_history.py:437` |
+| Failure records | Operators/diagnostics | datastore error authority | group/schema or derived-stage error and time | Failure is recorded per schema/stage; successful lanes continue | **Confirmed.** `datafetching/cme_runtime.py:168`, `datafetching/cme_runtime.py:189` |
+
+## Direct loop relationships
+
+### Upstream
+
+**Confirmed:** no other production loop is upstream. Databento is an external provider; this loop’s own cursor/history is state, not another loop.
+
+### Downstream
+
+**Confirmed:** Directional Loop B directly reads the hourly context and joins the `cme__` family by causal availability/freshness. Strategy receives the same values only indirectly because Loop B copies context into its samples/candidates. `ml/rolling_materialization.py:782`, `ml/datasets/families.py:517`, `ml/strategy_selection/model.py:118`
+
+### Timing and control relationships
+
+**Confirmed:** CME runs independently at sub-minute schema phases. There is no readiness barrier between it and Loop A or Loop B; Loop B consumes the latest causally eligible context at its own cutoff. `datafetching/cme_runtime.py:641`, `ml/rolling_materialization.py:782`
+
+## Prediction contribution
+
+| Prediction family | Contribution | Explanation and exact causal chain |
+|---|---|---|
+| Directional horizon predictions | Indirect | CME events → hourly causal context → Loop B `cme__` features → calibrated directional probability. `datafetching/cme_cross_asset_context.py:181`, `ml/rolling_materialization.py:782`, `ml/runtime_pipeline.py:480` |
+| Option-pricing predictions | None | No Pricing input reader for CME event/context/L2 artifacts was found. |
+| Options-strategy predictions | Indirect | CME context → Loop B samples/predictions → Strategy context features and profitable-outcome score. `ml/strategy_runtime.py:125`, `ml/strategy_selection/model.py:118` |
+
+**Roll-up classification: Both.** This follows evidenced paths to horizon and strategy outputs; it does not imply a CME path to contract pricing.
+
+## Failure and degradation behavior
+
+- **Confirmed:** a schema provider failure is recorded and other schemas still run; cursor advance is per successfully completed schema. `datafetching/cme_runtime.py:152`, `datafetching/cme_runtime.py:168`
+- **Confirmed:** a saturated MBP response is split; the cursor cannot leap over unpublished children. `datafetching/cme_runtime.py:492`
+- **Confirmed:** incomplete common windows, stale components, future evidence, or saturated books prevent that hourly context window from publishing. Existing earlier context remains immutable. `datafetching/cme_cross_asset_context.py:103`, `datafetching/cme_cross_asset_context.py:121`, `datafetching/cme_cross_asset_context.py:210`
+- **Confirmed:** L2 can publish rows labeled `STALE`; its freshness label is semantic output, not silent freshness relaxation. `datafetching/cme_history.py:366`
+- **Inferred:** when CME context merely lags, Loop B’s horizon freshness rules can null it and continue if the active model/route can process missing values; if no required CME source can be loaded, affected routes may fail. The code does not grant a separate CME-specific baseline.
+
+## Accuracy and efficiency relevance
+
+- Leakage prevention: common-window completeness, future-clock rejection, bounded staleness, and cursor lineage. `datafetching/cme_cross_asset_context.py:103`, `datafetching/cme_cross_asset_context.py:168`
+- Feature quality: five-root completeness plus quote/book spread and imbalance quality. `datafetching/cme_cross_asset_context.py:78`, `datafetching/cme_cross_asset_context.py:205`
+- Critical-path latency: not on a hard Loop A/Loop B barrier; context availability is asynchronous.
+- Computation/provider volume: schema-specific cadence/chunk/overlap; bounded concurrency; saturated split. `datafetching/cme_runtime.py:37`, `datafetching/cme_runtime.py:52`, `datafetching/cme_runtime.py:114`
+- Storage I/O: bounded day/hour partitions and overlap deduplication avoid whole-history rewrites. `datafetching/cme_history.py:256`
+
+## Conflicts, gaps, and uncertainty
+
+- **Documented only (obsolete reference):** the old SVG happened to represent CME → hourly features → B accurately, but it is not used for the current owner census. The same relationship is independently confirmed by producer and consumer implementation. `datafetching/cme_cross_asset_context.py:181`, `ml/rolling_materialization.py:782`
+- **Unknown:** no production-loop reader of the current L2 pointer was found. It is therefore classified as supporting output, not evidence of model use.
+- **Unknown:** static analysis cannot establish current Databento entitlement, data population, live freshness, or predictive lift of `cme__` features.
+- **Confidence:** High for ownership, cadence, artifacts, and the direct B relationship; Medium for operational importance because live data/gate state was intentionally not inspected.
+
+## Evidence index
+
+- `datafetching/cme_runtime.py:37`
+- `datafetching/cme_runtime.py:98`
+- `datafetching/cme_runtime.py:415`
+- `datafetching/cme_history.py:77`
+- `datafetching/cme_history.py:207`
+- `datafetching/cme_history.py:288`
+- `datafetching/cme_cross_asset_context.py:68`
+- `ml/rolling_materialization.py:782`
+- `tests/test_cme_runtime.py:191`
+- `tests/test_cme_runtime.py:270`

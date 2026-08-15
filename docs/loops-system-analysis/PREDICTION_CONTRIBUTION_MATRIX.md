@@ -1,0 +1,45 @@
+# Prediction-contribution matrix
+
+## Classification rule
+
+**Confirmed convention:** `Direct` is reserved for the loop that publishes the authoritative prediction artifact for that family. `Indirect` requires an implemented data or control chain into that artifact; phase proximity alone does not count. `None` means no such path was found. Roll-up `Both` means at least one directional-horizon path and at least one option-pricing or options-strategy path; `Options` means option-family only. This convention describes causal contribution, not proven empirical lift.
+
+## Matrix
+
+| Loop | Directional horizon contribution | Option-pricing contribution | Options-strategy contribution | Roll-up | Exact outputs that create the contribution | Immediate downstream consumer | Evidence | Confidence |
+|---|---|---|---|---|---|---|---|---|
+| CME/L2 runtime | Indirect | None | Indirect | Both | hourly causal cross-asset context: futures returns/breadth, relative spread, book imbalance, quality/availability | Directional Loop B; Strategy only through B | `datafetching/cme_cross_asset_context.py:181`, `ml/rolling_materialization.py:782`, `ml/strategy_selection/model.py:118` | High for path; Unknown empirical lift |
+| Loop A | Indirect | Indirect | Indirect | Both | exact bar-readiness/close; complete-cycle cutoff and feature Parquets; stock quote-liquidity | Pricing, Options, B, Strategy | `datafetching/orchestrate.py:292`, `datafetching/loop_a_cycle.py:127`, `ml/option_pricing_runtime.py:1116`, `ml/prediction_runtime.py:209`, `ml/strategy_selection/chain.py:151` | High |
+| Daily ALFRED runtime | Indirect | Indirect | Indirect | Both | verified vintage macro context/readiness; causal FEDFUNDS observation | Pricing and B; Strategy only through B | `datafetching/fred_vintages.py:364`, `datafetching/fred_alfred_readiness.py:667`, `ml/option_pricing/rates.py:361`, `ml/rolling_materialization.py:740` | High for path; Unknown live coverage |
+| Active Pricing / logical Loop 3 | Indirect | Direct | Indirect | Both | authoritative constrained Black–Scholes target point values; one-to-one finite-basis residual/fallback sidecar with uncertainty; compact `opx__` surfaces; verified per-leg BSGP/Black–Scholes catalog | Options barrier, B, Strategy | `ml/option_pricing/target_outcome.py:93`, `ml/option_pricing/prediction.py:250`, `ml/rolling_materialization.py:663`, `ml/option_pricing/strategy_shadow.py:298` | High for mechanics; empirical residual lift Unknown |
+| Options Capture / logical Loop 4 | Indirect | Indirect | Indirect | Both | immutable OPRA/Schwab chains and outcomes; compact `opt__` quality features; exact Schwab entry/exit receipts | Pricing, B, Strategy | `options/publication.py:92`, `ml/option_pricing_runtime.py:660`, `ml/rolling_materialization.py:614`, `ml/strategy_selection/runtime.py:240` | High for both provider contracts; deployed mix Unknown |
+| Directional Loop B | Direct | None | Indirect | Both | authoritative samples and LIVE raw/calibrated horizon probabilities with target/action clocks | Strategy and read-only forecast UI | `ml/runtime_pipeline.py:493`, `ml/runtime_pipeline.py:704`, `ml/runtime_pipeline.py:876`, `ml/strategy_runtime.py:74` | High |
+| Strategy runtime | None | None | Direct | Options | authoritative calibrated profitable-outcome probability or explicit scenario prior, expected profit/return and rank | read-only Options Strategy UI | `ml/strategy_selection/model.py:442`, `ml/strategy_runtime.py:463`, `ml/strategy_publication.py:40`, `app/ui/options_strategy_data.py:628` | High for contract; Unknown empirical performance |
+
+## Directional horizon prediction causal chain
+
+1. **Confirmed:** Loop A makes normalized/derived equity evidence and a complete-cycle cutoff authoritative; CME, Daily ALFRED, Options Capture and Active Pricing independently publish cross-asset, macro, `opt__`, and `opx__` evidence. `datafetching/loop_a_cycle.py:127`, `datafetching/cme_cross_asset_context.py:277`, `datafetching/fred_alfred_readiness.py:667`, `options/publication.py:92`, `ml/option_pricing/publication.py:83`
+2. **Confirmed:** Loop B holds the shared Loop A lock and materializes only data causally available by that complete-cycle cutoff, enforcing family freshness/readiness and quarantining unavailable Pricing features into the registered baseline. `ml/prediction_runtime.py:209`, `ml/rolling_materialization.py:160`, `ml/runtime_pipeline.py:432`
+3. **Confirmed:** target windows use predetermined exchange-calendar constituents; completed observations are split chronologically into training, calibration, assessment and sealed lockbox. `ml/horizons.py:121`, `ml/rolling_samples.py:288`, `ml/model_runtime.py:141`
+4. **Confirmed:** Loop B fits or reuses a compatible model, calibrates without assessment/lockbox leakage, scores the current eligible sample, enforces `actionable_until`, then atomically publishes the LIVE probability. `ml/model_runtime.py:372`, `ml/model_runtime.py:466`, `ml/runtime_pipeline.py:509`, `ml/runtime_pipeline.py:603`, `ml/runtime_pipeline.py:876`
+
+## Option-pricing prediction causal chain
+
+1. **Confirmed:** Loop A publishes the exact target readiness and underlying close; an earlier canonical OPRA-or-Schwab Options snapshot supplies contract/lagged-volatility evidence; Daily ALFRED/current rates and causal dividend/definition evidence complete the six semantic inputs. `datafetching/bar_readiness.py:82`, `ml/option_pricing_runtime.py:660`, `ml/option_pricing_runtime.py:1181`, `ml/option_pricing/policies.py:42`
+2. **Confirmed:** Active Pricing waits for readiness within the target's 1,200-second window and filters eligible contracts. It publishes constrained Black–Scholes baseline point values with fitted uncertainty null, plus a separate one-to-one `BS + residual` sidecar carrying finite-basis posterior intervals or explicit wider Black–Scholes fallback intervals. `ml/option_pricing_runtime.py:1116`, `ml/option_pricing_runtime.py:1220`, `ml/option_pricing/prediction.py:98`, `ml/option_pricing/prediction.py:250`
+3. **Confirmed:** target samples/predictions/status, receipt and pointer publish immutably; later Options evidence reconciles outcomes and feeds evaluations/surfaces/full-generation authority. `ml/option_pricing/target_outcome.py:192`, `ml/option_pricing_runtime.py:660`, `ml/option_pricing_runtime.py:2239`
+
+This is the implemented `BLACK-SCHOLES-OP` relationship: the reference's `f(x)=BS(x)+delta(x)` and six inputs are present, while Ducketz uses a bounded Nyström/Bayesian-ridge residual approximation rather than the reference exact GP/MCMC. `docs/edu/BLACK-SCHOLES-OP.md:327`, `docs/edu/BLACK-SCHOLES-OP.md:441`, `ml/option_pricing/model.py:68`
+
+## Options-strategy prediction causal chain
+
+1. **Confirmed:** Strategy binds one verified Loop B run, using its LIVE calibrated direction probability, exact target clocks and feature context. `ml/strategy_runtime.py:74`, `ml/strategy_selection/runtime.py:225`
+2. **Confirmed:** it selects exact causal Schwab entry-chain/stock evidence, constructs policy-eligible candidates, and attaches receipt-proven Pricing evidence before any fitted probability score. Ready target sidecars are canonicalized to `BSGP`; complete residual fallbacks are `BLACK_SCHOLES`; unavailable/ineligible coverage cannot masquerade as fitted pricing. `ml/strategy_selection/runtime.py:240`, `ml/strategy_selection/runtime.py:267`, `ml/option_pricing/strategy_shadow.py:298`, `ml/strategy_selection/runtime.py:288`
+3. **Confirmed:** historical exact entry/exit receipts produce strictly-positive-net-profit labels; chronological partitions fit/reuse a classifier/regressor and calibrate on a separate window. `ml/strategy_selection/runtime.py:351`, `ml/strategy_selection/model.py:137`, `ml/strategy_selection/model.py:330`, `ml/strategy_selection/model.py:364`
+4. **Confirmed:** eligible candidates receive calibrated profitable-outcome probability and bounded expected profit/return; otherwise the explicit Pricing-scenario prior remains. Rows are deterministically ranked, validated and atomically published. `ml/strategy_selection/model.py:442`, `ml/strategy_selection/runtime.py:306`, `ml/strategy_runtime.py:527`, `ml/strategy_publication.py:40`
+
+## Interpretation limits
+
+- **Unknown operational/empirical state:** the repository proves the OPRA and Black–Scholes-plus-residual paths, but—without provider configuration or datastore inspection—not their current activation/population, gate admission, provider share, or incremental predictive value.
+- **Confirmed:** no loop is classified `Neither/supporting infrastructure` at owner level. Some owned outputs (for example CME’s current L2 pointer) are supporting-only, but the same owner also publishes evidence used by prediction loops. `datafetching/cme_history.py:418`, `ml/rolling_materialization.py:782`
+- **Confirmed:** the Pricing worker is not a matrix row because it is owned and one-shot; its effect is included in Active Pricing. `ml/option_pricing_loop_native_worker.py:38`, `ml/option_pricing_runtime.py:418`
