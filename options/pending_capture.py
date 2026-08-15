@@ -368,7 +368,9 @@ def record_pending_request_failure(
         request,
         status="REQUEST_FAILED",
         terminal_at=_utc(failed_at, "failed_at"),
-        detail=f"{type(exc).__name__}: {exc}",
+        # Provider exception messages can contain request URLs or SDK context.
+        # Persist the stable failure class, never arbitrary provider text.
+        detail=type(exc).__name__,
     )
 
 

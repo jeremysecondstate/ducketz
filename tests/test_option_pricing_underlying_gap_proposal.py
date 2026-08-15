@@ -1,39 +1,19 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
 from datafetching.decision_time import completed_bar_clock_for_target
-from ml.artifacts import semantic_metadata_fingerprint
-
-
-def test_no_trade_proposal_is_hashed_inactive_and_requires_exact_approval() -> None:
+def test_obsolete_no_trade_proposal_remains_retired() -> None:
     path = (
         Path(__file__).resolve().parents[1]
         / "docs"
         / "datafetch-ml"
         / "opra-underlying-no-trade-proposal-v2.json"
     )
-    proposal = json.loads(path.read_text(encoding="utf-8"))
-
-    assert proposal["status"] == "PROPOSED_NOT_APPROVED"
-    assert proposal["active"] is False
-    assert proposal["explicit_operator_approval_received"] is False
-    assert proposal["automated_action_allowed"] is False
-    assert proposal["policy"]["exact_rule"]["status"] == (
-        "CURRENT_ACTIVE_RULE_REMAINS_UNCHANGED"
-    )
-    assert proposal["policy"]["gap_rule"]["maximum_staleness_seconds"] == 60
-    assert proposal["policy"]["gap_rule"]["next_interval_fallback_forbidden"] is True
-    assert proposal["policy"]["bbo_alternative"][
-        "separate_cost_authorization_required"
-    ] is True
-    assert proposal["policy_hash_sha256"] == semantic_metadata_fingerprint(
-        proposal["policy"]
-    )
+    assert not path.exists()
 
 
 def test_active_completed_bar_contract_still_rejects_prior_minute_substitution(

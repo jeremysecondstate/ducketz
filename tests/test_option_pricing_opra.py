@@ -490,6 +490,32 @@ def test_opra_price_scale_definition_asof_expiration_and_interval_semantics() ->
     assert target.iloc[0]["quote_timestamp"] == pd.Timestamp("2026-07-06T14:01:00Z")
 
 
+def test_definition_availability_prefers_receive_clock_and_decodes_cfi() -> None:
+    definitions = normalize_definition_records(
+        pd.DataFrame(
+            {
+                "raw_symbol": ["NVDA   260821C00100000"],
+                "underlying": ["NVDA"],
+                "ts_event": ["2026-07-06T13:00:00Z"],
+                "ts_recv": ["2026-07-06T13:00:01Z"],
+                "expiration": [pd.Timestamp("2026-08-21T00:00:00Z").value],
+                "instrument_class": ["C"],
+                "strike_price": [100 * OPRA_PRICE_SCALE],
+                # DBN fixed quantity promoted to float by DataFrame decoding.
+                "contract_multiplier": [100.0],
+                "cfi": ["OCASPS"],
+            }
+        )
+    )
+    row = definitions.iloc[0]
+    assert row["definition_effective_at"] == pd.Timestamp("2026-07-06T13:00:01Z")
+    assert row["exercise_style"] == "AMERICAN"
+    assert row["settlement_type"] == "PHYSICAL"
+    assert row["settlement_reference"] == "OPRA_DEFINITION_CFI:OCASPS"
+    assert row["multiplier"] == pytest.approx(100.0)
+    assert bool(row["standard_contract"]) is True
+
+
 def test_offline_outcome_must_follow_emulated_prediction_availability() -> None:
     cbbo = normalize_cbbo_records(
         pd.DataFrame(

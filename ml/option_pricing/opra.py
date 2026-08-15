@@ -1457,6 +1457,39 @@ def normalize_fixed_price(value: object) -> float:
     return result if math.isfinite(result) else math.nan
 
 
+def _normalize_definition_quantity(value: object) -> float:
+    """Normalize DBN fixed quantities while accepting decoded test/data frames."""
+
+    if value is None or value is pd.NA or isinstance(value, bool):
+        return math.nan
+    result = float(value)
+    if not math.isfinite(result):
+        return math.nan
+    # DataFrame decoding may promote DBN fixed integers to float when a column
+    # contains missing values, so magnitude—not the Python scalar class—must
+    # identify the 1e-9 representation.
+    if abs(result) >= 1_000_000:
+        return result / OPRA_PRICE_SCALE
+    return result
+
+
+def _historical_option_cfi(value: object) -> tuple[str | None, str | None, bool | None]:
+    cfi = str(value or "").strip().upper()
+    if len(cfi) != 6 or cfi[0] != "O" or cfi[1] not in {"C", "P"}:
+        return None, None, None
+    style = {"A": "AMERICAN", "E": "EUROPEAN", "B": "BERMUDAN"}.get(cfi[2])
+    settlement = {
+        "P": "PHYSICAL",
+        "C": "CASH",
+        "N": "NON_DELIVERABLE",
+        "E": "ELECT_AT_EXERCISE",
+    }.get(cfi[4])
+    standardized = {"S": True, "N": False}.get(cfi[5])
+    if cfi[3] != "S":
+        return None, None, False
+    return style, settlement, standardized
+
+
 def normalize_definition_records(records: pd.DataFrame) -> pd.DataFrame:
     """Preserve semantic definition fields for point-in-time as-of matching."""
 
@@ -1477,11 +1510,19 @@ def normalize_definition_records(records: pd.DataFrame) -> pd.DataFrame:
             )
         )
     raw_symbol_column = _first_column(records, "raw_symbol", "symbol")
-    effective_column = _first_column(records, "ts_event", "ts_recv")
+    # Databento definitions are indexed/effective by the receive timestamp.
+    # Preserve event time elsewhere when needed, but never let a later event
+    # clock make a definition appear available before Databento received it.
+    effective_column = _first_column(records, "ts_recv", "ts_event")
     expiration_column = _first_column(records, "expiration", "expiration_date")
     class_column = _first_column(records, "instrument_class", "class")
     strike_column = _first_column(records, "strike_price", "strike")
-    multiplier_column = _optional_column(records, "unit_of_measure_qty", "contract_multiplier", "multiplier")
+    multiplier_column = _optional_column(
+        records,
+        "contract_multiplier",
+        "unit_of_measure_qty",
+        "multiplier",
+    )
     output = pd.DataFrame(index=records.index)
     output["contract_symbol"] = records[raw_symbol_column].astype("string").str.strip()
     if "underlying" in records:
@@ -1500,15 +1541,25 @@ def normalize_definition_records(records: pd.DataFrame) -> pd.DataFrame:
     output["call_put"] = records[class_column].map(_normalize_call_put).astype("string")
     output["strike"] = records[strike_column].map(normalize_fixed_price)
     if multiplier_column is None:
-        output["multiplier"] = 100.0
+        output["multiplier"] = math.nan
     else:
-        output["multiplier"] = pd.to_numeric(records[multiplier_column], errors="coerce")
+        output["multiplier"] = records[multiplier_column].map(
+            _normalize_definition_quantity
+        )
     occ_root = output["contract_symbol"].map(_underlying_from_occ).astype("string")
+    cfi_column = _optional_column(records, "cfi")
+    cfi_semantics = (
+        records[cfi_column].map(_historical_option_cfi)
+        if cfi_column is not None
+        else pd.Series([(None, None, None)] * len(records), index=records.index)
+    )
+    cfi_standard = cfi_semantics.map(lambda value: value[2])
     output["standard_contract"] = (
         output["multiplier"].eq(100)
         & output["call_put"].isin(("call", "put"))
         & occ_root.eq(output["symbol"])
         & occ_root.str.fullmatch(r"[A-Z.]{1,6}", na=False)
+        & (cfi_standard.eq(True) if cfi_column is not None else True)
     )
     exercise_column = _optional_column(
         records, "exercise_style", "exerciseStyle", "exercise"
@@ -1519,21 +1570,42 @@ def normalize_definition_records(records: pd.DataFrame) -> pd.DataFrame:
     settlement_reference_column = _optional_column(
         records, "settlement_reference", "settlementReference"
     )
-    output["exercise_style"] = (
+    cfi_style = cfi_semantics.map(lambda value: value[0])
+    cfi_settlement = cfi_semantics.map(lambda value: value[1])
+    explicit_exercise = (
         records[exercise_column].astype("string").str.strip().str.upper()
         if exercise_column is not None
-        else "AMBIGUOUS"
+        else pd.Series(pd.NA, index=records.index, dtype="string")
     )
-    output["settlement_type"] = (
+    explicit_settlement = (
         records[settlement_column].astype("string").str.strip().str.upper()
         if settlement_column is not None
-        else "AMBIGUOUS"
+        else pd.Series(pd.NA, index=records.index, dtype="string")
     )
+    output["exercise_style"] = explicit_exercise.where(
+        explicit_exercise.notna() & explicit_exercise.ne(""),
+        cfi_style,
+    ).fillna("AMBIGUOUS")
+    output["settlement_type"] = explicit_settlement.where(
+        explicit_settlement.notna() & explicit_settlement.ne(""),
+        cfi_settlement,
+    ).fillna("AMBIGUOUS")
     output["settlement_reference"] = (
         records[settlement_reference_column].astype("string").str.strip()
         if settlement_reference_column is not None
-        else ""
+        else pd.Series("", index=records.index)
     )
+    if cfi_column is not None:
+        cfi_reference = records[cfi_column].astype("string").map(
+            lambda value: f"OPRA_DEFINITION_CFI:{str(value).strip().upper()}"
+            if str(value).strip()
+            else ""
+        )
+        output["settlement_reference"] = output["settlement_reference"].where(
+            output["settlement_reference"].astype("string").str.strip().ne(""),
+            cfi_reference,
+        )
+        output["cfi"] = records[cfi_column].astype("string").str.strip().str.upper()
     return output.reset_index(drop=True)
 
 

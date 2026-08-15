@@ -581,6 +581,7 @@ def _cached_offline_replay_predictions(
                     "bsgp_shadow_constrained_interval_95_upper",
                     "bsgp_shadow_predictive_standard_deviation",
                     "bsgp_shadow_normalized_residual",
+                    "bsgp_shadow_dollar_residual",
                     "bsgp_shadow_shrinkage",
                     "bsgp_shadow_status",
                 ],

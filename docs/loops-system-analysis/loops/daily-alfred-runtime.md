@@ -59,7 +59,7 @@ The importer’s pagination is internal. The one-time `ml.option_pricing_fred --
 ### Downstream
 
 - **Directional Loop B:** consumes only readiness-authorized vintage/context evidence for daily/weekly macros. `ml/rolling_materialization.py:740`
-- **Active Pricing:** its rate loader reads ALFRED release context, and the owned worker uses the same strictly prior FEDFUNDS observations for residual materialization. `ml/option_pricing/rates.py:369`, `ml/option_pricing_loop_native_worker.py:54`
+- **Active Pricing:** live construction requires a strictly prior FRED/ALFRED rate observation; its rate loader reads ALFRED release context, and the owned worker uses the same causal FEDFUNDS evidence for residual materialization. Provider/FMP rate substitution is disabled live. `ml/option_pricing/causal.py:264`, `ml/option_pricing/causal.py:450`, `ml/option_pricing/rates.py:369`, `ml/option_pricing_loop_native_worker.py:54`
 
 ### Timing and control relationships
 

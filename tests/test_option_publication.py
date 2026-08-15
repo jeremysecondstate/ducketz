@@ -24,7 +24,8 @@ from options.publication import (
     read_committed_option_surfaces,
     read_option_snapshot,
 )
-from options.providers import ProviderOptionEvidence
+from options.databento_live import DatabentoOpraIntegrityError
+from options.providers import OptionProviderUnavailable, ProviderOptionEvidence
 
 
 def test_committed_option_reader_ignores_partial_generation_and_honors_cutoff(
@@ -409,44 +410,7 @@ def test_injected_opra_adapter_is_primary_and_same_target_skips_provider_call(
         @classmethod
         def fetch_snapshot(cls, **_kwargs: object) -> ProviderOptionEvidence:
             cls.calls += 1
-            contract = "GOOG  260821C00100000"
-            return ProviderOptionEvidence(
-                provider=cls.provider,
-                dataset=cls.dataset,
-                schema=cls.schema,
-                symbol="GOOG",
-                target_snapshot_for=target,
-                received_at=target + pd.Timedelta(minutes=1),
-                quotes=pd.DataFrame(
-                    [
-                        {
-                            "contract_symbol": contract,
-                            "quote_timestamp": target - pd.Timedelta(seconds=1),
-                            "bid": 1.0,
-                            "ask": 1.1,
-                            "bid_size": 10,
-                            "ask_size": 12,
-                            "publisher_id": 30,
-                        }
-                    ]
-                ),
-                definitions=pd.DataFrame(
-                    [
-                        {
-                            "contract_symbol": contract,
-                            "symbol": "GOOG",
-                            "expiration_date": "2026-08-21T00:00:00Z",
-                            "call_put": "CALL",
-                            "strike": 100.0,
-                            "multiplier": 100.0,
-                            "standard_contract": True,
-                            "definition_effective_at": target - pd.Timedelta(days=1),
-                            "exercise_style": "AMERICAN",
-                            "settlement_type": "PHYSICAL",
-                        }
-                    ]
-                ),
-            )
+            return _valid_opra_evidence(target)
 
     runtime_clock = lambda: (target + pd.Timedelta(minutes=1)).to_pydatetime()
     first = options_runtime.run_options_cycle(
@@ -472,6 +436,286 @@ def test_injected_opra_adapter_is_primary_and_same_target_skips_provider_call(
     assert first.schwab_fallbacks == 0
     assert second.opra_requests == 0
     assert Adapter.calls == 1
+
+
+def test_compatibility_mode_does_not_request_schwab_for_committed_opra_target(
+    tmp_path: Path,
+) -> None:
+    target = pd.Timestamp("2026-08-05T17:15:00Z")
+    raw, contracts, features = _frames(
+        snapshot_for=target.isoformat(),
+        available_at=(target + pd.Timedelta(seconds=30)).isoformat(),
+        score=1.0,
+    )
+    publish_option_snapshot(
+        tmp_path,
+        symbol="GOOG",
+        raw=raw,
+        contracts=contracts,
+        features=features,
+        provider="databento-opra",
+        dataset="OPRA.PILLAR",
+    )
+
+    class Session:
+        @staticmethod
+        def get_option_chain_snapshot(*_args: object, **_kwargs: object) -> object:
+            pytest.fail("A committed OPRA target must suppress a Schwab request")
+
+    result = options_runtime.run_options_cycle(
+        ParquetStore(tmp_path),
+        symbols=("GOOG",),
+        session=Session(),  # type: ignore[arg-type]
+        clock=lambda: (target + pd.Timedelta(minutes=1)).to_pydatetime(),
+        bar_readiness_mode="exact",
+        pricing_barrier_timeout_seconds=0,
+        canonical_market_adapter=None,
+        reporter=None,
+    )
+
+    assert result.skipped == 1
+    assert result.opra_requests == 0
+    assert result.schwab_requests == 0
+
+
+def test_canonical_opra_capture_does_not_wait_for_loop_a_readiness(
+    tmp_path: Path,
+) -> None:
+    target = pd.Timestamp("2026-08-05T17:15:00Z")
+
+    class Adapter:
+        provider = "databento-opra"
+        dataset = "OPRA.PILLAR"
+        schema = "cbbo-1s"
+
+        @staticmethod
+        def fetch_snapshot(**_kwargs: object) -> ProviderOptionEvidence:
+            return _valid_opra_evidence(target)
+
+    class Session:
+        @staticmethod
+        def get_option_chain_snapshot(*_args: object, **_kwargs: object) -> object:
+            pytest.fail("Schwab must not be called when canonical OPRA is available")
+
+    result = options_runtime.run_options_cycle(
+        ParquetStore(tmp_path),
+        symbols=("GOOG",),
+        session=Session(),  # type: ignore[arg-type]
+        clock=lambda: (target + pd.Timedelta(minutes=1)).to_pydatetime(),
+        target_snapshot_for=target,
+        bar_readiness_mode="required",
+        pricing_barrier_timeout_seconds=0,
+        canonical_market_adapter=Adapter(),  # type: ignore[arg-type]
+        reporter=None,
+    )
+
+    assert result.published == 1
+    assert result.opra_requests == 1
+    assert result.schwab_requests == 0
+    assert result.pending_captures == 0
+    assert len(
+        committed_option_snapshots(
+            tmp_path,
+            symbol="GOOG",
+            provider="databento-opra",
+        )
+    ) == 1
+
+
+def test_transient_opra_failure_uses_labeled_secret_free_schwab_fallback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = pd.Timestamp("2026-08-05T17:15:00Z")
+    monkeypatch.setattr(
+        options_runtime,
+        "completed_bar_clock_for_target",
+        lambda *_args, **_kwargs: DecisionClock(
+            decision_timestamp=target,
+            bar_timestamp=target - pd.Timedelta(minutes=1),
+            provider="databento",
+            timeframe="1m",
+            source_file=tmp_path / "bars.parquet",
+        ),
+    )
+    captured: dict[str, object] = {}
+
+    class Adapter:
+        provider = "databento-opra"
+        dataset = "OPRA.PILLAR"
+        schema = "cbbo-1s"
+
+        @staticmethod
+        def fetch_snapshot(**_kwargs: object) -> ProviderOptionEvidence:
+            raise OptionProviderUnavailable("do-not-log-this credential fragment")
+
+    class Session:
+        calls = 0
+
+        @classmethod
+        def get_option_chain_snapshot(
+            cls, *_args: object, **_kwargs: object
+        ) -> dict[str, object]:
+            cls.calls += 1
+            return {"symbol": "GOOG"}
+
+    def persist(*_args: object, **kwargs: object) -> OptionSnapshotOutput:
+        captured.update(kwargs)
+        return OptionSnapshotOutput(
+            tmp_path / "contracts.parquet",
+            tmp_path / "features.parquet",
+            tmp_path / "raw.parquet",
+            1,
+            tmp_path / "receipt.json",
+            tmp_path / "snapshot",
+        )
+
+    failures: list[dict[str, object]] = []
+    reports: list[str] = []
+    monkeypatch.setattr(options_runtime, "persist_schwab_option_snapshot", persist)
+    monkeypatch.setattr(
+        options_runtime,
+        "_record_failure",
+        lambda *_args, **kwargs: failures.append(dict(kwargs)),
+    )
+    result = options_runtime.run_options_cycle(
+        ParquetStore(tmp_path),
+        symbols=("GOOG",),
+        session=Session(),  # type: ignore[arg-type]
+        clock=lambda: (target + pd.Timedelta(minutes=1)).to_pydatetime(),
+        bar_readiness_mode="exact",
+        pricing_barrier_timeout_seconds=0,
+        canonical_market_adapter=Adapter(),  # type: ignore[arg-type]
+        reporter=reports.append,
+    )
+
+    assert result.opra_requests == 1
+    assert result.schwab_requests == 1
+    assert result.schwab_fallbacks == 1
+    assert result.published == 1
+    assert Session.calls == 1
+    provenance = captured["capture_provenance"]
+    assert provenance["canonical_provider"] == "databento-opra"  # type: ignore[index]
+    assert provenance["fallback_used"] is True  # type: ignore[index]
+    assert provenance["fallback_reason"] == "OPTIONPROVIDERUNAVAILABLE"  # type: ignore[index]
+    assert failures[0]["source"] == "databento-opra"
+    assert failures[0]["safe_message"] == "OPTIONPROVIDERUNAVAILABLE"
+    assert "do-not-log-this" not in "\n".join(reports)
+
+
+def test_opra_integrity_failure_fails_target_closed_without_schwab_request(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = pd.Timestamp("2026-08-05T17:15:00Z")
+    monkeypatch.setattr(
+        options_runtime,
+        "completed_bar_clock_for_target",
+        lambda *_args, **_kwargs: DecisionClock(
+            decision_timestamp=target,
+            bar_timestamp=target - pd.Timedelta(minutes=1),
+            provider="databento",
+            timeframe="1m",
+            source_file=tmp_path / "bars.parquet",
+        ),
+    )
+
+    class Adapter:
+        provider = "databento-opra"
+        dataset = "OPRA.PILLAR"
+        schema = "cbbo-1s"
+
+        @staticmethod
+        def fetch_snapshot(**_kwargs: object) -> ProviderOptionEvidence:
+            raise DatabentoOpraIntegrityError("OPRA_QUOTE_DUPLICATE_DIVERGED")
+
+    class Session:
+        @staticmethod
+        def get_option_chain_snapshot(*_args: object, **_kwargs: object) -> object:
+            pytest.fail("Schwab must not be called for an OPRA integrity failure")
+
+    monkeypatch.setattr(options_runtime, "_record_failure", lambda *_args, **_kwargs: None)
+    result = options_runtime.run_options_cycle(
+        ParquetStore(tmp_path),
+        symbols=("GOOG",),
+        session=Session(),  # type: ignore[arg-type]
+        clock=lambda: (target + pd.Timedelta(minutes=1)).to_pydatetime(),
+        bar_readiness_mode="exact",
+        pricing_barrier_timeout_seconds=0,
+        canonical_market_adapter=Adapter(),  # type: ignore[arg-type]
+        reporter=None,
+    )
+    assert result.failed == 1
+    assert result.opra_requests == 1
+    assert result.schwab_requests == 0
+    assert result.schwab_fallbacks == 0
+
+
+def _valid_opra_evidence(target: pd.Timestamp) -> ProviderOptionEvidence:
+    contract = "GOOG  260821C00100000"
+    definition_at = target - pd.Timedelta(days=1)
+    received_at = target + pd.Timedelta(minutes=1)
+    return ProviderOptionEvidence(
+        provider="databento-opra",
+        dataset="OPRA.PILLAR",
+        schema="cbbo-1s",
+        symbol="GOOG",
+        target_snapshot_for=target,
+        received_at=received_at,
+        quotes=pd.DataFrame(
+            [
+                {
+                    "provider": "databento-opra",
+                    "dataset": "OPRA.PILLAR",
+                    "source_schema": "cbbo-1s",
+                    "symbol": "GOOG",
+                    "target_snapshot_for": target,
+                    "contract_symbol": contract,
+                    "quote_timestamp": target - pd.Timedelta(seconds=1),
+                    "market_event_timestamp": target - pd.Timedelta(seconds=1),
+                    "provider_interval_end_at": target,
+                    "provider_received_at": target,
+                    "provider_sent_at": target,
+                    "local_received_at": received_at,
+                    "bid": 1.0,
+                    "ask": 1.1,
+                    "bid_size": 10,
+                    "ask_size": 12,
+                    "publisher_id": 30,
+                }
+            ]
+        ),
+        definitions=pd.DataFrame(
+            [
+                {
+                    "provider": "databento-opra",
+                    "dataset": "OPRA.PILLAR",
+                    "source_schema": "definition",
+                    "symbol": "GOOG",
+                    "target_snapshot_for": target,
+                    "contract_symbol": contract,
+                    "expiration_date": "2026-08-21T00:00:00Z",
+                    "call_put": "CALL",
+                    "strike": 100.0,
+                    "multiplier": 100.0,
+                    "standard_contract": True,
+                    "definition_active": True,
+                    "definition_effective_at": definition_at,
+                    "definition_activation_at": definition_at - pd.Timedelta(days=1),
+                    "definition_market_event_at": definition_at,
+                    "definition_provider_received_at": definition_at,
+                    "definition_provider_sent_at": definition_at,
+                    "definition_local_received_at": definition_at,
+                    "exercise_style": "AMERICAN",
+                    "settlement_type": "PHYSICAL",
+                    "contract_semantics_source": "OPRA_DEFINITION_CFI_ISO10962",
+                    "cfi": "OCASPS",
+                    "security_type": "OPT",
+                    "publisher_id": 30,
+                }
+            ]
+        ),
+    )
 
 
 def _publish(

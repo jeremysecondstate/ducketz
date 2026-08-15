@@ -7,8 +7,8 @@ from ml.universe import OPTION_CALL_PUTS, PRODUCTION_OPTION_SYMBOLS
 
 OPTION_PRICING_POLICY_VERSION = "black-scholes-nystroem-rbf-bayesian-ridge-residual-v3"
 OPTION_PRICING_TIMING_POLICY_VERSION = "strict-prediction-availability-outcome-clock-v2"
-OPTION_PRICING_RATE_POLICY_VERSION = "causal-fmp-log-discount-curve-then-alfred-v2"
-OPTION_PRICING_DIVIDEND_POLICY_VERSION = "causal-fmp-cash-dividends-then-explicit-fallback-v2"
+OPTION_PRICING_RATE_POLICY_VERSION = "causal-alfred-fred-live-authority-v3"
+OPTION_PRICING_DIVIDEND_POLICY_VERSION = "causal-fmp-declarations-live-offline-fallback-v3"
 OPTION_PRICING_VOLATILITY_POLICY_VERSION = "strict-earlier-surface-interpolation-v1"
 OPTION_PRICING_EXPIRATION_POLICY_VERSION = "us-equity-option-ny-1600-act365-v1"
 OPTION_PRICING_CONTRACT_POLICY_VERSION = "standard-100-share-7-120d-logm25-v1"

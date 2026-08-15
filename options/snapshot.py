@@ -128,16 +128,43 @@ def normalize_databento_opra_option_snapshot(
     received_at: object,
     dataset: str = "OPRA.PILLAR",
     schema: str = "cbbo-1s",
+    maximum_quote_staleness_seconds: int = 20 * 60,
 ) -> pd.DataFrame:
     """Normalize injected OPRA L1 rows without making a provider request."""
 
     clean_symbol = str(symbol).strip().upper()
     target = _as_utc_timestamp(pd.Timestamp(target_snapshot_for))
     available = _as_utc_timestamp(pd.Timestamp(received_at))
+    if str(dataset).strip().upper() != "OPRA.PILLAR":
+        raise ValueError("Prospective OPRA evidence must use OPRA.PILLAR")
+    if str(schema).strip().lower() != "cbbo-1s":
+        raise ValueError("Prospective OPRA evidence must use cbbo-1s")
+    if maximum_quote_staleness_seconds < 0:
+        raise ValueError("OPRA quote staleness bound cannot be negative")
     if available < target:
         raise ValueError("OPRA receipt cannot predate its target")
-    required_quotes = {"contract_symbol", "quote_timestamp", "bid", "ask"}
+    required_quotes = {
+        "provider",
+        "dataset",
+        "source_schema",
+        "symbol",
+        "target_snapshot_for",
+        "contract_symbol",
+        "quote_timestamp",
+        "market_event_timestamp",
+        "provider_interval_end_at",
+        "provider_received_at",
+        "provider_sent_at",
+        "local_received_at",
+        "publisher_id",
+        "bid",
+        "ask",
+    }
     required_definitions = {
+        "provider",
+        "dataset",
+        "source_schema",
+        "target_snapshot_for",
         "contract_symbol",
         "symbol",
         "expiration_date",
@@ -145,22 +172,158 @@ def normalize_databento_opra_option_snapshot(
         "strike",
         "multiplier",
         "standard_contract",
+        "definition_active",
         "definition_effective_at",
+        "definition_activation_at",
+        "definition_market_event_at",
+        "definition_provider_received_at",
+        "definition_provider_sent_at",
+        "definition_local_received_at",
+        "exercise_style",
+        "settlement_type",
+        "contract_semantics_source",
+        "cfi",
+        "security_type",
+        "publisher_id",
     }
     if missing := sorted(required_quotes.difference(quotes.columns)):
         raise ValueError("OPRA quotes are missing: " + ", ".join(missing))
     if missing := sorted(required_definitions.difference(definitions.columns)):
         raise ValueError("OPRA definitions are missing: " + ", ".join(missing))
+    _validate_opra_frame_identity(
+        quotes,
+        symbol=clean_symbol,
+        target_snapshot_for=target,
+        schema="cbbo-1s",
+        label="quote",
+    )
+    _validate_opra_frame_identity(
+        definitions,
+        symbol=clean_symbol,
+        target_snapshot_for=target,
+        schema="definition",
+        label="definition",
+    )
+    _reject_divergent_opra_duplicates(
+        quotes,
+        keys=("contract_symbol", "quote_timestamp"),
+        label="quote",
+        ignored_columns=("local_received_at", "provider_sent_at"),
+    )
+    _reject_divergent_opra_duplicates(
+        definitions,
+        keys=("contract_symbol", "definition_effective_at"),
+        label="definition",
+        ignored_columns=(
+            "definition_local_received_at",
+            "definition_provider_sent_at",
+        ),
+    )
     definition_rows = definitions.loc[
         definitions["symbol"].astype("string").str.upper().eq(clean_symbol)
     ].copy()
     definition_rows["definition_effective_at"] = pd.to_datetime(
         definition_rows["definition_effective_at"], utc=True, errors="coerce"
     )
+    definition_market_event = _opra_timestamp_column(
+        definition_rows,
+        "definition_market_event_at",
+        default=definition_rows["definition_effective_at"],
+    )
+    definition_activation = _opra_timestamp_column(
+        definition_rows,
+        "definition_activation_at",
+        default=pd.Series(pd.NaT, index=definition_rows.index),
+    )
+    definition_provider_received = _opra_timestamp_column(
+        definition_rows,
+        "definition_provider_received_at",
+        default=definition_rows["definition_effective_at"],
+    )
+    definition_provider_sent = _opra_timestamp_column(
+        definition_rows,
+        "definition_provider_sent_at",
+        default=definition_provider_received,
+    )
+    definition_local_received = _opra_timestamp_column(
+        definition_rows,
+        "definition_local_received_at",
+        default=pd.Series(available, index=definition_rows.index),
+    )
+    definition_active = (
+        definition_rows["definition_active"].fillna(False).astype(bool)
+        if "definition_active" in definition_rows
+        else pd.Series(True, index=definition_rows.index)
+    )
+    definition_expiration = pd.to_datetime(
+        definition_rows["expiration_date"], utc=True, errors="coerce"
+    )
+    definition_strike = pd.to_numeric(definition_rows["strike"], errors="coerce")
+    definition_multiplier = pd.to_numeric(
+        definition_rows["multiplier"], errors="coerce"
+    )
+    definition_call_put = (
+        definition_rows["call_put"].astype("string").str.strip().str.upper()
+    )
+    definition_standard = definition_rows["standard_contract"].fillna(False).astype(bool)
+    definition_exercise = (
+        definition_rows["exercise_style"].astype("string").str.strip().str.upper()
+    )
+    definition_settlement = (
+        definition_rows["settlement_type"].astype("string").str.strip().str.upper()
+    )
+    definition_security_type = (
+        definition_rows["security_type"].astype("string").str.strip().str.upper()
+    )
+    definition_publisher = pd.to_numeric(
+        definition_rows["publisher_id"], errors="coerce"
+    )
+    definition_cfi = definition_rows["cfi"].astype("string").str.strip().str.upper()
+    cfi_call_put = definition_cfi.str[1].map({"C": "CALL", "P": "PUT"})
+    cfi_exercise = definition_cfi.str[2].map(
+        {"A": "AMERICAN", "E": "EUROPEAN", "B": "BERMUDAN"}
+    )
+    cfi_settlement = definition_cfi.str[4].map(
+        {
+            "P": "PHYSICAL",
+            "C": "CASH",
+            "N": "NON_DELIVERABLE",
+            "E": "ELECT_AT_EXERCISE",
+        }
+    )
     definition_rows = (
         definition_rows.loc[
             definition_rows["definition_effective_at"].notna()
             & definition_rows["definition_effective_at"].le(target)
+            & definition_activation.notna()
+            & definition_activation.le(target)
+            & definition_market_event.notna()
+            & definition_market_event.le(definition_provider_received)
+            & definition_provider_received.notna()
+            & definition_provider_sent.notna()
+            & definition_local_received.notna()
+            & definition_provider_received.le(definition_provider_sent)
+            & definition_provider_sent.le(
+                definition_local_received + pd.Timedelta(seconds=5)
+            )
+            & definition_local_received.le(available)
+            & definition_active
+            & definition_expiration.notna()
+            & definition_expiration.gt(target.normalize())
+            & definition_strike.gt(0.0)
+            & definition_multiplier.eq(100.0)
+            & definition_call_put.isin(("CALL", "PUT"))
+            & definition_standard
+            & definition_exercise.isin(("AMERICAN", "EUROPEAN"))
+            & definition_settlement.isin(
+                ("PHYSICAL", "CASH", "NON_DELIVERABLE", "ELECT_AT_EXERCISE")
+            )
+            & definition_security_type.eq("OPT")
+            & definition_publisher.eq(30)
+            & definition_cfi.str.fullmatch(r"O[CP][AEB]S[PCNE]S", na=False)
+            & cfi_call_put.eq(definition_call_put)
+            & cfi_exercise.eq(definition_exercise)
+            & cfi_settlement.eq(definition_settlement)
         ]
         .sort_values("definition_effective_at", kind="stable")
         .drop_duplicates("contract_symbol", keep="last")
@@ -175,9 +338,59 @@ def normalize_databento_opra_option_snapshot(
     merged["quote_timestamp"] = pd.to_datetime(
         merged["quote_timestamp"], utc=True, errors="coerce"
     )
+    market_event = _opra_timestamp_column(
+        merged,
+        "market_event_timestamp",
+        default=merged["quote_timestamp"],
+    )
+    provider_received = _opra_timestamp_column(
+        merged,
+        "provider_received_at",
+        default=merged["quote_timestamp"],
+    )
+    provider_sent = _opra_timestamp_column(
+        merged,
+        "provider_sent_at",
+        default=provider_received,
+    )
+    provider_interval_end = _opra_timestamp_column(
+        merged,
+        "provider_interval_end_at",
+        default=provider_received,
+    )
+    local_received = _opra_timestamp_column(
+        merged,
+        "local_received_at",
+        default=pd.Series(available, index=merged.index),
+    )
     bid = pd.to_numeric(merged["bid"], errors="coerce")
     ask = pd.to_numeric(merged["ask"], errors="coerce")
-    valid = bid.ge(0.0) & ask.gt(bid)
+    staleness = (target - merged["quote_timestamp"]).dt.total_seconds()
+    publisher_valid = (
+        pd.to_numeric(merged["publisher_id"], errors="coerce").eq(30)
+        if "publisher_id" in merged
+        else pd.Series(True, index=merged.index)
+    )
+    valid = (
+        bid.gt(0.0)
+        & ask.gt(bid)
+        & staleness.between(0.0, float(maximum_quote_staleness_seconds))
+        & market_event.notna()
+        & market_event.eq(merged["quote_timestamp"])
+        & market_event.lt(target)
+        & provider_interval_end.notna()
+        & market_event.lt(provider_interval_end)
+        & provider_interval_end.eq(provider_received)
+        & provider_interval_end.le(target)
+        & provider_received.notna()
+        & provider_sent.notna()
+        & local_received.notna()
+        & market_event.le(provider_received)
+        & provider_received.le(provider_sent)
+        & provider_sent.le(local_received + pd.Timedelta(seconds=5))
+        & local_received.le(available)
+        & publisher_valid
+    )
     merged = (
         merged.loc[
             merged["quote_timestamp"].notna()
@@ -189,13 +402,24 @@ def normalize_databento_opra_option_snapshot(
     )
     bid = pd.to_numeric(merged["bid"], errors="coerce")
     ask = pd.to_numeric(merged["ask"], errors="coerce")
-    valid = bid.ge(0.0) & ask.gt(bid)
+    valid = bid.gt(0.0) & ask.gt(bid)
+    market_event = market_event.loc[merged.index]
+    provider_received = provider_received.loc[merged.index]
+    provider_sent = provider_sent.loc[merged.index]
+    local_received = local_received.loc[merged.index]
     definition_at = pd.to_datetime(
         merged.get("definition_effective_at"), utc=True, errors="coerce"
     )
     exercise = merged.get(
         "exercise_style", pd.Series(pd.NA, index=merged.index, dtype="string")
     )
+    exercise_known = (
+        exercise.astype("string").str.strip().str.upper().isin(("AMERICAN", "EUROPEAN"))
+    )
+    settlement = merged.get(
+        "settlement_type", pd.Series(pd.NA, index=merged.index, dtype="string")
+    )
+    settlement_known = settlement.astype("string").str.strip().ne("") & settlement.notna()
     output = pd.DataFrame(
         {
             "provider": "databento-opra",
@@ -210,9 +434,23 @@ def normalize_databento_opra_option_snapshot(
             "first_available_at": available,
             "available_at": available,
             "fetched_at": available,
-            "provider_ingested_at": available,
-            "event_timestamp": merged["quote_timestamp"],
+            "provider_ingested_at": provider_received,
+            "event_timestamp": market_event,
             "quote_timestamp": merged["quote_timestamp"],
+            "market_event_timestamp": market_event,
+            "market_event_clock_status": merged.get("market_event_clock_status"),
+            "provider_interval_end_at": pd.to_datetime(
+                merged.get("provider_interval_end_at"), utc=True, errors="coerce"
+            ),
+            "provider_received_at": provider_received,
+            "provider_receipt_clock_status": merged.get(
+                "provider_receipt_clock_status"
+            ),
+            "provider_sent_at": provider_sent,
+            "local_received_at": local_received,
+            "last_trade_event_at": pd.to_datetime(
+                merged.get("last_trade_event_at"), utc=True, errors="coerce"
+            ),
             "bid": bid,
             "ask": ask,
             "midpoint": (bid + ask) / 2.0,
@@ -252,20 +490,41 @@ def normalize_databento_opra_option_snapshot(
             "adjusted": ~merged["standard_contract"].fillna(False).astype(bool),
             "publisher_id": merged.get("publisher_id"),
             "venue": merged.get("venue"),
-            "quote_staleness_seconds": (
-                target - merged["quote_timestamp"]
-            ).dt.total_seconds(),
+            "quote_staleness_seconds": staleness.loc[merged.index],
             "quote_valid": valid,
             "quote_quality_status": valid.map(
                 {True: "VALID", False: "REJECTED"}
             ),
             "definition_as_of": definition_at,
             "exercise_style": exercise,
-            "exercise_style_status": exercise.notna().map(
+            "exercise_style_status": exercise_known.map(
                 {True: "POINT_IN_TIME_REFERENCE", False: "AMBIGUOUS_UNVERIFIED"}
             ),
-            "settlement_type": merged.get("settlement_type"),
+            "settlement_type": settlement,
+            "settlement_status": settlement_known.map(
+                {True: "POINT_IN_TIME_REFERENCE", False: "AMBIGUOUS_UNVERIFIED"}
+            ),
             "settlement_reference": merged.get("settlement_reference"),
+            "contract_semantics_source": merged.get("contract_semantics_source"),
+            "cfi": merged.get("cfi"),
+            "security_type": merged.get("security_type"),
+            "definition_market_event_at": pd.to_datetime(
+                merged.get("definition_market_event_at"), utc=True, errors="coerce"
+            ),
+            "definition_activation_at": pd.to_datetime(
+                merged.get("definition_activation_at"), utc=True, errors="coerce"
+            ),
+            "definition_provider_received_at": pd.to_datetime(
+                merged.get("definition_provider_received_at"),
+                utc=True,
+                errors="coerce",
+            ),
+            "definition_provider_sent_at": pd.to_datetime(
+                merged.get("definition_provider_sent_at"), utc=True, errors="coerce"
+            ),
+            "definition_local_received_at": pd.to_datetime(
+                merged.get("definition_local_received_at"), utc=True, errors="coerce"
+            ),
             "evidence_lane": "PROSPECTIVE_OPRA",
             "fallback_used": False,
             "source_file": merged.get("source_file"),
@@ -277,6 +536,80 @@ def normalize_databento_opra_option_snapshot(
     if output.empty:
         raise RuntimeError(f"OPRA snapshot returned no contracts for {clean_symbol}")
     return output.reset_index(drop=True)
+
+
+def _validate_opra_frame_identity(
+    frame: pd.DataFrame,
+    *,
+    symbol: str,
+    target_snapshot_for: pd.Timestamp,
+    schema: str,
+    label: str,
+) -> None:
+    if frame.empty:
+        raise ValueError(f"OPRA {label} evidence is empty")
+    expected = {
+        "provider": "databento-opra",
+        "dataset": "OPRA.PILLAR",
+        "source_schema": schema,
+    }
+    for column, required in expected.items():
+        values = frame[column]
+        if values.isna().any():
+            raise ValueError(f"OPRA {label} rows have mismatched {column}")
+        observed = {
+            str(value).strip().lower() if column != "dataset" else str(value).strip().upper()
+            for value in values.unique()
+        }
+        comparison = required.lower() if column != "dataset" else required.upper()
+        if observed != {comparison}:
+            raise ValueError(f"OPRA {label} rows have mismatched {column}")
+    for column in ("symbol", "underlying_symbol"):
+        if column in frame:
+            if frame[column].isna().any():
+                raise ValueError(f"OPRA {label} rows have mismatched symbol")
+            observed_symbols = {
+                str(value).strip().upper() for value in frame[column].unique()
+            }
+            if observed_symbols != {symbol}:
+                raise ValueError(f"OPRA {label} rows have mismatched symbol")
+    for column in ("target_snapshot_for", "snapshot_for"):
+        if column not in frame:
+            continue
+        observed_targets = pd.to_datetime(frame[column], utc=True, errors="coerce")
+        if observed_targets.isna().any() or not observed_targets.eq(target_snapshot_for).all():
+            raise ValueError(f"OPRA {label} rows have mismatched target")
+
+
+def _reject_divergent_opra_duplicates(
+    frame: pd.DataFrame,
+    *,
+    keys: tuple[str, ...],
+    label: str,
+    ignored_columns: tuple[str, ...] = (),
+) -> None:
+    if frame.empty or not frame.duplicated(list(keys), keep=False).any():
+        return
+    semantic_columns = [
+        column
+        for column in sorted(frame.columns)
+        if column not in set(ignored_columns)
+    ]
+    duplicates = frame.loc[frame.duplicated(list(keys), keep=False)]
+    for _key, group in duplicates.groupby(list(keys), dropna=False, sort=False):
+        normalized = group.loc[:, semantic_columns].astype("string").fillna("<NA>")
+        if len(normalized.drop_duplicates()) > 1:
+            raise ValueError(f"Divergent duplicate OPRA {label} evidence is forbidden")
+
+
+def _opra_timestamp_column(
+    frame: pd.DataFrame,
+    column: str,
+    *,
+    default: pd.Series,
+) -> pd.Series:
+    values = frame[column] if column in frame else default
+    return pd.to_datetime(values, utc=True, errors="coerce")
 
 
 def _persist_schwab_option_snapshot(

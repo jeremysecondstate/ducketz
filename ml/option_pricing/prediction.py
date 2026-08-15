@@ -37,6 +37,7 @@ def create_prediction_rows(
     models: Mapping[tuple[str, str], PricingRouteModel] | None = None,
     projection_policy: ProjectionPolicy | None = None,
     fallback_standard_deviation_normalized: float | None = None,
+    include_baseline_uncertainty: bool = False,
 ) -> pd.DataFrame:
     """Price every available causal row and shape-project each expiration surface."""
 
@@ -97,9 +98,15 @@ def create_prediction_rows(
         model = route_models.get((str(symbol), str(call_put)))
         if model is None:
             residual_mean = np.zeros(len(route), dtype=float)
-            standard_deviation = np.full(len(route), np.nan, dtype=float)
-            width80 = np.full(len(route), np.nan, dtype=float)
-            width95 = np.full(len(route), np.nan, dtype=float)
+            standard_deviation = np.full(
+                len(route),
+                fallback_standard_deviation
+                if include_baseline_uncertainty
+                else np.nan,
+                dtype=float,
+            )
+            width80 = standard_deviation * 1.2815515655446004
+            width95 = standard_deviation * 1.959963984540054
         else:
             residual_mean, standard_deviation, width80, width95 = (
                 model.predict_residual(route)
@@ -121,7 +128,7 @@ def create_prediction_rows(
             if lower > upper + 1e-9:
                 raise ValueError("Configured American option bounds are inconsistent")
             lower = min(lower, upper)
-            has_uncertainty = model is not None
+            has_uncertainty = model is not None or include_baseline_uncertainty
             records.append(
                 {
                     "symbol": str(symbol),
@@ -163,6 +170,9 @@ def create_prediction_rows(
                     "dividend_yield": row["dividend_yield"],
                     "black_scholes_price": black_scholes,
                     "predicted_normalized_residual": float(residual_mean[position]),
+                    "predicted_dollar_residual": float(
+                        residual_mean[position] * underlying
+                    ),
                     "raw_fair_value": raw_fair,
                     "point_lower_bound": lower,
                     "point_upper_bound": upper,
@@ -282,11 +292,36 @@ def create_bsgp_shadow_rows(
     eligible["prediction_created_at"] = created
     if eligible.duplicated(keys).any():
         raise ValueError("Causal samples contain duplicate shadow natural keys")
+    fallback_std = policy.black_scholes_fallback_standard_deviation_normalized
+    fallback_priced = create_prediction_rows(
+        eligible.drop(columns="prediction_created_at"),
+        prediction_created_at=created,
+        prediction_available_at=available,
+        models={},
+        projection_policy=projection_policy,
+        fallback_standard_deviation_normalized=fallback_std,
+        include_baseline_uncertainty=True,
+    )
+    fallback_interval_columns = (
+        "predictive_standard_deviation",
+        "raw_interval_80_lower",
+        "raw_interval_80_upper",
+        "raw_interval_95_lower",
+        "raw_interval_95_upper",
+        "constrained_interval_80_lower",
+        "constrained_interval_80_upper",
+        "constrained_interval_95_lower",
+        "constrained_interval_95_upper",
+    )
+    fallback_intervals = fallback_priced.loc[
+        :, [*keys, *fallback_interval_columns]
+    ].rename(
+        columns={column: f"fallback_{column}" for column in fallback_interval_columns}
+    )
     generation = model_load.generation
     if generation is None:
         diagnostics = pd.DataFrame(index=eligible.index)
         diagnostics["normalized_residual"] = 0.0
-        fallback_std = policy.black_scholes_fallback_standard_deviation_normalized
         diagnostics["predictive_standard_deviation_normalized"] = fallback_std
         diagnostics["width_80_normalized"] = fallback_std * 1.2815515655446004
         diagnostics["width_95_normalized"] = fallback_std * 1.959963984540054
@@ -296,8 +331,7 @@ def create_bsgp_shadow_rows(
         diagnostics["support_distance"] = np.nan
         diagnostics["shrinkage"] = 0.0
         diagnostics["route_support_sessions"] = 0
-        shadow_priced = baseline.copy()
-        shadow_priced["raw_fair_value"] = shadow_priced["black_scholes_price"]
+        shadow_priced = fallback_priced
     else:
         diagnostics = predict_loop_native_residuals(
             generation,
@@ -364,6 +398,11 @@ def create_bsgp_shadow_rows(
         on=keys,
         how="left",
         validate="one_to_one",
+    ).merge(
+        fallback_intervals,
+        on=keys,
+        how="left",
+        validate="one_to_one",
     )
     if len(merged) != len(baseline) or merged["status"].isna().any():
         raise ValueError("Shadow inference did not align with every baseline row")
@@ -396,6 +435,18 @@ def create_bsgp_shadow_rows(
         merged["constrained_fair_value_shadow"] = merged[
             "constrained_fair_value_baseline"
         ]
+        for column in (
+            "predictive_standard_deviation",
+            "raw_interval_80_lower",
+            "raw_interval_80_upper",
+            "raw_interval_95_lower",
+            "raw_interval_95_upper",
+            "constrained_interval_80_lower",
+            "constrained_interval_80_upper",
+            "constrained_interval_95_lower",
+            "constrained_interval_95_upper",
+        ):
+            merged[f"{column}_baseline"] = merged[f"{column}_shadow"]
         merged["projection_correction"] = 0.0
         merged["projection_status"] = "BASELINE_COPIED"
         for column in (
@@ -522,15 +573,15 @@ def create_bsgp_shadow_rows(
         "expiration_date",
     )
     interval_columns = {
-        "bsgp_shadow_predictive_standard_deviation": "predictive_standard_deviation_baseline",
-        "bsgp_shadow_raw_interval_80_lower": "raw_interval_80_lower_baseline",
-        "bsgp_shadow_raw_interval_80_upper": "raw_interval_80_upper_baseline",
-        "bsgp_shadow_raw_interval_95_lower": "raw_interval_95_lower_baseline",
-        "bsgp_shadow_raw_interval_95_upper": "raw_interval_95_upper_baseline",
-        "bsgp_shadow_constrained_interval_80_lower": "constrained_interval_80_lower_baseline",
-        "bsgp_shadow_constrained_interval_80_upper": "constrained_interval_80_upper_baseline",
-        "bsgp_shadow_constrained_interval_95_lower": "constrained_interval_95_lower_baseline",
-        "bsgp_shadow_constrained_interval_95_upper": "constrained_interval_95_upper_baseline",
+        "bsgp_shadow_predictive_standard_deviation": "fallback_predictive_standard_deviation",
+        "bsgp_shadow_raw_interval_80_lower": "fallback_raw_interval_80_lower",
+        "bsgp_shadow_raw_interval_80_upper": "fallback_raw_interval_80_upper",
+        "bsgp_shadow_raw_interval_95_lower": "fallback_raw_interval_95_lower",
+        "bsgp_shadow_raw_interval_95_upper": "fallback_raw_interval_95_upper",
+        "bsgp_shadow_constrained_interval_80_lower": "fallback_constrained_interval_80_lower",
+        "bsgp_shadow_constrained_interval_80_upper": "fallback_constrained_interval_80_upper",
+        "bsgp_shadow_constrained_interval_95_lower": "fallback_constrained_interval_95_lower",
+        "bsgp_shadow_constrained_interval_95_upper": "fallback_constrained_interval_95_upper",
     }
     violation_columns = {
         "bsgp_shadow_raw_bound_violation": "raw_bound_violation_baseline",
@@ -576,9 +627,8 @@ def create_bsgp_shadow_rows(
         ].to_numpy()
         output.loc[index, "bsgp_shadow_normalized_residual"] = 0.0
         for output_column, baseline_column in interval_columns.items():
-            # Baseline uncertainty is intentionally unavailable. Preserve it
-            # as numeric NaN so pandas cannot coerce a float prediction column
-            # through an object array of Python ``None`` values.
+            # Preserve the separately projected Black-Scholes fallback interval
+            # (or numeric NaN for legacy baseline-only rows).
             output.loc[index, output_column] = pd.to_numeric(
                 merged.loc[index, baseline_column], errors="coerce"
             ).to_numpy(dtype=float)
@@ -600,6 +650,10 @@ def create_bsgp_shadow_rows(
             output.loc[index, output_column] = merged.loc[
                 index, baseline_column
             ].to_numpy()
+    output["bsgp_shadow_dollar_residual"] = (
+        pd.to_numeric(output["bsgp_shadow_normalized_residual"], errors="coerce")
+        * pd.to_numeric(output["underlying_price"], errors="coerce")
+    )
     if not output["black_scholes_price"].reset_index(drop=True).equals(
         baseline["black_scholes_price"].reset_index(drop=True)
     ):

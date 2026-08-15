@@ -115,7 +115,7 @@ def build_live_prediction_inputs(
     target_source_files: Sequence[Path] | None = None,
     contract_policy: ContractSelectionPolicy | None = None,
     rate_observations: pd.DataFrame | None = None,
-    allow_source_chain_carry_fallback: bool = True,
+    allow_source_chain_carry_fallback: bool = False,
 ) -> CausalSampleBatch:
     """Resolve a pre-quote target bar and materialize strictly lagged inputs."""
 
@@ -261,6 +261,7 @@ def build_live_prediction_inputs(
                 contract_policy=policy,
                 rate_observations=rate_observations,
                 allow_source_chain_carry_fallback=allow_source_chain_carry_fallback,
+                require_fred_alfred_rate=True,
             )
             available = samples["sample_status"].eq("AVAILABLE").any()
             if available and source_index:
@@ -329,6 +330,7 @@ def build_live_prediction_inputs(
         contract_policy=policy,
         rate_observations=rate_observations,
         allow_source_chain_carry_fallback=allow_source_chain_carry_fallback,
+        require_fred_alfred_rate=True,
     )
     return CausalSampleBatch(
         samples,
@@ -363,6 +365,7 @@ def build_causal_samples(
     contract_policy: ContractSelectionPolicy | None = None,
     rate_observations: pd.DataFrame | None = None,
     allow_source_chain_carry_fallback: bool = True,
+    require_fred_alfred_rate: bool = False,
 ) -> pd.DataFrame:
     """Build the six-feature causal contract without target quote leakage."""
 
@@ -444,6 +447,7 @@ def build_causal_samples(
         source,
         source_available_at=source_available,
         rate_observations=rate_observations,
+        allow_provider_rate=not require_fred_alfred_rate,
     )
     resolved_dividend, dividend_source_at = _surface_dividend(
         source,
@@ -459,12 +463,14 @@ def build_causal_samples(
             load_verified_fmp_dividend_history,
             resolve_dividend_for_expiration,
         )
-        from ml.option_pricing.rates import (
-            load_verified_fmp_treasury_curves,
-            resolve_rate_for_expiration,
-        )
+        from ml.option_pricing.rates import resolve_rate_for_expiration
 
-        curve_nodes = load_verified_fmp_treasury_curves(Path(datastore_root))
+        if require_fred_alfred_rate:
+            curve_nodes = pd.DataFrame()
+        else:
+            from ml.option_pricing.rates import load_verified_fmp_treasury_curves
+
+            curve_nodes = load_verified_fmp_treasury_curves(Path(datastore_root))
         source_symbols = source["symbol"].astype("string").str.upper().dropna().unique()
         dividend_history = {
             str(symbol): load_verified_fmp_dividend_history(
@@ -960,7 +966,7 @@ def reconcile_predictions(
     snapshots_by_symbol: Mapping[str, Sequence[CommittedOptionSnapshot]],
     evaluated_at: object,
 ) -> pd.DataFrame:
-    """Reconcile canonical predictions only to exact later option receipts."""
+    """Reconcile predictions to the earliest visible later quote, OPRA first."""
 
     evaluated = _utc(evaluated_at, "evaluated_at")
     canonical = canonicalize_predictions(predictions)
@@ -980,11 +986,15 @@ def reconcile_predictions(
         natural_receipts = [
             snapshot
             for snapshot in snapshots_by_symbol.get(symbol, ())
-            if snapshot.snapshot_for == target
+            if snapshot.snapshot_for >= target
+            and _snapshot_receipt_available_at(snapshot) <= evaluated
         ]
-        earliest_by_provider: dict[str, CommittedOptionSnapshot] = {}
+        earliest_by_provider_target: dict[
+            tuple[str, pd.Timestamp], CommittedOptionSnapshot
+        ] = {}
         for snapshot in natural_receipts:
-            prior = earliest_by_provider.get(snapshot.provider)
+            key = (snapshot.provider, snapshot.snapshot_for)
+            prior = earliest_by_provider_target.get(key)
             if prior is None or (
                 _snapshot_receipt_available_at(snapshot),
                 snapshot.directory.as_posix(),
@@ -992,8 +1002,8 @@ def reconcile_predictions(
                 _snapshot_receipt_available_at(prior),
                 prior.directory.as_posix(),
             ):
-                earliest_by_provider[snapshot.provider] = snapshot
-        natural_receipts = list(earliest_by_provider.values())
+                earliest_by_provider_target[key] = snapshot
+        natural_receipts = list(earliest_by_provider_target.values())
         status = "PENDING_TARGET_RECEIPT"
         observed: Mapping[str, object] | None = None
         receipt_available: pd.Timestamp | None = None
@@ -1011,12 +1021,14 @@ def reconcile_predictions(
                 status = "TARGET_ALREADY_OBSERVED_BEFORE_PREDICTION"
             else:
                 # Canonical OPRA is evaluated first regardless of provider
-                # receipt ordering. Schwab is used only when OPRA has no valid
-                # exact semantic outcome, and the chosen provider is persisted.
+                # receipt ordering. Within a provider, use the earliest later
+                # target that contains the exact semantic contract. Schwab is
+                # used only when no eligible OPRA outcome is visible.
                 candidates = sorted(
                     natural_receipts,
                     key=lambda snapshot: (
                         0 if snapshot.provider == "databento-opra" else 1,
+                        snapshot.snapshot_for,
                         _snapshot_receipt_available_at(snapshot),
                         snapshot.directory.as_posix(),
                     ),
@@ -1055,6 +1067,15 @@ def reconcile_predictions(
                     if quote_time <= created or quote_time <= authority_available:
                         status = "STALE_PRE_PREDICTION_QUOTE"
                         continue
+                    if quote_time > candidate_available:
+                        status = "TARGET_QUOTE_HAS_FUTURE_AVAILABILITY"
+                        continue
+                    if (
+                        snapshot.provider == "databento-opra"
+                        and quote_time >= snapshot.snapshot_for
+                    ):
+                        status = "TARGET_OPRA_QUOTE_NOT_STRICTLY_PRETARGET"
+                        continue
                     if bid is None or ask is None or bid <= 0.0 or ask <= bid:
                         status = "TARGET_QUOTE_INVALID"
                         continue
@@ -1062,6 +1083,7 @@ def reconcile_predictions(
                         **candidate_observed,
                         "provider": snapshot.provider,
                         "provider_ingested_at": candidate_available,
+                        "outcome_snapshot_for": snapshot.snapshot_for,
                     }
                     receipt_available = candidate_available
                     authority_proven = candidate_authority
@@ -1199,6 +1221,20 @@ def _evaluation_row(
         if midpoint is not None and underlying not in {None, 0.0}
         else None
     )
+    predicted_normalized_residual = _finite_or_none(
+        prediction.get("predicted_normalized_residual")
+    )
+    predicted_dollar_residual = _finite_or_none(
+        prediction.get("predicted_dollar_residual")
+    )
+    if (
+        predicted_dollar_residual is None
+        and predicted_normalized_residual is not None
+        and underlying is not None
+    ):
+        # Preserve backward compatibility for pre-v3 prediction artifacts while
+        # retaining the explicit dollar correction on every new evaluation.
+        predicted_dollar_residual = predicted_normalized_residual * underlying
     half_spread = spread / 2.0 if spread is not None and spread > 0.0 else None
     complete = status == "COMPLETE"
     prospective = bool(
@@ -1284,8 +1320,14 @@ def _evaluation_row(
             else None
         ),
         "black_scholes_price": prediction.get("black_scholes_price"),
-        "predicted_normalized_residual": prediction.get("predicted_normalized_residual"),
+        "predicted_normalized_residual": predicted_normalized_residual,
+        "predicted_dollar_residual": predicted_dollar_residual,
         "observed_normalized_residual": observed_residual,
+        "observed_dollar_residual": (
+            observed_residual * underlying
+            if observed_residual is not None and underlying is not None
+            else None
+        ),
         "raw_fair_value": raw,
         "constrained_fair_value": fair,
         "predictive_standard_deviation": prediction.get("predictive_standard_deviation"),
@@ -1320,6 +1362,11 @@ def _prospective_authority_proven(
     prediction: Mapping[str, object],
     snapshot: CommittedOptionSnapshot,
 ) -> bool:
+    expected_target = _timestamp_or_none(prediction.get("target_snapshot_for"))
+    if expected_target is None:
+        return False
+    if snapshot.snapshot_for > expected_target:
+        return _cross_cycle_authority_ordering_proven(prediction, snapshot)
     barrier = snapshot.receipt.get("pricing_barrier")
     if not isinstance(barrier, Mapping):
         return _legacy_authority_ordering_proven(prediction, snapshot)
@@ -1328,7 +1375,6 @@ def _prospective_authority_proven(
     published = _timestamp_or_none(barrier.get("pricing_published_at"))
     prediction_available = _timestamp_or_none(prediction.get("prediction_available_at"))
     target = _timestamp_or_none(barrier.get("target_snapshot_for"))
-    expected_target = _timestamp_or_none(prediction.get("target_snapshot_for"))
     proof_run = str(prediction.get(TARGET_OUTCOME_PROOF_COLUMNS[0], ""))
     proof_checksum = str(prediction.get(TARGET_OUTCOME_PROOF_COLUMNS[1], ""))
     proof_published = _timestamp_or_none(
@@ -1342,7 +1388,6 @@ def _prospective_authority_proven(
         and published is not None
         and prediction_available is not None
         and target is not None
-        and expected_target is not None
         and target == expected_target == snapshot.snapshot_for
         and published == proof_published
         and prediction_available <= proof_published
@@ -1351,6 +1396,46 @@ def _prospective_authority_proven(
         and str(barrier.get("pricing_run_path", "")) == proof_run
         and str(barrier.get("pricing_receipt_checksum_sha256", ""))
         == proof_checksum
+    )
+
+
+def _cross_cycle_authority_ordering_proven(
+    prediction: Mapping[str, object],
+    snapshot: CommittedOptionSnapshot,
+) -> bool:
+    """Prove that a prior target authority existed before a later capture."""
+
+    request = _timestamp_or_none(snapshot.receipt.get("request_started_at"))
+    prediction_available = _timestamp_or_none(prediction.get("prediction_available_at"))
+    proof_published = _timestamp_or_none(
+        prediction.get(TARGET_OUTCOME_PROOF_COLUMNS[2])
+    )
+    proof_run = str(prediction.get(TARGET_OUTCOME_PROOF_COLUMNS[0], "")).strip()
+    proof_checksum = str(prediction.get(TARGET_OUTCOME_PROOF_COLUMNS[1], "")).strip()
+    target = _timestamp_or_none(prediction.get("target_snapshot_for"))
+    receipt_available = _snapshot_receipt_available_at(snapshot)
+    barrier = snapshot.receipt.get("pricing_barrier")
+    barrier_ordered = True
+    if isinstance(barrier, Mapping):
+        barrier_target = _timestamp_or_none(barrier.get("target_snapshot_for"))
+        observed = _timestamp_or_none(barrier.get("observed_at"))
+        barrier_ordered = bool(
+            barrier_target == snapshot.snapshot_for
+            and observed is not None
+            and request is not None
+            and observed <= request
+        )
+    return bool(
+        target is not None
+        and snapshot.snapshot_for > target
+        and request is not None
+        and prediction_available is not None
+        and proof_published is not None
+        and proof_run.startswith("ml/option-pricing-target-outcomes/")
+        and proof_checksum
+        and prediction_available <= proof_published <= request
+        and request < receipt_available
+        and barrier_ordered
     )
 
 
@@ -1394,31 +1479,33 @@ def _surface_rate(
     *,
     source_available_at: pd.Timestamp,
     rate_observations: pd.DataFrame | None,
+    allow_provider_rate: bool = True,
 ) -> tuple[float | None, pd.Timestamp | None]:
+    if rate_observations is not None and not rate_observations.empty:
+        required = {"available_at", "risk_free_rate"}
+        if not required.issubset(rate_observations.columns):
+            raise ValueError("Rate observations require available_at and risk_free_rate")
+        observations = rate_observations.copy()
+        observations["available_at"] = pd.to_datetime(
+            observations["available_at"], utc=True, errors="coerce"
+        )
+        observations["risk_free_rate"] = pd.to_numeric(
+            observations["risk_free_rate"], errors="coerce"
+        )
+        observations = observations.loc[
+            observations["available_at"].lt(source_available_at)
+            & observations["risk_free_rate"].between(-0.20, 1.0)
+        ].sort_values("available_at")
+        if not observations.empty:
+            row = observations.iloc[-1]
+            return float(row["risk_free_rate"]), pd.Timestamp(row["available_at"])
+    if not allow_provider_rate:
+        return None, None
     provider = pd.to_numeric(source.get("interest_rate"), errors="coerce")
     provider = provider.loc[np.isfinite(provider) & provider.between(-0.20, 1.0)]
     if not provider.empty:
         return float(provider.median()), source_available_at
-    if rate_observations is None or rate_observations.empty:
-        return None, None
-    required = {"available_at", "risk_free_rate"}
-    if not required.issubset(rate_observations.columns):
-        raise ValueError("Rate observations require available_at and risk_free_rate")
-    observations = rate_observations.copy()
-    observations["available_at"] = pd.to_datetime(
-        observations["available_at"], utc=True, errors="coerce"
-    )
-    observations["risk_free_rate"] = pd.to_numeric(
-        observations["risk_free_rate"], errors="coerce"
-    )
-    observations = observations.loc[
-        observations["available_at"].lt(source_available_at)
-        & observations["risk_free_rate"].between(-0.20, 1.0)
-    ].sort_values("available_at")
-    if observations.empty:
-        return None, None
-    row = observations.iloc[-1]
-    return float(row["risk_free_rate"]), pd.Timestamp(row["available_at"])
+    return None, None
 
 
 def _surface_dividend(
@@ -1536,6 +1623,18 @@ def _source_contract_status(
             return (
                 "EXERCISE_STYLE_AMBIGUOUS",
                 "Point-in-time contract reference lacks a supported exercise style.",
+            )
+    if "settlement_type" in row:
+        settlement_type = str(row.get("settlement_type") or "").strip().upper()
+        if settlement_type not in {
+            "PHYSICAL",
+            "CASH",
+            "NON_DELIVERABLE",
+            "ELECT_AT_EXERCISE",
+        }:
+            return (
+                "SETTLEMENT_TYPE_AMBIGUOUS",
+                "Point-in-time contract reference lacks a supported settlement type.",
             )
     strike = _finite_or_none(row.get("strike"))
     if strike is None or strike <= 0.0:

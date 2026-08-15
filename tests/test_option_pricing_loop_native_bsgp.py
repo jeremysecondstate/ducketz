@@ -382,6 +382,13 @@ def test_offline_assessment_replay_uses_only_causal_bsgp_crossfit(
         rtol=0.0,
         atol=1e-10,
     )
+    np.testing.assert_allclose(
+        assessment["bsgp_shadow_dollar_residual"].to_numpy(dtype=float),
+        assessment["underlying_price"].to_numpy(dtype=float)
+        * assessment["bsgp_shadow_normalized_residual"].to_numpy(dtype=float),
+        rtol=0.0,
+        atol=1e-12,
+    )
     print(
         json.dumps(
             {
@@ -698,6 +705,18 @@ def test_mixed_support_surface_falls_back_to_constrained_baseline(
         calls["baseline_constrained_fair_value"]
     )
     assert calls["bsgp_shadow_normalized_residual"].eq(0.0).all()
+    assert calls["bsgp_shadow_dollar_residual"].eq(0.0).all()
+    assert calls["bsgp_shadow_predictive_standard_deviation"].notna().all()
+    assert calls["bsgp_shadow_constrained_interval_80_lower"].notna().all()
+    assert calls["bsgp_shadow_constrained_interval_95_upper"].notna().all()
+    assert (
+        calls["bsgp_shadow_constrained_interval_95_lower"]
+        <= calls["bsgp_shadow_fair_value_constrained"]
+    ).all()
+    assert (
+        calls["bsgp_shadow_fair_value_constrained"]
+        <= calls["bsgp_shadow_constrained_interval_95_upper"]
+    ).all()
     assert shadow.loc[shadow["call_put"].eq("PUT"), "bsgp_shadow_status"].eq(
         "BSGP_SHADOW_READY"
     ).all()
@@ -813,6 +832,17 @@ def test_black_scholes_baseline_is_identical_with_or_without_shadow_model(
     assert no_model["bsgp_shadow_fair_value_constrained"].equals(
         baseline["constrained_fair_value"]
     )
+    assert no_model["bsgp_shadow_predictive_standard_deviation"].notna().all()
+    assert no_model["bsgp_shadow_constrained_interval_80_lower"].notna().all()
+    assert no_model["bsgp_shadow_constrained_interval_95_upper"].notna().all()
+    assert (
+        no_model["bsgp_shadow_constrained_interval_95_lower"]
+        <= no_model["bsgp_shadow_fair_value_constrained"]
+    ).all()
+    assert (
+        no_model["bsgp_shadow_fair_value_constrained"]
+        <= no_model["bsgp_shadow_constrained_interval_95_upper"]
+    ).all()
 
 
 def test_loop_native_policy_uses_twelve_routes_and_requires_bounded_opra(

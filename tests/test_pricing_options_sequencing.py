@@ -376,26 +376,36 @@ def test_live_outcome_prefers_opra_and_labels_schwab_fallback(
         timeout_seconds=0,
         clock=lambda: publication.published_at + pd.Timedelta(milliseconds=250),
     )
-    request = publication.published_at + pd.Timedelta(milliseconds=500)
+    outcome_target = target + pd.Timedelta(minutes=15)
+    request = outcome_target + pd.Timedelta(seconds=5)
+    later_barrier = {
+        **barrier.as_receipt_metadata(request_started_at=request),
+        "target_snapshot_for": outcome_target.isoformat(),
+        "observed_at": (request - pd.Timedelta(milliseconds=1)).isoformat(),
+    }
     opra = _publish_target_snapshot(
         tmp_path,
         publication=publication,
-        barrier_metadata=barrier.as_receipt_metadata(request_started_at=request),
+        barrier_metadata=later_barrier,
         request_started_at=request,
-        available_at=publication.published_at + pd.Timedelta(seconds=8),
+        available_at=request + pd.Timedelta(seconds=2),
         provider="databento-opra",
         bid=9.8,
         ask=10.0,
+        snapshot_for=outcome_target,
+        quote_timestamp=outcome_target - pd.Timedelta(seconds=1),
     )
     schwab = _publish_target_snapshot(
         tmp_path,
         publication=publication,
-        barrier_metadata=barrier.as_receipt_metadata(request_started_at=request),
+        barrier_metadata=later_barrier,
         request_started_at=request,
-        available_at=publication.published_at + pd.Timedelta(seconds=7),
+        available_at=request + pd.Timedelta(seconds=1),
         provider="schwab",
         bid=10.8,
         ask=11.0,
+        snapshot_for=outcome_target,
+        quote_timestamp=outcome_target - pd.Timedelta(seconds=1),
     )
     prediction = publication.predictions()
     evaluated = reconcile_predictions(
@@ -403,7 +413,7 @@ def test_live_outcome_prefers_opra_and_labels_schwab_fallback(
         # Deliberately put the earlier Schwab receipt first. Provider precedence,
         # not caller ordering or receipt ordering, selects the fair-value label.
         snapshots_by_symbol={"GOOG": (schwab, opra)},
-        evaluated_at=publication.published_at + pd.Timedelta(seconds=20),
+        evaluated_at=request + pd.Timedelta(seconds=3),
     )
     assert evaluated["evaluation_status"].eq("COMPLETE").all()
     assert evaluated["outcome_provider"].eq("databento-opra").all()
@@ -418,7 +428,7 @@ def test_live_outcome_prefers_opra_and_labels_schwab_fallback(
     invalid_opra = _committed_stub(
         tmp_path / "invalid-opra",
         symbol="GOOG",
-        target=target,
+        target=outcome_target,
         available=opra.available_at,
         contracts=invalid_opra_contracts,
         provider="databento-opra",
@@ -428,7 +438,7 @@ def test_live_outcome_prefers_opra_and_labels_schwab_fallback(
     fallback = reconcile_predictions(
         prediction,
         snapshots_by_symbol={"GOOG": (invalid_opra, schwab)},
-        evaluated_at=publication.published_at + pd.Timedelta(seconds=20),
+        evaluated_at=request + pd.Timedelta(seconds=3),
     )
     assert fallback["evaluation_status"].eq("COMPLETE").all()
     assert fallback["outcome_provider"].eq("schwab").all()
@@ -642,6 +652,7 @@ def test_live_source_uses_opra_before_explicit_schwab_fallback(
         symbol="GOOG",
         prediction_created_at=target + pd.Timedelta(seconds=20),
         target_snapshot_for=target,
+        rate_observations=_rate_observations(target),
     )
     assert canonical.status == "READY"
     assert canonical.samples["source_provider"].eq("databento-opra").all()
@@ -654,6 +665,7 @@ def test_live_source_uses_opra_before_explicit_schwab_fallback(
         symbol="GOOG",
         prediction_created_at=target + pd.Timedelta(seconds=20),
         target_snapshot_for=target,
+        rate_observations=_rate_observations(target),
     )
     assert fallback.status == "READY"
     assert fallback.samples["source_provider"].eq("schwab").all()
@@ -711,6 +723,7 @@ def test_live_pricing_skips_newer_stale_surface_without_relaxing_contract(
         symbol="GOOG",
         prediction_created_at=target + pd.Timedelta(seconds=20),
         target_snapshot_for=target,
+        rate_observations=_rate_observations(target),
     )
 
     assert batch.status == "READY"
@@ -1437,6 +1450,7 @@ def test_representative_open_market_inventory_meets_runtime_budget(
     symbols = LOOP_NATIVE_SYMBOLS
     source_snapshot_for = target - pd.Timedelta(minutes=15)
     source_available_at = target - pd.Timedelta(minutes=14)
+    _publish_rate_observation(tmp_path, target=target)
     for symbol in symbols:
         _write_bar(tmp_path, symbol=symbol, target=target, close=200.0)
         common = {
@@ -1856,10 +1870,12 @@ def _publish_target_snapshot(
     provider: str = "schwab",
     bid: float = 9.9,
     ask: float = 10.1,
+    snapshot_for: pd.Timestamp | None = None,
+    quote_timestamp: pd.Timestamp | None = None,
 ):
     predictions = publication.predictions()
     prediction = predictions.iloc[0]
-    target = publication.target_snapshot_for
+    target = snapshot_for or publication.target_snapshot_for
     common = {
         "symbol": str(prediction["symbol"]),
         "snapshot_for": target,
@@ -1883,8 +1899,11 @@ def _publish_target_snapshot(
                 "definition_as_of": target - pd.Timedelta(days=1),
                 "bid": bid,
                 "ask": ask,
-                "quote_timestamp": publication.published_at
-                + pd.Timedelta(seconds=1),
+                "quote_timestamp": (
+                    quote_timestamp
+                    if quote_timestamp is not None
+                    else publication.published_at + pd.Timedelta(seconds=1)
+                ),
             }
             for _, row in predictions.iterrows()
         ]
@@ -1909,6 +1928,7 @@ def _publish_source_snapshot(
     symbol: str,
     target: pd.Timestamp,
 ):
+    _publish_rate_observation(root, target=target)
     snapshot_for = target - pd.Timedelta(minutes=15)
     available_at = target - pd.Timedelta(minutes=14)
     common = {
@@ -1925,6 +1945,37 @@ def _publish_source_snapshot(
         features=pd.DataFrame([{**common, "quality": 1.0}]),
         receipt_published_at=available_at,
     )
+
+
+def _rate_observations(target: pd.Timestamp) -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "available_at": [target - pd.Timedelta(days=1)],
+            "risk_free_rate": [0.04],
+        }
+    )
+
+
+def _publish_rate_observation(root: Path, *, target: pd.Timestamp) -> Path:
+    path = (
+        root
+        / "pools"
+        / "macro"
+        / "features"
+        / "alfred-release-context"
+        / "fred"
+        / "test-fedfunds.parquet"
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    _rate_observations(target).rename(
+        columns={
+            "available_at": "fed_funds_available_at",
+            "risk_free_rate": "macro__fed_funds_level",
+        }
+    ).assign(
+        macro__fed_funds_level=lambda frame: frame["macro__fed_funds_level"] * 100.0
+    ).to_parquet(path, index=False)
+    return path
 
 
 def _source_surface(symbol: str, *, target: pd.Timestamp) -> pd.DataFrame:

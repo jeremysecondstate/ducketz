@@ -70,11 +70,12 @@ python -m datafetching.fred_alfred_runtime `
 ```
 
 4. Active Pricing (logical Loop 3). Each readiness target is handled
-idempotently. The supported residual model is a 128-component Nyström RBF
+idempotently. The supported residual model is a 128-component Nystroem RBF
 finite-basis approximation with a Bayesian ridge posterior; it is not an exact
 GP. Missing model support uses the causal Black-Scholes mean with a wider
-interval. OPRA is the canonical surface when verified and causally available;
-Schwab is recorded as explicit fallback. Pricing waits
+sidecar interval. OPRA is the canonical surface when verified and causally
+available; Schwab is recorded as explicit fallback. Live rates require causal
+FRED/ALFRED evidence. Pricing waits
 once for the configured exact Loop A readiness deadline. If it expires, Pricing
 skips that target, leaves the current Pricing authority unchanged, and advances
 to the next eligible target without creating an empty terminal artifact. The
@@ -96,10 +97,17 @@ python -m ml.option_pricing_runtime `
 information clock and waits briefly on the target pointer. Its v2 publication
 identity is `(provider, symbol, target_snapshot_for)`: a committed target is
 reused without another provider call, and divergent duplicate content fails
-closed. An injected OPRA adapter is canonical when configured; Schwab remains
-explicit broker/fallback evidence. Neither missing Pricing nor delayed Loop A
-readiness prevents the allowed fallback request for an actionable target.
-Without exact readiness the raw response is checksum-sealed under the separate
+closed. Production mode constructs one bounded, reconnecting Databento live
+adapter for `OPRA.PILLAR` definitions and `cbbo-1s`, scoped to the six parent
+  symbols. Its per-target reads select from that shared buffer; they do not create
+  six new subscriptions. OPRA capture carries independent evidence clocks and
+  does not wait for Loop A, while Loop 3 still requires exact Loop A authority to
+  price. Schwab remains explicit broker/fallback evidence. A missing
+  `DATABENTO_API_KEY` or adapter startup failure stops this owner clearly; it
+  cannot silently become Schwab-only. Neither missing Pricing nor delayed Loop A
+  readiness prevents OPRA capture or the allowed fallback request for an
+  actionable target. Without exact readiness a fallback Schwab response is
+  checksum-sealed under the separate
 non-production `options/pending-captures/schwab` authority. The runtime polls
 that authority while waiting for later boundaries, reconciles it through the
 ordinary committed snapshot contract when readiness arrives inside 1,200
@@ -110,6 +118,7 @@ refetch or republish an already committed natural target:
 python -m datafetching.options_runtime `
   --datastore-target pc `
   --watchlist datafetching\watchlist.txt `
+  --provider-mode opra-canonical `
   --interval-minutes 15 `
   --phase-offset-minutes 6 `
   --pricing-barrier-timeout-seconds 45 `
@@ -175,6 +184,15 @@ python -m ml.option_pricing_opra --datastore-target pc --research-benchmark
 Paid execution is prohibited unless the operator separately supplies
 `--execute`, an explicit `--max-cost-usd`, sufficient capacity, and an exact
 approved authorization record. Startup does not imply that authorization.
+
+To open all seven owners in authoritative order from one PowerShell terminal,
+run the checked-in launcher. It opens visible child windows and uses the same
+OPRA-enabled Options command above; it does not run either historical OPRA
+maintenance command:
+
+```powershell
+& .\docs\datafetch-ml\start_all_loops.ps1
+```
 
 Stop a runtime with Ctrl+C. Never start a second owner for the same lock.
 Provider, migration, recovery, and rollout contracts are documented in

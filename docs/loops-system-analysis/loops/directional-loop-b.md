@@ -97,7 +97,7 @@
 ## Conflicts, gaps, and uncertainty
 
 - **Confirmed alias/history, not conflict:** the canonical functional name is Loop B and the startup owner is 6. “Loop 5” belongs only to the obsolete six-owner SVG. `docs/datafetch-ml/current_start_command:119`, `ml/prediction_runtime.py:29`
-- **Documented only:** the current startup prose deliberately places Options after B's +5 information clock, but no implementation artifact/control read from B was found in Options. `docs/datafetch-ml/current_start_command:95`, `datafetching/options_runtime.py:663`
+- **Documented only:** the current startup prose deliberately places Options after B's +5 information clock, but no implementation artifact/control read from B was found in Options. `docs/datafetch-ml/current_start_command:96`, `docs/datafetch-ml/current_start_command:151`, `datafetching/options_runtime.py:641`
 - **Unknown:** static analysis cannot establish which routes are currently populated/admitted, whether models are currently reused, current calibration performance, or incremental lift of any feature family.
 - **Inferred:** ordinary per-feature missing values can be handled where the registered model pipeline permits them, but there is no universal promise that every active route survives every missing family.
 - **Confidence:** High for authority, causal/model pipeline and direct relationships; Medium for live gate/population state and empirical accuracy.

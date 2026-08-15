@@ -30,9 +30,9 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 
 - **Status:** Confirmed.
 - **Type:** D + C.
-- **Exchange:** exact bar-readiness decision clock/close for commit authority; latest complete Loop A time as the regime-data cutoff; persisted daily equity bars for realized volatility.
-- **Availability:** exact target readiness is required for production commit. A missing receipt permits only checksum-sealed pending capture; closed-market discovery can reconstruct exact clocks from persisted bars.
-- **Consumer behavior:** commit, pending/quarantine, later reconcile, or terminal expiry; it does not fabricate readiness.
+- **Exchange:** exact bar-readiness decision clock/close for downstream pricing and Schwab normalization; latest complete Loop A time as the regime-data cutoff; persisted daily equity bars for realized volatility.
+- **Availability:** prospective OPRA capture has independent provider/local clocks and can commit before Loop A readiness. Schwab publication requires exact target readiness; a missing receipt permits only checksum-sealed Schwab pending capture, and closed-market discovery can reconstruct exact clocks from persisted bars.
+- **Consumer behavior:** OPRA commit, or Schwab commit/pending/reconcile/terminal expiry; it does not fabricate readiness.
 - **Producer evidence:** `datafetching/bar_readiness.py:50`, `datafetching/loop_a_cycle.py:153`, `datafetching/orchestrate.py:326`
 - **Consumer evidence:** `datafetching/options_runtime.py:266`, `datafetching/options_runtime.py:335`, `datafetching/options_runtime.py:454`, `options/features.py:335`
 
@@ -60,9 +60,9 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 
 - **Status:** Confirmed.
 - **Type:** D + M.
-- **Exchange:** point-in-time `FEDFUNDS` observations from `pools/macro/features/alfred-release-context/fred/*.parquet`; used as causal risk-free fallback input by fast target construction and by the owned residual-model worker.
+- **Exchange:** point-in-time `FEDFUNDS` observations from `pools/macro/features/alfred-release-context/fred/*.parquet`; used as the required causal live risk-free input by fast target construction and by the owned residual-model worker.
 - **Availability:** `fed_funds_available_at` must be strictly before the pricing decision/source boundary; rate is percentage points converted to decimal. Current-revised history is not eligible historical evidence.
-- **Consumer behavior:** prefers a verified FMP Treasury curve if separately present; otherwise uses the latest eligible ALFRED/FRED observation; no invented rate is allowed.
+- **Consumer behavior:** live construction requires the latest eligible ALFRED/FRED observation and disables both option-provider rate fallback and FMP-curve substitution. Offline/general materialization may retain the separately verified curve hierarchy; no invented rate is allowed. `ml/option_pricing/causal.py:264`, `ml/option_pricing/causal.py:450`, `ml/option_pricing/causal.py:468`
 - **Producer evidence:** `datafetching/fred_vintages.py:344`, `datafetching/fred_vintages.py:364`, `datafetching/fred_alfred_readiness.py:185`
 - **Consumer evidence:** `ml/option_pricing/rates.py:361`, `ml/option_pricing/rates.py:397`, `ml/option_pricing/rates.py:236`, `ml/option_pricing_loop_native_worker.py:54`
 
@@ -100,8 +100,8 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 
 - **Status:** Confirmed.
 - **Type:** D + M.
-- **Exchange:** earlier committed canonical OPRA/explicit-Schwab-fallback chains for contract definitions, lagged IV, source BBO, residual samples and model fitting; later chains reconcile prior predictions into dollar/normalized error and interval coverage. Provider/evidence lane and `fallback_used` remain explicit.
-- **Availability:** source quote/evidence must predate prediction; outcome quote/evidence must be strictly later. Natural targets and receipt chains are checksum-verified.
+- **Exchange:** earlier committed canonical OPRA/explicit-Schwab-fallback chains for contract definitions, lagged IV, source BBO, residual samples and model fitting; the earliest eligible later-target chain reconciles a prior prediction into dollar/normalized error and interval coverage. Provider/evidence lane and `fallback_used` remain explicit.
+- **Availability:** source quote/evidence must predate prediction. A prospective outcome must come from a committed snapshot target at or after the prediction target, with exact contract quote and receipt after prediction availability; the later target and availability are retained, never backdated. Natural targets and receipt chains are checksum-verified.
 - **Consumer behavior:** missing/stale source produces explicit route failure/baseline absence; missing later outcome leaves evaluation pending; OPRA is preferred when available and Schwab is labeled fallback.
 - **Producer evidence:** `options/publication.py:105`, `options/publication.py:402`, `options/snapshot.py:201`
 - **Consumer evidence:** `ml/option_pricing/causal.py:107`, `ml/option_pricing_runtime.py:660`, `ml/option_pricing_runtime.py:675`
@@ -162,7 +162,7 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 - **Type:** T.
 - **Exchange:** none. Startup says Options starts after Loop B’s +5 information clock; code schedules B at +5 and Options at +6, but Options never reads the Loop B pointer.
 - **Consumer behavior:** none; Options proceeds independently based on Loop A, Pricing barrier, pending state, and provider evidence.
-- **Evidence:** `docs/datafetch-ml/current_start_command:95`, `docs/datafetch-ml/current_start_command:141`, `datafetching/options_runtime.py:584`
+- **Evidence:** `docs/datafetch-ml/current_start_command:96`, `docs/datafetch-ml/current_start_command:151`, `datafetching/options_runtime.py:641`
 
 ## Owned-worker relationships
 
@@ -170,7 +170,7 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 
 ## OPRA boundaries that are not loop-to-loop relationships
 
-- **Confirmed prospective boundary:** `OptionMarketDataAdapter` is an injected `databento-opra`/`OPRA.PILLAR`/`cbbo-1s` interface inside Options Capture. It does not supervise itself and therefore adds no inventory row or dependency-matrix owner. When supplied, Options validates it, persists OPRA under its own provider identity, and uses labeled Schwab fallback on failure. The numbered CLI does not construct a concrete adapter. `options/providers.py:25`, `datafetching/options_runtime.py:362`, `datafetching/options_runtime.py:404`, `datafetching/options_runtime.py:663`
+- **Confirmed prospective boundary:** `DatabentoOpraLiveAdapter` implements the injected `OptionMarketDataAdapter` protocol inside Options Capture. It owns one scoped, bounded/reconnecting `OPRA.PILLAR` definitions + `cbbo-1s` transport and no separate supervisor. The default production CLI constructs it before entering the recurring loop; missing configuration/startup fails clearly. At a target, only bounded transient unavailability may use labeled Schwab fallback; identity/integrity failures fail closed. `options/databento_live.py:33`, `options/databento_live.py:139`, `datafetching/options_runtime.py:369`, `datafetching/options_runtime.py:384`, `datafetching/options_runtime.py:408`, `datafetching/options_runtime.py:650`, `datafetching/options_runtime.py:706`, `datafetching/options_runtime.py:720`
 - **Confirmed historical boundary:** `ml.option_pricing_opra` is an explicitly authorized, resumable maintenance importer for `OPRA.PILLAR` definitions/`cbbo-1m`, not startup. Active Pricing and its worker materialize only verified local import receipts; the worker records zero provider requests. `ml/option_pricing_opra.py:35`, `ml/option_pricing/opra.py:1120`, `ml/option_pricing_runtime.py:553`, `ml/option_pricing_loop_native_worker.py:58`, `ml/option_pricing_loop_native_worker.py:126`
 - **Confirmed model relationship, not process coordination:** the resulting residual architecture implements the reference `f(x)=BS(x)+delta(x)` pattern with six inputs, but uses a bounded Nyström/Bayesian-ridge posterior in production and retains an exact-GP SPY path only for research. `docs/edu/BLACK-SCHOLES-OP.md:327`, `docs/edu/BLACK-SCHOLES-OP.md:441`, `ml/option_pricing/model.py:68`, `ml/option_pricing/research_benchmark.py:34`
 
@@ -201,7 +201,7 @@ Rows are producers; columns are consumers. Empty cells mean no direct exchange. 
 
 - **Directional horizon publication:** Loop A complete authority is mandatory. Valid ALFRED authority is mandatory for the active v3 daily/weekly profile and invalid shared ALFRED/Pricing authority aborts the materialization. Missing valid Pricing rows alone is noncritical because the baseline feature set is explicit. CME and Options can lag while existing evidence remains within freshness; absent/invalid required family sources can fail affected routes. `ml/prediction_runtime.py:209`, `ml/rolling_materialization.py:322`, `ml/runtime_pipeline.py:455`
 - **Option-pricing target publication:** exact Loop A readiness and valid causal contract/rate/option inputs are critical for each target/route. The fitted residual model is not critical because the Black–Scholes point estimate and explicit sidecar fallback remain supported. Ready residual values can still affect Strategy through the separately verified sidecar. `ml/option_pricing_runtime.py:1128`, `ml/option_pricing_runtime.py:1220`, `ml/option_pricing/strategy_shadow.py:298`
-- **Options capture:** neither Pricing success nor immediate Loop A readiness is critical to making the single allowed request; they control prospective credit and commit-versus-pending authority. `datafetching/pricing_barrier.py:124`, `datafetching/options_runtime.py:349`
+- **Options capture:** Pricing success is not critical to capture. Target-scoped OPRA selection/commit uses its own point-in-time clocks and does not wait for Loop A; exact Loop A readiness remains mandatory for downstream Pricing and Schwab normalization. If OPRA is transiently unavailable while readiness is delayed, the single fallback Schwab request is durably claimed and quarantined pending reconciliation. `datafetching/pricing_barrier.py:124`, `datafetching/options_runtime.py:360`, `datafetching/options_runtime.py:369`, `datafetching/options_runtime.py:452`, `options/pending_capture.py:118`
 - **Options-strategy predictions:** a verified Loop B run and an eligible entry option-chain receipt are critical. Active Pricing and a fitted Strategy model improve/authorize calibrated fitted scoring but can degrade to explicit scenario prior. `ml/strategy_runtime.py:83`, `ml/strategy_selection/runtime.py:247`, `ml/strategy_selection/runtime.py:306`
 
 ## Explicit non-relationships

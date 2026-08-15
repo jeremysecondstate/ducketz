@@ -714,7 +714,8 @@ def _provider_neutral_frame(
     output["available_at"] = available_at
     if "fetched_at" not in output:
         output["fetched_at"] = available_at
-    output["provider_ingested_at"] = output.get("fetched_at", available_at)
+    if "provider_ingested_at" not in output:
+        output["provider_ingested_at"] = output.get("fetched_at", available_at)
     output["normalized_schema_version"] = "option-market-evidence-v2"
     if "evidence_lane" not in output:
         output["evidence_lane"] = (

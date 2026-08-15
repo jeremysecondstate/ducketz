@@ -200,6 +200,41 @@ def test_causal_samples_use_strictly_earlier_surface_and_exclude_target_fields()
     )
 
 
+def test_live_carry_ignores_option_provider_yield_without_known_declaration(
+    tmp_path: Path,
+) -> None:
+    source = _source_surface()
+    source["dividend_yield"] = 0.49
+    rates = pd.DataFrame(
+        {
+            "available_at": [pd.Timestamp("2026-01-02T15:00:00Z")],
+            "risk_free_rate": [0.04],
+        }
+    )
+
+    samples = build_causal_samples(
+        source,
+        target_contracts=None,
+        target_underlying_price=100.0,
+        source_snapshot_for=pd.Timestamp("2026-01-02T16:00:00Z"),
+        source_available_at=pd.Timestamp("2026-01-02T16:01:00Z"),
+        target_snapshot_for=pd.Timestamp("2026-01-03T16:00:00Z"),
+        source_provider="databento-opra",
+        prediction_mode="LIVE",
+        prediction_created_at=pd.Timestamp("2026-01-03T16:01:00Z"),
+        prediction_available_at=pd.Timestamp("2026-01-03T16:01:00Z"),
+        datastore_root=tmp_path,
+        rate_observations=rates,
+        allow_source_chain_carry_fallback=False,
+        require_fred_alfred_rate=True,
+    )
+
+    available = samples.loc[samples["sample_status"].eq("AVAILABLE")]
+    assert not available.empty
+    assert available["dividend_yield"].eq(0.0).all()
+    assert available["dividend_confidence"].eq("ZERO_NO_KNOWN_DIVIDEND").all()
+
+
 def test_iv_surface_interpolation_does_not_look_forward_or_extrapolate() -> None:
     source = _source_surface().copy()
     source["_resolved_iv"] = source["implied_volatility"]
@@ -339,6 +374,7 @@ def test_baseline_prediction_keeps_uncertainty_null_without_a_verified_model() -
     assert predictions["prediction_status"].eq("CREATED").all()
     assert predictions["constrained_fair_value"].notna().all()
     assert predictions["predicted_normalized_residual"].eq(0.0).all()
+    assert predictions["predicted_dollar_residual"].eq(0.0).all()
     assert predictions["raw_fair_value"].equals(
         predictions["black_scholes_price"]
     )
@@ -421,6 +457,14 @@ def test_reconciliation_requires_exact_later_quote_and_canonicalizes_duplicates(
     )
     assert evaluated.iloc[0]["evaluation_status"] == "COMPLETE"
     assert bool(evaluated.iloc[0]["prospective_eligible"]) is True
+    assert evaluated.iloc[0]["predicted_dollar_residual"] == pytest.approx(
+        evaluated.iloc[0]["predicted_normalized_residual"]
+        * evaluated.iloc[0]["underlying_price"]
+    )
+    assert evaluated.iloc[0]["observed_dollar_residual"] == pytest.approx(
+        evaluated.iloc[0]["observed_normalized_residual"]
+        * evaluated.iloc[0]["underlying_price"]
+    )
 
     target["non_standard"] = True
     target.to_parquet(contracts_path, index=False)
@@ -487,6 +531,77 @@ def test_reconciliation_requires_exact_later_quote_and_canonicalizes_duplicates(
     )
     assert missing.iloc[0]["evaluation_status"] == "MISSING_TARGET_CONTRACT"
     assert bool(missing.iloc[0]["prospective_eligible"]) is False
+
+
+def test_reconciliation_uses_later_cycle_opra_quote_for_earlier_prediction(
+    tmp_path: Path,
+) -> None:
+    prediction_target = pd.Timestamp("2026-01-03T16:00:00Z")
+    outcome_target = prediction_target + pd.Timedelta(minutes=15)
+    samples = build_causal_samples(
+        _source_surface().iloc[:1],
+        target_contracts=None,
+        target_underlying_price=100.0,
+        source_snapshot_for="2026-01-02T16:00:00Z",
+        source_available_at="2026-01-02T16:01:00Z",
+        target_snapshot_for=prediction_target,
+        source_provider="databento-opra",
+        prediction_mode="LIVE",
+    )
+    predictions = create_prediction_rows(
+        samples,
+        prediction_created_at=prediction_target + pd.Timedelta(minutes=1),
+        prediction_available_at=prediction_target + pd.Timedelta(minutes=1, seconds=5),
+    )
+    predictions["_pricing_outcome_run_path"] = (
+        "ml/option-pricing-target-outcomes/proven"
+    )
+    predictions["_pricing_outcome_receipt_checksum_sha256"] = "receipt-checksum"
+    predictions["_pricing_authority_published_at"] = (
+        prediction_target + pd.Timedelta(minutes=1, seconds=5)
+    )
+
+    outcome = _source_surface().iloc[:1].copy()
+    outcome["bid"] = 2.0
+    outcome["ask"] = 2.2
+    outcome["quote_timestamp"] = outcome_target - pd.Timedelta(seconds=1)
+    run = tmp_path / "later-opra"
+    run.mkdir()
+    contracts_path = run / "contracts.parquet"
+    outcome.to_parquet(contracts_path, index=False)
+    receipt_path = run / "receipt.json"
+    receipt_path.write_text("{}\n", encoding="utf-8")
+    request = outcome_target + pd.Timedelta(seconds=5)
+    snapshot = CommittedOptionSnapshot(
+        symbol="NVDA",
+        snapshot_for=outcome_target,
+        available_at=request + pd.Timedelta(seconds=2),
+        directory=run,
+        raw_path=contracts_path,
+        contracts_path=contracts_path,
+        features_path=contracts_path,
+        receipt_path=receipt_path,
+        receipt={
+            "request_started_at": request.isoformat(),
+            "pricing_barrier": {
+                "target_snapshot_for": outcome_target.isoformat(),
+                "observed_at": (request - pd.Timedelta(milliseconds=1)).isoformat(),
+            },
+        },
+        provider="databento-opra",
+        dataset="OPRA.PILLAR",
+    )
+    evaluated = reconcile_predictions(
+        predictions,
+        snapshots_by_symbol={"NVDA": (snapshot,)},
+        evaluated_at=request + pd.Timedelta(seconds=3),
+    )
+    row = evaluated.iloc[0]
+    assert row["evaluation_status"] == "COMPLETE"
+    assert row["outcome_provider"] == "databento-opra"
+    assert row["evidence_lane"] == "PROSPECTIVE_OPRA"
+    assert bool(row["prospective_eligible"]) is True
+    assert row["outcome_quote_timestamp"] == outcome_target - pd.Timedelta(seconds=1)
 
 
 def test_outcome_quote_after_target_but_before_prediction_availability_is_rejected() -> None:

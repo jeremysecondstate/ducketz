@@ -1188,9 +1188,9 @@ def _publish_fast_target_outcome(
                 target_source_files=(readiness.evidence_files if readiness else None),
                 contract_policy=contract_policy,
                 rate_observations=rate_observations,
-                allow_source_chain_carry_fallback=(
-                    loop_native_model_load is None
-                ),
+                # Live q/d authority is declaration-based only. Earlier option
+                # prices may supply lagged IV, but never a live carry input.
+                allow_source_chain_carry_fallback=False,
             )
             live_status[symbol] = {
                 "status": batch.status,

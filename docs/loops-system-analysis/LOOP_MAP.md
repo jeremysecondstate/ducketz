@@ -5,7 +5,7 @@
 ```mermaid
 flowchart LR
     subgraph BOUNDARIES[OPRA evidence boundaries — not independent loops]
-        OPRAL["Prospective OPRA.PILLAR adapter<br/>cbbo-1s; injected rollout boundary"]
+        OPRAL["Prospective OPRA.PILLAR live adapter<br/>definitions + cbbo-1s; Options-owned"]
         OPRAH["Historical OPRA.PILLAR importer<br/>cbbo-1m; authorized maintenance"]
     end
 
@@ -44,7 +44,7 @@ flowchart LR
     B ==>|"T(doc) · +5 precedes +6; no artifact"| OPT
     PR -->|"OWNED · launch after fast target"| W
     W -->|"OWNED · prior verified shadow model for later target"| PR
-    OPRAL ==>|"OPTIONAL D · pretarget OPRA L1 snapshot"| OPT
+    OPRAL ==>|"CANONICAL D · pretarget OPRA L1 snapshot"| OPT
     OPRAH ==>|"OPTIONAL D · verified offline OPRA evidence"| PR
     OPRAH ==>|"OPTIONAL D · OPRA-first model history"| W
 
@@ -63,7 +63,7 @@ Edge notation is semantic as well as visual:
 - dotted arrow: readiness/control flow (possibly carrying data too);
 - thick arrow: optional, fallback, asynchronous-historical, or documented timing association;
 - gray dashed worker node inside the `Owned work` subgraph plus an `OWNED` edge label: owned-worker launch/return, not an independent loop relationship.
-- gray OPRA boundary nodes are provider/maintenance interfaces, not additional production owners; their thick edges are optional because Black–Scholes/Schwab fallbacks preserve the loop topology.
+- gray OPRA boundary nodes are provider/maintenance interfaces, not additional production owners; the live transport is required at production startup, while a particular target may still lack usable OPRA evidence and take the explicit Schwab fallback.
 
 Node colors classify owner-level prediction contribution: blue = Horizon, orange = Options, purple = Both, gray/dashed = supporting/owned component. This inventory has no Horizon-only or owner-level supporting-only loop; the colors remain in the legend because those are valid classification states. `Both` signifies an evidenced causal path, not measured feature lift.
 
@@ -88,9 +88,9 @@ Every edge in the map is supported on both its producer and consumer sides. `T(d
 | B → Strategy | `D+M+C`: samples, LIVE probability and source authority | `ml/runtime_pipeline.py:704`, `ml/runtime_pipeline.py:876` | `ml/strategy_runtime.py:74`, `ml/strategy_runtime.py:125` | **Confirmed, mandatory** |
 | Options → Strategy | `D+M`: exact entry/exit chains/outcomes | `options/publication.py:92`, `options/snapshot.py:499` | `ml/strategy_selection/runtime.py:240`, `ml/strategy_selection/runtime.py:395` | **Confirmed** |
 | Pricing → Strategy | `D+M+F`: per-leg fair value/edge/uncertainty | `ml/option_pricing/publication.py:83`, `ml/option_pricing/strategy_shadow.py:74` | `ml/strategy_selection/runtime.py:288`, `ml/strategy_selection/runtime.py:310` | **Confirmed, scenario fallback** |
-| B → Options | `T(doc)`: +5 then +6 only | `docs/datafetch-ml/current_start_command:139` | `docs/datafetch-ml/current_start_command:112`, `datafetching/options_runtime.py:584` | **Documented only; no exchanged artifact** |
+| B → Options | `T(doc)`: +5 then +6 only | `docs/datafetch-ml/current_start_command:151` | `docs/datafetch-ml/current_start_command:123`, `datafetching/options_runtime.py:641` | **Documented only; no exchanged artifact** |
 | Pricing ↔ worker | owned launch and future shadow model | `ml/option_pricing_runtime.py:418`, `ml/option_pricing_runtime.py:440` | `ml/option_pricing_loop_native_worker.py:38`, `ml/option_pricing_loop_native_worker.py:135` | **Confirmed owned worker** |
-| Prospective OPRA adapter → Options | optional `D`: `OPRA.PILLAR` `cbbo-1s` definitions/final pretarget BBO | `options/providers.py:25`, `options/providers.py:42` | `datafetching/options_runtime.py:362`, `options/snapshot.py:122` | **Confirmed implemented injection boundary; live transport rollout external** |
+| Prospective OPRA adapter → Options | canonical `D`: scoped `OPRA.PILLAR` definitions plus `cbbo-1s` final pretarget BBO; one shared live transport | `options/databento_live.py:33`, `options/databento_live.py:139`, `options/databento_live.py:268` | `datafetching/options_runtime.py:369`, `options/snapshot.py:122` | **Confirmed production transport; per-target transient unavailability permits labeled Schwab fallback** |
 | Historical OPRA importer → Pricing | optional `D`: verified immutable `cbbo-1m` offline evidence for model fit/evaluation | `ml/option_pricing/opra.py:1120`, `ml/option_pricing/opra.py:1162` | `ml/option_pricing_runtime.py:553`, `ml/option_pricing/opra_materialization.py:66` | **Confirmed maintenance boundary; not startup** |
 | Historical OPRA importer → worker | optional `D`: OPRA-first committed history | `ml/option_pricing/opra.py:1120` | `ml/option_pricing_loop_native_worker.py:58`, `ml/option_pricing_loop_native_worker.py:72` | **Confirmed owned-worker input** |
 
@@ -116,7 +116,7 @@ sequenceDiagram
     P-->>O: Verified target outcome if available before request
     A-->>B: Complete-cycle cutoff under shared lock
     B->>B: Materialize, fit/reuse, score and atomically publish
-    O->>O: Wait up to 45 s; use injected OPRA first or labeled Schwab fallback
+    O->>O: Wait up to 45 s; read owned OPRA buffer first or use labeled Schwab fallback
     O-->>P: Committed chain becomes input/outcome for later Pricing work
     B-->>S: Current samples and LIVE direction probability
     O-->>S: Exact chain/stock evidence available by Strategy cutoff
@@ -134,4 +134,4 @@ sequenceDiagram
 - **B ↔ ALFRED is not a same-cycle deadlock.** B consumes already-authorized macro history. The daily owner uses the current B decision grid only to determine historical import/readiness coverage for later B runs; the one-time bootstrap covers the initial absence. `datafetching/fred_alfred_readiness.py:400`, `docs/datafetch-ml/current_start_command:21`
 - **Pricing → B is fallback-aware.** Missing/stale but structurally valid `opx__` evidence triggers a versioned baseline model feature set. Corrupt Pricing authority is not a fallback condition and aborts the new B publication. `ml/runtime_pipeline.py:455`, `ml/rolling_materialization.py:322`
 - **Pricing → Strategy is candidate-specific.** Full active leg coverage admits the fitted Strategy model; uncovered/delayed candidates retain an explicit scenario probability and cannot masquerade as calibrated fitted scores. `ml/strategy_selection/runtime.py:310`, `ml/strategy_runtime.py:527`
-- **OPRA has two non-owner entry boundaries.** Prospective `cbbo-1s` enters through the injected Options adapter; authorized historical `cbbo-1m` enters through a maintenance importer and is materialized locally by Pricing/its worker. Neither boundary adds an eighth recurring owner, and the numbered Options CLI still instantiates the Schwab broker lane unless a concrete adapter is supplied outside that call. `options/providers.py:25`, `ml/option_pricing_opra.py:35`, `datafetching/options_runtime.py:663`
+- **OPRA has two non-owner entry boundaries.** Prospective `cbbo-1s` enters through the concrete live adapter constructed by the Options CLI in default `opra-canonical` mode; authorized historical `cbbo-1m` enters through a maintenance importer and is materialized locally by Pricing/its worker. Neither boundary adds an eighth recurring owner. Schwab remains a lazily constructed, explicitly labeled per-target fallback/broker lane. `options/databento_live.py:33`, `datafetching/options_runtime.py:650`, `datafetching/options_runtime.py:706`, `datafetching/options_runtime.py:720`, `datafetching/options_runtime.py:452`, `ml/option_pricing_opra.py:35`

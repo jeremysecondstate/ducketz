@@ -2,6 +2,12 @@
 
 These are advisory experiments, not implementation instructions or claims of current lift. Each proposal must retain the present authority, point-in-time, readiness, freshness, schema, receipt and lockbox boundaries; failure of any guard keeps or restores the current behavior. No recommendation depends on opening, inspecting or tuning against sealed lockbox outcomes.
 
+## Resolved implementation gaps (not recommendations)
+
+- **Confirmed resolved:** prospective OPRA is no longer only an injected protocol/rollout dependency. Options Capture now owns a concrete, scoped `OPRA.PILLAR` definitions + `cbbo-1s` live adapter; the production CLI constructs/injects it, default startup requires it, and the checked-in command uses `--provider-mode opra-canonical`. `options/databento_live.py:33`, `datafetching/options_runtime.py:650`, `datafetching/options_runtime.py:706`, `datafetching/options_runtime.py:720`, `docs/datafetch-ml/current_start_command:110`
+- **Confirmed resolved:** later committed option targets can now evaluate earlier Pricing predictions without relabeling or backdating the later quote/receipt. `ml/option_pricing/causal.py:963`, `tests/test_option_pricing_core.py:536`
+- **Unknown operational verification:** real credential entitlement, connection success, actual capture coverage/provider mix, and predictive lift still require bounded operator observation. They are not reasons to weaken the Black–Scholes fallback or promotion gates.
+
 ## Prediction-accuracy improvements
 
 ### 1. Complete the existing gated residual-promotion experiment before changing fast target authority
