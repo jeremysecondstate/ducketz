@@ -100,10 +100,14 @@ class OptionHistorySyncSummary:
 DISCOVERY_CYCLE_MODE = "DISCOVERY_REFRESH"
 DISCOVERY_TARGET_STATE = "DISCOVERY_CHAIN_TARGET"
 DISCOVERY_ALREADY_REFRESHED_STATE = "DISCOVERY_CHAIN_ALREADY_REFRESHED"
-OPRA_SYMBOL_HISTORY_LOOKBACK_MONTHS = 6
-OPRA_CMBP_HISTORY_LOOKBACK_MONTHS = 1
-OPRA_SYMBOL_CATCHUP_OVERLAP_DAYS = 3
-OPRA_SYMBOL_HISTORY_CURSOR_VERSION = "options-opra-symbol-history-v3"
+OPRA_DEFAULT_CATCHUP_OVERLAP_DAYS = 3
+OPRA_SCHEMA_CATCHUP_OVERLAP_DAYS: dict[str, int] = {
+    "ohlcv-1s": 1,
+    "ohlcv-1m": 2,
+    "ohlcv-1h": 5,
+    "ohlcv-1d": 10,
+}
+OPRA_SYMBOL_HISTORY_CURSOR_VERSION = "options-opra-symbol-history-v4"
 OPRA_SYMBOL_HISTORY_SCHEMA_ORDER = (
     "definition",
     "ohlcv-1d",
@@ -118,6 +122,20 @@ OPRA_SYMBOL_HISTORY_SCHEMA_ORDER = (
     "cbbo-1s",
     "cmbp-1",
 )
+OPRA_SCHEMA_HISTORY_LOOKBACK_POLICY: dict[str, tuple[str, int]] = {
+    "definition": ("days", 5_000),
+    "ohlcv-1d": ("days", 5_000),
+    "ohlcv-1h": ("days", 2_000),
+    "ohlcv-1m": ("days", 100),
+    "ohlcv-1s": ("days", 5),
+    "status": ("months", 6),
+    "statistics": ("months", 6),
+    "trades": ("months", 6),
+    "tcbbo": ("months", 6),
+    "cbbo-1m": ("months", 6),
+    "cbbo-1s": ("months", 6),
+    "cmbp-1": ("months", 1),
+}
 DISCOVERY_PENDING_STATE = "DISCOVERY_CHAIN_PENDING_READINESS"
 OPRA_CANONICAL_MODE = "opra-canonical"
 SCHWAB_COMPATIBILITY_MODE = "schwab-only-compatibility"
@@ -788,7 +806,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             if canonical_adapter is not None and not args.skip_historical_catchup:
                 print(
                     "Historical OPRA: incremental cursor maintenance; "
-                    f"incremental overlap {OPRA_SYMBOL_CATCHUP_OVERLAP_DAYS} days"
+                    "schema-specific incremental overlap"
                 )
                 print(
                     "Historical OPRA bootstrap: run python -m "
@@ -886,10 +904,8 @@ def synchronize_option_history(
         ):
             clean_symbols = normalize_symbols(symbols)
             for schema in clean_schemas:
-                lookback_months = _opra_history_lookback_months(schema)
-                full_start = (
-                    pd.Timestamp(end) - pd.DateOffset(months=lookback_months)
-                ).date().isoformat()
+                lookback_label = opra_history_lookback_label(schema)
+                full_start = opra_history_start(schema, end=end)
                 for symbol in clean_symbols:
                     requested += 1
                     provider_symbol = f"{symbol}.OPT"
@@ -909,7 +925,7 @@ def synchronize_option_history(
                                 )
                             continue
                         start = full_start
-                        mode = f"INITIAL_{lookback_months}_MONTH_BACKFILL"
+                        mode = "INITIAL_" + lookback_label.upper().replace(" ", "_")
                     else:
                         completed_end = pd.Timestamp(
                             str(marker["completed_through"])
@@ -917,7 +933,7 @@ def synchronize_option_history(
                         start = max(
                             pd.Timestamp(full_start),
                             completed_end
-                            - pd.Timedelta(days=OPRA_SYMBOL_CATCHUP_OVERLAP_DAYS),
+                            - pd.Timedelta(days=opra_history_overlap_days(schema)),
                         ).date().isoformat()
                         mode = "INCREMENTAL_CATCHUP"
                     try:
@@ -1021,8 +1037,7 @@ def _read_opra_symbol_history_cursor(
         or payload.get("symbol") != symbol.strip().upper()
         or payload.get("provider_symbol") != f"{symbol.strip().upper()}.OPT"
         or payload.get("schema") != schema
-        or payload.get("lookback_months")
-        != _opra_history_lookback_months(schema)
+        or payload.get("lookback_policy") != opra_history_lookback_policy(schema)
         or pd.isna(completed)
     ):
         return None
@@ -1050,7 +1065,7 @@ def _write_opra_symbol_history_cursor(
         "symbol": clean_symbol,
         "provider_symbol": f"{clean_symbol}.OPT",
         "schema": schema,
-        "lookback_months": _opra_history_lookback_months(schema),
+        "lookback_policy": opra_history_lookback_policy(schema),
         "completed_through": completed_through,
         "updated_at": pd.Timestamp.now(tz="UTC").isoformat(),
     }
@@ -1063,11 +1078,40 @@ def _write_opra_symbol_history_cursor(
     return path
 
 
-def _opra_history_lookback_months(schema: str) -> int:
-    return (
-        OPRA_CMBP_HISTORY_LOOKBACK_MONTHS
-        if schema == "cmbp-1"
-        else OPRA_SYMBOL_HISTORY_LOOKBACK_MONTHS
+def opra_history_lookback_policy(schema: str) -> dict[str, object]:
+    try:
+        unit, value = OPRA_SCHEMA_HISTORY_LOOKBACK_POLICY[schema]
+    except KeyError as exc:
+        raise ValueError(f"Unsupported OPRA schema: {schema}") from exc
+    return {"unit": unit, "value": value}
+
+
+def opra_history_start(schema: str, *, end: str) -> str:
+    policy = opra_history_lookback_policy(schema)
+    anchor = pd.Timestamp(end)
+    value = int(policy["value"])
+    if policy["unit"] == "days":
+        start = anchor - pd.Timedelta(days=value)
+    else:
+        start = anchor - pd.DateOffset(months=value)
+    return start.date().isoformat()
+
+
+def opra_history_lookback_label(schema: str) -> str:
+    policy = opra_history_lookback_policy(schema)
+    value = int(policy["value"])
+    unit = str(policy["unit"])
+    if value == 1:
+        unit = unit.removesuffix("s")
+    return f"{value} {unit}"
+
+
+def opra_history_overlap_days(schema: str) -> int:
+    if schema not in STANDARD_SCHEMAS:
+        raise ValueError(f"Unsupported OPRA schema: {schema}")
+    return OPRA_SCHEMA_CATCHUP_OVERLAP_DAYS.get(
+        schema,
+        OPRA_DEFAULT_CATCHUP_OVERLAP_DAYS,
     )
 
 

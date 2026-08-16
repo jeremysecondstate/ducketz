@@ -116,8 +116,10 @@ refetch or republish an already committed natural target:
 
 Before starting Options Capture for a new watchlist symbol, run the idempotent
 one-time historical bootstrap. It requests every Standard schema under an
-independent parent-symbol bucket, caps `cmbp-1` at one month and the other schemas
-at six months, and resumes from checksum-verified partitions:
+independent parent-symbol bucket. Initial windows are 5 days for `ohlcv-1s`,
+100 days for `ohlcv-1m`, 2,000 days for `ohlcv-1h`, 5,000 days for `ohlcv-1d`
+and `definition`, one month for `cmbp-1`, and six months for the remaining
+schemas. It resumes from checksum-verified partitions:
 
 ```powershell
 python -m datafetching.options_history `
@@ -125,9 +127,10 @@ python -m datafetching.options_history `
   --watchlist datafetching\watchlist.txt
 ```
 
-Options Capture then owns only forward cursor maintenance. Its daily request
-overlaps three days and synchronizes missing verified partitions; it does not
-re-download three months on every cycle. Loop 3 consumes those verified files
+Options Capture then owns only forward cursor maintenance. Daily overlaps are
+1 day for `ohlcv-1s`, 2 days for `ohlcv-1m`, 5 days for `ohlcv-1h`, 10 days for
+`ohlcv-1d`, and 3 days for other schemas. It synchronizes missing verified
+partitions and does not re-download months on every cycle. Loop 3 consumes those verified files
 but does not initiate a missing-symbol bootstrap.
 
 ```powershell

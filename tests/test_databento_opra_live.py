@@ -674,7 +674,7 @@ def test_options_cli_sanitizes_adapter_startup_exception(
     assert "unit-test-placeholder" not in stderr
 
 
-def test_options_history_onboards_each_symbol_for_six_months_then_catches_up(
+def test_options_history_uses_schema_specific_bootstrap_and_overlap_windows(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -721,11 +721,17 @@ def test_options_history_onboards_each_symbol_for_six_months_then_catches_up(
     assert {
         scope.schemas[0]: scope.start for scope in scopes
     } == {
-        **{
-            schema: "2026-02-15"
-            for schema in options_runtime.STANDARD_SCHEMAS
-            if schema != "cmbp-1"
-        },
+        "definition": "2012-12-06",
+        "ohlcv-1d": "2012-12-06",
+        "ohlcv-1h": "2021-02-22",
+        "ohlcv-1m": "2026-05-07",
+        "ohlcv-1s": "2026-08-10",
+        "status": "2026-02-15",
+        "statistics": "2026-02-15",
+        "trades": "2026-02-15",
+        "tcbbo": "2026-02-15",
+        "cbbo-1m": "2026-02-15",
+        "cbbo-1s": "2026-02-15",
         "cmbp-1": "2026-07-15",
     }
     assert {scope.end for scope in scopes} == {"2026-08-15"}
@@ -743,7 +749,25 @@ def test_options_history_onboards_each_symbol_for_six_months_then_catches_up(
         symbols=("GOOG", "NVDA"),
         reporter=None,
     )
-    assert {scope.start for scope in scopes} == {"2026-08-12"}
+    assert {
+        scope.schemas[0]: scope.start for scope in scopes
+    } == {
+        **{
+            schema: "2026-08-12"
+            for schema in options_runtime.STANDARD_SCHEMAS
+            if not schema.startswith("ohlcv-")
+        },
+        "ohlcv-1s": "2026-08-14",
+        "ohlcv-1m": "2026-08-13",
+        "ohlcv-1h": "2026-08-10",
+        "ohlcv-1d": "2026-08-05",
+    }
+
+    assert options_runtime.opra_history_overlap_days("ohlcv-1s") == 1
+    assert options_runtime.opra_history_overlap_days("ohlcv-1m") == 2
+    assert options_runtime.opra_history_overlap_days("ohlcv-1h") == 5
+    assert options_runtime.opra_history_overlap_days("ohlcv-1d") == 10
+    assert options_runtime.opra_history_overlap_days("cmbp-1") == 3
 
 
 def test_options_history_capacity_block_is_isolated_per_symbol(

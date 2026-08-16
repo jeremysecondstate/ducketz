@@ -202,16 +202,20 @@ python -m datafetching.options_history `
   --watchlist datafetching\watchlist.txt
 ```
 
-The bootstrap synchronizes each symbol independently as `<SYMBOL>.OPT`, using at
-most six months of history except for the separately capped one-month `cmbp-1`
-scope. Each schema remains clamped to its shorter provider/account entitlement.
+The bootstrap synchronizes each symbol independently as `<SYMBOL>.OPT` with a
+schema-specific initial window: `ohlcv-1s` uses 5 days, `ohlcv-1m` 100 days,
+`ohlcv-1h` 2,000 days, and `ohlcv-1d` plus `definition` 5,000 days. `cmbp-1`
+uses one month; the remaining Standard schemas use six months. Every request
+remains clamped to its shorter provider/account entitlement.
 Dense `cmbp-1` and `cbbo-1s` days are split into deterministic intraday
 partitions so every normalized Parquet remains inside the exact duplicate-check
 bound. The command is idempotent and resumes from checksum-verified partitions.
 
 Options Capture does not perform a missing-symbol bootstrap. Once a bootstrap
-cursor exists, its owned daily maintenance overlaps the last three days and
-fetches only missing verified partitions. The overlap is a request safety window,
+cursor exists, its owned daily maintenance uses frequency-specific overlaps:
+1 day for `ohlcv-1s`, 2 days for `ohlcv-1m`, 5 days for `ohlcv-1h`, and 10 days
+for `ohlcv-1d`; other schemas retain 3 days. It fetches only missing verified
+partitions. The overlap is a request safety window,
 not a rolling three-month redownload; immutable partition verification and exact
 natural-key checks make it safe to repeat. One symbol's capacity or provider
 failure does not block the other symbols. Prospective L1 continues to default to `cbbo-1s`;

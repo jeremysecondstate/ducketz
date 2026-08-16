@@ -8,9 +8,8 @@ from typing import Sequence
 from datafetching.cme_runtime import load_repository_environment
 from datafetching.databento_opra_history import STANDARD_SCHEMAS
 from datafetching.options_runtime import (
-    OPRA_CMBP_HISTORY_LOOKBACK_MONTHS,
-    OPRA_SYMBOL_HISTORY_LOOKBACK_MONTHS,
     OPRA_SYMBOL_HISTORY_SCHEMA_ORDER,
+    opra_history_lookback_label,
     synchronize_option_history,
 )
 from datafetching.orchestrate import DEFAULT_WATCHLIST, normalize_symbols, read_watchlist
@@ -59,8 +58,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"Parent symbols: {', '.join(symbols)}")
     print(f"Schemas: {', '.join(args.schemas)}")
     print(
-        f"Lookback: {OPRA_SYMBOL_HISTORY_LOOKBACK_MONTHS} months; "
-        f"cmbp-1: {OPRA_CMBP_HISTORY_LOOKBACK_MONTHS} month"
+        "Lookbacks: "
+        + "; ".join(
+            f"{schema}={opra_history_lookback_label(schema)}"
+            for schema in args.schemas
+        )
     )
     summary = synchronize_option_history(
         store,
