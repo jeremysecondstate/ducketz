@@ -714,7 +714,7 @@ def test_options_history_uses_schema_specific_bootstrap_and_overlap_windows(
         reporter=None,
     )
 
-    assert len(scopes) == 2 * len(options_runtime.STANDARD_SCHEMAS)
+    assert len(scopes) == 2 * len(options_runtime.OPRA_SYMBOL_HISTORY_SCHEMA_ORDER)
     assert {scope.symbols for scope in scopes} == {
         ("GOOG.OPT",),
         ("NVDA.OPT",),
@@ -722,25 +722,24 @@ def test_options_history_uses_schema_specific_bootstrap_and_overlap_windows(
     assert {
         scope.schemas[0]: scope.start for scope in scopes
     } == {
-        "definition": "2013-08-15",
+        "definition": "2026-05-07",
         "ohlcv-1d": "2019-08-17",
         "ohlcv-1h": "2021-08-16",
         "ohlcv-1m": "2026-05-07",
-        "ohlcv-1s": "2026-08-12",
+        "ohlcv-1s": "2026-08-05",
         "status": "2026-07-15",
         "statistics": "2026-07-15",
         "trades": "2026-07-15",
         "tcbbo": "2026-07-15",
-        "cbbo-1m": "2026-05-07",
-        "cbbo-1s": "2026-08-12",
-        "cmbp-1": "2026-08-14",
+        "cbbo-1m": "2026-07-26",
+        "cbbo-1s": "2026-08-14",
     }
     assert {scope.end for scope in scopes} == {"2026-08-15"}
     assert set(options_runtime.OPRA_SYMBOL_HISTORY_SCHEMA_ORDER) == set(
         options_runtime.STANDARD_SCHEMAS
-    )
+    ) - {"cmbp-1"}
     assert sorted(scope.schemas[0] for scope in scopes) == sorted(
-        options_runtime.STANDARD_SCHEMAS * 2
+        options_runtime.OPRA_SYMBOL_HISTORY_SCHEMA_ORDER * 2
     )
 
     scopes.clear()
@@ -755,10 +754,10 @@ def test_options_history_uses_schema_specific_bootstrap_and_overlap_windows(
     } == {
         **{
             schema: "2026-08-12"
-            for schema in options_runtime.STANDARD_SCHEMAS
-            if not schema.startswith("ohlcv-") and schema != "cmbp-1"
+            for schema in options_runtime.OPRA_SYMBOL_HISTORY_SCHEMA_ORDER
+            if not schema.startswith("ohlcv-") and schema != "cbbo-1s"
         },
-        "cmbp-1": "2026-08-14",
+        "cbbo-1s": "2026-08-14",
         "ohlcv-1s": "2026-08-14",
         "ohlcv-1m": "2026-08-13",
         "ohlcv-1h": "2026-08-10",
@@ -855,7 +854,7 @@ def test_options_history_capacity_block_is_isolated_per_symbol(
         for _schema in options_runtime.OPRA_SYMBOL_HISTORY_SCHEMA_ORDER
         for provider_symbol in ("GOOG.OPT", "NVDA.OPT")
     ]
-    for schema in options_runtime.STANDARD_SCHEMAS:
+    for schema in options_runtime.OPRA_SYMBOL_HISTORY_SCHEMA_ORDER:
         assert not options_runtime._opra_symbol_history_cursor_path(
             tmp_path,
             symbol="GOOG",
@@ -900,10 +899,12 @@ def test_options_loop_requires_one_time_bootstrap_for_missing_cursors(
         bootstrap_missing=False,
     )
 
-    assert summary.requested_scopes == len(options_runtime.STANDARD_SCHEMAS)
+    assert summary.requested_scopes == len(
+        options_runtime.OPRA_SYMBOL_HISTORY_SCHEMA_ORDER
+    )
     assert summary.completed_scopes == 0
     assert summary.bootstrap_required_scopes == len(
-        options_runtime.STANDARD_SCHEMAS
+        options_runtime.OPRA_SYMBOL_HISTORY_SCHEMA_ORDER
     )
     assert summary.capacity_blocked_scopes == 0
     assert summary.failed_scopes == 0

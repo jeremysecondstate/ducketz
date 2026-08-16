@@ -60,17 +60,16 @@ def test_manifest_has_exact_schema_coverage_and_requested_windows(tmp_path: Path
     assert {item["symbol_scope"][0] for item in requests if item["dataset"] == EQUITIES_DATASET} == set(WATCHLIST)
 
     expected_common_starts = {
-        "ohlcv-1s": "2026-08-12",
+        "ohlcv-1s": "2026-08-05",
         "bbo-1s": "2026-08-12",
-        "cbbo-1s": "2026-08-12",
+        "cbbo-1s": "2026-08-14",
         "ohlcv-1m": "2026-05-07",
         "bbo-1m": "2026-05-07",
-        "cbbo-1m": "2026-05-07",
+        "cbbo-1m": "2026-07-26",
         "ohlcv-1h": "2021-08-16",
         "ohlcv-1d": "2019-08-17",
         "statistics": "2026-07-15",
         "status": "2026-07-15",
-        "cmbp-1": "2026-08-14",
         "mbp-10": "2026-08-14",
         "mbo": "2026-08-14",
     }
@@ -78,11 +77,7 @@ def test_manifest_has_exact_schema_coverage_and_requested_windows(tmp_path: Path
         assert request["end"] == AS_OF.isoformat()
         expected = expected_common_starts.get(request["schema"], "2026-07-15")
         if request["schema"] == "definition":
-            expected = {
-                cold_start.OPRA_DATASET: "2013-08-15",
-                CME_DATASET: "2012-12-06",
-                EQUITIES_DATASET: "2018-08-15",
-            }[request["dataset"]]
+            expected = "2026-05-07"
         assert request["start"] == expected
 
     assert {
@@ -97,19 +92,23 @@ def test_manifest_has_exact_schema_coverage_and_requested_windows(tmp_path: Path
             cold_start.PLAN_DATASET_US_EQUITIES,
         )
     } | {
-        (cold_start.PLAN_DATASET_OPRA, "definition"): {"unit": "years", "value": 13},
-        (cold_start.PLAN_DATASET_CME, "definition"): {"unit": "days", "value": 5_000},
-        (cold_start.PLAN_DATASET_US_EQUITIES, "definition"): {"unit": "years", "value": 8},
+        (cold_start.PLAN_DATASET_OPRA, "definition"): {"unit": "days", "value": 100},
+        (cold_start.PLAN_DATASET_CME, "definition"): {"unit": "days", "value": 100},
+        (cold_start.PLAN_DATASET_US_EQUITIES, "definition"): {"unit": "days", "value": 100},
     }
     assert manifest["derived_views"] == []
 
 
-def test_every_interval_schema_uses_the_shared_cap() -> None:
+def test_interval_schemas_use_the_configured_caps() -> None:
     expected = {
-        "1s": {"unit": "days", "value": 3},
-        "1m": {"unit": "days", "value": 100},
-        "1h": {"unit": "days", "value": 1_825},
-        "1d": {"unit": "days", "value": 2_555},
+        "ohlcv-1s": 10,
+        "bbo-1s": 3,
+        "cbbo-1s": 1,
+        "ohlcv-1m": 100,
+        "bbo-1m": 100,
+        "cbbo-1m": 20,
+        "ohlcv-1h": 1_825,
+        "ohlcv-1d": 2_555,
     }
     for role, schemas in (
         (cold_start.PLAN_DATASET_OPRA, cold_start.OPRA_SCHEMAS),
@@ -117,9 +116,17 @@ def test_every_interval_schema_uses_the_shared_cap() -> None:
         (cold_start.PLAN_DATASET_US_EQUITIES, cold_start.US_EQUITIES_SCHEMAS),
     ):
         for schema in schemas:
-            interval = schema.rsplit("-", maxsplit=1)[-1]
-            if interval in expected:
-                assert cold_start.schema_window(role, schema) == expected[interval]
+            if schema in expected:
+                assert cold_start.schema_window(role, schema) == {
+                    "unit": "days",
+                    "value": expected[schema],
+                }
+
+
+def test_research_only_and_redundant_books_are_not_default_baselines() -> None:
+    assert "cmbp-1" not in cold_start.OPRA_SCHEMAS
+    assert "mbp-1" not in cold_start.CME_SCHEMAS
+    assert "mbp-1" not in cold_start.US_EQUITIES_SCHEMAS
 
 
 def test_dense_book_schemas_use_one_day_initial_baseline() -> None:

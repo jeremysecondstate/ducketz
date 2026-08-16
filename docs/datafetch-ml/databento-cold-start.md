@@ -70,14 +70,15 @@ an alternate execution mode.
 
 | Dataset/schema | Configured window |
 | --- | ---: |
-| Every `*-1s` schema | 3 days |
-| Every `*-1m` schema | 100 days |
+| `ohlcv-1s` | 10 days |
+| `bbo-1s` | 3 days |
+| `cbbo-1s` | 1 day |
+| Every OHLCV/BBO `*-1m` schema | 100 days |
+| `cbbo-1m` | 20 days |
 | Every `*-1h` schema | 1,825 days |
 | Every `*-1d` schema | 2,555 days |
-| OPRA `definition` | 13 calendar years |
-| US Equities `definition` | 8 calendar years |
-| CME `definition` | 5,000 days |
-| `cmbp-1`, `mbp-10`, and `mbo` | one day |
+| Every `definition` schema | 100 days |
+| `mbp-10` and `mbo` | one day |
 | Every other non-interval schema | one calendar month |
 
 The suffix rule includes BBO/CBBO interval schemas as well as OHLCV. Loop A's
@@ -89,13 +90,19 @@ Options Capture for all OPRA schemas.
 Schema coverage is:
 
 - OPRA: `ohlcv-1s`, `ohlcv-1m`, `ohlcv-1h`, `ohlcv-1d`, `definition`,
-  `statistics`, `status`, `cmbp-1`, `tcbbo`, `cbbo-1s`, `cbbo-1m`, and
+  `statistics`, `status`, `tcbbo`, `cbbo-1s`, `cbbo-1m`, and
   `trades`.
-- CME: the four OHLCV schemas, `definition`, `statistics`, `status`, `mbp-1`,
+- CME: the four OHLCV schemas, `definition`, `statistics`, `status`,
   `tbbo`, `bbo-1s`, `bbo-1m`, `trades`, `mbp-10`, and `mbo`.
 - US Equities: the four OHLCV schemas, `definition`, `statistics`, `status`,
-  `mbp-1`, `tbbo`, `bbo-1s`, `bbo-1m`, `trades`, `mbp-10`, `mbo`, and
+  `tbbo`, `bbo-1s`, `bbo-1m`, `trades`, `mbp-10`, `mbo`, and
   `imbalance`.
+
+`cmbp-1` and `mbp-1` remain included-plan schemas but are deliberately
+excluded from the prediction-focused default baseline. `cmbp-1` is
+research-only in this repository, while the production depth feature uses
+`mbp-10`; both large schemas remain available for separately scoped research
+requests.
 
 `EQUS.SUMMARY` is a distinct consolidated provider dataset and is not
 manufactured from the venue-specific `XNAS.ITCH` records. The normal cold

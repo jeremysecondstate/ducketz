@@ -7,7 +7,7 @@ flowchart LR
     subgraph BOUNDARIES[OPRA evidence boundaries — not independent loops]
         OPRAL["Prospective OPRA.PILLAR live adapter<br/>definitions + cbbo-1s; Options-owned"]
         BOOT["Historical bootstrap commands<br/>per-symbol or all-dataset; one-shot"]
-        OPRAH["Historical OPRA.PILLAR storage<br/>all Standard schemas; verified v5 cursors"]
+        OPRAH["Historical OPRA.PILLAR storage<br/>prediction-focused Standard schemas; verified v5 cursors"]
     end
 
     subgraph EVIDENCE[Evidence acquisition and causal context]

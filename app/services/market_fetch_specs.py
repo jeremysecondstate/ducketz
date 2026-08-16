@@ -3,7 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import timedelta
 
-from datafetching.databento_history_policy import INTERVAL_LOOKBACK_DAYS
+from datafetching.databento_history_policy import (
+    INTERVAL_LOOKBACK_DAYS,
+    interval_lookback_days,
+)
 
 
 @dataclass(frozen=True)
@@ -89,10 +92,10 @@ def schwab_price_history_specs() -> tuple[SchwabPriceHistorySpec, ...]:
 def databento_analysis_source_specs() -> tuple[DatabentoAnalysisSourceSpec, ...]:
     return (
         DatabentoAnalysisSourceSpec(
-            key="source_3d_1s",
+            key="source_10d_1s",
             schema="ohlcv-1s",
             frequency="1s",
-            lookback=timedelta(days=INTERVAL_LOOKBACK_DAYS["1s"]),
+            lookback=timedelta(days=int(interval_lookback_days("ohlcv-1s") or 0)),
         ),
         DatabentoAnalysisSourceSpec(
             key="source_100d_1m",
@@ -117,10 +120,10 @@ def databento_analysis_source_specs() -> tuple[DatabentoAnalysisSourceSpec, ...]
 
 def databento_analysis_bar_specs() -> tuple[DatabentoAnalysisBarSpec, ...]:
     return (
-        DatabentoAnalysisBarSpec("analysis_3d_1s", "source_3d_1s", "1s", "native"),
-        DatabentoAnalysisBarSpec("analysis_3d_5s", "source_3d_1s", "5s", "resampled_from_1s"),
-        DatabentoAnalysisBarSpec("analysis_3d_15s", "source_3d_1s", "15s", "resampled_from_1s"),
-        DatabentoAnalysisBarSpec("analysis_3d_30s", "source_3d_1s", "30s", "resampled_from_1s"),
+        DatabentoAnalysisBarSpec("analysis_10d_1s", "source_10d_1s", "1s", "native"),
+        DatabentoAnalysisBarSpec("analysis_10d_5s", "source_10d_1s", "5s", "resampled_from_1s"),
+        DatabentoAnalysisBarSpec("analysis_10d_15s", "source_10d_1s", "15s", "resampled_from_1s"),
+        DatabentoAnalysisBarSpec("analysis_10d_30s", "source_10d_1s", "30s", "resampled_from_1s"),
         DatabentoAnalysisBarSpec("analysis_100d_1m", "source_100d_1m", "1m", "native"),
         DatabentoAnalysisBarSpec("analysis_100d_5m", "source_100d_1m", "5m", "resampled_from_1m"),
         DatabentoAnalysisBarSpec("analysis_100d_15m", "source_100d_1m", "15m", "resampled_from_1m"),

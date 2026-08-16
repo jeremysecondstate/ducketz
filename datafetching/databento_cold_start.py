@@ -32,6 +32,7 @@ import pyarrow.parquet as pq
 
 from datafetching.cme_runtime import load_repository_environment
 from datafetching.databento_history_policy import (
+    DEFINITION_LOOKBACK_DAYS,
     heavy_book_lookback_policy,
     interval_lookback_policy,
 )
@@ -72,7 +73,6 @@ OPRA_SCHEMAS = (
     "definition",
     "statistics",
     "status",
-    "cmbp-1",
     "tcbbo",
     "cbbo-1s",
     "cbbo-1m",
@@ -86,7 +86,6 @@ CME_SCHEMAS = (
     "definition",
     "statistics",
     "status",
-    "mbp-1",
     "tbbo",
     "bbo-1s",
     "bbo-1m",
@@ -102,7 +101,6 @@ US_EQUITIES_SCHEMAS = (
     "definition",
     "statistics",
     "status",
-    "mbp-1",
     "tbbo",
     "bbo-1s",
     "bbo-1m",
@@ -260,15 +258,7 @@ def schema_window(standard_plan_dataset: str, schema: str) -> dict[str, object]:
     if heavy_book_policy is not None:
         return heavy_book_policy
     if schema == "definition":
-        if standard_plan_dataset == PLAN_DATASET_OPRA:
-            return {"unit": "years", "value": 13}
-        if standard_plan_dataset == PLAN_DATASET_US_EQUITIES:
-            return {"unit": "years", "value": 8}
-        if standard_plan_dataset == PLAN_DATASET_CME:
-            return {"unit": "days", "value": 5_000}
-        raise ColdStartError(
-            f"Unknown Standard-plan dataset role: {standard_plan_dataset}"
-        )
+        return {"unit": "days", "value": DEFINITION_LOOKBACK_DAYS}
     return {"unit": "calendar_months", "value": 1}
 
 

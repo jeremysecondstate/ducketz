@@ -389,7 +389,7 @@ def test_discovery_skips_unrequested_canonical_timeframes_before_reading(
         source="databento",
         symbol="GOOG",
         timeframe="1s",
-        request_key="source_5d_1s_ohlcv-1s_1s",
+        request_key="source_10d_1s_ohlcv-1s_1s",
     )
     unrequested_path.parent.mkdir(parents=True)
     unrequested_path.write_bytes(b"not a parquet file")

@@ -30,7 +30,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         nargs="+",
         choices=STANDARD_SCHEMAS,
         default=list(OPRA_SYMBOL_HISTORY_SCHEMA_ORDER),
-        help="Schemas to bootstrap; defaults to every OPRA Standard schema.",
+        help=(
+            "Schemas to bootstrap; defaults to the prediction-focused baseline. "
+            "Research-only cmbp-1 remains available as an explicit choice."
+        ),
     )
     datastore = parser.add_mutually_exclusive_group()
     datastore.add_argument("--datastore", type=Path, default=None)

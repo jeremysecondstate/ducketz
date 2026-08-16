@@ -1,8 +1,7 @@
 """Shared Databento historical bootstrap limits.
 
-The interval suffix is the policy authority.  This intentionally covers every
-Databento interval schema (for example ``ohlcv-1s``, ``bbo-1s``, and
-``cbbo-1m``), rather than applying limits only to OHLCV bars.
+Interval suffixes provide the defaults, with explicit schema overrides for
+prediction value and storage density (for example OHLCV versus CBBO).
 """
 
 from __future__ import annotations
@@ -18,6 +17,14 @@ INTERVAL_LOOKBACK_DAYS: Mapping[str, int] = {
     "1d": 2_555,
 }
 
+SCHEMA_LOOKBACK_DAYS: Mapping[str, int] = {
+    "ohlcv-1s": 10,
+    "cbbo-1s": 1,
+    "cbbo-1m": 20,
+}
+
+DEFINITION_LOOKBACK_DAYS = 100
+
 HEAVY_BOOK_LOOKBACK_DAYS: Mapping[str, int] = {
     "cmbp-1": 1,
     "mbp-10": 1,
@@ -28,7 +35,10 @@ HEAVY_BOOK_LOOKBACK_DAYS: Mapping[str, int] = {
 def interval_lookback_days(schema: str) -> int | None:
     """Return the configured day cap for a timestamp-interval schema."""
 
-    interval = str(schema).strip().lower().rsplit("-", maxsplit=1)[-1]
+    clean_schema = str(schema).strip().lower()
+    if clean_schema in SCHEMA_LOOKBACK_DAYS:
+        return SCHEMA_LOOKBACK_DAYS[clean_schema]
+    interval = clean_schema.rsplit("-", maxsplit=1)[-1]
     return INTERVAL_LOOKBACK_DAYS.get(interval)
 
 
@@ -50,8 +60,10 @@ def heavy_book_lookback_policy(schema: str) -> dict[str, object] | None:
 
 
 __all__ = [
+    "DEFINITION_LOOKBACK_DAYS",
     "HEAVY_BOOK_LOOKBACK_DAYS",
     "INTERVAL_LOOKBACK_DAYS",
+    "SCHEMA_LOOKBACK_DAYS",
     "heavy_book_lookback_policy",
     "interval_lookback",
     "interval_lookback_days",
