@@ -23,7 +23,9 @@ Databento bar histories on an empty datastore: 5 days of 1-second bars, 1,000
 days of 1-minute bars, 2,000 days of hourly bars, and 2,920 days of daily bars.
 The daily bound is deliberately inside the documented eight-year US-equities
 Standard window. The separate US-equity cold-start archive is not read as Loop
-A readiness, completion, continuation, or publication authority.
+A readiness, completion, continuation, or publication authority. The archive
+uses `XNAS.ITCH`; Loop A may independently use `EQUS.MINI` for its live and
+continuation lane.
 
 ## Inputs
 

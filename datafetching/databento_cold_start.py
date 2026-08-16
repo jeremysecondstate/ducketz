@@ -51,7 +51,8 @@ PROGRESS_VERSION = "databento-cold-start-progress-v1"
 STORAGE_RESERVE_BYTES = 5 * 1024**3
 STORAGE_EXPANSION_FACTOR = 2
 DEFAULT_WATCHLIST = Path(__file__).resolve().parent / "watchlist.txt"
-DEFAULT_EQUITIES_DATASET = "DBEQ.BASIC"
+DEFAULT_EQUITIES_DATASET = "XNAS.ITCH"
+COLD_START_EQUITIES_DATASET_ENV = "DATABENTO_COLD_START_EQUITIES_DATASET"
 STANDARD_PLAN_AUTHORITY = "docs/databento-plan/databento_standard_plan_data_access.md"
 PLAN_DATASET_OPRA = "OPRA"
 PLAN_DATASET_CME = "CME"
@@ -230,6 +231,19 @@ def resolve_cme_scopes(
             )
         seen[scope.symbol] = scope.stype_in
     return tuple(sorted(scopes, key=lambda item: (item.symbol, item.stype_in)))
+
+
+def resolve_equities_dataset(explicit_dataset: str | None = None) -> str:
+    """Resolve the cold archive without inheriting Loop A's live dataset."""
+
+    dataset = str(
+        explicit_dataset
+        or os.environ.get(COLD_START_EQUITIES_DATASET_ENV, "")
+        or DEFAULT_EQUITIES_DATASET
+    ).strip()
+    if not dataset:
+        raise ColdStartError("US equities cold-start dataset is required")
+    return dataset
 
 
 def schema_window(standard_plan_dataset: str, schema: str) -> dict[str, object]:
@@ -429,14 +443,7 @@ def build_manifest(
         "datastore_root": str(Path(datastore_root).resolve()),
         "entitlement_authority": STANDARD_PLAN_AUTHORITY,
         "requests": [asdict(item) for item in entries],
-        "derived_views": [
-            {
-                "dataset": equities_dataset,
-                "name": "full-market-summary",
-                "components": ["ohlcv-1d", "definition", "statistics"],
-                "status": "REUSED_COMPONENTS_NO_DUPLICATE_FETCH",
-            }
-        ],
+        "derived_views": [],
     }
     _validate_manifest_included_scope(body)
     manifest_id = _checksum(body)[:24]
@@ -685,7 +692,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--watchlist", type=Path, default=DEFAULT_WATCHLIST)
     parser.add_argument("--as-of", type=_parse_date, default=None, help="Exclusive UTC date bound (YYYY-MM-DD); defaults to today.")
-    parser.add_argument("--equities-dataset", default=None, help="Defaults to DATABENTO_EQUITIES_DATASET or DBEQ.BASIC.")
+    parser.add_argument(
+        "--equities-dataset",
+        default=None,
+        help=(
+            "Cold-archive dataset; defaults to "
+            "DATABENTO_COLD_START_EQUITIES_DATASET or XNAS.ITCH."
+        ),
+    )
     parser.add_argument("--cme-dataset", default=None, help="Defaults to required DATABENTO_CME_DATASET.")
     parser.add_argument("--cme-symbol", action="append", default=[], help="Explicit CME symbol/root. Repeat for multiple symbols.")
     parser.add_argument("--cme-stype-in", default=None, help="Required with --cme-symbol; for example continuous or raw_symbol.")
@@ -711,11 +725,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise ColdStartError(
                 "CME cold-start requires DATABENTO_CME_DATASET or --cme-dataset before any request"
             )
-        equities_dataset = str(
-            args.equities_dataset or os.environ.get("DATABENTO_EQUITIES_DATASET", DEFAULT_EQUITIES_DATASET)
-        ).strip()
-        if not equities_dataset:
-            raise ColdStartError("US equities dataset is required")
+        equities_dataset = resolve_equities_dataset(args.equities_dataset)
         as_of = args.as_of or _utc_now().date()
         if args.dry_run:
             manifest = build_manifest(
@@ -1208,6 +1218,7 @@ __all__ = [
     "preflight_manifest",
     "required_free_bytes",
     "resolve_cme_scopes",
+    "resolve_equities_dataset",
     "schema_window",
     "standard_plan_history_policy",
     "write_manifest",

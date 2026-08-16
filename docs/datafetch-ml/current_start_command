@@ -149,6 +149,8 @@ must never be put inside Loop A's inline compatibility lanes. It applies the
 storage-sizing plan's one-calendar-month non-OHLCV window, uses canonical OPRA
 storage only after receipt verification, and publishes only the narrow v5 OPRA
 symbol/schema history-cursor handoff for Options-owned forward maintenance. It
+uses `XNAS.ITCH` for the eight-year US-equity cold archive and deliberately
+does not inherit Loop A's potentially narrower live `EQUS.MINI` dataset. It
 does not publish readiness, option snapshots, model state, or production
 publication pointers. Safe dry-run, metadata-preflight, and explicitly
 confirmed download commands are in

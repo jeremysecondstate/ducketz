@@ -16,6 +16,14 @@ universe. Each entry is fetched directly from the US-equity dataset and is
 expanded only to its canonical OPRA parent (`AAPL` becomes `AAPL.OPT`). A
 duplicate watchlist symbol or pre-expanded parent is rejected.
 
+The cold archive defaults to `XNAS.ITCH`, whose eight-year provider range and
+schema catalog cover the configured daily/definition and one-month depth/status
+scopes. This is deliberately separate from Loop A's live
+`DATABENTO_EQUITIES_DATASET` setting, which may be `EQUS.MINI` and does not
+offer the full cold-start schema set. Override only with
+`--equities-dataset` or `DATABENTO_COLD_START_EQUITIES_DATASET`; provider
+metadata must still prove the exact schema/range contract.
+
 CME is intentionally not inferred from equity symbols. The command requires
 the existing explicit CME configuration:
 
@@ -81,9 +89,9 @@ Schema coverage is:
   `mbp-1`, `tbbo`, `bbo-1s`, `bbo-1m`, `trades`, `mbp-10`, `mbo`, and
   `imbalance`.
 
-US Equities Full Market Summary is recorded as a derived/reused view of
-`ohlcv-1d`, `definition`, and `statistics`; no duplicate summary download is
-requested.
+`EQUS.SUMMARY` is a distinct consolidated provider dataset and is not
+manufactured from the venue-specific `XNAS.ITCH` records. The normal cold
+archive does not request or claim that separate summary product.
 
 ## Safe commands
 
@@ -96,6 +104,7 @@ $BootstrapAsOf = '2026-08-15'
 python -m datafetching.databento_cold_start `
   --datastore-target pc `
   --watchlist datafetching\watchlist.txt `
+  --equities-dataset XNAS.ITCH `
   --as-of $BootstrapAsOf `
   --dry-run
 ```
@@ -107,6 +116,7 @@ It validates the local universe/CME scope and prints the requested manifest.
 python -m datafetching.databento_cold_start `
   --datastore-target pc `
   --watchlist datafetching\watchlist.txt `
+  --equities-dataset XNAS.ITCH `
   --as-of $BootstrapAsOf `
   --preflight
 ```
@@ -129,6 +139,7 @@ After reviewing the preflight, execution is deliberately explicit:
 python -m datafetching.databento_cold_start `
   --datastore-target pc `
   --watchlist datafetching\watchlist.txt `
+  --equities-dataset XNAS.ITCH `
   --as-of $BootstrapAsOf `
   --execute `
   --confirm-download

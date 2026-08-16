@@ -12,7 +12,7 @@ import datafetching.databento_cold_start as cold_start
 
 AS_OF = date(2026, 8, 15)
 CME_DATASET = "GLBX.MDP3"
-EQUITIES_DATASET = "DBEQ.BASIC"
+EQUITIES_DATASET = "XNAS.ITCH"
 WATCHLIST = ("AAPL", "AMZN", "GOOG", "MU", "NVDA", "SNDK")
 CME_SCOPES = (cold_start.CmeScope("NQ.c.0", "continuous", "test"),)
 
@@ -96,14 +96,7 @@ def test_manifest_has_exact_schema_coverage_and_requested_windows(tmp_path: Path
         for schema in ("ohlcv-1d", "definition")
     }
 
-    assert manifest["derived_views"] == [
-        {
-            "dataset": EQUITIES_DATASET,
-            "name": "full-market-summary",
-            "components": ["ohlcv-1d", "definition", "statistics"],
-            "status": "REUSED_COMPONENTS_NO_DUPLICATE_FETCH",
-        }
-    ]
+    assert manifest["derived_views"] == []
 
 
 def test_watchlist_and_opra_parent_scope_reject_ambiguous_input(tmp_path: Path) -> None:
@@ -117,6 +110,18 @@ def test_watchlist_and_opra_parent_scope_reject_ambiguous_input(tmp_path: Path) 
         cold_start.parse_watchlist(watchlist)
     with pytest.raises(cold_start.ColdStartError, match="Cannot construct"):
         cold_start.opra_parent_symbols(("AAPL.OPT",))
+
+
+def test_cold_start_equities_dataset_does_not_inherit_live_dataset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DATABENTO_EQUITIES_DATASET", "EQUS.MINI")
+    monkeypatch.delenv("DATABENTO_COLD_START_EQUITIES_DATASET", raising=False)
+    assert cold_start.resolve_equities_dataset() == "XNAS.ITCH"
+
+    monkeypatch.setenv("DATABENTO_COLD_START_EQUITIES_DATASET", "XNYS.PILLAR")
+    assert cold_start.resolve_equities_dataset() == "XNYS.PILLAR"
+    assert cold_start.resolve_equities_dataset("XNAS.ITCH") == "XNAS.ITCH"
 
 
 def test_cme_scope_is_required_and_never_invented_from_equities() -> None:
