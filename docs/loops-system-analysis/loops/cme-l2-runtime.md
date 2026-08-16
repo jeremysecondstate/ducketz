@@ -76,36 +76,16 @@ No additional owned worker exists. Query splitting is an internal queue, not a p
 
 ## Failure and degradation behavior
 
-- **Confirmed:** a schema provider failure is recorded and other schemas still run; cursor advance is per successfully completed schema. `datafetching/cme_runtime.py:152`, `datafetching/cme_runtime.py:168`
-- **Confirmed:** a saturated MBP response is split; the cursor cannot leap over unpublished children. `datafetching/cme_runtime.py:492`
-- **Confirmed:** incomplete common windows, stale components, future evidence, or saturated books prevent that hourly context window from publishing. Existing earlier context remains immutable. `datafetching/cme_cross_asset_context.py:103`, `datafetching/cme_cross_asset_context.py:121`, `datafetching/cme_cross_asset_context.py:210`
-- **Confirmed:** L2 can publish rows labeled `STALE`; its freshness label is semantic output, not silent freshness relaxation. `datafetching/cme_history.py:366`
-- **Inferred:** when CME context merely lags, Loop B’s horizon freshness rules can null it and continue if the active model/route can process missing values; if no required CME source can be loaded, affected routes may fail. The code does not grant a separate CME-specific baseline.
+
 
 ## Accuracy and efficiency relevance
 
-- Leakage prevention: common-window completeness, future-clock rejection, bounded staleness, and cursor lineage. `datafetching/cme_cross_asset_context.py:103`, `datafetching/cme_cross_asset_context.py:168`
-- Feature quality: five-root completeness plus quote/book spread and imbalance quality. `datafetching/cme_cross_asset_context.py:78`, `datafetching/cme_cross_asset_context.py:205`
-- Critical-path latency: not on a hard Loop A/Loop B barrier; context availability is asynchronous.
-- Computation/provider volume: schema-specific cadence/chunk/overlap; bounded concurrency; saturated split. `datafetching/cme_runtime.py:37`, `datafetching/cme_runtime.py:52`, `datafetching/cme_runtime.py:114`
-- Storage I/O: bounded day/hour partitions and overlap deduplication avoid whole-history rewrites. `datafetching/cme_history.py:256`
+
 
 ## Conflicts, gaps, and uncertainty
 
-- **Documented only (obsolete reference):** the old SVG happened to represent CME → hourly features → B accurately, but it is not used for the current owner census. The same relationship is independently confirmed by producer and consumer implementation. `datafetching/cme_cross_asset_context.py:181`, `ml/rolling_materialization.py:782`
-- **Unknown:** no production-loop reader of the current L2 pointer was found. It is therefore classified as supporting output, not evidence of model use.
-- **Unknown:** static analysis cannot establish current Databento entitlement, data population, live freshness, or predictive lift of `cme__` features.
-- **Confidence:** High for ownership, cadence, artifacts, and the direct B relationship; Medium for operational importance because live data/gate state was intentionally not inspected.
+
 
 ## Evidence index
 
-- `datafetching/cme_runtime.py:37`
-- `datafetching/cme_runtime.py:98`
-- `datafetching/cme_runtime.py:415`
-- `datafetching/cme_history.py:77`
-- `datafetching/cme_history.py:207`
-- `datafetching/cme_history.py:288`
-- `datafetching/cme_cross_asset_context.py:68`
-- `ml/rolling_materialization.py:782`
-- `tests/test_cme_runtime.py:191`
-- `tests/test_cme_runtime.py:270`
+

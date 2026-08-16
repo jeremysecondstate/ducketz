@@ -79,11 +79,6 @@ The importer’s pagination is internal. The one-time `ml.option_pricing_fred --
 
 ## Failure and degradation behavior
 
-- **Confirmed:** no existing complete four-series history causes incremental planning failure; operator must rerun one-time backfill. `datafetching/fred_alfred_readiness.py:149`
-- **Confirmed:** an uncovered incremental gap, provider/import error, bad vintage identity, coverage below 0.95, any lookahead violation, changed checksum, automation-enabled evidence, or current-revised basis prevents readiness publication. `datafetching/fred_alfred_readiness.py:169`, `datafetching/fred_alfred_readiness.py:219`, `datafetching/fred_alfred_readiness.py:631`
-- **Confirmed:** the supervisor reports failure and waits for the next daily boundary; `--once` returns nonzero. It does not replace a verified prior pointer with failure. `datafetching/fred_alfred_runtime.py:162`, `datafetching/fred_alfred_runtime.py:180`
-- **Confirmed:** an invalid ALFRED readiness at Loop B consumption is re-raised and aborts the new Loop B publication; stale component values are nulled by their own clocks instead of silently substituted. `ml/rolling_materialization.py:322`, `ml/datasets/families.py:1026`
-- **Confirmed:** Pricing can use a prospective current-FRED receipt when causally eligible, but that receipt cannot backfill historical model rows. `datafetching/fred_vintages.py:456`, `tests/test_option_pricing_loop_native_bsgp.py:499`
 
 ## Accuracy and efficiency relevance
 
@@ -95,10 +90,6 @@ The importer’s pagination is internal. The one-time `ml.option_pricing_fred --
 
 ## Conflicts, gaps, and uncertainty
 
-- **Documented only (obsolete reference):** the old SVG omits this independent owner and folds point-in-time FEDFUNDS into a generic data node. It is not treated as current deployment evidence; the startup command and implementation independently establish the daily owner, ALFRED historical lane, and separate prospective current-FRED lane. `docs/datafetch-ml/current_start_command:61`, `datafetching/fred_alfred_runtime.py:156`, `ml/option_pricing/rates.py:369`
-- **Documented only:** startup says the one-time backfill has been run before “first v3 startup”; static code cannot prove it actually occurred in any datastore. `docs/datafetch-ml/current_start_command:21`
-- **Unknown:** current API coverage, pointer existence, readiness status and live macro lift were intentionally not inspected.
-- **Confidence:** High for ownership, causal contracts and direct consumers; Medium for deployed/populated state.
 
 ## Evidence index
 

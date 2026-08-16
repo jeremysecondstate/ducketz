@@ -6,7 +6,7 @@
 flowchart LR
     subgraph BOUNDARIES[OPRA evidence boundaries — not independent loops]
         OPRAL["Prospective OPRA.PILLAR live adapter<br/>definitions + cbbo-1s; Options-owned"]
-        OPRAH["Historical OPRA.PILLAR importer<br/>cbbo-1m; authorized maintenance"]
+        OPRAH["Historical OPRA.PILLAR storage<br/>all Standard schemas; per-symbol bootstrap"]
     end
 
     subgraph EVIDENCE[Evidence acquisition and causal context]
@@ -45,8 +45,10 @@ flowchart LR
     PR -->|"OWNED · launch after fast target"| W
     W -->|"OWNED · prior verified shadow model for later target"| PR
     OPRAL ==>|"CANONICAL D · pretarget OPRA L1 snapshot"| OPT
-    OPRAH ==>|"OPTIONAL D · verified offline OPRA evidence"| PR
+    OPT ==>|"OWNED C · daily schema-specific cursor catch-up"| OPRAH
+    OPRAH ==>|"OPTIONAL D · verified OPRA pricing history"| PR
     OPRAH ==>|"OPTIONAL D · OPRA-first model history"| W
+    OPRAH ==>|"OPTIONAL D · point-in-time definitions and BBO"| STR
 
     classDef horizon fill:#d8ecff,stroke:#1565c0,color:#102a43,stroke-width:2px;
     classDef options fill:#ffe2c6,stroke:#c45a00,color:#432204,stroke-width:2px;
@@ -91,8 +93,10 @@ Every edge in the map is supported on both its producer and consumer sides. `T(d
 | B → Options | `T(doc)`: +5 then +6 only | `docs/datafetch-ml/current_start_command:151` | `docs/datafetch-ml/current_start_command:123`, `datafetching/options_runtime.py:641` | **Documented only; no exchanged artifact** |
 | Pricing ↔ worker | owned launch and future shadow model | `ml/option_pricing_runtime.py:418`, `ml/option_pricing_runtime.py:440` | `ml/option_pricing_loop_native_worker.py:38`, `ml/option_pricing_loop_native_worker.py:135` | **Confirmed owned worker** |
 | Prospective OPRA adapter → Options | canonical `D`: scoped `OPRA.PILLAR` definitions plus `cbbo-1s` final pretarget BBO; one shared live transport | `options/databento_live.py:33`, `options/databento_live.py:139`, `options/databento_live.py:268` | `datafetching/options_runtime.py:369`, `options/snapshot.py:122` | **Confirmed production transport; per-target transient unavailability permits labeled Schwab fallback** |
-| Historical OPRA importer → Pricing | optional `D`: verified immutable `cbbo-1m` offline evidence for model fit/evaluation | `ml/option_pricing/opra.py:1120`, `ml/option_pricing/opra.py:1162` | `ml/option_pricing_runtime.py:553`, `ml/option_pricing/opra_materialization.py:66` | **Confirmed maintenance boundary; not startup** |
-| Historical OPRA importer → worker | optional `D`: OPRA-first committed history | `ml/option_pricing/opra.py:1120` | `ml/option_pricing_loop_native_worker.py:58`, `ml/option_pricing_loop_native_worker.py:72` | **Confirmed owned-worker input** |
+| Options → historical OPRA storage | owned `C`: at most one catch-up per UTC date for completed v4 cursors; schema-specific overlap | `datafetching/options_runtime.py` | `datafetching/databento_opra_history.py` | **Confirmed owned maintenance; missing cursors require the one-time bootstrap** |
+| Historical OPRA storage → Pricing | optional `D`: verified immutable definitions/CBBO evidence for causal replay, model fit, and evaluation | `datafetching/databento_opra_history.py` | `ml/option_pricing/opra_materialization.py` | **Confirmed local-data boundary; no provider call by Pricing** |
+| Historical OPRA storage → worker | optional `D`: OPRA-first committed history | `datafetching/databento_opra_history.py` | `ml/option_pricing_loop_native_worker.py:58`, `ml/option_pricing_loop_native_worker.py:72` | **Confirmed owned-worker input** |
+| Historical OPRA storage → Strategy | optional `D`: point-in-time definitions plus `cbbo-1m` or `cbbo-1s`; Schwab history only when OPRA is unavailable | `datafetching/databento_opra_history.py` | `ml/strategy_selection/chain.py` | **Confirmed OPRA-first provider-neutral history** |
 
 ## Ordinary production phase order
 
@@ -134,4 +138,4 @@ sequenceDiagram
 - **B ↔ ALFRED is not a same-cycle deadlock.** B consumes already-authorized macro history. The daily owner uses the current B decision grid only to determine historical import/readiness coverage for later B runs; the one-time bootstrap covers the initial absence. `datafetching/fred_alfred_readiness.py:400`, `docs/datafetch-ml/current_start_command:21`
 - **Pricing → B is fallback-aware.** Missing/stale but structurally valid `opx__` evidence triggers a versioned baseline model feature set. Corrupt Pricing authority is not a fallback condition and aborts the new B publication. `ml/runtime_pipeline.py:455`, `ml/rolling_materialization.py:322`
 - **Pricing → Strategy is candidate-specific.** Full active leg coverage admits the fitted Strategy model; uncovered/delayed candidates retain an explicit scenario probability and cannot masquerade as calibrated fitted scores. `ml/strategy_selection/runtime.py:310`, `ml/strategy_runtime.py:527`
-- **OPRA has two non-owner entry boundaries.** Prospective `cbbo-1s` enters through the concrete live adapter constructed by the Options CLI in default `opra-canonical` mode; authorized historical `cbbo-1m` enters through a maintenance importer and is materialized locally by Pricing/its worker. Neither boundary adds an eighth recurring owner. Schwab remains a lazily constructed, explicitly labeled per-target fallback/broker lane. `options/databento_live.py:33`, `datafetching/options_runtime.py:650`, `datafetching/options_runtime.py:706`, `datafetching/options_runtime.py:720`, `datafetching/options_runtime.py:452`, `ml/option_pricing_opra.py:35`
+- **OPRA has two non-owner entry boundaries.** Prospective `cbbo-1s` enters through the concrete live adapter constructed by the Options CLI in default `opra-canonical` mode. Historical Standard data enters through the one-time per-symbol bootstrap or the administrative synchronizer, after which Options owns daily overlap maintenance for completed cursors. Pricing and Strategy read verified local partitions OPRA-first; neither makes a historical provider request. Schwab remains a lazily constructed, explicitly labeled per-target fallback/broker lane. `datafetching/options_history.py`, `datafetching/options_runtime.py`, `ml/option_pricing_opra.py`, `ml/option_pricing/opra_materialization.py`, `ml/strategy_selection/chain.py`

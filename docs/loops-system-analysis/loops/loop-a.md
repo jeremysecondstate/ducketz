@@ -83,35 +83,13 @@ The one-shot provider/fundamental/technical/signal CLIs are owned stages, not in
 
 ## Failure and degradation behavior
 
-- **Confirmed:** provider/calculation errors increment the cycle failure count, producing `FAILED` and leaving the last complete pointer unchanged. `datafetching/orchestrate.py:368`, `datafetching/loop_a_cycle.py:120`
-- **Confirmed:** an exception or interrupt during the cycle attempts terminal `FAILED` and releases locks. `datafetching/orchestrate.py:179`, `tests/test_loop_a_orchestration.py:261`
-- **Confirmed:** readiness failure is independent of full-cycle completion; Pricing may miss/skip while Loop A still finishes other work. `datafetching/orchestrate.py:312`
-- **Confirmed:** the supervisor’s `O_EXCL` lock does not inspect/reclaim a dead PID, unlike the shared helper used by five other owners. A stale Loop A lock can therefore block restart until externally removed. `datafetching/orchestrate.py:496`, `datafetching/runtime_lock.py:37`
-- **Confirmed:** a malformed or noncomplete current cycle prevents Loop B from consuming it; the OS shared lock prevents Loop B reading mid-mutation. `datafetching/loop_a_cycle.py:136`, `datafetching/loop_a_cycle.py:205`
 
 ## Accuracy and efficiency relevance
 
-- Leakage/target integrity: exact one-minute all-symbol target readiness and separate full-cycle cutoff. `datafetching/bar_readiness.py:91`, `datafetching/loop_a_cycle.py:127`
-- Feature quality: provider-specific normalization, point-in-time fundamentals, quote/SEC component clocks, and explicit calculated-stage versions. `datafetching/parquet_store.py:1196`, `ml/datasets/families.py:653`, `ml/datasets/families.py:1051`
-- Critical-path latency: Databento-first callback publishes readiness before slower FMP/FRED/SEC and calculations. `tests/test_loop_a_orchestration.py:115`
-- Provider volume: batched watchlist calls and one shared FRED lane. `datafetching/main.py:214`
-- Storage I/O: canonical idempotent upserts and atomic replace avoid duplicate physical datasets. `datafetching/parquet_store.py:468`, `datafetching/parquet_store.py:530`
-- Duplicated work: calculated stages run each cycle; continuation/upsert and downstream model reuse limit, but do not eliminate, recomputation.
 
 ## Conflicts, gaps, and uncertainty
 
-- **Confirmed compatibility drift:** inline CME/Options code exists, but production command and isolation tests require external owners. It must not be counted as current production ownership. `docs/datafetch-ml/current_start_command:56`, `tests/test_independent_loop_isolation.py:17`
-- **Confirmed implementation distinction:** the generic runtime-lock helper reclaims dead owners, while Loop A's bespoke supervisor lock does not. This affects restart behavior but is neither an owner-count conflict nor evidence of multiple Loop A owners. `datafetching/runtime_lock.py:37`, `datafetching/orchestrate.py:509`
-- **Unknown:** static code cannot prove which provider/calculated feature files are currently populated or pass downstream freshness/activation gates.
-- **Confidence:** High for ownership, ordering, barriers, and consumers; Medium for the live availability of individual feature families.
 
 ## Evidence index
 
-- `datafetching/orchestrate.py:131`
-- `datafetching/orchestrate.py:217`
-- `datafetching/loop_a_cycle.py:75`
-- `datafetching/loop_a_cycle.py:198`
-- `datafetching/bar_readiness.py:82`
-- `datafetching/parquet_store.py:106`
-- `tests/test_loop_a_orchestration.py:115`
-- `tests/test_independent_loop_isolation.py:17`
+

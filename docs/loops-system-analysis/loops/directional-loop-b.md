@@ -3,7 +3,7 @@
 ## Identity
 
 - Canonical name: Directional Loop B
-- Logical aliases or numbering: Loop B; startup owner 6; “Loop 5” appears only in the obsolete SVG
+- Logical aliases or numbering: Loop B; startup owner 6
 - Runtime entry point: `python -m ml.prediction_runtime`
 - Owning package: `ml`
 - Classification: Independent production loop
@@ -80,11 +80,6 @@
 
 ## Failure and degradation behavior
 
-- **Confirmed:** no complete Loop A cycle or failure to acquire/read its boundary prevents a run. The prior current authority remains. `ml/prediction_runtime.py:209`, `ml/prediction_runtime.py:218`
-- **Confirmed:** production defaults allow valid routes to publish while recording ordinary route errors; `require_all_routes` changes this to fail closed. Empty predictions always fail. `ml/prediction_runtime.py:106`, `ml/runtime_pipeline.py:339`, `ml/runtime_pipeline.py:654`
-- **Confirmed:** unavailable/insufficient Pricing evidence gates out `opx__` and uses the registered baseline feature set; corrupt shared Pricing evidence is rethrown rather than silently downgraded. `ml/runtime_pipeline.py:455`, `ml/rolling_materialization.py:322`
-- **Confirmed:** late scoring/promotion fails before pointer change; prior still-actionable forecasts can carry, but expired forecasts cannot be republished. `ml/runtime_pipeline.py:603`, `ml/runtime_pipeline.py:612`
-- **Confirmed:** missing, incomplete or late target constituents produce non-complete labels, preventing them from training/evaluation rather than shifting the target. `ml/horizons.py:145`, `ml/rolling_samples.py:319`
 
 ## Accuracy and efficiency relevance
 
@@ -96,21 +91,6 @@
 
 ## Conflicts, gaps, and uncertainty
 
-- **Confirmed alias/history, not conflict:** the canonical functional name is Loop B and the startup owner is 6. “Loop 5” belongs only to the obsolete six-owner SVG. `docs/datafetch-ml/current_start_command:119`, `ml/prediction_runtime.py:29`
-- **Documented only:** the current startup prose deliberately places Options after B's +5 information clock, but no implementation artifact/control read from B was found in Options. `docs/datafetch-ml/current_start_command:96`, `docs/datafetch-ml/current_start_command:151`, `datafetching/options_runtime.py:641`
-- **Unknown:** static analysis cannot establish which routes are currently populated/admitted, whether models are currently reused, current calibration performance, or incremental lift of any feature family.
-- **Inferred:** ordinary per-feature missing values can be handled where the registered model pipeline permits them, but there is no universal promise that every active route survives every missing family.
-- **Confidence:** High for authority, causal/model pipeline and direct relationships; Medium for live gate/population state and empirical accuracy.
 
 ## Evidence index
 
-- `ml/prediction_runtime.py:189`
-- `ml/prediction_runtime.py:209`
-- `ml/runtime_pipeline.py:249`
-- `ml/runtime_pipeline.py:329`
-- `ml/runtime_pipeline.py:464`
-- `ml/runtime_pipeline.py:480`
-- `ml/runtime_pipeline.py:695`
-- `ml/runtime_pipeline.py:931`
-- `tests/test_ml_prediction_runtime.py:121`
-- `tests/test_ml_runtime_pipeline.py:623`

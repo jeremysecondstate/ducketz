@@ -115,11 +115,13 @@ seconds, and never backdates availability. Closed-market discovery does not
 refetch or republish an already committed natural target:
 
 Before starting Options Capture for a new watchlist symbol, run the idempotent
-one-time historical bootstrap. It requests every Standard schema under an
-independent parent-symbol bucket. Initial windows are 5 days for `ohlcv-1s`,
-100 days for `ohlcv-1m`, 2,000 days for `ohlcv-1h`, 5,000 days for `ohlcv-1d`
-and `definition`, one month for `cmbp-1`, and six months for the remaining
-schemas. It resumes from checksum-verified partitions:
+one-time historical bootstrap. It requests every Standard schema for each
+parent symbol independently. Initial windows are 5 days for `ohlcv-1s`, 100
+days for `ohlcv-1m`, 2,000 days for `ohlcv-1h`, 5,000 days for `ohlcv-1d` and
+`definition`, one month for `cmbp-1`, and six months for `status`, `statistics`,
+`trades`, `tcbbo`, `cbbo-1m`, and `cbbo-1s`. The command preflights each scope,
+publishes only checksum-verified partitions, resumes verified work, and exits
+nonzero if any requested symbol/schema is capacity-blocked or fails:
 
 ```powershell
 python -m datafetching.options_history `
@@ -129,9 +131,10 @@ python -m datafetching.options_history `
 
 Options Capture then owns only forward cursor maintenance. Daily overlaps are
 1 day for `ohlcv-1s`, 2 days for `ohlcv-1m`, 5 days for `ohlcv-1h`, 10 days for
-`ohlcv-1d`, and 3 days for other schemas. It synchronizes missing verified
-partitions and does not re-download months on every cycle. Loop 3 consumes those verified files
-but does not initiate a missing-symbol bootstrap.
+`ohlcv-1d`, and 3 days for every other schema. It runs catch-up at most once per
+UTC date, skips partitions that still verify, and never creates a missing v4
+cursor. A `bootstrap required` message means the one-time command above must be
+run; Loop 3 consumes verified files but never initiates acquisition.
 
 ```powershell
 python -m datafetching.options_runtime `
@@ -191,22 +194,34 @@ python -m ml.option_pricing_admin --datastore-target pc readiness
 python -m ml.option_pricing_admin --datastore-target pc diagnose-publications
 ```
 
-Historical OPRA backfill is resumable maintenance. The default command discovers
-the live Standard entitlement, refuses nonzero-cost ranges, preflights capacity,
-and synchronizes the full included schema/universe scope:
+The following is an administrative full-universe/custom-range synchronizer, not
+the normal six-symbol bootstrap and not a startup dependency. With no scope
+flags it requests the full provider-advertised Standard schema/universe and may
+be too large for the destination volume. The symbol, schema, date-range, and
+partition-limit flags are documented in `options-opra-history.md`; an explicit
+scope is never silently reduced after capacity preflight:
 
 ```powershell
 python -m ml.option_pricing_opra --datastore-target pc
 ```
 
-Options Capture owns the recurring three-day incremental catch-up. Verified raw
-DBN, normalized Parquet, manifests, receipts, cursors, and health are published
-below `market-data/databento-opra/OPRA.PILLAR`.
+Both commands publish provider-native DBN, normalized Parquet, immutable
+manifests/receipts, cursors, metadata, and current health below
+`C:\DATASTORE\market-data\databento-opra\OPRA.PILLAR`. Check actual population
+with:
+
+```powershell
+python -m ml.option_pricing_opra --datastore-target pc --health-only
+```
+
+Configured `opra-canonical` mode is not historical-fetch proof. Only nonempty
+verified partitions and their health/consumer records establish stored use.
 
 To open all seven owners in authoritative order from one PowerShell terminal,
 run the checked-in launcher. It opens visible child windows and uses the same
-OPRA-enabled Options command above; it does not run either historical OPRA
-maintenance command:
+OPRA-enabled Options command above. It does not run the one-time bootstrap or
+the full-universe administrative synchronizer; Options Capture performs only
+the daily overlap maintenance described above:
 
 ```powershell
 & .\docs\datafetch-ml\start_all_loops.ps1
@@ -214,4 +229,5 @@ maintenance command:
 
 Stop a runtime with Ctrl+C. Never start a second owner for the same lock.
 Provider, migration, recovery, and rollout contracts are documented in
-`options/README.md` and the Loop 3/4 audit pages.
+`options/README.md`, `docs/datafetch-ml/options-opra-history.md`, and the Loop
+3/4 audit pages.
