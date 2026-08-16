@@ -20,7 +20,6 @@ from options.features import (
 from options.snapshot import OPTION_CHAIN_SCHEMA_VERSION
 from options.publication import committed_option_snapshots
 from datafetching.databento_opra_history import (
-    canonical_root,
     iter_verified_partitions,
     record_consumer_usage,
 )
@@ -236,18 +235,12 @@ def _load_opra_chain_history(
     cbbo_frames: dict[str, list[pd.DataFrame]] = {"cbbo-1m": [], "cbbo-1s": []}
     files: dict[str, list[Path]] = {"definition": [], "cbbo-1m": [], "cbbo-1s": []}
     metadata_files: list[Path] = []
-    opra_root = canonical_root(root)
     for verified in iter_verified_partitions(
         root, schemas=("definition", "cbbo-1m", "cbbo-1s")
     ):
         manifest = verified["manifest"]
         schema = str(manifest["schema"])
-        directory = (
-            opra_root
-            / f"schema={schema}"
-            / f"date={manifest['partition_date']}"
-            / f"bucket={manifest['symbol_bucket']}"
-        )
+        directory = Path(verified["directory"])
         path = directory / str(manifest["normalized"]["path"])
         raw = pd.read_parquet(path)
         if schema == "definition":

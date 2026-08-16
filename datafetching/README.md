@@ -150,13 +150,14 @@ python -m datafetching.options_history --datastore-target pc --watchlist datafet
 It uses included Standard-plan windows and publishes the verified history
 cursor that Options Capture requires before daily continuation. The optional
 all-dataset `datafetching.databento_cold_start` maintenance command can build
-that same OPRA authority plus isolated CME and US-equity archives; see
-`docs/datafetch-ml/databento-cold-start.md`. The US-equity cold archive defaults
+that same OPRA authority plus isolated CME and US-equity histories beneath the
+readable `market-data/databento/<market>/<dataset>` tree; see
+`docs/datafetch-ml/databento-cold-start.md`. The US-equity history defaults
 to `XNAS.ITCH` and does not inherit Loop A's live dataset setting. Neither
 command is a recurring loop. CME/L2 self-initializes its owned 30-day OHLCV and
 shorter non-OHLCV runtime history, while Loop A self-initializes its owned bounded Databento bar
 windows (through 2,555 days for daily bars). Those runtime histories and their
-live cursors remain distinct from the cold-start archives. Capacity,
+live cursors remain distinct from the one-shot history cursors. Capacity,
 checksums, receipts, and exact included-scope validation govern bootstrap.
 
 When no datastore argument is supplied, path selection uses

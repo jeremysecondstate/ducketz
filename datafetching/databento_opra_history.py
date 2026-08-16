@@ -5,10 +5,8 @@ import gc
 import itertools
 import json
 import math
-import os
 import shutil
 import time
-import uuid
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
@@ -18,6 +16,14 @@ import pandas as pd
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
+from datafetching.databento_storage import (
+    MARKET_OPRA,
+    clean_token,
+    dataset_root,
+    opra_partition_directory,
+    symbol_scope_name,
+    window_name,
+)
 from ml.artifacts import file_checksum, utc_timestamp
 
 
@@ -86,12 +92,7 @@ class SyncResult:
 
 
 def canonical_root(datastore_root: Path) -> Path:
-    return (
-        Path(datastore_root).resolve()
-        / "market-data"
-        / PROVIDER
-        / DATASET
-    )
+    return dataset_root(datastore_root, market=MARKET_OPRA, dataset=DATASET)
 
 
 def configure_client(client: object) -> None:
@@ -176,12 +177,8 @@ def discover_standard_entitlement(
         "entitlements": entitlements,
     }
     payload["semantic_checksum_sha256"] = _semantic_checksum(payload)
-    destination = (
-        canonical_root(datastore_root)
-        / "metadata"
-        / f"entitlement-{timestamp.strftime('%Y%m%dT%H%M%S%fZ')}.json"
-    )
-    _write_json_exclusive(destination, payload)
+    destination = canonical_root(datastore_root) / "metadata" / "entitlement.json"
+    _write_json_atomic(destination, payload)
     return {**payload, "path": destination}
 
 
@@ -236,6 +233,12 @@ def storage_preflight(
         "schema_version": "databento-opra-storage-preflight-v2",
         "provider": PROVIDER,
         "dataset": DATASET,
+        "scope": {
+            "schemas": list(scope.schemas),
+            "symbols": list(scope.symbols) or ["ALL_SYMBOLS"],
+            "start": min((start for _schema, start, _end in requests), default=None),
+            "end": max((end for _schema, _start, end in requests), default=None),
+        },
         "estimates": estimates,
         "estimated_download_size_bytes": download_size_total,
         "record_count": record_total,
@@ -260,10 +263,8 @@ def publish_storage_preflight(
         "generated_at": timestamp.isoformat(),
     }
     payload["semantic_checksum_sha256"] = _semantic_checksum(payload)
-    destination = canonical_root(datastore_root) / "metadata" / (
-        "preflight-" + timestamp.strftime("%Y%m%dT%H%M%S%fZ") + ".json"
-    )
-    _write_json_exclusive(destination, payload)
+    destination = _storage_preflight_path(datastore_root, payload)
+    _write_json_atomic(destination, payload)
     return {**payload, "path": destination}
 
 
@@ -380,23 +381,20 @@ def partition_directory(
     symbols: Sequence[str] = (),
     segment: str | None = None,
 ) -> Path:
-    bucket = symbol_bucket(symbols)
-    if segment:
-        bucket = f"{bucket}-segment-{segment}"
-    return (
-        canonical_root(datastore_root)
-        / f"schema={schema}"
-        / f"date={day}"
-        / f"bucket={bucket}"
+    return opra_partition_directory(
+        datastore_root,
+        dataset=DATASET,
+        schema=schema,
+        day=day,
+        symbols=symbols,
+        segment=segment,
     )
 
 
 def symbol_bucket(symbols: Sequence[str]) -> str:
-    clean = tuple(sorted({str(value).strip().upper() for value in symbols if str(value).strip()}))
-    if not clean:
-        return "full-universe"
-    digest = hashlib.sha256("\n".join(clean).encode("utf-8")).hexdigest()[:12]
-    return f"parent-{digest}"
+    """Return the readable scope component retained in manifests for compatibility."""
+
+    return symbol_scope_name(symbols)
 
 
 def verify_partition(directory: Path, *, datastore_root: Path) -> Mapping[str, object]:
@@ -442,7 +440,7 @@ def verify_partition(directory: Path, *, datastore_root: Path) -> Mapping[str, o
     ):
         if key in expected and validation.get(key) != expected.get(key):
             raise OpraSyncError(f"OPRA partition normalized {key} changed")
-    return {"manifest": manifest, "receipt": receipt}
+    return {"manifest": manifest, "receipt": receipt, "directory": run}
 
 
 def validate_parquet(path: Path, *, schema: str) -> Mapping[str, object]:
@@ -522,14 +520,12 @@ def iter_verified_partitions(
 ) -> Iterable[Mapping[str, object]]:
     root = canonical_root(datastore_root)
     selected = set(schemas or STANDARD_SCHEMAS)
-    for receipt in sorted(root.glob("schema=*/date=*/bucket=*/receipt.json")):
-        schema = receipt.parents[2].name.removeprefix("schema=")
-        if schema not in selected:
-            continue
-        try:
-            yield verify_partition(receipt.parent, datastore_root=datastore_root)
-        except OpraSyncError:
-            continue
+    for schema in sorted(selected):
+        for receipt in sorted(root.glob(f"{clean_token(schema)}/*/dates/*/segments/*/receipt.json")):
+            try:
+                yield verify_partition(receipt.parent, datastore_root=datastore_root)
+            except OpraSyncError:
+                continue
 
 
 def publish_health(datastore_root: Path) -> Path:
@@ -647,7 +643,13 @@ def _download_partition(
         segment=segment,
     )
     staging_root = canonical_root(datastore_root) / ".staging"
-    staging = staging_root / f"{schema}-{day}-{uuid.uuid4().hex}"
+    staging = _next_attempt_directory(
+        staging_root
+        / clean_token(schema)
+        / symbol_scope_name(symbols)
+        / clean_token(day)
+        / clean_token(segment or "full-day")
+    )
     staging.mkdir(parents=True, exist_ok=False)
     raw_path = staging / "provider.dbn.zst"
     parquet_path = staging / "normalized.parquet"
@@ -739,7 +741,7 @@ def _download_partition(
             "partition_start": start_ts.isoformat(),
             "partition_end": end_ts.isoformat(),
             "time_segment": segment,
-            "symbol_bucket": symbol_bucket(symbols),
+            "symbol_scope": symbol_scope_name(symbols),
             "request": request,
             "provider_entitlement": dict(entitlement["entitlements"][schema]),
             "published_at": utc_timestamp().isoformat(),
@@ -950,10 +952,10 @@ def _metadata_request_kwargs(
 def _publish_cursor(datastore_root: Path, *, schema: str) -> None:
     manifests = list(
         canonical_root(datastore_root).glob(
-            f"schema={schema}/date=*/bucket=*/manifest.json"
+            f"{clean_token(schema)}/*/dates/*/segments/*/manifest.json"
         )
     )
-    completed_dates = sorted({path.parents[1].name.removeprefix("date=") for path in manifests})
+    completed_dates = sorted({path.parents[2].name for path in manifests})
     payload = {
         "schema_version": "databento-opra-cursor-v1",
         "provider": PROVIDER,
@@ -1002,7 +1004,7 @@ def _deduplicate_normalized_parquet(path: Path, *, schema: str) -> int:
     if removed:
         if index_name and index_name in frame.columns:
             frame = frame.set_index(index_name)
-        temporary = path.with_suffix(path.suffix + f".tmp-{uuid.uuid4().hex}")
+        temporary = _next_pending_file(path)
         frame.to_parquet(temporary, compression="zstd")
         temporary.replace(path)
     return removed
@@ -1081,6 +1083,44 @@ def _semantic_checksum(payload: Mapping[str, object]) -> str:
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
+def _storage_preflight_path(
+    datastore_root: Path,
+    payload: Mapping[str, object],
+) -> Path:
+    scope = payload.get("scope")
+    if not isinstance(scope, Mapping):
+        raise OpraSyncError("OPRA storage preflight lacks readable scope metadata")
+    schemas = tuple(str(value) for value in scope.get("schemas", ()))
+    schema_name = (
+        "all-standard-schemas"
+        if set(schemas) == set(STANDARD_SCHEMAS)
+        else "_and_".join(clean_token(value) for value in schemas)
+    ) or "no-schemas"
+    raw_symbols = tuple(str(value) for value in scope.get("symbols", ()))
+    symbols = () if raw_symbols == ("ALL_SYMBOLS",) else raw_symbols
+    start = scope.get("start")
+    end = scope.get("end")
+    if not start or not end:
+        raise OpraSyncError("OPRA storage preflight lacks readable date bounds")
+    return (
+        canonical_root(datastore_root)
+        / "metadata"
+        / "preflights"
+        / schema_name
+        / symbol_scope_name(symbols)
+        / window_name(str(start), str(end))
+        / "preflight.json"
+    )
+
+
+def _next_attempt_directory(base: Path) -> Path:
+    for attempt in range(1, 10_000):
+        candidate = base / f"attempt-{attempt:03d}"
+        if not candidate.exists():
+            return candidate
+    raise OpraSyncError(f"Too many retained OPRA staging attempts beneath {base}")
+
+
 def _write_json_exclusive(path: Path, payload: Mapping[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("x", encoding="utf-8") as handle:
@@ -1090,9 +1130,17 @@ def _write_json_exclusive(path: Path, payload: Mapping[str, object]) -> None:
 
 def _write_json_atomic(path: Path, payload: Mapping[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + f".tmp-{os.getpid()}-{uuid.uuid4().hex}")
+    temporary = _next_pending_file(path)
     _write_json_exclusive(temporary, payload)
     temporary.replace(path)
+
+
+def _next_pending_file(path: Path) -> Path:
+    for attempt in range(1, 10_000):
+        candidate = path.with_name(f"{path.name}.pending-{attempt:03d}")
+        if not candidate.exists():
+            return candidate
+    raise OpraSyncError(f"Too many retained pending files beside {path}")
 
 
 def _minimum_timestamp_text(left: object, right: object) -> str | None:

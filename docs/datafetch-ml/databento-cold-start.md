@@ -1,6 +1,7 @@
 # Databento cold-start bootstrap
 
-`datafetching.databento_cold_start` is a one-time historical bootstrap. It is
+`datafetching.databento_cold_start` performs the initial historical baseline and
+can later plan bounded overlap-fill runs for a newer `--as-of` date. It is
 not an eighth production loop and must not replace any command in
 `current_start_command`. It does not acquire the CME, Loop A, Options, Pricing,
 Loop B, ALFRED, or Strategy locks. It writes no readiness, option snapshot,
@@ -42,7 +43,7 @@ Databento request is made.
 OPRA uses the canonical consumer contract at:
 
 ```text
-C:\DATASTORE\market-data\databento-opra\OPRA.PILLAR
+C:\DATASTORE\market-data\databento\opra\OPRA.PILLAR
 ```
 
 Its existing provider DBN, normalized Parquet, manifest, receipt, health, and
@@ -50,16 +51,36 @@ per-symbol history cursor conventions remain in force. CME and US-equity
 bootstrap archives use a separate, non-live namespace:
 
 ```text
-C:\DATASTORE\market-data\databento-cold-start\archive-v1
-C:\DATASTORE\state\databento-cold-start
+C:\DATASTORE\market-data\databento\cme\GLBX.MDP3
+C:\DATASTORE\market-data\databento\us-equities\XNAS.ITCH
+C:\DATASTORE\state\databento\history
+C:\DATASTORE\state\databento\history-cursors
 ```
 
-Each non-OPRA request stores `provider.dbn.zst`, `normalized.parquet`, a
-checksummed manifest, and a receipt. The state tree stores an immutable
-request manifest, metadata preflight record, progress status, and a completed
-request cursor. Existing verified partitions are reused; damaged or incomplete
-evidence fails closed. Keep `--as-of` fixed when resuming so the same
-deterministic manifest is selected.
+All durable folder names state their market, dataset, schema, symbol, and date
+scope directly. Checksums and request IDs remain inside JSON and are never used
+as directory or file names. A representative tree is:
+
+```text
+C:\DATASTORE
+├── market-data\databento
+│   ├── opra\OPRA.PILLAR\cbbo-1s\AAPL.OPT\dates\2026-08-14\segments\full-day
+│   ├── cme\GLBX.MDP3\mbp-10\NQ.C.0\windows\2026-08-14_to_2026-08-15
+│   └── us-equities\XNAS.ITCH\ohlcv-1m\AAPL\windows\2026-05-07_to_2026-08-15
+└── state\databento
+    ├── history\prediction-focused-baseline\as-of\2026-08-15
+    │   ├── manifest.json
+    │   ├── preflight.json
+    │   └── progress.json
+    └── history-cursors\us-equities\XNAS.ITCH\ohlcv-1m\AAPL\cursor.json
+```
+
+Every published provider partition uses the same four artifact names:
+`provider.dbn.zst`, `normalized.parquet`, `manifest.json`, and `receipt.json`.
+The initial baseline and every later overlap-fill run go through these same path
+builders and writers. Existing verified partitions are reused; damaged or
+incomplete evidence fails closed. Keep `--as-of` fixed when resuming an
+interrupted run so the same deterministic manifest is selected.
 
 ## Exact coverage
 
@@ -184,3 +205,13 @@ the exact lookback policy, and `bootstrap_manifest_id` in an
 before it performs forward overlap maintenance. CME and US-equity request
 cursors remain cold-start progress state only and are not consumed as live-loop
 authority.
+
+For later maintenance, rerun the same preflight/execution sequence with a newer
+`--as-of` date. A readable per-market/dataset/schema/symbol cursor changes the
+request mode from `initial-baseline` to `overlap-fill`. The overlap is retained
+for safe boundary reconciliation, while the new request is stored under the
+same schema/symbol hierarchy and with the same four artifact filenames. OPRA's
+Options-owned daily catch-up already calls the same canonical OPRA partition
+writer. Loop A and the CME runtime likewise retain their established stable
+upsert filenames for their prospective bar and event views; they do not create
+timestamped or hash-named follow-up files.

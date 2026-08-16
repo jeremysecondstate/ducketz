@@ -26,7 +26,7 @@ explicit historical maintenance commands are listed separately and terminate:
 
 **Confirmed scope:** the checked-in production watchlist is `AAPL AMZN GOOG MU NVDA SNDK`; CALL and PUT create twelve Pricing routes, while `SPY` is research-only. `docs/datafetch-ml/current_start_command:16`
 
-**Confirmed OPRA implementation status:** historical bootstrap/catch-up and prospective live capture are distinct. The seven-loop launcher starts only the prospective Options owner; it does not bootstrap a missing symbol. A configured `opra-canonical` adapter is therefore not proof of historical acquisition. Current population must be established from nonempty `normalized.parquet` files, matching manifests/receipts/checksums, `health/current.json`, and consumer-usage records beneath `C:\DATASTORE\market-data\databento-opra\OPRA.PILLAR`.
+**Confirmed OPRA implementation status:** historical bootstrap/catch-up and prospective live capture are distinct. The seven-loop launcher starts only the prospective Options owner; it does not bootstrap a missing symbol. A configured `opra-canonical` adapter is therefore not proof of historical acquisition. Current population must be established from nonempty `normalized.parquet` files, matching manifests/receipts/checksums, `health/current.json`, and consumer-usage records beneath `C:\DATASTORE\market-data\databento\opra\OPRA.PILLAR`.
 
 ### 2. Normalization and persistence
 
@@ -42,7 +42,7 @@ explicit historical maintenance commands are listed separately and terminate:
 
 **Confirmed:** Options commits one immutable natural target keyed by `(provider, symbol, target_snapshot_for)`. An identical retry reuses the earliest verified receipt; divergent content fails closed. `options/publication.py:29`, `options/publication.py:105`, `options/publication.py:139`
 
-**Confirmed:** historical OPRA partitions use `schema=<schema>/date=<UTC-date>/bucket=<symbol-bucket>/` and contain distinct `provider.dbn.zst`, `normalized.parquet`, `manifest.json`, and `receipt.json` artifacts. Publication is atomic; duplicate natural keys, empty Parquet, timestamp escape, or checksum/schema mismatch prevents authority. `datafetching/databento_opra_history.py`
+**Confirmed:** historical OPRA partitions use `<schema>/<parent-symbol>/dates/<UTC-date>/segments/<full-day-or-UTC-range>/` and contain distinct `provider.dbn.zst`, `normalized.parquet`, `manifest.json`, and `receipt.json` artifacts. Publication is atomic; duplicate natural keys, empty Parquet, timestamp escape, or checksum/schema mismatch prevents authority. `datafetching/databento_opra_history.py`
 
 ### 3. Bar readiness and cycle completion
 
@@ -165,7 +165,7 @@ Strategy writes candidates, audit, model reports and copied model artifacts, the
 
 **Confirmed:** Loop A and Directional Loop B use their own `O_EXCL` supervisor locks, `.ducketz-orchestration.lock` and the current executable contract `.duckets-ml-prediction-runtime.lock`, without stale-PID recovery. They additionally share the OS-held `.ducketz-loop-a-cycle.lock` around Loop A writes and complete Loop B reads. The OS lock releases on process exit even though its marker file persists. `datafetching/orchestrate.py:496`, `ml/prediction_runtime.py:317`, `datafetching/loop_a_cycle.py:198`
 
-**Confirmed:** the one-shot all-dataset cold-start uses the same stale-owner-aware helper only for `.ducketz-databento-cold-start.lock` and the canonical OPRA `state/sync.lock`; neither is a production supervisor lock or snapshot/publication authority. `datafetching/databento_cold_start.py:620`, `datafetching/databento_cold_start.py:665`
+**Confirmed:** the one-shot all-dataset baseline/overlap command uses the same stale-owner-aware helper only for `.ducketz-databento-cold-start.lock` and the canonical OPRA `state/sync.lock`; neither is a production supervisor lock or snapshot/publication authority. `datafetching/databento_cold_start.py`
 
 **Confirmed:** the Pricing child has a separate collision lock but cannot move target authority directly; it publishes only future-consumable materialization/model/status artifacts. `ml/option_pricing_loop_native_worker.py:50`, `ml/option_pricing_loop_native_worker.py:87`
 

@@ -68,6 +68,20 @@ def test_storage_preflight_preserves_requested_scope(
         result["estimates"]["ohlcv-1d"]["estimated_download_size_bytes"]
         == 1_024
     )
+    published = opra_history.publish_storage_preflight(tmp_path, result)
+    assert published["path"] == (
+        tmp_path
+        / "market-data"
+        / "databento"
+        / "opra"
+        / "OPRA.PILLAR"
+        / "metadata"
+        / "preflights"
+        / "ohlcv-1d"
+        / "AAPL.OPT"
+        / "2025-01-01_to_2025-01-03"
+        / "preflight.json"
+    )
 
 
 def test_opra_scope_outside_plan_window_fails_instead_of_clamping(
@@ -116,12 +130,65 @@ def test_standard_entitlement_uses_plan_windows_without_cost_probe(
     assert result["entitlement_authority"].endswith(
         "databento_standard_plan_data_access.md"
     )
+    assert result["path"] == (
+        tmp_path
+        / "market-data"
+        / "databento"
+        / "opra"
+        / "OPRA.PILLAR"
+        / "metadata"
+        / "entitlement.json"
+    )
 
 
 def test_symbol_bucket_is_stable_and_full_universe_is_explicit() -> None:
-    assert symbol_bucket(()) == "full-universe"
+    assert symbol_bucket(()) == "all-symbols"
     assert symbol_bucket(("NVDA.OPT", "AAPL.OPT")) == symbol_bucket(
         ("AAPL.OPT", "NVDA.OPT")
+    )
+    assert symbol_bucket(("NVDA.OPT", "AAPL.OPT")) == "AAPL.OPT_and_NVDA.OPT"
+
+
+def test_opra_baseline_and_catchup_partitions_use_readable_stable_layout(
+    tmp_path: Path,
+) -> None:
+    daily = opra_history.partition_directory(
+        tmp_path,
+        schema="cbbo-1s",
+        day="2026-08-14",
+        symbols=("AAPL.OPT",),
+    )
+    split = opra_history.partition_directory(
+        tmp_path,
+        schema="cmbp-1",
+        day="2026-08-14",
+        symbols=("AAPL.OPT",),
+        segment="000000-120000",
+    )
+    root = (
+        tmp_path
+        / "market-data"
+        / "databento"
+        / "opra"
+        / "OPRA.PILLAR"
+    )
+    assert daily == (
+        root
+        / "cbbo-1s"
+        / "AAPL.OPT"
+        / "dates"
+        / "2026-08-14"
+        / "segments"
+        / "full-day"
+    )
+    assert split == (
+        root
+        / "cmbp-1"
+        / "AAPL.OPT"
+        / "dates"
+        / "2026-08-14"
+        / "segments"
+        / "000000-120000"
     )
 
 

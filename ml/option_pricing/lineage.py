@@ -456,9 +456,9 @@ def _verify_provider_evidence(
     verified_outputs: set[Path] = set()
     definition_imports = cbbo_imports = 0
     matching_policy_cbbo_imports = 0
-    opra_root = (
-        root / "market-data" / "databento-opra" / "OPRA.PILLAR"
-    ).resolve()
+    from datafetching.databento_opra_history import canonical_root
+
+    opra_root = canonical_root(root).resolve()
     receipt_paths = sorted(
         path
         for path in inventory_paths

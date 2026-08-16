@@ -99,6 +99,139 @@ def test_manifest_has_exact_schema_coverage_and_requested_windows(tmp_path: Path
     assert manifest["derived_views"] == []
 
 
+def test_datastore_paths_are_readable_and_grouped_by_market_scope(tmp_path: Path) -> None:
+    manifest = _manifest(tmp_path)
+    requests = manifest["requests"]
+    cme = next(
+        item
+        for item in requests
+        if item["dataset"] == CME_DATASET
+        and item["schema"] == "mbp-10"
+        and item["symbol_scope"] == ["NQ.c.0"]
+    )
+    equity = next(
+        item
+        for item in requests
+        if item["dataset"] == EQUITIES_DATASET
+        and item["schema"] == "ohlcv-1s"
+        and item["symbol_scope"] == ["AAPL"]
+    )
+    opra = next(
+        item
+        for item in requests
+        if item["dataset"] == cold_start.OPRA_DATASET
+        and item["schema"] == "ohlcv-1s"
+        and item["symbol_scope"] == ["AAPL.OPT"]
+    )
+
+    assert Path(cme["storage_path"]) == (
+        tmp_path
+        / "market-data"
+        / "databento"
+        / "cme"
+        / "GLBX.MDP3"
+        / "mbp-10"
+        / "NQ.C.0"
+        / "windows"
+        / "2026-08-14_to_2026-08-15"
+    )
+    assert Path(equity["storage_path"]) == (
+        tmp_path
+        / "market-data"
+        / "databento"
+        / "us-equities"
+        / "XNAS.ITCH"
+        / "ohlcv-1s"
+        / "AAPL"
+        / "windows"
+        / "2026-08-05_to_2026-08-15"
+    )
+    assert Path(opra["storage_path"]) == (
+        tmp_path
+        / "market-data"
+        / "databento"
+        / "opra"
+        / "OPRA.PILLAR"
+        / "ohlcv-1s"
+        / "AAPL.OPT"
+    )
+    assert all(str(item["request_id"]) not in str(item["storage_path"]) for item in requests)
+
+
+def test_manifest_preflight_and_overlap_cursor_use_readable_stable_names(
+    tmp_path: Path,
+) -> None:
+    first = _manifest(tmp_path)
+    manifest_path = cold_start.write_manifest(tmp_path, first)
+    preflight_path = cold_start.write_preflight(
+        tmp_path,
+        {
+            "schema_version": cold_start.PREFLIGHT_VERSION,
+            "manifest_id": first["manifest_id"],
+            "as_of": first["as_of"],
+            "capacity_pass": True,
+            "estimates": [],
+        },
+    )
+    run = (
+        tmp_path
+        / "state"
+        / "databento"
+        / "history"
+        / "prediction-focused-baseline"
+        / "as-of"
+        / "2026-08-15"
+    )
+    assert manifest_path == run / "manifest.json"
+    assert preflight_path == run / "preflight.json"
+
+    request = next(
+        item
+        for item in first["requests"]
+        if item["dataset"] == EQUITIES_DATASET
+        and item["schema"] == "ohlcv-1m"
+        and item["symbol_scope"] == ["AAPL"]
+    )
+    cursor_path = cold_start._write_request_cursor(
+        tmp_path,
+        manifest_id=str(first["manifest_id"]),
+        request=request,
+        status="PUBLISHED",
+    )
+    assert cursor_path == (
+        tmp_path
+        / "state"
+        / "databento"
+        / "history-cursors"
+        / "us-equities"
+        / "XNAS.ITCH"
+        / "ohlcv-1m"
+        / "AAPL"
+        / "cursor.json"
+    )
+
+    follow_up = cold_start.build_manifest(
+        datastore_root=tmp_path,
+        equities_symbols=WATCHLIST,
+        cme_dataset=CME_DATASET,
+        cme_scopes=CME_SCOPES,
+        equities_dataset=EQUITIES_DATASET,
+        as_of=date(2026, 8, 16),
+    )
+    overlap = next(
+        item
+        for item in follow_up["requests"]
+        if item["dataset"] == EQUITIES_DATASET
+        and item["schema"] == "ohlcv-1m"
+        and item["symbol_scope"] == ["AAPL"]
+    )
+    assert overlap["fetch_mode"] == "overlap-fill"
+    assert overlap["previous_completed_through"] == "2026-08-15"
+    assert overlap["start"] == "2026-08-13"
+    assert Path(overlap["storage_path"]).parent.parent == Path(request["storage_path"]).parent.parent
+    assert Path(overlap["storage_path"]).name == "2026-08-13_to_2026-08-16"
+
+
 def test_interval_schemas_use_the_configured_caps() -> None:
     expected = {
         "ohlcv-1s": 10,
@@ -284,7 +417,7 @@ def test_preflight_rejects_manifest_outside_configured_included_scope(
     )
     request["start"] = "2012-12-06"
 
-    with pytest.raises(cold_start.ColdStartError, match="configured bootstrap scope"):
+    with pytest.raises(cold_start.ColdStartError, match="configured baseline/overlap scope"):
         cold_start.preflight_manifest(
             SimpleNamespace(metadata=object()),
             datastore_root=tmp_path,
@@ -354,7 +487,17 @@ def test_execution_resumes_verified_generic_entries_without_network(
     assert downloads == ["test-request"]
     assert first == {"verified": 0, "downloaded": 1, "no_data": 0, "failed": 0}
     assert second == {"verified": 1, "downloaded": 0, "no_data": 0, "failed": 0}
-    assert (tmp_path / "state" / "databento-cold-start" / "cursors" / "test-request.json").is_file()
+    assert (
+        tmp_path
+        / "state"
+        / "databento"
+        / "history-cursors"
+        / "us-equities"
+        / "XNAS.ITCH"
+        / "trades"
+        / "AAPL"
+        / "cursor.json"
+    ).is_file()
 
 
 def test_opra_cursor_handoff_keeps_history_lock_and_normalizes_calendar_month_policy(

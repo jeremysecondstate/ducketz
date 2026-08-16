@@ -253,15 +253,7 @@ def _canonical_inventory(
     ):
         manifest = verified["manifest"]
         schema = str(manifest["schema"])
-        directory = (
-            root
-            / "market-data"
-            / "databento-opra"
-            / "OPRA.PILLAR"
-            / f"schema={schema}"
-            / f"date={manifest['partition_date']}"
-            / f"bucket={manifest['symbol_bucket']}"
-        )
+        directory = Path(verified["directory"])
         parquet = directory / str(manifest["normalized"]["path"])
         if schema == "definition" and selected_definitions and parquet.resolve() not in selected_definitions:
             continue

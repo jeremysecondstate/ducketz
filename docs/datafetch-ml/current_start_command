@@ -239,7 +239,7 @@ python -m ml.option_pricing_opra --datastore-target pc
 The per-symbol bootstrap and administrative OPRA synchronizer both publish
 provider-native DBN, normalized Parquet, immutable manifests/receipts, cursors,
 metadata, and current health below
-`C:\DATASTORE\market-data\databento-opra\OPRA.PILLAR`. Check actual population
+`C:\DATASTORE\market-data\databento\opra\OPRA.PILLAR`. Check actual population
 with:
 
 ```powershell

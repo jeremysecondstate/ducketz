@@ -187,8 +187,8 @@ bounds. Provider-native DBN, normalized Parquet, immutable manifests, and receip
 are stored below:
 
 ```text
-market-data/databento-opra/OPRA.PILLAR/
-  schema=<schema>/date=<YYYY-MM-DD>/bucket=<scope>[-segment-<UTC-range>]/
+market-data/databento/opra/OPRA.PILLAR/
+  <schema>/<parent-symbol>/dates/<YYYY-MM-DD>/segments/<full-day-or-UTC-range>/
     provider.dbn.zst
     normalized.parquet
     manifest.json

@@ -2,8 +2,9 @@
 
 This command is deliberately separate from the seven production supervisors.
 It writes only historical bootstrap evidence: OPRA uses the existing canonical
-OPRA partition contract, while CME and US-equity data live under a distinct
-``market-data/databento-cold-start`` archive.  It never writes Loop A readiness,
+OPRA partition contract, while CME and US-equity data use the same readable
+``market-data/databento/<market>/<dataset>`` hierarchy for their baseline and
+later overlap windows. It never writes Loop A readiness,
 live snapshots, or any ML publication pointer.  After a checksum-verified OPRA
 scope completes, it writes the v5 symbol/schema history cursor that hands later
 overlap maintenance to the independent Options runtime; that cursor is not
@@ -20,9 +21,8 @@ import re
 import shutil
 import sys
 import time
-import uuid
 from dataclasses import asdict, dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
@@ -36,6 +36,17 @@ from datafetching.databento_history_policy import (
     heavy_book_lookback_policy,
     interval_lookback_policy,
 )
+from datafetching.databento_storage import (
+    HISTORY_PROFILE,
+    MARKET_CME,
+    MARKET_OPRA,
+    MARKET_US_EQUITIES,
+    coordinator_run_directory,
+    databento_root,
+    dataset_root,
+    history_cursor_path,
+    request_directory,
+)
 from datafetching.databento_opra_history import (
     DATASET as OPRA_DATASET,
     SyncScope,
@@ -48,11 +59,11 @@ from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.artifacts import file_checksum
 
 
-COORDINATOR_VERSION = "databento-cold-start-v2"
-MANIFEST_VERSION = "databento-cold-start-manifest-v2"
+COORDINATOR_VERSION = "databento-cold-start-v3"
+MANIFEST_VERSION = "databento-cold-start-manifest-v3"
 PARTITION_VERSION = "databento-cold-start-partition-v1"
 RECEIPT_VERSION = "databento-cold-start-receipt-v1"
-PREFLIGHT_VERSION = "databento-cold-start-preflight-v2"
+PREFLIGHT_VERSION = "databento-cold-start-preflight-v3"
 PROGRESS_VERSION = "databento-cold-start-progress-v1"
 STORAGE_RESERVE_BYTES = 5 * 1024**3
 STORAGE_EXPANSION_FACTOR = 2
@@ -137,15 +148,18 @@ class ColdStartRequest:
     storage_path: str
     storage_contract: str
     window: Mapping[str, object]
+    fetch_mode: str = "initial-baseline"
+    baseline_start: str | None = None
+    previous_completed_through: str | None = None
     status: str = "PENDING"
 
 
 def cold_start_root(datastore_root: Path) -> Path:
-    return Path(datastore_root).resolve() / "market-data" / "databento-cold-start"
+    return databento_root(datastore_root)
 
 
 def coordinator_state_root(datastore_root: Path) -> Path:
-    return Path(datastore_root).resolve() / "state" / "databento-cold-start"
+    return Path(datastore_root).resolve() / "state" / "databento"
 
 
 def parse_watchlist(path: Path) -> tuple[str, ...]:
@@ -372,6 +386,7 @@ def build_manifest(
         (
             OPRA_DATASET,
             PLAN_DATASET_OPRA,
+            MARKET_OPRA,
             OPRA_SCHEMAS,
             opra_parent_symbols(equities_symbols),
             "parent",
@@ -380,6 +395,7 @@ def build_manifest(
         (
             cme_dataset,
             PLAN_DATASET_CME,
+            MARKET_CME,
             CME_SCHEMAS,
             tuple(scope.symbol for scope in cme_scopes),
             "cme",
@@ -388,6 +404,7 @@ def build_manifest(
         (
             equities_dataset,
             PLAN_DATASET_US_EQUITIES,
+            MARKET_US_EQUITIES,
             US_EQUITIES_SCHEMAS,
             tuple(equities_symbols),
             "raw_symbol",
@@ -398,6 +415,7 @@ def build_manifest(
     for (
         dataset,
         standard_plan_dataset,
+        market,
         schemas,
         symbols,
         default_stype,
@@ -409,7 +427,26 @@ def build_manifest(
                 bounds = catalog.get(schema) if catalog else None
                 end = as_of
                 window = schema_window(standard_plan_dataset, schema)
-                start = _window_start(end, window)
+                baseline_start = _window_start(end, window)
+                start = baseline_start
+                fetch_mode = "initial-baseline"
+                previous_completed_through: str | None = None
+                cursor = _read_request_cursor(
+                    Path(datastore_root),
+                    market=market,
+                    dataset=dataset,
+                    schema=schema,
+                    symbol=symbol,
+                )
+                if cursor is not None:
+                    completed_through = _as_date(cursor["completed_through"])
+                    if completed_through < end:
+                        start = max(
+                            baseline_start,
+                            completed_through - timedelta(days=_overlap_days(schema)),
+                        )
+                        fetch_mode = "overlap-fill"
+                        previous_completed_through = completed_through.isoformat()
                 if bounds:
                     provider_start = _as_date(bounds["start"])
                     provider_end = _as_date(bounds["end"])
@@ -428,6 +465,7 @@ def build_manifest(
                 storage = _entry_storage_path(
                     Path(datastore_root),
                     dataset=dataset,
+                    market=market,
                     schema=schema,
                     symbol=symbol,
                     start=start,
@@ -444,6 +482,9 @@ def build_manifest(
                     "end": end.isoformat(),
                     "storage_contract": contract,
                     "window": window,
+                    "fetch_mode": fetch_mode,
+                    "baseline_start": baseline_start.isoformat(),
+                    "previous_completed_through": previous_completed_through,
                 }
                 entries.append(
                     ColdStartRequest(
@@ -456,6 +497,7 @@ def build_manifest(
     body: dict[str, object] = {
         "schema_version": MANIFEST_VERSION,
         "coordinator_version": COORDINATOR_VERSION,
+        "history_profile": HISTORY_PROFILE,
         "as_of": as_of.isoformat(),
         "datastore_root": str(Path(datastore_root).resolve()),
         "entitlement_authority": STANDARD_PLAN_AUTHORITY,
@@ -468,8 +510,10 @@ def build_manifest(
 
 
 def write_manifest(datastore_root: Path, manifest: Mapping[str, object]) -> Path:
-    manifest_id = str(manifest["manifest_id"])
-    path = coordinator_state_root(datastore_root) / "manifests" / manifest_id / "manifest.json"
+    path = coordinator_run_directory(
+        datastore_root,
+        as_of=str(manifest["as_of"]),
+    ) / "manifest.json"
     if path.is_file():
         try:
             existing = json.loads(path.read_text(encoding="utf-8"))
@@ -508,11 +552,31 @@ def _validate_manifest_included_scope(manifest: Mapping[str, object]) -> None:
         start = _as_date(raw.get("start"))
         end = _as_date(raw.get("end"))
         expected_start = _window_start(as_of, configured_window)
-        if start != expected_start or end != as_of:
+        fetch_mode = str(raw.get("fetch_mode", "initial-baseline"))
+        baseline_start = _as_date(raw.get("baseline_start", expected_start))
+        expected_request_start = expected_start
+        if fetch_mode == "overlap-fill":
+            previous_completed = _as_date(raw.get("previous_completed_through"))
+            if previous_completed >= as_of:
+                raise ColdStartError(
+                    f"Cold-start overlap cursor is not behind the requested as-of for "
+                    f"{role}/{schema}"
+                )
+            expected_request_start = max(
+                expected_start,
+                previous_completed - timedelta(days=_overlap_days(schema)),
+            )
+        elif fetch_mode != "initial-baseline":
+            raise ColdStartError(f"Unsupported Databento history fetch mode: {fetch_mode}")
+        if (
+            baseline_start != expected_start
+            or start != expected_request_start
+            or end != as_of
+        ):
             raise ColdStartError(
-                f"Cold-start request does not match the configured bootstrap scope "
+                f"Cold-start request does not match the configured baseline/overlap scope "
                 f"for {role}/{schema}: requested={start.isoformat()}.."
-                f"{end.isoformat()} expected={expected_start.isoformat()}.."
+                f"{end.isoformat()} expected={expected_request_start.isoformat()}.."
                 f"{as_of.isoformat()}"
             )
         included_start = _window_start(
@@ -582,6 +646,8 @@ def preflight_manifest(
     return {
         "schema_version": PREFLIGHT_VERSION,
         "manifest_id": manifest["manifest_id"],
+        "as_of": manifest["as_of"],
+        "history_profile": manifest.get("history_profile", HISTORY_PROFILE),
         "generated_at": _utc_now().isoformat(),
         "estimates": estimates,
         "total_estimated_download_size_bytes": total_download_size,
@@ -596,12 +662,13 @@ def preflight_manifest(
 
 
 def write_preflight(datastore_root: Path, preflight: Mapping[str, object]) -> Path:
-    manifest_id = str(preflight["manifest_id"])
-    timestamp = _utc_now().strftime("%Y%m%dT%H%M%S%fZ")
-    path = coordinator_state_root(datastore_root) / "manifests" / manifest_id / f"preflight-{timestamp}.json"
+    path = coordinator_run_directory(
+        datastore_root,
+        as_of=str(preflight["as_of"]),
+    ) / "preflight.json"
     payload = dict(preflight)
     payload["semantic_checksum_sha256"] = _checksum(payload)
-    _write_json_exclusive(path, payload)
+    _write_json_atomic(path, payload)
     return path
 
 
@@ -628,7 +695,7 @@ def execute_manifest(
     requests = manifest.get("requests")
     if not isinstance(requests, list):
         raise ColdStartError("Cold-start manifest has no request list")
-    progress_path = _progress_path(datastore_root, str(manifest["manifest_id"]))
+    progress_path = _progress_path(datastore_root, manifest)
     progress = _read_progress(progress_path, manifest_id=str(manifest["manifest_id"]))
     counts = {"verified": 0, "downloaded": 0, "no_data": 0, "failed": 0}
     for raw in requests:
@@ -863,7 +930,10 @@ def _download_generic_entry(client: object, *, datastore_root: Path, request: Ma
     if destination.exists():
         _verify_generic_partition(destination, request)
         return
-    staging = cold_start_root(datastore_root) / ".staging" / f"{request['request_id']}-{uuid.uuid4().hex}"
+    destination_relative = destination.relative_to(cold_start_root(datastore_root))
+    staging = _next_attempt_directory(
+        cold_start_root(datastore_root) / ".staging" / destination_relative
+    )
     staging.mkdir(parents=True, exist_ok=False)
     raw_path = staging / "provider.dbn.zst"
     parquet_path = staging / "normalized.parquet"
@@ -1006,6 +1076,7 @@ def _entry_storage_path(
     datastore_root: Path,
     *,
     dataset: str,
+    market: str,
     schema: str,
     symbol: str,
     start: date,
@@ -1013,15 +1084,19 @@ def _entry_storage_path(
     contract: str,
 ) -> Path:
     if contract == "canonical-opra":
-        return canonical_opra_root(datastore_root) / f"schema={schema}"
-    scope = _checksum({"symbol": symbol})[:16]
-    return (
-        cold_start_root(datastore_root)
-        / "archive-v1"
-        / f"dataset={_safe_token(dataset)}"
-        / f"schema={_safe_token(schema)}"
-        / f"scope={scope}"
-        / f"window={start.isoformat()}--{end.isoformat()}"
+        return (
+            dataset_root(datastore_root, market=MARKET_OPRA, dataset=dataset)
+            / _safe_token(schema)
+            / _safe_token(symbol)
+        )
+    return request_directory(
+        datastore_root,
+        market=market,
+        dataset=dataset,
+        schema=schema,
+        symbol=symbol,
+        start=start,
+        end=end,
     )
 
 
@@ -1036,8 +1111,11 @@ def _request_kwargs(request: Mapping[str, object]) -> dict[str, object]:
     }
 
 
-def _progress_path(datastore_root: Path, manifest_id: str) -> Path:
-    return coordinator_state_root(datastore_root) / "manifests" / manifest_id / "progress.json"
+def _progress_path(datastore_root: Path, manifest: Mapping[str, object]) -> Path:
+    return coordinator_run_directory(
+        datastore_root,
+        as_of=str(manifest["as_of"]),
+    ) / "progress.json"
 
 
 def _write_request_cursor(
@@ -1049,7 +1127,15 @@ def _write_request_cursor(
 ) -> Path:
     """Record completed request identity without becoming a live-loop cursor."""
 
-    path = coordinator_state_root(datastore_root) / "cursors" / f"{request['request_id']}.json"
+    market = _market_for_plan_dataset(str(request["standard_plan_dataset"]))
+    symbol = str(request["symbol_scope"][0])
+    path = history_cursor_path(
+        datastore_root,
+        market=market,
+        dataset=str(request["dataset"]),
+        schema=str(request["schema"]),
+        symbol=symbol,
+    )
     payload = {
         "schema_version": "databento-cold-start-request-cursor-v1",
         "manifest_id": manifest_id,
@@ -1059,6 +1145,8 @@ def _write_request_cursor(
         "symbol_scope": list(request["symbol_scope"]),
         "start": request["start"],
         "end": request["end"],
+        "completed_through": request["end"],
+        "fetch_mode": request.get("fetch_mode", "initial-baseline"),
         "storage_path": request["storage_path"],
         "status": status,
         "completed_at": _utc_now().isoformat(),
@@ -1182,6 +1270,75 @@ def _safe_token(value: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "_", value).strip("._-") or "unknown"
 
 
+def _market_for_plan_dataset(standard_plan_dataset: str) -> str:
+    markets = {
+        PLAN_DATASET_OPRA: MARKET_OPRA,
+        PLAN_DATASET_CME: MARKET_CME,
+        PLAN_DATASET_US_EQUITIES: MARKET_US_EQUITIES,
+    }
+    try:
+        return markets[str(standard_plan_dataset)]
+    except KeyError as exc:
+        raise ColdStartError(
+            f"Unsupported Databento Standard-plan market: {standard_plan_dataset!r}"
+        ) from exc
+
+
+def _overlap_days(schema: str) -> int:
+    """Return a conservative whole-day overlap for a later coordinator run."""
+
+    if schema.endswith("-1s"):
+        return 1
+    if schema.endswith("-1m"):
+        return 2
+    if schema.endswith("-1h"):
+        return 5
+    if schema.endswith("-1d"):
+        return 10
+    return 3
+
+
+def _read_request_cursor(
+    datastore_root: Path,
+    *,
+    market: str,
+    dataset: str,
+    schema: str,
+    symbol: str,
+) -> Mapping[str, object] | None:
+    path = history_cursor_path(
+        datastore_root,
+        market=market,
+        dataset=dataset,
+        schema=schema,
+        symbol=symbol,
+    )
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ColdStartError(f"Databento history cursor is unreadable: {path}") from exc
+    if (
+        not isinstance(payload, Mapping)
+        or payload.get("schema_version") != "databento-cold-start-request-cursor-v1"
+        or payload.get("dataset") != dataset
+        or payload.get("schema") != schema
+        or payload.get("symbol_scope") != [symbol]
+        or not payload.get("completed_through")
+    ):
+        raise ColdStartError(f"Databento history cursor identity is invalid: {path}")
+    return payload
+
+
+def _next_attempt_directory(base: Path) -> Path:
+    for attempt in range(1, 10_000):
+        candidate = base / f"attempt-{attempt:03d}"
+        if not candidate.exists():
+            return candidate
+    raise ColdStartError(f"Too many retained Databento staging attempts beneath {base}")
+
+
 def _checksum(value: object) -> str:
     encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
@@ -1196,9 +1353,17 @@ def _write_json_exclusive(path: Path, payload: Mapping[str, object]) -> None:
 
 def _write_json_atomic(path: Path, payload: Mapping[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + f".tmp-{os.getpid()}-{uuid.uuid4().hex}")
+    temporary = _next_pending_file(path)
     _write_json_exclusive(temporary, payload)
     temporary.replace(path)
+
+
+def _next_pending_file(path: Path) -> Path:
+    for attempt in range(1, 10_000):
+        candidate = path.with_name(f"{path.name}.pending-{attempt:03d}")
+        if not candidate.exists():
+            return candidate
+    raise ColdStartError(f"Too many retained pending files beside {path}")
 
 
 def _utc_now() -> datetime:

@@ -51,11 +51,11 @@ the current schema-specific policy.
 The canonical root is:
 
 ```text
-C:\DATASTORE\market-data\databento-opra\OPRA.PILLAR
+C:\DATASTORE\market-data\databento\opra\OPRA.PILLAR
 ```
 
 Each partition is published at
-`schema=<schema>\date=<UTC-date>\bucket=<symbol-bucket>\` with
+`<schema>\<parent-symbol>\dates\<UTC-date>\segments\<full-day-or-UTC-range>\` with
 `provider.dbn.zst`, `normalized.parquet`, `manifest.json`, and `receipt.json`.
 Entitlement/preflight receipts live under `metadata`, symbol cursors under
 `state\symbol-history`, and current verified totals under `health\current.json`.
