@@ -204,6 +204,7 @@ def storage_preflight(
     datastore_root: Path,
     entitlement: Mapping[str, object],
     scope: SyncScope,
+    allow_billable: bool = False,
 ) -> Mapping[str, object]:
     requests = _scope_ranges(entitlement, scope)
     metadata = getattr(client, "metadata")
@@ -218,7 +219,7 @@ def storage_preflight(
         cost = float(
             _retry(metadata.get_cost, kwargs=kwargs, operation=f"{schema} cost")
         )
-        if cost != 0.0:
+        if cost != 0.0 and not allow_billable:
             raise OpraSyncError(
                 f"Provider reports requested {schema} scope outside the subscription: "
                 f"start={start} end={end} cost_usd={cost:.6f}"
@@ -291,6 +292,7 @@ def synchronize(
     entitlement: Mapping[str, object],
     scope: SyncScope = SyncScope(),
     reporter: Callable[[str], None] | None = print,
+    allow_billable: bool = False,
 ) -> SyncResult:
     """Download, normalize, publish, and verify immutable OPRA partitions."""
 
@@ -302,6 +304,7 @@ def synchronize(
         datastore_root=datastore_root,
         entitlement=entitlement,
         scope=scope,
+        allow_billable=allow_billable,
     )
     published_preflight = publish_storage_preflight(datastore_root, preflight)
     if not bool(preflight["capacity_pass"]):

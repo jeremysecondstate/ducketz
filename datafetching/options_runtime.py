@@ -107,7 +107,8 @@ OPRA_SCHEMA_CATCHUP_OVERLAP_DAYS: dict[str, int] = {
     "ohlcv-1h": 5,
     "ohlcv-1d": 10,
 }
-OPRA_SYMBOL_HISTORY_CURSOR_VERSION = "options-opra-symbol-history-v4"
+OPRA_SYMBOL_HISTORY_CURSOR_VERSION = "options-opra-symbol-history-v5"
+OPRA_LEGACY_SYMBOL_HISTORY_CURSOR_VERSION = "options-opra-symbol-history-v4"
 OPRA_SYMBOL_HISTORY_SCHEMA_ORDER = (
     "definition",
     "ohlcv-1d",
@@ -1033,13 +1034,24 @@ def _read_opra_symbol_history_cursor(
     except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError):
         return None
     if (
-        payload.get("schema_version") != OPRA_SYMBOL_HISTORY_CURSOR_VERSION
-        or payload.get("symbol") != symbol.strip().upper()
+        payload.get("symbol") != symbol.strip().upper()
         or payload.get("provider_symbol") != f"{symbol.strip().upper()}.OPT"
         or payload.get("schema") != schema
-        or payload.get("lookback_policy") != opra_history_lookback_policy(schema)
         or pd.isna(completed)
     ):
+        return None
+    version = payload.get("schema_version")
+    policy = payload.get("lookback_policy")
+    if version == OPRA_LEGACY_SYMBOL_HISTORY_CURSOR_VERSION:
+        if policy != opra_history_lookback_policy(schema):
+            return None
+    elif version == OPRA_SYMBOL_HISTORY_CURSOR_VERSION:
+        if not _valid_opra_history_policy(policy):
+            return None
+        requested_start = pd.Timestamp(str(payload.get("requested_start", "")))
+        if pd.isna(requested_start) or requested_start > completed:
+            return None
+    else:
         return None
     return payload
 
@@ -1050,8 +1062,19 @@ def _write_opra_symbol_history_cursor(
     symbol: str,
     schema: str,
     completed_through: str,
+    requested_start: str | None = None,
+    lookback_policy: dict[str, object] | None = None,
+    bootstrap_manifest_id: str | None = None,
 ) -> Path:
     clean_symbol = symbol.strip().upper()
+    policy = lookback_policy or opra_history_lookback_policy(schema)
+    if not _valid_opra_history_policy(policy):
+        raise ValueError(f"Invalid OPRA history lookback policy for {schema}")
+    start = requested_start or opra_history_start(schema, end=completed_through)
+    parsed_start = pd.Timestamp(start)
+    parsed_end = pd.Timestamp(completed_through)
+    if pd.isna(parsed_start) or pd.isna(parsed_end) or parsed_start > parsed_end:
+        raise ValueError("OPRA history cursor bounds are invalid")
     path = _opra_symbol_history_cursor_path(
         datastore_root,
         symbol=clean_symbol,
@@ -1065,10 +1088,13 @@ def _write_opra_symbol_history_cursor(
         "symbol": clean_symbol,
         "provider_symbol": f"{clean_symbol}.OPT",
         "schema": schema,
-        "lookback_policy": opra_history_lookback_policy(schema),
+        "lookback_policy": dict(policy),
+        "requested_start": parsed_start.date().isoformat(),
         "completed_through": completed_through,
         "updated_at": pd.Timestamp.now(tz="UTC").isoformat(),
     }
+    if bootstrap_manifest_id:
+        payload["bootstrap_manifest_id"] = str(bootstrap_manifest_id)
     temporary = path.with_suffix(path.suffix + f".tmp-{os.getpid()}")
     temporary.write_text(
         json.dumps(payload, indent=2, sort_keys=True) + "\n",
@@ -1078,12 +1104,55 @@ def _write_opra_symbol_history_cursor(
     return path
 
 
+def publish_opra_symbol_history_cursor(
+    datastore_root: Path,
+    *,
+    symbol: str,
+    schema: str,
+    requested_start: str,
+    completed_through: str,
+    lookback_policy: dict[str, object],
+    bootstrap_manifest_id: str,
+) -> Path:
+    """Publish a verified bootstrap cursor without granting snapshot authority.
+
+    The Options runtime owns forward overlap maintenance.  This helper only
+    records that a separate, checksum-verified historical bootstrap completed;
+    it never writes option snapshots, live pointers, or the Options writer lock.
+    """
+
+    if schema not in STANDARD_SCHEMAS:
+        raise ValueError(f"Unsupported OPRA schema: {schema}")
+    return _write_opra_symbol_history_cursor(
+        datastore_root,
+        symbol=symbol,
+        schema=schema,
+        requested_start=requested_start,
+        completed_through=completed_through,
+        lookback_policy=lookback_policy,
+        bootstrap_manifest_id=bootstrap_manifest_id,
+    )
+
+
 def opra_history_lookback_policy(schema: str) -> dict[str, object]:
     try:
         unit, value = OPRA_SCHEMA_HISTORY_LOOKBACK_POLICY[schema]
     except KeyError as exc:
         raise ValueError(f"Unsupported OPRA schema: {schema}") from exc
     return {"unit": unit, "value": value}
+
+
+def _valid_opra_history_policy(value: object) -> bool:
+    if not isinstance(value, dict):
+        return False
+    unit = value.get("unit")
+    amount = value.get("value")
+    return (
+        unit in {"days", "months"}
+        and isinstance(amount, int)
+        and not isinstance(amount, bool)
+        and amount > 0
+    )
 
 
 def opra_history_start(schema: str, *, end: str) -> str:

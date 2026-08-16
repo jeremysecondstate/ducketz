@@ -129,6 +129,13 @@ python -m datafetching.options_history `
   --watchlist datafetching\watchlist.txt
 ```
 
+The separate all-dataset cold-start coordinator is not a startup owner and
+must never be put inside Loop A's inline compatibility lanes. It applies the
+storage-sizing plan's one-calendar-month non-OHLCV window, uses canonical OPRA
+storage only after receipt verification, and leaves all live-loop authority
+untouched. Safe dry-run, metadata-preflight, and explicitly confirmed download
+commands are in `docs/datafetch-ml/databento-cold-start.md`.
+
 Options Capture then owns only forward cursor maintenance. Daily overlaps are
 1 day for `ohlcv-1s`, 2 days for `ohlcv-1m`, 5 days for `ohlcv-1h`, 10 days for
 `ohlcv-1d`, and 3 days for every other schema. It runs catch-up at most once per

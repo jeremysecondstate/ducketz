@@ -1,0 +1,258 @@
+from __future__ import annotations
+
+from datetime import date
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+import datafetching.databento_cold_start as cold_start
+
+
+AS_OF = date(2026, 8, 15)
+CME_DATASET = "GLBX.MDP3"
+EQUITIES_DATASET = "DBEQ.BASIC"
+WATCHLIST = ("AAPL", "AMZN", "GOOG", "MU", "NVDA", "SNDK")
+CME_SCOPES = (cold_start.CmeScope("NQ.c.0", "continuous", "test"),)
+
+
+def _catalog(schemas: tuple[str, ...]) -> dict[str, dict[str, str]]:
+    return {
+        schema: {"start": "2000-01-01", "end": AS_OF.isoformat()}
+        for schema in schemas
+    }
+
+
+def _manifest(tmp_path: Path) -> dict[str, object]:
+    return cold_start.build_manifest(
+        datastore_root=tmp_path,
+        equities_symbols=WATCHLIST,
+        cme_dataset=CME_DATASET,
+        cme_scopes=CME_SCOPES,
+        equities_dataset=EQUITIES_DATASET,
+        as_of=AS_OF,
+        catalogs={
+            cold_start.OPRA_DATASET: _catalog(cold_start.OPRA_SCHEMAS),
+            CME_DATASET: _catalog(cold_start.CME_SCHEMAS),
+            EQUITIES_DATASET: _catalog(cold_start.US_EQUITIES_SCHEMAS),
+        },
+    )
+
+
+def test_manifest_has_exact_schema_coverage_and_requested_windows(tmp_path: Path) -> None:
+    manifest = _manifest(tmp_path)
+    requests = manifest["requests"]
+    assert isinstance(requests, list)
+
+    by_dataset = {}
+    for request in requests:
+        by_dataset.setdefault(request["dataset"], set()).add(request["schema"])
+    assert by_dataset[cold_start.OPRA_DATASET] == set(cold_start.OPRA_SCHEMAS)
+    assert by_dataset[CME_DATASET] == set(cold_start.CME_SCHEMAS)
+    assert by_dataset[EQUITIES_DATASET] == set(cold_start.US_EQUITIES_SCHEMAS)
+
+    opra = [item for item in requests if item["dataset"] == cold_start.OPRA_DATASET]
+    assert {item["symbol_scope"][0] for item in opra} == {
+        f"{symbol}.OPT" for symbol in WATCHLIST
+    }
+    assert all(item["stype_in"] == "parent" for item in opra)
+    assert {item["symbol_scope"][0] for item in requests if item["dataset"] == EQUITIES_DATASET} == set(WATCHLIST)
+
+    expected_starts = {
+        "ohlcv-1s": "2026-08-10",
+        "ohlcv-1m": "2026-05-07",
+        "ohlcv-1h": "2021-02-22",
+        "ohlcv-1d": "2012-12-06",
+        "definition": "2012-12-06",
+        "statistics": "2026-07-15",
+        "status": "2026-07-15",
+        "mbp-10": "2026-07-15",
+    }
+    for request in requests:
+        assert request["end"] == AS_OF.isoformat()
+        assert request["start"] == expected_starts.get(request["schema"], "2026-07-15")
+
+    assert manifest["derived_views"] == [
+        {
+            "dataset": EQUITIES_DATASET,
+            "name": "full-market-summary",
+            "components": ["ohlcv-1d", "definition", "statistics"],
+            "status": "REUSED_COMPONENTS_NO_DUPLICATE_FETCH",
+        }
+    ]
+
+
+def test_watchlist_and_opra_parent_scope_reject_ambiguous_input(tmp_path: Path) -> None:
+    watchlist = tmp_path / "watchlist.txt"
+    watchlist.write_text("# scope\nAAPL\n nvda # note\n", encoding="utf-8")
+    assert cold_start.parse_watchlist(watchlist) == ("AAPL", "NVDA")
+    assert cold_start.opra_parent_symbols(("AAPL", "NVDA")) == ("AAPL.OPT", "NVDA.OPT")
+
+    watchlist.write_text("AAPL\naapl\n", encoding="utf-8")
+    with pytest.raises(cold_start.ColdStartError, match="duplicate"):
+        cold_start.parse_watchlist(watchlist)
+    with pytest.raises(cold_start.ColdStartError, match="Cannot construct"):
+        cold_start.opra_parent_symbols(("AAPL.OPT",))
+
+
+def test_cme_scope_is_required_and_never_invented_from_equities() -> None:
+    with pytest.raises(cold_start.ColdStartError, match="requires explicit CME scope"):
+        cold_start.resolve_cme_scopes({})
+
+    scopes = cold_start.resolve_cme_scopes(
+        {
+            "DATABENTO_CME_CONTEXT_SYMBOLS": '["NQ.c.0", "ES.c.0"]',
+            "DATABENTO_CME_CONTEXT_STYPE_IN": "continuous",
+        }
+    )
+    assert [(scope.symbol, scope.stype_in) for scope in scopes] == [
+        ("ES.c.0", "continuous"),
+        ("NQ.c.0", "continuous"),
+    ]
+    with pytest.raises(cold_start.ColdStartError, match="Ambiguous CME"):
+        cold_start.resolve_cme_scopes(
+            {
+                "DATABENTO_CME_CONTEXT_SYMBOLS": "NQ.c.0",
+                "DATABENTO_CME_CONTRACT_SYMBOLS": "NQ.c.0",
+            }
+        )
+
+
+def test_manifest_is_deterministic_and_storage_preflight_uses_exact_arithmetic(
+    tmp_path: Path,
+) -> None:
+    first = _manifest(tmp_path)
+    second = _manifest(tmp_path)
+    assert first == second
+
+    class Metadata:
+        def get_billable_size(self, **kwargs: object) -> int:
+            return len(str(kwargs["schema"])) * 100
+
+        def get_record_count(self, **_kwargs: object) -> int:
+            return 7
+
+        def get_cost(self, **_kwargs: object) -> float:
+            return 1.25
+
+    preflight = cold_start.preflight_manifest(
+        SimpleNamespace(metadata=Metadata()),
+        datastore_root=tmp_path,
+        manifest=first,
+        disk_usage=lambda _path: SimpleNamespace(free=10**15),
+    )
+    expected_billable = sum(
+        len(str(request["schema"])) * 100 for request in first["requests"]
+    )
+    assert preflight["total_billable_size_bytes"] == expected_billable
+    assert preflight["total_record_count"] == 7 * len(first["requests"])
+    assert preflight["required_free_bytes"] == (
+        5 * 1024**3 + 2 * expected_billable
+    )
+    assert preflight["capacity_pass"] is True
+    assert all(item["cost_usd"] == 1.25 for item in preflight["estimates"])
+
+
+def test_execution_resumes_verified_generic_entries_without_network(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    request = {
+        "request_id": "test-request",
+        "dataset": EQUITIES_DATASET,
+        "schema": "trades",
+        "symbol_scope": ["AAPL"],
+        "stype_in": "raw_symbol",
+        "start": "2026-07-15",
+        "end": "2026-08-15",
+        "storage_path": str(tmp_path / "partition"),
+        "storage_contract": "isolated-cold-start",
+        "window": {"unit": "calendar_months", "value": 1},
+        "status": "PENDING",
+    }
+    manifest = {"manifest_id": "resume-manifest", "requests": [request]}
+    preflight = {
+        "manifest_id": "resume-manifest",
+        "capacity_pass": True,
+        "estimates": [{"request_id": "test-request", "record_count": 4}],
+    }
+    completed: set[str] = set()
+    downloads: list[str] = []
+
+    monkeypatch.setattr(
+        cold_start,
+        "_entry_is_verified",
+        lambda _root, raw: str(raw["request_id"]) in completed,
+    )
+
+    def download(_client: object, *, datastore_root: Path, request: dict[str, object]) -> None:
+        assert datastore_root == tmp_path
+        downloads.append(str(request["request_id"]))
+        completed.add(str(request["request_id"]))
+
+    monkeypatch.setattr(cold_start, "_download_generic_entry", download)
+
+    first = cold_start.execute_manifest(
+        object(), datastore_root=tmp_path, manifest=manifest, preflight=preflight, reporter=None
+    )
+    second = cold_start.execute_manifest(
+        object(), datastore_root=tmp_path, manifest=manifest, preflight=preflight, reporter=None
+    )
+    assert downloads == ["test-request"]
+    assert first == {"verified": 0, "downloaded": 1, "no_data": 0, "failed": 0}
+    assert second == {"verified": 1, "downloaded": 0, "no_data": 0, "failed": 0}
+    assert (tmp_path / "state" / "databento-cold-start" / "cursors" / "test-request.json").is_file()
+
+
+def test_opra_cursor_handoff_keeps_history_lock_and_normalizes_calendar_month_policy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    request = {
+        "request_id": "opra-request",
+        "dataset": cold_start.OPRA_DATASET,
+        "schema": "trades",
+        "symbol_scope": ["AAPL.OPT"],
+        "stype_in": "parent",
+        "start": "2026-07-15",
+        "end": "2026-08-15",
+        "storage_path": str(tmp_path / "opra"),
+        "storage_contract": "canonical-opra",
+        "window": {"unit": "calendar_months", "value": 1},
+        "status": "PENDING",
+    }
+    seen: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        cold_start,
+        "synchronize_opra",
+        lambda *_args, **_kwargs: SimpleNamespace(errors={}, completed_rows=9),
+    )
+    monkeypatch.setattr(
+        cold_start,
+        "publish_opra_symbol_history_cursor",
+        lambda *_args, **kwargs: seen.update(kwargs),
+    )
+
+    cold_start._execute_opra_entry(
+        object(), datastore_root=tmp_path, request=request, manifest_id="manifest", reporter=None
+    )
+    assert seen["symbol"] == "AAPL"
+    assert seen["lookback_policy"] == {"unit": "months", "value": 1}
+    assert not (tmp_path / ".ducketz-options-writer.lock").exists()
+    assert not (tmp_path / ".ducketz-cme-writer.lock").exists()
+
+
+def test_coordinator_preserves_loop_locks_and_publication_authority() -> None:
+    source = Path(cold_start.__file__).read_text(encoding="utf-8")
+    assert ".ducketz-databento-cold-start.lock" in source
+    for forbidden in (
+        ".ducketz-cme-writer.lock",
+        ".ducketz-orchestration.lock",
+        ".ducketz-options-writer.lock",
+        "loop-a/bar-readiness",
+        "ml/latest/run.json",
+        "ml/strategy-latest/run.json",
+    ):
+        assert forbidden not in source
+    assert "publish_opra_symbol_history_cursor" in source
+    assert "option_writer_lock_path" not in source
+    assert ' / "state" / "sync.lock"' in source
