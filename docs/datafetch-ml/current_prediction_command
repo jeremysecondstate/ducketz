@@ -1,7 +1,7 @@
 # Authoritative startup pointer
 
-The authoritative commands for Loop A, active Pricing, independent Options
-capture, directional Loop B, and pricing-active Strategy now live in
+The authoritative commands for all seven owners—CME/L2, Loop A, Daily ALFRED,
+Active Pricing, Options Capture, Directional Loop B, and Strategy—live in
 `docs/datafetch-ml/current_start_command`.
 
 Do not maintain or execute a second command list from this file. Consolidating

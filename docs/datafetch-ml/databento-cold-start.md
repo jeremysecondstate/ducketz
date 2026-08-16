@@ -3,8 +3,11 @@
 `datafetching.databento_cold_start` is a one-time historical bootstrap. It is
 not an eighth production loop and must not replace any command in
 `current_start_command`. It does not acquire the CME, Loop A, Options, Pricing,
-Loop B, ALFRED, or Strategy locks; it writes no readiness, snapshot, live-loop
-cursor, model, or publication pointer.
+Loop B, ALFRED, or Strategy locks. It writes no readiness, option snapshot,
+model, or production publication pointer. For each nonempty, checksum-verified
+OPRA symbol/schema scope it does publish the current v5 history cursor under
+`state\symbol-history`; that narrow handoff lets Options Capture own later daily
+overlap maintenance and does not grant live snapshot authority.
 
 ## Scope and storage
 
@@ -132,3 +135,17 @@ Rerun the identical command after a failure; verified partitions are checked
 and skipped, while only incomplete scopes resume. A missing credential,
 schema, CME scope, capacity check, ambiguous expansion, or receipt verification
 stops execution before unsafe publication.
+
+## Ownership boundary after execution
+
+The coordinator holds only `.ducketz-databento-cold-start.lock` for its own
+one-shot manifest and the canonical OPRA `state\sync.lock` while an OPRA scope
+is synchronized. It never takes `.ducketz-cme-writer.lock`,
+`.ducketz-orchestration.lock`, or `.ducketz-options-writer.lock`.
+
+On verified OPRA completion it records `requested_start`, `completed_through`,
+the exact lookback policy, and `bootstrap_manifest_id` in an
+`options-opra-symbol-history-v5` cursor. Options Capture validates that cursor
+before it performs forward overlap maintenance. CME and US-equity request
+cursors remain cold-start progress state only and are not consumed as live-loop
+authority.

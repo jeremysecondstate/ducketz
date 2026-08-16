@@ -18,8 +18,11 @@ The checked-in watchlist is the authoritative six-symbol production scope:
 so the option-pricing acceptance scope is exactly 12 routes. `SPY` is a
 separate research-only benchmark and must not be added to this watchlist.
 
-Before first v3 startup, run the one-time complete ALFRED backfill. The command
-derives its observation and real-time bounds from the earliest eligible 1-day
+Before first v3 startup, run the one-time complete ALFRED backfill after an
+authoritative Loop B `samples.parquet` decision grid exists. A brand-new
+datastore therefore needs a completed base/earlier-profile Loop B generation
+before this v3 macro bootstrap can derive its bounds. The command derives its
+observation and real-time bounds from the earliest eligible 1-day
 or weekly decision, all configured lags, and feature freshness. It preserves
 the sealed importer receipt and immediately publishes the separate readiness
 receipt only after causal coverage and integrity pass:
@@ -98,16 +101,16 @@ information clock and waits briefly on the target pointer. Its v2 publication
 identity is `(provider, symbol, target_snapshot_for)`: a committed target is
 reused without another provider call, and divergent duplicate content fails
 closed. Production mode constructs one bounded, reconnecting Databento live
-  adapter for `OPRA.PILLAR` definitions and `cbbo-1s`, scoped to the six parent
-  symbols. Its per-target reads select from that shared buffer; they do not create
-  six new subscriptions. OPRA capture carries independent evidence clocks and
-  does not wait for Loop A, while Loop 3 still requires exact Loop A authority to
-  price. Schwab remains explicit broker/fallback evidence. A missing
-  `DATABENTO_API_KEY` or adapter startup failure stops this owner clearly; it
-  cannot silently become Schwab-only. Neither missing Pricing nor delayed Loop A
-  readiness prevents OPRA capture or the allowed fallback request for an
-  actionable target. Without exact readiness a fallback Schwab response is
-  checksum-sealed under the separate
+adapter for `OPRA.PILLAR` definitions and `cbbo-1s`, scoped to the six parent
+symbols. Its per-target reads select from that shared buffer; they do not create
+six new subscriptions. OPRA capture carries independent evidence clocks and
+does not wait for Loop A, while Loop 3 still requires exact Loop A authority to
+price. Schwab remains explicit broker/fallback evidence. A missing
+`DATABENTO_API_KEY` or adapter startup failure stops this owner clearly; it
+cannot silently become Schwab-only. Neither missing Pricing nor delayed Loop A
+readiness prevents OPRA capture or the allowed fallback request for an
+actionable target. Without exact readiness a fallback Schwab response is
+checksum-sealed under the separate
 non-production `options/pending-captures/schwab` authority. The runtime polls
 that authority while waiting for later boundaries, reconciles it through the
 ordinary committed snapshot contract when readiness arrives inside 1,200
@@ -132,16 +135,21 @@ python -m datafetching.options_history `
 The separate all-dataset cold-start coordinator is not a startup owner and
 must never be put inside Loop A's inline compatibility lanes. It applies the
 storage-sizing plan's one-calendar-month non-OHLCV window, uses canonical OPRA
-storage only after receipt verification, and leaves all live-loop authority
-untouched. Safe dry-run, metadata-preflight, and explicitly confirmed download
-commands are in `docs/datafetch-ml/databento-cold-start.md`.
+storage only after receipt verification, and publishes only the narrow v5 OPRA
+symbol/schema history-cursor handoff for Options-owned forward maintenance. It
+does not publish readiness, option snapshots, model state, or production
+publication pointers. Safe dry-run, metadata-preflight, and explicitly
+confirmed download commands are in
+`docs/datafetch-ml/databento-cold-start.md`.
 
 Options Capture then owns only forward cursor maintenance. Daily overlaps are
 1 day for `ohlcv-1s`, 2 days for `ohlcv-1m`, 5 days for `ohlcv-1h`, 10 days for
 `ohlcv-1d`, and 3 days for every other schema. It runs catch-up at most once per
-UTC date, skips partitions that still verify, and never creates a missing v4
-cursor. A `bootstrap required` message means the one-time command above must be
-run; Loop 3 consumes verified files but never initiates acquisition.
+UTC date, skips partitions that still verify, and never creates a missing
+cursor. Current writers use v5; narrowly compatible v4 cursors are accepted
+only when their legacy schema policy matches exactly. A `bootstrap required`
+message means one of the documented one-time bootstrap paths must be run;
+Loop 3 consumes verified files but never initiates acquisition.
 
 ```powershell
 python -m datafetching.options_runtime `
@@ -212,8 +220,9 @@ scope is never silently reduced after capacity preflight:
 python -m ml.option_pricing_opra --datastore-target pc
 ```
 
-Both commands publish provider-native DBN, normalized Parquet, immutable
-manifests/receipts, cursors, metadata, and current health below
+The per-symbol bootstrap and administrative OPRA synchronizer both publish
+provider-native DBN, normalized Parquet, immutable manifests/receipts, cursors,
+metadata, and current health below
 `C:\DATASTORE\market-data\databento-opra\OPRA.PILLAR`. Check actual population
 with:
 

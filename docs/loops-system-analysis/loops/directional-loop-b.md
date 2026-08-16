@@ -14,7 +14,7 @@
 
 ## Purpose
 
-**Confirmed:** Loop B is the authoritative directional-horizon prediction loop. It snapshots the latest complete Loop A availability boundary, materializes causal rolling samples and targets for intraday, daily and weekly routes, activates feature families through their contracts/gates, partitions observations chronologically, fits or reuses a calibrated classifier, scores BACKTEST and eligible LIVE rows, reconciles matured predictions, produces monitoring/intelligence views, and atomically promotes one immutable run. `ml/prediction_runtime.py:218`, `ml/runtime_pipeline.py:329`, `ml/runtime_pipeline.py:464`, `ml/runtime_pipeline.py:480`, `ml/runtime_pipeline.py:876`
+**Confirmed:** Loop B is the authoritative directional-horizon prediction loop. Under the shared lock it snapshots the current Loop A record only after that record is `COMPLETE`, materializes causal rolling samples and targets for intraday, daily and weekly routes, activates feature families through their contracts/gates, partitions observations chronologically, fits or reuses a calibrated classifier, scores BACKTEST and eligible LIVE rows, reconciles matured predictions, produces monitoring/intelligence views, and atomically promotes one immutable run. `datafetching/loop_a_cycle.py:136`, `ml/prediction_runtime.py:218`, `ml/runtime_pipeline.py:329`, `ml/runtime_pipeline.py:464`, `ml/runtime_pipeline.py:480`, `ml/runtime_pipeline.py:876`
 
 **Confirmed non-ownership:** it does not acquire provider data, publish option chains or option fair values, choose final options strategies, or write to the closed lockbox. Strategy is explicitly an independent authority. `ml/runtime_pipeline.py:695`, `ml/runtime_pipeline.py:838`
 
@@ -22,7 +22,7 @@
 
 | Input or dataset | Producer/source | Physical path or interface | Key fields and semantic values | Clock/freshness/causality rules | Required or optional | Evidence |
 |---|---|---|---|---|---|---|
-| Complete Loop A cycle and market/fundamental feature evidence | Loop A | `.ducketz-loop-a-complete.json` plus normalized bars/quotes, technicals, fundamentals, signals, energy/SEC/current context artifacts | complete-cycle `finished_at`; OHLCV/adjustments; technical returns/trends/volatility/momentum; valuation/financial statement; signal/regime and current provider context fields | shared lock prevents reading through a write; `finished_at` is the causal input cutoff; each feature uses its own `available_at`/freshness contract | Required control boundary and core features | **Confirmed.** `ml/prediction_runtime.py:209`, `ml/prediction_runtime.py:218`, `ml/rolling_materialization.py:128`, `ml/rolling_materialization.py:272` |
+| Complete current Loop A cycle and market/fundamental feature evidence | Loop A | current `.ducketz-loop-a-cycle.json` plus normalized bars/quotes, technicals, fundamentals, signals, energy/SEC/current context artifacts | current `COMPLETE` cycle’s `finished_at`; OHLCV/adjustments; technical returns/trends/volatility/momentum; valuation/financial statement; signal/regime and current provider context fields | shared lock prevents reading through a write; `finished_at` is the causal input cutoff; a newer `WRITING`/`FAILED` current record is not replaced with `.ducketz-loop-a-complete.json`; each feature uses its own `available_at`/freshness contract | Required control boundary and core features | **Confirmed.** `datafetching/loop_a_cycle.py:136`, `ml/prediction_runtime.py:209`, `ml/prediction_runtime.py:218`, `ml/rolling_materialization.py:128`, `ml/rolling_materialization.py:272` |
 | Point-in-time macro readiness and features | Daily ALFRED | readiness pointer/receipt plus immutable vintages and `alfred-release-context` | `macro__fed_funds_level`, `macro__cpi_yoy`, `macro__unemployment_change`, `macro__gdp_yoy`; observation/vintage/release/availability clocks and quality | daily/weekly only; verified importer lineage, no lookahead and at least 95% coverage; each value then obeys horizon freshness | Required shared contract for active daily/weekly macro family | **Confirmed.** `ml/rolling_materialization.py:740`, `ml/rolling_materialization.py:757`, `datafetching/fred_alfred_readiness.py:185` |
 | CME cross-asset context | CME/L2 runtime | `pools/cme/features/cross-asset-context/databento/1h.parquet` | `cme__` NQ/ES/RTY/gold/crude returns, breadth, relative spreads/book imbalance and quality/availability | latest causal completed common window; future/stale values are ineligible | Conditional feature family | **Confirmed.** `ml/rolling_materialization.py:782`, `datafetching/cme_cross_asset_context.py:174` |
 | Option-quality features | Options Capture | verified snapshot histories and `option-quality.parquet` | `opt__` implied move, IV-realized spread, term/skew/smile, OI/volume, parity, quote coverage/staleness and surface quality | snapshot/receipt must be available by decision and pass feature-specific freshness; missing values retain explicit semantics | Conditional feature family | **Confirmed.** `ml/rolling_materialization.py:614`, `options/features.py:214` |
@@ -31,7 +31,7 @@
 
 ## Processing and decisions
 
-1. **Confirmed:** acquire the standalone runtime lock, wait for phase, acquire the shared Loop A lock, then require the latest complete Loop A cycle and pass its finish time as `input_available_at`. `ml/prediction_runtime.py:189`, `ml/prediction_runtime.py:209`, `ml/prediction_runtime.py:218`
+1. **Confirmed:** acquire the standalone runtime lock, wait for phase, acquire the shared Loop A lock, then require the current Loop A cycle record to be `COMPLETE` and pass its finish time as `input_available_at`. `ml/prediction_runtime.py:189`, `ml/prediction_runtime.py:209`, `ml/prediction_runtime.py:218`
 2. **Confirmed:** materialize each symbol/horizon route at one input cutoff. Within the materializer, source/inventory caches are per invocation; it joins technical/fundamental/macro/signal/CME/option/Pricing families by point-in-time availability. `ml/rolling_materialization.py:128`, `ml/rolling_materialization.py:176`, `ml/rolling_materialization.py:614`, `ml/rolling_materialization.py:782`
 3. **Confirmed:** construct horizon targets according to explicit exchange-calendar rules: next 60 or 240 eligible one-minute records, next-session open/close, or remaining-week/component endpoints. A missing predetermined constituent makes the label incomplete; cost-adjusted return is positive only after one configured round trip. `ml/horizons.py:121`, `ml/horizons.py:171`, `ml/horizons.py:221`, `ml/horizons.py:240`, `ml/rolling_samples.py:266`
 4. **Confirmed:** require active feature-set contracts. If Pricing features are configured but fail coverage/freshness, quarantine that family and fit the implemented baseline feature set instead; shared-authority corruption is not treated as ordinary missingness. `ml/runtime_pipeline.py:424`, `ml/runtime_pipeline.py:432`, `ml/runtime_pipeline.py:455`, `ml/rolling_materialization.py:322`
@@ -66,7 +66,7 @@
 
 ### Timing and control relationships
 
-**Confirmed:** Loop B is phase +5 and waits on Loop A’s shared lock/complete cycle, not on CME, ALFRED’s daily scheduler, Pricing or Options. Its strict action deadline is a publication boundary independent of wall-clock phase. Options is phase +6, but no B → Options artifact exchange exists. `ml/prediction_runtime.py:78`, `ml/prediction_runtime.py:209`, `ml/runtime_pipeline.py:603`, `docs/datafetch-ml/current_start_command:112`
+**Confirmed:** Loop B is phase +5 and waits on Loop A’s shared lock/complete cycle, not on CME, ALFRED’s daily scheduler, Pricing or Options. Its strict action deadline is a publication boundary independent of wall-clock phase. Options is phase +6, but no B → Options artifact exchange exists. `ml/prediction_runtime.py:78`, `ml/prediction_runtime.py:209`, `ml/runtime_pipeline.py:603`, `docs/datafetch-ml/current_start_command:160`, `docs/datafetch-ml/current_start_command:188`
 
 ## Prediction contribution
 
@@ -80,6 +80,20 @@
 
 ## Failure and degradation behavior
 
+- `.duckets-ml-prediction-runtime.lock` rejects a second supervisor and has no
+  stale-PID recovery. The shared OS datastore-cycle lock prevents a complete B
+  read from overlapping Loop A mutation and releases when either process exits.
+- Missing, `WRITING`, or `FAILED` current Loop A cycle state aborts the attempt.
+  B does not silently fall back to `.ducketz-loop-a-complete.json`.
+- Structurally valid missing/stale optional feature values become audited null.
+  Pricing-family coverage/freshness failure selects the registered non-Pricing
+  baseline. Corrupt Pricing authority or invalid ALFRED readiness is a shared
+  contract failure and aborts the entire new publication.
+- The production default allows successful routes to publish when some routes
+  fail. An empty prediction set, `--require-all-routes`, missed action deadline,
+  receipt failure, or promotion failure leaves the prior `ml/latest/run.json`
+  authority in place.
+
 
 ## Accuracy and efficiency relevance
 
@@ -91,6 +105,26 @@
 
 ## Conflicts, gaps, and uncertainty
 
+- The executable lock filename is `.duckets-ml-prediction-runtime.lock`
+  (without the second `z`). This audit records the current contract and does not
+  rename it merely for spelling consistency.
+- `ml/latest/*.parquet` and
+  `ml-intelligence/latest/rolling-predictions.parquet` are compatibility mirrors;
+  only the immutable run receipt plus `ml/latest/run.json` selects authority.
+- Current route coverage, admitted feature family, model reuse and realized
+  metrics are manifest/evaluation facts, not guaranteed by the v3 command.
+
 
 ## Evidence index
 
+- `ml/prediction_runtime.py:189`
+- `ml/prediction_runtime.py:192`
+- `ml/prediction_runtime.py:209`
+- `ml/runtime_pipeline.py:432`
+- `ml/runtime_pipeline.py:603`
+- `ml/runtime_pipeline.py:654`
+- `ml/runtime_pipeline.py:859`
+- `ml/runtime_pipeline.py:943`
+- `datafetching/loop_a_cycle.py:136`
+- `tests/test_ml_prediction_runtime.py:100`
+- `tests/test_ml_runtime_pipeline.py:885`

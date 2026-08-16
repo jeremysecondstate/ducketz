@@ -40,8 +40,8 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 
 - **Status:** Confirmed.
 - **Type:** D + C + shared single-reader/writer lock.
-- **Exchange:** `.ducketz-loop-a-complete.json` and its `finished_at` causal cutoff; normalized equity bars/quotes, technicals, fundamentals, signals, current nonhistorical contexts, energy and SEC evidence.
-- **Availability:** Loop B acquires the shared datastore-cycle lock and requires a complete Loop A cycle; `input_available_at` is the complete cycle’s finish time.
+- **Exchange:** the current `.ducketz-loop-a-cycle.json` record and its `finished_at` causal cutoff; normalized equity bars/quotes, technicals, fundamentals, signals, current nonhistorical contexts, energy and SEC evidence. `.ducketz-loop-a-complete.json` is retained for independent readers such as Options, not substituted by B.
+- **Availability:** Loop B acquires the shared datastore-cycle lock and requires the current Loop A cycle to be `COMPLETE`; `input_available_at` is that cycle’s finish time. A newer `WRITING` or `FAILED` record aborts the B attempt even if a prior latest-complete record remains.
 - **Consumer behavior:** missing/noncomplete cycle fails cleanly; failed feature routes may be partial under the production default, while shared-authority corruption aborts the run.
 - **Producer evidence:** `datafetching/loop_a_cycle.py:127`, `datafetching/loop_a_cycle.py:198`, `datafetching/orchestrate.py:389`
 - **Consumer evidence:** `ml/prediction_runtime.py:209`, `ml/prediction_runtime.py:218`, `ml/rolling_materialization.py:272`
@@ -82,7 +82,7 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 - **Type:** M + H.
 - **Exchange:** current authoritative `samples.parquet` decision grid for `1d`, `1w`, and weekly component horizons. It determines the earliest required ALFRED observation/realtime bounds and readiness coverage checks.
 - **Availability:** a current verified Loop B publication with eligible decisions is required to derive backfill/incremental scope.
-- **Consumer behavior:** missing horizons/decisions fails plan derivation; the documented one-time backfill bootstraps the cycle before daily updates.
+- **Consumer behavior:** missing horizons/decisions fails plan derivation. A new datastore must first publish an authoritative base/earlier-profile Loop B sample grid; the documented one-time ALFRED backfill can then derive and authorize v3 macro coverage before daily updates begin.
 - **Producer evidence:** `ml/runtime_pipeline.py:695`, `ml/runtime_pipeline.py:794`
 - **Consumer evidence:** `datafetching/fred_alfred_readiness.py:400`, `datafetching/fred_alfred_readiness.py:405`, `datafetching/fred_alfred_readiness.py:420`, `docs/datafetch-ml/current_start_command:21`
 
@@ -132,7 +132,7 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 - **Type:** D + M + C.
 - **Exchange:** authoritative Loop B source record/receipt, redacted samples, LIVE calibrated directional probabilities, target windows, feature context and causal input cutoff.
 - **Availability:** Strategy reads one verified current pointer; predictions must match exactly one sample and precede entry.
-- **Consumer behavior:** no valid current Loop B run, samples, or predictions fails the Strategy cycle; unchanged Loop B plus unchanged option heads/pricing mode is skipped.
+- **Consumer behavior:** no valid current Loop B run, samples, or predictions fails the Strategy cycle. The current skip fingerprint compares the Loop B pointer, pricing mode, and per-symbol Schwab snapshot heads; OPRA historical-partition changes alone do not wake an otherwise unchanged supervisor cycle.
 - **Producer evidence:** `ml/runtime_pipeline.py:704`, `ml/runtime_pipeline.py:876`
 - **Consumer evidence:** `ml/strategy_runtime.py:74`, `ml/strategy_runtime.py:81`, `ml/strategy_runtime.py:125`, `ml/strategy_runtime.py:414`
 
@@ -162,7 +162,7 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 - **Type:** T.
 - **Exchange:** none. Startup says Options starts after Loop B’s +5 information clock; code schedules B at +5 and Options at +6, but Options never reads the Loop B pointer.
 - **Consumer behavior:** none; Options proceeds independently based on Loop A, Pricing barrier, pending state, and provider evidence.
-- **Evidence:** `docs/datafetch-ml/current_start_command:96`, `docs/datafetch-ml/current_start_command:151`, `datafetching/options_runtime.py:641`
+- **Evidence:** `docs/datafetch-ml/current_start_command:99`, `docs/datafetch-ml/current_start_command:160`, `docs/datafetch-ml/current_start_command:188`, `datafetching/options_runtime.py:700`, `datafetching/options_runtime.py:821`
 
 ## Owned-worker relationships
 
@@ -171,7 +171,8 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 ## OPRA boundaries that are not loop-to-loop relationships
 
 - **Confirmed prospective boundary:** `DatabentoOpraLiveAdapter` implements the injected `OptionMarketDataAdapter` protocol inside Options Capture. It owns one scoped, bounded/reconnecting `OPRA.PILLAR` definitions + `cbbo-1s` transport and no separate supervisor. The default production CLI constructs it before entering the recurring loop; missing configuration/startup fails clearly. At a target, only bounded transient unavailability may use labeled Schwab fallback; identity/integrity failures fail closed. `options/databento_live.py:33`, `options/databento_live.py:139`, `datafetching/options_runtime.py:369`, `datafetching/options_runtime.py:384`, `datafetching/options_runtime.py:408`, `datafetching/options_runtime.py:650`, `datafetching/options_runtime.py:706`, `datafetching/options_runtime.py:720`
-- **Confirmed historical boundary:** `datafetching.options_history` is the normal one-time per-parent bootstrap for every Standard schema. Options Capture runs at most one daily catch-up only for completed v4 cursors; a missing cursor is reported as bootstrap-required. `ml.option_pricing_opra` is the separate full-universe/custom-scope administrative synchronizer. Active Pricing and Strategy consume only verified local partitions and record consumer use; they do not fetch history. `datafetching/options_history.py`, `datafetching/options_runtime.py`, `datafetching/databento_opra_history.py`, `ml/option_pricing_opra.py`, `ml/option_pricing/opra_materialization.py`, `ml/strategy_selection/chain.py`
+- **Confirmed historical boundary:** `datafetching.options_history` is the normal one-time per-parent bootstrap for every Standard schema. The optional `datafetching.databento_cold_start` command can populate the same canonical OPRA partitions alongside isolated CME/US-equity archives; after each verified OPRA scope it publishes a v5 symbol/schema cursor containing the exact requested start, completion boundary, lookback policy, and bootstrap manifest. Options Capture runs at most one daily catch-up for valid cursors; legacy v4 is accepted only under its exact former schema policy, while current writes are v5. A missing/invalid cursor is reported as bootstrap-required. `ml.option_pricing_opra` is the separate full-universe/custom-scope administrative synchronizer. Active Pricing and Strategy consume only verified local partitions and record consumer use; they do not fetch history. `datafetching/options_history.py`, `datafetching/databento_cold_start.py:650`, `datafetching/options_runtime.py:1018`, `datafetching/options_runtime.py:1107`, `datafetching/databento_opra_history.py`, `ml/option_pricing_opra.py`, `ml/option_pricing/opra_materialization.py`, `ml/strategy_selection/chain.py`
+- **Confirmed cold-start ownership boundary:** the cold-start command holds `.ducketz-databento-cold-start.lock` and, for OPRA only, the canonical history `state/sync.lock`. It never takes the CME, Loop A, or Options snapshot-writer locks and never publishes Loop A readiness, option snapshots, ML/Strategy pointers, or model authority. Its CME and US-equity cursors are bootstrap progress state, not live-loop cursors. `datafetching/databento_cold_start.py:620`, `datafetching/databento_cold_start.py:665`, `tests/test_databento_cold_start.py`
 - **Confirmed model relationship, not process coordination:** the resulting residual architecture implements the reference `f(x)=BS(x)+delta(x)` pattern with six inputs, but uses a bounded Nyström/Bayesian-ridge posterior in production and retains an exact-GP SPY path only for research. `docs/edu/BLACK-SCHOLES-OP.md:327`, `docs/edu/BLACK-SCHOLES-OP.md:441`, `ml/option_pricing/model.py:68`, `ml/option_pricing/research_benchmark.py:34`
 
 ## Dependency matrix
@@ -192,7 +193,7 @@ Rows are producers; columns are consumers. Empty cells mean no direct exchange. 
 
 - **Confirmed fan-in — Active Pricing:** Loop A exact readiness, Daily ALFRED/current-FRED rates, earlier Options snapshots, and an optional prior owned-worker model. `ml/option_pricing_runtime.py:309`, `ml/option_pricing_runtime.py:1116`, `ml/option_pricing_runtime.py:1181`
 - **Confirmed fan-in — Directional Loop B:** complete Loop A authority plus Loop A feature files, CME context, ALFRED readiness/vintages, Options surfaces, and Pricing compact history. `ml/prediction_runtime.py:209`, `ml/rolling_materialization.py:614`, `ml/rolling_materialization.py:663`, `ml/rolling_materialization.py:740`, `ml/rolling_materialization.py:782`
-- **Confirmed fan-in — Strategy:** Loop B publication, OPRA-first provider-neutral option history with labeled Schwab fallback, stock BBO history, and the Pricing catalog. `ml/strategy_runtime.py`, `ml/strategy_selection/chain.py`, `ml/strategy_selection/runtime.py`
+- **Confirmed fan-in — Strategy:** Loop B publication, OPRA-first provider-neutral option history with labeled Schwab fallback, stock BBO history, and the Pricing catalog. The +10 supervisor skip check currently observes Schwab snapshot heads rather than canonical OPRA partition heads; a later Loop B/Schwab/pricing-mode change causes OPRA history to be reread. `ml/strategy_runtime.py`, `ml/strategy_selection/chain.py`, `ml/strategy_selection/runtime.py`
 - **Confirmed fan-out — Loop A:** exact readiness to Pricing/Options, complete-cycle/features to B, and stock BBO to Strategy. `datafetching/orchestrate.py:292`, `datafetching/loop_a_cycle.py:127`, `ml/strategy_selection/chain.py:151`
 - **Confirmed fan-out — Options Capture:** supplies future Pricing samples/evaluations, `opt__` features to B, and exact strategy chains/outcomes. `ml/option_pricing_runtime.py:660`, `ml/rolling_materialization.py:614`, `ml/strategy_selection/runtime.py:109`
 - **Confirmed fan-out — Active Pricing:** target barrier to Options, compact `opx__` features to B, and leg pricing to Strategy. `datafetching/pricing_barrier.py:100`, `ml/option_pricing/consumers.py:306`, `ml/option_pricing/strategy_shadow.py:74`

@@ -26,10 +26,16 @@ nonzero without deleting already verified partitions.
 | `status`, `statistics`, `trades`, `tcbbo`, `cbbo-1m`, `cbbo-1s` | 6 months | 3 days |
 
 The recurring `datafetching.options_runtime` runs catch-up at most once per UTC
-date. It advances only a verified v4 symbol/schema cursor and reports
+date. It advances only a verified v5 symbol/schema cursor and reports
 `bootstrap required` for a new or invalid cursor; it does not perform a large
 initial fetch. Overlap partitions are checksum-verified and naturally
 deduplicated before publication.
+
+The current `options-opra-symbol-history-v5` cursor records the exact
+`lookback_policy`, `requested_start`, and `completed_through`; a cold-start
+handoff also records its `bootstrap_manifest_id`. The reader accepts a legacy
+v4 cursor only when its policy exactly equals the former schema-specific
+bootstrap policy. Every new or advanced cursor is written as v5.
 
 ## Storage contract
 
@@ -79,3 +85,13 @@ An OPRA-enabled process, a configured provider name, an estimate, or an empty
 directory is not proof of historical acquisition. Require nonzero normalized
 Parquet rows, verified receipts/checksums, timestamp bounds, health counts, and
 consumer-usage records.
+
+## All-dataset cold-start alternative
+
+`datafetching.databento_cold_start` can populate the same canonical OPRA
+partitions while also building isolated CME and US-equity historical archives.
+It is a one-time maintenance/bootstrap command, not a recurring owner. After
+each verified OPRA scope it publishes the v5 symbol/schema history cursor so
+Options Capture can take over forward maintenance; it does not take the Options
+snapshot-writer lock or publish an option snapshot/pointer. See
+[Databento cold-start bootstrap](databento-cold-start.md).

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
@@ -239,6 +240,26 @@ def test_opra_cursor_handoff_keeps_history_lock_and_normalizes_calendar_month_po
     assert seen["lookback_policy"] == {"unit": "months", "value": 1}
     assert not (tmp_path / ".ducketz-options-writer.lock").exists()
     assert not (tmp_path / ".ducketz-cme-writer.lock").exists()
+
+
+def test_opra_cursor_handoff_publishes_current_v5_contract(tmp_path: Path) -> None:
+    path = cold_start.publish_opra_symbol_history_cursor(
+        tmp_path,
+        symbol="AAPL",
+        schema="trades",
+        requested_start="2026-07-15",
+        completed_through="2026-08-15",
+        lookback_policy={"unit": "months", "value": 1},
+        bootstrap_manifest_id="cold-start-manifest",
+    )
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == "options-opra-symbol-history-v5"
+    assert payload["provider_symbol"] == "AAPL.OPT"
+    assert payload["requested_start"] == "2026-07-15"
+    assert payload["completed_through"] == "2026-08-15"
+    assert payload["lookback_policy"] == {"unit": "months", "value": 1}
+    assert payload["bootstrap_manifest_id"] == "cold-start-manifest"
 
 
 def test_coordinator_preserves_loop_locks_and_publication_authority() -> None:

@@ -37,7 +37,7 @@
 | Input | Producer/source; concrete artifact and fields | Units | Event, receipt, availability, and freshness | Missing-value behavior | Training and live usage | Tests | Correction status |
 |---|---|---|---|---|---|---|---|
 | `S` | Loop A exact target readiness; per-symbol completed-bar `close`, bar timestamp/provider/timeframe, manifest/receipt and `ready_at` | USD per underlying share | The selected one-minute bar end/decision timestamp must equal the target; its stored bar timestamp must resolve exactly one row. Receipt/`ready_at` must precede construction and target age must remain inside 1,200 s | Missing/nonpositive/mismatched target close rejects that symbol/target; no option-chain underlying substitute | Same semantic column `underlying_price` scales the normalized residual in training and is the exact Loop A close in live inference | **Confirmed.** `tests/test_option_pricing_loop_native_bsgp.py:258`, `tests/test_option_pricing_loop_native_bsgp.py:430` | Already correct; preserved exact Loop A authority. `datafetching/decision_time.py:467`, `datafetching/decision_time.py:496`, `ml/option_pricing/causal.py:192`, `ml/option_pricing/causal.py:225`, `ml/option_pricing/causal.py:400` |
-| `K` plus contract semantics | Loop 4 committed `contracts.parquet`; effective OPRA definition fields `strike`, `call_put`, `expiration_date`, `multiplier`, `exercise_style`, `settlement_type`, `standard_contract`, `definition_effective_at`, `definition_activation_at`, CFI and definition clocks | USD per underlying share; multiplier shares; categorical contract semantics | Definition provider receipt/effective and contract-activation clocks must be no later than the market target; the definition event cannot follow provider receipt; local definition receipt must be no later than snapshot publication, and the committed source must be visible before prediction. Source quote must be fresh (≤1,200 s) and strictly pretarget; the later outcome must match the same semantic contract | Ambiguous/inactive/not-yet-active/nonstandard, wrong multiplier, unsupported style/settlement, changed semantics, or missing contract rejects the row | Definition columns determine call/put Black–Scholes and shape groups in both training and live rows; observed target price is never a feature | **Confirmed.** `tests/test_databento_opra_live.py:278`, `tests/test_option_pricing_opra.py:493`, `tests/test_option_pricing_core.py:198` | Corrected: live definitions now use provider-receipt selection, activation eligibility, separate local availability, and validated CFI semantics; ambiguous contracts fail closed. `options/databento_live.py:413`, `options/snapshot.py:297`, `ml/option_pricing/opra.py:1510` |
+| `K` plus contract semantics | Loop 4 committed `contracts.parquet`; effective OPRA definition fields `strike`, `call_put`, `expiration_date`, `multiplier`, `exercise_style`, `settlement_type`, `standard_contract`, `definition_effective_at`, `definition_activation_at`, CFI and definition clocks | USD per underlying share; multiplier shares; categorical contract semantics | Definition provider receipt/effective and contract-activation clocks must be no later than the market target; the definition event cannot follow provider receipt; local definition receipt must be no later than snapshot publication, and the committed source must be visible before prediction. Source quote must be fresh (≤1,200 s) and strictly pretarget; the later outcome must match the same semantic contract | Ambiguous/inactive/not-yet-active/nonstandard, wrong multiplier, unsupported style/settlement, changed semantics, or missing contract rejects the row | Definition columns determine call/put Black–Scholes and shape groups in both training and live rows; observed target price is never a feature | **Confirmed.** `tests/test_databento_opra_live.py:278`, `tests/test_databento_opra_live.py:318`, `tests/test_option_pricing_core.py:198` | Corrected: live definitions now use provider-receipt selection, activation eligibility, separate local availability, and validated CFI semantics; ambiguous contracts fail closed. `options/databento_live.py:333`, `options/databento_live.py:425`, `options/snapshot.py:297` |
 | `r` | Daily ALFRED/current FRED rate receipt; `risk_free_rate`, source/event/receipt/`available_at` and policy identity | Decimal continuously compounded annual rate | Observation availability must be strictly before the source/decision boundary; maturity resolution is target-to-expiration causal | Missing or invalid live FRED/ALFRED evidence yields `RATE_UNAVAILABLE`; provider and FMP-curve substitution are disabled live | Same `risk_free_rate` feature enters Black–Scholes and the residual design matrix for training/live inference | **Confirmed.** `tests/test_option_pricing_loop_native_bsgp.py:474`, `tests/test_option_pricing_loop_native_bsgp.py:499` | Corrected: live path now requires FRED/ALFRED rather than preferring FMP/provider rate fields. `ml/option_pricing/causal.py:264`, `ml/option_pricing/causal.py:450`, `ml/option_pricing/policies.py:10` |
 | `σ` | Earlier committed OPRA-preferred/Schwab-fallback surface; source bid/ask, source underlying, source definition, source quote/snapshot/receipt clocks; field `lagged_implied_volatility` | Decimal annualized volatility | Source snapshot and quote are strictly earlier than target and receipt-visible; interpolation stays inside earlier strike/tenor support with ≤1,200 s source staleness | Failed IV solve or interpolation/extrapolation need yields `VOLATILITY_UNAVAILABLE` | Earlier-price IV is used in training and live inference; target/later option price is used only as an outcome after prediction publication | **Confirmed.** `tests/test_option_pricing_core.py:178`, `tests/test_option_pricing_loop_native_bsgp.py:235`, `tests/test_option_pricing_loop_native_bsgp.py:250` | Already correct; later-cycle outcome reconciliation was completed without weakening the no-same-target-price rule. `ml/option_pricing/causal.py:524`, `ml/option_pricing/causal.py:542`, `ml/option_pricing/causal.py:963` |
 | `t` | Derived locally from target plus effective definition `expiration_date`; field `target_years_to_expiration` | ACT/365 calendar years | Target is the event boundary; expiry maps date precision to 16:00 America/New_York with DST; calculation occurs at prediction creation/availability | Nonpositive, <7-day, >120-day, or invalid expiry rejects the row | Same deterministic transformation is stored and used for training/live inference | **Confirmed.** `tests/test_option_pricing_core.py:121` | Already correct. `ml/option_pricing/black_scholes.py:187`, `ml/option_pricing/black_scholes.py:201`, `ml/option_pricing/policies.py:63` |
@@ -79,7 +79,7 @@
 
 ### Timing and control relationships
 
-**Confirmed:** intended order is Loop A +00:20, Pricing +1 minute, B +5, Options +6, Strategy +10. Pricing waits only for Loop A; its separate target outcome gives Options causal barrier credit. The worker and research tail are deliberately off the target-authority critical path. `docs/datafetch-ml/current_start_command:55`, `docs/datafetch-ml/current_start_command:88`, `ml/option_pricing_runtime.py:360`, `ml/option_pricing_loop_native_worker.py:141`
+**Confirmed:** intended order is Loop A +00:20, Pricing +1 minute, B +5, Options +6, Strategy +10. Pricing waits only for Loop A; its separate target outcome gives Options causal barrier credit. The worker and research tail are deliberately off the target-authority critical path. `docs/datafetch-ml/current_start_command:50`, `docs/datafetch-ml/current_start_command:94`, `ml/option_pricing_runtime.py:360`, `ml/option_pricing_loop_native_worker.py:141`
 
 ## Prediction contribution
 
@@ -93,12 +93,63 @@
 
 ## Failure and degradation behavior
 
+- `.ducketz-option-pricing-runtime.lock` rejects a second owner and can reclaim
+  one dead recorded PID. The child’s separate lock prevents duplicate local
+  materialization/training without granting it target-publication authority.
+- Missing exact Loop A readiness remains retryable until one monotonic deadline.
+  Expiry returns a write-free skipped result and leaves both current Pricing
+  pointers unchanged; no empty readiness or completion evidence is created.
+- Older missed boundaries outside the recoverable causal window receive an
+  explicit target outcome such as `PRICING_TIMED_OUT`. The newest still-causal
+  boundary is retried rather than prematurely marked missed.
+- Per-symbol source/input failure can produce a verified mixed terminal target
+  while successful symbols publish. Receipt/schema/pointer verification failure
+  prevents authority from advancing.
+- Once the fast target is published, later reconciliation, monitoring, full
+  generation, or owned-worker failure cannot retract it. The prior full
+  generation pointer remains authoritative when a replacement fails.
+- Missing/stale/out-of-support residual models retain the constrained
+  Black–Scholes point value and publish an explicit wider sidecar fallback; no
+  fitted uncertainty or residual lift is fabricated.
+
 
 ## Accuracy and efficiency relevance
+
+- Exact target readiness, earlier-chain selection, causal rates/dividends and
+  post-prediction outcome clocks protect against same-target and lookahead
+  leakage.
+- The fast baseline is deliberately on the critical path; local OPRA-first
+  materialization/model work is a nonblocking one-shot child with zero provider
+  requests and a refresh guard.
+- Chronological train/calibration/assessment partitions, a closed lockbox,
+  interval coverage and Black–Scholes comparisons are the relevant accuracy
+  evidence. The model’s presence alone does not prove lift.
 
 
 ## Conflicts, gaps, and uncertainty
 
+- Historical `BSGP` names are compatibility terminology. The production model
+  is the bounded 128-component Nyström/Bayesian-ridge residual, while exact GP
+  work is SPY research-only.
+- The baseline file and one-to-one residual sidecar intentionally have different
+  authority roles. Combining them in prose must not imply that the worker can
+  rewrite the fast target or authorize actions.
+- Current model readiness, OPRA/Schwab population, route support and empirical
+  performance are external datastore facts and remain unknown without current
+  receipts and reports.
+
 
 ## Evidence index
 
+- `ml/option_pricing_runtime.py:360`
+- `ml/option_pricing_runtime.py:418`
+- `ml/option_pricing_runtime.py:1062`
+- `ml/option_pricing_runtime.py:1116`
+- `ml/option_pricing_runtime.py:1220`
+- `ml/option_pricing_runtime.py:1305`
+- `ml/option_pricing_runtime.py:1563`
+- `ml/option_pricing_runtime.py:1680`
+- `ml/option_pricing/target_outcome.py:192`
+- `ml/option_pricing_loop_native_worker.py:126`
+- `tests/test_pricing_options_sequencing.py:129`
+- `tests/test_pricing_options_sequencing.py:256`

@@ -40,4 +40,18 @@ This is the implemented `BLACK-SCHOLES-OP` relationship: the reference's `f(x)=B
 
 ## Interpretation limits
 
+- `Direct` and `Indirect` classify implemented authority/data paths, not causal
+  effect size. A loop can qualify as `Both` even when its current evidence is
+  stale, gated out, or empirically unhelpful.
+- No documentation statement proves current provider entitlement, datastore
+  population, route coverage, model admission, calibration, profitability, or
+  realized lift. Those require current receipts, health/consumer-usage records,
+  manifests, and chronological evaluation outputs.
+- Compatibility mirrors and legacy readers do not create another prediction
+  owner. Authority remains the verified pointers named above.
+- Historical bootstrap commands, including the all-dataset Databento cold
+  start, establish input evidence only. They do not publish a prediction and do
+  not qualify as an eighth loop.
+- `None` means no executable path into that prediction family was found in the
+  repository. Untracked external automation remains outside this audit.
 

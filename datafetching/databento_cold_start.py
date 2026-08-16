@@ -4,7 +4,10 @@ This command is deliberately separate from the seven production supervisors.
 It writes only historical bootstrap evidence: OPRA uses the existing canonical
 OPRA partition contract, while CME and US-equity data live under a distinct
 ``market-data/databento-cold-start`` archive.  It never writes Loop A readiness,
-runtime cursors, live snapshots, or any ML publication pointer.
+live snapshots, or any ML publication pointer.  After a checksum-verified OPRA
+scope completes, it writes the v5 symbol/schema history cursor that hands later
+overlap maintenance to the independent Options runtime; that cursor is not
+snapshot or live-publication authority.
 """
 
 from __future__ import annotations

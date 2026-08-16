@@ -7,7 +7,7 @@
 - Runtime entry point: `python -m ml.strategy_runtime`
 - Owning package: `ml.strategy_selection`
 - Classification: Independent production loop
-- Scheduling mechanism: recurring supervisor that reacts to the current verified Loop B and option-snapshot heads
+- Scheduling mechanism: recurring supervisor that reacts to the current verified Loop B, pricing mode, and per-symbol Schwab option-snapshot heads
 - Cadence and phase: every 15 minutes at UTC phase +10 minutes
 - Lock or single-writer mechanism: `.ducketz-strategy-runtime.lock`
 - Primary code evidence: **Confirmed.** `ml/strategy_runtime.py:316`, `ml/strategy_runtime.py:327`, `ml/strategy_runtime.py:358`, `ml/strategy_runtime.py:361`
@@ -38,7 +38,7 @@
 5. **Confirmed:** for each canonical LIVE forecast, select one exact entry chain before target start, construct policy-allowed spread candidates, attach Loop B context and active Pricing evidence, infer market state using calibrated `probability_up`, and form a scenario prior. `ml/strategy_selection/runtime.py:225`, `ml/strategy_selection/runtime.py:240`, `ml/strategy_selection/runtime.py:267`, `ml/strategy_selection/runtime.py:296`
 6. **Confirmed:** when a model and eligible active Pricing exist, output calibrated profitable-outcome probability and bounded expected return/profit. Ineligible/no-model rows retain an explicit Pricing-scenario score basis; mixing is reranked deterministically. `ml/strategy_selection/runtime.py:306`, `ml/strategy_selection/runtime.py:311`, `ml/strategy_selection/model.py:442`, `ml/strategy_selection/model.py:466`
 7. **Confirmed:** validate probability bounds, score-basis/pricing-source coherence, one decision per route, unique candidate keys and complete ranks; then write candidate/audit/report/model files, manifest lineage, receipt and atomic current pointer. `ml/strategy_runtime.py:478`, `ml/strategy_runtime.py:527`, `ml/strategy_runtime.py:598`, `ml/strategy_runtime.py:217`, `ml/strategy_runtime.py:253`
-8. **Confirmed:** the supervisor skips work only when the Loop B pointer, pricing mode and option-snapshot heads are unchanged. Historical outcome caching is an owned, process-memory LRU keyed by immutable evidence, not another loop. `ml/strategy_runtime.py:414`, `ml/strategy_selection/runtime.py:520`, `ml/strategy_selection/runtime.py:607`
+8. **Confirmed:** the supervisor skips work only when the Loop B pointer, pricing mode and per-symbol Schwab option-snapshot heads are unchanged. The helper calls the snapshot-pointer path with its default `provider="schwab"`; OPRA historical-partition changes alone are not a wake key. Historical outcome caching is an owned, process-memory LRU keyed by immutable evidence, not another loop. `ml/strategy_runtime.py:283`, `ml/strategy_runtime.py:414`, `options/publication.py:75`, `ml/strategy_selection/runtime.py:520`, `ml/strategy_selection/runtime.py:607`
 
 ## Outputs
 
@@ -64,7 +64,7 @@
 
 ### Timing and control relationships
 
-**Confirmed:** Strategy’s +10 phase follows Loop B +5 and Options +6, but it does not wait on a named Options barrier; it reads the current verified Loop B and the option heads available by its own creation clock. If neither changes, it skips. `docs/datafetch-ml/current_start_command:139`, `docs/datafetch-ml/current_start_command:150`, `ml/strategy_runtime.py:120`, `ml/strategy_runtime.py:414`
+**Confirmed:** Strategy’s +10 phase follows Loop B +5 and Options +6, but it does not wait on a named Options barrier; it reads the current verified Loop B and evidence available by its own creation clock. Its unchanged-work test uses the Loop B pointer, pricing mode, and Schwab snapshot heads. `ml/strategy_runtime.py:120`, `ml/strategy_runtime.py:283`, `ml/strategy_runtime.py:414`
 
 ## Prediction contribution
 
@@ -78,12 +78,60 @@
 
 ## Failure and degradation behavior
 
+- `.ducketz-strategy-runtime.lock` rejects a second owner and may reclaim one
+  dead recorded PID. A cycle failure is caught by the supervisor; no incomplete
+  run is promoted and the prior Strategy pointer remains current.
+- Missing/corrupt Loop B authority or absent source samples/predictions fails the
+  cycle. Missing entry/exit chain or stock evidence is route-audited and skips
+  affected constructions/outcomes rather than synthesizing them.
+- Missing full active Pricing coverage or a compatible fitted model keeps an
+  explicit `PRICING_SCENARIO_FALLBACK` score. It never fills calibrated fitted
+  probabilities with the fallback prior.
+- Receipt, schema, rank/coherence, or source-lineage validation failure prevents
+  `ml/strategy-latest/run.json` from advancing.
+
 
 ## Accuracy and efficiency relevance
+
+- Exact causal entry/exit receipts, point-in-time definitions, Loop B target
+  clocks and pre-score Pricing attachment prevent future-chain and pricing
+  leakage.
+- Decision-cluster chronological partitions keep training, calibration and
+  assessment separate; real lockbox targets are excluded from fitting and
+  runtime evaluation.
+- Compatible model reuse and the in-process immutable-evidence LRU reduce repeat
+  work. Their existence does not prove profitability or calibration quality;
+  use current model/evaluation reports.
 
 
 ## Conflicts, gaps, and uncertainty
 
+- Strategy selection is OPRA-first, but the supervisor’s unchanged-work
+  fingerprint observes only the default Schwab snapshot heads. A pure OPRA
+  historical update will be reread only after Loop B, pricing mode, or a Schwab
+  head changes. This is documented as current behavior, not silently broadened
+  in this documentation audit.
+- The manifest checksums every `selection.source_files` input, but the separately
+  summarized `option_snapshot_receipts` lineage field filters specifically for
+  `options/snapshots/schwab`. The full manifest remains the broader input
+  authority.
+- No downstream production loop consumes Strategy output; the located consumer
+  is the read-only Options Strategy UI. Current candidate coverage and empirical
+  performance remain datastore facts.
+
 
 ## Evidence index
 
+- `ml/strategy_runtime.py:74`
+- `ml/strategy_runtime.py:120`
+- `ml/strategy_runtime.py:203`
+- `ml/strategy_runtime.py:217`
+- `ml/strategy_runtime.py:283`
+- `ml/strategy_runtime.py:358`
+- `ml/strategy_runtime.py:361`
+- `ml/strategy_runtime.py:414`
+- `ml/strategy_publication.py:40`
+- `ml/strategy_selection/runtime.py:240`
+- `options/publication.py:75`
+- `tests/test_ml_runtime_pipeline.py:454`
+- `tests/test_ml_runtime_pipeline.py:606`

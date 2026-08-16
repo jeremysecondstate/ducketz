@@ -71,9 +71,10 @@ Provider-native identifiers, UUIDs, and hashes are preserved in raw
 provider-shaped data without a source allowlist. They remain provider values,
 not the Duckets `id`. Calculated and normalized outputs do not carry them.
 
-See
-[`docs/datafetch-ml/parquet-id-contract.md`](../docs/datafetch-ml/parquet-id-contract.md)
-for the repository-wide rule.
+The executable repository-wide rules are enforced by
+[`datafetching/parquet_store.py`](parquet_store.py) for ingestion outputs and
+[`ml/parquet_contracts.py`](../ml/parquet_contracts.py) for model-facing
+schemas.
 
 ## Canonical Parquet datasets
 
@@ -211,7 +212,8 @@ CME stores exact nanosecond provider events in bounded partitions and advances
 the successful `queried_through` endpoint even when a range is quiet. Options
 publishes raw, normalized, and quality files through one checksum-verified
 receipt. Full operating instructions are in
-[`independent-runtime-orchestration.md`](../docs/datafetch-ml/independent-runtime-orchestration.md).
+the [authoritative startup commands](../docs/datafetch-ml/current_start_command)
+and the [Loops system analysis](../docs/loops-system-analysis/README.md).
 
 ## Macro authorities and freshness
 

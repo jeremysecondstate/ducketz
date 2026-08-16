@@ -16,7 +16,7 @@
 
 **Confirmed:** this loop incrementally maintains the historical point-in-time macro authority needed by Directional Loop B and Pricing. It fetches exact ALFRED realtime/vintage intervals for four series, seals provider evidence, persists immutable vintage identities and derived macro release context, proves causal coverage against the current Loop B decision grid, and publishes separate readiness and daily-completion pointers. `datafetching/fred_alfred_runtime.py:69`, `datafetching/fred_vintage_import.py:147`, `datafetching/fred_alfred_readiness.py:185`
 
-**Confirmed non-ownership:** it is not part of Loop A’s 15-minute cycle and does not publish directional, option-price, or strategy predictions. `docs/datafetch-ml/current_start_command:61`
+**Confirmed non-ownership:** it is not part of Loop A’s 15-minute cycle and does not publish directional, option-price, or strategy predictions. `docs/datafetch-ml/current_start_command:64`, `docs/datafetch-ml/current_start_command:67`
 
 ## Inputs
 
@@ -79,6 +79,20 @@ The importer’s pagination is internal. The one-time `ml.option_pricing_fred --
 
 ## Failure and degradation behavior
 
+- Missing `FRED_API_KEY`, a conflicting
+  `.ducketz-fred-alfred-import.lock`, provider/import failure, or readiness
+  verification failure makes the daily attempt fail without advancing its
+  verified receipt/readiness pointers.
+- The lock is shared with `ml.option_pricing_fred --backfill` and can reclaim a
+  dead recorded PID once. This prevents daily maintenance and the one-time
+  backfill from writing the same vintage authority concurrently.
+- Incremental planning requires all four series, the authoritative Loop B
+  decision grid, and a bounded overlap. A gap outside that safe overlap fails
+  closed and requires the complete backfill rather than widening history
+  silently.
+- The supervisor runs immediately at process start, then at most once per UTC
+  date. Repeated same-day wakeups do not manufacture another daily authority.
+
 
 ## Accuracy and efficiency relevance
 
@@ -89,6 +103,14 @@ The importer’s pagination is internal. The one-time `ml.option_pricing_fred --
 - Storage I/O: yearly immutable feature partitions and stable-identity replay suppression. `datafetching/fred_vintages.py:383`, `datafetching/fred_vintages.py:707`
 
 ## Conflicts, gaps, and uncertainty
+
+- The one-time ALFRED backfill cannot bootstrap from an empty datastore because
+  its request/readiness bounds come from an existing authoritative Loop B
+  `samples.parquet`. A base/earlier-profile Loop B generation is therefore an
+  explicit setup prerequisite before the v3 macro profile starts.
+- Repository code establishes the four-series contract and readiness checks,
+  but not current API entitlement, actual datastore coverage, or current
+  ≥95% readiness. Those remain receipt/health facts.
 
 
 ## Evidence index

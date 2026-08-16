@@ -14,7 +14,7 @@
 
 ## Purpose
 
-**Confirmed:** this loop independently acquires high-frequency continuous-futures evidence, preserves event history and successful query positions, publishes a causally bounded current L2 snapshot, and derives hourly cross-asset features for Directional Loop B. It exists outside Loop A so CME cadence, high-volume MBP recovery, and writer ownership do not delay the equity/provider cycle. `datafetching/cme_runtime.py:98`, `datafetching/cme_runtime.py:171`, `datafetching/cme_runtime.py:192`, `docs/datafetch-ml/current_start_command:39`
+**Confirmed:** this loop independently acquires high-frequency continuous-futures evidence, preserves event history and successful query positions, publishes a causally bounded current L2 snapshot, and derives hourly cross-asset features for Directional Loop B. It exists outside Loop A so CME cadence, high-volume MBP recovery, and writer ownership do not delay the equity/provider cycle. `datafetching/cme_runtime.py:98`, `datafetching/cme_runtime.py:171`, `datafetching/cme_runtime.py:192`, `docs/datafetch-ml/current_start_command:42`
 
 **Confirmed non-ownership:** it does not fetch equity Loop A data, build horizon targets, fit models, publish option valuations, capture equity option chains, or publish strategy ranks.
 
@@ -47,7 +47,7 @@ No additional owned worker exists. Query splitting is an internal queue, not a p
 | Raw and normalized CME event history | This loop’s derivations; possible read-only/research consumers | `pools/cme/events/databento/.../events.parquet` | OHLCV/BBO/MBP records; provider event/receive and local receipt clocks; normalized IDs | Bounded immutable/idempotent partitions; saturated parent request is never published as complete | **Confirmed.** `datafetching/cme_history.py:173`, `datafetching/cme_runtime.py:492`, `datafetching/cme_runtime.py:508` |
 | Per-schema successful cursor | This loop | `pools/cme/runtime/cursors/*.json` | queried-through boundary, last event, success time and row count | Atomic JSON; only after the schema’s exact ranges succeed | **Confirmed.** `datafetching/cme_history.py:131`, `datafetching/cme_history.py:162`, `datafetching/cme_runtime.py:535` |
 | Hourly cross-asset context | Directional Loop B; indirectly Strategy | `pools/cme/features/cross-asset-context/databento/1h.parquet` | NQ/ES/gold/crude returns; small-cap and tech breadth; relative spread; book imbalance; completeness/staleness and availability | Immutable natural key `(context_name, window_end, calculation_version)`; only complete causal windows | **Confirmed.** `datafetching/cme_cross_asset_context.py:24`, `datafetching/cme_cross_asset_context.py:181`, `datafetching/cme_cross_asset_context.py:221`, `datafetching/cme_cross_asset_context.py:277` |
-| Five-minute L2 snapshot, manifest, receipt and pointer | No production-loop consumer located; supporting/current-state artifact | `pools/cme/snapshots/l2/databento/5m/<target_ns>/` plus current pointer | latest causal book/BBO rows; event/receipt ages; `FRESH`/`STALE`; cursor lineage | Immutable target directory and checksum receipt, then atomic pointer; exact existing target is reused | **Confirmed.** `datafetching/cme_history.py:295`, `datafetching/cme_history.py:306`, `datafetching/cme_history.py:418`, `datafetching/cme_history.py:437` |
+| Five-minute L2 snapshot, manifest, receipt and pointer | No production-loop consumer located; supporting/current-state artifact | `pools/cme/snapshots/l2/databento/5m/<target_ns>/`; pointer `pools/cme/snapshots/l2/databento/5m/latest.json` | latest causal book/BBO rows; event/receipt ages; `FRESH`/`STALE`; cursor lineage | Immutable target directory and checksum receipt, then atomic pointer; exact existing target is reused | **Confirmed.** `datafetching/cme_history.py:295`, `datafetching/cme_history.py:306`, `datafetching/cme_history.py:418`, `datafetching/cme_history.py:437` |
 | Failure records | Operators/diagnostics | datastore error authority | group/schema or derived-stage error and time | Failure is recorded per schema/stage; successful lanes continue | **Confirmed.** `datafetching/cme_runtime.py:168`, `datafetching/cme_runtime.py:189` |
 
 ## Direct loop relationships
@@ -76,16 +76,46 @@ No additional owned worker exists. Query splitting is an internal queue, not a p
 
 ## Failure and degradation behavior
 
+- A second owner is rejected by `.ducketz-cme-writer.lock`; the shared helper
+  may reclaim the lock once only when its recorded PID is dead.
+- A provider or persistence failure is recorded per group/schema. Other due
+  schemas can continue, but the failed schema cursor does not advance until all
+  exact chunks for that query range verify.
+- Saturated multi-symbol requests are split rather than published as complete.
+  Derived hourly-context or L2 failure leaves the prior verified artifact and
+  pointer authoritative.
+- Missing/stale MBP/BBO evidence produces explicit quality/staleness state; it
+  is never restamped to make a causal window fresh.
 
 
 ## Accuracy and efficiency relevance
 
+- Exact query cursors, adaptive natural keys, event/receipt clocks and common
+  completed windows prevent duplicate or future CME evidence from entering
+  Loop B.
+- The production `--max-concurrency 1` command bounds provider pressure;
+  schema-specific 5/15/60-second phases keep high-frequency work independent of
+  Loop A.
+- Empirical directional lift is not established by code presence; current
+  `cme__` coverage, quality and model reports remain operational evidence.
 
 
 ## Conflicts, gaps, and uncertainty
 
+- No executable production consumer of the five-minute L2 `latest.json` pointer
+  was found. It is intentionally retained because the CME owner still publishes
+  and verifies it; this audit does not treat it as Loop A readiness or delete it.
+- CME dataset/symbol scope is externally configured. Repository defaults and
+  code establish validation/ownership, not current entitlement or population.
 
 
 ## Evidence index
 
-
+- `datafetching/cme_runtime.py:37`
+- `datafetching/cme_runtime.py:355`
+- `datafetching/cme_runtime.py:382`
+- `datafetching/cme_runtime.py:535`
+- `datafetching/cme_history.py:131`
+- `datafetching/cme_history.py:295`
+- `datafetching/cme_cross_asset_context.py:181`
+- `ml/rolling_materialization.py:782`

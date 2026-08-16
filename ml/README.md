@@ -43,7 +43,7 @@ removes the lock.
 Useful runtime choices are:
 
 ```text
---feature-profile loop-a-all-v1|production-v1|technical-all-v2
+--feature-profile loop-a-all-v1|production-v1|technical-all-v2|loop-a-all-bsgp-shadow-v1|loop-a-all-bsgp-active-v3
 --model-family logistic|lightgbm|xgboost
 --calibration none|platt|isotonic
 --balanced-class-weight
@@ -55,8 +55,9 @@ Useful runtime choices are:
 ```
 
 Strategy selection is not a Loop B stage. `ml.strategy_runtime` consumes an
-already-published authoritative Loop B run, exact committed Schwab receipts,
-and stock BBO evidence, then publishes a separate immutable Strategy run. It
+already-published authoritative Loop B run, OPRA-first point-in-time option
+history with verified Schwab snapshot fallback, stock BBO evidence, and active
+Pricing evidence, then publishes a separate immutable Strategy run. It
 can lag or retry without delaying directional predictions and never mutates the
 source Loop B directory:
 
@@ -64,8 +65,8 @@ source Loop B directory:
 python -m ml.strategy_runtime --datastore C:\data\duckets --once
 ```
 
-See [options-strategy selection](../docs/datafetch-ml/options-strategy-selection.md)
-and [independent runtime orchestration](../docs/datafetch-ml/independent-runtime-orchestration.md).
+See the [Strategy runtime audit](../docs/loops-system-analysis/loops/strategy-runtime.md)
+and [Loops relationship map](../docs/loops-system-analysis/LOOP_RELATIONSHIPS.md).
 
 For `4h`, the closed profile routes resolve to `technical-all-4h`,
 `technical-all-v2-4h`, and `loop-a-all-v1-4h`. The default set is an exact
@@ -248,9 +249,9 @@ The files contain readable columns such as `model_name`, `horizon`,
 `evaluation_status`, and `schema_version`. They do not contain model,
 feature-set, target, policy, route, publication, receipt, or lineage IDs.
 
-See
-[`docs/datafetch-ml/parquet-id-contract.md`](../docs/datafetch-ml/parquet-id-contract.md)
-for exact schema examples and enforcement.
+Exact schema examples and enforcement live in
+[`ml/parquet_contracts.py`](parquet_contracts.py) and the corresponding
+publication/runtime tests.
 
 ## Timestamped artifacts
 
@@ -401,8 +402,8 @@ remaining session close as their deadline; later components use their own
 session closes.
 
 The UI follows the authoritative pointer; it does not discover a run by
-directory recency. See
-[`docs/datafetch-ml/rolling_forecast_ui.md`](../docs/datafetch-ml/rolling_forecast_ui.md).
+directory recency. See the
+[system functionality audit](../docs/loops-system-analysis/SYSTEM_FUNCTIONALITY.md).
 
 A successful publication contains one route for every requested internal
 symbol/horizon. With `GOOG`, `MU`, and `NVDA` and public selections `1h 4h 1d
@@ -415,8 +416,8 @@ deployed or observed; deployment and supervisor restart remain operator actions.
 
 ## Focused documentation
 
-- [Loop B runtime](../docs/datafetch-ml/ml_prediction_runtime.md)
-- [Rolling horizon and timing rules](../docs/datafetch-ml/rolling_forecasts.md)
-- [Two-loop orchestration map](../docs/datafetch-ml/duckets_datafetching_ml_orchestration_map.md)
-- [Parquet ID contract](../docs/datafetch-ml/parquet-id-contract.md)
-- [Options-strategy selection](../docs/datafetch-ml/options-strategy-selection.md)
+- [Directional Loop B runtime](../docs/loops-system-analysis/loops/directional-loop-b.md)
+- [Production loop map and timing](../docs/loops-system-analysis/LOOP_MAP.md)
+- [Loop relationship catalog](../docs/loops-system-analysis/LOOP_RELATIONSHIPS.md)
+- [System functionality and publication contracts](../docs/loops-system-analysis/SYSTEM_FUNCTIONALITY.md)
+- [Strategy runtime](../docs/loops-system-analysis/loops/strategy-runtime.md)

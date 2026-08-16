@@ -211,6 +211,18 @@ Dense `cmbp-1` and `cbbo-1s` days are split into deterministic intraday
 partitions so every normalized Parquet remains inside the exact duplicate-check
 bound. The command is idempotent and resumes from checksum-verified partitions.
 
+Verified completion publishes an `options-opra-symbol-history-v5` cursor with
+the exact lookback policy, requested start, and completed-through boundary. The
+reader retains narrow v4 compatibility only when the old cursor’s policy exactly
+matches the former schema-specific bootstrap policy; all new writes are v5.
+
+The optional one-shot `datafetching.databento_cold_start` command can populate
+the same canonical OPRA partitions while creating separate CME/US-equity cold
+archives. It uses the OPRA history sync lock and writes the same v5 cursor
+handoff after verification, but it never takes the Options snapshot-writer lock
+or publishes a snapshot/readiness/model pointer. It is maintenance, not an
+eighth production loop.
+
 Options Capture does not perform a missing-symbol bootstrap. Once a bootstrap
 cursor exists, its owned daily maintenance uses frequency-specific overlaps:
 1 day for `ohlcv-1s`, 2 days for `ohlcv-1m`, 5 days for `ohlcv-1h`, and 10 days
