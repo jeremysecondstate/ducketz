@@ -132,10 +132,12 @@ archive does not request or claim that separate summary product.
 ## Safe commands
 
 Use one fixed date for a preflight/execution/resume sequence. Omitting `--as-of`
-during preflight or execution selects the latest exclusive date bound common to
-every required provider schema, so weekend and holiday starts do not request a
-future historical boundary. An explicit unavailable date still fails closed.
-These commands make no provider data download until the last one.
+during preflight selects the latest exclusive date bound common to every
+required provider schema, so weekend and holiday starts do not request a future
+historical boundary. Execution requires the same explicit date so it can select
+the saved receipts without repeating provider metadata calls. An explicit
+unavailable date still fails closed. These commands make no provider data
+download until the last one.
 
 ```powershell
 $BootstrapAsOf = '2026-08-15'
@@ -184,13 +186,46 @@ python -m datafetching.databento_cold_start `
   --confirm-download
 ```
 
-Execution re-runs metadata/capacity preflight immediately before fetching.
-Rerun the identical command after a failure; verified partitions are checked
-and skipped, while only incomplete scopes resume. A missing credential,
-schema, CME scope, entitlement match, capacity check, ambiguous expansion, or
-receipt verification stops execution before unsafe publication. Storage
-capacity, including the reserve and expansion allowance above, is the relevant
-normal-bootstrap constraint.
+Execution checksum-verifies and reuses the saved manifest and preflight. It does
+not repeat Databento catalog, record-count, or estimated-size calls. Current
+free disk space is rechecked locally before any download. Use
+`--refresh-preflight` with `--execute` only when intentionally replacing the
+saved receipt after the requested scope has changed. Rerun the identical normal
+execution command after a failure; verified partitions are checked and skipped,
+while only incomplete scopes resume. A missing credential, schema, CME scope,
+entitlement match, capacity check, ambiguous expansion, or receipt verification
+stops execution before unsafe publication. Storage capacity, including the
+reserve and expansion allowance above, is the relevant normal-bootstrap
+constraint.
+
+Generic CME and US-equity downloads use up to ten retries after the initial
+provider call for transient stream or network failures (for example a
+prematurely ended response, connection reset/timeout, or HTTP 502/503/504).
+Exponential backoff is capped at 30 seconds per retry and at three minutes in
+total, excluding time spent inside the provider calls themselves. Each call
+writes to a new readable `attempt-NNN` directory. Failed and interrupted
+attempts remain beneath `market-data\databento\.staging` for inspection; they
+are never overwritten or treated as complete. Authentication, entitlement,
+invalid schema/symbol, and other non-transient provider failures are not
+retried.
+
+Before making another provider request, resume checks retained staging for the
+same exact manifest request. A staging attempt is published only after its
+request identity, manifest/receipt relationship, raw and normalized checksums,
+Parquet timestamps, and row count all verify. Incomplete or corrupt attempts
+remain staged. The Databento DBN source handle is explicitly released before a
+Windows directory rename, before retrying, and while propagating an interrupt.
+Any execution error other than an already-supported no-data result is recorded
+and stops the coordinator immediately, so a publication or provider outage does
+not trigger the remaining manifest downloads. `Ctrl+C` is not converted into an
+ordinary request failure; the runtime lock unwinds and the current staging
+attempt remains resumable.
+
+Databento `BentoWarning` messages about reduced-quality days are provider data
+quality metadata, not transport or publication failures and not a quality
+guarantee. They remain visible in command output. Warnings observed on a
+successfully published generic request are also copied into that partition's
+`manifest.json` under `provider_warnings` for later audit.
 
 ## Ownership boundary after execution
 

@@ -14,6 +14,7 @@ snapshot or live-publication authority.
 from __future__ import annotations
 
 import argparse
+import gc
 import hashlib
 import json
 import os
@@ -21,6 +22,7 @@ import re
 import shutil
 import sys
 import time
+import warnings
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -29,6 +31,8 @@ from typing import Any, Callable, Iterable, Mapping, Sequence
 import pandas as pd
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
+from requests import exceptions as requests_exceptions
+from urllib3 import exceptions as urllib3_exceptions
 
 from datafetching.cme_runtime import load_repository_environment
 from datafetching.databento_history_policy import (
@@ -68,6 +72,9 @@ PROGRESS_VERSION = "databento-cold-start-progress-v1"
 STORAGE_RESERVE_BYTES = 5 * 1024**3
 STORAGE_EXPANSION_FACTOR = 2
 METADATA_MAX_ATTEMPTS = 3
+GENERIC_DOWNLOAD_MAX_RETRIES = 10
+GENERIC_DOWNLOAD_RETRY_WINDOW_SECONDS = 3 * 60
+GENERIC_DOWNLOAD_MAX_BACKOFF_SECONDS = 30
 DEFAULT_WATCHLIST = Path(__file__).resolve().parent / "watchlist.txt"
 DEFAULT_EQUITIES_DATASET = "XNAS.ITCH"
 COLD_START_EQUITIES_DATASET_ENV = "DATABENTO_COLD_START_EQUITIES_DATASET"
@@ -126,6 +133,14 @@ _SYMBOL_RE = re.compile(r"^[A-Z][A-Z0-9._-]*$")
 
 class ColdStartError(RuntimeError):
     """A cold-start safety contract was not satisfied."""
+
+
+class ColdStartInfrastructureError(ColdStartError):
+    """A systemic execution failure requires the coordinator to stop."""
+
+
+class ColdStartPublicationError(ColdStartInfrastructureError):
+    """A verified staging partition could not be published atomically."""
 
 
 @dataclass(frozen=True)
@@ -672,6 +687,271 @@ def write_preflight(datastore_root: Path, preflight: Mapping[str, object]) -> Pa
     return path
 
 
+def _read_json_object(path: Path, *, label: str) -> dict[str, object]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise ColdStartError(
+            f"Existing {label} was not found: {path}. Run --preflight first."
+        ) from exc
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ColdStartError(f"Existing {label} is unreadable: {path}") from exc
+    if not isinstance(payload, dict):
+        raise ColdStartError(f"Existing {label} is not a JSON object: {path}")
+    return payload
+
+
+def _validate_manifest_checksum(manifest: Mapping[str, object]) -> None:
+    supplied_checksum = str(manifest.get("semantic_checksum_sha256", ""))
+    body = {
+        key: value
+        for key, value in manifest.items()
+        if key not in {"manifest_id", "semantic_checksum_sha256"}
+    }
+    expected_checksum = _checksum(body)
+    if supplied_checksum != expected_checksum:
+        raise ColdStartError("Existing cold-start manifest checksum verification failed")
+    if str(manifest.get("manifest_id", "")) != expected_checksum[:24]:
+        raise ColdStartError("Existing cold-start manifest identity verification failed")
+
+
+def _request_configuration(
+    *,
+    equities_symbols: Sequence[str],
+    cme_dataset: str,
+    cme_scopes: Sequence[CmeScope],
+    equities_dataset: str,
+) -> set[tuple[str, str, str, tuple[str, ...], str]]:
+    expected: set[tuple[str, str, str, tuple[str, ...], str]] = set()
+    for schema in OPRA_SCHEMAS:
+        for symbol in opra_parent_symbols(equities_symbols):
+            expected.add(
+                (OPRA_DATASET, PLAN_DATASET_OPRA, schema, (symbol,), "parent")
+            )
+    for schema in CME_SCHEMAS:
+        for scope in cme_scopes:
+            expected.add(
+                (
+                    cme_dataset,
+                    PLAN_DATASET_CME,
+                    schema,
+                    (scope.symbol,),
+                    scope.stype_in,
+                )
+            )
+    for schema in US_EQUITIES_SCHEMAS:
+        for symbol in equities_symbols:
+            expected.add(
+                (
+                    equities_dataset,
+                    PLAN_DATASET_US_EQUITIES,
+                    schema,
+                    (symbol,),
+                    "raw_symbol",
+                )
+            )
+    return expected
+
+
+def _validate_execution_request_identity(
+    datastore_root: Path,
+    request: Mapping[str, object],
+) -> None:
+    identity_keys = (
+        "dataset",
+        "standard_plan_dataset",
+        "schema",
+        "symbol_scope",
+        "stype_in",
+        "start",
+        "end",
+        "storage_contract",
+        "window",
+        "fetch_mode",
+        "baseline_start",
+        "previous_completed_through",
+    )
+    identity = {key: request.get(key) for key in identity_keys}
+    if request.get("request_id") != _checksum(identity)[:24]:
+        raise ColdStartError("Existing cold-start manifest request identity is invalid")
+
+    role = str(request.get("standard_plan_dataset", ""))
+    contract = str(request.get("storage_contract", ""))
+    expected_contract = (
+        "canonical-opra" if role == PLAN_DATASET_OPRA else "isolated-cold-start"
+    )
+    if contract != expected_contract:
+        raise ColdStartError("Existing cold-start manifest has the wrong storage contract")
+    symbols = request.get("symbol_scope")
+    if not isinstance(symbols, list) or len(symbols) != 1:
+        raise ColdStartError("Existing cold-start manifest request symbol scope is invalid")
+    expected_path = _entry_storage_path(
+        datastore_root,
+        dataset=str(request.get("dataset", "")),
+        market=_market_for_plan_dataset(role),
+        schema=str(request.get("schema", "")),
+        symbol=str(symbols[0]),
+        start=_as_date(request.get("start")),
+        end=_as_date(request.get("end")),
+        contract=contract,
+    ).resolve()
+    if Path(str(request.get("storage_path", ""))).resolve() != expected_path:
+        raise ColdStartError("Existing cold-start manifest request storage path is invalid")
+
+
+def load_execution_manifest(
+    datastore_root: Path,
+    *,
+    as_of: date,
+    equities_symbols: Sequence[str],
+    cme_dataset: str,
+    cme_scopes: Sequence[CmeScope],
+    equities_dataset: str,
+) -> tuple[dict[str, object], Path]:
+    """Load and verify the immutable manifest selected for execution."""
+
+    path = coordinator_run_directory(
+        datastore_root,
+        as_of=as_of.isoformat(),
+    ) / "manifest.json"
+    manifest = _read_json_object(path, label="cold-start manifest")
+    _validate_manifest_checksum(manifest)
+    if manifest.get("schema_version") != MANIFEST_VERSION:
+        raise ColdStartError("Existing cold-start manifest has an unsupported version")
+    if manifest.get("coordinator_version") != COORDINATOR_VERSION:
+        raise ColdStartError("Existing cold-start manifest belongs to another coordinator version")
+    if manifest.get("history_profile") != HISTORY_PROFILE:
+        raise ColdStartError("Existing cold-start manifest has the wrong history profile")
+    if manifest.get("as_of") != as_of.isoformat():
+        raise ColdStartError("Existing cold-start manifest has the wrong as-of date")
+    if Path(str(manifest.get("datastore_root", ""))).resolve() != Path(
+        datastore_root
+    ).resolve():
+        raise ColdStartError("Existing cold-start manifest belongs to another datastore")
+    if manifest.get("derived_views") != []:
+        raise ColdStartError("Existing cold-start manifest unexpectedly contains derived views")
+    _validate_manifest_included_scope(manifest)
+
+    requests = manifest.get("requests")
+    if not isinstance(requests, list):
+        raise ColdStartError("Existing cold-start manifest has no request list")
+    actual: set[tuple[str, str, str, tuple[str, ...], str]] = set()
+    for request in requests:
+        if not isinstance(request, Mapping):
+            raise ColdStartError("Existing cold-start manifest request is malformed")
+        _validate_execution_request_identity(datastore_root, request)
+        symbol_scope = request.get("symbol_scope")
+        if not isinstance(symbol_scope, list):
+            raise ColdStartError("Existing cold-start manifest symbol scope is malformed")
+        actual.add(
+            (
+                str(request.get("dataset", "")),
+                str(request.get("standard_plan_dataset", "")),
+                str(request.get("schema", "")),
+                tuple(str(symbol) for symbol in symbol_scope),
+                str(request.get("stype_in", "")),
+            )
+        )
+    expected = _request_configuration(
+        equities_symbols=equities_symbols,
+        cme_dataset=cme_dataset,
+        cme_scopes=cme_scopes,
+        equities_dataset=equities_dataset,
+    )
+    if len(actual) != len(requests) or actual != expected:
+        raise ColdStartError(
+            "Existing cold-start manifest does not match the requested watchlist, "
+            "datasets, or CME scope; run --preflight for the changed scope"
+        )
+    return manifest, path
+
+
+def load_execution_preflight(
+    datastore_root: Path,
+    *,
+    manifest: Mapping[str, object],
+    disk_usage: Callable[[str | Path], Any] = shutil.disk_usage,
+) -> tuple[dict[str, object], Path]:
+    """Verify a saved provider preflight and refresh only local free-space state."""
+
+    path = coordinator_run_directory(
+        datastore_root,
+        as_of=str(manifest["as_of"]),
+    ) / "preflight.json"
+    payload = _read_json_object(path, label="cold-start preflight")
+    supplied_checksum = str(payload.get("semantic_checksum_sha256", ""))
+    checksum_body = {
+        key: value
+        for key, value in payload.items()
+        if key != "semantic_checksum_sha256"
+    }
+    if supplied_checksum != _checksum(checksum_body):
+        raise ColdStartError("Existing cold-start preflight checksum verification failed")
+    if payload.get("schema_version") != PREFLIGHT_VERSION:
+        raise ColdStartError("Existing cold-start preflight has an unsupported version")
+    if payload.get("manifest_id") != manifest.get("manifest_id"):
+        raise ColdStartError("Existing preflight does not belong to the selected manifest")
+    if payload.get("as_of") != manifest.get("as_of"):
+        raise ColdStartError("Existing preflight has the wrong as-of date")
+    if payload.get("history_profile") != HISTORY_PROFILE:
+        raise ColdStartError("Existing preflight has the wrong history profile")
+
+    requests = manifest.get("requests")
+    estimates = payload.get("estimates")
+    if not isinstance(requests, list) or not isinstance(estimates, list):
+        raise ColdStartError("Existing preflight has no complete estimate list")
+    requests_by_id = {
+        str(request["request_id"]): request
+        for request in requests
+        if isinstance(request, Mapping)
+    }
+    estimates_by_id: dict[str, Mapping[str, object]] = {}
+    total_size = 0
+    total_records = 0
+    for estimate in estimates:
+        if not isinstance(estimate, Mapping):
+            raise ColdStartError("Existing preflight estimate is malformed")
+        request_id = str(estimate.get("request_id", ""))
+        request = requests_by_id.get(request_id)
+        if request is None or request_id in estimates_by_id:
+            raise ColdStartError("Existing preflight estimate coverage is invalid")
+        for key in ("dataset", "schema", "symbol_scope", "start", "end"):
+            if estimate.get(key) != request.get(key):
+                raise ColdStartError(
+                    f"Existing preflight estimate does not match request {request_id}"
+                )
+        try:
+            size = int(estimate["estimated_download_size_bytes"])
+            records = int(estimate["record_count"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ColdStartError("Existing preflight estimate totals are malformed") from exc
+        if size < 0 or records < 0:
+            raise ColdStartError("Existing preflight contains a negative provider estimate")
+        estimates_by_id[request_id] = estimate
+        total_size += size
+        total_records += records
+    if set(estimates_by_id) != set(requests_by_id):
+        raise ColdStartError("Existing preflight is incomplete for the selected manifest")
+    if int(payload.get("total_estimated_download_size_bytes", -1)) != total_size:
+        raise ColdStartError("Existing preflight download-size total is inconsistent")
+    if int(payload.get("total_record_count", -1)) != total_records:
+        raise ColdStartError("Existing preflight record-count total is inconsistent")
+    if payload.get("storage_reserve_bytes") != STORAGE_RESERVE_BYTES:
+        raise ColdStartError("Existing preflight has the wrong storage reserve")
+    if payload.get("storage_expansion_factor") != STORAGE_EXPANSION_FACTOR:
+        raise ColdStartError("Existing preflight has the wrong storage expansion factor")
+    required = required_free_bytes(total_size)
+    if int(payload.get("required_free_bytes", -1)) != required:
+        raise ColdStartError("Existing preflight required-capacity total is inconsistent")
+
+    usage = disk_usage(Path(datastore_root).resolve().anchor)
+    current = dict(payload)
+    current["available_free_bytes"] = int(usage.free)
+    current["capacity_pass"] = int(usage.free) >= required
+    current["shortfall_bytes"] = max(required - int(usage.free), 0)
+    return current, path
+
+
 def execute_manifest(
     client: object,
     *,
@@ -723,11 +1003,24 @@ def execute_manifest(
                 status = "VERIFIED_EXISTING"
                 counts["verified"] += 1
             elif raw["storage_contract"] == "canonical-opra":
-                _execute_opra_entry(client, datastore_root=datastore_root, request=raw, manifest_id=str(manifest["manifest_id"]), reporter=reporter)
+                _execute_opra_entry(
+                    client,
+                    datastore_root=datastore_root,
+                    request=raw,
+                    manifest_id=str(manifest["manifest_id"]),
+                    reporter=reporter,
+                    preflight_estimate=estimate,
+                    available_free_bytes=int(preflight["available_free_bytes"]),
+                )
                 status = "PUBLISHED"
                 counts["downloaded"] += 1
             else:
-                _download_generic_entry(client, datastore_root=datastore_root, request=raw)
+                _download_generic_entry(
+                    client,
+                    datastore_root=datastore_root,
+                    request=raw,
+                    reporter=reporter,
+                )
                 status = "PUBLISHED"
                 counts["downloaded"] += 1
             _update_progress(progress, raw, status=status, details={"preflight": estimate})
@@ -751,10 +1044,12 @@ def execute_manifest(
             counts["failed"] += 1
             if reporter:
                 reporter(f"FAILED {raw['dataset']}/{raw['schema']}/{raw['symbol_scope'][0]}: {exc}")
-    if counts["failed"]:
-        raise ColdStartError(
-            f"Cold-start incomplete: {counts['failed']} request(s) failed; rerun the same manifest to resume"
-        )
+            raise ColdStartInfrastructureError(
+                "Cold-start stopped after the first failed request; verified progress "
+                "was recorded and the same manifest can be resumed: "
+                f"{raw['dataset']}/{raw['schema']}/{raw['symbol_scope'][0]}: "
+                f"{type(exc).__name__}: {exc}"
+            ) from exc
     return counts
 
 
@@ -768,7 +1063,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--dry-run", action="store_true", help="Print the deterministic request plan without credentials or network access.")
     mode.add_argument("--preflight", action="store_true", help="Fetch only provider metadata, write the manifest/preflight receipt, and check disk capacity.")
-    mode.add_argument("--execute", action="store_true", help="Re-preflight, then download and publish verified historical partitions.")
+    mode.add_argument("--execute", action="store_true", help="Reuse a verified preflight receipt, then download and publish historical partitions.")
+    parser.add_argument(
+        "--refresh-preflight",
+        action="store_true",
+        help="With --execute, explicitly replace the saved receipt using fresh provider metadata.",
+    )
     parser.add_argument(
         "--confirm-download",
         action="store_true",
@@ -795,6 +1095,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("--confirm-download is only valid with --execute")
     if args.execute and not args.confirm_download:
         parser.error("--execute requires --confirm-download; no downloads were started")
+    if args.refresh_preflight and not args.execute:
+        parser.error("--refresh-preflight is only valid with --execute")
 
     try:
         load_repository_environment()
@@ -829,25 +1131,68 @@ def main(argv: Sequence[str] | None = None) -> int:
         import databento as db
 
         client = db.Historical(api_key)
-        catalogs = {
-            OPRA_DATASET: discover_dataset_catalog(client, dataset=OPRA_DATASET, required_schemas=OPRA_SCHEMAS),
-            cme_dataset: discover_dataset_catalog(client, dataset=cme_dataset, required_schemas=CME_SCHEMAS),
-            equities_dataset: discover_dataset_catalog(client, dataset=equities_dataset, required_schemas=US_EQUITIES_SCHEMAS),
-        }
-        as_of = args.as_of or latest_common_available_date(catalogs)
-        manifest = build_manifest(
-            datastore_root=root,
-            equities_symbols=equities,
-            cme_dataset=cme_dataset,
-            cme_scopes=cme_scopes,
-            equities_dataset=equities_dataset,
-            as_of=as_of,
-            catalogs=catalogs,
-        )
         with exclusive_runtime_lock(
             Path(root).resolve() / ".ducketz-databento-cold-start.lock",
             process_name="Duckets Databento cold-start coordinator",
         ):
+            if args.execute and not args.refresh_preflight:
+                if args.as_of is None:
+                    raise ColdStartError(
+                        "--execute requires the same explicit --as-of date used by "
+                        "--preflight so its saved receipts can be selected without "
+                        "provider metadata calls"
+                    )
+                manifest, manifest_path = load_execution_manifest(
+                    root,
+                    as_of=args.as_of,
+                    equities_symbols=equities,
+                    cme_dataset=cme_dataset,
+                    cme_scopes=cme_scopes,
+                    equities_dataset=equities_dataset,
+                )
+                preflight, preflight_path = load_execution_preflight(
+                    root,
+                    manifest=manifest,
+                )
+                print(
+                    "Using checksum-verified saved preflight; provider estimate "
+                    "calls were skipped. Current free disk space was rechecked locally."
+                )
+                _print_preflight(
+                    manifest,
+                    preflight,
+                    manifest_path=manifest_path,
+                    preflight_path=preflight_path,
+                )
+                if not bool(preflight["capacity_pass"]):
+                    return 2
+                counts = execute_manifest(
+                    client,
+                    datastore_root=root,
+                    manifest=manifest,
+                    preflight=preflight,
+                )
+                print(
+                    "Cold-start completed: "
+                    + "; ".join(f"{key}={value}" for key, value in counts.items())
+                )
+                return 0
+
+            catalogs = {
+                OPRA_DATASET: discover_dataset_catalog(client, dataset=OPRA_DATASET, required_schemas=OPRA_SCHEMAS),
+                cme_dataset: discover_dataset_catalog(client, dataset=cme_dataset, required_schemas=CME_SCHEMAS),
+                equities_dataset: discover_dataset_catalog(client, dataset=equities_dataset, required_schemas=US_EQUITIES_SCHEMAS),
+            }
+            as_of = args.as_of or latest_common_available_date(catalogs)
+            manifest = build_manifest(
+                datastore_root=root,
+                equities_symbols=equities,
+                cme_dataset=cme_dataset,
+                cme_scopes=cme_scopes,
+                equities_dataset=equities_dataset,
+                as_of=as_of,
+                catalogs=catalogs,
+            )
             manifest_path = write_manifest(root, manifest)
             preflight = preflight_manifest(client, datastore_root=root, manifest=manifest)
             preflight_path = write_preflight(root, preflight)
@@ -874,6 +1219,8 @@ def _execute_opra_entry(
     request: Mapping[str, object],
     manifest_id: str,
     reporter: Callable[[str], None] | None,
+    preflight_estimate: Mapping[str, object] | None = None,
+    available_free_bytes: int | None = None,
 ) -> None:
     schema = str(request["schema"])
     symbol = str(request["symbol_scope"][0])
@@ -893,6 +1240,40 @@ def _execute_opra_entry(
         canonical_opra_root(datastore_root) / "state" / "sync.lock",
         process_name="Duckets cold-start OPRA history synchronizer",
     ):
+        storage_preflight_receipt: Mapping[str, object] | None = None
+        if preflight_estimate is not None and available_free_bytes is not None:
+            estimated_size = int(preflight_estimate["estimated_download_size_bytes"])
+            record_count = int(preflight_estimate["record_count"])
+            required = required_free_bytes(estimated_size)
+            storage_preflight_receipt = {
+                "schema_version": "databento-opra-storage-preflight-v2",
+                "provider": "databento-opra",
+                "dataset": OPRA_DATASET,
+                "scope": {
+                    "schemas": [schema],
+                    "symbols": [symbol],
+                    "start": str(request["start"]),
+                    "end": str(request["end"]),
+                },
+                "estimates": {
+                    schema: {
+                        "start": str(request["start"]),
+                        "end": str(request["end"]),
+                        "symbols": [symbol],
+                        "estimated_download_size_bytes": estimated_size,
+                        "record_count": record_count,
+                    }
+                },
+                "estimated_download_size_bytes": estimated_size,
+                "record_count": record_count,
+                "storage_expansion_factor": float(STORAGE_EXPANSION_FACTOR),
+                "storage_reserve_bytes": STORAGE_RESERVE_BYTES,
+                "required_free_bytes": required,
+                "available_free_bytes": available_free_bytes,
+                "capacity_pass": available_free_bytes >= required,
+                "shortfall_bytes": max(required - available_free_bytes, 0),
+                "source": "checksum-verified cold-start coordinator preflight",
+            }
         result = synchronize_opra(
             client,
             datastore_root=datastore_root,
@@ -904,6 +1285,8 @@ def _execute_opra_entry(
                 symbols=(symbol,),
             ),
             reporter=reporter,
+            storage_preflight_receipt=storage_preflight_receipt,
+            fail_fast=True,
         )
         if result.errors or result.completed_rows < 1:
             raise ColdStartError(
@@ -925,22 +1308,116 @@ def _execute_opra_entry(
         )
 
 
-def _download_generic_entry(client: object, *, datastore_root: Path, request: Mapping[str, object]) -> None:
-    destination = Path(str(request["storage_path"]))
+def _download_generic_entry(
+    client: object,
+    *,
+    datastore_root: Path,
+    request: Mapping[str, object],
+    reporter: Callable[[str], None] | None = print,
+    _retry_sleeper: Callable[[float], None] = time.sleep,
+) -> None:
+    destination, staging_base = _generic_entry_paths(datastore_root, request)
     if destination.exists():
         _verify_generic_partition(destination, request)
         return
-    destination_relative = destination.relative_to(cold_start_root(datastore_root))
-    staging = _next_attempt_directory(
-        cold_start_root(datastore_root) / ".staging" / destination_relative
-    )
-    staging.mkdir(parents=True, exist_ok=False)
+    if _publish_recoverable_generic_staging(
+        staging_base,
+        destination=destination,
+        request=request,
+    ):
+        return
+    last_error: Exception | None = None
+    retry_wait_seconds = 0.0
+    maximum_attempts = GENERIC_DOWNLOAD_MAX_RETRIES + 1
+    for provider_attempt in range(1, maximum_attempts + 1):
+        staging = _next_attempt_directory(staging_base)
+        staging.mkdir(parents=True, exist_ok=False)
+        try:
+            _download_generic_attempt(
+                client,
+                staging=staging,
+                destination=destination,
+                request=request,
+            )
+            return
+        except Exception as exc:
+            # Failed staging is retained for operator inspection and never
+            # becomes consumer authority. KeyboardInterrupt is a BaseException
+            # and deliberately bypasses this retry boundary.
+            last_error = exc
+            if not _transient_download_error(exc):
+                raise
+            if provider_attempt >= maximum_attempts:
+                break
+            remaining_retry_window = (
+                float(GENERIC_DOWNLOAD_RETRY_WINDOW_SECONDS) - retry_wait_seconds
+            )
+            if remaining_retry_window <= 0:
+                break
+            delay = min(
+                float(2 ** (provider_attempt - 1)),
+                float(GENERIC_DOWNLOAD_MAX_BACKOFF_SECONDS),
+                remaining_retry_window,
+            )
+            if reporter:
+                reporter(
+                    "RETRYING_TRANSIENT "
+                    f"{request['dataset']}/{request['schema']}/"
+                    f"{request['symbol_scope'][0]} retry "
+                    f"{provider_attempt}/{GENERIC_DOWNLOAD_MAX_RETRIES} after "
+                    f"provider attempt {provider_attempt}/{maximum_attempts}; "
+                    f"backoff={delay:g}s: "
+                    f"{type(exc).__name__}: {exc}"
+                )
+            _retry_sleeper(delay)
+            retry_wait_seconds += delay
+    assert last_error is not None
+    raise ColdStartInfrastructureError(
+        "Databento generic download exhausted transient retries after "
+        f"{provider_attempt} provider attempts and {retry_wait_seconds:g}s "
+        "of backoff: "
+        f"{type(last_error).__name__}: {last_error}"
+    ) from last_error
+
+
+def _download_generic_attempt(
+    client: object,
+    *,
+    staging: Path,
+    destination: Path,
+    request: Mapping[str, object],
+) -> None:
+    """Download, verify, and publish one provider attempt."""
+
     raw_path = staging / "provider.dbn.zst"
     parquet_path = staging / "normalized.parquet"
     kwargs = _request_kwargs(request)
     kwargs["path"] = raw_path
+    provider_warnings: list[dict[str, str]] = []
+    store: object | None = None
+    original_showwarning = warnings.showwarning
+
+    def record_and_show_warning(
+        message: Warning | str,
+        category: type[Warning],
+        filename: str,
+        lineno: int,
+        file: Any = None,
+        line: str | None = None,
+    ) -> None:
+        provider_warnings.append(
+            {
+                "category": f"{category.__module__}.{category.__name__}",
+                "message": str(message),
+            }
+        )
+        original_showwarning(message, category, filename, lineno, file=file, line=line)
+
     try:
-        store = getattr(client, "timeseries").get_range(**kwargs)
+        with warnings.catch_warnings():
+            warnings.simplefilter("always")
+            warnings.showwarning = record_and_show_warning
+            store = getattr(client, "timeseries").get_range(**kwargs)
         if not raw_path.is_file() or raw_path.stat().st_size == 0:
             raise ColdStartError("Databento did not produce a provider-native DBN file")
         if store is None:
@@ -948,47 +1425,194 @@ def _download_generic_entry(client: object, *, datastore_root: Path, request: Ma
 
             store = db.DBNStore.from_file(raw_path)
         store.to_parquet(parquet_path, map_symbols=True)
-        if not parquet_path.is_file():
-            raise ColdStartError("Databento DBN normalization produced no Parquet")
-        validation = _validate_generic_parquet(parquet_path, request)
-        manifest = {
-            "schema_version": PARTITION_VERSION,
-            "coordinator_version": COORDINATOR_VERSION,
-            "request": dict(request),
-            "published_at": _utc_now().isoformat(),
-            "raw": {
-                "path": raw_path.name,
-                "size_bytes": raw_path.stat().st_size,
-                "checksum_sha256": file_checksum(raw_path),
-            },
-            "normalized": {
-                "path": parquet_path.name,
-                "size_bytes": parquet_path.stat().st_size,
-                "checksum_sha256": file_checksum(parquet_path),
-                **validation,
-            },
-        }
-        manifest_path = staging / "manifest.json"
-        _write_json_exclusive(manifest_path, manifest)
-        receipt = {
-            "schema_version": RECEIPT_VERSION,
-            "request_id": request["request_id"],
-            "manifest_checksum_sha256": file_checksum(manifest_path),
-            "raw_checksum_sha256": manifest["raw"]["checksum_sha256"],
-            "normalized_checksum_sha256": manifest["normalized"]["checksum_sha256"],
-            "published_at": manifest["published_at"],
-        }
-        _write_json_exclusive(staging / "receipt.json", receipt)
+    finally:
+        # DBNStore retains its source file handle on Windows. This runs before
+        # every publication, retry, error propagation, and KeyboardInterrupt.
+        store = None
+        gc.collect()
+
+    if not parquet_path.is_file():
+        raise ColdStartError("Databento DBN normalization produced no Parquet")
+    validation = _validate_generic_parquet(parquet_path, request)
+    manifest = {
+        "schema_version": PARTITION_VERSION,
+        "coordinator_version": COORDINATOR_VERSION,
+        "request": dict(request),
+        "published_at": _utc_now().isoformat(),
+        "provider_warnings": provider_warnings,
+        "raw": {
+            "path": raw_path.name,
+            "size_bytes": raw_path.stat().st_size,
+            "checksum_sha256": file_checksum(raw_path),
+        },
+        "normalized": {
+            "path": parquet_path.name,
+            "size_bytes": parquet_path.stat().st_size,
+            "checksum_sha256": file_checksum(parquet_path),
+            **validation,
+        },
+    }
+    manifest_path = staging / "manifest.json"
+    _write_json_exclusive(manifest_path, manifest)
+    receipt = {
+        "schema_version": RECEIPT_VERSION,
+        "request_id": request["request_id"],
+        "manifest_checksum_sha256": file_checksum(manifest_path),
+        "raw_checksum_sha256": manifest["raw"]["checksum_sha256"],
+        "normalized_checksum_sha256": manifest["normalized"]["checksum_sha256"],
+        "published_at": manifest["published_at"],
+    }
+    _write_json_exclusive(staging / "receipt.json", receipt)
+    _verify_generic_partition(staging, request)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        _verify_generic_partition(destination, request)
+        return
+    try:
+        staging.replace(destination)
+    except OSError as exc:
+        raise ColdStartPublicationError(
+            f"Verified staging could not be published: {staging} -> {destination}: {exc}"
+        ) from exc
+    _verify_generic_partition(destination, request)
+
+
+def _generic_entry_paths(
+    datastore_root: Path,
+    request: Mapping[str, object],
+) -> tuple[Path, Path]:
+    """Resolve final/staging paths and reject any path outside Databento storage."""
+
+    root = cold_start_root(datastore_root).resolve()
+    destination = Path(str(request["storage_path"])).resolve()
+    try:
+        destination_relative = destination.relative_to(root)
+    except ValueError as exc:
+        raise ColdStartError(
+            f"Cold-start destination escapes the Databento root: {destination}"
+        ) from exc
+    staging_root = (root / ".staging").resolve()
+    staging_base = (staging_root / destination_relative).resolve()
+    try:
+        staging_base.relative_to(staging_root)
+    except ValueError as exc:  # pragma: no cover - defensive against path semantics
+        raise ColdStartError(
+            f"Cold-start staging path escapes the Databento staging root: {staging_base}"
+        ) from exc
+    return destination, staging_base
+
+
+def _publish_recoverable_generic_staging(
+    staging_base: Path,
+    *,
+    destination: Path,
+    request: Mapping[str, object],
+) -> bool:
+    """Publish a complete retained attempt before requesting the data again."""
+
+    if not staging_base.is_dir():
+        return False
+    resolved_base = staging_base.resolve()
+    for candidate in sorted(staging_base.glob("attempt-*")):
+        if not candidate.is_dir():
+            continue
+        resolved_candidate = candidate.resolve()
+        try:
+            resolved_candidate.relative_to(resolved_base)
+        except ValueError as exc:
+            raise ColdStartError(
+                f"Retained staging attempt escapes its request root: {candidate}"
+            ) from exc
+        try:
+            _verify_generic_partition(resolved_candidate, request)
+        except ColdStartError:
+            continue
+        # Verification reads Parquet and checksums before publication. Ensure
+        # all transient reader objects are finalized before the Windows rename.
+        gc.collect()
         destination.parent.mkdir(parents=True, exist_ok=True)
         if destination.exists():
             _verify_generic_partition(destination, request)
-            return
-        staging.replace(destination)
+            return True
+        try:
+            resolved_candidate.replace(destination)
+        except OSError as exc:
+            raise ColdStartPublicationError(
+                "Verified retained staging could not be published: "
+                f"{resolved_candidate} -> {destination}: {exc}"
+            ) from exc
         _verify_generic_partition(destination, request)
-    except Exception:
-        # Failed staging is retained for operator inspection and never becomes
-        # consumer authority.
-        raise
+        return True
+    return False
+
+
+def _transient_download_error(exc: Exception) -> bool:
+    """Return true only for bounded-retry transport and streaming failures."""
+
+    chain: list[BaseException] = []
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        chain.append(current)
+        current = current.__cause__ or current.__context__
+
+    for error in chain:
+        status = _exception_http_status(error)
+        if status is not None:
+            # A concrete response status takes precedence over message text so
+            # authentication, entitlement, schema, and symbol 4xx failures are
+            # never accidentally retried. 408 and 429 are explicitly transient.
+            return status in {408, 429} or 500 <= status <= 599
+
+    transient_types = (
+        TimeoutError,
+        ConnectionResetError,
+        ConnectionAbortedError,
+        BrokenPipeError,
+        requests_exceptions.Timeout,
+        requests_exceptions.ConnectionError,
+        requests_exceptions.ChunkedEncodingError,
+        requests_exceptions.ContentDecodingError,
+        urllib3_exceptions.ProtocolError,
+        urllib3_exceptions.TimeoutError,
+        urllib3_exceptions.IncompleteRead,
+        urllib3_exceptions.NewConnectionError,
+        urllib3_exceptions.MaxRetryError,
+    )
+    if any(isinstance(error, transient_types) for error in chain):
+        return True
+
+    message = " | ".join(str(error) for error in chain).casefold()
+    return any(
+        marker in message
+        for marker in (
+            "response ended prematurely",
+            "connection reset",
+            "connection aborted",
+            "connection broken",
+            "remote end closed",
+            "incomplete read",
+            "unexpected end of file",
+            "read timed out",
+            "connect timeout",
+            "connection timed out",
+            "temporary failure in name resolution",
+            "service unavailable",
+            "bad gateway",
+            "gateway timeout",
+        )
+    )
+
+
+def _exception_http_status(exc: BaseException) -> int | None:
+    for attribute in ("http_status", "status_code", "status"):
+        value = getattr(exc, attribute, None)
+        if isinstance(value, int):
+            return value
+    response = getattr(exc, "response", None)
+    value = getattr(response, "status_code", None)
+    return value if isinstance(value, int) else None
 
 
 def _entry_is_verified(datastore_root: Path, request: Mapping[str, object]) -> bool:
@@ -996,7 +1620,7 @@ def _entry_is_verified(datastore_root: Path, request: Mapping[str, object]) -> b
         # Re-run the canonical synchronizer on resume.  It verifies each stored
         # partition before skipping it and catches any damaged receipt.
         return False
-    destination = Path(str(request["storage_path"]))
+    destination, _staging_base = _generic_entry_paths(datastore_root, request)
     if not destination.is_dir():
         return False
     _verify_generic_partition(destination, request)
@@ -1417,6 +2041,8 @@ __all__ = [
     "discover_dataset_catalog",
     "execute_manifest",
     "latest_common_available_date",
+    "load_execution_manifest",
+    "load_execution_preflight",
     "main",
     "opra_parent_symbols",
     "parse_watchlist",

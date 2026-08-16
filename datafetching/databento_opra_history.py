@@ -275,19 +275,37 @@ def synchronize(
     entitlement: Mapping[str, object],
     scope: SyncScope = SyncScope(),
     reporter: Callable[[str], None] | None = print,
+    storage_preflight_receipt: Mapping[str, object] | None = None,
+    fail_fast: bool = False,
 ) -> SyncResult:
     """Download, normalize, publish, and verify immutable OPRA partitions."""
 
     root = canonical_root(datastore_root)
     root.mkdir(parents=True, exist_ok=True)
     configure_client(client)
-    preflight = storage_preflight(
-        client,
-        datastore_root=datastore_root,
-        entitlement=entitlement,
-        scope=scope,
-    )
-    published_preflight = publish_storage_preflight(datastore_root, preflight)
+    if storage_preflight_receipt is None:
+        preflight = storage_preflight(
+            client,
+            datastore_root=datastore_root,
+            entitlement=entitlement,
+            scope=scope,
+        )
+        published_preflight = publish_storage_preflight(datastore_root, preflight)
+    else:
+        preflight = _validate_storage_preflight_receipt(
+            storage_preflight_receipt,
+            entitlement=entitlement,
+            scope=scope,
+        )
+        published_preflight = {
+            **preflight,
+            "path": str(
+                preflight.get(
+                    "source",
+                    "checksum-verified cold-start coordinator preflight",
+                )
+            ),
+        }
     if not bool(preflight["capacity_pass"]):
         health = publish_health(datastore_root)
         raise OpraCapacityError(
@@ -361,6 +379,8 @@ def synchronize(
             errors[key] = f"{type(exc).__name__}: {exc}"
             if reporter:
                 reporter(f"FAILED {key} {errors[key]}")
+            if fail_fast:
+                raise
     health = publish_health(datastore_root)
     return SyncResult(
         status="COMPLETE" if not errors else "PARTIAL",
@@ -371,6 +391,67 @@ def synchronize(
         errors=errors,
         health_path=health,
     )
+
+
+def _validate_storage_preflight_receipt(
+    receipt: Mapping[str, object],
+    *,
+    entitlement: Mapping[str, object],
+    scope: SyncScope,
+) -> Mapping[str, object]:
+    """Validate coordinator-owned estimates without calling provider metadata again."""
+
+    if receipt.get("provider") != PROVIDER or receipt.get("dataset") != DATASET:
+        raise OpraSyncError("Supplied OPRA storage preflight belongs to another provider scope")
+    requests = _scope_ranges(entitlement, scope)
+    estimates = receipt.get("estimates")
+    if not isinstance(estimates, Mapping):
+        raise OpraSyncError("Supplied OPRA storage preflight has no estimate map")
+    expected_schemas = {schema for schema, _start, _end in requests}
+    if set(str(schema) for schema in estimates) != expected_schemas:
+        raise OpraSyncError("Supplied OPRA storage preflight has the wrong schema scope")
+    total_size = 0
+    total_records = 0
+    expected_symbols = list(scope.symbols) or ["ALL_SYMBOLS"]
+    for schema, start, end in requests:
+        estimate = estimates.get(schema)
+        if not isinstance(estimate, Mapping):
+            raise OpraSyncError("Supplied OPRA storage preflight estimate is malformed")
+        if (
+            estimate.get("start") != start
+            or estimate.get("end") != end
+            or estimate.get("symbols") != expected_symbols
+        ):
+            raise OpraSyncError("Supplied OPRA storage preflight does not match the request")
+        try:
+            size = int(estimate["estimated_download_size_bytes"])
+            records = int(estimate["record_count"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise OpraSyncError("Supplied OPRA storage preflight totals are malformed") from exc
+        if size < 0 or records < 0:
+            raise OpraSyncError("Supplied OPRA storage preflight contains negative values")
+        total_size += size
+        total_records += records
+    required = math.ceil(total_size * STORAGE_EXPANSION_FACTOR) + STORAGE_RESERVE_BYTES
+    expected_totals = {
+        "estimated_download_size_bytes": total_size,
+        "record_count": total_records,
+        "storage_expansion_factor": STORAGE_EXPANSION_FACTOR,
+        "storage_reserve_bytes": STORAGE_RESERVE_BYTES,
+        "required_free_bytes": required,
+    }
+    for key, expected in expected_totals.items():
+        if receipt.get(key) != expected:
+            raise OpraSyncError(f"Supplied OPRA storage preflight has inconsistent {key}")
+    try:
+        available = int(receipt["available_free_bytes"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise OpraSyncError("Supplied OPRA storage preflight has no free-space check") from exc
+    if bool(receipt.get("capacity_pass")) != (available >= required):
+        raise OpraSyncError("Supplied OPRA storage preflight capacity result is inconsistent")
+    if int(receipt.get("shortfall_bytes", -1)) != max(required - available, 0):
+        raise OpraSyncError("Supplied OPRA storage preflight shortfall is inconsistent")
+    return dict(receipt)
 
 
 def partition_directory(
