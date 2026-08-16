@@ -98,7 +98,7 @@ information clock and waits briefly on the target pointer. Its v2 publication
 identity is `(provider, symbol, target_snapshot_for)`: a committed target is
 reused without another provider call, and divergent duplicate content fails
 closed. Production mode constructs one bounded, reconnecting Databento live
-adapter for `OPRA.PILLAR` definitions and `cbbo-1s`, scoped to the six parent
+  adapter for `OPRA.PILLAR` definitions and `cbbo-1s`, scoped to the six parent
   symbols. Its per-target reads select from that shared buffer; they do not create
   six new subscriptions. OPRA capture carries independent evidence clocks and
   does not wait for Loop A, while Loop 3 still requires exact Loop A authority to
@@ -113,6 +113,22 @@ that authority while waiting for later boundaries, reconciles it through the
 ordinary committed snapshot contract when readiness arrives inside 1,200
 seconds, and never backdates availability. Closed-market discovery does not
 refetch or republish an already committed natural target:
+
+Before starting Options Capture for a new watchlist symbol, run the idempotent
+one-time historical bootstrap. It requests every Standard schema under an
+independent parent-symbol bucket, caps `cmbp-1` at one month and the other schemas
+at six months, and resumes from checksum-verified partitions:
+
+```powershell
+python -m datafetching.options_history `
+  --datastore-target pc `
+  --watchlist datafetching\watchlist.txt
+```
+
+Options Capture then owns only forward cursor maintenance. Its daily request
+overlaps three days and synchronizes missing verified partitions; it does not
+re-download three months on every cycle. Loop 3 consumes those verified files
+but does not initiate a missing-symbol bootstrap.
 
 ```powershell
 python -m datafetching.options_runtime `

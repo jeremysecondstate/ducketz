@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable
 
@@ -671,3 +672,175 @@ def test_options_cli_sanitizes_adapter_startup_exception(
     stderr = capsys.readouterr().err
     assert "could not be constructed" in stderr
     assert "unit-test-placeholder" not in stderr
+
+
+def test_options_history_onboards_each_symbol_for_six_months_then_catches_up(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    scopes: list[options_runtime.SyncScope] = []
+    entitlement = {
+        "entitlements": {
+            schema: {"entitled_end": "2026-08-15"}
+            for schema in options_runtime.STANDARD_SCHEMAS
+        }
+    }
+
+    monkeypatch.setattr("databento.Historical", lambda _key: object())
+    monkeypatch.setattr(
+        options_runtime,
+        "discover_standard_entitlement",
+        lambda *_args, **_kwargs: entitlement,
+    )
+
+    def synchronize(*_args: object, **kwargs: object) -> object:
+        scopes.append(kwargs["scope"])  # type: ignore[arg-type]
+        return SimpleNamespace(
+            status="COMPLETE",
+            completed_partitions=1,
+            skipped_partitions=0,
+            completed_rows=10,
+            errors={},
+            health_path=tmp_path / "health.json",
+        )
+
+    monkeypatch.setattr(options_runtime, "synchronize", synchronize)
+    store = SimpleNamespace(root_dir=tmp_path)
+    options_runtime.synchronize_option_history(  # type: ignore[arg-type]
+        store,
+        api_key="unit-test-placeholder",
+        symbols=("GOOG", "NVDA"),
+        reporter=None,
+    )
+
+    assert len(scopes) == 2 * len(options_runtime.STANDARD_SCHEMAS)
+    assert {scope.symbols for scope in scopes} == {
+        ("GOOG.OPT",),
+        ("NVDA.OPT",),
+    }
+    assert {
+        scope.schemas[0]: scope.start for scope in scopes
+    } == {
+        **{
+            schema: "2026-02-15"
+            for schema in options_runtime.STANDARD_SCHEMAS
+            if schema != "cmbp-1"
+        },
+        "cmbp-1": "2026-07-15",
+    }
+    assert {scope.end for scope in scopes} == {"2026-08-15"}
+    assert set(options_runtime.OPRA_SYMBOL_HISTORY_SCHEMA_ORDER) == set(
+        options_runtime.STANDARD_SCHEMAS
+    )
+    assert sorted(scope.schemas[0] for scope in scopes) == sorted(
+        options_runtime.STANDARD_SCHEMAS * 2
+    )
+
+    scopes.clear()
+    options_runtime.synchronize_option_history(  # type: ignore[arg-type]
+        store,
+        api_key="unit-test-placeholder",
+        symbols=("GOOG", "NVDA"),
+        reporter=None,
+    )
+    assert {scope.start for scope in scopes} == {"2026-08-12"}
+
+
+def test_options_history_capacity_block_is_isolated_per_symbol(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempted: list[str] = []
+    entitlement = {
+        "entitlements": {
+            schema: {"entitled_end": "2026-08-15"}
+            for schema in options_runtime.STANDARD_SCHEMAS
+        }
+    }
+    monkeypatch.setattr("databento.Historical", lambda _key: object())
+    monkeypatch.setattr(
+        options_runtime,
+        "discover_standard_entitlement",
+        lambda *_args, **_kwargs: entitlement,
+    )
+
+    def synchronize(*_args: object, **kwargs: object) -> object:
+        scope = kwargs["scope"]
+        attempted.append(scope.symbols[0])
+        if scope.symbols == ("GOOG.OPT",):
+            raise options_runtime.OpraCapacityError("blocked")
+        return SimpleNamespace(
+            status="COMPLETE",
+            completed_partitions=1,
+            skipped_partitions=0,
+            completed_rows=10,
+            errors={},
+            health_path=tmp_path / "health.json",
+        )
+
+    monkeypatch.setattr(options_runtime, "synchronize", synchronize)
+    store = SimpleNamespace(root_dir=tmp_path)
+    options_runtime.synchronize_option_history(  # type: ignore[arg-type]
+        store,
+        api_key="unit-test-placeholder",
+        symbols=("GOOG", "NVDA"),
+        reporter=None,
+    )
+
+    assert attempted == [
+        provider_symbol
+        for _schema in options_runtime.OPRA_SYMBOL_HISTORY_SCHEMA_ORDER
+        for provider_symbol in ("GOOG.OPT", "NVDA.OPT")
+    ]
+    for schema in options_runtime.STANDARD_SCHEMAS:
+        assert not options_runtime._opra_symbol_history_cursor_path(
+            tmp_path,
+            symbol="GOOG",
+            schema=schema,
+        ).exists()
+        assert options_runtime._opra_symbol_history_cursor_path(
+            tmp_path,
+            symbol="NVDA",
+            schema=schema,
+        ).is_file()
+
+
+def test_options_loop_requires_one_time_bootstrap_for_missing_cursors(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entitlement = {
+        "entitlements": {
+            schema: {"entitled_end": "2026-08-15"}
+            for schema in options_runtime.STANDARD_SCHEMAS
+        }
+    }
+    monkeypatch.setattr("databento.Historical", lambda _key: object())
+    monkeypatch.setattr(
+        options_runtime,
+        "discover_standard_entitlement",
+        lambda *_args, **_kwargs: entitlement,
+    )
+    monkeypatch.setattr(
+        options_runtime,
+        "synchronize",
+        lambda *_args, **_kwargs: pytest.fail(
+            "the recurring loop must not perform an initial history bootstrap"
+        ),
+    )
+
+    summary = options_runtime.synchronize_option_history(  # type: ignore[arg-type]
+        SimpleNamespace(root_dir=tmp_path),
+        api_key="unit-test-placeholder",
+        symbols=("GOOG",),
+        reporter=None,
+        bootstrap_missing=False,
+    )
+
+    assert summary.requested_scopes == len(options_runtime.STANDARD_SCHEMAS)
+    assert summary.completed_scopes == 0
+    assert summary.bootstrap_required_scopes == len(
+        options_runtime.STANDARD_SCHEMAS
+    )
+    assert summary.capacity_blocked_scopes == 0
+    assert summary.failed_scopes == 0

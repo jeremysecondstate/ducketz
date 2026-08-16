@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
+import datafetching.databento_opra_history as opra_history
 from datafetching.databento_opra_history import (
     STANDARD_SCHEMAS,
     SyncScope,
@@ -72,6 +73,123 @@ def test_symbol_bucket_is_stable_and_full_universe_is_explicit() -> None:
     assert symbol_bucket(("NVDA.OPT", "AAPL.OPT")) == symbol_bucket(
         ("AAPL.OPT", "NVDA.OPT")
     )
+
+
+def test_dense_cmbp_days_are_split_into_deterministic_intraday_partitions() -> None:
+    calls: list[dict[str, object]] = []
+
+    class Metadata:
+        def get_record_count(self, **kwargs: object) -> int:
+            calls.append(kwargs)
+            duration = pd.Timestamp(str(kwargs["end"])) - pd.Timestamp(
+                str(kwargs["start"])
+            )
+            return (
+                opra_history.TARGET_HIGH_VOLUME_PARTITION_ROWS + 1
+                if duration > pd.Timedelta(hours=12)
+                else 100
+            )
+
+    segments = opra_history._partition_time_segments(
+        SimpleNamespace(metadata=Metadata()),
+        schema="cmbp-1",
+        day="2026-08-14",
+        symbols=("AAPL.OPT",),
+    )
+
+    assert segments == [
+        (
+            "2026-08-14T00:00:00+00:00",
+            "2026-08-14T12:00:00+00:00",
+            "000000-120000",
+        ),
+        (
+            "2026-08-14T12:00:00+00:00",
+            "2026-08-15T00:00:00+00:00",
+            "120000-000000",
+        ),
+    ]
+    assert len(calls) == 3
+    assert all(call["symbols"] == ["AAPL.OPT"] for call in calls)
+
+
+def test_low_volume_schema_keeps_one_daily_partition_without_metadata_probe() -> None:
+    segments = opra_history._partition_time_segments(
+        SimpleNamespace(),
+        schema="definition",
+        day="2026-08-14",
+        symbols=("AAPL.OPT",),
+    )
+    assert segments == [
+        (
+            "2026-08-14T00:00:00+00:00",
+            "2026-08-15T00:00:00+00:00",
+            None,
+        )
+    ]
+
+
+def test_parent_symbol_no_data_day_is_a_nonfatal_partition_skip(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class TimeSeries:
+        def get_range(self, **_kwargs: object) -> object:
+            raise RuntimeError(
+                "422 symbology_invalid_request Could not resolve smart symbols: AAPL.OPT"
+            )
+
+    monkeypatch.setattr(opra_history.time, "sleep", lambda _seconds: None)
+    entitlement = _entitlement()
+    with pytest.raises(opra_history.OpraNoDataError):
+        opra_history._download_partition(
+            SimpleNamespace(timeseries=TimeSeries()),
+            datastore_root=tmp_path,
+            entitlement=entitlement,
+            schema="definition",
+            day="2025-01-01",
+            symbols=("AAPL.OPT",),
+        )
+
+
+def test_cmbp_normalization_removes_only_exact_provider_duplicates(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "cmbp.parquet"
+    rows = pd.DataFrame(
+        {
+            "ts_recv": [pd.Timestamp("2026-08-14T13:30:00Z")] * 3,
+            "publisher_id": [30] * 3,
+            "instrument_id": [123] * 3,
+            "symbol": ["GOOG  260814C00200000"] * 3,
+            "ts_event": [pd.Timestamp("2026-08-14T13:29:59.999Z")] * 3,
+            "rtype": [177] * 3,
+            "action": ["A"] * 3,
+            "side": ["A"] * 3,
+            "price": [7.35] * 3,
+            "size": [2, 2, 3],
+            "flags": [192] * 3,
+            "ts_in_delta": [0] * 3,
+            "bid_px_00": [6.5] * 3,
+            "ask_px_00": [7.35] * 3,
+            "bid_sz_00": [17] * 3,
+            "ask_sz_00": [2, 2, 3],
+            "bid_pb_00": [21] * 3,
+            "ask_pb_00": [37] * 3,
+        }
+    ).set_index("ts_recv")
+    rows.to_parquet(path)
+
+    removed = opra_history._deduplicate_normalized_parquet(path, schema="cmbp-1")
+    validation = opra_history.validate_parquet(path, schema="cmbp-1")
+
+    assert removed == 1
+    assert validation["row_count"] == 2
+    assert validation["duplicate_natural_key_rows"] == 0
+    assert validation["event_timestamp_column"] == "ts_event"
+    assert validation["partition_timestamp_column"] == "ts_recv"
+    assert validation["earliest_event_timestamp"] == "2026-08-14T13:29:59.999000+00:00"
+    assert validation["earliest_partition_timestamp"] == "2026-08-14T13:30:00+00:00"
 
 
 def test_definition_asof_never_uses_future_definition() -> None:

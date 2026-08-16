@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import time
 from dataclasses import dataclass
@@ -21,8 +22,10 @@ from datafetching.decision_time import (
     latest_eligible_option_target,
 )
 from datafetching.databento_opra_history import (
+    STANDARD_SCHEMAS,
     OpraCapacityError,
     SyncScope,
+    canonical_root,
     discover_standard_entitlement,
     synchronize,
 )
@@ -85,9 +88,36 @@ class OptionsCycleResult:
     pricing_surface_diagnostics: dict[str, object] | None = None
 
 
+@dataclass(frozen=True)
+class OptionHistorySyncSummary:
+    requested_scopes: int = 0
+    completed_scopes: int = 0
+    capacity_blocked_scopes: int = 0
+    failed_scopes: int = 0
+    bootstrap_required_scopes: int = 0
+
+
 DISCOVERY_CYCLE_MODE = "DISCOVERY_REFRESH"
 DISCOVERY_TARGET_STATE = "DISCOVERY_CHAIN_TARGET"
 DISCOVERY_ALREADY_REFRESHED_STATE = "DISCOVERY_CHAIN_ALREADY_REFRESHED"
+OPRA_SYMBOL_HISTORY_LOOKBACK_MONTHS = 6
+OPRA_CMBP_HISTORY_LOOKBACK_MONTHS = 1
+OPRA_SYMBOL_CATCHUP_OVERLAP_DAYS = 3
+OPRA_SYMBOL_HISTORY_CURSOR_VERSION = "options-opra-symbol-history-v3"
+OPRA_SYMBOL_HISTORY_SCHEMA_ORDER = (
+    "definition",
+    "ohlcv-1d",
+    "ohlcv-1h",
+    "ohlcv-1m",
+    "ohlcv-1s",
+    "status",
+    "statistics",
+    "trades",
+    "tcbbo",
+    "cbbo-1m",
+    "cbbo-1s",
+    "cmbp-1",
+)
 DISCOVERY_PENDING_STATE = "DISCOVERY_CHAIN_PENDING_READINESS"
 OPRA_CANONICAL_MODE = "opra-canonical"
 SCHWAB_COMPATIBILITY_MODE = "schwab-only-compatibility"
@@ -686,7 +716,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--skip-historical-catchup",
         action="store_true",
-        help="Disable the Options-owned daily OPRA Standard incremental catch-up.",
+        help=(
+            "Disable Options-owned daily incremental OPRA cursor catch-up."
+        ),
     )
     datastore = parser.add_mutually_exclusive_group()
     datastore.add_argument("--datastore", type=Path, default=None)
@@ -753,6 +785,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if canonical_adapter is not None
                 else "Ownership: explicit Schwab-only compatibility evidence"
             )
+            if canonical_adapter is not None and not args.skip_historical_catchup:
+                print(
+                    "Historical OPRA: incremental cursor maintenance; "
+                    f"incremental overlap {OPRA_SYMBOL_CATCHUP_OVERLAP_DAYS} days"
+                )
+                print(
+                    "Historical OPRA bootstrap: run python -m "
+                    "datafetching.options_history once for new symbols"
+                )
             print("Stop: Ctrl+C")
             print()
 
@@ -766,10 +807,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                     and not args.skip_historical_catchup
                     and catchup_date != last_catchup_date
                 ):
-                    _run_historical_catchup(
+                    synchronize_option_history(
                         store,
                         api_key=api_key,
+                        symbols=symbols,
                         reporter=print,
+                        bootstrap_missing=False,
                     )
                     last_catchup_date = catchup_date
                 if not args.once:
@@ -809,16 +852,24 @@ def main(argv: Sequence[str] | None = None) -> int:
                 canonical_adapter.close()
 
 
-def _run_historical_catchup(
+def synchronize_option_history(
     store: ParquetStore,
     *,
     api_key: str,
+    symbols: Sequence[str],
     reporter: Callable[[str], None] | None,
-) -> None:
-    """Keep rolling Standard history current under Options Capture ownership."""
+    bootstrap_missing: bool = True,
+    schemas: Sequence[str] = OPRA_SYMBOL_HISTORY_SCHEMA_ORDER,
+) -> OptionHistorySyncSummary:
+    """Bootstrap or incrementally maintain Standard history per parent symbol."""
 
     import databento as db
 
+    clean_schemas = tuple(dict.fromkeys(str(schema) for schema in schemas))
+    invalid = sorted(set(clean_schemas).difference(STANDARD_SCHEMAS))
+    if invalid:
+        raise ValueError("Unsupported OPRA schemas: " + ", ".join(invalid))
+    requested = completed = blocked = failed = needs_bootstrap = 0
     client = db.Historical(api_key)
     try:
         entitlement = discover_standard_entitlement(
@@ -828,30 +879,196 @@ def _run_historical_catchup(
             str(item["entitled_end"])
             for item in entitlement["entitlements"].values()
         )
-        start = (pd.Timestamp(end) - pd.Timedelta(days=3)).date().isoformat()
-        result = synchronize(
-            client,
-            datastore_root=store.root_dir,
-            entitlement=entitlement,
-            scope=SyncScope(start=start, end=end),
-            reporter=reporter,
-        )
-        if reporter is not None:
-            reporter(
-                "OPRA historical catch-up: "
-                f"status={result.status}; completed={result.completed_partitions}; "
-                f"verified_existing={result.skipped_partitions}; rows={result.completed_rows}; "
-                f"health={result.health_path}"
-            )
-    except OpraCapacityError as exc:
-        if reporter is not None:
-            reporter(f"OPRA historical catch-up capacity blocked: {exc}")
+        history_root = canonical_root(store.root_dir)
+        with exclusive_runtime_lock(
+            history_root / "state" / "sync.lock",
+            process_name="Options-owned OPRA symbol history synchronizer",
+        ):
+            clean_symbols = normalize_symbols(symbols)
+            for schema in clean_schemas:
+                lookback_months = _opra_history_lookback_months(schema)
+                full_start = (
+                    pd.Timestamp(end) - pd.DateOffset(months=lookback_months)
+                ).date().isoformat()
+                for symbol in clean_symbols:
+                    requested += 1
+                    provider_symbol = f"{symbol}.OPT"
+                    marker = _read_opra_symbol_history_cursor(
+                        store.root_dir,
+                        symbol=symbol,
+                        schema=schema,
+                    )
+                    if marker is None:
+                        if not bootstrap_missing:
+                            needs_bootstrap += 1
+                            if reporter is not None:
+                                reporter(
+                                    "OPRA symbol/schema bootstrap required: "
+                                    f"symbol={symbol}; schema={schema}; command=python -m "
+                                    "datafetching.options_history"
+                                )
+                            continue
+                        start = full_start
+                        mode = f"INITIAL_{lookback_months}_MONTH_BACKFILL"
+                    else:
+                        completed_end = pd.Timestamp(
+                            str(marker["completed_through"])
+                        )
+                        start = max(
+                            pd.Timestamp(full_start),
+                            completed_end
+                            - pd.Timedelta(days=OPRA_SYMBOL_CATCHUP_OVERLAP_DAYS),
+                        ).date().isoformat()
+                        mode = "INCREMENTAL_CATCHUP"
+                    try:
+                        result = synchronize(
+                            client,
+                            datastore_root=store.root_dir,
+                            entitlement=entitlement,
+                            scope=SyncScope(
+                                schemas=(schema,),
+                                start=start,
+                                end=end,
+                                symbols=(provider_symbol,),
+                            ),
+                            reporter=reporter,
+                        )
+                    except OpraCapacityError as exc:
+                        blocked += 1
+                        if reporter is not None:
+                            reporter(
+                                "OPRA symbol/schema history capacity blocked: "
+                                f"symbol={symbol}; schema={schema}; mode={mode}; {exc}"
+                            )
+                        continue
+                    if result.errors or result.completed_rows < 1:
+                        failed += 1
+                        if reporter is not None:
+                            reporter(
+                                f"OPRA symbol/schema history incomplete: symbol={symbol}; "
+                                f"schema={schema}; mode={mode}; "
+                                f"errors={len(result.errors)}; rows={result.completed_rows}; "
+                                f"health={result.health_path}"
+                            )
+                        continue
+                    completed += 1
+                    _write_opra_symbol_history_cursor(
+                        store.root_dir,
+                        symbol=symbol,
+                        schema=schema,
+                        completed_through=end,
+                    )
+                    if reporter is not None:
+                        reporter(
+                            f"OPRA symbol/schema history: symbol={symbol}; "
+                            f"schema={schema}; mode={mode}; start={start}; end={end}; "
+                            f"status={result.status}; "
+                            f"completed={result.completed_partitions}; "
+                            f"verified_existing={result.skipped_partitions}; "
+                            f"rows={result.completed_rows}; health={result.health_path}"
+                        )
     except Exception as exc:
+        failed += 1
         if reporter is not None:
             reporter(
                 "OPRA historical catch-up failed: "
                 f"{type(exc).__name__}: {exc}"
             )
+    return OptionHistorySyncSummary(
+        requested_scopes=requested,
+        completed_scopes=completed,
+        capacity_blocked_scopes=blocked,
+        failed_scopes=failed,
+        bootstrap_required_scopes=needs_bootstrap,
+    )
+
+
+def _opra_symbol_history_cursor_path(
+    datastore_root: Path,
+    *,
+    symbol: str,
+    schema: str,
+) -> Path:
+    return (
+        canonical_root(datastore_root)
+        / "state"
+        / "symbol-history"
+        / symbol.strip().upper()
+        / f"{schema}.json"
+    )
+
+
+def _read_opra_symbol_history_cursor(
+    datastore_root: Path,
+    *,
+    symbol: str,
+    schema: str,
+) -> dict[str, object] | None:
+    path = _opra_symbol_history_cursor_path(
+        datastore_root,
+        symbol=symbol,
+        schema=schema,
+    )
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        completed = pd.Timestamp(str(payload["completed_through"]))
+    except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError):
+        return None
+    if (
+        payload.get("schema_version") != OPRA_SYMBOL_HISTORY_CURSOR_VERSION
+        or payload.get("symbol") != symbol.strip().upper()
+        or payload.get("provider_symbol") != f"{symbol.strip().upper()}.OPT"
+        or payload.get("schema") != schema
+        or payload.get("lookback_months")
+        != _opra_history_lookback_months(schema)
+        or pd.isna(completed)
+    ):
+        return None
+    return payload
+
+
+def _write_opra_symbol_history_cursor(
+    datastore_root: Path,
+    *,
+    symbol: str,
+    schema: str,
+    completed_through: str,
+) -> Path:
+    clean_symbol = symbol.strip().upper()
+    path = _opra_symbol_history_cursor_path(
+        datastore_root,
+        symbol=clean_symbol,
+        schema=schema,
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "schema_version": OPRA_SYMBOL_HISTORY_CURSOR_VERSION,
+        "provider": "databento-opra",
+        "dataset": "OPRA.PILLAR",
+        "symbol": clean_symbol,
+        "provider_symbol": f"{clean_symbol}.OPT",
+        "schema": schema,
+        "lookback_months": _opra_history_lookback_months(schema),
+        "completed_through": completed_through,
+        "updated_at": pd.Timestamp.now(tz="UTC").isoformat(),
+    }
+    temporary = path.with_suffix(path.suffix + f".tmp-{os.getpid()}")
+    temporary.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    temporary.replace(path)
+    return path
+
+
+def _opra_history_lookback_months(schema: str) -> int:
+    return (
+        OPRA_CMBP_HISTORY_LOOKBACK_MONTHS
+        if schema == "cmbp-1"
+        else OPRA_SYMBOL_HISTORY_LOOKBACK_MONTHS
+    )
 
 
 def report_options_result(

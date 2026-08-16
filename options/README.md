@@ -187,17 +187,37 @@ are stored below:
 
 ```text
 market-data/databento-opra/OPRA.PILLAR/
-  schema=<schema>/date=<YYYY-MM-DD>/bucket=<scope>/
+  schema=<schema>/date=<YYYY-MM-DD>/bucket=<scope>[-segment-<UTC-range>]/
     provider.dbn.zst
     normalized.parquet
     manifest.json
     receipt.json
 ```
 
-Options Capture owns the daily incremental catch-up. Prospective L1 continues to
-default to `cbbo-1s`; Strategy and Active Pricing read verified historical
-`cbbo-1m` first, use `cbbo-1s` when it is the only verified CBBO schema, and keep
-Schwab explicitly labeled as fallback/broker evidence.
+Run the resumable bootstrap once for each new parent-symbol set:
+
+```powershell
+python -m datafetching.options_history `
+  --datastore-target pc `
+  --watchlist datafetching\watchlist.txt
+```
+
+The bootstrap synchronizes each symbol independently as `<SYMBOL>.OPT`, using at
+most six months of history except for the separately capped one-month `cmbp-1`
+scope. Each schema remains clamped to its shorter provider/account entitlement.
+Dense `cmbp-1` and `cbbo-1s` days are split into deterministic intraday
+partitions so every normalized Parquet remains inside the exact duplicate-check
+bound. The command is idempotent and resumes from checksum-verified partitions.
+
+Options Capture does not perform a missing-symbol bootstrap. Once a bootstrap
+cursor exists, its owned daily maintenance overlaps the last three days and
+fetches only missing verified partitions. The overlap is a request safety window,
+not a rolling three-month redownload; immutable partition verification and exact
+natural-key checks make it safe to repeat. One symbol's capacity or provider
+failure does not block the other symbols. Prospective L1 continues to default to `cbbo-1s`;
+Strategy and Active Pricing read verified historical `cbbo-1m` first, use
+`cbbo-1s` when it is the only verified CBBO schema, and keep Schwab explicitly
+labeled as fallback/broker evidence.
 
 ## Prospective OPRA startup and fallback
 
@@ -227,7 +247,7 @@ provider makes no second provider request. The explicit
 production command.
 
 The live receiver, callbacks, reconnect bookkeeping, bounded buffers, and daily
-historical catch-up are owned by the Options Capture process and close with it.
+incremental historical catch-up are owned by the Options Capture process and close with it.
 They are not an eighth loop.
 
 ## Supplied Standard-plan evidence
