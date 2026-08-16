@@ -17,7 +17,7 @@ expanded only to its canonical OPRA parent (`AAPL` becomes `AAPL.OPT`). A
 duplicate watchlist symbol or pre-expanded parent is rejected.
 
 The cold archive defaults to `XNAS.ITCH`, whose eight-year provider range and
-schema catalog cover the configured daily/definition and one-month depth/status
+schema catalog cover the configured interval, definition, and non-interval event
 scopes. This is deliberately separate from Loop A's live
 `DATABENTO_EQUITIES_DATASET` setting, which may be `EQUS.MINI` and does not
 offer the full cold-start schema set. Override only with
@@ -70,13 +70,20 @@ an alternate execution mode.
 
 | Dataset/schema | Configured window |
 | --- | ---: |
-| Every dataset: `ohlcv-1s` | 5 days |
-| Every dataset: `ohlcv-1m` | 100 days |
-| Every dataset: `ohlcv-1h` | 2,000 days |
-| OPRA: `ohlcv-1d`, `definition` | 13 calendar years |
-| US Equities: `ohlcv-1d`, `definition` | 8 calendar years |
-| CME: `ohlcv-1d`, `definition` | 5,000 days |
-| Every other available schema | one calendar month |
+| Every `*-1s` schema | 5 days |
+| Every `*-1m` schema | 100 days |
+| Every `*-1h` schema | 1,825 days |
+| Every `*-1d` schema | 2,555 days |
+| OPRA `definition` | 13 calendar years |
+| US Equities `definition` | 8 calendar years |
+| CME `definition` | 5,000 days |
+| Every non-interval schema other than `definition` | one calendar month |
+
+The suffix rule includes BBO/CBBO interval schemas as well as OHLCV. Loop A's
+native US-equity OHLCV requests use these same four limits; after the initial
+fetch they resume from the latest persisted timestamp with overlap and Parquet
+upsert deduplication. Verified OPRA bootstrap cursors hand the same pattern to
+Options Capture for all OPRA schemas.
 
 Schema coverage is:
 
@@ -95,8 +102,11 @@ archive does not request or claim that separate summary product.
 
 ## Safe commands
 
-Use one fixed date for a preflight/execution/resume sequence. These commands
-make no provider data download until the last one.
+Use one fixed date for a preflight/execution/resume sequence. Omitting `--as-of`
+during preflight or execution selects the latest exclusive date bound common to
+every required provider schema, so weekend and holiday starts do not request a
+future historical boundary. An explicit unavailable date still fails closed.
+These commands make no provider data download until the last one.
 
 ```powershell
 $BootstrapAsOf = '2026-08-15'

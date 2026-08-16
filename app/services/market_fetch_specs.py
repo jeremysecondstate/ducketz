@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import timedelta
 
+from datafetching.databento_history_policy import INTERVAL_LOOKBACK_DAYS
+
 
 @dataclass(frozen=True)
 class SchwabPriceHistorySpec:
@@ -90,27 +92,25 @@ def databento_analysis_source_specs() -> tuple[DatabentoAnalysisSourceSpec, ...]
             key="source_5d_1s",
             schema="ohlcv-1s",
             frequency="1s",
-            lookback=timedelta(days=5),
+            lookback=timedelta(days=INTERVAL_LOOKBACK_DAYS["1s"]),
         ),
         DatabentoAnalysisSourceSpec(
-            key="source_1000d_1m",
+            key="source_100d_1m",
             schema="ohlcv-1m",
             frequency="1m",
-            lookback=timedelta(days=1000),
+            lookback=timedelta(days=INTERVAL_LOOKBACK_DAYS["1m"]),
         ),
         DatabentoAnalysisSourceSpec(
-            key="source_2000d_1h",
+            key="source_1825d_1h",
             schema="ohlcv-1h",
             frequency="1h",
-            lookback=timedelta(days=2000),
+            lookback=timedelta(days=INTERVAL_LOOKBACK_DAYS["1h"]),
         ),
         DatabentoAnalysisSourceSpec(
-            key="source_2920d_1d",
+            key="source_2555d_1d",
             schema="ohlcv-1d",
             frequency="1d",
-            # Eight 365-day years stays inside the documented Standard-plan
-            # US-equities L0 boundary for every leap-year placement.
-            lookback=timedelta(days=2920),
+            lookback=timedelta(days=INTERVAL_LOOKBACK_DAYS["1d"]),
         ),
     )
 
@@ -121,14 +121,14 @@ def databento_analysis_bar_specs() -> tuple[DatabentoAnalysisBarSpec, ...]:
         DatabentoAnalysisBarSpec("analysis_5d_5s", "source_5d_1s", "5s", "resampled_from_1s"),
         DatabentoAnalysisBarSpec("analysis_5d_15s", "source_5d_1s", "15s", "resampled_from_1s"),
         DatabentoAnalysisBarSpec("analysis_5d_30s", "source_5d_1s", "30s", "resampled_from_1s"),
-        DatabentoAnalysisBarSpec("analysis_1000d_1m", "source_1000d_1m", "1m", "native"),
-        DatabentoAnalysisBarSpec("analysis_1000d_5m", "source_1000d_1m", "5m", "resampled_from_1m"),
-        DatabentoAnalysisBarSpec("analysis_1000d_15m", "source_1000d_1m", "15m", "resampled_from_1m"),
-        DatabentoAnalysisBarSpec("analysis_1000d_30m", "source_1000d_1m", "30m", "resampled_from_1m"),
-        DatabentoAnalysisBarSpec("analysis_2000d_1h", "source_2000d_1h", "1h", "native"),
-        DatabentoAnalysisBarSpec("analysis_2000d_2h", "source_2000d_1h", "2h", "resampled_from_1h"),
-        DatabentoAnalysisBarSpec("analysis_2000d_4h", "source_2000d_1h", "4h", "resampled_from_1h"),
-        DatabentoAnalysisBarSpec("analysis_2920d_1d", "source_2920d_1d", "1d", "native"),
-        DatabentoAnalysisBarSpec("analysis_2920d_1w", "source_2920d_1d", "1w", "resampled_from_1d"),
-        DatabentoAnalysisBarSpec("analysis_2920d_1mo", "source_2920d_1d", "1mo", "resampled_from_1d"),
+        DatabentoAnalysisBarSpec("analysis_100d_1m", "source_100d_1m", "1m", "native"),
+        DatabentoAnalysisBarSpec("analysis_100d_5m", "source_100d_1m", "5m", "resampled_from_1m"),
+        DatabentoAnalysisBarSpec("analysis_100d_15m", "source_100d_1m", "15m", "resampled_from_1m"),
+        DatabentoAnalysisBarSpec("analysis_100d_30m", "source_100d_1m", "30m", "resampled_from_1m"),
+        DatabentoAnalysisBarSpec("analysis_1825d_1h", "source_1825d_1h", "1h", "native"),
+        DatabentoAnalysisBarSpec("analysis_1825d_2h", "source_1825d_1h", "2h", "resampled_from_1h"),
+        DatabentoAnalysisBarSpec("analysis_1825d_4h", "source_1825d_1h", "4h", "resampled_from_1h"),
+        DatabentoAnalysisBarSpec("analysis_2555d_1d", "source_2555d_1d", "1d", "native"),
+        DatabentoAnalysisBarSpec("analysis_2555d_1w", "source_2555d_1d", "1w", "resampled_from_1d"),
+        DatabentoAnalysisBarSpec("analysis_2555d_1mo", "source_2555d_1d", "1mo", "resampled_from_1d"),
     )

@@ -21,6 +21,7 @@ from datafetching.decision_time import (
     expected_quarter_hour_target,
     latest_eligible_option_target,
 )
+from datafetching.databento_history_policy import INTERVAL_LOOKBACK_DAYS
 from datafetching.databento_opra_history import (
     STANDARD_SCHEMAS,
     OpraCapacityError,
@@ -125,16 +126,16 @@ OPRA_SYMBOL_HISTORY_SCHEMA_ORDER = (
 )
 OPRA_SCHEMA_HISTORY_LOOKBACK_POLICY: dict[str, tuple[str, int]] = {
     "definition": ("years", 13),
-    "ohlcv-1d": ("years", 13),
-    "ohlcv-1h": ("days", 2_000),
-    "ohlcv-1m": ("days", 100),
-    "ohlcv-1s": ("days", 5),
-    "status": ("months", 6),
-    "statistics": ("months", 6),
-    "trades": ("months", 6),
-    "tcbbo": ("months", 6),
-    "cbbo-1m": ("months", 6),
-    "cbbo-1s": ("months", 6),
+    "ohlcv-1d": ("days", INTERVAL_LOOKBACK_DAYS["1d"]),
+    "ohlcv-1h": ("days", INTERVAL_LOOKBACK_DAYS["1h"]),
+    "ohlcv-1m": ("days", INTERVAL_LOOKBACK_DAYS["1m"]),
+    "ohlcv-1s": ("days", INTERVAL_LOOKBACK_DAYS["1s"]),
+    "status": ("months", 1),
+    "statistics": ("months", 1),
+    "trades": ("months", 1),
+    "tcbbo": ("months", 1),
+    "cbbo-1m": ("days", INTERVAL_LOOKBACK_DAYS["1m"]),
+    "cbbo-1s": ("days", INTERVAL_LOOKBACK_DAYS["1s"]),
     "cmbp-1": ("months", 1),
 }
 OPRA_LEGACY_SCHEMA_HISTORY_LOOKBACK_POLICY: dict[str, tuple[str, int]] = {

@@ -723,16 +723,16 @@ def test_options_history_uses_schema_specific_bootstrap_and_overlap_windows(
         scope.schemas[0]: scope.start for scope in scopes
     } == {
         "definition": "2013-08-15",
-        "ohlcv-1d": "2013-08-15",
-        "ohlcv-1h": "2021-02-22",
+        "ohlcv-1d": "2019-08-17",
+        "ohlcv-1h": "2021-08-16",
         "ohlcv-1m": "2026-05-07",
         "ohlcv-1s": "2026-08-10",
-        "status": "2026-02-15",
-        "statistics": "2026-02-15",
-        "trades": "2026-02-15",
-        "tcbbo": "2026-02-15",
-        "cbbo-1m": "2026-02-15",
-        "cbbo-1s": "2026-02-15",
+        "status": "2026-07-15",
+        "statistics": "2026-07-15",
+        "trades": "2026-07-15",
+        "tcbbo": "2026-07-15",
+        "cbbo-1m": "2026-05-07",
+        "cbbo-1s": "2026-08-10",
         "cmbp-1": "2026-07-15",
     }
     assert {scope.end for scope in scopes} == {"2026-08-15"}

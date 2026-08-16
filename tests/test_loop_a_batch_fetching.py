@@ -32,14 +32,16 @@ from technicals.parquet_io import _schwab_history_file_sort_key
 SYMBOLS = tuple(f"S{index:02d}" for index in range(15))
 
 
-def test_loop_a_daily_history_stays_inside_standard_equities_window() -> None:
-    daily = next(
-        spec
-        for spec in databento_analysis_source_specs()
-        if spec.schema == "ohlcv-1d"
-    )
-    assert daily.key == "source_2920d_1d"
-    assert daily.lookback == timedelta(days=2_920)
+def test_loop_a_history_uses_the_configured_interval_caps() -> None:
+    specs = {spec.frequency: spec for spec in databento_analysis_source_specs()}
+    assert specs["1s"].key == "source_5d_1s"
+    assert specs["1s"].lookback == timedelta(days=5)
+    assert specs["1m"].key == "source_100d_1m"
+    assert specs["1m"].lookback == timedelta(days=100)
+    assert specs["1h"].key == "source_1825d_1h"
+    assert specs["1h"].lookback == timedelta(days=1_825)
+    assert specs["1d"].key == "source_2555d_1d"
+    assert specs["1d"].lookback == timedelta(days=2_555)
 
 
 def test_default_watchlist_and_runtime_commands_use_the_same_configured_symbols() -> None:

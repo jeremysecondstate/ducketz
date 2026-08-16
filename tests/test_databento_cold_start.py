@@ -61,8 +61,13 @@ def test_manifest_has_exact_schema_coverage_and_requested_windows(tmp_path: Path
 
     expected_common_starts = {
         "ohlcv-1s": "2026-08-10",
+        "bbo-1s": "2026-08-10",
+        "cbbo-1s": "2026-08-10",
         "ohlcv-1m": "2026-05-07",
-        "ohlcv-1h": "2021-02-22",
+        "bbo-1m": "2026-05-07",
+        "cbbo-1m": "2026-05-07",
+        "ohlcv-1h": "2021-08-16",
+        "ohlcv-1d": "2019-08-17",
         "statistics": "2026-07-15",
         "status": "2026-07-15",
         "mbp-10": "2026-07-15",
@@ -70,7 +75,7 @@ def test_manifest_has_exact_schema_coverage_and_requested_windows(tmp_path: Path
     for request in requests:
         assert request["end"] == AS_OF.isoformat()
         expected = expected_common_starts.get(request["schema"], "2026-07-15")
-        if request["schema"] in {"ohlcv-1d", "definition"}:
+        if request["schema"] == "definition":
             expected = {
                 cold_start.OPRA_DATASET: "2013-08-15",
                 CME_DATASET: "2012-12-06",
@@ -83,20 +88,36 @@ def test_manifest_has_exact_schema_coverage_and_requested_windows(tmp_path: Path
         for request in requests
         if request["schema"] in {"ohlcv-1d", "definition"}
     } == {
-        (cold_start.PLAN_DATASET_OPRA, schema): {"unit": "years", "value": 13}
-        for schema in ("ohlcv-1d", "definition")
+        (role, "ohlcv-1d"): {"unit": "days", "value": 2_555}
+        for role in (
+            cold_start.PLAN_DATASET_OPRA,
+            cold_start.PLAN_DATASET_CME,
+            cold_start.PLAN_DATASET_US_EQUITIES,
+        )
     } | {
-        (cold_start.PLAN_DATASET_CME, schema): {"unit": "days", "value": 5_000}
-        for schema in ("ohlcv-1d", "definition")
-    } | {
-        (cold_start.PLAN_DATASET_US_EQUITIES, schema): {
-            "unit": "years",
-            "value": 8,
-        }
-        for schema in ("ohlcv-1d", "definition")
+        (cold_start.PLAN_DATASET_OPRA, "definition"): {"unit": "years", "value": 13},
+        (cold_start.PLAN_DATASET_CME, "definition"): {"unit": "days", "value": 5_000},
+        (cold_start.PLAN_DATASET_US_EQUITIES, "definition"): {"unit": "years", "value": 8},
     }
-
     assert manifest["derived_views"] == []
+
+
+def test_every_interval_schema_uses_the_shared_cap() -> None:
+    expected = {
+        "1s": {"unit": "days", "value": 5},
+        "1m": {"unit": "days", "value": 100},
+        "1h": {"unit": "days", "value": 1_825},
+        "1d": {"unit": "days", "value": 2_555},
+    }
+    for role, schemas in (
+        (cold_start.PLAN_DATASET_OPRA, cold_start.OPRA_SCHEMAS),
+        (cold_start.PLAN_DATASET_CME, cold_start.CME_SCHEMAS),
+        (cold_start.PLAN_DATASET_US_EQUITIES, cold_start.US_EQUITIES_SCHEMAS),
+    ):
+        for schema in schemas:
+            interval = schema.rsplit("-", maxsplit=1)[-1]
+            if interval in expected:
+                assert cold_start.schema_window(role, schema) == expected[interval]
 
 
 def test_watchlist_and_opra_parent_scope_reject_ambiguous_input(tmp_path: Path) -> None:
@@ -122,6 +143,20 @@ def test_cold_start_equities_dataset_does_not_inherit_live_dataset(
     monkeypatch.setenv("DATABENTO_COLD_START_EQUITIES_DATASET", "XNYS.PILLAR")
     assert cold_start.resolve_equities_dataset() == "XNYS.PILLAR"
     assert cold_start.resolve_equities_dataset("XNAS.ITCH") == "XNAS.ITCH"
+
+
+def test_default_as_of_uses_latest_date_available_to_every_schema() -> None:
+    catalogs = {
+        "OPRA.PILLAR": {
+            "ohlcv-1s": {"start": "2013-01-01", "end": "2026-08-15"},
+            "ohlcv-1d": {"start": "2013-01-01", "end": "2026-08-16"},
+        },
+        "GLBX.MDP3": {
+            "ohlcv-1s": {"start": "2010-01-01", "end": "2026-08-16"},
+        },
+    }
+
+    assert cold_start.latest_common_available_date(catalogs) == date(2026, 8, 15)
 
 
 def test_cme_scope_is_required_and_never_invented_from_equities() -> None:

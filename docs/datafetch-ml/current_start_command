@@ -129,10 +129,11 @@ refetch or republish an already committed natural target:
 
 Before starting Options Capture for a new watchlist symbol, run the idempotent
 one-time historical bootstrap. It requests every Standard schema for each
-parent symbol independently. Initial windows are 5 days for `ohlcv-1s`, 100
-days for `ohlcv-1m`, 2,000 days for `ohlcv-1h`, 13 calendar years for `ohlcv-1d`
-and `definition`, one month for `cmbp-1`, and six months for `status`, `statistics`,
-`trades`, `tcbbo`, `cbbo-1m`, and `cbbo-1s`. The command preflights each scope,
+parent symbol independently. Initial interval windows are 5 days for every
+`*-1s` schema, 100 days for every `*-1m` schema, 1,825 days for `ohlcv-1h`, and
+2,555 days for `ohlcv-1d`. `definition` retains 13 calendar years, while
+`cmbp-1`, `status`, `statistics`, `trades`, and `tcbbo` use one month. The
+command preflights each scope,
 publishes only checksum-verified partitions, resumes verified work, and exits
 nonzero if any requested symbol/schema is capacity-blocked or fails. This
 normal command stays inside the documented included Standard-plan windows;

@@ -30,6 +30,7 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 from datafetching.cme_runtime import load_repository_environment
+from datafetching.databento_history_policy import interval_lookback_policy
 from datafetching.databento_opra_history import (
     DATASET as OPRA_DATASET,
     SyncScope,
@@ -247,13 +248,10 @@ def resolve_equities_dataset(explicit_dataset: str | None = None) -> str:
 
 
 def schema_window(standard_plan_dataset: str, schema: str) -> dict[str, object]:
-    if schema == "ohlcv-1s":
-        return {"unit": "days", "value": 5}
-    if schema == "ohlcv-1m":
-        return {"unit": "days", "value": 100}
-    if schema == "ohlcv-1h":
-        return {"unit": "days", "value": 2_000}
-    if schema in {"ohlcv-1d", "definition"}:
+    interval_policy = interval_lookback_policy(schema)
+    if interval_policy is not None:
+        return interval_policy
+    if schema == "definition":
         if standard_plan_dataset == PLAN_DATASET_OPRA:
             return {"unit": "years", "value": 13}
         if standard_plan_dataset == PLAN_DATASET_US_EQUITIES:
@@ -336,6 +334,27 @@ def discover_dataset_catalog(
             raise ColdStartError(f"Databento returned invalid range for {dataset}/{schema}")
         result[str(schema)] = {"start": start.isoformat(), "end": end.isoformat()}
     return result
+
+
+def latest_common_available_date(
+    catalogs: Mapping[str, Mapping[str, Mapping[str, str]]],
+) -> date:
+    """Return the latest exclusive date bound supported by every required schema."""
+
+    ends: list[date] = []
+    for dataset, schemas in catalogs.items():
+        if not schemas:
+            raise ColdStartError(f"Databento returned an empty schema catalog for {dataset}")
+        for schema, bounds in schemas.items():
+            try:
+                ends.append(_as_date(bounds["end"]))
+            except (KeyError, TypeError) as exc:
+                raise ColdStartError(
+                    f"Databento returned no end bound for {dataset}/{schema}"
+                ) from exc
+    if not ends:
+        raise ColdStartError("Databento returned no common historical date bound")
+    return min(ends)
 
 
 def build_manifest(
@@ -726,8 +745,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "CME cold-start requires DATABENTO_CME_DATASET or --cme-dataset before any request"
             )
         equities_dataset = resolve_equities_dataset(args.equities_dataset)
-        as_of = args.as_of or _utc_now().date()
         if args.dry_run:
+            as_of = args.as_of or _utc_now().date()
             manifest = build_manifest(
                 datastore_root=root,
                 equities_symbols=equities,
@@ -750,6 +769,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             cme_dataset: discover_dataset_catalog(client, dataset=cme_dataset, required_schemas=CME_SCHEMAS),
             equities_dataset: discover_dataset_catalog(client, dataset=equities_dataset, required_schemas=US_EQUITIES_SCHEMAS),
         }
+        as_of = args.as_of or latest_common_available_date(catalogs)
         manifest = build_manifest(
             datastore_root=root,
             equities_symbols=equities,
@@ -1173,7 +1193,6 @@ def _print_dry_run(manifest: Mapping[str, object]) -> None:
             f"PENDING {item['dataset']} {item['schema']} {item['symbol_scope'][0]} "
             f"{item['start']}..{item['end']} -> {item['storage_path']}"
         )
-    print("US Equities full-market-summary: REUSED_COMPONENTS_NO_DUPLICATE_FETCH")
 
 
 def _print_preflight(
@@ -1212,6 +1231,7 @@ __all__ = [
     "build_manifest",
     "discover_dataset_catalog",
     "execute_manifest",
+    "latest_common_available_date",
     "main",
     "opra_parent_symbols",
     "parse_watchlist",

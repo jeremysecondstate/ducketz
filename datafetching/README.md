@@ -155,7 +155,7 @@ that same OPRA authority plus isolated CME and US-equity archives; see
 to `XNAS.ITCH` and does not inherit Loop A's live dataset setting. Neither
 command is a recurring loop. CME/L2 self-initializes its owned 30-day OHLCV and
 shorter non-OHLCV runtime history, while Loop A self-initializes its owned bounded Databento bar
-windows (through 2,920 days for daily bars). Those runtime histories and their
+windows (through 2,555 days for daily bars). Those runtime histories and their
 live cursors remain distinct from the cold-start archives. Capacity,
 checksums, receipts, and exact included-scope validation govern bootstrap.
 

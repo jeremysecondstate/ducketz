@@ -21,11 +21,12 @@ are included Standard-plan access and are checked against
 |---|---:|---:|
 | `ohlcv-1s` | 5 days | 1 day |
 | `ohlcv-1m` | 100 days | 2 days |
-| `ohlcv-1h` | 2,000 days | 5 days |
-| `ohlcv-1d` | 13 calendar years | 10 days |
+| `ohlcv-1h` | 1,825 days | 5 days |
+| `ohlcv-1d` | 2,555 days | 10 days |
 | `definition` | 13 calendar years | 3 days |
-| `cmbp-1` | 1 month | 3 days |
-| `status`, `statistics`, `trades`, `tcbbo`, `cbbo-1m`, `cbbo-1s` | 6 months | 3 days |
+| `cbbo-1s` | 5 days | 3 days |
+| `cbbo-1m` | 100 days | 3 days |
+| `cmbp-1`, `status`, `statistics`, `trades`, `tcbbo` | 1 month | 3 days |
 
 The recurring `datafetching.options_runtime` runs catch-up at most once per UTC
 date. It advances only a verified v5 symbol/schema cursor and reports
@@ -39,7 +40,7 @@ handoff also records its `bootstrap_manifest_id`. The reader accepts a legacy
 v4 cursor only when its policy exactly equals the former schema-specific
 bootstrap policy, including the former 5,000-day daily/definition value. This
 is read compatibility only; every new or advanced cursor is written as v5 with
-the 13-calendar-year policy.
+the current schema-specific policy.
 
 ## Storage contract
 

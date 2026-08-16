@@ -76,7 +76,7 @@ def test_native_hour_wins_duplicates_while_derived_hour_fills_lag(
         "NVDA",
         "1h",
         native,
-        request_key="source_2000d_1h_ohlcv-1h_1h",
+        request_key="source_1825d_1h_ohlcv-1h_1h",
         as_of=as_of,
     )
 
@@ -154,19 +154,19 @@ def test_databento_fetch_persists_daily_fallback_once_after_close(
 ) -> None:
     store = ParquetStore(tmp_path)
     minute_spec = DatabentoAnalysisSourceSpec(
-        key="source_1000d_1m",
+        key="source_100d_1m",
         schema="ohlcv-1m",
         frequency="1m",
-        lookback=pd.Timedelta(days=1000),
+        lookback=pd.Timedelta(days=100),
     )
     daily_spec = DatabentoAnalysisSourceSpec(
-        key="source_2920d_1d",
+        key="source_2555d_1d",
         schema="ohlcv-1d",
         frequency="1d",
-        lookback=pd.Timedelta(days=2920),
+        lookback=pd.Timedelta(days=2555),
     )
     observed_at = pd.Timestamp("2026-08-04T20:01:00Z")
-    minute_request_key = "source_1000d_1m_ohlcv-1m_1m"
+    minute_request_key = "source_100d_1m_ohlcv-1m_1m"
     store.save_bars(
         "databento",
         "NVDA",
@@ -231,7 +231,7 @@ def test_native_daily_wins_duplicate_while_derived_daily_fills_lag(
         "NVDA",
         "1d",
         [_day_bar("2024-07-29T00:00:00Z", close=201.0)],
-        request_key="source_2920d_1d_ohlcv-1d_1d",
+        request_key="source_2555d_1d_ohlcv-1d_1d",
         as_of=as_of,
     )
 

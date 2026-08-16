@@ -204,9 +204,10 @@ python -m datafetching.options_history `
 ```
 
 The bootstrap synchronizes each symbol independently as `<SYMBOL>.OPT` with a
-schema-specific initial window: `ohlcv-1s` uses 5 days, `ohlcv-1m` 100 days,
-`ohlcv-1h` 2,000 days, and `ohlcv-1d` plus `definition` 13 calendar years. `cmbp-1`
-uses one month; the remaining Standard schemas use six months. Every request
+schema-specific initial window: every `*-1s` schema uses 5 days, every `*-1m`
+schema 100 days, `ohlcv-1h` 1,825 days, and `ohlcv-1d` 2,555 days.
+`definition` retains 13 calendar years; the remaining non-interval Standard
+schemas use one month. Every request
 must remain inside its configured included entitlement; an explicit range
 outside it is rejected rather than silently shortened.
 Dense `cmbp-1` and `cbbo-1s` days are split into deterministic intraday
@@ -218,7 +219,7 @@ the exact lookback policy, requested start, and completed-through boundary. The
 reader retains narrow v4 compatibility only when the old cursor’s policy exactly
 matches the former schema-specific bootstrap policy; all new writes are v5.
 For daily bars and definitions, that legacy-only v4 policy was 5,000 days; v5
-writes use the current 13-calendar-year Standard-plan boundary.
+writes use the current schema-specific policy.
 
 The optional one-shot `datafetching.databento_cold_start` command can populate
 the same canonical OPRA partitions while creating separate CME/US-equity cold
