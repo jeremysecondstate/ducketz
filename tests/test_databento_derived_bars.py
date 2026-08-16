@@ -160,10 +160,10 @@ def test_databento_fetch_persists_daily_fallback_once_after_close(
         lookback=pd.Timedelta(days=1000),
     )
     daily_spec = DatabentoAnalysisSourceSpec(
-        key="source_3000d_1d",
+        key="source_2920d_1d",
         schema="ohlcv-1d",
         frequency="1d",
-        lookback=pd.Timedelta(days=3000),
+        lookback=pd.Timedelta(days=2920),
     )
     observed_at = pd.Timestamp("2026-08-04T20:01:00Z")
     minute_request_key = "source_1000d_1m_ohlcv-1m_1m"
@@ -231,7 +231,7 @@ def test_native_daily_wins_duplicate_while_derived_daily_fills_lag(
         "NVDA",
         "1d",
         [_day_bar("2024-07-29T00:00:00Z", close=201.0)],
-        request_key="source_3000d_1d_ohlcv-1d_1d",
+        request_key="source_2920d_1d_ohlcv-1d_1d",
         as_of=as_of,
     )
 

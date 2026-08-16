@@ -105,10 +105,12 @@ def databento_analysis_source_specs() -> tuple[DatabentoAnalysisSourceSpec, ...]
             lookback=timedelta(days=2000),
         ),
         DatabentoAnalysisSourceSpec(
-            key="source_3000d_1d",
+            key="source_2920d_1d",
             schema="ohlcv-1d",
             frequency="1d",
-            lookback=timedelta(days=3000),
+            # Eight 365-day years stays inside the documented Standard-plan
+            # US-equities L0 boundary for every leap-year placement.
+            lookback=timedelta(days=2920),
         ),
     )
 
@@ -126,7 +128,7 @@ def databento_analysis_bar_specs() -> tuple[DatabentoAnalysisBarSpec, ...]:
         DatabentoAnalysisBarSpec("analysis_2000d_1h", "source_2000d_1h", "1h", "native"),
         DatabentoAnalysisBarSpec("analysis_2000d_2h", "source_2000d_1h", "2h", "resampled_from_1h"),
         DatabentoAnalysisBarSpec("analysis_2000d_4h", "source_2000d_1h", "4h", "resampled_from_1h"),
-        DatabentoAnalysisBarSpec("analysis_3000d_1d", "source_3000d_1d", "1d", "native"),
-        DatabentoAnalysisBarSpec("analysis_3000d_1w", "source_3000d_1d", "1w", "resampled_from_1d"),
-        DatabentoAnalysisBarSpec("analysis_3000d_1mo", "source_3000d_1d", "1mo", "resampled_from_1d"),
+        DatabentoAnalysisBarSpec("analysis_2920d_1d", "source_2920d_1d", "1d", "native"),
+        DatabentoAnalysisBarSpec("analysis_2920d_1w", "source_2920d_1d", "1w", "resampled_from_1d"),
+        DatabentoAnalysisBarSpec("analysis_2920d_1mo", "source_2920d_1d", "1mo", "resampled_from_1d"),
     )

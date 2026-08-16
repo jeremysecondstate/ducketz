@@ -42,16 +42,20 @@ from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.artifacts import file_checksum
 
 
-COORDINATOR_VERSION = "databento-cold-start-v1"
-MANIFEST_VERSION = "databento-cold-start-manifest-v1"
+COORDINATOR_VERSION = "databento-cold-start-v2"
+MANIFEST_VERSION = "databento-cold-start-manifest-v2"
 PARTITION_VERSION = "databento-cold-start-partition-v1"
 RECEIPT_VERSION = "databento-cold-start-receipt-v1"
-PREFLIGHT_VERSION = "databento-cold-start-preflight-v1"
+PREFLIGHT_VERSION = "databento-cold-start-preflight-v2"
 PROGRESS_VERSION = "databento-cold-start-progress-v1"
 STORAGE_RESERVE_BYTES = 5 * 1024**3
 STORAGE_EXPANSION_FACTOR = 2
 DEFAULT_WATCHLIST = Path(__file__).resolve().parent / "watchlist.txt"
 DEFAULT_EQUITIES_DATASET = "DBEQ.BASIC"
+STANDARD_PLAN_AUTHORITY = "docs/databento-plan/databento_standard_plan_data_access.md"
+PLAN_DATASET_OPRA = "OPRA"
+PLAN_DATASET_CME = "CME"
+PLAN_DATASET_US_EQUITIES = "US_EQUITIES"
 
 OPRA_SCHEMAS = (
     "ohlcv-1s",
@@ -119,6 +123,7 @@ class CmeScope:
 class ColdStartRequest:
     request_id: str
     dataset: str
+    standard_plan_dataset: str
     schema: str
     symbol_scope: tuple[str, ...]
     stype_in: str
@@ -227,7 +232,7 @@ def resolve_cme_scopes(
     return tuple(sorted(scopes, key=lambda item: (item.symbol, item.stype_in)))
 
 
-def schema_window(schema: str) -> dict[str, object]:
+def schema_window(standard_plan_dataset: str, schema: str) -> dict[str, object]:
     if schema == "ohlcv-1s":
         return {"unit": "days", "value": 5}
     if schema == "ohlcv-1m":
@@ -235,14 +240,52 @@ def schema_window(schema: str) -> dict[str, object]:
     if schema == "ohlcv-1h":
         return {"unit": "days", "value": 2_000}
     if schema in {"ohlcv-1d", "definition"}:
-        return {"unit": "days", "value": 5_000}
+        if standard_plan_dataset == PLAN_DATASET_OPRA:
+            return {"unit": "years", "value": 13}
+        if standard_plan_dataset == PLAN_DATASET_US_EQUITIES:
+            return {"unit": "years", "value": 8}
+        if standard_plan_dataset == PLAN_DATASET_CME:
+            return {"unit": "days", "value": 5_000}
+        raise ColdStartError(
+            f"Unknown Standard-plan dataset role: {standard_plan_dataset}"
+        )
     return {"unit": "calendar_months", "value": 1}
 
 
-def required_free_bytes(total_billable_bytes: int) -> int:
-    if total_billable_bytes < 0:
-        raise ValueError("Billable bytes cannot be negative")
-    return STORAGE_RESERVE_BYTES + STORAGE_EXPANSION_FACTOR * total_billable_bytes
+def standard_plan_history_policy(
+    standard_plan_dataset: str, schema: str
+) -> dict[str, object]:
+    if standard_plan_dataset == PLAN_DATASET_OPRA:
+        if schema in {"ohlcv-1s", "ohlcv-1m", "ohlcv-1h", "ohlcv-1d", "definition", "statistics", "status"}:
+            return {"unit": "years", "value": 13}
+        if schema in {"cmbp-1", "tcbbo", "cbbo-1s", "cbbo-1m", "trades"}:
+            return {"unit": "months", "value": 12}
+    elif standard_plan_dataset == PLAN_DATASET_CME:
+        if schema in {"ohlcv-1s", "ohlcv-1m", "ohlcv-1h", "ohlcv-1d", "definition", "statistics", "status"}:
+            return {"unit": "years", "value": 16}
+        if schema in {"mbp-1", "tbbo", "bbo-1s", "bbo-1m", "trades"}:
+            return {"unit": "months", "value": 12}
+        if schema in {"mbp-10", "mbo"}:
+            return {"unit": "calendar_months", "value": 1}
+    elif standard_plan_dataset == PLAN_DATASET_US_EQUITIES:
+        if schema in {"ohlcv-1s", "ohlcv-1m", "ohlcv-1h", "ohlcv-1d", "definition", "statistics", "status"}:
+            return {"unit": "years", "value": 8}
+        if schema in {"mbp-1", "tbbo", "bbo-1s", "bbo-1m", "trades"}:
+            return {"unit": "months", "value": 12}
+        if schema in {"mbp-10", "mbo", "imbalance"}:
+            return {"unit": "calendar_months", "value": 1}
+    raise ColdStartError(
+        f"No Standard-plan history policy for {standard_plan_dataset}/{schema}"
+    )
+
+
+def required_free_bytes(total_download_payload_bytes: int) -> int:
+    if total_download_payload_bytes < 0:
+        raise ValueError("Estimated download payload bytes cannot be negative")
+    return (
+        STORAGE_RESERVE_BYTES
+        + STORAGE_EXPANSION_FACTOR * total_download_payload_bytes
+    )
 
 
 def discover_dataset_catalog(
@@ -295,20 +338,57 @@ def build_manifest(
 
     entries: list[ColdStartRequest] = []
     dataset_specs = (
-        (OPRA_DATASET, OPRA_SCHEMAS, opra_parent_symbols(equities_symbols), "parent", "canonical-opra"),
-        (cme_dataset, CME_SCHEMAS, tuple(scope.symbol for scope in cme_scopes), "cme", "isolated-cold-start"),
-        (equities_dataset, US_EQUITIES_SCHEMAS, tuple(equities_symbols), "raw_symbol", "isolated-cold-start"),
+        (
+            OPRA_DATASET,
+            PLAN_DATASET_OPRA,
+            OPRA_SCHEMAS,
+            opra_parent_symbols(equities_symbols),
+            "parent",
+            "canonical-opra",
+        ),
+        (
+            cme_dataset,
+            PLAN_DATASET_CME,
+            CME_SCHEMAS,
+            tuple(scope.symbol for scope in cme_scopes),
+            "cme",
+            "isolated-cold-start",
+        ),
+        (
+            equities_dataset,
+            PLAN_DATASET_US_EQUITIES,
+            US_EQUITIES_SCHEMAS,
+            tuple(equities_symbols),
+            "raw_symbol",
+            "isolated-cold-start",
+        ),
     )
     cme_stypes = {scope.symbol: scope.stype_in for scope in cme_scopes}
-    for dataset, schemas, symbols, default_stype, contract in dataset_specs:
+    for (
+        dataset,
+        standard_plan_dataset,
+        schemas,
+        symbols,
+        default_stype,
+        contract,
+    ) in dataset_specs:
         catalog = catalogs.get(dataset) if catalogs else None
         for schema in schemas:
             for symbol in symbols:
                 bounds = catalog.get(schema) if catalog else None
-                end = min(as_of, _as_date(bounds["end"])) if bounds else as_of
-                start = _window_start(end, schema_window(schema))
+                end = as_of
+                window = schema_window(standard_plan_dataset, schema)
+                start = _window_start(end, window)
                 if bounds:
-                    start = max(start, _as_date(bounds["start"]))
+                    provider_start = _as_date(bounds["start"])
+                    provider_end = _as_date(bounds["end"])
+                    if provider_start > start or provider_end < end:
+                        raise ColdStartError(
+                            f"Provider range does not cover the configured included "
+                            f"bootstrap for {dataset}/{schema}: requested="
+                            f"{start.isoformat()}..{end.isoformat()} provider="
+                            f"{provider_start.isoformat()}..{provider_end.isoformat()}"
+                        )
                 if start >= end:
                     raise ColdStartError(
                         f"No historical interval remains for {dataset}/{schema}/{symbol}"
@@ -325,13 +405,14 @@ def build_manifest(
                 )
                 identity = {
                     "dataset": dataset,
+                    "standard_plan_dataset": standard_plan_dataset,
                     "schema": schema,
                     "symbol_scope": [symbol],
                     "stype_in": stype,
                     "start": start.isoformat(),
                     "end": end.isoformat(),
                     "storage_contract": contract,
-                    "window": schema_window(schema),
+                    "window": window,
                 }
                 entries.append(
                     ColdStartRequest(
@@ -346,6 +427,7 @@ def build_manifest(
         "coordinator_version": COORDINATOR_VERSION,
         "as_of": as_of.isoformat(),
         "datastore_root": str(Path(datastore_root).resolve()),
+        "entitlement_authority": STANDARD_PLAN_AUTHORITY,
         "requests": [asdict(item) for item in entries],
         "derived_views": [
             {
@@ -356,6 +438,7 @@ def build_manifest(
             }
         ],
     }
+    _validate_manifest_included_scope(body)
     manifest_id = _checksum(body)[:24]
     return {"manifest_id": manifest_id, **body, "semantic_checksum_sha256": _checksum(body)}
 
@@ -375,6 +458,51 @@ def write_manifest(datastore_root: Path, manifest: Mapping[str, object]) -> Path
     return path
 
 
+def _validate_manifest_included_scope(manifest: Mapping[str, object]) -> None:
+    """Reject any cold-start request outside the documented included scope."""
+
+    try:
+        as_of = _as_date(manifest["as_of"])
+        requests = manifest["requests"]
+    except KeyError as exc:
+        raise ColdStartError("Cold-start manifest lacks included-scope metadata") from exc
+    if manifest.get("entitlement_authority") != STANDARD_PLAN_AUTHORITY:
+        raise ColdStartError("Cold-start manifest has the wrong entitlement authority")
+    if not isinstance(requests, list):
+        raise ColdStartError("Cold-start manifest has no request list")
+    for raw in requests:
+        if not isinstance(raw, Mapping):
+            raise ColdStartError("Cold-start manifest request is malformed")
+        role = str(raw.get("standard_plan_dataset", ""))
+        schema = str(raw.get("schema", ""))
+        configured_window = schema_window(role, schema)
+        if raw.get("window") != configured_window:
+            raise ColdStartError(
+                f"Cold-start request changed the configured bootstrap window for "
+                f"{role}/{schema}"
+            )
+        start = _as_date(raw.get("start"))
+        end = _as_date(raw.get("end"))
+        expected_start = _window_start(as_of, configured_window)
+        if start != expected_start or end != as_of:
+            raise ColdStartError(
+                f"Cold-start request does not match the configured bootstrap scope "
+                f"for {role}/{schema}: requested={start.isoformat()}.."
+                f"{end.isoformat()} expected={expected_start.isoformat()}.."
+                f"{as_of.isoformat()}"
+            )
+        included_start = _window_start(
+            as_of, standard_plan_history_policy(role, schema)
+        )
+        if start < included_start or end > as_of:
+            raise ColdStartError(
+                f"Cold-start request is outside the included Standard-plan scope "
+                f"for {role}/{schema}: requested={start.isoformat()}.."
+                f"{end.isoformat()} included={included_start.isoformat()}.."
+                f"{as_of.isoformat()} authority={STANDARD_PLAN_AUTHORITY}"
+            )
+
+
 def preflight_manifest(
     client: object,
     *,
@@ -384,6 +512,7 @@ def preflight_manifest(
 ) -> dict[str, object]:
     """Use exact Databento metadata and calculate the required free capacity."""
 
+    _validate_manifest_included_scope(manifest)
     metadata = getattr(client, "metadata", None)
     if metadata is None:
         raise ColdStartError("Databento client has no metadata endpoint")
@@ -396,23 +525,17 @@ def preflight_manifest(
             raise ColdStartError("Cold-start manifest request is malformed")
         kwargs = _request_kwargs(raw)
         try:
-            billable = int(_metadata_call(metadata.get_billable_size, **kwargs))
+            estimated_download_size = int(
+                _metadata_call(metadata.get_billable_size, **kwargs)
+            )
             records = int(_metadata_call(metadata.get_record_count, **kwargs))
         except AttributeError as exc:
             raise ColdStartError(
-                "Databento metadata does not support required billable-size and record-count preflight"
+                "Databento metadata does not support the required download-size "
+                "and record-count capacity preflight"
             ) from exc
-        if billable < 0 or records < 0:
+        if estimated_download_size < 0 or records < 0:
             raise ColdStartError(f"Databento returned negative preflight values for {raw['request_id']}")
-        cost: float | None = None
-        get_cost = getattr(metadata, "get_cost", None)
-        if callable(get_cost):
-            try:
-                cost = float(_metadata_call(get_cost, **kwargs))
-            except ColdStartError:
-                # Cost in USD is advisory. Exact billable bytes and record
-                # counts remain mandatory for the capacity safety decision.
-                cost = None
         estimates.append(
             {
                 "request_id": raw["request_id"],
@@ -422,21 +545,22 @@ def preflight_manifest(
                 "start": raw["start"],
                 "end": raw["end"],
                 "record_count": records,
-                "billable_size_bytes": billable,
-                "cost_usd": cost,
+                "estimated_download_size_bytes": estimated_download_size,
             }
         )
     estimates.sort(key=lambda item: (str(item["dataset"]), str(item["schema"]), tuple(item["symbol_scope"])))
-    total_billable = sum(int(item["billable_size_bytes"]) for item in estimates)
+    total_download_size = sum(
+        int(item["estimated_download_size_bytes"]) for item in estimates
+    )
     total_records = sum(int(item["record_count"]) for item in estimates)
     usage = disk_usage(Path(datastore_root).resolve().anchor)
-    required = required_free_bytes(total_billable)
+    required = required_free_bytes(total_download_size)
     return {
         "schema_version": PREFLIGHT_VERSION,
         "manifest_id": manifest["manifest_id"],
         "generated_at": _utc_now().isoformat(),
         "estimates": estimates,
-        "total_billable_size_bytes": total_billable,
+        "total_estimated_download_size_bytes": total_download_size,
         "total_record_count": total_records,
         "storage_reserve_bytes": STORAGE_RESERVE_BYTES,
         "storage_expansion_factor": STORAGE_EXPANSION_FACTOR,
@@ -465,8 +589,9 @@ def execute_manifest(
     preflight: Mapping[str, object],
     reporter: Callable[[str], None] | None = print,
 ) -> dict[str, int]:
-    """Download only a preflighted manifest and retain durable progress receipts."""
+    """Fetch only a preflighted manifest and retain durable progress receipts."""
 
+    _validate_manifest_included_scope(manifest)
     if not bool(preflight.get("capacity_pass")):
         raise ColdStartError("Cold-start capacity preflight failed; no downloads were started")
     if preflight.get("manifest_id") != manifest.get("manifest_id"):
@@ -546,14 +671,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Plan, preflight, and explicitly execute the isolated Databento historical cold-start. "
-            "No downloads occur unless both --execute and --confirm-billable-download are supplied."
+            "No downloads occur unless both --execute and --confirm-download are supplied."
         )
     )
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--dry-run", action="store_true", help="Print the deterministic request plan without credentials or network access.")
     mode.add_argument("--preflight", action="store_true", help="Fetch only provider metadata, write the manifest/preflight receipt, and check disk capacity.")
     mode.add_argument("--execute", action="store_true", help="Re-preflight, then download and publish verified historical partitions.")
-    parser.add_argument("--confirm-billable-download", action="store_true", help="Required with --execute because historical downloads may be billable.")
+    parser.add_argument(
+        "--confirm-download",
+        action="store_true",
+        help="Required with --execute to confirm the included historical transfer.",
+    )
     parser.add_argument("--watchlist", type=Path, default=DEFAULT_WATCHLIST)
     parser.add_argument("--as-of", type=_parse_date, default=None, help="Exclusive UTC date bound (YYYY-MM-DD); defaults to today.")
     parser.add_argument("--equities-dataset", default=None, help="Defaults to DATABENTO_EQUITIES_DATASET or DBEQ.BASIC.")
@@ -564,10 +693,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     datastore.add_argument("--datastore", type=Path, default=None)
     datastore.add_argument("--datastore-target", choices=tuple(DATASTORE_TARGETS), default=None)
     args = parser.parse_args(argv)
-    if args.confirm_billable_download and not args.execute:
-        parser.error("--confirm-billable-download is only valid with --execute")
-    if args.execute and not args.confirm_billable_download:
-        parser.error("--execute requires --confirm-billable-download; no downloads were started")
+    if args.confirm_download and not args.execute:
+        parser.error("--confirm-download is only valid with --execute")
+    if args.execute and not args.confirm_download:
+        parser.error("--execute requires --confirm-download; no downloads were started")
 
     try:
         load_repository_environment()
@@ -680,7 +809,6 @@ def _execute_opra_entry(
                 symbols=(symbol,),
             ),
             reporter=reporter,
-            allow_billable=True,
         )
         if result.errors or result.completed_rows < 1:
             raise ColdStartError(
@@ -957,7 +1085,9 @@ def _window_start(end: date, policy: Mapping[str, object]) -> date:
     amount = int(policy["value"])
     if policy["unit"] == "days":
         return (pd.Timestamp(end) - pd.Timedelta(days=amount)).date()
-    if policy["unit"] == "calendar_months":
+    if policy["unit"] == "years":
+        return (pd.Timestamp(end) - pd.DateOffset(years=amount)).date()
+    if policy["unit"] in {"months", "calendar_months"}:
         return (pd.Timestamp(end) - pd.DateOffset(months=amount)).date()
     raise ColdStartError(f"Unsupported cold-start window policy: {policy}")
 
@@ -1049,12 +1179,14 @@ def _print_preflight(
     for item in preflight["estimates"]:
         print(
             f"{item['dataset']} {item['schema']} {item['symbol_scope'][0]} "
-            f"records={item['record_count']} billable_bytes={item['billable_size_bytes']}"
+            f"records={item['record_count']} "
+            f"estimated_download_bytes={item['estimated_download_size_bytes']}"
         )
     print(
         "Totals: "
         f"records={preflight['total_record_count']} "
-        f"billable_bytes={preflight['total_billable_size_bytes']} "
+        f"estimated_download_bytes="
+        f"{preflight['total_estimated_download_size_bytes']} "
         f"required_free_bytes={preflight['required_free_bytes']} "
         f"available_free_bytes={preflight['available_free_bytes']} "
         f"capacity_pass={preflight['capacity_pass']}"
@@ -1077,6 +1209,7 @@ __all__ = [
     "required_free_bytes",
     "resolve_cme_scopes",
     "schema_window",
+    "standard_plan_history_policy",
     "write_manifest",
 ]
 

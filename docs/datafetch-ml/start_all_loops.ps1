@@ -1,5 +1,9 @@
 $ErrorActionPreference = 'Stop'
 
+# This launcher starts only the seven recurring production owners. Empty-store
+# ALFRED and included Standard-plan Databento bootstraps remain explicit,
+# one-time maintenance commands documented in current_start_command.
+
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
 $python = Join-Path $repoRoot '.venv\Scripts\python.exe'
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {

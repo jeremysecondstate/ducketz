@@ -12,7 +12,10 @@ from app.services.databento_market_data import (
     DatabentoAvailableRange,
     DatabentoMarketDataProvider,
 )
-from app.services.market_fetch_specs import DatabentoAnalysisSourceSpec
+from app.services.market_fetch_specs import (
+    DatabentoAnalysisSourceSpec,
+    databento_analysis_source_specs,
+)
 from app.services.schwab import SchwabSession
 from datafetching import FetchResult
 from datafetching import (
@@ -27,6 +30,16 @@ from technicals.parquet_io import _schwab_history_file_sort_key
 
 
 SYMBOLS = tuple(f"S{index:02d}" for index in range(15))
+
+
+def test_loop_a_daily_history_stays_inside_standard_equities_window() -> None:
+    daily = next(
+        spec
+        for spec in databento_analysis_source_specs()
+        if spec.schema == "ohlcv-1d"
+    )
+    assert daily.key == "source_2920d_1d"
+    assert daily.lookback == timedelta(days=2_920)
 
 
 def test_default_watchlist_and_runtime_commands_use_the_same_configured_symbols() -> None:

@@ -59,19 +59,42 @@ def test_manifest_has_exact_schema_coverage_and_requested_windows(tmp_path: Path
     assert all(item["stype_in"] == "parent" for item in opra)
     assert {item["symbol_scope"][0] for item in requests if item["dataset"] == EQUITIES_DATASET} == set(WATCHLIST)
 
-    expected_starts = {
+    expected_common_starts = {
         "ohlcv-1s": "2026-08-10",
         "ohlcv-1m": "2026-05-07",
         "ohlcv-1h": "2021-02-22",
-        "ohlcv-1d": "2012-12-06",
-        "definition": "2012-12-06",
         "statistics": "2026-07-15",
         "status": "2026-07-15",
         "mbp-10": "2026-07-15",
     }
     for request in requests:
         assert request["end"] == AS_OF.isoformat()
-        assert request["start"] == expected_starts.get(request["schema"], "2026-07-15")
+        expected = expected_common_starts.get(request["schema"], "2026-07-15")
+        if request["schema"] in {"ohlcv-1d", "definition"}:
+            expected = {
+                cold_start.OPRA_DATASET: "2013-08-15",
+                CME_DATASET: "2012-12-06",
+                EQUITIES_DATASET: "2018-08-15",
+            }[request["dataset"]]
+        assert request["start"] == expected
+
+    assert {
+        (request["standard_plan_dataset"], request["schema"]): request["window"]
+        for request in requests
+        if request["schema"] in {"ohlcv-1d", "definition"}
+    } == {
+        (cold_start.PLAN_DATASET_OPRA, schema): {"unit": "years", "value": 13}
+        for schema in ("ohlcv-1d", "definition")
+    } | {
+        (cold_start.PLAN_DATASET_CME, schema): {"unit": "days", "value": 5_000}
+        for schema in ("ohlcv-1d", "definition")
+    } | {
+        (cold_start.PLAN_DATASET_US_EQUITIES, schema): {
+            "unit": "years",
+            "value": 8,
+        }
+        for schema in ("ohlcv-1d", "definition")
+    }
 
     assert manifest["derived_views"] == [
         {
@@ -133,25 +156,56 @@ def test_manifest_is_deterministic_and_storage_preflight_uses_exact_arithmetic(
         def get_record_count(self, **_kwargs: object) -> int:
             return 7
 
-        def get_cost(self, **_kwargs: object) -> float:
-            return 1.25
-
     preflight = cold_start.preflight_manifest(
         SimpleNamespace(metadata=Metadata()),
         datastore_root=tmp_path,
         manifest=first,
         disk_usage=lambda _path: SimpleNamespace(free=10**15),
     )
-    expected_billable = sum(
+    expected_download_size = sum(
         len(str(request["schema"])) * 100 for request in first["requests"]
     )
-    assert preflight["total_billable_size_bytes"] == expected_billable
+    assert (
+        preflight["total_estimated_download_size_bytes"]
+        == expected_download_size
+    )
     assert preflight["total_record_count"] == 7 * len(first["requests"])
     assert preflight["required_free_bytes"] == (
-        5 * 1024**3 + 2 * expected_billable
+        5 * 1024**3 + 2 * expected_download_size
     )
     assert preflight["capacity_pass"] is True
-    assert all(item["cost_usd"] == 1.25 for item in preflight["estimates"])
+    assert all(
+        item["estimated_download_size_bytes"] > 0
+        for item in preflight["estimates"]
+    )
+
+
+def test_preflight_rejects_manifest_outside_configured_included_scope(
+    tmp_path: Path,
+) -> None:
+    manifest = _manifest(tmp_path)
+    request = next(
+        item
+        for item in manifest["requests"]
+        if item["dataset"] == EQUITIES_DATASET and item["schema"] == "ohlcv-1d"
+    )
+    request["start"] = "2012-12-06"
+
+    with pytest.raises(cold_start.ColdStartError, match="configured bootstrap scope"):
+        cold_start.preflight_manifest(
+            SimpleNamespace(metadata=object()),
+            datastore_root=tmp_path,
+            manifest=manifest,
+        )
+
+
+def test_cold_start_cli_requires_neutral_download_confirmation() -> None:
+    with pytest.raises(SystemExit):
+        cold_start.main(["--execute"])
+    with pytest.raises(SystemExit):
+        cold_start.main(["--preflight", "--confirm-download"])
+    with pytest.raises(SystemExit):
+        cold_start.main(["--execute", "--confirm-billable-download"])
 
 
 def test_execution_resumes_verified_generic_entries_without_network(
@@ -160,6 +214,7 @@ def test_execution_resumes_verified_generic_entries_without_network(
     request = {
         "request_id": "test-request",
         "dataset": EQUITIES_DATASET,
+        "standard_plan_dataset": cold_start.PLAN_DATASET_US_EQUITIES,
         "schema": "trades",
         "symbol_scope": ["AAPL"],
         "stype_in": "raw_symbol",
@@ -170,7 +225,12 @@ def test_execution_resumes_verified_generic_entries_without_network(
         "window": {"unit": "calendar_months", "value": 1},
         "status": "PENDING",
     }
-    manifest = {"manifest_id": "resume-manifest", "requests": [request]}
+    manifest = {
+        "manifest_id": "resume-manifest",
+        "as_of": "2026-08-15",
+        "entitlement_authority": cold_start.STANDARD_PLAN_AUTHORITY,
+        "requests": [request],
+    }
     preflight = {
         "manifest_id": "resume-manifest",
         "capacity_pass": True,
@@ -210,6 +270,7 @@ def test_opra_cursor_handoff_keeps_history_lock_and_normalizes_calendar_month_po
     request = {
         "request_id": "opra-request",
         "dataset": cold_start.OPRA_DATASET,
+        "standard_plan_dataset": cold_start.PLAN_DATASET_OPRA,
         "schema": "trades",
         "symbol_scope": ["AAPL.OPT"],
         "stype_in": "parent",
@@ -260,6 +321,37 @@ def test_opra_cursor_handoff_publishes_current_v5_contract(tmp_path: Path) -> No
     assert payload["completed_through"] == "2026-08-15"
     assert payload["lookback_policy"] == {"unit": "months", "value": 1}
     assert payload["bootstrap_manifest_id"] == "cold-start-manifest"
+
+
+def test_opra_cursor_handoff_accepts_calendar_year_policy(tmp_path: Path) -> None:
+    path = cold_start.publish_opra_symbol_history_cursor(
+        tmp_path,
+        symbol="AAPL",
+        schema="definition",
+        requested_start="2013-08-15",
+        completed_through="2026-08-15",
+        lookback_policy={"unit": "years", "value": 13},
+        bootstrap_manifest_id="cold-start-manifest",
+    )
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert payload["lookback_policy"] == {"unit": "years", "value": 13}
+
+
+def test_active_startup_material_has_no_stale_paid_download_wording() -> None:
+    root = Path(__file__).resolve().parents[1]
+    paths = [
+        root / "docs" / "datafetch-ml" / "current_start_command",
+        root / "docs" / "datafetch-ml" / "databento-cold-start.md",
+        root / "docs" / "datafetch-ml" / "options-opra-history.md",
+        root / "docs" / "datafetch-ml" / "start_all_loops.ps1",
+        root / "options" / "README.md",
+        *sorted((root / "docs" / "loops-system-analysis").rglob("*.md")),
+    ]
+    combined = "\n".join(path.read_text(encoding="utf-8") for path in paths).lower()
+    assert "confirm-billable" not in combined
+    assert "billable" not in combined
+    assert "nonzero-cost" not in combined
 
 
 def test_coordinator_preserves_loop_locks_and_publication_authority() -> None:

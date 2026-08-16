@@ -55,14 +55,19 @@ deterministic manifest is selected.
 
 ## Exact coverage
 
-Every dataset gets these windows:
+The manifest applies the checked-in Standard-plan entitlement exactly. The
+normal configured scope is included data access; the command rejects a
+provider range or edited manifest outside these boundaries instead of offering
+an alternate execution mode.
 
-| Schema | Window |
-| --- | --- |
-| `ohlcv-1s` | 5 days |
-| `ohlcv-1m` | 100 days |
-| `ohlcv-1h` | 2,000 days |
-| `ohlcv-1d`, `definition` | 5,000 days |
+| Dataset/schema | Configured window |
+| --- | ---: |
+| Every dataset: `ohlcv-1s` | 5 days |
+| Every dataset: `ohlcv-1m` | 100 days |
+| Every dataset: `ohlcv-1h` | 2,000 days |
+| OPRA: `ohlcv-1d`, `definition` | 13 calendar years |
+| US Equities: `ohlcv-1d`, `definition` | 8 calendar years |
+| CME: `ohlcv-1d`, `definition` | 5,000 days |
 | Every other available schema | one calendar month |
 
 Schema coverage is:
@@ -107,19 +112,18 @@ python -m datafetching.databento_cold_start `
 ```
 
 `--preflight` requires `DATABENTO_API_KEY`, uses only Databento metadata for
-record counts and billable sizes, writes the manifest/preflight evidence, and
-calculates required free capacity as:
+record counts and estimated compressed download sizes, writes the
+manifest/preflight evidence, and calculates required free capacity as:
 
 ```text
-5 GiB + 2 × total billable GiB
+5 GiB + 2 × total estimated download GiB
 ```
 
 It reports one line per dataset/schema/symbol and blocks when the destination
 volume is too small. It never truncates scope, deletes data, or makes a
 timeseries request.
 
-After reviewing the preflight, the only download command is deliberately
-explicit:
+After reviewing the preflight, execution is deliberately explicit:
 
 ```powershell
 python -m datafetching.databento_cold_start `
@@ -127,14 +131,16 @@ python -m datafetching.databento_cold_start `
   --watchlist datafetching\watchlist.txt `
   --as-of $BootstrapAsOf `
   --execute `
-  --confirm-billable-download
+  --confirm-download
 ```
 
 Execution re-runs metadata/capacity preflight immediately before fetching.
 Rerun the identical command after a failure; verified partitions are checked
 and skipped, while only incomplete scopes resume. A missing credential,
-schema, CME scope, capacity check, ambiguous expansion, or receipt verification
-stops execution before unsafe publication.
+schema, CME scope, entitlement match, capacity check, ambiguous expansion, or
+receipt verification stops execution before unsafe publication. Storage
+capacity, including the reserve and expansion allowance above, is the relevant
+normal-bootstrap constraint.
 
 ## Ownership boundary after execution
 

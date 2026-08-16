@@ -18,6 +18,13 @@
 
 **Confirmed non-ownership:** it does not acquire provider data, publish option chains or option fair values, choose final options strategies, or write to the closed lockbox. Strategy is explicitly an independent authority. `ml/runtime_pipeline.py:695`, `ml/runtime_pipeline.py:838`
 
+**Startup/bootstrap boundary:** Loop B is a reader/computation owner. It starts
+only from verified Loop A and other causal feature authorities and never uses a
+cold-start archive cursor as production evidence. On a brand-new datastore a
+base/earlier-profile Loop B generation is also the decision-grid prerequisite
+for the one-time ALFRED backfill; the v3 macro profile begins only after ALFRED
+readiness is verified.
+
 ## Inputs
 
 | Input or dataset | Producer/source | Physical path or interface | Key fields and semantic values | Clock/freshness/causality rules | Required or optional | Evidence |

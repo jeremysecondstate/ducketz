@@ -39,6 +39,16 @@ prospective rate bridge, its optional one-time seed remains:
 python -m ml.option_pricing_admin --datastore-target pc capture-current-rate
 ```
 
+For a completely empty datastore, also complete the normal historical inputs
+before starting their consumers: run either the six-symbol OPRA bootstrap shown
+under Options Capture or the all-dataset cold start documented in
+`databento-cold-start.md`, then run the ALFRED sequence above once its Loop B
+decision grid exists. Both Databento bootstrap paths use included Standard-plan
+access and fail closed on entitlement, capacity, checksum, receipt, or cursor
+verification. CME and Loop A otherwise self-initialize their own bounded runtime
+history; their live continuation authorities do not depend on cold-start
+archive cursors.
+
 1. Independent CME/L2 owner:
 
 ```powershell
@@ -120,11 +130,13 @@ refetch or republish an already committed natural target:
 Before starting Options Capture for a new watchlist symbol, run the idempotent
 one-time historical bootstrap. It requests every Standard schema for each
 parent symbol independently. Initial windows are 5 days for `ohlcv-1s`, 100
-days for `ohlcv-1m`, 2,000 days for `ohlcv-1h`, 5,000 days for `ohlcv-1d` and
-`definition`, one month for `cmbp-1`, and six months for `status`, `statistics`,
+days for `ohlcv-1m`, 2,000 days for `ohlcv-1h`, 13 calendar years for `ohlcv-1d`
+and `definition`, one month for `cmbp-1`, and six months for `status`, `statistics`,
 `trades`, `tcbbo`, `cbbo-1m`, and `cbbo-1s`. The command preflights each scope,
 publishes only checksum-verified partitions, resumes verified work, and exits
-nonzero if any requested symbol/schema is capacity-blocked or fails:
+nonzero if any requested symbol/schema is capacity-blocked or fails. This
+normal command stays inside the documented included Standard-plan windows;
+storage capacity is the operative constraint:
 
 ```powershell
 python -m datafetching.options_history `

@@ -26,7 +26,7 @@ PROVIDER = "databento-opra"
 SYNC_VERSION = "databento-opra-standard-sync-v1"
 PARTITION_VERSION = "databento-opra-partition-v1"
 RECEIPT_VERSION = "databento-opra-partition-receipt-v1"
-ENTITLEMENT_VERSION = "databento-opra-entitlement-v1"
+ENTITLEMENT_VERSION = "databento-opra-entitlement-v2"
 HEALTH_VERSION = "databento-opra-health-v1"
 
 L0_SCHEMAS = (
@@ -50,6 +50,7 @@ MAX_EXACT_VALIDATION_ROWS = 25_000_000
 TARGET_HIGH_VOLUME_PARTITION_ROWS = 20_000_000
 MINIMUM_TIME_PARTITION_SECONDS = 1
 HIGH_VOLUME_SCHEMAS = frozenset(("cmbp-1", "cbbo-1s"))
+STANDARD_PLAN_AUTHORITY = "docs/databento-plan/databento_standard_plan_data_access.md"
 
 
 class OpraSyncError(RuntimeError):
@@ -137,43 +138,29 @@ def discover_standard_entitlement(
     if not isinstance(schema_ranges, Mapping):
         raise OpraSyncError("Databento returned no schema-specific OPRA ranges")
 
-    entitlements: dict[str, dict[str, str]] = {}
-    cost_probes: dict[str, list[dict[str, object]]] = {}
+    entitlements: dict[str, dict[str, object]] = {}
     for schema in STANDARD_SCHEMAS:
         raw_range = schema_ranges.get(schema)
         if not isinstance(raw_range, Mapping):
             raise OpraSyncError(f"Databento returned no range for {schema}")
         dataset_start = _date_text(raw_range["start"])
         dataset_end = _date_text(raw_range["end"])
-        if schema in L0_SCHEMAS:
-            entitled_start = dataset_start
-            cost = _account_cost(
-                metadata,
-                schema=schema,
-                start=entitled_start,
-                end=dataset_end,
+        included_policy = standard_plan_history_policy(schema)
+        plan_start = _history_window_start(dataset_end, included_policy)
+        entitled_start = max(dataset_start, plan_start)
+        if entitled_start >= dataset_end:
+            raise OpraSyncError(
+                f"Provider range does not overlap the configured Standard-plan "
+                f"window for {schema}: provider_start={dataset_start} "
+                f"included_start={plan_start} end={dataset_end}"
             )
-            cost_probes[schema] = [
-                {"start": entitled_start, "end": dataset_end, "cost_usd": cost}
-            ]
-            if cost != 0.0:
-                raise OpraSyncError(
-                    f"Provider reports nonzero cost for advertised Standard L0 {schema}: "
-                    f"{cost:.6f} USD"
-                )
-        else:
-            entitled_start, probes = _discover_zero_cost_start(
-                metadata,
-                schema=schema,
-                dataset_start=dataset_start,
-                dataset_end=dataset_end,
-            )
-            cost_probes[schema] = probes
         entitlements[schema] = {
             "level": "L0" if schema in L0_SCHEMAS else "L1",
             "dataset_start": dataset_start,
+            "configured_included_start": plan_start,
             "entitled_start": entitled_start,
             "entitled_end": dataset_end,
+            "included_history_policy": included_policy,
         }
 
     timestamp = utc_timestamp(observed_at)
@@ -185,8 +172,8 @@ def discover_standard_entitlement(
         "provider_dataset_range": dataset_range,
         "provider_schema_names": list(schemas),
         "standard_schema_names": list(STANDARD_SCHEMAS),
+        "entitlement_authority": STANDARD_PLAN_AUTHORITY,
         "entitlements": entitlements,
-        "account_cost_boundary_probes": cost_probes,
     }
     payload["semantic_checksum_sha256"] = _semantic_checksum(payload)
     destination = (
@@ -204,7 +191,6 @@ def storage_preflight(
     datastore_root: Path,
     entitlement: Mapping[str, object],
     scope: SyncScope,
-    allow_billable: bool = False,
 ) -> Mapping[str, object]:
     requests = _scope_ranges(entitlement, scope)
     metadata = getattr(client, "metadata")
@@ -216,19 +202,11 @@ def storage_preflight(
             end=end,
             symbols=scope.symbols,
         )
-        cost = float(
-            _retry(metadata.get_cost, kwargs=kwargs, operation=f"{schema} cost")
-        )
-        if cost != 0.0 and not allow_billable:
-            raise OpraSyncError(
-                f"Provider reports requested {schema} scope outside the subscription: "
-                f"start={start} end={end} cost_usd={cost:.6f}"
-            )
-        billable = int(
+        estimated_download_size = int(
             _retry(
                 metadata.get_billable_size,
                 kwargs=kwargs,
-                operation=f"{schema} billable size",
+                operation=f"{schema} estimated download size",
             )
         )
         records = int(
@@ -242,20 +220,24 @@ def storage_preflight(
             "start": start,
             "end": end,
             "symbols": list(scope.symbols) or ["ALL_SYMBOLS"],
-            "cost_usd": cost,
-            "billable_size_bytes": billable,
+            "estimated_download_size_bytes": estimated_download_size,
             "record_count": records,
         }
-    billable_total = sum(int(item["billable_size_bytes"]) for item in estimates.values())
+    download_size_total = sum(
+        int(item["estimated_download_size_bytes"]) for item in estimates.values()
+    )
     record_total = sum(int(item["record_count"]) for item in estimates.values())
-    required = math.ceil(billable_total * STORAGE_EXPANSION_FACTOR) + STORAGE_RESERVE_BYTES
+    required = (
+        math.ceil(download_size_total * STORAGE_EXPANSION_FACTOR)
+        + STORAGE_RESERVE_BYTES
+    )
     usage = shutil.disk_usage(canonical_root(datastore_root).anchor)
     return {
-        "schema_version": "databento-opra-storage-preflight-v1",
+        "schema_version": "databento-opra-storage-preflight-v2",
         "provider": PROVIDER,
         "dataset": DATASET,
         "estimates": estimates,
-        "billable_size_bytes": billable_total,
+        "estimated_download_size_bytes": download_size_total,
         "record_count": record_total,
         "storage_expansion_factor": STORAGE_EXPANSION_FACTOR,
         "storage_reserve_bytes": STORAGE_RESERVE_BYTES,
@@ -292,7 +274,6 @@ def synchronize(
     entitlement: Mapping[str, object],
     scope: SyncScope = SyncScope(),
     reporter: Callable[[str], None] | None = print,
-    allow_billable: bool = False,
 ) -> SyncResult:
     """Download, normalize, publish, and verify immutable OPRA partitions."""
 
@@ -304,7 +285,6 @@ def synchronize(
         datastore_root=datastore_root,
         entitlement=entitlement,
         scope=scope,
-        allow_billable=allow_billable,
     )
     published_preflight = publish_storage_preflight(datastore_root, preflight)
     if not bool(preflight["capacity_pass"]):
@@ -903,87 +883,55 @@ def _scope_ranges(
     output: list[tuple[str, str, str]] = []
     for schema in schemas:
         item = entitlements[schema]
-        start = max(
-            date.fromisoformat(str(item["entitled_start"])),
-            date.fromisoformat(scope.start) if scope.start else date.min,
+        if not isinstance(item, Mapping):
+            raise OpraSyncError(f"Entitlement receipt has malformed bounds for {schema}")
+        entitled_start = date.fromisoformat(str(item["entitled_start"]))
+        entitled_end = date.fromisoformat(str(item["entitled_end"]))
+        requested_start = (
+            date.fromisoformat(scope.start) if scope.start else entitled_start
         )
-        end = min(
-            date.fromisoformat(str(item["entitled_end"])),
-            date.fromisoformat(scope.end) if scope.end else date.max,
+        requested_end = date.fromisoformat(scope.end) if scope.end else entitled_end
+        if requested_start < entitled_start or requested_end > entitled_end:
+            raise OpraSyncError(
+                f"Requested OPRA {schema} scope is outside the configured included "
+                f"Standard-plan window: requested={requested_start.isoformat()}.."
+                f"{requested_end.isoformat()} included={entitled_start.isoformat()}.."
+                f"{entitled_end.isoformat()} authority={STANDARD_PLAN_AUTHORITY}"
+            )
+        if requested_start >= requested_end:
+            raise OpraSyncError(
+                f"Requested OPRA {schema} scope is empty or reversed: "
+                f"{requested_start.isoformat()}..{requested_end.isoformat()}"
+            )
+        output.append(
+            (schema, requested_start.isoformat(), requested_end.isoformat())
         )
-        if start < end:
-            output.append((schema, start.isoformat(), end.isoformat()))
     if not output:
         raise OpraSyncError("Requested OPRA scope does not overlap the entitlement")
     return output
 
 
-def _discover_zero_cost_start(
-    metadata: object,
-    *,
-    schema: str,
-    dataset_start: str,
-    dataset_end: str,
-) -> tuple[str, list[dict[str, object]]]:
-    conditions = _retry(
-        getattr(metadata, "get_dataset_condition"),
-        kwargs={
-            "dataset": DATASET,
-            "start_date": max(
-                date.fromisoformat(dataset_start),
-                date.fromisoformat(dataset_end) - timedelta(days=400),
-            ).isoformat(),
-            "end_date": dataset_end,
-        },
-        operation=f"{schema} entitlement conditions",
-    )
-    days = [
-        date.fromisoformat(str(item["date"]))
-        for item in conditions
-        if str(item.get("condition")) == "available"
-    ]
-    if not days:
-        raise OpraSyncError(f"No available days exist for {schema}")
-    probes: list[dict[str, object]] = []
+def standard_plan_history_policy(schema: str) -> dict[str, object]:
+    """Return the conservative included OPRA window from the plan authority."""
 
-    def included(index: int) -> bool:
-        day = days[index]
-        cost = _account_cost(
-            metadata,
-            schema=schema,
-            start=day.isoformat(),
-            end=(day + timedelta(days=1)).isoformat(),
-        )
-        probes.append({"date": day.isoformat(), "cost_usd": cost})
-        return cost == 0.0
-
-    if not included(len(days) - 1):
-        raise OpraSyncError(f"Current {schema} data is not included by the account")
-    low, high = 0, len(days) - 1
-    while low < high:
-        middle = (low + high) // 2
-        if included(middle):
-            high = middle
-        else:
-            low = middle + 1
-    first = days[low]
-    if low > 0 and included(low - 1):
-        raise OpraSyncError(f"{schema} entitlement boundary discovery was not minimal")
-    return first.isoformat(), sorted(probes, key=lambda item: str(item["date"]))
+    if schema in L0_SCHEMAS:
+        return {"unit": "years", "value": 13}
+    if schema in L1_SCHEMAS:
+        return {"unit": "months", "value": 12}
+    raise ValueError(f"Unsupported OPRA schema: {schema}")
 
 
-def _account_cost(
-    metadata: object, *, schema: str, start: str, end: str
-) -> float:
-    return float(
-        _retry(
-            getattr(metadata, "get_cost"),
-            kwargs=_metadata_request_kwargs(
-                schema=schema, start=start, end=end, symbols=()
-            ),
-            operation=f"{schema} account cost",
-        )
-    )
+def _history_window_start(end: str, policy: Mapping[str, object]) -> str:
+    anchor = pd.Timestamp(end)
+    amount = int(policy["value"])
+    unit = str(policy["unit"])
+    if unit == "years":
+        start = anchor - pd.DateOffset(years=amount)
+    elif unit == "months":
+        start = anchor - pd.DateOffset(months=amount)
+    else:
+        raise ValueError(f"Unsupported OPRA included-history policy: {policy}")
+    return start.date().isoformat()
 
 
 def _metadata_request_kwargs(
@@ -1178,6 +1126,7 @@ __all__ = [
     "partition_directory",
     "publish_health",
     "publish_storage_preflight",
+    "standard_plan_history_policy",
     "record_consumer_usage",
     "storage_preflight",
     "symbol_bucket",

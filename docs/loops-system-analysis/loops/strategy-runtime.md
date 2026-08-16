@@ -18,6 +18,12 @@
 
 **Confirmed non-ownership:** it does not publish directional forecasts, option chains or option fair-value authority; it consumes them. It publishes predictions/ranks only, and the candidate contract does not authorize automated actions or orders. `ml/strategy_runtime.py:71`, `ml/strategy_publication.py:159`
 
+**Startup/bootstrap boundary:** Strategy is a reader/computation owner and has
+no Databento bootstrap path. It requires verified Loop B, Pricing, and option
+evidence, preserves each upstream pointer/receipt and causal cutoff, and cannot
+promote an empty archive, configured provider, or unverified partition into
+strategy authority.
+
 ## Inputs
 
 | Input or dataset | Producer/source | Physical path or interface | Key fields and semantic values | Clock/freshness/causality rules | Required or optional | Evidence |

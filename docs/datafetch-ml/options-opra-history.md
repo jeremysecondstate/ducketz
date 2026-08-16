@@ -13,15 +13,17 @@ python -m datafetching.options_history `
 The bootstrap is idempotent and resumable. `--symbols` narrows parent symbols and
 `--schemas` narrows schemas; omitted flags use the production watchlist and all
 Standard schemas. A capacity-blocked or failed scope makes the command exit
-nonzero without deleting already verified partitions.
+nonzero without deleting already verified partitions. These configured windows
+are included Standard-plan access and are checked against
+`docs/databento-plan/databento_standard_plan_data_access.md`.
 
 | Schema | Initial lookback | Options Capture overlap |
 |---|---:|---:|
 | `ohlcv-1s` | 5 days | 1 day |
 | `ohlcv-1m` | 100 days | 2 days |
 | `ohlcv-1h` | 2,000 days | 5 days |
-| `ohlcv-1d` | 5,000 days | 10 days |
-| `definition` | 5,000 days | 3 days |
+| `ohlcv-1d` | 13 calendar years | 10 days |
+| `definition` | 13 calendar years | 3 days |
 | `cmbp-1` | 1 month | 3 days |
 | `status`, `statistics`, `trades`, `tcbbo`, `cbbo-1m`, `cbbo-1s` | 6 months | 3 days |
 
@@ -35,7 +37,9 @@ The current `options-opra-symbol-history-v5` cursor records the exact
 `lookback_policy`, `requested_start`, and `completed_through`; a cold-start
 handoff also records its `bootstrap_manifest_id`. The reader accepts a legacy
 v4 cursor only when its policy exactly equals the former schema-specific
-bootstrap policy. Every new or advanced cursor is written as v5.
+bootstrap policy, including the former 5,000-day daily/definition value. This
+is read compatibility only; every new or advanced cursor is written as v5 with
+the 13-calendar-year policy.
 
 ## Storage contract
 
@@ -52,10 +56,10 @@ Entitlement/preflight receipts live under `metadata`, symbol cursors under
 `state\symbol-history`, and current verified totals under `health\current.json`.
 Staging files are never consumer authority.
 
-The capacity preflight compares destination free space with twice the provider
-billable size plus a 5 GiB safety reserve. It blocks the requested scope when it
-does not fit; it does not cap the datastore, truncate a date range, or delete
-completed data.
+The capacity preflight compares destination free space with twice the provider's
+estimated compressed download size plus a 5 GiB safety reserve. It blocks the
+requested scope when it does not fit; it does not cap the datastore, truncate a
+date range, or delete completed data.
 
 ## Administrative synchronization
 

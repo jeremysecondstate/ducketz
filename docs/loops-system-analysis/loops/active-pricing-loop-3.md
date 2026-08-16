@@ -20,6 +20,12 @@
 
 **Confirmed non-ownership:** it does not obtain live option chains from providers, declare Loop A bars ready, build directional labels, rank strategies, or make automated trading decisions. The owned worker performs no external provider requests and is not an eighth loop. `ml/option_pricing_loop_native_worker.py:126`, `ml/option_pricing_loop_native_worker.py:141`
 
+**Startup/bootstrap boundary:** Pricing is a computation and publication owner,
+not a Databento history owner. On an empty datastore it waits for verified Loop
+A, rates, and option evidence. The included Standard-plan OPRA bootstrap and
+Options-owned continuation create that historical evidence; Pricing reads only
+receipt-verified partitions and never initiates or expands a provider request.
+
 ## Inputs
 
 | Input or dataset | Producer/source | Physical path or interface | Key fields and semantic values | Clock/freshness/causality rules | Required or optional | Evidence |

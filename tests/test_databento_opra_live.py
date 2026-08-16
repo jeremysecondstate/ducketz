@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable
@@ -721,8 +722,8 @@ def test_options_history_uses_schema_specific_bootstrap_and_overlap_windows(
     assert {
         scope.schemas[0]: scope.start for scope in scopes
     } == {
-        "definition": "2012-12-06",
-        "ohlcv-1d": "2012-12-06",
+        "definition": "2013-08-15",
+        "ohlcv-1d": "2013-08-15",
         "ohlcv-1h": "2021-02-22",
         "ohlcv-1m": "2026-05-07",
         "ohlcv-1s": "2026-08-10",
@@ -768,6 +769,43 @@ def test_options_history_uses_schema_specific_bootstrap_and_overlap_windows(
     assert options_runtime.opra_history_overlap_days("ohlcv-1h") == 5
     assert options_runtime.opra_history_overlap_days("ohlcv-1d") == 10
     assert options_runtime.opra_history_overlap_days("cmbp-1") == 3
+
+
+def test_legacy_v4_cursor_compatibility_is_limited_to_former_policy(
+    tmp_path: Path,
+) -> None:
+    path = options_runtime._opra_symbol_history_cursor_path(
+        tmp_path,
+        symbol="NVDA",
+        schema="ohlcv-1d",
+    )
+    path.parent.mkdir(parents=True)
+    legacy = {
+        "schema_version": options_runtime.OPRA_LEGACY_SYMBOL_HISTORY_CURSOR_VERSION,
+        "symbol": "NVDA",
+        "provider_symbol": "NVDA.OPT",
+        "schema": "ohlcv-1d",
+        "completed_through": "2026-08-15",
+        "lookback_policy": {"unit": "days", "value": 5000},
+    }
+    path.write_text(json.dumps(legacy), encoding="utf-8")
+
+    assert options_runtime._read_opra_symbol_history_cursor(
+        tmp_path,
+        symbol="NVDA",
+        schema="ohlcv-1d",
+    ) == legacy
+
+    legacy["lookback_policy"] = {"unit": "years", "value": 13}
+    path.write_text(json.dumps(legacy), encoding="utf-8")
+    assert (
+        options_runtime._read_opra_symbol_history_cursor(
+            tmp_path,
+            symbol="NVDA",
+            schema="ohlcv-1d",
+        )
+        is None
+    )
 
 
 def test_options_history_capacity_block_is_isolated_per_symbol(

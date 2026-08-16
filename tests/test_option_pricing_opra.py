@@ -26,8 +26,7 @@ from ml.option_pricing.strategy_shadow import load_strategy_pricing_evidence
 
 
 class _Metadata:
-    def get_cost(self, **_kwargs: object) -> float:
-        return 0.0
+    TIMEOUT = 0
 
     def get_billable_size(self, **_kwargs: object) -> int:
         return 1_024
@@ -65,7 +64,58 @@ def test_storage_preflight_preserves_requested_scope(
     )
     assert result["capacity_pass"] is True
     assert result["estimates"]["ohlcv-1d"]["symbols"] == ["AAPL.OPT"]
-    assert result["estimates"]["ohlcv-1d"]["cost_usd"] == 0.0
+    assert (
+        result["estimates"]["ohlcv-1d"]["estimated_download_size_bytes"]
+        == 1_024
+    )
+
+
+def test_opra_scope_outside_plan_window_fails_instead_of_clamping(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(opra_history.OpraSyncError, match="outside the configured included"):
+        storage_preflight(
+            SimpleNamespace(metadata=_Metadata()),
+            datastore_root=tmp_path,
+            entitlement=_entitlement(),
+            scope=SyncScope(
+                schemas=("ohlcv-1d",),
+                start="2024-12-31",
+                end="2025-01-03",
+                symbols=("AAPL.OPT",),
+            ),
+        )
+
+
+def test_standard_entitlement_uses_plan_windows_without_cost_probe(
+    tmp_path: Path,
+) -> None:
+    class Metadata:
+        TIMEOUT = 0
+
+        def list_schemas(self, **_kwargs: object) -> tuple[str, ...]:
+            return STANDARD_SCHEMAS
+
+        def get_dataset_range(self, **_kwargs: object) -> dict[str, object]:
+            return {
+                "schema": {
+                    schema: {"start": "2000-01-01", "end": "2026-08-15"}
+                    for schema in STANDARD_SCHEMAS
+                }
+            }
+
+    client = SimpleNamespace(metadata=Metadata(), timeseries=SimpleNamespace(TIMEOUT=0))
+    result = opra_history.discover_standard_entitlement(
+        client,
+        datastore_root=tmp_path,
+        observed_at="2026-08-15T00:00:00Z",
+    )
+
+    assert result["entitlements"]["definition"]["entitled_start"] == "2013-08-15"
+    assert result["entitlements"]["cbbo-1s"]["entitled_start"] == "2025-08-15"
+    assert result["entitlement_authority"].endswith(
+        "databento_standard_plan_data_access.md"
+    )
 
 
 def test_symbol_bucket_is_stable_and_full_universe_is_explicit() -> None:

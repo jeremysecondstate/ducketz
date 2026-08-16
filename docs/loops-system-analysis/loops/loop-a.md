@@ -18,6 +18,13 @@
 
 **Confirmed non-ownership:** in production it does not own CME/L2, option-chain capture, ALFRED-vintage history, option-pricing inference, directional fitting/scoring, or Strategy. Inline CME/Options modes are compatibility paths and default to `external`. `datafetching/orchestrate.py:90`, `datafetching/orchestrate.py:96`
 
+**Startup/bootstrap boundary:** Loop A self-initializes its owned bounded
+Databento bar histories on an empty datastore: 5 days of 1-second bars, 1,000
+days of 1-minute bars, 2,000 days of hourly bars, and 2,920 days of daily bars.
+The daily bound is deliberately inside the documented eight-year US-equities
+Standard window. The separate US-equity cold-start archive is not read as Loop
+A readiness, completion, continuation, or publication authority.
+
 ## Inputs
 
 | Input or dataset | Producer/source | Physical path or interface | Key fields and semantic values | Clock/freshness/causality rules | Required or optional | Evidence |

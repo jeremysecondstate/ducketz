@@ -18,6 +18,13 @@
 
 **Confirmed non-ownership:** it does not fetch equity Loop A data, build horizon targets, fit models, publish option valuations, capture equity option chains, or publish strategy ranks.
 
+**Startup/bootstrap boundary:** on an empty datastore this recurring owner
+self-initializes its own bounded runtime history (30 days for OHLCV and at most
+three days for non-OHLCV schemas) and then continues from its verified owned
+cursors. The optional 5,000-day CME cold-start archive is included Standard-plan
+maintenance evidence in a distinct namespace; it does not replace or authorize
+the CME runtime cursor, L2 snapshot, or writer lock.
+
 ## Inputs
 
 | Input or dataset | Producer/source | Physical path or interface | Key fields and semantic values | Clock/freshness/causality rules | Required or optional | Evidence |

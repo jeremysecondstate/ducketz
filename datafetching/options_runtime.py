@@ -124,8 +124,8 @@ OPRA_SYMBOL_HISTORY_SCHEMA_ORDER = (
     "cmbp-1",
 )
 OPRA_SCHEMA_HISTORY_LOOKBACK_POLICY: dict[str, tuple[str, int]] = {
-    "definition": ("days", 5_000),
-    "ohlcv-1d": ("days", 5_000),
+    "definition": ("years", 13),
+    "ohlcv-1d": ("years", 13),
     "ohlcv-1h": ("days", 2_000),
     "ohlcv-1m": ("days", 100),
     "ohlcv-1s": ("days", 5),
@@ -136,6 +136,11 @@ OPRA_SCHEMA_HISTORY_LOOKBACK_POLICY: dict[str, tuple[str, int]] = {
     "cbbo-1m": ("months", 6),
     "cbbo-1s": ("months", 6),
     "cmbp-1": ("months", 1),
+}
+OPRA_LEGACY_SCHEMA_HISTORY_LOOKBACK_POLICY: dict[str, tuple[str, int]] = {
+    **OPRA_SCHEMA_HISTORY_LOOKBACK_POLICY,
+    "definition": ("days", 5_000),
+    "ohlcv-1d": ("days", 5_000),
 }
 DISCOVERY_PENDING_STATE = "DISCOVERY_CHAIN_PENDING_READINESS"
 OPRA_CANONICAL_MODE = "opra-canonical"
@@ -894,10 +899,6 @@ def synchronize_option_history(
         entitlement = discover_standard_entitlement(
             client, datastore_root=store.root_dir
         )
-        end = max(
-            str(item["entitled_end"])
-            for item in entitlement["entitlements"].values()
-        )
         history_root = canonical_root(store.root_dir)
         with exclusive_runtime_lock(
             history_root / "state" / "sync.lock",
@@ -905,6 +906,7 @@ def synchronize_option_history(
         ):
             clean_symbols = normalize_symbols(symbols)
             for schema in clean_schemas:
+                end = str(entitlement["entitlements"][schema]["entitled_end"])
                 lookback_label = opra_history_lookback_label(schema)
                 full_start = opra_history_start(schema, end=end)
                 for symbol in clean_symbols:
@@ -1043,7 +1045,10 @@ def _read_opra_symbol_history_cursor(
     version = payload.get("schema_version")
     policy = payload.get("lookback_policy")
     if version == OPRA_LEGACY_SYMBOL_HISTORY_CURSOR_VERSION:
-        if policy != opra_history_lookback_policy(schema):
+        legacy_unit, legacy_value = OPRA_LEGACY_SCHEMA_HISTORY_LOOKBACK_POLICY[
+            schema
+        ]
+        if policy != {"unit": legacy_unit, "value": legacy_value}:
             return None
     elif version == OPRA_SYMBOL_HISTORY_CURSOR_VERSION:
         if not _valid_opra_history_policy(policy):
@@ -1148,7 +1153,7 @@ def _valid_opra_history_policy(value: object) -> bool:
     unit = value.get("unit")
     amount = value.get("value")
     return (
-        unit in {"days", "months"}
+        unit in {"days", "months", "years"}
         and isinstance(amount, int)
         and not isinstance(amount, bool)
         and amount > 0
@@ -1161,6 +1166,8 @@ def opra_history_start(schema: str, *, end: str) -> str:
     value = int(policy["value"])
     if policy["unit"] == "days":
         start = anchor - pd.Timedelta(days=value)
+    elif policy["unit"] == "years":
+        start = anchor - pd.DateOffset(years=value)
     else:
         start = anchor - pd.DateOffset(months=value)
     return start.date().isoformat()

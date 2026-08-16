@@ -172,9 +172,10 @@ FMP's supplied yield is not used directly and future declarations are excluded.
 
 ## Historical OPRA synchronization
 
-The canonical command discovers the account's Standard entitlement from
-Databento metadata, refuses any nonzero-cost range, performs a storage preflight,
-and synchronizes every included schema over the full OPRA universe by default:
+The canonical command validates provider metadata against the checked-in
+Standard-plan authority, rejects any range outside the configured included
+scope, performs a storage-capacity preflight, and synchronizes every included
+schema over the full OPRA universe by default:
 
 ```powershell
 python -m ml.option_pricing_opra --datastore-target pc
@@ -204,9 +205,10 @@ python -m datafetching.options_history `
 
 The bootstrap synchronizes each symbol independently as `<SYMBOL>.OPT` with a
 schema-specific initial window: `ohlcv-1s` uses 5 days, `ohlcv-1m` 100 days,
-`ohlcv-1h` 2,000 days, and `ohlcv-1d` plus `definition` 5,000 days. `cmbp-1`
+`ohlcv-1h` 2,000 days, and `ohlcv-1d` plus `definition` 13 calendar years. `cmbp-1`
 uses one month; the remaining Standard schemas use six months. Every request
-remains clamped to its shorter provider/account entitlement.
+must remain inside its configured included entitlement; an explicit range
+outside it is rejected rather than silently shortened.
 Dense `cmbp-1` and `cbbo-1s` days are split into deterministic intraday
 partitions so every normalized Parquet remains inside the exact duplicate-check
 bound. The command is idempotent and resumes from checksum-verified partitions.
@@ -215,6 +217,8 @@ Verified completion publishes an `options-opra-symbol-history-v5` cursor with
 the exact lookback policy, requested start, and completed-through boundary. The
 reader retains narrow v4 compatibility only when the old cursor’s policy exactly
 matches the former schema-specific bootstrap policy; all new writes are v5.
+For daily bars and definitions, that legacy-only v4 policy was 5,000 days; v5
+writes use the current 13-calendar-year Standard-plan boundary.
 
 The optional one-shot `datafetching.databento_cold_start` command can populate
 the same canonical OPRA partitions while creating separate CME/US-equity cold
@@ -268,7 +272,8 @@ They are not an eighth loop.
 
 ## Supplied Standard-plan evidence
 
-**Confirmed from the four supplied screenshots:** the displayed Standard OPRA
+**Confirmed by the current entitlement authority at
+`docs/databento-plan/databento_standard_plan_data_access.md`:** the displayed Standard OPRA
 plan advertises live OPRA data without a separate license fee, 18 exchanges,
 approximately 1.6 million symbols, 13+ years of L0 history, about one year of L1
 history, and definitions, OHLCV, statistics, status, CMBP-1, TCBBO, CBBO, and
@@ -276,9 +281,8 @@ trades. The displayed use table permits personal display on up to two devices
 and personal non-display use; commercial display, distribution, white-label,
 and dedicated-service rights are not shown as included. This is entitlement
 evidence only, not proof that this repository's key is currently active or that
-any live capture has succeeded. Source images:
-`docs/databento/STANDARD-PLAN-PIC-1.png` through
-`docs/databento/STANDARD-PLAN-PIC-4.png`.
+any live capture has succeeded. The authority records its source evidence and
+the exact included-history interpretation used by the executable guards.
 
 The implementation was checked against installed `databento` SDK 0.81.0 and
 Databento's official [OPRA.PILLAR dataset](https://databento.com/docs/venues-and-datasets/opra-pillar),

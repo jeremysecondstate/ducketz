@@ -18,6 +18,13 @@
 
 **Confirmed non-ownership:** it is not part of Loop A’s 15-minute cycle and does not publish directional, option-price, or strategy predictions. `docs/datafetch-ml/current_start_command:64`, `docs/datafetch-ml/current_start_command:67`
 
+**Startup/bootstrap boundary:** this owner does not self-initialize from an
+empty datastore. A base/earlier-profile Loop B decision grid must exist before
+the one-time complete ALFRED backfill can derive causal bounds and publish its
+separate readiness receipt. Only then does the daily owner continue with
+bounded overlap under the existing ALFRED lock; the backfill is maintenance,
+not another loop.
+
 ## Inputs
 
 | Input or dataset | Producer/source | Physical path or interface | Key fields and semantic values | Clock/freshness/causality rules | Required or optional | Evidence |
