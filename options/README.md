@@ -204,10 +204,10 @@ python -m datafetching.options_history `
 ```
 
 The bootstrap synchronizes each symbol independently as `<SYMBOL>.OPT` with a
-schema-specific initial window: every `*-1s` schema uses 5 days, every `*-1m`
+schema-specific initial window: every `*-1s` schema uses 3 days, every `*-1m`
 schema 100 days, `ohlcv-1h` 1,825 days, and `ohlcv-1d` 2,555 days.
-`definition` retains 13 calendar years; the remaining non-interval Standard
-schemas use one month. Every request
+`definition` retains 13 calendar years; `cmbp-1` uses one day, and the other
+non-interval Standard schemas use one month. Every request
 must remain inside its configured included entitlement; an explicit range
 outside it is rejected rather than silently shortened.
 Dense `cmbp-1` and `cbbo-1s` days are split into deterministic intraday

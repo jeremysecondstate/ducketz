@@ -70,14 +70,15 @@ an alternate execution mode.
 
 | Dataset/schema | Configured window |
 | --- | ---: |
-| Every `*-1s` schema | 5 days |
+| Every `*-1s` schema | 3 days |
 | Every `*-1m` schema | 100 days |
 | Every `*-1h` schema | 1,825 days |
 | Every `*-1d` schema | 2,555 days |
 | OPRA `definition` | 13 calendar years |
 | US Equities `definition` | 8 calendar years |
 | CME `definition` | 5,000 days |
-| Every non-interval schema other than `definition` | one calendar month |
+| `cmbp-1`, `mbp-10`, and `mbo` | one day |
+| Every other non-interval schema | one calendar month |
 
 The suffix rule includes BBO/CBBO interval schemas as well as OHLCV. Loop A's
 native US-equity OHLCV requests use these same four limits; after the initial

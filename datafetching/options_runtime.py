@@ -21,7 +21,10 @@ from datafetching.decision_time import (
     expected_quarter_hour_target,
     latest_eligible_option_target,
 )
-from datafetching.databento_history_policy import INTERVAL_LOOKBACK_DAYS
+from datafetching.databento_history_policy import (
+    HEAVY_BOOK_LOOKBACK_DAYS,
+    INTERVAL_LOOKBACK_DAYS,
+)
 from datafetching.databento_opra_history import (
     STANDARD_SCHEMAS,
     OpraCapacityError,
@@ -136,12 +139,15 @@ OPRA_SCHEMA_HISTORY_LOOKBACK_POLICY: dict[str, tuple[str, int]] = {
     "tcbbo": ("months", 1),
     "cbbo-1m": ("days", INTERVAL_LOOKBACK_DAYS["1m"]),
     "cbbo-1s": ("days", INTERVAL_LOOKBACK_DAYS["1s"]),
-    "cmbp-1": ("months", 1),
+    "cmbp-1": ("days", HEAVY_BOOK_LOOKBACK_DAYS["cmbp-1"]),
 }
 OPRA_LEGACY_SCHEMA_HISTORY_LOOKBACK_POLICY: dict[str, tuple[str, int]] = {
     **OPRA_SCHEMA_HISTORY_LOOKBACK_POLICY,
     "definition": ("days", 5_000),
     "ohlcv-1d": ("days", 5_000),
+    "ohlcv-1s": ("days", 5),
+    "cbbo-1s": ("days", 5),
+    "cmbp-1": ("months", 1),
 }
 DISCOVERY_PENDING_STATE = "DISCOVERY_CHAIN_PENDING_READINESS"
 OPRA_CANONICAL_MODE = "opra-canonical"

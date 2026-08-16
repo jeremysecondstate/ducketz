@@ -19,14 +19,15 @@ are included Standard-plan access and are checked against
 
 | Schema | Initial lookback | Options Capture overlap |
 |---|---:|---:|
-| `ohlcv-1s` | 5 days | 1 day |
+| `ohlcv-1s` | 3 days | 1 day |
 | `ohlcv-1m` | 100 days | 2 days |
 | `ohlcv-1h` | 1,825 days | 5 days |
 | `ohlcv-1d` | 2,555 days | 10 days |
 | `definition` | 13 calendar years | 3 days |
-| `cbbo-1s` | 5 days | 3 days |
+| `cbbo-1s` | 3 days | 3 days |
 | `cbbo-1m` | 100 days | 3 days |
-| `cmbp-1`, `status`, `statistics`, `trades`, `tcbbo` | 1 month | 3 days |
+| `cmbp-1` | 1 day | 3 days |
+| `status`, `statistics`, `trades`, `tcbbo` | 1 month | 3 days |
 
 The recurring `datafetching.options_runtime` runs catch-up at most once per UTC
 date. It advances only a verified v5 symbol/schema cursor and reports

@@ -34,8 +34,8 @@ SYMBOLS = tuple(f"S{index:02d}" for index in range(15))
 
 def test_loop_a_history_uses_the_configured_interval_caps() -> None:
     specs = {spec.frequency: spec for spec in databento_analysis_source_specs()}
-    assert specs["1s"].key == "source_5d_1s"
-    assert specs["1s"].lookback == timedelta(days=5)
+    assert specs["1s"].key == "source_3d_1s"
+    assert specs["1s"].lookback == timedelta(days=3)
     assert specs["1m"].key == "source_100d_1m"
     assert specs["1m"].lookback == timedelta(days=100)
     assert specs["1h"].key == "source_1825d_1h"

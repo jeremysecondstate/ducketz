@@ -60,9 +60,9 @@ def test_manifest_has_exact_schema_coverage_and_requested_windows(tmp_path: Path
     assert {item["symbol_scope"][0] for item in requests if item["dataset"] == EQUITIES_DATASET} == set(WATCHLIST)
 
     expected_common_starts = {
-        "ohlcv-1s": "2026-08-10",
-        "bbo-1s": "2026-08-10",
-        "cbbo-1s": "2026-08-10",
+        "ohlcv-1s": "2026-08-12",
+        "bbo-1s": "2026-08-12",
+        "cbbo-1s": "2026-08-12",
         "ohlcv-1m": "2026-05-07",
         "bbo-1m": "2026-05-07",
         "cbbo-1m": "2026-05-07",
@@ -70,7 +70,9 @@ def test_manifest_has_exact_schema_coverage_and_requested_windows(tmp_path: Path
         "ohlcv-1d": "2019-08-17",
         "statistics": "2026-07-15",
         "status": "2026-07-15",
-        "mbp-10": "2026-07-15",
+        "cmbp-1": "2026-08-14",
+        "mbp-10": "2026-08-14",
+        "mbo": "2026-08-14",
     }
     for request in requests:
         assert request["end"] == AS_OF.isoformat()
@@ -104,7 +106,7 @@ def test_manifest_has_exact_schema_coverage_and_requested_windows(tmp_path: Path
 
 def test_every_interval_schema_uses_the_shared_cap() -> None:
     expected = {
-        "1s": {"unit": "days", "value": 5},
+        "1s": {"unit": "days", "value": 3},
         "1m": {"unit": "days", "value": 100},
         "1h": {"unit": "days", "value": 1_825},
         "1d": {"unit": "days", "value": 2_555},
@@ -118,6 +120,25 @@ def test_every_interval_schema_uses_the_shared_cap() -> None:
             interval = schema.rsplit("-", maxsplit=1)[-1]
             if interval in expected:
                 assert cold_start.schema_window(role, schema) == expected[interval]
+
+
+def test_dense_book_schemas_use_one_day_initial_baseline() -> None:
+    for role, schema in (
+        (cold_start.PLAN_DATASET_OPRA, "cmbp-1"),
+        (cold_start.PLAN_DATASET_CME, "mbp-10"),
+        (cold_start.PLAN_DATASET_CME, "mbo"),
+        (cold_start.PLAN_DATASET_US_EQUITIES, "mbp-10"),
+        (cold_start.PLAN_DATASET_US_EQUITIES, "mbo"),
+    ):
+        assert cold_start.schema_window(role, schema) == {
+            "unit": "days",
+            "value": 1,
+        }
+
+    assert cold_start.schema_window(
+        cold_start.PLAN_DATASET_US_EQUITIES,
+        "imbalance",
+    ) == {"unit": "calendar_months", "value": 1}
 
 
 def test_watchlist_and_opra_parent_scope_reject_ambiguous_input(tmp_path: Path) -> None:
@@ -218,6 +239,31 @@ def test_manifest_is_deterministic_and_storage_preflight_uses_exact_arithmetic(
         item["estimated_download_size_bytes"] > 0
         for item in preflight["estimates"]
     )
+
+
+def test_metadata_call_retries_only_transient_server_failures() -> None:
+    attempts = 0
+    delays: list[float] = []
+
+    def transient_then_success(**_kwargs: object) -> int:
+        nonlocal attempts
+        attempts += 1
+        if attempts < 3:
+            raise RuntimeError("504 The remote gateway timed out")
+        return 17
+
+    assert cold_start._metadata_call(
+        transient_then_success,
+        _retry_sleeper=delays.append,
+    ) == 17
+    assert attempts == 3
+    assert delays == [1.0, 2.0]
+
+    with pytest.raises(cold_start.ColdStartError, match=r"after 1 attempt\(s\)"):
+        cold_start._metadata_call(
+            lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("401 Unauthorized")),
+            _retry_sleeper=delays.append,
+        )
 
 
 def test_preflight_rejects_manifest_outside_configured_included_scope(

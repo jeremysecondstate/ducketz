@@ -726,14 +726,14 @@ def test_options_history_uses_schema_specific_bootstrap_and_overlap_windows(
         "ohlcv-1d": "2019-08-17",
         "ohlcv-1h": "2021-08-16",
         "ohlcv-1m": "2026-05-07",
-        "ohlcv-1s": "2026-08-10",
+        "ohlcv-1s": "2026-08-12",
         "status": "2026-07-15",
         "statistics": "2026-07-15",
         "trades": "2026-07-15",
         "tcbbo": "2026-07-15",
         "cbbo-1m": "2026-05-07",
-        "cbbo-1s": "2026-08-10",
-        "cmbp-1": "2026-07-15",
+        "cbbo-1s": "2026-08-12",
+        "cmbp-1": "2026-08-14",
     }
     assert {scope.end for scope in scopes} == {"2026-08-15"}
     assert set(options_runtime.OPRA_SYMBOL_HISTORY_SCHEMA_ORDER) == set(
@@ -756,8 +756,9 @@ def test_options_history_uses_schema_specific_bootstrap_and_overlap_windows(
         **{
             schema: "2026-08-12"
             for schema in options_runtime.STANDARD_SCHEMAS
-            if not schema.startswith("ohlcv-")
+            if not schema.startswith("ohlcv-") and schema != "cmbp-1"
         },
+        "cmbp-1": "2026-08-14",
         "ohlcv-1s": "2026-08-14",
         "ohlcv-1m": "2026-08-13",
         "ohlcv-1h": "2026-08-10",

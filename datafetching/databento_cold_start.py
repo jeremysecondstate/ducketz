@@ -19,6 +19,7 @@ import os
 import re
 import shutil
 import sys
+import time
 import uuid
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timezone
@@ -30,7 +31,10 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 from datafetching.cme_runtime import load_repository_environment
-from datafetching.databento_history_policy import interval_lookback_policy
+from datafetching.databento_history_policy import (
+    heavy_book_lookback_policy,
+    interval_lookback_policy,
+)
 from datafetching.databento_opra_history import (
     DATASET as OPRA_DATASET,
     SyncScope,
@@ -51,6 +55,7 @@ PREFLIGHT_VERSION = "databento-cold-start-preflight-v2"
 PROGRESS_VERSION = "databento-cold-start-progress-v1"
 STORAGE_RESERVE_BYTES = 5 * 1024**3
 STORAGE_EXPANSION_FACTOR = 2
+METADATA_MAX_ATTEMPTS = 3
 DEFAULT_WATCHLIST = Path(__file__).resolve().parent / "watchlist.txt"
 DEFAULT_EQUITIES_DATASET = "XNAS.ITCH"
 COLD_START_EQUITIES_DATASET_ENV = "DATABENTO_COLD_START_EQUITIES_DATASET"
@@ -251,6 +256,9 @@ def schema_window(standard_plan_dataset: str, schema: str) -> dict[str, object]:
     interval_policy = interval_lookback_policy(schema)
     if interval_policy is not None:
         return interval_policy
+    heavy_book_policy = heavy_book_lookback_policy(schema)
+    if heavy_book_policy is not None:
+        return heavy_book_policy
     if schema == "definition":
         if standard_plan_dataset == PLAN_DATASET_OPRA:
             return {"unit": "years", "value": 13}
@@ -1102,13 +1110,35 @@ def _write_progress(path: Path, progress: Mapping[str, object]) -> None:
     _write_json_atomic(path, progress)
 
 
-def _metadata_call(function: Callable[..., object], **kwargs: object) -> object:
-    try:
-        return function(**kwargs)
-    except Exception as exc:
-        raise ColdStartError(
-            f"Databento metadata request failed: {type(exc).__name__}: {exc}"
-        ) from exc
+def _metadata_call(
+    function: Callable[..., object],
+    *,
+    _retry_sleeper: Callable[[float], None] = time.sleep,
+    **kwargs: object,
+) -> object:
+    for attempt in range(1, METADATA_MAX_ATTEMPTS + 1):
+        try:
+            return function(**kwargs)
+        except Exception as exc:
+            if attempt < METADATA_MAX_ATTEMPTS and _transient_metadata_error(exc):
+                _retry_sleeper(float(2 ** (attempt - 1)))
+                continue
+            raise ColdStartError(
+                f"Databento metadata request failed after {attempt} attempt(s): "
+                f"{type(exc).__name__}: {exc}"
+            ) from exc
+    raise AssertionError("metadata retry loop terminated without a result")
+
+
+def _transient_metadata_error(exc: Exception) -> bool:
+    status = getattr(exc, "status_code", None)
+    if status is None:
+        response = getattr(exc, "response", None)
+        status = getattr(response, "status_code", None)
+    if isinstance(status, int):
+        return 500 <= status <= 599
+    message = str(exc)
+    return bool(re.search(r"(?:^|\D)5\d\d(?:\D|$)", message))
 
 
 def _window_start(end: date, policy: Mapping[str, object]) -> date:

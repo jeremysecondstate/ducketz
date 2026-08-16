@@ -89,7 +89,7 @@ def schwab_price_history_specs() -> tuple[SchwabPriceHistorySpec, ...]:
 def databento_analysis_source_specs() -> tuple[DatabentoAnalysisSourceSpec, ...]:
     return (
         DatabentoAnalysisSourceSpec(
-            key="source_5d_1s",
+            key="source_3d_1s",
             schema="ohlcv-1s",
             frequency="1s",
             lookback=timedelta(days=INTERVAL_LOOKBACK_DAYS["1s"]),
@@ -117,10 +117,10 @@ def databento_analysis_source_specs() -> tuple[DatabentoAnalysisSourceSpec, ...]
 
 def databento_analysis_bar_specs() -> tuple[DatabentoAnalysisBarSpec, ...]:
     return (
-        DatabentoAnalysisBarSpec("analysis_5d_1s", "source_5d_1s", "1s", "native"),
-        DatabentoAnalysisBarSpec("analysis_5d_5s", "source_5d_1s", "5s", "resampled_from_1s"),
-        DatabentoAnalysisBarSpec("analysis_5d_15s", "source_5d_1s", "15s", "resampled_from_1s"),
-        DatabentoAnalysisBarSpec("analysis_5d_30s", "source_5d_1s", "30s", "resampled_from_1s"),
+        DatabentoAnalysisBarSpec("analysis_3d_1s", "source_3d_1s", "1s", "native"),
+        DatabentoAnalysisBarSpec("analysis_3d_5s", "source_3d_1s", "5s", "resampled_from_1s"),
+        DatabentoAnalysisBarSpec("analysis_3d_15s", "source_3d_1s", "15s", "resampled_from_1s"),
+        DatabentoAnalysisBarSpec("analysis_3d_30s", "source_3d_1s", "30s", "resampled_from_1s"),
         DatabentoAnalysisBarSpec("analysis_100d_1m", "source_100d_1m", "1m", "native"),
         DatabentoAnalysisBarSpec("analysis_100d_5m", "source_100d_1m", "5m", "resampled_from_1m"),
         DatabentoAnalysisBarSpec("analysis_100d_15m", "source_100d_1m", "15m", "resampled_from_1m"),
