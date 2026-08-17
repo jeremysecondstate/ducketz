@@ -436,6 +436,38 @@ def test_mismatched_dbn_without_parquet_remains_fatal(
     assert "metadata does not match" in str(raised.value)
 
 
+def test_batch_metadata_allows_partial_but_not_unresolved_symbology() -> None:
+    request = {
+        "dataset": opra_history.DATASET,
+        "schema": "ohlcv-1d",
+        "start": "2025-01-01",
+        "end": "2025-01-02",
+        "symbols": ["AAPL.OPT"],
+        "stype_in": "parent",
+    }
+    store = _ProbeDBNStore()
+    store.metadata.partial = ["AAPL  250117C00100000"]
+
+    with pytest.raises(opra_history.OpraSyncError, match="metadata does not match"):
+        opra_history._validate_dbn_request_metadata(store, request=request)
+    assert (
+        opra_history._validate_dbn_request_metadata(
+            store,
+            request=request,
+            allow_partially_resolved_symbols=True,
+        )
+        == 1
+    )
+
+    store.metadata.not_found = ["AAPL  250117P00999999"]
+    with pytest.raises(opra_history.OpraSyncError, match="metadata does not match"):
+        opra_history._validate_dbn_request_metadata(
+            store,
+            request=request,
+            allow_partially_resolved_symbols=True,
+        )
+
+
 def test_synchronize_fail_fast_skips_no_data_and_continues_after_existing_partition(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -543,7 +575,7 @@ def test_daily_batch_publishes_files_and_persists_no_data_coverage(
             self.limit = None
             self.metadata = SimpleNamespace(
                 version=1,
-                partial=[],
+                partial=["AAPL  250117C00100000"],
                 not_found=[],
                 ts_out=False,
             )
@@ -668,7 +700,10 @@ def test_daily_batch_publishes_files_and_persists_no_data_coverage(
             symbols=("AAPL.OPT",),
         )
         verified = opra_history.verify_partition(destination, datastore_root=tmp_path)
-        assert verified["manifest"]["provider_delivery"]["mode"] == "batch"
+        delivery = verified["manifest"]["provider_delivery"]
+        assert delivery["mode"] == "batch"
+        assert delivery["partially_resolved_symbol_count"] == 1
+        assert delivery["normalized_symbol_mapping"] == "complete"
 
     second = opra_history.synchronize(
         client,

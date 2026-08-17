@@ -640,12 +640,28 @@ def verify_partition(directory: Path, *, datastore_root: Path) -> Mapping[str, o
             raise OpraSyncError("OPRA partition has invalid provider delivery evidence")
         if provider_delivery.get("mode") == "batch":
             provider_hash = str(provider_delivery.get("provider_hash", ""))
+            partial_symbol_count = provider_delivery.get(
+                "partially_resolved_symbol_count"
+            )
             if (
                 not str(provider_delivery.get("job_id", "")).strip()
                 or not str(provider_delivery.get("filename", "")).strip()
                 or provider_hash.partition(":")[0] != "sha256"
                 or provider_hash.partition(":")[2]
                 != str(manifest["raw"]["checksum_sha256"])
+                or (
+                    partial_symbol_count is not None
+                    and (
+                        not isinstance(partial_symbol_count, int)
+                        or partial_symbol_count < 0
+                    )
+                )
+                or (
+                    isinstance(partial_symbol_count, int)
+                    and partial_symbol_count > 0
+                    and provider_delivery.get("normalized_symbol_mapping")
+                    != "complete"
+                )
             ):
                 raise OpraSyncError("OPRA partition batch delivery evidence is incomplete")
     parquet_path = run / str(manifest["normalized"]["path"])
@@ -1295,6 +1311,13 @@ def _execute_batch_job_state(
             day=day,
             symbols=symbols,
         )
+        source = _batch_local_file(
+            datastore_root,
+            state=current,
+            schema=schema,
+            symbols=symbols,
+            filename=str(raw_info["filename"]),
+        )
         if destination.is_dir():
             if day in target_days:
                 verified = verify_partition(destination, datastore_root=datastore_root)
@@ -1305,30 +1328,35 @@ def _execute_batch_job_state(
                 progress.completed_bytes += int(
                     verified["manifest"]["normalized"]["size_bytes"]
                 )
+            if source.is_file():
+                _verify_batch_source_file(source, raw_info)
+                try:
+                    source.unlink()
+                except OSError:
+                    pass
             continue
-        source = _batch_local_file(
-            datastore_root,
-            state=current,
-            schema=schema,
-            symbols=symbols,
-            filename=str(raw_info["filename"]),
-        )
         _verify_batch_source_file(source, raw_info)
-        manifest = _download_partition(
-            client,
-            datastore_root=datastore_root,
-            entitlement=entitlement,
-            schema=schema,
-            day=day,
-            symbols=symbols,
-            provider_file=source,
-            provider_delivery={
-                "mode": "batch",
-                "job_id": current["job_id"],
-                "filename": raw_info["filename"],
-                "provider_hash": raw_info["hash"],
-            },
-        )
+        try:
+            manifest = _download_partition(
+                client,
+                datastore_root=datastore_root,
+                entitlement=entitlement,
+                schema=schema,
+                day=day,
+                symbols=symbols,
+                provider_file=source,
+                provider_delivery={
+                    "mode": "batch",
+                    "job_id": current["job_id"],
+                    "filename": raw_info["filename"],
+                    "provider_hash": raw_info["hash"],
+                },
+            )
+        except Exception as exc:
+            raise OpraSyncError(
+                f"Databento OPRA batch file failed canonical publication: "
+                f"{raw_info['filename']}: {type(exc).__name__}: {exc}"
+            ) from exc
         progress.completed_partitions += 1
         progress.completed_rows += int(manifest["normalized"]["row_count"])
         progress.completed_bytes += int(manifest["normalized"]["size_bytes"])
@@ -1780,6 +1808,7 @@ def _download_partition(
     kwargs = dict(request)
     kwargs["path"] = raw_path
     store: object | None = None
+    partially_resolved_symbol_count = 0
     try:
         if provider_file is None:
             try:
@@ -1805,7 +1834,11 @@ def _download_partition(
                 raise OpraSyncError("Databento batch source DBN is missing or empty")
             shutil.copy2(source, raw_path)
             store = _load_dbn_store(raw_path)
-            _validate_dbn_request_metadata(store, request=request)
+            partially_resolved_symbol_count = _validate_dbn_request_metadata(
+                store,
+                request=request,
+                allow_partially_resolved_symbols=True,
+            )
         if not raw_path.is_file() or raw_path.stat().st_size == 0:
             raise OpraSyncError("Databento returned no provider-native DBN file")
         if store is None:
@@ -1821,7 +1854,11 @@ def _download_partition(
             store = None
             gc.collect()
         if not parquet_path.is_file():
-            _classify_missing_parquet(raw_path, request=request)
+            _classify_missing_parquet(
+                raw_path,
+                request=request,
+                allow_partially_resolved_symbols=provider_file is not None,
+            )
         provider_duplicates_removed = _deduplicate_normalized_parquet(
             parquet_path,
             schema=schema,
@@ -1841,6 +1878,17 @@ def _download_partition(
             raise OpraSyncError(
                 "Databento partition-clock timestamps escape the requested interval"
             )
+        if partially_resolved_symbol_count:
+            columns = set(str(value) for value in validation["columns"])
+            null_counts = validation["null_counts"]
+            if (
+                "symbol" not in columns
+                or not isinstance(null_counts, Mapping)
+                or int(null_counts.get("symbol", -1)) != 0
+            ):
+                raise OpraSyncError(
+                    "Databento batch partial symbology did not map every normalized row"
+                )
         if int(validation["duplicate_natural_key_rows"]) != 0:
             raise OpraSyncError("Databento partition contains duplicate natural keys")
         raw_inventory = {
@@ -1858,6 +1906,13 @@ def _download_partition(
                 or provider_hash.partition(":")[2] != raw_inventory["checksum_sha256"]
             ):
                 raise OpraSyncError("Databento batch delivery evidence does not match raw DBN")
+            delivery_evidence = {
+                **dict(provider_delivery),
+                "partially_resolved_symbol_count": partially_resolved_symbol_count,
+                "normalized_symbol_mapping": "complete",
+            }
+        else:
+            delivery_evidence = {"mode": "timeseries-stream"}
         normalized_inventory = {
             "path": parquet_path.name,
             "size_bytes": parquet_path.stat().st_size,
@@ -1879,11 +1934,7 @@ def _download_partition(
             "symbol_scope": symbol_scope_name(symbols),
             "request": request,
             "provider_entitlement": dict(entitlement["entitlements"][schema]),
-            "provider_delivery": (
-                dict(provider_delivery)
-                if provider_delivery is not None
-                else {"mode": "timeseries-stream"}
-            ),
+            "provider_delivery": delivery_evidence,
             "published_at": utc_timestamp().isoformat(),
             "raw": raw_inventory,
             "normalized": normalized_inventory,
@@ -1921,6 +1972,7 @@ def _classify_missing_parquet(
     raw_path: Path,
     *,
     request: Mapping[str, object],
+    allow_partially_resolved_symbols: bool = False,
 ) -> None:
     """Raise NO_DATA only for a request-matching DBN that cleanly has no records."""
 
@@ -1930,7 +1982,11 @@ def _classify_missing_parquet(
         with warnings.catch_warnings(record=True) as parser_warnings:
             warnings.simplefilter("always")
             reopened = _load_dbn_store(raw_path)
-            _validate_dbn_request_metadata(reopened, request=request)
+            _validate_dbn_request_metadata(
+                reopened,
+                request=request,
+                allow_partially_resolved_symbols=allow_partially_resolved_symbols,
+            )
             records = iter(reopened)
             sentinel = object()
             first_record = next(records, sentinel)
@@ -1966,8 +2022,9 @@ def _validate_dbn_request_metadata(
     store: object,
     *,
     request: Mapping[str, object],
-) -> None:
-    """Fail closed unless native DBN metadata identifies the exact request."""
+    allow_partially_resolved_symbols: bool = False,
+) -> int:
+    """Validate native DBN identity and return its partial-symbol count."""
 
     metadata = getattr(store, "metadata")
     expected_start = pd.to_datetime(request["start"], utc=True, errors="raise")
@@ -1993,8 +2050,10 @@ def _validate_dbn_request_metadata(
         isinstance(version, int)
         and version >= 1
         and isinstance(partial, (list, tuple))
-        and not partial
+        and all(isinstance(value, str) for value in partial)
+        and (allow_partially_resolved_symbols or not partial)
         and isinstance(not_found, (list, tuple))
+        and all(isinstance(value, str) for value in not_found)
         and not not_found
         and getattr(metadata, "ts_out", None) is False
     )
@@ -2002,6 +2061,7 @@ def _validate_dbn_request_metadata(
         raise OpraSyncError(
             "Databento DBN request metadata does not match the normalization request"
         )
+    return len(partial)
 
 
 def _partition_plan(

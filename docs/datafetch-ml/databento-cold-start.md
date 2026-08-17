@@ -222,7 +222,11 @@ provider-verified no-data dates. Interrupting while a job is queued, downloading
 or publishing therefore resumes that same job and does not resubmit already
 covered no-data history. Batch archives are temporary staging; verified provider
 DBNs move through the same canonical daily manifest/receipt contract used by
-streaming.
+streaming. Daily batch DBNs may also report child option symbols that resolved
+for only part of that day. Those files are accepted only when there are no wholly
+unresolved symbols and normalization maps every returned row to a non-null raw
+symbol; the partial-symbol count is retained in the partition's delivery
+evidence.
 
 The OPRA schema cursor is refreshed once per completed symbol/schema scope, and
 the expensive all-partition health inventory is refreshed once after the OPRA
