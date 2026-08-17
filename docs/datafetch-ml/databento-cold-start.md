@@ -238,6 +238,21 @@ not trigger the remaining manifest downloads. `Ctrl+C` is not converted into an
 ordinary request failure; the runtime lock unwinds and the current staging
 attempt remains resumable.
 
+For OPRA, Databento can return a valid provider-native DBN whose request
+metadata and symbol mappings are present but whose data-record stream is empty.
+Because the SDK emits no Parquet file for that response, the canonical writer
+reopens the DBN, verifies its dataset, schema, exact UTC interval, symbol scope,
+and symbology against the request, and probes the record iterator to clean EOF.
+Only that provider-confirmed case is reported as, for example,
+`NO_DATA ohlcv-1d/2025-08-24 provider returned a readable zero-record DBN`.
+The native staging evidence is retained, no empty canonical partition is
+published, and synchronization continues to later dates even under the
+cold-start's fail-fast policy. The date's weekday, warning text, file size, and
+missing Parquet file are not classification evidence. An unreadable, malformed,
+truncated, partial, mismatched, or nonempty DBN whose conversion emitted no
+Parquet remains fatal; checksum, timestamp, duplicate-key, manifest, receipt,
+and atomic-publication validation are unchanged.
+
 Databento `BentoWarning` messages about reduced-quality days are provider data
 quality metadata, not transport or publication failures and not a quality
 guarantee. They remain visible in command output. Warnings observed on a

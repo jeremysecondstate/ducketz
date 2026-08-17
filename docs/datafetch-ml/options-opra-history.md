@@ -66,6 +66,17 @@ estimated compressed download size plus a 5 GiB safety reserve. It blocks the
 requested scope when it does not fit; it does not cap the datastore, truncate a
 date range, or delete completed data.
 
+A provider-native DBN that cleanly decodes to zero data records is retained in
+staging and skipped as `NO_DATA` only after its dataset, schema, exact UTC
+interval, symbols, and symbology are verified against the request. Databento's
+SDK does not create a Parquet file for this valid empty response, and the writer
+does not publish an empty canonical partition. Weekend/holiday status, warning
+text, file size, and a missing Parquet file alone never establish no-data. If
+the DBN is unreadable, malformed, truncated, partial, request-mismatched, or has
+even one record despite producing no Parquet, synchronization fails closed.
+All nonempty checksum, timestamp, duplicate-key, receipt, and atomic-publication
+checks remain mandatory.
+
 ## Administrative synchronization
 
 `ml.option_pricing_opra` is for an explicitly chosen maintenance scope. With no

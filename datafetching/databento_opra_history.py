@@ -7,6 +7,7 @@ import json
 import math
 import shutil
 import time
+import warnings
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
@@ -68,7 +69,7 @@ class OpraCapacityError(OpraSyncError):
 
 
 class OpraNoDataError(OpraSyncError):
-    """A provider-available dataset day has no records for the parent symbol."""
+    """A structurally valid provider response has no records for the request."""
 
 
 @dataclass(frozen=True)
@@ -771,13 +772,18 @@ def _download_partition(
             import databento as db
 
             store = db.DBNStore.from_file(raw_path)
-        store.to_parquet(parquet_path, map_symbols=True)
-        # Databento's DBN reader retains an open file handle on Windows. Release
-        # it before the directory-level atomic rename.
-        store = None
-        gc.collect()
+        try:
+            store.to_parquet(parquet_path, map_symbols=True)
+        except Exception as exc:
+            raise OpraSyncError("Databento DBN normalization failed") from exc
+        finally:
+            # Databento's DBN reader retains an open file handle on Windows.
+            # Release it before inspecting the native file or atomically
+            # publishing the completed directory.
+            store = None
+            gc.collect()
         if not parquet_path.is_file():
-            raise OpraSyncError("Databento DBN normalization produced no Parquet")
+            _classify_missing_parquet(raw_path, request=request)
         provider_duplicates_removed = _deduplicate_normalized_parquet(
             parquet_path,
             schema=schema,
@@ -856,6 +862,93 @@ def _download_partition(
         # Preserve failed staging in place for diagnosis. Moving it while the
         # SDK still owns a Windows file handle can mask the original exception.
         raise
+
+
+def _classify_missing_parquet(
+    raw_path: Path,
+    *,
+    request: Mapping[str, object],
+) -> None:
+    """Raise NO_DATA only for a request-matching DBN that cleanly has no records."""
+
+    reopened = None
+    records = None
+    try:
+        with warnings.catch_warnings(record=True) as parser_warnings:
+            warnings.simplefilter("always")
+            reopened = _load_dbn_store(raw_path)
+            _validate_dbn_request_metadata(reopened, request=request)
+            records = iter(reopened)
+            sentinel = object()
+            first_record = next(records, sentinel)
+        if parser_warnings:
+            raise OpraSyncError(
+                "Databento DBN parsing emitted warnings after normalization "
+                "produced no Parquet"
+            )
+        if first_record is not sentinel:
+            raise OpraSyncError(
+                "Databento DBN contains records but normalization produced no Parquet"
+            )
+    except OpraSyncError:
+        raise
+    except Exception as exc:
+        raise OpraSyncError(
+            "Databento DBN is unreadable after normalization produced no Parquet"
+        ) from exc
+    finally:
+        records = None
+        reopened = None
+        gc.collect()
+    raise OpraNoDataError("provider returned a readable zero-record DBN")
+
+
+def _load_dbn_store(path: Path) -> object:
+    import databento as db
+
+    return db.DBNStore.from_file(path)
+
+
+def _validate_dbn_request_metadata(
+    store: object,
+    *,
+    request: Mapping[str, object],
+) -> None:
+    """Fail closed unless native DBN metadata identifies the exact request."""
+
+    metadata = getattr(store, "metadata")
+    expected_start = pd.to_datetime(request["start"], utc=True, errors="raise")
+    expected_end = pd.to_datetime(request["end"], utc=True, errors="raise")
+    actual_start = pd.to_datetime(getattr(store, "start"), utc=True, errors="raise")
+    actual_end = pd.to_datetime(getattr(store, "end"), utc=True, errors="raise")
+    expected_symbols = tuple(str(value) for value in request["symbols"])
+    actual_symbols = tuple(str(value) for value in getattr(store, "symbols"))
+    matches_request = (
+        str(getattr(store, "dataset")) == str(request["dataset"])
+        and str(getattr(store, "schema")) == str(request["schema"])
+        and actual_start == expected_start
+        and actual_end == expected_end
+        and actual_symbols == expected_symbols
+        and str(getattr(store, "stype_in")) == str(request["stype_in"])
+        and str(getattr(store, "stype_out")) == "instrument_id"
+        and getattr(store, "limit") is None
+    )
+    version = getattr(metadata, "version", None)
+    partial = getattr(metadata, "partial", None)
+    not_found = getattr(metadata, "not_found", None)
+    structurally_complete = (
+        isinstance(version, int)
+        and version >= 1
+        and isinstance(partial, (list, tuple))
+        and not partial
+        and isinstance(not_found, (list, tuple))
+        and not not_found
+        and getattr(metadata, "ts_out", None) is False
+    )
+    if not matches_request or not structurally_complete:
+        raise OpraSyncError(
+            "Databento DBN request metadata does not match the normalization request"
+        )
 
 
 def _partition_plan(

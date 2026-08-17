@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -47,6 +48,56 @@ def _entitlement() -> dict[str, object]:
             for schema in STANDARD_SCHEMAS
         }
     }
+
+
+class _NoParquetStore:
+    def to_parquet(self, _path: Path, **_kwargs: object) -> None:
+        return None
+
+
+class _ProbeDBNStore:
+    def __init__(
+        self,
+        *,
+        dataset: str = opra_history.DATASET,
+        schema: str = "ohlcv-1d",
+        start: str = "2025-01-01",
+        end: str = "2025-01-02",
+        symbols: tuple[str, ...] = ("AAPL.OPT",),
+        stype_in: str = "parent",
+        records: tuple[object, ...] = (),
+        parser_warning: str | None = None,
+    ) -> None:
+        self.dataset = dataset
+        self.schema = schema
+        self.start = pd.Timestamp(start, tz="UTC")
+        self.end = pd.Timestamp(end, tz="UTC")
+        self.symbols = list(symbols)
+        self.stype_in = stype_in
+        self.stype_out = "instrument_id"
+        self.limit = None
+        self.metadata = SimpleNamespace(
+            version=1,
+            partial=[],
+            not_found=[],
+            ts_out=False,
+        )
+        self._records = records
+        self._parser_warning = parser_warning
+
+    def __iter__(self) -> object:
+        if self._parser_warning is not None:
+            warnings.warn(self._parser_warning, RuntimeWarning)
+        return iter(self._records)
+
+
+def _client_with_missing_parquet() -> object:
+    class TimeSeries:
+        def get_range(self, **kwargs: object) -> object:
+            Path(str(kwargs["path"])).write_bytes(b"controlled-provider-dbn")
+            return _NoParquetStore()
+
+    return SimpleNamespace(timeseries=TimeSeries())
 
 
 def test_storage_preflight_preserves_requested_scope(
@@ -267,6 +318,263 @@ def test_parent_symbol_no_data_day_is_a_nonfatal_partition_skip(
             day="2025-01-01",
             symbols=("AAPL.OPT",),
         )
+
+
+def test_readable_zero_record_dbn_without_parquet_is_no_data(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reopened_paths: list[Path] = []
+
+    def load(path: Path) -> object:
+        reopened_paths.append(path)
+        assert path.read_bytes() == b"controlled-provider-dbn"
+        return _ProbeDBNStore()
+
+    monkeypatch.setattr(opra_history, "_load_dbn_store", load)
+
+    with pytest.raises(
+        opra_history.OpraNoDataError,
+        match="provider returned a readable zero-record DBN",
+    ):
+        opra_history._download_partition(
+            _client_with_missing_parquet(),
+            datastore_root=tmp_path,
+            entitlement=_entitlement(),
+            schema="ohlcv-1d",
+            day="2025-01-01",
+            symbols=("AAPL.OPT",),
+        )
+
+    assert len(reopened_paths) == 1
+    assert reopened_paths[0].is_file()
+    assert not opra_history.partition_directory(
+        tmp_path,
+        schema="ohlcv-1d",
+        day="2025-01-01",
+        symbols=("AAPL.OPT",),
+    ).exists()
+    assert list(opra_history.canonical_root(tmp_path).glob(".staging/**/provider.dbn.zst"))
+
+
+def test_nonempty_dbn_without_parquet_remains_fatal(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        opra_history,
+        "_load_dbn_store",
+        lambda _path: _ProbeDBNStore(records=(object(),)),
+    )
+
+    with pytest.raises(opra_history.OpraSyncError) as raised:
+        opra_history._download_partition(
+            _client_with_missing_parquet(),
+            datastore_root=tmp_path,
+            entitlement=_entitlement(),
+            schema="ohlcv-1d",
+            day="2025-01-01",
+            symbols=("AAPL.OPT",),
+        )
+
+    assert type(raised.value) is opra_history.OpraSyncError
+    assert "contains records" in str(raised.value)
+
+
+@pytest.mark.parametrize("failure", ("malformed", "truncated"))
+def test_invalid_dbn_without_parquet_remains_fatal(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
+) -> None:
+    if failure == "malformed":
+        def load(_path: Path) -> object:
+            raise ValueError("invalid DBN header")
+    else:
+        def load(_path: Path) -> object:
+            return _ProbeDBNStore(parser_warning="DBN file is truncated")
+
+    monkeypatch.setattr(opra_history, "_load_dbn_store", load)
+
+    with pytest.raises(opra_history.OpraSyncError) as raised:
+        opra_history._download_partition(
+            _client_with_missing_parquet(),
+            datastore_root=tmp_path,
+            entitlement=_entitlement(),
+            schema="ohlcv-1d",
+            day="2025-01-01",
+            symbols=("AAPL.OPT",),
+        )
+
+    assert type(raised.value) is opra_history.OpraSyncError
+    assert "no Parquet" in str(raised.value)
+
+
+def test_mismatched_dbn_without_parquet_remains_fatal(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        opra_history,
+        "_load_dbn_store",
+        lambda _path: _ProbeDBNStore(schema="trades"),
+    )
+
+    with pytest.raises(opra_history.OpraSyncError) as raised:
+        opra_history._download_partition(
+            _client_with_missing_parquet(),
+            datastore_root=tmp_path,
+            entitlement=_entitlement(),
+            schema="ohlcv-1d",
+            day="2025-01-01",
+            symbols=("AAPL.OPT",),
+        )
+
+    assert type(raised.value) is opra_history.OpraSyncError
+    assert "metadata does not match" in str(raised.value)
+
+
+def test_synchronize_fail_fast_skips_no_data_and_continues_after_existing_partition(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    symbols = ("AAPL.OPT",)
+    existing = opra_history.partition_directory(
+        tmp_path,
+        schema="ohlcv-1d",
+        day="2025-01-01",
+        symbols=symbols,
+    )
+    existing.mkdir(parents=True)
+    downloaded_days: list[str] = []
+    reports: list[str] = []
+
+    monkeypatch.setattr(
+        opra_history,
+        "_validate_storage_preflight_receipt",
+        lambda *_args, **_kwargs: {"capacity_pass": True},
+    )
+    monkeypatch.setattr(
+        opra_history,
+        "_partition_plan",
+        lambda *_args, **_kwargs: [
+            ("ohlcv-1d", "2025-01-01"),
+            ("ohlcv-1d", "2025-01-02"),
+            ("ohlcv-1d", "2025-01-03"),
+        ],
+    )
+    monkeypatch.setattr(
+        opra_history,
+        "verify_partition",
+        lambda *_args, **_kwargs: {
+            "manifest": {"normalized": {"row_count": 5, "size_bytes": 50}}
+        },
+    )
+
+    def download(_client: object, **kwargs: object) -> object:
+        day = str(kwargs["day"])
+        downloaded_days.append(day)
+        if day == "2025-01-02":
+            raise opra_history.OpraNoDataError(
+                "provider returned a readable zero-record DBN"
+            )
+        return {"normalized": {"row_count": 7, "size_bytes": 70}}
+
+    monkeypatch.setattr(opra_history, "_download_partition", download)
+    monkeypatch.setattr(opra_history, "_publish_cursor", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        opra_history,
+        "publish_health",
+        lambda _root: tmp_path / "health.json",
+    )
+    client = SimpleNamespace(
+        metadata=SimpleNamespace(TIMEOUT=0),
+        timeseries=SimpleNamespace(TIMEOUT=0),
+    )
+
+    result = opra_history.synchronize(
+        client,
+        datastore_root=tmp_path,
+        entitlement=_entitlement(),
+        scope=SyncScope(
+            schemas=("ohlcv-1d",),
+            start="2025-01-01",
+            end="2025-01-04",
+            symbols=symbols,
+        ),
+        reporter=reports.append,
+        storage_preflight_receipt={"controlled": True},
+        fail_fast=True,
+    )
+
+    assert downloaded_days == ["2025-01-02", "2025-01-03"]
+    assert result.status == "COMPLETE"
+    assert result.completed_partitions == 1
+    assert result.skipped_partitions == 2
+    assert result.completed_rows == 12
+    assert result.completed_bytes == 120
+    assert result.errors == {}
+    assert reports == [
+        "VERIFIED_EXISTING ohlcv-1d/2025-01-01",
+        "NO_DATA ohlcv-1d/2025-01-02 provider returned a readable zero-record DBN",
+        "PUBLISHED ohlcv-1d/2025-01-03 rows=7 bytes=70",
+    ]
+
+
+def test_nonempty_dbn_publication_path_is_unchanged(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Store:
+        def to_parquet(self, path: Path, **_kwargs: object) -> None:
+            pd.DataFrame(
+                {
+                    "ts_event": [pd.Timestamp("2025-01-01T21:00:00Z")],
+                    "publisher_id": [1],
+                    "instrument_id": [2],
+                    "symbol": ["AAPL  250117C00100000"],
+                    "open": [1.0],
+                    "high": [1.5],
+                    "low": [0.5],
+                    "close": [1.25],
+                    "volume": [10],
+                }
+            ).to_parquet(path, index=False)
+
+    class TimeSeries:
+        def get_range(self, **kwargs: object) -> object:
+            Path(str(kwargs["path"])).write_bytes(b"controlled-nonempty-dbn")
+            return Store()
+
+    monkeypatch.setattr(
+        opra_history,
+        "_load_dbn_store",
+        lambda _path: pytest.fail("nonempty publication must not use the empty probe"),
+    )
+
+    manifest = opra_history._download_partition(
+        SimpleNamespace(timeseries=TimeSeries()),
+        datastore_root=tmp_path,
+        entitlement=_entitlement(),
+        schema="ohlcv-1d",
+        day="2025-01-01",
+        symbols=("AAPL.OPT",),
+    )
+    destination = opra_history.partition_directory(
+        tmp_path,
+        schema="ohlcv-1d",
+        day="2025-01-01",
+        symbols=("AAPL.OPT",),
+    )
+
+    assert manifest["normalized"]["row_count"] == 1
+    assert manifest["normalized"]["duplicate_natural_key_rows"] == 0
+    assert (destination / "provider.dbn.zst").read_bytes() == b"controlled-nonempty-dbn"
+    assert (destination / "normalized.parquet").is_file()
+    assert opra_history.verify_partition(
+        destination,
+        datastore_root=tmp_path,
+    )["manifest"] == manifest
 
 
 def test_cmbp_normalization_removes_only_exact_provider_duplicates(
