@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import warnings
+import zipfile
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -519,6 +521,348 @@ def test_synchronize_fail_fast_skips_no_data_and_continues_after_existing_partit
         "NO_DATA ohlcv-1d/2025-01-02 provider returned a readable zero-record DBN",
         "PUBLISHED ohlcv-1d/2025-01-03 rows=7 bytes=70",
     ]
+
+
+def test_daily_batch_publishes_files_and_persists_no_data_coverage(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    days = tuple(f"2025-01-{value:02d}" for value in range(1, 31))
+    data_days = (days[0], days[-1])
+    payloads = {day: day.encode("ascii") for day in data_days}
+
+    class BatchStore:
+        def __init__(self, day: str) -> None:
+            self.dataset = opra_history.DATASET
+            self.schema = "ohlcv-1d"
+            self.start = pd.Timestamp(day, tz="UTC")
+            self.end = self.start + pd.Timedelta(days=1)
+            self.symbols = ["AAPL.OPT"]
+            self.stype_in = "parent"
+            self.stype_out = "instrument_id"
+            self.limit = None
+            self.metadata = SimpleNamespace(
+                version=1,
+                partial=[],
+                not_found=[],
+                ts_out=False,
+            )
+
+        def to_parquet(self, path: Path, **_kwargs: object) -> None:
+            pd.DataFrame(
+                {
+                    "ts_event": [self.start + pd.Timedelta(hours=21)],
+                    "publisher_id": [1],
+                    "instrument_id": [2],
+                    "symbol": ["AAPL  250117C00100000"],
+                    "open": [1.0],
+                    "high": [1.5],
+                    "low": [0.5],
+                    "close": [1.25],
+                    "volume": [10],
+                }
+            ).to_parquet(path, index=False)
+
+    class Batch:
+        submit_calls = 0
+        download_calls = 0
+
+        def submit_job(self, **kwargs: object) -> dict[str, object]:
+            self.submit_calls += 1
+            assert kwargs["split_duration"] == "day"
+            assert kwargs["start"] == days[0]
+            assert kwargs["end"] == "2025-01-31"
+            return {"id": "OPRA-TEST-BATCH"}
+
+        def get_job_details(self, job_id: str) -> dict[str, object]:
+            return {"id": job_id, "state": "done", "record_count": 2, "progress": 100}
+
+        def list_files(self, _job_id: str) -> list[dict[str, object]]:
+            return [
+                {
+                    "filename": f"opra-pillar-{day.replace('-', '')}.ohlcv-1d.dbn.zst",
+                    "size": len(payload),
+                    "hash": f"sha256:{hashlib.sha256(payload).hexdigest()}",
+                }
+                for day, payload in payloads.items()
+            ]
+
+        def download(
+            self,
+            *,
+            job_id: str,
+            output_dir: Path,
+            keep_zip: bool,
+        ) -> list[Path]:
+            self.download_calls += 1
+            assert keep_zip is True
+            archive = Path(output_dir) / job_id / f"{job_id}.zip"
+            archive.parent.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(archive, "w") as output:
+                for day, payload in payloads.items():
+                    output.writestr(
+                        f"opra-pillar-{day.replace('-', '')}.ohlcv-1d.dbn.zst",
+                        payload,
+                    )
+            return [archive]
+
+    batch = Batch()
+    client = SimpleNamespace(
+        metadata=SimpleNamespace(TIMEOUT=0),
+        timeseries=SimpleNamespace(TIMEOUT=0),
+        batch=batch,
+    )
+    monkeypatch.setattr(
+        opra_history,
+        "_validate_storage_preflight_receipt",
+        lambda *_args, **_kwargs: {"capacity_pass": True},
+    )
+    monkeypatch.setattr(
+        opra_history,
+        "_partition_plan",
+        lambda *_args, **_kwargs: [("ohlcv-1d", day) for day in days],
+    )
+    monkeypatch.setattr(
+        opra_history,
+        "_load_dbn_store",
+        lambda path: BatchStore(Path(path).read_text(encoding="ascii")),
+    )
+
+    first = opra_history.synchronize(
+        client,
+        datastore_root=tmp_path,
+        entitlement=_entitlement(),
+        scope=SyncScope(
+            schemas=("ohlcv-1d",),
+            start=days[0],
+            end="2025-01-31",
+            symbols=("AAPL.OPT",),
+        ),
+        reporter=None,
+        storage_preflight_receipt={"controlled": True},
+        fail_fast=True,
+        batch_download=True,
+        refresh_health=False,
+    )
+
+    assert first.completed_partitions == 2
+    assert first.skipped_partitions == 28
+    assert first.completed_rows == 2
+    assert batch.submit_calls == 1
+    assert batch.download_calls == 1
+    states = list(
+        opra_history.canonical_root(tmp_path).glob(
+            "state/batch-jobs/ohlcv-1d/AAPL.OPT/*/job.json"
+        )
+    )
+    assert len(states) == 1
+    state = json.loads(states[0].read_text(encoding="utf-8"))
+    assert state["status"] == "COMPLETE"
+    assert state["published_dates"] == list(data_days)
+    assert len(state["no_data_dates"]) == 28
+    for day in data_days:
+        destination = opra_history.partition_directory(
+            tmp_path,
+            schema="ohlcv-1d",
+            day=day,
+            symbols=("AAPL.OPT",),
+        )
+        verified = opra_history.verify_partition(destination, datastore_root=tmp_path)
+        assert verified["manifest"]["provider_delivery"]["mode"] == "batch"
+
+    second = opra_history.synchronize(
+        client,
+        datastore_root=tmp_path,
+        entitlement=_entitlement(),
+        scope=SyncScope(
+            schemas=("ohlcv-1d",),
+            start=days[0],
+            end="2025-01-31",
+            symbols=("AAPL.OPT",),
+        ),
+        reporter=None,
+        storage_preflight_receipt={"controlled": True},
+        fail_fast=True,
+        batch_download=True,
+        refresh_health=False,
+    )
+    assert second.completed_partitions == 0
+    assert second.skipped_partitions == 30
+    assert second.completed_rows == 2
+    assert batch.submit_calls == 1
+    assert batch.download_calls == 1
+
+
+def test_daily_batch_streams_a_short_remaining_gap(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    days = tuple(f"2025-01-{value:02d}" for value in range(1, 31))
+    for day in days[:-1]:
+        opra_history.partition_directory(
+            tmp_path,
+            schema="ohlcv-1d",
+            day=day,
+            symbols=("AAPL.OPT",),
+        ).mkdir(parents=True)
+
+    monkeypatch.setattr(
+        opra_history,
+        "verify_partition",
+        lambda *_args, **_kwargs: {
+            "manifest": {"normalized": {"row_count": 1, "size_bytes": 1}}
+        },
+    )
+    streamed: list[tuple[str, str]] = []
+
+    def execute_stream_plan(*_args: object, **kwargs: object) -> object:
+        streamed.extend(kwargs["plan"])
+        return opra_history._SyncProgress(
+            completed_partitions=1,
+            completed_rows=1,
+            completed_bytes=1,
+        )
+
+    monkeypatch.setattr(opra_history, "_execute_stream_plan", execute_stream_plan)
+    client = SimpleNamespace(
+        batch=SimpleNamespace(
+            submit_job=lambda **_kwargs: pytest.fail(
+                "a one-day remaining gap must not enter the batch queue"
+            )
+        )
+    )
+
+    result = opra_history._synchronize_daily_batch(
+        client,
+        datastore_root=tmp_path,
+        entitlement=_entitlement(),
+        schema="ohlcv-1d",
+        days=days,
+        symbols=("AAPL.OPT",),
+        reporter=None,
+    )
+
+    assert streamed == [("ohlcv-1d", days[-1])]
+    assert result.completed_partitions == 1
+    assert result.skipped_partitions == 29
+    assert result.completed_rows == 30
+
+
+def test_batch_inventory_ignores_unplanned_dates_inside_the_requested_range() -> None:
+    payload = b"provider-data"
+    provider_hash = f"sha256:{hashlib.sha256(payload).hexdigest()}"
+    accepted, ignored = opra_history._batch_data_file_inventory(
+        [
+            {
+                "filename": "opra-pillar-20240603.ohlcv-1d.dbn.zst",
+                "size": len(payload),
+                "hash": provider_hash,
+            },
+            {
+                "filename": "opra-pillar-20240604.ohlcv-1d.dbn.zst",
+                "size": len(payload),
+                "hash": provider_hash,
+            },
+        ],
+        planned_dates=("2024-06-04",),
+        request_start="2024-06-03",
+        request_end="2024-06-05",
+    )
+
+    assert [item["day"] for item in accepted] == ["2024-06-04"]
+    assert [item["day"] for item in ignored] == ["2024-06-03"]
+
+
+def test_batch_inventory_rejects_files_outside_the_requested_range() -> None:
+    payload = b"provider-data"
+    with pytest.raises(opra_history.OpraSyncError, match="outside its request range"):
+        opra_history._batch_data_file_inventory(
+            [
+                {
+                    "filename": "opra-pillar-20240602.ohlcv-1d.dbn.zst",
+                    "size": len(payload),
+                    "hash": f"sha256:{hashlib.sha256(payload).hexdigest()}",
+                }
+            ],
+            planned_dates=("2024-06-03",),
+            request_start="2024-06-03",
+            request_end="2024-06-05",
+        )
+
+
+def test_batch_interrupt_resumes_the_same_job_without_resubmission(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    days = tuple(f"2025-01-{value:02d}" for value in range(1, 31))
+
+    class Batch:
+        ready = False
+        submit_calls = 0
+
+        def submit_job(self, **_kwargs: object) -> dict[str, object]:
+            self.submit_calls += 1
+            return {"id": "OPRA-INTERRUPT-BATCH"}
+
+        def get_job_details(self, job_id: str) -> dict[str, object]:
+            return {
+                "id": job_id,
+                "state": "done" if self.ready else "processing",
+                "record_count": 0 if self.ready else None,
+                "progress": 100 if self.ready else 25,
+            }
+
+        def list_files(self, _job_id: str) -> list[dict[str, object]]:
+            return [{"filename": "metadata.json", "size": 2, "hash": "sha256:00"}]
+
+        def download(self, **_kwargs: object) -> list[Path]:
+            pytest.fail("zero-record batch must not download an archive")
+
+    batch = Batch()
+    client = SimpleNamespace(
+        metadata=SimpleNamespace(TIMEOUT=0),
+        timeseries=SimpleNamespace(TIMEOUT=0),
+        batch=batch,
+    )
+    monkeypatch.setattr(
+        opra_history,
+        "_validate_storage_preflight_receipt",
+        lambda *_args, **_kwargs: {"capacity_pass": True},
+    )
+    monkeypatch.setattr(
+        opra_history,
+        "_partition_plan",
+        lambda *_args, **_kwargs: [("ohlcv-1d", day) for day in days],
+    )
+    monkeypatch.setattr(
+        opra_history.time,
+        "sleep",
+        lambda _seconds: (_ for _ in ()).throw(KeyboardInterrupt()),
+    )
+    kwargs = {
+        "datastore_root": tmp_path,
+        "entitlement": _entitlement(),
+        "scope": SyncScope(
+            schemas=("ohlcv-1d",),
+            start=days[0],
+            end="2025-01-31",
+            symbols=("AAPL.OPT",),
+        ),
+        "reporter": None,
+        "storage_preflight_receipt": {"controlled": True},
+        "fail_fast": True,
+        "batch_download": True,
+        "refresh_health": False,
+    }
+    with pytest.raises(KeyboardInterrupt):
+        opra_history.synchronize(client, **kwargs)
+    assert batch.submit_calls == 1
+
+    batch.ready = True
+    result = opra_history.synchronize(client, **kwargs)
+    assert result.completed_partitions == 0
+    assert result.skipped_partitions == 30
+    assert batch.submit_calls == 1
 
 
 def test_nonempty_dbn_publication_path_is_unchanged(

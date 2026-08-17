@@ -5,12 +5,16 @@ import gc
 import itertools
 import json
 import math
+import re
 import shutil
 import time
 import warnings
+import zipfile
 from dataclasses import dataclass
+from dataclasses import field
 from datetime import date, timedelta
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Callable, Iterable, Mapping, Sequence
 
 import pandas as pd
@@ -35,6 +39,7 @@ PARTITION_VERSION = "databento-opra-partition-v1"
 RECEIPT_VERSION = "databento-opra-partition-receipt-v1"
 ENTITLEMENT_VERSION = "databento-opra-entitlement-v2"
 HEALTH_VERSION = "databento-opra-health-v1"
+BATCH_JOB_VERSION = "databento-opra-batch-job-v1"
 
 L0_SCHEMAS = (
     "ohlcv-1s",
@@ -57,7 +62,12 @@ MAX_EXACT_VALIDATION_ROWS = 25_000_000
 TARGET_HIGH_VOLUME_PARTITION_ROWS = 20_000_000
 MINIMUM_TIME_PARTITION_SECONDS = 1
 HIGH_VOLUME_SCHEMAS = frozenset(("cmbp-1", "cbbo-1s"))
+OPRA_BATCH_MIN_DAYS = 30
+OPRA_BATCH_POLL_SECONDS = 5
+OPRA_BATCH_PROGRESS_FILES = 25
 STANDARD_PLAN_AUTHORITY = "docs/databento-plan/databento_standard_plan_data_access.md"
+_BATCH_JOB_ID_RE = re.compile(r"^[A-Za-z0-9-]+$")
+_BATCH_FILE_DATE_RE = re.compile(r"(?<!\d)(\d{8})(?!\d)")
 
 
 class OpraSyncError(RuntimeError):
@@ -90,6 +100,22 @@ class SyncResult:
     completed_bytes: int
     errors: Mapping[str, str]
     health_path: Path
+
+
+@dataclass
+class _SyncProgress:
+    completed_partitions: int = 0
+    skipped_partitions: int = 0
+    completed_rows: int = 0
+    completed_bytes: int = 0
+    errors: dict[str, str] = field(default_factory=dict)
+
+    def absorb(self, other: "_SyncProgress") -> None:
+        self.completed_partitions += other.completed_partitions
+        self.skipped_partitions += other.skipped_partitions
+        self.completed_rows += other.completed_rows
+        self.completed_bytes += other.completed_bytes
+        self.errors.update(other.errors)
 
 
 def canonical_root(datastore_root: Path) -> Path:
@@ -278,6 +304,8 @@ def synchronize(
     reporter: Callable[[str], None] | None = print,
     storage_preflight_receipt: Mapping[str, object] | None = None,
     fail_fast: bool = False,
+    batch_download: bool = False,
+    refresh_health: bool = True,
 ) -> SyncResult:
     """Download, normalize, publish, and verify immutable OPRA partitions."""
 
@@ -318,6 +346,58 @@ def synchronize(
         )
 
     plan = _partition_plan(client, entitlement=entitlement, scope=scope)
+    if scope.max_partitions is not None and scope.max_partitions < 1:
+        raise ValueError("max_partitions must be positive")
+    if batch_download and scope.max_partitions is None:
+        progress = _execute_batch_aware_plan(
+            client,
+            datastore_root=datastore_root,
+            entitlement=entitlement,
+            scope=scope,
+            plan=plan,
+            reporter=reporter,
+            fail_fast=fail_fast,
+        )
+    else:
+        progress = _execute_stream_plan(
+            client,
+            datastore_root=datastore_root,
+            entitlement=entitlement,
+            symbols=scope.symbols,
+            plan=plan,
+            reporter=reporter,
+            fail_fast=fail_fast,
+            max_partitions=scope.max_partitions,
+        )
+    for schema in sorted({schema for schema, _day in plan}):
+        _publish_cursor(datastore_root, schema=schema)
+    health = (
+        publish_health(datastore_root)
+        if refresh_health
+        else canonical_root(datastore_root) / "health" / "current.json"
+    )
+    return SyncResult(
+        status="COMPLETE" if not progress.errors else "PARTIAL",
+        completed_partitions=progress.completed_partitions,
+        skipped_partitions=progress.skipped_partitions,
+        completed_rows=progress.completed_rows,
+        completed_bytes=progress.completed_bytes,
+        errors=progress.errors,
+        health_path=health,
+    )
+
+
+def _execute_stream_plan(
+    client: object,
+    *,
+    datastore_root: Path,
+    entitlement: Mapping[str, object],
+    symbols: Sequence[str],
+    plan: Sequence[tuple[str, str]],
+    reporter: Callable[[str], None] | None,
+    fail_fast: bool,
+    max_partitions: int | None = None,
+) -> _SyncProgress:
     tasks: Iterable[tuple[str, str, str, str, str | None]] = (
         (schema, day, request_start, request_end, segment)
         for schema, day in plan
@@ -325,30 +405,31 @@ def synchronize(
             client,
             schema=schema,
             day=day,
-            symbols=scope.symbols,
+            symbols=symbols,
         )
     )
-    if scope.max_partitions is not None:
-        if scope.max_partitions < 1:
-            raise ValueError("max_partitions must be positive")
-        tasks = itertools.islice(tasks, scope.max_partitions)
-    complete = skipped = rows = byte_count = 0
-    errors: dict[str, str] = {}
+    if max_partitions is not None:
+        tasks = itertools.islice(tasks, max_partitions)
+    progress = _SyncProgress()
     for schema, day, request_start, request_end, segment in tasks:
         key = f"{schema}/{day}" + (f"/{segment}" if segment else "")
         destination = partition_directory(
             datastore_root,
             schema=schema,
             day=day,
-            symbols=scope.symbols,
+            symbols=symbols,
             segment=segment,
         )
         try:
             if destination.is_dir():
                 verified = verify_partition(destination, datastore_root=datastore_root)
-                skipped += 1
-                rows += int(verified["manifest"]["normalized"]["row_count"])
-                byte_count += int(verified["manifest"]["normalized"]["size_bytes"])
+                progress.skipped_partitions += 1
+                progress.completed_rows += int(
+                    verified["manifest"]["normalized"]["row_count"]
+                )
+                progress.completed_bytes += int(
+                    verified["manifest"]["normalized"]["size_bytes"]
+                )
                 if reporter:
                     reporter(f"VERIFIED_EXISTING {key}")
                 continue
@@ -358,40 +439,82 @@ def synchronize(
                 entitlement=entitlement,
                 schema=schema,
                 day=day,
-                symbols=scope.symbols,
+                symbols=symbols,
                 request_start=request_start,
                 request_end=request_end,
                 segment=segment,
             )
-            complete += 1
-            rows += int(manifest["normalized"]["row_count"])
-            byte_count += int(manifest["normalized"]["size_bytes"])
-            _publish_cursor(datastore_root, schema=schema)
+            progress.completed_partitions += 1
+            progress.completed_rows += int(manifest["normalized"]["row_count"])
+            progress.completed_bytes += int(manifest["normalized"]["size_bytes"])
             if reporter:
                 reporter(
                     f"PUBLISHED {key} rows={manifest['normalized']['row_count']} "
                     f"bytes={manifest['normalized']['size_bytes']}"
                 )
         except OpraNoDataError as exc:
-            skipped += 1
+            progress.skipped_partitions += 1
             if reporter:
                 reporter(f"NO_DATA {key} {exc}")
         except Exception as exc:
-            errors[key] = f"{type(exc).__name__}: {exc}"
+            progress.errors[key] = f"{type(exc).__name__}: {exc}"
             if reporter:
-                reporter(f"FAILED {key} {errors[key]}")
+                reporter(f"FAILED {key} {progress.errors[key]}")
             if fail_fast:
                 raise
-    health = publish_health(datastore_root)
-    return SyncResult(
-        status="COMPLETE" if not errors else "PARTIAL",
-        completed_partitions=complete,
-        skipped_partitions=skipped,
-        completed_rows=rows,
-        completed_bytes=byte_count,
-        errors=errors,
-        health_path=health,
-    )
+    return progress
+
+
+def _execute_batch_aware_plan(
+    client: object,
+    *,
+    datastore_root: Path,
+    entitlement: Mapping[str, object],
+    scope: SyncScope,
+    plan: Sequence[tuple[str, str]],
+    reporter: Callable[[str], None] | None,
+    fail_fast: bool,
+) -> _SyncProgress:
+    by_schema: dict[str, list[str]] = {}
+    for schema, day in plan:
+        by_schema.setdefault(schema, []).append(day)
+    progress = _SyncProgress()
+    for schema, days in by_schema.items():
+        use_batch = (
+            bool(scope.symbols)
+            and schema not in HIGH_VOLUME_SCHEMAS
+            and len(days) >= OPRA_BATCH_MIN_DAYS
+        )
+        try:
+            if use_batch:
+                current = _synchronize_daily_batch(
+                    client,
+                    datastore_root=datastore_root,
+                    entitlement=entitlement,
+                    schema=schema,
+                    days=days,
+                    symbols=scope.symbols,
+                    reporter=reporter,
+                )
+            else:
+                current = _execute_stream_plan(
+                    client,
+                    datastore_root=datastore_root,
+                    entitlement=entitlement,
+                    symbols=scope.symbols,
+                    plan=[(schema, day) for day in days],
+                    reporter=reporter,
+                    fail_fast=fail_fast,
+                )
+            progress.absorb(current)
+        except Exception as exc:
+            key = f"{schema}/batch"
+            progress.errors[key] = f"{type(exc).__name__}: {exc}"
+            if reporter:
+                reporter(f"FAILED {key} {progress.errors[key]}")
+            if fail_fast:
+                raise
+    return progress
 
 
 def _validate_storage_preflight_receipt(
@@ -508,6 +631,23 @@ def verify_partition(directory: Path, *, datastore_root: Path) -> Mapping[str, o
             or file_checksum(path) != info.get("checksum_sha256")
         ):
             raise OpraSyncError(f"OPRA partition {name} checksum verification failed")
+    provider_delivery = manifest.get("provider_delivery")
+    if provider_delivery is not None:
+        if not isinstance(provider_delivery, Mapping) or provider_delivery.get("mode") not in {
+            "timeseries-stream",
+            "batch",
+        }:
+            raise OpraSyncError("OPRA partition has invalid provider delivery evidence")
+        if provider_delivery.get("mode") == "batch":
+            provider_hash = str(provider_delivery.get("provider_hash", ""))
+            if (
+                not str(provider_delivery.get("job_id", "")).strip()
+                or not str(provider_delivery.get("filename", "")).strip()
+                or provider_hash.partition(":")[0] != "sha256"
+                or provider_hash.partition(":")[2]
+                != str(manifest["raw"]["checksum_sha256"])
+            ):
+                raise OpraSyncError("OPRA partition batch delivery evidence is incomplete")
     parquet_path = run / str(manifest["normalized"]["path"])
     validation = validate_parquet(parquet_path, schema=str(manifest["schema"]))
     expected = manifest["normalized"]
@@ -705,6 +845,895 @@ def record_consumer_usage(
     return path
 
 
+def _synchronize_daily_batch(
+    client: object,
+    *,
+    datastore_root: Path,
+    entitlement: Mapping[str, object],
+    schema: str,
+    days: Sequence[str],
+    symbols: Sequence[str],
+    reporter: Callable[[str], None] | None,
+) -> _SyncProgress:
+    """Resume or submit daily-split jobs while retaining canonical daily output."""
+
+    ordered_days = tuple(dict.fromkeys(sorted(str(day) for day in days)))
+    planned = set(ordered_days)
+    verified_no_data = _batch_verified_no_data_dates(
+        datastore_root,
+        schema=schema,
+        symbols=symbols,
+    )
+    progress = _SyncProgress()
+    satisfied: set[str] = set()
+    existing: set[str] = set()
+    for day in ordered_days:
+        destination = partition_directory(
+            datastore_root,
+            schema=schema,
+            day=day,
+            symbols=symbols,
+        )
+        if destination.is_dir():
+            verified = verify_partition(destination, datastore_root=datastore_root)
+            progress.skipped_partitions += 1
+            progress.completed_rows += int(
+                verified["manifest"]["normalized"]["row_count"]
+            )
+            progress.completed_bytes += int(
+                verified["manifest"]["normalized"]["size_bytes"]
+            )
+            existing.add(day)
+            satisfied.add(day)
+        elif day in verified_no_data:
+            progress.skipped_partitions += 1
+            satisfied.add(day)
+
+    missing = planned.difference(satisfied)
+    if reporter:
+        reporter(
+            f"BATCH_SCAN {schema}/{symbol_scope_name(symbols)} "
+            f"verified_existing={len(existing)} verified_no_data="
+            f"{len(satisfied.difference(existing))} missing={len(missing)}"
+        )
+
+    for state_path, state in _batch_job_states(
+        datastore_root,
+        schema=schema,
+        symbols=symbols,
+    ):
+        if str(state.get("status")) == "COMPLETE":
+            continue
+        state_days = set(str(value) for value in state["planned_dates"])
+        if not state_days.issubset(planned):
+            continue
+        target_days = state_days.intersection(missing)
+        if not target_days and not state_days.issubset(satisfied):
+            continue
+        resumed = _execute_batch_job_state(
+            client,
+            datastore_root=datastore_root,
+            entitlement=entitlement,
+            schema=schema,
+            symbols=symbols,
+            state_path=state_path,
+            state=state,
+            target_days=target_days,
+            reporter=reporter,
+        )
+        progress.absorb(resumed)
+        missing.difference_update(state_days)
+
+    for group in _missing_batch_groups(ordered_days, missing):
+        if len(group) < OPRA_BATCH_MIN_DAYS:
+            if reporter:
+                reporter(
+                    f"STREAMING_SHORT_GAP {schema}/{symbol_scope_name(symbols)} "
+                    f"days={len(group)} range={group[0]}..{group[-1]}"
+                )
+            current = _execute_stream_plan(
+                client,
+                datastore_root=datastore_root,
+                entitlement=entitlement,
+                symbols=symbols,
+                plan=[(schema, day) for day in group],
+                reporter=reporter,
+                fail_fast=True,
+            )
+            progress.absorb(current)
+            missing.difference_update(group)
+            continue
+        request_start = group[0]
+        request_end = (date.fromisoformat(group[-1]) + timedelta(days=1)).isoformat()
+        state_path, state = _load_or_submit_batch_job(
+            client,
+            datastore_root=datastore_root,
+            schema=schema,
+            symbols=symbols,
+            start=request_start,
+            end=request_end,
+            planned_dates=group,
+            reporter=reporter,
+        )
+        current = _execute_batch_job_state(
+            client,
+            datastore_root=datastore_root,
+            entitlement=entitlement,
+            schema=schema,
+            symbols=symbols,
+            state_path=state_path,
+            state=state,
+            target_days=set(group),
+            reporter=reporter,
+        )
+        progress.absorb(current)
+        missing.difference_update(group)
+
+    if missing:
+        raise OpraSyncError(
+            f"Batch synchronization left {len(missing)} uncovered {schema} dates"
+        )
+    return progress
+
+
+def _missing_batch_groups(
+    ordered_days: Sequence[str], missing: set[str]
+) -> list[tuple[str, ...]]:
+    groups: list[tuple[str, ...]] = []
+    current: list[str] = []
+    for day in ordered_days:
+        if day in missing:
+            current.append(day)
+        elif current:
+            groups.append(tuple(current))
+            current = []
+    if current:
+        groups.append(tuple(current))
+    return groups
+
+
+def _opra_batch_api(client: object) -> object:
+    batch = getattr(client, "batch", None)
+    required = ("submit_job", "get_job_details", "list_files", "download")
+    if batch is None or not all(callable(getattr(batch, name, None)) for name in required):
+        raise OpraSyncError(
+            "Installed Databento client does not provide the required OPRA batch API"
+        )
+    return batch
+
+
+def _batch_job_request(
+    *, schema: str, symbols: Sequence[str], start: str, end: str
+) -> dict[str, object]:
+    return {
+        "dataset": DATASET,
+        "schema": schema,
+        "symbols": list(symbols),
+        "stype_in": "parent",
+        "stype_out": "instrument_id",
+        "start": start,
+        "end": end,
+        "encoding": "dbn",
+        "compression": "zstd",
+        "split_duration": "day",
+        "delivery": "download",
+    }
+
+
+def _batch_job_directory(
+    datastore_root: Path,
+    *,
+    schema: str,
+    symbols: Sequence[str],
+    start: str,
+    end: str,
+) -> Path:
+    return (
+        canonical_root(datastore_root)
+        / "state"
+        / "batch-jobs"
+        / clean_token(schema)
+        / symbol_scope_name(symbols)
+        / window_name(start, end)
+    )
+
+
+def _batch_download_directory(
+    datastore_root: Path,
+    *,
+    schema: str,
+    symbols: Sequence[str],
+    start: str,
+    end: str,
+) -> Path:
+    return (
+        canonical_root(datastore_root)
+        / ".staging"
+        / "batch-jobs"
+        / clean_token(schema)
+        / symbol_scope_name(symbols)
+        / window_name(start, end)
+        / "downloads"
+    )
+
+
+def _batch_job_states(
+    datastore_root: Path,
+    *,
+    schema: str,
+    symbols: Sequence[str],
+) -> list[tuple[Path, dict[str, object]]]:
+    root = (
+        canonical_root(datastore_root)
+        / "state"
+        / "batch-jobs"
+        / clean_token(schema)
+        / symbol_scope_name(symbols)
+    )
+    output: list[tuple[Path, dict[str, object]]] = []
+    for path in sorted(root.glob("*/job.json")):
+        output.append(
+            (
+                path,
+                _load_batch_job_state(
+                    path,
+                    expected_schema=schema,
+                    expected_symbols=symbols,
+                ),
+            )
+        )
+    return output
+
+
+def _batch_verified_no_data_dates(
+    datastore_root: Path,
+    *,
+    schema: str,
+    symbols: Sequence[str],
+) -> set[str]:
+    output: set[str] = set()
+    for _path, state in _batch_job_states(
+        datastore_root,
+        schema=schema,
+        symbols=symbols,
+    ):
+        if str(state.get("status")) == "COMPLETE":
+            output.update(str(value) for value in state.get("no_data_dates", ()))
+    return output
+
+
+def _load_or_submit_batch_job(
+    client: object,
+    *,
+    datastore_root: Path,
+    schema: str,
+    symbols: Sequence[str],
+    start: str,
+    end: str,
+    planned_dates: Sequence[str],
+    reporter: Callable[[str], None] | None,
+) -> tuple[Path, dict[str, object]]:
+    directory = _batch_job_directory(
+        datastore_root,
+        schema=schema,
+        symbols=symbols,
+        start=start,
+        end=end,
+    )
+    path = directory / "job.json"
+    request = _batch_job_request(
+        schema=schema,
+        symbols=symbols,
+        start=start,
+        end=end,
+    )
+    if path.is_file():
+        state = _load_batch_job_state(
+            path,
+            expected_schema=schema,
+            expected_symbols=symbols,
+        )
+        if state["request"] != request or tuple(state["planned_dates"]) != tuple(
+            planned_dates
+        ):
+            raise OpraSyncError(f"OPRA batch state does not match requested range: {path}")
+        return path, state
+
+    batch = _opra_batch_api(client)
+    response = getattr(batch, "submit_job")(
+        dataset=DATASET,
+        schema=schema,
+        symbols=list(symbols),
+        stype_in="parent",
+        stype_out="instrument_id",
+        start=start,
+        end=end,
+        encoding="dbn",
+        compression="zstd",
+        split_duration="day",
+        delivery="download",
+    )
+    if not isinstance(response, Mapping):
+        raise OpraSyncError("Databento OPRA batch submission returned malformed details")
+    job_id = str(response.get("id", "")).strip()
+    if not job_id or _BATCH_JOB_ID_RE.fullmatch(job_id) is None:
+        raise OpraSyncError("Databento OPRA batch submission returned an unsafe job ID")
+    state = {
+        "schema_version": BATCH_JOB_VERSION,
+        "status": "SUBMITTED",
+        "request": request,
+        "request_checksum_sha256": _semantic_checksum(request),
+        "planned_dates": list(planned_dates),
+        "job_id": job_id,
+        "submitted_at": utc_timestamp().isoformat(),
+    }
+    _write_json_exclusive(path, state)
+    if reporter:
+        reporter(
+            f"SUBMITTED_BATCH {schema}/{symbol_scope_name(symbols)} "
+            f"job={job_id} days={len(planned_dates)} range={start}..{end}"
+        )
+    return path, state
+
+
+def _load_batch_job_state(
+    path: Path,
+    *,
+    expected_schema: str,
+    expected_symbols: Sequence[str],
+) -> dict[str, object]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise OpraSyncError(f"OPRA batch state is unreadable: {path}") from exc
+    if not isinstance(payload, dict) or payload.get("schema_version") != BATCH_JOB_VERSION:
+        raise OpraSyncError(f"OPRA batch state version is invalid: {path}")
+    request = payload.get("request")
+    planned_dates = payload.get("planned_dates")
+    job_id = str(payload.get("job_id", "")).strip()
+    if (
+        not isinstance(request, Mapping)
+        or request.get("dataset") != DATASET
+        or request.get("schema") != expected_schema
+        or tuple(str(value) for value in request.get("symbols", ()))
+        != tuple(str(value) for value in expected_symbols)
+        or payload.get("request_checksum_sha256") != _semantic_checksum(request)
+        or not isinstance(planned_dates, list)
+        or not planned_dates
+        or not job_id
+        or _BATCH_JOB_ID_RE.fullmatch(job_id) is None
+    ):
+        raise OpraSyncError(f"OPRA batch state identity is invalid: {path}")
+    normalized_dates = tuple(str(value) for value in planned_dates)
+    if normalized_dates != tuple(sorted(set(normalized_dates))):
+        raise OpraSyncError(f"OPRA batch state dates are invalid: {path}")
+    status = str(payload.get("status", ""))
+    if status not in {"SUBMITTED", "DONE", "FILES_READY", "COMPLETE"}:
+        raise OpraSyncError(f"OPRA batch state status is invalid: {path}")
+    if status == "COMPLETE":
+        completion = _batch_completion_body(payload)
+        if payload.get("completion_checksum_sha256") != _semantic_checksum(completion):
+            raise OpraSyncError(f"OPRA batch completion checksum is invalid: {path}")
+        covered = set(str(value) for value in payload.get("published_dates", ()))
+        covered.update(str(value) for value in payload.get("no_data_dates", ()))
+        if covered != set(normalized_dates):
+            raise OpraSyncError(f"OPRA batch completion coverage is invalid: {path}")
+    return payload
+
+
+def _batch_completion_body(state: Mapping[str, object]) -> dict[str, object]:
+    return {
+        "request": dict(state["request"]),
+        "request_checksum_sha256": state["request_checksum_sha256"],
+        "planned_dates": list(state["planned_dates"]),
+        "job_id": state["job_id"],
+        "provider_files": list(state.get("provider_files", ())),
+        "published_dates": list(state.get("published_dates", ())),
+        "no_data_dates": list(state.get("no_data_dates", ())),
+    }
+
+
+def _update_batch_job_state(
+    path: Path,
+    state: Mapping[str, object],
+    **updates: object,
+) -> dict[str, object]:
+    payload = {**dict(state), **updates}
+    if payload.get("status") == "COMPLETE":
+        payload["completion_checksum_sha256"] = _semantic_checksum(
+            _batch_completion_body(payload)
+        )
+    _write_json_atomic(path, payload)
+    return payload
+
+
+def _execute_batch_job_state(
+    client: object,
+    *,
+    datastore_root: Path,
+    entitlement: Mapping[str, object],
+    schema: str,
+    symbols: Sequence[str],
+    state_path: Path,
+    state: Mapping[str, object],
+    target_days: set[str],
+    reporter: Callable[[str], None] | None,
+) -> _SyncProgress:
+    current = dict(state)
+    if str(current.get("status")) == "COMPLETE":
+        return _SyncProgress(skipped_partitions=len(target_days))
+    current = _wait_for_batch_job(
+        client,
+        state_path=state_path,
+        state=current,
+        reporter=reporter,
+    )
+    current = _prepare_batch_job_files(
+        client,
+        datastore_root=datastore_root,
+        state_path=state_path,
+        state=current,
+        schema=schema,
+        symbols=symbols,
+        reporter=reporter,
+    )
+    planned_dates = set(str(value) for value in current["planned_dates"])
+    provider_files = list(current.get("provider_files", ()))
+    data_dates = {str(item["day"]) for item in provider_files if isinstance(item, Mapping)}
+    if not data_dates.issubset(planned_dates):
+        raise OpraSyncError("Databento OPRA batch returned files outside planned dates")
+    no_data_dates = planned_dates.difference(data_dates)
+    progress = _SyncProgress()
+    processed = 0
+    for raw_info in sorted(provider_files, key=lambda value: str(value["day"])):
+        if not isinstance(raw_info, Mapping):
+            raise OpraSyncError("Databento OPRA batch file inventory is malformed")
+        day = str(raw_info["day"])
+        destination = partition_directory(
+            datastore_root,
+            schema=schema,
+            day=day,
+            symbols=symbols,
+        )
+        if destination.is_dir():
+            if day in target_days:
+                verified = verify_partition(destination, datastore_root=datastore_root)
+                progress.skipped_partitions += 1
+                progress.completed_rows += int(
+                    verified["manifest"]["normalized"]["row_count"]
+                )
+                progress.completed_bytes += int(
+                    verified["manifest"]["normalized"]["size_bytes"]
+                )
+            continue
+        source = _batch_local_file(
+            datastore_root,
+            state=current,
+            schema=schema,
+            symbols=symbols,
+            filename=str(raw_info["filename"]),
+        )
+        _verify_batch_source_file(source, raw_info)
+        manifest = _download_partition(
+            client,
+            datastore_root=datastore_root,
+            entitlement=entitlement,
+            schema=schema,
+            day=day,
+            symbols=symbols,
+            provider_file=source,
+            provider_delivery={
+                "mode": "batch",
+                "job_id": current["job_id"],
+                "filename": raw_info["filename"],
+                "provider_hash": raw_info["hash"],
+            },
+        )
+        progress.completed_partitions += 1
+        progress.completed_rows += int(manifest["normalized"]["row_count"])
+        progress.completed_bytes += int(manifest["normalized"]["size_bytes"])
+        try:
+            source.unlink()
+        except OSError:
+            pass
+        processed += 1
+        if reporter and (
+            processed % OPRA_BATCH_PROGRESS_FILES == 0 or processed == len(provider_files)
+        ):
+            reporter(
+                f"BATCH_PROGRESS {schema}/{symbol_scope_name(symbols)} "
+                f"job={current['job_id']} files={processed}/{len(provider_files)} "
+                f"rows={progress.completed_rows}"
+            )
+
+    target_no_data = no_data_dates.intersection(target_days)
+    progress.skipped_partitions += len(target_no_data)
+    completed = _update_batch_job_state(
+        state_path,
+        current,
+        status="COMPLETE",
+        published_dates=sorted(data_dates),
+        no_data_dates=sorted(no_data_dates),
+        completed_at=utc_timestamp().isoformat(),
+    )
+    _load_batch_job_state(
+        state_path,
+        expected_schema=schema,
+        expected_symbols=symbols,
+    )
+    if reporter:
+        reporter(
+            f"COMPLETED_BATCH {schema}/{symbol_scope_name(symbols)} "
+            f"job={completed['job_id']} published={len(data_dates)} "
+            f"no_data={len(no_data_dates)}"
+        )
+    return progress
+
+
+def _wait_for_batch_job(
+    client: object,
+    *,
+    state_path: Path,
+    state: Mapping[str, object],
+    reporter: Callable[[str], None] | None,
+) -> dict[str, object]:
+    if str(state.get("status")) in {"DONE", "FILES_READY"}:
+        return dict(state)
+    batch = _opra_batch_api(client)
+    job_id = str(state["job_id"])
+    last_report: tuple[str, object] | None = None
+    while True:
+        details = getattr(batch, "get_job_details")(job_id)
+        if not isinstance(details, Mapping):
+            raise OpraSyncError(f"Databento OPRA batch job {job_id} returned malformed details")
+        provider_state = str(details.get("state", "")).lower()
+        progress = details.get("progress")
+        report_key = (provider_state, progress)
+        if reporter and report_key != last_report:
+            reporter(
+                f"WAITING_BATCH job={job_id} state={provider_state or 'unknown'} "
+                f"progress={progress if progress is not None else 'unknown'}"
+            )
+            last_report = report_key
+        if provider_state == "done":
+            selected = {
+                key: details.get(key)
+                for key in (
+                    "id",
+                    "state",
+                    "record_count",
+                    "billed_size",
+                    "actual_size",
+                    "cost_usd",
+                    "ts_received",
+                    "ts_process_start",
+                    "ts_process_done",
+                    "ts_expiration",
+                )
+            }
+            return _update_batch_job_state(
+                state_path,
+                state,
+                status="DONE",
+                provider_job=selected,
+                provider_done_at=utc_timestamp().isoformat(),
+            )
+        if provider_state == "expired":
+            raise OpraSyncError(
+                f"Databento OPRA batch job expired before local completion: {job_id}"
+            )
+        if provider_state not in {"received", "queued", "processing"}:
+            raise OpraSyncError(
+                f"Databento OPRA batch job has unexpected state {provider_state!r}: {job_id}"
+            )
+        time.sleep(OPRA_BATCH_POLL_SECONDS)
+
+
+def _prepare_batch_job_files(
+    client: object,
+    *,
+    datastore_root: Path,
+    state_path: Path,
+    state: Mapping[str, object],
+    schema: str,
+    symbols: Sequence[str],
+    reporter: Callable[[str], None] | None,
+) -> dict[str, object]:
+    current = dict(state)
+    provider_files = current.get("provider_files")
+    if provider_files is None:
+        batch = _opra_batch_api(client)
+        response = getattr(batch, "list_files")(str(current["job_id"]))
+        if not isinstance(response, list) or not all(
+            isinstance(item, Mapping) for item in response
+        ):
+            raise OpraSyncError("Databento OPRA batch returned a malformed file list")
+        request = current["request"]
+        if not isinstance(request, Mapping):
+            raise OpraSyncError("Databento OPRA batch state has a malformed request")
+        provider_files, ignored_provider_files = _batch_data_file_inventory(
+            response,
+            planned_dates=tuple(str(value) for value in current["planned_dates"]),
+            request_start=str(request["start"]),
+            request_end=str(request["end"]),
+        )
+        current = _update_batch_job_state(
+            state_path,
+            current,
+            provider_files=provider_files,
+            ignored_provider_files=ignored_provider_files,
+        )
+        if reporter and ignored_provider_files:
+            reporter(
+                f"IGNORED_UNAVAILABLE_BATCH_FILES "
+                f"{schema}/{symbol_scope_name(symbols)} job={current['job_id']} "
+                f"files={len(ignored_provider_files)}"
+            )
+    elif not isinstance(provider_files, list) or not all(
+        isinstance(item, Mapping) for item in provider_files
+    ):
+        raise OpraSyncError("Databento OPRA batch state has malformed file inventory")
+
+    missing_sources: list[Mapping[str, object]] = []
+    for info in provider_files:
+        day = str(info["day"])
+        destination = partition_directory(
+            datastore_root,
+            schema=schema,
+            day=day,
+            symbols=symbols,
+        )
+        if destination.is_dir():
+            continue
+        source = _batch_local_file(
+            datastore_root,
+            state=current,
+            schema=schema,
+            symbols=symbols,
+            filename=str(info["filename"]),
+        )
+        if source.is_file():
+            _verify_batch_source_file(source, info)
+        else:
+            missing_sources.append(info)
+
+    if missing_sources:
+        if reporter:
+            total_size = sum(int(item["size"]) for item in missing_sources)
+            reporter(
+                f"DOWNLOADING_BATCH {schema}/{symbol_scope_name(symbols)} "
+                f"job={current['job_id']} files={len(missing_sources)} "
+                f"bytes={total_size}"
+            )
+        _download_batch_archive(
+            client,
+            datastore_root=datastore_root,
+            state=current,
+            schema=schema,
+            symbols=symbols,
+            required_files=missing_sources,
+        )
+    for info in provider_files:
+        day = str(info["day"])
+        destination = partition_directory(
+            datastore_root,
+            schema=schema,
+            day=day,
+            symbols=symbols,
+        )
+        if destination.is_dir():
+            continue
+        _verify_batch_source_file(
+            _batch_local_file(
+                datastore_root,
+                state=current,
+                schema=schema,
+                symbols=symbols,
+                filename=str(info["filename"]),
+            ),
+            info,
+        )
+    return _update_batch_job_state(
+        state_path,
+        current,
+        status="FILES_READY",
+        files_ready_at=utc_timestamp().isoformat(),
+    )
+
+
+def _batch_data_file_inventory(
+    response: Sequence[Mapping[str, object]],
+    *,
+    planned_dates: Sequence[str],
+    request_start: str,
+    request_end: str,
+) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    planned = set(planned_dates)
+    request_start_date = date.fromisoformat(request_start)
+    request_end_date = date.fromisoformat(request_end)
+    output: list[dict[str, object]] = []
+    ignored: list[dict[str, object]] = []
+    seen_days: set[str] = set()
+    for item in response:
+        filename = str(item.get("filename", "")).strip()
+        if not filename.endswith(".dbn.zst"):
+            continue
+        if not filename or Path(filename).name != filename:
+            raise OpraSyncError("Databento OPRA batch returned an unsafe filename")
+        size = int(item.get("size", -1))
+        if size <= 0:
+            raise OpraSyncError(f"Databento OPRA batch returned invalid size for {filename}")
+        provider_hash = _normalized_provider_hash(item.get("hash"))
+        day = _batch_filename_day(filename)
+        day_value = date.fromisoformat(day)
+        if not request_start_date <= day_value < request_end_date:
+            raise OpraSyncError(
+                f"Databento OPRA batch returned a file outside its request "
+                f"range: {filename}"
+            )
+        if day in seen_days:
+            raise OpraSyncError(
+                f"Databento OPRA batch returned multiple DBN files for {day}"
+            )
+        seen_days.add(day)
+        file_info = {
+            "filename": filename,
+            "size": size,
+            "hash": provider_hash,
+            "day": day,
+        }
+        if day in planned:
+            output.append(file_info)
+        else:
+            # Batch requests cover one continuous range, while the canonical
+            # plan intentionally includes only provider-available dates. The
+            # provider may still package a degraded date inside that range;
+            # retain its inventory as evidence, but do not publish it as a
+            # checksum-verified canonical partition.
+            ignored.append(file_info)
+    output.sort(key=lambda value: str(value["day"]))
+    ignored.sort(key=lambda value: str(value["day"]))
+    return output, ignored
+
+
+def _batch_filename_day(filename: str) -> str:
+    candidates: set[str] = set()
+    for match in _BATCH_FILE_DATE_RE.findall(filename):
+        try:
+            candidates.add(date.fromisoformat(f"{match[:4]}-{match[4:6]}-{match[6:]}").isoformat())
+        except ValueError:
+            continue
+    if len(candidates) != 1:
+        raise OpraSyncError(
+            f"Databento OPRA batch filename has no unambiguous UTC date: {filename}"
+        )
+    return next(iter(candidates))
+
+
+def _normalized_provider_hash(value: object) -> str:
+    text = str(value or "").strip().lower()
+    algorithm, separator, digest = text.partition(":")
+    if not separator and len(text) == 64:
+        algorithm, digest = "sha256", text
+    if algorithm != "sha256" or re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+        raise OpraSyncError("Databento OPRA batch file has no valid SHA-256")
+    return f"sha256:{digest}"
+
+
+def _batch_local_file(
+    datastore_root: Path,
+    *,
+    state: Mapping[str, object],
+    schema: str,
+    symbols: Sequence[str],
+    filename: str,
+) -> Path:
+    request = state["request"]
+    assert isinstance(request, Mapping)
+    return (
+        _batch_download_directory(
+            datastore_root,
+            schema=schema,
+            symbols=symbols,
+            start=str(request["start"]),
+            end=str(request["end"]),
+        )
+        / str(state["job_id"])
+        / filename
+    )
+
+
+def _verify_batch_source_file(path: Path, info: Mapping[str, object]) -> None:
+    expected_hash = str(info["hash"]).partition(":")[2]
+    if (
+        not path.is_file()
+        or path.stat().st_size != int(info["size"])
+        or file_checksum(path) != expected_hash
+    ):
+        raise OpraSyncError(f"Databento OPRA batch file verification failed: {path}")
+
+
+def _download_batch_archive(
+    client: object,
+    *,
+    datastore_root: Path,
+    state: Mapping[str, object],
+    schema: str,
+    symbols: Sequence[str],
+    required_files: Sequence[Mapping[str, object]],
+) -> None:
+    request = state["request"]
+    assert isinstance(request, Mapping)
+    download_root = _batch_download_directory(
+        datastore_root,
+        schema=schema,
+        symbols=symbols,
+        start=str(request["start"]),
+        end=str(request["end"]),
+    )
+    download_root.mkdir(parents=True, exist_ok=True)
+    batch = _opra_batch_api(client)
+    downloaded = getattr(batch, "download")(
+        job_id=str(state["job_id"]),
+        output_dir=download_root,
+        keep_zip=True,
+    )
+    if not isinstance(downloaded, list) or len(downloaded) != 1:
+        raise OpraSyncError("Databento OPRA batch archive download returned malformed paths")
+    archive_path = Path(downloaded[0]).resolve()
+    resolved_root = download_root.resolve()
+    if resolved_root not in archive_path.parents or archive_path.suffix.lower() != ".zip":
+        raise OpraSyncError("Databento OPRA batch archive escaped its staging root")
+    expected = {str(item["filename"]): item for item in required_files}
+    try:
+        with zipfile.ZipFile(archive_path) as archive:
+            members: dict[str, zipfile.ZipInfo] = {}
+            for member in archive.infolist():
+                if member.is_dir():
+                    continue
+                parts = PurePosixPath(member.filename).parts
+                if (
+                    not parts
+                    or PurePosixPath(member.filename).is_absolute()
+                    or any(part in {"", ".", ".."} for part in parts)
+                ):
+                    raise OpraSyncError(
+                        "Databento OPRA batch archive contains an unsafe member"
+                    )
+                basename = parts[-1]
+                if basename in expected:
+                    if basename in members:
+                        raise OpraSyncError(
+                            f"Databento OPRA batch archive duplicates {basename}"
+                        )
+                    members[basename] = member
+            missing = sorted(set(expected).difference(members))
+            if missing:
+                raise OpraSyncError(
+                    "Databento OPRA batch archive omitted expected files: "
+                    + ", ".join(missing[:5])
+                )
+            job_root = download_root / str(state["job_id"])
+            job_root.mkdir(parents=True, exist_ok=True)
+            for filename, info in expected.items():
+                target = job_root / filename
+                if target.is_file():
+                    _verify_batch_source_file(target, info)
+                    continue
+                pending = _next_pending_file(target)
+                with archive.open(members[filename]) as source, pending.open("xb") as destination:
+                    shutil.copyfileobj(source, destination, length=8 * 1024**2)
+                _verify_batch_source_file(pending, info)
+                pending.replace(target)
+    except (OSError, zipfile.BadZipFile) as exc:
+        raise OpraSyncError("Databento OPRA batch archive is unreadable") from exc
+    finally:
+        try:
+            archive_path.unlink()
+        except OSError:
+            pass
+
+
 def _download_partition(
     client: object,
     *,
@@ -716,6 +1745,8 @@ def _download_partition(
     request_start: str | None = None,
     request_end: str | None = None,
     segment: str | None = None,
+    provider_file: Path | None = None,
+    provider_delivery: Mapping[str, object] | None = None,
 ) -> Mapping[str, object]:
     destination = partition_directory(
         datastore_root,
@@ -748,30 +1779,37 @@ def _download_partition(
     }
     kwargs = dict(request)
     kwargs["path"] = raw_path
+    store: object | None = None
     try:
-        try:
-            store = _retry(
-                getattr(client, "timeseries").get_range,
-                kwargs=kwargs,
-                operation=f"{schema} {day} download",
-            )
-        except OpraSyncError as exc:
-            message = str(exc)
-            if (
-                symbols
-                and "symbology_invalid_request" in message
-                and "Could not resolve smart symbols" in message
-            ):
-                raise OpraNoDataError(
-                    "provider returned no resolvable parent-symbol data"
-                ) from None
-            raise
+        if provider_file is None:
+            try:
+                store = _retry(
+                    getattr(client, "timeseries").get_range,
+                    kwargs=kwargs,
+                    operation=f"{schema} {day} download",
+                )
+            except OpraSyncError as exc:
+                message = str(exc)
+                if (
+                    symbols
+                    and "symbology_invalid_request" in message
+                    and "Could not resolve smart symbols" in message
+                ):
+                    raise OpraNoDataError(
+                        "provider returned no resolvable parent-symbol data"
+                    ) from None
+                raise
+        else:
+            source = Path(provider_file).resolve()
+            if not source.is_file() or source.stat().st_size == 0:
+                raise OpraSyncError("Databento batch source DBN is missing or empty")
+            shutil.copy2(source, raw_path)
+            store = _load_dbn_store(raw_path)
+            _validate_dbn_request_metadata(store, request=request)
         if not raw_path.is_file() or raw_path.stat().st_size == 0:
             raise OpraSyncError("Databento returned no provider-native DBN file")
         if store is None:
-            import databento as db
-
-            store = db.DBNStore.from_file(raw_path)
+            store = _load_dbn_store(raw_path)
         try:
             store.to_parquet(parquet_path, map_symbols=True)
         except Exception as exc:
@@ -810,6 +1848,16 @@ def _download_partition(
             "size_bytes": raw_path.stat().st_size,
             "checksum_sha256": file_checksum(raw_path),
         }
+        if provider_delivery is not None:
+            provider_hash = str(provider_delivery.get("provider_hash", ""))
+            if (
+                provider_delivery.get("mode") != "batch"
+                or not str(provider_delivery.get("job_id", "")).strip()
+                or not str(provider_delivery.get("filename", "")).strip()
+                or provider_hash.partition(":")[0] != "sha256"
+                or provider_hash.partition(":")[2] != raw_inventory["checksum_sha256"]
+            ):
+                raise OpraSyncError("Databento batch delivery evidence does not match raw DBN")
         normalized_inventory = {
             "path": parquet_path.name,
             "size_bytes": parquet_path.stat().st_size,
@@ -831,6 +1879,11 @@ def _download_partition(
             "symbol_scope": symbol_scope_name(symbols),
             "request": request,
             "provider_entitlement": dict(entitlement["entitlements"][schema]),
+            "provider_delivery": (
+                dict(provider_delivery)
+                if provider_delivery is not None
+                else {"mode": "timeseries-stream"}
+            ),
             "published_at": utc_timestamp().isoformat(),
             "raw": raw_inventory,
             "normalized": normalized_inventory,

@@ -198,6 +198,38 @@ stops execution before unsafe publication. Storage capacity, including the
 reserve and expansion allowance above, is the relevant normal-bootstrap
 constraint.
 
+Canonical OPRA cold-start requests automatically choose between two delivery
+paths without changing the manifest, schema coverage, date windows, or durable
+daily partition layout. A non-book schema with at least 30 missing
+provider-available days uses one Databento batch job per parent symbol and
+missing contiguous range, with DBN/Zstd output split by UTC day. Shorter gaps
+continue to stream,
+and exceptionally dense `cbbo-1s`/`cmbp-1` dates retain their record-count-based
+intraday segmentation. This avoids using the batch queue for tiny requests while
+removing thousands of request/response round trips from multi-year OHLCV
+baselines.
+
+Every submitted OPRA job is recorded immediately under
+`market-data\databento\opra\OPRA.PILLAR\state\batch-jobs` with its exact request,
+planned provider-available dates, job ID, and request checksum. Downloaded daily
+files must match Databento's size and SHA-256 inventory, native DBN request
+metadata, normalized timestamp bounds, and the canonical partition checks before
+publication. Because a provider batch covers one continuous date range, it may
+also contain files for dates marked `degraded`; those files are retained in the
+job inventory as ignored evidence and are never promoted into the canonical
+available-only plan. A completed job records both published dates and
+provider-verified no-data dates. Interrupting while a job is queued, downloading,
+or publishing therefore resumes that same job and does not resubmit already
+covered no-data history. Batch archives are temporary staging; verified provider
+DBNs move through the same canonical daily manifest/receipt contract used by
+streaming.
+
+The OPRA schema cursor is refreshed once per completed symbol/schema scope, and
+the expensive all-partition health inventory is refreshed once after the OPRA
+block rather than after every daily partition or parent-symbol request. Physical
+Parquet compaction is deliberately separate: existing consumers continue to see
+the established daily paths during the accelerated cold-start resume.
+
 Generic CME and US-equity downloads use up to ten retries after the initial
 provider call for transient stream or network failures (for example a
 prematurely ended response, connection reset/timeout, or HTTP 502/503/504).

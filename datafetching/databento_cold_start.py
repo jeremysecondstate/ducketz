@@ -57,6 +57,7 @@ from datafetching.databento_opra_history import (
     DATASET as OPRA_DATASET,
     SyncScope,
     canonical_root as canonical_opra_root,
+    publish_health as publish_opra_health,
     synchronize as synchronize_opra,
 )
 from datafetching.options_runtime import publish_opra_symbol_history_cursor
@@ -984,9 +985,18 @@ def execute_manifest(
     progress_path = _progress_path(datastore_root, manifest)
     progress = _read_progress(progress_path, manifest_id=str(manifest["manifest_id"]))
     counts = {"verified": 0, "downloaded": 0, "no_data": 0, "failed": 0}
+    opra_health_pending = False
     for raw in requests:
         if not isinstance(raw, Mapping):
             raise ColdStartError("Cold-start manifest request is malformed")
+        is_opra = raw.get("storage_contract") == "canonical-opra"
+        if opra_health_pending and not is_opra:
+            health_path = publish_opra_health(datastore_root)
+            opra_health_pending = False
+            if reporter:
+                reporter(f"REFRESHED_OPRA_HEALTH {health_path}")
+        if is_opra:
+            opra_health_pending = True
         request_id = str(raw["request_id"])
         estimate = estimates.get(request_id)
         if estimate is None:
@@ -1056,6 +1066,10 @@ def execute_manifest(
                 f"{raw['dataset']}/{raw['schema']}/{raw['symbol_scope'][0]}: "
                 f"{type(exc).__name__}: {exc}"
             ) from exc
+    if opra_health_pending:
+        health_path = publish_opra_health(datastore_root)
+        if reporter:
+            reporter(f"REFRESHED_OPRA_HEALTH {health_path}")
     return counts
 
 
@@ -1293,6 +1307,8 @@ def _execute_opra_entry(
             reporter=reporter,
             storage_preflight_receipt=storage_preflight_receipt,
             fail_fast=True,
+            batch_download=True,
+            refresh_health=False,
         )
         if result.errors or result.completed_rows < 1:
             raise ColdStartError(

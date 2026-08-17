@@ -1252,6 +1252,8 @@ def test_opra_cursor_handoff_keeps_history_lock_and_normalizes_calendar_month_po
     def synchronize(*_args: object, **kwargs: object) -> object:
         seen["storage_preflight_receipt"] = kwargs["storage_preflight_receipt"]
         seen["fail_fast"] = kwargs["fail_fast"]
+        seen["batch_download"] = kwargs["batch_download"]
+        seen["refresh_health"] = kwargs["refresh_health"]
         return SimpleNamespace(errors={}, completed_rows=9)
 
     monkeypatch.setattr(cold_start, "synchronize_opra", synchronize)
@@ -1279,6 +1281,8 @@ def test_opra_cursor_handoff_keeps_history_lock_and_normalizes_calendar_month_po
     assert storage_preflight_receipt["estimates"]["trades"]["record_count"] == 9
     assert storage_preflight_receipt["source"].startswith("checksum-verified")
     assert seen["fail_fast"] is True
+    assert seen["batch_download"] is True
+    assert seen["refresh_health"] is False
     assert not (tmp_path / ".ducketz-options-writer.lock").exists()
     assert not (tmp_path / ".ducketz-cme-writer.lock").exists()
 
