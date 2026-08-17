@@ -209,6 +209,23 @@ are never overwritten or treated as complete. Authentication, entitlement,
 invalid schema/symbol, and other non-transient provider failures are not
 retried.
 
+When three small failed attempts have the same byte-for-byte partial response,
+or ordinary streaming retries otherwise exhaust, the generic downloader uses
+Databento's batch API for that same preflighted request. It requests one DBN/Zstd
+file with `split_duration=none`, records the job ID and request checksum in
+`batch-fallback.json`, polls the job, and downloads the provider file through
+the SDK's resumable batch downloader. The provider-reported size and SHA-256,
+the local raw checksum, normalized Parquet bounds, partition manifest, and
+receipt must all verify before atomic publication. A malformed job, unexpected
+job state, expired job, unsafe filename, multiple DBN files, or checksum
+mismatch fails closed.
+
+Batch fallback state is durable. If the command is interrupted while the job is
+queued, processing, or downloading, rerunning the identical execution command
+reuses the recorded job rather than submitting and billing another job. Retained
+matching partials also cause a resumed run to choose the batch path immediately
+instead of repeating a known-bad stream.
+
 Before making another provider request, resume checks retained staging for the
 same exact manifest request. A staging attempt is published only after its
 request identity, manifest/receipt relationship, raw and normalized checksums,

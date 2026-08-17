@@ -23,10 +23,12 @@ import shutil
 import sys
 import time
 import warnings
+from collections import Counter
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable, Iterable, Mapping, Sequence
+from typing import Any, Callable, Iterable, Iterator, Mapping, Sequence
 
 import pandas as pd
 import pyarrow.compute as pc
@@ -69,12 +71,16 @@ PARTITION_VERSION = "databento-cold-start-partition-v1"
 RECEIPT_VERSION = "databento-cold-start-receipt-v1"
 PREFLIGHT_VERSION = "databento-cold-start-preflight-v3"
 PROGRESS_VERSION = "databento-cold-start-progress-v1"
+BATCH_FALLBACK_VERSION = "databento-cold-start-batch-fallback-v1"
 STORAGE_RESERVE_BYTES = 5 * 1024**3
 STORAGE_EXPANSION_FACTOR = 2
 METADATA_MAX_ATTEMPTS = 3
 GENERIC_DOWNLOAD_MAX_RETRIES = 10
 GENERIC_DOWNLOAD_RETRY_WINDOW_SECONDS = 3 * 60
 GENERIC_DOWNLOAD_MAX_BACKOFF_SECONDS = 30
+GENERIC_BATCH_FALLBACK_REPEAT_THRESHOLD = 3
+GENERIC_BATCH_FALLBACK_SIGNATURE_MAX_BYTES = 1024**2
+GENERIC_BATCH_FALLBACK_POLL_SECONDS = 5
 DEFAULT_WATCHLIST = Path(__file__).resolve().parent / "watchlist.txt"
 DEFAULT_EQUITIES_DATASET = "XNAS.ITCH"
 COLD_START_EQUITIES_DATASET_ENV = "DATABENTO_COLD_START_EQUITIES_DATASET"
@@ -1326,6 +1332,28 @@ def _download_generic_entry(
         request=request,
     ):
         return
+    batch_api = _generic_batch_api(client)
+    retained_repeat_count = _repeated_small_partial_count(staging_base)
+    if batch_api is not None and (
+        _batch_fallback_state_path(staging_base).is_file()
+        or retained_repeat_count >= GENERIC_BATCH_FALLBACK_REPEAT_THRESHOLD
+    ):
+        if reporter:
+            reporter(
+                "USING_BATCH_FALLBACK "
+                f"{request['dataset']}/{request['schema']}/"
+                f"{request['symbol_scope'][0]}; retained_matching_partials="
+                f"{retained_repeat_count}"
+            )
+        _download_generic_batch_fallback(
+            client,
+            staging_base=staging_base,
+            destination=destination,
+            request=request,
+            reporter=reporter,
+            _poll_sleeper=_retry_sleeper,
+        )
+        return
     last_error: Exception | None = None
     retry_wait_seconds = 0.0
     maximum_attempts = GENERIC_DOWNLOAD_MAX_RETRIES + 1
@@ -1347,6 +1375,27 @@ def _download_generic_entry(
             last_error = exc
             if not _transient_download_error(exc):
                 raise
+            retained_repeat_count = _repeated_small_partial_count(staging_base)
+            if (
+                batch_api is not None
+                and retained_repeat_count >= GENERIC_BATCH_FALLBACK_REPEAT_THRESHOLD
+            ):
+                if reporter:
+                    reporter(
+                        "USING_BATCH_FALLBACK "
+                        f"{request['dataset']}/{request['schema']}/"
+                        f"{request['symbol_scope'][0]} after {provider_attempt} "
+                        "truncated stream attempts"
+                    )
+                _download_generic_batch_fallback(
+                    client,
+                    staging_base=staging_base,
+                    destination=destination,
+                    request=request,
+                    reporter=reporter,
+                    _poll_sleeper=_retry_sleeper,
+                )
+                return
             if provider_attempt >= maximum_attempts:
                 break
             remaining_retry_window = (
@@ -1372,12 +1421,58 @@ def _download_generic_entry(
             _retry_sleeper(delay)
             retry_wait_seconds += delay
     assert last_error is not None
+    if batch_api is not None:
+        if reporter:
+            reporter(
+                "USING_BATCH_FALLBACK "
+                f"{request['dataset']}/{request['schema']}/"
+                f"{request['symbol_scope'][0]} after exhausted stream retries"
+            )
+        _download_generic_batch_fallback(
+            client,
+            staging_base=staging_base,
+            destination=destination,
+            request=request,
+            reporter=reporter,
+            _poll_sleeper=_retry_sleeper,
+        )
+        return
     raise ColdStartInfrastructureError(
         "Databento generic download exhausted transient retries after "
         f"{provider_attempt} provider attempts and {retry_wait_seconds:g}s "
         "of backoff: "
         f"{type(last_error).__name__}: {last_error}"
     ) from last_error
+
+
+@contextmanager
+def _capture_provider_warnings(
+    provider_warnings: list[dict[str, str]],
+) -> Iterator[None]:
+    """Keep provider warnings visible while retaining them for partition audit."""
+
+    original_showwarning = warnings.showwarning
+
+    def record_and_show_warning(
+        message: Warning | str,
+        category: type[Warning],
+        filename: str,
+        lineno: int,
+        file: Any = None,
+        line: str | None = None,
+    ) -> None:
+        warning = {
+            "category": f"{category.__module__}.{category.__name__}",
+            "message": str(message),
+        }
+        if warning not in provider_warnings:
+            provider_warnings.append(warning)
+        original_showwarning(message, category, filename, lineno, file=file, line=line)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("always")
+        warnings.showwarning = record_and_show_warning
+        yield
 
 
 def _download_generic_attempt(
@@ -1395,28 +1490,9 @@ def _download_generic_attempt(
     kwargs["path"] = raw_path
     provider_warnings: list[dict[str, str]] = []
     store: object | None = None
-    original_showwarning = warnings.showwarning
-
-    def record_and_show_warning(
-        message: Warning | str,
-        category: type[Warning],
-        filename: str,
-        lineno: int,
-        file: Any = None,
-        line: str | None = None,
-    ) -> None:
-        provider_warnings.append(
-            {
-                "category": f"{category.__module__}.{category.__name__}",
-                "message": str(message),
-            }
-        )
-        original_showwarning(message, category, filename, lineno, file=file, line=line)
 
     try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("always")
-            warnings.showwarning = record_and_show_warning
+        with _capture_provider_warnings(provider_warnings):
             store = getattr(client, "timeseries").get_range(**kwargs)
         if not raw_path.is_file() or raw_path.stat().st_size == 0:
             raise ColdStartError("Databento did not produce a provider-native DBN file")
@@ -1431,6 +1507,27 @@ def _download_generic_attempt(
         store = None
         gc.collect()
 
+    _publish_generic_attempt(
+        staging=staging,
+        destination=destination,
+        request=request,
+        provider_warnings=provider_warnings,
+        provider_delivery={"mode": "timeseries-stream"},
+    )
+
+
+def _publish_generic_attempt(
+    *,
+    staging: Path,
+    destination: Path,
+    request: Mapping[str, object],
+    provider_warnings: Sequence[Mapping[str, str]],
+    provider_delivery: Mapping[str, object],
+) -> None:
+    """Validate normalized output, write evidence, and atomically publish it."""
+
+    raw_path = staging / "provider.dbn.zst"
+    parquet_path = staging / "normalized.parquet"
     if not parquet_path.is_file():
         raise ColdStartError("Databento DBN normalization produced no Parquet")
     validation = _validate_generic_parquet(parquet_path, request)
@@ -1439,7 +1536,8 @@ def _download_generic_attempt(
         "coordinator_version": COORDINATOR_VERSION,
         "request": dict(request),
         "published_at": _utc_now().isoformat(),
-        "provider_warnings": provider_warnings,
+        "provider_warnings": [dict(item) for item in provider_warnings],
+        "provider_delivery": dict(provider_delivery),
         "raw": {
             "path": raw_path.name,
             "size_bytes": raw_path.stat().st_size,
@@ -1475,6 +1573,306 @@ def _download_generic_attempt(
             f"Verified staging could not be published: {staging} -> {destination}: {exc}"
         ) from exc
     _verify_generic_partition(destination, request)
+
+
+def _generic_batch_api(client: object) -> object | None:
+    batch_api = getattr(client, "batch", None)
+    required = ("submit_job", "get_job_details", "list_files", "download")
+    if batch_api is None or not all(
+        callable(getattr(batch_api, name, None)) for name in required
+    ):
+        return None
+    return batch_api
+
+
+def _repeated_small_partial_count(staging_base: Path) -> int:
+    """Count matching incomplete responses without hashing potentially huge files."""
+
+    if not staging_base.is_dir():
+        return 0
+    signatures: Counter[tuple[int, str]] = Counter()
+    for candidate in sorted(staging_base.glob("attempt-*")):
+        if not candidate.is_dir() or (candidate / "manifest.json").exists():
+            continue
+        raw_path = candidate / "provider.dbn.zst"
+        try:
+            size = raw_path.stat().st_size
+        except OSError:
+            continue
+        if size < 1 or size > GENERIC_BATCH_FALLBACK_SIGNATURE_MAX_BYTES:
+            continue
+        try:
+            signatures[(size, file_checksum(raw_path))] += 1
+        except OSError:
+            continue
+    return max(signatures.values(), default=0)
+
+
+def _batch_fallback_state_path(staging_base: Path) -> Path:
+    return staging_base / "batch-fallback.json"
+
+
+def _load_batch_fallback_state(
+    staging_base: Path,
+    request: Mapping[str, object],
+) -> dict[str, object] | None:
+    path = _batch_fallback_state_path(staging_base)
+    if not path.is_file():
+        return None
+    payload = _read_json_object(path, label="Databento batch fallback state")
+    supplied_checksum = str(payload.get("semantic_checksum_sha256", ""))
+    body = {
+        key: value
+        for key, value in payload.items()
+        if key != "semantic_checksum_sha256"
+    }
+    if (
+        payload.get("schema_version") != BATCH_FALLBACK_VERSION
+        or payload.get("request_id") != request.get("request_id")
+        or payload.get("request_checksum_sha256") != _checksum(dict(request))
+        or supplied_checksum != _checksum(body)
+        or not str(payload.get("job_id", "")).strip()
+    ):
+        raise ColdStartError(
+            f"Databento batch fallback state does not match request: {path}"
+        )
+    return payload
+
+
+def _load_or_submit_batch_fallback(
+    batch_api: object,
+    *,
+    staging_base: Path,
+    request: Mapping[str, object],
+    reporter: Callable[[str], None] | None,
+) -> str:
+    existing = _load_batch_fallback_state(staging_base, request)
+    if existing is not None:
+        job_id = str(existing["job_id"])
+        if reporter:
+            reporter(f"BATCH_FALLBACK_RESUMED job_id={job_id}")
+        return job_id
+
+    response = getattr(batch_api, "submit_job")(
+        dataset=request["dataset"],
+        schema=request["schema"],
+        symbols=list(request["symbol_scope"]),
+        stype_in=request["stype_in"],
+        start=request["start"],
+        end=request["end"],
+        encoding="dbn",
+        compression="zstd",
+        map_symbols=False,
+        split_symbols=False,
+        split_duration="none",
+        delivery="download",
+    )
+    if not isinstance(response, Mapping) or not str(response.get("id", "")).strip():
+        raise ColdStartInfrastructureError(
+            "Databento batch fallback submission returned no job ID"
+        )
+    job_id = str(response["id"]).strip()
+    if Path(job_id).name != job_id:
+        raise ColdStartInfrastructureError("Databento returned an unsafe batch job ID")
+    state = {
+        "schema_version": BATCH_FALLBACK_VERSION,
+        "request_id": request["request_id"],
+        "request_checksum_sha256": _checksum(dict(request)),
+        "job_id": job_id,
+        "submitted_at": _utc_now().isoformat(),
+    }
+    state["semantic_checksum_sha256"] = _checksum(state)
+    _write_json_exclusive(_batch_fallback_state_path(staging_base), state)
+    if reporter:
+        reporter(f"BATCH_FALLBACK_SUBMITTED job_id={job_id}")
+    return job_id
+
+
+def _wait_for_batch_fallback(
+    batch_api: object,
+    *,
+    job_id: str,
+    reporter: Callable[[str], None] | None,
+    sleeper: Callable[[float], None],
+) -> Mapping[str, object]:
+    last_report: tuple[str, object] | None = None
+    while True:
+        details = getattr(batch_api, "get_job_details")(job_id)
+        if not isinstance(details, Mapping):
+            raise ColdStartInfrastructureError(
+                f"Databento batch job {job_id} returned malformed details"
+            )
+        state = str(details.get("state", "")).strip().casefold()
+        progress = details.get("progress")
+        if state == "done":
+            if reporter:
+                reporter(f"BATCH_FALLBACK_READY job_id={job_id}")
+            return details
+        if state == "expired":
+            raise ColdStartInfrastructureError(
+                f"Databento batch fallback job expired before publication: {job_id}"
+            )
+        if state not in {"received", "queued", "processing"}:
+            raise ColdStartInfrastructureError(
+                f"Databento batch fallback job has unexpected state {state!r}: {job_id}"
+            )
+        report = (state, progress)
+        if reporter and report != last_report:
+            reporter(
+                f"BATCH_FALLBACK_WAITING job_id={job_id} "
+                f"state={state} progress={progress}"
+            )
+        last_report = report
+        sleeper(float(GENERIC_BATCH_FALLBACK_POLL_SECONDS))
+
+
+def _download_batch_fallback_file(
+    batch_api: object,
+    *,
+    staging_base: Path,
+    job_id: str,
+) -> tuple[Path, Mapping[str, object]]:
+    files = getattr(batch_api, "list_files")(job_id)
+    if not isinstance(files, list):
+        raise ColdStartInfrastructureError(
+            f"Databento batch job {job_id} returned a malformed file list"
+        )
+    data_files = [
+        item
+        for item in files
+        if isinstance(item, Mapping)
+        and str(item.get("filename", "")).casefold().endswith(".dbn.zst")
+    ]
+    if len(data_files) != 1:
+        raise ColdStartInfrastructureError(
+            f"Databento batch fallback expected one DBN file but found {len(data_files)}: "
+            f"{job_id}"
+        )
+    file_info = data_files[0]
+    filename = str(file_info.get("filename", "")).strip()
+    if not filename or Path(filename).name != filename:
+        raise ColdStartInfrastructureError(
+            f"Databento batch job {job_id} returned an unsafe filename"
+        )
+    try:
+        expected_size = int(file_info["size"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ColdStartInfrastructureError(
+            f"Databento batch job {job_id} returned no valid DBN size"
+        ) from exc
+    provider_hash = str(file_info.get("hash", ""))
+    algorithm, separator, expected_hash = provider_hash.partition(":")
+    if algorithm.casefold() != "sha256" or not separator or not expected_hash:
+        raise ColdStartInfrastructureError(
+            f"Databento batch job {job_id} returned no SHA-256 DBN checksum"
+        )
+
+    download_root = staging_base / "batch-downloads"
+    download_root.mkdir(parents=True, exist_ok=True)
+    downloaded = getattr(batch_api, "download")(
+        job_id=job_id,
+        output_dir=download_root,
+        filename_to_download=filename,
+    )
+    if not isinstance(downloaded, list):
+        raise ColdStartInfrastructureError(
+            f"Databento batch job {job_id} returned malformed download paths"
+        )
+    candidates = [Path(path) for path in downloaded if Path(path).name == filename]
+    if len(candidates) != 1:
+        raise ColdStartInfrastructureError(
+            f"Databento batch job {job_id} did not download the expected DBN file"
+        )
+    source = candidates[0].resolve()
+    try:
+        source.relative_to(download_root.resolve())
+    except ValueError as exc:
+        raise ColdStartInfrastructureError(
+            f"Databento batch download escaped its staging root: {source}"
+        ) from exc
+    if (
+        not source.is_file()
+        or source.stat().st_size != expected_size
+        or file_checksum(source).casefold() != expected_hash.casefold()
+    ):
+        raise ColdStartInfrastructureError(
+            f"Databento batch DBN checksum verification failed: {source}"
+        )
+    return source, file_info
+
+
+def _dbn_store_from_file(path: Path) -> object:
+    import databento as db
+
+    return db.DBNStore.from_file(path)
+
+
+def _download_generic_batch_fallback(
+    client: object,
+    *,
+    staging_base: Path,
+    destination: Path,
+    request: Mapping[str, object],
+    reporter: Callable[[str], None] | None,
+    _poll_sleeper: Callable[[float], None] = time.sleep,
+) -> None:
+    """Submit or resume one exact batch job, then verify and publish its DBN."""
+
+    batch_api = _generic_batch_api(client)
+    if batch_api is None:
+        raise ColdStartInfrastructureError(
+            "Installed Databento client does not provide the required batch fallback API"
+        )
+    provider_warnings: list[dict[str, str]] = []
+    with _capture_provider_warnings(provider_warnings):
+        job_id = _load_or_submit_batch_fallback(
+            batch_api,
+            staging_base=staging_base,
+            request=request,
+            reporter=reporter,
+        )
+        _wait_for_batch_fallback(
+            batch_api,
+            job_id=job_id,
+            reporter=reporter,
+            sleeper=_poll_sleeper,
+        )
+        source, file_info = _download_batch_fallback_file(
+            batch_api,
+            staging_base=staging_base,
+            job_id=job_id,
+        )
+
+    staging = _next_attempt_directory(staging_base)
+    staging.mkdir(parents=True, exist_ok=False)
+    raw_path = staging / "provider.dbn.zst"
+    parquet_path = staging / "normalized.parquet"
+    try:
+        shutil.copy2(source, raw_path)
+    except OSError as exc:
+        raise ColdStartInfrastructureError(
+            f"Unable to copy verified Databento batch DBN into staging: {exc}"
+        ) from exc
+    store: object | None = None
+    try:
+        store = _dbn_store_from_file(raw_path)
+        getattr(store, "to_parquet")(parquet_path, map_symbols=True)
+    finally:
+        store = None
+        gc.collect()
+
+    _publish_generic_attempt(
+        staging=staging,
+        destination=destination,
+        request=request,
+        provider_warnings=provider_warnings,
+        provider_delivery={
+            "mode": "batch",
+            "job_id": job_id,
+            "filename": file_info["filename"],
+            "provider_hash": file_info["hash"],
+        },
+    )
 
 
 def _generic_entry_paths(
@@ -1643,6 +2041,25 @@ def _verify_generic_partition(directory: Path, request: Mapping[str, object]) ->
         or manifest.get("request") != dict(request)
     ):
         raise ColdStartError(f"Cold-start partition receipt does not match request: {directory}")
+    provider_delivery = manifest.get("provider_delivery")
+    if provider_delivery is not None:
+        if not isinstance(provider_delivery, Mapping) or provider_delivery.get("mode") not in {
+            "timeseries-stream",
+            "batch",
+        }:
+            raise ColdStartError(
+                f"Cold-start partition has invalid provider delivery evidence: {directory}"
+            )
+        if provider_delivery.get("mode") == "batch" and (
+            not str(provider_delivery.get("job_id", "")).strip()
+            or not str(provider_delivery.get("filename", "")).strip()
+            or not str(provider_delivery.get("provider_hash", ""))
+            .casefold()
+            .startswith("sha256:")
+        ):
+            raise ColdStartError(
+                f"Cold-start partition has incomplete batch delivery evidence: {directory}"
+            )
     for name in ("raw", "normalized"):
         info = manifest.get(name)
         if not isinstance(info, Mapping):
@@ -1654,6 +2071,17 @@ def _verify_generic_partition(directory: Path, request: Mapping[str, object]) ->
             or file_checksum(path) != info.get("checksum_sha256")
         ):
             raise ColdStartError(f"Cold-start {name} checksum verification failed: {directory}")
+    if isinstance(provider_delivery, Mapping) and provider_delivery.get("mode") == "batch":
+        _algorithm, _separator, provider_hash = str(
+            provider_delivery["provider_hash"]
+        ).partition(":")
+        if (
+            manifest["raw"].get("checksum_sha256", "").casefold()
+            != provider_hash.casefold()
+        ):
+            raise ColdStartError(
+                f"Cold-start batch provider checksum verification failed: {directory}"
+            )
     validation = _validate_generic_parquet(directory / str(manifest["normalized"]["path"]), request)
     for key in ("row_count", "earliest_timestamp", "latest_timestamp", "timestamp_column"):
         if validation.get(key) != manifest["normalized"].get(key):

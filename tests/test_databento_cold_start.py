@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gc
+import hashlib
 import json
 from datetime import date
 from pathlib import Path
@@ -870,6 +871,130 @@ def test_transient_truncated_stream_retries_in_a_fresh_attempt_then_succeeds(
     assert paths[0].is_file()
     assert sleeps == [1.0]
     cold_start._verify_generic_partition(destination, request)
+
+
+def test_matching_truncated_streams_submit_and_resume_exact_batch_fallback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from databento.common.error import BentoError
+
+    request = _generic_request(tmp_path)
+    partial_paths: list[Path] = []
+    batch_payload = b"verified batch provider data"
+    batch_filename = "glbx-mdp3.definition.dbn.zst"
+    batch_hash = hashlib.sha256(batch_payload).hexdigest()
+
+    class TimeSeries:
+        def get_range(self, **kwargs: object) -> object:
+            path = Path(str(kwargs["path"]))
+            partial_paths.append(path)
+            path.write_bytes(b"matching truncated header")
+            raise BentoError("Error streaming response: Response ended prematurely")
+
+    class Batch:
+        ready = False
+        submit_calls = 0
+
+        def submit_job(self, **kwargs: object) -> dict[str, object]:
+            self.submit_calls += 1
+            assert kwargs["dataset"] == request["dataset"]
+            assert kwargs["schema"] == request["schema"]
+            assert kwargs["symbols"] == request["symbol_scope"]
+            assert kwargs["stype_in"] == request["stype_in"]
+            assert kwargs["start"] == request["start"]
+            assert kwargs["end"] == request["end"]
+            assert kwargs["split_duration"] == "none"
+            return {"id": "GLBX-TEST-BATCH"}
+
+        def get_job_details(self, job_id: str) -> dict[str, object]:
+            assert job_id == "GLBX-TEST-BATCH"
+            if self.ready:
+                return {"id": job_id, "state": "done", "progress": 100}
+            return {"id": job_id, "state": "processing", "progress": 25}
+
+        def list_files(self, job_id: str) -> list[dict[str, object]]:
+            assert job_id == "GLBX-TEST-BATCH"
+            return [
+                {
+                    "filename": "metadata.json",
+                    "size": 2,
+                    "hash": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+                },
+                {
+                    "filename": batch_filename,
+                    "size": len(batch_payload),
+                    "hash": f"sha256:{batch_hash}",
+                },
+            ]
+
+        def download(
+            self,
+            *,
+            job_id: str,
+            output_dir: Path,
+            filename_to_download: str,
+        ) -> list[Path]:
+            assert job_id == "GLBX-TEST-BATCH"
+            assert filename_to_download == batch_filename
+            path = Path(output_dir) / job_id / filename_to_download
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(batch_payload)
+            return [path]
+
+    batch = Batch()
+    client = SimpleNamespace(timeseries=TimeSeries(), batch=batch)
+    monkeypatch.setattr(
+        cold_start,
+        "_dbn_store_from_file",
+        lambda _path: _ParquetStore(),
+    )
+    sleeps: list[float] = []
+
+    def interrupt_while_batch_is_processing(delay: float) -> None:
+        sleeps.append(delay)
+        if delay == cold_start.GENERIC_BATCH_FALLBACK_POLL_SECONDS:
+            raise KeyboardInterrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        cold_start._download_generic_entry(
+            client,
+            datastore_root=tmp_path,
+            request=request,
+            reporter=None,
+            _retry_sleeper=interrupt_while_batch_is_processing,
+        )
+
+    _destination, staging_base = cold_start._generic_entry_paths(tmp_path, request)
+    state_path = cold_start._batch_fallback_state_path(staging_base)
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    assert state["job_id"] == "GLBX-TEST-BATCH"
+    assert batch.submit_calls == 1
+    assert len(partial_paths) == cold_start.GENERIC_BATCH_FALLBACK_REPEAT_THRESHOLD
+    assert sleeps == [1.0, 2.0, 5.0]
+
+    batch.ready = True
+    cold_start._download_generic_entry(
+        client,
+        datastore_root=tmp_path,
+        request=request,
+        reporter=None,
+        _retry_sleeper=lambda _delay: pytest.fail("completed batch job should not sleep"),
+    )
+
+    destination = Path(str(request["storage_path"]))
+    assert batch.submit_calls == 1
+    assert len(partial_paths) == cold_start.GENERIC_BATCH_FALLBACK_REPEAT_THRESHOLD
+    cold_start._verify_generic_partition(destination, request)
+    partition_manifest = json.loads(
+        (destination / "manifest.json").read_text(encoding="utf-8")
+    )
+    assert partition_manifest["provider_delivery"] == {
+        "mode": "batch",
+        "job_id": "GLBX-TEST-BATCH",
+        "filename": batch_filename,
+        "provider_hash": f"sha256:{batch_hash}",
+    }
 
 
 def test_exhausted_transient_generic_retries_stop_with_all_attempts_retained(
