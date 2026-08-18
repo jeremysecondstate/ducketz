@@ -36,7 +36,9 @@ The recurring `datafetching.options_runtime` runs catch-up at most once per UTC
 date. It advances only a verified v5 symbol/schema cursor and reports
 `bootstrap required` for a new or invalid cursor; it does not perform a large
 initial fetch. Overlap partitions are checksum-verified and naturally
-deduplicated before publication.
+deduplicated before publication. Each symbol/schema scope still verifies its
+own receipts and files, while the expensive global health inventory is rebuilt
+once after the complete daily catch-up pass rather than once per scope.
 
 The current `options-opra-symbol-history-v5` cursor records the exact
 `lookback_policy`, `requested_start`, and `completed_through`; a cold-start

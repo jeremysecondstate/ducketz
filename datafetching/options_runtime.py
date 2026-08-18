@@ -33,6 +33,7 @@ from datafetching.databento_opra_history import (
     SyncScope,
     canonical_root,
     discover_standard_entitlement,
+    publish_health,
     synchronize,
 )
 from datafetching.loop_a_cycle import read_latest_complete_loop_a_cycle
@@ -909,6 +910,7 @@ def synchronize_option_history(
             client, datastore_root=store.root_dir
         )
         history_root = canonical_root(store.root_dir)
+        health_refresh_pending = False
         with exclusive_runtime_lock(
             history_root / "state" / "sync.lock",
             process_name="Options-owned OPRA symbol history synchronizer",
@@ -960,7 +962,9 @@ def synchronize_option_history(
                                 symbols=(provider_symbol,),
                             ),
                             reporter=reporter,
+                            refresh_health=False,
                         )
+                        health_refresh_pending = True
                     except OpraCapacityError as exc:
                         blocked += 1
                         if reporter is not None:
@@ -995,6 +999,10 @@ def synchronize_option_history(
                             f"verified_existing={result.skipped_partitions}; "
                             f"rows={result.completed_rows}; health={result.health_path}"
                         )
+            if health_refresh_pending:
+                health_path = publish_health(store.root_dir)
+                if reporter is not None:
+                    reporter(f"REFRESHED_OPRA_HEALTH {health_path}")
     except Exception as exc:
         failed += 1
         if reporter is not None:

@@ -680,6 +680,7 @@ def test_options_history_uses_schema_specific_bootstrap_and_overlap_windows(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     scopes: list[options_runtime.SyncScope] = []
+    health_refreshes: list[Path] = []
     entitlement = {
         "entitlements": {
             schema: {"entitled_end": "2026-08-15"}
@@ -695,6 +696,7 @@ def test_options_history_uses_schema_specific_bootstrap_and_overlap_windows(
     )
 
     def synchronize(*_args: object, **kwargs: object) -> object:
+        assert kwargs["refresh_health"] is False
         scopes.append(kwargs["scope"])  # type: ignore[arg-type]
         return SimpleNamespace(
             status="COMPLETE",
@@ -706,6 +708,11 @@ def test_options_history_uses_schema_specific_bootstrap_and_overlap_windows(
         )
 
     monkeypatch.setattr(options_runtime, "synchronize", synchronize)
+    monkeypatch.setattr(
+        options_runtime,
+        "publish_health",
+        lambda root: health_refreshes.append(Path(root)) or tmp_path / "health.json",
+    )
     store = SimpleNamespace(root_dir=tmp_path)
     options_runtime.synchronize_option_history(  # type: ignore[arg-type]
         store,
@@ -741,6 +748,7 @@ def test_options_history_uses_schema_specific_bootstrap_and_overlap_windows(
     assert sorted(scope.schemas[0] for scope in scopes) == sorted(
         options_runtime.OPRA_SYMBOL_HISTORY_SCHEMA_ORDER * 2
     )
+    assert health_refreshes == [tmp_path]
 
     scopes.clear()
     options_runtime.synchronize_option_history(  # type: ignore[arg-type]
@@ -763,6 +771,7 @@ def test_options_history_uses_schema_specific_bootstrap_and_overlap_windows(
         "ohlcv-1h": "2026-08-10",
         "ohlcv-1d": "2026-08-05",
     }
+    assert health_refreshes == [tmp_path, tmp_path]
 
     assert options_runtime.opra_history_overlap_days("ohlcv-1s") == 1
     assert options_runtime.opra_history_overlap_days("ohlcv-1m") == 2
@@ -888,6 +897,13 @@ def test_options_loop_requires_one_time_bootstrap_for_missing_cursors(
         "synchronize",
         lambda *_args, **_kwargs: pytest.fail(
             "the recurring loop must not perform an initial history bootstrap"
+        ),
+    )
+    monkeypatch.setattr(
+        options_runtime,
+        "publish_health",
+        lambda *_args, **_kwargs: pytest.fail(
+            "a pass with no eligible history scope must not rebuild global health"
         ),
     )
 

@@ -432,6 +432,53 @@ def test_intraday_target_adjustment_basis_must_match_source_bars() -> None:
         )
 
 
+def test_intraday_target_range_after_every_source_split_is_compatible() -> None:
+    import ml.rolling_materialization as module
+
+    source_bars = SimpleNamespace(
+        adjustment_status="SPLIT_ADJUSTED",
+        split_event_count=1,
+        split_events_json='[{"ex_date":"2024-06-10"}]',
+    )
+    target_bars = SimpleNamespace(
+        adjustment_status="NO_SPLIT_EVENTS_IN_RANGE",
+        split_event_count=0,
+        split_events_json="[]",
+        frame=pd.DataFrame(
+            {"timestamp": pd.to_datetime(["2026-05-11T08:03:00Z"], utc=True)}
+        ),
+    )
+
+    module._validate_target_price_adjustment_basis(
+        source_bars,
+        target_bars=target_bars,
+    )
+
+
+def test_intraday_target_range_overlapping_source_split_is_rejected() -> None:
+    import ml.rolling_materialization as module
+
+    source_bars = SimpleNamespace(
+        adjustment_status="SPLIT_ADJUSTED",
+        split_event_count=1,
+        split_events_json='[{"ex_date":"2024-06-10"}]',
+    )
+    target_bars = SimpleNamespace(
+        adjustment_status="NO_SPLIT_EVENTS_IN_RANGE",
+        split_event_count=0,
+        split_events_json="[]",
+        frame=pd.DataFrame(
+            {"timestamp": pd.to_datetime(["2024-06-07T13:30:00Z"], utc=True)}
+        ),
+    )
+
+    with pytest.raises(ValueError, match="adjustment basis does not match"):
+        module._validate_target_price_adjustment_basis(
+            source_bars,
+            target_bars=target_bars,
+        )
+
+
 def test_materialization_reuses_source_and_target_caches_for_1h_and_4h(
     tmp_path,
     monkeypatch,

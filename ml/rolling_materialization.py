@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import math
 import re
 from dataclasses import dataclass
@@ -1514,6 +1515,9 @@ def _validate_target_price_adjustment_basis(
         target_bars.adjustment_status != source_bars.adjustment_status
         or target_bars.split_event_count != source_bars.split_event_count
         or target_bars.split_events_json != source_bars.split_events_json
+    ) and not _target_range_is_after_source_adjustments(
+        source_bars,
+        target_bars=target_bars,
     ):
         raise ValueError(
             "Target-price adjustment basis does not match the native source "
@@ -1521,6 +1525,58 @@ def _validate_target_price_adjustment_basis(
             f"{source_bars.split_event_count}, target="
             f"{target_bars.adjustment_status}/{target_bars.split_event_count}."
         )
+
+
+def _target_range_is_after_source_adjustments(
+    source_bars: BarDataset,
+    *,
+    target_bars: BarDataset,
+) -> bool:
+    """Prove that a shorter unadjusted target range is already post-split.
+
+    A long source history can require historical split adjustment while a
+    shorter target-price history starts after every one of those splits and
+    therefore correctly reports no split events in its own range.  The two
+    price series then share the same post-split basis.  Missing or malformed
+    interval evidence remains a hard mismatch.
+    """
+
+    if (
+        source_bars.adjustment_status != "SPLIT_ADJUSTED"
+        or int(source_bars.split_event_count) < 1
+        or target_bars.adjustment_status != "NO_SPLIT_EVENTS_IN_RANGE"
+        or int(target_bars.split_event_count) != 0
+    ):
+        return False
+    try:
+        source_events = json.loads(source_bars.split_events_json)
+        target_events = json.loads(target_bars.split_events_json)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return False
+    if (
+        not isinstance(source_events, list)
+        or len(source_events) != int(source_bars.split_event_count)
+        or target_events != []
+    ):
+        return False
+    effective_dates = []
+    for event in source_events:
+        if not isinstance(event, Mapping):
+            return False
+        raw_date = event.get("ex_date", event.get("effective_date"))
+        effective = pd.to_datetime(raw_date, utc=True, errors="coerce")
+        if pd.isna(effective):
+            return False
+        effective_dates.append(pd.Timestamp(effective))
+    frame = getattr(target_bars, "frame", None)
+    if not isinstance(frame, pd.DataFrame) or frame.empty or "timestamp" not in frame:
+        return False
+    target_start = pd.to_datetime(
+        frame["timestamp"], utc=True, errors="coerce"
+    ).min()
+    return not pd.isna(target_start) and pd.Timestamp(target_start) >= max(
+        effective_dates
+    )
 
 
 def _technical_path(
