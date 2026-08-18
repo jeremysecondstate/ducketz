@@ -251,6 +251,20 @@ validation. This follows Databento's documented
 [OHLCV timestamp convention](https://databento.com/docs/schemas-and-data-formats/ohlcv)
 and [point-in-time symbology intervals](https://databento.com/docs/standards-and-conventions/symbology).
 
+TCBBO uses a separate lossless identity rule. Databento defines TCBBO as every
+trade event with the consolidated BBO immediately before that trade, but the
+TCBBO schema intentionally has no venue `sequence` field. Multiple executions
+can therefore have the same receive timestamp and otherwise identical normalized
+values. Canonical normalization preserves every native record and appends a
+zero-based `source_record_ordinal` tied to the immutable DBN order. Publication
+requires the native DBN and normalized row counts to agree exactly, requires the
+ordinal column to be the contiguous range `0..row_count-1`, and includes it in
+the TCBBO natural key. No TCBBO row is deduplicated; the raw DBN checksum and the
+ordinal basis are retained in the manifest and reverified with the partition.
+This follows Databento's documented
+[TCBBO field contract](https://databento.com/docs/schemas-and-data-formats/cmbp-1#consolidated-bbo-on-trade-tcbbo),
+which omits the `sequence` field present in Trades and non-consolidated TBBO.
+
 The OPRA schema cursor is refreshed once per completed symbol/schema scope, and
 the expensive all-partition health inventory is refreshed once after the OPRA
 block rather than after every daily partition or parent-symbol request. Physical

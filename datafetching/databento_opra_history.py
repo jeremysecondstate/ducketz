@@ -71,6 +71,8 @@ _BATCH_JOB_ID_RE = re.compile(r"^[A-Za-z0-9-]+$")
 _BATCH_FILE_DATE_RE = re.compile(r"(?<!\d)(\d{8})(?!\d)")
 _BATCH_DEFINITION_FALLBACK_FILENAME = "point-in-time-definition.dbn.zst"
 _BATCH_DEFINITION_FALLBACK_SCHEMAS = frozenset(("ohlcv-1d", "ohlcv-1h"))
+_TCBBO_SOURCE_ORDINAL_COLUMN = "source_record_ordinal"
+_TCBBO_SOURCE_ORDINAL_BASIS = "zero-based-native-dbn-record-order"
 
 
 class OpraSyncError(RuntimeError):
@@ -685,6 +687,7 @@ def verify_partition(directory: Path, *, datastore_root: Path) -> Mapping[str, o
         "earliest_partition_timestamp",
         "latest_partition_timestamp",
         "duplicate_natural_key_rows",
+        "source_record_identity",
     ):
         if key in expected and validation.get(key) != expected.get(key):
             raise OpraSyncError(f"OPRA partition normalized {key} changed")
@@ -730,9 +733,14 @@ def validate_parquet(path: Path, *, schema: str) -> Mapping[str, object]:
                     )
     event_bounds = bounds.get(event_column, [None, None])
     partition_bounds = bounds.get(partition_column, [None, None])
+    source_record_identity = (
+        _validate_tcbbo_source_record_identity(path, row_count=row_count)
+        if schema == "tcbbo"
+        else None
+    )
     natural_key = tuple(name for name in _natural_key(schema) if name in names)
     duplicate_rows = _duplicate_rows(path, columns=natural_key, row_count=row_count)
-    return {
+    result: dict[str, object] = {
         "parquet_schema": str(parquet.schema_arrow),
         "columns": list(names),
         "row_count": row_count,
@@ -759,6 +767,9 @@ def validate_parquet(path: Path, *, schema: str) -> Mapping[str, object]:
         "duplicate_natural_key_rows": duplicate_rows,
         "duplicate_natural_key_rate": duplicate_rows / row_count if row_count else 0.0,
     }
+    if source_record_identity is not None:
+        result["source_record_identity"] = source_record_identity
+    return result
 
 
 def iter_verified_partitions(
@@ -1878,6 +1889,11 @@ def _download_partition(
                 request=request,
                 allow_partially_resolved_symbols=provider_file is not None,
             )
+        _add_tcbbo_source_record_identity(
+            raw_path,
+            parquet_path,
+            schema=schema,
+        )
         provider_duplicates_removed = _deduplicate_normalized_parquet(
             parquet_path,
             schema=schema,
@@ -2805,6 +2821,80 @@ def _deduplicate_normalized_parquet(path: Path, *, schema: str) -> int:
     return removed
 
 
+def _add_tcbbo_source_record_identity(
+    raw_path: Path,
+    parquet_path: Path,
+    *,
+    schema: str,
+) -> Mapping[str, object] | None:
+    """Retain lossless TCBBO multiplicity using immutable native DBN order."""
+
+    if schema != "tcbbo":
+        return None
+    table = pq.read_table(parquet_path)
+    if _TCBBO_SOURCE_ORDINAL_COLUMN in table.column_names:
+        raise OpraSyncError(
+            f"TCBBO normalized Parquet already contains {_TCBBO_SOURCE_ORDINAL_COLUMN}"
+        )
+    native_store: object | None = None
+    native_records: object | None = None
+    try:
+        native_store = _load_dbn_store(raw_path)
+        native_records = iter(native_store)
+        native_record_count = sum(1 for _record in native_records)
+    except Exception as exc:
+        raise OpraSyncError(
+            "TCBBO native DBN record-count verification failed"
+        ) from exc
+    finally:
+        native_records = None
+        native_store = None
+        gc.collect()
+    if native_record_count != table.num_rows:
+        raise OpraSyncError(
+            "TCBBO normalization did not preserve every native record: "
+            f"native_rows={native_record_count} normalized_rows={table.num_rows}"
+        )
+    table = table.append_column(
+        _TCBBO_SOURCE_ORDINAL_COLUMN,
+        pa.array(range(table.num_rows), type=pa.uint64()),
+    )
+    pending = _next_pending_file(parquet_path)
+    pq.write_table(table, pending, compression="zstd")
+    pending.replace(parquet_path)
+    return {
+        "column": _TCBBO_SOURCE_ORDINAL_COLUMN,
+        "basis": _TCBBO_SOURCE_ORDINAL_BASIS,
+        "record_count": table.num_rows,
+    }
+
+
+def _validate_tcbbo_source_record_identity(
+    path: Path,
+    *,
+    row_count: int,
+) -> Mapping[str, object]:
+    parquet = pq.ParquetFile(path)
+    if _TCBBO_SOURCE_ORDINAL_COLUMN not in parquet.schema_arrow.names:
+        raise OpraSyncError(
+            f"TCBBO normalized Parquet lacks {_TCBBO_SOURCE_ORDINAL_COLUMN}"
+        )
+    ordinals = pq.read_table(
+        path,
+        columns=[_TCBBO_SOURCE_ORDINAL_COLUMN],
+    ).column(_TCBBO_SOURCE_ORDINAL_COLUMN).combine_chunks()
+    expected = pa.array(range(row_count), type=pa.uint64())
+    if ordinals.null_count or not ordinals.equals(expected):
+        raise OpraSyncError(
+            "TCBBO source record ordinals do not exactly preserve native DBN order"
+        )
+    return {
+        "column": _TCBBO_SOURCE_ORDINAL_COLUMN,
+        "basis": _TCBBO_SOURCE_ORDINAL_BASIS,
+        "record_count": row_count,
+    }
+
+
 def _natural_key(schema: str) -> tuple[str, ...]:
     if schema.startswith("ohlcv-"):
         return ("ts_event", "publisher_id", "instrument_id", "symbol")
@@ -2834,8 +2924,19 @@ def _natural_key(schema: str) -> tuple[str, ...]:
             "bid_pb_00",
             "ask_pb_00",
         )
-    if schema in {"trades", "tcbbo"}:
+    if schema == "trades":
         return ("ts_recv", "publisher_id", "instrument_id", "sequence", "symbol")
+    if schema == "tcbbo":
+        # TCBBO contains every trade event but, unlike Trades and TBBO, its
+        # provider schema has no venue sequence field. Native DBN order is the
+        # only lossless identity for otherwise byte-equivalent executions.
+        return (
+            "ts_recv",
+            "publisher_id",
+            "instrument_id",
+            _TCBBO_SOURCE_ORDINAL_COLUMN,
+            "symbol",
+        )
     if schema.startswith("cbbo-"):
         return ("ts_recv", "publisher_id", "instrument_id", "symbol")
     if schema == "statistics":

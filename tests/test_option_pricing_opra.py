@@ -1492,6 +1492,136 @@ def test_cmbp_normalization_removes_only_exact_provider_duplicates(
     assert validation["earliest_partition_timestamp"] == "2026-08-14T13:30:00+00:00"
 
 
+def test_tcbbo_normalization_preserves_every_native_trade_event(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class MarketStore:
+        def to_parquet(self, path: Path, **_kwargs: object) -> None:
+            pd.DataFrame(
+                {
+                    "ts_recv": [pd.Timestamp("2025-01-01T14:30:00.100000001Z")] * 4,
+                    "ts_event": [pd.Timestamp("2025-01-01T14:30:00.099999001Z")] * 4,
+                    "rtype": [194] * 4,
+                    "publisher_id": [28] * 4,
+                    "instrument_id": [16785973] * 4,
+                    "side": ["N"] * 4,
+                    "price": [0.23] * 4,
+                    # The first pair is byte-equivalent; the latter pair proves
+                    # that one receive timestamp can contain distinct executions.
+                    "size": [34, 34, 3, 1],
+                    "flags": [192] * 4,
+                    "bid_px_00": [0.02] * 4,
+                    "ask_px_00": [0.41] * 4,
+                    "bid_sz_00": [5] * 4,
+                    "ask_sz_00": [20] * 4,
+                    "bid_pb_00": [23] * 4,
+                    "ask_pb_00": [23] * 4,
+                    "symbol": ["AAPL  250117P00100000"] * 4,
+                }
+            ).set_index("ts_recv").to_parquet(path)
+
+    class NativeStore:
+        def __iter__(self) -> object:
+            return iter((object(), object(), object(), object()))
+
+    class TimeSeries:
+        def get_range(self, **kwargs: object) -> object:
+            Path(str(kwargs["path"])).write_bytes(b"controlled-tcbbo-dbn")
+            return MarketStore()
+
+    monkeypatch.setattr(opra_history, "_load_dbn_store", lambda _path: NativeStore())
+    manifest = opra_history._download_partition(
+        SimpleNamespace(timeseries=TimeSeries()),
+        datastore_root=tmp_path,
+        entitlement=_entitlement(),
+        schema="tcbbo",
+        day="2025-01-01",
+        symbols=("AAPL.OPT",),
+    )
+    destination = opra_history.partition_directory(
+        tmp_path,
+        schema="tcbbo",
+        day="2025-01-01",
+        symbols=("AAPL.OPT",),
+    )
+    normalized = pd.read_parquet(destination / "normalized.parquet").reset_index()
+
+    assert len(normalized) == 4
+    assert normalized["size"].tolist() == [34, 34, 3, 1]
+    assert normalized["size"].sum() == 72
+    assert normalized["source_record_ordinal"].tolist() == [0, 1, 2, 3]
+    assert manifest["normalized"]["provider_duplicate_rows_removed"] == 0
+    assert manifest["normalized"]["duplicate_natural_key_rows"] == 0
+    assert manifest["normalized"]["natural_key_columns"] == [
+        "ts_recv",
+        "publisher_id",
+        "instrument_id",
+        "source_record_ordinal",
+        "symbol",
+    ]
+    assert manifest["normalized"]["source_record_identity"] == {
+        "column": "source_record_ordinal",
+        "basis": "zero-based-native-dbn-record-order",
+        "record_count": 4,
+    }
+    assert opra_history.verify_partition(
+        destination,
+        datastore_root=tmp_path,
+    )["manifest"] == manifest
+    assert "sequence" in opra_history._natural_key("trades")
+    assert "sequence" not in opra_history._natural_key("tcbbo")
+
+
+def test_tcbbo_normalization_rejects_native_record_count_mismatch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parquet_path = tmp_path / "tcbbo.parquet"
+    pd.DataFrame(
+        {
+            "ts_recv": [pd.Timestamp("2025-01-01T14:30:00Z")] * 2,
+            "ts_event": [pd.Timestamp("2025-01-01T14:29:59.999Z")] * 2,
+        }
+    ).set_index("ts_recv").to_parquet(parquet_path)
+
+    class NativeStore:
+        def __iter__(self) -> object:
+            return iter((object(), object(), object()))
+
+    monkeypatch.setattr(opra_history, "_load_dbn_store", lambda _path: NativeStore())
+    with pytest.raises(
+        opra_history.OpraSyncError,
+        match="native_rows=3 normalized_rows=2",
+    ):
+        opra_history._add_tcbbo_source_record_identity(
+            tmp_path / "provider.dbn.zst",
+            parquet_path,
+            schema="tcbbo",
+        )
+
+
+@pytest.mark.parametrize("ordinals", (None, [0, 0], [1, 0]))
+def test_tcbbo_validation_rejects_missing_or_invalid_source_ordinals(
+    tmp_path: Path,
+    ordinals: list[int] | None,
+) -> None:
+    path = tmp_path / "tcbbo.parquet"
+    data: dict[str, object] = {
+        "ts_recv": [pd.Timestamp("2025-01-01T14:30:00Z")] * 2,
+        "ts_event": [pd.Timestamp("2025-01-01T14:29:59.999Z")] * 2,
+        "publisher_id": [28, 28],
+        "instrument_id": [123, 123],
+        "symbol": ["AAPL  250117P00100000"] * 2,
+    }
+    if ordinals is not None:
+        data["source_record_ordinal"] = ordinals
+    pd.DataFrame(data).set_index("ts_recv").to_parquet(path)
+
+    with pytest.raises(opra_history.OpraSyncError, match="source record ordinal|lacks"):
+        opra_history.validate_parquet(path, schema="tcbbo")
+
+
 def test_definition_asof_never_uses_future_definition() -> None:
     raw = pd.DataFrame(
         {
