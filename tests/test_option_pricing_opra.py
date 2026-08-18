@@ -98,6 +98,9 @@ _OPRA_COLLISION_MAPPINGS = {
     855638733: "NVDA  270319P00115000",
     855638790: "NVDA  260605C00255000",
 }
+_OPRA_HOURLY_COLLISION_ID = 117444508
+_OPRA_HOURLY_COLLISION_SYMBOL = "AMZN  271217P00205000"
+_OPRA_HOURLY_WRONG_CHANNEL_ID = 1124077468
 
 
 class _BatchCollisionStore(_ProbeDBNStore):
@@ -193,6 +196,93 @@ class _PointInTimeDefinitionStore(_ProbeDBNStore):
         return pd.DataFrame(rows).set_index("ts_recv")
 
 
+class _HourlyBatchCollisionStore(_ProbeDBNStore):
+    def __init__(self) -> None:
+        super().__init__(
+            schema="ohlcv-1h",
+            start="2026-04-28",
+            end="2026-04-29",
+            symbols=("AMZN.OPT",),
+        )
+        self.metadata.partial = [_OPRA_HOURLY_COLLISION_SYMBOL]
+        self.metadata.mappings = {
+            _OPRA_HOURLY_COLLISION_SYMBOL: [
+                {
+                    "start_date": "2026-04-28",
+                    "end_date": "2026-04-29",
+                    # The real batch metadata mapped the raw symbol to channel 67,
+                    # while both valid bars retained the channel-7 instrument ID.
+                    "symbol": str(_OPRA_HOURLY_WRONG_CHANNEL_ID),
+                }
+            ]
+        }
+
+    def to_parquet(self, path: Path, **_kwargs: object) -> None:
+        pd.DataFrame(
+            {
+                "ts_event": pd.to_datetime(
+                    ["2026-04-28T13:00:00Z", "2026-04-28T16:00:00Z"],
+                    utc=True,
+                ),
+                "rtype": [34, 34],
+                "publisher_id": [22, 22],
+                "instrument_id": [
+                    _OPRA_HOURLY_COLLISION_ID,
+                    _OPRA_HOURLY_COLLISION_ID,
+                ],
+                "symbol": pd.array([None, None], dtype="string"),
+                "open": [18.99, 17.91],
+                "high": [18.99, 17.91],
+                "low": [18.99, 17.91],
+                "close": [18.99, 17.91],
+                "volume": [7, 1],
+            }
+        ).to_parquet(path, index=False)
+
+
+class _HourlyPointInTimeDefinitionStore(_ProbeDBNStore):
+    def __init__(
+        self,
+        *,
+        activation_timestamp: str = "2026-04-28T10:30:05.601191347Z",
+    ) -> None:
+        super().__init__(
+            schema="definition",
+            start="2026-04-28",
+            end="2026-04-29",
+            symbols=(str(_OPRA_HOURLY_COLLISION_ID),),
+            stype_in="instrument_id",
+        )
+        self.metadata.mappings = {
+            str(_OPRA_HOURLY_COLLISION_ID): [
+                {
+                    "start_date": "2026-04-28",
+                    "end_date": "2026-04-29",
+                    "symbol": str(_OPRA_HOURLY_COLLISION_ID),
+                }
+            ]
+        }
+        self._activation_timestamp = pd.Timestamp(activation_timestamp)
+
+    def to_df(self, *, map_symbols: bool) -> pd.DataFrame:
+        assert map_symbols is False
+        return pd.DataFrame(
+            [
+                {
+                    "ts_recv": self._activation_timestamp + pd.Timedelta(microseconds=1),
+                    "ts_event": self._activation_timestamp,
+                    "instrument_id": _OPRA_HOURLY_COLLISION_ID,
+                    "raw_symbol": _OPRA_HOURLY_COLLISION_SYMBOL,
+                    "security_update_action": "A",
+                    "instrument_class": "P",
+                    "raw_instrument_id": _OPRA_HOURLY_COLLISION_ID,
+                    "channel_id": 7,
+                    "asset": "AMZN",
+                }
+            ]
+        ).set_index("ts_recv")
+
+
 def _publish_collision_batch(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -226,6 +316,54 @@ def _publish_collision_batch(
         provider_delivery={
             "mode": "batch",
             "job_id": "OPRA-TEST-COLLISION",
+            "filename": filename,
+            "provider_hash": f"sha256:{hashlib.sha256(payload).hexdigest()}",
+        },
+    )
+    return dict(manifest), timeseries
+
+
+def _publish_hourly_collision_batch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    definition_store: _HourlyPointInTimeDefinitionStore,
+) -> tuple[dict[str, object], object]:
+    payload = b"controlled-hourly-collision-provider-dbn"
+    source = tmp_path / "source-hourly.dbn.zst"
+    source.write_bytes(payload)
+    market_store = _HourlyBatchCollisionStore()
+    monkeypatch.setattr(opra_history, "_load_dbn_store", lambda _path: market_store)
+
+    class TimeSeries:
+        calls: list[dict[str, object]] = []
+
+        def get_range(self, **kwargs: object) -> object:
+            self.calls.append(dict(kwargs))
+            Path(str(kwargs["path"])).write_bytes(b"controlled-hourly-definition-dbn")
+            return definition_store
+
+    entitlement = _entitlement()
+    entitlement["entitlements"]["ohlcv-1h"].update(
+        {
+            "dataset_start": "2021-08-16",
+            "entitled_start": "2021-08-16",
+            "entitled_end": "2026-04-29",
+        }
+    )
+    timeseries = TimeSeries()
+    filename = "opra-pillar-20260428.ohlcv-1h.dbn.zst"
+    manifest = opra_history._download_partition(
+        SimpleNamespace(timeseries=timeseries),
+        datastore_root=tmp_path,
+        entitlement=entitlement,
+        schema="ohlcv-1h",
+        day="2026-04-28",
+        symbols=("AMZN.OPT",),
+        provider_file=source,
+        provider_delivery={
+            "mode": "batch",
+            "job_id": "OPRA-TEST-HOURLY-COLLISION",
             "filename": filename,
             "provider_hash": f"sha256:{hashlib.sha256(payload).hexdigest()}",
         },
@@ -653,6 +791,85 @@ def test_batch_daily_symbol_collision_uses_exact_day_definition_evidence(
         destination,
         datastore_root=tmp_path,
     )["manifest"] == manifest
+
+
+def test_batch_hourly_symbol_collision_requires_definition_active_before_bar(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manifest, timeseries = _publish_hourly_collision_batch(
+        tmp_path,
+        monkeypatch,
+        definition_store=_HourlyPointInTimeDefinitionStore(),
+    )
+    destination = opra_history.partition_directory(
+        tmp_path,
+        schema="ohlcv-1h",
+        day="2026-04-28",
+        symbols=("AMZN.OPT",),
+    )
+    normalized = pd.read_parquet(destination / "normalized.parquet")
+
+    assert len(normalized) == 2
+    assert normalized["symbol"].isna().sum() == 0
+    assert set(normalized["symbol"]) == {_OPRA_HOURLY_COLLISION_SYMBOL}
+    assert set(normalized["instrument_id"]) == {_OPRA_HOURLY_COLLISION_ID}
+    assert len(timeseries.calls) == 1
+    assert timeseries.calls[0]["symbols"] == [str(_OPRA_HOURLY_COLLISION_ID)]
+    fallback = manifest["provider_delivery"]["symbol_mapping_fallback"]
+    assert fallback["method"] == "same-day-instrument-definition-v2"
+    assert fallback["schema"] == "ohlcv-1h"
+    assert fallback["original_null_symbol_count"] == 2
+    assert fallback["affected_instrument_ids"] == [_OPRA_HOURLY_COLLISION_ID]
+    mapping = fallback["mappings"][0]
+    assert mapping["raw_symbol"] == _OPRA_HOURLY_COLLISION_SYMBOL
+    assert mapping["definition_activation_timestamp"] == (
+        "2026-04-28T10:30:05.601191347+00:00"
+    )
+    assert mapping["earliest_affected_timestamp"] == "2026-04-28T13:00:00+00:00"
+    assert mapping["latest_affected_timestamp"] == "2026-04-28T16:00:00+00:00"
+    assert mapping["record_timestamp_coverage"] == (
+        "definition-activation-at-or-before-record"
+    )
+    assert opra_history.verify_partition(
+        destination,
+        datastore_root=tmp_path,
+    )["manifest"] == manifest
+
+
+def test_batch_hourly_definition_fallback_rejects_activation_after_bar(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with pytest.raises(opra_history.OpraSyncError) as raised:
+        _publish_hourly_collision_batch(
+            tmp_path,
+            monkeypatch,
+            definition_store=_HourlyPointInTimeDefinitionStore(
+                activation_timestamp="2026-04-28T14:00:00Z"
+            ),
+        )
+
+    message = str(raised.value)
+    assert "opra-pillar-20260428.ohlcv-1h.dbn.zst" in message
+    assert "null_count=2" in message
+    assert f"instrument_ids=[{_OPRA_HOURLY_COLLISION_ID}]" in message
+    assert "activation timestamp does not cover every normalized record" in message
+    retained = list(
+        opra_history.canonical_root(tmp_path).glob(
+            ".staging/ohlcv-1h/AMZN.OPT/2026-04-28/full-day/attempt-*/normalized.parquet"
+        )
+    )
+    assert len(retained) == 1
+    failed = pd.read_parquet(retained[0])
+    assert failed["symbol"].isna().sum() == 2
+    assert not failed["symbol"].fillna("").str.contains("UNKNOWN|UNMAPPED").any()
+    assert not opra_history.partition_directory(
+        tmp_path,
+        schema="ohlcv-1h",
+        day="2026-04-28",
+        symbols=("AMZN.OPT",),
+    ).exists()
 
 
 def test_batch_daily_definition_fallback_rejects_noncovering_interval(

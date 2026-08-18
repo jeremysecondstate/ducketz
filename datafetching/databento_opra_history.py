@@ -70,6 +70,7 @@ STANDARD_PLAN_AUTHORITY = "docs/databento-plan/databento_standard_plan_data_acce
 _BATCH_JOB_ID_RE = re.compile(r"^[A-Za-z0-9-]+$")
 _BATCH_FILE_DATE_RE = re.compile(r"(?<!\d)(\d{8})(?!\d)")
 _BATCH_DEFINITION_FALLBACK_FILENAME = "point-in-time-definition.dbn.zst"
+_BATCH_DEFINITION_FALLBACK_SCHEMAS = frozenset(("ohlcv-1d", "ohlcv-1h"))
 
 
 class OpraSyncError(RuntimeError):
@@ -668,7 +669,11 @@ def verify_partition(directory: Path, *, datastore_root: Path) -> Mapping[str, o
                 raise OpraSyncError("OPRA partition batch delivery evidence is incomplete")
             fallback = provider_delivery.get("symbol_mapping_fallback")
             if fallback is not None:
-                _verify_symbol_mapping_fallback_evidence(run, fallback)
+                _verify_symbol_mapping_fallback_evidence(
+                    run,
+                    fallback,
+                    schema=str(manifest["schema"]),
+                )
     parquet_path = run / str(manifest["normalized"]["path"])
     validation = validate_parquet(parquet_path, schema=str(manifest["schema"]))
     expected = manifest["normalized"]
@@ -1900,15 +1905,16 @@ def _download_partition(
             if (
                 provider_file is not None
                 and (provider_delivery or {}).get("mode") == "batch"
-                and schema == "ohlcv-1d"
+                and schema in _BATCH_DEFINITION_FALLBACK_SCHEMAS
                 and partially_resolved_symbol_count
                 and symbols
             ):
                 try:
-                    symbol_mapping_fallback = _repair_batch_daily_symbol_mapping(
+                    symbol_mapping_fallback = _repair_batch_ohlcv_symbol_mapping(
                         client,
                         parquet_path=parquet_path,
                         definition_path=staging / _BATCH_DEFINITION_FALLBACK_FILENAME,
+                        schema=schema,
                         day=day,
                         symbols=symbols,
                         unresolved_rows=symbol_null_rows,
@@ -2101,16 +2107,22 @@ def _batch_symbol_mapping_error(
     )
 
 
-def _repair_batch_daily_symbol_mapping(
+def _repair_batch_ohlcv_symbol_mapping(
     client: object,
     *,
     parquet_path: Path,
     definition_path: Path,
+    schema: str,
     day: str,
     symbols: Sequence[str],
     unresolved_rows: pd.DataFrame,
 ) -> Mapping[str, object]:
-    """Repair only batch daily-bar nulls backed by exact-day definition records."""
+    """Repair selected batch OHLCV nulls backed by exact-day definitions."""
+
+    if schema not in _BATCH_DEFINITION_FALLBACK_SCHEMAS:
+        raise OpraSyncError(
+            f"Point-in-time definition fallback is not allowed for schema={schema}"
+        )
 
     instrument_ids = sorted(
         {int(value) for value in unresolved_rows["instrument_id"].tolist()}
@@ -2130,7 +2142,7 @@ def _repair_batch_daily_symbol_mapping(
         definition_store = _retry(
             getattr(client, "timeseries").get_range,
             kwargs={**request, "path": definition_path},
-            operation=f"ohlcv-1d {day} point-in-time definition lookup",
+            operation=f"{schema} {day} point-in-time definition lookup",
             maximum_attempts=1,
         )
         _validate_dbn_request_metadata(definition_store, request=request)
@@ -2149,6 +2161,7 @@ def _repair_batch_daily_symbol_mapping(
             definition_store,
             definitions=definitions,
             unresolved_rows=unresolved_rows,
+            schema=schema,
             day=day,
             symbols=symbols,
         )
@@ -2168,7 +2181,12 @@ def _repair_batch_daily_symbol_mapping(
         "checksum_sha256": file_checksum(definition_path),
     }
     return {
-        "method": "same-day-instrument-definition-v1",
+        "method": (
+            "same-day-instrument-definition-v1"
+            if schema == "ohlcv-1d"
+            else "same-day-instrument-definition-v2"
+        ),
+        "schema": schema,
         "request": request,
         "source": source_inventory,
         "original_null_symbol_count": len(unresolved_rows),
@@ -2183,9 +2201,14 @@ def _definition_symbol_mapping(
     *,
     definitions: pd.DataFrame,
     unresolved_rows: pd.DataFrame,
+    schema: str,
     day: str,
     symbols: Sequence[str],
 ) -> tuple[dict[int, str], list[dict[str, object]]]:
+    if schema not in _BATCH_DEFINITION_FALLBACK_SCHEMAS:
+        raise OpraSyncError(
+            f"Point-in-time definition fallback is not allowed for schema={schema}"
+        )
     required_columns = {
         "ts_event",
         "instrument_id",
@@ -2278,26 +2301,54 @@ def _definition_symbol_mapping(
         affected_timestamps = unresolved_timestamps.loc[
             unresolved_rows["instrument_id"].astype("int64") == instrument_id
         ]
+        if affected_timestamps.empty:
+            raise OpraSyncError(
+                f"No affected timestamps exist for instrument_id={instrument_id}"
+            )
         interval_start, interval_end = _covering_identity_interval(
             mappings,
             instrument_id=instrument_id,
             timestamps=affected_timestamps,
         )
+        record_timestamp_coverage = "daily-bucket-date-interval"
+        activation_timestamp: pd.Timestamp | None = None
+        if schema == "ohlcv-1h":
+            additions = rows.loc[rows["security_update_action"] == "A"]
+            if additions.empty:
+                raise OpraSyncError(
+                    "No same-day definition activation exists for "
+                    f"instrument_id={instrument_id}"
+                )
+            activation_timestamp = additions["ts_event"].min()
+            if pd.isna(activation_timestamp) or (
+                activation_timestamp > affected_timestamps.min()
+            ):
+                raise OpraSyncError(
+                    "Definition activation timestamp does not cover every normalized "
+                    f"record timestamp for instrument_id={instrument_id}"
+                )
+            record_timestamp_coverage = "definition-activation-at-or-before-record"
         raw_symbol = raw_symbols[0]
         resolved[instrument_id] = raw_symbol
-        evidence.append(
-            {
-                "instrument_id": instrument_id,
-                "raw_symbol": raw_symbol,
-                "asset": rows["asset"].iloc[0],
-                "mapping_interval_start": interval_start,
-                "mapping_interval_end": interval_end,
-                "definition_record_count": len(rows),
-                "earliest_definition_timestamp": rows["ts_event"].min().isoformat(),
-                "latest_definition_timestamp": rows["ts_event"].max().isoformat(),
-                "channel_ids": sorted({int(value) for value in rows["channel_id"]}),
-            }
-        )
+        mapping_evidence: dict[str, object] = {
+            "instrument_id": instrument_id,
+            "raw_symbol": raw_symbol,
+            "asset": rows["asset"].iloc[0],
+            "mapping_interval_start": interval_start,
+            "mapping_interval_end": interval_end,
+            "definition_record_count": len(rows),
+            "earliest_definition_timestamp": rows["ts_event"].min().isoformat(),
+            "latest_definition_timestamp": rows["ts_event"].max().isoformat(),
+            "earliest_affected_timestamp": affected_timestamps.min().isoformat(),
+            "latest_affected_timestamp": affected_timestamps.max().isoformat(),
+            "record_timestamp_coverage": record_timestamp_coverage,
+            "channel_ids": sorted({int(value) for value in rows["channel_id"]}),
+        }
+        if activation_timestamp is not None:
+            mapping_evidence["definition_activation_timestamp"] = (
+                activation_timestamp.isoformat()
+            )
+        evidence.append(mapping_evidence)
     return resolved, evidence
 
 
@@ -2392,6 +2443,8 @@ def _fill_null_symbols(path: Path, mappings: Mapping[int, str]) -> None:
 def _verify_symbol_mapping_fallback_evidence(
     directory: Path,
     evidence: object,
+    *,
+    schema: str,
 ) -> None:
     if not isinstance(evidence, Mapping):
         raise OpraSyncError("OPRA partition symbol fallback evidence is malformed")
@@ -2399,7 +2452,11 @@ def _verify_symbol_mapping_fallback_evidence(
     mappings = evidence.get("mappings")
     affected = evidence.get("affected_instrument_ids")
     if (
-        evidence.get("method") != "same-day-instrument-definition-v1"
+        evidence.get("method")
+        not in {
+            "same-day-instrument-definition-v1",
+            "same-day-instrument-definition-v2",
+        }
         or not isinstance(source, Mapping)
         or not isinstance(mappings, list)
         or not isinstance(affected, list)
@@ -2427,6 +2484,46 @@ def _verify_symbol_mapping_fallback_evidence(
     )
     if mapped_ids != sorted(int(value) for value in affected):
         raise OpraSyncError("OPRA partition symbol fallback mappings are incomplete")
+    if schema == "ohlcv-1h":
+        if (
+            evidence.get("method") != "same-day-instrument-definition-v2"
+            or evidence.get("schema") != schema
+        ):
+            raise OpraSyncError(
+                "OPRA hourly partition symbol fallback evidence is incomplete"
+            )
+        for item in mappings:
+            if not isinstance(item, Mapping):
+                raise OpraSyncError(
+                    "OPRA hourly partition symbol fallback mappings are malformed"
+                )
+            activation = pd.to_datetime(
+                item.get("definition_activation_timestamp"),
+                utc=True,
+                errors="coerce",
+            )
+            earliest = pd.to_datetime(
+                item.get("earliest_affected_timestamp"),
+                utc=True,
+                errors="coerce",
+            )
+            latest = pd.to_datetime(
+                item.get("latest_affected_timestamp"),
+                utc=True,
+                errors="coerce",
+            )
+            if (
+                item.get("record_timestamp_coverage")
+                != "definition-activation-at-or-before-record"
+                or pd.isna(activation)
+                or pd.isna(earliest)
+                or pd.isna(latest)
+                or activation > earliest
+                or earliest > latest
+            ):
+                raise OpraSyncError(
+                    "OPRA hourly partition symbol fallback timestamp evidence is invalid"
+                )
 
 
 def _validate_dbn_request_metadata(

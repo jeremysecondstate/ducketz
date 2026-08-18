@@ -228,23 +228,27 @@ unresolved symbols and normalization maps every returned row to a non-null raw
 symbol; the partial-symbol count is retained in the partition's delivery
 evidence.
 
-One OPRA edge case is handled more narrowly still. A batch `ohlcv-1d` DBN can
-contain valid daily bars whose instrument IDs are absent from that file's native
-symbol mappings because provider symbology collided across OPRA channel IDs.
-Daily bars use midnight UTC as the start of the aggregation interval, while the
-same-day option definitions are published before the electronic session. Only
-when a batch daily file has otherwise-valid partial metadata and actual null
-symbols, the publisher performs one read-only `definition` lookup for exactly
-the affected instrument IDs and UTC day. It accepts a replacement only when the
-definition's provider mapping interval covers every bar timestamp, the raw and
-normalized instrument IDs agree, the definition is an option under the requested
-parent asset, and exactly one raw symbol is present for that ID. The native
-definition DBN, its checksum, request, intervals, affected IDs, and original null
-count are retained atomically with the partition. Missing, ambiguous, future-only,
-wrong-parent, deleted, or conflicting definitions fail with the provider filename,
-null count, and instrument IDs; no placeholder is written. Streaming responses
-never use this fallback and retain strict native symbology validation. This
-follows Databento's documented [daily-bar timestamp convention](https://databento.com/docs/schemas-and-data-formats/ohlcv)
+One OPRA edge case is handled more narrowly still. Batch `ohlcv-1d` and
+`ohlcv-1h` DBNs can contain valid bars whose instrument IDs are absent from that
+file's native symbol mappings because provider symbology collided across OPRA
+channel IDs. Only when one of those two batch schemas has otherwise-valid partial
+metadata and actual null symbols, the publisher performs one read-only
+`definition` lookup for exactly the affected instrument IDs and UTC day. It
+accepts a replacement only when the definition's provider mapping interval covers
+every bar timestamp, the raw and normalized instrument IDs agree, the definition
+is an option under the requested parent asset, and exactly one raw symbol is
+present for that ID. Daily bars use midnight UTC as the aggregation-period start,
+so their exact-day definition and identity interval provide the temporal proof.
+For hourly bars, the definition must additionally contain an add record at or
+before the earliest affected bar timestamp; a later intraday activation is
+rejected. The native definition DBN, its checksum, request, intervals, definition
+and affected-bar timestamps, affected IDs, and original null count are retained
+atomically with the partition. Missing, ambiguous, future-only, wrong-parent,
+deleted, or conflicting definitions fail with the provider filename, null count,
+and instrument IDs; no placeholder is written. Streaming responses and every
+other schema never use this fallback and retain strict native symbology
+validation. This follows Databento's documented
+[OHLCV timestamp convention](https://databento.com/docs/schemas-and-data-formats/ohlcv)
 and [point-in-time symbology intervals](https://databento.com/docs/standards-and-conventions/symbology).
 
 The OPRA schema cursor is refreshed once per completed symbol/schema scope, and
