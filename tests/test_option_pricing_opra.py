@@ -93,6 +93,146 @@ class _ProbeDBNStore:
         return iter(self._records)
 
 
+_OPRA_COLLISION_MAPPINGS = {
+    855638726: "NVDA  270319P00240000",
+    855638733: "NVDA  270319P00115000",
+    855638790: "NVDA  260605C00255000",
+}
+
+
+class _BatchCollisionStore(_ProbeDBNStore):
+    def __init__(self, *, null_symbols: bool = True) -> None:
+        super().__init__(
+            start="2025-01-01",
+            end="2025-01-02",
+            symbols=("NVDA.OPT",),
+        )
+        self.metadata.partial = list(_OPRA_COLLISION_MAPPINGS.values())
+        self.metadata.mappings = {
+            raw_symbol: [
+                {
+                    "start_date": "2025-01-01",
+                    "end_date": "2025-01-02",
+                    # Same low 24 bits, but the wrong OPRA channel (47 vs. 51).
+                    "symbol": str(instrument_id - (4 << 24)),
+                }
+            ]
+            for instrument_id, raw_symbol in _OPRA_COLLISION_MAPPINGS.items()
+        }
+        self._null_symbols = null_symbols
+
+    def to_parquet(self, path: Path, **_kwargs: object) -> None:
+        ids = [*_OPRA_COLLISION_MAPPINGS, 123]
+        pd.DataFrame(
+            {
+                "ts_event": [pd.Timestamp("2025-01-01T00:00:00Z")] * len(ids),
+                "publisher_id": [20, 22, 35, 30],
+                "instrument_id": ids,
+                "symbol": [
+                    *(
+                        [None] * len(_OPRA_COLLISION_MAPPINGS)
+                        if self._null_symbols
+                        else list(_OPRA_COLLISION_MAPPINGS.values())
+                    ),
+                    "NVDA  250117C00100000",
+                ],
+                "open": [1.0, 2.0, 3.0, 4.0],
+                "high": [1.5, 2.5, 3.5, 4.5],
+                "low": [0.5, 1.5, 2.5, 3.5],
+                "close": [1.25, 2.25, 3.25, 4.25],
+                "volume": [10, 20, 30, 40],
+            }
+        ).to_parquet(path, index=False)
+
+
+class _PointInTimeDefinitionStore(_ProbeDBNStore):
+    def __init__(
+        self,
+        *,
+        interval_start: str = "2025-01-01",
+        interval_end: str = "2025-01-02",
+        omitted_ids: tuple[int, ...] = (),
+    ) -> None:
+        ids = tuple(str(value) for value in sorted(_OPRA_COLLISION_MAPPINGS))
+        super().__init__(
+            schema="definition",
+            start="2025-01-01",
+            end="2025-01-02",
+            symbols=ids,
+            stype_in="instrument_id",
+        )
+        self.metadata.mappings = {
+            value: [
+                {
+                    "start_date": interval_start,
+                    "end_date": interval_end,
+                    "symbol": value,
+                }
+            ]
+            for value in ids
+        }
+        self._omitted_ids = set(omitted_ids)
+
+    def to_df(self, *, map_symbols: bool) -> pd.DataFrame:
+        assert map_symbols is False
+        rows = [
+            {
+                "ts_recv": pd.Timestamp("2025-01-01T10:30:01.6Z"),
+                "ts_event": pd.Timestamp("2025-01-01T10:30:01.5Z"),
+                "instrument_id": instrument_id,
+                "raw_symbol": raw_symbol,
+                "security_update_action": "A",
+                "instrument_class": raw_symbol[12],
+                "raw_instrument_id": instrument_id,
+                "channel_id": 51,
+                "asset": "NVDA",
+            }
+            for instrument_id, raw_symbol in _OPRA_COLLISION_MAPPINGS.items()
+            if instrument_id not in self._omitted_ids
+        ]
+        return pd.DataFrame(rows).set_index("ts_recv")
+
+
+def _publish_collision_batch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    definition_store: _PointInTimeDefinitionStore,
+) -> tuple[dict[str, object], object]:
+    payload = b"controlled-collision-provider-dbn"
+    source = tmp_path / "source.dbn.zst"
+    source.write_bytes(payload)
+    market_store = _BatchCollisionStore()
+    monkeypatch.setattr(opra_history, "_load_dbn_store", lambda _path: market_store)
+
+    class TimeSeries:
+        calls: list[dict[str, object]] = []
+
+        def get_range(self, **kwargs: object) -> object:
+            self.calls.append(dict(kwargs))
+            Path(str(kwargs["path"])).write_bytes(b"controlled-definition-dbn")
+            return definition_store
+
+    timeseries = TimeSeries()
+    filename = "opra-pillar-20250101.ohlcv-1d.dbn.zst"
+    manifest = opra_history._download_partition(
+        SimpleNamespace(timeseries=timeseries),
+        datastore_root=tmp_path,
+        entitlement=_entitlement(),
+        schema="ohlcv-1d",
+        day="2025-01-01",
+        symbols=("NVDA.OPT",),
+        provider_file=source,
+        provider_delivery={
+            "mode": "batch",
+            "job_id": "OPRA-TEST-COLLISION",
+            "filename": filename,
+            "provider_hash": f"sha256:{hashlib.sha256(payload).hexdigest()}",
+        },
+    )
+    return dict(manifest), timeseries
+
+
 def _client_with_missing_parquet() -> object:
     class TimeSeries:
         def get_range(self, **kwargs: object) -> object:
@@ -466,6 +606,145 @@ def test_batch_metadata_allows_partial_but_not_unresolved_symbology() -> None:
             request=request,
             allow_partially_resolved_symbols=True,
         )
+
+
+def test_batch_daily_symbol_collision_uses_exact_day_definition_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manifest, timeseries = _publish_collision_batch(
+        tmp_path,
+        monkeypatch,
+        definition_store=_PointInTimeDefinitionStore(),
+    )
+    destination = opra_history.partition_directory(
+        tmp_path,
+        schema="ohlcv-1d",
+        day="2025-01-01",
+        symbols=("NVDA.OPT",),
+    )
+    normalized = pd.read_parquet(destination / "normalized.parquet")
+    resolved = normalized.set_index("instrument_id")["symbol"].to_dict()
+
+    assert normalized["symbol"].isna().sum() == 0
+    assert {key: resolved[key] for key in _OPRA_COLLISION_MAPPINGS} == (
+        _OPRA_COLLISION_MAPPINGS
+    )
+    assert len(timeseries.calls) == 1
+    lookup = timeseries.calls[0]
+    assert lookup["schema"] == "definition"
+    assert lookup["stype_in"] == "instrument_id"
+    assert lookup["stype_out"] == "instrument_id"
+    assert lookup["start"] == "2025-01-01"
+    assert lookup["end"] == "2025-01-02"
+    delivery = manifest["provider_delivery"]
+    assert delivery["partially_resolved_symbol_count"] == 3
+    assert delivery["partially_resolved_symbols_checksum_sha256"]
+    assert delivery["normalized_symbol_mapping"] == "complete"
+    fallback = delivery["symbol_mapping_fallback"]
+    assert fallback["method"] == "same-day-instrument-definition-v1"
+    assert fallback["original_null_symbol_count"] == 3
+    assert fallback["post_repair_null_symbol_count"] == 0
+    assert fallback["affected_instrument_ids"] == sorted(_OPRA_COLLISION_MAPPINGS)
+    assert (
+        destination / fallback["source"]["path"]
+    ).read_bytes() == b"controlled-definition-dbn"
+    assert opra_history.verify_partition(
+        destination,
+        datastore_root=tmp_path,
+    )["manifest"] == manifest
+
+
+def test_batch_daily_definition_fallback_rejects_noncovering_interval(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with pytest.raises(opra_history.OpraSyncError) as raised:
+        _publish_collision_batch(
+            tmp_path,
+            monkeypatch,
+            definition_store=_PointInTimeDefinitionStore(
+                interval_start="2025-01-02",
+                interval_end="2025-01-03",
+            ),
+        )
+
+    message = str(raised.value)
+    assert "opra-pillar-20250101.ohlcv-1d.dbn.zst" in message
+    assert "null_count=3" in message
+    assert f"instrument_ids={sorted(_OPRA_COLLISION_MAPPINGS)}" in message
+    assert "does not uniquely cover every normalized record timestamp" in message
+    assert not opra_history.partition_directory(
+        tmp_path,
+        schema="ohlcv-1d",
+        day="2025-01-01",
+        symbols=("NVDA.OPT",),
+    ).exists()
+
+
+def test_batch_daily_unresolved_symbols_fail_without_placeholder_acceptance(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    omitted = max(_OPRA_COLLISION_MAPPINGS)
+    with pytest.raises(opra_history.OpraSyncError) as raised:
+        _publish_collision_batch(
+            tmp_path,
+            monkeypatch,
+            definition_store=_PointInTimeDefinitionStore(omitted_ids=(omitted,)),
+        )
+
+    message = str(raised.value)
+    assert "opra-pillar-20250101.ohlcv-1d.dbn.zst" in message
+    assert "null_count=3" in message
+    assert f"instrument_ids={sorted(_OPRA_COLLISION_MAPPINGS)}" in message
+    assert f"No same-day definition record exists for instrument_id={omitted}" in message
+    retained = list(
+        opra_history.canonical_root(tmp_path).glob(
+            ".staging/ohlcv-1d/NVDA.OPT/2025-01-01/full-day/attempt-*/normalized.parquet"
+        )
+    )
+    assert len(retained) == 1
+    failed = pd.read_parquet(retained[0])
+    assert failed["symbol"].isna().sum() == 3
+    assert not failed["symbol"].fillna("").str.contains("UNKNOWN|UNMAPPED").any()
+
+
+def test_streaming_symbol_nulls_remain_strict_and_never_use_batch_fallback(
+    tmp_path: Path,
+) -> None:
+    market_store = _BatchCollisionStore()
+
+    class TimeSeries:
+        calls = 0
+
+        def get_range(self, **kwargs: object) -> object:
+            self.calls += 1
+            Path(str(kwargs["path"])).write_bytes(b"controlled-stream-dbn")
+            return market_store
+
+    timeseries = TimeSeries()
+    with pytest.raises(
+        opra_history.OpraSyncError,
+        match="normalized symbol mapping remains unresolved",
+    ) as raised:
+        opra_history._download_partition(
+            SimpleNamespace(timeseries=timeseries),
+            datastore_root=tmp_path,
+            entitlement=_entitlement(),
+            schema="ohlcv-1d",
+            day="2025-01-01",
+            symbols=("NVDA.OPT",),
+        )
+
+    assert timeseries.calls == 1
+    assert "null_count=3" in str(raised.value)
+    assert not opra_history.partition_directory(
+        tmp_path,
+        schema="ohlcv-1d",
+        day="2025-01-01",
+        symbols=("NVDA.OPT",),
+    ).exists()
 
 
 def test_synchronize_fail_fast_skips_no_data_and_continues_after_existing_partition(

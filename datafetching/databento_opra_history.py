@@ -18,6 +18,7 @@ from pathlib import PurePosixPath
 from typing import Callable, Iterable, Mapping, Sequence
 
 import pandas as pd
+import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
@@ -68,6 +69,7 @@ OPRA_BATCH_PROGRESS_FILES = 25
 STANDARD_PLAN_AUTHORITY = "docs/databento-plan/databento_standard_plan_data_access.md"
 _BATCH_JOB_ID_RE = re.compile(r"^[A-Za-z0-9-]+$")
 _BATCH_FILE_DATE_RE = re.compile(r"(?<!\d)(\d{8})(?!\d)")
+_BATCH_DEFINITION_FALLBACK_FILENAME = "point-in-time-definition.dbn.zst"
 
 
 class OpraSyncError(RuntimeError):
@@ -664,6 +666,9 @@ def verify_partition(directory: Path, *, datastore_root: Path) -> Mapping[str, o
                 )
             ):
                 raise OpraSyncError("OPRA partition batch delivery evidence is incomplete")
+            fallback = provider_delivery.get("symbol_mapping_fallback")
+            if fallback is not None:
+                _verify_symbol_mapping_fallback_evidence(run, fallback)
     parquet_path = run / str(manifest["normalized"]["path"])
     validation = validate_parquet(parquet_path, schema=str(manifest["schema"]))
     expected = manifest["normalized"]
@@ -1809,6 +1814,8 @@ def _download_partition(
     kwargs["path"] = raw_path
     store: object | None = None
     partially_resolved_symbol_count = 0
+    partially_resolved_symbols_checksum: str | None = None
+    symbol_mapping_fallback: Mapping[str, object] | None = None
     try:
         if provider_file is None:
             try:
@@ -1839,6 +1846,13 @@ def _download_partition(
                 request=request,
                 allow_partially_resolved_symbols=True,
             )
+            if partially_resolved_symbol_count:
+                partial_symbols = sorted(
+                    str(value) for value in getattr(store.metadata, "partial")
+                )
+                partially_resolved_symbols_checksum = _semantic_checksum(
+                    {"partial": partial_symbols}
+                )
         if not raw_path.is_file() or raw_path.stat().st_size == 0:
             raise OpraSyncError("Databento returned no provider-native DBN file")
         if store is None:
@@ -1878,16 +1892,40 @@ def _download_partition(
             raise OpraSyncError(
                 "Databento partition-clock timestamps escape the requested interval"
             )
-        if partially_resolved_symbol_count:
-            columns = set(str(value) for value in validation["columns"])
-            null_counts = validation["null_counts"]
+        symbol_null_rows = _normalized_symbol_null_rows(parquet_path)
+        if not symbol_null_rows.empty:
+            provider_filename = str(
+                (provider_delivery or {}).get("filename", raw_path.name)
+            )
             if (
-                "symbol" not in columns
-                or not isinstance(null_counts, Mapping)
-                or int(null_counts.get("symbol", -1)) != 0
+                provider_file is not None
+                and (provider_delivery or {}).get("mode") == "batch"
+                and schema == "ohlcv-1d"
+                and partially_resolved_symbol_count
+                and symbols
             ):
-                raise OpraSyncError(
-                    "Databento batch partial symbology did not map every normalized row"
+                try:
+                    symbol_mapping_fallback = _repair_batch_daily_symbol_mapping(
+                        client,
+                        parquet_path=parquet_path,
+                        definition_path=staging / _BATCH_DEFINITION_FALLBACK_FILENAME,
+                        day=day,
+                        symbols=symbols,
+                        unresolved_rows=symbol_null_rows,
+                    )
+                except Exception as exc:
+                    raise _batch_symbol_mapping_error(
+                        filename=provider_filename,
+                        unresolved_rows=symbol_null_rows,
+                        reason=f"{type(exc).__name__}: {exc}",
+                    ) from exc
+                validation = validate_parquet(parquet_path, schema=schema)
+                symbol_null_rows = _normalized_symbol_null_rows(parquet_path)
+            if not symbol_null_rows.empty:
+                raise _batch_symbol_mapping_error(
+                    filename=provider_filename,
+                    unresolved_rows=symbol_null_rows,
+                    reason="no verified point-in-time definition mapping was applied",
                 )
         if int(validation["duplicate_natural_key_rows"]) != 0:
             raise OpraSyncError("Databento partition contains duplicate natural keys")
@@ -1909,8 +1947,15 @@ def _download_partition(
             delivery_evidence = {
                 **dict(provider_delivery),
                 "partially_resolved_symbol_count": partially_resolved_symbol_count,
+                "partially_resolved_symbols_checksum_sha256": (
+                    partially_resolved_symbols_checksum
+                ),
                 "normalized_symbol_mapping": "complete",
             }
+            if symbol_mapping_fallback is not None:
+                delivery_evidence["symbol_mapping_fallback"] = dict(
+                    symbol_mapping_fallback
+                )
         else:
             delivery_evidence = {"mode": "timeseries-stream"}
         normalized_inventory = {
@@ -2016,6 +2061,372 @@ def _load_dbn_store(path: Path) -> object:
     import databento as db
 
     return db.DBNStore.from_file(path)
+
+
+def _normalized_symbol_null_rows(path: Path) -> pd.DataFrame:
+    parquet = pq.ParquetFile(path)
+    names = tuple(parquet.schema_arrow.names)
+    timestamp_column = _event_column(names)
+    selected = [
+        name
+        for name in (timestamp_column, "publisher_id", "instrument_id", "symbol")
+        if name is not None and name in names
+    ]
+    if "instrument_id" not in selected:
+        raise OpraSyncError("Databento normalized Parquet has no instrument ID")
+    table = pq.read_table(path, columns=selected)
+    if "symbol" in names:
+        table = table.filter(pc.is_null(table.column("symbol")))
+    frame = table.to_pandas()
+    if frame.index.name and frame.index.name not in frame.columns:
+        frame = frame.reset_index()
+    if "symbol" not in frame.columns:
+        frame["symbol"] = None
+    return frame
+
+
+def _batch_symbol_mapping_error(
+    *,
+    filename: str,
+    unresolved_rows: pd.DataFrame,
+    reason: str,
+) -> OpraSyncError:
+    instrument_ids = sorted(
+        {int(value) for value in unresolved_rows["instrument_id"].tolist()}
+    )
+    return OpraSyncError(
+        "Databento normalized symbol mapping remains unresolved: "
+        f"filename={filename} null_count={len(unresolved_rows)} "
+        f"instrument_ids={instrument_ids}; {reason}"
+    )
+
+
+def _repair_batch_daily_symbol_mapping(
+    client: object,
+    *,
+    parquet_path: Path,
+    definition_path: Path,
+    day: str,
+    symbols: Sequence[str],
+    unresolved_rows: pd.DataFrame,
+) -> Mapping[str, object]:
+    """Repair only batch daily-bar nulls backed by exact-day definition records."""
+
+    instrument_ids = sorted(
+        {int(value) for value in unresolved_rows["instrument_id"].tolist()}
+    )
+    next_day = (date.fromisoformat(day) + timedelta(days=1)).isoformat()
+    request = {
+        "dataset": DATASET,
+        "schema": "definition",
+        "start": day,
+        "end": next_day,
+        "symbols": [str(value) for value in instrument_ids],
+        "stype_in": "instrument_id",
+        "stype_out": "instrument_id",
+    }
+    definition_store: object | None = None
+    try:
+        definition_store = _retry(
+            getattr(client, "timeseries").get_range,
+            kwargs={**request, "path": definition_path},
+            operation=f"ohlcv-1d {day} point-in-time definition lookup",
+            maximum_attempts=1,
+        )
+        _validate_dbn_request_metadata(definition_store, request=request)
+        if not definition_path.is_file() or definition_path.stat().st_size == 0:
+            raise OpraSyncError(
+                "Databento point-in-time definition lookup retained no native DBN"
+            )
+        definitions = definition_store.to_df(map_symbols=False)
+        if not isinstance(definitions, pd.DataFrame):
+            raise OpraSyncError(
+                "Databento point-in-time definition lookup returned no DataFrame"
+            )
+        if definitions.index.name and definitions.index.name not in definitions.columns:
+            definitions = definitions.reset_index()
+        resolved, mapping_evidence = _definition_symbol_mapping(
+            definition_store,
+            definitions=definitions,
+            unresolved_rows=unresolved_rows,
+            day=day,
+            symbols=symbols,
+        )
+    finally:
+        definition_store = None
+        gc.collect()
+
+    _fill_null_symbols(parquet_path, resolved)
+    remaining = _normalized_symbol_null_rows(parquet_path)
+    if not remaining.empty:
+        raise OpraSyncError(
+            "Point-in-time definition repair left normalized symbol nulls"
+        )
+    source_inventory = {
+        "path": definition_path.name,
+        "size_bytes": definition_path.stat().st_size,
+        "checksum_sha256": file_checksum(definition_path),
+    }
+    return {
+        "method": "same-day-instrument-definition-v1",
+        "request": request,
+        "source": source_inventory,
+        "original_null_symbol_count": len(unresolved_rows),
+        "affected_instrument_ids": instrument_ids,
+        "mappings": mapping_evidence,
+        "post_repair_null_symbol_count": 0,
+    }
+
+
+def _definition_symbol_mapping(
+    store: object,
+    *,
+    definitions: pd.DataFrame,
+    unresolved_rows: pd.DataFrame,
+    day: str,
+    symbols: Sequence[str],
+) -> tuple[dict[int, str], list[dict[str, object]]]:
+    required_columns = {
+        "ts_event",
+        "instrument_id",
+        "raw_symbol",
+        "security_update_action",
+        "instrument_class",
+        "raw_instrument_id",
+        "channel_id",
+        "asset",
+    }
+    missing_columns = sorted(required_columns.difference(definitions.columns))
+    if missing_columns:
+        raise OpraSyncError(
+            "Databento point-in-time definitions lack required fields: "
+            + ", ".join(missing_columns)
+        )
+    allowed_assets = _option_parent_assets(symbols)
+    start_ts = pd.Timestamp(day, tz="UTC")
+    end_ts = start_ts + pd.Timedelta(days=1)
+    frame = definitions.copy()
+    frame["instrument_id"] = pd.to_numeric(frame["instrument_id"], errors="coerce")
+    frame["raw_instrument_id"] = pd.to_numeric(
+        frame["raw_instrument_id"], errors="coerce"
+    )
+    frame["ts_event"] = pd.to_datetime(frame["ts_event"], utc=True, errors="coerce")
+    target_ids = sorted(
+        {int(value) for value in unresolved_rows["instrument_id"].tolist()}
+    )
+    frame = frame.loc[frame["instrument_id"].isin(target_ids)].copy()
+    mappings = getattr(getattr(store, "metadata"), "mappings", None)
+    if not isinstance(mappings, Mapping):
+        raise OpraSyncError(
+            "Databento point-in-time definitions have no mapping intervals"
+        )
+
+    timestamp_column = _event_column(tuple(unresolved_rows.columns))
+    if timestamp_column is None:
+        raise OpraSyncError("Normalized null-symbol rows have no event timestamp")
+    unresolved_timestamps = pd.to_datetime(
+        unresolved_rows[timestamp_column], utc=True, errors="coerce"
+    )
+    if unresolved_timestamps.isna().any():
+        raise OpraSyncError("Normalized null-symbol rows have invalid timestamps")
+
+    resolved: dict[int, str] = {}
+    evidence: list[dict[str, object]] = []
+    for instrument_id in target_ids:
+        rows = frame.loc[frame["instrument_id"] == instrument_id].copy()
+        if rows.empty:
+            raise OpraSyncError(
+                f"No same-day definition record exists for instrument_id={instrument_id}"
+            )
+        if (
+            rows["ts_event"].isna().any()
+            or (rows["ts_event"] < start_ts).any()
+            or (rows["ts_event"] >= end_ts).any()
+        ):
+            raise OpraSyncError(
+                f"Definition records escape the requested day for instrument_id={instrument_id}"
+            )
+        rows["raw_symbol"] = rows["raw_symbol"].map(lambda value: str(value).strip())
+        rows["asset"] = rows["asset"].map(lambda value: str(value).strip())
+        rows["instrument_class"] = rows["instrument_class"].map(
+            lambda value: str(value).strip()
+        )
+        rows["security_update_action"] = rows["security_update_action"].map(
+            lambda value: str(value).strip()
+        )
+        raw_symbols = sorted(set(rows["raw_symbol"]).difference({""}))
+        if len(raw_symbols) != 1:
+            raise OpraSyncError(
+                f"Ambiguous same-day definitions for instrument_id={instrument_id}"
+            )
+        if not set(rows["asset"]).issubset(allowed_assets):
+            raise OpraSyncError(
+                f"Definition parent identity does not match for instrument_id={instrument_id}"
+            )
+        if not set(rows["instrument_class"]).issubset({"C", "P"}):
+            raise OpraSyncError(
+                f"Definition is not an option for instrument_id={instrument_id}"
+            )
+        if "D" in set(rows["security_update_action"]):
+            raise OpraSyncError(
+                f"Definition was deleted during the day for instrument_id={instrument_id}"
+            )
+        if not (rows["raw_instrument_id"] == instrument_id).all():
+            raise OpraSyncError(
+                f"Definition raw instrument identity differs for instrument_id={instrument_id}"
+            )
+        affected_timestamps = unresolved_timestamps.loc[
+            unresolved_rows["instrument_id"].astype("int64") == instrument_id
+        ]
+        interval_start, interval_end = _covering_identity_interval(
+            mappings,
+            instrument_id=instrument_id,
+            timestamps=affected_timestamps,
+        )
+        raw_symbol = raw_symbols[0]
+        resolved[instrument_id] = raw_symbol
+        evidence.append(
+            {
+                "instrument_id": instrument_id,
+                "raw_symbol": raw_symbol,
+                "asset": rows["asset"].iloc[0],
+                "mapping_interval_start": interval_start,
+                "mapping_interval_end": interval_end,
+                "definition_record_count": len(rows),
+                "earliest_definition_timestamp": rows["ts_event"].min().isoformat(),
+                "latest_definition_timestamp": rows["ts_event"].max().isoformat(),
+                "channel_ids": sorted({int(value) for value in rows["channel_id"]}),
+            }
+        )
+    return resolved, evidence
+
+
+def _option_parent_assets(symbols: Sequence[str]) -> set[str]:
+    assets: set[str] = set()
+    for symbol in symbols:
+        value = str(symbol).strip()
+        if not value.endswith(".OPT") or not value[:-4]:
+            raise OpraSyncError(
+                "Point-in-time definition fallback requires OPRA parent option symbols"
+            )
+        assets.add(value[:-4])
+    return assets
+
+
+def _covering_identity_interval(
+    mappings: Mapping[object, object],
+    *,
+    instrument_id: int,
+    timestamps: pd.Series,
+) -> tuple[str, str]:
+    raw_intervals = mappings.get(str(instrument_id), mappings.get(instrument_id))
+    if not isinstance(raw_intervals, (list, tuple)):
+        raise OpraSyncError(
+            f"No definition mapping interval exists for instrument_id={instrument_id}"
+        )
+    candidates: list[tuple[date, date]] = []
+    timestamp_dates = [value.date() for value in timestamps]
+    for raw_interval in raw_intervals:
+        if not isinstance(raw_interval, Mapping):
+            continue
+        try:
+            start = date.fromisoformat(str(raw_interval["start_date"]))
+            end = date.fromisoformat(str(raw_interval["end_date"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+        if (
+            str(raw_interval.get("symbol")) == str(instrument_id)
+            and start < end
+            and timestamp_dates
+            and all(start <= value < end for value in timestamp_dates)
+        ):
+            candidates.append((start, end))
+    if len(candidates) != 1:
+        raise OpraSyncError(
+            "Definition mapping interval does not uniquely cover every normalized "
+            f"record timestamp for instrument_id={instrument_id}"
+        )
+    return candidates[0][0].isoformat(), candidates[0][1].isoformat()
+
+
+def _fill_null_symbols(path: Path, mappings: Mapping[int, str]) -> None:
+    table = pq.read_table(path)
+    if "symbol" not in table.column_names:
+        raise OpraSyncError("Databento normalized Parquet has no symbol column")
+    instrument_ids = table.column("instrument_id").to_pylist()
+    symbols = table.column("symbol").to_pylist()
+    for instrument_id, replacement in mappings.items():
+        existing = {
+            str(symbol)
+            for row_instrument_id, symbol in zip(instrument_ids, symbols, strict=True)
+            if int(row_instrument_id) == instrument_id and symbol is not None
+        }
+        if existing and existing != {replacement}:
+            raise OpraSyncError(
+                "Point-in-time definition conflicts with an existing normalized symbol "
+                f"for instrument_id={instrument_id}"
+            )
+    repaired: list[object] = []
+    for instrument_id, symbol in zip(instrument_ids, symbols, strict=True):
+        if symbol is not None:
+            repaired.append(symbol)
+            continue
+        replacement = mappings.get(int(instrument_id))
+        if not replacement:
+            raise OpraSyncError(
+                f"No verified symbol replacement exists for instrument_id={instrument_id}"
+            )
+        repaired.append(replacement)
+    symbol_index = table.column_names.index("symbol")
+    symbol_type = table.schema.field(symbol_index).type
+    table = table.set_column(
+        symbol_index,
+        "symbol",
+        pa.array(repaired, type=symbol_type),
+    )
+    pending = _next_pending_file(path)
+    pq.write_table(table, pending, compression="zstd")
+    pending.replace(path)
+
+
+def _verify_symbol_mapping_fallback_evidence(
+    directory: Path,
+    evidence: object,
+) -> None:
+    if not isinstance(evidence, Mapping):
+        raise OpraSyncError("OPRA partition symbol fallback evidence is malformed")
+    source = evidence.get("source")
+    mappings = evidence.get("mappings")
+    affected = evidence.get("affected_instrument_ids")
+    if (
+        evidence.get("method") != "same-day-instrument-definition-v1"
+        or not isinstance(source, Mapping)
+        or not isinstance(mappings, list)
+        or not isinstance(affected, list)
+        or not affected
+        or int(evidence.get("original_null_symbol_count", 0)) < 1
+        or evidence.get("post_repair_null_symbol_count") != 0
+    ):
+        raise OpraSyncError("OPRA partition symbol fallback evidence is incomplete")
+    source_name = str(source.get("path", ""))
+    source_path = directory / source_name
+    if (
+        source_name != _BATCH_DEFINITION_FALLBACK_FILENAME
+        or not source_path.is_file()
+        or source_path.stat().st_size != int(source.get("size_bytes", -1))
+        or file_checksum(source_path) != source.get("checksum_sha256")
+    ):
+        raise OpraSyncError("OPRA partition symbol fallback checksum verification failed")
+    mapped_ids = sorted(
+        int(item.get("instrument_id"))
+        for item in mappings
+        if isinstance(item, Mapping)
+        and str(item.get("raw_symbol", "")).strip()
+        and str(item.get("mapping_interval_start", "")).strip()
+        and str(item.get("mapping_interval_end", "")).strip()
+    )
+    if mapped_ids != sorted(int(value) for value in affected):
+        raise OpraSyncError("OPRA partition symbol fallback mappings are incomplete")
 
 
 def _validate_dbn_request_metadata(
