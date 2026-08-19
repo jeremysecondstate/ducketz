@@ -11,7 +11,7 @@ import pandas as pd
 
 from ml.strategy_selection.contracts import (
     MARKET_STATE_POLICY_VERSION,
-    PRICING_SCENARIO_FALLBACK_SCORE_BASIS,
+    SCENARIO_COVERAGE_SCORE_BASIS,
     STRATEGY_CANDIDATE_SCHEMA_VERSION,
     STRATEGY_MODEL_POLICY_VERSION,
     STRATEGY_PRIOR_POLICY_VERSION,
@@ -119,23 +119,30 @@ def score_market_state_prior(
         for row in output.to_dict("records")
     ]
     prior = pd.DataFrame(prior_rows, index=output.index)
-    output["strategy_prior__profit_probability"] = prior["probability"]
+    output["strategy_prior__scenario_coverage_score"] = prior[
+        "scenario_coverage"
+    ]
     output["strategy_prior__expected_net_profit"] = prior["expected_net_profit"]
     output["strategy_prior__expected_return_on_risk"] = prior[
         "expected_return_on_risk"
     ]
-    probability = pd.to_numeric(prior["probability"], errors="coerce")
+    scenario_coverage = pd.to_numeric(
+        prior["scenario_coverage"], errors="coerce"
+    )
     expected_return = pd.to_numeric(
         prior["expected_return_on_risk"], errors="coerce"
     )
     if (
-        not np.isfinite(probability.to_numpy(dtype=float)).all()
-        or not probability.between(0.0, 1.0).all()
+        not np.isfinite(scenario_coverage.to_numpy(dtype=float)).all()
+        or not scenario_coverage.between(0.0, 1.0).all()
     ):
-        raise ValueError("Strategy scenario-prior probabilities must be finite in [0, 1]")
+        raise ValueError("Strategy scenario coverage must be finite in [0, 1]")
     if not np.isfinite(expected_return.to_numpy(dtype=float)).all():
-        raise ValueError("Strategy scenario-prior expected returns must be finite")
-    output["raw_profit_probability"] = probability
+        raise ValueError("Strategy scenario expected returns must be finite")
+    # A scenario-grid pass fraction is not a fitted or calibrated probability.
+    # Keep it separately typed and leave every probability field unavailable.
+    output["scenario_coverage_score"] = scenario_coverage
+    output["raw_profit_probability"] = np.nan
     output["calibrated_profit_probability"] = np.nan
     probability_direction = state.effective_probability_up
     output["direction_probability_up"] = probability_direction
@@ -144,15 +151,15 @@ def score_market_state_prior(
     ) * (2.0 * probability_direction - 1.0)
     output["expected_net_profit"] = prior["expected_net_profit"]
     output["expected_return_on_risk"] = expected_return
-    output["decision_score"] = probability
-    output["score_basis"] = PRICING_SCENARIO_FALLBACK_SCORE_BASIS
+    output["decision_score"] = np.nan
+    output["score_basis"] = SCENARIO_COVERAGE_SCORE_BASIS
     output["schema_version"] = STRATEGY_CANDIDATE_SCHEMA_VERSION
     output["model_version"] = STRATEGY_PRIOR_POLICY_VERSION
     output["model_policy_version"] = STRATEGY_MODEL_POLICY_VERSION
     output["ranking_policy_version"] = STRATEGY_RANKING_POLICY_VERSION
-    output["model_status"] = "PRICING_SCENARIO"
+    output["model_status"] = "HEURISTIC_ONLY"
     output = output.sort_values(
-        ["decision_score", "expected_return_on_risk", "candidate_key"],
+        ["scenario_coverage_score", "expected_return_on_risk", "candidate_key"],
         ascending=[False, False, True],
         kind="mergesort",
     ).reset_index(drop=True)
@@ -211,7 +218,7 @@ def _candidate_prior(
         # floating-point sum can exceed one by a few ulps when every scenario
         # is favorable.  Clamp only that arithmetic residue; the caller still
         # rejects NaN, infinity, and genuinely invalid probabilities.
-        "probability": float(np.clip(probability, 0.0, 1.0)),
+        "scenario_coverage": float(np.clip(probability, 0.0, 1.0)),
         "expected_net_profit": expected_net_profit,
         "expected_return_on_risk": expected_net_profit / capital,
     }

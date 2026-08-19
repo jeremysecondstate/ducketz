@@ -21,7 +21,7 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 - **Status:** Confirmed.
 - **Type:** D + C.
 - **Exchange:** exact all-symbol bar-readiness receipt/row checksums and each target close; completed Databento bars; prospective current-FRED rate context when available.
-- **Availability:** exact eligible quarter-hour; readiness must become authoritative within the configured 30-second production wait and no later than the 1,200-second causal window.
+- **Availability:** exact eligible quarter-hour; Loop A polls Databento Historical schema availability and may refetch the exact minute for at most 420 seconds. Pricing waits at most 480 seconds, and both remain inside the independent 1,200-second causal window.
 - **Consumer behavior:** bounded wait/retry; deadline causes a write-free skip and leaves prior Pricing authority unchanged.
 - **Producer evidence:** `datafetching/orchestrate.py:292`, `datafetching/bar_readiness.py:120`, `datafetching/fred_vintages.py:600`
 - **Consumer evidence:** `ml/option_pricing_runtime.py:1116`, `ml/option_pricing_runtime.py:1181`, `ml/option_pricing/rates.py:361`, `ml/option_pricing_runtime.py:1713`
@@ -132,7 +132,7 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 - **Type:** D + M + C.
 - **Exchange:** authoritative Loop B source record/receipt, redacted samples, LIVE calibrated directional probabilities, target windows, feature context and causal input cutoff.
 - **Availability:** Strategy reads one verified current pointer; predictions must match exactly one sample and precede entry.
-- **Consumer behavior:** no valid current Loop B run, samples, or predictions fails the Strategy cycle. The current skip fingerprint compares the Loop B pointer, pricing mode, and per-symbol Schwab snapshot heads; OPRA historical-partition changes alone do not wake an otherwise unchanged supervisor cycle.
+- **Consumer behavior:** no valid current Loop B run, samples, or predictions fails the Strategy cycle. The skip fingerprint compares the Loop B pointer, pricing mode, and both prospective OPRA and Schwab per-symbol snapshot heads; a new receipt from either provider wakes the cycle.
 - **Producer evidence:** `ml/runtime_pipeline.py:704`, `ml/runtime_pipeline.py:876`
 - **Consumer evidence:** `ml/strategy_runtime.py:74`, `ml/strategy_runtime.py:81`, `ml/strategy_runtime.py:125`, `ml/strategy_runtime.py:414`
 
@@ -152,7 +152,7 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 - **Type:** D + M + F.
 - **Exchange:** exact-contract baseline predictions, one-to-one residual sidecars and verified generation history; `BSGP_SHADOW_READY` becomes Strategy source `BSGP`, while complete residual fallback becomes `BLACK_SCHOLES`. Per leg, Strategy receives fair-value edge, conservative edge, uncertainty, favorable probability, model age and residual shrinkage.
 - **Availability:** Pricing evidence must be receipt-verified and available before the candidate probability; live scoring disallows offline replay.
-- **Consumer behavior:** full active leg coverage admits fitted Strategy scoring; missing/delayed coverage keeps the explicit scenario-prior fallback.
+- **Consumer behavior:** full active leg coverage admits fitted Strategy scoring; missing/delayed coverage keeps a separately typed non-probabilistic scenario-coverage heuristic with all model-probability fields null.
 - **Producer evidence:** `ml/option_pricing/target_outcome.py:93`, `ml/option_pricing/publication.py:83`, `ml/option_pricing/strategy_shadow.py:263`, `ml/option_pricing/strategy_shadow.py:298`
 - **Consumer evidence:** `ml/strategy_selection/runtime.py:93`, `ml/strategy_selection/runtime.py:288`, `ml/strategy_selection/runtime.py:310`, `ml/strategy_selection/runtime.py:637`
 
@@ -193,7 +193,7 @@ Rows are producers; columns are consumers. Empty cells mean no direct exchange. 
 
 - **Confirmed fan-in — Active Pricing:** Loop A exact readiness, Daily ALFRED/current-FRED rates, earlier Options snapshots, and an optional prior owned-worker model. `ml/option_pricing_runtime.py:309`, `ml/option_pricing_runtime.py:1116`, `ml/option_pricing_runtime.py:1181`
 - **Confirmed fan-in — Directional Loop B:** complete Loop A authority plus Loop A feature files, CME context, ALFRED readiness/vintages, Options surfaces, and Pricing compact history. `ml/prediction_runtime.py:209`, `ml/rolling_materialization.py:614`, `ml/rolling_materialization.py:663`, `ml/rolling_materialization.py:740`, `ml/rolling_materialization.py:782`
-- **Confirmed fan-in — Strategy:** Loop B publication, OPRA-first provider-neutral option history with labeled Schwab fallback, stock BBO history, and the Pricing catalog. The +10 supervisor skip check currently observes Schwab snapshot heads rather than canonical OPRA partition heads; a later Loop B/Schwab/pricing-mode change causes OPRA history to be reread. `ml/strategy_runtime.py`, `ml/strategy_selection/chain.py`, `ml/strategy_selection/runtime.py`
+- **Confirmed fan-in — Strategy:** Loop B publication, immutable prospective provider-neutral receipts with OPRA priority per target, historical OPRA replay fallback, stock BBO history, and the Pricing catalog. The +10 supervisor observes both prospective provider heads. `ml/strategy_runtime.py`, `ml/strategy_selection/chain.py`, `ml/strategy_selection/runtime.py`
 - **Confirmed fan-out — Loop A:** exact readiness to Pricing/Options, complete-cycle/features to B, and stock BBO to Strategy. `datafetching/orchestrate.py:292`, `datafetching/loop_a_cycle.py:127`, `ml/strategy_selection/chain.py:151`
 - **Confirmed fan-out — Options Capture:** supplies future Pricing samples/evaluations, `opt__` features to B, and exact strategy chains/outcomes. `ml/option_pricing_runtime.py:660`, `ml/rolling_materialization.py:614`, `ml/strategy_selection/runtime.py:109`
 - **Confirmed fan-out — Active Pricing:** target barrier to Options, compact `opx__` features to B, and leg pricing to Strategy. `datafetching/pricing_barrier.py:100`, `ml/option_pricing/consumers.py:306`, `ml/option_pricing/strategy_shadow.py:74`
@@ -203,7 +203,7 @@ Rows are producers; columns are consumers. Empty cells mean no direct exchange. 
 - **Directional horizon publication:** Loop A complete authority is mandatory. Valid ALFRED authority is mandatory for the active v3 daily/weekly profile and invalid shared ALFRED/Pricing authority aborts the materialization. Missing valid Pricing rows alone is noncritical because the baseline feature set is explicit. CME and Options can lag while existing evidence remains within freshness; absent/invalid required family sources can fail affected routes. `ml/prediction_runtime.py:209`, `ml/rolling_materialization.py:322`, `ml/runtime_pipeline.py:455`
 - **Option-pricing target publication:** exact Loop A readiness and valid causal contract/rate/option inputs are critical for each target/route. The fitted residual model is not critical because the Black–Scholes point estimate and explicit sidecar fallback remain supported. Ready residual values can still affect Strategy through the separately verified sidecar. `ml/option_pricing_runtime.py:1128`, `ml/option_pricing_runtime.py:1220`, `ml/option_pricing/strategy_shadow.py:298`
 - **Options capture:** Pricing success is not critical to capture. Target-scoped OPRA selection/commit uses its own point-in-time clocks and does not wait for Loop A; exact Loop A readiness remains mandatory for downstream Pricing and Schwab normalization. If OPRA is transiently unavailable while readiness is delayed, the single fallback Schwab request is durably claimed and quarantined pending reconciliation. `datafetching/pricing_barrier.py:124`, `datafetching/options_runtime.py:360`, `datafetching/options_runtime.py:369`, `datafetching/options_runtime.py:452`, `options/pending_capture.py:118`
-- **Options-strategy predictions:** a verified Loop B run and an eligible entry option-chain receipt are critical. Active Pricing and a fitted Strategy model improve/authorize calibrated fitted scoring but can degrade to explicit scenario prior. `ml/strategy_runtime.py:83`, `ml/strategy_selection/runtime.py:247`, `ml/strategy_selection/runtime.py:306`
+- **Options-strategy predictions:** a verified Loop B run and an eligible entry option-chain receipt are critical. Active Pricing plus a fitted and calibrated Strategy model authorizes probability scoring; otherwise Strategy exposes only separately typed Scenario Coverage. `ml/strategy_runtime.py`, `ml/strategy_selection/runtime.py`
 
 ## Explicit non-relationships
 

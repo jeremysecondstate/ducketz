@@ -39,14 +39,14 @@ from ml.strategy_selection import STRATEGY_SELECTION_OPRA_FIRST_SPREADS_V2
 from ml.strategy_selection.contracts import (
     BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
     BSGP_CALIBRATED_MODEL_SCORE_BASIS,
-    PRICING_SCENARIO_FALLBACK_SCORE_BASIS,
+    SCENARIO_COVERAGE_SCORE_BASIS,
     STRATEGY_CANDIDATE_SCHEMA_VERSION,
     STRATEGY_MODEL_POLICY_VERSION,
     STRATEGY_RANKING_POLICY_VERSION,
 )
 from ml.strategy_selection.research_trace import strategy_research_trace
 from ml.strategy_selection.runtime import run_strategy_selection
-from options.publication import option_snapshot_pointer_path
+from options.publication import SUPPORTED_OPTION_PROVIDERS, option_snapshot_pointer_path
 
 
 @dataclass(frozen=True)
@@ -187,6 +187,10 @@ def run_strategy_once(
         "copied_model_artifacts": copied_models,
         "research_trace": strategy_research_trace(),
         "pricing_evidence": dict(selection.pricing_report),
+        "health_states": _strategy_health_states(
+            selection.model_reports,
+            selection.pricing_report,
+        ),
         "strategy_candidate_contract": _strategy_candidate_contract(),
     }
     (run_directory / reports_name).write_text(
@@ -203,7 +207,7 @@ def run_strategy_once(
     option_receipts = _receipt_lineage(
         root,
         selection.source_files,
-        marker=("options", "snapshots", "schwab"),
+        marker=("options", "snapshots"),
         receipt_name="receipt.json",
     )
     stock_bbo_files = _file_lineage(
@@ -296,20 +300,31 @@ def _option_snapshot_heads(
         dict.fromkeys(str(value).strip().upper() for value in symbols)
     )
     for symbol in clean_symbols:
-        pointer = option_snapshot_pointer_path(root, symbol=symbol)
-        if not pointer.is_file():
+        provider_heads: dict[str, str] = {}
+        for provider in SUPPORTED_OPTION_PROVIDERS:
+            pointer = option_snapshot_pointer_path(
+                root,
+                symbol=symbol,
+                provider=provider,
+            )
+            if not pointer.is_file():
+                continue
+            try:
+                payload = json.loads(pointer.read_text(encoding="utf-8"))
+                available_at = utc_timestamp(
+                    payload.get("first_available_at", payload.get("available_at"))
+                )
+                provider_heads[provider] = (
+                    "FUTURE"
+                    if cutoff is not None and available_at > cutoff
+                    else file_checksum(pointer)
+                )
+            except Exception:
+                provider_heads[provider] = "INVALID"
+        if not provider_heads:
             heads[symbol] = "MISSING"
             continue
-        try:
-            payload = json.loads(pointer.read_text(encoding="utf-8"))
-            available_at = utc_timestamp(payload["available_at"])
-            heads[symbol] = (
-                "FUTURE"
-                if cutoff is not None and available_at > cutoff
-                else file_checksum(pointer)
-            )
-        except Exception:
-            heads[symbol] = "INVALID"
+        heads[symbol] = json.dumps(provider_heads, sort_keys=True, separators=(",", ":"))
     return heads
 
 
@@ -465,13 +480,57 @@ def _strategy_candidate_contract() -> dict[str, object]:
         "schema_version": STRATEGY_CANDIDATE_SCHEMA_VERSION,
         "model_policy_version": STRATEGY_MODEL_POLICY_VERSION,
         "ranking_policy_version": STRATEGY_RANKING_POLICY_VERSION,
-        "decision_score": "profitable_outcome_probability",
+        "decision_score": "calibrated_profitable_outcome_probability_or_null",
+        "scenario_coverage_score": (
+            "nonprobabilistic_fraction_of_weighted_local_scenarios_profitable"
+        ),
         "fitted_score_bases": [
             BSGP_CALIBRATED_MODEL_SCORE_BASIS,
             BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
         ],
-        "fallback_score_basis": PRICING_SCENARIO_FALLBACK_SCORE_BASIS,
+        "heuristic_score_basis": SCENARIO_COVERAGE_SCORE_BASIS,
         "pricing_evidence_before_probability": True,
+        "heuristic_values_are_not_probabilities": True,
+    }
+
+
+def _strategy_health_states(
+    model_reports: Mapping[str, Mapping[str, object]],
+    pricing_report: Mapping[str, object],
+) -> dict[str, object]:
+    authority = pricing_report.get("authority_states")
+    authority = dict(authority) if isinstance(authority, Mapping) else {}
+    model_available = any(
+        str(report.get("status", "")).upper() == "MODEL_FIT"
+        for report in model_reports.values()
+    )
+    calibration_available = any(
+        str(report.get("calibration_status", "")).upper() == "AVAILABLE"
+        for report in model_reports.values()
+    )
+    return {
+        "loop_a_readiness": authority.get("loop_a_readiness", "UNKNOWN"),
+        "pricing_model": authority.get(
+            "live_pricing_authority", "PRICING_MODE_OFF_OR_UNKNOWN"
+        ),
+        "strategy_model": "AVAILABLE" if model_available else "UNAVAILABLE",
+        "calibration": "AVAILABLE" if calibration_available else "UNAVAILABLE",
+        "pricing_quality": {
+            "surface_failure_rows": int(
+                pricing_report.get("surface_quality_failure_rows", 0)
+            ),
+            "liquidity_failure_rows": int(
+                pricing_report.get("liquidity_policy_failure_rows", 0)
+            ),
+        },
+        "candidate_authority": {
+            "calibrated_rows": int(
+                pricing_report.get("calibrated_candidate_rows", 0)
+            ),
+            "scenario_coverage_rows": int(
+                pricing_report.get("scenario_coverage_candidate_rows", 0)
+            ),
+        },
     }
 
 
@@ -486,11 +545,16 @@ def _validate_strategy_candidate_rows(frame: pd.DataFrame) -> None:
         "decision_score",
         "score_basis",
         "candidate_rank",
+        "scenario_coverage_score",
         "raw_profit_probability",
         "calibrated_profit_probability",
         "expected_net_profit",
         "expected_return_on_risk",
         "model_status",
+        "pricing_leg_coverage",
+        "surface_quality_pass",
+        "liquidity_policy_pass",
+        "all_option_quotes_valid",
         "model_policy_version",
         "ranking_policy_version",
         "schema_version",
@@ -513,12 +577,12 @@ def _validate_strategy_candidate_rows(frame: pd.DataFrame) -> None:
     calibrated = pd.to_numeric(
         frame["calibrated_profit_probability"], errors="coerce"
     )
-    for values, label in (
-        (score, "decision score"),
-        (raw, "raw profit probability"),
+    scenario = pd.to_numeric(frame["scenario_coverage_score"], errors="coerce")
+    if (
+        not scenario.map(math.isfinite).all()
+        or not scenario.between(0.0, 1.0).all()
     ):
-        if not values.map(math.isfinite).all() or not values.between(0.0, 1.0).all():
-            raise ValueError(f"Strategy candidate {label} must be finite in [0, 1]")
+        raise ValueError("Strategy candidate scenario coverage must be finite in [0, 1]")
     for column in ("expected_net_profit", "expected_return_on_risk"):
         values = pd.to_numeric(frame[column], errors="coerce")
         if not values.map(math.isfinite).all():
@@ -532,12 +596,16 @@ def _validate_strategy_candidate_rows(frame: pd.DataFrame) -> None:
     )
     fitted = bsgp_fitted | black_scholes_fitted
     prior = frame["score_basis"].eq(
-        PRICING_SCENARIO_FALLBACK_SCORE_BASIS
+        SCENARIO_COVERAGE_SCORE_BASIS
     )
     if not (fitted | prior).all():
         raise ValueError("Strategy candidate score basis is invalid")
     if (
         not frame.loc[fitted, "model_status"].eq("MODEL_FIT").all()
+        or not raw.loc[fitted].map(math.isfinite).all()
+        or not raw.loc[fitted].between(0.0, 1.0).all()
+        or not score.loc[fitted].map(math.isfinite).all()
+        or not score.loc[fitted].between(0.0, 1.0).all()
         or not calibrated.loc[fitted].map(math.isfinite).all()
         or not calibrated.loc[fitted].between(0.0, 1.0).all()
         or not score.loc[fitted].sub(calibrated.loc[fitted]).abs().le(1e-12).all()
@@ -562,12 +630,34 @@ def _validate_strategy_candidate_rows(frame: pd.DataFrame) -> None:
         raise ValueError(
             "Calibrated Strategy score basis does not match pricing source"
         )
+    pricing_coverage = pd.to_numeric(
+        frame.get("pricing_leg_coverage"), errors="coerce"
+    )
+    quality_valid = (
+        frame.get("surface_quality_pass", pd.Series(False, index=frame.index))
+        .fillna(False)
+        .astype(bool)
+        & frame.get("liquidity_policy_pass", pd.Series(False, index=frame.index))
+        .fillna(False)
+        .astype(bool)
+        & frame.get("all_option_quotes_valid", pd.Series(False, index=frame.index))
+        .fillna(False)
+        .astype(bool)
+    )
     if (
-        not frame.loc[prior, "model_status"].eq("PRICING_SCENARIO").all()
-        or not calibrated.loc[prior].isna().all()
-        or not score.loc[prior].sub(raw.loc[prior]).abs().le(1e-12).all()
+        not pricing_coverage.loc[fitted].ge(1.0 - 1e-12).all()
+        or not quality_valid.loc[fitted].all()
     ):
-        raise ValueError("Scenario-prior Strategy candidate score contract is invalid")
+        raise ValueError(
+            "Calibrated Strategy scores require full exact-leg pricing and quality"
+        )
+    if (
+        not frame.loc[prior, "model_status"].eq("HEURISTIC_ONLY").all()
+        or not raw.loc[prior].isna().all()
+        or not calibrated.loc[prior].isna().all()
+        or not score.loc[prior].isna().all()
+    ):
+        raise ValueError("Scenario-coverage Strategy candidate contract is invalid")
 
     ranks = pd.to_numeric(frame["candidate_rank"], errors="coerce")
     if ranks.isna().any() or not ranks.ge(1).all() or not ranks.mod(1).eq(0).all():

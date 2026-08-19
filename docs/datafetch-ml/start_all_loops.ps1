@@ -17,7 +17,7 @@ $owners = @(
     },
     [pscustomobject]@{
         Title = '2 - Ducketz Loop A'
-        Arguments = @('-m', 'datafetching.orchestrate', '--datastore-target', 'pc', '--watchlist', 'datafetching\watchlist.txt', '--providers', 'databento', 'fmp', 'fred', 'schwab', 'sec', '--cme-mode', 'external', '--options-mode', 'external', '--interval-minutes', '15')
+        Arguments = @('-m', 'datafetching.orchestrate', '--datastore-target', 'pc', '--watchlist', 'datafetching\watchlist.txt', '--providers', 'databento', 'fmp', 'fred', 'schwab', 'sec', '--cme-mode', 'external', '--options-mode', 'external', '--interval-minutes', '15', '--bar-readiness-recovery-timeout-seconds', '420', '--bar-readiness-recovery-poll-seconds', '10')
     },
     [pscustomobject]@{
         Title = '3 - Ducketz Daily ALFRED'
@@ -25,7 +25,7 @@ $owners = @(
     },
     [pscustomobject]@{
         Title = '4 - Ducketz Active Pricing - logical Loop 3'
-        Arguments = @('-m', 'ml.option_pricing_runtime', '--datastore-target', 'pc', '--watchlist', 'datafetching\watchlist.txt', '--interval-minutes', '15', '--phase-offset-minutes', '1', '--bar-readiness-mode', 'required', '--bar-readiness-timeout-seconds', '30')
+        Arguments = @('-m', 'ml.option_pricing_runtime', '--datastore-target', 'pc', '--watchlist', 'datafetching\watchlist.txt', '--interval-minutes', '15', '--phase-offset-minutes', '1', '--bar-readiness-mode', 'required', '--bar-readiness-timeout-seconds', '480')
     },
     [pscustomobject]@{
         Title = '5 - Ducketz Options Capture - logical Loop 4'

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -30,6 +31,7 @@ from datafetching.cme_cross_asset_context import (
     CmeCrossAssetQualityError,
     materialize_cme_cross_asset_context,
 )
+from datafetching.decision_time import completed_bar_clock_for_target
 from datafetching.cme_history import cme_writer_lock_path
 from datafetching.derived_bars import (
     DERIVED_INTRADAY_FREQUENCIES,
@@ -43,6 +45,169 @@ from datafetching.parquet_store import ParquetStore
 from datafetching.runtime_lock import exclusive_runtime_lock
 
 DATABENTO_MAX_SYMBOLS_PER_REQUEST = 2_000
+DATABENTO_HISTORICAL_TARGET_MAX_LAG_SECONDS = 20 * 60
+
+
+class DatabentoTargetRecoveryError(RuntimeError):
+    """The bounded Historical-API target recovery could not prove exact bars."""
+
+
+def recover_historical_minute_target(
+    symbols: Iterable[str],
+    store: ParquetStore,
+    *,
+    target_snapshot_for: object,
+    timeout_seconds: float,
+    poll_seconds: float = 10.0,
+    provider: DatabentoMarketDataProvider | None = None,
+    clock: Callable[[], object] | None = None,
+    sleeper: Callable[[float], None] = time.sleep,
+    monotonic_clock: Callable[[], float] = time.monotonic,
+) -> Mapping[str, object]:
+    """Recover one exact all-symbol 1m boundary after Historical publication lag.
+
+    Databento Historical availability is polled before any retry request.  The
+    retry is therefore tied to the provider's advertised ``ohlcv-1m`` end bound,
+    not to an arbitrary sleep.  The function persists only completed bars and
+    returns only after every requested symbol resolves the exact target; it does
+    not publish Loop A readiness itself.
+    """
+
+    if timeout_seconds < 0:
+        raise ValueError("Databento target recovery timeout cannot be negative")
+    if poll_seconds <= 0:
+        raise ValueError("Databento target recovery poll interval must be positive")
+    clean_symbols = _normalize_symbols(symbols)
+    target = pd.to_datetime(target_snapshot_for, utc=True, errors="coerce")
+    if pd.isna(target):
+        raise ValueError("Databento target recovery requires a valid UTC target")
+    target = pd.Timestamp(target)
+    now = clock or (lambda: datetime.now(timezone.utc))
+    started_at = _utc_timestamp(now(), label="recovery clock")
+    causal_deadline = target + pd.Timedelta(
+        seconds=DATABENTO_HISTORICAL_TARGET_MAX_LAG_SECONDS
+    )
+    configured_deadline = started_at + pd.Timedelta(seconds=float(timeout_seconds))
+    deadline = min(causal_deadline, configured_deadline)
+    monotonic_deadline = monotonic_clock() + max(
+        0.0, (deadline - started_at).total_seconds()
+    )
+    effective_provider = provider or DatabentoMarketDataProvider()
+    minute_specs = tuple(
+        spec
+        for spec in effective_provider.native_specs()
+        if str(getattr(spec, "frequency", "")).strip().lower() == "1m"
+    )
+    if len(minute_specs) != 1:
+        raise DatabentoTargetRecoveryError(
+            "Databento Historical recovery requires exactly one native 1m spec"
+        )
+    spec = minute_specs[0]
+    attempts = 0
+    last_state = "PROVIDER_RANGE_NOT_CHECKED"
+    advertised_end: pd.Timestamp | None = None
+
+    while True:
+        observed_at = _utc_timestamp(now(), label="recovery clock")
+        if observed_at > causal_deadline:
+            last_state = "CAUSAL_DEADLINE_EXCEEDED"
+        else:
+            try:
+                range_payload = effective_provider.dataset_range()
+                available_range = effective_provider.available_range_for_schema(
+                    spec.schema,
+                    dataset_range=range_payload,
+                )
+                advertised_end = _utc_timestamp(
+                    available_range.end,
+                    label="Databento available range end",
+                )
+                if advertised_end >= target:
+                    attempts += 1
+                    request_start = max(
+                        _utc_timestamp(
+                            available_range.start,
+                            label="Databento available range start",
+                        ),
+                        target - _continuation_overlap("1m"),
+                    )
+                    request_spec = replace(
+                        spec,
+                        lookback=pd.Timedelta(
+                            max(
+                                _continuation_overlap("1m"),
+                                advertised_end - request_start,
+                            )
+                        ).to_pytimedelta(),
+                    )
+                    fetched, selected_range = effective_provider.fetch_native_bars_many(
+                        clean_symbols,
+                        request_spec,
+                        available_range=available_range,
+                    )
+                    missing = tuple(
+                        symbol for symbol in clean_symbols if symbol not in fetched
+                    )
+                    if missing:
+                        raise DatabentoTargetRecoveryError(
+                            "Databento recovery omitted symbol(s): "
+                            + ", ".join(missing)
+                        )
+                    persisted_at = max(observed_at, target)
+                    for symbol in clean_symbols:
+                        bars, raw_frame = fetched[symbol]
+                        _persist_native_results(
+                            symbol,
+                            store,
+                            provider=effective_provider,
+                            profile="continuation",
+                            observed_at=persisted_at.to_pydatetime(),
+                            native_results=(
+                                (spec, bars, raw_frame, selected_range, None),
+                            ),
+                            batch_watchlist_symbol_count=len(clean_symbols),
+                            run_derived=False,
+                        )
+                    for symbol in clean_symbols:
+                        completed_bar_clock_for_target(
+                            store.root_dir,
+                            symbol=symbol,
+                            target_snapshot_for=target,
+                            as_of=persisted_at,
+                        )
+                    return {
+                        "status": "EXACT_TARGET_RECOVERED",
+                        "target_snapshot_for": target.isoformat(),
+                        "provider_schema": spec.schema,
+                        "provider_available_end": advertised_end.isoformat(),
+                        "attempts": attempts,
+                        "symbols": clean_symbols,
+                        "observed_at": persisted_at.isoformat(),
+                    }
+                last_state = "PROVIDER_TARGET_NOT_YET_AVAILABLE"
+            except DatabentoTargetRecoveryError:
+                raise
+            except Exception as exc:
+                last_state = f"{type(exc).__name__}: {exc}"
+
+        remaining = monotonic_deadline - monotonic_clock()
+        if remaining <= 0 or observed_at >= deadline:
+            advertised = (
+                advertised_end.isoformat() if advertised_end is not None else "UNKNOWN"
+            )
+            raise DatabentoTargetRecoveryError(
+                "Databento Historical exact-target recovery deadline missed; "
+                f"target={target.isoformat()}; advertised_end={advertised}; "
+                f"state={last_state}; attempts={attempts}"
+            )
+        sleeper(min(float(poll_seconds), remaining))
+
+
+def _utc_timestamp(value: object, *, label: str) -> pd.Timestamp:
+    timestamp = pd.to_datetime(value, utc=True, errors="coerce")
+    if pd.isna(timestamp):
+        raise ValueError(f"Invalid {label}")
+    return pd.Timestamp(timestamp)
 
 
 def fetch(

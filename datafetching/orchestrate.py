@@ -24,6 +24,7 @@ from datafetching.main import (
     run_symbols_fetch,
 )
 from datafetching.bar_readiness import publish_bar_readiness
+from datafetching.databento_fetch import recover_historical_minute_target
 from datafetching.decision_time import cycle_target_decision
 from datafetching.observability import timed_stage
 from datafetching.parquet_store import DATASTORE_TARGETS, ParquetStore
@@ -87,6 +88,21 @@ def main(argv: list[str] | None = None) -> int:
         help="Skip shared Databento CME context.",
     )
     parser.add_argument(
+        "--bar-readiness-recovery-timeout-seconds",
+        type=float,
+        default=420.0,
+        help=(
+            "Bounded provider-aware wait for Databento Historical ohlcv-1m "
+            "availability when the exact Loop A target is initially absent."
+        ),
+    )
+    parser.add_argument(
+        "--bar-readiness-recovery-poll-seconds",
+        type=float,
+        default=10.0,
+        help="Databento Historical metadata poll interval during target recovery.",
+    )
+    parser.add_argument(
         "--cme-mode",
         choices=("external", "inline"),
         default="external",
@@ -130,6 +146,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.interval_minutes < 1:
         parser.error("--interval-minutes must be at least 1")
+    if args.bar_readiness_recovery_timeout_seconds < 0:
+        parser.error("--bar-readiness-recovery-timeout-seconds cannot be negative")
+    if args.bar_readiness_recovery_poll_seconds <= 0:
+        parser.error("--bar-readiness-recovery-poll-seconds must be positive")
     symbols = normalize_symbols(args.symbols or read_watchlist(args.watchlist))
     if not symbols:
         parser.error("No symbols were found. Add one to the watchlist or pass --symbols.")
@@ -175,6 +195,12 @@ def main(argv: list[str] | None = None) -> int:
                             run_signal_calculations=not args.skip_signals,
                             cycle_started_at=cycle_started_at,
                             loop_a_generation=cycle.generation,
+                            bar_readiness_recovery_timeout_seconds=(
+                                args.bar_readiness_recovery_timeout_seconds
+                            ),
+                            bar_readiness_recovery_poll_seconds=(
+                                args.bar_readiness_recovery_poll_seconds
+                            ),
                         )
                     except BaseException:
                         finish_loop_a_cycle(
@@ -230,7 +256,13 @@ def run_cycle(
     cycle_started_at: datetime | None = None,
     loop_a_generation: str | None = None,
     bar_readiness_clock: Callable[[], object] | None = None,
+    bar_readiness_recovery_timeout_seconds: float = 0.0,
+    bar_readiness_recovery_poll_seconds: float = 10.0,
 ) -> int:
+    if bar_readiness_recovery_timeout_seconds < 0:
+        raise ValueError("Bar readiness recovery timeout cannot be negative")
+    if bar_readiness_recovery_poll_seconds <= 0:
+        raise ValueError("Bar readiness recovery poll interval must be positive")
     failures = 0
     providers_tuple = tuple(providers)
     fetch_providers_tuple = (
@@ -271,8 +303,8 @@ def run_cycle(
         nonlocal readiness_attempted
         if provider != "databento" or readiness_attempted:
             return
+        readiness_attempted = True
         if not target_decision.actionable:
-            readiness_attempted = True
             print(
                 "Loop A bar readiness idle: "
                 f"cycle_mode={target_decision.cycle_mode}; "
@@ -300,7 +332,6 @@ def run_cycle(
                 as_of=observed_at,
                 clock=(lambda: observed_at),
             )
-            readiness_attempted = True
             print(
                 "Loop A bars ready: "
                 f"cycle_mode=ACTIONABLE; "
@@ -309,13 +340,64 @@ def run_cycle(
                 f"ready_at={readiness.ready_at.isoformat()}; "
                 f"symbols={len(readiness.symbols)}"
             )
+        except FileNotFoundError as initial_exc:
+            if bar_readiness_recovery_timeout_seconds <= 0:
+                print(
+                    "Loop A bars waiting: "
+                    f"cycle_mode=ACTIONABLE; "
+                    "target_state=WAITING_FOR_LOOP_A_READINESS; "
+                    f"target={target.isoformat()}; "
+                    f"reason={type(initial_exc).__name__}: {initial_exc}"
+                )
+                return
+            try:
+                recovery = recover_historical_minute_target(
+                    symbols_tuple,
+                    store,
+                    target_snapshot_for=target,
+                    timeout_seconds=bar_readiness_recovery_timeout_seconds,
+                    poll_seconds=bar_readiness_recovery_poll_seconds,
+                    clock=bar_readiness_clock,
+                )
+                observed_at = (
+                    bar_readiness_clock()
+                    if bar_readiness_clock is not None
+                    else datetime.now(timezone.utc)
+                )
+                readiness = publish_bar_readiness(
+                    store.root_dir,
+                    target_snapshot_for=target,
+                    symbols=symbols_tuple,
+                    loop_a_generation=(
+                        loop_a_generation
+                        or f"standalone-{started_at.strftime('%Y%m%dT%H%M%S.%fZ')}"
+                    ),
+                    as_of=observed_at,
+                    clock=(lambda: observed_at),
+                )
+                print(
+                    "Loop A bars ready after provider-aware recovery: "
+                    f"target_state=ACTIONABLE_EXACT_TARGET; "
+                    f"target={readiness.target_snapshot_for.isoformat()}; "
+                    f"ready_at={readiness.ready_at.isoformat()}; "
+                    f"provider_available_end={recovery['provider_available_end']}; "
+                    f"attempts={recovery['attempts']}"
+                )
+            except Exception as exc:
+                print(
+                    "Loop A bars waiting: "
+                    f"cycle_mode=ACTIONABLE; "
+                    "target_state=HISTORICAL_RECOVERY_DEADLINE_MISSED; "
+                    f"target={target.isoformat()}; "
+                    f"reason={type(exc).__name__}: {exc}"
+                )
         except Exception as exc:
-            # Loop A completion remains provider-owned and independent. Pricing
-            # decides whether the bounded readiness deadline is later missed.
+            # Corrupt or contradictory readiness is not eligible for a network
+            # retry.  The existing authority fails closed for operator repair.
             print(
                 "Loop A bars waiting: "
                 f"cycle_mode=ACTIONABLE; "
-                "target_state=WAITING_FOR_LOOP_A_READINESS; "
+                "target_state=READINESS_INTEGRITY_FAILURE; "
                 f"target={target.isoformat()}; "
                 f"reason={type(exc).__name__}: {exc}"
             )

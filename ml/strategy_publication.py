@@ -10,14 +10,15 @@ import pandas as pd
 
 from ml.artifacts import file_checksum, verify_manifest
 from ml.strategy_selection.contracts import (
+    SCENARIO_COVERAGE_SCORE_BASIS,
     STRATEGY_CANDIDATE_SCHEMA_VERSION,
     STRATEGY_MODEL_POLICY_VERSION,
     STRATEGY_RANKING_POLICY_VERSION,
 )
 
 
-STRATEGY_PUBLICATION_VERSION = "strategy-publication-v3"
-STRATEGY_POINTER_VERSION = "strategy-pointer-v3"
+STRATEGY_PUBLICATION_VERSION = "strategy-publication-v4"
+STRATEGY_POINTER_VERSION = "strategy-pointer-v4"
 STRATEGY_RECEIPT_NAME = "publication.json"
 
 
@@ -160,13 +161,17 @@ def _candidate_contract(manifest: Mapping[str, object]) -> dict[str, object]:
         "schema_version": STRATEGY_CANDIDATE_SCHEMA_VERSION,
         "model_policy_version": STRATEGY_MODEL_POLICY_VERSION,
         "ranking_policy_version": STRATEGY_RANKING_POLICY_VERSION,
-        "decision_score": "profitable_outcome_probability",
+        "decision_score": "calibrated_profitable_outcome_probability_or_null",
+        "scenario_coverage_score": (
+            "nonprobabilistic_fraction_of_weighted_local_scenarios_profitable"
+        ),
         "fitted_score_bases": [
             "BSGP_CALIBRATED_MODEL",
             "BLACK_SCHOLES_CALIBRATED_MODEL",
         ],
-        "fallback_score_basis": "PRICING_SCENARIO_FALLBACK",
+        "heuristic_score_basis": SCENARIO_COVERAGE_SCORE_BASIS,
         "pricing_evidence_before_probability": True,
+        "heuristic_values_are_not_probabilities": True,
     }
     if not isinstance(observed, Mapping) or dict(observed) != expected:
         raise StrategyPublicationError(

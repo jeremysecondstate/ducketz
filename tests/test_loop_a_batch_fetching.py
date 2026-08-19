@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
+from app.models.market_data import MarketBar
 from app.services.databento_market_data import (
     DatabentoAvailableRange,
     DatabentoMarketDataProvider,
@@ -75,7 +76,9 @@ def test_default_watchlist_and_runtime_commands_use_the_same_configured_symbols(
     assert "python -m" not in loop_b_command
     assert "capture-current-rate" in loop_a_command
     assert "option_pricing_admin" in loop_a_command
-    assert "--bar-readiness-timeout-seconds 30" in loop_a_command
+    assert "--bar-readiness-timeout-seconds 480" in loop_a_command
+    assert "--bar-readiness-recovery-timeout-seconds 420" in loop_a_command
+    assert "--bar-readiness-recovery-poll-seconds 10" in loop_a_command
     assert "--pricing-barrier-timeout-seconds 45" in loop_a_command
 
 
@@ -151,6 +154,160 @@ def test_databento_minute_fast_lane_persists_all_symbols_before_callback(
     ]
     assert events[-2:] == ["persist-GOOG-full", "persist-NVDA-full"]
     assert set(result) == set(symbols)
+
+
+def test_historical_minute_recovery_waits_for_advertised_exact_boundary(
+    tmp_path: Path,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    spec = DatabentoAnalysisSourceSpec(
+        key="source_100d_1m",
+        schema="ohlcv-1m",
+        frequency="1m",
+        lookback=timedelta(days=100),
+    )
+    state = {
+        "wall": target + pd.Timedelta(seconds=20),
+        "monotonic": 0.0,
+        "range_calls": 0,
+        "fetch_calls": 0,
+    }
+
+    class _Provider:
+        dataset = "EQUS.MINI"
+
+        def native_specs(self):
+            return (spec,)
+
+        def dataset_range(self):
+            state["range_calls"] += 1
+            end = (
+                target - pd.Timedelta(minutes=1)
+                if state["range_calls"] == 1
+                else target
+            )
+            return {"start": target - pd.Timedelta(days=1), "end": end}
+
+        def available_range_for_schema(self, schema, *, dataset_range):
+            return DatabentoAvailableRange(
+                schema=schema,
+                start=pd.Timestamp(dataset_range["start"]).to_pydatetime(),
+                end=pd.Timestamp(dataset_range["end"]).to_pydatetime(),
+            )
+
+        def fetch_native_bars_many(self, symbols, _spec, *, available_range):
+            state["fetch_calls"] += 1
+            assert state["range_calls"] == 2
+            rows = {}
+            for index, symbol in enumerate(symbols):
+                price = 100.0 + index
+                bar = MarketBar(
+                    symbol=symbol,
+                    source="databento",
+                    timeframe="1m",
+                    timestamp=(target - pd.Timedelta(minutes=1)).to_pydatetime(),
+                    open=price,
+                    high=price + 1.0,
+                    low=price - 1.0,
+                    close=price + 0.5,
+                    volume=100.0,
+                )
+                rows[symbol] = (
+                    [bar],
+                    pd.DataFrame(
+                        [
+                            {
+                                "symbol": symbol,
+                                "ts_event": bar.timestamp,
+                                "open": bar.open,
+                                "high": bar.high,
+                                "low": bar.low,
+                                "close": bar.close,
+                                "volume": bar.volume,
+                            }
+                        ]
+                    ),
+                )
+            return rows, available_range
+
+    def sleep(seconds: float) -> None:
+        state["monotonic"] += seconds
+        state["wall"] += pd.Timedelta(seconds=seconds)
+
+    report = databento_fetch.recover_historical_minute_target(
+        ("GOOG", "NVDA"),
+        ParquetStore(tmp_path),
+        target_snapshot_for=target,
+        timeout_seconds=60.0,
+        poll_seconds=10.0,
+        provider=_Provider(),
+        clock=lambda: state["wall"],
+        sleeper=sleep,
+        monotonic_clock=lambda: state["monotonic"],
+    )
+
+    assert report["status"] == "EXACT_TARGET_RECOVERED"
+    assert report["attempts"] == 1
+    assert state["range_calls"] == 2
+    assert state["fetch_calls"] == 1
+    assert not (tmp_path / "loop-a" / "bar-readiness-latest" / "run.json").exists()
+
+
+def test_historical_minute_recovery_never_fetches_unadvertised_target(
+    tmp_path: Path,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    spec = DatabentoAnalysisSourceSpec(
+        key="source_100d_1m",
+        schema="ohlcv-1m",
+        frequency="1m",
+        lookback=timedelta(days=100),
+    )
+    state = {"wall": target, "monotonic": 0.0, "fetch_calls": 0}
+
+    class _Provider:
+        dataset = "EQUS.MINI"
+
+        def native_specs(self):
+            return (spec,)
+
+        def dataset_range(self):
+            return {
+                "start": target - pd.Timedelta(days=1),
+                "end": target - pd.Timedelta(minutes=1),
+            }
+
+        def available_range_for_schema(self, schema, *, dataset_range):
+            return DatabentoAvailableRange(
+                schema=schema,
+                start=pd.Timestamp(dataset_range["start"]).to_pydatetime(),
+                end=pd.Timestamp(dataset_range["end"]).to_pydatetime(),
+            )
+
+        def fetch_native_bars_many(self, *_args, **_kwargs):
+            state["fetch_calls"] += 1
+            raise AssertionError("unadvertised target must not be fetched")
+
+    def sleep(seconds: float) -> None:
+        state["monotonic"] += seconds
+        state["wall"] += pd.Timedelta(seconds=seconds)
+
+    with pytest.raises(
+        databento_fetch.DatabentoTargetRecoveryError,
+        match="PROVIDER_TARGET_NOT_YET_AVAILABLE",
+    ):
+        databento_fetch.recover_historical_minute_target(
+            ("GOOG",),
+            ParquetStore(tmp_path),
+            target_snapshot_for=target,
+            timeout_seconds=20.0,
+            poll_seconds=10.0,
+            provider=_Provider(),
+            clock=lambda: state["wall"],
+            sleeper=sleep,
+            monotonic_clock=lambda: state["monotonic"],
+        )
+    assert state["fetch_calls"] == 0
 
 
 def test_databento_provider_splits_one_multi_symbol_response_by_ticker(

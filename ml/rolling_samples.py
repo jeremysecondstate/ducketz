@@ -8,7 +8,11 @@ import numpy as np
 import pandas as pd
 
 from datafetching.ids import add_readable_id
-from ml.calendars import ExchangeSessionCalendar, calendar_for_horizon
+from ml.calendars import (
+    ExchangeSessionCalendar,
+    attach_official_intraday_sessions,
+    calendar_for_horizon,
+)
 from ml.contracts import MLContractError
 from ml.horizons import HorizonSpecification, is_weekly_horizon
 from ml.timing import utc_timestamp
@@ -244,7 +248,7 @@ def _build_symbol_samples(
             target_prices,
             source_prices=source_prices,
             calendar=calendar,
-            target_minute_count=240,
+            target_minute_count=180,
         )
     elif specification.horizon == "1d":
         windows = _daily_windows(features, target_prices, calendar=calendar)
@@ -660,29 +664,17 @@ def _prepare_prices(
         )
         part = group.copy()
         if specification.source_timeframe == "1h":
-            local_sessions = group["bar_timestamp"].dt.tz_convert(
-                calendar.exchange_timezone
-            ).dt.tz_localize(None).dt.normalize()
             if part["bar_end_timestamp"].isna().any():
                 raise MLContractError(
                     "Hourly prices require complete bar_end_timestamp timing"
                 )
-            interval_lookup = {
-                (item.start_timestamp, item.end_timestamp): item.exchange_session
-                for item in calendar.eligible_hour_intervals(
-                    start_session=local_sessions.min() - pd.Timedelta(days=7),
-                    end_session=local_sessions.max() + pd.Timedelta(days=7),
-                )
-            }
-            part["exchange_session"] = local_sessions
-            part["intraday_interval_eligible"] = [
-                (pd.Timestamp(start), pd.Timestamp(end)) in interval_lookup
-                for start, end in zip(
-                    part["bar_timestamp"],
-                    part["bar_end_timestamp"],
-                    strict=True,
-                )
-            ]
+            part = attach_official_intraday_sessions(
+                part,
+                calendar_column="exchange_calendar",
+                bar_timestamp_column="bar_timestamp",
+                bar_end_column="bar_end_timestamp",
+                include_extended_hours=specification.horizon == "1h",
+            )
         else:
             daily_sessions = group["bar_timestamp"].dt.tz_convert(
                 "UTC"

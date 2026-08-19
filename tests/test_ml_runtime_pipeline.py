@@ -562,7 +562,9 @@ def test_directional_publication_does_not_wait_for_active_external_writers_and_s
     verify_parquet_schema(candidates_path, STRATEGY_CANDIDATE_SCHEMA)
     candidates = pd.read_parquet(candidates_path)
     assert not candidates.empty
-    assert candidates["score_basis"].eq("PRICING_SCENARIO_FALLBACK").all()
+    assert candidates["score_basis"].eq("SCENARIO_COVERAGE_HEURISTIC").all()
+    assert candidates["scenario_coverage_score"].between(0.0, 1.0).all()
+    assert candidates["decision_score"].isna().all()
     assert candidates["maximum_quote_staleness_seconds"].isna().all()
     assert not candidates["liquidity_policy_pass"].any()
     assert all(
@@ -577,13 +579,17 @@ def test_directional_publication_does_not_wait_for_active_external_writers_and_s
         "schema_version": STRATEGY_CANDIDATE_SCHEMA_VERSION,
         "model_policy_version": STRATEGY_MODEL_POLICY_VERSION,
         "ranking_policy_version": STRATEGY_RANKING_POLICY_VERSION,
-        "decision_score": "profitable_outcome_probability",
+        "decision_score": "calibrated_profitable_outcome_probability_or_null",
+        "scenario_coverage_score": (
+            "nonprobabilistic_fraction_of_weighted_local_scenarios_profitable"
+        ),
         "fitted_score_bases": [
             "BSGP_CALIBRATED_MODEL",
             "BLACK_SCHOLES_CALIBRATED_MODEL",
         ],
-        "fallback_score_basis": "PRICING_SCENARIO_FALLBACK",
+        "heuristic_score_basis": "SCENARIO_COVERAGE_HEURISTIC",
         "pricing_evidence_before_probability": True,
+        "heuristic_values_are_not_probabilities": True,
     }
     assert source_checksums == {
         path.name: file_checksum(path)
@@ -604,7 +610,11 @@ def test_directional_publication_does_not_wait_for_active_external_writers_and_s
         STRATEGY_PUBLICATION_VERSION
     )
     assert _current_source_already_processed(tmp_path) is True
-    option_pointer = option_snapshot_pointer_path(tmp_path, symbol="GOOG")
+    option_pointer = option_snapshot_pointer_path(
+        tmp_path,
+        symbol="GOOG",
+        provider="databento-opra",
+    )
     option_pointer.parent.mkdir(parents=True, exist_ok=True)
     option_pointer.write_text(
         json.dumps(

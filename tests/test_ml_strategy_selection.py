@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 import time
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 
+import ml.strategy_selection.runtime as strategy_runtime
 from datafetching.quote_liquidity import (
     QUOTE_LIQUIDITY_CALCULATION,
     QUOTE_LIQUIDITY_CALCULATION_VERSION,
@@ -22,6 +24,7 @@ from ml.strategy_selection.chain import (
     OptionChainHistory,
     entry_chain_receipt,
     exit_chain_receipt,
+    load_option_chain_history,
 )
 from ml.strategy_selection.contracts import (
     BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
@@ -45,6 +48,11 @@ from ml.strategy_selection.model import (
     partition_strategy_outcomes,
     score_strategy_candidates,
 )
+from ml.strategy_selection.outcome_store import (
+    StrategyOutcomeStoreError,
+    publish_strategy_outcome_artifact,
+    read_strategy_outcome_artifact,
+)
 from ml.strategy_selection.registry import (
     STRATEGY_REGISTRY,
     validate_strategy_registry,
@@ -58,6 +66,7 @@ from options.features import (
     OPTION_SURFACE_QUALITY_POLICY_VERSION,
 )
 from options.snapshot import OPTION_CHAIN_SCHEMA_VERSION
+from options.publication import publish_option_snapshot
 
 
 _POLICY = StrategySelectionPolicy(
@@ -182,6 +191,154 @@ def test_entry_chain_receipt_uses_the_causal_interval_between_clocks() -> None:
     assert latest.surface["snapshot_for"] == decision + pd.Timedelta(minutes=25)
     assert latest.available_at == decision + pd.Timedelta(minutes=26)
     assert latest.contracts["available_at"].eq(latest.available_at).all()
+
+
+def test_committed_provider_neutral_history_prefers_opra_for_same_target(
+    tmp_path: Path,
+) -> None:
+    decision = pd.Timestamp("2026-07-31T20:05:00Z")
+    snapshot_for = decision - pd.Timedelta(minutes=5)
+    available_at = decision + pd.Timedelta(minutes=5)
+    for provider, underlying in (("databento-opra", 101.0), ("schwab", 202.0)):
+        contracts = _contracts_for_receipt(
+            snapshot_for=snapshot_for,
+            available_at=available_at,
+            underlying=underlying,
+        )
+        publish_option_snapshot(
+            tmp_path,
+            provider=provider,
+            dataset="OPRA.PILLAR" if provider == "databento-opra" else "SCHWAB_CHAIN",
+            symbol="GOOG",
+            raw=contracts,
+            contracts=contracts,
+            features=_surface_for_receipt(
+                snapshot_for=snapshot_for,
+                available_at=available_at,
+            ),
+            receipt_published_at=available_at + pd.Timedelta(seconds=1),
+        )
+
+    history = load_option_chain_history(
+        tmp_path,
+        symbol="GOOG",
+        available_not_after=available_at + pd.Timedelta(minutes=1),
+    )
+
+    assert history.provider == "databento-opra"
+    assert history.contracts["underlying_price"].eq(101.0).all()
+    assert any("databento-opra" in path.parts for path in history.source_files)
+    assert not any("schwab" in path.parts for path in history.source_files)
+
+
+def test_live_opra_chain_uses_only_causally_available_stock_bbo_for_underlying(
+    tmp_path: Path,
+) -> None:
+    sample = _sample(0)
+    decision = pd.Timestamp(sample["decision_timestamp"])
+    snapshot_for = pd.Timestamp(sample["bar_end_timestamp"])
+    receipt_available = decision + pd.Timedelta(minutes=5)
+    contracts = _contracts_for_receipt(
+        snapshot_for=snapshot_for,
+        available_at=receipt_available,
+        underlying=100.0,
+    )
+    contracts["underlying_price"] = np.nan
+    publish_option_snapshot(
+        tmp_path,
+        provider="databento-opra",
+        dataset="OPRA.PILLAR",
+        symbol="GOOG",
+        raw=contracts,
+        contracts=contracts,
+        features=contracts,
+        receipt_published_at=receipt_available + pd.Timedelta(seconds=1),
+    )
+    quote_path = (
+        tmp_path
+        / "stocks"
+        / "GOOG"
+        / "quotes"
+        / "features"
+        / "quote-liquidity"
+        / "schwab"
+        / "2026-07.parquet"
+    )
+    quote_path.parent.mkdir(parents=True, exist_ok=True)
+    _quote_for_receipt(
+        available_at=decision + pd.Timedelta(minutes=6),
+        underlying=100.0,
+    ).to_parquet(quote_path, index=False)
+
+    result = run_strategy_selection(
+        tmp_path,
+        samples=pd.DataFrame([sample]),
+        predictions=pd.DataFrame([_prediction_for_sample(sample)]),
+        forbidden_target_starts={},
+        run_timestamp=decision + pd.Timedelta(minutes=20),
+        input_available_at=decision + pd.Timedelta(minutes=20),
+        policy=_POLICY,
+    )
+
+    assert not result.candidates.empty
+    assert result.candidates["underlying_price"].eq(100.0).all()
+    assert any("databento-opra" in path.parts for path in result.source_files)
+
+
+def test_live_opra_chain_rejects_underlying_quote_after_strategy_cutoff(
+    tmp_path: Path,
+) -> None:
+    sample = _sample(0)
+    decision = pd.Timestamp(sample["decision_timestamp"])
+    snapshot_for = pd.Timestamp(sample["bar_end_timestamp"])
+    receipt_available = decision + pd.Timedelta(minutes=5)
+    contracts = _contracts_for_receipt(
+        snapshot_for=snapshot_for,
+        available_at=receipt_available,
+        underlying=100.0,
+    )
+    contracts["underlying_price"] = np.nan
+    publish_option_snapshot(
+        tmp_path,
+        provider="databento-opra",
+        dataset="OPRA.PILLAR",
+        symbol="GOOG",
+        raw=contracts,
+        contracts=contracts,
+        features=contracts,
+        receipt_published_at=receipt_available + pd.Timedelta(seconds=1),
+    )
+    quote_path = (
+        tmp_path
+        / "stocks"
+        / "GOOG"
+        / "quotes"
+        / "features"
+        / "quote-liquidity"
+        / "schwab"
+        / "2026-07.parquet"
+    )
+    quote_path.parent.mkdir(parents=True, exist_ok=True)
+    _quote_for_receipt(
+        available_at=decision + pd.Timedelta(minutes=25),
+        underlying=100.0,
+    ).to_parquet(quote_path, index=False)
+
+    result = run_strategy_selection(
+        tmp_path,
+        samples=pd.DataFrame([sample]),
+        predictions=pd.DataFrame([_prediction_for_sample(sample)]),
+        forbidden_target_starts={},
+        run_timestamp=decision + pd.Timedelta(minutes=20),
+        input_available_at=decision + pd.Timedelta(minutes=20),
+        policy=_POLICY,
+    )
+
+    assert result.candidates.empty
+    assert result.audit["construction_status"].eq(
+        "CANDIDATE_CONSTRUCTION_FAILED"
+    ).all()
+    assert result.audit["reason"].str.contains("underlying_price").all()
 
 
 def test_indexed_receipt_and_contract_lookup_matches_full_frame_scan() -> None:
@@ -538,7 +695,8 @@ def test_missing_optional_liquidity_diagnostics_remain_null() -> None:
         ),
         policy=_POLICY,
     )
-    assert scored["decision_score"].map(np.isfinite).all()
+    assert scored["scenario_coverage_score"].map(np.isfinite).all()
+    assert scored["decision_score"].isna().all()
 
 
 def test_market_state_prior_scores_every_exact_candidate_without_fake_calibration() -> None:
@@ -567,16 +725,16 @@ def test_market_state_prior_scores_every_exact_candidate_without_fake_calibratio
     scored = score_market_state_prior(candidates, state=state, policy=_POLICY)
 
     assert len(scored) == 4 * len(STRATEGY_REGISTRY)
-    assert scored["raw_profit_probability"].between(0.0, 1.0).all()
+    assert scored["scenario_coverage_score"].between(0.0, 1.0).all()
+    assert scored["raw_profit_probability"].isna().all()
     assert scored["calibrated_profit_probability"].isna().all()
     assert scored["expected_net_profit"].notna().all()
     assert scored["expected_return_on_risk"].notna().all()
-    assert scored["decision_score"].equals(scored["raw_profit_probability"])
-    assert scored["decision_score"].between(0.0, 1.0).all()
+    assert scored["decision_score"].isna().all()
     assert scored["score_basis"].eq(SCENARIO_PRIOR_SCORE_BASIS).all()
     assert scored["schema_version"].eq(STRATEGY_CANDIDATE_SCHEMA_VERSION).all()
     assert scored["candidate_rank"].tolist() == list(range(1, len(scored) + 1))
-    assert scored["model_status"].eq("PRICING_SCENARIO").all()
+    assert scored["model_status"].eq("HEURISTIC_ONLY").all()
     assert scored["direction_probability_up"].eq(0.70).all()
     assert scored["market_expected_absolute_move"].gt(0.0).all()
 
@@ -618,7 +776,7 @@ def test_scenario_prior_clamps_only_floating_point_probability_residue() -> None
         policy=_POLICY,
     )
 
-    assert prior["probability"] == 1.0
+    assert prior["scenario_coverage"] == 1.0
 
 
 def test_outcomes_use_conservative_exit_bbo_and_do_not_fake_lifecycle_labels() -> None:
@@ -826,6 +984,7 @@ def test_strategy_model_fits_only_training_and_calibration_partitions(
     assert manifest["model_policy_version"] == STRATEGY_MODEL_POLICY_VERSION
     assert manifest["ranking_policy_version"] == STRATEGY_RANKING_POLICY_VERSION
     assert manifest["assessment_policy_selection"] == "fixed_before_assessment"
+    assert len(manifest["training_data_fingerprint_sha256"]) == 64
     assert manifest["preprocessing_policy_version"] == (
         "training-quantiles-0.25-99.75-v1"
     )
@@ -851,6 +1010,69 @@ def test_strategy_model_fits_only_training_and_calibration_partitions(
     assert scored["score_basis"].eq(CALIBRATED_MODEL_SCORE_BASIS).all()
     assert scored["candidate_rank"].tolist() == list(range(1, len(scored) + 1))
     assert "probability_threshold" not in scored
+
+
+def test_strategy_model_refuses_one_class_calibration_partition(
+    tmp_path: Path,
+) -> None:
+    partitions = partition_strategy_outcomes(_model_outcomes(), policy=_POLICY)
+    one_class = partitions.calibration.copy()
+    one_class["profitable"] = 1
+
+    with pytest.raises(ValueError, match="calibration partition requires both"):
+        fit_or_reuse_strategy_model(
+            tmp_path,
+            horizon="1d",
+            partitions=replace(partitions, calibration=one_class),
+            policy=_POLICY,
+            input_files=(),
+            trained_at=pd.Timestamp("2026-08-01T12:00:00Z"),
+        )
+
+
+def test_strategy_outcome_store_is_content_addressed_and_receipt_verified(
+    tmp_path: Path,
+) -> None:
+    frame = pd.DataFrame(
+        {
+            "candidate_key": ["long_call|w1"],
+            "outcome_status": ["COMPLETE"],
+            "profitable": [1],
+        }
+    )
+    artifact = publish_strategy_outcome_artifact(
+        tmp_path,
+        horizon="1d",
+        cache_key="a" * 64,
+        frame=frame,
+        candidate_rows=1,
+        failures={},
+        created_at="2026-08-01T12:00:00Z",
+    )
+    replay = publish_strategy_outcome_artifact(
+        tmp_path,
+        horizon="1d",
+        cache_key="a" * 64,
+        frame=frame,
+        candidate_rows=1,
+        failures={},
+        created_at="2026-08-01T12:01:00Z",
+    )
+
+    assert replay.directory == artifact.directory
+    assert read_strategy_outcome_artifact(
+        tmp_path,
+        horizon="1d",
+        cache_key="a" * 64,
+    ) is not None
+    with artifact.outcome_path.open("ab") as handle:
+        handle.write(b"tamper")
+    with pytest.raises(StrategyOutcomeStoreError, match="verification failed"):
+        read_strategy_outcome_artifact(
+            tmp_path,
+            horizon="1d",
+            cache_key="a" * 64,
+        )
 
 
 def test_fitted_ranking_is_probability_first_and_stable() -> None:
@@ -1029,13 +1251,12 @@ def test_runtime_publishes_prior_rank_with_missing_quote_age_diagnostics(
 
     assert result.model_reports["1d"]["status"] == "MODEL_NOT_FIT"
     assert len(result.candidates) == 4 * len(STRATEGY_REGISTRY)
-    assert result.candidates["model_status"].eq("PRICING_SCENARIO").all()
-    assert result.candidates["raw_profit_probability"].notna().all()
+    assert result.candidates["model_status"].eq("HEURISTIC_ONLY").all()
+    assert result.candidates["scenario_coverage_score"].notna().all()
+    assert result.candidates["raw_profit_probability"].isna().all()
     assert result.candidates["calibrated_profit_probability"].isna().all()
     assert result.candidates["expected_return_on_risk"].notna().all()
-    assert result.candidates["decision_score"].equals(
-        result.candidates["raw_profit_probability"]
-    )
+    assert result.candidates["decision_score"].isna().all()
     assert result.candidates["score_basis"].eq(SCENARIO_PRIOR_SCORE_BASIS).all()
     assert result.candidates["maximum_quote_staleness_seconds"].isna().all()
     assert not result.candidates["liquidity_policy_pass"].any()
@@ -1104,8 +1325,16 @@ def test_offline_strategy_runtime_builds_trains_and_ranks_from_schwab_receipts(
     assert result.candidates["pricing_leg_coverage"].eq(1.0).all()
     assert "recommendation_action" not in result.candidates
     assert result.source_files
+    assert (
+        result.model_reports["1d"]["persistent_outcome_artifacts_published"]
+        == len(samples)
+    )
     assert full_rebuild_seconds < 300.0
 
+    # Simulate a fresh Strategy process: no in-memory observation cache is
+    # available, so reuse must come from verified append-only artifacts.
+    with strategy_runtime._HISTORICAL_OUTCOME_CACHE_LOCK:
+        strategy_runtime._HISTORICAL_OUTCOME_CACHE.clear()
     incremental_started = time.perf_counter()
     incremental = run_strategy_selection(
         tmp_path,
@@ -1128,6 +1357,14 @@ def test_offline_strategy_runtime_builds_trains_and_ranks_from_schwab_receipts(
         == len(samples)
     )
     assert incremental.model_reports["1d"]["incremental_outcome_cache_misses"] == 0
+    assert (
+        incremental.model_reports["1d"]["persistent_outcome_cache_hits"]
+        == len(samples)
+    )
+    assert (
+        incremental.model_reports["1d"]["process_memory_outcome_cache_hits"]
+        == 0
+    )
     assert incremental_seconds < 60.0
     print(
         json.dumps(
@@ -1141,6 +1378,36 @@ def test_offline_strategy_runtime_builds_trains_and_ranks_from_schwab_receipts(
             sort_keys=True,
         )
     )
+
+
+def test_live_strategy_cycle_disables_full_historical_opra_replay(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sample = _sample(0)
+    observed: list[bool] = []
+
+    def unavailable(*_args: object, **kwargs: object) -> OptionChainHistory:
+        observed.append(bool(kwargs.get("allow_historical_opra_replay")))
+        raise FileNotFoundError("prospective receipt not available")
+
+    monkeypatch.setattr(
+        strategy_runtime,
+        "load_option_chain_history",
+        unavailable,
+    )
+    result = run_strategy_selection(
+        tmp_path,
+        samples=pd.DataFrame([sample]),
+        predictions=pd.DataFrame([_prediction_for_sample(sample)]),
+        forbidden_target_starts={},
+        run_timestamp=sample["decision_timestamp"] + pd.Timedelta(minutes=20),
+        input_available_at=sample["decision_timestamp"] + pd.Timedelta(minutes=20),
+        policy=_POLICY,
+    )
+
+    assert observed == [False]
+    assert result.candidates.empty
 
 
 def _sample(index: int) -> dict[str, object]:

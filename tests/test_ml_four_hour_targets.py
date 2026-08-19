@@ -44,13 +44,13 @@ def test_every_closed_feature_profile_uses_canonical_horizon_order() -> None:
     (
         (
             "1h",
-            "next-60-eligible-regular-minutes-open-close-v2",
+            "next-60-eligible-regular-minutes-open-close-v3",
             "60",
         ),
         (
             "4h",
-            "next-240-eligible-regular-minutes-open-close-v2",
-            "240",
+            "next-180-eligible-regular-minutes-open-close-v3",
+            "180",
         ),
     ),
 )
@@ -105,7 +105,7 @@ def test_hybrid_candidates_include_exact_open_and_full_local_clock_hours(
     ("horizon", "expected_end"),
     (
         ("1h", "2026-07-27T14:30:00Z"),
-        ("4h", "2026-07-27T17:30:00Z"),
+        ("4h", "2026-07-27T16:30:00Z"),
     ),
 )
 def test_prior_session_decision_targets_exact_xnas_summer_open(
@@ -124,6 +124,26 @@ def test_prior_session_decision_targets_exact_xnas_summer_open(
     )
     assert sample["target_window_end"] == pd.Timestamp(expected_end)
     assert sample["actionable_until"] == sample["target_window_start"]
+
+
+def test_one_hour_aftermarket_decision_uses_latest_completed_extended_bar() -> None:
+    feature = _feature(
+        horizon="1h",
+        session="2026-07-27",
+        bar_start="2026-07-27T20:00:00Z",
+        decision="2026-07-27T21:05:00Z",
+    )
+
+    sample = _build(feature, source_open=100.0, source_close=102.0)
+
+    assert sample["decision_timestamp"] == pd.Timestamp("2026-07-27T21:05:00Z")
+    assert sample["target_window_start"] == pd.Timestamp(
+        "2026-07-28T13:30:00Z"
+    )
+    assert sample["target_window_end"] == pd.Timestamp(
+        "2026-07-28T14:30:00Z"
+    )
+    assert sample["previous_period_direction"] == 1.0
 
 
 def test_four_hour_ordinary_target_retains_safe_next_clock_anchor() -> None:
@@ -146,10 +166,10 @@ def test_four_hour_ordinary_target_retains_safe_next_clock_anchor() -> None:
         "2026-07-27T16:00:00Z"
     )
     assert sample["target_window_end"] == pd.Timestamp(
-        "2026-07-27T20:00:00Z"
+        "2026-07-27T19:00:00Z"
     )
     assert sample["label_available_at"] == pd.Timestamp(
-        "2026-07-27T20:05:00Z"
+        "2026-07-27T19:05:00Z"
     )
     assert sample["target_open"] == 102.0
     assert sample["target_close"] == 108.0
@@ -202,7 +222,7 @@ def test_exact_target_start_equality_is_too_late() -> None:
         "2026-07-27T17:00:00Z"
     )
     assert sample["target_window_end"] == pd.Timestamp(
-        "2026-07-28T14:30:00Z"
+        "2026-07-27T20:00:00Z"
     )
 
 
@@ -218,7 +238,7 @@ def test_late_day_four_hour_target_pauses_across_session_close() -> None:
         "2026-07-27T19:00:00Z"
     )
     assert sample["target_window_end"] == pd.Timestamp(
-        "2026-07-28T16:30:00Z"
+        "2026-07-28T15:30:00Z"
     )
     assert sample["previous_period_direction"] == 0.0
 
@@ -235,7 +255,7 @@ def test_four_hour_target_crosses_weekend_and_xnas_holiday() -> None:
         "2026-07-06T13:30:00Z"
     )
     assert sample["target_window_end"] == pd.Timestamp(
-        "2026-07-06T17:30:00Z"
+        "2026-07-06T16:30:00Z"
     )
 
 
@@ -251,7 +271,7 @@ def test_four_hour_target_respects_early_close_before_crossing_weekend() -> None
         "2026-11-27T17:00:00Z"
     )
     assert sample["target_window_end"] == pd.Timestamp(
-        "2026-11-30T17:30:00Z"
+        "2026-11-30T16:30:00Z"
     )
 
 
@@ -267,7 +287,7 @@ def test_four_hour_target_uses_exchange_dst_schedule_across_weekend() -> None:
         "2026-03-09T13:30:00Z"
     )
     assert sample["target_window_end"] == pd.Timestamp(
-        "2026-03-09T17:30:00Z"
+        "2026-03-09T16:30:00Z"
     )
 
 
@@ -284,11 +304,11 @@ def test_four_hour_target_pauses_across_exchange_break() -> None:
         "2026-07-27T01:30:00Z"
     )
     assert sample["target_window_end"] == pd.Timestamp(
-        "2026-07-27T06:30:00Z"
+        "2026-07-27T05:30:00Z"
     )
 
 
-@pytest.mark.parametrize("missing_target_index", (0, 120, 239))
+@pytest.mark.parametrize("missing_target_index", (0, 90, 179))
 def test_missing_four_hour_constituent_keeps_window_and_label_incomplete(
     missing_target_index: int,
 ) -> None:
@@ -303,7 +323,7 @@ def test_missing_four_hour_constituent_keeps_window_and_label_incomplete(
         "2026-07-27T16:00:00Z"
     )
     assert sample["target_window_end"] == pd.Timestamp(
-        "2026-07-27T20:00:00Z"
+        "2026-07-27T19:00:00Z"
     )
     assert sample["label_status"] == "INCOMPLETE_LABEL"
     assert sample["label_exclusion_reason"] == (
@@ -324,11 +344,11 @@ def test_four_hour_label_matures_only_at_end_plus_five_minutes() -> None:
     )
     immature = _build(
         feature,
-        materialized_at="2026-07-27T20:04:59.999999Z",
+        materialized_at="2026-07-27T19:04:59.999999Z",
     )
     mature = _build(
         feature,
-        materialized_at="2026-07-27T20:05:00Z",
+        materialized_at="2026-07-27T19:05:00Z",
     )
     assert immature["label_status"] == "INCOMPLETE_LABEL"
     assert immature["label_exclusion_reason"] == "target_window_not_mature"
@@ -511,6 +531,7 @@ def test_materialization_reuses_source_and_target_caches_for_1h_and_4h(
     bar_load_calls: list[tuple[str, tuple[str, ...]]] = []
     price_frame_calls: list[str] = []
     build_calls: list[tuple[str, str, str]] = []
+    decision_policies: list[tuple[str, bool]] = []
 
     def fake_load(root, *, symbol, provider, timeframe, bars):
         source_calls.append((symbol, timeframe))
@@ -531,11 +552,13 @@ def test_materialization_reuses_source_and_target_caches_for_1h_and_4h(
         "initial_universe_membership",
         lambda *args, **kwargs: pd.DataFrame(),
     )
-    monkeypatch.setattr(
-        module,
-        "assemble_technical_feature_frame",
-        lambda *args, **kwargs: pd.DataFrame({"symbol": ["GOOG"]}),
-    )
+    def fake_assemble(*args, config, **kwargs):
+        decision_policies.append(
+            (config.feature_set, config.include_extended_hours)
+        )
+        return pd.DataFrame({"symbol": ["GOOG"]})
+
+    monkeypatch.setattr(module, "assemble_technical_feature_frame", fake_assemble)
     monkeypatch.setattr(
         module,
         "_attach_loop_a_features",
@@ -592,6 +615,10 @@ def test_materialization_reuses_source_and_target_caches_for_1h_and_4h(
     assert build_calls == [
         ("1h", "target", "source"),
         ("4h", "target", "source"),
+    ]
+    assert decision_policies == [
+        ("technical-all", True),
+        ("technical-all-4h", False),
     ]
     assert materialized.samples["horizon"].tolist() == ["1h", "4h"]
 
@@ -701,7 +728,7 @@ def _build(
     cost: float = 0.0,
 ) -> pd.Series:
     specification = horizon_specification(str(feature.iloc[0]["horizon"]))
-    minute_count = 60 if specification.horizon == "1h" else 240
+    minute_count = 60 if specification.horizon == "1h" else 180
     window, target_prices = _window_and_target_prices(
         feature,
         minute_count=minute_count,

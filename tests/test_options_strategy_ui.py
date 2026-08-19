@@ -59,10 +59,10 @@ from ml.strategy_selection.contracts import (
         ),
         (
             SCENARIO_PRIOR_SCORE_BASIS,
-            "PRICING_SCENARIO",
+            "HEURISTIC_ONLY",
             "BLACK_SCHOLES",
             float("nan"),
-            "Pricing Scenario",
+            "Scenario Coverage",
         ),
     ),
 )
@@ -91,8 +91,13 @@ def test_strategy_loader_displays_every_pricing_score_basis(
         model_status=model_status,
         pricing_source=pricing_source,
         calibrated_profit_probability=calibrated,
-        raw_profit_probability=0.61,
-        decision_score=0.61,
+        raw_profit_probability=(
+            0.61 if model_status == "MODEL_FIT" else float("nan")
+        ),
+        decision_score=(
+            0.61 if model_status == "MODEL_FIT" else float("nan")
+        ),
+        scenario_coverage_score=0.61,
         pricing_status=(
             "Active" if pricing_source == "BSGP" else "Black-Scholes fallback"
         ),
@@ -111,7 +116,13 @@ def test_strategy_loader_displays_every_pricing_score_basis(
         ),
     )
     assert view.candidates[0].score_basis == label
-    assert view.candidates[0].predictive_score == pytest.approx(61.0)
+    if model_status == "MODEL_FIT":
+        assert view.candidates[0].predictive_score == pytest.approx(61.0)
+        assert view.candidates[0].manual_order_actionable
+    else:
+        assert view.candidates[0].predictive_score is None
+        assert not view.candidates[0].manual_order_actionable
+    assert view.candidates[0].scenario_coverage == pytest.approx(61.0)
 
 
 def test_position_context_reads_equity_options_cash_and_working_orders() -> None:
@@ -690,14 +701,15 @@ def test_strategy_loader_uses_market_state_prior_until_calibration_exists(
                 ask=2.50,
             )
         ],
-        raw_profit_probability=0.57,
+        raw_profit_probability=float("nan"),
         calibrated_profit_probability=float("nan"),
         expected_net_profit=12.0,
         expected_return_on_risk=0.04,
-        decision_score=0.57,
+        decision_score=float("nan"),
+        scenario_coverage_score=0.57,
         candidate_rank=1,
-        model_status="PRICING_SCENARIO",
-        model_version="pricing-greek-bbo-scenario-prior-v3",
+        model_status="HEURISTIC_ONLY",
+        model_version="pricing-greek-bbo-scenario-coverage-v4",
         score_basis=SCENARIO_PRIOR_SCORE_BASIS,
     )
     path = tmp_path / "strategy-candidates.parquet"
@@ -717,10 +729,66 @@ def test_strategy_loader_uses_market_state_prior_until_calibration_exists(
         ),
     )
 
-    assert view.candidates[0].predictive_score == pytest.approx(57.0)
-    assert 0.0 <= view.candidates[0].predictive_score <= 100.0
+    assert view.candidates[0].predictive_score is None
+    assert view.candidates[0].scenario_coverage == pytest.approx(57.0)
+    assert not view.candidates[0].manual_order_actionable
     assert view.candidates[0].expected_return == pytest.approx(0.04)
-    assert view.candidates[0].score_basis == "Pricing Scenario"
+    assert view.candidates[0].score_basis == "Scenario Coverage"
+
+
+def test_strategy_loader_marks_heuristic_quality_failures_research_only(
+    tmp_path: Path,
+) -> None:
+    candidate = _candidate(
+        strategy_name="long_call",
+        strategy_display_name="Long Call",
+        legs=[
+            _option_leg(
+                side="LONG",
+                option_type="CALL",
+                strike=105,
+                symbol="GOOG  260918C00105000",
+                bid=2.40,
+                ask=2.50,
+            )
+        ],
+        score_basis=SCENARIO_PRIOR_SCORE_BASIS,
+        model_status="HEURISTIC_ONLY",
+        raw_profit_probability=float("nan"),
+        calibrated_profit_probability=float("nan"),
+        decision_score=float("nan"),
+        scenario_coverage_score=1.0,
+        pricing_status="Unavailable",
+        pricing_source="UNAVAILABLE",
+        pricing_leg_coverage=0.0,
+        pricing_missing_reason="PREDICTION_MISSING",
+        surface_quality_pass=False,
+        liquidity_policy_pass=False,
+        all_option_quotes_valid=True,
+    )
+    path = tmp_path / "strategy-candidates.parquet"
+    write_parquet_with_schema(
+        pd.DataFrame([candidate]),
+        path,
+        STRATEGY_CANDIDATE_SCHEMA,
+    )
+
+    view = load_strategy_candidates(
+        path,
+        snapshot=PortfolioSnapshot(
+            source="schwab",
+            account_label="Schwab",
+            account_facts={},
+        ),
+    )
+    result = view.candidates[0]
+    assert result.predictive_score is None
+    assert result.scenario_coverage == 100.0
+    assert result.pricing_summary == "Unavailable pricing · Unavailable · Prediction Missing"
+    assert "surface policy failed" in result.quality_warning
+    assert "liquidity policy failed" in result.quality_warning
+    assert not result.manual_order_actionable
+    assert result.manual_actionability.startswith("Research only")
 
 
 def test_discover_empty_state_surfaces_matching_publication_audit_reason(
@@ -1134,7 +1202,10 @@ def test_options_strategy_submit_uses_the_existing_schwab_session(
 
     tab = OptionsStrategiesTab.__new__(OptionsStrategiesTab)
     tab.root = object()
-    tab.selected_candidate = SimpleNamespace(order_draft=draft)
+    tab.selected_candidate = SimpleNamespace(
+        order_draft=draft,
+        manual_order_actionable=True,
+    )
     tab.selected_order_index = 0
     tab.ticket_quantity = _Value("1")
     tab.ticket_order_method = _Value(
@@ -1179,6 +1250,25 @@ def test_options_strategy_submit_uses_the_existing_schwab_session(
     assert submitted[0]["complexOrderStrategyType"] == "VERTICAL"
     assert len(receipts) == 1
     assert "Order ID: 12345" in receipts[0]
+
+
+def test_options_strategy_submit_refuses_research_only_candidate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tab = OptionsStrategiesTab.__new__(OptionsStrategiesTab)
+    tab.selected_candidate = SimpleNamespace(
+        manual_order_actionable=False,
+        manual_actionability="Research only; calibration is unavailable.",
+    )
+    warnings: list[str] = []
+    monkeypatch.setattr(
+        "app.ui.options_strategies.messagebox.showwarning",
+        lambda _title, message: warnings.append(message),
+    )
+
+    tab._submit_order()
+
+    assert warnings == ["Research only; calibration is unavailable."]
 
 
 def _candidate(
@@ -1240,6 +1330,7 @@ def _candidate(
         "all_option_quotes_valid": True,
         "liquidity_policy_pass": True,
         "maximum_quote_staleness_seconds": 5.0,
+        "scenario_coverage_score": 0.60,
         "raw_profit_probability": 0.60,
         "calibrated_profit_probability": 0.61,
         "direction_probability_up": 0.55,

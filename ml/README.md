@@ -118,7 +118,9 @@ One Loop B iteration:
    component weekly target windows using the exchange calendar;
 6. partitions completed samples chronologically by `target_window_start`
    cluster into training, calibration, assessment, and a latest closed lockbox,
-   purging target-window overlap and never reading lockbox targets;
+   purging target-window overlap and never reading lockbox targets; the bounded
+   100-calendar-day minute input uses 160/40/40/80 clusters for `1h`/`4h`,
+   while daily and weekly routes retain 252/63/63/126;
 7. reuses a compatible model or fits and calibrates a new model;
 8. writes the point-in-time sample view, including complete and not-yet-mature
    labels but omitting exact closed-lockbox rows;
@@ -145,11 +147,15 @@ One Loop B iteration:
     runtime consume the run.
 
 The versioned intraday target contracts are
-`next-60-eligible-regular-minutes-open-close-v2` for `1h` and
-`next-240-eligible-regular-minutes-open-close-v2` for `4h`. Both use completed
-canonical `1h` bars as the decision and feature source. Native Databento rows
-win duplicate timestamps, while an all-60-minute derived hour fills only a
-native publication lag. The calendar fixes the
+`next-60-eligible-regular-minutes-open-close-v3` for `1h` and
+`next-180-eligible-regular-minutes-open-close-v3` for `4h`. Both use completed
+canonical `1h` bars as the decision and feature source. The `1h` route selects
+the latest completed full regular or standard US extended-hours bar available
+between 04:00 and 20:00 exchange-local time; when no extended bar exists it
+naturally retains the official-close decision. The `4h` route remains bounded
+to completed regular-session bars. Native Databento rows win duplicate
+timestamps, while an all-60-minute derived hour fills only a native publication
+lag. The calendar fixes the
 target before price lookup using
 `session-open-break-resume-plus-full-local-clock-anchor-v1`: each continuous
 regular-session segment contributes its exact start (the official session open
@@ -157,7 +163,7 @@ or post-break resume) and every full exchange-local clock-hour start wholly
 contained in that segment. The first candidate strictly after
 `information_available_at` wins; equality is too late.
 
-From that fixed start, the calendar accumulates exactly 60 or 240 eligible
+From that fixed start, the calendar accumulates exactly 60 or 180 eligible
 regular-session one-minute intervals. Breaks and closures pause accumulation,
 while the open-to-close return includes any intervening price gap. The target
 price source is canonical adjusted native Databento `1m`, version
@@ -170,13 +176,13 @@ later minute. Target minutes do not enter the feature matrix, and
 `1h` source bar.
 
 On an ordinary XNAS session this makes a pre-open `1h` target
-09:30–10:30 Eastern and a pre-open `4h` target 09:30–13:30 Eastern. In summer,
+09:30–10:30 Eastern and a pre-open `4h` checkpoint target 09:30–12:30 Eastern. In summer,
 those starts are 13:30 UTC / 09:30 ET / 06:30 Pacific; in winter they are
 14:30 UTC / 09:30 ET / 06:30 Pacific. This is a full 60-eligible-minute opening
 target, not the 09:30–10:00 opening fragment. Ordinary intraday decisions
 retain the full local-clock candidates (for example, information available at
 11:05 Eastern selects 12:00). `target_window_start` and `actionable_until` are the
-selected start, `target_window_end` follows the 60th or 240th eligible minute,
+selected start, `target_window_end` follows the 60th or 180th eligible minute,
 and `label_available_at` is that end plus five minutes. The raw return receives
 the configured round-trip-cost subtraction exactly once, and the positive
 class is strictly greater than zero.

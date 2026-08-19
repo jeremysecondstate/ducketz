@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 from datafetching.ids import is_opaque_identifier
+from ml.contracts import FeatureSet, FeatureSpec
 from ml.datasets.families import (
     WEEKLY_CONTEXT_VALUES,
     load_weekly_context_features,
@@ -428,6 +429,208 @@ def test_symbol_join_is_backward_asof_and_respects_freshness() -> None:
     assert pd.isna(joined.loc[0, "fixture__signal"])
     assert joined.loc[1, "fixture__signal"] == 7.0
     assert pd.isna(joined.loc[2, "fixture__signal"])
+
+
+@pytest.mark.parametrize("future_receipt_exists", (False, True))
+def test_option_family_before_first_causal_receipt_is_explicitly_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    future_receipt_exists: bool,
+) -> None:
+    feature = FeatureSpec(
+        name="opt__fixture",
+        source_family="opt",
+        source_column="fixture",
+        applicable_horizons=("1h",),
+    )
+    feature_set = FeatureSet(
+        "option-first-receipt-fixture",
+        (feature,),
+        applicable_horizons=("1h",),
+    )
+    decisions = pd.DataFrame(
+        {
+            "symbol": ["AAPL"],
+            "decision_timestamp": [pd.Timestamp("2026-08-18T20:05:00Z")],
+        }
+    )
+    monkeypatch.setattr(
+        rolling_materialization.DEFAULT_FEATURE_REGISTRY,
+        "feature_set",
+        lambda *_args, **_kwargs: feature_set,
+    )
+    monkeypatch.setattr(
+        rolling_materialization,
+        "read_committed_option_surfaces",
+        lambda *_args, **_kwargs: (pd.DataFrame(), ()),
+    )
+    monkeypatch.setattr(
+        rolling_materialization,
+        "committed_option_snapshots",
+        lambda *_args, **_kwargs: ((object(),) if future_receipt_exists else ()),
+    )
+    if future_receipt_exists:
+        monkeypatch.setattr(
+            rolling_materialization,
+            "_stock_glob_paths",
+            lambda *_args, **_kwargs: pytest.fail(
+                "a future receipt must not activate a legacy or future mapping"
+            ),
+        )
+
+    assembled, sources = rolling_materialization._attach_loop_a_features(
+        tmp_path,
+        decisions,
+        symbols=("AAPL",),
+        horizon="1h",
+        source_timeframe="1h",
+        provider="databento",
+        feature_set_name=feature_set.name,
+        parquet_cache={},
+        derived_cache={},
+        input_available_at="2026-08-18T20:05:00Z",
+    )
+
+    assert pd.isna(assembled.loc[0, "opt__fixture"])
+    assert sources == ()
+
+
+def test_option_family_does_not_hide_a_committed_reader_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    feature = FeatureSpec(
+        name="opt__fixture",
+        source_family="opt",
+        source_column="fixture",
+        applicable_horizons=("1h",),
+    )
+    feature_set = FeatureSet(
+        "option-corruption-fixture",
+        (feature,),
+        applicable_horizons=("1h",),
+    )
+    decisions = pd.DataFrame(
+        {
+            "symbol": ["AAPL"],
+            "decision_timestamp": [pd.Timestamp("2026-08-18T20:05:00Z")],
+        }
+    )
+    monkeypatch.setattr(
+        rolling_materialization.DEFAULT_FEATURE_REGISTRY,
+        "feature_set",
+        lambda *_args, **_kwargs: feature_set,
+    )
+
+    def corrupt(*_args: object, **_kwargs: object) -> object:
+        raise RuntimeError("checksum-invalid option receipt")
+
+    monkeypatch.setattr(
+        rolling_materialization,
+        "read_committed_option_surfaces",
+        corrupt,
+    )
+
+    with pytest.raises(RuntimeError, match="checksum-invalid option receipt"):
+        rolling_materialization._attach_loop_a_features(
+            tmp_path,
+            decisions,
+            symbols=("AAPL",),
+            horizon="1h",
+            source_timeframe="1h",
+            provider="databento",
+            feature_set_name=feature_set.name,
+            parquet_cache={},
+            derived_cache={},
+            input_available_at="2026-08-18T20:05:00Z",
+        )
+
+
+def test_cme_family_before_first_verified_context_is_explicitly_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    feature = FeatureSpec(
+        name="cme__fixture",
+        source_family="cme",
+        source_column="fixture",
+        applicable_horizons=("1h",),
+    )
+    feature_set = FeatureSet(
+        "cme-first-context-fixture",
+        (feature,),
+        applicable_horizons=("1h",),
+    )
+    decisions = pd.DataFrame(
+        {
+            "symbol": ["AAPL"],
+            "decision_timestamp": [pd.Timestamp("2026-08-18T20:05:00Z")],
+        }
+    )
+    monkeypatch.setattr(
+        rolling_materialization.DEFAULT_FEATURE_REGISTRY,
+        "feature_set",
+        lambda *_args, **_kwargs: feature_set,
+    )
+
+    assembled, sources = rolling_materialization._attach_loop_a_features(
+        tmp_path,
+        decisions,
+        symbols=("AAPL",),
+        horizon="1h",
+        source_timeframe="1h",
+        provider="databento",
+        feature_set_name=feature_set.name,
+        parquet_cache={},
+        derived_cache={},
+    )
+
+    assert pd.isna(assembled.loc[0, "cme__fixture"])
+    assert sources == ()
+
+
+def test_partially_present_legacy_cme_family_still_fails_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    feature = FeatureSpec(
+        name="cme__fixture",
+        source_family="cme",
+        source_column="fixture",
+        applicable_horizons=("1h",),
+    )
+    feature_set = FeatureSet(
+        "cme-partial-fixture",
+        (feature,),
+        applicable_horizons=("1h",),
+    )
+    decisions = pd.DataFrame(
+        {
+            "symbol": ["AAPL"],
+            "decision_timestamp": [pd.Timestamp("2026-08-18T20:05:00Z")],
+        }
+    )
+    paths = rolling_materialization._cme_normalized_source_paths(tmp_path)
+    paths[0].parent.mkdir(parents=True)
+    pd.DataFrame({"fixture": [1.0]}).to_parquet(paths[0], index=False)
+    monkeypatch.setattr(
+        rolling_materialization.DEFAULT_FEATURE_REGISTRY,
+        "feature_set",
+        lambda *_args, **_kwargs: feature_set,
+    )
+
+    with pytest.raises(FileNotFoundError, match="Databento CME"):
+        rolling_materialization._attach_loop_a_features(
+            tmp_path,
+            decisions,
+            symbols=("AAPL",),
+            horizon="1h",
+            source_timeframe="1h",
+            provider="databento",
+            feature_set_name=feature_set.name,
+            parquet_cache={},
+            derived_cache={},
+        )
 
 
 def test_midweek_1w_model_matrix_uses_only_last_completed_exchange_week(

@@ -121,14 +121,16 @@ DEFAULT_HORIZON_SPECIFICATIONS: Final[
     "1h": HorizonSpecification(
         horizon="1h",
         target_definition_version=(
-            "next-60-eligible-regular-minutes-open-close-v2"
+            "next-60-eligible-regular-minutes-open-close-v3"
         ),
         source_timeframe="1h",
         information_availability_rule=(
-            "completed_native_hour_bar_end_plus_processing_delay"
+            "completed_native_regular_or_available_us_extended_hour_bar_end_"
+            "plus_processing_delay"
         ),
         decision_time_rule=(
-            "after_completed_eligible_hour_and_required_processing_delay"
+            "after_latest_completed_regular_or_available_us_extended_hour_"
+            "and_required_processing_delay"
         ),
         target_window_start_rule=(
             "first_session_open_break_resume_or_full_local_clock_hour_start_"
@@ -171,7 +173,7 @@ DEFAULT_HORIZON_SPECIFICATIONS: Final[
     "4h": HorizonSpecification(
         horizon="4h",
         target_definition_version=(
-            "next-240-eligible-regular-minutes-open-close-v2"
+            "next-180-eligible-regular-minutes-open-close-v3"
         ),
         source_timeframe="1h",
         information_availability_rule=(
@@ -185,7 +187,7 @@ DEFAULT_HORIZON_SPECIFICATIONS: Final[
             "strictly_after_information_availability"
         ),
         target_window_end_rule=(
-            "end_after_240_calendar_selected_eligible_regular_session_minutes"
+            "end_after_180_calendar_selected_eligible_regular_session_minutes"
         ),
         return_definition=(
             "first_target_minute_open_to_final_target_minute_close_simple_"

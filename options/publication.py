@@ -170,7 +170,11 @@ def publish_option_snapshot(
         prepared = {
             "raw.parquet": add_readable_id(
                 prepared_inputs["raw.parquet"].reset_index(drop=True),
-                key_columns=_SNAPSHOT_KEY,
+                key_columns=(
+                    (*_SNAPSHOT_KEY, "contract_symbol")
+                    if "contract_symbol" in prepared_inputs["raw.parquet"]
+                    else _SNAPSHOT_KEY
+                ),
             ),
             "contracts.parquet": add_readable_id(
                 prepared_inputs["contracts.parquet"].reset_index(drop=True),
@@ -178,7 +182,12 @@ def publish_option_snapshot(
             ),
             "option-quality.parquet": add_readable_id(
                 prepared_inputs["option-quality.parquet"].reset_index(drop=True),
-                key_columns=_SNAPSHOT_KEY,
+                key_columns=(
+                    (*_SNAPSHOT_KEY, "contract_symbol")
+                    if "contract_symbol"
+                    in prepared_inputs["option-quality.parquet"]
+                    else _SNAPSHOT_KEY
+                ),
             ),
         }
         for name, frame in prepared.items():

@@ -310,6 +310,7 @@ STRATEGY_CANDIDATE_SCHEMA = _schema(
         ("market_uncertainty", FLOAT),
         ("market_trend_persistence", FLOAT),
         ("market_mean_reversion_tendency", FLOAT),
+        ("scenario_coverage_score", FLOAT),
         ("raw_profit_probability", FLOAT),
         ("calibrated_profit_probability", FLOAT),
         ("direction_probability_up", FLOAT),

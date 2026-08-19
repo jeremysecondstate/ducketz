@@ -5,6 +5,7 @@ import pandas as pd
 from ml.calendars import (
     ExchangeSessionCalendar,
     attach_official_daily_sessions,
+    attach_official_intraday_sessions,
 )
 from ml.horizons import (
     HORIZON_ORDER,
@@ -76,7 +77,7 @@ def test_horizon_contracts_are_readable_and_share_feature_columns() -> None:
     )
     four_hour = contracts["4h"]
     assert four_hour["target_definition_version"] == (
-        "next-240-eligible-regular-minutes-open-close-v2"
+        "next-180-eligible-regular-minutes-open-close-v3"
     )
     assert four_hour["source_timeframe"] == "1h"
     assert four_hour["target_price_timeframe"] == "1m"
@@ -86,7 +87,7 @@ def test_horizon_contracts_are_readable_and_share_feature_columns() -> None:
     assert four_hour["processing_delay"] == "0 days 00:05:00"
     one_hour = contracts["1h"]
     assert one_hour["target_definition_version"] == (
-        "next-60-eligible-regular-minutes-open-close-v2"
+        "next-60-eligible-regular-minutes-open-close-v3"
     )
     assert one_hour["target_price_timeframe"] == "1m"
     assert one_hour["target_calendar_policy_version"] == (
@@ -220,6 +221,54 @@ def test_hourly_calendar_uses_exchange_dst_schedule() -> None:
     )
     assert before[0].start_timestamp == pd.Timestamp("2026-03-06T15:00:00Z")
     assert after[0].start_timestamp == pd.Timestamp("2026-03-09T14:00:00Z")
+
+
+def test_one_hour_decisions_admit_only_bounded_us_extended_full_hours() -> None:
+    intervals = pd.DataFrame(
+        {
+            "exchange_calendar": ["XNAS"] * 4,
+            "bar_timestamp": pd.to_datetime(
+                [
+                    "2026-07-27T19:00:00Z",
+                    "2026-07-27T20:00:00Z",
+                    "2026-07-27T23:00:00Z",
+                    "2026-07-28T00:00:00Z",
+                ],
+                utc=True,
+            ),
+            "operational_bar_end_timestamp": pd.to_datetime(
+                [
+                    "2026-07-27T20:00:00Z",
+                    "2026-07-27T21:00:00Z",
+                    "2026-07-28T00:00:00Z",
+                    "2026-07-28T01:00:00Z",
+                ],
+                utc=True,
+            ),
+        }
+    )
+
+    regular_only = attach_official_intraday_sessions(intervals)
+    with_extended = attach_official_intraday_sessions(
+        intervals,
+        include_extended_hours=True,
+    )
+
+    assert regular_only["intraday_interval_eligible"].tolist() == [
+        True,
+        False,
+        False,
+        False,
+    ]
+    assert with_extended["intraday_interval_eligible"].tolist() == [
+        True,
+        True,
+        True,
+        False,
+    ]
+    assert with_extended.loc[1:2, "exchange_session"].eq(
+        pd.Timestamp("2026-07-27")
+    ).all()
 
 
 def test_hour_target_skips_the_interval_already_started_during_processing() -> None:

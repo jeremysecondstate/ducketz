@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 from statistics import NormalDist
@@ -11,6 +11,11 @@ from typing import Mapping, Sequence
 import numpy as np
 import pandas as pd
 
+from datafetching.bar_readiness import (
+    bar_readiness_pointer_path,
+    read_bar_readiness,
+)
+from datafetching.decision_time import cycle_target_decision
 from ml.artifacts import file_checksum, utc_timestamp
 from ml.option_pricing.policies import (
     ContractSelectionPolicy,
@@ -24,6 +29,7 @@ from ml.option_pricing.policies import (
 from ml.option_pricing.prediction import create_bsgp_shadow_rows, create_prediction_rows
 from ml.option_pricing.publication import (
     authoritative_option_pricing_runs,
+    pricing_pointer_path,
     receipt_proven_prediction_rows,
 )
 from ml.option_pricing.schwab_materialization import (
@@ -39,7 +45,10 @@ from ml.option_pricing.shadow_model import (
     read_current_loop_native_model_generation,
     read_loop_native_model_generation,
 )
-from ml.option_pricing.target_outcome import authoritative_target_outcomes
+from ml.option_pricing.target_outcome import (
+    authoritative_target_outcomes,
+    target_outcome_pointer_path,
+)
 
 
 STRATEGY_PRICING_EVIDENCE_VERSION = "strategy-option-pricing-evidence-v2"
@@ -62,6 +71,7 @@ class StrategyPricingEvidenceCatalog:
     predictions: pd.DataFrame
     source_files: tuple[Path, ...]
     errors: tuple[str, ...] = ()
+    authority_states: Mapping[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -84,7 +94,37 @@ def load_strategy_pricing_evidence(
     frames: list[pd.DataFrame] = []
     files: list[Path] = []
     errors: list[str] = []
+    authority_states: dict[str, str] = {}
 
+    readiness_pointer = bar_readiness_pointer_path(root)
+    if not readiness_pointer.is_file():
+        authority_states["loop_a_readiness"] = "MISSING"
+    else:
+        try:
+            readiness_payload = json.loads(
+                readiness_pointer.read_text(encoding="utf-8")
+            )
+            readiness_current = readiness_payload.get("current")
+            if not isinstance(readiness_current, Mapping):
+                raise ValueError("Loop A readiness pointer has no current record")
+            readiness_target = utc_timestamp(
+                readiness_current.get("target_snapshot_for")
+            )
+            read_bar_readiness(root, target_snapshot_for=readiness_target)
+            decision = cycle_target_decision(cutoff)
+            expected_target = decision.target_snapshot_for
+            authority_states["loop_a_readiness"] = (
+                "LAGGING"
+                if expected_target is not None and readiness_target < expected_target
+                else "FUTURE"
+                if readiness_target > cutoff
+                else "VERIFIED"
+            )
+        except Exception as exc:
+            authority_states["loop_a_readiness"] = "CORRUPT"
+            errors.append(f"loop_a_readiness:{type(exc).__name__}:{exc}")
+
+    target_pointer = target_outcome_pointer_path(root)
     try:
         live, live_files = _loop_native_target_predictions(
             root,
@@ -94,19 +134,37 @@ def load_strategy_pricing_evidence(
             frames.append(live)
             files.extend(live_files)
     except Exception as exc:
+        authority_states["target_pricing_pointer"] = "CORRUPT"
         errors.append(f"loop_native:{type(exc).__name__}:{exc}")
+    else:
+        authority_states["target_pricing_pointer"] = (
+            "VERIFIED" if target_pointer.is_file() else "MISSING"
+        )
 
     if not frames:
-        try:
-            legacy, legacy_files = _legacy_verified_predictions(
-                root,
-                available_not_after=cutoff,
-            )
-            if not legacy.empty:
-                frames.append(legacy)
-                files.extend(legacy_files)
-        except Exception as exc:
-            errors.append(f"legacy:{type(exc).__name__}:{exc}")
+        full_pointer = pricing_pointer_path(root)
+        if not full_pointer.is_file():
+            authority_states["full_pricing_pointer"] = "MISSING"
+        else:
+            try:
+                legacy, legacy_files = _legacy_verified_predictions(
+                    root,
+                    available_not_after=cutoff,
+                )
+                if not legacy.empty:
+                    frames.append(legacy)
+                    files.extend(legacy_files)
+            except Exception as exc:
+                authority_states["full_pricing_pointer"] = "CORRUPT"
+                errors.append(f"legacy:{type(exc).__name__}:{exc}")
+            else:
+                authority_states["full_pricing_pointer"] = "VERIFIED"
+    else:
+        authority_states["full_pricing_pointer"] = (
+            "PRESENT_NOT_NEEDED"
+            if pricing_pointer_path(root).is_file()
+            else "MISSING"
+        )
 
     if include_offline_replay:
         try:
@@ -118,11 +176,30 @@ def load_strategy_pricing_evidence(
                 frames.append(replay)
                 files.extend(replay_files)
         except Exception as exc:
+            authority_states["offline_pricing_evidence"] = "CORRUPT"
             errors.append(f"offline_replay:{type(exc).__name__}:{exc}")
+        else:
+            authority_states["offline_pricing_evidence"] = (
+                "AVAILABLE" if not replay.empty else "MISSING"
+            )
 
     if not frames:
+        live_states = {
+            authority_states.get("target_pricing_pointer"),
+            authority_states.get("full_pricing_pointer"),
+        }
+        authority_states["live_pricing_authority"] = (
+            "CORRUPT_POINTER"
+            if "CORRUPT" in live_states
+            else "MISSING_POINTER"
+            if live_states <= {"MISSING", None}
+            else "NO_USABLE_PRICING_EVIDENCE"
+        )
         return StrategyPricingEvidenceCatalog(
-            pd.DataFrame(), tuple(dict.fromkeys(files)), tuple(errors)
+            pd.DataFrame(),
+            tuple(dict.fromkeys(files)),
+            tuple(errors),
+            authority_states,
         )
     predictions = pd.concat(frames, ignore_index=True, sort=False)
     for column in (
@@ -161,10 +238,15 @@ def load_strategy_pricing_evidence(
         ],
         keep="first",
     ).drop(columns="__lane_priority")
+    live = predictions["evidence_lane"].astype("string").str.upper().eq("LIVE")
+    authority_states["live_pricing_authority"] = (
+        "AVAILABLE" if live.any() else "NO_USABLE_PRICING_EVIDENCE"
+    )
     return StrategyPricingEvidenceCatalog(
         predictions.reset_index(drop=True),
         tuple(dict.fromkeys(files)),
         tuple(errors),
+        authority_states,
     )
 
 
@@ -372,7 +454,10 @@ def _legacy_verified_predictions(
         "BLACK_SCHOLES",
     )
     predictions["pricing_evidence_status"] = predictions["model_status"]
-    predictions["model_published_at"] = predictions["prediction_available_at"]
+    # The legacy row contract has no independent model-publication clock.  Do
+    # not fabricate one from prediction availability; exact prediction clocks
+    # and receipt authority remain enforced below.
+    predictions["model_published_at"] = pd.NaT
     predictions["input_staleness_seconds"] = _effective_input_staleness(
         predictions,
         reported_column="source_quote_staleness_seconds",
@@ -392,6 +477,15 @@ def _offline_replay_predictions(
     )
     if not opra.empty:
         return opra, opra_files
+
+    materialization_pointer = (
+        Path(datastore_root)
+        / "ml"
+        / "option-pricing-loop-native-materialization-latest"
+        / "run.json"
+    )
+    if not materialization_pointer.is_file():
+        return pd.DataFrame(), ()
 
     materialization = read_current_loop_native_schwab_materialization(
         datastore_root,
@@ -552,7 +646,9 @@ def _canonical_opra_replay_predictions(
     predictions["residual_shrinkage"] = 0.0
     predictions["pricing_source"] = "BLACK_SCHOLES"
     predictions["pricing_evidence_status"] = predictions["model_status"]
-    predictions["model_published_at"] = utc_timestamp(receipt["published_at"])
+    # This lane is a constrained Black-Scholes baseline, not a fitted-model
+    # claim.  The replay receipt clocks the artifact but is not a model clock.
+    predictions["model_published_at"] = pd.NaT
     predictions["input_staleness_seconds"] = pd.to_numeric(
         predictions["source_quote_staleness_seconds"], errors="coerce"
     )
@@ -824,6 +920,7 @@ def _candidate_diagnostic(
             predictions,
             symbol=str(candidate.get("symbol") or ""),
             leg=leg,
+            candidate_cutoff=candidate.get("entry_available_at"),
             allow_offline_replay=allow_offline_replay,
         )
         if prediction is None:
@@ -928,6 +1025,7 @@ def _matching_prediction(
     symbol: str,
     leg: Mapping[str, object],
     allow_offline_replay: bool,
+    candidate_cutoff: object | None = None,
 ) -> tuple[Mapping[str, object] | None, str]:
     target = _timestamp(leg.get("target_snapshot_for"))
     quote = _timestamp(leg.get("quote_timestamp"))
@@ -975,12 +1073,57 @@ def _matching_prediction(
         ]
     if matches.empty:
         return None, "PREDICTION_MISSING"
-    matches = matches.loc[
-        matches["prediction_created_at"].lt(quote)
-        & matches["prediction_available_at"].lt(quote)
-    ].copy()
+    cutoff = _timestamp(candidate_cutoff)
+    created = pd.to_datetime(
+        matches["prediction_created_at"], utc=True, errors="coerce"
+    )
+    available = pd.to_datetime(
+        matches["prediction_available_at"], utc=True, errors="coerce"
+    )
+    valid_clocks = (
+        created.notna()
+        & available.notna()
+        & created.gt(target)
+        & available.ge(created)
+        & created.lt(quote)
+        & available.lt(quote)
+    )
+    if cutoff is not None:
+        valid_clocks &= available.le(cutoff)
+    matches = matches.loc[valid_clocks].copy()
     if matches.empty:
-        return None, "PREDICTION_NOT_COMMITTED_BEFORE_QUOTE"
+        return None, "FUTURE_OR_INVALID_PRICING_CLOCK"
+    source_target = pd.to_datetime(
+        matches.get("source_snapshot_for"), utc=True, errors="coerce"
+    )
+    if isinstance(source_target, pd.Series):
+        matches = matches.loc[source_target.lt(target)].copy()
+    if matches.empty:
+        return None, "PRICING_SOURCE_NOT_STRICTLY_PRIOR"
+    source_available = pd.to_datetime(
+        matches.get("source_available_at"), utc=True, errors="coerce"
+    )
+    if isinstance(source_available, pd.Series) and source_available.notna().any():
+        created = pd.to_datetime(
+            matches["prediction_created_at"], utc=True, errors="coerce"
+        )
+        matches = matches.loc[
+            source_available.isna() | source_available.le(created)
+        ].copy()
+    if matches.empty:
+        return None, "PRICING_SOURCE_AVAILABLE_AFTER_PREDICTION"
+    model_published = pd.to_datetime(
+        matches.get("model_published_at"), utc=True, errors="coerce"
+    )
+    if isinstance(model_published, pd.Series) and model_published.notna().any():
+        created = pd.to_datetime(
+            matches["prediction_created_at"], utc=True, errors="coerce"
+        )
+        matches = matches.loc[
+            model_published.isna() | model_published.le(created)
+        ].copy()
+    if matches.empty:
+        return None, "PRICING_MODEL_PUBLISHED_IN_FUTURE"
     input_age = pd.to_numeric(
         matches.get("input_staleness_seconds"), errors="coerce"
     )

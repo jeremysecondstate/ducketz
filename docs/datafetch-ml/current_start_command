@@ -59,7 +59,10 @@ python -m datafetching.cme_runtime `
 
 2. Loop A. Its Databento 1-minute fast lane persists all six symbols and
 publishes the exact readiness receipt before 1-second history, derived bars,
-technicals, FMP, FRED, SEC, or other slower work finishes:
+technicals, FMP, FRED, SEC, or other slower work finishes. If Databento
+Historical has not yet advertised the exact minute, Loop A polls the provider's
+`ohlcv-1m` availability and performs a bounded continuation refetch only after
+that boundary is advertised. It never substitutes an older or future bar:
 
 ```powershell
 python -m datafetching.orchestrate `
@@ -68,7 +71,9 @@ python -m datafetching.orchestrate `
   --providers databento fmp fred schwab sec `
   --cme-mode external `
   --options-mode external `
-  --interval-minutes 15
+  --interval-minutes 15 `
+  --bar-readiness-recovery-timeout-seconds 420 `
+  --bar-readiness-recovery-poll-seconds 10
 ```
 
 3. Independent daily ALFRED owner. It runs the complete four-series update at
@@ -88,8 +93,9 @@ finite-basis approximation with a Bayesian ridge posterior; it is not an exact
 GP. Missing model support uses the causal Black-Scholes mean with a wider
 sidecar interval. OPRA is the canonical surface when verified and causally
 available; Schwab is recorded as explicit fallback. Live rates require causal
-FRED/ALFRED evidence. Pricing waits
-once for the configured exact Loop A readiness deadline. If it expires, Pricing
+FRED/ALFRED evidence. Pricing waits once for the configured exact Loop A
+readiness deadline, paired with Loop A's provider-aware recovery window. If it
+expires, Pricing
 skips that target, leaves the current Pricing authority unchanged, and advances
 to the next eligible target without creating an empty terminal artifact. The
 separate 1,200-second causal window still rejects stale sources and backdated
@@ -103,7 +109,7 @@ python -m ml.option_pricing_runtime `
   --interval-minutes 15 `
   --phase-offset-minutes 1 `
   --bar-readiness-mode required `
-  --bar-readiness-timeout-seconds 30
+  --bar-readiness-timeout-seconds 480
 ```
 
 5. Independent Options Capture (logical Loop 4). It starts after Loop B's +5
@@ -205,8 +211,10 @@ python -m ml.prediction_runtime `
 ```
 
 7. Strategy. Exact contract pricing is attached to historical and live
-candidates before the profitable-outcome classifier is fit or scored. The
-persisted probability is then ranked and displayed by Options Strategies:
+candidates before the profitable-outcome classifier is fit or scored. Only a
+fitted, Platt-calibrated model populates calibrated probability. Otherwise the
+separate non-probabilistic Scenario Coverage value remains available for
+research ranking and manual submission stays disabled:
 
 ```powershell
 python -m ml.strategy_runtime `
@@ -215,6 +223,27 @@ python -m ml.strategy_runtime `
   --phase-offset-minutes 10 `
   --pricing-mode active
 ```
+
+After restarting only Loop A, Active Pricing, and Strategy for a regular-session
+rollout, run the bounded read-only canary in a fourth terminal. Set `$targetUtc`
+to the exact quarter-hour UTC boundary being observed. The canary reads verified
+receipts only, times out without changing authority, and contains no Schwab order
+path:
+
+```powershell
+$targetUtc = '2026-08-19T14:45:00Z'
+python -m ml.strategy_pricing_canary `
+  --datastore-target pc `
+  --target $targetUtc `
+  --watchlist datafetching\watchlist.txt `
+  --timeout-seconds 600 `
+  --poll-seconds 5
+```
+
+For an affected-loop-only restart, first stop the existing Loop A, Active
+Pricing, and Strategy owners with Ctrl+C and verify their three terminals have
+returned to a prompt. Then run commands 2, 4, and 7 above in separate terminals.
+Do not run the seven-owner launcher when unaffected owners are still active.
 
 Optional maintenance commands are not startup dependencies. In particular,
 eligibility/quality reports monitor production and cannot block the valid

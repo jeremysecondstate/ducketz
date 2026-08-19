@@ -1139,7 +1139,11 @@ def _publish_fast_target_outcome(
             "causal window"
         )
 
-    effective_loop_native_model_load = loop_native_model_load
+    effective_loop_native_model_load = loop_native_model_load or LoopNativeModelLoad(
+        None,
+        "BASELINE_FALLBACK_NO_MODEL",
+        "No verified BSGP residual generation was available for this target.",
+    )
     if (
         loop_native_model_load is not None
         and loop_native_model_load.generation is not None
@@ -1228,32 +1232,30 @@ def _publish_fast_target_outcome(
         if not samples.empty
         else pd.DataFrame()
     )
-    shadow_predictions: pd.DataFrame | None = None
-    if effective_loop_native_model_load is not None:
-        try:
-            shadow_predictions = create_bsgp_shadow_rows(
-                samples,
-                predictions,
-                prediction_created_at=prediction_created_at,
-                prediction_available_at=prediction_created_at,
-                model_load=effective_loop_native_model_load,
-                model_policy=loop_native_model_policy,
-                projection_policy=projection_policy,
-            )
-        except Exception as exc:
-            shadow_predictions = create_bsgp_shadow_rows(
-                samples,
-                predictions,
-                prediction_created_at=prediction_created_at,
-                prediction_available_at=prediction_created_at,
-                model_load=LoopNativeModelLoad(
-                    None,
-                    "BASELINE_FALLBACK_NO_MODEL",
-                    f"Shadow inference failed closed: {type(exc).__name__}: {exc}",
-                ),
-                model_policy=loop_native_model_policy,
-                projection_policy=projection_policy,
-            )
+    try:
+        shadow_predictions = create_bsgp_shadow_rows(
+            samples,
+            predictions,
+            prediction_created_at=prediction_created_at,
+            prediction_available_at=prediction_created_at,
+            model_load=effective_loop_native_model_load,
+            model_policy=loop_native_model_policy,
+            projection_policy=projection_policy,
+        )
+    except Exception as exc:
+        shadow_predictions = create_bsgp_shadow_rows(
+            samples,
+            predictions,
+            prediction_created_at=prediction_created_at,
+            prediction_available_at=prediction_created_at,
+            model_load=LoopNativeModelLoad(
+                None,
+                "BASELINE_FALLBACK_NO_MODEL",
+                f"Shadow inference failed closed: {type(exc).__name__}: {exc}",
+            ),
+            model_policy=loop_native_model_policy,
+            projection_policy=projection_policy,
+        )
     states = {str(value.get("status", "UNKNOWN")) for value in live_status.values()}
     if not predictions.empty and states == {"READY"}:
         terminal_status = "PREDICTIONS_PUBLISHED"

@@ -339,10 +339,12 @@ class OptionsStrategiesTab:
                 "rank",
                 "strategy",
                 "exact_legs",
-                "predictive_score",
+                "calibrated_probability",
+                "scenario_coverage",
                 "expected_return",
                 "portfolio_fit",
                 "score_basis",
+                "pricing_quality",
             ),
             show="headings",
             height=18,
@@ -351,10 +353,12 @@ class OptionsStrategiesTab:
             ("rank", "Rank", 48, tk.E),
             ("strategy", "Strategy", 135, tk.W),
             ("exact_legs", "Exact Legs", 195, tk.W),
-            ("predictive_score", "Predictive Score", 110, tk.E),
+            ("calibrated_probability", "Calibrated Probability", 135, tk.E),
+            ("scenario_coverage", "Scenario Coverage", 120, tk.E),
             ("expected_return", "Expected Return", 100, tk.E),
             ("portfolio_fit", "Portfolio Fit", 95, tk.W),
             ("score_basis", "Score Basis", 160, tk.W),
+            ("pricing_quality", "Pricing / Quality", 280, tk.W),
         )
         for name, label, width, anchor in columns:
             table.heading(name, text=label)
@@ -363,7 +367,7 @@ class OptionsStrategiesTab:
                 width=width,
                 minwidth=50,
                 anchor=anchor,
-                stretch=name in {"strategy", "exact_legs"},
+                stretch=name in {"strategy", "exact_legs", "pricing_quality"},
             )
         scroll_y = ttk.Scrollbar(
             table_frame,
@@ -659,15 +663,22 @@ class OptionsStrategiesTab:
                     candidate.rank,
                     candidate.strategy_display_name,
                     candidate.exact_legs,
-                    _number(candidate.predictive_score, 2),
+                    _percentage_points(candidate.predictive_score),
+                    _percentage_points(candidate.scenario_coverage),
                     _percent(candidate.expected_return),
                     candidate.portfolio_fit.label,
                     candidate.score_basis,
+                    f"{candidate.pricing_summary} · {candidate.quality_warning}",
                 ),
             )
-        self.candidate_summary.set(
-            f"{len(self.visible_candidates):,} Candidates"
+        research_only = sum(
+            not candidate.manual_order_actionable
+            for candidate in self.visible_candidates
         )
+        summary = f"{len(self.visible_candidates):,} Candidates"
+        if research_only:
+            summary += f" · {research_only:,} Research Only"
+        self.candidate_summary.set(summary)
         if self.visible_candidates:
             position = self.visible_candidates[0].position
             self.position_summary.set(_position_summary(position))
@@ -721,13 +732,33 @@ class OptionsStrategiesTab:
             f"{len(draft.legs)} Strategy {leg_word}"
         )
         self.ticket_quantity.set("1")
-        self.ticket_portfolio_impact.set(candidate.portfolio_fit.detail)
+        self.ticket_portfolio_impact.set(
+            " ".join(
+                (
+                    candidate.portfolio_fit.detail,
+                    candidate.pricing_summary + ".",
+                    candidate.quality_warning + ".",
+                    candidate.manual_actionability,
+                )
+            )
+        )
         order_names = tuple(order.display_name for order in draft.orders)
         self._order_part_box.configure(values=order_names)
         self.ticket_order_part.set(order_names[0])
         self._render_order_part()
         if self.submit_button is not None:
-            self.submit_button.configure(state=tk.NORMAL)
+            self.submit_button.configure(
+                state=(
+                    tk.NORMAL
+                    if candidate.manual_order_actionable
+                    else tk.DISABLED
+                ),
+                text=(
+                    "Submit Order"
+                    if candidate.manual_order_actionable
+                    else "Research Only — Submission Disabled"
+                ),
+            )
 
     def _order_part_changed(self, _event: object = None) -> None:
         candidate = self.selected_candidate
@@ -797,11 +828,20 @@ class OptionsStrategiesTab:
         self._limit_price_entry.configure(state=tk.NORMAL)
         self._clear_table(self.ticket_legs)
         if self.submit_button is not None:
-            self.submit_button.configure(state=tk.DISABLED)
+            self.submit_button.configure(
+                state=tk.DISABLED,
+                text="Submit Order",
+            )
 
     def _submit_order(self) -> None:
         candidate = self.selected_candidate
         if candidate is None:
+            return
+        if not candidate.manual_order_actionable:
+            messagebox.showwarning(
+                "Option Order Not Actionable",
+                candidate.manual_actionability,
+            )
             return
         try:
             payload = build_strategy_order_payload(
@@ -827,7 +867,13 @@ class OptionsStrategiesTab:
 
             def succeeded(location: str | None) -> None:
                 if submit_button is not None:
-                    submit_button.configure(state=tk.NORMAL)
+                    submit_button.configure(
+                        state=(
+                            tk.NORMAL
+                            if candidate.manual_order_actionable
+                            else tk.DISABLED
+                        )
+                    )
                 messagebox.showinfo(
                     "Option Order Submitted",
                     order_submitted_message(payload, location),
@@ -841,7 +887,13 @@ class OptionsStrategiesTab:
 
             def failed(exc: Exception) -> None:
                 if submit_button is not None:
-                    submit_button.configure(state=tk.NORMAL)
+                    submit_button.configure(
+                        state=(
+                            tk.NORMAL
+                            if candidate.manual_order_actionable
+                            else tk.DISABLED
+                        )
+                    )
                 messagebox.showerror(
                     "Option Order Failed",
                     str(exc) or "The option order could not be submitted.",
@@ -904,6 +956,10 @@ def _percent(value: float | None) -> str:
 
 def _number(value: float | None, digits: int) -> str:
     return "—" if value is None else f"{value:.{digits}f}"
+
+
+def _percentage_points(value: float | None) -> str:
+    return "—" if value is None else f"{value:.2f}%"
 
 
 def _money(value: float | None) -> str:

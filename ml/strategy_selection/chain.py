@@ -18,7 +18,11 @@ from options.features import (
     OPTION_SURFACE_QUALITY_POLICY_VERSION,
 )
 from options.snapshot import OPTION_CHAIN_SCHEMA_VERSION
-from options.publication import committed_option_snapshots
+from options.publication import (
+    SUPPORTED_OPTION_PROVIDERS,
+    canonical_option_snapshots,
+    committed_option_snapshots,
+)
 from datafetching.databento_opra_history import (
     iter_verified_partitions,
     record_consumer_usage,
@@ -108,16 +112,28 @@ def load_option_chain_history(
     *,
     symbol: str,
     available_not_after: object | None = None,
+    allow_historical_opra_replay: bool = True,
 ) -> OptionChainHistory:
     root = Path(datastore_root)
     clean_symbol = str(symbol).strip().upper()
-    opra = _load_opra_chain_history(
+    prospective = _load_committed_chain_history(
         root,
         symbol=clean_symbol,
         available_not_after=available_not_after,
     )
-    if opra is not None:
-        return opra
+    if prospective is not None:
+        # Immutable prospective receipts are the operational authority.  They
+        # are already natural-target deduplicated and avoid re-reading the
+        # multi-billion-row historical replay before a live Strategy publish.
+        return prospective
+    if allow_historical_opra_replay:
+        opra = _load_opra_chain_history(
+            root,
+            symbol=clean_symbol,
+            available_not_after=available_not_after,
+        )
+        if opra is not None:
+            return opra
     stock_root = root / "stocks" / clean_symbol
     all_committed = committed_option_snapshots(
         root,
@@ -222,6 +238,159 @@ def load_option_chain_history(
             (*contract_paths, *surface_paths, *receipt_paths, *quote_paths)
         ),
     )
+
+
+def _load_committed_chain_history(
+    datastore_root: Path,
+    *,
+    symbol: str,
+    available_not_after: object | None,
+) -> OptionChainHistory | None:
+    """Load provider-neutral prospective receipts with OPRA priority per target."""
+
+    selected: dict[pd.Timestamp, object] = {}
+    for provider in SUPPORTED_OPTION_PROVIDERS:
+        snapshots, _audit = canonical_option_snapshots(
+            datastore_root,
+            symbol=symbol,
+            provider=provider,
+            available_not_after=available_not_after,
+        )
+        for snapshot in snapshots:
+            selected.setdefault(pd.Timestamp(snapshot.snapshot_for), snapshot)
+    snapshots = tuple(
+        sorted(
+            selected.values(),
+            key=lambda value: (value.available_at, value.snapshot_for),
+        )
+    )
+    if not snapshots:
+        return None
+
+    contract_frames: list[pd.DataFrame] = []
+    surface_frames: list[pd.DataFrame] = []
+    source_files: list[Path] = []
+    providers: list[str] = []
+    for snapshot in snapshots:
+        contracts = _read_verified_immutable_parquet(snapshot.contracts_path)
+        if snapshot.provider == "databento-opra":
+            contracts = _project_committed_opra_contracts(contracts)
+            surface = _project_committed_opra_surface(contracts)
+        else:
+            surface = _read_verified_immutable_parquet(snapshot.features_path)
+        contract_frames.append(contracts)
+        surface_frames.append(surface)
+        providers.append(snapshot.provider)
+        source_files.extend(
+            (
+                snapshot.contracts_path,
+                snapshot.features_path,
+                snapshot.receipt_path,
+            )
+        )
+
+    contracts = pd.concat(contract_frames, ignore_index=True, sort=False)
+    surfaces = pd.concat(surface_frames, ignore_index=True, sort=False)
+    quote_paths = tuple(
+        sorted(
+            (
+                Path(datastore_root)
+                / "stocks"
+                / symbol
+                / "quotes"
+                / "features"
+                / "quote-liquidity"
+                / "schwab"
+            ).glob("*.parquet")
+        )
+    )
+    quotes = _read_many(quote_paths) if quote_paths else pd.DataFrame()
+    if available_not_after is not None and not quotes.empty:
+        cutoff = _utc(available_not_after)
+        available = pd.to_datetime(quotes["available_at"], utc=True, errors="coerce")
+        quotes = quotes.loc[available.le(cutoff)].copy()
+
+    _validate_contracts(contracts, symbol=symbol)
+    _validate_surfaces(surfaces, symbol=symbol)
+    if not quotes.empty:
+        _validate_quotes(quotes, symbol=symbol)
+    surface_keys = surfaces.loc[
+        :, [*_SNAPSHOT_KEY, "surface_quality_pass"]
+    ].drop_duplicates(list(_SNAPSHOT_KEY), keep="last")
+    contracts = contracts.merge(
+        surface_keys.rename(columns={"surface_quality_pass": "__surface_quality"}),
+        on=list(_SNAPSHOT_KEY),
+        how="left",
+        validate="many_to_one",
+    )
+    contracts["__surface_quality"] = (
+        contracts["__surface_quality"].fillna(False).astype(bool)
+    )
+    return OptionChainHistory(
+        symbol=symbol,
+        provider="+".join(dict.fromkeys(providers)),
+        contracts=contracts,
+        surfaces=surfaces,
+        quotes=quotes,
+        source_files=tuple(dict.fromkeys((*source_files, *quote_paths))),
+    )
+
+
+def _project_committed_opra_contracts(frame: pd.DataFrame) -> pd.DataFrame:
+    """Project the rich live-OPRA envelope into Strategy's chain contract."""
+
+    output = frame.copy()
+    bid = pd.to_numeric(output.get("bid"), errors="coerce")
+    ask = pd.to_numeric(output.get("ask"), errors="coerce")
+    midpoint = (bid + ask) / 2.0
+    relative_spread = (
+        pd.to_numeric(output["relative_bid_ask_spread"], errors="coerce")
+        if "relative_bid_ask_spread" in output
+        else pd.Series(float("nan"), index=output.index)
+    )
+    output["relative_bid_ask_spread"] = relative_spread.where(
+        relative_spread.notna(),
+        (ask - bid) / midpoint.where(midpoint.gt(0.0)),
+    )
+    defaults: dict[str, object] = {
+        "underlying_price": float("nan"),
+        "open_interest": float("nan"),
+        "volume": float("nan"),
+        "delta": float("nan"),
+        "gamma": float("nan"),
+        "theta": float("nan"),
+        "vega": float("nan"),
+        "mini": False,
+        "non_standard": False,
+        "quote_valid": bid.ge(0.0) & ask.gt(bid),
+        "quote_staleness_seconds": float("nan"),
+    }
+    for column, default in defaults.items():
+        if column not in output:
+            output[column] = default
+    output["call_put"] = output["call_put"].astype("string").str.upper()
+    output["schema_version"] = OPTION_CHAIN_SCHEMA_VERSION
+    return output
+
+
+def _project_committed_opra_surface(contracts: pd.DataFrame) -> pd.DataFrame:
+    keys = contracts.loc[:, list(_SNAPSHOT_KEY)].drop_duplicates()
+    if len(keys) != 1:
+        raise ValueError("Committed OPRA snapshot contains multiple receipt keys")
+    row = keys.iloc[0].to_dict()
+    row.update(
+        {
+            # OPRA L1 does not carry the Schwab Greeks/OI surface fields.  Keep
+            # that quality distinction explicit while retaining valid BBO legs.
+            "surface_quality_pass": False,
+            "source_provider": "databento-opra",
+            "fallback_used": False,
+            "surface_quality_policy_version": OPTION_SURFACE_QUALITY_POLICY_VERSION,
+            "calculation_version": OPTION_FEATURE_VERSION,
+            "schema_version": OPTION_FEATURE_SCHEMA_VERSION,
+        }
+    )
+    return pd.DataFrame([row])
 
 
 def _load_opra_chain_history(

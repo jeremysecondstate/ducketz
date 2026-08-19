@@ -532,8 +532,15 @@ def attach_official_intraday_sessions(
     bar_end_column: str = "operational_bar_end_timestamp",
     processing_delay: pd.Timedelta = pd.Timedelta(0),
     future_padding_days: int = 45,
+    include_extended_hours: bool = False,
 ) -> pd.DataFrame:
-    """Attach exchange sessions and validate full regular-market clock hours."""
+    """Attach exchange sessions to eligible full-hour decision intervals.
+
+    Regular-market intervals are always eligible.  When explicitly enabled for
+    a US equity calendar, completed full hours wholly inside 04:00--09:30 or
+    the official close--20:00 exchange-local time are eligible too.  Intervals
+    crossing the open/close or extending beyond those bounds remain excluded.
+    """
 
     if processing_delay < pd.Timedelta(0):
         raise ValueError("processing_delay cannot be negative")
@@ -590,7 +597,37 @@ def attach_official_intraday_sessions(
             part[bar_end_column],
             strict=True,
         ):
-            session = interval_lookup.get((pd.Timestamp(start), pd.Timestamp(end)))
+            start_timestamp = pd.Timestamp(start)
+            end_timestamp = pd.Timestamp(end)
+            session = interval_lookup.get((start_timestamp, end_timestamp))
+            if (
+                session is None
+                and include_extended_hours
+                and str(calendar_name).upper() in {"XNAS", "XNYS"}
+                and end_timestamp - start_timestamp == pd.Timedelta(hours=1)
+            ):
+                local_start = start_timestamp.tz_convert(
+                    calendar.exchange_timezone
+                )
+                session_candidate = local_start.tz_localize(None).normalize()
+                if session_candidate in calendar.sessions:
+                    official_open = calendar.session_open(session_candidate)
+                    official_close = calendar.session_close(session_candidate)
+                    local_midnight = session_candidate.tz_localize(
+                        calendar.exchange_timezone
+                    )
+                    extended_open = local_midnight + pd.Timedelta(hours=4)
+                    extended_close = local_midnight + pd.Timedelta(hours=20)
+                    is_premarket = (
+                        start_timestamp >= extended_open
+                        and end_timestamp <= official_open
+                    )
+                    is_aftermarket = (
+                        start_timestamp >= official_close
+                        and end_timestamp <= extended_close
+                    )
+                    if is_premarket or is_aftermarket:
+                        session = session_candidate
             resolved_sessions.append(session)
             eligible.append(session is not None)
         part["intraday_interval_eligible"] = eligible

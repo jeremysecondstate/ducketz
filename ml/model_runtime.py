@@ -73,8 +73,13 @@ class ModelPartitionConfig:
 
 
 DEFAULT_PARTITION_CONFIGS: Mapping[str, ModelPartitionConfig] = {
-    "1h": ModelPartitionConfig(252, 63, 63, 126),
-    "4h": ModelPartitionConfig(252, 63, 63, 126),
+    # Intraday decisions are sourced from the deliberately bounded 100-calendar-day
+    # native one-minute history.  A full regular session contributes roughly five
+    # target-start clusters, so the daily 504-cluster policy can never be satisfied
+    # by the production input contract.  Keep the same 4:1:1:2 partition proportions
+    # while leaving enough room for holiday/half-day and overlap-boundary purging.
+    "1h": ModelPartitionConfig(160, 40, 40, 80),
+    "4h": ModelPartitionConfig(160, 40, 40, 80),
     "1d": ModelPartitionConfig(252, 63, 63, 126),
     **{
         horizon: ModelPartitionConfig(252, 63, 63, 126)

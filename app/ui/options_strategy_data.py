@@ -28,7 +28,7 @@ from ml.parquet_contracts import (
 from ml.strategy_selection.contracts import (
     BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
     BSGP_CALIBRATED_MODEL_SCORE_BASIS,
-    PRICING_SCENARIO_FALLBACK_SCORE_BASIS,
+    SCENARIO_COVERAGE_SCORE_BASIS,
     STRATEGY_CANDIDATE_SCHEMA_VERSION,
     STRATEGY_MODEL_POLICY_VERSION,
     STRATEGY_RANKING_POLICY_VERSION,
@@ -51,7 +51,7 @@ PORTFOLIO_FIT_POLICY_VERSION = "current-schwab-position-fit-v2"
 _SCORE_BASIS_LABELS = {
     BSGP_CALIBRATED_MODEL_SCORE_BASIS: "BSGP + Strategy ML",
     BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS: "Black-Scholes + ML",
-    PRICING_SCENARIO_FALLBACK_SCORE_BASIS: "Pricing Scenario",
+    SCENARIO_COVERAGE_SCORE_BASIS: "Scenario Coverage",
 }
 
 
@@ -72,11 +72,16 @@ class StrategyCandidateView:
     strategy_name: str
     strategy_display_name: str
     exact_legs: str
-    predictive_score: float
+    predictive_score: float | None
+    scenario_coverage: float
     expected_net_profit: float | None
     expected_return: float | None
     portfolio_fit: PortfolioFit
     score_basis: str
+    pricing_summary: str
+    quality_warning: str
+    manual_order_actionable: bool
+    manual_actionability: str
     position: SchwabPositionContext
     order_draft: StrategyOrderDraft
     row: Mapping[str, object]
@@ -211,6 +216,7 @@ def _candidate_views(
         "strategy_name",
         "strategy_display_name",
         "legs_json",
+        "scenario_coverage_score",
         "raw_profit_probability",
         "calibrated_profit_probability",
         "expected_net_profit",
@@ -220,6 +226,11 @@ def _candidate_views(
         "candidate_rank",
         "pricing_status",
         "pricing_source",
+        "pricing_leg_coverage",
+        "pricing_missing_reason",
+        "surface_quality_pass",
+        "liquidity_policy_pass",
+        "all_option_quotes_valid",
         "model_status",
         "model_policy_version",
         "ranking_policy_version",
@@ -275,10 +286,6 @@ def _candidate_views(
             if not candidate_key:
                 raise ValueError("Options strategy candidate key is blank")
             rank = _required_rank(row.get("candidate_rank"))
-            probability = _required_probability(
-                row.get("decision_score"),
-                label="Predictive score",
-            )
             basis_code = str(row.get("score_basis") or "").strip().upper()
             basis_label = _SCORE_BASIS_LABELS.get(basis_code)
             if basis_label is None:
@@ -286,31 +293,39 @@ def _candidate_views(
                     f"Options strategy candidate score basis is invalid: {basis_code or 'missing'}"
                 )
             model_status = str(row.get("model_status") or "").strip().upper()
-            raw_probability = _required_probability(
-                row.get("raw_profit_probability"),
-                label="Raw profit probability",
+            scenario_coverage = _required_probability(
+                row.get("scenario_coverage_score"),
+                label="Scenario coverage",
+            )
+            fitted_basis = basis_code in {
+                BSGP_CALIBRATED_MODEL_SCORE_BASIS,
+                BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
+            }
+            probability = (
+                _required_probability(
+                    row.get("decision_score"),
+                    label="Calibrated predictive probability",
+                )
+                if fitted_basis
+                else None
+            )
+            raw_probability = (
+                _required_probability(
+                    row.get("raw_profit_probability"),
+                    label="Raw model probability",
+                )
+                if fitted_basis
+                else None
             )
             backing_probability = (
                 _required_probability(
                     row.get("calibrated_profit_probability"),
                     label="Calibrated model probability",
                 )
-                if basis_code
-                in {
-                    BSGP_CALIBRATED_MODEL_SCORE_BASIS,
-                    BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
-                }
-                else raw_probability
+                if fitted_basis
+                else None
             )
-            expected_status = (
-                "MODEL_FIT"
-                if basis_code
-                in {
-                    BSGP_CALIBRATED_MODEL_SCORE_BASIS,
-                    BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
-                }
-                else "PRICING_SCENARIO"
-            )
+            expected_status = "MODEL_FIT" if fitted_basis else "HEURISTIC_ONLY"
             if model_status != expected_status:
                 raise ValueError(
                     "Options strategy candidate model status does not match score basis"
@@ -336,17 +351,77 @@ def _candidate_views(
                 raise ValueError(
                     "Options strategy score basis does not match its pricing source"
                 )
-            if not math.isclose(probability, backing_probability, abs_tol=1e-12):
+            if fitted_basis and not math.isclose(
+                float(probability), float(backing_probability), abs_tol=1e-12
+            ):
                 raise ValueError(
                     "Options strategy predictive score does not match its score basis"
                 )
             if (
-                basis_code == PRICING_SCENARIO_FALLBACK_SCORE_BASIS
-                and _number(row.get("calibrated_profit_probability")) is not None
+                basis_code == SCENARIO_COVERAGE_SCORE_BASIS
+                and any(
+                    _number(row.get(column)) is not None
+                    for column in (
+                        "decision_score",
+                        "raw_profit_probability",
+                        "calibrated_profit_probability",
+                    )
+                )
             ):
                 raise ValueError(
-                    "Scenario-prior candidate cannot claim a calibrated probability"
+                    "Scenario-coverage candidate cannot claim any model probability"
                 )
+            pricing_coverage = _required_probability(
+                row.get("pricing_leg_coverage"),
+                label="Pricing leg coverage",
+            )
+            surface_pass = _required_bool(
+                row.get("surface_quality_pass"),
+                label="Surface quality policy",
+            )
+            liquidity_pass = _required_bool(
+                row.get("liquidity_policy_pass"),
+                label="Liquidity policy",
+            )
+            quotes_pass = _required_bool(
+                row.get("all_option_quotes_valid"),
+                label="Option quote validity",
+            )
+            missing_reason = str(row.get("pricing_missing_reason") or "").strip()
+            quality_failures = []
+            if not surface_pass:
+                quality_failures.append("surface policy failed")
+            if not liquidity_pass:
+                quality_failures.append("liquidity policy failed")
+            if not quotes_pass:
+                quality_failures.append("quote validity failed")
+            quality_warning = (
+                "Quality warning: " + ", ".join(quality_failures)
+                if quality_failures
+                else "Quality policies passed"
+            )
+            source_label = {
+                "BSGP": "BSGP",
+                "BLACK_SCHOLES": "Black-Scholes",
+                "UNAVAILABLE": "Unavailable",
+            }.get(pricing_source, pricing_source.title() or "Unavailable")
+            pricing_summary = f"{pricing_status} pricing · {source_label}"
+            if missing_reason:
+                pricing_summary += " · " + _human_reason(missing_reason)
+            manual_order_actionable = bool(
+                fitted_basis
+                and pricing_coverage >= 1.0 - 1e-12
+                and pricing_status in {"Active", "Black-Scholes fallback"}
+                and not quality_failures
+            )
+            manual_actionability = (
+                "Manual review eligible; submission still requires user confirmation."
+                if manual_order_actionable
+                else (
+                    "Research only; manual submission is disabled because calibrated, "
+                    "fully covered, quality-passing pricing evidence is unavailable."
+                )
+            )
             expected_net_profit = _required_finite(
                 row.get("expected_net_profit"),
                 label="Expected net profit",
@@ -362,8 +437,17 @@ def _candidate_views(
                     "fit": fit,
                     "rank": rank,
                     "candidate_key": candidate_key,
-                    "predictive_score": probability * 100.0,
+                    "predictive_score": (
+                        float(probability) * 100.0
+                        if probability is not None
+                        else None
+                    ),
+                    "scenario_coverage": scenario_coverage * 100.0,
                     "score_basis": basis_label,
+                    "pricing_summary": pricing_summary,
+                    "quality_warning": quality_warning,
+                    "manual_order_actionable": manual_order_actionable,
+                    "manual_actionability": manual_actionability,
                     "expected_net_profit": expected_net_profit,
                     "expected_return": expected_return,
                 }
@@ -395,11 +479,22 @@ def _candidate_views(
                     strategy_name=str(row["strategy_name"]),
                     strategy_display_name=str(row["strategy_display_name"]),
                     exact_legs=_exact_legs(row, position=position),
-                    predictive_score=float(item["predictive_score"]),
+                    predictive_score=(
+                        float(item["predictive_score"])
+                        if item["predictive_score"] is not None
+                        else None
+                    ),
+                    scenario_coverage=float(item["scenario_coverage"]),
                     expected_net_profit=float(item["expected_net_profit"]),
                     expected_return=float(item["expected_return"]),
                     portfolio_fit=item["fit"],
                     score_basis=str(item["score_basis"]),
+                    pricing_summary=str(item["pricing_summary"]),
+                    quality_warning=str(item["quality_warning"]),
+                    manual_order_actionable=bool(
+                        item["manual_order_actionable"]
+                    ),
+                    manual_actionability=str(item["manual_actionability"]),
                     position=position,
                     order_draft=draft,
                     row=row,
@@ -643,6 +738,19 @@ def _number(value: object) -> float | None:
     except (TypeError, ValueError):
         return None
     return number if math.isfinite(number) else None
+
+
+def _human_reason(value: str) -> str:
+    return " ".join(str(value).strip().replace("_", " ").split()).title()
+
+
+def _required_bool(value: object, *, label: str) -> bool:
+    if isinstance(value, bool):
+        return value
+    number = _number(value)
+    if number in (0.0, 1.0):
+        return bool(number)
+    raise ValueError(f"{label} must be explicitly true or false")
 
 
 def _required_probability(value: object, *, label: str) -> float:

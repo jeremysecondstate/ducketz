@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+import ml.option_pricing_runtime as option_pricing_runtime
 from datafetching.bar_readiness import publish_bar_readiness
 from datafetching.bar_schema import write_normalized_bar_parquet
 from ml.artifacts import file_checksum, semantic_metadata_fingerprint
@@ -29,10 +30,12 @@ from ml.option_pricing.loop_native_eligibility import (
     verify_loop_native_capture_lineage,
 )
 from ml.option_pricing.policies import (
+    ContractSelectionPolicy,
     LOOP_NATIVE_CALL_PUTS,
     LOOP_NATIVE_MATERIALIZATION_POLICY_VERSION,
     LOOP_NATIVE_SYMBOLS,
     LoopNativeModelPolicy,
+    ProjectionPolicy,
     SEMANTIC_FEATURE_COLUMNS,
 )
 from ml.option_pricing.prediction import (
@@ -843,6 +846,75 @@ def test_black_scholes_baseline_is_identical_with_or_without_shadow_model(
         no_model["bsgp_shadow_fair_value_constrained"]
         <= no_model["bsgp_shadow_constrained_interval_95_upper"]
     ).all()
+
+
+def test_fast_target_publishes_black_scholes_authority_without_bsgp(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = pd.Timestamp("2026-01-09T16:00:00Z")
+    created = target + pd.Timedelta(minutes=1)
+    samples = _live_samples()
+
+    class _Decision:
+        reason = "fixture"
+
+        def with_runtime_state(self, **_kwargs: object):
+            return self
+
+    monkeypatch.setattr(
+        option_pricing_runtime,
+        "build_live_prediction_inputs",
+        lambda *_args, **_kwargs: type(
+            "Batch",
+            (),
+            {
+                "status": "READY",
+                "reason": "",
+                "samples": samples,
+                "source_files": (),
+            },
+        )(),
+    )
+
+    publication, _samples, predictions, statuses, _files, created_new, _decision = (
+        option_pricing_runtime._publish_fast_target_outcome(
+            tmp_path,
+            symbols=("NVDA",),
+            target_snapshot_for=target,
+            created_at=created,
+            runtime_clock=lambda: created + pd.Timedelta(seconds=5),
+            bar_readiness_mode="exact",
+            contract_policy=ContractSelectionPolicy(),
+            projection_policy=ProjectionPolicy(),
+            rate_observations=None,
+            cycle_decision=_Decision(),  # type: ignore[arg-type]
+            bar_readiness_timeout_seconds=0.0,
+            readiness_sleeper=lambda _seconds: None,
+            monotonic_clock=lambda: 0.0,
+            loop_native_model_load=None,
+            loop_native_model_policy=None,
+        )
+    )
+
+    assert created_new
+    assert statuses["NVDA"]["status"] == "READY"
+    assert not predictions.empty
+    shadow = publication.shadow_predictions()
+    assert len(shadow) == len(predictions)
+    assert shadow["bsgp_shadow_status"].eq(
+        "BASELINE_FALLBACK_NO_MODEL"
+    ).all()
+    assert shadow["bsgp_shadow_fair_value_constrained"].equals(
+        predictions["constrained_fair_value"]
+    )
+    catalog = load_strategy_pricing_evidence(
+        tmp_path,
+        available_not_after=created + pd.Timedelta(seconds=6),
+        include_offline_replay=False,
+    )
+    assert catalog.authority_states["live_pricing_authority"] == "AVAILABLE"
+    assert catalog.predictions["pricing_source"].eq("BLACK_SCHOLES").all()
 
 
 def test_loop_native_policy_uses_twelve_routes_and_requires_bounded_opra(

@@ -267,6 +267,7 @@ def _materialize_rolling_samples(
                             if specification.source_timeframe == "1h"
                             else "daily"
                         ),
+                        include_extended_hours=(horizon == "1h"),
                     ),
                 )
                 features["horizon"] = horizon
@@ -636,20 +637,29 @@ def _attach_loop_a_features(
                 for symbol in clean_symbols
             )
             if not any_committed:
-                paths = _stock_glob_paths(
-                    root,
-                    clean_symbols,
-                    ("options", "features", "option-quality", "schwab"),
-                )
-                source = _read_required_sources(
-                    paths,
-                    family="Schwab option-quality",
-                    cache=parquet_cache,
-                )
-            else:
-                raise FileNotFoundError(
-                    "No fully committed Schwab option-quality receipt was available "
-                    f"by the causal input cutoff {cutoff.isoformat()}"
+                try:
+                    paths = _stock_glob_paths(
+                        root,
+                        clean_symbols,
+                        ("options", "features", "option-quality", "schwab"),
+                    )
+                except FileNotFoundError:
+                    paths = ()
+                if paths:
+                    source = _read_required_sources(
+                        paths,
+                        family="Schwab option-quality",
+                        cache=parquet_cache,
+                    )
+            # The registered option-feature contract explicitly represents
+            # decisions before the first causal surface as missing values.  An
+            # empty verified selection is therefore different from a corrupt
+            # receipt or a quality-failed surface: retain the former as
+            # audited null model inputs while allowing the latter to keep
+            # failing closed in the readers and point-in-time join.
+            if source.empty:
+                source = pd.DataFrame(
+                    columns=("symbol", "available_at", *mapping.values())
                 )
         output = _join_symbol_values(
             output,
@@ -658,6 +668,7 @@ def _attach_loop_a_features(
             value_columns=mapping,
             tie_breakers=("snapshot_for",),
             freshness=OPTION_FRESHNESS[feature_horizon],
+            require_populated_values=not source.empty,
         )
         source_files.extend(paths)
 
@@ -804,17 +815,31 @@ def _attach_loop_a_features(
             cme_paths = _cme_normalized_source_paths(root)
             cache_key = "cme-current-context"
             if cache_key not in derived_cache:
-                source_frames = [
-                    _read_required_sources(
-                        (path,),
-                        family=f"Databento CME {path.parent.parent.parent.name}",
-                        cache=parquet_cache,
+                try:
+                    source_frames = [
+                        _read_required_sources(
+                            (path,),
+                            family=(
+                                "Databento CME "
+                                f"{path.parent.parent.parent.name}"
+                            ),
+                            cache=parquet_cache,
+                        )
+                        for path in cme_paths
+                    ]
+                except FileNotFoundError:
+                    if any(path.is_file() for path in cme_paths):
+                        # A partially present legacy family is damage, not the
+                        # ordinary not-yet-published conditional state.
+                        raise
+                    cme_paths = ()
+                    derived_cache[cache_key] = pd.DataFrame(
+                        columns=("available_at", *mapping.values())
                     )
-                    for path in cme_paths
-                ]
-                derived_cache[cache_key] = _derive_current_cme_context(
-                    *source_frames
-                )
+                else:
+                    derived_cache[cache_key] = _derive_current_cme_context(
+                        *source_frames
+                    )
             source = derived_cache[cache_key]
         output = _join_shared_values(
             output,
@@ -822,6 +847,7 @@ def _attach_loop_a_features(
             family="cme",
             value_columns=mapping,
             freshness=CME_FRESHNESS[feature_horizon],
+            require_populated_values=not source.empty,
         )
         source_files.extend(cme_paths)
 
@@ -977,6 +1003,7 @@ def _join_shared_values(
     family: str,
     value_columns: Mapping[str, str],
     freshness: pd.Timedelta | None = None,
+    require_populated_values: bool = True,
 ) -> pd.DataFrame:
     required = {"available_at", *value_columns.values()}
     missing = sorted(required.difference(source.columns))
@@ -997,11 +1024,12 @@ def _join_shared_values(
         .drop_duplicates("available_at", keep="last")
         .reset_index(drop=True)
     )
-    _require_family_value(
-        prepared,
-        value_columns=value_columns,
-        family=family,
-    )
+    if require_populated_values:
+        _require_family_value(
+            prepared,
+            value_columns=value_columns,
+            family=family,
+        )
     return backward_asof_shared(
         decisions,
         prepared,

@@ -42,6 +42,7 @@ from ml.option_pricing.strategy_shadow import (
     StrategyPricingEvidenceCatalog,
     attach_strategy_pricing_evidence,
     attach_strategy_pricing_shadow,
+    load_strategy_pricing_evidence,
 )
 from ml.parquet_contracts import (
     LEGACY_OPTION_PRICING_SURFACE_SCHEMA,
@@ -1040,6 +1041,36 @@ def test_strategy_missing_or_tampered_pricing_falls_back_without_rank_change(
     ).candidates
     assert missing.iloc[0]["pricing_status"] == "Delayed"
     assert missing.iloc[0]["candidate_rank"] == 1
+    missing_catalog = load_strategy_pricing_evidence(
+        tmp_path,
+        available_not_after="2026-07-06T14:03:00Z",
+        include_offline_replay=False,
+    )
+    assert missing_catalog.authority_states["target_pricing_pointer"] == "MISSING"
+    assert missing_catalog.authority_states["full_pricing_pointer"] == "MISSING"
+    assert missing_catalog.authority_states["live_pricing_authority"] == (
+        "MISSING_POINTER"
+    )
+    uncalibrated_input = missing.assign(
+        underlying_price=100.0,
+        net_delta=0.0,
+        net_gamma=0.0,
+        net_theta=0.0,
+        max_loss=1_000.0,
+        max_profit=1_000.0,
+        capital_required=1_000.0,
+    )
+    uncalibrated = score_market_state_prior(
+        uncalibrated_input,
+        state=MarketState(0.5, 0.01, 0.2, 1.0, None, None, 1.0),
+        policy=StrategySelectionPolicy(
+            minimum_train_decisions=1,
+            calibration_decisions=1,
+            assessment_decisions=1,
+        ),
+    )
+    assert uncalibrated["decision_score"].isna().all()
+    assert uncalibrated["scenario_coverage_score"].between(0.0, 1.0).all()
 
     run = _publish_pricing(tmp_path)
     with (run / "pricing-predictions.parquet").open("ab") as handle:
@@ -1053,6 +1084,15 @@ def test_strategy_missing_or_tampered_pricing_falls_back_without_rank_change(
     ).candidates
     assert tampered.iloc[0]["pricing_status"] == "Delayed"
     assert tampered.iloc[0]["candidate_rank"] == 1
+    corrupt_catalog = load_strategy_pricing_evidence(
+        tmp_path,
+        available_not_after="2026-07-06T14:03:00Z",
+        include_offline_replay=False,
+    )
+    assert corrupt_catalog.authority_states["full_pricing_pointer"] == "CORRUPT"
+    assert corrupt_catalog.authority_states["live_pricing_authority"] == (
+        "CORRUPT_POINTER"
+    )
 
 
 def test_exact_contract_matching_and_stale_fallback_are_isolated() -> None:
@@ -1123,6 +1163,48 @@ def test_exact_contract_matching_and_stale_fallback_are_isolated() -> None:
     assert rejected_offline["pricing_status"] == "Delayed"
     assert rejected_offline["pricing_source"] == "UNAVAILABLE"
 
+    future = dict(exact)
+    future["prediction_available_at"] = pd.Timestamp("2026-07-06T14:02:01Z")
+    rejected_future = attach_strategy_pricing_evidence(
+        candidate,
+        catalog=StrategyPricingEvidenceCatalog(pd.DataFrame([future]), ()),
+        pricing_mode="active",
+        per_contract_fee=0.65,
+        allow_offline_replay=False,
+    ).candidates.iloc[0]
+    assert rejected_future["pricing_status"] == "Unavailable"
+    assert "FUTURE_OR_INVALID_PRICING_CLOCK" in rejected_future[
+        "pricing_missing_reason"
+    ]
+
+    wrong_target = dict(exact)
+    wrong_target["target_snapshot_for"] = pd.Timestamp("2026-07-06T13:45:00Z")
+    rejected_target = attach_strategy_pricing_evidence(
+        candidate,
+        catalog=StrategyPricingEvidenceCatalog(pd.DataFrame([wrong_target]), ()),
+        pricing_mode="active",
+        per_contract_fee=0.65,
+        allow_offline_replay=False,
+    ).candidates.iloc[0]
+    assert rejected_target["pricing_status"] == "Delayed"
+    assert "PREDICTION_MISSING" in rejected_target["pricing_missing_reason"]
+
+    noncausal_source = dict(exact)
+    noncausal_source["source_snapshot_for"] = exact["target_snapshot_for"]
+    rejected_source = attach_strategy_pricing_evidence(
+        candidate,
+        catalog=StrategyPricingEvidenceCatalog(
+            pd.DataFrame([noncausal_source]), ()
+        ),
+        pricing_mode="active",
+        per_contract_fee=0.65,
+        allow_offline_replay=False,
+    ).candidates.iloc[0]
+    assert rejected_source["pricing_status"] == "Unavailable"
+    assert "PRICING_SOURCE_NOT_STRICTLY_PRIOR" in rejected_source[
+        "pricing_missing_reason"
+    ]
+
 
 def test_long_short_multileg_edge_and_conservative_joint_uncertainty() -> None:
     long_leg = json.loads(_candidate().iloc[0]["legs_json"])[0]
@@ -1185,7 +1267,7 @@ def test_long_short_multileg_edge_and_conservative_joint_uncertainty() -> None:
     assert row["pricing_leg_coverage"] == 1.0
 
 
-def test_pricing_evidence_changes_profit_probability_and_candidate_rank() -> None:
+def test_pricing_evidence_changes_scenario_coverage_and_candidate_rank() -> None:
     first = _candidate().iloc[0].to_dict()
     second = _candidate().iloc[0].to_dict()
     first["candidate_key"] = "candidate-a"
@@ -1254,16 +1336,18 @@ def test_pricing_evidence_changes_profit_probability_and_candidate_rank() -> Non
         zip(b_favored["candidate_key"], b_favored["candidate_rank"])
     )
     score_a_first = dict(
-        zip(a_favored["candidate_key"], a_favored["decision_score"])
+        zip(a_favored["candidate_key"], a_favored["scenario_coverage_score"])
     )
     score_b_first = dict(
-        zip(b_favored["candidate_key"], b_favored["decision_score"])
+        zip(b_favored["candidate_key"], b_favored["scenario_coverage_score"])
     )
+    assert a_favored["decision_score"].isna().all()
+    assert b_favored["decision_score"].isna().all()
     assert rank_a_first == {"candidate-a": 1, "candidate-b": 2}
     assert rank_b_first == {"candidate-b": 1, "candidate-a": 2}
     assert score_a_first["candidate-a"] > score_b_first["candidate-a"]
     assert score_b_first["candidate-b"] > score_a_first["candidate-b"]
-    assert a_favored["decision_score"].between(0.0, 1.0).all()
+    assert a_favored["scenario_coverage_score"].between(0.0, 1.0).all()
     print(
         json.dumps(
             {

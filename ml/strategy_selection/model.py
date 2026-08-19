@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 from dataclasses import asdict
@@ -25,7 +26,7 @@ from ml.artifacts import (
     input_inventory,
     utc_timestamp,
 )
-from ml.calibration import IdentityCalibrator, fit_probability_calibrator
+from ml.calibration import fit_probability_calibrator
 from ml.preprocessing import (
     PREPROCESSING_POLICY_VERSION,
     TRAINING_CLIP_LOWER_QUANTILE,
@@ -83,7 +84,7 @@ CANDIDATE_NUMERIC_FEATURES = (
     "market_uncertainty",
     "market_trend_persistence",
     "market_mean_reversion_tendency",
-    "strategy_prior__profit_probability",
+    "strategy_prior__scenario_coverage_score",
     "strategy_prior__expected_return_on_risk",
     "pricing_leg_coverage",
     "pricing_candidate_edge",
@@ -356,19 +357,19 @@ def fit_or_reuse_strategy_model(
         label="Calibration raw model",
     )
     calibration_target = partitions.calibration["profitable"].astype(int)
-    calibrator: object
     if calibration_target.nunique() != 2:
-        calibrator = IdentityCalibrator()
-        effective_calibration = "none"
-    else:
-        calibrator = fit_probability_calibrator(
-            "platt",
-            calibration_raw,
-            calibration_target,
-            clip_to_observed_probability_range=True,
-            sample_weight=_decision_weights(partitions.calibration),
+        raise ValueError(
+            "Strategy calibration unavailable: calibration partition requires "
+            "both observed outcome classes"
         )
-        effective_calibration = "platt"
+    calibrator = fit_probability_calibrator(
+        "platt",
+        calibration_raw,
+        calibration_target,
+        clip_to_observed_probability_range=True,
+        sample_weight=_decision_weights(partitions.calibration),
+    )
+    effective_calibration = "platt"
     offline_evaluation = _offline_evaluation(
         partitions,
         estimator=estimator,
@@ -939,7 +940,7 @@ def _model_configuration(
             "calibrated_probability_of_strictly_positive_net_profit"
         ),
         "fallback_score_definition": (
-            "pricing_informed_scenario_probability_of_strictly_positive_net_profit"
+            "nonprobabilistic_pricing_informed_scenario_grid_coverage"
         ),
         "assessment_policy_selection": "fixed_before_assessment",
         "calibration_method": "platt",
@@ -950,6 +951,7 @@ def _model_configuration(
         "calibration_decisions": partitions.calibration_decisions,
         "assessment_rows": len(partitions.assessment),
         "assessment_decisions": partitions.assessment_decisions,
+        "training_data_fingerprint_sha256": _partition_fingerprint(partitions),
         "training_through": pd.to_datetime(
             partitions.train["target_window_end"], utc=True
         ).max().isoformat(),
@@ -959,6 +961,46 @@ def _model_configuration(
     # the same canonical representation before comparing a live configuration
     # with an existing generation; otherwise every run needlessly refits.
     return json.loads(json.dumps(configuration, sort_keys=True, default=str))
+
+
+def _partition_fingerprint(partitions: StrategyPartitions) -> str:
+    """Hash the actual train/calibration/assessment cohorts, not broad inputs."""
+
+    digest = hashlib.sha256()
+    for label, frame in (
+        ("train", partitions.train),
+        ("calibration", partitions.calibration),
+        ("assessment", partitions.assessment),
+    ):
+        digest.update(label.encode("utf-8"))
+        normalized = frame.reindex(sorted(frame.columns), axis=1).copy()
+        digest.update("\x1f".join(normalized.columns).encode("utf-8"))
+        for column in normalized.columns:
+            normalized[column] = normalized[column].map(_fingerprint_value)
+        row_hashes = pd.util.hash_pandas_object(
+            normalized,
+            index=False,
+            categorize=True,
+        ).to_numpy(dtype="uint64", copy=True)
+        row_hashes.sort()
+        digest.update(len(normalized).to_bytes(8, byteorder="big", signed=False))
+        digest.update(row_hashes.tobytes())
+    return digest.hexdigest()
+
+
+def _fingerprint_value(value: object) -> str:
+    if value is None or value is pd.NA or value is pd.NaT:
+        return "<null>"
+    if isinstance(value, pd.Timestamp):
+        return value.isoformat()
+    if isinstance(value, (Mapping, list, tuple)):
+        return json.dumps(value, sort_keys=True, default=str, separators=(",", ":"))
+    try:
+        if pd.isna(value):
+            return "<null>"
+    except (TypeError, ValueError):
+        pass
+    return str(value)
 
 
 def _load_compatible_model(
@@ -975,7 +1017,12 @@ def _load_compatible_model(
         manifest = json.loads(
             (directory / "manifest.json").read_text(encoding="utf-8")
         )
-        if any(manifest.get(key) != value for key, value in expected.items()):
+        compatibility = {
+            key: value for key, value in expected.items() if key != "input_files"
+        }
+        if any(manifest.get(key) != value for key, value in compatibility.items()):
+            return None
+        if manifest.get("effective_calibration_method") != "platt":
             return None
         metadata = manifest["model_file"]
         model_path = directory / str(metadata["path"])

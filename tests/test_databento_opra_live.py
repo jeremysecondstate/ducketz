@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable
@@ -580,6 +581,86 @@ def test_options_cli_constructs_and_injects_live_adapter(
     assert captured["key_present"] is True
     assert captured["symbols"] == PRODUCTION_OPTION_SYMBOLS
     assert captured["adapter"].provider == "databento-opra"  # type: ignore[union-attr]
+    assert captured["closed"] is True
+
+
+def test_options_cli_captures_before_slow_history_and_lets_calendar_own_target(
+    tmp_path: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+    order: list[str] = []
+    clock_values = iter(
+        (
+            datetime(2026, 8, 18, 16, 0, tzinfo=timezone.utc),
+            datetime(2026, 8, 18, 19, 20, tzinfo=timezone.utc),
+        )
+    )
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz: object = None) -> datetime:
+            value = next(clock_values)
+            return value if tz is not None else value.replace(tzinfo=None)
+
+    class Adapter:
+        provider = "databento-opra"
+        dataset = "OPRA.PILLAR"
+        schema = "cbbo-1s"
+
+        def __init__(self, **_kwargs: object) -> None:
+            pass
+
+        def close(self) -> None:
+            captured["closed"] = True
+
+    def next_cycle(now: datetime, **_kwargs: object) -> datetime:
+        captured["scheduled_from"] = now
+        return now + timedelta(minutes=1)
+
+    def run(*_args: object, **kwargs: object) -> OptionsCycleResult:
+        order.append("cycle")
+        captured["cycle_kwargs"] = kwargs
+        return OptionsCycleResult(published=1, failed=0, skipped=0)
+
+    def catchup(*_args: object, **_kwargs: object) -> None:
+        order.append("history")
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(options_runtime, "datetime", Clock)
+    monkeypatch.setattr(options_runtime, "load_repository_environment", lambda: False)
+    monkeypatch.setenv("DATABENTO_API_KEY", "unit-test-placeholder")
+    monkeypatch.setattr(options_runtime, "DatabentoOpraLiveAdapter", Adapter)
+    monkeypatch.setattr(
+        options_runtime,
+        "synchronize_option_history",
+        catchup,
+    )
+    monkeypatch.setattr(options_runtime, "next_boundary", next_cycle)
+    monkeypatch.setattr(
+        options_runtime,
+        "_wait_for_options_boundary",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(options_runtime, "run_options_cycle", run)
+
+    result = options_runtime.main(
+        [
+            "--symbols",
+            *PRODUCTION_OPTION_SYMBOLS,
+            "--datastore",
+            str(tmp_path),
+            "--provider-mode",
+            "opra-canonical",
+        ]
+    )
+
+    assert result == 0
+    assert captured["scheduled_from"] == datetime(
+        2026, 8, 18, 16, 0, tzinfo=timezone.utc
+    )
+    assert order == ["cycle", "history"]
+    assert "target_snapshot_for" not in captured["cycle_kwargs"]
     assert captured["closed"] is True
 
 

@@ -10,6 +10,7 @@ from typing import Mapping, Sequence
 import pandas as pd
 
 from ml.option_pricing.strategy_shadow import (
+    STRATEGY_PRICING_EVIDENCE_VERSION,
     STRATEGY_PRICING_MODES,
     StrategyPricingEvidenceCatalog,
     attach_strategy_pricing_evidence,
@@ -29,7 +30,10 @@ from ml.strategy_selection.chain import (
     load_option_chain_history,
 )
 from ml.strategy_selection.contracts import (
+    MARKET_STATE_POLICY_VERSION,
     STRATEGY_CANDIDATE_POLICY_VERSION,
+    STRATEGY_OUTCOME_POLICY_VERSION,
+    STRATEGY_PRIOR_POLICY_VERSION,
     STRATEGY_REGISTRY_VERSION,
     StrategySelectionPolicy,
     StrategySelectionRun,
@@ -42,6 +46,10 @@ from ml.strategy_selection.model import (
     fit_or_reuse_strategy_model,
     partition_strategy_outcomes,
     score_strategy_candidates,
+)
+from ml.strategy_selection.outcome_store import (
+    publish_strategy_outcome_artifact,
+    read_strategy_outcome_artifact,
 )
 from ml.strategy_selection.registry import STRATEGY_REGISTRY
 
@@ -60,7 +68,7 @@ _EXIT_DELAYS = {
 
 _HISTORICAL_OUTCOME_CACHE_LIMIT = 4_096
 _HISTORICAL_OUTCOME_CACHE: OrderedDict[
-    str, tuple[pd.DataFrame, int, Mapping[str, int]]
+    str, tuple[pd.DataFrame, int, Mapping[str, int], tuple[Path, ...]]
 ] = OrderedDict()
 _HISTORICAL_OUTCOME_CACHE_LOCK = RLock()
 
@@ -112,6 +120,7 @@ def run_strategy_selection(
                 datastore_root,
                 symbol=str(symbol),
                 available_not_after=history_available_not_after,
+                allow_historical_opra_replay=False,
             )
         except Exception as exc:
             history_errors[str(symbol)] = f"{type(exc).__name__}: {exc}"
@@ -136,8 +145,10 @@ def run_strategy_selection(
             lockbox_boundaries[horizon] = min(_utc(value) for value in values)
     for horizon in tuple(dict.fromkeys(samples["horizon"].astype(str))):
         horizon_samples = completed.loc[completed["horizon"].eq(horizon)].copy()
-        outcomes, outcome_report = _historical_outcomes(
+        outcomes, outcome_report, outcome_files = _historical_outcomes(
             horizon_samples,
+            datastore_root=Path(datastore_root),
+            horizon=horizon,
             histories=histories,
             prediction_probabilities=prediction_probabilities,
             policy=effective_policy,
@@ -145,18 +156,10 @@ def run_strategy_selection(
             pricing_mode=mode,
             pricing_catalog=catalog,
         )
+        source_files.extend(outcome_files)
         model_outcomes = outcomes
-        if mode == "active" and not outcomes.empty:
-            pricing_eligible = (
-                outcomes["pricing_mode"].astype("string").str.upper().eq("ACTIVE")
-                & outcomes["pricing_source"]
-                .astype("string")
-                .str.upper()
-                .isin(("BSGP", "BLACK_SCHOLES"))
-                & pd.to_numeric(
-                    outcomes["pricing_leg_coverage"], errors="coerce"
-                ).ge(1.0 - 1e-12)
-            )
+        if not outcomes.empty:
+            pricing_eligible = _pricing_model_eligible(outcomes)
             model_outcomes = outcomes.loc[pricing_eligible].reset_index(drop=True)
             outcome_report = {
                 **outcome_report,
@@ -169,6 +172,7 @@ def run_strategy_selection(
             model_reports[horizon] = {
                 "status": "MODEL_NOT_FIT",
                 "reason": "No complete observed-BBO candidate outcomes were materialized.",
+                "calibration_status": "NOT_ATTEMPTED_NO_OUTCOMES",
                 **outcome_report,
                 "required_decision_clusters": required_decisions,
                 "usable_decision_clusters": 0,
@@ -191,9 +195,15 @@ def run_strategy_selection(
                 trained_at=created,
             )
         except Exception as exc:
+            reason = f"{type(exc).__name__}: {exc}"
             model_reports[horizon] = {
                 "status": "MODEL_NOT_FIT",
-                "reason": f"{type(exc).__name__}: {exc}",
+                "reason": reason,
+                "calibration_status": (
+                    "UNAVAILABLE"
+                    if "calibration unavailable" in reason.lower()
+                    else "NOT_AVAILABLE_MODEL_NOT_FIT"
+                ),
                 **outcome_report,
                 "complete_outcome_rows": len(outcomes),
                 "usable_decision_clusters": int(
@@ -208,6 +218,7 @@ def run_strategy_selection(
         models_reused += int(model.reused)
         model_reports[horizon] = {
             "status": "MODEL_FIT",
+            "calibration_status": "AVAILABLE",
             **outcome_report,
             "complete_outcome_rows": len(outcomes),
             "usable_decision_clusters": int(
@@ -265,10 +276,14 @@ def run_strategy_selection(
             target_window_start=sample["target_window_start"],
             known_at=input_cutoff,
         )
+        entry_contracts = _attach_causal_underlying_quote(
+            entry.contracts,
+            stock_quote=stock_quote,
+        )
         try:
             candidates, audit = construct_strategy_candidates(
                 sample,
-                entry.contracts,
+                entry_contracts,
                 surface=entry.surface,
                 stock_quote=stock_quote,
                 policy=effective_policy,
@@ -309,24 +324,18 @@ def run_strategy_selection(
         if model is None:
             candidate_frames.append(candidates)
             continue
-        if mode == "active":
-            eligible = _pricing_model_eligible(candidates)
-            scored_frames = [candidates.loc[~eligible].copy()]
-            if eligible.any():
-                scored_frames.append(
-                    score_strategy_candidates(
-                        model,  # type: ignore[arg-type]
-                        candidates.loc[eligible].copy(),
-                    )
+        eligible = _pricing_model_eligible(candidates)
+        scored_frames = [candidates.loc[~eligible].copy()]
+        if eligible.any():
+            scored_frames.append(
+                score_strategy_candidates(
+                    model,  # type: ignore[arg-type]
+                    candidates.loc[eligible].copy(),
                 )
-            scored = _rerank_candidates(
-                pd.concat(scored_frames, ignore_index=True, sort=False)
             )
-        else:
-            scored = score_strategy_candidates(
-                model,  # type: ignore[arg-type]
-                candidates,
-            )
+        scored = _rerank_candidates(
+            pd.concat(scored_frames, ignore_index=True, sort=False)
+        )
         candidate_frames.append(scored)
 
     candidates = (
@@ -353,6 +362,8 @@ def run_strategy_selection(
 def _historical_outcomes(
     samples: pd.DataFrame,
     *,
+    datastore_root: Path,
+    horizon: str,
     histories: Mapping[str, OptionChainHistory],
     prediction_probabilities: Mapping[
         tuple[str, str, pd.Timestamp, pd.Timestamp, pd.Timestamp], float
@@ -361,12 +372,16 @@ def _historical_outcomes(
     strictly_before: pd.Timestamp | None,
     pricing_mode: str,
     pricing_catalog: StrategyPricingEvidenceCatalog,
-) -> tuple[pd.DataFrame, dict[str, object]]:
+) -> tuple[pd.DataFrame, dict[str, object], tuple[Path, ...]]:
     outcome_frames: list[pd.DataFrame] = []
     failures: Counter[str] = Counter()
     candidate_rows = 0
     cache_hits = 0
     cache_misses = 0
+    persistent_hits = 0
+    persistent_misses = 0
+    persistent_published = 0
+    outcome_files: list[Path] = []
     possible_samples, coverage_failures = _samples_with_possible_receipts(
         samples,
         histories=histories,
@@ -434,12 +449,39 @@ def _historical_outcomes(
         )
         cached = _historical_outcome_cache_get(cache_key)
         if cached is not None:
-            cached_frame, cached_candidate_rows, cached_failures = cached
+            (
+                cached_frame,
+                cached_candidate_rows,
+                cached_failures,
+                cached_files,
+            ) = cached
             outcome_frames.append(cached_frame)
             candidate_rows += cached_candidate_rows
             failures.update(cached_failures)
+            outcome_files.extend(cached_files)
             cache_hits += 1
             continue
+        stored = read_strategy_outcome_artifact(
+            datastore_root,
+            horizon=horizon,
+            cache_key=cache_key,
+        )
+        if stored is not None:
+            outcome_frames.append(stored.frame)
+            candidate_rows += stored.candidate_rows
+            failures.update(stored.failures)
+            outcome_files.extend(stored.evidence_files)
+            persistent_hits += 1
+            cache_hits += 1
+            _historical_outcome_cache_put(
+                cache_key,
+                stored.frame,
+                candidate_rows=stored.candidate_rows,
+                failures=stored.failures,
+                evidence_files=stored.evidence_files,
+            )
+            continue
+        persistent_misses += 1
         cache_misses += 1
         observation_failures: Counter[str] = Counter()
         try:
@@ -491,11 +533,22 @@ def _historical_outcomes(
         evaluated_frame = pd.DataFrame(evaluated)
         failures.update(observation_failures)
         outcome_frames.append(evaluated_frame)
+        stored = publish_strategy_outcome_artifact(
+            datastore_root,
+            horizon=horizon,
+            cache_key=cache_key,
+            frame=evaluated_frame,
+            candidate_rows=len(candidates),
+            failures=observation_failures,
+        )
+        outcome_files.extend(stored.evidence_files)
+        persistent_published += 1
         _historical_outcome_cache_put(
             cache_key,
             evaluated_frame,
             candidate_rows=len(candidates),
             failures=observation_failures,
+            evidence_files=stored.evidence_files,
         )
     outcomes = (
         pd.concat(outcome_frames, ignore_index=True, sort=False)
@@ -507,16 +560,50 @@ def _historical_outcomes(
         if not outcomes.empty
         else 0
     )
-    return outcomes.loc[
+    complete = outcomes.loc[
         outcomes["outcome_status"].eq("COMPLETE")
-    ].reset_index(drop=True) if not outcomes.empty else outcomes, {
+    ].reset_index(drop=True) if not outcomes.empty else outcomes
+    report = {
         "sample_rows_considered": len(samples),
         "candidate_rows_constructed": candidate_rows,
         "complete_outcome_rows": complete_rows,
         "failures": dict(sorted(failures.items())),
         "incremental_outcome_cache_hits": cache_hits,
         "incremental_outcome_cache_misses": cache_misses,
+        "process_memory_outcome_cache_hits": cache_hits - persistent_hits,
+        "persistent_outcome_cache_hits": persistent_hits,
+        "persistent_outcome_cache_misses": persistent_misses,
+        "persistent_outcome_artifacts_published": persistent_published,
     }
+    return complete, report, tuple(dict.fromkeys(outcome_files))
+
+
+def _attach_causal_underlying_quote(
+    contracts: pd.DataFrame,
+    *,
+    stock_quote: pd.Series | None,
+) -> pd.DataFrame:
+    """Fill an absent OPRA underlying only from the already-cutoff stock BBO."""
+
+    observed = pd.to_numeric(contracts["underlying_price"], errors="coerce")
+    if observed.notna().any() or stock_quote is None:
+        return contracts
+    midpoint = pd.to_numeric(
+        pd.Series([stock_quote.get("mid")]), errors="coerce"
+    ).iloc[0]
+    if pd.isna(midpoint):
+        bid = pd.to_numeric(
+            pd.Series([stock_quote.get("bid")]), errors="coerce"
+        ).iloc[0]
+        ask = pd.to_numeric(
+            pd.Series([stock_quote.get("ask")]), errors="coerce"
+        ).iloc[0]
+        midpoint = (bid + ask) / 2.0
+    if pd.isna(midpoint) or float(midpoint) <= 0.0:
+        return contracts
+    output = contracts.copy()
+    output["underlying_price"] = float(midpoint)
+    return output
 
 
 def _historical_outcome_cache_key(
@@ -536,6 +623,20 @@ def _historical_outcome_cache_key(
     """Fingerprint only immutable evidence used by one historical observation."""
 
     digest = hashlib.sha256()
+    digest.update(
+        json.dumps(
+            {
+                "candidate_policy": STRATEGY_CANDIDATE_POLICY_VERSION,
+                "outcome_policy": STRATEGY_OUTCOME_POLICY_VERSION,
+                "market_state_policy": MARKET_STATE_POLICY_VERSION,
+                "prior_policy": STRATEGY_PRIOR_POLICY_VERSION,
+                "registry": STRATEGY_REGISTRY_VERSION,
+                "pricing_evidence": STRATEGY_PRICING_EVIDENCE_VERSION,
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    )
     digest.update(repr(policy).encode("utf-8"))
     digest.update(str(pricing_mode).encode("utf-8"))
     digest.update(repr(probability_up).encode("utf-8"))
@@ -608,14 +709,19 @@ def _stable_cache_value(value: object) -> str:
 
 def _historical_outcome_cache_get(
     key: str,
-) -> tuple[pd.DataFrame, int, Mapping[str, int]] | None:
+) -> tuple[pd.DataFrame, int, Mapping[str, int], tuple[Path, ...]] | None:
     with _HISTORICAL_OUTCOME_CACHE_LOCK:
         cached = _HISTORICAL_OUTCOME_CACHE.get(key)
         if cached is None:
             return None
         _HISTORICAL_OUTCOME_CACHE.move_to_end(key)
-        frame, candidate_rows, failures = cached
-        return frame.copy(deep=True), candidate_rows, dict(failures)
+        frame, candidate_rows, failures, evidence_files = cached
+        return (
+            frame.copy(deep=True),
+            candidate_rows,
+            dict(failures),
+            tuple(evidence_files),
+        )
 
 
 def _historical_outcome_cache_put(
@@ -624,12 +730,14 @@ def _historical_outcome_cache_put(
     *,
     candidate_rows: int,
     failures: Mapping[str, int],
+    evidence_files: Sequence[Path],
 ) -> None:
     with _HISTORICAL_OUTCOME_CACHE_LOCK:
         _HISTORICAL_OUTCOME_CACHE[key] = (
             frame.copy(deep=True),
             int(candidate_rows),
             dict(failures),
+            tuple(Path(path) for path in evidence_files),
         )
         _HISTORICAL_OUTCOME_CACHE.move_to_end(key)
         while len(_HISTORICAL_OUTCOME_CACHE) > _HISTORICAL_OUTCOME_CACHE_LIMIT:
@@ -646,17 +754,32 @@ def _pricing_model_eligible(frame: pd.DataFrame) -> pd.Series:
         & pd.to_numeric(frame["pricing_leg_coverage"], errors="coerce").ge(
             1.0 - 1e-12
         )
+        & frame["surface_quality_pass"].fillna(False).astype(bool)
+        & frame["liquidity_policy_pass"].fillna(False).astype(bool)
+        & frame["all_option_quotes_valid"].fillna(False).astype(bool)
     )
 
 
 def _rerank_candidates(frame: pd.DataFrame) -> pd.DataFrame:
     if frame.empty:
         return frame.copy()
-    output = frame.sort_values(
-        ["decision_score", "expected_return_on_risk", "candidate_key"],
-        ascending=[False, False, True],
+    output = frame.copy()
+    decision = pd.to_numeric(output["decision_score"], errors="coerce")
+    scenario = pd.to_numeric(
+        output["scenario_coverage_score"], errors="coerce"
+    )
+    output["__calibrated_rank"] = decision.notna().astype(int)
+    output["__rank_value"] = decision.where(decision.notna(), scenario)
+    output = output.sort_values(
+        [
+            "__calibrated_rank",
+            "__rank_value",
+            "expected_return_on_risk",
+            "candidate_key",
+        ],
+        ascending=[False, False, False, True],
         kind="mergesort",
-    ).reset_index(drop=True)
+    ).drop(columns=["__calibrated_rank", "__rank_value"]).reset_index(drop=True)
     output["candidate_rank"] = range(1, len(output) + 1)
     return output
 
@@ -670,6 +793,16 @@ def _pricing_report(
     status = frame.get(
         "pricing_status", pd.Series("", index=frame.index, dtype="string")
     ).astype("string")
+    fitted = frame.get(
+        "calibrated_profit_probability",
+        pd.Series(float("nan"), index=frame.index),
+    ).notna()
+    surface_failed = ~frame.get(
+        "surface_quality_pass", pd.Series(False, index=frame.index)
+    ).fillna(False).astype(bool)
+    liquidity_failed = ~frame.get(
+        "liquidity_policy_pass", pd.Series(False, index=frame.index)
+    ).fillna(False).astype(bool)
     return {
         "mode": mode,
         "candidate_rows": len(frame),
@@ -678,6 +811,12 @@ def _pricing_report(
         },
         "prediction_rows_loaded": len(catalog.predictions),
         "load_errors": list(catalog.errors),
+        "authority_states": dict(catalog.authority_states),
+        "calibration_state": "AVAILABLE" if fitted.any() else "UNAVAILABLE",
+        "calibrated_candidate_rows": int(fitted.sum()),
+        "scenario_coverage_candidate_rows": int((~fitted).sum()),
+        "surface_quality_failure_rows": int(surface_failed.sum()),
+        "liquidity_policy_failure_rows": int(liquidity_failed.sum()),
         "attached_before_training_and_scoring": True,
     }
 

@@ -33,15 +33,36 @@ _PARTITIONS = ModelPartitionConfig(
 )
 
 
-def test_four_hour_defaults_match_hourly_policy() -> None:
-    assert DEFAULT_PARTITION_CONFIGS["4h"] == ModelPartitionConfig(
+def test_intraday_defaults_fit_bounded_minute_history_without_weakening_daily() -> None:
+    expected_intraday = ModelPartitionConfig(160, 40, 40, 80)
+    assert DEFAULT_PARTITION_CONFIGS["4h"] == expected_intraday
+    assert DEFAULT_PARTITION_CONFIGS["4h"] == DEFAULT_PARTITION_CONFIGS["1h"]
+    assert DEFAULT_PARTITION_CONFIGS["1d"] == ModelPartitionConfig(
         252,
         63,
         63,
         126,
     )
-    assert DEFAULT_PARTITION_CONFIGS["4h"] == DEFAULT_PARTITION_CONFIGS["1h"]
     assert MINIMUM_LIVE_DECISIONS["4h"] == 60
+
+    for horizon, window in (("1h", pd.Timedelta(hours=1)), ("4h", pd.Timedelta(hours=3))):
+        samples = _overlapping_samples(cluster_count=343).copy()
+        samples["horizon"] = horizon
+        samples["id"] = [
+            f"GOOG|{horizon}|{_iso_z(value)}"
+            for value in samples["decision_timestamp"]
+        ]
+        samples["target_window_end"] = samples["target_window_start"] + window
+
+        partitions = partition_model_rows(
+            samples,
+            config=DEFAULT_PARTITION_CONFIGS[horizon],
+        )
+
+        assert partitions.train["target_window_start"].nunique() >= 160
+        assert partitions.calibration["target_window_start"].nunique() == 40
+        assert partitions.assessment["target_window_start"].nunique() == 40
+        assert partitions.lockbox_cluster_count == 80
 
 
 def test_four_hour_overlaps_are_purged_across_every_partition_boundary() -> None:
@@ -266,7 +287,7 @@ def test_four_hour_target_contract_is_model_compatibility_metadata(
         specification=replace(
             specification,
             target_definition_version=(
-                "next-240-eligible-regular-minutes-open-close-test-change"
+                "next-180-eligible-regular-minutes-open-close-test-change"
             ),
         ),
         trained_at="2026-07-30T12:03:00Z",
@@ -285,7 +306,7 @@ def test_four_hour_target_contract_is_model_compatibility_metadata(
     assert changed.artifact_directory != first.artifact_directory
     target_definition = manifest["target_definition"]
     assert target_definition["version"] == (
-        "next-240-eligible-regular-minutes-open-close-v2"
+        "next-180-eligible-regular-minutes-open-close-v3"
     )
     assert target_definition["horizon_specification"] == specification.as_dict()
     assert target_definition["calendar_policy"] == (
@@ -352,7 +373,7 @@ def test_four_hour_contract_change_does_not_invalidate_one_hour_model(
     four_hour_specification = replace(
         horizon_specification("4h"),
         target_definition_version=(
-            "next-240-eligible-regular-minutes-open-close-isolation-test"
+            "next-180-eligible-regular-minutes-open-close-isolation-test"
         ),
     )
     four_hour_features = resolve_model_feature_set(
@@ -396,7 +417,7 @@ def test_four_hour_contract_change_does_not_invalidate_one_hour_model(
         )
     )
     assert one_hour_manifest["target_definition"]["version"] == (
-        "next-60-eligible-regular-minutes-open-close-v2"
+        "next-60-eligible-regular-minutes-open-close-v3"
     )
     assert one_hour_manifest["target_definition"][
         "horizon_specification"

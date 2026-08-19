@@ -16,21 +16,24 @@ STRATEGY_SELECTION_OPRA_FIRST_SPREADS_V2 = "opra-first-spreads-v2"
 
 STRATEGY_REGISTRY_VERSION = "opra-first-spreads-strategy-registry-v2"
 STRATEGY_CANDIDATE_POLICY_VERSION = (
-    "provider-neutral-opra-first-chain-pricing-candidates-v5"
+    "provider-neutral-opra-first-chain-pricing-candidates-v6"
 )
 STRATEGY_OUTCOME_POLICY_VERSION = "observed-bbo-pseudo-outcome-v2"
-MARKET_STATE_POLICY_VERSION = "point-in-time-market-state-pricing-v2"
-STRATEGY_PRIOR_POLICY_VERSION = "pricing-greek-bbo-scenario-prior-v3"
-STRATEGY_MODEL_POLICY_VERSION = "pricing-market-state-hgb-platt-return-v5"
-STRATEGY_RANKING_POLICY_VERSION = "post-pricing-probability-first-ranking-v4"
-STRATEGY_CANDIDATE_SCHEMA_VERSION = "strategy-candidate-v3"
+MARKET_STATE_POLICY_VERSION = "point-in-time-market-state-pricing-v3"
+STRATEGY_PRIOR_POLICY_VERSION = "pricing-greek-bbo-scenario-coverage-v4"
+STRATEGY_MODEL_POLICY_VERSION = "pricing-market-state-hgb-platt-return-v6"
+STRATEGY_RANKING_POLICY_VERSION = "calibrated-then-scenario-ranking-v5"
+STRATEGY_CANDIDATE_SCHEMA_VERSION = "strategy-candidate-v4"
 STRATEGY_RESEARCH_TRACE_VERSION = "nyu-hu-uh-trace-v3"
 
 BSGP_CALIBRATED_MODEL_SCORE_BASIS = "BSGP_CALIBRATED_MODEL"
 BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS = (
     "BLACK_SCHOLES_CALIBRATED_MODEL"
 )
-PRICING_SCENARIO_FALLBACK_SCORE_BASIS = "PRICING_SCENARIO_FALLBACK"
+SCENARIO_COVERAGE_SCORE_BASIS = "SCENARIO_COVERAGE_HEURISTIC"
+# Kept as an import-compatible name while persisted v4 rows use the accurately
+# typed scenario-coverage basis above.
+PRICING_SCENARIO_FALLBACK_SCORE_BASIS = SCENARIO_COVERAGE_SCORE_BASIS
 # Import-compatible names for downstream code while persisted rows use only the
 # three pricing-aware bases above.
 CALIBRATED_MODEL_SCORE_BASIS = BSGP_CALIBRATED_MODEL_SCORE_BASIS
@@ -191,6 +194,7 @@ __all__ = [
     "OptionType",
     "PositionSide",
     "PRICING_SCENARIO_FALLBACK_SCORE_BASIS",
+    "SCENARIO_COVERAGE_SCORE_BASIS",
     "STRATEGY_CANDIDATE_POLICY_VERSION",
     "STRATEGY_CANDIDATE_SCHEMA_VERSION",
     "STRATEGY_MODEL_POLICY_VERSION",

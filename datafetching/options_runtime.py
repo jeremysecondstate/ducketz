@@ -835,20 +835,6 @@ def main(argv: Sequence[str] | None = None) -> int:
 
             while True:
                 cycle_anchor = datetime.now(timezone.utc)
-                catchup_date = cycle_anchor.date()
-                if (
-                    canonical_adapter is not None
-                    and not args.skip_historical_catchup
-                    and catchup_date != last_catchup_date
-                ):
-                    synchronize_option_history(
-                        store,
-                        api_key=api_key,
-                        symbols=symbols,
-                        reporter=print,
-                        bootstrap_missing=False,
-                    )
-                    last_catchup_date = catchup_date
                 if not args.once:
                     boundary = next_boundary(
                         cycle_anchor,
@@ -866,7 +852,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                     store,
                     symbols=symbols,
                     writer_lock_held=True,
-                    target_snapshot_for=expected_quarter_hour_target(cycle_anchor),
                     pricing_barrier_timeout_seconds=(
                         args.pricing_barrier_timeout_seconds
                     ),
@@ -878,6 +863,25 @@ def main(argv: Sequence[str] | None = None) -> int:
                 report_options_result(result)
                 if args.once:
                     return 1 if result.failed else 0
+                # Prospective evidence is the latency-sensitive authority.  A
+                # daily historical overlap can take hours for cbbo-1s, so it
+                # must never run before the process has captured its first
+                # calendar-owned target.  Maintenance remains resumable and
+                # runs at most once per UTC date after that publication attempt.
+                catchup_date = datetime.now(timezone.utc).date()
+                if (
+                    canonical_adapter is not None
+                    and not args.skip_historical_catchup
+                    and catchup_date != last_catchup_date
+                ):
+                    synchronize_option_history(
+                        store,
+                        api_key=api_key,
+                        symbols=symbols,
+                        reporter=print,
+                        bootstrap_missing=False,
+                    )
+                    last_catchup_date = catchup_date
         except KeyboardInterrupt:
             print("Options runtime stopped.")
             return 0

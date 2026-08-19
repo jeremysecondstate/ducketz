@@ -81,7 +81,7 @@ receipt-verified partitions and never initiates or expands a provider request.
 
 - **Confirmed:** Options Capture waits for or records this target outcome as a sequencing proof, but can still commit causally clocked OPRA or capture pending Schwab evidence if it is absent. `datafetching/pricing_barrier.py:77`, `datafetching/options_runtime.py:360`, `datafetching/options_runtime.py:452`
 - **Confirmed:** Directional Loop B consumes compact verified `opx__` surface features. `ml/rolling_materialization.py:663`
-- **Confirmed:** Strategy's active catalog reads the target sidecar and full verified history, maps ready residual rows to `BSGP` and complete fallback rows to `BLACK_SCHOLES`, then attaches exact leg values before scoring; unavailable coverage retains the scenario-prior fallback. `ml/option_pricing/strategy_shadow.py:263`, `ml/option_pricing/strategy_shadow.py:298`, `ml/strategy_selection/runtime.py:288`
+- **Confirmed:** Strategy's active catalog reads the target sidecar and verified history, maps ready residual rows to `BSGP` and complete fallback rows to `BLACK_SCHOLES`, then attaches exact leg values before scoring; unavailable coverage retains only separately typed Scenario Coverage. `ml/option_pricing/strategy_shadow.py`, `ml/strategy_selection/runtime.py`
 
 ### Timing and control relationships
 
@@ -93,7 +93,7 @@ receipt-verified partitions and never initiates or expands a provider request.
 |---|---|---|
 | Directional horizon predictions | Indirect | Verified Pricing generation → compact `opx__` surfaces → Loop B samples/features → directional probabilities. `ml/option_pricing/consumers.py:30`, `ml/rolling_materialization.py:663`, `ml/runtime_pipeline.py:493` |
 | Option-pricing predictions | Direct | Loop A target plus earlier OPRA/Schwab chain, rate, dividend and volatility → authoritative constrained Black–Scholes baseline point value plus separately published finite-basis residual/fallback sidecar → target and full Pricing authorities. `ml/option_pricing_runtime.py:1181`, `ml/option_pricing_runtime.py:1220`, `ml/option_pricing/target_outcome.py:93` |
-| Options-strategy predictions | Indirect | verified ready BSGP or Black–Scholes contract values → exact candidate leg pricing/eligibility → fitted profitable-outcome probability, or unavailable coverage → explicit scenario fallback → rank. `ml/option_pricing/strategy_shadow.py:298`, `ml/strategy_selection/runtime.py:288`, `ml/strategy_selection/runtime.py:311` |
+| Options-strategy predictions | Indirect | verified ready BSGP or Black–Scholes contract values → exact candidate leg pricing/eligibility → fitted calibrated profitable-outcome probability, or unavailable coverage → non-probabilistic Scenario Coverage → rank. `ml/option_pricing/strategy_shadow.py`, `ml/strategy_selection/runtime.py` |
 
 **Roll-up classification: Both.** It directly owns option-pricing predictions and has evidenced indirect paths to horizon and strategy predictions.
 
