@@ -510,6 +510,11 @@ def _prepare_contracts(
         policy.minimum_open_interest,
         _HORIZON_MIN_OPEN_INTEREST[horizon],
     )
+    source_provider = frame.get(
+        "source_provider",
+        pd.Series("", index=frame.index, dtype="string"),
+    ).astype("string").str.strip().str.lower()
+    opra_bbo_evidence = source_provider.eq("databento-opra")
     structural = (
         ~frame["mini"].fillna(True).astype(bool)
         & ~frame["non_standard"].fillna(True).astype(bool)
@@ -526,13 +531,17 @@ def _prepare_contracts(
     result = frame.loc[structural].copy()
     if result.empty:
         raise ValueError("No standard contracts contain a numerically usable BBO")
+    open_interest_pass = (
+        np.isfinite(result["open_interest"])
+        & result["open_interest"].ge(minimum_open_interest)
+    )
+    opra_result = opra_bbo_evidence.reindex(result.index, fill_value=False)
     result["__liquidity_policy_pass"] = (
         result["quote_valid"].map(_scalar_true)
         & np.isfinite(result["relative_bid_ask_spread"])
         & result["relative_bid_ask_spread"].ge(0.0)
         & result["relative_bid_ask_spread"].le(maximum_spread)
-        & np.isfinite(result["open_interest"])
-        & result["open_interest"].ge(minimum_open_interest)
+        & (open_interest_pass | opra_result)
         & np.isfinite(result["quote_staleness_seconds"])
         & result["quote_staleness_seconds"].ge(0.0)
         & result["quote_staleness_seconds"].le(

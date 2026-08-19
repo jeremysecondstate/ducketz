@@ -9,6 +9,7 @@ from typing import Callable, Iterable, Mapping
 
 import pandas as pd
 import pyarrow.parquet as pq
+from dotenv import load_dotenv
 
 from app.models.market_data import MarketBar
 from app.services.databento_cme_context import (
@@ -31,6 +32,7 @@ from datafetching.cme_cross_asset_context import (
     CmeCrossAssetQualityError,
     materialize_cme_cross_asset_context,
 )
+from datafetching.databento_archive import materialize_equity_archive_baseline
 from datafetching.decision_time import completed_bar_clock_for_target
 from datafetching.cme_history import cme_writer_lock_path
 from datafetching.derived_bars import (
@@ -46,6 +48,7 @@ from datafetching.runtime_lock import exclusive_runtime_lock
 
 DATABENTO_MAX_SYMBOLS_PER_REQUEST = 2_000
 DATABENTO_HISTORICAL_TARGET_MAX_LAG_SECONDS = 20 * 60
+REPOSITORY_ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
 
 
 class DatabentoTargetRecoveryError(RuntimeError):
@@ -92,6 +95,7 @@ def recover_historical_minute_target(
     monotonic_deadline = monotonic_clock() + max(
         0.0, (deadline - started_at).total_seconds()
     )
+    _load_repository_environment()
     effective_provider = provider or DatabentoMarketDataProvider()
     minute_specs = tuple(
         spec
@@ -224,8 +228,15 @@ def fetch(
     candle. Normalized equity-bar Parquets are a finalized-candle dataset and
     therefore contain only intervals completed as of this fetch cycle.
     """
+    _load_repository_environment()
     provider = DatabentoMarketDataProvider()
     observed_at = datetime.now(timezone.utc)
+    _materialize_archive_baseline(
+        store,
+        provider=provider,
+        symbols=(symbol,),
+        observed_at=observed_at,
+    )
     minute_result: FetchResult | None = None
 
     def on_spec_completed(spec: object, results: list[tuple]) -> None:
@@ -323,8 +334,15 @@ def _fetch_many(
             )
         }
 
+    _load_repository_environment()
     provider = DatabentoMarketDataProvider()
     observed_at = datetime.now(timezone.utc)
+    _materialize_archive_baseline(
+        store,
+        provider=provider,
+        symbols=clean_symbols,
+        observed_at=observed_at,
+    )
     minute_results: dict[str, FetchResult] = {}
 
     def on_spec_completed(
@@ -518,6 +536,36 @@ def _persist_native_results(
         error_files += daily_errors
 
     return FetchResult("databento", data_files, error_files, advisory_files)
+
+
+def _materialize_archive_baseline(
+    store: ParquetStore,
+    *,
+    provider: DatabentoMarketDataProvider,
+    symbols: Iterable[str],
+    observed_at: datetime,
+) -> None:
+    live_dataset = str(getattr(provider, "dataset", "") or "").strip()
+    native_specs = getattr(provider, "native_specs", None)
+    if not live_dataset or not callable(native_specs):
+        return
+    result = materialize_equity_archive_baseline(
+        store.root_dir,
+        symbols=symbols,
+        live_dataset=live_dataset,
+        source_specs=native_specs(),
+        as_of=observed_at,
+    )
+    if result.materialized_files:
+        print(
+            "[databento/archive-bridge] seeded "
+            f"{result.materialized_files} Loop A files with "
+            f"{result.archive_rows:,} verified {result.dataset} rows"
+        )
+
+
+def _load_repository_environment() -> None:
+    load_dotenv(dotenv_path=REPOSITORY_ENV_FILE, override=False)
 
 
 def _with_shared_cme_result(result: FetchResult, store: ParquetStore) -> FetchResult:

@@ -2,12 +2,20 @@ from __future__ import annotations
 
 import math
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
 
 import pandas as pd
+import pyarrow.parquet as pq
 
 from datafetching.calculated_features import write_immutable_feature_partition
+from datafetching.databento_archive import (
+    archive_lineage_metadata,
+    cme_archive_source_inventory,
+    load_cme_archive_frame,
+    publish_archive_lineage,
+)
 from datafetching.cme_history import cme_normalized_event_paths
 
 CME_CONTEXT_NAME = "continuous-cross-asset-1h"
@@ -20,6 +28,7 @@ CME_CONTEXT_ROOTS = ("NQ", "ES", "RTY", "GC", "CL")
 CME_CONTEXT_MAX_STALENESS = pd.Timedelta(minutes=15)
 CME_CONTEXT_MAX_CLOCK_SKEW = pd.Timedelta(seconds=5)
 CME_BOOK_LOOKBACK = pd.Timedelta(minutes=15)
+_CME_PERSISTED_BATCH_ROWS = 50_000
 
 CME_CONTEXT_COLUMNS = (
     "context_name",
@@ -63,6 +72,12 @@ class CmeCrossAssetNotReady(ValueError):
 
 class CmeCrossAssetQualityError(ValueError):
     """Raised when a candidate CME context window fails a hard quality gate."""
+
+
+@dataclass(frozen=True)
+class _PersistedCmeSource:
+    combined: pd.DataFrame
+    archive: pd.DataFrame
 
 
 def calculate_cme_cross_asset_context(
@@ -236,6 +251,8 @@ def materialize_cme_cross_asset_context(
     datastore_root: Path,
     *,
     calculated_at: object | None = None,
+    archive_dataset: str | None = None,
+    archive_symbols: Sequence[str] = (),
 ) -> Path | None:
     """Read already-persisted Databento rows and append unseen context windows."""
 
@@ -255,23 +272,144 @@ def materialize_cme_cross_asset_context(
         ]
         excluded = tuple(matching["window_end"])
 
-    try:
-        sources = {
-            name: _read_persisted_source(root, dataset)
-            for name, dataset in _CME_SOURCE_DATASETS.items()
-        }
-        frame = calculate_cme_cross_asset_context(
-            sources["ohlcv"],
-            sources["bbo"],
-            sources["mbp"],
-            calculated_at=calculated_at,
-            excluded_window_ends=excluded,
+    dataset = str(archive_dataset or "").strip()
+    symbols = tuple(
+        dict.fromkeys(
+            str(value).strip() for value in archive_symbols if str(value).strip()
         )
+    )
+    inventories: dict[str, tuple[Path, ...]] = {}
+    fingerprints: dict[str, str] = {}
+    if dataset and symbols:
+        for name, source_dataset in _CME_SOURCE_DATASETS.items():
+            schema = source_dataset.removeprefix("cme_context_")
+            inventory, fingerprint = cme_archive_source_inventory(
+                root,
+                dataset=dataset,
+                schema=schema,
+                symbols=symbols,
+            )
+            inventories[name] = inventory
+            if fingerprint:
+                fingerprints[name] = fingerprint
+    prior_lineage = archive_lineage_metadata(output_path)
+    replay_archive = bool(fingerprints) and prior_lineage.get(
+        "archive_fingerprints"
+    ) != fingerprints
+
+    try:
+        loaded = {
+            name: _read_persisted_source(
+                root,
+                source_dataset,
+                archive_dataset=dataset,
+                archive_symbols=symbols,
+                include_archive=replay_archive,
+            )
+            for name, source_dataset in _CME_SOURCE_DATASETS.items()
+        }
+        frames: list[pd.DataFrame] = []
+        if replay_archive:
+            historical = _calculate_cme_context_history(
+                loaded["ohlcv"].archive,
+                loaded["bbo"].archive,
+                loaded["mbp"].archive,
+                excluded_window_ends=excluded,
+            )
+            if not historical.empty:
+                frames.append(historical)
+                excluded = (*excluded, *tuple(historical["window_end"]))
+
+        current_sources = {
+            name: (
+                _recent_source(value.combined, calculated_at=calculated_at)
+                if fingerprints and not replay_archive
+                else value.combined
+            )
+            for name, value in loaded.items()
+        }
+        try:
+            current = calculate_cme_cross_asset_context(
+                current_sources["ohlcv"],
+                current_sources["bbo"],
+                current_sources["mbp"],
+                calculated_at=calculated_at,
+                excluded_window_ends=excluded,
+            )
+        except CmeCrossAssetNotReady:
+            current = pd.DataFrame()
+        except CmeCrossAssetQualityError:
+            if not frames:
+                raise
+            current = pd.DataFrame()
+        if not current.empty:
+            frames.append(current)
     except CmeCrossAssetNotReady:
         return None
-    if frame.empty:
-        return None
-    return persist_cme_cross_asset_context(root, frame)
+
+    output: Path | None = None
+    if frames:
+        output = persist_cme_cross_asset_context(
+            root,
+            pd.concat(frames, ignore_index=True, sort=False),
+        )
+    if replay_archive and output_path.is_file():
+        publish_archive_lineage(
+            root,
+            output_path,
+            archive_dataset=dataset,
+            live_dataset=dataset,
+            source_files=tuple(
+                dict.fromkeys(
+                    path
+                    for paths in inventories.values()
+                    for path in paths
+                )
+            ),
+            metadata={
+                "archive_fingerprints": fingerprints,
+                "archive_symbols": list(symbols),
+                "archive_context_rows_materialized": int(
+                    sum(len(frame) for frame in frames)
+                ),
+            },
+        )
+    return output
+
+
+def cme_archive_replay_pending(
+    datastore_root: Path,
+    *,
+    archive_dataset: str,
+    archive_symbols: Sequence[str],
+) -> bool:
+    """Return whether immutable CME history has not reached the derived view."""
+
+    root = Path(datastore_root)
+    dataset = str(archive_dataset or "").strip()
+    symbols = tuple(
+        dict.fromkeys(
+            str(value).strip()
+            for value in archive_symbols
+            if str(value).strip()
+        )
+    )
+    if not dataset or not symbols:
+        return False
+    fingerprints: dict[str, str] = {}
+    for name, source_dataset in _CME_SOURCE_DATASETS.items():
+        _inventory, fingerprint = cme_archive_source_inventory(
+            root,
+            dataset=dataset,
+            schema=source_dataset.removeprefix("cme_context_"),
+            symbols=symbols,
+        )
+        if fingerprint:
+            fingerprints[name] = fingerprint
+    if not fingerprints:
+        return False
+    lineage = archive_lineage_metadata(cme_cross_asset_context_path(root))
+    return lineage.get("archive_fingerprints") != fingerprints
 
 
 def cme_cross_asset_context_path(datastore_root: Path) -> Path:
@@ -286,42 +424,261 @@ def cme_cross_asset_context_path(datastore_root: Path) -> Path:
     )
 
 
-def _read_persisted_source(root: Path, dataset: str) -> pd.DataFrame:
+def _read_persisted_source(
+    root: Path,
+    dataset: str,
+    *,
+    archive_dataset: str = "",
+    archive_symbols: Sequence[str] = (),
+    include_archive: bool = False,
+) -> _PersistedCmeSource:
     schema = dataset.removeprefix("cme_context_")
+    archive = pd.DataFrame()
+    if include_archive and archive_dataset and archive_symbols:
+        archive, _source_files, _fingerprint = load_cme_archive_frame(
+            root,
+            dataset=archive_dataset,
+            schema=schema,
+            symbols=archive_symbols,
+        )
     partitioned = cme_normalized_event_paths(
         root,
         group_key="context",
         schema=schema,
     )
     if partitioned:
-        return pd.concat(
-            [pd.read_parquet(path) for path in partitioned],
-            ignore_index=True,
-            sort=False,
+        live = _read_persisted_event_files(partitioned, schema=schema)
+    else:
+        folder = (
+            root
+            / "pools"
+            / "cme"
+            / "CME_CONTEXT"
+            / dataset
+            / "databento"
+            / "normalized"
         )
-    folder = (
-        root
-        / "pools"
-        / "cme"
-        / "CME_CONTEXT"
-        / dataset
-        / "databento"
-        / "normalized"
-    )
-    paths = tuple(
-        path
-        for path in sorted(folder.glob("*.parquet"))
-        if not path.stem.endswith("_status")
-    )
-    if not paths:
+        paths = tuple(
+            path
+            for path in sorted(folder.glob("*.parquet"))
+            if not path.stem.endswith("_status")
+        )
+        live = _read_persisted_event_files(paths, schema=schema)
+    if archive.empty and live.empty:
         raise CmeCrossAssetNotReady(
-            f"Persisted CME source is not ready: {folder}"
+            f"Persisted CME source is not ready: {dataset}"
         )
-    return pd.concat(
-        [pd.read_parquet(path) for path in paths],
-        ignore_index=True,
-        sort=False,
+    combined = pd.concat([archive, live], ignore_index=True, sort=False)
+    if schema == "ohlcv-1m" and not combined.empty:
+        symbol_column = (
+            "provider_symbol" if "provider_symbol" in combined else "symbol"
+        )
+        combined = (
+            combined.sort_values("timestamp", kind="stable")
+            .drop_duplicates([symbol_column, "timestamp"], keep="last")
+            .reset_index(drop=True)
+        )
+    elif schema in {"bbo-1m", "mbp-10"} and not combined.empty:
+        combined = _compact_persisted_events(combined)
+    return _PersistedCmeSource(
+        combined=combined,
+        archive=archive,
     )
+
+
+def _read_persisted_event_files(
+    paths: Sequence[Path],
+    *,
+    schema: str,
+) -> pd.DataFrame:
+    """Read context columns and compact high-volume books in bounded batches."""
+
+    frames: list[pd.DataFrame] = []
+    for path in paths:
+        parquet = pq.ParquetFile(path)
+        columns = _persisted_event_columns(
+            set(parquet.schema_arrow.names),
+            schema=schema,
+        )
+        if schema not in {"bbo-1m", "mbp-10"}:
+            frames.append(pd.read_parquet(path, columns=columns).reset_index())
+            continue
+        for batch in parquet.iter_batches(
+            batch_size=_CME_PERSISTED_BATCH_ROWS,
+            columns=columns,
+            use_threads=True,
+        ):
+            frame = batch.to_pandas()
+            if frame.index.name is not None and frame.index.name not in frame.columns:
+                frame = frame.reset_index()
+            else:
+                frame = frame.reset_index(drop=True)
+            frame = _compact_persisted_events(frame)
+            if not frame.empty:
+                frames.append(frame)
+    if not frames:
+        return pd.DataFrame()
+    combined = pd.concat(frames, ignore_index=True, sort=False)
+    if schema in {"bbo-1m", "mbp-10"}:
+        combined = _compact_persisted_events(combined)
+    return combined
+
+
+def _persisted_event_columns(
+    available: set[str],
+    *,
+    schema: str,
+) -> list[str]:
+    common = (
+        "provider_symbol",
+        "symbol",
+        "raw_symbol",
+        "provider_stype_in",
+        "timestamp",
+        "fetched_at",
+        "ts_recv",
+        "databento_ts_recv",
+        "ts_event",
+        "databento_ts_event",
+        "sequence",
+        "request_limit_saturated",
+    )
+    if schema == "ohlcv-1m":
+        values = ("timeframe", "open", "high", "low", "close", "volume")
+    elif schema == "bbo-1m":
+        values = ("bid_px_00", "ask_px_00", "bid_price", "ask_price")
+    elif schema == "mbp-10":
+        values = (
+            *(f"bid_sz_{depth:02d}" for depth in range(10)),
+            *(f"ask_sz_{depth:02d}" for depth in range(10)),
+            "side",
+            "book_side",
+            "size",
+            "quantity",
+            "qty",
+            "depth",
+        )
+    else:
+        values = tuple(available)
+    return [column for column in (*common, *values) if column in available]
+
+
+def _compact_persisted_events(frame: pd.DataFrame) -> pd.DataFrame:
+    if frame.empty or "timestamp" not in frame.columns:
+        return frame
+    symbol_column = next(
+        (
+            column
+            for column in ("provider_symbol", "symbol", "raw_symbol")
+            if column in frame.columns
+        ),
+        None,
+    )
+    if symbol_column is None:
+        return frame
+    output = frame.copy()
+    output["timestamp"] = pd.to_datetime(
+        output["timestamp"], utc=True, errors="coerce"
+    )
+    output = output.loc[output["timestamp"].notna()].copy()
+    output["__window"] = output["timestamp"].dt.floor("1h")
+    natural_key = [symbol_column, "__window"]
+    helper_columns = ["__window"]
+    has_wide_book = bool(_wide_size_columns(output)[0]) and bool(
+        _wide_size_columns(output)[1]
+    )
+    if not has_wide_book and "side" in output.columns:
+        output["__side"] = output["side"].astype("string").str.upper()
+        natural_key.append("__side")
+        helper_columns.append("__side")
+        if "depth" in output.columns:
+            natural_key.append("depth")
+    sort_columns = ["timestamp"]
+    if "sequence" in output.columns:
+        sort_columns.append("sequence")
+    return (
+        output.sort_values(sort_columns, kind="stable")
+        .drop_duplicates(natural_key, keep="last")
+        .drop(columns=helper_columns)
+        .reset_index(drop=True)
+    )
+
+
+def _calculate_cme_context_history(
+    ohlcv: pd.DataFrame,
+    bbo: pd.DataFrame,
+    mbp: pd.DataFrame,
+    *,
+    excluded_window_ends: Iterable[object] = (),
+) -> pd.DataFrame:
+    bars = _prepare_ohlcv(ohlcv)
+    quotes = _prepare_events(bbo, label="BBO")
+    book = _prepare_events(mbp, label="MBP")
+    windows = _complete_common_ohlcv_windows(bars)
+    excluded = {
+        timestamp
+        for value in excluded_window_ends
+        if (timestamp := _optional_utc_timestamp(value)) is not None
+    }
+    frames: list[pd.DataFrame] = []
+    for window_start in windows:
+        window_end = window_start + pd.Timedelta(hours=1)
+        if window_end in excluded:
+            continue
+        bar_window = bars.loc[
+            bars["timestamp"].ge(window_start)
+            & bars["timestamp"].lt(window_end)
+        ].drop(columns="_root", errors="ignore")
+        quote_window = quotes.loc[
+            quotes["timestamp"].ge(window_start)
+            & quotes["timestamp"].lt(window_end)
+        ].drop(columns="_root", errors="ignore")
+        book_window = book.loc[
+            book["timestamp"].ge(window_start)
+            & book["timestamp"].lt(window_end)
+        ].drop(columns="_root", errors="ignore")
+        if quote_window.empty or book_window.empty:
+            continue
+        receipt_values = pd.concat(
+            (
+                pd.to_datetime(bar_window["fetched_at"], utc=True, errors="coerce"),
+                pd.to_datetime(quote_window["fetched_at"], utc=True, errors="coerce"),
+                pd.to_datetime(book_window["fetched_at"], utc=True, errors="coerce"),
+            ),
+            ignore_index=True,
+        ).dropna()
+        completed = max(
+            window_end,
+            pd.Timestamp(receipt_values.max()) if not receipt_values.empty else window_end,
+        )
+        try:
+            frame = calculate_cme_cross_asset_context(
+                bar_window,
+                quote_window,
+                book_window,
+                calculated_at=completed,
+            )
+        except (CmeCrossAssetNotReady, CmeCrossAssetQualityError):
+            continue
+        frames.append(frame)
+    return (
+        pd.concat(frames, ignore_index=True, sort=False)
+        if frames
+        else pd.DataFrame(columns=CME_CONTEXT_COLUMNS)
+    )
+
+
+def _recent_source(
+    frame: pd.DataFrame,
+    *,
+    calculated_at: object | None,
+) -> pd.DataFrame:
+    completed = _utc_timestamp(
+        calculated_at if calculated_at is not None else pd.Timestamp.now(tz="UTC"),
+        field="calculated_at",
+    )
+    timestamps = pd.to_datetime(frame.get("timestamp"), utc=True, errors="coerce")
+    return frame.loc[timestamps.ge(completed - pd.Timedelta(hours=2))].copy()
 
 
 def _prepare_ohlcv(frame: pd.DataFrame) -> pd.DataFrame:

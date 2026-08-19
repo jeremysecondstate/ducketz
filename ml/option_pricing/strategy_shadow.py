@@ -291,10 +291,14 @@ def attach_strategy_pricing_evidence(
             _evidence_report(output, mode=mode, errors=catalog.errors),
         )
 
+    relevant_predictions = _candidate_pricing_slice(
+        catalog.predictions,
+        output,
+    )
     diagnostics = [
         _candidate_diagnostic(
             candidate,
-            predictions=catalog.predictions,
+            predictions=relevant_predictions,
             per_contract_fee=per_contract_fee,
             mode=mode,
             allow_offline_replay=allow_offline_replay,
@@ -309,6 +313,47 @@ def attach_strategy_pricing_evidence(
         catalog.source_files,
         _evidence_report(output, mode=mode, errors=catalog.errors),
     )
+
+
+def _candidate_pricing_slice(
+    predictions: pd.DataFrame,
+    candidates: pd.DataFrame,
+) -> pd.DataFrame:
+    """Bound exact-leg matching to keys present in this candidate batch."""
+
+    symbols = {
+        str(value).strip().upper()
+        for value in candidates.get("symbol", pd.Series(dtype="string"))
+        if str(value).strip()
+    }
+    targets: set[pd.Timestamp] = set()
+    contracts: set[str] = set()
+    for value in candidates.get("legs_json", pd.Series(dtype="string")):
+        try:
+            legs = json.loads(str(value or "[]"))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            continue
+        for leg in legs if isinstance(legs, list) else ():
+            if not isinstance(leg, Mapping):
+                continue
+            if str(leg.get("asset") or "").upper() != "OPTION":
+                continue
+            target = _timestamp(leg.get("target_snapshot_for"))
+            contract = str(leg.get("contract_symbol") or "").strip()
+            if target is not None:
+                targets.add(target)
+            if contract:
+                contracts.add(contract)
+    if not symbols or not targets or not contracts:
+        return predictions.iloc[0:0].copy()
+    target_values = pd.to_datetime(
+        predictions["target_snapshot_for"], utc=True, errors="coerce"
+    )
+    return predictions.loc[
+        predictions["symbol"].astype("string").str.upper().isin(symbols)
+        & target_values.isin(targets)
+        & predictions["contract_symbol"].astype("string").isin(contracts)
+    ].copy()
 
 
 def attach_strategy_pricing_shadow(

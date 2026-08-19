@@ -9,6 +9,8 @@ from typing import Callable, Mapping, Sequence
 
 import pandas as pd
 
+from datafetching.databento_archive import archive_lineage_sources
+
 from datafetching.fred_alfred_readiness import (
     FredAlfredReadinessError,
     VerifiedMacroEvidence,
@@ -849,7 +851,9 @@ def _attach_loop_a_features(
             freshness=CME_FRESHNESS[feature_horizon],
             require_populated_values=not source.empty,
         )
-        source_files.extend(cme_paths)
+        for cme_path in cme_paths:
+            source_files.append(cme_path)
+            source_files.extend(archive_lineage_sources(root, cme_path))
 
     missing = [
         feature.name

@@ -19,8 +19,10 @@ from app.services.databento_retry import call_with_persistent_databento_retry
 from datafetching.cme_cross_asset_context import (
     CmeCrossAssetNotReady,
     CmeCrossAssetQualityError,
+    cme_archive_replay_pending,
     materialize_cme_cross_asset_context,
 )
+from datafetching.databento_archive import cme_archive_cursor_for_spec
 from datafetching.cme_history import (
     CmeCursor,
     cme_writer_lock_path,
@@ -129,6 +131,45 @@ def run_cme_cycle(
             if not requested_schemas or spec.schema in requested_schemas
         )
         timing.annotate(row_count=len(specs), operation="fetched")
+    context_specs = tuple(value for value in specs if value.group_key == "context")
+    archive_dataset = next(
+        (value.dataset for value in context_specs),
+        "",
+    )
+    archive_symbols = tuple(
+        dict.fromkeys(
+            symbol
+            for value in context_specs
+            for symbol in value.symbols
+        )
+    )
+    hourly_written = False
+    try:
+        replay_pending = cme_archive_replay_pending(
+            store.root_dir,
+            archive_dataset=archive_dataset,
+            archive_symbols=archive_symbols,
+        )
+        if replay_pending:
+            with timed_stage(
+                "cme.replay-archive-context",
+                provider="databento",
+                schema="cme-cross-asset-v1",
+                reporter=reporter,
+            ) as timing:
+                output = materialize_cme_cross_asset_context(
+                    store.root_dir,
+                    calculated_at=clock().astimezone(timezone.utc),
+                    archive_dataset=archive_dataset,
+                    archive_symbols=archive_symbols,
+                )
+                hourly_written = output is not None
+                timing.annotate(operation="wrote" if output else "skipped")
+    except (CmeCrossAssetNotReady, CmeCrossAssetQualityError) as exc:
+        if reporter is not None:
+            reporter(f"[CME/archive-context] {type(exc).__name__}: {exc}")
+    except Exception as exc:
+        _record_derived_failure(store, "archive-cross-asset-context", exc)
     overlaps = {**DEFAULT_OVERLAP_SECONDS, **dict(overlap_seconds or {})}
     chunks = {**DEFAULT_CHUNK_MINUTES, **dict(chunk_minutes or {})}
     limits = {**DEFAULT_RECORD_LIMITS, **dict(record_limits or {})}
@@ -169,7 +210,6 @@ def run_cme_cycle(
         _record_failure(store, spec, exc)
 
     completed_at = clock().astimezone(timezone.utc)
-    hourly_written = False
     try:
         with timed_stage(
             "cme.derive-hourly-context",
@@ -180,8 +220,10 @@ def run_cme_cycle(
             output = materialize_cme_cross_asset_context(
                 store.root_dir,
                 calculated_at=completed_at,
+                archive_dataset=archive_dataset,
+                archive_symbols=archive_symbols,
             )
-            hourly_written = output is not None
+            hourly_written = hourly_written or output is not None
             timing.annotate(operation="wrote" if output else "skipped")
     except (CmeCrossAssetNotReady, CmeCrossAssetQualityError) as exc:
         if reporter is not None:
@@ -430,6 +472,14 @@ def _collect_schema(
         group_key=spec.group_key,
         schema=spec.schema,
     )
+    if cursor is None:
+        cursor = cme_archive_cursor_for_spec(store.root_dir, spec)
+        if cursor is not None and reporter is not None:
+            reporter(
+                f"[CME/archive-bridge] continuing {spec.group_key}/{spec.schema} "
+                f"from verified cold history through "
+                f"{cursor.queried_through.isoformat()}"
+            )
     ranges = query_chunks(
         spec,
         cursor=cursor,

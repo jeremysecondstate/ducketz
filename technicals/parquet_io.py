@@ -13,6 +13,7 @@ from datafetching.bar_schema import (
     read_normalized_bar_parquet,
 )
 from datafetching.bar_timing import annotate_bar_timing
+from datafetching.databento_archive import archive_lineage_sources
 from datafetching.ids import add_readable_id, without_internal_identity_columns
 from datafetching.layout import safe_token
 from fundamentals.join import attach_fundamental_context
@@ -207,7 +208,10 @@ def discover_bar_datasets(
                     timeframe=timeframe,
                     symbol=clean_symbol,
                     frame=adjustment.frame,
-                    source_files=tuple(dict.fromkeys(grouped_files[timeframe])),
+                    source_files=_bar_source_files(
+                        datastore_root,
+                        grouped_files[timeframe],
+                    ),
                     adjustment_status=adjustment.status,
                     split_event_count=adjustment.event_count,
                     split_events_json=adjustment.metadata_json,
@@ -224,6 +228,17 @@ def discover_bar_datasets(
             )
 
     return tuple(datasets)
+
+
+def _bar_source_files(
+    datastore_root: Path,
+    paths: Iterable[Path],
+) -> tuple[Path, ...]:
+    expanded: list[Path] = []
+    for path in paths:
+        expanded.append(path)
+        expanded.extend(archive_lineage_sources(datastore_root, path))
+    return tuple(dict.fromkeys(expanded))
 
 
 def write_technical_parquet(

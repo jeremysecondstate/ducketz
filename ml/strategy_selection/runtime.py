@@ -16,6 +16,7 @@ from ml.option_pricing.strategy_shadow import (
     attach_strategy_pricing_evidence,
     load_strategy_pricing_evidence,
 )
+from ml.option_pricing_opra_replay import ensure_opra_pricing_replay
 
 from ml.strategy_selection.candidates import (
     construct_strategy_candidates,
@@ -46,6 +47,10 @@ from ml.strategy_selection.model import (
     fit_or_reuse_strategy_model,
     partition_strategy_outcomes,
     score_strategy_candidates,
+)
+from ml.strategy_selection.opra_cache import (
+    ensure_opra_strategy_cache,
+    strategy_opra_prediction_clocks,
 )
 from ml.strategy_selection.outcome_store import (
     publish_strategy_outcome_artifact,
@@ -98,6 +103,25 @@ def run_strategy_selection(
     mode = str(pricing_mode).strip().lower()
     if mode not in STRATEGY_PRICING_MODES:
         raise ValueError("pricing_mode must be off, shadow, or active")
+    symbols = tuple(
+        sorted(set(samples["symbol"].astype("string").str.upper()))
+    )
+    replay_bootstrap_error: str | None = None
+    if mode != "off":
+        try:
+            opra_target_clocks = strategy_opra_prediction_clocks(
+                datastore_root,
+                samples=samples,
+                symbols=symbols,
+            )
+            ensure_opra_pricing_replay(
+                datastore_root,
+                symbols=symbols,
+                published_at=created,
+                target_clocks=opra_target_clocks,
+            )
+        except Exception as exc:
+            replay_bootstrap_error = f"{type(exc).__name__}: {exc}"
     catalog = pricing_catalog
     if catalog is None:
         catalog = (
@@ -109,12 +133,32 @@ def run_strategy_selection(
             if mode != "off"
             else StrategyPricingEvidenceCatalog(pd.DataFrame(), ())
         )
+    if replay_bootstrap_error is not None:
+        catalog = StrategyPricingEvidenceCatalog(
+            catalog.predictions,
+            catalog.source_files,
+            (*catalog.errors, f"opra_replay_bootstrap:{replay_bootstrap_error}"),
+            catalog.authority_states,
+        )
     prediction_probabilities = _prediction_probabilities(predictions)
     histories: dict[str, OptionChainHistory] = {}
     source_files: list[Path] = []
     source_files.extend(catalog.source_files)
     history_errors: dict[str, str] = {}
-    for symbol in sorted(set(samples["symbol"].astype("string").str.upper())):
+    try:
+        opra_cache = ensure_opra_strategy_cache(
+            datastore_root,
+            samples=samples,
+            symbols=symbols,
+            published_at=created,
+        )
+        if opra_cache is not None:
+            source_files.extend(opra_cache.source_files)
+    except Exception as exc:
+        history_errors["__opra_observed_outcome_cache__"] = (
+            f"{type(exc).__name__}: {exc}"
+        )
+    for symbol in symbols:
         try:
             history = load_option_chain_history(
                 datastore_root,
@@ -169,10 +213,29 @@ def run_strategy_selection(
                 ),
             }
         if model_outcomes.empty:
+            complete_outcome_rows = int(
+                outcome_report.get("complete_outcome_rows", 0)
+            )
+            pricing_excluded_rows = int(
+                outcome_report.get("pricing_excluded_outcome_rows", 0)
+            )
+            pricing_gate_excluded_all = (
+                complete_outcome_rows > 0
+                and pricing_excluded_rows == complete_outcome_rows
+            )
             model_reports[horizon] = {
                 "status": "MODEL_NOT_FIT",
-                "reason": "No complete observed-BBO candidate outcomes were materialized.",
-                "calibration_status": "NOT_ATTEMPTED_NO_OUTCOMES",
+                "reason": (
+                    "Complete observed-BBO outcomes exist, but none passed the "
+                    "exact causal Pricing evidence gate."
+                    if pricing_gate_excluded_all
+                    else "No complete observed-BBO candidate outcomes were materialized."
+                ),
+                "calibration_status": (
+                    "NOT_ATTEMPTED_NO_PRICING_ELIGIBLE_OUTCOMES"
+                    if pricing_gate_excluded_all
+                    else "NOT_ATTEMPTED_NO_OUTCOMES"
+                ),
                 **outcome_report,
                 "required_decision_clusters": required_decisions,
                 "usable_decision_clusters": 0,

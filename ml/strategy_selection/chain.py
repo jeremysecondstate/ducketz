@@ -31,6 +31,7 @@ from ml.option_pricing.opra import (
     normalize_cbbo_records,
     normalize_definition_records,
 )
+from ml.strategy_selection.opra_cache import load_opra_strategy_cache
 
 
 _SNAPSHOT_KEY = ("symbol", "snapshot_for", "available_at")
@@ -116,6 +117,11 @@ def load_option_chain_history(
 ) -> OptionChainHistory:
     root = Path(datastore_root)
     clean_symbol = str(symbol).strip().upper()
+    cached = _load_cached_opra_chain_history(
+        root,
+        symbol=clean_symbol,
+        available_not_after=available_not_after,
+    )
     prospective = _load_committed_chain_history(
         root,
         symbol=clean_symbol,
@@ -125,7 +131,13 @@ def load_option_chain_history(
         # Immutable prospective receipts are the operational authority.  They
         # are already natural-target deduplicated and avoid re-reading the
         # multi-billion-row historical replay before a live Strategy publish.
-        return prospective
+        return (
+            _merge_option_chain_histories(cached, prospective)
+            if cached is not None
+            else prospective
+        )
+    if cached is not None:
+        return cached
     if allow_historical_opra_replay:
         opra = _load_opra_chain_history(
             root,
@@ -236,6 +248,130 @@ def load_option_chain_history(
         quotes=quotes,
         source_files=tuple(
             (*contract_paths, *surface_paths, *receipt_paths, *quote_paths)
+        ),
+    )
+
+
+def _load_cached_opra_chain_history(
+    datastore_root: Path,
+    *,
+    symbol: str,
+    available_not_after: object | None,
+) -> OptionChainHistory | None:
+    cache = load_opra_strategy_cache(datastore_root)
+    if cache is None:
+        return None
+    contracts = cache.contracts.loc[
+        cache.contracts["symbol"].astype("string").str.upper().eq(symbol)
+    ].copy()
+    surfaces = cache.surfaces.loc[
+        cache.surfaces["symbol"].astype("string").str.upper().eq(symbol)
+    ].copy()
+    if available_not_after is not None:
+        cutoff = _utc(available_not_after)
+        contracts = contracts.loc[
+            pd.to_datetime(contracts["available_at"], utc=True, errors="coerce").le(
+                cutoff
+            )
+        ]
+        surfaces = surfaces.loc[
+            pd.to_datetime(surfaces["available_at"], utc=True, errors="coerce").le(
+                cutoff
+            )
+        ]
+    if contracts.empty or surfaces.empty:
+        return None
+    _validate_contracts(contracts, symbol=symbol)
+    _validate_surfaces(surfaces, symbol=symbol)
+    surface_keys = surfaces.loc[
+        :, [*_SNAPSHOT_KEY, "surface_quality_pass"]
+    ].drop_duplicates(list(_SNAPSHOT_KEY), keep="last")
+    contracts = contracts.drop(columns="__surface_quality", errors="ignore").merge(
+        surface_keys.rename(columns={"surface_quality_pass": "__surface_quality"}),
+        on=list(_SNAPSHOT_KEY),
+        how="left",
+        validate="many_to_one",
+    )
+    contracts["__surface_quality"] = (
+        contracts["__surface_quality"].fillna(False).astype(bool)
+    )
+    quote_paths = tuple(
+        sorted(
+            (
+                Path(datastore_root)
+                / "stocks"
+                / symbol
+                / "quotes"
+                / "features"
+                / "quote-liquidity"
+                / "schwab"
+            ).glob("*.parquet")
+        )
+    )
+    quotes = _read_many(quote_paths) if quote_paths else pd.DataFrame()
+    if available_not_after is not None and not quotes.empty:
+        cutoff = _utc(available_not_after)
+        quotes = quotes.loc[
+            pd.to_datetime(quotes["available_at"], utc=True, errors="coerce").le(
+                cutoff
+            )
+        ].copy()
+    if not quotes.empty:
+        _validate_quotes(quotes, symbol=symbol)
+    return OptionChainHistory(
+        symbol=symbol,
+        provider="databento-opra-cache",
+        contracts=contracts,
+        surfaces=surfaces,
+        quotes=quotes,
+        source_files=tuple(dict.fromkeys((*cache.source_files, *quote_paths))),
+    )
+
+
+def _merge_option_chain_histories(
+    historical: OptionChainHistory,
+    prospective: OptionChainHistory,
+) -> OptionChainHistory:
+    contracts = (
+        pd.concat(
+            [historical.contracts, prospective.contracts],
+            ignore_index=True,
+            sort=False,
+        )
+        .sort_values(["available_at", "snapshot_for"], kind="stable")
+        .drop_duplicates([*_SNAPSHOT_KEY, "contract_symbol"], keep="last")
+        .reset_index(drop=True)
+    )
+    surfaces = (
+        pd.concat(
+            [historical.surfaces, prospective.surfaces],
+            ignore_index=True,
+            sort=False,
+        )
+        .sort_values(["available_at", "snapshot_for"], kind="stable")
+        .drop_duplicates(list(_SNAPSHOT_KEY), keep="last")
+        .reset_index(drop=True)
+    )
+    quotes = (
+        pd.concat(
+            [historical.quotes, prospective.quotes],
+            ignore_index=True,
+            sort=False,
+        )
+        .sort_values("available_at", kind="stable")
+        .drop_duplicates(["symbol", "available_at"], keep="last")
+        .reset_index(drop=True)
+        if not historical.quotes.empty or not prospective.quotes.empty
+        else pd.DataFrame()
+    )
+    return OptionChainHistory(
+        symbol=prospective.symbol,
+        provider=f"{historical.provider}+{prospective.provider}",
+        contracts=contracts,
+        surfaces=surfaces,
+        quotes=quotes,
+        source_files=tuple(
+            dict.fromkeys((*historical.source_files, *prospective.source_files))
         ),
     )
 
@@ -380,10 +516,19 @@ def _project_committed_opra_surface(contracts: pd.DataFrame) -> pd.DataFrame:
     row = keys.iloc[0].to_dict()
     row.update(
         {
-            # OPRA L1 does not carry the Schwab Greeks/OI surface fields.  Keep
-            # that quality distinction explicit while retaining valid BBO legs.
-            "surface_quality_pass": False,
+            # OPRA L1 does not carry Schwab Greeks/OI, but its consolidated BBO
+            # is first-party quote evidence.  Surface quality therefore means
+            # valid two-sided call/put BBO coverage, not synthetic Greeks.
+            "surface_quality_pass": bool(
+                contracts.get("quote_valid", pd.Series(False)).fillna(False).any()
+                and contracts.get("call_put", pd.Series(dtype="string"))
+                .astype("string")
+                .str.upper()
+                .nunique()
+                == 2
+            ),
             "source_provider": "databento-opra",
+            "surface_quality_basis": "OPRA_VALID_BBO_CALL_PUT_COVERAGE",
             "fallback_used": False,
             "surface_quality_policy_version": OPTION_SURFACE_QUALITY_POLICY_VERSION,
             "calculation_version": OPTION_FEATURE_VERSION,

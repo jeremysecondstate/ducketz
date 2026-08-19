@@ -33,6 +33,7 @@ ducketz-option-pricing-admin = "ml.option_pricing_admin:main"
 ducketz-option-pricing-lockbox = "ml.option_pricing_lockbox:main"
 ducketz-option-pricing-loop-native = "ml.option_pricing_loop_native_worker:main"
 ducketz-system-monitor = "ml.system_monitor:main"
+ducketz-system-guardian = "ml.system_guardian:main"
 
 [project.optional-dependencies]
 ml = [

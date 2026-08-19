@@ -850,6 +850,7 @@ def record_consumer_usage(
     schemas: Sequence[str],
     rows: int,
     source_files: Sequence[Path],
+    refresh_health: bool = True,
 ) -> Path:
     root = canonical_root(datastore_root)
     path = root / "state" / "consumer-usage.json"
@@ -878,7 +879,8 @@ def record_consumer_usage(
             "events": events[-1_000:],
         },
     )
-    publish_health(datastore_root)
+    if refresh_health:
+        publish_health(datastore_root)
     return path
 
 

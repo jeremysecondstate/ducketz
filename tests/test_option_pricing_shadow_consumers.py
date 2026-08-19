@@ -40,6 +40,7 @@ from ml.option_pricing.reporting import SURFACE_VERSION
 from ml.option_pricing.reporting import build_pricing_surfaces
 from ml.option_pricing.strategy_shadow import (
     StrategyPricingEvidenceCatalog,
+    _candidate_pricing_slice,
     attach_strategy_pricing_evidence,
     attach_strategy_pricing_shadow,
     load_strategy_pricing_evidence,
@@ -1204,6 +1205,29 @@ def test_exact_contract_matching_and_stale_fallback_are_isolated() -> None:
     assert "PRICING_SOURCE_NOT_STRICTLY_PRIOR" in rejected_source[
         "pricing_missing_reason"
     ]
+
+
+def test_candidate_pricing_slice_excludes_unrelated_catalog_rows() -> None:
+    exact = _canonical_prediction(
+        contract_symbol="NVDA  260821C00100000",
+        fair_value=2.30,
+    )
+    noise = [
+        {
+            **exact,
+            "contract_symbol": f"OTHER-{index}",
+            "target_snapshot_for": pd.Timestamp("2026-07-05T14:00:00Z"),
+        }
+        for index in range(100)
+    ]
+
+    sliced = _candidate_pricing_slice(
+        pd.DataFrame([exact, *noise]),
+        _candidate(),
+    )
+
+    assert len(sliced) == 1
+    assert sliced.iloc[0]["contract_symbol"] == exact["contract_symbol"]
 
 
 def test_long_short_multileg_edge_and_conservative_joint_uncertainty() -> None:
