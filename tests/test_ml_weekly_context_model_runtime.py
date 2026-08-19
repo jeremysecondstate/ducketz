@@ -22,7 +22,7 @@ from ml.model_runtime import (
     fit_or_reuse_model,
     partition_model_rows,
 )
-from ml.parquet_contracts import EVALUATION_SCHEMA, empty_frame
+from ml.parquet_contracts import EVALUATION_SCHEMA, PREDICTION_SCHEMA, empty_frame
 from ml.rolling_materialization import RollingMaterialization, RouteMaterialization
 from ml.runtime_pipeline import (
     MINIMUM_LIVE_DECISIONS,
@@ -356,6 +356,141 @@ def test_preopen_weekly_context_candidate_produces_readable_live_prediction(
     assert intelligence["intelligence_status"].eq("PENDING_EVIDENCE").all()
     assert intelligence["model_name"].eq("logistic-1w").all()
     assert intelligence["forecast_created_at"].eq(forecast_timestamp).all()
+
+
+def test_dynamic_weekly_omissions_are_current_only_with_a_coherent_bundle(
+    tmp_path: Path,
+) -> None:
+    symbol = "GOOG"
+    decision = pd.Timestamp("2026-08-19T20:05:00Z")
+    created = pd.Timestamp("2026-08-19T20:12:00Z")
+    windows = {
+        "1w": (
+            pd.Timestamp("2026-08-20T13:30:00Z"),
+            pd.Timestamp("2026-08-21T20:00:00Z"),
+        ),
+        "1w-d1": (
+            pd.Timestamp("2026-08-20T13:30:00Z"),
+            pd.Timestamp("2026-08-20T20:00:00Z"),
+        ),
+        "1w-d2": (
+            pd.Timestamp("2026-08-21T13:30:00Z"),
+            pd.Timestamp("2026-08-21T20:00:00Z"),
+        ),
+        "1w-d3": (
+            pd.Timestamp("2026-08-24T13:30:00Z"),
+            pd.Timestamp("2026-08-24T20:00:00Z"),
+        ),
+        "1w-d4": (
+            pd.Timestamp("2026-08-25T13:30:00Z"),
+            pd.Timestamp("2026-08-25T20:00:00Z"),
+        ),
+        "1w-d5": (
+            pd.Timestamp("2026-08-26T13:30:00Z"),
+            pd.Timestamp("2026-08-26T20:00:00Z"),
+        ),
+    }
+    samples = pd.DataFrame(
+        [
+            {
+                "symbol": symbol,
+                "horizon": horizon,
+                "decision_timestamp": decision,
+                "information_available_at": decision,
+                "target_window_start": start,
+                "target_window_end": end,
+                "actionable_until": end,
+                "target_definition_version": f"dynamic-{horizon}-v2",
+            }
+            for horizon, (start, end) in windows.items()
+        ]
+    )
+    predictions = pd.DataFrame(
+        [
+            {
+                "id": f"{symbol}|{horizon}|{_iso_z(decision)}|{_iso_z(created)}",
+                "symbol": symbol,
+                "provider": "databento",
+                "horizon": horizon,
+                "decision_timestamp": decision,
+                "information_available_at": decision,
+                "target_window_start": windows[horizon][0],
+                "target_window_end": windows[horizon][1],
+                "actionable_until": (
+                    windows["1w-d1"][1]
+                    if horizon == "1w"
+                    else windows[horizon][1]
+                ),
+                "target_definition_version": f"dynamic-{horizon}-v2",
+                "target_specification": "synthetic coherent weekly bundle",
+                "prediction_created_at": created,
+                "model_name": f"logistic-{horizon}",
+                "model_version": "20260819T200000.000000Z",
+                "calibration_method": "platt",
+                "prediction_mode": "LIVE",
+                "prediction_status": "CREATED",
+                "assumed_round_trip_cost": _ROUND_TRIP_COST,
+                "raw_probability": 0.55,
+                "calibrated_probability": 0.55,
+            }
+            for horizon in ("1w", "1w-d1", "1w-d2")
+        ]
+    )
+    materialization = RollingMaterialization(
+        samples=samples,
+        routes=tuple(
+            RouteMaterialization(
+                symbol=symbol,
+                horizon=horizon,
+                status="READY",
+                samples=samples.loc[samples["horizon"].eq(horizon)].copy(),
+                source_files=(),
+            )
+            for horizon in WEEKLY_HORIZON_ORDER
+        ),
+        source_files=(),
+        datastore_root=tmp_path,
+    )
+
+    intelligence = _intelligence_frame(
+        materialization,
+        samples,
+        predictions,
+        empty_frame(EVALUATION_SCHEMA),
+        models={},
+        created_at=created,
+    )
+    omitted = intelligence.loc[
+        intelligence["horizon"].isin(("1w-d3", "1w-d4", "1w-d5"))
+    ]
+
+    assert omitted["operational_status"].eq("OPERATIONALLY_CURRENT").all()
+    assert omitted["intelligence_status"].eq(
+        "NOT_APPLICABLE_TO_REMAINING_WEEK"
+    ).all()
+    assert omitted["actionability_status"].eq("NOT_ACTIONABLE").all()
+    assert omitted["probability_up"].isna().all()
+    assert omitted["limitations"].str.contains(
+        "not part of current remaining-week snapshot", regex=False
+    ).all()
+
+    missing_bundle = _intelligence_frame(
+        materialization,
+        samples,
+        empty_frame(PREDICTION_SCHEMA),
+        empty_frame(EVALUATION_SCHEMA),
+        models={},
+        created_at=created,
+    )
+    missing_components = missing_bundle.loc[
+        missing_bundle["horizon"].isin(("1w-d3", "1w-d4", "1w-d5"))
+    ]
+    assert missing_components["operational_status"].eq(
+        "OPERATIONALLY_STALE"
+    ).all()
+    assert missing_components["intelligence_status"].eq(
+        "NO_CURRENT_FORECAST"
+    ).all()
 
 
 class _ConstantProbabilityEstimator:

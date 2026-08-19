@@ -267,6 +267,133 @@ def test_large_recovery_gap_is_chunked_with_safety_overlap() -> None:
     assert all(left[1] == right[0] for left, right in zip(ranges, ranges[1:]))
 
 
+def test_large_recovery_gap_publishes_latest_lane_and_checkpoints_one_chunk(
+    tmp_path: Path,
+) -> None:
+    mbp_spec = _spec(
+        start="2026-08-05T10:19:30Z",
+        end="2026-08-05T10:20:27Z",
+    )
+    bbo_spec = replace(
+        mbp_spec,
+        schema="bbo-1m",
+        end=pd.Timestamp("2026-08-05T10:25:27Z").to_pydatetime(),
+    )
+    publish_cme_cursor(
+        tmp_path,
+        spec=mbp_spec,
+        queried_through="2026-08-05T10:00:00Z",
+        successful_at="2026-08-05T10:00:01Z",
+        last_event_at="2026-08-05T09:59:59Z",
+        row_count=1,
+    )
+    provider = _SaturatingExactProvider((bbo_spec, mbp_spec))
+
+    result = run_cme_cycle(
+        ParquetStore(tmp_path),
+        provider=provider,
+        retry_attempts=1,
+        retry_delay_seconds=0,
+        now=lambda: datetime(2026, 8, 5, 10, 20, 1, tzinfo=UTC),
+        reporter=None,
+    )
+
+    assert [
+        (pd.Timestamp(item.start), pd.Timestamp(item.end))
+        for item in provider.requests[:2]
+    ] == [
+        (
+            pd.Timestamp("2026-08-05T10:15:00Z"),
+            pd.Timestamp("2026-08-05T10:20:00Z"),
+        ),
+        (
+            pd.Timestamp("2026-08-05T10:19:55Z"),
+            pd.Timestamp("2026-08-05T10:20:00Z"),
+        ),
+    ]
+    assert (pd.Timestamp(provider.requests[-1].start), pd.Timestamp(provider.requests[-1].end)) == (
+        pd.Timestamp("2026-08-05T09:59:58Z"),
+        pd.Timestamp("2026-08-05T10:04:58Z"),
+    )
+    cursor = read_cme_cursor(tmp_path, group_key="context", schema="mbp-10")
+    assert cursor is not None
+    assert cursor.queried_through == pd.Timestamp("2026-08-05T10:04:58Z")
+    pointer = json.loads(
+        (
+            tmp_path
+            / "pools"
+            / "cme"
+            / "snapshots"
+            / "l2"
+            / "databento"
+            / "5m"
+            / "latest.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert pd.Timestamp(pointer["snapshot_for"]) == pd.Timestamp(
+        "2026-08-05T10:20:00Z"
+    )
+    snapshot = pd.read_parquet(tmp_path / pointer["run_path"] / "snapshot.parquet")
+    assert snapshot["quality_status"].eq("FRESH").all()
+    assert set(snapshot["provider_schema"]) == {"bbo-1m", "mbp-10"}
+    assert result.l2_snapshot_rows == len(snapshot)
+
+
+def test_strict_l2_uses_current_configured_symbols_over_stale_cursor(
+    tmp_path: Path,
+) -> None:
+    current = _spec(
+        start="2026-08-05T10:19:55Z",
+        end="2026-08-05T10:20:00Z",
+        symbols=("NQ.c.0",),
+    )
+    event_at = pd.Timestamp("2026-08-05T10:19:59Z")
+    persist_cme_event_history(
+        tmp_path,
+        spec=current,
+        normalized_rows=(
+            _event(
+                "NQ.c.0",
+                event_at,
+                event_at + pd.Timedelta(milliseconds=1),
+                sequence=1,
+                price=100.0,
+            ),
+        ),
+        raw_frame=None,
+    )
+    publish_cme_cursor(
+        tmp_path,
+        spec=replace(current, symbols=("OLD",)),
+        queried_through=current.end,
+        successful_at="2026-08-05T10:20:01Z",
+        last_event_at=event_at,
+        row_count=1,
+    )
+
+    assert (
+        publish_cme_l2_snapshot(
+            tmp_path,
+            snapshot_for=current.end,
+            available_not_after="2026-08-05T10:20:02Z",
+            require_all_fresh=True,
+        )
+        is None
+    )
+    snapshot = publish_cme_l2_snapshot(
+        tmp_path,
+        snapshot_for=current.end,
+        available_not_after="2026-08-05T10:20:02Z",
+        require_all_fresh=True,
+        expected_stream_symbols={("context", "mbp-10"): current.symbols},
+    )
+
+    assert snapshot is not None
+    frame = pd.read_parquet(snapshot.snapshot_path)
+    assert set(frame["provider_symbol"]) == {"NQ.c.0"}
+    assert frame["quality_status"].eq("FRESH").all()
+
+
 def test_saturated_cme_request_splits_without_advancing_past_missing_rows(
     tmp_path: Path,
 ) -> None:
@@ -455,12 +582,15 @@ class _DelayedQuietProvider:
 
 
 class _SaturatingExactProvider:
-    def __init__(self, spec: DatabentoCmeContextSpec) -> None:
-        self.spec = spec
+    def __init__(
+        self,
+        spec: DatabentoCmeContextSpec | tuple[DatabentoCmeContextSpec, ...],
+    ) -> None:
+        self._specs = spec if isinstance(spec, tuple) else (spec,)
         self.requests: list[DatabentoCmeContextSpec] = []
 
     def specs(self) -> tuple[DatabentoCmeContextSpec, ...]:
-        return (self.spec,)
+        return self._specs
 
     def fetch_cme_context(
         self,

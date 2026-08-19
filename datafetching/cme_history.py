@@ -289,10 +289,19 @@ def publish_cme_l2_snapshot(
     datastore_root: Path,
     *,
     snapshot_for: object,
+    available_not_after: object | None = None,
+    require_all_fresh: bool = False,
+    expected_stream_symbols: Mapping[
+        tuple[str, str], Sequence[str]
+    ] | None = None,
 ) -> CmeL2Snapshot | None:
     """Publish latest L2 state using only events available by the boundary."""
 
     boundary = five_minute_boundary(snapshot_for)
+    availability_cutoff = _utc(
+        boundary if available_not_after is None else available_not_after,
+        "availability cutoff",
+    )
     root = (
         Path(datastore_root)
         / "pools"
@@ -305,6 +314,12 @@ def publish_cme_l2_snapshot(
     destination = root / str(boundary.value)
     if (destination / "receipt.json").is_file():
         stored = pd.read_parquet(destination / "snapshot.parquet")
+        if require_all_fresh and not _strict_l2_snapshot_ready(
+            stored,
+            datastore_root=datastore_root,
+            expected_stream_symbols=expected_stream_symbols,
+        ):
+            return None
         _publish_l2_pointer(
             datastore_root,
             root=root,
@@ -322,6 +337,7 @@ def publish_cme_l2_snapshot(
 
     selected: list[pd.DataFrame] = []
     cursor_lineage: list[dict[str, object]] = []
+    strict_streams_ready = True
     events_root = Path(datastore_root) / "pools" / "cme" / "events" / "databento"
     if not events_root.is_dir():
         return None
@@ -333,16 +349,20 @@ def publish_cme_l2_snapshot(
             paths = tuple(sorted((schema_root / "normalized").rglob("events.parquet")))
             if not paths:
                 continue
+            expected_symbols = _expected_stream_symbols(
+                datastore_root,
+                group_key=group_root.name,
+                schema=schema,
+                configured=expected_stream_symbols,
+            )
             eligible = _causal_latest_events(
                 paths,
                 boundary=boundary,
-                expected_symbols=_cursor_symbols(
-                    datastore_root,
-                    group_key=group_root.name,
-                    schema=schema,
-                ),
+                available_not_after=availability_cutoff,
+                expected_symbols=expected_symbols,
             )
             if eligible.empty:
+                strict_streams_ready = False
                 continue
             symbol_column = next(
                 (
@@ -353,7 +373,13 @@ def publish_cme_l2_snapshot(
                 None,
             )
             if symbol_column is None:
+                strict_streams_ready = False
                 continue
+            observed_symbols = frozenset(
+                eligible[symbol_column].astype("string").dropna().astype(str)
+            )
+            if expected_symbols and not expected_symbols.issubset(observed_symbols):
+                strict_streams_ready = False
             latest = eligible.copy()
             latest["snapshot_for"] = boundary
             latest["event_age_seconds"] = (
@@ -391,6 +417,11 @@ def publish_cme_l2_snapshot(
         return None
 
     snapshot = pd.concat(selected, ignore_index=True, sort=False)
+    if require_all_fresh and (
+        not strict_streams_ready
+        or not snapshot["quality_status"].astype("string").eq("FRESH").all()
+    ):
+        return None
     snapshot = _add_event_ids(
         snapshot,
         preferred=(
@@ -454,10 +485,12 @@ def _causal_latest_events(
     paths: Sequence[Path],
     *,
     boundary: pd.Timestamp,
+    available_not_after: pd.Timestamp | None = None,
     expected_symbols: frozenset[str],
 ) -> pd.DataFrame:
     """Read newest partitions first and stop once every expected state is found."""
 
+    availability_cutoff = available_not_after or boundary
     latest_by_symbol: dict[str, pd.DataFrame] = {}
     for path in sorted(paths, reverse=True):
         frame = pd.read_parquet(path)
@@ -465,7 +498,9 @@ def _causal_latest_events(
         fetched_at = pd.to_datetime(
             frame.get("fetched_at"), utc=True, errors="coerce"
         )
-        eligible = frame.loc[event_at.le(boundary) & fetched_at.le(boundary)].copy()
+        eligible = frame.loc[
+            event_at.le(boundary) & fetched_at.le(availability_cutoff)
+        ].copy()
         if eligible.empty:
             continue
         eligible["__event_at"] = event_at.loc[eligible.index]
@@ -492,6 +527,68 @@ def _causal_latest_events(
     if not latest_by_symbol:
         return pd.DataFrame()
     return pd.concat(latest_by_symbol.values(), ignore_index=True, sort=False)
+
+
+def _strict_l2_snapshot_ready(
+    frame: pd.DataFrame,
+    *,
+    datastore_root: Path,
+    expected_stream_symbols: Mapping[
+        tuple[str, str], Sequence[str]
+    ] | None = None,
+) -> bool:
+    if frame.empty or "quality_status" not in frame.columns:
+        return False
+    if not frame["quality_status"].astype("string").eq("FRESH").all():
+        return False
+    required = {
+        "cme_context_group",
+        "provider_schema",
+        "provider_symbol",
+    }
+    if not required.issubset(frame.columns):
+        return False
+    events_root = Path(datastore_root) / "pools" / "cme" / "events" / "databento"
+    for group_root in sorted(path for path in events_root.iterdir() if path.is_dir()):
+        for schema_root in sorted(path for path in group_root.iterdir() if path.is_dir()):
+            schema = schema_root.name
+            if not schema.startswith(("bbo-", "mbp-", "mbo")):
+                continue
+            if not tuple((schema_root / "normalized").rglob("events.parquet")):
+                continue
+            expected = _expected_stream_symbols(
+                datastore_root,
+                group_key=group_root.name,
+                schema=schema,
+                configured=expected_stream_symbols,
+            )
+            rows = frame.loc[
+                frame["cme_context_group"].astype("string").eq(group_root.name)
+                & frame["provider_schema"].astype("string").eq(schema)
+            ]
+            observed = frozenset(
+                rows["provider_symbol"].astype("string").dropna().astype(str)
+            )
+            if rows.empty or (expected and not expected.issubset(observed)):
+                return False
+    return True
+
+
+def _expected_stream_symbols(
+    datastore_root: Path,
+    *,
+    group_key: str,
+    schema: str,
+    configured: Mapping[tuple[str, str], Sequence[str]] | None,
+) -> frozenset[str]:
+    key = (group_key, schema)
+    if configured is not None and key in configured:
+        return frozenset(str(value) for value in configured[key] if str(value))
+    return _cursor_symbols(
+        datastore_root,
+        group_key=group_key,
+        schema=schema,
+    )
 
 
 def _cursor_symbols(

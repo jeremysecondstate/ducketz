@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 
 import datafetching.options_runtime as options_runtime
+import options.databento_live as databento_live
 from datafetching.options_runtime import OptionsCycleResult
 from ml.contracts import MLContractError
 from ml.universe import PRODUCTION_OPTION_SYMBOLS
@@ -169,6 +170,21 @@ def _complete_evidence(
         target_snapshot_for=TARGET,
         requested_at=TARGET + pd.Timedelta(seconds=1),
     )
+
+
+def test_live_adapter_cooperatively_yields_during_dense_replay(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monotonic = iter((10.0, 10.005, 10.011))
+    sleeps: list[float] = []
+    monkeypatch.setattr(databento_live.time, "monotonic", lambda: next(monotonic))
+    monkeypatch.setattr(databento_live.time, "sleep", sleeps.append)
+    adapter, _client = _adapter()
+
+    adapter.ingest_record(SimpleNamespace(rtype=_rtype("SYSTEM")))
+    assert sleeps == []
+    adapter.ingest_record(SimpleNamespace(rtype=_rtype("SYSTEM")))
+    assert sleeps == [0]
 
 
 def test_live_adapter_uses_one_scoped_transport_and_strict_pretarget_cbbo() -> None:

@@ -26,6 +26,7 @@ from datafetching.databento_archive import cme_archive_cursor_for_spec
 from datafetching.cme_history import (
     CmeCursor,
     cme_writer_lock_path,
+    five_minute_boundary,
     persist_cme_event_history,
     publish_cme_cursor,
     publish_cme_l2_snapshot,
@@ -61,6 +62,9 @@ DEFAULT_RECORD_LIMITS = {
     # response below 100 MB and saturated ranges are split before publication.
     "mbp-10": 250_000,
 }
+CME_RECOVERY_CHUNK_BUDGET = 1
+CME_OPERATIONAL_MBP_WINDOW_SECONDS = 5
+CME_OPERATIONAL_BBO_WINDOW_SECONDS = 5 * 60
 REPOSITORY_ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
 
 
@@ -143,6 +147,125 @@ def run_cme_cycle(
             for symbol in value.symbols
         )
     )
+    overlaps = {**DEFAULT_OVERLAP_SECONDS, **dict(overlap_seconds or {})}
+    chunks = {**DEFAULT_CHUNK_MINUTES, **dict(chunk_minutes or {})}
+    limits = {**DEFAULT_RECORD_LIMITS, **dict(record_limits or {})}
+    results: list[CmeSchemaResult] = []
+    failures: list[tuple[DatabentoCmeContextSpec, Exception]] = []
+    l2_rows = 0
+
+    # A deep complete-history gap must not block the current operational L2
+    # authority. Fetch one exact five-second lane for every L2 stream ending at
+    # the latest completed common boundary, publish it only when every expected
+    # stream is fresh, and then checkpoint at most one older recovery chunk per
+    # schema in this cycle.
+    recovery_ranges: dict[
+        str, tuple[tuple[pd.Timestamp, pd.Timestamp], ...]
+    ] = {}
+    for spec in specs:
+        if spec.schema != "mbp-10":
+            continue
+        cursor = read_cme_cursor(
+            store.root_dir,
+            group_key=spec.group_key,
+            schema=spec.schema,
+        )
+        if cursor is None:
+            continue
+        ranges = query_chunks(
+            spec,
+            cursor=cursor,
+            overlap=timedelta(seconds=overlaps.get(spec.schema, 30)),
+            maximum_chunk=timedelta(minutes=chunks.get(spec.schema, 60)),
+        )
+        if len(ranges) > CME_RECOVERY_CHUNK_BUDGET:
+            recovery_ranges[spec.key] = ranges
+
+    operational_l2_specs = tuple(
+        spec
+        for spec in specs
+        if spec.schema.startswith(("bbo-", "mbp-", "mbo"))
+    )
+    operational_expected_symbols = {
+        (spec.group_key, spec.schema): spec.symbols
+        for spec in operational_l2_specs
+    }
+    operational_target = (
+        min(
+            five_minute_boundary(_utc(spec.end))
+            for spec in specs
+            if spec.key in recovery_ranges
+        )
+        if recovery_ranges
+        else None
+    )
+    latest_completed: list[DatabentoCmeContextSpec] = []
+    for spec in operational_l2_specs if operational_target is not None else ():
+        latest_end = operational_target
+        window_seconds = (
+            CME_OPERATIONAL_BBO_WINDOW_SECONDS
+            if spec.schema.startswith("bbo-")
+            else CME_OPERATIONAL_MBP_WINDOW_SECONDS
+        )
+        latest_start = latest_end - pd.Timedelta(
+            seconds=window_seconds
+        )
+        latest_spec = replace(
+            spec,
+            start=latest_start.to_pydatetime(),
+            end=latest_end.to_pydatetime(),
+        )
+        try:
+            _collect_schema(
+                store,
+                provider=provider,
+                spec=latest_spec,
+                overlap=timedelta(0),
+                chunk=timedelta(seconds=window_seconds),
+                record_limit=limits.get(spec.schema),
+                retry_attempts=retry_attempts,
+                retry_delay_seconds=retry_delay_seconds,
+                now=clock,
+                reporter=reporter,
+                ranges_override=((latest_start, latest_end),),
+                publish_cursor_result=False,
+                stage_name="cme.collect-latest-range",
+            )
+            latest_completed.append(spec)
+        except Exception as exc:
+            failures.append((spec, exc))
+
+    if operational_target is not None and len(latest_completed) == len(
+        operational_l2_specs
+    ):
+        publication_at = clock().astimezone(timezone.utc)
+        try:
+            with timed_stage(
+                "cme.publish-operational-l2-snapshot",
+                provider="databento",
+                schema="l2-5m",
+                request_end=operational_target,
+                reporter=reporter,
+            ) as timing:
+                snapshot = publish_cme_l2_snapshot(
+                    store.root_dir,
+                    snapshot_for=operational_target,
+                    available_not_after=publication_at,
+                    require_all_fresh=True,
+                    expected_stream_symbols=operational_expected_symbols,
+                )
+                if snapshot is not None:
+                    l2_rows = snapshot.rows
+                    timing.annotate(
+                        row_count=snapshot.rows,
+                        operation="reused" if snapshot.reused else "wrote",
+                        snapshot_for=snapshot.snapshot_for.isoformat(),
+                    )
+                else:
+                    timing.annotate(operation="skipped")
+        except Exception as exc:
+            _record_derived_failure(store, "operational-l2-5m", exc)
+
     hourly_written = False
     try:
         replay_pending = cme_archive_replay_pending(
@@ -170,12 +293,6 @@ def run_cme_cycle(
             reporter(f"[CME/archive-context] {type(exc).__name__}: {exc}")
     except Exception as exc:
         _record_derived_failure(store, "archive-cross-asset-context", exc)
-    overlaps = {**DEFAULT_OVERLAP_SECONDS, **dict(overlap_seconds or {})}
-    chunks = {**DEFAULT_CHUNK_MINUTES, **dict(chunk_minutes or {})}
-    limits = {**DEFAULT_RECORD_LIMITS, **dict(record_limits or {})}
-    results: list[CmeSchemaResult] = []
-    failures: list[tuple[DatabentoCmeContextSpec, Exception]] = []
-
     def collect(spec: DatabentoCmeContextSpec) -> CmeSchemaResult:
         return _collect_schema(
             store,
@@ -188,6 +305,11 @@ def run_cme_cycle(
             retry_delay_seconds=retry_delay_seconds,
             now=clock,
             reporter=reporter,
+            maximum_chunks=(
+                CME_RECOVERY_CHUNK_BUDGET
+                if spec.key in recovery_ranges
+                else None
+            ),
         )
 
     if max_concurrency == 1:
@@ -231,18 +353,26 @@ def run_cme_cycle(
     except Exception as exc:
         _record_derived_failure(store, "cross-asset-context", exc)
 
-    l2_rows = 0
+    mbp_specs = tuple(spec for spec in specs if spec.schema == "mbp-10")
     try:
+        if not mbp_specs:
+            raise CmeCrossAssetNotReady(
+                "No MBP-10 schema is due; L2 publication cannot advance."
+            )
+        l2_target = min(_utc(spec.end) for spec in mbp_specs)
         with timed_stage(
             "cme.publish-l2-snapshot",
             provider="databento",
             schema="l2-5m",
-            request_end=completed_at,
+            request_end=l2_target,
             reporter=reporter,
         ) as timing:
             snapshot = publish_cme_l2_snapshot(
                 store.root_dir,
-                snapshot_for=completed_at,
+                snapshot_for=l2_target,
+                available_not_after=completed_at,
+                require_all_fresh=True,
+                expected_stream_symbols=operational_expected_symbols,
             )
             if snapshot is not None:
                 l2_rows = snapshot.rows
@@ -253,6 +383,8 @@ def run_cme_cycle(
                 )
             else:
                 timing.annotate(operation="skipped")
+    except CmeCrossAssetNotReady:
+        pass
     except Exception as exc:
         _record_derived_failure(store, "l2-5m", exc)
 
@@ -466,6 +598,10 @@ def _collect_schema(
     retry_delay_seconds: float,
     now: Callable[[], datetime],
     reporter: Callable[[str], None] | None,
+    ranges_override: Sequence[tuple[pd.Timestamp, pd.Timestamp]] | None = None,
+    maximum_chunks: int | None = None,
+    publish_cursor_result: bool = True,
+    stage_name: str = "cme.collect-range",
 ) -> CmeSchemaResult:
     cursor = read_cme_cursor(
         store.root_dir,
@@ -480,12 +616,20 @@ def _collect_schema(
                 f"from verified cold history through "
                 f"{cursor.queried_through.isoformat()}"
             )
-    ranges = query_chunks(
-        spec,
-        cursor=cursor,
-        overlap=overlap,
-        maximum_chunk=chunk,
+    ranges = (
+        tuple(ranges_override)
+        if ranges_override is not None
+        else query_chunks(
+            spec,
+            cursor=cursor,
+            overlap=overlap,
+            maximum_chunk=chunk,
+        )
     )
+    if maximum_chunks is not None:
+        if maximum_chunks < 1:
+            raise ValueError("CME maximum chunks per cycle must be positive")
+        ranges = ranges[:maximum_chunks]
     total_rows = 0
     partitions_written = 0
     partitions_reused = 0
@@ -509,7 +653,7 @@ def _collect_schema(
             request_start = pd.Timestamp(request_spec.start)
             request_end = pd.Timestamp(request_spec.end)
             with timed_stage(
-                "cme.collect-range",
+                stage_name,
                 symbol=spec.output_symbol,
                 provider="databento",
                 schema=spec.schema,
@@ -582,21 +726,29 @@ def _collect_schema(
                     partitions_reused=persisted.reused,
                     limit_saturated=False,
                 )
-    successful_at = now().astimezone(timezone.utc)
-    published_cursor = publish_cme_cursor(
-        store.root_dir,
-        spec=spec,
-        queried_through=spec.end,
-        successful_at=successful_at,
-        last_event_at=latest_event,
-        row_count=total_rows,
-    )
+    queried_through = ranges[-1][1] if ranges else _utc(spec.end)
+    if publish_cursor_result:
+        successful_at = now().astimezone(timezone.utc)
+        published_cursor = publish_cme_cursor(
+            store.root_dir,
+            spec=spec,
+            queried_through=queried_through,
+            successful_at=successful_at,
+            last_event_at=latest_event,
+            row_count=total_rows,
+        )
+    else:
+        if cursor is None:
+            raise RuntimeError(
+                "A cursorless CME latest lane cannot suppress cursor publication"
+            )
+        published_cursor = cursor
     queried_from = ranges[0][0] if ranges else _utc(spec.end)
     return CmeSchemaResult(
         spec.group_key,
         spec.schema,
         queried_from,
-        _utc(spec.end),
+        queried_through,
         total_rows,
         partitions_written,
         partitions_reused,

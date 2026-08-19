@@ -3771,6 +3771,7 @@ def _intelligence_frame(
 ) -> pd.DataFrame:
     rows: list[dict[str, object]] = []
     completed_live = _canonical_live_evaluations(evaluations)
+    weekly_bundle_horizons = _coherent_weekly_live_bundle_horizons(predictions)
     carried_frame = (
         carried_predictions
         if carried_predictions is not None
@@ -3812,6 +3813,15 @@ def _intelligence_frame(
             else (sample["target_window_end"] if sample is not None else pd.NaT)
         )
         weekly_snapshot = is_weekly_horizon(horizon) and prediction is not None
+        symbol_weekly_horizons = weekly_bundle_horizons.get(
+            str(symbol).strip().upper(), ()
+        )
+        weekly_component_not_applicable = (
+            horizon in WEEKLY_HORIZON_ORDER[1:]
+            and prediction is None
+            and bool(symbol_weekly_horizons)
+            and horizon not in symbol_weekly_horizons
+        )
         carried = (
             prediction is not None
             and str(prediction.get("id")) in carried_ids
@@ -3853,9 +3863,13 @@ def _intelligence_frame(
                     None
                     if prediction is not None
                     else (
-                        "no remaining-week snapshot"
-                        if is_weekly_horizon(horizon)
-                        else "no current forecast"
+                        "not part of current remaining-week snapshot"
+                        if weekly_component_not_applicable
+                        else (
+                            "no remaining-week snapshot"
+                            if is_weekly_horizon(horizon)
+                            else "no current forecast"
+                        )
                     )
                 ),
                 "remaining-week snapshot" if weekly_snapshot else None,
@@ -3931,7 +3945,12 @@ def _intelligence_frame(
                 "operational_status": (
                     "OPERATIONALLY_CURRENT"
                     if route.status == "READY"
-                    and (actionable or in_progress or weekly_snapshot)
+                    and (
+                        actionable
+                        or in_progress
+                        or weekly_snapshot
+                        or weekly_component_not_applicable
+                    )
                     else (
                         "OPERATIONALLY_STALE"
                         if route.status == "READY"
@@ -3948,12 +3967,16 @@ def _intelligence_frame(
                     current_evidence_status
                     if weekly_snapshot
                     else (
-                        "FORECAST_IN_PROGRESS"
-                        if in_progress
+                        "NOT_APPLICABLE_TO_REMAINING_WEEK"
+                        if weekly_component_not_applicable
                         else (
-                            "RISK_ANALYSIS_SUPPORT"
-                            if actionable
-                            else "NO_CURRENT_FORECAST"
+                            "FORECAST_IN_PROGRESS"
+                            if in_progress
+                            else (
+                                "RISK_ANALYSIS_SUPPORT"
+                                if actionable
+                                else "NO_CURRENT_FORECAST"
+                            )
                         )
                     )
                 ),
@@ -3977,6 +4000,88 @@ def _intelligence_frame(
         key_columns=("symbol", "horizon", "decision_timestamp"),
     )
     return _project(output, INTELLIGENCE_SCHEMA.names)
+
+
+def _coherent_weekly_live_bundle_horizons(
+    predictions: pd.DataFrame,
+) -> dict[str, tuple[str, ...]]:
+    """Return the one coherent published weekly LIVE bundle per symbol.
+
+    The runtime verifies receipt-chain and calendar validity before building the
+    intelligence frame.  This local check deliberately repeats the structural
+    invariants needed to distinguish a dynamic Day 1 prefix from a missing
+    weekly publication.  Ambiguous or malformed input remains fail-closed.
+    """
+
+    required = {
+        "symbol",
+        "horizon",
+        "decision_timestamp",
+        "prediction_created_at",
+        "prediction_mode",
+        "prediction_status",
+        "target_window_start",
+        "target_window_end",
+        "actionable_until",
+        "model_name",
+        "model_version",
+        "calibrated_probability",
+    }
+    if predictions.empty or not required.issubset(predictions.columns):
+        return {}
+    weekly_live = predictions.loc[
+        predictions["prediction_mode"].eq("LIVE")
+        & predictions["horizon"].isin(WEEKLY_HORIZON_ORDER)
+    ].copy()
+    if weekly_live.empty:
+        return {}
+
+    candidates: dict[str, list[tuple[str, ...]]] = {}
+    invalid_symbols: set[str] = set()
+    for (symbol, _decision, _created), bundle in weekly_live.groupby(
+        ["symbol", "decision_timestamp", "prediction_created_at"],
+        sort=False,
+        dropna=False,
+    ):
+        normalized_symbol = str(symbol or "").strip().upper()
+        if not normalized_symbol:
+            continue
+        try:
+            horizons = _weekly_bundle_horizons(bundle)
+            _validate_weekly_bundle_geometry(bundle)
+            created = pd.to_datetime(
+                bundle["prediction_created_at"], utc=True, errors="coerce"
+            )
+            deadlines = pd.to_datetime(
+                bundle["actionable_until"], utc=True, errors="coerce"
+            )
+            probability = pd.to_numeric(
+                bundle["calibrated_probability"], errors="coerce"
+            )
+            if not (
+                bundle["prediction_mode"].eq("LIVE").all()
+                and bundle["prediction_status"].eq("CREATED").all()
+                and created.notna().all()
+                and created.nunique() == 1
+                and deadlines.notna().all()
+                and created.lt(deadlines).all()
+                and bundle[["model_name", "model_version"]]
+                .notna()
+                .all()
+                .all()
+                and probability.between(0.0, 1.0, inclusive="both").all()
+            ):
+                raise RuntimeError("Weekly LIVE bundle is not publication-valid")
+        except (KeyError, RuntimeError, TypeError, ValueError):
+            invalid_symbols.add(normalized_symbol)
+            continue
+        candidates.setdefault(normalized_symbol, []).append(horizons)
+
+    return {
+        symbol: bundles[0]
+        for symbol, bundles in candidates.items()
+        if symbol not in invalid_symbols and len(bundles) == 1
+    }
 
 
 def _weekly_prediction_evidence_status(

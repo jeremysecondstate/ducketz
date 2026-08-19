@@ -24,6 +24,7 @@ OPRA_DEFINITION_SCHEMA = "definition"
 OPRA_CONSOLIDATED_PUBLISHER_ID = 30
 OPRA_PARENT_SUFFIX = ".OPT"
 OPRA_PRICE_SCALE = 1_000_000_000
+OPRA_CALLBACK_YIELD_INTERVAL_SECONDS = 0.01
 
 
 class DatabentoOpraIntegrityError(RuntimeError):
@@ -102,6 +103,7 @@ class DatabentoOpraLiveAdapter:
         self._integrity_error: str | None = None
         self._callback_failures = 0
         self._reconnects = 0
+        self._last_callback_yield_at = time.monotonic()
         self._started = False
         self._closed = False
         self._client: object | None = None
@@ -242,6 +244,16 @@ class DatabentoOpraLiveAdapter:
     def ingest_record(self, record: object) -> None:
         """SDK callback that performs only bounded in-memory normalization."""
 
+        # The SDK dispatches dense replay bursts from one background thread. On
+        # CPython those callbacks can otherwise retain the GIL long enough to
+        # starve the runtime thread that must publish an explicit fallback.
+        callback_at = time.monotonic()
+        if (
+            callback_at - self._last_callback_yield_at
+            >= OPRA_CALLBACK_YIELD_INTERVAL_SECONDS
+        ):
+            self._last_callback_yield_at = callback_at
+            time.sleep(0)
         received = _utc(self._clock())
         rtype = _record_type(record)
         try:

@@ -17,6 +17,7 @@ _RETRYABLE_MESSAGE_MARKERS = (
     "temporarily unavailable",
     "service unavailable",
     "too many requests",
+    "response ended prematurely",
 )
 
 
