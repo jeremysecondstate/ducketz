@@ -87,6 +87,33 @@ def test_launch_allowlist_covers_each_runtime_once() -> None:
         launch.module == _RUNTIME_BY_NAME[launch.runtime].module
         for launch in GUARDIAN_LAUNCHES
     )
+    assert all(launch.arguments[0] == "-u" for launch in GUARDIAN_LAUNCHES)
+    assert all(
+        all(required in launch.command_signature for required in runtime.required_arguments)
+        for launch in GUARDIAN_LAUNCHES
+        for runtime in (_RUNTIME_BY_NAME[launch.runtime],)
+    )
+    assert "--skip-historical-catchup" in _LAUNCH_BY_RUNTIME["options"].arguments
+
+
+def test_checked_in_launcher_is_hidden_idempotent_and_allowlist_owned() -> None:
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "docs"
+        / "datafetch-ml"
+        / "start_all_loops.ps1"
+    )
+    source = path.read_text(encoding="utf-8")
+
+    assert "GUARDIAN_LAUNCHES" in source
+    assert "Get-CimInstance Win32_Process" in source
+    assert "ValidPairAndLock" in source
+    assert "-WindowStyle Hidden" in source
+    assert "-WorkingDirectory $repoRoot" in source
+    assert "-RedirectStandardOutput $stdout" in source
+    assert "-RedirectStandardError $stderr" in source
+    assert "logs\\ducketz\\background-launch" in source
+    assert "-NoExit" not in source
 
 
 def test_healthy_owner_pairs_need_no_action(tmp_path: Path) -> None:

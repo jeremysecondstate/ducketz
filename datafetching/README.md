@@ -210,11 +210,11 @@ Loop A processes cannot write the same files. `Ctrl+C` exits the loop and remove
 the lock.
 
 Provider endpoints that only accept one symbol remain isolated: FMP statements
-and filings, Schwab price history and option chains, and SEC filing text. A
-failed batch request falls back to those existing per-symbol paths. Loop A also
-requests only the maximal Schwab history window for each native frequency; the
-shorter overlapping windows previously produced no additional consolidated bar
-coverage.
+and filings, optional/manual Schwab price history and option chains, and SEC
+filing text. A failed batch request falls back to those existing per-symbol
+paths. Recurring Loop A runs Schwab in quote-only mode; Databento owns its 1s,
+1m, 1h, and 1d operational bars. Direct data-fetching calls retain the explicit
+Schwab history compatibility path.
 
 Useful calculation skips are `--skip-fundamentals`, `--skip-technicals`, and
 `--skip-signals`. `--cme-mode inline` and `--options-mode inline` are explicit

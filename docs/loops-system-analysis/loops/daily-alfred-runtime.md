@@ -119,6 +119,25 @@ The importer’s pagination is internal. The one-time `ml.option_pricing_fred --
   but not current API entitlement, actual datastore coverage, or current
   ≥95% readiness. Those remain receipt/health facts.
 
+## Runtime and monitoring observation
+
+**Confirmed deployment contract:** Daily ALFRED is one of the seven independent
+hidden owners, even though its work is at most once per UTC date. The canonical
+launcher/guardian command is unbuffered, uses an explicit working directory and
+redirected monitor-visible logs, and requires one launcher/worker pair whose
+worker owns `.ducketz-fred-alfred-import.lock`. Existing valid ownership is not
+duplicated. `docs/datafetch-ml/start_all_loops.ps1:18`,
+`ml/system_guardian.py:81`
+
+Hourly monitoring verifies process/lock/log state and the current daily
+pointer. Daily and weekly layers additionally verify full vintage/importer
+lineage, minimum coverage, and lookahead guards; a freshness failure is not
+silenced by a live process. `ml/system_monitor.py:164`
+
+**Observed 2026-08-19 11:15 UTC:** exactly one ALFRED launcher/worker pair and
+its matching worker lock passed, and its current publication contract verified.
+This timestamped observation does not guarantee the next provider update.
+
 
 ## Evidence index
 

@@ -49,6 +49,21 @@ _FAIL = "FAIL"
 _EXPECTED_PUBLICATION_AGE = pd.Timedelta(minutes=45)
 _TARGET_SETTLE_GRACE = pd.Timedelta(minutes=14)
 _RECENT_STDERR_WINDOW = pd.Timedelta(hours=2)
+_WEEKLY_MINIMUM_INDEPENDENT_OBSERVATIONS = 30
+_WEEKLY_CONTRACT_COLUMNS = (
+    "provider",
+    "model_name",
+    "prediction_mode",
+    "target_definition_version",
+    "target_specification",
+    "assumed_round_trip_cost",
+)
+_WEEKLY_CLUSTER_COLUMNS = (
+    "symbol",
+    "decision_timestamp",
+    "target_window_start",
+    "target_window_end",
+)
 
 
 @dataclass(frozen=True)
@@ -157,8 +172,8 @@ def build_monitor_report(
     """Build one read-only, fail-contained system or production-quality report."""
 
     clean_mode = str(mode).strip().lower()
-    if clean_mode not in {"hourly", "daily"}:
-        raise ValueError("mode must be hourly or daily")
+    if clean_mode not in {"hourly", "daily", "weekly"}:
+        raise ValueError("mode must be hourly, daily, or weekly")
     root = Path(datastore_root).resolve()
     now = _utc(observed_at if observed_at is not None else _now(), "observed_at")
     watchlist = tuple(
@@ -227,7 +242,7 @@ def build_monitor_report(
     checks.append(_safe("ui_contracts", lambda: _ui_check(root, now, watchlist)))
     checks.append(_safe("storage_capacity", lambda: _storage_check(root)))
 
-    if clean_mode == "daily":
+    if clean_mode in {"daily", "weekly"}:
         checks.append(_safe("alfred_full_evidence", lambda: _alfred_full_check(root)))
         checks.append(
             _safe(
@@ -250,6 +265,13 @@ def build_monitor_report(
                     target=latest_target,
                     symbols=watchlist,
                 ),
+            )
+        )
+    if clean_mode == "weekly":
+        checks.append(
+            _safe(
+                "weekly_evaluation_rollup",
+                lambda: _weekly_evaluation_rollup_check(root, now=now),
             )
         )
 
@@ -408,8 +430,17 @@ def _log_activity_check(
     now: pd.Timestamp,
     market_actionable: bool,
 ) -> dict[str, object]:
-    log_root = root / "logs" / "ducketz"
-    stdout_files = tuple(log_root.glob("**/*.stdout.log")) if log_root.is_dir() else ()
+    primary_log_root = root / "logs" / "ducketz"
+    legacy_log_root = root / "runtime-logs"
+    log_roots = tuple(
+        path for path in (primary_log_root, legacy_log_root) if path.is_dir()
+    )
+    stdout_files = tuple(
+        path
+        for log_root in log_roots
+        for pattern in ("**/*.stdout.log", "**/*.out.log")
+        for path in log_root.glob(pattern)
+    )
     problems: list[str] = []
     results: dict[str, object] = {}
     for spec in RUNTIMES:
@@ -431,7 +462,7 @@ def _log_activity_check(
             and age > spec.maximum_log_age
             and not quiet_allowed
         )
-        stderr = stdout.with_name(stdout.name.replace(".stdout.log", ".stderr.log"))
+        stderr = _paired_stderr_path(stdout)
         recent_stderr = False
         stderr_tail = None
         if stderr.is_file() and stderr.stat().st_size > 0:
@@ -445,6 +476,11 @@ def _log_activity_check(
             problems.append(f"{spec.name}:recent-stderr")
         results[spec.name] = {
             "stdout": str(stdout),
+            "log_authority": (
+                "PRIMARY"
+                if primary_log_root in stdout.resolve().parents
+                else "LEGACY_RUNTIME_LOGS"
+            ),
             "stdout_age_minutes": _minutes(age),
             "quiet_allowed": quiet_allowed,
             "stderr": str(stderr) if stderr.exists() else None,
@@ -462,7 +498,18 @@ def _log_activity_check(
         ),
         problems=problems,
         runtimes=results,
+        primary_log_root=str(primary_log_root),
+        legacy_log_root=str(legacy_log_root),
     )
+
+
+def _paired_stderr_path(stdout: Path) -> Path:
+    name = stdout.name
+    if name.endswith(".stdout.log"):
+        return stdout.with_name(name[: -len(".stdout.log")] + ".stderr.log")
+    if name.endswith(".out.log"):
+        return stdout.with_name(name[: -len(".out.log")] + ".err.log")
+    raise ValueError(f"Unsupported runtime stdout log name: {stdout}")
 
 
 def _loop_a_cycle_check(
@@ -977,12 +1024,14 @@ def _ui_check(
 def _storage_check(root: Path) -> dict[str, object]:
     usage = shutil.disk_usage(root)
     free_ratio = usage.free / usage.total if usage.total else 0.0
-    log_root = root / "logs" / "ducketz"
+    log_roots = (root / "logs" / "ducketz", root / "runtime-logs")
     log_bytes = sum(
         path.stat().st_size
+        for log_root in log_roots
+        if log_root.is_dir()
         for path in log_root.glob("**/*")
         if path.is_file()
-    ) if log_root.is_dir() else 0
+    )
     if usage.free < 10 * 1024**3 or free_ratio < 0.03:
         status = _FAIL
         summary = "Datastore disk capacity is critically low."
@@ -1277,6 +1326,331 @@ def summarize_strategy_quality(
     }
 
 
+def _weekly_evaluation_rollup_check(
+    root: Path,
+    *,
+    now: pd.Timestamp,
+) -> dict[str, object]:
+    publication = read_current_publication(root)
+    evaluations_path = publication.run_directory / "evaluations.parquet"
+    evaluations = pd.read_parquet(evaluations_path)
+    completed_weeks = _completed_xnys_weeks(now, count=2)
+    source = {
+        "run_path": publication.run_directory.relative_to(root).as_posix(),
+        "publication_receipt": str(publication.run_directory / "publication.json"),
+        "publication_receipt_sha256": file_checksum(
+            publication.run_directory / "publication.json"
+        ),
+        "evaluations_sha256": file_checksum(evaluations_path),
+        "receipt_verified": publication.receipt is not None,
+    }
+    if len(completed_weeks) < 2:
+        return _check(
+            "weekly_evaluation_rollup",
+            _INFO,
+            "INSUFFICIENT_WEEKLY_EVIDENCE: two completed XNYS weeks are unavailable.",
+            evidence_state="INSUFFICIENT_WEEKLY_EVIDENCE",
+            source=source,
+            completed_weeks=completed_weeks,
+        )
+    previous, current = completed_weeks
+    summary = summarize_weekly_evidence(
+        evaluations,
+        previous_week_start=previous["week_start"],
+        current_week_start=current["week_start"],
+        minimum_observations=_WEEKLY_MINIMUM_INDEPENDENT_OBSERVATIONS,
+    )
+    status = str(summary.pop("status"))
+    text = str(summary.pop("summary"))
+    return _check(
+        "weekly_evaluation_rollup",
+        status,
+        text,
+        source=source,
+        periods={"previous": previous, "current": current},
+        **summary,
+    )
+
+
+def summarize_weekly_evidence(
+    evaluations: pd.DataFrame,
+    *,
+    previous_week_start: object,
+    current_week_start: object,
+    minimum_observations: int = _WEEKLY_MINIMUM_INDEPENDENT_OBSERVATIONS,
+) -> dict[str, object]:
+    """Compare two completed exchange weeks without mixing contracts or maturity."""
+
+    required = {
+        "symbol",
+        "provider",
+        "horizon",
+        "decision_timestamp",
+        "target_window_start",
+        "target_window_end",
+        "prediction_created_at",
+        "model_name",
+        "model_version",
+        "prediction_mode",
+        "evaluation_status",
+        "target_definition_version",
+        "target_specification",
+        "assumed_round_trip_cost",
+        "observed_target",
+        "calibrated_probability",
+        "log_loss",
+        "brier_score",
+        "prediction_correct_0_5",
+    }
+    missing = sorted(required.difference(evaluations.columns))
+    if missing:
+        raise ValueError("Weekly evaluations are missing: " + ", ".join(missing))
+    minimum = int(minimum_observations)
+    if minimum < 1:
+        raise ValueError("minimum_observations must be positive")
+    previous_start = _week_start(previous_week_start)
+    current_start = _week_start(current_week_start)
+    if previous_start >= current_start:
+        raise ValueError("Weekly comparison periods are not chronological")
+
+    frame = evaluations.copy()
+    for column in (
+        "decision_timestamp",
+        "target_window_start",
+        "target_window_end",
+        "prediction_created_at",
+    ):
+        frame[column] = pd.to_datetime(frame[column], utc=True, errors="coerce")
+    frame = frame.loc[
+        frame["prediction_mode"].astype("string").str.upper().eq("LIVE")
+        & frame["target_window_end"].notna()
+    ].copy()
+    local_target_dates = (
+        frame["target_window_end"]
+        .dt.tz_convert("America/New_York")
+        .dt.normalize()
+        .dt.tz_localize(None)
+    )
+    frame["_week_start"] = local_target_dates - pd.to_timedelta(
+        local_target_dates.dt.weekday, unit="D"
+    )
+
+    routes: dict[str, object] = {}
+    comparable_horizons: list[str] = []
+    state_counts: dict[str, int] = {}
+    for horizon in INTERNAL_HORIZON_ORDER:
+        route = frame.loc[frame["horizon"].astype("string").str.lower().eq(horizon)]
+        previous_all = route.loc[route["_week_start"].eq(previous_start)]
+        current_all = route.loc[route["_week_start"].eq(current_start)]
+        previous_rows = _canonical_weekly_evaluations(previous_all)
+        current_rows = _canonical_weekly_evaluations(current_all)
+        previous_contracts = _weekly_contracts(previous_rows)
+        current_contracts = _weekly_contracts(current_rows)
+        previous_payload = _weekly_period_payload(previous_all, previous_rows)
+        current_payload = _weekly_period_payload(current_all, current_rows)
+
+        if len(previous_rows) < minimum or len(current_rows) < minimum:
+            evidence_state = "INSUFFICIENT_WEEKLY_EVIDENCE"
+            comparison = None
+        elif (
+            len(previous_contracts) != 1
+            or len(current_contracts) != 1
+            or previous_contracts != current_contracts
+        ):
+            evidence_state = "INCOMPATIBLE_WEEKLY_DEFINITIONS"
+            comparison = None
+        else:
+            evidence_state = "COMPARABLE_WEEKLY_EVIDENCE"
+            comparable_horizons.append(horizon)
+            comparison = _weekly_metric_deltas(
+                previous_payload["metrics"], current_payload["metrics"]
+            )
+        state_counts[evidence_state] = state_counts.get(evidence_state, 0) + 1
+        routes[horizon] = {
+            "evidence_state": evidence_state,
+            "minimum_independent_observations": minimum,
+            "previous": previous_payload,
+            "current": current_payload,
+            "previous_contracts": previous_contracts,
+            "current_contracts": current_contracts,
+            "comparison": comparison,
+        }
+
+    if comparable_horizons:
+        status = _PASS
+        evidence_state = "COMPARABLE_WEEKLY_EVIDENCE"
+        text = (
+            "Comparable immutable live evaluation evidence exists for "
+            f"{len(comparable_horizons)} production horizon(s); non-comparable "
+            "routes remain explicitly classified."
+        )
+    else:
+        status = _INFO
+        evidence_state = "INSUFFICIENT_WEEKLY_EVIDENCE"
+        text = (
+            "INSUFFICIENT_WEEKLY_EVIDENCE: no production horizon has two "
+            "compatible completed XNYS weeks with enough independent live outcomes."
+        )
+    return {
+        "status": status,
+        "summary": text,
+        "evidence_state": evidence_state,
+        "evidence_scope": "IMMUTABLE_LIVE_EVALUATIONS_BY_COMPLETED_XNYS_WEEK",
+        "previous_week_start": previous_start.strftime("%Y-%m-%d"),
+        "current_week_start": current_start.strftime("%Y-%m-%d"),
+        "minimum_independent_observations": minimum,
+        "comparable_horizons": comparable_horizons,
+        "state_counts": state_counts,
+        "routes": routes,
+    }
+
+
+def _canonical_weekly_evaluations(frame: pd.DataFrame) -> pd.DataFrame:
+    completed = frame.loc[
+        frame["evaluation_status"].astype("string").str.upper().eq("EVALUATED")
+    ].copy()
+    if completed.empty:
+        return completed
+    return (
+        completed.sort_values("prediction_created_at", kind="stable")
+        .drop_duplicates(list(_WEEKLY_CLUSTER_COLUMNS), keep="last")
+        .reset_index(drop=True)
+    )
+
+
+def _weekly_contracts(frame: pd.DataFrame) -> list[dict[str, object]]:
+    if frame.empty:
+        return []
+    contracts = frame.loc[:, list(_WEEKLY_CONTRACT_COLUMNS)].drop_duplicates()
+    return sorted(
+        (
+            {
+                column: _jsonable(row[column])
+                for column in _WEEKLY_CONTRACT_COLUMNS
+            }
+            for row in contracts.to_dict("records")
+        ),
+        key=lambda value: json.dumps(value, sort_keys=True, default=str),
+    )
+
+
+def _weekly_period_payload(
+    all_rows: pd.DataFrame,
+    completed_rows: pd.DataFrame,
+) -> dict[str, object]:
+    statuses = {
+        str(key): int(value)
+        for key, value in all_rows["evaluation_status"]
+        .astype("string")
+        .str.upper()
+        .value_counts(dropna=False)
+        .items()
+    }
+    versions = sorted(
+        str(value)
+        for value in completed_rows["model_version"].dropna().astype("string").unique()
+    )
+    return {
+        "published_evaluation_rows": len(all_rows),
+        "evaluation_status_counts": statuses,
+        "independent_evaluated_observations": len(completed_rows),
+        "model_versions": versions,
+        "metrics": _weekly_metrics(completed_rows),
+    }
+
+
+def _weekly_metrics(frame: pd.DataFrame) -> dict[str, float | None]:
+    return {
+        "accuracy_at_0_5": _mean_or_none(frame["prediction_correct_0_5"]),
+        "mean_brier_score": _mean_or_none(frame["brier_score"]),
+        "mean_log_loss": _mean_or_none(frame["log_loss"]),
+        "observed_positive_rate": _mean_or_none(frame["observed_target"]),
+        "mean_calibrated_probability": _mean_or_none(
+            frame["calibrated_probability"]
+        ),
+    }
+
+
+def _weekly_metric_deltas(
+    previous: Mapping[str, object],
+    current: Mapping[str, object],
+) -> dict[str, float | None]:
+    return {
+        f"{metric}_delta": _difference_or_none(current.get(metric), previous.get(metric))
+        for metric in (
+            "accuracy_at_0_5",
+            "mean_brier_score",
+            "mean_log_loss",
+            "observed_positive_rate",
+            "mean_calibrated_probability",
+        )
+    }
+
+
+def _mean_or_none(values: pd.Series) -> float | None:
+    numeric = pd.to_numeric(values, errors="coerce").dropna()
+    return round(float(numeric.mean()), 12) if not numeric.empty else None
+
+
+def _difference_or_none(current: object, previous: object) -> float | None:
+    current_value = _finite_or_none(current)
+    previous_value = _finite_or_none(previous)
+    if current_value is None or previous_value is None:
+        return None
+    return round(current_value - previous_value, 12)
+
+
+def _week_start(value: object) -> pd.Timestamp:
+    timestamp = pd.Timestamp(value)
+    if timestamp.tzinfo is not None:
+        timestamp = timestamp.tz_convert("America/New_York").tz_localize(None)
+    timestamp = timestamp.normalize()
+    return timestamp - pd.Timedelta(days=int(timestamp.weekday()))
+
+
+def _completed_xnys_weeks(
+    now: pd.Timestamp,
+    *,
+    count: int,
+) -> list[dict[str, object]]:
+    calendar = _xnys_monitor_calendar(
+        now - pd.Timedelta(days=max(35, count * 14)),
+        now + pd.Timedelta(days=7),
+    )
+    by_week: dict[pd.Timestamp, list[tuple[pd.Timestamp, pd.Timestamp]]] = {}
+    for session in calendar.sessions:
+        label = pd.Timestamp(session).tz_localize(None).normalize()
+        start = label - pd.Timedelta(days=int(label.weekday()))
+        close = pd.Timestamp(calendar.session_close(session)).tz_convert("UTC")
+        by_week.setdefault(start, []).append((label, close))
+    completed: list[dict[str, object]] = []
+    for start, sessions in sorted(by_week.items()):
+        final_session, final_close = max(sessions, key=lambda value: value[0])
+        if now < final_close:
+            continue
+        completed.append(
+            {
+                "week_start": start.strftime("%Y-%m-%d"),
+                "final_eligible_session": final_session.strftime("%Y-%m-%d"),
+                "final_session_close": final_close.isoformat(),
+                "session_count": len(sessions),
+            }
+        )
+    return completed[-count:]
+
+
+def _xnys_monitor_calendar(start: pd.Timestamp, end: pd.Timestamp):
+    try:
+        import exchange_calendars as xcals
+    except ImportError as exc:  # pragma: no cover - required project dependency
+        raise RuntimeError("exchange-calendars is required for Loops monitoring") from exc
+    return xcals.get_calendar(
+        "XNYS",
+        start=start.date().isoformat(),
+        end=end.date().isoformat(),
+    )
+
+
 def _pricing_strategy_canary_check(
     root: Path,
     *,
@@ -1496,17 +1870,49 @@ def _now() -> datetime:
 
 
 def scheduled_monitor_mode(value: datetime | None = None) -> str:
-    """Select the daily layer for the weekday 14:42 local heartbeat."""
+    """Select post-close daily/weekly layers from the XNYS session calendar."""
 
     local = value or datetime.now().astimezone()
     if local.tzinfo is None:
         raise ValueError("scheduled monitor clock must be timezone-aware")
-    return "daily" if local.weekday() < 5 and local.hour == 14 else "hourly"
+    if local.hour != 14:
+        return "hourly"
+    observed = pd.Timestamp(local).tz_convert("UTC")
+    market_date = observed.tz_convert("America/New_York").tz_localize(None).normalize()
+    calendar = _xnys_monitor_calendar(
+        observed - pd.Timedelta(days=7),
+        observed + pd.Timedelta(days=7),
+    )
+    sessions = [
+        session
+        for session in calendar.sessions
+        if pd.Timestamp(session).tz_localize(None).normalize() == market_date
+    ]
+    if len(sessions) != 1:
+        return "hourly"
+    session = sessions[0]
+    close = pd.Timestamp(calendar.session_close(session)).tz_convert("UTC")
+    if observed < close:
+        return "hourly"
+    week_start = market_date - pd.Timedelta(days=int(market_date.weekday()))
+    week_end = week_start + pd.Timedelta(days=6)
+    week_sessions = [
+        candidate
+        for candidate in calendar.sessions
+        if week_start
+        <= pd.Timestamp(candidate).tz_localize(None).normalize()
+        <= week_end
+    ]
+    if session == max(week_sessions):
+        return "weekly"
+    return "daily"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Run read-only hourly or daily health checks across the Loops system."
+        description=(
+            "Run read-only hourly, daily, or weekly checks across the Loops system."
+        )
     )
     datastore = parser.add_mutually_exclusive_group()
     datastore.add_argument("--datastore", type=Path, default=None)
@@ -1515,11 +1921,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument(
         "--mode",
-        choices=("hourly", "daily", "scheduled"),
+        choices=("hourly", "daily", "weekly", "scheduled"),
         required=True,
         help=(
-            "Scheduled selects daily during the weekday 2 PM local heartbeat and "
-            "hourly at every other wake."
+            "Scheduled selects daily after an eligible XNYS close, weekly after "
+            "the final eligible XNYS session of the week, and hourly otherwise."
         ),
     )
     parser.add_argument(
@@ -1559,4 +1965,5 @@ __all__ = [
     "scheduled_monitor_mode",
     "summarize_directional_quality",
     "summarize_strategy_quality",
+    "summarize_weekly_evidence",
 ]

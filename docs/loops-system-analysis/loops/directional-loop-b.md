@@ -19,11 +19,13 @@
 **Confirmed non-ownership:** it does not acquire provider data, publish option chains or option fair values, choose final options strategies, or write to the closed lockbox. Strategy is explicitly an independent authority. `ml/runtime_pipeline.py:695`, `ml/runtime_pipeline.py:838`
 
 **Startup/bootstrap boundary:** Loop B is a reader/computation owner. It starts
-only from verified Loop A and other causal feature authorities and never uses a
-cold-start archive cursor as production evidence. On a brand-new datastore a
-base/earlier-profile Loop B generation is also the decision-grid prerequisite
-for the one-time ALFRED backfill; the v3 macro profile begins only after ALFRED
-readiness is verified.
+only from verified Loop A and other causal feature authorities and never treats
+a cold-start cursor itself as production evidence. Loop A and CME may first
+materialize verified archive history into their ordinary operational stores,
+with lineage; Loop B then consumes those operational products under its normal
+causal feature contracts. On a brand-new datastore a base/earlier-profile Loop
+B generation is also the decision-grid prerequisite for the one-time ALFRED
+backfill; the v3 macro profile begins only after ALFRED readiness is verified.
 
 ## Inputs
 
@@ -120,6 +122,33 @@ readiness is verified.
   only the immutable run receipt plus `ml/latest/run.json` selects authority.
 - Current route coverage, admitted feature family, model reuse and realized
   metrics are manifest/evaluation facts, not guaranteed by the v3 command.
+
+## Runtime and evaluation monitoring
+
+**Confirmed deployment contract:** Directional Loop B is a standalone hidden
+owner whose worker owns the executable singleton lock
+`.duckets-ml-prediction-runtime.lock`. The monitor verifies the exact pair,
+lock, immutable run receipt/pointer, freshness, route inventory, Strategy
+source lineage, and UI contract independently. A live PID cannot excuse a stale
+publication. `ml/system_monitor.py:164`,
+`docs/datafetch-ml/start_all_loops.ps1:18`
+
+Daily monitoring evaluates every public and component route—`1h`, `4h`, `1d`,
+`1w`, and `1w-d1` through `1w-d5`—and keeps insufficient mature LIVE labels
+separate from measured poor results. Weekly monitoring is not an alias for this
+loop's `1w` route: it uses immutable `LIVE` evaluations from the last two
+completed XNYS session weeks, requires matching model/target/cost definitions
+and at least 30 independent observations per period, and otherwise returns
+`INSUFFICIENT_WEEKLY_EVIDENCE` or
+`INCOMPATIBLE_WEEKLY_DEFINITIONS`. `ml/system_monitor.py:1375`
+
+**Observed 2026-08-19 11:15 UTC:** one Loop B launcher/worker pair and matching
+worker lock passed. Its current immutable publication had freshly advanced to
+`ml/runs/20260819T110751.748181Z` with 54 routes; no restart produced that
+recovery. The explicit weekly audit found no comparable mature LIVE evaluation
+cohorts in the two completed weeks and correctly reported insufficient weekly
+evidence instead of a trend. The run path is observation evidence, not a fixed
+architectural pointer.
 
 
 ## Evidence index

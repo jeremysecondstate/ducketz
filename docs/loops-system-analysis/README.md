@@ -7,8 +7,18 @@ This directory documents the current production Loops implementation. Code, immu
 - **Confirmed:** the startup document declares seven independent runtime owners and says they coordinate through verified atomic pointers. `docs/datafetch-ml/current_start_command:3`, `docs/datafetch-ml/current_start_command:5`
 - **Confirmed by code census:** exactly seven recurring production supervisors exist: CME/L2, Loop A, Daily ALFRED, Active Pricing, Options Capture, Directional Loop B, and Strategy.
 - **Confirmed:** `ml.option_pricing_loop_native_worker` is a one-shot, non-blocking child owned by Active Pricing, not an eighth independent loop. `ml/option_pricing_loop_native_worker.py:38`, `ml/option_pricing_loop_native_worker.py:135`, `ml/option_pricing_runtime.py:440`
+- **Confirmed deployment:** the checked-in launcher derives its seven commands from `ml.system_guardian.GUARDIAN_LAUNCHES`, verifies `ml.system_monitor.RUNTIMES`, existing process pairs, and worker-owned locks before acting, starts only a completely missing owner, and uses resolved paths, explicit working directory, redirected primary logs, unbuffered Python, and hidden windows. Options retains `--skip-historical-catchup`. `docs/datafetch-ml/start_all_loops.ps1:18`, `ml/system_guardian.py:81`
 - **Confirmed:** `datafetching.options_history` is the one-time per-symbol OPRA bootstrap. `datafetching.databento_cold_start` is the optional one-time all-dataset bootstrap and hands verified OPRA scopes to Options through v5 symbol/schema history cursors. Both normal paths use the included Standard-plan windows, validate free capacity with a 5 GiB reserve and 2× expansion allowance, and fail closed on scope or evidence mismatch. Options Capture owns recurring catch-up for completed cursors; none of these maintenance paths creates an eighth supervisor. `datafetching/options_history.py`, `datafetching/databento_cold_start.py`, `datafetching/options_runtime.py`
+- **Confirmed archive separation:** Loop A uses current `EQUS.MINI` operational bars under `stocks`; the different-dataset `XNAS.ITCH` equity archive remains cold provenance and is not timestamp-merged into that view. The bridge remains available only for matching dataset identities. CME still derives a missing initial runtime boundary from verified archive scope, fingerprints archive inventories, combines archive and persisted live rows, and materializes unseen context windows. `datafetching/databento_archive.py:213`, `datafetching/databento_archive.py:539`, `datafetching/databento_fetch.py:541`, `datafetching/equity_dataset_migration.py`, `datafetching/cme_cross_asset_context.py:250`
+- **Confirmed monitoring:** hourly mode covers ownership, locks, logs, publications, lineage, UIs, and storage; daily adds every directional route plus Strategy/Pricing outcome evaluation; weekly adds a comparable immutable-evidence roll-up after the final eligible XNYS session of the week. Insufficient weekly observations are reported explicitly rather than converted into a trend. `ml/system_monitor.py:164`, `ml/system_monitor.py:1375`, `ml/system_monitor.py:1872`
 - **Operational boundary:** historical files are mutable production state. Verify the current state with `python -m ml.option_pricing_opra --datastore-target pc --health-only` and the receipts beneath `C:\DATASTORE\market-data\databento\opra\OPRA.PILLAR`; do not infer population from these docs or from `provider-mode=opra-canonical`.
+
+**Observed 2026-08-19 11:15 UTC:** all seven launcher/worker pairs and matching
+worker locks passed. Active legacy `C:\DATASTORE\runtime-logs` streams became
+monitor-visible without restarting healthy owners; Loop B advanced to a fresh
+publication on its own. Strategy-to-Loop-B lineage was still warning at that
+observation and remained publication-health evidence for the normal +10 cycle.
+No PID is architectural and none is recorded here.
 
 ## Evidence labels
 
@@ -38,7 +48,17 @@ Repository citations use `relative/path:line`. A citation names the line where t
 
 “Both” means the loop has an evidenced causal path to at least one directional-horizon output and to at least one options-family output (option pricing or options strategy). “Direct” is reserved for the loop that publishes that prediction family’s authoritative artifact; upstream causal inputs are “Indirect.” This prevents temporal proximity alone from counting as contribution. The detailed basis is in [Prediction contribution matrix](PREDICTION_CONTRIBUTION_MATRIX.md).
 
-At a high level, Loop A freezes exact equity-bar readiness and later a complete provider/feature cycle; CME/L2 and Daily ALFRED independently publish cross-asset and vintage-macro evidence. CME and Loop A self-initialize their bounded owned runtime histories, while Daily ALFRED requires its documented one-time causal backfill sequence. Options Capture owns prospective provider-neutral option evidence through one scoped, bounded OPRA `cbbo-1s` live adapter and retains Schwab as labeled per-target fallback/broker evidence. A separate one-time per-parent command, or the `--confirm-download` all-dataset cold-start coordinator, bootstraps included Standard history. Both publish only verified v5 history-cursor handoffs; Options Capture subsequently performs one daily, schema-specific overlap catch-up for valid cursors. Active Pricing and Strategy are readers of verified OPRA partitions and use Schwab only where their contracts allow fallback. `datafetching/options_history.py`, `datafetching/databento_cold_start.py`, `datafetching/options_runtime.py`, `ml/option_pricing/opra_materialization.py`, `ml/strategy_selection/chain.py`
+At a high level, Loop A freezes exact equity-bar readiness and later a complete provider/feature cycle; CME/L2 and Daily ALFRED independently publish cross-asset and vintage-macro evidence. CME and Loop A verify and bridge available archive baselines, then continue under bounded overlapping owned-runtime contracts; Daily ALFRED requires its documented one-time causal backfill sequence. Options Capture owns prospective provider-neutral option evidence through one scoped, bounded OPRA `cbbo-1s` live adapter and retains Schwab as labeled per-target fallback/broker evidence. A separate one-time per-parent command, or the `--confirm-download` all-dataset cold-start coordinator, bootstraps included Standard history. Both publish only verified v5 history-cursor handoffs; Options Capture subsequently performs one daily, schema-specific overlap catch-up for valid cursors. Active Pricing and eligible offline Strategy workflows read verified OPRA partitions; recurring live Strategy selection requires prospective receipts and forbids offline replay. `datafetching/options_history.py`, `datafetching/databento_cold_start.py`, `datafetching/databento_archive.py:213`, `datafetching/databento_archive.py:539`, `datafetching/options_runtime.py`, `ml/strategy_selection/runtime.py:167`
+
+Historical OPRA replay/cache is eligible for receipt-verified offline Pricing
+evaluation and Strategy outcome/model construction. Prospective receipts remain
+the preferred live evidence, and recurring Strategy entry plus live Pricing
+attachment explicitly forbid offline replay. Scenario Coverage is a heuristic
+scenario-grid pass fraction, not a probability; calibrated Strategy fields stay
+null until the fitted causal model and full eligible Pricing coverage exist.
+`ml/option_pricing_opra_replay.py:224`,
+`ml/strategy_selection/runtime.py:167`,
+`ml/strategy_selection/contracts.py:33`
 
 ## Deliverables
 
@@ -47,6 +67,7 @@ At a high level, Loop A freezes exact equity-bar readiness and later a complete 
 - [Loop relationships](LOOP_RELATIONSHIPS.md)
 - [Visual loop map](LOOP_MAP.md)
 - [Prediction contribution matrix](PREDICTION_CONTRIBUTION_MATRIX.md)
+- [Monitoring and guarded recovery](MONITORING.md)
 - Per-loop reports:
   - [CME/L2 runtime](loops/cme-l2-runtime.md)
   - [Loop A](loops/loop-a.md)

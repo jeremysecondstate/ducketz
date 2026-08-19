@@ -138,6 +138,7 @@ def run_symbol_fetch(
     include_cme: bool = True,
     include_fmp_macro: bool = True,
     include_options: bool = True,
+    include_schwab_price_history: bool = True,
     provider_completed: ProviderCompleted | None = None,
     databento_minute_bars_completed: DatabentoMinuteBarsCompleted | None = None,
 ) -> tuple[FetchResult, ...]:
@@ -162,6 +163,7 @@ def run_symbol_fetch(
                 include_cme=include_cme,
                 include_fmp_macro=include_fmp_macro,
                 include_options=include_options,
+                include_schwab_price_history=include_schwab_price_history,
             )
         results.append(result)
         if provider_completed is not None:
@@ -178,6 +180,7 @@ def run_symbols_fetch(
     include_cme: bool = True,
     include_fmp_macro: bool = True,
     include_options: bool = True,
+    include_schwab_price_history: bool = True,
     provider_completed: ProviderCompleted | None = None,
     databento_minute_bars_completed: DatabentoMinuteBarsCompleted | None = None,
 ) -> dict[str, tuple[FetchResult, ...]]:
@@ -202,6 +205,7 @@ def run_symbols_fetch(
                 include_cme=include_cme,
                 include_fmp_macro=include_fmp_macro,
                 include_options=include_options,
+                include_schwab_price_history=include_schwab_price_history,
                 provider_completed=provider_completed,
                 databento_minute_bars_completed=databento_minute_bars_completed,
             )
@@ -260,6 +264,7 @@ def run_symbols_fetch(
                     store,
                     profile=effective_profile,
                     include_options=include_options,
+                    include_price_history=include_schwab_price_history,
                 )
             else:
                 batch_results = {}
@@ -281,6 +286,7 @@ def run_symbols_fetch(
                     include_cme=include_cme and index == 0,
                     include_fmp_macro=include_fmp_macro and index == 0,
                     include_options=include_options,
+                    include_schwab_price_history=include_schwab_price_history,
                 )
             results[symbol].append(result)
 
@@ -309,6 +315,7 @@ def run_provider_fetch(
     include_cme: bool,
     include_fmp_macro: bool,
     include_options: bool = True,
+    include_schwab_price_history: bool = True,
 ) -> FetchResult:
     effective_profile = normalize_fetch_profile(profile)
     runners: dict[str, Callable[[], FetchResult]] = {
@@ -325,6 +332,7 @@ def run_provider_fetch(
             store,
             profile=effective_profile,
             include_options=include_options,
+            include_price_history=include_schwab_price_history,
         ),
         "sec": lambda: fetch_sec(symbol, store),
     }

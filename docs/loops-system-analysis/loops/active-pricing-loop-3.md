@@ -141,8 +141,37 @@ receipt-verified partitions and never initiates or expands a provider request.
   authority roles. Combining them in prose must not imply that the worker can
   rewrite the fast target or authorize actions.
 - Current model readiness, OPRA/Schwab population, route support and empirical
-  performance are external datastore facts and remain unknown without current
-  receipts and reports.
+  performance are mutable datastore facts; every claim about them requires a
+  timestamped receipt/report observation.
+
+## Canonical OPRA replay observation
+
+**Confirmed:** `ml.option_pricing_opra_replay` is the canonical local replay
+boundary. It selects explicit target clocks, materializes point-in-time OPRA
+definitions/quotes, publishes samples/predictions/observed evaluations, repairs
+legacy emulated creation clocks to remain causal, and binds outputs through a
+manifest, publication receipt, current pointer, and SHA-256 values. The replay
+does not make its offline rows eligible as live Pricing evidence.
+`ml/option_pricing_opra_replay.py:224`,
+`ml/option_pricing_opra_replay.py:382`
+
+**Observed 2026-08-19 11:15 UTC:** the current replay contained 68 target
+clocks and 394,296 complete evaluations, with four explicitly corrected target
+clocks and zero materialization errors. Output checksums and the
+receipt-to-manifest checksum verified. The underlying OPRA archive is mutable
+operational history and may advance later, so a published replay's verified
+receipt is authoritative for that replay without claiming its source
+fingerprint remains identical to the newest archive forever.
+
+## Runtime and monitoring observation
+
+**Observed 2026-08-19 11:15 UTC:** one Pricing launcher/worker pair and its
+worker-owned runtime lock passed the hourly monitor. The market was closed and
+no current target authority was expected, so Pricing publication state was
+informational. Hidden future starts use the closed guardian command and primary
+`logs\ducketz` hierarchy; the one-shot residual child remains owned work, not
+an eighth supervisor. `docs/datafetch-ml/start_all_loops.ps1:18`,
+`ml/system_guardian.py:81`
 
 
 ## Evidence index

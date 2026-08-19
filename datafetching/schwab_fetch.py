@@ -123,9 +123,10 @@ def fetch(
     provider: SchwabMarketDataProvider | None = None,
     prefetched_quote: tuple[Any, Any] | None = None,
     include_options: bool = True,
+    include_price_history: bool = True,
 ) -> FetchResult:
-    """Fetch every Schwab dataset, continuing each one from its stored latest timestamp."""
-    specs = _specs_for_profile(profile)
+    """Fetch Schwab evidence, optionally continuing its price-history series."""
+    specs = _specs_for_profile(profile) if include_price_history else ()
     request_observed_at = datetime.now(timezone.utc)
     session = session or DataFetchingSchwabSession()
     provider = provider or SchwabMarketDataProvider(session=session)
@@ -429,6 +430,7 @@ def fetch_many(
     *,
     profile: str = "continuation",
     include_options: bool = True,
+    include_price_history: bool = True,
 ) -> dict[str, FetchResult]:
     """Fetch a watchlist while sharing Schwab's multi-symbol quote request."""
     clean_symbols = _normalize_symbols(symbols)
@@ -440,6 +442,7 @@ def fetch_many(
                 store,
                 profile=profile,
                 include_options=include_options,
+                include_price_history=include_price_history,
             )
         }
 
@@ -463,6 +466,7 @@ def fetch_many(
             provider=provider,
             prefetched_quote=prefetched_quotes.get(symbol),
             include_options=include_options,
+            include_price_history=include_price_history,
         )
         for symbol in clean_symbols
     }

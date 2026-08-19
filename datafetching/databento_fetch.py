@@ -32,7 +32,10 @@ from datafetching.cme_cross_asset_context import (
     CmeCrossAssetQualityError,
     materialize_cme_cross_asset_context,
 )
-from datafetching.databento_archive import materialize_equity_archive_baseline
+from datafetching.databento_archive import (
+    configured_equity_archive_dataset,
+    materialize_equity_archive_baseline,
+)
 from datafetching.decision_time import completed_bar_clock_for_target
 from datafetching.cme_history import cme_writer_lock_path
 from datafetching.derived_bars import (
@@ -549,11 +552,19 @@ def _materialize_archive_baseline(
     native_specs = getattr(provider, "native_specs", None)
     if not live_dataset or not callable(native_specs):
         return
+    archive_dataset = configured_equity_archive_dataset()
+    if archive_dataset != live_dataset:
+        print(
+            "[databento/archive-bridge] cold archive retained as provenance; "
+            f"operational_dataset={live_dataset}; archive_dataset={archive_dataset}"
+        )
+        return
     result = materialize_equity_archive_baseline(
         store.root_dir,
         symbols=symbols,
         live_dataset=live_dataset,
         source_specs=native_specs(),
+        archive_dataset=archive_dataset,
         as_of=observed_at,
     )
     if result.materialized_files:

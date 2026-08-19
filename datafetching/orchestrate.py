@@ -251,6 +251,7 @@ def run_cycle(
     datastore_target: str | None,
     datastore_path: Path | None,
     include_options: bool = False,
+    include_schwab_price_history: bool = False,
     run_fundamental_calculations: bool = True,
     run_signal_calculations: bool = True,
     cycle_started_at: datetime | None = None,
@@ -416,6 +417,7 @@ def run_cycle(
                 include_cme=include_cme,
                 include_fmp_macro=True,
                 include_options=include_options,
+                include_schwab_price_history=include_schwab_price_history,
                 provider_completed=provider_completed,
                 databento_minute_bars_completed=minute_bars_completed,
             )
@@ -429,6 +431,7 @@ def run_cycle(
             include_cme=include_cme,
             include_fmp_macro=True,
             include_options=include_options,
+            include_schwab_price_history=include_schwab_price_history,
             provider_completed=provider_completed,
             databento_minute_bars_completed=minute_bars_completed,
         )

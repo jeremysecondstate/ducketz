@@ -254,8 +254,8 @@ def run_guardian(
     """Run the monitor and apply at most one allowlisted liveness repair."""
 
     clean_mode = str(mode).strip().lower()
-    if clean_mode not in {"hourly", "daily"}:
-        raise ValueError("mode must be hourly or daily")
+    if clean_mode not in {"hourly", "daily", "weekly"}:
+        raise ValueError("mode must be hourly, daily, or weekly")
     root = Path(datastore_root).resolve()
     now = _utc(observed_at if observed_at is not None else datetime.now(timezone.utc))
     read_processes = process_reader or _windows_process_rows
@@ -1145,7 +1145,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument(
         "--mode",
-        choices=("hourly", "daily", "scheduled"),
+        choices=("hourly", "daily", "weekly", "scheduled"),
         required=True,
     )
     parser.add_argument(

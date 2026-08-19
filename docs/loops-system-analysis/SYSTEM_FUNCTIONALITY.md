@@ -4,6 +4,15 @@
 
 **Confirmed:** Ducketz is a set of seven single-writer, independently scheduled processes that exchange immutable data products and checksum-bound authority pointers through the datastore. The processes are not a single in-memory pipeline and are not coordinated by a central scheduler. `docs/datafetch-ml/current_start_command:3`, `docs/datafetch-ml/current_start_command:5`
 
+The checked-in deployment path audits exact Win32 launcher/worker pairs and
+worker-owned locks before acting, starts only a completely missing owner, and
+uses resolved paths, explicit working directory, unbuffered Python, redirected
+`logs\ducketz` streams, and hidden windows. Commands come from the guardian's
+closed allowlist and Options retains `--skip-historical-catchup`. A partial,
+duplicate, foreign-lock, or command-drift state is not repaired by creating a
+second owner. `docs/datafetch-ml/start_all_loops.ps1:18`,
+`ml/system_guardian.py:81`
+
 There are three authoritative prediction endpoints:
 
 1. **Option-pricing predictions:** Active Pricing’s exact-target publication (`ml/option-pricing-target-latest/run.json`) is the fast authority used by the Pricing-to-Options barrier; its full append-only generation (`ml/option-pricing-latest/run.json`) supplies compact surfaces, evaluations, and historical consumers. `ml/option_pricing_runtime.py:1305`, `ml/option_pricing/publication.py:79`
@@ -21,7 +30,7 @@ explicit historical maintenance commands are listed separately and terminate:
 - Loop A calls Databento equity history, FMP, current FRED, Schwab stock data, and SEC lanes for the production watchlist. It explicitly runs CME and option-chain ownership externally in the production command. `datafetching/main.py:23`, `docs/datafetch-ml/current_start_command:55`, `docs/datafetch-ml/current_start_command:59`, `docs/datafetch-ml/current_start_command:60`
 - Daily ALFRED calls the FRED/ALFRED API for `FEDFUNDS`, `CPIAUCSL`, `UNRATE`, and `GDP`. `datafetching/fred_vintage_import.py:37`, `datafetching/fred_alfred_runtime.py:69`
 - Options Capture owns prospective provider-neutral option snapshots. Its default production CLI constructs one concrete, scoped Databento live adapter for `OPRA.PILLAR` definitions and `cbbo-1s`, validates provider/dataset/schema/symbol/target, definition activation, and all definition/quote clocks, and falls back to a separately labeled Schwab request only for bounded transient per-target unavailability. Missing credentials or transport startup aborts before recurrence; integrity failures do not trigger fallback. `options/databento_live.py:33`, `options/databento_live.py:139`, `datafetching/options_runtime.py:369`, `datafetching/options_runtime.py:384`, `datafetching/options_runtime.py:408`, `datafetching/options_runtime.py:650`, `datafetching/options_runtime.py:706`, `datafetching/options_runtime.py:720`
-- Historical OPRA synchronization has three one-shot command boundaries. `datafetching.options_history` performs the normal prediction-focused bootstrap independently for each parent symbol and schema: `ohlcv-1s` uses 10 days, `cbbo-1s` 1 day, `cbbo-1m` 20 days, `ohlcv-1m` and `definition` 100 days, `ohlcv-1h` 1,825 days, `ohlcv-1d` 2,555 days, and other default non-interval schemas one month. Research-only `cmbp-1` remains explicitly selectable but is omitted by default. `datafetching.databento_cold_start` is the optional all-dataset bootstrap whose execution requires `--confirm-download`; its OPRA scopes use the same canonical storage and publish a v5 history-cursor handoff, while CME/US-equity outputs remain in an isolated archive. The all-dataset default similarly defers historical `mbp-1`, retains one day of prediction-consumed `mbp-10`, and validates included scope and storage capacity. `ml.option_pricing_opra` is the separate full-universe or custom-scope administrative synchronizer. Options Capture then runs at most one catch-up per UTC date for valid cursors, only after attempting the latency-sensitive prospective cycle, using OHLCV overlaps of 1/2/5/10 days and three days for other schemas. Current writes are v5; legacy v4 is accepted only when its schema policy matches exactly. `datafetching/options_history.py`, `datafetching/databento_cold_start.py`, `datafetching/options_runtime.py`, `datafetching/databento_opra_history.py`, `ml/option_pricing_opra.py`
+- Historical OPRA synchronization has three one-shot command boundaries. `datafetching.options_history` performs the normal prediction-focused bootstrap independently for each parent symbol and schema: `ohlcv-1s` uses 10 days, `cbbo-1s` 1 day, `cbbo-1m` 20 days, `ohlcv-1m` and `definition` 100 days, `ohlcv-1h` 1,825 days, `ohlcv-1d` 2,555 days, and other default non-interval schemas one month. Research-only `cmbp-1` remains explicitly selectable but is omitted by default. `datafetching.databento_cold_start` is the optional all-dataset bootstrap whose execution requires `--confirm-download`; its OPRA scopes use canonical storage and publish a v5 history-cursor handoff. Its CME and US-equity products remain provider-provenance namespaces: the different-dataset `XNAS.ITCH` equity archive stays cold while Loop A uses current `EQUS.MINI` operational bars, and verified CME scope seeds missing runtime boundaries and historical context fingerprints. The all-dataset default similarly defers historical `mbp-1`, retains one day of prediction-consumed `mbp-10`, and validates included scope and storage capacity. `ml.option_pricing_opra` is the separate full-universe or custom-scope administrative synchronizer. Options Capture then runs at most one catch-up per UTC date for valid cursors, only after attempting the latency-sensitive prospective cycle. `datafetching/options_history.py`, `datafetching/databento_cold_start.py`, `datafetching/databento_archive.py:213`, `datafetching/equity_dataset_migration.py`, `datafetching/databento_archive.py:539`, `datafetching/options_runtime.py`, `ml/option_pricing_opra.py`
 - Active Pricing, its owned worker, Directional Loop B, and Strategy consume local evidence. The worker explicitly records zero external provider requests. `ml/option_pricing_loop_native_worker.py:126`
 
 **Confirmed scope:** the checked-in production watchlist is `AAPL AMZN GOOG MU NVDA SNDK`; CALL and PUT create twelve Pricing routes, while `SPY` is research-only. `docs/datafetch-ml/current_start_command:16`
@@ -32,7 +41,27 @@ explicit historical maintenance commands are listed separately and terminate:
 
 **Confirmed:** Loop A’s `ParquetStore` performs canonical idempotent upserts and replaces a temporary file atomically. It persists raw, normalized, error, and calculated datasets by provider/category/symbol rather than publishing a single monolith. `datafetching/parquet_store.py:106`, `datafetching/parquet_store.py:290`, `datafetching/parquet_store.py:530`
 
+**Confirmed equity dataset boundary:** Loop A's operational dataset is current
+`EQUS.MINI`; the cold archive dataset is `XNAS.ITCH`. Native requests overlap
+each schema from the latest same-dataset operational timestamp under `stocks`.
+`materialize_equity_archive_baseline` remains available only for matching
+dataset identities; the recurring wrapper skips a different-dataset archive so
+venue-specific and consolidated rows cannot be silently timestamp-merged.
+`market-data/databento/us-equities` remains archive provenance, and the
+2026-08-19 operational switch is checksum-receipted under `catalog/migrations`.
+`datafetching/databento_archive.py:213`, `datafetching/databento_fetch.py:541`,
+`datafetching/equity_dataset_migration.py`
+
 **Confirmed:** CME history is partitioned by day for OHLCV and hour for BBO/MBP, with adaptive event natural keys. A cursor is advanced only after all exact ranges in that schema pass persistence. `datafetching/cme_history.py:207`, `datafetching/cme_history.py:256`, `datafetching/cme_runtime.py:535`, `datafetching/cme_history.py:654`
+
+**Confirmed CME archive bridge:** when an owned runtime cursor is absent,
+verified archive scope supplies the exact-spec historical boundary for live
+continuation. Cross-asset context fingerprints the archive inventory, combines
+archive and ongoing persisted rows, appends unseen historical/current common
+windows, and checksum-binds the lineage. Archive code never owns the CME live
+lock, cursor, L2 pointer, or publication. `datafetching/databento_archive.py:539`,
+`datafetching/cme_runtime.py:476`,
+`datafetching/cme_cross_asset_context.py:250`
 
 **Confirmed:** the supporting five-minute L2 generation is immutable beneath `pools/cme/snapshots/l2/databento/5m/<target_ns>/`; its current pointer is exactly `pools/cme/snapshots/l2/databento/5m/latest.json`. No production-loop consumer of that pointer was found. It remains a CME-owned current-state artifact and is not Loop A readiness. `datafetching/cme_history.py:295`, `datafetching/cme_history.py:437`
 
@@ -126,11 +155,28 @@ Directional outputs carry raw and calibrated probabilities in `[0,1]`, target wi
 
 ### 10. Strategy construction, prediction, ranking, publication, and UI
 
-**Confirmed:** Strategy reads one verified current Loop B run and uses its causal input cutoff, samples, and directional probabilities. Immutable prospective snapshots are selected first with OPRA priority per natural target; historical OPRA replay is the fallback when no prospective receipt exists. For each LIVE prediction it requires a point-in-time chain receipt between information availability and target entry, constructs registered candidates, attaches exact-contract Pricing evidence before market-state/model scoring, and uses a calibrated fitted model only when active Pricing covers every leg. A missing OPRA underlying may be filled only from a Schwab stock BBO already eligible under the same Strategy cutoff. `ml/strategy_runtime.py`, `ml/strategy_selection/chain.py`, `ml/strategy_selection/runtime.py`
+**Confirmed:** Strategy reads one verified current Loop B run and uses its causal input cutoff, samples, and directional probabilities. Immutable prospective snapshots are selected first with OPRA priority per natural target. Canonical historical OPRA replay and the Strategy cache are eligible fallbacks only for offline history/outcome/model construction; the recurring live entry loader passes `allow_historical_opra_replay=False`, and live Pricing attachment also rejects offline evidence. For each LIVE prediction it therefore requires a point-in-time prospective chain receipt between information availability and target entry, constructs registered candidates, attaches exact-contract live-eligible Pricing evidence before market-state/model scoring, and uses a calibrated fitted model only when active Pricing covers every leg. A missing OPRA underlying may be filled only from a Schwab stock BBO already eligible under the same Strategy cutoff. `ml/strategy_runtime.py`, `ml/strategy_selection/chain.py:116`, `ml/strategy_selection/runtime.py:167`
 
 When the fitted model is unavailable or full quality-passing Pricing coverage is absent, the candidate remains `SCENARIO_COVERAGE_HEURISTIC`. Its local scenario-grid pass fraction is stored only in `scenario_coverage_score`; raw, calibrated, and decision probabilities remain null. Fitted rows use calibrated profitable-outcome probability as the decision score. Calibrated candidates rank ahead of heuristic candidates, with deterministic within-tier ranking. `ml/strategy_runtime.py`, `ml/strategy_selection/market_state.py`, `ml/strategy_selection/runtime.py`
 
 Strategy writes candidates, audit, model reports and copied model artifacts, then binds the manifest, Loop B source record, option receipts, and stock BBO lineage into an atomic publication receipt/pointer. `ml/strategy_runtime.py:163`, `ml/strategy_runtime.py:181`, `ml/strategy_runtime.py:217`, `ml/strategy_publication.py:40`
+
+**Observed 2026-08-19 11:15 UTC:** the verified canonical OPRA replay described
+68 targets, 394,296 complete evaluations, four corrected causal target clocks,
+and zero replay errors; its outputs and receipt/manifest checksums verified.
+The Strategy OPRA cache contained about 270,035 contracts and 48 surfaces from
+860 source files with valid output/receipt checksums. These are mutable,
+timestamped datastore measurements, not timeless architecture counts.
+
+The latest Strategy report at that observation required 378 decision clusters
+(252 train, 63 calibration, 63 assessment) but had only 2 usable `1h` clusters,
+1 usable `4h` cluster, and none for `1d`, `1w`, or weekly components. All nine
+routes were `MODEL_NOT_FIT`; 5,760 candidates used Scenario Coverage and zero
+used calibrated probability. This is insufficient causal/model/Pricing
+maturity, not poor calibrated performance. Scenario Coverage stays a distinct
+heuristic fraction and must not fill a probability column.
+`ml/strategy_selection/contracts.py:107`,
+`ml/strategy_selection/model.py:195`
 
 **Confirmed:** the Rolling Forecast UI resolves the authoritative Loop B pointer; the Options Strategy UI resolves the Strategy pointer and validates candidate schema/policy. Neither is a writer or an automated-action owner. `app/ui/rolling_forecast_data.py:539`, `app/ui/options_strategy_data.py:628`, `app/ui/rolling_forecast_data.py:408`
 
@@ -147,6 +193,42 @@ Strategy writes candidates, audit, model reports and copied model artifacts, the
 | Daily ALFRED | at most once per date; 07:00 UTC next boundary | Asynchronous historical authority, not a quarter-hour phase | **Confirmed.** `datafetching/fred_alfred_runtime.py:53`, `docs/datafetch-ml/current_start_command:72` |
 
 **Inferred:** under normal latency the ordinary quarter-hour flow is Loop A bar readiness at about `+00:20`, Pricing at `+01`, Loop B at `+05`, Options at `+06`, Strategy at `+10`. The exact completion order is not guaranteed: readiness and pricing barriers are bounded, each process has its own clock, and no central orchestrator enforces this sequence. `datafetching/bar_readiness.py:245`, `datafetching/pricing_barrier.py:77`
+
+## Operational monitoring and guarded recovery
+
+**Confirmed:** `ml.system_monitor` has three nested layers. Hourly verifies the
+seven exact process pairs, worker locks, active logs, publications, lineage,
+UI contracts, and storage. Daily adds post-close ALFRED, directional, Strategy,
+and Pricing/Strategy evaluation for all nine routes, explicitly including `1d`
+and `1w`. Weekly contains both baselines and adds a comparison of the last two
+completed XNYS session weeks using immutable `LIVE` evaluation evidence only.
+It requires identical model/target/cost definitions and at least 30 independent
+observations per period; otherwise it reports insufficient or incompatible
+weekly evidence, never a manufactured trend. `ml/system_monitor.py:164`,
+`ml/system_monitor.py:1375`
+
+Scheduled selection is exchange-calendar-aware. The heartbeat wakes at local
+minute 42; at the 2 PM wake an eligible post-close XNYS session selects daily,
+or weekly if it is the final eligible session of that exchange week. Holidays
+and shortened weeks therefore do not assume Friday. All other wakes select
+hourly. `ml/system_monitor.py:1872`
+
+**Confirmed guardian boundary:** `ml.system_guardian` may repair at most one
+closed-allowlist liveness fault per wake. A suspected hang requires two
+unchanged observations at least 30 minutes apart; the first writes
+`OBSERVING_HANG` and preserves evidence. Duplicate/ambiguous owners, foreign or
+unreadable locks, integrity failure, and credential/entitlement/rate/capacity
+blockers fail closed. Repairs have a two-hour per-runtime cooldown and write
+immutable audit receipts. The guardian never repairs data/model/lineage
+quality, backfills history, changes pointers, promotes models, edits code, or
+places orders. `ml/system_guardian.py:237`
+
+**Active automation:** `loops-hourly-operations` is the single active heartbeat
+at minute 42. It runs the compact scheduled guardian exactly once, parses JSON
+even on exit 2, and reports selected mode/status/time/remediation plus every
+WARN/FAIL while distinguishing process from publication health, immature from
+poor measured outcomes, and Scenario Coverage from Calibrated Probability.
+See `MONITORING.md` for its exact responsibility boundary.
 
 ## Clocks, causality, and authority boundaries
 
@@ -168,6 +250,14 @@ Strategy writes candidates, audit, model reports and copied model artifacts, the
 **Confirmed:** the one-shot all-dataset baseline/overlap command uses the same stale-owner-aware helper only for `.ducketz-databento-cold-start.lock` and the canonical OPRA `state/sync.lock`; neither is a production supervisor lock or snapshot/publication authority. `datafetching/databento_cold_start.py`
 
 **Confirmed:** the Pricing child has a separate collision lock but cannot move target authority directly; it publishes only future-consumable materialization/model/status artifacts. `ml/option_pricing_loop_native_worker.py:50`, `ml/option_pricing_loop_native_worker.py:87`
+
+**Confirmed deployment/repair rule:** the checked-in launcher and guardian both
+derive commands from the closed allowlist. New starts are hidden, unbuffered,
+resolved-path launches with explicit working directory and stdout/stderr under
+`logs\ducketz`. Active legacy `runtime-logs` streams remain discoverable for
+monitoring, but are not the future launch destination. The Options command
+retains `--skip-historical-catchup`. `docs/datafetch-ml/start_all_loops.ps1:18`,
+`ml/system_guardian.py:81`, `ml/system_monitor.py:427`
 
 ## Failure and degradation propagation
 

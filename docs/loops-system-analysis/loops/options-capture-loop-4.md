@@ -16,7 +16,7 @@
 
 **Confirmed:** Options Capture owns acquisition and immutable publication of provider-neutral option-chain evidence at the calendar target. Default production mode constructs one canonical Databento OPRA L1 adapter before recurrence; per target it publishes validated OPRA using independent evidence clocks or, only after bounded OPRA unavailability, separately labeled Schwab fallback. OPRA capture does not wait for Loop A, although Loop 3 cannot price without exact Loop A authority. If a Schwab fallback occurs while readiness is unavailable, the runtime makes one durably claimed request inside the causal window, seals the response under non-production pending authority, and reconciles it only after exact readiness is provable. `options/databento_live.py:33`, `datafetching/options_runtime.py:360`, `datafetching/options_runtime.py:369`, `datafetching/options_runtime.py:384`, `datafetching/options_runtime.py:452`, `options/pending_capture.py:264`
 
-**Confirmed OPRA scope:** the concrete live implementation subscribes to definitions and `OPRA.PILLAR` `cbbo-1s` for exactly `AAPL.OPT AMZN.OPT GOOG.OPT MU.OPT NVDA.OPT SNDK.OPT`; `SPY` is rejected. One reconnecting client and bounded buffers are shared across symbols/targets. Historical scope is separate: `datafetching.options_history` bootstraps each new parent symbol across the prediction-focused Standard schema set, with research-only `cmbp-1` available explicitly, while the optional one-shot `datafetching.databento_cold_start` can populate the same OPRA contract alongside isolated CME/US-equity archives. Both hand verified OPRA scopes to this supervisor through v5 symbol/schema cursors. `options/databento_live.py`, `datafetching/options_history.py`, `datafetching/databento_cold_start.py`, `datafetching/options_runtime.py:110`
+**Confirmed OPRA scope:** the concrete live implementation subscribes to definitions and `OPRA.PILLAR` `cbbo-1s` for exactly `AAPL.OPT AMZN.OPT GOOG.OPT MU.OPT NVDA.OPT SNDK.OPT`; `SPY` is rejected. One reconnecting client and bounded buffers are shared across symbols/targets. Historical scope is separate: `datafetching.options_history` bootstraps each new parent symbol across the prediction-focused Standard schema set, with research-only `cmbp-1` available explicitly, while the optional one-shot `datafetching.databento_cold_start` can populate the same canonical OPRA contract alongside CME and US-equity provider archives. OPRA scopes hand verified v5 symbol/schema cursors to this supervisor; the CME and equity archive namespaces have their own verified bridges into their operational stores and do not become option-snapshot authority. `options/databento_live.py`, `datafetching/options_history.py`, `datafetching/databento_cold_start.py`, `datafetching/options_runtime.py:110`, `datafetching/databento_archive.py:213`
 
 **Confirmed historical policy:** the prediction-focused default uses 10 days of `ohlcv-1s`, 1 day of `cbbo-1s`, 20 days of `cbbo-1m`, 100 days of `ohlcv-1m` and `definition`, 1,825 days of `ohlcv-1h`, 2,555 days of `ohlcv-1d`, and one month for the other default non-interval schemas. Research-only `cmbp-1` is explicitly selectable but default-deferred. Catch-up overlaps are 1/2/5/10 days for the four OHLCV frequencies and three days for every other schema. The recurring runtime never bootstraps a missing cursor; it reports the required one-time command instead. Capacity preflight, checksum/receipt verification, and exact entitlement bounds all fail closed. `datafetching/options_runtime.py`, `docs/datafetch-ml/options-opra-history.md`
 
@@ -126,6 +126,34 @@ After the first prospective target attempt of a UTC date, the supervisor attempt
   never takes `.ducketz-options-writer.lock` or publishes snapshots/readiness.
 - A valid cursor proves a verified completion boundary, not that every current
   entitlement, partition or live buffer is presently healthy.
+
+## Historical replay and live-evidence boundary
+
+**Confirmed:** the canonical OPRA replay materializes causal target-clock
+samples, predictions, and observed evaluations with receipt/checksum authority.
+Pricing and Strategy may use verified replay/cache evidence for offline model,
+evaluation, and outcome construction. A recurring live Strategy entry or live
+Pricing attachment still requires prospective evidence and explicitly forbids
+offline replay. Prospective Options receipts are therefore preferred live
+evidence; historical completeness does not manufacture a live capture.
+`ml/option_pricing_opra_replay.py:224`,
+`ml/strategy_selection/runtime.py:167`
+
+**Observed 2026-08-19 11:15 UTC:** the current canonical replay described 68
+targets and 394,296 complete evaluations, including four recorded causal clock
+corrections and zero replay errors; its published output and receipt/manifest
+checksums verified. This is a timestamped downstream materialization measure,
+not a promise that every OPRA partition or current live buffer is complete.
+
+## Runtime and monitoring observation
+
+**Observed 2026-08-19 11:15 UTC:** one Options launcher/worker pair and its
+worker-owned `.ducketz-options-writer.lock` passed. New hidden launches and all
+guardian recoveries use the canonical `-u` command and retain
+`--skip-historical-catchup`; liveness repair therefore resumes prospective
+capture without initiating a provider-history catch-up. Existing valid pairs
+are never duplicated solely to correct command drift.
+`docs/datafetch-ml/start_all_loops.ps1:18`, `ml/system_guardian.py:81`
 
 
 ## Evidence index

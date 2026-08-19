@@ -225,6 +225,8 @@ def _run_loop_a_once(
             "fmp",
             "databento",
             "--skip-cme",
+            "--bar-readiness-recovery-timeout-seconds",
+            "0",
             "--once",
         ]
     )

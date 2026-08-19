@@ -18,7 +18,7 @@ def test_loop_a_external_modes_never_enter_slow_failing_cme_or_options_lanes(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    observed: list[tuple[bool, bool]] = []
+    observed: list[tuple[bool, bool, bool]] = []
 
     def provider_batch(
         symbols: tuple[str, ...],
@@ -26,9 +26,12 @@ def test_loop_a_external_modes_never_enter_slow_failing_cme_or_options_lanes(
         *,
         include_cme: bool,
         include_options: bool,
+        include_schwab_price_history: bool,
         **_kwargs: object,
     ) -> dict[str, tuple[FetchResult, ...]]:
-        observed.append((include_cme, include_options))
+        observed.append(
+            (include_cme, include_options, include_schwab_price_history)
+        )
         if include_cme or include_options:
             time.sleep(0.5)
             raise TimeoutError("deliberately slow external provider")
@@ -58,7 +61,7 @@ def test_loop_a_external_modes_never_enter_slow_failing_cme_or_options_lanes(
     elapsed = time.perf_counter() - started
 
     assert failures == 0
-    assert observed == [(False, False)]
+    assert observed == [(False, False, False)]
     assert elapsed < 0.25
 
 
@@ -118,3 +121,29 @@ def test_inline_options_conflict_fails_before_slow_chain_request(
     assert session.calls == 0
     assert result.error_files >= 1
     assert elapsed < 0.25
+
+
+def test_loop_a_schwab_quote_only_mode_never_builds_price_history_specs(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class QuoteFailureProvider:
+        def fetch_quote(self, *_args: object, **_kwargs: object) -> object:
+            raise RuntimeError("quote unavailable")
+
+    monkeypatch.setattr(
+        schwab_fetch,
+        "_specs_for_profile",
+        lambda _profile: pytest.fail("quote-only mode requested Schwab bars"),
+    )
+
+    result = schwab_fetch.fetch(
+        "GOOG",
+        ParquetStore(tmp_path),
+        provider=QuoteFailureProvider(),  # type: ignore[arg-type]
+        include_options=False,
+        include_price_history=False,
+    )
+
+    assert result.provider == "schwab"
+    assert result.error_files == 1

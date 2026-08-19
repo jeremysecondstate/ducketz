@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -14,12 +15,14 @@ from ml.strategy_selection.contracts import (
 )
 from ml.system_monitor import (
     RUNTIMES,
+    _log_activity_check,
     _loop_a_cycle_check,
     _overall_status,
     _process_checks,
     scheduled_monitor_mode,
     summarize_directional_quality,
     summarize_strategy_quality,
+    summarize_weekly_evidence,
 )
 
 
@@ -243,9 +246,156 @@ def test_overall_status_ignores_info_but_escalates_warning_and_failure() -> None
     assert _overall_status([{"status": "WARN"}, {"status": "FAIL"}]) == "UNHEALTHY"
 
 
-def test_scheduled_mode_uses_daily_only_during_weekday_two_pm_local_hour() -> None:
+def test_scheduled_mode_uses_xnys_post_close_daily_and_final_session_weekly() -> None:
     pacific = ZoneInfo("America/Los_Angeles")
 
     assert scheduled_monitor_mode(datetime(2026, 8, 19, 14, 42, tzinfo=pacific)) == "daily"
+    assert scheduled_monitor_mode(datetime(2026, 8, 21, 14, 42, tzinfo=pacific)) == "weekly"
     assert scheduled_monitor_mode(datetime(2026, 8, 19, 13, 42, tzinfo=pacific)) == "hourly"
     assert scheduled_monitor_mode(datetime(2026, 8, 22, 14, 42, tzinfo=pacific)) == "hourly"
+
+
+def test_scheduled_weekly_mode_uses_holiday_week_final_session_not_friday() -> None:
+    pacific = ZoneInfo("America/Los_Angeles")
+
+    assert scheduled_monitor_mode(datetime(2026, 4, 1, 14, 42, tzinfo=pacific)) == "daily"
+    assert scheduled_monitor_mode(datetime(2026, 4, 2, 14, 42, tzinfo=pacific)) == "weekly"
+    assert scheduled_monitor_mode(datetime(2026, 4, 3, 14, 42, tzinfo=pacific)) == "hourly"
+
+
+def test_log_discovery_prefers_current_legacy_runtime_log_over_old_primary(
+    tmp_path: Path,
+) -> None:
+    now = pd.Timestamp("2026-08-19T18:42:00Z")
+    primary = tmp_path / "logs" / "ducketz"
+    legacy = tmp_path / "runtime-logs"
+    primary.mkdir(parents=True)
+    legacy.mkdir(parents=True)
+    old_time = pd.Timestamp("2026-08-19T15:00:00Z").timestamp()
+    current_time = pd.Timestamp("2026-08-19T18:40:00Z").timestamp()
+    for spec in RUNTIMES:
+        stdout = primary / f"{spec.log_aliases[0]}.stdout.log"
+        stderr = primary / f"{spec.log_aliases[0]}.stderr.log"
+        stdout.write_text("current\n", encoding="utf-8")
+        stderr.write_text("", encoding="utf-8")
+        os.utime(stdout, (current_time, current_time))
+        os.utime(stderr, (current_time, current_time))
+    cme_primary = primary / "cme-l2.stdout.log"
+    os.utime(cme_primary, (old_time, old_time))
+    legacy_stdout = legacy / "20260819T183900Z-cme.out.log"
+    legacy_stderr = legacy / "20260819T183900Z-cme.err.log"
+    legacy_stdout.write_text("live\n", encoding="utf-8")
+    legacy_stderr.write_text("", encoding="utf-8")
+    os.utime(legacy_stdout, (current_time, current_time))
+    os.utime(legacy_stderr, (current_time, current_time))
+
+    check = _log_activity_check(tmp_path, now=now, market_actionable=True)
+
+    assert check["status"] == "PASS"
+    cme = check["details"]["runtimes"]["cme"]
+    assert cme["stdout"] == str(legacy_stdout)
+    assert cme["stderr"] == str(legacy_stderr)
+    assert cme["log_authority"] == "LEGACY_RUNTIME_LOGS"
+
+
+def _weekly_rows(
+    *,
+    week_start: str,
+    count: int,
+    accuracy: float,
+    definition: str = "definition-v1",
+) -> list[dict[str, object]]:
+    start = pd.Timestamp(week_start, tz="UTC") + pd.Timedelta(hours=14)
+    correct_count = round(count * accuracy)
+    rows: list[dict[str, object]] = []
+    for index in range(count):
+        decision = start + pd.Timedelta(minutes=index)
+        correct = index < correct_count
+        rows.append(
+            {
+                "symbol": f"S{index % 6}",
+                "provider": "databento",
+                "horizon": "1h",
+                "decision_timestamp": decision,
+                "target_window_start": decision + pd.Timedelta(hours=1),
+                "target_window_end": decision + pd.Timedelta(hours=2),
+                "prediction_created_at": decision + pd.Timedelta(minutes=5),
+                "model_name": "logistic",
+                "model_version": f"model-{week_start}",
+                "prediction_mode": "LIVE",
+                "evaluation_status": "EVALUATED",
+                "target_definition_version": definition,
+                "target_specification": "same-target-contract",
+                "assumed_round_trip_cost": 0.001,
+                "observed_target": int(correct),
+                "calibrated_probability": 0.6 if correct else 0.4,
+                "log_loss": 0.5 if correct else 0.8,
+                "brier_score": 0.16 if correct else 0.36,
+                "prediction_correct_0_5": correct,
+            }
+        )
+    return rows
+
+
+def test_weekly_rollup_compares_only_sufficient_compatible_live_evidence() -> None:
+    evaluations = pd.DataFrame(
+        _weekly_rows(week_start="2026-08-03", count=30, accuracy=0.4)
+        + _weekly_rows(week_start="2026-08-10", count=30, accuracy=0.6)
+    )
+
+    summary = summarize_weekly_evidence(
+        evaluations,
+        previous_week_start="2026-08-03",
+        current_week_start="2026-08-10",
+    )
+
+    assert summary["status"] == "PASS"
+    assert summary["comparable_horizons"] == ["1h"]
+    route = summary["routes"]["1h"]
+    assert route["evidence_state"] == "COMPARABLE_WEEKLY_EVIDENCE"
+    assert route["comparison"]["accuracy_at_0_5_delta"] == 0.2
+    assert summary["routes"]["1w"]["evidence_state"] == (
+        "INSUFFICIENT_WEEKLY_EVIDENCE"
+    )
+
+
+def test_weekly_rollup_refuses_incompatible_definitions() -> None:
+    evaluations = pd.DataFrame(
+        _weekly_rows(week_start="2026-08-03", count=30, accuracy=0.4)
+        + _weekly_rows(
+            week_start="2026-08-10",
+            count=30,
+            accuracy=0.6,
+            definition="definition-v2",
+        )
+    )
+
+    summary = summarize_weekly_evidence(
+        evaluations,
+        previous_week_start="2026-08-03",
+        current_week_start="2026-08-10",
+    )
+
+    assert summary["status"] == "INFO"
+    assert summary["evidence_state"] == "INSUFFICIENT_WEEKLY_EVIDENCE"
+    assert summary["routes"]["1h"]["evidence_state"] == (
+        "INCOMPATIBLE_WEEKLY_DEFINITIONS"
+    )
+    assert summary["routes"]["1h"]["comparison"] is None
+
+
+def test_weekly_rollup_labels_immature_outcomes_instead_of_making_a_trend() -> None:
+    evaluations = pd.DataFrame(
+        _weekly_rows(week_start="2026-08-03", count=6, accuracy=0.5)
+        + _weekly_rows(week_start="2026-08-10", count=6, accuracy=0.5)
+    )
+
+    summary = summarize_weekly_evidence(
+        evaluations,
+        previous_week_start="2026-08-03",
+        current_week_start="2026-08-10",
+    )
+
+    assert summary["status"] == "INFO"
+    assert summary["evidence_state"] == "INSUFFICIENT_WEEKLY_EVIDENCE"
+    assert summary["routes"]["1h"]["comparison"] is None

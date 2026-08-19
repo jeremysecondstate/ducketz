@@ -10,6 +10,11 @@ flowchart LR
         OPRAH["Historical OPRA.PILLAR storage<br/>prediction-focused Standard schemas; verified v5 cursors"]
     end
 
+    subgraph ARCHIVES[Verified archive bridges — provenance, not owners]
+        EQA["US-equity XNAS.ITCH archive<br/>checksum lineage to operational stocks"]
+        CMEA["CME archive inventories<br/>cursor seed + historical context fingerprints"]
+    end
+
     subgraph EVIDENCE[Evidence acquisition and causal context]
         CME["CME/L2 runtime"]
         A["Loop A"]
@@ -51,6 +56,8 @@ flowchart LR
     OPRAH ==>|"OPTIONAL D · verified OPRA pricing history"| PR
     OPRAH ==>|"OPTIONAL D · OPRA-first model history"| W
     OPRAH ==>|"OPTIONAL D · point-in-time definitions and BBO"| STR
+    EQA ==>|"BASELINE D · verified materialization before live overlap"| A
+    CMEA ==>|"BASELINE D · verified boundary + unseen context windows"| CME
 
     classDef horizon fill:#d8ecff,stroke:#1565c0,color:#102a43,stroke-width:2px;
     classDef options fill:#ffe2c6,stroke:#c45a00,color:#432204,stroke-width:2px;
@@ -58,7 +65,7 @@ flowchart LR
     classDef support fill:#eeeeee,stroke:#666666,color:#222222,stroke-dasharray:5 4;
     class CME,A,FRED,OPT,PR,B both;
     class STR options;
-    class W,OPRAL,BOOT,OPRAH support;
+    class W,OPRAL,BOOT,OPRAH,EQA,CMEA support;
 ```
 
 Edge notation is semantic as well as visual:
@@ -67,7 +74,7 @@ Edge notation is semantic as well as visual:
 - dotted arrow: readiness/control flow (possibly carrying data too);
 - thick arrow: optional, fallback, asynchronous-historical, or documented timing association;
 - gray dashed worker node inside the `Owned work` subgraph plus an `OWNED` edge label: owned-worker launch/return, not an independent loop relationship.
-- gray OPRA boundary nodes are provider/maintenance interfaces, not additional production owners; the live transport is required at production startup, while a particular target may still lack usable OPRA evidence and take the explicit Schwab fallback.
+- gray boundary nodes are provider/maintenance interfaces, not additional production owners. OPRA live transport is required at Options startup, while a particular target may still lack usable evidence and take the explicit Schwab fallback. Equity/CME archive nodes retain provider provenance while verified lineage bridges them into ordinary operational continuation.
 
 Node colors classify owner-level prediction contribution: blue = Horizon, orange = Options, purple = Both, gray/dashed = supporting/owned component. This inventory has no Horizon-only or owner-level supporting-only loop; the colors remain in the legend because those are valid classification states. `Both` signifies an evidenced causal path, not measured feature lift.
 
@@ -99,7 +106,9 @@ Every edge in the map is supported on both its producer and consumer sides. `T(d
 | Options → historical OPRA storage | owned `C`: at most one catch-up per UTC date for valid v5 cursors; narrowly compatible legacy v4 cursors require the exact old policy | `datafetching/options_runtime.py:1018`, `datafetching/options_runtime.py:1137` | `datafetching/databento_opra_history.py` | **Confirmed owned maintenance; missing/invalid cursors require a one-time bootstrap** |
 | Historical OPRA storage → Pricing | optional `D`: verified immutable definitions/CBBO evidence for causal replay, model fit, and evaluation | `datafetching/databento_opra_history.py` | `ml/option_pricing/opra_materialization.py` | **Confirmed local-data boundary; no provider call by Pricing** |
 | Historical OPRA storage → worker | optional `D`: OPRA-first committed history | `datafetching/databento_opra_history.py` | `ml/option_pricing_loop_native_worker.py:58`, `ml/option_pricing_loop_native_worker.py:72` | **Confirmed owned-worker input** |
-| Historical OPRA storage → Strategy | optional `D`: point-in-time definitions plus `cbbo-1m` or `cbbo-1s`; Schwab history only when OPRA is unavailable | `datafetching/databento_opra_history.py` | `ml/strategy_selection/chain.py` | **Confirmed OPRA-first provider-neutral history** |
+| Historical OPRA storage → Strategy | offline `D`: point-in-time definitions plus `cbbo-1m` or `cbbo-1s` through canonical replay/cache; prospective receipts remain live authority | `datafetching/databento_opra_history.py`, `ml/option_pricing_opra_replay.py` | `ml/strategy_selection/chain.py:116`, `ml/strategy_selection/runtime.py:167` | **Confirmed offline history; recurring live loader forbids replay** |
+| US-equity archive → Loop A | no current data edge: cold `XNAS.ITCH` provenance and operational `EQUS.MINI` have different dataset identities; a bridge is eligible only when identities match | `datafetching/databento_archive.py:213` | `datafetching/databento_fetch.py:541`, `datafetching/equity_dataset_migration.py` | **Confirmed deliberate separation** |
+| CME archive → CME/L2 | baseline `D`: verified scope seeds a missing runtime query boundary; archive fingerprints plus ongoing persisted rows materialize unseen historical context windows | `datafetching/databento_archive.py:539` | `datafetching/cme_runtime.py:476`, `datafetching/cme_cross_asset_context.py:250` | **Confirmed operational continuation; archive does not own live authority** |
 
 ## Ordinary production phase order
 
@@ -142,3 +151,5 @@ sequenceDiagram
 - **Pricing → B is fallback-aware.** Missing/stale but structurally valid `opx__` evidence triggers a versioned baseline model feature set. Corrupt Pricing authority is not a fallback condition and aborts the new B publication. `ml/runtime_pipeline.py:455`, `ml/rolling_materialization.py:322`
 - **Pricing → Strategy is candidate-specific.** Full active quality-passing leg coverage admits the fitted Strategy model; uncovered/delayed candidates retain non-probabilistic Scenario Coverage while raw, calibrated and decision probabilities remain null. `ml/strategy_selection/runtime.py`, `ml/strategy_runtime.py`
 - **OPRA has two non-owner entry boundaries.** Prospective `cbbo-1s` enters through the concrete live adapter constructed by the Options CLI in default `opra-canonical` mode. Historical Standard data enters through the one-time per-symbol bootstrap, the one-time all-dataset cold-start, or the administrative synchronizer. Verified per-symbol/cold-start work publishes a v5 history-cursor handoff; Options then owns daily overlap maintenance. Pricing and Strategy read verified local partitions OPRA-first; neither makes a historical provider request. Schwab remains a lazily constructed, explicitly labeled per-target fallback/broker lane. `datafetching/options_history.py`, `datafetching/databento_cold_start.py`, `datafetching/options_runtime.py`, `ml/option_pricing_opra.py`, `ml/option_pricing/opra_materialization.py`, `ml/strategy_selection/chain.py`
+- **Equity and CME archives keep explicit authority boundaries.** The different-dataset `XNAS.ITCH` equity archive remains cold provenance while Loop A continues `EQUS.MINI`; no cross-dataset timestamp merge occurs. The CME bridge derives an initial exact-spec boundary and fingerprints archive rows into historical context alongside ongoing persisted events. Neither archive directory becomes a live lock, readiness pointer, or publication owner. `datafetching/databento_archive.py:213`, `datafetching/databento_archive.py:539`, `datafetching/databento_fetch.py:541`, `datafetching/equity_dataset_migration.py`, `datafetching/cme_cross_asset_context.py:250`
+- **Historical OPRA does not become prospective evidence.** Canonical replay and the Strategy OPRA cache are receipt/checksum-bound offline inputs for evaluation, model, and outcome construction. Recurring Strategy entry selection and live Pricing attachment set offline replay ineligible; prospective receipts remain preferred. `ml/option_pricing_opra_replay.py:224`, `ml/strategy_selection/runtime.py:167`

@@ -18,12 +18,17 @@
 
 **Confirmed non-ownership:** it does not fetch equity Loop A data, build horizon targets, fit models, publish option valuations, capture equity option chains, or publish strategy ranks.
 
-**Startup/bootstrap boundary:** on an empty datastore this recurring owner
-self-initializes its own bounded runtime history (30 days for OHLCV and at most
-three days for non-OHLCV schemas) and then continues from its verified owned
-cursors. The optional 5,000-day CME cold-start archive is included Standard-plan
-maintenance evidence in a distinct namespace; it does not replace or authorize
-the CME runtime cursor, L2 snapshot, or writer lock.
+**Startup/bootstrap boundary:** the cold archive remains separate provider
+provenance, but it is no longer isolated from runtime continuation. When an
+owned runtime cursor is absent, `cme_archive_cursor_for_spec` verifies the
+matching archive scope and supplies a historical boundary for the first live
+query. Cross-asset materialization fingerprints archive inventories, combines
+verified archive rows with ongoing persisted runtime rows, appends unseen
+historical common windows, and records lineage before continuing current
+windows. The archive never owns the runtime lock, live cursor, L2 pointer, or
+publication authority. `datafetching/databento_archive.py:539`,
+`datafetching/cme_runtime.py:476`,
+`datafetching/cme_cross_asset_context.py:250`
 
 ## Inputs
 
@@ -34,15 +39,16 @@ the CME runtime cursor, L2 snapshot, or writer lock.
 | CME MBP-10 | Databento Historical API | schema `mbp-10` | depth price/size, side, action, sequence, instrument/symbol and event clocks | 5-second cadence; 2-second overlap; five-minute chunks; 250,000-row cap; saturated ranges split before persistence | Required for book imbalance/current book; otherwise source fetch or derived stage fails independently | **Confirmed.** `datafetching/cme_runtime.py:40`, `datafetching/cme_runtime.py:55`, `datafetching/cme_runtime.py:57`, `datafetching/cme_runtime.py:492` |
 | Successful query cursor | This loop’s prior cycle | `pools/cme/runtime/cursors/<group>__<schema>.json` | dataset/group/schema/symbols, `queried_through`, `successful_at`, optional `last_event_at`, row count | Read before query planning; only advanced after all chunks in that schema complete | Optional on first run; required if present and must match path identity/schema | **Confirmed.** `datafetching/cme_history.py:81`, `datafetching/cme_history.py:114`, `datafetching/cme_runtime.py:428`, `datafetching/cme_runtime.py:535` |
 | Previously persisted event partitions | This loop’s prior cycles | `pools/cme/events/databento/<group>/<schema>/{raw,normalized}/.../events.parquet` | exact event rows keyed adaptively by symbol/instrument, event time, sequence, action, side, depth and price | Idempotent overlap upsert; day partition for OHLCV, hour for book/quote events | Optional on bootstrap; reused for overlap, hourly derivation and L2 | **Confirmed.** `datafetching/cme_history.py:173`, `datafetching/cme_history.py:207`, `datafetching/cme_history.py:256`, `datafetching/cme_history.py:654` |
+| Verified CME archive inventory | One-shot Databento archive coordinator | `market-data/databento/cme/<dataset>` plus readable scope manifests/receipts | dataset, schema/group/symbol bounds, event clocks, normalized rows, source inventory checksums/fingerprints | eligible only after scope and checksums verify; seeds a missing runtime query boundary and historical context, but cannot advance a live cursor or pointer itself | Optional on empty runtime state; included when verified | **Confirmed.** `datafetching/databento_archive.py:539`, `datafetching/cme_runtime.py:476`, `datafetching/cme_cross_asset_context.py:250` |
 
 ## Processing and decisions
 
 1. **Confirmed:** discover requested Databento CME specs and enforce maximum concurrency of one or two. `datafetching/cme_runtime.py:114`, `datafetching/cme_runtime.py:126`
-2. **Confirmed:** for each schema, read its cursor, build bounded overlapping chunks, and call the provider with persistent bounded retry. `datafetching/cme_runtime.py:428`, `datafetching/cme_runtime.py:433`, `datafetching/cme_runtime.py:479`
+2. **Confirmed:** for each schema, read its owned cursor; if absent, derive a verified archive boundary for that exact spec. Build bounded overlapping chunks and call the provider with persistent bounded retry. `datafetching/cme_runtime.py:428`, `datafetching/cme_runtime.py:476`, `datafetching/cme_runtime.py:479`
 3. **Confirmed:** if a response hits its record limit, split the exact request and do not persist/advance past the missing range. `datafetching/cme_runtime.py:492`
 4. **Confirmed:** persist normalized and raw events into bounded partitions, deduplicating by stable event identity rather than volatile fetch metadata. `datafetching/cme_history.py:207`, `datafetching/cme_history.py:654`
 5. **Confirmed:** after every planned range for a schema succeeds, atomically publish the cursor. Schema failures are recorded and do not prevent other schemas from running. `datafetching/cme_runtime.py:168`, `datafetching/cme_runtime.py:535`
-6. **Confirmed:** derive every unseen completed common one-hour window. It requires the same 60 OHLCV minutes for all roots, recent BBO/MBP for all roots, rejects limit saturation/future evidence, and records `available_at` as the maximum relevant clock. `datafetching/cme_cross_asset_context.py:76`, `datafetching/cme_cross_asset_context.py:96`, `datafetching/cme_cross_asset_context.py:168`, `datafetching/cme_cross_asset_context.py:174`
+6. **Confirmed:** fingerprint verified archive inventories, combine archive and already-persisted runtime rows, materialize every unseen historical and current completed common one-hour window, and checksum-bind the lineage. Each window requires the same 60 OHLCV minutes for all roots plus eligible BBO/MBP, rejects saturation/future evidence, and records `available_at` as the maximum relevant clock. `datafetching/cme_cross_asset_context.py:250`, `datafetching/cme_cross_asset_context.py:296`, `datafetching/cme_cross_asset_context.py:370`
 7. **Confirmed:** publish the latest five-minute L2 state using only events causally available by the boundary; classify MBP/MBO older than 60 seconds and BBO older than 300 seconds as `STALE`. `datafetching/cme_history.py:288`, `datafetching/cme_history.py:336`, `datafetching/cme_history.py:366`
 
 No additional owned worker exists. Query splitting is an internal queue, not a production loop.
@@ -114,6 +120,21 @@ No additional owned worker exists. Query splitting is an internal queue, not a p
   and verifies it; this audit does not treat it as Loop A readiness or delete it.
 - CME dataset/symbol scope is externally configured. Repository defaults and
   code establish validation/ownership, not current entitlement or population.
+
+## Runtime and datastore observation
+
+**Confirmed deployment contract:** CME is one of the seven independently
+scheduled owners. Hidden launch uses the guardian allowlist, resolved paths,
+redirected monitor-visible logs, and the worker-owned
+`.ducketz-cme-writer.lock`; no archive command becomes another owner.
+`docs/datafetch-ml/start_all_loops.ps1:18`, `ml/system_guardian.py:81`
+
+**Observed 2026-08-19 11:15 UTC:** the hourly monitor found one CME
+launcher/worker pair and its matching live lock. The `GLBX.MDP3` archive
+contained 117 observed partitions across 13 schema/symbol groupings. The
+cross-asset lineage verified 31 listed source files and recorded 13 historical
+context rows materialized from archive fingerprints before live continuation.
+These counts are timestamped operating evidence, not fixed architecture.
 
 
 ## Evidence index
