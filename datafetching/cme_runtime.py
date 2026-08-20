@@ -129,9 +129,17 @@ def run_cme_cycle(
         provider="databento",
         reporter=reporter,
     ) as timing:
+        discovered_specs = call_with_persistent_databento_retry(
+            provider.specs,
+            operation_name="CME endpoint discovery",
+            delay_seconds=retry_delay_seconds,
+            max_attempts=retry_attempts,
+            reporter=reporter,
+            timing_reporter=reporter,
+        )
         specs = tuple(
             spec
-            for spec in provider.specs()
+            for spec in discovered_specs
             if not requested_schemas or spec.schema in requested_schemas
         )
         timing.annotate(row_count=len(specs), operation="fetched")

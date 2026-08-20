@@ -1005,31 +1005,20 @@ def _start_windows_runtime(
     stem = f"{now.strftime('%H%M%S')}-{launch.log_stem}"
     stdout = directory / f"{stem}.stdout.log"
     stderr = directory / f"{stem}.stderr.log"
-    arguments = ",".join(f"'{_powershell_quote(value)}'" for value in launch.arguments)
-    script = f"""
-$ErrorActionPreference = 'Stop'
-$arguments = @({arguments})
-$process = Start-Process -FilePath '{_powershell_quote(str(python))}' `
-  -ArgumentList $arguments `
-  -WorkingDirectory '{_powershell_quote(str(repository))}' `
-  -RedirectStandardOutput '{_powershell_quote(str(stdout))}' `
-  -RedirectStandardError '{_powershell_quote(str(stderr))}' `
-  -WindowStyle Hidden `
-  -PassThru
-[pscustomobject]@{{ pid = [int]$process.Id }} | ConvertTo-Json -Compress
-"""
-    completed = subprocess.run(
-        ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
-    if completed.returncode != 0:
-        detail = completed.stderr.strip() or "unknown PowerShell startup error"
-        raise RuntimeError(detail)
-    payload = json.loads(completed.stdout)
-    return int(payload["pid"])
+    creation_flags = subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS
+    with stdout.open("ab", buffering=0) as stdout_handle, stderr.open(
+        "ab", buffering=0
+    ) as stderr_handle:
+        process = subprocess.Popen(
+            [str(python), *launch.arguments],
+            cwd=str(repository),
+            stdin=subprocess.DEVNULL,
+            stdout=stdout_handle,
+            stderr=stderr_handle,
+            close_fds=True,
+            creationflags=creation_flags,
+        )
+    return int(process.pid)
 
 
 def _stop_windows_process_tree(

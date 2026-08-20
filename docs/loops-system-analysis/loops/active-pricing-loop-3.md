@@ -10,7 +10,7 @@
 - Scheduling mechanism: recurring quarter-hour supervisor plus an asynchronously launched, one-shot local model worker
 - Cadence and phase: every 15 minutes at UTC phase +1 minute; the target is the calendar-owned eligible quarter-hour
 - Lock or single-writer mechanism: `.ducketz-option-pricing-runtime.lock`; the owned worker separately uses `.ducketz-loop-native-bsgp-worker.lock`
-- Primary code evidence: **Confirmed.** `ml/option_pricing_runtime.py:1480`, `ml/option_pricing_runtime.py:1501`, `ml/option_pricing_runtime.py:1560`, `ml/option_pricing_runtime.py:1564`, `ml/option_pricing_loop_native_worker.py:50`
+- Primary code evidence: **Confirmed.** `ml/option_pricing_runtime.py:1481`, `ml/option_pricing_runtime.py:1502`, `ml/option_pricing_runtime.py:1561`, `ml/option_pricing_runtime.py:1565`, `ml/option_pricing_loop_native_worker.py:36`
 
 ## Purpose
 
@@ -43,7 +43,7 @@ receipt-verified partitions and never initiates or expands a provider request.
 | Input | Producer/source; concrete artifact and fields | Units | Event, receipt, availability, and freshness | Missing-value behavior | Training and live usage | Tests | Correction status |
 |---|---|---|---|---|---|---|---|
 | `S` | Loop A exact target readiness; per-symbol completed-bar `close`, bar timestamp/provider/timeframe, manifest/receipt and `ready_at` | USD per underlying share | The selected one-minute bar end/decision timestamp must equal the target; its stored bar timestamp must resolve exactly one row. Receipt/`ready_at` must precede construction and target age must remain inside 1,200 s | Missing/nonpositive/mismatched target close rejects that symbol/target; no option-chain underlying substitute | Same semantic column `underlying_price` scales the normalized residual in training and is the exact Loop A close in live inference | **Confirmed.** `tests/test_option_pricing_loop_native_bsgp.py:258`, `tests/test_option_pricing_loop_native_bsgp.py:430` | Already correct; preserved exact Loop A authority. `datafetching/decision_time.py:467`, `datafetching/decision_time.py:496`, `ml/option_pricing/causal.py:192`, `ml/option_pricing/causal.py:225`, `ml/option_pricing/causal.py:400` |
-| `K` plus contract semantics | Loop 4 committed `contracts.parquet`; effective OPRA definition fields `strike`, `call_put`, `expiration_date`, `multiplier`, `exercise_style`, `settlement_type`, `standard_contract`, `definition_effective_at`, `definition_activation_at`, CFI and definition clocks | USD per underlying share; multiplier shares; categorical contract semantics | Definition provider receipt/effective and contract-activation clocks must be no later than the market target; the definition event cannot follow provider receipt; local definition receipt must be no later than snapshot publication, and the committed source must be visible before prediction. Source quote must be fresh (≤1,200 s) and strictly pretarget; the later outcome must match the same semantic contract | Ambiguous/inactive/not-yet-active/nonstandard, wrong multiplier, unsupported style/settlement, changed semantics, or missing contract rejects the row | Definition columns determine call/put Black–Scholes and shape groups in both training and live rows; observed target price is never a feature | **Confirmed.** `tests/test_databento_opra_live.py:278`, `tests/test_databento_opra_live.py:318`, `tests/test_option_pricing_core.py:198` | Corrected: live definitions now use provider-receipt selection, activation eligibility, separate local availability, and validated CFI semantics; ambiguous contracts fail closed. `options/databento_live.py:333`, `options/databento_live.py:425`, `options/snapshot.py:297` |
+| `K` plus contract semantics | Loop 4 committed `contracts.parquet`; effective OPRA definition fields `strike`, `call_put`, `expiration_date`, `multiplier`, `exercise_style`, `settlement_type`, `standard_contract`, `definition_effective_at`, `definition_activation_at`, CFI and definition clocks | USD per underlying share; multiplier shares; categorical contract semantics | Definition provider receipt/effective and contract-activation clocks must be no later than the market target; the definition event cannot follow provider receipt; local definition receipt must be no later than snapshot publication, and the committed source must be visible before prediction. Source quote must be fresh (≤1,200 s) and strictly pretarget; the later outcome must match the same semantic contract | Ambiguous/inactive/not-yet-active/nonstandard, wrong multiplier, unsupported style/settlement, changed semantics, or missing contract rejects the row | Definition columns determine call/put Black–Scholes and shape groups in both training and live rows; observed target price is never a feature | **Confirmed.** `tests/test_databento_opra_live.py:278`, `tests/test_databento_opra_live.py:319`, `tests/test_option_pricing_core.py:173` | Corrected: live definitions now use provider-receipt selection, activation eligibility, separate local availability, and validated CFI semantics; ambiguous contracts fail closed. `options/databento_live.py:345`, `options/databento_live.py:425`, `options/snapshot.py:297` |
 | `r` | Daily ALFRED/current FRED rate receipt; `risk_free_rate`, source/event/receipt/`available_at` and policy identity | Decimal continuously compounded annual rate | Observation availability must be strictly before the source/decision boundary; maturity resolution is target-to-expiration causal | Missing or invalid live FRED/ALFRED evidence yields `RATE_UNAVAILABLE`; provider and FMP-curve substitution are disabled live | Same `risk_free_rate` feature enters Black–Scholes and the residual design matrix for training/live inference | **Confirmed.** `tests/test_option_pricing_loop_native_bsgp.py:474`, `tests/test_option_pricing_loop_native_bsgp.py:499` | Corrected: live path now requires FRED/ALFRED rather than preferring FMP/provider rate fields. `ml/option_pricing/causal.py:264`, `ml/option_pricing/causal.py:450`, `ml/option_pricing/policies.py:10` |
 | `σ` | Earlier committed OPRA-preferred/Schwab-fallback surface; source bid/ask, source underlying, source definition, source quote/snapshot/receipt clocks; field `lagged_implied_volatility` | Decimal annualized volatility | Source snapshot and quote are strictly earlier than target and receipt-visible; interpolation stays inside earlier strike/tenor support with ≤1,200 s source staleness | Failed IV solve or interpolation/extrapolation need yields `VOLATILITY_UNAVAILABLE` | Earlier-price IV is used in training and live inference; target/later option price is used only as an outcome after prediction publication | **Confirmed.** `tests/test_option_pricing_core.py:178`, `tests/test_option_pricing_loop_native_bsgp.py:235`, `tests/test_option_pricing_loop_native_bsgp.py:250` | Already correct; later-cycle outcome reconciliation was completed without weakening the no-same-target-price rule. `ml/option_pricing/causal.py:524`, `ml/option_pricing/causal.py:542`, `ml/option_pricing/causal.py:963` |
 | `t` | Derived locally from target plus effective definition `expiration_date`; field `target_years_to_expiration` | ACT/365 calendar years | Target is the event boundary; expiry maps date precision to 16:00 America/New_York with DST; calculation occurs at prediction creation/availability | Nonpositive, <7-day, >120-day, or invalid expiry rejects the row | Same deterministic transformation is stored and used for training/live inference | **Confirmed.** `tests/test_option_pricing_core.py:121` | Already correct. `ml/option_pricing/black_scholes.py:187`, `ml/option_pricing/black_scholes.py:201`, `ml/option_pricing/policies.py:63` |
@@ -51,11 +51,11 @@ receipt-verified partitions and never initiates or expands a provider request.
 
 ## Processing and decisions
 
-1. **Confirmed:** derive the only calendar-eligible quarter-hour target; reject replayed or future targets and targets beyond the 1,200-second causal source window. `ml/option_pricing_runtime.py:251`, `ml/option_pricing_runtime.py:255`, `ml/option_pricing_runtime.py:282`
+1. **Confirmed:** derive the only calendar-eligible quarter-hour target; reject replayed or future targets and targets beyond the 1,200-second causal source window. If the market-aware selector has no eligible target, publish no target authority and never manufacture one by backdating a prior boundary. The monitor reports this closed/settling state as `INFO`. `ml/option_pricing_runtime.py:251`, `ml/system_monitor.py:830`
 2. **Confirmed:** reuse an existing immutable target outcome unless it is a legacy retryable `TARGET_BAR_NOT_READY`; otherwise wait for exact all-symbol readiness. Missing readiness remains retryable and publishes nothing. `ml/option_pricing_runtime.py:1062`, `ml/option_pricing_runtime.py:1080`, `ml/option_pricing_runtime.py:1128`
 3. **Confirmed:** per symbol, build rows for standard 100-share contracts with 7–120 days to expiry and absolute log-moneyness at most 0.25, using earlier chain/volatility, causal rate/dividend inputs and the Loop A close. `ml/option_pricing/policies.py:61`, `ml/option_pricing_runtime.py:1181`
 4. **Confirmed:** the authoritative baseline predictions deliberately pass `models={}`: residual mean is zero and fitted uncertainty/interval fields are null. A verified prior model separately prices `BS + normalized residual × underlying`, publishes that correction explicitly in normalized and dollar fields, calibrates uncertainty, and shape-projects the surface into a keyed sidecar; missing, stale, unsupported, uncalibrated, or failed-model surfaces copy the Black–Scholes point and retain separately projected wider fallback intervals. Every sidecar row keeps `automated_action_allowed=false`. `ml/option_pricing_runtime.py:1220`, `ml/option_pricing/prediction.py:98`, `ml/option_pricing/prediction.py:110`, `ml/option_pricing/prediction.py:172`, `ml/option_pricing/prediction.py:260`, `ml/option_pricing/target_outcome.py:165`
-5. **Confirmed:** publish one immutable target authority containing samples, predictions or terminal status, shadow sidecar, manifest and receipt; atomically advance its pointer after files are complete. `ml/option_pricing_runtime.py:1305`, `ml/option_pricing/target_outcome.py:192`, `ml/option_pricing/target_outcome.py:238`
+5. **Confirmed:** publish one immutable target authority containing samples, predictions or terminal status, shadow sidecar, manifest and receipt; atomically advance its pointer after files are complete. `ml/option_pricing_runtime.py:1306`, `ml/option_pricing/target_outcome.py:93`, `ml/option_pricing/target_outcome.py:238`
 6. **Confirmed:** launch the owned worker after the fast publication without blocking Pricing or Options. The worker materializes verified imported historical OPRA first, combines it with causal Schwab fallback history, trains locally at most once per refresh window, and records provider row counts/status; it has no recurring supervisor and makes zero provider requests. `ml/option_pricing_runtime.py:418`, `ml/option_pricing_loop_native_worker.py:38`, `ml/option_pricing_loop_native_worker.py:58`, `ml/option_pricing_loop_native_worker.py:118`, `ml/option_pricing_loop_native_worker.py:126`
 7. **Confirmed:** reconcile receipt-proven predictions with later quotes, form chronological train/calibration/assessment/closed-lockbox partitions, compute evaluations/surfaces/monitoring, and publish a verified full generation. Lockbox target values are not reported and automated action remains disabled. `ml/option_pricing_runtime.py:466`, `ml/option_pricing/policies.py:82`, `ml/option_pricing_runtime.py:2233`, `ml/option_pricing_runtime.py:2235`
 
@@ -105,6 +105,9 @@ receipt-verified partitions and never initiates or expands a provider request.
 - Missing exact Loop A readiness remains retryable until one monotonic deadline.
   Expiry returns a write-free skipped result and leaves both current Pricing
   pointers unchanged; no empty readiness or completion evidence is created.
+- A closed or settling XNYS cycle with no calendar-eligible target is an idle
+  informational state. It creates no missing-target failure, does not backdate,
+  and cannot move a target pointer.
 - Older missed boundaries outside the recoverable causal window receive an
   explicit target outcome such as `PRICING_TIMED_OUT`. The newest still-causal
   boundary is retried rather than prematurely marked missed.
@@ -144,7 +147,7 @@ receipt-verified partitions and never initiates or expands a provider request.
   performance are mutable datastore facts; every claim about them requires a
   timestamped receipt/report observation.
 
-## Canonical OPRA replay observation
+## Historical canonical OPRA replay measurement
 
 **Confirmed:** `ml.option_pricing_opra_replay` is the canonical local replay
 boundary. It selects explicit target clocks, materializes point-in-time OPRA
@@ -155,7 +158,7 @@ does not make its offline rows eligible as live Pricing evidence.
 `ml/option_pricing_opra_replay.py:224`,
 `ml/option_pricing_opra_replay.py:382`
 
-**Observed 2026-08-19 11:15 UTC:** the current replay contained 68 target
+**Historical observation at 2026-08-19 11:15 UTC:** the then-current replay contained 68 target
 clocks and 394,296 complete evaluations, with four explicitly corrected target
 clocks and zero materialization errors. Output checksums and the
 receipt-to-manifest checksum verified. The underlying OPRA archive is mutable
@@ -165,13 +168,16 @@ fingerprint remains identical to the newest archive forever.
 
 ## Runtime and monitoring observation
 
-**Observed 2026-08-19 11:15 UTC:** one Pricing launcher/worker pair and its
-worker-owned runtime lock passed the hourly monitor. The market was closed and
-no current target authority was expected, so Pricing publication state was
-informational. Hidden future starts use the closed guardian command and primary
-`logs\ducketz` hierarchy; the one-shot residual child remains owned work, not
-an eighth supervisor. `docs/datafetch-ml/start_all_loops.ps1:18`,
-`ml/system_guardian.py:81`
+**Observed 2026-08-19 22:45:36 UTC:** one Pricing launcher/worker pair, its
+worker-owned runtime lock, primary logs, and verified full-generation authority
+passed. The regular XNYS option-evidence window was closed and no eligible
+target authority existed, so the sole monitor `INFO` stated that closed or
+settling cycles do not backdate one. This was intentional market-aware behavior,
+not stale Pricing. The 22:59:29 UTC read-only follow-up produced the same benign
+`INFO` while all other checks remained `PASS`. Hidden future starts use the
+closed guardian command; the one-shot residual child remains owned work, not an
+eighth supervisor. `ml/system_monitor.py:830`,
+`docs/datafetch-ml/start_all_loops.ps1:18`, `ml/system_guardian.py:81`
 
 
 ## Evidence index
@@ -181,10 +187,10 @@ an eighth supervisor. `docs/datafetch-ml/start_all_loops.ps1:18`,
 - `ml/option_pricing_runtime.py:1062`
 - `ml/option_pricing_runtime.py:1116`
 - `ml/option_pricing_runtime.py:1220`
-- `ml/option_pricing_runtime.py:1305`
+- `ml/option_pricing_runtime.py:1306`
 - `ml/option_pricing_runtime.py:1563`
 - `ml/option_pricing_runtime.py:1680`
-- `ml/option_pricing/target_outcome.py:192`
+- `ml/option_pricing/target_outcome.py:93`
 - `ml/option_pricing_loop_native_worker.py:126`
 - `tests/test_pricing_options_sequencing.py:129`
 - `tests/test_pricing_options_sequencing.py:256`

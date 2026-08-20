@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 from pathlib import Path
 from typing import Mapping
 
 import pandas as pd
+import pytest
 
+import ml.system_guardian as system_guardian
 from ml.system_guardian import (
     GUARDIAN_LAUNCHES,
     _audit_directory,
@@ -114,6 +118,49 @@ def test_checked_in_launcher_is_hidden_idempotent_and_allowlist_owned() -> None:
     assert "-RedirectStandardError $stderr" in source
     assert "logs\\ducketz\\background-launch" in source
     assert "-NoExit" not in source
+
+
+def test_guardian_start_detaches_without_captured_startup_pipes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    if os.name != "nt":
+        pytest.skip("Guarded startup is Windows-only")
+    observed: dict[str, object] = {}
+
+    class _Process:
+        pid = 43210
+
+    def fake_popen(arguments: list[str], **kwargs: object) -> _Process:
+        observed["arguments"] = arguments
+        observed["cwd"] = kwargs["cwd"]
+        observed["stdin"] = kwargs["stdin"]
+        observed["stdout"] = getattr(kwargs["stdout"], "name", None)
+        observed["stderr"] = getattr(kwargs["stderr"], "name", None)
+        observed["close_fds"] = kwargs["close_fds"]
+        observed["creationflags"] = kwargs["creationflags"]
+        return _Process()
+
+    monkeypatch.setattr(system_guardian.subprocess, "Popen", fake_popen)
+    log_directory = (
+        tmp_path / "logs" / "ducketz" / "system-guardian" / "20260820"
+    )
+
+    pid = system_guardian._start_windows_runtime(
+        tmp_path,
+        log_directory,
+        _LAUNCH_BY_RUNTIME["cme"],
+        pd.Timestamp("2026-08-20T01:43:16Z"),
+    )
+
+    assert pid == 43210
+    assert observed["arguments"][1:] == list(_LAUNCH_BY_RUNTIME["cme"].arguments)
+    assert observed["stdin"] == subprocess.DEVNULL
+    assert observed["stdout"] == str(log_directory / "014316-cme-l2.stdout.log")
+    assert observed["stderr"] == str(log_directory / "014316-cme-l2.stderr.log")
+    assert observed["close_fds"] is True
+    assert int(observed["creationflags"]) & subprocess.CREATE_NO_WINDOW
+    assert int(observed["creationflags"]) & subprocess.DETACHED_PROCESS
 
 
 def test_healthy_owner_pairs_need_no_action(tmp_path: Path) -> None:

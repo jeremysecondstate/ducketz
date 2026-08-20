@@ -76,12 +76,21 @@ primary hierarchy and also discovers already-running legacy launches beneath
 `.out/.err` suffix pairs. Legacy discovery is compatibility, not the future
 launch destination. `ml/system_monitor.py:427`
 
-**Operational observation — 2026-08-19 11:15 UTC:** all seven owners had one
-launcher/worker pair and a matching live worker lock. The pre-existing launch
-used the legacy `runtime-logs` tree; after the discovery fix those active files
-were selected and the log check passed. No process was restarted to hide the
-integration mismatch. This observation is transient evidence, not an
-architectural PID record.
+**Operational observation — 2026-08-19 22:45:36 UTC:** all seven owners had one
+canonical launcher/worker pair, a matching live worker lock, and active primary
+`logs\ducketz` streams. The preserved read-only report was `HEALTHY` with 19
+`PASS`, 1 `INFO`, 0 `WARN`, 0 `FAIL`, no stale condition,
+`read_only=true`, and `orders_placed=0`. No process was restarted during this
+documentation reconciliation. The immutable proof is
+`C:\DATASTORE\logs\ducketz\restart-proof\20260819T200349.8245990Z\20260819T224536.737912+0000-monitor-post-activation-stale-free-healthy.json`.
+
+The proof deliberately distinguished Loop A's active `WRITING` generation from
+`last_complete_generation`: the later cycle was liveness evidence, while
+`20260819T223020.010102Z-pid5516` remained the zero-failure completed authority
+finished at 22:35:52 UTC. A 22:59:29 UTC scheduled read-only follow-up remained
+`HEALTHY` with the same 19/1/0/0 totals after Loop A completed generation
+`20260819T224520.001083Z-pid5516` and Loop B and Strategy advanced normally.
+Run IDs and process IDs are transient evidence, not architecture.
 
 ## Hourly operations contract
 
@@ -103,6 +112,13 @@ is a failure. Process health and publication health are separate conclusions:
 a valid pair and lock do not make a stale publication healthy, and a fresh
 publication does not prove singleton ownership.
 
+For the Rolling Forecast UI, a weekly suffix route is current but
+calendar-inapplicable only when one unambiguous created-LIVE per-symbol bundle
+proves the aggregate-plus-contiguous-component prefix. A missing, malformed, or
+ambiguous bundle remains stale and cannot be hidden by an N/A label.
+`ml/runtime_pipeline.py:4005`, `app/ui/rolling_forecast_data.py:592`,
+`tests/test_ml_weekly_context_model_runtime.py:361`
+
 ## Daily production/output contract
 
 Daily mode contains the full hourly baseline and additionally verifies:
@@ -121,6 +137,11 @@ model describes evidence maturity, not poor measured performance. Scenario
 Coverage is a local scenario-grid pass fraction and never a probability.
 `Calibrated Probability` remains null until a fitted causal Strategy model and
 full eligible exact-leg Pricing coverage are both present.
+
+The daily inventory still names all five weekly component slots. This does not
+require a Wednesday LIVE bundle to fabricate Monday-through-Wednesday routes:
+only the remaining calendar prefix is forecast, while later suffix slots are
+classified as inapplicable under the coherent-bundle rule above.
 
 ## Weekly evaluation contract
 
@@ -213,8 +234,8 @@ promotion, code edits, or orders.
 
 ## Status meaning
 
-- `HEALTHY`: no warning or failure; informational market/evidence states may be
-  present.
+- `HEALTHY`: no warning, failure, or unresolved stale condition;
+  informational market/evidence states may be present.
 - `DEGRADED`: all required evidence remains readable, but at least one
   operational or production-quality warning needs attention.
 - `UNHEALTHY`: at least one required runtime, authority, integrity, freshness,
@@ -224,3 +245,12 @@ Every monitor report publishes `read_only=true`, `orders_placed=0`, and
 `automated_action_allowed=false`. The guardian separately records whether the
 narrow repair flag was enabled, its decision, all process/lock actions,
 before/after evidence, verification, and unconditional `orders_placed=0`.
+
+`INFO` is not silently discarded: it remains in the check inventory, but
+`_overall_status` escalates only `WARN` to `DEGRADED` and `FAIL` to
+`UNHEALTHY`. In the preserved proof, the sole `INFO` was correct market-aware
+behavior: XNYS had no eligible option-evidence target, so Active Pricing had no
+target to publish and did not backdate or fabricate a pointer. Process/lock
+health, provider authority, publication freshness, cross-loop lineage, and UI
+contract health still passed as separate checks. `ml/system_monitor.py:830`,
+`ml/system_monitor.py:1767`, `tests/test_system_monitor.py:243`

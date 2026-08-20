@@ -242,6 +242,28 @@ def test_quiet_market_cursor_advances_by_successful_endpoint(tmp_path: Path) -> 
     assert cursor.queried_through == pd.Timestamp("2026-08-05T10:02:00Z")
 
 
+def test_endpoint_discovery_retries_transient_databento_failure(tmp_path: Path) -> None:
+    provider = _TransientDiscoveryProvider(
+        _spec(
+            start="2026-08-05T10:00:00Z",
+            end="2026-08-05T10:01:00Z",
+        )
+    )
+
+    result = run_cme_cycle(
+        ParquetStore(tmp_path),
+        provider=provider,
+        retry_attempts=2,
+        retry_delay_seconds=0,
+        now=lambda: datetime(2026, 8, 5, 10, 1, 1, tzinfo=UTC),
+        reporter=None,
+    )
+
+    assert provider.discovery_attempts == 2
+    assert result.schemas_succeeded == 1
+    assert result.schemas_failed == 0
+
+
 def test_large_recovery_gap_is_chunked_with_safety_overlap() -> None:
     spec = _spec(
         start="2026-08-05T00:15:30Z",
@@ -543,6 +565,18 @@ class _QuietProvider:
             pd.DataFrame(),
             spec,
         )
+
+
+class _TransientDiscoveryProvider(_QuietProvider):
+    def __init__(self, spec: DatabentoCmeContextSpec) -> None:
+        super().__init__(spec)
+        self.discovery_attempts = 0
+
+    def specs(self) -> tuple[DatabentoCmeContextSpec, ...]:
+        self.discovery_attempts += 1
+        if self.discovery_attempts == 1:
+            raise RuntimeError("504 The remote gateway timed out")
+        return super().specs()
 
 
 class _DelayedQuietProvider:

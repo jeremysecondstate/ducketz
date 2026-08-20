@@ -15,7 +15,7 @@ second owner. `docs/datafetch-ml/start_all_loops.ps1:18`,
 
 There are three authoritative prediction endpoints:
 
-1. **Option-pricing predictions:** Active Pricing’s exact-target publication (`ml/option-pricing-target-latest/run.json`) is the fast authority used by the Pricing-to-Options barrier; its full append-only generation (`ml/option-pricing-latest/run.json`) supplies compact surfaces, evaluations, and historical consumers. `ml/option_pricing_runtime.py:1305`, `ml/option_pricing/publication.py:79`
+1. **Option-pricing predictions:** Active Pricing’s exact-target publication (`ml/option-pricing-target-latest/run.json`) is the fast authority used by the Pricing-to-Options barrier; its full append-only generation (`ml/option-pricing-latest/run.json`) supplies compact surfaces, evaluations, and historical consumers. `ml/option_pricing_runtime.py:1306`, `ml/option_pricing/publication.py:79`
 2. **Directional horizon predictions:** Directional Loop B’s immutable run is selected by `ml/latest/run.json`; compatibility `latest` files are mirrors, not the generation boundary. `ml/runtime_pipeline.py:859`, `ml/runtime_pipeline.py:943`
 3. **Options-strategy predictions:** Strategy’s immutable run is selected by `ml/strategy-latest/run.json`; candidate `decision_score` is a calibrated profitable-outcome probability only for fitted rows. Heuristic rows keep `decision_score` and both probability fields null and publish separate `scenario_coverage_score`. `ml/strategy_publication.py`, `ml/strategy_runtime.py`
 
@@ -26,10 +26,10 @@ There are three authoritative prediction endpoints:
 **Confirmed:** recurring provider calls are confined to ingestion owners;
 explicit historical maintenance commands are listed separately and terminate:
 
-- CME/L2 calls Databento for continuous futures OHLCV, BBO, and MBP-10 ranges. `datafetching/cme_runtime.py:98`, `datafetching/cme_runtime.py:479`
-- Loop A calls Databento equity history, FMP, current FRED, Schwab stock data, and SEC lanes for the production watchlist. It explicitly runs CME and option-chain ownership externally in the production command. `datafetching/main.py:23`, `docs/datafetch-ml/current_start_command:55`, `docs/datafetch-ml/current_start_command:59`, `docs/datafetch-ml/current_start_command:60`
+- CME/L2 calls Databento for continuous futures OHLCV, BBO, and MBP-10 ranges. Current short-window BBO/MBP collection and strict publication precede at most one older recovery chunk per affected schema, so a deep cursor gap cannot redefine current authority. `datafetching/cme_runtime.py:104`, `datafetching/cme_runtime.py:157`, `datafetching/cme_runtime.py:296`
+- Loop A calls Databento `EQUS.MINI` equity history, FMP, current FRED, Schwab stock quotes, and SEC lanes for the production watchlist. It explicitly runs CME and option-chain ownership externally in the production command. The shared Databento retry policy treats a prematurely ended response as transient while leaving authentication, entitlement, validation, and readiness-integrity failures fail-closed. `datafetching/main.py:23`, `app/services/databento_retry.py:14`, `app/services/databento_retry.py:24`, `tests/test_databento_retry.py:6`
 - Daily ALFRED calls the FRED/ALFRED API for `FEDFUNDS`, `CPIAUCSL`, `UNRATE`, and `GDP`. `datafetching/fred_vintage_import.py:37`, `datafetching/fred_alfred_runtime.py:69`
-- Options Capture owns prospective provider-neutral option snapshots. Its default production CLI constructs one concrete, scoped Databento live adapter for `OPRA.PILLAR` definitions and `cbbo-1s`, validates provider/dataset/schema/symbol/target, definition activation, and all definition/quote clocks, and falls back to a separately labeled Schwab request only for bounded transient per-target unavailability. Missing credentials or transport startup aborts before recurrence; integrity failures do not trigger fallback. `options/databento_live.py:33`, `options/databento_live.py:139`, `datafetching/options_runtime.py:369`, `datafetching/options_runtime.py:384`, `datafetching/options_runtime.py:408`, `datafetching/options_runtime.py:650`, `datafetching/options_runtime.py:706`, `datafetching/options_runtime.py:720`
+- Options Capture owns prospective provider-neutral option snapshots. Its default production CLI constructs one concrete, scoped Databento live adapter for `OPRA.PILLAR` definitions and `cbbo-1s`. Dense callback replay yields cooperatively, and target selection waits for the requested symbol's watermark before validating the final pretarget BBO. Bounded `OptionProviderUnavailable`, including `OPRA_TARGET_WATERMARK_UNAVAILABLE`, can enter a separately labeled Schwab request; missing startup configuration aborts before recurrence and identity/integrity failures do not trigger fallback. `options/databento_live.py:34`, `options/databento_live.py:244`, `options/databento_live.py:280`, `datafetching/options_runtime.py:430`, `datafetching/options_runtime.py:454`
 - Historical OPRA synchronization has three one-shot command boundaries. `datafetching.options_history` performs the normal prediction-focused bootstrap independently for each parent symbol and schema: `ohlcv-1s` uses 10 days, `cbbo-1s` 1 day, `cbbo-1m` 20 days, `ohlcv-1m` and `definition` 100 days, `ohlcv-1h` 1,825 days, `ohlcv-1d` 2,555 days, and other default non-interval schemas one month. Research-only `cmbp-1` remains explicitly selectable but is omitted by default. `datafetching.databento_cold_start` is the optional all-dataset bootstrap whose execution requires `--confirm-download`; its OPRA scopes use canonical storage and publish a v5 history-cursor handoff. Its CME and US-equity products remain provider-provenance namespaces: the different-dataset `XNAS.ITCH` equity archive stays cold while Loop A uses current `EQUS.MINI` operational bars, and verified CME scope seeds missing runtime boundaries and historical context fingerprints. The all-dataset default similarly defers historical `mbp-1`, retains one day of prediction-consumed `mbp-10`, and validates included scope and storage capacity. `ml.option_pricing_opra` is the separate full-universe or custom-scope administrative synchronizer. Options Capture then runs at most one catch-up per UTC date for valid cursors, only after attempting the latency-sensitive prospective cycle. `datafetching/options_history.py`, `datafetching/databento_cold_start.py`, `datafetching/databento_archive.py:213`, `datafetching/equity_dataset_migration.py`, `datafetching/databento_archive.py:539`, `datafetching/options_runtime.py`, `ml/option_pricing_opra.py`
 - Active Pricing, its owned worker, Directional Loop B, and Strategy consume local evidence. The worker explicitly records zero external provider requests. `ml/option_pricing_loop_native_worker.py:126`
 
@@ -49,10 +49,10 @@ dataset identities; the recurring wrapper skips a different-dataset archive so
 venue-specific and consolidated rows cannot be silently timestamp-merged.
 `market-data/databento/us-equities` remains archive provenance, and the
 2026-08-19 operational switch is checksum-receipted under `catalog/migrations`.
-`datafetching/databento_archive.py:213`, `datafetching/databento_fetch.py:541`,
+`datafetching/databento_archive.py:213`, `datafetching/databento_fetch.py:544`,
 `datafetching/equity_dataset_migration.py`
 
-**Confirmed:** CME history is partitioned by day for OHLCV and hour for BBO/MBP, with adaptive event natural keys. A cursor is advanced only after all exact ranges in that schema pass persistence. `datafetching/cme_history.py:207`, `datafetching/cme_history.py:256`, `datafetching/cme_runtime.py:535`, `datafetching/cme_history.py:654`
+**Confirmed:** CME history is partitioned by day for OHLCV and hour for BBO/MBP, with adaptive event natural keys. A cursor is advanced only after all exact ranges in that schema pass persistence. When a deep MBP gap exists, the runtime first fetches exact five-second current MBP and five-minute BBO windows, requires every configured symbol/stream fresh, and then checkpoints at most one older recovery chunk. `datafetching/cme_history.py:207`, `datafetching/cme_runtime.py:157`, `datafetching/cme_runtime.py:202`, `datafetching/cme_runtime.py:296`
 
 **Confirmed CME archive bridge:** when an owned runtime cursor is absent,
 verified archive scope supplies the exact-spec historical boundary for live
@@ -63,7 +63,7 @@ lock, cursor, L2 pointer, or publication. `datafetching/databento_archive.py:539
 `datafetching/cme_runtime.py:476`,
 `datafetching/cme_cross_asset_context.py:250`
 
-**Confirmed:** the supporting five-minute L2 generation is immutable beneath `pools/cme/snapshots/l2/databento/5m/<target_ns>/`; its current pointer is exactly `pools/cme/snapshots/l2/databento/5m/latest.json`. No production-loop consumer of that pointer was found. It remains a CME-owned current-state artifact and is not Loop A readiness. `datafetching/cme_history.py:295`, `datafetching/cme_history.py:437`
+**Confirmed:** the supporting five-minute L2 generation is immutable beneath `pools/cme/snapshots/l2/databento/5m/<target_ns>/`; its current pointer is exactly `pools/cme/snapshots/l2/databento/5m/latest.json`. Event time is bounded by the snapshot boundary, local fetch availability is separately bounded by `available_not_after`, configured symbols override a stale cursor inventory, and strict publication requires all expected BBO/MBP rows `FRESH`. No production-loop consumer of that pointer was found. It remains a CME-owned current-state artifact and is not Loop A readiness. `datafetching/cme_history.py:288`, `datafetching/cme_history.py:484`, `datafetching/cme_history.py:532`, `datafetching/cme_history.py:577`
 
 **Confirmed:** ALFRED seals the raw response, normalized vintage Parquet, manifest, and receipt before merging stable vintage identities into immutable yearly feature partitions. It derives macro context only when all four series exist. `datafetching/fred_vintage_import.py:195`, `datafetching/fred_vintage_import.py:267`, `datafetching/fred_vintage_import.py:273`
 
@@ -77,7 +77,7 @@ lock, cursor, L2 pointer, or publication. `datafetching/databento_archive.py:539
 
 Loop A has two different authority boundaries:
 
-- **Fast exact-bar readiness. Confirmed.** Immediately after the Databento lane completes, Loop A freezes an all-symbol quarter-hour target containing each symbol’s exact completed one-minute bar timestamp, close, provider, timeframe, source path, and row checksum. It publishes a manifest/receipt directory, then an atomic latest pointer. `datafetching/orchestrate.py:267`, `datafetching/orchestrate.py:292`, `datafetching/bar_readiness.py:82`, `datafetching/bar_readiness.py:150`
+- **Fast exact-bar readiness. Confirmed.** Immediately after the Databento lane completes, Loop A freezes an all-symbol quarter-hour target containing each symbol’s exact completed one-minute bar timestamp, close, provider, timeframe, source path, and row checksum. Only an actionable XNYS target can publish; a closed/non-actionable cycle explicitly keeps `target=NONE`. Missing exact rows may enter provider-aware bounded recovery, but corrupt/contradictory readiness never enters network retry. It publishes a manifest/receipt directory, then an atomic latest pointer. `datafetching/orchestrate.py:277`, `datafetching/orchestrate.py:300`, `datafetching/orchestrate.py:344`, `datafetching/bar_readiness.py:82`
 - **Full-cycle completion. Confirmed.** Loop A begins `WRITING`; after all fetch, fundamental, technical, and signal stages it publishes `COMPLETE` only if the failure count is zero, otherwise `FAILED`. Only a complete cycle advances `.ducketz-loop-a-complete.json`. `datafetching/loop_a_cycle.py:75`, `datafetching/loop_a_cycle.py:118`, `datafetching/loop_a_cycle.py:127`
 
 These boundaries intentionally decouple time-sensitive Pricing/Options work from slower features. A readiness publication failure does not stop the remainder of Loop A; Pricing decides whether its bounded deadline is missed. `datafetching/orchestrate.py:312`
@@ -86,17 +86,17 @@ These boundaries intentionally decouple time-sensitive Pricing/Options work from
 
 **Confirmed:** Loop A owns provider-normalized equity bars and quotes, point-in-time fundamentals, technical calculations, and cross-domain signals. It invokes the calculated stages after fetch and counts failures into the terminal cycle state. `datafetching/orchestrate.py:326`, `datafetching/orchestrate.py:389`, `datafetching/orchestrate.py:409`, `datafetching/orchestrate.py:429`
 
-**Confirmed:** CME/L2 derives hourly `cme__` context from 60 exact common one-minute observations across NQ, ES, RTY, GC, and CL plus recent BBO/MBP data. Values include futures returns, breadth spreads, relative spread, and book imbalance; future, incomplete, saturated, or stale evidence is rejected. `datafetching/cme_cross_asset_context.py:68`, `datafetching/cme_cross_asset_context.py:103`, `datafetching/cme_cross_asset_context.py:168`, `datafetching/cme_cross_asset_context.py:181`
+**Confirmed:** CME/L2 derives hourly `cme__` context from 60 exact common one-minute observations across NQ, ES, RTY, GC, and CL plus recent BBO/MBP data. Values include futures returns, breadth spreads, relative spread, and book imbalance; future, incomplete, saturated, or stale evidence is rejected. `datafetching/cme_cross_asset_context.py:83`, `datafetching/cme_cross_asset_context.py:183`, `datafetching/cme_cross_asset_context.py:196`, `datafetching/cme_cross_asset_context.py:1007`, `datafetching/cme_cross_asset_context.py:1016`
 
 **Confirmed:** Daily ALFRED derives `macro__fed_funds_level`, CPI year-over-year, unemployment change, and GDP year-over-year. Each value retains its own component availability clock. Current/revised FRED history is explicitly rejected as historical evidence. `datafetching/fred_vintages.py:46`, `datafetching/fred_vintages.py:324`, `datafetching/fred_vintages.py:351`, `datafetching/fred_vintages.py:75`
 
 **Confirmed:** Options Capture derives option-surface values such as IV-minus-realized volatility, term and skew differences, move richness, liquidity/spread measures, coverage ratios, and quote staleness. Its `surface_quality_pass` requires causal timing and minimum quote, timestamp, IV, Greeks, and open-interest coverage. `options/features.py:169`, `options/features.py:186`, `options/features.py:199`, `options/features.py:250`
 
-**Confirmed:** Directional Loop B joins implemented feature families using `available_at`, per-component clocks, freshness, natural-key uniqueness, and quality status. The production v3 profile activates verified ALFRED macros only for daily/weekly contracts and includes `opt__`, `opx__`, quote, CME, fundamental, technical, lifecycle, SEC, and energy families where registered. `ml/feature_registry.py:1039`, `ml/feature_registry.py:1051`, `ml/rolling_materialization.py:614`, `ml/rolling_materialization.py:663`, `ml/rolling_materialization.py:740`, `ml/rolling_materialization.py:782`
+**Confirmed:** Directional Loop B joins implemented feature families using `available_at`, per-component clocks, freshness, natural-key uniqueness, and quality status. The production v3 profile activates verified ALFRED macros only for daily/weekly contracts and includes `opt__`, `opx__`, quote, CME, fundamental, technical, lifecycle, SEC, and energy families where registered. `ml/feature_registry.py:1039`, `ml/feature_registry.py:1051`, `ml/rolling_materialization.py:614`, `ml/rolling_materialization.py:663`, `ml/rolling_materialization.py:740`, `ml/rolling_materialization.py:796`
 
 ### 5. Option-pricing inputs and predictions
 
-**Confirmed:** Active Pricing selects an actionable XNYS quarter-hour target, rejects future or replayed targets, and permits delayed work only inside the 1,200-second causal source window. `ml/option_pricing_runtime.py:251`, `ml/option_pricing_runtime.py:255`, `ml/option_pricing_runtime.py:258`, `ml/option_pricing_runtime.py:284`
+**Confirmed:** Active Pricing selects an actionable XNYS quarter-hour target, rejects future or replayed targets, and permits delayed work only inside the 1,200-second causal source window. When no target is calendar-eligible, it makes no target pointer and does not backdate a prior boundary; monitoring classifies that state as benign `INFO`, not missing production work. `ml/option_pricing_runtime.py:251`, `ml/system_monitor.py:830`
 
 Its target-time inputs are:
 
@@ -121,17 +121,17 @@ The six semantic model inputs are underlying price, strike, risk-free rate, lagg
 
 **Confirmed:** Options Capture first reconciles pending evidence, selects the calendar-owned target (or the latest eligible target during closed-market discovery), reuses committed/pending identities without another provider call, waits at most 45 seconds in production for Pricing, then checks exact Loop A readiness. `datafetching/options_runtime.py:108`, `datafetching/options_runtime.py:117`, `datafetching/options_runtime.py:169`, `datafetching/options_runtime.py:250`, `docs/datafetch-ml/current_start_command:161`
 
-The owned prospective OPRA adapter is attempted first for the calendar target, independently of Loop A readiness because its definitions and BBO carry their own causal clocks. It selects provider-received definitions whose contract activation is no later than the target and the final valid consolidated BBO strictly before the target from its shared buffer, then commits under `databento-opra`; Loop 3 still requires exact Loop A authority before pricing. A bounded availability failure records a credential-free code and uses separately labeled Schwab fallback; definition/quote identity or integrity failure rejects the target. Both lanes retain distinct target, activation, market-event, provider-receipt/send, local-receipt, request, prediction, and publication clocks. `options/databento_live.py:268`, `options/snapshot.py:122`, `datafetching/options_runtime.py:369`, `datafetching/options_runtime.py:384`, `datafetching/options_runtime.py:408`, `datafetching/options_runtime.py:428`, `datafetching/options_runtime.py:437`
+The owned prospective OPRA adapter is attempted first for the calendar target, independently of Loop A readiness because its definitions and BBO carry their own causal clocks. Dense replay callbacks periodically yield to the runtime. Before selection, the adapter waits for that symbol's quote watermark to reach the target; only then can it select provider-received definitions active by the target and the final valid consolidated BBO strictly before it. A bounded watermark/transport availability failure records a credential-free code and uses separately labeled Schwab fallback; definition/quote identity or integrity failure rejects the target. Both lanes retain distinct target, activation, market-event, provider-receipt/send, local-receipt, request, prediction, and publication clocks. `options/databento_live.py:244`, `options/databento_live.py:280`, `datafetching/options_runtime.py:430`, `datafetching/options_runtime.py:454`, `options/snapshot.py:122`
 
 If OPRA is transiently unavailable and Loop A readiness is absent, the runtime makes the permitted fallback Schwab request only after durably claiming it, checksum-seals the response under `options/pending-captures/schwab`, and later reconciles it without refetching. The explicit compatibility mode follows the same Schwab pending contract. A response/readiness/reconciliation outside 1,200 seconds becomes an explicit terminal expiry; no clock is backdated. `datafetching/options_runtime.py:360`, `datafetching/options_runtime.py:452`, `datafetching/options_runtime.py:477`, `datafetching/options_runtime.py:490`, `options/pending_capture.py:118`, `options/pending_capture.py:264`, `options/pending_capture.py:450`
 
 ### 7. Horizon samples and targets
 
-**Confirmed:** Loop B materializes public horizons `1h`, `4h`, `1d`, and `1w`, plus internal weekly components `1w-d1` through `1w-d5`. `ml/horizons.py:9`, `ml/horizons.py:18`
+**Confirmed:** Loop B materializes public horizons `1h`, `4h`, `1d`, and `1w`, plus internal weekly route slots `1w-d1` through `1w-d5`. The LIVE remaining-week publication is a calendar-correct contiguous prefix: aggregate `1w`, Day 1, then only the eligible sessions still remaining in that exchange week. `ml/horizons.py:9`, `ml/horizons.py:242`, `ml/horizons.py:283`
 
 - `1h` uses the latest completed regular or available standard US extended-hours source bar (04:00--20:00 exchange-local) and predicts the next 60 eligible regular-session minutes; without an extended bar it falls back naturally to the official-close decision. `4h` remains close/regular-source bounded and predicts the next 180 eligible regular-session minutes. Both require every calendar-selected native one-minute target record; missing minutes do not shift the window. `ml/calendars.py:527`, `ml/horizons.py:121`, `ml/horizons.py:173`
 - `1d` is next eligible session open-to-close. `ml/horizons.py:221`
-- `1w` is the remaining next-target exchange week, with component routes for each of the next five eligible sessions. `ml/horizons.py:240`, `ml/horizons.py:281`
+- `1w` is the remaining next-target exchange week. In intelligence, an omitted suffix slot is `NOT_APPLICABLE_TO_REMAINING_WEEK` and `OPERATIONALLY_CURRENT` only when exactly one coherent per-symbol created-LIVE bundle proves its contiguous calendar prefix, common issuance, valid geometry/deadlines/model fields, and bounded probability. Missing, malformed, or ambiguous bundles remain fail-closed as `NO_CURRENT_FORECAST`/`OPERATIONALLY_STALE`. `ml/runtime_pipeline.py:3762`, `ml/runtime_pipeline.py:4005`, `tests/test_ml_weekly_context_model_runtime.py:361`
 
 For every route, the label is complete only after the target end plus processing delay and only when target prices are complete. The target is `1` when simple forward return minus the configured round-trip cost is strictly positive; otherwise `0`; immature or incomplete labels remain null with an explicit status/reason. `ml/rolling_samples.py:272`, `ml/rolling_samples.py:282`, `ml/rolling_samples.py:288`, `ml/rolling_samples.py:319`
 
@@ -143,7 +143,7 @@ It fits the configured logistic model on training only, fits Platt calibration o
 
 **Confirmed:** Pricing’s residual model uses a 128-component Nyström RBF approximation and Bayesian ridge, selects gamma on chronological calibration evidence, calibrates predictive intervals separately, and reports comparison against Black–Scholes on assessment. It is not an exact Gaussian process. `ml/option_pricing/policies.py:103`, `ml/option_pricing/model.py:847`, `ml/option_pricing/model.py:895`, `ml/option_pricing/model.py:902`
 
-**Confirmed:** Strategy constructs historical candidate outcomes from exact entry and exit option receipts and stock BBOs, partitions decision clusters chronologically, fits a profitable-outcome classifier and expected-return residual model on training, fits Platt on calibration, and evaluates/reuses by full evidence fingerprint. `ml/strategy_selection/runtime.py:351`, `ml/strategy_selection/model.py:194`, `ml/strategy_selection/model.py:330`, `ml/strategy_selection/model.py:352`
+**Confirmed:** Strategy constructs historical candidate outcomes from exact entry and exit option receipts and stock BBOs, partitions decision clusters chronologically, fits a profitable-outcome classifier and expected-return residual model on training, fits Platt on calibration, and evaluates/reuses by full evidence fingerprint. `ml/strategy_selection/runtime.py:425`, `ml/strategy_selection/model.py:138`, `ml/strategy_selection/model.py:277`, `ml/strategy_selection/model.py:331`, `ml/strategy_selection/model.py:365`
 
 ### 9. Horizon prediction publication
 
@@ -155,28 +155,23 @@ Directional outputs carry raw and calibrated probabilities in `[0,1]`, target wi
 
 ### 10. Strategy construction, prediction, ranking, publication, and UI
 
-**Confirmed:** Strategy reads one verified current Loop B run and uses its causal input cutoff, samples, and directional probabilities. Immutable prospective snapshots are selected first with OPRA priority per natural target. Canonical historical OPRA replay and the Strategy cache are eligible fallbacks only for offline history/outcome/model construction; the recurring live entry loader passes `allow_historical_opra_replay=False`, and live Pricing attachment also rejects offline evidence. For each LIVE prediction it therefore requires a point-in-time prospective chain receipt between information availability and target entry, constructs registered candidates, attaches exact-contract live-eligible Pricing evidence before market-state/model scoring, and uses a calibrated fitted model only when active Pricing covers every leg. A missing OPRA underlying may be filled only from a Schwab stock BBO already eligible under the same Strategy cutoff. `ml/strategy_runtime.py`, `ml/strategy_selection/chain.py:116`, `ml/strategy_selection/runtime.py:167`
+**Confirmed:** Strategy reads the verified current Loop B run, captures the complete current pointer record, and binds that exact record and its checksums into the Strategy manifest and publication receipt. It then uses the causal input cutoff, samples, and directional probabilities. Immutable prospective snapshots are selected first with OPRA priority per natural target. Canonical historical OPRA replay and the Strategy cache are eligible fallbacks only for offline history/outcome/model construction; recurring live entry and live Pricing attachment reject offline evidence. For each actual LIVE prediction it requires a point-in-time prospective chain receipt between information availability and target entry, constructs registered candidates, attaches exact-contract live-eligible Pricing evidence before scoring, and uses a calibrated fitted model only when active Pricing covers every leg. `ml/strategy_runtime.py:63`, `ml/strategy_runtime.py:235`, `ml/strategy_publication.py:41`, `ml/strategy_selection/chain.py:111`, `ml/strategy_selection/runtime.py:167`
 
 When the fitted model is unavailable or full quality-passing Pricing coverage is absent, the candidate remains `SCENARIO_COVERAGE_HEURISTIC`. Its local scenario-grid pass fraction is stored only in `scenario_coverage_score`; raw, calibrated, and decision probabilities remain null. Fitted rows use calibrated profitable-outcome probability as the decision score. Calibrated candidates rank ahead of heuristic candidates, with deterministic within-tier ranking. `ml/strategy_runtime.py`, `ml/strategy_selection/market_state.py`, `ml/strategy_selection/runtime.py`
 
-Strategy writes candidates, audit, model reports and copied model artifacts, then binds the manifest, Loop B source record, option receipts, and stock BBO lineage into an atomic publication receipt/pointer. `ml/strategy_runtime.py:163`, `ml/strategy_runtime.py:181`, `ml/strategy_runtime.py:217`, `ml/strategy_publication.py:40`
+Strategy writes candidates, audit, model reports and copied model artifacts, then binds the manifest, exact Loop B source record, option receipts, and stock BBO lineage into an atomic publication receipt/pointer. The unchanged-work test likewise requires exact current Loop B record equality plus unchanged pricing mode and provider heads. `ml/strategy_runtime.py:163`, `ml/strategy_runtime.py:221`, `ml/strategy_runtime.py:256`, `ml/strategy_runtime.py:429`
 
-**Observed 2026-08-19 11:15 UTC:** the verified canonical OPRA replay described
-68 targets, 394,296 complete evaluations, four corrected causal target clocks,
-and zero replay errors; its outputs and receipt/manifest checksums verified.
-The Strategy OPRA cache contained about 270,035 contracts and 48 surfaces from
-860 source files with valid output/receipt checksums. These are mutable,
-timestamped datastore measurements, not timeless architecture counts.
-
-The latest Strategy report at that observation required 378 decision clusters
-(252 train, 63 calibration, 63 assessment) but had only 2 usable `1h` clusters,
-1 usable `4h` cluster, and none for `1d`, `1w`, or weekly components. All nine
-routes were `MODEL_NOT_FIT`; 5,760 candidates used Scenario Coverage and zero
-used calibrated probability. This is insufficient causal/model/Pricing
-maturity, not poor calibrated performance. Scenario Coverage stays a distinct
-heuristic fraction and must not fill a probability column.
-`ml/strategy_selection/contracts.py:107`,
-`ml/strategy_selection/model.py:195`
+**Observed in the preserved 2026-08-19 22:45:36 UTC proof:** Loop B run
+`ml/runs/20260819T223552.337574Z` and Strategy run
+`ml/strategy-runs/20260819T224000.073641Z` both passed manifest/publication
+checksum verification, and Strategy was bound to that exact current Loop B
+record. The Strategy run published 4,800 candidate rows and 1,440 audit rows;
+all candidates were explicitly `SCENARIO_COVERAGE_HEURISTIC`, all nine model
+reports were `MODEL_NOT_FIT`, and zero models were trained or reused. This is
+insufficient causal/model/Pricing maturity, not poor calibrated performance.
+Scenario Coverage stays a distinct heuristic fraction and must not fill a
+probability column. A 22:59:29 UTC read-only follow-up verified newer Loop B and
+Strategy authorities with the same exact-lineage contract.
 
 **Confirmed:** the Rolling Forecast UI resolves the authoritative Loop B pointer; the Options Strategy UI resolves the Strategy pointer and validates candidate schema/policy. Neither is a writer or an automated-action owner. `app/ui/rolling_forecast_data.py:539`, `app/ui/options_strategy_data.py:628`, `app/ui/rolling_forecast_data.py:408`
 
@@ -184,8 +179,8 @@ heuristic fraction and must not fill a probability column.
 
 | Loop | Implemented production cadence/phase | Same-cycle relationship | Status |
 |---|---|---|---|
-| CME/L2 | 5 s MBP, 15 s BBO, 60 s OHLCV with +0/+2/+1 s phases | Independent rolling context | **Confirmed.** `datafetching/cme_runtime.py:37`, `datafetching/cme_runtime.py:42` |
-| Loop A | 15-minute boundary then +20 s after each completed recurring cycle | Readiness precedes slower Loop A work | **Confirmed.** `datafetching/orchestrate.py:199`, `datafetching/orchestrate.py:210`, `datafetching/orchestrate.py:267` |
+| CME/L2 | 5 s MBP, 15 s BBO, 60 s OHLCV with +0/+2/+1 s phases | Independent rolling context | **Confirmed.** `datafetching/cme_runtime.py:40`, `datafetching/cme_runtime.py:45` |
+| Loop A | 15-minute boundary then +20 s after each completed recurring cycle | Readiness precedes slower Loop A work | **Confirmed.** `datafetching/orchestrate.py:225`, `datafetching/orchestrate.py:236`, `datafetching/orchestrate.py:243` |
 | Active Pricing | 15 minutes, +1 | Waits up to 480 s for Loop A's exact target while Loop A performs a provider-availability-gated recovery for at most 420 s | **Confirmed.** `docs/datafetch-ml/current_start_command`, `datafetching/databento_fetch.py`, `datafetching/orchestrate.py` |
 | Directional Loop B | 15 minutes, +5 | Reads only a complete Loop A cycle | **Confirmed.** `docs/datafetch-ml/current_start_command:188`, `ml/prediction_runtime.py:209` |
 | Options Capture | 15 minutes, +6 | Bounded 45 s Pricing barrier; documented after B’s +5 clock but no B artifact read | **Confirmed timing; documented-only B association.** `docs/datafetch-ml/current_start_command:99`, `docs/datafetch-ml/current_start_command:160`, `docs/datafetch-ml/current_start_command:161` |
@@ -213,6 +208,13 @@ or weekly if it is the final eligible session of that exchange week. Holidays
 and shortened weeks therefore do not assume Friday. All other wakes select
 hourly. `ml/system_monitor.py:1872`
 
+**Confirmed status semantics:** `FAIL` makes the report `UNHEALTHY`, `WARN`
+makes it `DEGRADED`, and a report containing only `PASS` plus benign `INFO`
+remains `HEALTHY`. In particular, closed/settling market awareness may report
+that no Pricing target exists without treating it as stale; it cannot mask a
+warning, failure, or stale UI/publication condition. `ml/system_monitor.py:830`,
+`ml/system_monitor.py:1767`, `tests/test_system_monitor.py:243`
+
 **Confirmed guardian boundary:** `ml.system_guardian` may repair at most one
 closed-allowlist liveness fault per wake. A suspected hang requires two
 unchanged observations at least 30 minutes apart; the first writes
@@ -235,9 +237,9 @@ See `MONITORING.md` for its exact responsibility boundary.
 | Clock/boundary | Meaning | Enforcement |
 |---|---|---|
 | `decision_timestamp` / `target_snapshot_for` | Calendar-owned information boundary, not receipt time | Must be an eligible XNYS quarter-hour for Pricing/Options; exact completed bars only. `datafetching/bar_readiness.py:94`, `datafetching/bar_readiness.py:97` |
-| event/quote timestamp | Provider’s market-event time | Option OPRA quotes must be strictly before target; CME future evidence is rejected. `options/snapshot.py:183`, `datafetching/cme_cross_asset_context.py:168` |
+| event/quote timestamp | Provider’s market-event time | Option OPRA quotes must be strictly before target; CME future evidence is rejected. `options/snapshot.py:183`, `datafetching/cme_cross_asset_context.py:183` |
 | `available_at` / `first_available_at` | Earliest causal consumer availability | Family joins use it and reject component clocks after it; Pricing history selection is bounded by it. `ml/datasets/families.py:1577`, `ml/option_pricing/consumers.py:372` |
-| local receipt/publication time | When immutable evidence actually became consumable | Receipts cannot predate input availability; barrier credit requires authority before Options request. `options/publication.py:195`, `datafetching/pricing_barrier.py:40` |
+| local receipt/publication time | When immutable evidence actually became consumable | Receipts cannot predate input availability; barrier credit requires authority before Options request. `options/publication.py:204`, `datafetching/pricing_barrier.py:40` |
 | label/outcome availability | Earliest time a target or strategy result may be known | Loop B label requires target end + delay; Pricing reconciliation requires post-prediction option evidence; Strategy exit receipts follow target end. `ml/rolling_samples.py:272`, `ml/option_pricing/causal.py:909`, `ml/strategy_selection/runtime.py:395` |
 | closed lockbox | Sealed final-evidence interval | Model partitions report metadata only; target values are redacted/unread. `ml/model_runtime.py:745`, `ml/option_pricing_runtime.py:2229` |
 
@@ -245,11 +247,11 @@ See `MONITORING.md` for its exact responsibility boundary.
 
 **Confirmed:** CME, ALFRED, Pricing, Options, and Strategy use the shared exclusive runtime-lock helper for `.ducketz-cme-writer.lock`, `.ducketz-fred-alfred-import.lock`, `.ducketz-option-pricing-runtime.lock`, `.ducketz-options-writer.lock`, and `.ducketz-strategy-runtime.lock`. The helper creates an `O_EXCL` lock, reclaims it once only when its recorded PID is dead, and removes it on normal exit. `datafetching/runtime_lock.py:12`, `datafetching/runtime_lock.py:20`, `datafetching/runtime_lock.py:37`
 
-**Confirmed:** Loop A and Directional Loop B use their own `O_EXCL` supervisor locks, `.ducketz-orchestration.lock` and the current executable contract `.duckets-ml-prediction-runtime.lock`, without stale-PID recovery. They additionally share the OS-held `.ducketz-loop-a-cycle.lock` around Loop A writes and complete Loop B reads. The OS lock releases on process exit even though its marker file persists. `datafetching/orchestrate.py:496`, `ml/prediction_runtime.py:317`, `datafetching/loop_a_cycle.py:198`
+**Confirmed:** Loop A and Directional Loop B use their own `O_EXCL` supervisor locks, `.ducketz-orchestration.lock` and the current executable contract `.duckets-ml-prediction-runtime.lock`, without stale-PID recovery. They additionally share the OS-held `.ducketz-loop-a-cycle.lock` around Loop A writes and complete Loop B reads. The OS lock releases on process exit even though its marker file persists. `datafetching/orchestrate.py:582`, `ml/prediction_runtime.py:318`, `datafetching/loop_a_cycle.py:199`
 
 **Confirmed:** the one-shot all-dataset baseline/overlap command uses the same stale-owner-aware helper only for `.ducketz-databento-cold-start.lock` and the canonical OPRA `state/sync.lock`; neither is a production supervisor lock or snapshot/publication authority. `datafetching/databento_cold_start.py`
 
-**Confirmed:** the Pricing child has a separate collision lock but cannot move target authority directly; it publishes only future-consumable materialization/model/status artifacts. `ml/option_pricing_loop_native_worker.py:50`, `ml/option_pricing_loop_native_worker.py:87`
+**Confirmed:** the Pricing child has a separate collision lock but cannot move target authority directly; it publishes only future-consumable materialization/model/status artifacts. `ml/option_pricing_loop_native_worker.py:36`, `ml/option_pricing_loop_native_worker.py:48`, `ml/option_pricing_loop_native_worker.py:87`
 
 **Confirmed deployment/repair rule:** the checked-in launcher and guardian both
 derive commands from the closed allowlist. New starts are hidden, unbuffered,
@@ -267,10 +269,11 @@ retains `--skip-historical-catchup`. `docs/datafetch-ml/start_all_loops.ps1:18`,
 | Loop A target bar missing for Options | Canonical OPRA can still commit using its own causal clocks. If OPRA is transiently unavailable, the single Schwab fallback is sealed pending and reconciled if readiness arrives inside 1,200 s. `datafetching/options_runtime.py:360`, `datafetching/options_runtime.py:452`, `datafetching/options_runtime.py:490`, `options/pending_capture.py:450` | OPRA evidence remains available for later causal Pricing; no pending Schwab feature is usable until committed. |
 | Pricing barrier missing/timed out | Barrier returns status rather than raising; Options still captures, but prospective Pricing-before-request credit is false. `datafetching/pricing_barrier.py:121`, `datafetching/pricing_barrier.py:181` | Options continues; later evaluation cannot claim invalid causal sequencing. |
 | Pricing model missing/stale/out-of-support | Fast target keeps the Black–Scholes point estimate; the sidecar publishes explicit fallback status and wider fallback uncertainty. `ml/option_pricing_runtime.py:1143`, `ml/option_pricing/prediction.py:289`, `ml/option_pricing_runtime.py:1244` | Option prices remain available at baseline quality; no model-based residual lift. |
-| Pricing evidence missing/stale in Loop B | `opx__` becomes audited null, then the family gate uses the versioned non-Pricing baseline. `ml/rolling_materialization.py:676`, `ml/runtime_pipeline.py:455` | Directional publication can continue without Pricing features. |
+| Pricing evidence missing/stale in Loop B | `opx__` becomes audited null, then the family gate uses the versioned non-Pricing baseline. `ml/rolling_materialization.py:677`, `ml/runtime_pipeline.py:455` | Directional publication can continue without Pricing features. |
 | Pricing authority corrupt or ALFRED readiness invalid | The shared contract exception is re-raised instead of converted into a partial route. `ml/rolling_materialization.py:322` | Whole new Loop B publication aborts; prior pointer remains. |
 | Optional feature is stale but contract-valid | Point-in-time joins null the feature after freshness/quality rules. `ml/datasets/families.py:1026`, `ml/datasets/families.py:1577` | Model preprocessing/family gate determines degradation; no silent stale substitution. |
 | Some Loop B routes fail | Production default permits successful routes; an empty prediction set or explicit `require_all_routes` fails the run. `ml/runtime_pipeline.py:633`, `ml/runtime_pipeline.py:654` | Partial current coverage is possible; failed routes are manifest-audited. |
+| Weekly component suffix is omitted | It is current/calendar-inapplicable only when one coherent created-LIVE per-symbol bundle proves the exact remaining-week prefix. Missing, malformed, or ambiguous proof stays stale. `ml/runtime_pipeline.py:3819`, `ml/runtime_pipeline.py:4005` | UI may show an intentional N/A slot without a probability; genuine absence cannot masquerade as current. |
 | Loop B publication crosses entry deadline or promotion fails | Transaction aborts/rolls back before pointer replacement. `ml/runtime_pipeline.py:603`, `ml/runtime_pipeline.py:1067` | Prior directional authority remains consumable. |
 | Strategy lacks chain history/entry receipt | Route is audit-only and candidate construction skips. `ml/strategy_selection/runtime.py:230`, `ml/strategy_selection/runtime.py:247` | No new candidate predictions for the affected route. |
 | Strategy lacks full active Pricing coverage/model | Candidate uses separately typed Scenario Coverage; all model-probability fields remain null and fitted calibration is not fabricated. `ml/strategy_selection/runtime.py`, `ml/strategy_runtime.py` | Strategy output may continue as research-only fallback. |

@@ -10,7 +10,7 @@
 - Scheduling mechanism: execute immediately, then sleep to the next 15-minute UTC boundary and apply a 20-second pre-start pause
 - Cadence and phase: 15 minutes; effective recurring start about boundary +20 seconds
 - Lock or single-writer mechanism: `.ducketz-orchestration.lock` plus `.ducketz-loop-a-cycle.lock` OS lock shared with Directional Loop B
-- Primary code evidence: **Confirmed.** `datafetching/orchestrate.py:37`, `datafetching/orchestrate.py:149`, `datafetching/orchestrate.py:152`, `datafetching/orchestrate.py:199`, `datafetching/loop_a_cycle.py:198`
+- Primary code evidence: **Confirmed.** `datafetching/orchestrate.py:38`, `datafetching/orchestrate.py:169`, `datafetching/orchestrate.py:172`, `datafetching/orchestrate.py:243`, `datafetching/loop_a_cycle.py:199`
 
 ## Purpose
 
@@ -29,7 +29,7 @@ operational dataset identities match; otherwise the recurring path explicitly
 skips that bridge instead of timestamp-merging venue-specific XNAS rows with
 consolidated EQUS rows. The 2026-08-19 switch is checksum-receipted under
 `C:\DATASTORE\catalog\migrations`. `datafetching/databento_archive.py:213`,
-`datafetching/databento_fetch.py:541`,
+`datafetching/databento_fetch.py:544`,
 `datafetching/equity_dataset_migration.py`
 
 ## Inputs
@@ -37,8 +37,8 @@ consolidated EQUS rows. The 2026-08-19 switch is checksum-receipted under
 | Input or dataset | Producer/source | Physical path or interface | Key fields and semantic values | Clock/freshness/causality rules | Required or optional | Evidence |
 |---|---|---|---|---|---|---|
 | Production symbols | checked-in watchlist or explicit CLI override | `datafetching/watchlist.txt` / CLI | uppercase equity symbols; production scope AAPL, AMZN, GOOG, MU, NVDA, SNDK | resolved once before supervisor starts | Required, nonempty | **Confirmed.** `docs/datafetch-ml/current_start_command:16`, `datafetching/orchestrate.py:133` |
-| Equity OHLCV | Databento | provider specs for native/resampled analysis bars | OHLCV, timeframe, bar/event/end/receipt clocks, adjustment/source identity | Databento is forced first; exact completed native one-minute bars govern readiness | Required for readiness and directional targets; other timeframes depend on profile | **Confirmed.** `datafetching/orchestrate.py:236`, `app/services/market_fetch_specs.py:87`, `datafetching/decision_time.py:347` |
-| Cold US-equity archive | One-shot Databento archive coordinator | provenance under `market-data/databento/us-equities/XNAS.ITCH`; operational EQUS targets under `stocks` | source receipts/checksums and independent operational migration receipts | different dataset identities remain separate; a bridge is eligible only when identities match | Not a recurring Loop A input while operational dataset is `EQUS.MINI` | **Confirmed.** `datafetching/databento_archive.py:213`, `datafetching/databento_fetch.py:541`, `datafetching/equity_dataset_migration.py` |
+| Equity OHLCV | Databento `EQUS.MINI` | provider specs for native/resampled analysis bars | OHLCV, timeframe, bar/event/end/receipt clocks, adjustment/source identity | Databento is forced first; exact completed native one-minute bars govern readiness; prematurely ended transport responses use the bounded transient-retry policy | Required for readiness and directional targets; other timeframes depend on profile | **Confirmed.** `datafetching/orchestrate.py:268`, `app/services/databento_retry.py:14`, `app/services/market_fetch_specs.py:92`, `app/services/market_fetch_specs.py:121`, `datafetching/decision_time.py:347` |
+| Cold US-equity archive | One-shot Databento archive coordinator | provenance under `market-data/databento/us-equities/XNAS.ITCH`; operational EQUS targets under `stocks` | source receipts/checksums and independent operational migration receipts | different dataset identities remain separate; a bridge is eligible only when identities match | Not a recurring Loop A input while operational dataset is `EQUS.MINI` | **Confirmed.** `datafetching/databento_archive.py:213`, `datafetching/databento_fetch.py:544`, `datafetching/equity_dataset_migration.py:537` |
 | Corporate/fundamental/macro/commodity metadata | FMP | stable provider routes | statements, ratios, market cap, filing metadata, energy/commodity context and provider timestamps | point-in-time statement/publication/receipt rules; current values cannot be presumed historical | Required only for configured feature families; lane failures count toward cycle failure | **Confirmed.** `datafetching/main.py:14`, `datafetching/orchestrate.py:389`, `ml/feature_registry.py:659` |
 | Current FRED observations | FRED CSV lane | GDP/CPIAUCSL/UNRATE/FEDFUNDS normalized Parquets | current/revised values, observation and fetch/availability clocks | prospective-rate/monitoring only; not ALFRED historical Loop B evidence | One eligible source for Pricing's required causal live FRED/ALFRED rate; never historical macro authority | **Confirmed.** `datafetching/fred_fetch.py:64`, `ml/option_pricing/causal.py:264`, `docs/datafetch-ml/current_start_command:39` |
 | Equity quotes | Schwab | batched quote endpoint; price-history remains an explicit compatibility/manual mode | bid/ask/mid, quote event/receipt, spread, quote-quality flags | receipt-bound, quote staleness and crossed/locked quality | Required for active quote/liquidity; recurring Loop A does not refresh Schwab OHLCV | **Confirmed.** `datafetching/schwab_fetch.py:113`, `datafetching/orchestrate.py:243`, `ml/datasets/families.py:383` |
@@ -47,10 +47,10 @@ consolidated EQUS rows. The 2026-08-19 switch is checksum-receipted under
 
 ## Processing and decisions
 
-1. **Confirmed:** acquire the supervisor lock, then the shared datastore-cycle lock; publish a new `WRITING` generation with symbol/provider scope. `datafetching/orchestrate.py:149`, `datafetching/orchestrate.py:154`, `datafetching/loop_a_cycle.py:75`
-2. **Confirmed:** compute the calendar-owned target decision. Only eligible XNYS regular-session quarter-hour targets can receive readiness. `datafetching/orchestrate.py:244`, `datafetching/bar_readiness.py:94`
-3. **Confirmed:** run Databento `EQUS.MINI` first across the watchlist. Each native request begins at an overlap of the latest same-dataset operational timestamp rather than rebuilding history. The different-dataset XNAS cold archive remains provenance-only. The one-minute completion callback attempts all-symbol readiness before unrelated providers and calculated stages. `datafetching/databento_fetch.py:541`, `datafetching/databento_fetch.py:801`, `datafetching/orchestrate.py:236`, `datafetching/orchestrate.py:267`
-4. **Confirmed:** for each symbol, `publish_bar_readiness` resolves the exact completed one-minute bar and close, constructs semantic checksums, writes private manifest/receipt files, renames the immutable directory, verifies it, and updates the pointer. Failure leaves Pricing to its own deadline and does not abort the remaining Loop A work. `datafetching/bar_readiness.py:120`, `datafetching/bar_readiness.py:138`, `datafetching/bar_readiness.py:160`, `datafetching/orchestrate.py:312`
+1. **Confirmed:** acquire the supervisor lock, then the shared datastore-cycle lock; publish a new `WRITING` generation with symbol/provider scope. `datafetching/orchestrate.py:169`, `datafetching/orchestrate.py:174`, `datafetching/loop_a_cycle.py:75`
+2. **Confirmed:** compute the calendar-owned target decision. Only eligible XNYS regular-session quarter-hour targets can receive readiness; a closed/non-actionable cycle reports `target=NONE` and creates no readiness. `datafetching/orchestrate.py:277`, `datafetching/orchestrate.py:300`, `datafetching/bar_readiness.py:94`
+3. **Confirmed:** run Databento `EQUS.MINI` first across the watchlist. Each native request begins at an overlap of the latest same-dataset operational timestamp rather than rebuilding history. The different-dataset XNAS cold archive remains provenance-only. Prematurely ended responses are transient-retry eligible; authentication, entitlement, malformed-request, and validation failures are immediate. `datafetching/databento_fetch.py:544`, `app/services/databento_retry.py:14`, `app/services/databento_retry.py:24`
+4. **Confirmed:** the one-minute completion callback attempts all-symbol readiness before unrelated providers and calculated stages. `publish_bar_readiness` resolves the exact completed one-minute bar and close, constructs semantic checksums, writes private manifest/receipt files, renames the immutable directory, verifies it, and updates the pointer. A missing exact row may use provider-aware bounded recovery; contradictory/corrupt readiness does not. Failure leaves Pricing to its own deadline and does not abort the remaining Loop A work. `datafetching/orchestrate.py:300`, `datafetching/orchestrate.py:344`, `datafetching/orchestrate.py:395`, `datafetching/bar_readiness.py:82`
 5. **Confirmed:** fetch the remaining provider lanes in batched watchlist form; shared FRED runs once for the first symbol. Normalize/upsert data and errors. `datafetching/main.py:214`, `datafetching/main.py:217`, `datafetching/parquet_store.py:290`
 6. **Confirmed:** run fundamental calculations when FMP is configured, then technicals, then cross-domain signals for each symbol. A nonzero stage exit increments failure count. `datafetching/orchestrate.py:389`, `datafetching/orchestrate.py:409`, `datafetching/orchestrate.py:429`
 7. **Confirmed:** publish terminal `COMPLETE` only when failure count is zero; otherwise `FAILED`. `.ducketz-loop-a-complete.json` remains the last successful generation. `datafetching/loop_a_cycle.py:118`, `datafetching/loop_a_cycle.py:127`
@@ -66,7 +66,7 @@ The one-shot provider/fundamental/technical/signal CLIs are owned stages, not in
 | Current cycle state | Directional Loop B; Loop A/operator | `.ducketz-loop-a-cycle.json` | generation, `WRITING`/`COMPLETE`/`FAILED`, start/finish, symbols/providers, failure count | atomically replaced for current state; B requires this exact current record to be `COMPLETE` | **Confirmed.** `datafetching/loop_a_cycle.py:15`, `datafetching/loop_a_cycle.py:136` |
 | Latest complete-cycle authority | Options regime cutoff; independent readers | `.ducketz-loop-a-complete.json` | last zero-failure generation and `finished_at` causal input cutoff | advances only on `COMPLETE`; failed/current writing cycles do not replace it | **Confirmed.** `datafetching/loop_a_cycle.py:127`, `datafetching/loop_a_cycle.py:153`, `datafetching/options_runtime.py:399` |
 | Provider raw/normalized Parquets | Directional Loop B; Pricing/Options/Strategy where relevant; calculations | provider/category/symbol trees under datastore | OHLCV, quotes, statements, FRED current values, SEC records, timestamps, natural IDs, status/error rows | canonical idempotent upsert; temporary file atomic replace | **Confirmed.** `datafetching/parquet_store.py:106`, `datafetching/parquet_store.py:530` |
-| Equity archive lineage | Operators and later archive materialization | operational `.archive-lineage.json` beside each materialized Loop A target | archive dataset/live dataset, selected source paths and SHA-256 values, target path, row bounds/counts, creation time | source checksums and dataset identity must reverify; lineage does not turn the provenance directory into a Loop A publication pointer | **Confirmed.** `datafetching/databento_archive.py:213` |
+| Conditional equity archive lineage | Operators and later same-dataset archive materialization | operational `.archive-lineage.json` beside a materialized Loop A target | archive dataset/live dataset, selected source paths and SHA-256 values, target path, row bounds/counts, creation time | source checksums and dataset identity must reverify; current XNAS/EQUS mismatch produces no materialization edge | **Confirmed.** `datafetching/databento_archive.py:213`, `datafetching/databento_fetch.py:544` |
 | Calculated fundamental, technical, signal, energy, quote and SEC feature products | Directional Loop B; stock quote subset also Strategy | symbol/pool calculated feature paths | registered feature values, calculation/schema versions, component `available_at`, quality and lifecycle status | written by owned calculation stages; complete-cycle pointer states whether the whole generation succeeded | **Confirmed.** `datafetching/orchestrate.py:389`, `ml/feature_registry.py:545`, `ml/feature_registry.py:626`, `ml/feature_registry.py:848` |
 | Prospective current FEDFUNDS rate context | Active Pricing rate loader | `pools/macro/features/prospective-release-context/fred/*.parquet` when bridge exists | FEDFUNDS level and local receipt availability; other macro values null | valid only for decisions after its actual receipt; never rewritten as historical | **Confirmed.** `datafetching/fred_vintages.py:456`, `datafetching/fred_vintages.py:541`, `ml/option_pricing/rates.py:369` |
 
@@ -106,6 +106,9 @@ The one-shot provider/fundamental/technical/signal CLIs are owned stages, not in
 - Bar-readiness publication is attempted only from the completed Databento
   all-symbol fast lane. A publish failure is reported and later Loop A stages
   may continue, but no readiness receipt is synthesized.
+- Premature stream termination is a bounded transient retry condition. Provider
+  identity, entitlement, malformed request, validation, or readiness-integrity
+  failures remain fail-closed and are not relabeled as transport recovery.
 - Any provider/calculation failure increments the cycle failure count and makes
   the current `.ducketz-loop-a-cycle.json` `FAILED`. Only a zero-failure cycle
   advances `.ducketz-loop-a-complete.json`.
@@ -145,23 +148,34 @@ logs, and one launcher/worker pair whose worker owns
 command drift alone does not authorize a second owner or an improvised restart.
 `docs/datafetch-ml/start_all_loops.ps1:18`, `ml/system_guardian.py:81`
 
-**Observed 2026-08-19 11:15 UTC:** one Loop A pair and its live worker lock
-passed the hourly monitor. Separately, 24 operational archive-lineage files
-covered six symbols across `1s`, `1m`, `1h`, and `1d`; every observed lineage
-identified `XNAS.ITCH` on both sides and its listed source checksums verified.
-This measurement establishes the bridge at that observation, not permanent
-archive completeness.
+**Observed 2026-08-19 22:45:36 UTC:** one Loop A pair, its live worker lock,
+primary logs, and exact six-symbol readiness for target
+`2026-08-19T20:00:00Z` passed. The checksum-valid receipt is
+`loop-a/bar-readiness/1787169600000000000/receipt.json`. The monitor correctly
+reported an active later `WRITING` generation while retaining
+`20260819T223020.010102Z-pid5516` as `last_complete_generation`; that generation
+finished at 22:35:52 UTC with zero failures and all six symbols. Active cycle
+state is liveness evidence, not permission to substitute it for completed
+authority.
+
+The observed raw one-minute files for AAPL, AMZN, GOOG, MU, NVDA, and SNDK each
+contained only `provider_dataset=EQUS.MINI` and
+`source_schema=ohlcv-1m`. Schwab remained quote/chain/broker evidence, not
+canonical operational OHLCV, and the cold `XNAS.ITCH` archive remained
+separate. At 22:59:29 UTC the read-only monitor had verified a newer complete
+Loop A generation, `20260819T224520.001083Z-pid5516`, with the same zero-failure
+contract.
 
 
 ## Evidence index
 
 - `datafetching/orchestrate.py:84`
-- `datafetching/orchestrate.py:149`
+- `datafetching/orchestrate.py:169`
 - `datafetching/orchestrate.py:267`
 - `datafetching/orchestrate.py:389`
 - `datafetching/loop_a_cycle.py:15`
 - `datafetching/loop_a_cycle.py:127`
-- `datafetching/loop_a_cycle.py:198`
+- `datafetching/loop_a_cycle.py:199`
 - `datafetching/bar_readiness.py:82`
 - `tests/test_independent_loop_isolation.py:17`
 - `tests/test_loop_a_cycle.py:36`

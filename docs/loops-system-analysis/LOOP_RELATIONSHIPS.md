@@ -13,15 +13,16 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 - **Exchange:** `pools/cme/features/cross-asset-context/databento/1h.parquet`; values `nq_return`, `es_return`, RTY-minus-ES, NQ-minus-ES, gold/crude returns, relative spread, book imbalance, quality/completeness and availability clocks.
 - **Availability:** common completed 60-minute window; no future evidence; maximum 15-minute source staleness for context construction and horizon-specific feature freshness.
 - **Consumer behavior:** joins by causal availability; stale/quality-failed values become unavailable. If no usable source exists, affected routes may fail, but no stale substitution is authorized.
+- **Current-authority boundary:** the five-minute L2 pointer is not the artifact B reads. CME independently requires complete configured-symbol BBO/MBP freshness for that pointer, using an event boundary distinct from the local availability cutoff; older history recovery is bounded to at most one chunk and cannot delay or weaken the strict current lane. `datafetching/cme_runtime.py:157`, `datafetching/cme_history.py:288`, `datafetching/cme_history.py:532`
 - **Producer evidence:** `datafetching/cme_cross_asset_context.py:24`, `datafetching/cme_cross_asset_context.py:174`, `datafetching/cme_cross_asset_context.py:277`
-- **Consumer evidence:** `ml/rolling_materialization.py:782`, `ml/datasets/families.py:517`, `ml/feature_registry.py:499`
+- **Consumer evidence:** `ml/rolling_materialization.py:796`, `ml/datasets/families.py:517`, `ml/feature_registry.py:499`
 
 ### R2 — Loop A → Active Pricing
 
 - **Status:** Confirmed.
 - **Type:** D + C.
 - **Exchange:** exact all-symbol bar-readiness receipt/row checksums and each target close; completed Databento bars; prospective current-FRED rate context when available.
-- **Availability:** exact eligible quarter-hour; Loop A polls Databento Historical schema availability and may refetch the exact minute for at most 420 seconds. Pricing waits at most 480 seconds, and both remain inside the independent 1,200-second causal window.
+- **Availability:** exact eligible quarter-hour; Loop A polls Databento Historical schema availability and may refetch the exact minute for at most 420 seconds. Pricing waits at most 480 seconds, and both remain inside the independent 1,200-second causal window. A prematurely ended Databento response is classified as transient and retried by the shared bounded policy; identity, entitlement, and readiness-integrity failures still fail closed. `app/services/databento_retry.py:14`, `app/services/databento_retry.py:24`, `tests/test_databento_retry.py:6`
 - **Consumer behavior:** bounded wait/retry; deadline causes a write-free skip and leaves prior Pricing authority unchanged.
 - **Producer evidence:** `datafetching/orchestrate.py:292`, `datafetching/bar_readiness.py:120`, `datafetching/fred_vintages.py:600`
 - **Consumer evidence:** `ml/option_pricing_runtime.py:1116`, `ml/option_pricing_runtime.py:1181`, `ml/option_pricing/rates.py:361`, `ml/option_pricing_runtime.py:1713`
@@ -43,7 +44,7 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 - **Exchange:** the current `.ducketz-loop-a-cycle.json` record and its `finished_at` causal cutoff; normalized equity bars/quotes, technicals, fundamentals, signals, current nonhistorical contexts, energy and SEC evidence. `.ducketz-loop-a-complete.json` is retained for independent readers such as Options, not substituted by B.
 - **Availability:** Loop B acquires the shared datastore-cycle lock and requires the current Loop A cycle to be `COMPLETE`; `input_available_at` is that cycle’s finish time. A newer `WRITING` or `FAILED` record aborts the B attempt even if a prior latest-complete record remains.
 - **Consumer behavior:** missing/noncomplete cycle fails cleanly; failed feature routes may be partial under the production default, while shared-authority corruption aborts the run.
-- **Producer evidence:** `datafetching/loop_a_cycle.py:127`, `datafetching/loop_a_cycle.py:198`, `datafetching/orchestrate.py:389`
+- **Producer evidence:** `datafetching/loop_a_cycle.py:127`, `datafetching/loop_a_cycle.py:199`, `datafetching/orchestrate.py:389`
 - **Consumer evidence:** `ml/prediction_runtime.py:209`, `ml/prediction_runtime.py:218`, `ml/rolling_materialization.py:272`
 
 ### R5 — Loop A → Strategy
@@ -93,7 +94,7 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 - **Exchange:** exact target-outcome receipt/pointer, terminal status, published time, prediction-row count, run path and receipt checksum embedded as `pricing_barrier` metadata in the Options receipt.
 - **Availability:** authority must be verified and published before the Options request to receive prospective credit.
 - **Consumer behavior:** blocks for at most 45 seconds in production; `MISSING`, `TIMED_OUT`, or a verified no-prediction/failure outcome does not prevent capture, but cannot receive causal Pricing-before-request credit.
-- **Producer evidence:** `ml/option_pricing/target_outcome.py:93`, `ml/option_pricing_runtime.py:1305`
+- **Producer evidence:** `ml/option_pricing/target_outcome.py:93`, `ml/option_pricing_runtime.py:1306`
 - **Consumer evidence:** `datafetching/pricing_barrier.py:77`, `datafetching/pricing_barrier.py:38`, `datafetching/options_runtime.py:250`
 
 ### R10 — Options Capture → Active Pricing
@@ -101,8 +102,8 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 - **Status:** Confirmed.
 - **Type:** D + M.
 - **Exchange:** earlier committed canonical OPRA/explicit-Schwab-fallback chains for contract definitions, lagged IV, source BBO, residual samples and model fitting; the earliest eligible later-target chain reconciles a prior prediction into dollar/normalized error and interval coverage. Provider/evidence lane and `fallback_used` remain explicit.
-- **Availability:** source quote/evidence must predate prediction. A prospective outcome must come from a committed snapshot target at or after the prediction target, with exact contract quote and receipt after prediction availability; the later target and availability are retained, never backdated. Natural targets and receipt chains are checksum-verified.
-- **Consumer behavior:** missing/stale source produces explicit route failure/baseline absence; missing later outcome leaves evaluation pending; OPRA is preferred when available and Schwab is labeled fallback.
+- **Availability:** source quote/evidence must predate prediction. The owned OPRA callback yields cooperatively during replay, and a target read waits for the requested symbol's watermark to reach the target before selecting a final strictly pretarget BBO. A prospective outcome must come from a committed snapshot target at or after the prediction target, with exact contract quote and receipt after prediction availability; the later target and availability are retained, never backdated. Natural targets and receipt chains are checksum-verified. `options/databento_live.py:244`, `options/databento_live.py:280`
+- **Consumer behavior:** missing/stale source produces explicit route failure/baseline absence; missing later outcome leaves evaluation pending. `OPRA_TARGET_WATERMARK_UNAVAILABLE` is bounded provider unavailability and may use separately labeled Schwab fallback; definition, identity, clock, or checksum failures do not. `options/databento_live.py:301`, `datafetching/options_runtime.py:454`
 - **Producer evidence:** `options/publication.py:105`, `options/publication.py:402`, `options/snapshot.py:201`
 - **Consumer evidence:** `ml/option_pricing/causal.py:107`, `ml/option_pricing_runtime.py:660`, `ml/option_pricing_runtime.py:675`
 
@@ -114,7 +115,7 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 - **Availability:** every reachable Pricing generation is verified; Loop B selects the newest generation for a natural symbol/target whose first availability is no later than its causal cutoff. Freshness is 2 h/4 h/2 d/8 d by public horizon.
 - **Consumer behavior:** unavailable/stale/uncovered data becomes audited null and triggers the non-Pricing baseline feature set; corrupt authority aborts publication.
 - **Producer evidence:** `ml/option_pricing_runtime.py:707`, `ml/option_pricing/publication.py:36`, `ml/option_pricing/consumers.py:306`
-- **Consumer evidence:** `ml/rolling_materialization.py:663`, `ml/rolling_materialization.py:676`, `ml/runtime_pipeline.py:432`
+- **Consumer evidence:** `ml/rolling_materialization.py:663`, `ml/rolling_materialization.py:677`, `ml/runtime_pipeline.py:432`
 
 ### R12 — Options Capture → Directional Loop B
 
@@ -131,8 +132,8 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 - **Status:** Confirmed.
 - **Type:** D + M + C.
 - **Exchange:** authoritative Loop B source record/receipt, redacted samples, LIVE calibrated directional probabilities, target windows, feature context and causal input cutoff.
-- **Availability:** Strategy reads one verified current pointer; predictions must match exactly one sample and precede entry.
-- **Consumer behavior:** no valid current Loop B run, samples, or predictions fails the Strategy cycle. The skip fingerprint compares the Loop B pointer, pricing mode, and both prospective OPRA and Schwab per-symbol snapshot heads; a new receipt from either provider wakes the cycle.
+- **Availability:** Strategy reads one verified current pointer, captures its complete current record, and binds that exact record and its manifest/receipt checksums into the Strategy manifest and publication receipt; predictions must match exactly one sample and precede entry. `ml/strategy_runtime.py:63`, `ml/strategy_runtime.py:235`, `ml/strategy_publication.py:41`
+- **Consumer behavior:** no valid current Loop B run, samples, or predictions fails the Strategy cycle. The unchanged-work fingerprint requires exact equality with the current Loop B pointer plus the pricing mode and both prospective OPRA and Schwab per-symbol snapshot heads. A valid dynamic weekly bundle contributes only its actually published prefix; Strategy does not synthesize calendar-inapplicable component predictions. `ml/strategy_runtime.py:429`, `ml/runtime_pipeline.py:4005`
 - **Producer evidence:** `ml/runtime_pipeline.py:704`, `ml/runtime_pipeline.py:876`
 - **Consumer evidence:** `ml/strategy_runtime.py:74`, `ml/strategy_runtime.py:81`, `ml/strategy_runtime.py:125`, `ml/strategy_runtime.py:414`
 
@@ -170,11 +171,11 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 
 ## OPRA boundaries that are not loop-to-loop relationships
 
-- **Confirmed prospective boundary:** `DatabentoOpraLiveAdapter` implements the injected `OptionMarketDataAdapter` protocol inside Options Capture. It owns one scoped, bounded/reconnecting `OPRA.PILLAR` definitions + `cbbo-1s` transport and no separate supervisor. The default production CLI constructs it before entering the recurring loop; missing configuration/startup fails clearly. At a target, only bounded transient unavailability may use labeled Schwab fallback; identity/integrity failures fail closed. `options/databento_live.py:33`, `options/databento_live.py:139`, `datafetching/options_runtime.py:369`, `datafetching/options_runtime.py:384`, `datafetching/options_runtime.py:408`, `datafetching/options_runtime.py:650`, `datafetching/options_runtime.py:706`, `datafetching/options_runtime.py:720`
+- **Confirmed prospective boundary:** `DatabentoOpraLiveAdapter` implements the injected `OptionMarketDataAdapter` protocol inside Options Capture. It owns one scoped, bounded/reconnecting `OPRA.PILLAR` definitions + `cbbo-1s` transport and no separate supervisor. Dense callback replay yields cooperatively so the publication thread can run; each target read requires a per-symbol watermark. The default production CLI constructs it before entering the recurring loop; missing configuration/startup fails clearly. Only bounded `OptionProviderUnavailable`, including target-watermark unavailability, may use labeled Schwab fallback; identity/integrity failures fail closed. `options/databento_live.py:34`, `options/databento_live.py:244`, `options/databento_live.py:280`, `datafetching/options_runtime.py:430`, `datafetching/options_runtime.py:454`
 - **Confirmed historical boundary:** `datafetching.options_history` is the normal one-time prediction-focused per-parent bootstrap. It prioritizes 100 days of definitions, 20 days of `cbbo-1m`, 1 day of `cbbo-1s`, and the bounded OHLCV windows; research-only `cmbp-1` remains explicitly selectable but default-deferred. The optional `datafetching.databento_cold_start` command can populate the same canonical OPRA partitions alongside CME and US-equity provider archives, where historical `mbp-1` is also default-deferred in favor of prediction-consumed `mbp-10`. The `XNAS.ITCH` equity archive is cold provenance while Loop A uses current `EQUS.MINI` operational continuation; different provider dataset identities are deliberately not merged. CME has a parallel exact-spec cursor/context bridge. After each verified OPRA scope the command publishes a v5 symbol/schema cursor containing the exact requested start, completion boundary, lookback policy, and bootstrap manifest. Options Capture runs at most one daily catch-up for valid cursors; a missing/invalid cursor is bootstrap-required. `ml.option_pricing_opra` is the separate full-universe/custom-scope administrative synchronizer. Active Pricing and offline Strategy workflows consume verified local OPRA partitions without fetching history; live Strategy entry/Pricing attachment explicitly forbid offline replay. `datafetching/options_history.py`, `datafetching/databento_cold_start.py`, `datafetching/databento_archive.py:213`, `datafetching/equity_dataset_migration.py`, `datafetching/databento_archive.py:539`, `datafetching/options_runtime.py`, `ml/option_pricing_opra_replay.py`, `ml/strategy_selection/runtime.py:167`
 - **Confirmed cold-start ownership boundary:** the cold-start command holds `.ducketz-databento-cold-start.lock` and, for OPRA only, the canonical history `state/sync.lock`. It never takes the CME, Loop A, or Options snapshot-writer locks and never publishes Loop A readiness, option snapshots, ML/Strategy pointers, or model authority. Its readable CME and US-equity scope records are not live-loop cursors or pointers; verified bridge code may use their evidence to seed operational continuation under the receiving owner's contracts. `datafetching/databento_cold_start.py`, `datafetching/databento_archive.py:213`, `datafetching/databento_archive.py:539`
-- **Confirmed equity archive bridge:** `materialize_equity_archive_baseline` verifies dataset identity, receipts and source checksums, retains compatible existing operational rows, and writes `.archive-lineage.json` while materializing into Loop A's `ParquetStore`. Native fetch then overlaps each schema from its latest operational timestamp. `market-data/databento/us-equities` remains provenance and `stocks` remains operational state; they are conjoined by lineage, not destructively merged. `datafetching/databento_archive.py:213`, `datafetching/databento_fetch.py:541`, `datafetching/databento_fetch.py:801`
-- **Confirmed CME archive bridge:** if a runtime cursor is absent, `cme_archive_cursor_for_spec` verifies a matching archive scope and supplies the first continuation boundary. Cross-asset materialization fingerprints archive inventories, combines archive and ongoing runtime rows, appends unseen historical/current common windows, and checksum-binds lineage. The bridge does not grant archive code a CME lock, live cursor, L2 pointer, or publication authority. `datafetching/databento_archive.py:539`, `datafetching/cme_runtime.py:476`, `datafetching/cme_cross_asset_context.py:250`
+- **Confirmed conditional equity archive bridge and current separation:** `materialize_equity_archive_baseline` can materialize only when archive and operational dataset identities match. The recurring wrapper currently sees cold `XNAS.ITCH` versus operational `EQUS.MINI`, logs provenance, and returns without merging rows. Native EQUS fetch then overlaps its own operational timestamps. `datafetching/databento_archive.py:213`, `datafetching/databento_fetch.py:544`, `datafetching/equity_dataset_migration.py:537`
+- **Confirmed CME archive bridge:** if a runtime cursor is absent, `cme_archive_cursor_for_spec` verifies a matching archive scope and supplies the first continuation boundary. Cross-asset materialization fingerprints archive inventories, combines archive and ongoing runtime rows, appends unseen historical/current common windows, and checksum-binds lineage. Separately, the runtime collects exact short current BBO/MBP windows, requires every configured stream fresh, and checkpoints at most one older recovery chunk. The bridge does not grant archive code a CME lock, live cursor, L2 pointer, or publication authority. `datafetching/databento_archive.py:539`, `datafetching/cme_runtime.py:157`, `datafetching/cme_history.py:532`, `datafetching/cme_cross_asset_context.py:250`
 - **Confirmed model relationship, not process coordination:** the resulting residual architecture implements the reference `f(x)=BS(x)+delta(x)` pattern with six inputs, but uses a bounded Nyström/Bayesian-ridge posterior in production and retains an exact-GP SPY path only for research. `docs/edu/BLACK-SCHOLES-OP.md:327`, `docs/edu/BLACK-SCHOLES-OP.md:441`, `ml/option_pricing/model.py:68`, `ml/option_pricing/research_benchmark.py:34`
 
 ## Dependency matrix
@@ -194,8 +195,8 @@ Rows are producers; columns are consumers. Empty cells mean no direct exchange. 
 ## Fan-in, fan-out, and critical path
 
 - **Confirmed fan-in — Active Pricing:** Loop A exact readiness, Daily ALFRED/current-FRED rates, earlier Options snapshots, and an optional prior owned-worker model. `ml/option_pricing_runtime.py:309`, `ml/option_pricing_runtime.py:1116`, `ml/option_pricing_runtime.py:1181`
-- **Confirmed fan-in — Directional Loop B:** complete Loop A authority plus Loop A feature files, CME context, ALFRED readiness/vintages, Options surfaces, and Pricing compact history. `ml/prediction_runtime.py:209`, `ml/rolling_materialization.py:614`, `ml/rolling_materialization.py:663`, `ml/rolling_materialization.py:740`, `ml/rolling_materialization.py:782`
-- **Confirmed fan-in — Strategy:** Loop B publication, immutable prospective provider-neutral receipts with OPRA priority per target, stock BBO history, and the Pricing catalog are live inputs. Canonical OPRA replay/cache is an eligible offline history/outcome input only; recurring live entry and live Pricing attachment reject it. The +10 supervisor observes both prospective provider heads. `ml/strategy_runtime.py`, `ml/strategy_selection/chain.py:116`, `ml/strategy_selection/runtime.py:167`
+- **Confirmed fan-in — Directional Loop B:** complete Loop A authority plus Loop A feature files, CME context, ALFRED readiness/vintages, Options surfaces, and Pricing compact history. `ml/prediction_runtime.py:209`, `ml/rolling_materialization.py:614`, `ml/rolling_materialization.py:663`, `ml/rolling_materialization.py:740`, `ml/rolling_materialization.py:796`
+- **Confirmed fan-in — Strategy:** Loop B publication, immutable prospective provider-neutral receipts with OPRA priority per target, stock BBO history, and the Pricing catalog are live inputs. Canonical OPRA replay/cache is an eligible offline history/outcome input only; recurring live entry and live Pricing attachment reject it. The +10 supervisor observes both prospective provider heads. `ml/strategy_runtime.py`, `ml/strategy_selection/chain.py:111`, `ml/strategy_selection/runtime.py:167`
 - **Confirmed fan-out — Loop A:** exact readiness to Pricing/Options, complete-cycle/features to B, and stock BBO to Strategy. `datafetching/orchestrate.py:292`, `datafetching/loop_a_cycle.py:127`, `ml/strategy_selection/chain.py:151`
 - **Confirmed fan-out — Options Capture:** supplies future Pricing samples/evaluations, `opt__` features to B, and exact strategy chains/outcomes. `ml/option_pricing_runtime.py:660`, `ml/rolling_materialization.py:614`, `ml/strategy_selection/runtime.py:109`
 - **Confirmed fan-out — Active Pricing:** target barrier to Options, compact `opx__` features to B, and leg pricing to Strategy. `datafetching/pricing_barrier.py:100`, `ml/option_pricing/consumers.py:306`, `ml/option_pricing/strategy_shadow.py:74`
@@ -226,7 +227,11 @@ allowlisted unambiguous liveness fault and leaves all data/model/lineage
 findings report-only. `ml/system_monitor.py:164`,
 `ml/system_monitor.py:1375`, `ml/system_guardian.py:237`
 
-**Observed 2026-08-19 11:15 UTC:** all seven process/lock relationships passed.
-Loop B publication had recovered naturally, while Strategy still referenced
-the preceding Loop B generation. The latter was correctly a publication-lineage
-warning, not evidence of duplicate or dead ownership.
+**Observed 2026-08-19 22:45:36 UTC:** all seven process/lock relationships,
+publication authorities, and both UI contracts passed. Strategy authority
+`ml/strategy-runs/20260819T224000.073641Z` was checksum-bound to the exact
+current Loop B record `ml/runs/20260819T223552.337574Z`; the former lineage
+warning was no longer present. A 22:59:29 UTC read-only follow-up remained
+`HEALTHY` after both owners advanced again with exact current lineage. The only
+`INFO` was the valid closed-market absence of an Active Pricing target, not a
+relationship, process, or publication fault.

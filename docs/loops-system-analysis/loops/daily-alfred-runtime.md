@@ -80,7 +80,7 @@ The importer’s pagination is internal. The one-time `ml.option_pricing_fred --
 |---|---|---|
 | Directional horizon predictions | Indirect | ALFRED vintages/readiness → daily/weekly `macro__` feature joins → Loop B model → calibrated horizon probabilities. `ml/rolling_materialization.py:740`, `ml/runtime_pipeline.py:480` |
 | Option-pricing predictions | Indirect | ALFRED FEDFUNDS context → causal decimal risk-free rate → Pricing Black–Scholes/residual features → target contract values. `ml/option_pricing/rates.py:361`, `ml/option_pricing/rates.py:236`, `ml/option_pricing_runtime.py:1189` |
-| Options-strategy predictions | Indirect | macro features influence Loop B probability/context; Pricing rate influences leg fair values; both feed Strategy candidate scoring. `ml/strategy_selection/model.py:118`, `ml/strategy_selection/runtime.py:288` |
+| Options-strategy predictions | Indirect | macro features influence Loop B probability/context; Pricing rate influences leg fair values; both feed Strategy candidate scoring. `ml/strategy_selection/model.py:130`, `ml/strategy_selection/runtime.py:288` |
 
 **Roll-up classification: Both.**
 
@@ -134,9 +134,12 @@ pointer. Daily and weekly layers additionally verify full vintage/importer
 lineage, minimum coverage, and lookahead guards; a freshness failure is not
 silenced by a live process. `ml/system_monitor.py:164`
 
-**Observed 2026-08-19 11:15 UTC:** exactly one ALFRED launcher/worker pair and
-its matching worker lock passed, and its current publication contract verified.
-This timestamped observation does not guarantee the next provider update.
+**Observed 2026-08-19 22:45:36 UTC:** exactly one ALFRED launcher/worker pair,
+its matching worker lock, active primary logs, and its current publication
+contract passed. The current checksum-valid daily receipt was
+`ml/fred-alfred-runtime/20260819T070003.938741Z/receipt.json`. The 22:59:29 UTC
+read-only follow-up verified the same daily authority. These timestamped facts
+do not guarantee the next provider update or future API entitlement.
 
 
 ## Evidence index
