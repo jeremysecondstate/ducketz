@@ -328,7 +328,11 @@ class OptionsStrategiesTab:
         ).pack(anchor=tk.W)
         ttk.Label(
             parent,
-            text="Select an entry in Exact Legs to fill the order ticket.",
+            text=(
+                "Direction Up is Loop B's calibrated price forecast; ML Profit "
+                "Probability is the fitted strategy-outcome model; Scenario "
+                "Coverage is a non-probabilistic fallback."
+            ),
             style="StrategyMuted.TLabel",
         ).pack(anchor=tk.W, pady=(2, 8))
         table_frame = ttk.Frame(parent, style="StrategySurface.TFrame")
@@ -339,6 +343,7 @@ class OptionsStrategiesTab:
                 "rank",
                 "strategy",
                 "exact_legs",
+                "direction_probability_up",
                 "calibrated_probability",
                 "scenario_coverage",
                 "expected_return",
@@ -353,7 +358,8 @@ class OptionsStrategiesTab:
             ("rank", "Rank", 48, tk.E),
             ("strategy", "Strategy", 135, tk.W),
             ("exact_legs", "Exact Legs", 195, tk.W),
-            ("calibrated_probability", "Calibrated Probability", 135, tk.E),
+            ("direction_probability_up", "Direction Up (ML)", 125, tk.E),
+            ("calibrated_probability", "ML Profit Probability", 145, tk.E),
             ("scenario_coverage", "Scenario Coverage", 120, tk.E),
             ("expected_return", "Expected Return", 100, tk.E),
             ("portfolio_fit", "Portfolio Fit", 95, tk.W),
@@ -663,6 +669,7 @@ class OptionsStrategiesTab:
                     candidate.rank,
                     candidate.strategy_display_name,
                     candidate.exact_legs,
+                    _percentage_points(candidate.direction_probability_up),
                     _percentage_points(candidate.predictive_score),
                     _percentage_points(candidate.scenario_coverage),
                     _percent(candidate.expected_return),

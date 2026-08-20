@@ -1,0 +1,56 @@
+%% Ducketz recurring production-loop architecture.
+%% Keep transient process IDs, run directories, symbols, and row counts out of this file.
+flowchart TB
+  SCHEDULE["Exactly seven independently scheduled owners<br/>phase offsets are not one central transaction"]:::note
+
+  subgraph FOUNDATIONS["Foundational evidence owners"]
+    direction LR
+    CME["1 · CME/L2 runtime<br/>5 s, 15 s, and 60 s lanes"]:::owner
+    A["2 · Loop A<br/>15-minute boundary"]:::owner
+    F["3 · Daily ALFRED runtime<br/>07:00 UTC, once per UTC date"]:::owner
+  end
+
+  subgraph QUARTER["Quarter-hour owners with independent supervisors"]
+    direction LR
+    P["4 · Active Pricing<br/>phase +1"]:::prediction
+    B["5 · Directional Loop B<br/>phase +5"]:::prediction
+    O["6 · Options Capture<br/>phase +6"]:::owner
+  end
+
+  S["7 · Strategy runtime<br/>15 minutes at phase +10"]:::prediction
+  W["OWNED WORKER<br/>Pricing residual model<br/>not an independent loop"]:::worker
+
+  SCHEDULE ~~~ A
+
+  CME -->|"R1"| B
+
+  A -->|"R2 data"| P
+  A -.->|"R2 control"| P
+  A -->|"R3 data"| O
+  A -.->|"R3 control"| O
+  A -->|"R4 data"| B
+  A -.->|"R4 control"| B
+  A -->|"R5"| S
+
+  F -->|"R6"| P
+  F -->|"R7 data"| B
+  F -.->|"R7 control"| B
+  B ==>|"R8 history"| F
+
+  P -.->|"R9 control"| O
+  O -->|"R10 across time"| P
+  P ==>|"R11 optional"| B
+  O -->|"R12"| B
+
+  B -->|"R13"| S
+  O -->|"R14"| S
+  P -->|"R15"| S
+  B -.->|"R16 PHASE ONLY<br/>no artifact"| O
+
+  P -.->|"owned launch"| W
+  W ==>|"optional prior"| P
+
+  classDef owner fill:#e8f1ff,stroke:#315f9d,color:#14233a,stroke-width:1.5px;
+  classDef prediction fill:#e8f7ed,stroke:#2f7650,color:#153522,stroke-width:1.5px;
+  classDef worker fill:#fff2cc,stroke:#986a00,color:#3f2d00,stroke-width:2px,stroke-dasharray:5 3;
+  classDef note fill:#f3f4f6,stroke:#6b7280,color:#1f2937,stroke-width:1px;

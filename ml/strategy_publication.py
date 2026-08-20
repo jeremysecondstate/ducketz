@@ -10,6 +10,7 @@ import pandas as pd
 
 from ml.artifacts import file_checksum, verify_manifest
 from ml.strategy_selection.contracts import (
+    COMPATIBLE_STRATEGY_MODEL_POLICY_VERSIONS,
     SCENARIO_COVERAGE_SCORE_BASIS,
     STRATEGY_CANDIDATE_SCHEMA_VERSION,
     STRATEGY_MODEL_POLICY_VERSION,
@@ -173,11 +174,22 @@ def _candidate_contract(manifest: Mapping[str, object]) -> dict[str, object]:
         "pricing_evidence_before_probability": True,
         "heuristic_values_are_not_probabilities": True,
     }
-    if not isinstance(observed, Mapping) or dict(observed) != expected:
+    if not isinstance(observed, Mapping):
         raise StrategyPublicationError(
             "Strategy manifest candidate score contract is incompatible"
         )
-    return expected
+    observed_contract = dict(observed)
+    observed_model_policy = observed_contract.pop("model_policy_version", None)
+    expected_without_model_policy = dict(expected)
+    expected_without_model_policy.pop("model_policy_version")
+    if (
+        observed_model_policy not in COMPATIBLE_STRATEGY_MODEL_POLICY_VERSIONS
+        or observed_contract != expected_without_model_policy
+    ):
+        raise StrategyPublicationError(
+            "Strategy manifest candidate score contract is incompatible"
+        )
+    return dict(observed)
 
 
 def resolve_current_strategy_output(datastore_root: Path, name: str) -> Path:

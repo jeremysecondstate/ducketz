@@ -28,9 +28,9 @@ from ml.parquet_contracts import (
 from ml.strategy_selection.contracts import (
     BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
     BSGP_CALIBRATED_MODEL_SCORE_BASIS,
+    COMPATIBLE_STRATEGY_MODEL_POLICY_VERSIONS,
     SCENARIO_COVERAGE_SCORE_BASIS,
     STRATEGY_CANDIDATE_SCHEMA_VERSION,
-    STRATEGY_MODEL_POLICY_VERSION,
     STRATEGY_RANKING_POLICY_VERSION,
 )
 
@@ -72,6 +72,7 @@ class StrategyCandidateView:
     strategy_name: str
     strategy_display_name: str
     exact_legs: str
+    direction_probability_up: float
     predictive_score: float | None
     scenario_coverage: float
     expected_net_profit: float | None
@@ -278,7 +279,9 @@ def _candidate_views(
                 raise ValueError(
                     "Options strategy candidate ranking policy is incompatible"
                 )
-            if row.get("model_policy_version") != STRATEGY_MODEL_POLICY_VERSION:
+            if row.get("model_policy_version") not in (
+                COMPATIBLE_STRATEGY_MODEL_POLICY_VERSIONS
+            ):
                 raise ValueError(
                     "Options strategy candidate model policy is incompatible"
                 )
@@ -296,6 +299,10 @@ def _candidate_views(
             scenario_coverage = _required_probability(
                 row.get("scenario_coverage_score"),
                 label="Scenario coverage",
+            )
+            direction_probability_up = _required_probability(
+                row.get("direction_probability_up"),
+                label="Loop B direction probability",
             )
             fitted_basis = basis_code in {
                 BSGP_CALIBRATED_MODEL_SCORE_BASIS,
@@ -443,6 +450,9 @@ def _candidate_views(
                         else None
                     ),
                     "scenario_coverage": scenario_coverage * 100.0,
+                    "direction_probability_up": (
+                        direction_probability_up * 100.0
+                    ),
                     "score_basis": basis_label,
                     "pricing_summary": pricing_summary,
                     "quality_warning": quality_warning,
@@ -479,6 +489,9 @@ def _candidate_views(
                     strategy_name=str(row["strategy_name"]),
                     strategy_display_name=str(row["strategy_display_name"]),
                     exact_legs=_exact_legs(row, position=position),
+                    direction_probability_up=float(
+                        item["direction_probability_up"]
+                    ),
                     predictive_score=(
                         float(item["predictive_score"])
                         if item["predictive_score"] is not None

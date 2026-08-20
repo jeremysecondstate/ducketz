@@ -125,6 +125,42 @@ def test_strategy_loader_displays_every_pricing_score_basis(
     assert view.candidates[0].scenario_coverage == pytest.approx(61.0)
 
 
+def test_strategy_loader_accepts_previous_model_policy_during_upgrade(
+    tmp_path: Path,
+) -> None:
+    candidate = _candidate(
+        strategy_name="long_call",
+        strategy_display_name="Long Call",
+        legs=[
+            _option_leg(
+                side="LONG",
+                option_type="CALL",
+                strike=105,
+                symbol="GOOG  260918C00105000",
+                bid=2.40,
+                ask=2.50,
+            )
+        ],
+        model_policy_version="pricing-market-state-hgb-platt-return-v6",
+    )
+    path = tmp_path / "strategy-candidates.parquet"
+    write_parquet_with_schema(
+        pd.DataFrame([candidate]), path, STRATEGY_CANDIDATE_SCHEMA
+    )
+
+    view = load_strategy_candidates(
+        path,
+        snapshot=PortfolioSnapshot(
+            source="schwab",
+            account_label="Schwab",
+            synced_at=datetime(2026, 8, 1, 15, 0, tzinfo=timezone.utc),
+            account_facts={},
+        ),
+    )
+
+    assert view.candidates[0].predictive_score == pytest.approx(61.0)
+
+
 def test_position_context_reads_equity_options_cash_and_working_orders() -> None:
     observed = datetime(2026, 8, 1, 15, 0, tzinfo=timezone.utc)
     context = schwab_position_context(
@@ -676,6 +712,7 @@ def test_strategy_loader_combines_model_output_with_current_position(
     result = view.candidates[0]
     assert result.exact_legs == "Buy 1 $105 Put · Sell 1 $95 Put"
     assert result.portfolio_fit.label == "Downside Hedge"
+    assert result.direction_probability_up == pytest.approx(55.0)
     assert result.predictive_score == pytest.approx(62.0)
     assert 0.0 <= result.predictive_score <= 100.0
     assert result.score_basis == "BSGP + Strategy ML"

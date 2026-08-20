@@ -951,6 +951,9 @@ def test_strategy_model_fits_only_training_and_calibration_partitions(
 
     evidence = model.offline_evaluation
     assert set(PRICING_NUMERIC_FEATURES).issubset(model.numeric_features)
+    assert {"direction_probability_up", "direction_alignment"}.issubset(
+        model.numeric_features
+    )
     assert "pricing_source" in model.categorical_features
     assert evidence["assessment_used_for_training"] is False
     assert evidence["assessment_used_for_calibration"] is False
@@ -984,6 +987,10 @@ def test_strategy_model_fits_only_training_and_calibration_partitions(
     assert manifest["model_policy_version"] == STRATEGY_MODEL_POLICY_VERSION
     assert manifest["ranking_policy_version"] == STRATEGY_RANKING_POLICY_VERSION
     assert manifest["assessment_policy_selection"] == "fixed_before_assessment"
+    assert manifest["selected_probability_model_family"] == "hist-gradient"
+    assert evidence["probability_model_selection"]["status"] == (
+        "NOT_EVALUATED_INSUFFICIENT_TRAINING_DECISIONS"
+    )
     assert len(manifest["training_data_fingerprint_sha256"]) == 64
     assert manifest["preprocessing_policy_version"] == (
         "training-quantiles-0.25-99.75-v1"
@@ -1010,6 +1017,47 @@ def test_strategy_model_fits_only_training_and_calibration_partitions(
     assert scored["score_basis"].eq(CALIBRATED_MODEL_SCORE_BASIS).all()
     assert scored["candidate_rank"].tolist() == list(range(1, len(scored) + 1))
     assert "probability_threshold" not in scored
+
+
+def test_strategy_neural_challenger_uses_training_only_temporal_holdout(
+    tmp_path: Path,
+) -> None:
+    policy = StrategySelectionPolicy(
+        minimum_train_decisions=64,
+        calibration_decisions=2,
+        assessment_decisions=2,
+    )
+    partitions = partition_strategy_outcomes(
+        _model_outcomes(decision_count=68),
+        policy=policy,
+    )
+
+    model = fit_or_reuse_strategy_model(
+        tmp_path,
+        horizon="1d",
+        partitions=partitions,
+        policy=policy,
+        input_files=(),
+        trained_at=pd.Timestamp("2026-10-01T12:00:00Z"),
+    )
+
+    selection = model.offline_evaluation["probability_model_selection"]
+    assert selection["status"] == "EVALUATED"
+    assert selection["calibration_used_for_selection"] is False
+    assert selection["assessment_used_for_selection"] is False
+    assert selection["validation_decisions"] > 0
+    assert set(selection["candidate_metrics"]) == {
+        "hist-gradient",
+        "hist-gradient-mlp-0.25",
+        "hist-gradient-mlp-0.50",
+        "hist-gradient-mlp-0.75",
+        "mlp-neural-network",
+    }
+    assert model.probability_model_family in {
+        "hist-gradient",
+        "hist-gradient-mlp-ensemble",
+        "mlp-neural-network",
+    }
 
 
 def test_strategy_model_refuses_one_class_calibration_partition(
@@ -1697,10 +1745,10 @@ def _pricing_catalog_for_samples(
     return StrategyPricingEvidenceCatalog(pd.DataFrame(rows), ())
 
 
-def _model_outcomes() -> pd.DataFrame:
+def _model_outcomes(*, decision_count: int = 10) -> pd.DataFrame:
     rows: list[dict[str, object]] = []
     strategies = ("long_call", "long_put", "iron_condor")
-    for index in range(10):
+    for index in range(decision_count):
         sample = _sample(index)
         for strategy_index, strategy in enumerate(strategies):
             profitable = int((index + strategy_index) % 2 == 0)

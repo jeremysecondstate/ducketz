@@ -38,7 +38,7 @@ ducketz-system-guardian = "ml.system_guardian:main"
 
 [project.optional-dependencies]
 ml = [
-    "scikit-learn>=1.5",
+    "scikit-learn>=1.7",
     "joblib>=1.4",
     "scipy>=1.11",
 ]

@@ -17,6 +17,7 @@ from sklearn.ensemble import (
 )
 from sklearn.impute import MissingIndicator, SimpleImputer
 from sklearn.metrics import roc_auc_score
+from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, RobustScaler
 
@@ -84,6 +85,8 @@ CANDIDATE_NUMERIC_FEATURES = (
     "market_uncertainty",
     "market_trend_persistence",
     "market_mean_reversion_tendency",
+    "direction_probability_up",
+    "direction_alignment",
     "strategy_prior__scenario_coverage_score",
     "strategy_prior__expected_return_on_risk",
     "pricing_leg_coverage",
@@ -96,6 +99,37 @@ CANDIDATE_NUMERIC_FEATURES = (
     "pricing_model_age_seconds",
     "pricing_residual_shrinkage",
 )
+
+_NEURAL_CHALLENGER_POLICY_VERSION = (
+    "chronological-hgb-mlp-log-loss-challenger-v1"
+)
+_NEURAL_CHALLENGER_MINIMUM_DECISIONS = 64
+_NEURAL_CHALLENGER_MAXIMUM_VALIDATION_DECISIONS = 63
+_NEURAL_CHALLENGER_VALIDATION_FRACTION = 0.20
+_NEURAL_CHALLENGER_REQUIRED_RELATIVE_IMPROVEMENT = 0.005
+_NEURAL_BLEND_WEIGHTS = (0.25, 0.50, 0.75, 1.0)
+
+
+class _ProbabilityBlend:
+    """A fitted, joblib-safe convex blend of two probability estimators."""
+
+    def __init__(
+        self,
+        hist_gradient: object,
+        neural_network: object,
+        *,
+        neural_weight: float,
+    ) -> None:
+        self.hist_gradient = hist_gradient
+        self.neural_network = neural_network
+        self.neural_weight = float(neural_weight)
+
+    def predict_proba(self, frame: pd.DataFrame) -> np.ndarray:
+        tree = np.asarray(self.hist_gradient.predict_proba(frame), dtype=float)
+        neural = np.asarray(self.neural_network.predict_proba(frame), dtype=float)
+        return (1.0 - self.neural_weight) * tree + self.neural_weight * neural
+
+
 PRICING_NUMERIC_FEATURES = (
     "pricing_leg_coverage",
     "pricing_candidate_edge",
@@ -325,18 +359,23 @@ def fit_or_reuse_strategy_model(
             categorical_features=categorical,
             artifact_directory=existing["artifact_directory"],
             offline_evaluation=existing["offline_evaluation"],
+            probability_model_family=str(
+                existing.get("probability_model_family") or "hist-gradient"
+            ),
             reused=True,
         )
 
     train_target = partitions.train["profitable"].astype(int)
     if train_target.nunique() != 2:
         raise ValueError("Strategy model training requires both outcome classes")
-    estimator = _probability_estimator(numeric, categorical, policy=policy)
     weights = _decision_weights(partitions.train)
-    estimator.fit(
-        _matrix(partitions.train, numeric, categorical),
-        train_target,
-        model__sample_weight=weights,
+    estimator, probability_model_family, model_selection = (
+        _fit_probability_model(
+            partitions.train,
+            numeric=numeric,
+            categorical=categorical,
+            policy=policy,
+        )
     )
     return_estimator = _return_estimator(numeric, categorical, policy=policy)
     observed_return = pd.to_numeric(
@@ -379,6 +418,8 @@ def fit_or_reuse_strategy_model(
         categorical=categorical,
         calibration_raw=calibration_raw,
         effective_calibration=effective_calibration,
+        model_selection=model_selection,
+        probability_model_family=probability_model_family,
     )
 
     directory = create_timestamp_directory(model_root, timestamp=created)
@@ -397,6 +438,7 @@ def fit_or_reuse_strategy_model(
         **expected,
         "trained_at": created.isoformat(),
         "effective_calibration_method": effective_calibration,
+        "selected_probability_model_family": probability_model_family,
         "offline_evaluation": offline_evaluation,
         "model_file": {
             "path": model_path.name,
@@ -418,6 +460,7 @@ def fit_or_reuse_strategy_model(
         categorical_features=categorical,
         artifact_directory=directory,
         offline_evaluation=offline_evaluation,
+        probability_model_family=probability_model_family,
         reused=False,
     )
 
@@ -515,6 +558,282 @@ def _probability_estimator(
             random_state=policy.random_state,
         ),
     )
+
+
+def _neural_probability_estimator(
+    numeric: tuple[str, ...],
+    categorical: tuple[str, ...],
+    *,
+    policy: StrategySelectionPolicy,
+) -> Pipeline:
+    return _model_pipeline(
+        numeric,
+        categorical,
+        model=MLPClassifier(
+            hidden_layer_sizes=(64, 32),
+            activation="relu",
+            solver="adam",
+            alpha=1e-3,
+            batch_size=128,
+            learning_rate_init=1e-3,
+            max_iter=150,
+            early_stopping=True,
+            validation_fraction=0.15,
+            n_iter_no_change=15,
+            tol=1e-4,
+            shuffle=False,
+            random_state=policy.random_state,
+        ),
+    )
+
+
+def _fit_probability_model(
+    train: pd.DataFrame,
+    *,
+    numeric: tuple[str, ...],
+    categorical: tuple[str, ...],
+    policy: StrategySelectionPolicy,
+) -> tuple[object, str, dict[str, object]]:
+    """Fit HGB and admit neural influence only on an earlier training holdout.
+
+    Calibration and assessment stay completely outside this choice.  The
+    neural network therefore cannot reach production merely because it fits
+    the calibration or assessment cohort well.
+    """
+
+    split = _neural_challenger_split(train)
+    if split is None:
+        estimator = _probability_estimator(numeric, categorical, policy=policy)
+        _fit_probability_pipeline(
+            estimator,
+            train,
+            numeric=numeric,
+            categorical=categorical,
+        )
+        return estimator, "hist-gradient", {
+            "policy_version": _NEURAL_CHALLENGER_POLICY_VERSION,
+            "status": "NOT_EVALUATED_INSUFFICIENT_TRAINING_DECISIONS",
+            "selected_family": "hist-gradient",
+            "training_decisions": int(train["target_window_start"].nunique()),
+            "minimum_required_decisions": _NEURAL_CHALLENGER_MINIMUM_DECISIONS,
+            "calibration_used_for_selection": False,
+            "assessment_used_for_selection": False,
+        }
+
+    inner_train, validation, purged_rows = split
+    try:
+        hist_validation_model = _probability_estimator(
+            numeric, categorical, policy=policy
+        )
+        neural_validation_model = _neural_probability_estimator(
+            numeric, categorical, policy=policy
+        )
+        _fit_probability_pipeline(
+            hist_validation_model,
+            inner_train,
+            numeric=numeric,
+            categorical=categorical,
+        )
+        _fit_probability_pipeline(
+            neural_validation_model,
+            inner_train,
+            numeric=numeric,
+            categorical=categorical,
+        )
+        validation_matrix = _matrix(validation, numeric, categorical)
+        target = validation["profitable"].astype(int).to_numpy()
+        weights = _decision_weights(validation)
+        hist_probability = _validated_probability_array(
+            hist_validation_model.predict_proba(validation_matrix)[:, 1],
+            label="Neural challenger HGB validation",
+        )
+        neural_probability = _validated_probability_array(
+            neural_validation_model.predict_proba(validation_matrix)[:, 1],
+            label="Neural challenger MLP validation",
+        )
+        candidate_metrics: dict[str, dict[str, object]] = {
+            "hist-gradient": {
+                "neural_weight": 0.0,
+                **_probability_metrics(target, hist_probability, sample_weight=weights),
+            }
+        }
+        for neural_weight in _NEURAL_BLEND_WEIGHTS:
+            probability = (
+                (1.0 - neural_weight) * hist_probability
+                + neural_weight * neural_probability
+            )
+            label = (
+                "mlp-neural-network"
+                if neural_weight == 1.0
+                else f"hist-gradient-mlp-{neural_weight:.2f}"
+            )
+            candidate_metrics[label] = {
+                "neural_weight": neural_weight,
+                **_probability_metrics(target, probability, sample_weight=weights),
+            }
+        baseline_loss = float(candidate_metrics["hist-gradient"]["log_loss"])
+        required_improvement = max(
+            1e-4,
+            baseline_loss * _NEURAL_CHALLENGER_REQUIRED_RELATIVE_IMPROVEMENT,
+        )
+        eligible = [
+            (name, metrics)
+            for name, metrics in candidate_metrics.items()
+            if name != "hist-gradient"
+            and float(metrics["log_loss"]) <= baseline_loss - required_improvement
+        ]
+        if eligible:
+            selected_name, selected_metrics = min(
+                eligible,
+                key=lambda item: (
+                    float(item[1]["log_loss"]),
+                    float(item[1]["brier_score"]),
+                    float(item[1]["neural_weight"]),
+                ),
+            )
+            neural_weight = float(selected_metrics["neural_weight"])
+        else:
+            selected_name = "hist-gradient"
+            neural_weight = 0.0
+        report: dict[str, object] = {
+            "policy_version": _NEURAL_CHALLENGER_POLICY_VERSION,
+            "status": "EVALUATED",
+            "selected_family": selected_name,
+            "selected_neural_weight": neural_weight,
+            "required_relative_log_loss_improvement": (
+                _NEURAL_CHALLENGER_REQUIRED_RELATIVE_IMPROVEMENT
+            ),
+            "required_absolute_log_loss_improvement": required_improvement,
+            "inner_training_rows": len(inner_train),
+            "inner_training_decisions": int(
+                inner_train["target_window_start"].nunique()
+            ),
+            "validation_rows": len(validation),
+            "validation_decisions": int(
+                validation["target_window_start"].nunique()
+            ),
+            "boundary_purged_rows": purged_rows,
+            "validation_target_start_min": pd.Timestamp(
+                validation["target_window_start"].min()
+            ).isoformat(),
+            "validation_target_start_max": pd.Timestamp(
+                validation["target_window_start"].max()
+            ).isoformat(),
+            "candidate_metrics": candidate_metrics,
+            "calibration_used_for_selection": False,
+            "assessment_used_for_selection": False,
+        }
+    except Exception as exc:
+        selected_name = "hist-gradient"
+        neural_weight = 0.0
+        report = {
+            "policy_version": _NEURAL_CHALLENGER_POLICY_VERSION,
+            "status": "CHALLENGER_FAILED_SAFE_TO_HIST_GRADIENT",
+            "selected_family": selected_name,
+            "error": f"{type(exc).__name__}: {exc}",
+            "calibration_used_for_selection": False,
+            "assessment_used_for_selection": False,
+        }
+
+    hist_gradient = _probability_estimator(numeric, categorical, policy=policy)
+    _fit_probability_pipeline(
+        hist_gradient,
+        train,
+        numeric=numeric,
+        categorical=categorical,
+    )
+    if neural_weight <= 0.0:
+        return hist_gradient, "hist-gradient", report
+
+    try:
+        neural_network = _neural_probability_estimator(
+            numeric, categorical, policy=policy
+        )
+        _fit_probability_pipeline(
+            neural_network,
+            train,
+            numeric=numeric,
+            categorical=categorical,
+        )
+    except Exception as exc:
+        report = {
+            **report,
+            "status": "SELECTED_CHALLENGER_REFIT_FAILED_SAFE_TO_HIST_GRADIENT",
+            "selected_family": "hist-gradient",
+            "selected_neural_weight": 0.0,
+            "refit_error": f"{type(exc).__name__}: {exc}",
+        }
+        return hist_gradient, "hist-gradient", report
+    if neural_weight >= 1.0:
+        return neural_network, "mlp-neural-network", report
+    return (
+        _ProbabilityBlend(
+            hist_gradient,
+            neural_network,
+            neural_weight=neural_weight,
+        ),
+        "hist-gradient-mlp-ensemble",
+        report,
+    )
+
+
+def _fit_probability_pipeline(
+    estimator: Pipeline,
+    frame: pd.DataFrame,
+    *,
+    numeric: tuple[str, ...],
+    categorical: tuple[str, ...],
+) -> None:
+    target = frame["profitable"].astype(int)
+    if target.nunique() != 2:
+        raise ValueError("Strategy probability fitting requires both outcome classes")
+    estimator.fit(
+        _matrix(frame, numeric, categorical),
+        target,
+        model__sample_weight=_decision_weights(frame),
+    )
+
+
+def _neural_challenger_split(
+    train: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame, int] | None:
+    clusters = pd.Index(
+        pd.to_datetime(
+            train["target_window_start"], utc=True, errors="coerce"
+        ).dropna().drop_duplicates().sort_values()
+    )
+    if len(clusters) < _NEURAL_CHALLENGER_MINIMUM_DECISIONS:
+        return None
+    validation_count = min(
+        _NEURAL_CHALLENGER_MAXIMUM_VALIDATION_DECISIONS,
+        max(
+            1,
+            int(math.ceil(len(clusters) * _NEURAL_CHALLENGER_VALIDATION_FRACTION)),
+        ),
+    )
+    validation_clusters = clusters[-validation_count:]
+    boundary = pd.Timestamp(validation_clusters[0])
+    starts = pd.to_datetime(train["target_window_start"], utc=True, errors="coerce")
+    ends = pd.to_datetime(train["target_window_end"], utc=True, errors="coerce")
+    inner = train.loc[starts.lt(boundary) & ends.lt(boundary)].copy()
+    validation = train.loc[starts.isin(validation_clusters)].copy()
+    if (
+        inner.empty
+        or validation.empty
+        or inner["profitable"].nunique() != 2
+        or inner["target_window_start"].nunique() < 2
+    ):
+        return None
+    inner = inner.sort_values(
+        ["target_window_start", "strategy_name", "candidate_key"],
+        kind="mergesort",
+    ).reset_index(drop=True)
+    validation = validation.sort_values(
+        ["target_window_start", "strategy_name", "candidate_key"],
+        kind="mergesort",
+    ).reset_index(drop=True)
+    purged = int(len(train) - len(inner) - len(validation))
+    return inner, validation, purged
 
 
 def _return_estimator(
@@ -660,6 +979,8 @@ def _offline_evaluation(
     categorical: tuple[str, ...],
     calibration_raw: np.ndarray,
     effective_calibration: str,
+    model_selection: Mapping[str, object],
+    probability_model_family: str,
 ) -> dict[str, object]:
     assessment_target = partitions.assessment["profitable"].astype(int).to_numpy()
     assessment_matrix = _matrix(partitions.assessment, numeric, categorical)
@@ -724,6 +1045,8 @@ def _offline_evaluation(
         "assessment_rows": len(partitions.assessment),
         "assessment_decisions": partitions.assessment_decisions,
         "boundary_purged_rows": partitions.purged_rows,
+        "probability_model_family": probability_model_family,
+        "probability_model_selection": dict(model_selection),
         "effective_calibration_method": effective_calibration,
         "calibration_support": {
             "raw_probability_min": support_min,
@@ -921,7 +1244,25 @@ def _model_configuration(
 ) -> dict[str, object]:
     configuration = {
         "model_name": "market-state-strategy-outcome",
-        "model_family": "hist-gradient-classifier-regressor",
+        "model_family": "hgb-mlp-challenger-classifier-hgb-regressor",
+        "probability_model_policy": {
+            "version": _NEURAL_CHALLENGER_POLICY_VERSION,
+            "baseline": "hist-gradient",
+            "challenger": "mlp-neural-network",
+            "selection_partition": "chronological_tail_of_training_only",
+            "selection_metric": "equal-decision-weighted-log-loss",
+            "minimum_training_decisions": (
+                _NEURAL_CHALLENGER_MINIMUM_DECISIONS
+            ),
+            "maximum_validation_decisions": (
+                _NEURAL_CHALLENGER_MAXIMUM_VALIDATION_DECISIONS
+            ),
+            "required_relative_improvement": (
+                _NEURAL_CHALLENGER_REQUIRED_RELATIVE_IMPROVEMENT
+            ),
+            "calibration_used_for_selection": False,
+            "assessment_used_for_selection": False,
+        },
         "horizon": horizon,
         "model_policy_version": STRATEGY_MODEL_POLICY_VERSION,
         "registry_version": STRATEGY_REGISTRY_VERSION,
@@ -1039,6 +1380,9 @@ def _load_compatible_model(
             **bundle,
             "artifact_directory": directory,
             "offline_evaluation": manifest.get("offline_evaluation", {}),
+            "probability_model_family": manifest.get(
+                "selected_probability_model_family", "hist-gradient"
+            ),
         }
     except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
         return None

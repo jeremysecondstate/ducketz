@@ -21,7 +21,13 @@ STRATEGY_CANDIDATE_POLICY_VERSION = (
 STRATEGY_OUTCOME_POLICY_VERSION = "observed-bbo-pseudo-outcome-v2"
 MARKET_STATE_POLICY_VERSION = "point-in-time-market-state-pricing-v3"
 STRATEGY_PRIOR_POLICY_VERSION = "pricing-greek-bbo-scenario-coverage-v4"
-STRATEGY_MODEL_POLICY_VERSION = "pricing-market-state-hgb-platt-return-v6"
+STRATEGY_MODEL_POLICY_VERSION = (
+    "pricing-market-state-hgb-mlp-challenger-platt-return-v7"
+)
+COMPATIBLE_STRATEGY_MODEL_POLICY_VERSIONS = (
+    STRATEGY_MODEL_POLICY_VERSION,
+    "pricing-market-state-hgb-platt-return-v6",
+)
 STRATEGY_RANKING_POLICY_VERSION = "calibrated-then-scenario-ranking-v5"
 STRATEGY_CANDIDATE_SCHEMA_VERSION = "strategy-candidate-v4"
 STRATEGY_RESEARCH_TRACE_VERSION = "nyu-hu-uh-trace-v3"
@@ -169,6 +175,7 @@ class StrategyModel:
     categorical_features: tuple[str, ...]
     artifact_directory: Path
     offline_evaluation: Mapping[str, object]
+    probability_model_family: str = "hist-gradient"
     reused: bool = False
 
 
@@ -188,6 +195,7 @@ __all__ = [
     "BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS",
     "BSGP_CALIBRATED_MODEL_SCORE_BASIS",
     "CALIBRATED_MODEL_SCORE_BASIS",
+    "COMPATIBLE_STRATEGY_MODEL_POLICY_VERSIONS",
     "ExpirationRole",
     "LegRule",
     "MARKET_STATE_POLICY_VERSION",

@@ -93,7 +93,16 @@ def run_opra_pricing_replay(
         evaluations = _replace_targets(
             base_evaluations, evaluations, replaced_targets
         )
-        consumed.extend(_manifest_input_paths(root, base["manifest"]))
+        base_run = Path(base["run_directory"])
+        consumed.extend(
+            (
+                Path(base["manifest_path"]),
+                Path(base["receipt_path"]),
+                base_run / "pricing-samples.parquet",
+                base_run / "pricing-predictions.parquet",
+                base_run / "pricing-evaluations.parquet",
+            )
+        )
         consumed.extend(source_files)
         errors.update(_manifest_errors(base["manifest"]))
         errors.update(materialization_errors)
@@ -463,23 +472,6 @@ def _verified_current_replay(
         }
     except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError):
         return None
-
-
-def _manifest_input_paths(
-    root: Path,
-    manifest: Mapping[str, object],
-) -> tuple[Path, ...]:
-    paths: list[Path] = []
-    values = manifest.get("input_files")
-    if not isinstance(values, Sequence) or isinstance(values, (str, bytes)):
-        return ()
-    for item in values:
-        if not isinstance(item, Mapping):
-            continue
-        path = (root / str(item.get("path") or "")).resolve()
-        if root in path.parents and path.is_file():
-            paths.append(path)
-    return tuple(dict.fromkeys(paths))
 
 
 def _manifest_errors(manifest: Mapping[str, object]) -> dict[str, str]:

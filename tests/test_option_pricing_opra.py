@@ -1748,6 +1748,9 @@ def test_strategy_catalog_reads_receipt_verified_canonical_opra_replay(
         ),
         encoding="utf-8",
     )
+    # Captured operational inputs are point-in-time provenance. They may
+    # legitimately advance after the immutable replay is published.
+    input_path.write_text('{"advanced": true}\n', encoding="utf-8")
 
     catalog = load_strategy_pricing_evidence(
         root,
@@ -1758,3 +1761,4 @@ def test_strategy_catalog_reads_receipt_verified_canonical_opra_replay(
     assert catalog.predictions.iloc[0]["source_provider"] == "databento-opra"
     assert catalog.predictions.iloc[0]["pricing_source"] == "BLACK_SCHOLES"
     assert prediction_path in catalog.source_files
+    assert input_path not in catalog.source_files

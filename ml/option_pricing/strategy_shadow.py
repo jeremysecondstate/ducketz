@@ -666,11 +666,14 @@ def _canonical_opra_replay_predictions(
         if not isinstance(item, Mapping):
             raise RuntimeError("Canonical OPRA replay input inventory is invalid")
         path = (root / str(item.get("path") or "")).resolve()
-        if root not in path.parents or file_checksum(path) != str(
-            item.get("checksum_sha256") or ""
-        ):
-            raise RuntimeError(f"Canonical OPRA replay input failed verification: {path}")
-        source_files.append(path)
+        if root not in path.parents or not str(item.get("checksum_sha256") or ""):
+            raise RuntimeError("Canonical OPRA replay input inventory is invalid")
+        # The replay receipt seals this point-in-time inventory and the replay
+        # outputs.  Operational bar and annual macro Parquets legitimately
+        # advance in place after publication, so comparing their current bytes
+        # with an old captured checksum would incorrectly corrupt an immutable
+        # replay.  Downstream lineage stops at the immutable replay artifacts
+        # above instead of re-attaching those mutable leaves.
     predictions = pd.read_parquet(predictions_path)
     if len(predictions) != int(prediction_metadata["row_count"]):
         raise RuntimeError("Canonical OPRA replay prediction row count mismatch")

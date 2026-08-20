@@ -71,6 +71,9 @@ null until the fitted causal model and full eligible Pricing coverage exist.
 
 ## Deliverables
 
+- [Ducketz Loops System Mind Map](LOOPS_SYSTEM_MIND_MAP.md)
+  - [Editable Mermaid source](assets/loops-system-mind-map.mmd)
+  - [Rendered SVG](assets/loops-system-mind-map.svg)
 - [Loop inventory and classification](LOOP_INVENTORY.md)
 - [System functionality](SYSTEM_FUNCTIONALITY.md)
 - [Loop relationships](LOOP_RELATIONSHIPS.md)
