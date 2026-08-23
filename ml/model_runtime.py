@@ -18,6 +18,7 @@ from ml.artifacts import (
     utc_timestamp,
 )
 from ml.calibration import (
+    CALIBRATION_ORIENTATION_POLICY_VERSION,
     IdentityCalibrator,
     ProbabilityCalibrator,
     fit_probability_calibrator,
@@ -474,22 +475,51 @@ def fit_or_reuse_model(
     calibration_target = partitions.calibration[TARGET_COLUMN].astype(int)
     calibrator: ProbabilityCalibrator
     effective_calibration = calibration_method
+    calibration_admission_status = "ADMITTED"
     if calibration_method == "none" or calibration_target.nunique() != 2:
         calibrator = IdentityCalibrator()
         effective_calibration = "none"
+        calibration_admission_status = (
+            "NOT_REQUESTED"
+            if calibration_method == "none"
+            else "UNAVAILABLE_SINGLE_CLASS_CALIBRATION_WINDOW"
+        )
     else:
         calibrator = fit_probability_calibrator(
             calibration_method,
             calibration_raw,
             calibration_target,
+            require_nondecreasing=True,
             **dict(model_spec.calibration_parameters),
         )
+        effective_calibration = calibrator.method
+        if bool(
+            getattr(calibrator, "nondecreasing_constraint_active", False)
+        ):
+            calibration_admission_status = (
+                "CONSTRAINED_TO_CONSTANT_NONDECREASING_MAP"
+            )
+        elif effective_calibration != calibration_method:
+            calibration_admission_status = "REJECTED_NON_MONOTONIC_MAPPING"
     offline_evaluation = _offline_evaluation(
         partitions,
         estimator=estimator,
         calibrator=calibrator,
         feature_set=feature_set,
     )
+    offline_evaluation = {
+        **offline_evaluation,
+        "calibration_admission": {
+            "policy_version": CALIBRATION_ORIENTATION_POLICY_VERSION,
+            "requested_method": calibration_method,
+            "effective_method": effective_calibration,
+            "status": calibration_admission_status,
+            "training_rows_used": 0,
+            "calibration_rows_used": len(partitions.calibration),
+            "assessment_rows_used": 0,
+            "lockbox_rows_used": 0,
+        },
+    }
 
     directory = create_timestamp_directory(model_root, timestamp=created)
     model_path = directory / "model.joblib"
@@ -564,6 +594,9 @@ def _model_configuration(
         "target_column": TARGET_COLUMN,
         "runtime_compatibility": _runtime_compatibility(),
         "requested_calibration_method": model_spec.calibration_method,
+        "calibration_orientation_policy_version": (
+            CALIBRATION_ORIENTATION_POLICY_VERSION
+        ),
         "class_weight": model_spec.class_weight,
         "training_rows": len(partitions.train),
         "calibration_rows": len(partitions.calibration),

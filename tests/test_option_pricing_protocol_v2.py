@@ -3,10 +3,12 @@ from __future__ import annotations
 import json
 import math
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
 
+import ml.option_pricing_runtime as pricing_runtime
 from datafetching.decision_time import cycle_target_decision
 from ml.artifacts import file_checksum, write_manifest
 from ml.option_pricing_admin import build_readiness_summary
@@ -84,6 +86,47 @@ _OUTPUTS = {
     "pricing-surfaces.parquet": OPTION_PRICING_SURFACE_SCHEMA,
     "pricing-monitoring.parquet": OPTION_PRICING_MONITORING_SCHEMA,
 }
+
+
+def test_default_runtime_budget_covers_verified_six_symbol_production_envelope() -> None:
+    limits = RuntimeLimits()
+
+    assert limits.maximum_cycle_seconds == 840.0
+    assert limits.maximum_peak_memory_bytes == 6 * 1024**3
+
+
+def test_scheduled_pricing_uses_immutable_readiness_without_heavy_cycle_lock(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[str] = []
+    expected = object()
+
+    def ready(*_args: object, **_kwargs: object) -> object:
+        events.append("readiness")
+        return SimpleNamespace(readiness=object(), detail="")
+
+    def run_once(*_args: object, **kwargs: object) -> object:
+        events.append("pricing")
+        assert kwargs["bar_readiness_timeout_seconds"] == 1.0
+        return expected
+
+    monkeypatch.setattr(pricing_runtime, "wait_for_bar_readiness", ready)
+    monkeypatch.setattr(pricing_runtime, "run_option_pricing_once", run_once)
+
+    result = pricing_runtime._run_pricing_until_ready(
+        tmp_path,
+        symbols=("AAPL",),
+        target_snapshot_for="2026-08-20T14:00:00Z",
+        bar_readiness_mode="required",
+        bar_readiness_timeout_seconds=480.0,
+        phase_offset_minutes=1,
+        runtime_clock=lambda: pd.Timestamp("2026-08-20T14:01:00Z"),
+        monotonic_clock=lambda: 0.0,
+    )
+
+    assert result is expected
+    assert events == ["readiness", "pricing"]
 
 
 def test_treasury_curve_selection_is_causal_and_maturity_matched(

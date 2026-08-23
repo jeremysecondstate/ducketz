@@ -408,7 +408,7 @@ def fit_or_reuse_strategy_model(
         clip_to_observed_probability_range=True,
         sample_weight=_decision_weights(partitions.calibration),
     )
-    effective_calibration = "platt"
+    effective_calibration = calibrator.method
     offline_evaluation = _offline_evaluation(
         partitions,
         estimator=estimator,

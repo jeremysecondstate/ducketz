@@ -186,6 +186,12 @@ def test_loop_b_materializes_trains_predicts_and_persists_readable_ids(
     assert model_manifest["offline_evaluation"]["calibrated_model"][
         "log_loss"
     ] >= 0.0
+    calibration_admission = model_manifest["offline_evaluation"][
+        "calibration_admission"
+    ]
+    assert calibration_admission["assessment_rows_used"] == 0
+    assert calibration_admission["lockbox_rows_used"] == 0
+    assert calibration_admission["calibration_rows_used"] > 0
     assert model_manifest["lockbox"]["status"] == "CLOSED_UNTOUCHED_UNSCORED"
     assert model_manifest["lockbox"]["rows"] == _CONFIG.lockbox_clusters
     assert "python_major_minor" in model_manifest["runtime_compatibility"]

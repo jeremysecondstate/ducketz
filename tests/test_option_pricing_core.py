@@ -200,6 +200,59 @@ def test_causal_samples_use_strictly_earlier_surface_and_exclude_target_fields()
     )
 
 
+def test_standard_single_name_occ_fallback_infers_supported_contract_semantics() -> None:
+    source = _source_surface()
+    source["contract_symbol"] = source.apply(
+        lambda row: (
+            f"NVDA  {pd.Timestamp(row['expiration_date']).strftime('%y%m%d')}"
+            f"C{int(float(row['strike']) * 1000):08d}"
+        ),
+        axis=1,
+    )
+    source["standard_contract"] = True
+    source["exercise_style"] = None
+    source["settlement_type"] = "P"
+    source["settlement_reference"] = None
+
+    samples = build_causal_samples(
+        source,
+        target_contracts=None,
+        target_underlying_price=100.0,
+        source_snapshot_for="2026-01-02T16:00:00Z",
+        source_available_at="2026-01-02T16:01:00Z",
+        target_snapshot_for="2026-01-03T16:00:00Z",
+        source_provider="schwab",
+        prediction_mode="LIVE",
+    )
+
+    assert samples["sample_status"].eq("AVAILABLE").all()
+    assert samples["exercise_style"].eq("AMERICAN").all()
+    assert samples["settlement_type"].eq("PHYSICAL").all()
+    assert samples["settlement_reference"].eq(
+        "OCC_STANDARD_EQUITY_OPTION"
+    ).all()
+
+
+def test_non_occ_contract_keeps_missing_exercise_style_ambiguous() -> None:
+    source = _source_surface().iloc[:1].copy()
+    source["standard_contract"] = True
+    source["exercise_style"] = None
+    source["settlement_type"] = "P"
+
+    samples = build_causal_samples(
+        source,
+        target_contracts=None,
+        target_underlying_price=100.0,
+        source_snapshot_for="2026-01-02T16:00:00Z",
+        source_available_at="2026-01-02T16:01:00Z",
+        target_snapshot_for="2026-01-03T16:00:00Z",
+        source_provider="schwab",
+        prediction_mode="LIVE",
+    )
+
+    assert samples.iloc[0]["sample_status"] == "EXERCISE_STYLE_AMBIGUOUS"
+
+
 def test_live_carry_ignores_option_provider_yield_without_known_declaration(
     tmp_path: Path,
 ) -> None:

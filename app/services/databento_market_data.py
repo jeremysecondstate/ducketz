@@ -183,6 +183,70 @@ class DatabentoMarketDataProvider:
             )
         return results, selected_range
 
+    def fetch_native_bars_range(
+        self,
+        symbols: Iterable[str],
+        spec: DatabentoAnalysisSourceSpec,
+        *,
+        start: object,
+        end: object,
+        available_range: DatabentoAvailableRange | None = None,
+    ) -> tuple[
+        dict[str, tuple[list[MarketBar], pd.DataFrame]],
+        DatabentoAvailableRange,
+    ]:
+        """Fetch one explicit completed interval without a moving latest window."""
+
+        clean_symbols = _symbols(symbols)
+        self._validate_config()
+        source_range = available_range or self.available_range_for_schema(spec.schema)
+        request_start = _datetime_from_value(start)
+        request_end = _datetime_from_value(end)
+        if request_start is None or request_end is None or request_start >= request_end:
+            raise ValueError("Databento explicit range must have start before end")
+        if request_start < source_range.start or request_end > source_range.end:
+            raise ValueError(
+                "Databento explicit range is outside advertised schema availability"
+            )
+        selected_range = DatabentoAvailableRange(
+            schema=spec.schema,
+            start=request_start,
+            end=request_end,
+        )
+        store = self._client().timeseries.get_range(
+            dataset=self.dataset,
+            schema=spec.schema,
+            symbols=list(clean_symbols),
+            stype_in="raw_symbol",
+            start=request_start.isoformat(),
+            end=request_end.isoformat(),
+        )
+        frame = store.to_df(map_symbols=True)
+        if not isinstance(frame, pd.DataFrame):
+            frame = pd.DataFrame(frame)
+        raw_frame = frame.reset_index()
+        if not raw_frame.empty and "symbol" not in raw_frame.columns:
+            raise RuntimeError(
+                "Databento multi-symbol response did not include mapped symbols."
+            )
+        results: dict[str, tuple[list[MarketBar], pd.DataFrame]] = {}
+        mapped_symbols = (
+            raw_frame["symbol"].map(_mapped_symbol)
+            if not raw_frame.empty
+            else pd.Series(dtype="string")
+        )
+        for symbol in clean_symbols:
+            symbol_frame = (
+                raw_frame.loc[mapped_symbols.eq(symbol)].reset_index(drop=True)
+                if not raw_frame.empty
+                else raw_frame.copy()
+            )
+            results[symbol] = (
+                _bars_from_databento_frame(symbol, spec.frequency, symbol_frame),
+                symbol_frame,
+            )
+        return results, selected_range
+
     def derive_analysis_bars(self, symbol: str, source_bars: list[MarketBar], output_frequency: str, aggregation_method: str) -> list[MarketBar]:
         clean_symbol = _symbol(symbol)
         if aggregation_method == "native":

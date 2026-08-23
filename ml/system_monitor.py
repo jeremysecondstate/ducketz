@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import shutil
@@ -11,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
+import numpy as np
 import pandas as pd
 
 from app.models.portfolio import PortfolioSnapshot
@@ -24,7 +26,7 @@ from datafetching.decision_time import (
 from datafetching.orchestrate import DEFAULT_WATCHLIST, read_watchlist
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from ml.artifacts import file_checksum
-from ml.current_publication import read_current_publication
+from ml.current_publication import CurrentPublication, read_current_publication
 from ml.horizons import INTERNAL_HORIZON_ORDER
 from ml.option_pricing.publication import read_current_option_pricing_publication
 from ml.option_pricing.target_outcome import (
@@ -32,7 +34,10 @@ from ml.option_pricing.target_outcome import (
     target_outcome_pointer_path,
 )
 from ml.strategy_pricing_canary import run_canary
-from ml.strategy_publication import read_current_strategy_publication
+from ml.strategy_publication import (
+    StrategyPublication,
+    read_current_strategy_publication,
+)
 from ml.strategy_selection.contracts import (
     BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
     BSGP_CALIBRATED_MODEL_SCORE_BASIS,
@@ -75,6 +80,81 @@ class RuntimeSpec:
     log_aliases: tuple[str, ...]
     quiet_when_market_closed: bool = False
     maximum_log_age: pd.Timedelta | None = _EXPECTED_PUBLICATION_AGE
+
+
+@dataclass(frozen=True)
+class _MonitorPublicationSnapshot:
+    """One invocation's immutable Loop B and Strategy authorities."""
+
+    loop_b: CurrentPublication | None
+    strategy: StrategyPublication | None
+    loop_b_error: str | None = None
+    strategy_error: str | None = None
+
+    def require_loop_b(self) -> CurrentPublication:
+        if self.loop_b is None:
+            raise RuntimeError(
+                "Pinned Loop B publication is unavailable: "
+                f"{self.loop_b_error or 'unknown capture error'}"
+            )
+        return self.loop_b
+
+    def require_strategy(self) -> StrategyPublication:
+        if self.strategy is None:
+            raise RuntimeError(
+                "Pinned Strategy publication is unavailable: "
+                f"{self.strategy_error or 'unknown capture error'}"
+            )
+        return self.strategy
+
+
+def _capture_monitor_publications(root: Path) -> _MonitorPublicationSnapshot:
+    """Read each mutable current pointer once before any dependent check runs."""
+
+    loop_b: CurrentPublication | None = None
+    strategy: StrategyPublication | None = None
+    loop_b_error: str | None = None
+    strategy_error: str | None = None
+    try:
+        loop_b = read_current_publication(root)
+    except Exception as exc:
+        loop_b_error = _error_text(exc)
+    try:
+        strategy = read_current_strategy_publication(root)
+    except Exception as exc:
+        strategy_error = _error_text(exc)
+    return _MonitorPublicationSnapshot(
+        loop_b=loop_b,
+        strategy=strategy,
+        loop_b_error=loop_b_error,
+        strategy_error=strategy_error,
+    )
+
+
+def _publication_snapshot_details(
+    root: Path,
+    snapshot: _MonitorPublicationSnapshot,
+) -> dict[str, object]:
+    def details(
+        publication: CurrentPublication | StrategyPublication | None,
+        error: str | None,
+    ) -> dict[str, object]:
+        if publication is None:
+            return {"status": "UNAVAILABLE", "reason": error}
+        return {
+            "status": "PINNED",
+            "run_path": publication.run_directory.relative_to(root).as_posix(),
+            "run_timestamp": _utc(
+                publication.manifest.get("run_timestamp"),
+                "pinned publication run_timestamp",
+            ).isoformat(),
+        }
+
+    return {
+        "capture_policy": "READ_EACH_CURRENT_POINTER_ONCE",
+        "loop_b": details(snapshot.loop_b, snapshot.loop_b_error),
+        "strategy": details(snapshot.strategy, snapshot.strategy_error),
+    }
 
 
 RUNTIMES = (
@@ -188,6 +268,7 @@ def build_monitor_report(
     market = cycle_target_decision(now)
     latest_target = latest_eligible_option_target(now)
     rows = tuple(process_rows) if process_rows is not None else _windows_process_rows()
+    publications = _capture_monitor_publications(root)
 
     checks: list[dict[str, object]] = []
     checks.extend(_safe_many("runtime_processes", lambda: _process_checks(rows)))
@@ -225,7 +306,17 @@ def build_monitor_report(
             ),
         )
     )
-    checks.append(_safe("loop_b_publication", lambda: _loop_b_check(root, now, watchlist)))
+    checks.append(
+        _safe(
+            "loop_b_publication",
+            lambda: _loop_b_check(
+                root,
+                now,
+                watchlist,
+                publication=publications.require_loop_b(),
+            ),
+        )
+    )
     checks.append(
         _safe(
             "pricing_publications",
@@ -237,9 +328,38 @@ def build_monitor_report(
             ),
         )
     )
-    checks.append(_safe("strategy_publication", lambda: _strategy_check(root, now)))
-    checks.append(_safe("cross_loop_lineage", lambda: _lineage_check(root)))
-    checks.append(_safe("ui_contracts", lambda: _ui_check(root, now, watchlist)))
+    checks.append(
+        _safe(
+            "strategy_publication",
+            lambda: _strategy_check(
+                root,
+                now,
+                publication=publications.require_strategy(),
+            ),
+        )
+    )
+    checks.append(
+        _safe(
+            "cross_loop_lineage",
+            lambda: _lineage_check(
+                root,
+                loop_b=publications.require_loop_b(),
+                strategy=publications.require_strategy(),
+            ),
+        )
+    )
+    checks.append(
+        _safe(
+            "ui_contracts",
+            lambda: _ui_check(
+                root,
+                now,
+                watchlist,
+                loop_b=publications.require_loop_b(),
+                strategy_publication=publications.require_strategy(),
+            ),
+        )
+    )
     checks.append(_safe("storage_capacity", lambda: _storage_check(root)))
 
     if clean_mode in {"daily", "weekly"}:
@@ -247,13 +367,19 @@ def build_monitor_report(
         checks.append(
             _safe(
                 "directional_prediction_quality",
-                lambda: _directional_quality_check(root),
+                lambda: _directional_quality_check(
+                    root,
+                    publication=publications.require_loop_b(),
+                ),
             )
         )
         checks.append(
             _safe(
                 "strategy_prediction_quality",
-                lambda: _strategy_quality_check(root),
+                lambda: _strategy_quality_check(
+                    root,
+                    publication=publications.require_strategy(),
+                ),
             )
         )
         checks.append(
@@ -264,6 +390,7 @@ def build_monitor_report(
                     now=now,
                     target=latest_target,
                     symbols=watchlist,
+                    strategy_publication=publications.require_strategy(),
                 ),
             )
         )
@@ -271,7 +398,11 @@ def build_monitor_report(
         checks.append(
             _safe(
                 "weekly_evaluation_rollup",
-                lambda: _weekly_evaluation_rollup_check(root, now=now),
+                lambda: _weekly_evaluation_rollup_check(
+                    root,
+                    now=now,
+                    publication=publications.require_loop_b(),
+                ),
             )
         )
 
@@ -299,6 +430,10 @@ def build_monitor_report(
             "reason": market.reason,
         },
         "watchlist": list(watchlist),
+        "publication_generations": _publication_snapshot_details(
+            root,
+            publications,
+        ),
         "summary": {
             "check_count": len(checks),
             "counts": counts,
@@ -576,12 +711,21 @@ def _bar_readiness_check(
     market_actionable: bool,
 ) -> dict[str, object]:
     pointer_path = root / "loop-a" / "bar-readiness-latest" / "run.json"
+    attempt_path = (
+        root
+        / "loop-a"
+        / "bar-readiness-attempts"
+        / str(expected_target.value)
+        / "attempt.json"
+    )
+    attempt = _read_json(attempt_path) if attempt_path.is_file() else None
     if not pointer_path.is_file():
         return _check(
             "loop_a_bar_readiness",
             _FAIL if market_actionable else _INFO,
             "No Loop A target-bar readiness has been published yet.",
             expected_target=expected_target.isoformat(),
+            target_attempt=attempt,
         )
     pointer = _read_json(pointer_path)
     current = pointer.get("current")
@@ -626,6 +770,13 @@ def _bar_readiness_check(
         symbol_count=len(readiness.symbols),
         pointer_valid=pointer_valid,
         settling=settling,
+        coordination=dict(readiness.coordination),
+        immutable_bar_file_count=sum(
+            bool(raw.get("source_file_checksum_sha256"))
+            for raw in readiness.bars.values()
+            if isinstance(raw, Mapping)
+        ),
+        target_attempt=attempt,
     )
 
 
@@ -793,8 +944,9 @@ def _loop_b_check(
     root: Path,
     now: pd.Timestamp,
     symbols: Sequence[str],
+    *,
+    publication: CurrentPublication,
 ) -> dict[str, object]:
-    publication = read_current_publication(root)
     run_timestamp = _utc(publication.manifest.get("run_timestamp"), "Loop B run timestamp")
     age = max(pd.Timedelta(0), now - run_timestamp)
     intelligence = pd.read_parquet(publication.run_directory / "intelligence.parquet")
@@ -900,8 +1052,12 @@ def _pricing_check(
     )
 
 
-def _strategy_check(root: Path, now: pd.Timestamp) -> dict[str, object]:
-    publication = read_current_strategy_publication(root)
+def _strategy_check(
+    root: Path,
+    now: pd.Timestamp,
+    *,
+    publication: StrategyPublication,
+) -> dict[str, object]:
     run_timestamp = _utc(publication.manifest.get("run_timestamp"), "Strategy run timestamp")
     age = max(pd.Timedelta(0), now - run_timestamp)
     candidates = pd.read_parquet(publication.run_directory / "strategy-candidates.parquet")
@@ -923,9 +1079,12 @@ def _strategy_check(root: Path, now: pd.Timestamp) -> dict[str, object]:
     )
 
 
-def _lineage_check(root: Path) -> dict[str, object]:
-    loop_b = read_current_publication(root)
-    strategy = read_current_strategy_publication(root)
+def _lineage_check(
+    root: Path,
+    *,
+    loop_b: CurrentPublication,
+    strategy: StrategyPublication,
+) -> dict[str, object]:
     configuration = strategy.manifest.get("configuration")
     source = configuration.get("source_loop_b") if isinstance(configuration, Mapping) else None
     if not isinstance(source, Mapping):
@@ -970,13 +1129,16 @@ def _ui_check(
     root: Path,
     now: pd.Timestamp,
     symbols: Sequence[str],
+    *,
+    loop_b: CurrentPublication,
+    strategy_publication: StrategyPublication,
 ) -> dict[str, object]:
     forecast = load_forecast_dashboard(
-        root / "ml-intelligence" / "latest" / "rolling-predictions.parquet",
+        loop_b.run_directory / "intelligence.parquet",
         loaded_at=now.to_pydatetime(),
     )
     strategy = load_strategy_candidates(
-        root / "ml" / "strategy-latest" / "strategy-candidates.parquet",
+        strategy_publication.run_directory / "strategy-candidates.parquet",
         snapshot=PortfolioSnapshot(
             source="schwab",
             account_label="read-only system monitor",
@@ -1100,8 +1262,11 @@ def _alfred_full_check(root: Path) -> dict[str, object]:
     )
 
 
-def _directional_quality_check(root: Path) -> dict[str, object]:
-    publication = read_current_publication(root)
+def _directional_quality_check(
+    root: Path,
+    *,
+    publication: CurrentPublication,
+) -> dict[str, object]:
     monitoring = pd.read_parquet(publication.run_directory / "monitoring.parquet")
     evaluations = pd.read_parquet(publication.run_directory / "evaluations.parquet")
     summary = summarize_directional_quality(monitoring, evaluations)
@@ -1185,6 +1350,7 @@ def summarize_directional_quality(
     live_completed = int(
         pd.to_numeric(live["observed_value"], errors="coerce").fillna(0).sum()
     )
+    uncertainty_by_horizon = _directional_uncertainty_by_horizon(evaluations)
     if missing_horizons:
         status = _FAIL
         text = "Directional evaluations are missing one or more production horizons."
@@ -1201,6 +1367,7 @@ def summarize_directional_quality(
         "evaluation_rows": len(evaluations),
         "missing_horizons": missing_horizons,
         "metrics_by_horizon": metrics_by_horizon,
+        "uncertainty_by_horizon": uncertainty_by_horizon,
         "quality_warnings": warnings,
         "live_evidence": {
             "completed_forecasts": live_completed,
@@ -1214,8 +1381,139 @@ def summarize_directional_quality(
     }
 
 
-def _strategy_quality_check(root: Path) -> dict[str, object]:
-    publication = read_current_strategy_publication(root)
+def _directional_uncertainty_by_horizon(
+    evaluations: pd.DataFrame,
+    *,
+    bootstrap_replicates: int = 300,
+) -> dict[str, object]:
+    """Cluster-bootstrap the same published horizon cohorts, deterministically."""
+
+    required = {
+        "horizon",
+        "evaluation_status",
+        "target_window_start",
+        "observed_target",
+        "calibrated_probability",
+        "prediction_correct_0_5",
+        "brier_score",
+        "log_loss",
+    }
+    missing = sorted(required.difference(evaluations.columns))
+    if missing:
+        return {
+            horizon: {
+                "status": "UNAVAILABLE_MISSING_COLUMNS",
+                "missing_columns": missing,
+            }
+            for horizon in INTERNAL_HORIZON_ORDER
+        }
+    evaluated = evaluations.loc[
+        evaluations["evaluation_status"]
+        .astype("string")
+        .str.upper()
+        .eq("EVALUATED")
+    ].copy()
+    output: dict[str, object] = {}
+    for horizon_index, horizon in enumerate(INTERNAL_HORIZON_ORDER):
+        cohort = evaluated.loc[
+            evaluated["horizon"].astype("string").str.lower().eq(horizon)
+        ].copy()
+        cohort["target_window_start"] = pd.to_datetime(
+            cohort["target_window_start"], utc=True, errors="coerce"
+        )
+        cohort = cohort.dropna(subset=["target_window_start"])
+        clusters = [
+            group.reset_index(drop=True)
+            for _target, group in cohort.groupby("target_window_start", sort=True)
+        ]
+        if not clusters:
+            output[horizon] = {
+                "status": "UNAVAILABLE_NO_EVALUATED_CLUSTERS",
+                "evaluated_rows": len(cohort),
+                "independent_target_clusters": 0,
+            }
+            continue
+        point = _directional_cohort_metrics(cohort)
+        rng = np.random.default_rng(73_000 + horizon_index)
+        samples: dict[str, list[float]] = {
+            metric: [] for metric in point if point[metric] is not None
+        }
+        for _iteration in range(bootstrap_replicates):
+            selected = rng.integers(0, len(clusters), size=len(clusters))
+            resample = pd.concat(
+                [clusters[int(index)] for index in selected],
+                ignore_index=True,
+            )
+            metrics = _directional_cohort_metrics(resample)
+            for metric in samples:
+                value = metrics.get(metric)
+                if value is not None and math.isfinite(float(value)):
+                    samples[metric].append(float(value))
+        intervals: dict[str, object] = {}
+        for metric, point_value in point.items():
+            draws = samples.get(metric, [])
+            intervals[metric] = {
+                "point": point_value,
+                "lower_95": (
+                    round(float(np.quantile(draws, 0.025)), 12) if draws else None
+                ),
+                "upper_95": (
+                    round(float(np.quantile(draws, 0.975)), 12) if draws else None
+                ),
+                "successful_replicates": len(draws),
+            }
+        output[horizon] = {
+            "status": "AVAILABLE",
+            "method": "TARGET_WINDOW_CLUSTER_BOOTSTRAP_PERCENTILE_95",
+            "bootstrap_replicates": bootstrap_replicates,
+            "evaluated_rows": len(cohort),
+            "independent_target_clusters": len(clusters),
+            "intervals": intervals,
+        }
+    return output
+
+
+def _directional_cohort_metrics(frame: pd.DataFrame) -> dict[str, float | None]:
+    paired = frame.loc[
+        :, ["observed_target", "calibrated_probability"]
+    ].apply(pd.to_numeric, errors="coerce").dropna()
+    auc: float | None = None
+    calibration_gap: float | None = None
+    if not paired.empty:
+        labels = paired["observed_target"].astype(int)
+        probabilities = paired["calibrated_probability"]
+        calibration_gap = float(abs(probabilities.mean() - labels.mean()))
+        positive_count = int(labels.eq(1).sum())
+        negative_count = int(labels.eq(0).sum())
+        if positive_count and negative_count:
+            ranks = probabilities.rank(method="average")
+            auc = float(
+                (
+                    ranks.loc[labels.eq(1)].sum()
+                    - positive_count * (positive_count + 1) / 2.0
+                )
+                / (positive_count * negative_count)
+            )
+    return {
+        "accuracy_at_0_5": _mean_or_none(frame["prediction_correct_0_5"]),
+        "mean_brier_score": _mean_or_none(frame["brier_score"]),
+        "mean_log_loss": _mean_or_none(frame["log_loss"]),
+        "roc_auc": round(auc, 12) if auc is not None else None,
+        "calibration_gap": (
+            round(calibration_gap, 12) if calibration_gap is not None else None
+        ),
+        "observed_positive_rate": _mean_or_none(frame["observed_target"]),
+        "mean_calibrated_probability": _mean_or_none(
+            frame["calibrated_probability"]
+        ),
+    }
+
+
+def _strategy_quality_check(
+    root: Path,
+    *,
+    publication: StrategyPublication,
+) -> dict[str, object]:
     candidates = pd.read_parquet(publication.run_directory / "strategy-candidates.parquet")
     reports = _read_json(publication.run_directory / "strategy-model-reports.json")
     summary = summarize_strategy_quality(candidates, reports)
@@ -1280,11 +1578,41 @@ def summarize_strategy_quality(
         if isinstance(report, Mapping)
     )
     report_statuses: dict[str, int] = {}
-    for report in model_reports.values():
+    exclusion_reasons: dict[str, int] = {}
+    pricing_eligibility_by_horizon: dict[str, object] = {}
+    total_pricing_eligible = 0
+    total_pricing_excluded = 0
+    for horizon, report in model_reports.items():
         if not isinstance(report, Mapping):
             continue
         value = str(report.get("status", "UNKNOWN"))
         report_statuses[value] = report_statuses.get(value, 0) + 1
+        eligible_rows = int(report.get("pricing_eligible_outcome_rows", 0))
+        excluded_rows = int(report.get("pricing_excluded_outcome_rows", 0))
+        total_pricing_eligible += eligible_rows
+        total_pricing_excluded += excluded_rows
+        reasons = report.get("pricing_exclusion_reason_counts")
+        if isinstance(reasons, Mapping):
+            for reason, count in reasons.items():
+                exclusion_reasons[str(reason)] = (
+                    exclusion_reasons.get(str(reason), 0) + int(count)
+                )
+        pricing_eligibility_by_horizon[str(horizon)] = {
+            "complete_outcome_rows": int(report.get("complete_outcome_rows", 0)),
+            "pricing_eligible_outcome_rows": eligible_rows,
+            "pricing_excluded_outcome_rows": excluded_rows,
+            "usable_decision_clusters": int(
+                report.get("usable_decision_clusters", 0)
+            ),
+            "required_decision_clusters": int(
+                report.get("required_decision_clusters", 0)
+            ),
+            "pricing_exclusion_reason_counts": (
+                {str(key): int(count) for key, count in reasons.items()}
+                if isinstance(reasons, Mapping)
+                else {}
+            ),
+        }
     calibrated_rows = int(fitted.sum())
     heuristic_rows = int(heuristic.sum())
     if missing_horizons:
@@ -1316,11 +1644,28 @@ def summarize_strategy_quality(
         "fully_priced_rows": int(fully_priced.sum()),
         "quality_passing_rows": int(quality.sum()),
         "complete_observed_outcome_rows": complete_outcomes,
+        "pricing_eligible_observed_outcome_rows": total_pricing_eligible,
+        "pricing_excluded_observed_outcome_rows": total_pricing_excluded,
+        "pricing_exclusion_reason_counts": dict(sorted(exclusion_reasons.items())),
+        "pricing_eligibility_by_horizon": pricing_eligibility_by_horizon,
         "model_status_counts": report_statuses,
         "model_evidence_interpretation": (
             "INSUFFICIENT_OBSERVED_OPTION_OUTCOMES"
             if complete_outcomes == 0
-            else "OBSERVED_OPTION_OUTCOMES_AVAILABLE"
+            else (
+                "NO_PRICING_ELIGIBLE_OBSERVED_OUTCOMES"
+                if total_pricing_eligible == 0
+                else (
+                    "INSUFFICIENT_CHRONOLOGICAL_PRICING_CLUSTERS"
+                    if any(
+                        int(value.get("usable_decision_clusters", 0))
+                        < int(value.get("required_decision_clusters", 0))
+                        for value in pricing_eligibility_by_horizon.values()
+                        if int(value.get("required_decision_clusters", 0)) > 0
+                    )
+                    else "PRICING_ELIGIBLE_OBSERVED_OUTCOMES_AVAILABLE"
+                )
+            )
         ),
         "missing_horizons": missing_horizons,
     }
@@ -1330,8 +1675,8 @@ def _weekly_evaluation_rollup_check(
     root: Path,
     *,
     now: pd.Timestamp,
+    publication: CurrentPublication,
 ) -> dict[str, object]:
-    publication = read_current_publication(root)
     evaluations_path = publication.run_directory / "evaluations.parquet"
     evaluations = pd.read_parquet(evaluations_path)
     completed_weeks = _completed_xnys_weeks(now, count=2)
@@ -1657,6 +2002,7 @@ def _pricing_strategy_canary_check(
     now: pd.Timestamp,
     target: pd.Timestamp,
     symbols: Sequence[str],
+    strategy_publication: StrategyPublication,
 ) -> dict[str, object]:
     try:
         result = run_canary(
@@ -1665,6 +2011,7 @@ def _pricing_strategy_canary_check(
             symbols=symbols,
             timeout_seconds=0.0,
             clock=lambda: now.to_pydatetime(),
+            strategy_publication=strategy_publication,
         )
     except Exception as exc:
         return _check(

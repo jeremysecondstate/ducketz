@@ -8,6 +8,7 @@ from typing import Mapping, Sequence
 import numpy as np
 import pandas as pd
 
+from datafetching.bar_readiness import BarReadinessError, read_bar_readiness
 from datafetching.decision_time import (
     DecisionClock,
     completed_bar_clock_for_target,
@@ -216,21 +217,44 @@ def build_live_prediction_inputs(
                 )
                 if source_spot is None or not np.isfinite(source_spot).any():
                     # OPRA quotes do not carry the equity spot. Bind the option
-                    # surface to the exact receipt-visible Loop A bar for the
-                    # source target instead of borrowing the later target spot.
+                    # surface to immutable exact-target Loop A evidence instead
+                    # of borrowing the later target spot or a moving latest file.
+                    readiness_bound = False
                     try:
-                        source_clock = completed_bar_clock_for_target(
+                        source_readiness = read_bar_readiness(
                             root,
-                            symbol=clean_symbol,
                             target_snapshot_for=source.snapshot_for,
-                            as_of=_snapshot_receipt_available_at(source),
+                            required_symbols=(clean_symbol,),
                         )
-                        source_contracts["underlying_price"] = completed_bar_close(
-                            source_clock
+                        if source_readiness.ready_at >= created:
+                            raise BarReadinessError(
+                                "Source readiness was not available before prediction"
+                            )
+                        source_contracts["underlying_price"] = (
+                            source_readiness.close(clean_symbol)
                         )
-                        consulted_source_files.append(source_clock.source_file)
-                    except (FileNotFoundError, RuntimeError, ValueError):
-                        continue
+                        consulted_source_files.extend(
+                            source_readiness.evidence_files
+                        )
+                        readiness_bound = True
+                    except (BarReadinessError, FileNotFoundError, RuntimeError, ValueError):
+                        pass
+                    if not readiness_bound:
+                        # Compatibility for pre-readiness history remains tied to
+                        # the option receipt's own information cutoff.
+                        try:
+                            source_clock = completed_bar_clock_for_target(
+                                root,
+                                symbol=clean_symbol,
+                                target_snapshot_for=source.snapshot_for,
+                                as_of=_snapshot_receipt_available_at(source),
+                            )
+                            source_contracts["underlying_price"] = (
+                                completed_bar_close(source_clock)
+                            )
+                            consulted_source_files.append(source_clock.source_file)
+                        except (FileNotFoundError, RuntimeError, ValueError):
+                            continue
             candidate_mask = _source_contract_candidate_mask(
                 source_contracts,
                 target_underlying_price=underlying,
@@ -570,6 +594,9 @@ def build_causal_samples(
     for definition in target_definitions.to_dict("records"):
         contract_symbol = str(definition["contract_symbol"])
         source_row = source_by_contract[contract_symbol]
+        exercise_style, settlement_type, settlement_reference = (
+            _effective_contract_semantics(source_row)
+        )
         status, reason = _source_contract_status(
             source_row,
             target_underlying_price=float(target_underlying_price),
@@ -756,9 +783,9 @@ def build_causal_samples(
                 "contract_definition_as_of": _timestamp_or_none(
                     source_row.get("definition_as_of")
                 ),
-                "exercise_style": source_row.get("exercise_style"),
-                "settlement_type": source_row.get("settlement_type"),
-                "settlement_reference": source_row.get("settlement_reference"),
+                "exercise_style": exercise_style,
+                "settlement_type": settlement_type,
+                "settlement_reference": settlement_reference,
                 "source_mid": source_mid,
                 "observed_bid": observed_bid,
                 "observed_ask": observed_ask,
@@ -1617,15 +1644,16 @@ def _source_contract_status(
     nonstandard = _explicit_bool(row.get("non_standard"))
     if mini is not False or nonstandard is not False or multiplier is None or not math.isclose(multiplier, policy.required_multiplier):
         return "NONSTANDARD_CONTRACT", "Contract is mini, adjusted, nonstandard, or not a 100-share contract."
+    exercise_style, settlement_type, _settlement_reference = (
+        _effective_contract_semantics(row)
+    )
     if "exercise_style" in row:
-        exercise_style = str(row.get("exercise_style") or "").strip().upper()
         if exercise_style not in {"AMERICAN", "EUROPEAN"}:
             return (
                 "EXERCISE_STYLE_AMBIGUOUS",
                 "Point-in-time contract reference lacks a supported exercise style.",
             )
     if "settlement_type" in row:
-        settlement_type = str(row.get("settlement_type") or "").strip().upper()
         if settlement_type not in {
             "PHYSICAL",
             "CASH",
@@ -1656,6 +1684,67 @@ def _source_contract_status(
     if quote_time is None or quote_time >= target_snapshot_for:
         return "SOURCE_TIMING_INVALID", "Earlier option quote is not strictly before target."
     return "AVAILABLE", ""
+
+
+def _effective_contract_semantics(
+    row: Mapping[str, object] | pd.Series,
+) -> tuple[str, str, str]:
+    """Resolve explicit semantics or the closed standard single-name OCC class."""
+
+    exercise = str(row.get("exercise_style") or "").strip().upper()
+    exercise = {"A": "AMERICAN", "E": "EUROPEAN"}.get(exercise, exercise)
+    settlement = str(row.get("settlement_type") or "").strip().upper()
+    settlement = {
+        "P": "PHYSICAL",
+        "C": "CASH",
+        "N": "NON_DELIVERABLE",
+        "E": "ELECT_AT_EXERCISE",
+    }.get(settlement, settlement)
+    reference = str(row.get("settlement_reference") or "").strip()
+
+    multiplier = _finite_or_none(row.get("multiplier"))
+    declared_standard = _explicit_bool(row.get("standard_contract"))
+    symbol = str(row.get("symbol") or "").strip().upper()
+    standard_single_name_occ = bool(
+        declared_standard is not False
+        and _explicit_bool(row.get("mini")) is False
+        and _explicit_bool(row.get("non_standard")) is False
+        and multiplier is not None
+        and math.isclose(multiplier, 100.0)
+        and _occ_underlying(row.get("contract_symbol")) == symbol
+    )
+    if standard_single_name_occ:
+        if exercise not in {"AMERICAN", "EUROPEAN"}:
+            exercise = "AMERICAN"
+        if settlement not in {
+            "PHYSICAL",
+            "CASH",
+            "NON_DELIVERABLE",
+            "ELECT_AT_EXERCISE",
+        }:
+            settlement = "PHYSICAL"
+        if not reference:
+            reference = "OCC_STANDARD_EQUITY_OPTION"
+    return exercise, settlement, reference
+
+
+def _occ_underlying(value: object) -> str:
+    contract = str(value or "").strip().upper()
+    if len(contract) < 15:
+        return ""
+    suffix = contract[-15:]
+    if (
+        not suffix[:6].isdigit()
+        or suffix[6] not in {"C", "P"}
+        or not suffix[7:].isdigit()
+    ):
+        return ""
+    root = contract[:-15].strip()
+    return (
+        root
+        if root and all(character.isalpha() or character == "." for character in root)
+        else ""
+    )
 
 
 def _source_contract_candidate_mask(

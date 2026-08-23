@@ -184,7 +184,7 @@ def test_live_adapter_cooperatively_yields_during_dense_replay(
     adapter.ingest_record(SimpleNamespace(rtype=_rtype("SYSTEM")))
     assert sleeps == []
     adapter.ingest_record(SimpleNamespace(rtype=_rtype("SYSTEM")))
-    assert sleeps == [0]
+    assert sleeps == [databento_live.OPRA_CALLBACK_YIELD_SLEEP_SECONDS]
 
 
 def test_live_adapter_uses_one_scoped_transport_and_strict_pretarget_cbbo() -> None:

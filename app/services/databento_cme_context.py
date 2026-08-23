@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import warnings
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping
@@ -244,7 +245,19 @@ class DatabentoCmeContextProvider:
         ), frame
 
     def _fetch_frame(self, client: Any, spec: DatabentoCmeContextSpec) -> pd.DataFrame:
-        store = client.timeseries.get_range(**_get_range_kwargs(spec))
+        # Empty CME windows are part of normal cursor probing and are handled below
+        # as explicit NO CURRENT ROWS evidence.  The SDK otherwise writes its
+        # expected BentoWarning to stderr, which makes the production log monitor
+        # report a false runtime incident even though the request succeeded.
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=(
+                    r"^No data found for the request you submitted\."
+                    r"(?: The request time range falls entirely inside a weekend\.)?$"
+                ),
+            )
+            store = client.timeseries.get_range(**_get_range_kwargs(spec))
         frame = store.to_df()
         return frame if isinstance(frame, pd.DataFrame) else pd.DataFrame(frame)
 

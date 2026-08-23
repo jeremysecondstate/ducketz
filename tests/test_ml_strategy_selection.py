@@ -118,6 +118,48 @@ _EXPECTED_STRATEGIES = {
 }
 
 
+def test_pricing_model_exclusions_publish_reconciled_primary_reasons() -> None:
+    frame = pd.DataFrame(
+        {
+            "pricing_mode": ["ACTIVE", "OFF", "ACTIVE", "ACTIVE", "ACTIVE", "ACTIVE", "ACTIVE"],
+            "pricing_source": [
+                "BLACK_SCHOLES",
+                "BLACK_SCHOLES",
+                "UNAVAILABLE",
+                "BLACK_SCHOLES",
+                "BLACK_SCHOLES",
+                "BLACK_SCHOLES",
+                "BLACK_SCHOLES",
+            ],
+            "pricing_leg_coverage": [1.0, 1.0, 1.0, 0.5, 1.0, 1.0, 1.0],
+            "surface_quality_pass": [True, True, True, True, False, True, True],
+            "liquidity_policy_pass": [True, True, True, True, True, False, True],
+            "all_option_quotes_valid": [True, True, True, True, True, True, False],
+            "pricing_status": ["Black-Scholes fallback"] + ["Unavailable"] * 6,
+        }
+    )
+
+    eligible = strategy_runtime._pricing_model_eligible(frame)
+    report = strategy_runtime._pricing_model_eligibility_report(
+        frame,
+        eligible=eligible,
+    )
+
+    assert eligible.tolist() == [True, False, False, False, False, False, False]
+    assert report["pricing_eligible_outcome_rows"] == 1
+    assert report["pricing_excluded_outcome_rows"] == 6
+    assert report["pricing_exclusion_reason_counts"] == {
+        "PRICING_MODE_NOT_ACTIVE": 1,
+        "PRICING_SOURCE_NOT_BASELINE": 1,
+        "INCOMPLETE_LEG_COVERAGE": 1,
+        "SURFACE_QUALITY_FAILED": 1,
+        "LIQUIDITY_POLICY_FAILED": 1,
+        "OPTION_QUOTES_INVALID": 1,
+    }
+    assert sum(report["pricing_exclusion_reason_counts"].values()) == 6
+    assert report["pricing_exclusion_reasons_are_mutually_exclusive"] is True
+
+
 def test_entry_chain_receipt_uses_the_causal_interval_between_clocks() -> None:
     decision = pd.Timestamp("2026-07-31T20:05:00Z")
     target_start = pd.Timestamp("2026-07-31T21:00:00Z")
@@ -1353,6 +1395,11 @@ def test_offline_strategy_runtime_builds_trains_and_ranks_from_schwab_receipts(
     assert result.models_reused == 0
     assert result.model_reports["1d"]["status"] == "MODEL_FIT"
     assert result.model_reports["1d"]["real_lockbox_used"] is False
+    assert result.model_reports["1d"]["pricing_excluded_outcome_rows"] == 0
+    assert result.model_reports["1d"]["pricing_exclusion_reason_counts"] == {}
+    assert result.model_reports["1d"]["pricing_eligible_outcome_rows"] == (
+        result.model_reports["1d"]["complete_outcome_rows"]
+    )
     assert len(result.audit) == len(STRATEGY_REGISTRY)
     assert set(result.audit["strategy_name"]) == set(STRATEGY_REGISTRY)
     assert len(result.candidates) == 4 * len(STRATEGY_REGISTRY)

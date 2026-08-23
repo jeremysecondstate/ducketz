@@ -423,6 +423,62 @@ def test_databento_fetch_groups_fifteen_initial_symbols_into_one_schema_request(
     assert all(symbol_results[0][-1] is None for symbol_results in results.values())
 
 
+def test_databento_explicit_range_does_not_move_with_provider_latest(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed: dict[str, Any] = {}
+
+    class _Store:
+        @staticmethod
+        def to_df(*, map_symbols: bool) -> pd.DataFrame:
+            observed["map_symbols"] = map_symbols
+            return pd.DataFrame()
+
+    class _Timeseries:
+        @staticmethod
+        def get_range(**kwargs: Any) -> _Store:
+            observed["request"] = kwargs
+            return _Store()
+
+    class _Client:
+        timeseries = _Timeseries()
+
+    provider = DatabentoMarketDataProvider(
+        api_key="test",
+        dataset="EQUS.MINI",
+        native_schemas=("ohlcv-1m",),
+    )
+    monkeypatch.setattr(provider, "_client", lambda: _Client())
+    spec = DatabentoAnalysisSourceSpec(
+        key="source_1d_1m",
+        schema="ohlcv-1m",
+        frequency="1m",
+        lookback=timedelta(days=1),
+    )
+    available = DatabentoAvailableRange(
+        schema=spec.schema,
+        start=datetime(2026, 8, 1, tzinfo=timezone.utc),
+        end=datetime(2026, 8, 3, 20, 5, tzinfo=timezone.utc),
+    )
+    start = datetime(2026, 8, 3, 19, 59, tzinfo=timezone.utc)
+    end = datetime(2026, 8, 3, 20, 0, tzinfo=timezone.utc)
+
+    results, selected = provider.fetch_native_bars_range(
+        ("NVDA", "GOOG"),
+        spec,
+        start=start,
+        end=end,
+        available_range=available,
+    )
+
+    assert observed["map_symbols"] is True
+    assert observed["request"]["start"] == start.isoformat()
+    assert observed["request"]["end"] == end.isoformat()
+    assert selected.start == start
+    assert selected.end == end
+    assert list(results) == ["NVDA", "GOOG"]
+
+
 def test_fmp_prefetches_quote_and_market_cap_for_fifteen_symbols() -> None:
     class _Provider:
         calls: list[tuple[str, dict[str, str]]] = []

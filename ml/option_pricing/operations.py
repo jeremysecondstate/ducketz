@@ -54,8 +54,11 @@ class OperationalError(RuntimeError):
 @dataclass(frozen=True)
 class RuntimeLimits:
     minimum_free_disk_bytes: int = 5 * 1024**3
-    maximum_cycle_seconds: float = 600.0
-    maximum_peak_memory_bytes: int = 4 * 1024**3
+    # The verified six-symbol production inventory needs roughly 649 seconds and
+    # 4.7 GiB at first materialization.  Keep bounded headroom below one complete
+    # 15-minute scheduling interval and far below host capacity.
+    maximum_cycle_seconds: float = 840.0
+    maximum_peak_memory_bytes: int = 6 * 1024**3
     maximum_sample_rows: int = 2_000_000
     maximum_prediction_rows: int = 1_500_000
     maximum_evaluation_rows: int = 1_500_000

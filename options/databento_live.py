@@ -25,6 +25,7 @@ OPRA_CONSOLIDATED_PUBLISHER_ID = 30
 OPRA_PARENT_SUFFIX = ".OPT"
 OPRA_PRICE_SCALE = 1_000_000_000
 OPRA_CALLBACK_YIELD_INTERVAL_SECONDS = 0.01
+OPRA_CALLBACK_YIELD_SLEEP_SECONDS = 0.001
 
 
 class DatabentoOpraIntegrityError(RuntimeError):
@@ -253,7 +254,9 @@ class DatabentoOpraLiveAdapter:
             >= OPRA_CALLBACK_YIELD_INTERVAL_SECONDS
         ):
             self._last_callback_yield_at = callback_at
-            time.sleep(0)
+            # ``sleep(0)`` can immediately reschedule this same callback thread
+            # on Windows, starving the publication thread during dense replay.
+            time.sleep(OPRA_CALLBACK_YIELD_SLEEP_SECONDS)
         received = _utc(self._clock())
         rtype = _record_type(record)
         try:

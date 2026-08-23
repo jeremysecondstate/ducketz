@@ -1570,6 +1570,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                         interval_minutes=args.interval_minutes,
                         phase_offset_minutes=args.phase_offset_minutes,
                     )
+                    if previous_boundary is None:
+                        boundary = _initial_pricing_boundary(
+                            cycle_anchor,
+                            next_scheduled_boundary=boundary,
+                            interval_minutes=args.interval_minutes,
+                        )
                     if previous_boundary is not None:
                         due_boundaries = _missed_boundaries(
                             previous_boundary,
@@ -1681,6 +1687,24 @@ def _run_pricing_until_ready(
     last_error = ""
     while True:
         remaining = max(0.0, monotonic_deadline - monotonic_clock())
+        if bar_readiness_mode == "required":
+            readiness_wait = wait_for_bar_readiness(
+                root,
+                target_snapshot_for=target,
+                required_symbols=symbols,
+                timeout_seconds=remaining,
+                clock=clock,
+                sleeper=readiness_sleeper,
+                monotonic_clock=monotonic_clock,
+            )
+            if readiness_wait.readiness is None:
+                last_error = readiness_wait.detail
+                break
+            # The v2 readiness authority owns immutable checksummed target-bar
+            # files, so heavy Loop A/Loop B work is not part of this critical
+            # path. The inner verifier samples its clock more than once; retain
+            # a one-second read-only verification window.
+            remaining = 1.0
         try:
             return run_option_pricing_once(
                 root,
@@ -1916,6 +1940,24 @@ def _pricing_boundary_is_recoverable(
     observed = utc_timestamp(observed_at)
     return observed <= decision.target_snapshot_for + pd.Timedelta(
         seconds=ContractSelectionPolicy().maximum_source_staleness_seconds
+    )
+
+
+def _initial_pricing_boundary(
+    observed_at: datetime,
+    *,
+    next_scheduled_boundary: datetime,
+    interval_minutes: int,
+) -> datetime:
+    """Recover only the immediately prior causal phase after a process reload."""
+
+    candidate = next_scheduled_boundary.astimezone(timezone.utc) - timedelta(
+        minutes=interval_minutes
+    )
+    return (
+        candidate
+        if _pricing_boundary_is_recoverable(candidate, observed_at=observed_at)
+        else next_scheduled_boundary
     )
 
 

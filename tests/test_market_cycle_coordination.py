@@ -19,6 +19,7 @@ from datafetching.parquet_store import ParquetStore
 from ml.option_pricing.target_outcome import read_target_outcome
 from ml.option_pricing_runtime import (
     RetryablePricingReadinessError,
+    _initial_pricing_boundary,
     _missed_boundaries,
     _pricing_boundary_is_recoverable,
     _run_pricing_until_ready,
@@ -296,6 +297,17 @@ def test_pricing_scheduler_preserves_only_still_causal_delayed_boundaries(
         scheduled_phase.to_pydatetime(),
         observed_at=target + pd.Timedelta(minutes=delay_minutes),
     ) is recoverable
+
+
+def test_pricing_process_reload_recovers_the_immediately_prior_causal_phase() -> None:
+    observed = datetime.fromisoformat("2026-08-20T14:17:00+00:00")
+    next_scheduled = datetime.fromisoformat("2026-08-20T14:31:00+00:00")
+
+    assert _initial_pricing_boundary(
+        observed,
+        next_scheduled_boundary=next_scheduled,
+        interval_minutes=15,
+    ) == datetime.fromisoformat("2026-08-20T14:16:00+00:00")
 
 
 @pytest.mark.parametrize("delay_minutes", (13, 19))

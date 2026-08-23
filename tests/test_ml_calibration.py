@@ -6,7 +6,10 @@ import joblib
 import numpy as np
 import pytest
 
-from ml.calibration import PlattCalibrator, fit_probability_calibrator
+from ml.calibration import (
+    PlattCalibrator,
+    fit_probability_calibrator,
+)
 
 
 def test_bounded_platt_calibration_does_not_extrapolate_past_fit_support(
@@ -55,3 +58,22 @@ def test_platt_calibration_rejects_invalid_regularization(
             [0, 0, 1, 1],
             platt_regularization_c=regularization_c,
         )
+
+
+def test_platt_calibration_never_reverses_probability_ranking() -> None:
+    probabilities = np.array([0.05, 0.15, 0.80, 0.95])
+    # This calibration-only cohort conflicts with the base model orientation.
+    target = np.array([1, 1, 0, 0])
+
+    calibrator = fit_probability_calibrator(
+        "platt",
+        probabilities,
+        target,
+        require_nondecreasing=True,
+    )
+
+    assert isinstance(calibrator, PlattCalibrator)
+    assert calibrator.nondecreasing_constraint_active is True
+    calibrated = calibrator.predict(probabilities)
+    np.testing.assert_allclose(calibrated, np.full(len(probabilities), 0.5))
+    assert np.all(np.diff(calibrated) >= 0.0)

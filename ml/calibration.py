@@ -8,6 +8,9 @@ from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
 
 CalibrationMethod = Literal["none", "platt", "isotonic"]
+CALIBRATION_ORIENTATION_POLICY_VERSION = (
+    "probability-calibration-nondecreasing-or-identity-v1"
+)
 
 _EPSILON = 1e-6
 
@@ -31,6 +34,7 @@ class PlattCalibrator:
     model: LogisticRegression
     raw_probability_min: float | None = None
     raw_probability_max: float | None = None
+    nondecreasing_constraint_active: bool = False
     method: CalibrationMethod = "platt"
 
     def predict(self, probabilities: object) -> np.ndarray:
@@ -66,6 +70,7 @@ def fit_probability_calibrator(
     platt_regularization_c: float = 1.0,
     clip_to_observed_probability_range: bool = False,
     sample_weight: object | None = None,
+    require_nondecreasing: bool = False,
 ) -> ProbabilityCalibrator:
     """Fit calibration only on the caller-provided calibration window.
 
@@ -101,6 +106,29 @@ def fit_probability_calibrator(
             labels,
             sample_weight=weights,
         )
+        # Probability calibration may change scale and base rate, but it must
+        # not reverse the already-oriented class probability ranking. A
+        # negative Platt slope is a calibration-window regime conflict, not
+        # evidence that the model's class semantics should be inverted.
+        slope = float(np.asarray(model.coef_, dtype=float).reshape(-1)[0])
+        constrained = bool(
+            require_nondecreasing and (not np.isfinite(slope) or slope <= 0.0)
+        )
+        if constrained:
+            # The maximum-likelihood solution under a nonnegative slope
+            # constraint is the boundary slope of zero. Its intercept is the
+            # calibration-window base rate, producing a flat, honest map rather
+            # than reversing the model's class orientation.
+            base_rate = float(
+                np.average(labels, weights=weights)
+                if weights is not None
+                else labels.mean()
+            )
+            model.coef_ = np.zeros_like(model.coef_, dtype=float)
+            model.intercept_ = np.asarray(
+                [_logit(np.asarray([base_rate], dtype=float))[0]],
+                dtype=float,
+            )
         return PlattCalibrator(
             model=model,
             raw_probability_min=(
@@ -113,6 +141,7 @@ def fit_probability_calibrator(
                 if clip_to_observed_probability_range
                 else None
             ),
+            nondecreasing_constraint_active=constrained,
         )
 
     if len(labels) < minimum_isotonic_rows:

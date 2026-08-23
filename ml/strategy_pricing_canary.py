@@ -14,7 +14,10 @@ import pandas as pd
 from datafetching.bar_readiness import read_bar_readiness
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from ml.option_pricing.target_outcome import read_target_outcome
-from ml.strategy_publication import read_current_strategy_publication
+from ml.strategy_publication import (
+    StrategyPublication,
+    read_current_strategy_publication,
+)
 from ml.strategy_selection.contracts import (
     BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
     BSGP_CALIBRATED_MODEL_SCORE_BASIS,
@@ -39,6 +42,7 @@ def run_canary(
     clock: Callable[[], object] | None = None,
     sleeper: Callable[[float], None] = time.sleep,
     monotonic_clock: Callable[[], float] = time.monotonic,
+    strategy_publication: StrategyPublication | None = None,
 ) -> Mapping[str, object]:
     """Wait for and verify one exact target without writing or placing orders."""
 
@@ -70,6 +74,7 @@ def run_canary(
                 symbols=clean_symbols,
                 observed_at=observed_at,
                 deadline_at=deadline_at,
+                strategy_publication=strategy_publication,
             )
         except Exception as exc:
             last_error = f"{type(exc).__name__}: {exc}"
@@ -89,6 +94,7 @@ def _inspect_target(
     symbols: tuple[str, ...],
     observed_at: pd.Timestamp,
     deadline_at: pd.Timestamp,
+    strategy_publication: StrategyPublication | None = None,
 ) -> Mapping[str, object]:
     readiness = read_bar_readiness(
         root,
@@ -140,7 +146,7 @@ def _inspect_target(
         "BLACK_SCHOLES": int((~shadow_status.eq("BSGP_SHADOW_READY")).sum()),
     }
 
-    strategy = read_current_strategy_publication(root)
+    strategy = strategy_publication or read_current_strategy_publication(root)
     if _utc(strategy.receipt.get("published_at"), label="Strategy published_at") > observed_at:
         raise StrategyPricingCanaryError("Strategy publication is future-dated")
     candidate_path = strategy.run_directory / "strategy-candidates.parquet"

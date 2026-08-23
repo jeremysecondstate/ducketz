@@ -14,6 +14,7 @@ _RETRYABLE_HTTP_STATUSES = {429, 500, 502, 503, 504}
 _RETRYABLE_MESSAGE_MARKERS = (
     "gateway timed out",
     "gateway timeout",
+    "read timed out",
     "temporarily unavailable",
     "service unavailable",
     "too many requests",

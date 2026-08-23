@@ -8,7 +8,10 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
+import ml.system_monitor as system_monitor
+from ml.current_publication import CurrentPublication
 from ml.horizons import INTERNAL_HORIZON_ORDER
+from ml.strategy_publication import StrategyPublication
 from ml.strategy_selection.contracts import (
     BSGP_CALIBRATED_MODEL_SCORE_BASIS,
     SCENARIO_COVERAGE_SCORE_BASIS,
@@ -24,6 +27,155 @@ from ml.system_monitor import (
     summarize_strategy_quality,
     summarize_weekly_evidence,
 )
+
+
+def test_monitor_pins_each_current_publication_once_across_checks(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    loop_b_a = CurrentPublication(
+        run_directory=tmp_path / "ml" / "runs" / "loop-b-a",
+        manifest={"run_timestamp": "2026-08-20T21:00:00Z"},
+        receipt={},
+        pointer={},
+    )
+    loop_b_b = CurrentPublication(
+        run_directory=tmp_path / "ml" / "runs" / "loop-b-b",
+        manifest={"run_timestamp": "2026-08-20T21:01:00Z"},
+        receipt={},
+        pointer={},
+    )
+    strategy_a = StrategyPublication(
+        run_directory=tmp_path / "ml" / "strategy-runs" / "strategy-a",
+        manifest={"run_timestamp": "2026-08-20T21:02:00Z"},
+        receipt={},
+        pointer={},
+    )
+    strategy_b = StrategyPublication(
+        run_directory=tmp_path / "ml" / "strategy-runs" / "strategy-b",
+        manifest={"run_timestamp": "2026-08-20T21:03:00Z"},
+        receipt={},
+        pointer={},
+    )
+    reads = {"loop_b": 0, "strategy": 0}
+
+    def read_loop_b(_root: Path) -> CurrentPublication:
+        reads["loop_b"] += 1
+        return loop_b_a if reads["loop_b"] == 1 else loop_b_b
+
+    def read_strategy(_root: Path) -> StrategyPublication:
+        reads["strategy"] += 1
+        return strategy_a if reads["strategy"] == 1 else strategy_b
+
+    def ok(name: str) -> dict[str, object]:
+        return {"name": name, "status": "PASS", "summary": "ok", "details": {}}
+
+    monkeypatch.setattr(system_monitor, "read_current_publication", read_loop_b)
+    monkeypatch.setattr(
+        system_monitor,
+        "read_current_strategy_publication",
+        read_strategy,
+    )
+    monkeypatch.setattr(system_monitor, "_process_checks", lambda _rows: [])
+    for name in (
+        "_lock_check",
+        "_log_activity_check",
+        "_loop_a_cycle_check",
+        "_bar_readiness_check",
+        "_cme_snapshot_check",
+        "_alfred_pointer_check",
+        "_options_check",
+        "_pricing_check",
+        "_storage_check",
+        "_alfred_full_check",
+    ):
+        monkeypatch.setattr(
+            system_monitor,
+            name,
+            lambda *_args, _name=name, **_kwargs: ok(_name),
+        )
+
+    observed: dict[str, object] = {}
+
+    def loop_b_check(*_args, publication, **_kwargs):
+        observed["loop_b_check"] = publication
+        return ok("loop_b_publication")
+
+    def strategy_check(*_args, publication, **_kwargs):
+        observed["strategy_check"] = publication
+        return ok("strategy_publication")
+
+    def lineage_check(*_args, loop_b, strategy, **_kwargs):
+        observed["lineage"] = (loop_b, strategy)
+        return ok("cross_loop_lineage")
+
+    def ui_check(*_args, loop_b, strategy_publication, **_kwargs):
+        observed["ui"] = (loop_b, strategy_publication)
+        return ok("ui_contracts")
+
+    def directional_check(*_args, publication, **_kwargs):
+        observed["directional"] = publication
+        return ok("directional_prediction_quality")
+
+    def strategy_quality_check(*_args, publication, **_kwargs):
+        observed["strategy_quality"] = publication
+        return ok("strategy_prediction_quality")
+
+    def canary_check(*_args, strategy_publication, **_kwargs):
+        observed["canary"] = strategy_publication
+        return ok("pricing_strategy_canary")
+
+    monkeypatch.setattr(system_monitor, "_loop_b_check", loop_b_check)
+    monkeypatch.setattr(system_monitor, "_strategy_check", strategy_check)
+    monkeypatch.setattr(system_monitor, "_lineage_check", lineage_check)
+    monkeypatch.setattr(system_monitor, "_ui_check", ui_check)
+    monkeypatch.setattr(
+        system_monitor,
+        "_directional_quality_check",
+        directional_check,
+    )
+    monkeypatch.setattr(
+        system_monitor,
+        "_strategy_quality_check",
+        strategy_quality_check,
+    )
+    monkeypatch.setattr(
+        system_monitor,
+        "_pricing_strategy_canary_check",
+        canary_check,
+    )
+
+    report = system_monitor.build_monitor_report(
+        tmp_path,
+        mode="daily",
+        observed_at="2026-08-20T22:00:00Z",
+        process_rows=(),
+        symbols=("AAPL",),
+    )
+
+    assert reads == {"loop_b": 1, "strategy": 1}
+    assert observed == {
+        "loop_b_check": loop_b_a,
+        "strategy_check": strategy_a,
+        "lineage": (loop_b_a, strategy_a),
+        "ui": (loop_b_a, strategy_a),
+        "directional": loop_b_a,
+        "strategy_quality": strategy_a,
+        "canary": strategy_a,
+    }
+    assert report["publication_generations"] == {
+        "capture_policy": "READ_EACH_CURRENT_POINTER_ONCE",
+        "loop_b": {
+            "status": "PINNED",
+            "run_path": "ml/runs/loop-b-a",
+            "run_timestamp": "2026-08-20T21:00:00+00:00",
+        },
+        "strategy": {
+            "status": "PINNED",
+            "run_path": "ml/strategy-runs/strategy-a",
+            "run_timestamp": "2026-08-20T21:02:00+00:00",
+        },
+    }
 
 
 def _production_process_rows() -> list[dict[str, object]]:
@@ -178,6 +330,46 @@ def test_directional_quality_passes_when_published_references_pass() -> None:
     assert summary["missing_horizons"] == []
 
 
+def test_directional_uncertainty_is_clustered_and_deterministic() -> None:
+    evaluations = pd.DataFrame(
+        {
+            "horizon": ["1h"] * 4,
+            "evaluation_status": ["EVALUATED"] * 4,
+            "target_window_start": pd.to_datetime(
+                [
+                    "2026-08-18T15:00:00Z",
+                    "2026-08-18T15:00:00Z",
+                    "2026-08-18T16:00:00Z",
+                    "2026-08-18T16:00:00Z",
+                ],
+                utc=True,
+            ),
+            "observed_target": [0, 1, 0, 1],
+            "calibrated_probability": [0.2, 0.8, 0.4, 0.6],
+            "prediction_correct_0_5": [True, True, True, True],
+            "brier_score": [0.04, 0.04, 0.16, 0.16],
+            "log_loss": [0.22, 0.22, 0.51, 0.51],
+        }
+    )
+
+    first = system_monitor._directional_uncertainty_by_horizon(
+        evaluations,
+        bootstrap_replicates=50,
+    )
+    second = system_monitor._directional_uncertainty_by_horizon(
+        evaluations,
+        bootstrap_replicates=50,
+    )
+
+    assert first == second
+    assert first["1h"]["status"] == "AVAILABLE"
+    assert first["1h"]["independent_target_clusters"] == 2
+    assert first["1h"]["evaluated_rows"] == 4
+    accuracy = first["1h"]["intervals"]["accuracy_at_0_5"]
+    assert accuracy["point"] == 1.0
+    assert accuracy["successful_replicates"] == 50
+
+
 def _strategy_candidates(*, calibrated: bool) -> pd.DataFrame:
     return pd.DataFrame(
         {
@@ -210,6 +402,11 @@ def _strategy_reports(*, calibrated: bool) -> dict[str, object]:
             horizon: {
                 "status": "MODEL_FIT" if calibrated else "MODEL_NOT_FIT",
                 "complete_outcome_rows": 100 if calibrated else 0,
+                "pricing_eligible_outcome_rows": 100 if calibrated else 0,
+                "pricing_excluded_outcome_rows": 0,
+                "usable_decision_clusters": 100 if calibrated else 0,
+                "required_decision_clusters": 80,
+                "pricing_exclusion_reason_counts": {},
             }
             for horizon in INTERNAL_HORIZON_ORDER
         }
@@ -238,6 +435,9 @@ def test_strategy_quality_passes_calibrated_fully_priced_quality_rows() -> None:
     assert summary["status"] == "PASS"
     assert summary["fully_priced_rows"] == len(INTERNAL_HORIZON_ORDER)
     assert summary["quality_passing_rows"] == len(INTERNAL_HORIZON_ORDER)
+    assert summary["model_evidence_interpretation"] == (
+        "PRICING_ELIGIBLE_OBSERVED_OUTCOMES_AVAILABLE"
+    )
 
 
 def test_overall_status_ignores_info_but_escalates_warning_and_failure() -> None:

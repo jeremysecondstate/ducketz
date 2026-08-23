@@ -2,17 +2,29 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from datafetching import FetchResult
 from datafetching import orchestrate
+from app.models.market_data import MarketBar
+from app.services.databento_market_data import DatabentoAvailableRange
 from datafetching.loop_a_cycle import read_loop_a_cycle
-from datafetching.bar_readiness import read_bar_readiness
+from datafetching.bar_readiness import (
+    BarReadinessError,
+    publish_frozen_bar_readiness,
+    read_bar_readiness,
+)
 from datafetching.bar_schema import write_normalized_bar_parquet
 from datafetching.parquet_store import ParquetStore
+from datafetching.readiness_lane import (
+    LoopAReadinessLane,
+    materialize_exact_target_readiness,
+)
 import pandas as pd
 
 
@@ -197,6 +209,204 @@ def test_databento_readiness_precedes_unrelated_provider_and_calculation_work(
     assert events.index("fmp-start") < events.index("fundamentals")
 
 
+def test_independent_readiness_lane_freezes_exact_bars_after_provider_delay(
+    tmp_path: Path,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    state = {"seconds": 0.0, "metadata_calls": 0}
+
+    class Provider:
+        dataset = "EQUS.MINI"
+
+        @staticmethod
+        def native_specs():
+            return (SimpleNamespace(schema="ohlcv-1m", frequency="1m"),)
+
+        @staticmethod
+        def dataset_range():
+            return {}
+
+        @staticmethod
+        def available_range_for_schema(_schema, *, dataset_range):
+            del dataset_range
+            state["metadata_calls"] += 1
+            end = target if state["metadata_calls"] > 1 else target - pd.Timedelta(minutes=1)
+            return DatabentoAvailableRange(
+                schema="ohlcv-1m",
+                start=(target - pd.Timedelta(days=1)).to_pydatetime(),
+                end=end.to_pydatetime(),
+            )
+
+        @staticmethod
+        def fetch_native_bars_range(symbols, _spec, *, start, end, available_range):
+            assert pd.Timestamp(start) == target - pd.Timedelta(minutes=1)
+            assert pd.Timestamp(end) == target
+            bars = {
+                symbol: (
+                    [
+                        MarketBar(
+                            symbol=symbol,
+                            source="databento",
+                            timeframe="1m",
+                            timestamp=(target - pd.Timedelta(minutes=1)).to_pydatetime(),
+                            open=199.0,
+                            high=201.0,
+                            low=198.0,
+                            close=200.0,
+                            volume=1000.0,
+                        )
+                    ],
+                    pd.DataFrame(),
+                )
+                for symbol in symbols
+            }
+            return bars, DatabentoAvailableRange(
+                schema="ohlcv-1m",
+                start=pd.Timestamp(start).to_pydatetime(),
+                end=pd.Timestamp(end).to_pydatetime(),
+            )
+
+    def clock() -> datetime:
+        return (target + pd.Timedelta(seconds=1 + state["seconds"])).to_pydatetime()
+
+    def sleeper(seconds: float) -> None:
+        state["seconds"] += seconds
+
+    readiness = materialize_exact_target_readiness(
+        tmp_path,
+        symbols=("GOOG", "NVDA"),
+        target_snapshot_for=target,
+        deadline_seconds=420,
+        poll_seconds=10,
+        provider=Provider(),
+        clock=clock,
+        sleeper=sleeper,
+        monotonic_clock=lambda: state["seconds"],
+    )
+
+    assert readiness.close("GOOG") == 200.0
+    assert readiness.coordination["first_delayed_stage"] == (
+        "DATABENTO_PROVIDER_AVAILABILITY"
+    )
+    assert readiness.coordination["deadline_at"] == (
+        target + pd.Timedelta(seconds=420)
+    ).isoformat()
+    frozen_source = readiness.decision_clock("GOOG").source_file
+    assert frozen_source.parent == readiness.directory / "bars"
+    assert frozen_source in readiness.evidence_files
+
+    frame = pd.read_parquet(frozen_source)
+    frame.loc[0, "close"] = 999.0
+    frame.to_parquet(frozen_source, index=False)
+    with pytest.raises(BarReadinessError, match="source checksum"):
+        read_bar_readiness(
+            tmp_path,
+            target_snapshot_for=target,
+            required_symbols=("GOOG", "NVDA"),
+        )
+
+
+def test_frozen_readiness_rejects_partial_and_wrong_target_bars(
+    tmp_path: Path,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+
+    def payload(timestamp: pd.Timestamp) -> dict[str, object]:
+        return {
+            "timestamp": timestamp,
+            "open": 199.0,
+            "high": 201.0,
+            "low": 198.0,
+            "close": 200.0,
+            "volume": 1000.0,
+            "provider": "databento",
+            "dataset": "EQUS.MINI",
+            "schema": "ohlcv-1m",
+            "timeframe": "1m",
+        }
+
+    with pytest.raises(BarReadinessError, match="all-symbol scope"):
+        publish_frozen_bar_readiness(
+            tmp_path,
+            target_snapshot_for=target,
+            symbols=("GOOG", "NVDA"),
+            loop_a_generation="partial",
+            exact_bars={"GOOG": payload(target - pd.Timedelta(minutes=1))},
+            coordination={},
+            clock=lambda: target + pd.Timedelta(seconds=2),
+        )
+    with pytest.raises(BarReadinessError, match="exact completed target bar"):
+        publish_frozen_bar_readiness(
+            tmp_path,
+            target_snapshot_for=target,
+            symbols=("GOOG",),
+            loop_a_generation="wrong-target",
+            exact_bars={"GOOG": payload(target)},
+            coordination={},
+            clock=lambda: target + pd.Timedelta(seconds=2),
+        )
+    assert not (tmp_path / "loop-a" / "bar-readiness" / str(target.value)).exists()
+
+
+def test_readiness_lane_runs_while_heavy_datastore_lock_is_occupied(
+    tmp_path: Path,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+    published = threading.Event()
+
+    def materializer(*_args, **_kwargs):
+        published.set()
+        return SimpleNamespace(
+            ready_at=target + pd.Timedelta(seconds=2),
+            symbols=("GOOG", "NVDA"),
+        )
+
+    lane = LoopAReadinessLane(
+        datastore_root=tmp_path,
+        symbols=("GOOG", "NVDA"),
+        clock=lambda: (target + pd.Timedelta(seconds=1)).to_pydatetime(),
+        materializer=materializer,
+        reporter=lambda _message: None,
+    )
+
+    # This lock represents a long Loop B/Loop A heavyweight generation. The
+    # exact-bar lane has no dependency on it.
+    from datafetching.loop_a_cycle import datastore_cycle_lock
+
+    with datastore_cycle_lock(tmp_path):
+        worker = threading.Thread(target=lane.inspect_once)
+        worker.start()
+        assert published.wait(timeout=2.0)
+        worker.join(timeout=2.0)
+        assert not worker.is_alive()
+
+
+def test_readiness_lane_process_reload_never_publishes_an_expired_target(
+    tmp_path: Path,
+) -> None:
+    target = pd.Timestamp("2026-08-10T17:00:00Z")
+
+    def forbidden_materializer(*_args, **_kwargs):
+        raise AssertionError("expired target must not call the provider")
+
+    lane = LoopAReadinessLane(
+        datastore_root=tmp_path,
+        symbols=("GOOG",),
+        deadline_seconds=420,
+        clock=lambda: (target + pd.Timedelta(minutes=8)).to_pydatetime(),
+        materializer=forbidden_materializer,
+        reporter=lambda _message: None,
+    )
+
+    result = lane.inspect_once()
+
+    assert result is not None
+    assert result["status"] == "READINESS_DEADLINE_MISSED"
+    assert result["target_snapshot_for"] == target.isoformat()
+    assert result["first_delayed_stage"] == "SCHEDULER_WAKE"
+    assert not (tmp_path / "loop-a" / "bar-readiness" / str(target.value)).exists()
+
+
 def test_once_publishes_writing_then_complete_cycle(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -334,3 +544,16 @@ def test_next_boundary_uses_the_next_interval() -> None:
         datetime(2026, 7, 29, 10, 14, 30, tzinfo=timezone.utc),
         interval_minutes=15,
     ) == datetime(2026, 7, 29, 10, 15, tzinfo=timezone.utc)
+
+
+def test_next_boundary_preserves_cycle_cadence_after_an_overrun() -> None:
+    cycle_started_at = datetime(2026, 7, 29, 10, 0, 20, tzinfo=timezone.utc)
+    cycle_completed_at = datetime(2026, 7, 29, 10, 15, 5, tzinfo=timezone.utc)
+
+    next_run = orchestrate.next_boundary(
+        cycle_started_at,
+        interval_minutes=15,
+    )
+
+    assert next_run == datetime(2026, 7, 29, 10, 15, tzinfo=timezone.utc)
+    assert next_run < cycle_completed_at

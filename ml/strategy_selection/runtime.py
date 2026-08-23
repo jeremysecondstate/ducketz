@@ -201,17 +201,17 @@ def run_strategy_selection(
             pricing_catalog=catalog,
         )
         source_files.extend(outcome_files)
-        model_outcomes = outcomes
-        if not outcomes.empty:
+        if outcomes.empty:
+            model_outcomes = outcomes
+            eligibility_report = _empty_pricing_eligibility_report()
+        else:
             pricing_eligible = _pricing_model_eligible(outcomes)
             model_outcomes = outcomes.loc[pricing_eligible].reset_index(drop=True)
-            outcome_report = {
-                **outcome_report,
-                "pricing_eligible_outcome_rows": len(model_outcomes),
-                "pricing_excluded_outcome_rows": int(
-                    len(outcomes) - len(model_outcomes)
-                ),
-            }
+            eligibility_report = _pricing_model_eligibility_report(
+                outcomes,
+                eligible=pricing_eligible,
+            )
+        outcome_report = {**outcome_report, **eligibility_report}
         if model_outcomes.empty:
             complete_outcome_rows = int(
                 outcome_report.get("complete_outcome_rows", 0)
@@ -808,19 +808,104 @@ def _historical_outcome_cache_put(
 
 
 def _pricing_model_eligible(frame: pd.DataFrame) -> pd.Series:
-    return (
-        frame["pricing_mode"].astype("string").str.upper().eq("ACTIVE")
-        & frame["pricing_source"]
+    gates = _pricing_model_gate_masks(frame)
+    eligible = pd.Series(True, index=frame.index, dtype=bool)
+    for gate in gates.values():
+        eligible &= gate
+    return eligible
+
+
+def _pricing_model_gate_masks(frame: pd.DataFrame) -> dict[str, pd.Series]:
+    return {
+        "PRICING_MODE_NOT_ACTIVE": frame["pricing_mode"]
         .astype("string")
         .str.upper()
-        .isin(("BSGP", "BLACK_SCHOLES"))
-        & pd.to_numeric(frame["pricing_leg_coverage"], errors="coerce").ge(
-            1.0 - 1e-12
-        )
-        & frame["surface_quality_pass"].fillna(False).astype(bool)
-        & frame["liquidity_policy_pass"].fillna(False).astype(bool)
-        & frame["all_option_quotes_valid"].fillna(False).astype(bool)
-    )
+        .eq("ACTIVE"),
+        "PRICING_SOURCE_NOT_BASELINE": frame["pricing_source"]
+        .astype("string")
+        .str.upper()
+        .isin(("BSGP", "BLACK_SCHOLES")),
+        "INCOMPLETE_LEG_COVERAGE": pd.to_numeric(
+            frame["pricing_leg_coverage"], errors="coerce"
+        ).ge(1.0 - 1e-12),
+        "SURFACE_QUALITY_FAILED": frame["surface_quality_pass"]
+        .fillna(False)
+        .astype(bool),
+        "LIQUIDITY_POLICY_FAILED": frame["liquidity_policy_pass"]
+        .fillna(False)
+        .astype(bool),
+        "OPTION_QUOTES_INVALID": frame["all_option_quotes_valid"]
+        .fillna(False)
+        .astype(bool),
+    }
+
+
+def _pricing_model_eligibility_report(
+    frame: pd.DataFrame,
+    *,
+    eligible: pd.Series | None = None,
+) -> dict[str, object]:
+    """Publish auditable Pricing-gate evidence without double-counting exclusions."""
+
+    gates = _pricing_model_gate_masks(frame)
+    accepted = _pricing_model_eligible(frame) if eligible is None else eligible
+    accepted = accepted.reindex(frame.index, fill_value=False).astype(bool)
+    remaining = ~accepted
+    primary_reasons: dict[str, int] = {}
+    gate_failures: dict[str, int] = {}
+    for reason, gate in gates.items():
+        passed = gate.reindex(frame.index, fill_value=False).astype(bool)
+        gate_failures[reason] = int((~passed).sum())
+        assigned = remaining & ~passed
+        count = int(assigned.sum())
+        if count:
+            primary_reasons[reason] = count
+        remaining &= ~assigned
+    if remaining.any():
+        raise RuntimeError("Pricing eligibility left excluded rows unclassified")
+    excluded = int((~accepted).sum())
+    if sum(primary_reasons.values()) != excluded:
+        raise RuntimeError("Pricing exclusion reasons do not reconcile")
+    return {
+        "pricing_eligible_outcome_rows": int(accepted.sum()),
+        "pricing_excluded_outcome_rows": excluded,
+        "pricing_exclusion_reason_counts": primary_reasons,
+        "pricing_gate_failure_counts": gate_failures,
+        "pricing_status_counts": _text_value_counts(frame, "pricing_status"),
+        "pricing_source_counts": _text_value_counts(frame, "pricing_source"),
+        "pricing_mode_counts": _text_value_counts(frame, "pricing_mode"),
+        "pricing_exclusion_reasons_are_mutually_exclusive": True,
+    }
+
+
+def _empty_pricing_eligibility_report() -> dict[str, object]:
+    reasons = tuple(_pricing_model_gate_masks(pd.DataFrame({
+        "pricing_mode": pd.Series(dtype="string"),
+        "pricing_source": pd.Series(dtype="string"),
+        "pricing_leg_coverage": pd.Series(dtype=float),
+        "surface_quality_pass": pd.Series(dtype=bool),
+        "liquidity_policy_pass": pd.Series(dtype=bool),
+        "all_option_quotes_valid": pd.Series(dtype=bool),
+    })))
+    return {
+        "pricing_eligible_outcome_rows": 0,
+        "pricing_excluded_outcome_rows": 0,
+        "pricing_exclusion_reason_counts": {},
+        "pricing_gate_failure_counts": {reason: 0 for reason in reasons},
+        "pricing_status_counts": {},
+        "pricing_source_counts": {},
+        "pricing_mode_counts": {},
+        "pricing_exclusion_reasons_are_mutually_exclusive": True,
+    }
+
+
+def _text_value_counts(frame: pd.DataFrame, column: str) -> dict[str, int]:
+    values = frame.get(column, pd.Series(pd.NA, index=frame.index, dtype="string"))
+    normalized = values.astype("string").fillna("<MISSING>")
+    return {
+        str(key): int(value)
+        for key, value in normalized.value_counts(dropna=False).items()
+    }
 
 
 def _rerank_candidates(frame: pd.DataFrame) -> pd.DataFrame:

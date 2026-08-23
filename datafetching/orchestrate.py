@@ -4,7 +4,7 @@ import argparse
 import os
 import sys
 import time
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, Iterable, Iterator, Mapping
@@ -28,6 +28,7 @@ from datafetching.databento_fetch import recover_historical_minute_target
 from datafetching.decision_time import cycle_target_decision
 from datafetching.observability import timed_stage
 from datafetching.parquet_store import DATASTORE_TARGETS, ParquetStore
+from datafetching.readiness_lane import running_readiness_lane
 from fundamentals.main import main as run_fundamentals
 from signals.main import main as run_signals
 from technicals.main import main as run_technicals
@@ -167,11 +168,25 @@ def main(argv: list[str] | None = None) -> int:
     print()
 
     lock_path = store.root_dir / ".ducketz-orchestration.lock"
-    with orchestration_lock(lock_path):
+    readiness_context = (
+        running_readiness_lane(
+            store.root_dir,
+            symbols=symbols,
+            deadline_seconds=args.bar_readiness_recovery_timeout_seconds,
+            poll_seconds=args.bar_readiness_recovery_poll_seconds,
+        )
+        if "databento" in args.providers and not args.once
+        else nullcontext()
+    )
+    with orchestration_lock(lock_path), readiness_context:
         try:
             while True:
-                cycle_started_at = datetime.now(timezone.utc)
+                cycle_scheduled_at = datetime.now(timezone.utc)
                 with datastore_cycle_lock(store.root_dir, reporter=print):
+                    # This is the truthful start of the heavyweight generation.
+                    # The independent readiness lane remains active while this
+                    # acquisition waits behind a Loop B reader.
+                    cycle_started_at = datetime.now(timezone.utc)
                     cycle = begin_loop_a_cycle(
                         store.root_dir,
                         symbols=symbols,
@@ -201,6 +216,7 @@ def main(argv: list[str] | None = None) -> int:
                             bar_readiness_recovery_poll_seconds=(
                                 args.bar_readiness_recovery_poll_seconds
                             ),
+                            publish_bar_readiness_from_cycle=args.once,
                         )
                     except BaseException:
                         finish_loop_a_cycle(
@@ -222,8 +238,12 @@ def main(argv: list[str] | None = None) -> int:
                 if args.once:
                     return 1 if failures else 0
 
+                # Preserve the cadence owned by this cycle.  If a provider-aware
+                # recovery crosses the following boundary, scheduling from the
+                # completion clock would silently skip that target.  A past-due
+                # boundary intentionally produces an immediate bounded catch-up.
                 next_run = next_boundary(
-                    datetime.now(timezone.utc),
+                    cycle_scheduled_at,
                     interval_minutes=args.interval_minutes,
                 )
                 print(
@@ -259,6 +279,7 @@ def run_cycle(
     bar_readiness_clock: Callable[[], object] | None = None,
     bar_readiness_recovery_timeout_seconds: float = 0.0,
     bar_readiness_recovery_poll_seconds: float = 10.0,
+    publish_bar_readiness_from_cycle: bool = True,
 ) -> int:
     if bar_readiness_recovery_timeout_seconds < 0:
         raise ValueError("Bar readiness recovery timeout cannot be negative")
@@ -305,6 +326,12 @@ def run_cycle(
         if provider != "databento" or readiness_attempted:
             return
         readiness_attempted = True
+        if not publish_bar_readiness_from_cycle:
+            print(
+                "Loop A heavyweight Databento stage completed; immutable target "
+                "readiness is owned by the independent exact-bar lane."
+            )
+            return
         if not target_decision.actionable:
             print(
                 "Loop A bar readiness idle: "
