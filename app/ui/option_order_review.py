@@ -21,7 +21,10 @@ from app.services.option_order_review import (
     quote_age_seconds,
 )
 from app.ui.background_tasks import run_in_background
-from app.ui.schwab_order_messages import order_submitted_message
+from app.ui.schwab_order_messages import (
+    order_confirmation_message,
+    order_submitted_message,
+)
 from app.ui.theme import (
     ACCENT,
     BACKGROUND,
@@ -130,6 +133,7 @@ class OptionOrderReviewDialog(tk.Toplevel):
         self._prior_grab = self.grab_current()
         self._inline_status = ""
         self._cost_value_labels: dict[str, tk.Label] = {}
+        self.acknowledgment_check: tk.Widget | None = None
         self.price_var = tk.StringVar(master=self)
         self.acknowledged_var = tk.BooleanVar(master=self, value=False)
         self.quote_label_var = tk.StringVar(master=self)
@@ -763,6 +767,29 @@ class OptionOrderReviewDialog(tk.Toplevel):
 
     def _build_acknowledgment(self, parent: tk.Frame, review: OptionOrderReview) -> None:
         card = self._card(parent, padding=(10, 8))
+        if (
+            review.operation == OrderReviewOperation.ENTRY
+            and review.placement_capability
+            == OrderReviewPlacementCapability.SUPPORTED
+        ):
+            self._section_title(card, "Final Confirmation")
+            tk.Label(
+                card,
+                text=(
+                    "Click Place Strategy Order to see a concise final order "
+                    "summary. Nothing is sent until you confirm that window."
+                ),
+                background=SURFACE,
+                foreground=TEXT,
+                font=("Segoe UI", 9),
+                wraplength=350,
+                justify=tk.LEFT,
+                anchor=tk.W,
+                padx=5,
+                pady=6,
+            ).pack(fill=tk.X)
+            self.acknowledgment_check = None
+            return
         check = tk.Checkbutton(
             card,
             text=review.acknowledgment_copy,
@@ -832,7 +859,37 @@ class OptionOrderReviewDialog(tk.Toplevel):
             return
         if review.placement_capability != OrderReviewPlacementCapability.SUPPORTED:
             return
-        if self._placement_dispatched or not self.controller.can_place:
+        if self._placement_dispatched or not self.controller.primary_action_enabled:
+            return
+        if review.operation == OrderReviewOperation.ENTRY:
+            try:
+                payload_builder = getattr(self.controller.draft, "payload")
+                payload = payload_builder()
+            except Exception as exc:
+                messagebox.showerror(
+                    "Strategy Order Confirmation Unavailable",
+                    str(exc) or "The strategy order summary could not be built.",
+                    parent=self,
+                )
+                return
+            confirmed = messagebox.askyesno(
+                "Confirm Strategy Order",
+                order_confirmation_message(
+                    payload,
+                    account_label=review.account_display_label,
+                    strategy_label=review.strategy_label,
+                    acknowledgment_copy=review.acknowledgment_copy,
+                ),
+                parent=self,
+                default=messagebox.NO,
+                icon=messagebox.QUESTION,
+            )
+            if not confirmed:
+                return
+            self.controller.acknowledge(True)
+        if not self.controller.can_place:
+            self._inline_status = self.controller.state_text
+            self._sync_controls()
             return
         self._placement_dispatched = True
         self._inline_status = ""
@@ -925,7 +982,10 @@ class OptionOrderReviewDialog(tk.Toplevel):
         busy = self.controller.state.value in {"REVALIDATING", "PREVIEWING", "FALLBACK", "SUBMITTING"}
         self.back_button.configure(state=tk.DISABLED if busy else tk.NORMAL)
         self.close_button.configure(state=tk.DISABLED if busy else tk.NORMAL)
-        self.acknowledgment_check.configure(state=tk.DISABLED if busy else tk.NORMAL)
+        if self.acknowledgment_check is not None:
+            self.acknowledgment_check.configure(
+                state=tk.DISABLED if busy else tk.NORMAL
+            )
         if getattr(self, "price_spin", None) is not None:
             self.price_spin.configure(state=tk.DISABLED if busy or self._refresh_dispatched else tk.NORMAL)
         if review.quote_state in {OrderReviewQuoteState.STALE, OrderReviewQuoteState.UNAVAILABLE}:
@@ -991,7 +1051,8 @@ class OptionOrderReviewDialog(tk.Toplevel):
 
     def _establish_focus(self) -> None:
         if self.winfo_exists():
-            self.acknowledgment_check.focus_set()
+            target = self.acknowledgment_check or self.primary_button
+            target.focus_set()
 
     def _save(self) -> None:
         # Deliberately non-submitting. There is no executable saved-draft store.

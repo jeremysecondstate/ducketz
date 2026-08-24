@@ -1762,14 +1762,20 @@ def test_confirmation_copy_is_human_readable() -> None:
                     },
                 }
             ],
-        }
+        },
+        account_label="Schwab ••••5678",
+        strategy_label="Long Put",
+        acknowledgment_copy="I reviewed the contract, limit, and warnings.",
     )
 
+    assert "Account: Schwab ••••5678" in message
+    assert "Strategy: Long Put" in message
     assert "Order type: Net debit" in message
     assert "Duration: Good until canceled" in message
     assert "Buy to open 1 contract(s)" in message
     assert "NET_DEBIT" not in message
     assert "BUY_TO_OPEN" not in message
+    assert "By choosing Yes, you confirm:" in message
 
 
 def test_options_strategy_submit_opens_review_without_direct_submission(

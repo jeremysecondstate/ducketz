@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -128,6 +129,89 @@ def test_normal_review_hides_redundant_notice_rails_but_keeps_actionable_checks(
     assert routine == (next(notice for notice in review.notices if notice.title == "Atomic Net-Order Structure"),)
     assert any(notice.blocking and notice.title == "Stale Quote" for notice in stale)
     assert "may not fill" in review.price_editor_explanation
+
+
+def test_strategy_primary_action_confirms_summary_then_dispatches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    payload = {
+        "orderType": "NET_DEBIT",
+        "session": "NORMAL",
+        "duration": "DAY",
+        "price": 0.80,
+        "quantity": 1,
+        "orderLegCollection": [
+            {
+                "instruction": "BUY_TO_OPEN",
+                "quantity": 1,
+                "instrument": {"symbol": LONG, "assetType": "OPTION"},
+            }
+        ],
+    }
+
+    class _Draft:
+        def payload(self) -> dict[str, object]:
+            return payload
+
+    class _Controller:
+        def __init__(self) -> None:
+            self.review = SimpleNamespace(
+                operation=OrderReviewOperation.ENTRY,
+                placement_capability=OrderReviewPlacementCapability.SUPPORTED,
+                account_display_label="Schwab ••••4681",
+                strategy_label="Long Put",
+                acknowledgment_copy="I reviewed every contract and warning.",
+            )
+            self.draft = _Draft()
+            self.primary_action_enabled = True
+            self.can_place = False
+            self.state_text = "Ready to Place"
+            self.acknowledged = False
+            self.place_calls = 0
+
+        def acknowledge(self, value: bool) -> None:
+            self.acknowledged = value
+            self.can_place = value
+
+        def place(self) -> object:
+            self.place_calls += 1
+            return object()
+
+    controller = _Controller()
+    dialog = OptionOrderReviewDialog.__new__(OptionOrderReviewDialog)
+    dialog.controller = controller
+    dialog._placement_dispatched = False
+    dialog._inline_status = ""
+    dialog._sync_controls = lambda: None
+    dialog._placement_finished = lambda _outcome: None
+    dialog._placement_crashed = lambda _exc: None
+    confirmations: list[tuple[str, str]] = []
+    background_calls: list[object] = []
+
+    def confirm(title: str, message: str, **_kwargs: object) -> bool:
+        confirmations.append((title, message))
+        return True
+
+    monkeypatch.setattr(
+        "app.ui.option_order_review.messagebox.askyesno",
+        confirm,
+    )
+    monkeypatch.setattr(
+        "app.ui.option_order_review.run_in_background",
+        lambda _owner, work, _succeeded, _failed: background_calls.append(work),
+    )
+
+    dialog._primary_action()
+
+    assert controller.acknowledged is True
+    assert dialog._placement_dispatched is True
+    assert len(background_calls) == 1
+    assert confirmations[0][0] == "Confirm Strategy Order"
+    assert "Account: Schwab ••••4681" in confirmations[0][1]
+    assert "Strategy: Long Put" in confirmations[0][1]
+    assert "Limit price: $0.8" in confirmations[0][1]
+    background_calls[0]()
+    assert controller.place_calls == 1
 
 
 def test_roll_review_has_close_and_replacement_roles_metrics_and_local_provenance() -> None:

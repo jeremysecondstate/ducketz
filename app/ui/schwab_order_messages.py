@@ -3,16 +3,25 @@ from __future__ import annotations
 from typing import Mapping
 
 
-def order_confirmation_message(payload: Mapping[str, object]) -> str:
-    return "\n".join(
-        [
-            "Review this LIVE Schwab order before submitting:",
-            "",
-            *_order_summary_lines(payload),
-            "",
-            "Submit this order?",
-        ]
-    )
+def order_confirmation_message(
+    payload: Mapping[str, object],
+    *,
+    account_label: str = "",
+    strategy_label: str = "",
+    acknowledgment_copy: str = "",
+) -> str:
+    lines = ["Review this LIVE Schwab order before submitting:", ""]
+    if account_label:
+        lines.append(f"Account: {account_label}")
+    if strategy_label:
+        lines.append(f"Strategy: {strategy_label}")
+    if account_label or strategy_label:
+        lines.append("")
+    lines.extend(_order_summary_lines(payload))
+    if acknowledgment_copy:
+        lines.extend(("", "By choosing Yes, you confirm:", acknowledgment_copy))
+    lines.extend(("", "Submit this order to Schwab now?"))
+    return "\n".join(lines)
 
 
 def order_submitted_message(

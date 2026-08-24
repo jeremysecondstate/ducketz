@@ -426,8 +426,8 @@ def strategy_entry_order_review(
         price_rail=price_rail,
         price_editable=draft.order_method != MARKET_ORDER,
         price_editor_explanation=(
-            "Changing the limit resets acknowledgment. Final placement refreshes "
-            "the exact Schwab quotes again; a limit order may not fill."
+            "The final confirmation shows this exact limit. Ordinary quote movement "
+            "will not cancel an unchanged limit order; a limit order may not fill."
         ),
         estimated_cash_effect=estimated_cash_effect,
         estimated_cash_label=(
@@ -538,8 +538,8 @@ def strategy_entry_order_review(
             else "I reviewed every contract, action, quantity, limit, and warning."
         ),
         safety_copy=(
-            "This order opens new market risk. Placement requires current exact-leg "
-            "Schwab quotes and explicit confirmation."
+            "This order opens new market risk. Confirming submits the displayed "
+            "terms after a current Schwab account and exact-leg quote safety check."
         ),
         placement_capability=OrderReviewPlacementCapability.SUPPORTED,
         placement_disabled_reason=None,
@@ -550,7 +550,7 @@ def strategy_entry_order_review(
 
 
 class StrategyOrderReviewController:
-    """Concept D state machine for exactly-once manual strategy entry."""
+    """Exactly-once manual strategy entry with a final broker safety read."""
 
     def __init__(
         self,
@@ -597,12 +597,13 @@ class StrategyOrderReviewController:
 
     @property
     def primary_action_enabled(self) -> bool:
-        return self.can_place
+        with self._lock:
+            return self._ready_for_confirmation_unlocked()
 
     @property
     def state_text(self) -> str:
         if self.state == OrderReviewPlacementState.REVALIDATING:
-            return "Revalidating Account and Quotes…"
+            return "Checking Current Account and Quotes…"
         if self.state == OrderReviewPlacementState.FALLBACK:
             return "Using Local-Estimate Fallback…"
         if self.state == OrderReviewPlacementState.SUBMITTING:
@@ -621,11 +622,7 @@ class StrategyOrderReviewController:
             return "Current Schwab Quote Required"
         if self.review.has_blocking_notice or not self.review.internal_valid:
             return "Review Action Required"
-        return (
-            "Ready for Final Revalidation"
-            if self.acknowledged
-            else "Confirmation Required"
-        )
+        return "Ready to Place"
 
     def acknowledge(self, acknowledged: bool) -> None:
         with self._lock:
@@ -745,8 +742,7 @@ class StrategyOrderReviewController:
                     self.state_text,
                 )
             reviewed = self.draft
-            reviewed_semantic = _semantic_fingerprint(reviewed)
-            reviewed_market = _market_fingerprint(reviewed)
+            reviewed_execution = _execution_fingerprint(reviewed)
             self.state = OrderReviewPlacementState.REVALIDATING
         self._notify()
 
@@ -784,10 +780,11 @@ class StrategyOrderReviewController:
                 retryable=True,
             )
 
-        if (
-            _semantic_fingerprint(refreshed) != reviewed_semantic
-            or _market_fingerprint(refreshed) != reviewed_market
-        ):
+        # Quotes and balances naturally move between review and submission. They
+        # may update when the refreshed review remains valid and the actual
+        # Schwab payload/destination account is unchanged. Otherwise a fixed
+        # limit order can be trapped in an endless confirmation loop.
+        if _execution_fingerprint(refreshed) != reviewed_execution:
             with self._lock:
                 self.draft = refreshed
                 self.review = replace(
@@ -796,7 +793,7 @@ class StrategyOrderReviewController:
                         *refreshed_review.notices,
                         _warning(
                             "Order Facts Changed",
-                            "Account coverage or exact-leg quotes changed during final revalidation; review and acknowledge again.",
+                            "The destination account or transmitted order details changed during the final safety read; review the updated order before placing it.",
                         ),
                     ),
                 )
@@ -805,7 +802,7 @@ class StrategyOrderReviewController:
             self._notify()
             return OrderReviewPlacementOutcome(
                 OrderReviewOutcomeStatus.INVALIDATED,
-                "Current order facts changed; review the refreshed values and confirm again.",
+                "The destination account or transmitted order changed; review the updated order before placing it.",
                 retryable=True,
             )
 
@@ -856,10 +853,12 @@ class StrategyOrderReviewController:
         )
 
     def _can_place_unlocked(self) -> bool:
+        return bool(self.acknowledged and self._ready_for_confirmation_unlocked())
+
+    def _ready_for_confirmation_unlocked(self) -> bool:
         return bool(
             self.review.placement_capability
             == OrderReviewPlacementCapability.SUPPORTED
-            and self.acknowledged
             and self.review.internal_valid
             and not self.review.has_blocking_notice
             and self.review.quote_state
@@ -947,35 +946,16 @@ class StrategyOrderReviewController:
             listener(self)
 
 
-def _semantic_fingerprint(draft: StrategyEntryOrderReviewDraft) -> tuple[object, ...]:
-    component = draft.component
+def _execution_fingerprint(
+    draft: StrategyEntryOrderReviewDraft,
+) -> tuple[object, ...]:
+    """Facts that determine what is sent and which account it is sent for."""
+
     return (
         draft.order_draft.candidate_id,
         draft.order_index,
-        draft.strategy_quantity,
-        draft.order_method,
-        draft.limit_price,
-        draft.duration,
         draft.account_label,
-        draft.available_cash,
-        draft.applicable_funds,
-        draft.applicable_funds_label,
-        draft.estimated_funds_required,
-        draft.funds_after_estimate,
-        draft.working_option_orders,
-        draft.order_draft.uses_existing_shares,
-        draft.order_draft.shares_available,
-        tuple(
-            (leg.symbol, leg.instruction, leg.quantity, leg.asset_type)
-            for leg in component.legs
-        ),
-    )
-
-
-def _market_fingerprint(draft: StrategyEntryOrderReviewDraft) -> tuple[object, ...]:
-    return tuple(
-        (leg.symbol, leg.bid, leg.ask)
-        for leg in draft.component.legs
+        draft.payload(),
     )
 
 

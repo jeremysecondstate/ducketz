@@ -89,7 +89,9 @@ def test_strategy_review_requires_acknowledgment_and_submits_exactly_once() -> N
     controller = _controller(session)
 
     controller.refresh_review()
+    assert controller.primary_action_enabled
     assert not controller.can_place
+    assert controller.state_text == "Ready to Place"
     controller.acknowledge(True)
     assert controller.can_place
 
@@ -104,7 +106,7 @@ def test_strategy_review_requires_acknowledgment_and_submits_exactly_once() -> N
     assert len(session.submissions) == 1
 
 
-def test_changed_exact_leg_quotes_force_review_again_before_submission() -> None:
+def test_changed_exact_leg_quotes_do_not_block_an_unchanged_limit_order() -> None:
     session = _Session()
     controller = _controller(session)
     controller.refresh_review()
@@ -113,17 +115,14 @@ def test_changed_exact_leg_quotes_force_review_again_before_submission() -> None
 
     outcome = controller.place()
 
-    assert outcome.status == OrderReviewOutcomeStatus.INVALIDATED
-    assert outcome.retryable
-    assert not controller.acknowledged
-    assert session.submissions == []
-    assert any(
-        notice.title == "Order Facts Changed"
-        for notice in controller.review.notices
-    )
+    assert outcome.status == OrderReviewOutcomeStatus.ACCEPTED
+    assert outcome.submission is not None
+    assert outcome.submission.payload["price"] == pytest.approx(1.30)
+    assert len(session.submissions) == 1
+    assert controller.draft.component.legs[0].bid == pytest.approx(2.50)
 
 
-def test_changed_account_facts_force_review_again_before_submission() -> None:
+def test_changed_sufficient_account_balance_does_not_block_submission() -> None:
     session = _Session()
     available_cash = [10_000.0]
     controller = StrategyOrderReviewController(
@@ -142,10 +141,67 @@ def test_changed_account_facts_force_review_again_before_submission() -> None:
 
     outcome = controller.place()
 
+    assert outcome.status == OrderReviewOutcomeStatus.ACCEPTED
+    assert len(session.submissions) == 1
+    assert controller.draft.available_cash == pytest.approx(9_000.0)
+
+
+def test_changed_destination_account_still_blocks_before_submission() -> None:
+    session = _Session()
+    account_label = ["Schwab account 12345678"]
+    controller = StrategyOrderReviewController(
+        draft=_entry_draft(research_only=True),
+        refresher=lambda draft: refresh_strategy_entry_review_draft(
+            draft,
+            snapshot=_snapshot(account_label=account_label[0]),
+            session=session,
+        ),
+        session_factory=lambda: session,
+        now_provider=lambda: datetime.now(timezone.utc),
+    )
+    controller.refresh_review()
+    controller.acknowledge(True)
+    account_label[0] = "Schwab account 87654321"
+
+    outcome = controller.place()
+
     assert outcome.status == OrderReviewOutcomeStatus.INVALIDATED
     assert outcome.retryable
     assert not controller.acknowledged
     assert session.submissions == []
+    assert any(
+        notice.title == "Order Facts Changed"
+        for notice in controller.review.notices
+    )
+
+
+def test_newly_insufficient_funds_still_block_before_submission() -> None:
+    session = _Session()
+    available_cash = [10_000.0]
+    controller = StrategyOrderReviewController(
+        draft=_entry_draft(research_only=True),
+        refresher=lambda draft: refresh_strategy_entry_review_draft(
+            draft,
+            snapshot=_snapshot(available_cash=available_cash[0]),
+            session=session,
+        ),
+        session_factory=lambda: session,
+        now_provider=lambda: datetime.now(timezone.utc),
+    )
+    controller.refresh_review()
+    controller.acknowledge(True)
+    available_cash[0] = 25.0
+
+    outcome = controller.place()
+
+    assert outcome.status == OrderReviewOutcomeStatus.INVALIDATED
+    assert outcome.retryable
+    assert not controller.acknowledged
+    assert session.submissions == []
+    assert any(
+        notice.title == "Insufficient Available Funds"
+        for notice in controller.review.notices
+    )
 
 
 def test_obvious_debit_above_available_funds_blocks_placement() -> None:
@@ -361,10 +417,14 @@ def _candidate_row() -> dict[str, object]:
     }
 
 
-def _snapshot(*, available_cash: float = 10_000.0) -> PortfolioSnapshot:
+def _snapshot(
+    *,
+    available_cash: float = 10_000.0,
+    account_label: str = "Schwab account 12345678",
+) -> PortfolioSnapshot:
     return PortfolioSnapshot(
         source="schwab",
-        account_label="Schwab account 12345678",
+        account_label=account_label,
         synced_at=NOW,
         account_facts={
             "positions": {"items": []},
