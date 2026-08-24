@@ -16,6 +16,10 @@ from app.services.schwab_strategy_orders import (
     MARKET_ORDER,
     StrategyOrderDraft,
 )
+from app.services.strategy_portfolio_impact import (
+    StrategyPortfolioImpact,
+    calculate_strategy_portfolio_impact,
+)
 from app.services.strategy_order_review import (
     StrategyEntryOrderReviewDraft,
     StrategyOrderReviewController,
@@ -37,10 +41,13 @@ from app.ui.theme import (
     ACCENT,
     BACKGROUND,
     BORDER,
+    DANGER,
     MUTED_TEXT,
+    SUCCESS,
     SURFACE,
     SURFACE_ALT,
     TEXT,
+    WARNING,
 )
 
 
@@ -127,10 +134,30 @@ class OptionsStrategiesTab:
         self.ticket_order_method = tk.StringVar()
         self.ticket_limit_price = tk.StringVar()
         self.ticket_duration = tk.StringVar(value=DAY_ONLY)
-        self.ticket_portfolio_impact = tk.StringVar(value="")
+        self.impact_source = tk.StringVar(value="Select exact legs to calculate impact")
+        self.impact_status = tk.StringVar(value="No Strategy Selected")
+        self.impact_available_label = tk.StringVar(value="Applicable Funds")
+        self.impact_available = tk.StringVar(value="—")
+        self.impact_requirement = tk.StringVar(value="—")
+        self.impact_funds_after = tk.StringVar(value="—")
+        self.impact_cash_balance = tk.StringVar(value="—")
+        self.impact_buying_power = tk.StringVar(value="—")
+        self.impact_cash_flow = tk.StringVar(value="—")
+        self.impact_requirement_basis = tk.StringVar(value="")
+        self.impact_position = tk.StringVar(value="")
+        self.impact_model = tk.StringVar(value="—")
+        self.impact_pricing = tk.StringVar(value="—")
+        self.impact_quality = tk.StringVar(value="—")
+        self.impact_review = tk.StringVar(value="—")
 
         self._apply_styles()
         self._build(parent)
+        for variable in (
+            self.ticket_quantity,
+            self.ticket_order_method,
+            self.ticket_limit_price,
+        ):
+            variable.trace_add("write", self._ticket_impact_changed)
         self.root.after_idle(self.refresh)
 
     def _apply_styles(self) -> None:
@@ -174,6 +201,67 @@ class OptionsStrategiesTab:
             "StrategyMuted.TLabel",
             background=SURFACE,
             foreground=MUTED_TEXT,
+            font=("Segoe UI", 9),
+        )
+        style.configure(
+            "StrategyImpactMetric.TFrame",
+            background=SURFACE_ALT,
+            bordercolor=BORDER,
+            borderwidth=1,
+            relief=tk.SOLID,
+        )
+        style.configure(
+            "StrategyImpactMetricLabel.TLabel",
+            background=SURFACE_ALT,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 8),
+        )
+        style.configure(
+            "StrategyImpactMetricValue.TLabel",
+            background=SURFACE_ALT,
+            foreground=TEXT,
+            font=("Segoe UI", 10, "bold"),
+        )
+        style.configure(
+            "StrategyImpactMetricGood.TLabel",
+            background=SURFACE_ALT,
+            foreground=SUCCESS,
+            font=("Segoe UI", 10, "bold"),
+        )
+        style.configure(
+            "StrategyImpactMetricDanger.TLabel",
+            background=SURFACE_ALT,
+            foreground=DANGER,
+            font=("Segoe UI", 10, "bold"),
+        )
+        style.configure(
+            "StrategyImpactGood.TLabel",
+            background=SURFACE,
+            foreground=SUCCESS,
+            font=("Segoe UI", 9, "bold"),
+        )
+        style.configure(
+            "StrategyImpactWarning.TLabel",
+            background=SURFACE,
+            foreground=WARNING,
+            font=("Segoe UI", 9, "bold"),
+        )
+        style.configure(
+            "StrategyImpactDanger.TLabel",
+            background=SURFACE,
+            foreground=DANGER,
+            font=("Segoe UI", 9, "bold"),
+        )
+        style.configure(
+            "StrategyEvidenceKey.TLabel",
+            background=SURFACE,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 8, "bold"),
+        )
+        style.configure(
+            "StrategyEvidenceValue.TLabel",
+            background=SURFACE,
+            foreground=TEXT,
             font=("Segoe UI", 9),
         )
         style.configure(
@@ -528,18 +616,106 @@ class OptionsStrategiesTab:
         legs.pack(fill=tk.X)
         self.ticket_legs = legs
 
+        impact_header = ttk.Frame(parent, style="StrategySurface.TFrame")
+        impact_header.pack(fill=tk.X, pady=(8, 3))
         ttk.Label(
-            parent,
+            impact_header,
             text="Portfolio Impact",
             style="StrategyHeading.TLabel",
-        ).pack(anchor=tk.W, pady=(8, 2))
+        ).pack(side=tk.LEFT, anchor=tk.W)
+        ttk.Label(
+            impact_header,
+            textvariable=self.impact_source,
+            style="StrategyMuted.TLabel",
+            justify=tk.RIGHT,
+            wraplength=260,
+        ).pack(side=tk.RIGHT, anchor=tk.E)
+
+        metrics = ttk.Frame(parent, style="StrategySurface.TFrame")
+        metrics.pack(fill=tk.X)
+        for column in range(3):
+            metrics.grid_columnconfigure(column, weight=1, uniform="impact")
+        self._impact_metric(
+            metrics,
+            self.impact_available_label,
+            self.impact_available,
+            row=0,
+            column=0,
+            dynamic_label=True,
+        )
+        self._impact_metric(
+            metrics,
+            "Est. Requirement",
+            self.impact_requirement,
+            row=0,
+            column=1,
+        )
+        self._impact_funds_after_value = self._impact_metric(
+            metrics,
+            "Est. Funds After",
+            self.impact_funds_after,
+            row=0,
+            column=2,
+        )
+        self._impact_metric(
+            metrics,
+            "Cash Balance",
+            self.impact_cash_balance,
+            row=1,
+            column=0,
+        )
+        self._impact_metric(
+            metrics,
+            "Buying Power",
+            self.impact_buying_power,
+            row=1,
+            column=1,
+        )
+        self._impact_cash_flow_value = self._impact_metric(
+            metrics,
+            "Opening Cash Flow",
+            self.impact_cash_flow,
+            row=1,
+            column=2,
+        )
+
+        impact_context = ttk.Frame(parent, style="StrategySurface.TFrame")
+        impact_context.pack(fill=tk.X, pady=(5, 0))
+        self._impact_status_label = ttk.Label(
+            impact_context,
+            textvariable=self.impact_status,
+            style="StrategyImpactWarning.TLabel",
+        )
+        self._impact_status_label.pack(anchor=tk.W)
+        ttk.Label(
+            impact_context,
+            textvariable=self.impact_position,
+            style="StrategyMuted.TLabel",
+            wraplength=440,
+            justify=tk.LEFT,
+        ).pack(fill=tk.X, anchor=tk.W, pady=(1, 0))
         ttk.Label(
             parent,
-            textvariable=self.ticket_portfolio_impact,
-            style="StrategyBody.TLabel",
-            wraplength=430,
+            textvariable=self.impact_requirement_basis,
+            style="StrategyMuted.TLabel",
+            wraplength=440,
             justify=tk.LEFT,
-        ).pack(anchor=tk.W, fill=tk.X)
+        ).pack(fill=tk.X, anchor=tk.W, pady=(2, 4))
+
+        ttk.Separator(parent, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=(1, 4))
+        ttk.Label(
+            parent,
+            text="Decision Evidence",
+            style="StrategyBody.TLabel",
+            font=("Segoe UI", 9, "bold"),
+        ).pack(anchor=tk.W, pady=(0, 2))
+        evidence = ttk.Frame(parent, style="StrategySurface.TFrame")
+        evidence.pack(fill=tk.X)
+        evidence.grid_columnconfigure(1, weight=1)
+        self._evidence_row(evidence, "MODEL", self.impact_model, row=0)
+        self._evidence_row(evidence, "PRICING", self.impact_pricing, row=1)
+        self._evidence_row(evidence, "QUALITY", self.impact_quality, row=2)
+        self._evidence_row(evidence, "REVIEW", self.impact_review, row=3)
 
         self.submit_button = ttk.Button(
             parent,
@@ -578,6 +754,67 @@ class OptionsStrategiesTab:
             padx=(0 if column == 0 else 5, 5 if column == 0 else 0),
             pady=(3, 7),
         )
+
+    @staticmethod
+    def _impact_metric(
+        parent: ttk.Frame,
+        label: str | tk.StringVar,
+        value: tk.StringVar,
+        *,
+        row: int,
+        column: int,
+        dynamic_label: bool = False,
+    ) -> ttk.Label:
+        card = ttk.Frame(
+            parent,
+            padding=(7, 5),
+            style="StrategyImpactMetric.TFrame",
+        )
+        card.grid(
+            row=row,
+            column=column,
+            sticky=tk.NSEW,
+            padx=(0 if column == 0 else 3, 0),
+            pady=(0 if row == 0 else 3, 0),
+        )
+        label_options: dict[str, object] = (
+            {"textvariable": label}
+            if dynamic_label
+            else {"text": str(label)}
+        )
+        ttk.Label(
+            card,
+            style="StrategyImpactMetricLabel.TLabel",
+            **label_options,
+        ).pack(anchor=tk.W)
+        value_label = ttk.Label(
+            card,
+            textvariable=value,
+            style="StrategyImpactMetricValue.TLabel",
+        )
+        value_label.pack(anchor=tk.W, pady=(1, 0))
+        return value_label
+
+    @staticmethod
+    def _evidence_row(
+        parent: ttk.Frame,
+        label: str,
+        value: tk.StringVar,
+        *,
+        row: int,
+    ) -> None:
+        ttk.Label(
+            parent,
+            text=label,
+            style="StrategyEvidenceKey.TLabel",
+        ).grid(row=row, column=0, sticky=tk.NW, padx=(0, 8), pady=1)
+        ttk.Label(
+            parent,
+            textvariable=value,
+            style="StrategyEvidenceValue.TLabel",
+            wraplength=370,
+            justify=tk.LEFT,
+        ).grid(row=row, column=1, sticky=tk.EW, pady=1)
 
     def refresh(self) -> None:
         if self.past_positions_view is not None:
@@ -806,20 +1043,11 @@ class OptionsStrategiesTab:
             f"{len(draft.legs)} Strategy {leg_word}"
         )
         self.ticket_quantity.set("1")
-        self.ticket_portfolio_impact.set(
-            " ".join(
-                (
-                    candidate.portfolio_fit.detail,
-                    candidate.pricing_summary + ".",
-                    candidate.quality_warning + ".",
-                    candidate.manual_actionability,
-                )
-            )
-        )
         order_names = tuple(order.display_name for order in draft.orders)
         self._order_part_box.configure(values=order_names)
         self.ticket_order_part.set(order_names[0])
         self._render_order_part()
+        self._update_portfolio_impact()
         if self.submit_button is not None:
             self.submit_button.configure(
                 state=tk.NORMAL,
@@ -879,6 +1107,168 @@ class OptionsStrategiesTab:
             )
         )
 
+    def _ticket_impact_changed(self, *_args: object) -> None:
+        self._update_portfolio_impact()
+
+    def _update_portfolio_impact(self) -> None:
+        candidate = self.selected_candidate
+        snapshot = self.snapshot
+        if candidate is None or snapshot is None:
+            self._reset_portfolio_impact()
+            return
+        self._set_decision_evidence(candidate)
+        self.impact_source.set(
+            _impact_source_text(snapshot.account_label, snapshot.synced_at)
+        )
+        try:
+            impact = calculate_strategy_portfolio_impact(
+                candidate.row,
+                order_draft=candidate.order_draft,
+                position=candidate.position,
+                order_index=self.selected_order_index,
+                strategy_quantity=self.ticket_quantity.get().strip(),
+                order_method=self.ticket_order_method.get(),
+                limit_price=(
+                    None
+                    if self.ticket_order_method.get() == MARKET_ORDER
+                    else self.ticket_limit_price.get().strip()
+                ),
+                account_label=snapshot.account_label,
+            )
+        except (TypeError, ValueError) as exc:
+            self.impact_status.set("Complete Ticket Details")
+            self._impact_status_label.configure(
+                style="StrategyImpactWarning.TLabel"
+            )
+            self.impact_available_label.set("Applicable Funds")
+            for variable in (
+                self.impact_available,
+                self.impact_requirement,
+                self.impact_funds_after,
+                self.impact_cash_balance,
+                self.impact_buying_power,
+                self.impact_cash_flow,
+            ):
+                variable.set("—")
+            self.impact_requirement_basis.set(str(exc))
+            self.impact_position.set(_position_impact_text(candidate.position))
+            self._impact_funds_after_value.configure(
+                style="StrategyImpactMetricValue.TLabel"
+            )
+            self._impact_cash_flow_value.configure(
+                style="StrategyImpactMetricValue.TLabel"
+            )
+            return
+        self._render_portfolio_impact(candidate, impact)
+
+    def _render_portfolio_impact(
+        self,
+        candidate: StrategyCandidateView,
+        impact: StrategyPortfolioImpact,
+    ) -> None:
+        self.impact_available_label.set(impact.applicable_funds_label)
+        self.impact_available.set(_money_or_dash(impact.applicable_funds))
+        self.impact_requirement.set(
+            _money_or_dash(impact.estimated_funds_required)
+        )
+        self.impact_funds_after.set(
+            _money_or_dash(impact.funds_after_estimate)
+        )
+        self.impact_cash_balance.set(_money_or_dash(impact.cash_balance))
+        self.impact_buying_power.set(_money_or_dash(impact.buying_power))
+        self.impact_cash_flow.set(
+            _cash_flow_text(impact.estimated_opening_cash_flow)
+        )
+
+        if impact.has_share_shortfall:
+            status = "Share Shortfall"
+            status_style = "StrategyImpactDanger.TLabel"
+        elif impact.has_funds_shortfall:
+            status = "Funds Below Estimate"
+            status_style = "StrategyImpactDanger.TLabel"
+        elif impact.applicable_funds is None:
+            status = "Applicable Balance Unavailable"
+            status_style = "StrategyImpactWarning.TLabel"
+        elif impact.estimated_funds_required is None:
+            status = "Broker Estimate Required"
+            status_style = "StrategyImpactWarning.TLabel"
+        else:
+            status = candidate.portfolio_fit.label
+            status_style = "StrategyImpactGood.TLabel"
+        self.impact_status.set(status)
+        self._impact_status_label.configure(style=status_style)
+        self._impact_funds_after_value.configure(
+            style=(
+                "StrategyImpactMetricDanger.TLabel"
+                if impact.has_funds_shortfall
+                else "StrategyImpactMetricGood.TLabel"
+                if impact.funds_after_estimate is not None
+                else "StrategyImpactMetricValue.TLabel"
+            )
+        )
+        self._impact_cash_flow_value.configure(
+            style=(
+                "StrategyImpactMetricGood.TLabel"
+                if impact.estimated_opening_cash_flow is not None
+                and impact.estimated_opening_cash_flow > 0.0
+                else "StrategyImpactMetricDanger.TLabel"
+                if impact.estimated_opening_cash_flow is not None
+                and impact.estimated_opening_cash_flow < 0.0
+                else "StrategyImpactMetricValue.TLabel"
+            )
+        )
+
+        coverage = (
+            ""
+            if impact.coverage_ratio is None
+            else f" • {impact.coverage_ratio:.2f}× coverage"
+        )
+        self.impact_requirement_basis.set(
+            "Local estimate: "
+            f"{impact.requirement_basis}{coverage} • "
+            f"{impact.opening_cash_flow_basis} • Schwab review is authoritative"
+        )
+        self.impact_position.set(_position_impact_text_from_impact(impact))
+
+    def _set_decision_evidence(self, candidate: StrategyCandidateView) -> None:
+        self.impact_model.set(candidate.model_summary)
+        self.impact_pricing.set(_pricing_evidence_text(candidate))
+        self.impact_quality.set(_quality_evidence_text(candidate))
+        self.impact_review.set(
+            "Research Only — Manual broker review required"
+            if not candidate.manual_order_actionable
+            else "Eligible — Explicit confirmation required"
+        )
+
+    def _reset_portfolio_impact(self) -> None:
+        self.impact_source.set("Select exact legs to calculate impact")
+        self.impact_status.set("No Strategy Selected")
+        self.impact_available_label.set("Applicable Funds")
+        for variable in (
+            self.impact_available,
+            self.impact_requirement,
+            self.impact_funds_after,
+            self.impact_cash_balance,
+            self.impact_buying_power,
+            self.impact_cash_flow,
+            self.impact_model,
+            self.impact_pricing,
+            self.impact_quality,
+            self.impact_review,
+        ):
+            variable.set("—")
+        self.impact_requirement_basis.set("")
+        self.impact_position.set("")
+        self._impact_status_label.configure(
+            style="StrategyImpactWarning.TLabel"
+        )
+        self._impact_funds_after_value.configure(
+            style="StrategyImpactMetricValue.TLabel"
+        )
+        self._impact_cash_flow_value.configure(
+            style="StrategyImpactMetricValue.TLabel"
+        )
+
     def _clear_ticket(self) -> None:
         self.selected_candidate = None
         self.selected_order_index = 0
@@ -890,7 +1280,7 @@ class OptionsStrategiesTab:
         self.ticket_order_method.set("")
         self.ticket_limit_price.set("")
         self.ticket_duration.set(DAY_ONLY)
-        self.ticket_portfolio_impact.set("")
+        self._reset_portfolio_impact()
         self._limit_price_entry.configure(state=tk.NORMAL)
         self._clear_table(self.ticket_legs)
         if self.submit_button is not None:
@@ -911,6 +1301,20 @@ class OptionsStrategiesTab:
             )
             return
         try:
+            portfolio_impact = calculate_strategy_portfolio_impact(
+                candidate.row,
+                order_draft=candidate.order_draft,
+                position=candidate.position,
+                order_index=self.selected_order_index,
+                strategy_quantity=self.ticket_quantity.get().strip(),
+                order_method=self.ticket_order_method.get(),
+                limit_price=(
+                    None
+                    if self.ticket_order_method.get() == MARKET_ORDER
+                    else self.ticket_limit_price.get().strip()
+                ),
+                account_label=snapshot.account_label,
+            )
             draft = build_strategy_entry_review_draft(
                 candidate_row=candidate.row,
                 order_draft=candidate.order_draft,
@@ -933,6 +1337,7 @@ class OptionsStrategiesTab:
                 model_summary=candidate.model_summary,
                 pricing_summary=candidate.pricing_summary,
                 quality_warning=candidate.quality_warning,
+                portfolio_impact=portfolio_impact,
             )
             controller = StrategyOrderReviewController(
                 draft=draft,
@@ -1053,6 +1458,94 @@ def _position_summary(position: object) -> str:
             f"{orders} working option order" + ("s" if orders != 1 else "")
         )
     return " · ".join(parts)
+
+
+def _impact_source_text(
+    account_label: str,
+    observed_at: object,
+) -> str:
+    label = str(account_label or "Schwab").strip()
+    source = "Schwab Duckets" if label.casefold() == "schwab" else label
+    if not hasattr(observed_at, "astimezone"):
+        return f"{source} snapshot"
+    local = observed_at.astimezone()  # type: ignore[union-attr]
+    timestamp = local.strftime("%b %d, %I:%M %p").replace(" 0", " ")
+    return f"{source} • Synced {timestamp}"
+
+
+def _position_impact_text(position: object) -> str:
+    symbol = str(getattr(position, "symbol", "")).strip().upper()
+    shares = float(getattr(position, "shares", 0.0))
+    options = float(getattr(position, "option_contracts", 0.0))
+    orders = int(getattr(position, "working_option_orders", 0))
+    return (
+        f"{symbol}: {shares:g} shares • {options:g} option contracts • "
+        f"{orders} working option order{'s' if orders != 1 else ''}"
+    )
+
+
+def _position_impact_text_from_impact(
+    impact: StrategyPortfolioImpact,
+) -> str:
+    if impact.shares_required > 0.0:
+        share_text = (
+            f"{impact.shares_held:g} held / {impact.shares_required:g} required"
+        )
+    else:
+        share_text = f"{impact.shares_held:g} shares held"
+    return (
+        f"{share_text} • {impact.option_contracts:g} option contracts • "
+        f"{impact.working_option_orders} working option order"
+        f"{'s' if impact.working_option_orders != 1 else ''}"
+    )
+
+
+def _pricing_evidence_text(candidate: StrategyCandidateView) -> str:
+    parts = [
+        part.strip()
+        for part in str(candidate.pricing_summary).split(" · ")
+        if part.strip()
+    ]
+    if not parts:
+        return "Unavailable"
+    headline = " • ".join(parts[:2])
+    details = " • ".join(parts[2:])
+    return headline if not details else f"{headline}\n{details}"
+
+
+def _quality_evidence_text(candidate: StrategyCandidateView) -> str:
+    sections = [
+        section.strip().removeprefix("Quality warning: ")
+        for section in str(candidate.quality_warning).split(" · ")
+        if section.strip()
+    ]
+    cleaned = [
+        " • ".join(
+            item.strip()[:1].upper() + item.strip()[1:]
+            for item in section.split(",")
+            if item.strip()
+        )
+        for section in sections
+    ]
+    return "\n".join(cleaned) if cleaned else "Unavailable"
+
+
+def _money_or_dash(value: float | None) -> str:
+    if value is None:
+        return "—"
+    if value < 0.0:
+        return f"-${abs(value):,.2f}"
+    return f"${value:,.2f}"
+
+
+def _cash_flow_text(value: float | None) -> str:
+    if value is None:
+        return "—"
+    if value > 0.0:
+        return f"+${value:,.2f} credit"
+    if value < 0.0:
+        return f"-${abs(value):,.2f} debit"
+    return "$0.00"
 
 
 def _empty_candidate_message(reason: str | None) -> str:

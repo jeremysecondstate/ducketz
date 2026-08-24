@@ -12,12 +12,16 @@ import pytest
 from app.models.portfolio import PortfolioSnapshot
 from app.services.schwab_strategy_orders import (
     DAY_ONLY,
+    LIMIT_ORDER,
     MARKET_ORDER,
     NET_CREDIT_LIMIT,
     NET_DEBIT_LIMIT,
     build_strategy_order_draft,
     build_strategy_order_payload,
     schwab_position_context,
+)
+from app.services.strategy_portfolio_impact import (
+    calculate_strategy_portfolio_impact,
 )
 from app.ui.options_strategy_data import load_strategy_candidates, portfolio_fit
 from app.ui.options_strategies import OptionsStrategiesTab, _sort_candidate_views
@@ -297,7 +301,14 @@ def test_position_context_reads_equity_options_cash_and_working_orders() -> None
                     },
                 ]
             },
-            "account_values": {"available_funds": 15_000},
+            "account_values": {
+                "status": "CURRENT",
+                "available_funds": 15_000,
+                "available_funds_non_marginable_trade": 8_000,
+                "cash_balance": 6_000,
+                "buying_power": 30_000,
+                "liquidation_value": 45_000,
+            },
         },
         symbol="goog",
         observed_at=observed,
@@ -309,6 +320,12 @@ def test_position_context_reads_equity_options_cash_and_working_orders() -> None
     assert context.option_contracts == 2
     assert context.working_option_orders == 1
     assert context.available_cash == 15_000
+    assert context.available_cash_source == "Available Funds"
+    assert context.non_marginable_funds == 8_000
+    assert context.cash_balance == 6_000
+    assert context.buying_power == 30_000
+    assert context.liquidation_value == 45_000
+    assert context.account_values_status == "CURRENT"
 
 
 def test_vertical_candidate_builds_one_net_debit_schwab_order() -> None:
@@ -1272,7 +1289,12 @@ def test_portfolio_fit_reports_funds_below_cash_secured_estimate() -> None:
         ],
     )
     position = schwab_position_context(
-        {"account_values": {"available_funds": 5_000}},
+        {
+            "account_values": {
+                "available_funds": 50_000,
+                "available_funds_non_marginable_trade": 5_000,
+            }
+        },
         symbol="GOOG",
     )
 
@@ -1281,6 +1303,153 @@ def test_portfolio_fit_reports_funds_below_cash_secured_estimate() -> None:
     assert result.label == "Funds Below Estimate"
     assert "$5,000.00" in result.detail
     assert "$9,500.00" in result.detail
+    assert "non-marginable funds" in result.detail
+
+
+def test_cash_secured_impact_uses_current_non_marginable_schwab_funds() -> None:
+    candidate = _candidate(
+        strategy_name="cash_secured_put",
+        strategy_display_name="Cash-Secured Put",
+        cash_requirement="STRIKE_TIMES_MULTIPLIER",
+        capital_required=30_755.0,
+        legs=[
+            _option_leg(
+                side="SHORT",
+                option_type="PUT",
+                strike=307.5,
+                symbol="GOOG  260918P00307500",
+                bid=3.25,
+                ask=3.35,
+            )
+        ],
+    )
+    position = schwab_position_context(
+        {
+            "account_values": {
+                "status": "CURRENT",
+                "available_funds": 103_046.94,
+                "available_funds_non_marginable_trade": 50_000.0,
+                "cash_balance": 24_000.0,
+                "buying_power": 206_093.88,
+            }
+        },
+        symbol="GOOG",
+    )
+    draft = build_strategy_order_draft(candidate, position=position)
+
+    impact = calculate_strategy_portfolio_impact(
+        candidate,
+        order_draft=draft,
+        position=position,
+        order_index=0,
+        strategy_quantity=2,
+        order_method=LIMIT_ORDER,
+        limit_price=3.25,
+        account_label="Schwab",
+    )
+
+    assert impact.applicable_funds_label == "Non-Marginable Funds"
+    assert impact.applicable_funds == 50_000.0
+    assert impact.available_funds == 103_046.94
+    assert impact.estimated_funds_required == 61_510.0
+    assert impact.funds_after_estimate == -11_510.0
+    assert impact.estimated_opening_cash_flow == 650.0
+    assert impact.has_funds_shortfall
+
+
+def test_debit_impact_recalculates_from_ticket_quantity_and_limit() -> None:
+    candidate = _candidate(
+        strategy_name="long_put",
+        strategy_display_name="Long Put",
+        capital_required=130.0,
+        legs=[
+            _option_leg(
+                side="LONG",
+                option_type="PUT",
+                strike=105,
+                symbol="GOOG  260918P00105000",
+                bid=2.40,
+                ask=2.50,
+            )
+        ],
+    )
+    position = schwab_position_context(
+        {"account_values": {"available_funds": 10_000.0}},
+        symbol="GOOG",
+    )
+    draft = build_strategy_order_draft(candidate, position=position)
+
+    impact = calculate_strategy_portfolio_impact(
+        candidate,
+        order_draft=draft,
+        position=position,
+        order_index=0,
+        strategy_quantity=3,
+        order_method=LIMIT_ORDER,
+        limit_price=4.0,
+        account_label="Schwab",
+    )
+
+    assert impact.estimated_opening_cash_flow == -1_200.0
+    assert impact.estimated_capital_at_risk == 390.0
+    assert impact.estimated_funds_required == 1_200.0
+    assert impact.funds_after_estimate == 8_800.0
+    assert impact.requirement_basis == "Configured opening debit"
+
+
+def test_held_share_impact_does_not_recount_stock_as_new_cash() -> None:
+    candidate = _candidate(
+        strategy_name="covered_call",
+        strategy_display_name="Covered Call",
+        stock_requirement="EXISTING_100_SHARES",
+        capital_required=10_500.0,
+        legs=[
+            _stock_leg(bid=104.90, ask=105.10),
+            _option_leg(
+                side="SHORT",
+                option_type="CALL",
+                strike=110,
+                symbol="GOOG  260918C00110000",
+                bid=2.00,
+                ask=2.10,
+            ),
+        ],
+    )
+    position = schwab_position_context(
+        {
+            "positions": {
+                "items": [
+                    {
+                        "asset_type": "EQUITY",
+                        "symbol": "GOOG",
+                        "net_quantity": 100,
+                    }
+                ]
+            },
+            "account_values": {"available_funds": 20_000.0},
+        },
+        symbol="GOOG",
+    )
+    draft = build_strategy_order_draft(candidate, position=position)
+
+    impact = calculate_strategy_portfolio_impact(
+        candidate,
+        order_draft=draft,
+        position=position,
+        order_index=0,
+        strategy_quantity=1,
+        order_method=LIMIT_ORDER,
+        limit_price=2.0,
+        account_label="Schwab",
+    )
+
+    assert draft.uses_existing_shares
+    assert impact.shares_required == 100
+    assert impact.shares_after_estimate == 0
+    assert impact.estimated_funds_required == 0.0
+    assert impact.funds_after_estimate == 20_000.0
+    assert impact.estimated_opening_cash_flow == 200.0
+    assert not impact.has_share_shortfall
 
 
 def test_confirmation_copy_is_human_readable() -> None:

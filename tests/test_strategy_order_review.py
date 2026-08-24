@@ -15,9 +15,13 @@ from app.models.option_management import (
 from app.models.portfolio import PortfolioSnapshot
 from app.services.schwab_strategy_orders import (
     DAY_ONLY,
+    LIMIT_ORDER,
     NET_DEBIT_LIMIT,
     build_strategy_order_draft,
     schwab_position_context,
+)
+from app.services.strategy_portfolio_impact import (
+    calculate_strategy_portfolio_impact,
 )
 from app.services.strategy_order_review import (
     StrategyEntryOrderReviewDraft,
@@ -157,6 +161,93 @@ def test_obvious_debit_above_available_funds_blocks_placement() -> None:
     assert any(
         notice.title == "Insufficient Available Funds"
         for notice in review.notices
+    )
+
+
+def test_cash_secured_collateral_uses_refreshed_non_marginable_funds() -> None:
+    row = {
+        "id": "AAPL|1d|cash_secured_put",
+        "symbol": "AAPL",
+        "strategy_name": "cash_secured_put",
+        "strategy_display_name": "Cash-Secured Put",
+        "stock_requirement": "NONE",
+        "cash_requirement": "STRIKE_TIMES_MULTIPLIER",
+        "capital_required": 30_100.0,
+        "legs_json": json.dumps(
+            [
+                {
+                    "asset": "OPTION",
+                    "side": "SHORT",
+                    "quantity": 1,
+                    "contract_symbol": SHORT,
+                    "multiplier": 100,
+                    "expiration_date": "2026-09-18",
+                    "strike": 305,
+                    "option_type": "PUT",
+                    "bid": 3.25,
+                    "ask": 3.35,
+                }
+            ]
+        ),
+    }
+    position = schwab_position_context(
+        {
+            "account_values": {
+                "status": "CURRENT",
+                "available_funds": 100_000.0,
+                "available_funds_non_marginable_trade": 20_000.0,
+            }
+        },
+        symbol="AAPL",
+        observed_at=NOW,
+    )
+    order_draft = build_strategy_order_draft(row, position=position)
+    impact = calculate_strategy_portfolio_impact(
+        row,
+        order_draft=order_draft,
+        position=position,
+        order_index=0,
+        strategy_quantity=1,
+        order_method=LIMIT_ORDER,
+        limit_price=3.25,
+        account_label="Schwab account 12345678",
+    )
+    draft = build_strategy_entry_review_draft(
+        candidate_row=row,
+        order_draft=order_draft,
+        order_index=0,
+        strategy_quantity=1,
+        order_method=LIMIT_ORDER,
+        limit_price=3.25,
+        duration=DAY_ONLY,
+        account_label="Schwab account 12345678",
+        reviewed_account_at=NOW,
+        available_cash=position.available_cash,
+        working_option_orders=0,
+        research_only=True,
+        research_reason="Research pricing is unavailable.",
+        portfolio_detail="Cash-secured collateral required.",
+        model_summary="Scenario coverage only",
+        pricing_summary="Unavailable pricing",
+        quality_warning="Surface policy failed",
+        portfolio_impact=impact,
+    )
+
+    review = strategy_entry_order_review(
+        replace(draft, quote_observed_at=NOW),
+        now=NOW,
+    )
+
+    assert impact.applicable_funds_label == "Non-Marginable Funds"
+    assert impact.estimated_funds_required == 30_500.0
+    assert review.has_blocking_notice
+    assert any(
+        notice.title == "Insufficient Available Funds"
+        for notice in review.notices
+    )
+    assert any(
+        cost.label == "Non-Marginable Funds" and cost.value == "$20,000.00"
+        for cost in review.costs
     )
 
 

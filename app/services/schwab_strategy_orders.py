@@ -29,6 +29,12 @@ class SchwabPositionContext:
     option_contracts: float
     working_option_orders: int
     available_cash: float | None
+    available_cash_source: str = "Available Funds"
+    non_marginable_funds: float | None = None
+    cash_balance: float | None = None
+    buying_power: float | None = None
+    liquidation_value: float | None = None
+    account_values_status: str = "UNAVAILABLE"
 
 
 @dataclass(frozen=True)
@@ -88,6 +94,12 @@ def schwab_position_context(
     option_contracts = 0.0
     working_option_orders = 0
     available_cash: float | None = None
+    available_cash_source = "Available Funds"
+    non_marginable_funds: float | None = None
+    cash_balance: float | None = None
+    buying_power: float | None = None
+    liquidation_value: float | None = None
+    account_values_status = "UNAVAILABLE"
     facts = account_facts if isinstance(account_facts, Mapping) else {}
 
     positions = facts.get("positions")
@@ -128,14 +140,27 @@ def schwab_position_context(
 
     account_values = facts.get("account_values")
     if isinstance(account_values, Mapping):
-        for field in (
-            "available_funds",
-            "cash_available_for_withdrawal",
-            "cash_balance",
+        account_values_status = str(
+            account_values.get("status") or "UNAVAILABLE"
+        ).strip().upper()
+        for field, label in (
+            ("available_funds", "Available Funds"),
+            ("cash_available_for_trading", "Cash Available for Trading"),
+            ("cash_available_for_withdrawal", "Cash Available for Withdrawal"),
+            ("cash_balance", "Cash Balance"),
         ):
             available_cash = _finite_number(account_values.get(field))
             if available_cash is not None:
+                available_cash_source = label
                 break
+        non_marginable_funds = _finite_number(
+            account_values.get("available_funds_non_marginable_trade")
+        )
+        cash_balance = _finite_number(account_values.get("cash_balance"))
+        buying_power = _finite_number(account_values.get("buying_power"))
+        liquidation_value = _finite_number(
+            account_values.get("liquidation_value")
+        )
 
     return SchwabPositionContext(
         symbol=clean_symbol,
@@ -144,6 +169,12 @@ def schwab_position_context(
         option_contracts=round(option_contracts, 8),
         working_option_orders=working_option_orders,
         available_cash=available_cash,
+        available_cash_source=available_cash_source,
+        non_marginable_funds=non_marginable_funds,
+        cash_balance=cash_balance,
+        buying_power=buying_power,
+        liquidation_value=liquidation_value,
+        account_values_status=account_values_status,
     )
 
 

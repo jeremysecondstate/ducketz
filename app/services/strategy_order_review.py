@@ -48,6 +48,10 @@ from app.services.schwab_strategy_orders import (
     refresh_strategy_order_quotes,
     schwab_position_context,
 )
+from app.services.strategy_portfolio_impact import (
+    StrategyPortfolioImpact,
+    calculate_strategy_portfolio_impact,
+)
 
 
 @dataclass(frozen=True)
@@ -72,6 +76,11 @@ class StrategyEntryOrderReviewDraft:
     model_summary: str
     pricing_summary: str
     quality_warning: str
+    applicable_funds: float | None = None
+    applicable_funds_label: str = "Available Funds"
+    estimated_funds_required: float | None = None
+    funds_after_estimate: float | None = None
+    requirement_basis: str = ""
 
     @property
     def component(self) -> StrategyOrderComponent:
@@ -109,6 +118,7 @@ def build_strategy_entry_review_draft(
     model_summary: str,
     pricing_summary: str,
     quality_warning: str,
+    portfolio_impact: StrategyPortfolioImpact | None = None,
 ) -> StrategyEntryOrderReviewDraft:
     quantity = _positive_int(strategy_quantity, "Strategy quantity")
     clean_limit = (
@@ -135,6 +145,29 @@ def build_strategy_entry_review_draft(
         model_summary=str(model_summary).strip(),
         pricing_summary=str(pricing_summary).strip(),
         quality_warning=str(quality_warning).strip(),
+        applicable_funds=(
+            None if portfolio_impact is None else portfolio_impact.applicable_funds
+        ),
+        applicable_funds_label=(
+            "Available Funds"
+            if portfolio_impact is None
+            else portfolio_impact.applicable_funds_label
+        ),
+        estimated_funds_required=(
+            None
+            if portfolio_impact is None
+            else portfolio_impact.estimated_funds_required
+        ),
+        funds_after_estimate=(
+            None
+            if portfolio_impact is None
+            else portfolio_impact.funds_after_estimate
+        ),
+        requirement_basis=(
+            ""
+            if portfolio_impact is None
+            else portfolio_impact.requirement_basis
+        ),
     )
     draft.payload()
     return draft
@@ -165,6 +198,16 @@ def refresh_strategy_entry_review_draft(
             "Schwab did not return every exact-leg quote: " + ", ".join(missing)
         )
     refreshed = refresh_strategy_order_quotes(rebuilt, quotes)
+    impact = calculate_strategy_portfolio_impact(
+        draft.candidate_row,
+        order_draft=refreshed,
+        position=position,
+        order_index=draft.order_index,
+        strategy_quantity=draft.strategy_quantity,
+        order_method=draft.order_method,
+        limit_price=draft.limit_price,
+        account_label=snapshot.account_label,
+    )
     quote_observed_at = min(quote.fetched_at for quote in quotes.values())
     updated = replace(
         draft,
@@ -174,6 +217,11 @@ def refresh_strategy_entry_review_draft(
         quote_observed_at=quote_observed_at,
         available_cash=position.available_cash,
         working_option_orders=position.working_option_orders,
+        applicable_funds=impact.applicable_funds,
+        applicable_funds_label=impact.applicable_funds_label,
+        estimated_funds_required=impact.estimated_funds_required,
+        funds_after_estimate=impact.funds_after_estimate,
+        requirement_basis=impact.requirement_basis,
     )
     updated.payload()
     return updated
@@ -280,19 +328,42 @@ def strategy_entry_order_review(
                 "Placement remains blocked until every exact leg is refreshed from Schwab.",
             )
         )
+    estimated_funds_required = draft.estimated_funds_required
     if (
-        estimated_cash_effect is not None
+        estimated_funds_required is None
+        and estimated_cash_effect is not None
         and estimated_cash_effect < 0.0
-        and draft.available_cash is not None
-        and abs(estimated_cash_effect) > draft.available_cash + 1e-9
+    ):
+        estimated_funds_required = abs(estimated_cash_effect)
+    applicable_funds = (
+        draft.applicable_funds
+        if draft.applicable_funds is not None
+        else draft.available_cash
+    )
+    if estimated_funds_required is not None and applicable_funds is None:
+        notices.append(
+            _blocking(
+                "Applicable Balance Unavailable",
+                (
+                    f"The local requirement estimate is "
+                    f"{_money(estimated_funds_required)}, but Schwab did not report "
+                    f"{draft.applicable_funds_label.lower()}."
+                ),
+            )
+        )
+    elif (
+        estimated_funds_required is not None
+        and applicable_funds is not None
+        and estimated_funds_required > applicable_funds + 1e-9
     ):
         notices.append(
             _blocking(
                 "Insufficient Available Funds",
                 (
-                    f"The estimated debit is {_money(abs(estimated_cash_effect))}, "
-                    f"but the refreshed account reports {_money(draft.available_cash)} "
-                    "available."
+                    f"The local requirement estimate is "
+                    f"{_money(estimated_funds_required)}, but refreshed Schwab "
+                    f"{draft.applicable_funds_label.lower()} are "
+                    f"{_money(applicable_funds)}."
                 ),
             )
         )
@@ -309,10 +380,10 @@ def strategy_entry_order_review(
             )
         )
     price_rail = _price_rail(draft)
-    available_cash = (
+    available_funds = (
         "Unavailable"
-        if draft.available_cash is None
-        else _money(draft.available_cash)
+        if applicable_funds is None
+        else _money(applicable_funds)
     )
     classification = "Research Only" if draft.research_only else "Model Actionable"
     execution_mode = (
@@ -410,9 +481,35 @@ def strategy_entry_order_review(
                 estimated=True,
             ),
             OptionOrderReviewCost(
-                "Available Funds",
-                available_cash,
+                draft.applicable_funds_label,
+                available_funds,
                 "Current Schwab account read",
+            ),
+            OptionOrderReviewCost(
+                "Estimated Funds Required",
+                (
+                    _money(estimated_funds_required)
+                    if estimated_funds_required is not None
+                    else "Unavailable"
+                ),
+                draft.requirement_basis or LOCAL_CALCULATION,
+                estimated=True,
+            ),
+            OptionOrderReviewCost(
+                "Estimated Funds After",
+                (
+                    _money(draft.funds_after_estimate)
+                    if draft.funds_after_estimate is not None
+                    else "Unavailable"
+                ),
+                LOCAL_CALCULATION,
+                tone=(
+                    "negative"
+                    if draft.funds_after_estimate is not None
+                    and draft.funds_after_estimate < 0.0
+                    else "positive"
+                ),
+                estimated=True,
             ),
             OptionOrderReviewCost(
                 "Broker Preview",
@@ -853,6 +950,10 @@ def _semantic_fingerprint(draft: StrategyEntryOrderReviewDraft) -> tuple[object,
         draft.duration,
         draft.account_label,
         draft.available_cash,
+        draft.applicable_funds,
+        draft.applicable_funds_label,
+        draft.estimated_funds_required,
+        draft.funds_after_estimate,
         draft.working_option_orders,
         draft.order_draft.uses_existing_shares,
         draft.order_draft.shares_available,

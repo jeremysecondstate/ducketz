@@ -583,23 +583,37 @@ def portfolio_fit(
         cash_requirement=cash_requirement,
     )
     if required_funds is not None:
-        if position.available_cash is None:
+        uses_non_marginable_funds = bool(
+            "STRIKE_TIMES_MULTIPLIER" in cash_requirement
+            and position.non_marginable_funds is not None
+        )
+        applicable_funds = (
+            position.non_marginable_funds
+            if uses_non_marginable_funds
+            else position.available_cash
+        )
+        balance_name = (
+            "non-marginable funds"
+            if uses_non_marginable_funds
+            else position.available_cash_source.lower()
+        )
+        if applicable_funds is None:
             labels.append("Funds Not Reported")
             details.append(
                 f"The estimated requirement is ${required_funds:,.2f}; "
-                "current available funds were not reported."
+                "current applicable funds were not reported."
             )
-        elif position.available_cash >= required_funds:
+        elif applicable_funds >= required_funds:
             labels.append("Funds Available")
             details.append(
-                f"The account reports ${position.available_cash:,.2f} "
+                f"Schwab reports ${applicable_funds:,.2f} in {balance_name} "
                 f"available against an estimated ${required_funds:,.2f} "
                 "requirement."
             )
         else:
             labels.append("Funds Below Estimate")
             details.append(
-                f"The account reports ${position.available_cash:,.2f} "
+                f"Schwab reports ${applicable_funds:,.2f} in {balance_name} "
                 f"available against an estimated ${required_funds:,.2f} "
                 "requirement."
             )
@@ -832,7 +846,12 @@ def _profit_probability_exclusion_reason(
 
 
 def _human_reason(value: str) -> str:
-    return " ".join(str(value).strip().replace("_", " ").split()).title()
+    text = str(value).strip()
+    if ":" in text:
+        subject, reason = text.split(":", 1)
+        human_reason = " ".join(reason.replace("_", " ").split()).title()
+        return f"{subject.strip()}: {human_reason}"
+    return " ".join(text.replace("_", " ").split()).title()
 
 
 def _required_bool(value: object, *, label: str) -> bool:
