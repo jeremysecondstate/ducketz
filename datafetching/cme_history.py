@@ -660,6 +660,12 @@ def _upsert_event_partition(path: Path, incoming: pd.DataFrame) -> bool:
         else pd.DataFrame()
     )
     key_columns = _event_natural_key(incoming)
+    if not existing.empty and key_columns:
+        existing = _drop_replaced_incomplete_events(
+            existing,
+            incoming,
+            preferred=key_columns,
+        )
     if existing.empty:
         output = incoming.drop_duplicates(list(key_columns), keep="last")
         changed = not output.empty
@@ -732,9 +738,7 @@ def _prepare_event_frame(frame: pd.DataFrame) -> pd.DataFrame:
             or normalized.endswith("_timestamp")
             or normalized.endswith("_at")
         ):
-            output[column] = pd.to_datetime(
-                output[column], utc=True, errors="coerce"
-            ).astype("datetime64[ns, UTC]")
+            output[column] = _parse_utc_datetimes(output[column])
     return output
 
 
@@ -743,9 +747,84 @@ def _event_times(frame: pd.DataFrame) -> pd.Series:
     for column in _EVENT_TIME_COLUMNS:
         if column not in frame.columns:
             continue
-        parsed = pd.to_datetime(frame[column], utc=True, errors="coerce")
+        parsed = _parse_utc_datetimes(frame[column])
         output = output.fillna(parsed)
     return output
+
+
+def _parse_utc_datetimes(values: pd.Series) -> pd.Series:
+    """Parse provider ISO timestamps without losing exact-second reset rows."""
+
+    return pd.to_datetime(
+        values,
+        utc=True,
+        errors="coerce",
+        format="mixed",
+    ).astype("datetime64[ns, UTC]")
+
+
+def _drop_replaced_incomplete_events(
+    existing: pd.DataFrame,
+    incoming: pd.DataFrame,
+    *,
+    preferred: Sequence[str],
+) -> pd.DataFrame:
+    """Drop only corrupt overlap rows proven identical by receive-time evidence.
+
+    An older writer could coerce an exact-second ``ts_event`` to ``NaT`` when a
+    batch also contained fractional ISO timestamps.  A later overlap supplies
+    the intact row.  Match the corrupt row on every complete, stable provider
+    field other than event time and remove it only when exactly one incoming row
+    is identical on that receive-time identity.  Ambiguous or unmatched rows
+    remain in place so the normal readable-key validation fails closed.
+    """
+
+    preferred_columns = [column for column in preferred if column in existing.columns]
+    if not preferred_columns:
+        return existing
+    incomplete = existing.loc[:, preferred_columns].isna().any(axis=1)
+    if not bool(incomplete.any()):
+        return existing
+
+    corrupt = existing.loc[incomplete]
+    event_only_columns = {"timestamp", "ts_event", "databento_ts_event"}
+    shared = [
+        column
+        for column in existing.columns
+        if column in incoming.columns
+        and column not in _VOLATILE_EVENT_COLUMNS
+        and column not in event_only_columns
+        and not corrupt[column].isna().any()
+        and not incoming[column].isna().any()
+    ]
+    if not any(column in shared for column in ("ts_recv", "databento_ts_recv")):
+        return existing
+    if not any(
+        column in shared
+        for column in ("provider_symbol", "symbol", "instrument_id")
+    ):
+        return existing
+    if not any(column in shared for column in ("sequence", "databento_sequence")):
+        return existing
+
+    incoming_hashes = pd.util.hash_pandas_object(
+        incoming.loc[:, shared],
+        index=False,
+    )
+    corrupt_hashes = pd.util.hash_pandas_object(
+        corrupt.loc[:, shared],
+        index=False,
+    )
+    replaced: list[object] = []
+    for index, fingerprint in corrupt_hashes.items():
+        candidates = incoming.loc[incoming_hashes.eq(fingerprint), shared]
+        if len(candidates) != 1:
+            continue
+        left = corrupt.loc[index, shared]
+        right = candidates.iloc[0]
+        if bool((left.eq(right) | (left.isna() & right.isna())).fillna(False).all()):
+            replaced.append(index)
+    return existing.drop(index=replaced) if replaced else existing
 
 
 def _event_natural_key(frame: pd.DataFrame) -> tuple[str, ...]:
@@ -760,13 +839,26 @@ def _event_natural_key(frame: pd.DataFrame) -> tuple[str, ...]:
             "price",
         ),
         ("symbol", "ts_event", "sequence", "action", "side", "depth", "price"),
+        (
+            "provider_symbol",
+            "ts_recv",
+            "sequence",
+            "action",
+            "side",
+            "depth",
+            "price",
+        ),
+        ("symbol", "ts_recv", "sequence", "action", "side", "depth", "price"),
         ("provider_symbol", "timestamp", "sequence", "side", "depth"),
         ("symbol", "timestamp", "sequence", "side", "depth"),
         ("provider_symbol", "timestamp"),
         ("symbol", "timestamp"),
         ("instrument_id", "ts_event", "sequence", "action", "side", "depth"),
         ("instrument_id", "ts_event", "sequence"),
+        ("instrument_id", "ts_recv", "sequence", "action", "side", "depth"),
+        ("instrument_id", "ts_recv", "sequence"),
         ("ts_event", "sequence", "action", "side", "depth"),
+        ("ts_recv", "sequence", "action", "side", "depth"),
         ("timestamp", "sequence"),
     )
     return adaptive_unique_key(

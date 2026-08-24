@@ -257,6 +257,14 @@ class DatabentoCmeContextProvider:
                     r"(?: The request time range falls entirely inside a weekend\.)?$"
                 ),
             )
+            if _is_likely_empty_cme_weekend(spec.start, spec.end):
+                warnings.filterwarnings(
+                    "ignore",
+                    message=(
+                        r"^The streaming request had one or more symbols which "
+                        r"did not resolve: .+\.$"
+                    ),
+                )
             store = client.timeseries.get_range(**_get_range_kwargs(spec))
         frame = store.to_df()
         return frame if isinstance(frame, pd.DataFrame) else pd.DataFrame(frame)

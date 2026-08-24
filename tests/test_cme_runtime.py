@@ -188,6 +188,81 @@ def test_partitioned_l2_history_preserves_nanoseconds_and_causal_receipts(
     assert later.loc[later["provider_symbol"].eq("NQ.c.0"), "timestamp"].iloc[0] == later_event
 
 
+def test_partitioned_l2_history_repairs_mixed_format_session_reset_overlap(
+    tmp_path: Path,
+) -> None:
+    spec = _spec(
+        start="2026-08-18T21:59:55Z",
+        end="2026-08-18T22:00:05Z",
+    )
+    reset_received_at = pd.Timestamp("2026-08-18T22:00:00.015586102Z")
+    reset = {
+        "symbol": "NQ.c.0",
+        "provider_symbol": "NQ.c.0",
+        "timestamp": "",
+        "ts_event": None,
+        "ts_recv": reset_received_at,
+        "sequence": 14_600_237,
+        "action": "T",
+        "side": "N",
+        "depth": 0,
+        "price": 7_714.0,
+        "size": 1,
+        "fetched_at": reset_received_at + pd.Timedelta(milliseconds=1),
+        "provider_schema": "mbp-10",
+        "cme_context_group": "context",
+    }
+    repaired_reset = {
+        **reset,
+        "timestamp": "2026-08-18T22:00:00+00:00",
+        "ts_event": "2026-08-18T22:00:00+00:00",
+        "fetched_at": reset_received_at + pd.Timedelta(milliseconds=2),
+    }
+    later = _event(
+        "NQ.c.0",
+        pd.Timestamp("2026-08-18T22:00:01Z"),
+        pd.Timestamp("2026-08-18T22:00:01.001Z"),
+        sequence=14_600_238,
+        price=7_714.25,
+    )
+    later["ts_recv"] = pd.Timestamp("2026-08-18T22:00:01.000100Z")
+
+    initial = persist_cme_event_history(
+        tmp_path,
+        spec=spec,
+        normalized_rows=(reset,),
+        raw_frame=None,
+    )
+    continued = persist_cme_event_history(
+        tmp_path,
+        spec=spec,
+        normalized_rows=(repaired_reset, later),
+        raw_frame=None,
+    )
+
+    assert initial.written == 1
+    assert continued.written == 1
+    stored = pd.read_parquet(
+        next(
+            (
+                tmp_path
+                / "pools"
+                / "cme"
+                / "events"
+                / "databento"
+                / "context"
+                / "mbp-10"
+                / "normalized"
+            ).rglob("events.parquet")
+        )
+    )
+    assert len(stored) == 2
+    assert stored["id"].is_unique
+    stored_reset = stored.loc[stored["sequence"].eq(14_600_237)].iloc[0]
+    assert stored_reset["ts_event"] == pd.Timestamp("2026-08-18T22:00:00Z")
+    assert stored_reset["id"].startswith("NQ.c.0|2026-08-18T22:00:00Z|")
+
+
 def test_quiet_market_cursor_advances_by_successful_endpoint(tmp_path: Path) -> None:
     first_spec = _spec(
         start="2026-08-05T10:00:00Z",
