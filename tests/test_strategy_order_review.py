@@ -53,10 +53,10 @@ def test_research_only_candidate_retains_manual_concept_d_review() -> None:
         (SHORT, "Sell to Open"),
     ]
     assert any(
-        notice.title == "Research-Only Candidate"
+        notice.title == "Publication Evidence Requires Validation"
         for notice in review.notices
     )
-    assert "research-only classification" in review.acknowledgment_copy
+    assert "publication-evidence notice" in review.acknowledgment_copy
     assert review.safety_copy.startswith("This order opens new market risk")
 
 

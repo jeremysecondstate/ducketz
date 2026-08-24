@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import math
 import tkinter as tk
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from tkinter import messagebox, ttk
 
@@ -84,6 +85,22 @@ _DESCENDING_FIRST_CANDIDATE_COLUMNS = frozenset(
 )
 
 
+@dataclass(frozen=True)
+class _DecisionEvidence:
+    model: str
+    quote_legs_available: int
+    quote_legs_total: int
+    candidate_snapshot: str
+    publication_notices: tuple[str, ...]
+    publication_checks: tuple[tuple[str, bool], ...]
+    direction_probability_up: float
+    predictive_score: float | None
+    scenario_coverage: float
+    expected_return: float | None
+    execution_status: str
+    execution_detail: str
+
+
 class OptionsStrategiesTab:
     def __init__(
         self,
@@ -120,6 +137,13 @@ class OptionsStrategiesTab:
         self.candidate_table: ttk.Treeview | None = None
         self.ticket_legs: ttk.Treeview | None = None
         self.submit_button: ttk.Button | None = None
+        self.decision_details_button: ttk.Button | None = None
+        self._decision_details_window: tk.Toplevel | None = None
+        self._decision_status_label: ttk.Label | None = None
+        self._decision_funds_after_value: ttk.Label | None = None
+        self._decision_cash_flow_value: ttk.Label | None = None
+        self._decision_pricing_text: tk.Text | None = None
+        self._decision_assurance_text: tk.Text | None = None
         self._candidate_sort_column: str | None = None
         self._candidate_sort_descending = False
 
@@ -145,10 +169,9 @@ class OptionsStrategiesTab:
         self.impact_cash_flow = tk.StringVar(value="—")
         self.impact_requirement_basis = tk.StringVar(value="")
         self.impact_position = tk.StringVar(value="")
-        self.impact_model = tk.StringVar(value="—")
-        self.impact_pricing = tk.StringVar(value="—")
-        self.impact_quality = tk.StringVar(value="—")
-        self.impact_review = tk.StringVar(value="—")
+        self.impact_decision_summary = tk.StringVar(
+            value="Select a strategy to inspect its decision evidence"
+        )
 
         self._apply_styles()
         self._build(parent)
@@ -253,18 +276,6 @@ class OptionsStrategiesTab:
             font=("Segoe UI", 9, "bold"),
         )
         style.configure(
-            "StrategyEvidenceKey.TLabel",
-            background=SURFACE,
-            foreground=MUTED_TEXT,
-            font=("Segoe UI", 8, "bold"),
-        )
-        style.configure(
-            "StrategyEvidenceValue.TLabel",
-            background=SURFACE,
-            foreground=TEXT,
-            font=("Segoe UI", 9),
-        )
-        style.configure(
             "StrategySubmit.TButton",
             background=ACCENT,
             foreground="#ffffff",
@@ -275,6 +286,19 @@ class OptionsStrategiesTab:
         style.map(
             "StrategySubmit.TButton",
             background=[("active", "#93c5fd"), ("disabled", SURFACE_ALT)],
+            foreground=[("disabled", MUTED_TEXT)],
+        )
+        style.configure(
+            "StrategyDetails.TButton",
+            background=SURFACE_ALT,
+            foreground=TEXT,
+            bordercolor=BORDER,
+            font=("Segoe UI", 9, "bold"),
+            padding=(10, 6),
+        )
+        style.map(
+            "StrategyDetails.TButton",
+            background=[("active", BORDER), ("disabled", SURFACE)],
             foreground=[("disabled", MUTED_TEXT)],
         )
         style.configure(
@@ -508,23 +532,42 @@ class OptionsStrategiesTab:
         self.candidate_table = table
 
     def _build_ticket(self, parent: ttk.Frame) -> None:
+        parent.grid_rowconfigure(0, weight=1)
+        parent.grid_columnconfigure(0, weight=1)
+
+        sections = ttk.PanedWindow(parent, orient=tk.VERTICAL)
+        sections.grid(row=0, column=0, sticky=tk.NSEW)
+        order_section = ttk.Frame(
+            sections,
+            padding=(0, 0, 0, 6),
+            style="StrategySurface.TFrame",
+        )
+        impact_section = ttk.Frame(
+            sections,
+            padding=(0, 7, 0, 0),
+            style="StrategySurface.TFrame",
+        )
+        sections.add(order_section, weight=3)
+        sections.add(impact_section, weight=2)
+        self._ticket_sections = sections
+
         ttk.Label(
-            parent,
+            order_section,
             text="Order Ticket",
             style="StrategyHeading.TLabel",
         ).pack(anchor=tk.W)
         ttk.Label(
-            parent,
+            order_section,
             textvariable=self.ticket_strategy,
             style="StrategyBody.TLabel",
         ).pack(anchor=tk.W, pady=(5, 0))
         ttk.Label(
-            parent,
+            order_section,
             textvariable=self.ticket_structure,
             style="StrategyMuted.TLabel",
         ).pack(anchor=tk.W, pady=(1, 6))
 
-        fields = ttk.Frame(parent, style="StrategySurface.TFrame")
+        fields = ttk.Frame(order_section, style="StrategySurface.TFrame")
         fields.pack(fill=tk.X)
         order_part_box = ttk.Combobox(
             fields,
@@ -594,12 +637,12 @@ class OptionsStrategiesTab:
         )
 
         ttk.Label(
-            parent,
+            order_section,
             text="Ticket Legs",
             style="StrategyHeading.TLabel",
         ).pack(anchor=tk.W, pady=(8, 4))
         legs = ttk.Treeview(
-            parent,
+            order_section,
             columns=("action", "contract", "quantity", "bid", "ask"),
             show="headings",
             height=3,
@@ -613,11 +656,14 @@ class OptionsStrategiesTab:
         ):
             legs.heading(name, text=label)
             legs.column(name, width=width, anchor=anchor)
-        legs.pack(fill=tk.X)
+        legs.pack(fill=tk.BOTH, expand=True)
         self.ticket_legs = legs
 
-        impact_header = ttk.Frame(parent, style="StrategySurface.TFrame")
-        impact_header.pack(fill=tk.X, pady=(8, 3))
+        impact_header = ttk.Frame(
+            impact_section,
+            style="StrategySurface.TFrame",
+        )
+        impact_header.pack(fill=tk.X, pady=(0, 3))
         ttk.Label(
             impact_header,
             text="Portfolio Impact",
@@ -631,7 +677,7 @@ class OptionsStrategiesTab:
             wraplength=260,
         ).pack(side=tk.RIGHT, anchor=tk.E)
 
-        metrics = ttk.Frame(parent, style="StrategySurface.TFrame")
+        metrics = ttk.Frame(impact_section, style="StrategySurface.TFrame")
         metrics.pack(fill=tk.X)
         for column in range(3):
             metrics.grid_columnconfigure(column, weight=1, uniform="impact")
@@ -679,7 +725,10 @@ class OptionsStrategiesTab:
             column=2,
         )
 
-        impact_context = ttk.Frame(parent, style="StrategySurface.TFrame")
+        impact_context = ttk.Frame(
+            impact_section,
+            style="StrategySurface.TFrame",
+        )
         impact_context.pack(fill=tk.X, pady=(5, 0))
         self._impact_status_label = ttk.Label(
             impact_context,
@@ -695,27 +744,35 @@ class OptionsStrategiesTab:
             justify=tk.LEFT,
         ).pack(fill=tk.X, anchor=tk.W, pady=(1, 0))
         ttk.Label(
-            parent,
+            impact_section,
             textvariable=self.impact_requirement_basis,
             style="StrategyMuted.TLabel",
             wraplength=440,
             justify=tk.LEFT,
         ).pack(fill=tk.X, anchor=tk.W, pady=(2, 4))
 
-        ttk.Separator(parent, orient=tk.HORIZONTAL).pack(fill=tk.X, pady=(1, 4))
+        decision_bar = ttk.Frame(
+            impact_section,
+            padding=(8, 7),
+            style="StrategyImpactMetric.TFrame",
+        )
+        decision_bar.pack(fill=tk.X, pady=(4, 0))
+        decision_bar.grid_columnconfigure(0, weight=1)
         ttk.Label(
-            parent,
-            text="Decision Evidence",
-            style="StrategyBody.TLabel",
-            font=("Segoe UI", 9, "bold"),
-        ).pack(anchor=tk.W, pady=(0, 2))
-        evidence = ttk.Frame(parent, style="StrategySurface.TFrame")
-        evidence.pack(fill=tk.X)
-        evidence.grid_columnconfigure(1, weight=1)
-        self._evidence_row(evidence, "MODEL", self.impact_model, row=0)
-        self._evidence_row(evidence, "PRICING", self.impact_pricing, row=1)
-        self._evidence_row(evidence, "QUALITY", self.impact_quality, row=2)
-        self._evidence_row(evidence, "REVIEW", self.impact_review, row=3)
+            decision_bar,
+            textvariable=self.impact_decision_summary,
+            style="StrategyImpactMetricLabel.TLabel",
+            justify=tk.LEFT,
+            wraplength=300,
+        ).grid(row=0, column=0, sticky=tk.EW, padx=(0, 8))
+        self.decision_details_button = ttk.Button(
+            decision_bar,
+            text="Decision Details ↗",
+            style="StrategyDetails.TButton",
+            command=self._open_decision_details,
+            state=tk.DISABLED,
+        )
+        self.decision_details_button.grid(row=0, column=1, sticky=tk.E)
 
         self.submit_button = ttk.Button(
             parent,
@@ -724,7 +781,12 @@ class OptionsStrategiesTab:
             command=self._submit_order,
             state=tk.DISABLED,
         )
-        self.submit_button.pack(fill=tk.X, pady=(8, 0))
+        self.submit_button.grid(
+            row=1,
+            column=0,
+            sticky=tk.EW,
+            pady=(8, 0),
+        )
 
     def _ticket_field(
         self,
@@ -795,26 +857,496 @@ class OptionsStrategiesTab:
         value_label.pack(anchor=tk.W, pady=(1, 0))
         return value_label
 
-    @staticmethod
-    def _evidence_row(
-        parent: ttk.Frame,
-        label: str,
-        value: tk.StringVar,
-        *,
-        row: int,
-    ) -> None:
+    def _open_decision_details(self) -> None:
+        if self.selected_candidate is None:
+            return
+        window = self._decision_details_window
+        if window is not None:
+            try:
+                window.deiconify()
+                window.lift()
+                window.focus_set()
+                self._refresh_decision_details()
+                return
+            except tk.TclError:
+                self._decision_details_window = None
+
+        window = tk.Toplevel(self.root)
+        self._decision_details_window = window
+        window.title("Strategy Decision Details")
+        self.root.update_idletasks()
+        width = 980
+        height = 720
+        x = self.root.winfo_rootx() + max(
+            16,
+            (self.root.winfo_width() - width) // 2,
+        )
+        y = self.root.winfo_rooty() + max(
+            16,
+            (self.root.winfo_height() - height) // 2,
+        )
+        window.geometry(f"{width}x{height}+{x}+{y}")
+        window.minsize(740, 520)
+        window.configure(background=BACKGROUND)
+        window.transient(self.root)
+        window.protocol("WM_DELETE_WINDOW", self._close_decision_details)
+
+        outer = ttk.Frame(
+            window,
+            padding=(16, 14),
+            style="StrategyPage.TFrame",
+        )
+        outer.grid(row=0, column=0, sticky=tk.NSEW)
+        window.grid_rowconfigure(0, weight=1)
+        window.grid_columnconfigure(0, weight=1)
+        outer.grid_rowconfigure(1, weight=1)
+        outer.grid_columnconfigure(0, weight=1)
+
+        header = ttk.Frame(outer, style="StrategyPage.TFrame")
+        header.grid(row=0, column=0, sticky=tk.EW, pady=(0, 10))
+        header.grid_columnconfigure(0, weight=1)
         ttk.Label(
-            parent,
-            text=label,
-            style="StrategyEvidenceKey.TLabel",
-        ).grid(row=row, column=0, sticky=tk.NW, padx=(0, 8), pady=1)
+            header,
+            text="Strategy Decision Details",
+            style="StrategyTitle.TLabel",
+        ).grid(row=0, column=0, sticky=tk.W)
         ttk.Label(
-            parent,
-            textvariable=value,
-            style="StrategyEvidenceValue.TLabel",
-            wraplength=370,
+            header,
+            textvariable=self.ticket_strategy,
+            style="StrategySubtitle.TLabel",
+        ).grid(row=1, column=0, sticky=tk.W, pady=(2, 0))
+        ttk.Label(
+            header,
+            textvariable=self.ticket_structure,
+            style="StrategySubtitle.TLabel",
+        ).grid(row=2, column=0, sticky=tk.W)
+        ttk.Label(
+            header,
+            textvariable=self.impact_source,
+            style="StrategySubtitle.TLabel",
+            justify=tk.RIGHT,
+        ).grid(row=0, column=1, rowspan=3, sticky=tk.NE, padx=(18, 0))
+
+        details_panes = tk.PanedWindow(
+            outer,
+            orient=tk.VERTICAL,
+            background=BORDER,
+            borderwidth=0,
+            sashwidth=6,
+            sashrelief=tk.FLAT,
+            showhandle=True,
+            handlesize=8,
+            handlepad=8,
+            opaqueresize=True,
+        )
+        details_panes.grid(row=1, column=0, sticky=tk.NSEW)
+
+        summary = ttk.Frame(
+            details_panes,
+            padding=(14, 12),
+            style="StrategySurface.TFrame",
+        )
+        evidence_panel = ttk.Frame(
+            details_panes,
+            padding=(14, 12),
+            style="StrategySurface.TFrame",
+        )
+        details_panes.add(summary, minsize=205, stretch="always")
+        details_panes.add(evidence_panel, minsize=245, stretch="always")
+
+        summary_header = ttk.Frame(summary, style="StrategySurface.TFrame")
+        summary_header.pack(fill=tk.X, pady=(0, 7))
+        ttk.Label(
+            summary_header,
+            text="Portfolio Overview",
+            style="StrategyHeading.TLabel",
+        ).pack(side=tk.LEFT)
+        self._decision_status_label = ttk.Label(
+            summary_header,
+            textvariable=self.impact_status,
+            style="StrategyImpactWarning.TLabel",
+        )
+        self._decision_status_label.pack(side=tk.RIGHT)
+
+        metrics = ttk.Frame(summary, style="StrategySurface.TFrame")
+        metrics.pack(fill=tk.X)
+        for column in range(3):
+            metrics.grid_columnconfigure(column, weight=1, uniform="details-impact")
+        self._impact_metric(
+            metrics,
+            self.impact_available_label,
+            self.impact_available,
+            row=0,
+            column=0,
+            dynamic_label=True,
+        )
+        self._impact_metric(
+            metrics,
+            "Est. Requirement",
+            self.impact_requirement,
+            row=0,
+            column=1,
+        )
+        self._decision_funds_after_value = self._impact_metric(
+            metrics,
+            "Est. Funds After",
+            self.impact_funds_after,
+            row=0,
+            column=2,
+        )
+        self._impact_metric(
+            metrics,
+            "Cash Balance",
+            self.impact_cash_balance,
+            row=1,
+            column=0,
+        )
+        self._impact_metric(
+            metrics,
+            "Buying Power",
+            self.impact_buying_power,
+            row=1,
+            column=1,
+        )
+        self._decision_cash_flow_value = self._impact_metric(
+            metrics,
+            "Opening Cash Flow",
+            self.impact_cash_flow,
+            row=1,
+            column=2,
+        )
+        ttk.Label(
+            summary,
+            textvariable=self.impact_position,
+            style="StrategyBody.TLabel",
             justify=tk.LEFT,
-        ).grid(row=row, column=1, sticky=tk.EW, pady=1)
+            wraplength=850,
+        ).pack(fill=tk.X, anchor=tk.W, pady=(8, 1))
+        ttk.Label(
+            summary,
+            textvariable=self.impact_requirement_basis,
+            style="StrategyMuted.TLabel",
+            justify=tk.LEFT,
+            wraplength=850,
+        ).pack(fill=tk.X, anchor=tk.W)
+
+        evidence_header = ttk.Frame(
+            evidence_panel,
+            style="StrategySurface.TFrame",
+        )
+        evidence_header.pack(fill=tk.X, pady=(0, 8))
+        ttk.Label(
+            evidence_header,
+            text="Decision Support",
+            style="StrategyHeading.TLabel",
+        ).pack(side=tk.LEFT)
+        ttk.Label(
+            evidence_header,
+            text="Drag either divider or resize the window to suit the content",
+            style="StrategyMuted.TLabel",
+        ).pack(side=tk.RIGHT)
+
+        evidence_panes = tk.PanedWindow(
+            evidence_panel,
+            orient=tk.HORIZONTAL,
+            background=BORDER,
+            borderwidth=0,
+            sashwidth=6,
+            sashrelief=tk.FLAT,
+            showhandle=True,
+            handlesize=8,
+            handlepad=8,
+            opaqueresize=True,
+        )
+        evidence_panes.pack(fill=tk.BOTH, expand=True)
+        pricing_panel = ttk.Frame(
+            evidence_panes,
+            padding=(10, 9),
+            style="StrategyImpactMetric.TFrame",
+        )
+        assurance_panel = ttk.Frame(
+            evidence_panes,
+            padding=(10, 9),
+            style="StrategyImpactMetric.TFrame",
+        )
+        evidence_panes.add(pricing_panel, minsize=300, stretch="always")
+        evidence_panes.add(assurance_panel, minsize=300, stretch="always")
+        ttk.Label(
+            pricing_panel,
+            text="Quote Snapshot",
+            style="StrategyImpactMetricValue.TLabel",
+        ).pack(anchor=tk.W, pady=(0, 6))
+        ttk.Label(
+            assurance_panel,
+            text="Signal & Execution",
+            style="StrategyImpactMetricValue.TLabel",
+        ).pack(anchor=tk.W, pady=(0, 6))
+        self._decision_pricing_text = self._decision_text(pricing_panel)
+        self._decision_assurance_text = self._decision_text(assurance_panel)
+
+        footer = ttk.Frame(outer, style="StrategyPage.TFrame")
+        footer.grid(row=2, column=0, sticky=tk.EW, pady=(10, 0))
+        ttk.Label(
+            footer,
+            text="Ticket edits update this view automatically.",
+            style="StrategySubtitle.TLabel",
+        ).pack(side=tk.LEFT)
+        ttk.Button(
+            footer,
+            text="Close",
+            style="StrategyDetails.TButton",
+            command=self._close_decision_details,
+        ).pack(side=tk.RIGHT)
+        self._refresh_decision_details()
+
+    def _close_decision_details(self) -> None:
+        window = self._decision_details_window
+        self._decision_details_window = None
+        self._decision_status_label = None
+        self._decision_funds_after_value = None
+        self._decision_cash_flow_value = None
+        self._decision_pricing_text = None
+        self._decision_assurance_text = None
+        if window is not None:
+            try:
+                window.destroy()
+            except tk.TclError:
+                pass
+
+    @staticmethod
+    def _decision_text(parent: ttk.Frame) -> tk.Text:
+        body = ttk.Frame(parent, style="StrategyImpactMetric.TFrame")
+        body.pack(fill=tk.BOTH, expand=True)
+        text = tk.Text(
+            body,
+            background=SURFACE_ALT,
+            foreground=TEXT,
+            selectbackground=ACCENT,
+            selectforeground="#ffffff",
+            borderwidth=0,
+            highlightthickness=0,
+            padx=5,
+            pady=3,
+            wrap=tk.WORD,
+            font=("Segoe UI", 10),
+            cursor="arrow",
+        )
+        scrollbar = ttk.Scrollbar(body, orient=tk.VERTICAL, command=text.yview)
+        text.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        text.tag_configure(
+            "eyebrow",
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 8, "bold"),
+            spacing1=5,
+            spacing3=3,
+        )
+        text.tag_configure(
+            "heading",
+            foreground=TEXT,
+            font=("Segoe UI", 12, "bold"),
+            spacing3=8,
+        )
+        text.tag_configure(
+            "body",
+            foreground=TEXT,
+            font=("Segoe UI", 10),
+            spacing3=4,
+        )
+        text.tag_configure(
+            "muted",
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 9),
+            spacing3=5,
+        )
+        text.tag_configure(
+            "good",
+            foreground=SUCCESS,
+            font=("Segoe UI", 11, "bold"),
+            spacing3=7,
+        )
+        text.tag_configure(
+            "warning",
+            foreground=WARNING,
+            font=("Segoe UI", 11, "bold"),
+            spacing3=7,
+        )
+        text.tag_configure(
+            "danger",
+            foreground=DANGER,
+            font=("Segoe UI", 11, "bold"),
+            spacing3=7,
+        )
+        text.tag_configure(
+            "bullet",
+            foreground=TEXT,
+            font=("Segoe UI", 9),
+            lmargin1=8,
+            lmargin2=22,
+            spacing3=4,
+        )
+        text.tag_configure(
+            "check_good",
+            foreground=SUCCESS,
+            font=("Segoe UI", 9, "bold"),
+            lmargin1=8,
+            lmargin2=22,
+            spacing3=3,
+        )
+        text.tag_configure(
+            "check_warning",
+            foreground=WARNING,
+            font=("Segoe UI", 9, "bold"),
+            lmargin1=8,
+            lmargin2=22,
+            spacing3=3,
+        )
+        text.configure(state=tk.DISABLED)
+        return text
+
+    def _refresh_decision_details(self) -> None:
+        window = getattr(self, "_decision_details_window", None)
+        pricing_text = getattr(self, "_decision_pricing_text", None)
+        assurance_text = getattr(self, "_decision_assurance_text", None)
+        candidate = getattr(self, "selected_candidate", None)
+        if (
+            window is None
+            or pricing_text is None
+            or assurance_text is None
+        ):
+            return
+        if candidate is None:
+            window.title("Strategy Decision Details")
+            placeholder = [
+                ("NO STRATEGY SELECTED\n", "eyebrow"),
+                (
+                    "Choose a ranked candidate to populate this view.\n",
+                    "muted",
+                ),
+            ]
+            self._replace_decision_text(pricing_text, placeholder)
+            self._replace_decision_text(assurance_text, placeholder)
+            self._sync_decision_detail_tones()
+            return
+        evidence = _decision_evidence(
+            candidate,
+            order_index=self.selected_order_index,
+        )
+        window.title(f"{candidate.strategy_display_name} — Decision Details")
+        quotes_complete = bool(
+            evidence.quote_legs_total
+            and evidence.quote_legs_available == evidence.quote_legs_total
+        )
+        quote_tone = "good" if quotes_complete else "warning"
+        pricing_chunks: list[tuple[str, str]] = [
+            ("SNAPSHOT QUOTES\n", "eyebrow"),
+            (
+                f"{evidence.quote_legs_available} / "
+                f"{evidence.quote_legs_total} ticket legs populated\n",
+                quote_tone,
+            ),
+            ("CANDIDATE SNAPSHOT\n", "eyebrow"),
+            (f"{evidence.candidate_snapshot}\n", "heading"),
+            ("ORDER INPUT\n", "eyebrow"),
+            (
+                _ticket_order_input(
+                    self.ticket_quantity.get(),
+                    self.ticket_order_method.get(),
+                    self.ticket_limit_price.get(),
+                )
+                + "\n",
+                "heading",
+            ),
+            ("LIVE SCHWAB REFRESH\n", "eyebrow"),
+            (
+                "Review Strategy Order requests current exact-leg quotes and "
+                "current account facts before placement.\n",
+                "body",
+            ),
+            ("PUBLICATION NOTES\n", "eyebrow"),
+        ]
+        if evidence.publication_notices:
+            pricing_chunks.extend(
+                (f"• {_publication_notice_display(notice)}\n", "bullet")
+                for notice in evidence.publication_notices
+            )
+        else:
+            pricing_chunks.append(
+                ("No model-overlay exceptions were reported.\n", "muted")
+            )
+        self._replace_decision_text(pricing_text, pricing_chunks)
+
+        assurance_chunks: list[tuple[str, str]] = [
+            ("FORECAST SIGNAL\n", "eyebrow"),
+            (f"{evidence.model}\n", "heading"),
+            (
+                "• Direction Up (ML): "
+                f"{_percentage_points(evidence.direction_probability_up)}   "
+                "• ML Profit: "
+                f"{_percentage_points(evidence.predictive_score)}\n",
+                "bullet",
+            ),
+            (
+                "• Scenario Coverage: "
+                f"{_percentage_points(evidence.scenario_coverage)}   "
+                f"• Expected Return: {_percent(evidence.expected_return)}\n",
+                "bullet",
+            ),
+            ("PUBLICATION CHECKS\n", "eyebrow"),
+        ]
+        assurance_chunks.extend(
+            (
+                (
+                    f"✓ {label} — Passed\n"
+                    if passed
+                    else f"• {label} — Not passed in snapshot\n"
+                ),
+                "check_good" if passed else "check_warning",
+            )
+            for label, passed in evidence.publication_checks
+        )
+        assurance_chunks.extend(
+            (
+                ("EXECUTION PATH\n", "eyebrow"),
+                (f"{evidence.execution_status}\n", "good"),
+                (f"{evidence.execution_detail}\n", "body"),
+            )
+        )
+        self._replace_decision_text(assurance_text, assurance_chunks)
+        self._sync_decision_detail_tones()
+
+    @staticmethod
+    def _replace_decision_text(
+        widget: tk.Text,
+        chunks: Iterable[tuple[str, str]],
+    ) -> None:
+        widget.configure(state=tk.NORMAL)
+        widget.delete("1.0", tk.END)
+        for value, tag in chunks:
+            widget.insert(tk.END, value, tag)
+        widget.configure(state=tk.DISABLED)
+        widget.yview_moveto(0.0)
+
+    def _sync_decision_detail_tones(self) -> None:
+        status_label = getattr(self, "_decision_status_label", None)
+        if status_label is not None:
+            status_label.configure(
+                style=_impact_status_style(self.impact_status.get())
+            )
+        funds_after = getattr(self, "_decision_funds_after_value", None)
+        if funds_after is not None:
+            funds_after.configure(
+                style=_money_metric_style(
+                    self.impact_funds_after.get(),
+                    positive_is_good=True,
+                )
+            )
+        cash_flow = getattr(self, "_decision_cash_flow_value", None)
+        if cash_flow is not None:
+            cash_flow.configure(
+                style=_cash_flow_metric_style(self.impact_cash_flow.get())
+            )
 
     def refresh(self) -> None:
         if self.past_positions_view is not None:
@@ -949,13 +1481,13 @@ class OptionsStrategiesTab:
                     _pricing_quality_summary(candidate),
                 ),
             )
-        research_only = sum(
+        validation_required = sum(
             not candidate.manual_order_actionable
             for candidate in self.visible_candidates
         )
         summary = f"{len(self.visible_candidates):,} Candidates"
-        if research_only:
-            summary += f" · {research_only:,} Research Only"
+        if validation_required:
+            summary += f" · {validation_required:,} Need Schwab Validation"
         self.candidate_summary.set(summary)
         if self.visible_candidates:
             position = self.visible_candidates[0].position
@@ -1053,6 +1585,8 @@ class OptionsStrategiesTab:
                 state=tk.NORMAL,
                 text="Review Strategy Order",
             )
+        if self.decision_details_button is not None:
+            self.decision_details_button.configure(state=tk.NORMAL)
 
     def _order_part_changed(self, _event: object = None) -> None:
         candidate = self.selected_candidate
@@ -1158,6 +1692,7 @@ class OptionsStrategiesTab:
             self._impact_cash_flow_value.configure(
                 style="StrategyImpactMetricValue.TLabel"
             )
+            self._refresh_decision_details()
             return
         self._render_portfolio_impact(candidate, impact)
 
@@ -1229,16 +1764,16 @@ class OptionsStrategiesTab:
             f"{impact.opening_cash_flow_basis} • Schwab review is authoritative"
         )
         self.impact_position.set(_position_impact_text_from_impact(impact))
+        self._refresh_decision_details()
 
     def _set_decision_evidence(self, candidate: StrategyCandidateView) -> None:
-        self.impact_model.set(candidate.model_summary)
-        self.impact_pricing.set(_pricing_evidence_text(candidate))
-        self.impact_quality.set(_quality_evidence_text(candidate))
-        self.impact_review.set(
-            "Research Only — Manual broker review required"
-            if not candidate.manual_order_actionable
-            else "Eligible — Explicit confirmation required"
+        self.impact_decision_summary.set(
+            _inline_decision_summary(
+                candidate,
+                order_index=self.selected_order_index,
+            )
         )
+        self._refresh_decision_details()
 
     def _reset_portfolio_impact(self) -> None:
         self.impact_source.set("Select exact legs to calculate impact")
@@ -1251,14 +1786,13 @@ class OptionsStrategiesTab:
             self.impact_cash_balance,
             self.impact_buying_power,
             self.impact_cash_flow,
-            self.impact_model,
-            self.impact_pricing,
-            self.impact_quality,
-            self.impact_review,
         ):
             variable.set("—")
         self.impact_requirement_basis.set("")
         self.impact_position.set("")
+        self.impact_decision_summary.set(
+            "Select a strategy to inspect its decision evidence"
+        )
         self._impact_status_label.configure(
             style="StrategyImpactWarning.TLabel"
         )
@@ -1268,6 +1802,7 @@ class OptionsStrategiesTab:
         self._impact_cash_flow_value.configure(
             style="StrategyImpactMetricValue.TLabel"
         )
+        self._refresh_decision_details()
 
     def _clear_ticket(self) -> None:
         self.selected_candidate = None
@@ -1288,6 +1823,8 @@ class OptionsStrategiesTab:
                 state=tk.DISABLED,
                 text="Review Strategy Order",
             )
+        if self.decision_details_button is not None:
+            self.decision_details_button.configure(state=tk.DISABLED)
 
     def _submit_order(self) -> None:
         candidate = self.selected_candidate
@@ -1500,34 +2037,206 @@ def _position_impact_text_from_impact(
     )
 
 
-def _pricing_evidence_text(candidate: StrategyCandidateView) -> str:
-    parts = [
+def _decision_evidence(
+    candidate: StrategyCandidateView,
+    *,
+    order_index: int = 0,
+) -> _DecisionEvidence:
+    pricing_parts = [
         part.strip()
         for part in str(candidate.pricing_summary).split(" · ")
         if part.strip()
     ]
-    if not parts:
-        return "Unavailable"
-    headline = " • ".join(parts[:2])
-    details = " • ".join(parts[2:])
-    return headline if not details else f"{headline}\n{details}"
+    publication_notices: list[str] = []
+    for part in pricing_parts[2:]:
+        for line in part.replace("\n", ";").split(";"):
+            notice = line.strip()
+            if notice:
+                publication_notices.append(notice)
+
+    draft = candidate.order_draft
+    try:
+        legs = draft.orders[order_index].legs
+    except (AttributeError, IndexError, TypeError):
+        legs = draft.legs
+    quote_legs_total = len(legs)
+    quote_legs_available = sum(
+        _ticket_quote_populated(leg.bid, leg.ask)
+        for leg in legs
+    )
+    row = candidate.row if isinstance(candidate.row, Mapping) else {}
+    return _DecisionEvidence(
+        model=str(candidate.model_summary),
+        quote_legs_available=quote_legs_available,
+        quote_legs_total=quote_legs_total,
+        candidate_snapshot=_candidate_snapshot_text(
+            row.get("decision_timestamp")
+        ),
+        publication_notices=tuple(publication_notices),
+        publication_checks=(
+            (
+                "Contract quote fields",
+                bool(
+                    row.get(
+                        "all_option_quotes_valid",
+                        quote_legs_available == quote_legs_total,
+                    )
+                ),
+            ),
+            (
+                "Volatility surface screen",
+                bool(row.get("surface_quality_pass", False)),
+            ),
+            (
+                "Liquidity screen",
+                bool(row.get("liquidity_policy_pass", False)),
+            ),
+        ),
+        direction_probability_up=float(candidate.direction_probability_up),
+        predictive_score=(
+            None
+            if candidate.predictive_score is None
+            else float(candidate.predictive_score)
+        ),
+        scenario_coverage=float(candidate.scenario_coverage),
+        expected_return=(
+            None
+            if candidate.expected_return is None
+            else float(candidate.expected_return)
+        ),
+        execution_status="Schwab Review & Confirm",
+        execution_detail=(
+            "Refreshes current quotes, balances, and order facts; you explicitly "
+            "confirm placement."
+        ),
+    )
 
 
-def _quality_evidence_text(candidate: StrategyCandidateView) -> str:
-    sections = [
-        section.strip().removeprefix("Quality warning: ")
-        for section in str(candidate.quality_warning).split(" · ")
-        if section.strip()
-    ]
-    cleaned = [
-        " • ".join(
-            item.strip()[:1].upper() + item.strip()[1:]
-            for item in section.split(",")
-            if item.strip()
+def _inline_decision_summary(
+    candidate: StrategyCandidateView,
+    *,
+    order_index: int = 0,
+) -> str:
+    evidence = _decision_evidence(candidate, order_index=order_index)
+    incomplete_checks = sum(
+        not passed for _label, passed in evidence.publication_checks
+    )
+    checks_summary = (
+        "Publication checks passed"
+        if incomplete_checks == 0
+        else (
+            f"{incomplete_checks} publication check"
+            f"{'s' if incomplete_checks != 1 else ''} incomplete"
         )
-        for section in sections
-    ]
-    return "\n".join(cleaned) if cleaned else "Unavailable"
+    )
+    return " • ".join(
+        (
+            (
+                f"{evidence.quote_legs_available}/"
+                f"{evidence.quote_legs_total} snapshot quotes populated"
+            ),
+            checks_summary,
+            "Live Schwab validation",
+        )
+    )
+
+
+def _publication_notice_display(value: str) -> str:
+    subject, separator, detail = str(value).partition(":")
+    raw_reason = detail.strip() if separator else subject.strip()
+    normalized = " ".join(raw_reason.replace("_", " ").split()).casefold()
+    explanation = {
+        "target event stale": "Model prediction window expired",
+        "future or invalid pricing clock": "Pricing clock is outside the candidate window",
+        "prediction missing": "No matching model overlay",
+        "target snapshot missing": "Prediction target snapshot is missing",
+        "leg quote timestamp missing": "Candidate quote timestamp is missing",
+        "semantic contract incomplete": "Contract metadata is incomplete",
+        "pricing evidence not attached": "Model overlay is not attached",
+    }.get(normalized, raw_reason)
+    return (
+        f"{subject.strip()} — {explanation}"
+        if separator
+        else explanation
+    )
+
+
+def _candidate_snapshot_text(value: object) -> str:
+    observed = value
+    converter = getattr(observed, "to_pydatetime", None)
+    if callable(converter):
+        observed = converter()
+    if not hasattr(observed, "astimezone"):
+        return "Timestamp unavailable"
+    local = observed.astimezone()  # type: ignore[union-attr]
+    return local.strftime("%b %d, %I:%M %p").replace(" 0", " ")
+
+
+def _ticket_order_input(
+    quantity: str,
+    order_method: str,
+    limit_price: str,
+) -> str:
+    clean_quantity = str(quantity).strip() or "—"
+    clean_method = str(order_method).strip() or "Order method unavailable"
+    parts = [f"Qty {clean_quantity}", clean_method]
+    if clean_method != MARKET_ORDER and str(limit_price).strip():
+        try:
+            parts.append(f"${float(limit_price):,.2f}")
+        except (TypeError, ValueError):
+            parts.append(str(limit_price).strip())
+    return " • ".join(parts)
+
+
+def _ticket_quote_populated(bid: object, ask: object) -> bool:
+    try:
+        return bool(
+            math.isfinite(float(bid))
+            and math.isfinite(float(ask))
+            and float(bid) >= 0.0
+            and float(ask) >= 0.0
+        )
+    except (TypeError, ValueError):
+        return False
+
+
+def _impact_status_style(status: str) -> str:
+    if status in {"Share Shortfall", "Funds Below Estimate"}:
+        return "StrategyImpactDanger.TLabel"
+    if status in {
+        "Applicable Balance Unavailable",
+        "Broker Estimate Required",
+        "Complete Ticket Details",
+        "No Strategy Selected",
+    }:
+        return "StrategyImpactWarning.TLabel"
+    return "StrategyImpactGood.TLabel"
+
+
+def _money_metric_style(
+    value: str,
+    *,
+    positive_is_good: bool,
+) -> str:
+    cleaned = str(value).strip()
+    if not cleaned or cleaned == "—":
+        return "StrategyImpactMetricValue.TLabel"
+    is_negative = cleaned.startswith("-")
+    is_good = not is_negative if positive_is_good else is_negative
+    return (
+        "StrategyImpactMetricGood.TLabel"
+        if is_good
+        else "StrategyImpactMetricDanger.TLabel"
+    )
+
+
+def _cash_flow_metric_style(value: str) -> str:
+    cleaned = str(value).strip()
+    if cleaned.startswith("+"):
+        return "StrategyImpactMetricGood.TLabel"
+    if cleaned.startswith("-"):
+        return "StrategyImpactMetricDanger.TLabel"
+    return "StrategyImpactMetricValue.TLabel"
 
 
 def _money_or_dash(value: float | None) -> str:

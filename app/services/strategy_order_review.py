@@ -270,22 +270,26 @@ def strategy_entry_order_review(
     if draft.research_only:
         notices.append(
             _warning(
-                "Research-Only Candidate",
+                "Publication Evidence Requires Validation",
                 (
-                    f"{draft.research_reason} This classification describes the "
-                    "model/pricing evidence; continuing is a manual broker decision."
+                    f"{draft.research_reason} This describes the candidate "
+                    "publication; current Schwab quotes and account facts remain "
+                    "the execution authority."
                 ).strip(),
             )
         )
     if draft.research_only and draft.quality_warning:
-        notices.append(_warning("Candidate Quality Evidence", draft.quality_warning))
+        notices.append(
+            _warning("Candidate Publication Checks", draft.quality_warning)
+        )
     if draft.pricing_summary:
         notices.append(
             _information(
-                "Research Pricing Evidence",
+                "Published Model Context",
                 (
                     f"{draft.pricing_summary}. The final order review uses a fresh "
-                    "Schwab quote read instead of treating research pricing as execution authority."
+                    "Schwab quote read instead of treating the candidate snapshot "
+                    "as execution authority."
                 ),
             )
         )
@@ -385,7 +389,11 @@ def strategy_entry_order_review(
         if applicable_funds is None
         else _money(applicable_funds)
     )
-    classification = "Research Only" if draft.research_only else "Model Actionable"
+    classification = (
+        "Evidence Refresh Required"
+        if draft.research_only
+        else "Publication Checks Passed"
+    )
     execution_mode = (
         "Atomic Net Order"
         if len(component.legs) > 1
@@ -434,10 +442,10 @@ def strategy_entry_order_review(
         quote_state=freshness,
         metrics=(
             OptionOrderReviewMetric(
-                "Candidate Classification",
+                "Publication Readiness",
                 classification,
-                "Manual Broker Review",
-                "Strategy publication and explicit user review",
+                "Schwab-Validated Review",
+                "Strategy publication plus current broker refresh",
                 before_tone="warning" if draft.research_only else "positive",
             ),
             OptionOrderReviewMetric(
@@ -525,7 +533,7 @@ def strategy_entry_order_review(
         notices=tuple(notices),
         acknowledgment_copy=(
             "I reviewed every contract, action, quantity, limit, warning, and the "
-            "research-only classification."
+            "publication-evidence notice."
             if draft.research_only
             else "I reviewed every contract, action, quantity, limit, and warning."
         ),

@@ -23,8 +23,18 @@ from app.services.schwab_strategy_orders import (
 from app.services.strategy_portfolio_impact import (
     calculate_strategy_portfolio_impact,
 )
-from app.ui.options_strategy_data import load_strategy_candidates, portfolio_fit
-from app.ui.options_strategies import OptionsStrategiesTab, _sort_candidate_views
+from app.ui.options_strategy_data import (
+    _human_reason,
+    load_strategy_candidates,
+    portfolio_fit,
+)
+from app.ui.options_strategies import (
+    OptionsStrategiesTab,
+    _decision_evidence,
+    _inline_decision_summary,
+    _publication_notice_display,
+    _sort_candidate_views,
+)
 from app.ui.schwab_order_messages import order_confirmation_message
 from ml.parquet_contracts import (
     STRATEGY_AUDIT_SCHEMA,
@@ -951,8 +961,10 @@ def test_strategy_loader_marks_heuristic_quality_failures_research_only(
         result.quality_warning
     )
     assert not result.manual_order_actionable
-    assert result.manual_actionability.startswith("Research only")
-    assert "Manual broker review is required" in result.manual_actionability
+    assert result.manual_actionability.startswith(
+        "Publication model-pricing checks are incomplete"
+    )
+    assert "current account facts" in result.manual_actionability
 
 
 def test_discover_empty_state_surfaces_matching_publication_audit_reason(
@@ -1452,6 +1464,101 @@ def test_held_share_impact_does_not_recount_stock_as_new_cash() -> None:
     assert not impact.has_share_shortfall
 
 
+def test_decision_evidence_separates_contract_and_quality_notices() -> None:
+    legs = (
+        SimpleNamespace(bid=4.10, ask=4.30),
+        SimpleNamespace(bid=3.65, ask=3.85),
+    )
+    candidate = SimpleNamespace(
+        model_summary="Calibrated profit model active",
+        direction_probability_up=53.44,
+        predictive_score=37.88,
+        scenario_coverage=55.09,
+        expected_return=0.0367,
+        order_draft=SimpleNamespace(
+            legs=legs,
+            orders=(SimpleNamespace(legs=legs),),
+        ),
+        row={
+            "decision_timestamp": pd.Timestamp("2026-08-21T20:05:00Z"),
+            "all_option_quotes_valid": True,
+            "surface_quality_pass": False,
+            "liquidity_policy_pass": False,
+        },
+        pricing_summary=(
+            "Unavailable pricing · Unavailable · "
+            "AAPL 260828P00310000: Target Event Stale;"
+            "AAPL 260828C00310000: Target Event Stale"
+        ),
+        quality_warning=(
+            "Quality warning: surface policy failed, liquidity policy failed"
+        ),
+    )
+
+    evidence = _decision_evidence(candidate)
+
+    assert evidence.quote_legs_available == 2
+    assert evidence.quote_legs_total == 2
+    assert evidence.candidate_snapshot != "Timestamp unavailable"
+    assert evidence.publication_notices == (
+        "AAPL 260828P00310000: Target Event Stale",
+        "AAPL 260828C00310000: Target Event Stale",
+    )
+    assert evidence.publication_checks == (
+        ("Contract quote fields", True),
+        ("Volatility surface screen", False),
+        ("Liquidity screen", False),
+    )
+    assert evidence.execution_status == "Schwab Review & Confirm"
+    assert _publication_notice_display(
+        evidence.publication_notices[0]
+    ) == "AAPL 260828P00310000 — Model prediction window expired"
+    assert _inline_decision_summary(candidate) == (
+        "2/2 snapshot quotes populated • 2 publication checks incomplete • "
+        "Live Schwab validation"
+    )
+
+
+def test_decision_summary_reports_complete_publication_checks() -> None:
+    leg = SimpleNamespace(bid=2.40, ask=2.50)
+    candidate = SimpleNamespace(
+        model_summary="Calibrated profit model active",
+        direction_probability_up=55.0,
+        predictive_score=61.0,
+        scenario_coverage=60.0,
+        expected_return=0.07,
+        order_draft=SimpleNamespace(
+            legs=(leg,),
+            orders=(SimpleNamespace(legs=(leg,)),),
+        ),
+        row={
+            "decision_timestamp": pd.Timestamp("2026-08-24T15:00:00Z"),
+            "all_option_quotes_valid": True,
+            "surface_quality_pass": True,
+            "liquidity_policy_pass": True,
+        },
+        pricing_summary="Active pricing · BSGP",
+    )
+
+    evidence = _decision_evidence(candidate)
+
+    assert evidence.publication_notices == ()
+    assert _inline_decision_summary(candidate) == (
+        "1/1 snapshot quotes populated • Publication checks passed • "
+        "Live Schwab validation"
+    )
+
+
+def test_human_pricing_reason_preserves_each_contract_symbol() -> None:
+    assert _human_reason(
+        "AAPL 260828P00310000:TARGET_EVENT_STALE;"
+        "AAPL 260828C00310000:TARGET_EVENT_STALE"
+    ) == (
+        "AAPL 260828P00310000: Target Event Stale · "
+        "AAPL 260828C00310000: Target Event Stale"
+    )
+
+
 def test_confirmation_copy_is_human_readable() -> None:
     message = order_confirmation_message(
         {
@@ -1597,7 +1704,10 @@ def test_options_strategy_submit_routes_research_only_candidate_to_review(
         row=candidate,
         order_draft=draft,
         manual_order_actionable=False,
-        manual_actionability="Research only; calibration is unavailable.",
+        manual_actionability=(
+            "Publication model-pricing checks are incomplete. Strategy Order "
+            "Review refreshes exact Schwab quotes before any placement."
+        ),
         position=SimpleNamespace(
             available_cash=10_000.0,
             working_option_orders=0,
@@ -1635,7 +1745,10 @@ def test_options_strategy_submit_routes_research_only_candidate_to_review(
     assert len(dialogs) == 1
     review = dialogs[0][1].review
     assert review.title == "Review Strategy Order"
-    assert any(notice.title == "Research-Only Candidate" for notice in review.notices)
+    assert any(
+        notice.title == "Publication Evidence Requires Validation"
+        for notice in review.notices
+    )
 
 
 def _candidate(

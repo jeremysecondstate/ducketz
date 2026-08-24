@@ -445,11 +445,13 @@ def _candidate_views(
                 and not quality_failures
             )
             manual_actionability = (
-                "Manual review eligible; submission still requires user confirmation."
+                "Publication checks passed. Strategy Order Review still refreshes "
+                "exact Schwab quotes and current account facts before confirmation."
                 if manual_order_actionable
                 else (
-                    "Research only; calibrated, fully covered, quality-passing pricing "
-                    "evidence is unavailable. Manual broker review is required."
+                    "Publication model-pricing checks are incomplete. Strategy Order "
+                    "Review refreshes exact Schwab quotes and current account facts "
+                    "before any placement."
                 )
             )
             expected_net_profit = _required_finite(
@@ -847,11 +849,20 @@ def _profit_probability_exclusion_reason(
 
 def _human_reason(value: str) -> str:
     text = str(value).strip()
-    if ":" in text:
-        subject, reason = text.split(":", 1)
-        human_reason = " ".join(reason.replace("_", " ").split()).title()
-        return f"{subject.strip()}: {human_reason}"
-    return " ".join(text.replace("_", " ").split()).title()
+    reasons: list[str] = []
+    for section in text.split(";"):
+        cleaned = section.strip()
+        if not cleaned:
+            continue
+        if ":" in cleaned:
+            subject, reason = cleaned.split(":", 1)
+            human_reason = " ".join(reason.replace("_", " ").split()).title()
+            reasons.append(f"{subject.strip()}: {human_reason}")
+        else:
+            reasons.append(
+                " ".join(cleaned.replace("_", " ").split()).title()
+            )
+    return " · ".join(reasons)
 
 
 def _required_bool(value: object, *, label: str) -> bool:

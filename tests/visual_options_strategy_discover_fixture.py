@@ -1,6 +1,6 @@
 """Fake-only visual fixture for Options Command Center > Discover.
 
-Usage: pythonw tests/visual_options_strategy_discover_fixture.py [--probe]
+Usage: pythonw tests/visual_options_strategy_discover_fixture.py [--details] [--probe]
 No network-capable Schwab session is supplied.
 """
 
@@ -28,38 +28,68 @@ from ml.strategy_selection.contracts import (
 
 def main() -> None:
     probe = "--probe" in sys.argv
+    show_details = "--details" in sys.argv
     helpers = runpy.run_path(
         str(Path(__file__).with_name("test_options_strategy_ui.py"))
     )
     option_leg = helpers["_option_leg"]
     candidate = helpers["_candidate"](
-        strategy_name="cash_secured_put",
-        strategy_display_name="Cash-Secured Put",
-        cash_requirement="STRIKE_TIMES_MULTIPLIER",
+        strategy_name="crash_and_squeeze_barbell",
+        strategy_display_name="Crash-and-Squeeze Barbell",
         legs=[
+            option_leg(
+                side="LONG",
+                option_type="PUT",
+                strike=310.0,
+                symbol="AAPL  260828P00310000",
+                bid=4.10,
+                ask=4.30,
+                expiration="2026-08-28T00:00:00Z",
+            ),
             option_leg(
                 side="SHORT",
                 option_type="PUT",
                 strike=307.5,
-                symbol="AAPL  260831P00307500",
-                bid=3.25,
-                ask=3.35,
-                expiration="2026-08-31T00:00:00Z",
-            )
+                symbol="AAPL  260828P00307500",
+                bid=2.95,
+                ask=3.15,
+                expiration="2026-08-28T00:00:00Z",
+            ),
+            option_leg(
+                side="SHORT",
+                option_type="CALL",
+                strike=310.0,
+                symbol="AAPL  260828C00310000",
+                bid=3.65,
+                ask=3.85,
+                expiration="2026-08-28T00:00:00Z",
+            ),
+            option_leg(
+                side="LONG",
+                option_type="CALL",
+                strike=315.0,
+                symbol="AAPL  260828C00315000",
+                bid=2.55,
+                ask=2.75,
+                quantity=2,
+                expiration="2026-08-28T00:00:00Z",
+            ),
         ],
     )
     candidate.update(
         {
-            "id": "AAPL|1d|2026-08-23T20:55:00Z|cash_secured_put",
+            "id": "AAPL|1d|2026-08-23T20:55:00Z|crash_and_squeeze_barbell",
             "symbol": "AAPL",
-            "candidate_key": "cash_secured_put|front=2026-08-31",
+            "candidate_key": "crash_and_squeeze_barbell|front=2026-08-28",
             "underlying_price": 315.0,
-            "entry_cash_flow": 325.0,
-            "entry_net_credit": 325.0,
-            "entry_net_debit": 0.0,
-            "max_profit": 325.0,
-            "max_loss": 30_425.0,
-            "capital_required": 30_755.0,
+            "front_expiration": pd.Timestamp("2026-08-28T00:00:00Z"),
+            "front_days_to_expiration": 5.0,
+            "entry_cash_flow": -320.0,
+            "entry_net_credit": 0.0,
+            "entry_net_debit": 320.0,
+            "max_profit": 1_250.0,
+            "max_loss": 573.25,
+            "capital_required": 573.25,
             "direction_probability_up": 0.6312,
             "raw_profit_probability": 0.4434,
             "calibrated_profit_probability": 0.4434,
@@ -71,8 +101,12 @@ def main() -> None:
             "pricing_mode": "UNAVAILABLE",
             "pricing_status": "Unavailable",
             "pricing_source": "UNAVAILABLE",
+            "pricing_leg_coverage": 0.0,
             "pricing_missing_reason": (
-                "AAPL 260831P00307500:TARGET_EVENT_STALE"
+                "AAPL 260828P00310000:TARGET_EVENT_STALE;"
+                "AAPL 260828P00307500:TARGET_EVENT_STALE;"
+                "AAPL 260828C00310000:TARGET_EVENT_STALE;"
+                "AAPL 260828C00315000:TARGET_EVENT_STALE"
             ),
             "surface_quality_pass": False,
             "liquidity_policy_pass": False,
@@ -87,10 +121,9 @@ def main() -> None:
         account_facts={
             "account_values": {
                 "status": "CURRENT",
-                "available_funds": 103_046.94,
-                "available_funds_non_marginable_trade": 50_000.0,
-                "cash_balance": 24_184.12,
-                "buying_power": 206_093.88,
+                "available_funds": 103_036.04,
+                "cash_balance": 44_498.03,
+                "buying_power": 217_660.0,
                 "liquidation_value": 154_322.40,
             },
             "positions": {
@@ -150,13 +183,20 @@ def main() -> None:
             if tab.candidate_table is not None:
                 tab.candidate_table.selection_set("0")
             tab._fill_ticket(0)
+            if show_details:
+                tab._open_decision_details()
             if probe:
                 root.update_idletasks()
-                print(
+                geometry = (
                     f"root={root.winfo_geometry()} requested="
-                    f"{root.winfo_reqwidth()}x{root.winfo_reqheight()}",
-                    flush=True,
+                    f"{root.winfo_reqwidth()}x{root.winfo_reqheight()}"
                 )
+                if tab._decision_details_window is not None:
+                    geometry += (
+                        " details="
+                        f"{tab._decision_details_window.winfo_geometry()}"
+                    )
+                print(geometry, flush=True)
                 root.after(500, root.destroy)
 
         root.after(250, show_candidate)
