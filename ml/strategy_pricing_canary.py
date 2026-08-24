@@ -21,8 +21,10 @@ from ml.strategy_publication import (
 from ml.strategy_selection.contracts import (
     BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
     BSGP_CALIBRATED_MODEL_SCORE_BASIS,
+    OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS,
     SCENARIO_COVERAGE_SCORE_BASIS,
 )
+from ml.strategy_selection.runtime import _opra_execution_model_eligible
 
 
 DEFAULT_WATCHLIST = Path(__file__).resolve().parents[1] / "datafetching" / "watchlist.txt"
@@ -160,9 +162,10 @@ def _inspect_target(
             "Current Strategy publication has no candidates for the exact target"
         )
     checks = _strategy_checks(target_candidates)
-    if checks["fully_priced_candidate_rows"] < 1:
+    if checks["calibrated_evidence_quality_rows"] < 1:
         raise StrategyPricingCanaryError(
-            "Strategy has not attached full exact-leg pricing coverage"
+            "Strategy has no calibrated candidate backed by eligible "
+            "theoretical Pricing or qualified OPRA execution evidence"
         )
     reports_path = strategy.run_directory / "strategy-model-reports.json"
     reports = _read_json(reports_path)
@@ -240,17 +243,15 @@ def _strategy_checks(frame: pd.DataFrame) -> dict[str, int]:
         {
             BSGP_CALIBRATED_MODEL_SCORE_BASIS,
             BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
+            OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS,
         }
     )
     if not allowed_fitted.loc[fitted].all() or not probabilities.loc[
         fitted
     ].notna().all().all():
         raise StrategyPricingCanaryError("Calibrated candidate score contract is invalid")
-    coverage = pd.to_numeric(frame["pricing_leg_coverage"], errors="coerce")
-    pricing_source = frame["pricing_source"].astype("string").str.upper()
-    fully_priced = coverage.ge(1.0 - 1e-12) & pricing_source.isin(
-        {"BSGP", "BLACK_SCHOLES"}
-    )
+    evidence = _strategy_score_evidence_masks(frame)
+    fully_priced = evidence["fully_priced"]
     if frame["pricing_status"].astype("string").str.strip().eq("").any():
         raise StrategyPricingCanaryError("Pricing status is not visible")
     for column in (
@@ -260,15 +261,18 @@ def _strategy_checks(frame: pd.DataFrame) -> dict[str, int]:
     ):
         if frame[column].isna().any():
             raise StrategyPricingCanaryError(f"Quality state is not visible: {column}")
-    quality_pass = (
-        frame["surface_quality_pass"].astype(bool)
-        & frame["liquidity_policy_pass"].astype(bool)
-        & frame["all_option_quotes_valid"].astype(bool)
-    )
+    quality_pass = evidence["calibrated_evidence_quality"]
     hundred_percent_scenario = heuristic & scenario.ge(1.0 - 1e-12)
     return {
         "candidate_rows": len(frame),
         "fully_priced_candidate_rows": int(fully_priced.sum()),
+        "opra_execution_scored_rows": int(
+            evidence["opra_execution_scored"].sum()
+        ),
+        "opra_execution_quality_passing_rows": int(
+            evidence["opra_execution_quality"].sum()
+        ),
+        "calibrated_evidence_quality_rows": int(quality_pass.sum()),
         "calibrated_candidate_rows": int(fitted.sum()),
         "heuristic_candidate_rows": int(heuristic.sum()),
         "all_positive_scenario_rows_without_probability": int(
@@ -276,6 +280,61 @@ def _strategy_checks(frame: pd.DataFrame) -> dict[str, int]:
         ),
         "quality_passing_rows": int(quality_pass.sum()),
         "quality_warning_rows": int((~quality_pass).sum()),
+    }
+
+
+def _strategy_score_evidence_masks(
+    frame: pd.DataFrame,
+) -> dict[str, pd.Series]:
+    """Recompute the declared theoretical and OPRA score-evidence gates."""
+
+    basis = frame["score_basis"].astype("string")
+    theoretical_scored = basis.isin(
+        {
+            BSGP_CALIBRATED_MODEL_SCORE_BASIS,
+            BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
+        }
+    )
+    coverage = pd.to_numeric(frame["pricing_leg_coverage"], errors="coerce")
+    pricing_source = frame["pricing_source"].astype("string").str.upper()
+    fully_priced = coverage.ge(1.0 - 1e-12) & pricing_source.isin(
+        {"BSGP", "BLACK_SCHOLES"}
+    )
+    theoretical_quality = (
+        frame["surface_quality_pass"].fillna(False).astype(bool)
+        & frame["liquidity_policy_pass"].fillna(False).astype(bool)
+        & frame["all_option_quotes_valid"].fillna(False).astype(bool)
+    )
+    opra_execution_scored = basis.eq(
+        OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS
+    )
+    opra_execution_quality = pd.Series(False, index=frame.index, dtype=bool)
+    if bool(opra_execution_scored.any()):
+        required = {
+            "pricing_mode",
+            "max_relative_spread",
+            "maximum_quote_staleness_seconds",
+            "minimum_open_interest",
+            "total_volume",
+        }
+        missing = sorted(required.difference(frame.columns))
+        if missing:
+            raise StrategyPricingCanaryError(
+                "OPRA execution evidence contract is missing: "
+                + ", ".join(missing)
+            )
+        opra_execution_quality = (
+            opra_execution_scored & _opra_execution_model_eligible(frame)
+        )
+    calibrated_evidence_quality = (
+        theoretical_scored & fully_priced & theoretical_quality
+    ) | opra_execution_quality
+    return {
+        "fully_priced": fully_priced,
+        "theoretical_quality": theoretical_quality,
+        "opra_execution_scored": opra_execution_scored,
+        "opra_execution_quality": opra_execution_quality,
+        "calibrated_evidence_quality": calibrated_evidence_quality,
     }
 
 

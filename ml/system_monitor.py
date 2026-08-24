@@ -33,7 +33,10 @@ from ml.option_pricing.target_outcome import (
     read_current_target_outcome,
     target_outcome_pointer_path,
 )
-from ml.strategy_pricing_canary import run_canary
+from ml.strategy_pricing_canary import (
+    _strategy_score_evidence_masks,
+    run_canary,
+)
 from ml.strategy_publication import (
     StrategyPublication,
     read_current_strategy_publication,
@@ -2162,19 +2165,11 @@ def summarize_strategy_quality(
         }
     )
     heuristic = basis.eq(SCENARIO_COVERAGE_SCORE_BASIS)
-    coverage = pd.to_numeric(candidates["pricing_leg_coverage"], errors="coerce")
-    quality = (
-        candidates["surface_quality_pass"].fillna(False).astype(bool)
-        & candidates["liquidity_policy_pass"].fillna(False).astype(bool)
-        & candidates["all_option_quotes_valid"].fillna(False).astype(bool)
-    )
-    fully_priced = coverage.ge(1.0 - 1e-12) & candidates[
-        "pricing_source"
-    ].astype("string").str.upper().isin({"BSGP", "BLACK_SCHOLES"})
-    opra_execution_scored = basis.eq(
-        OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS
-    )
-    declared_evidence = fully_priced | opra_execution_scored
+    evidence = _strategy_score_evidence_masks(candidates)
+    fully_priced = evidence["fully_priced"]
+    opra_execution_scored = evidence["opra_execution_scored"]
+    opra_execution_quality = evidence["opra_execution_quality"]
+    calibrated_evidence_quality = evidence["calibrated_evidence_quality"]
     model_reports = reports.get("model_reports")
     if not isinstance(model_reports, Mapping):
         raise ValueError("Strategy model reports have no model_reports object")
@@ -2228,7 +2223,7 @@ def summarize_strategy_quality(
     elif calibrated_rows == 0:
         status = _WARN
         text = "Strategy is publishing research-only Scenario Coverage, not calibrated probabilities."
-    elif not bool((fitted & declared_evidence & quality).any()):
+    elif not bool((fitted & calibrated_evidence_quality).any()):
         status = _WARN
         text = (
             "Calibrated Strategy rows exist but none pass their declared "
@@ -2256,7 +2251,10 @@ def summarize_strategy_quality(
         "scenario_coverage_candidate_rows": heuristic_rows,
         "fully_priced_rows": int(fully_priced.sum()),
         "opra_execution_scored_rows": int(opra_execution_scored.sum()),
-        "quality_passing_rows": int(quality.sum()),
+        "opra_execution_quality_passing_rows": int(
+            opra_execution_quality.sum()
+        ),
+        "quality_passing_rows": int(calibrated_evidence_quality.sum()),
         "complete_observed_outcome_rows": complete_outcomes,
         "pricing_eligible_observed_outcome_rows": total_pricing_eligible,
         "pricing_excluded_observed_outcome_rows": total_pricing_excluded,
@@ -2636,11 +2634,14 @@ def _pricing_strategy_canary_check(
             evidence_state="NOT_PROVEN",
             reason=_error_text(exc),
         )
+    details = dict(result)
+    canary_status = details.pop("status", None)
     return _check(
         "pricing_strategy_canary",
         _PASS,
         "The latest regular target passes the exact Pricing-to-Strategy canary.",
-        **dict(result),
+        canary_status=canary_status,
+        **details,
     )
 
 

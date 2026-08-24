@@ -16,6 +16,7 @@ from ml.horizons import INTERNAL_HORIZON_ORDER
 from ml.strategy_publication import StrategyPublication
 from ml.strategy_selection.contracts import (
     BSGP_CALIBRATED_MODEL_SCORE_BASIS,
+    OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS,
     SCENARIO_COVERAGE_SCORE_BASIS,
 )
 from ml.system_monitor import (
@@ -451,6 +452,61 @@ def test_strategy_quality_passes_calibrated_fully_priced_quality_rows() -> None:
     assert summary["model_evidence_interpretation"] == (
         "PRICING_ELIGIBLE_OBSERVED_OUTCOMES_AVAILABLE"
     )
+
+
+def test_strategy_quality_passes_quality_gated_opra_execution_rows() -> None:
+    candidates = _strategy_candidates(calibrated=True)
+    candidates["score_basis"] = OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS
+    candidates["pricing_status"] = "Unavailable"
+    candidates["pricing_source"] = "UNAVAILABLE"
+    candidates["pricing_leg_coverage"] = 0.0
+    candidates["surface_quality_pass"] = False
+    candidates["liquidity_policy_pass"] = False
+    candidates["pricing_mode"] = "ACTIVE"
+    candidates["max_relative_spread"] = 0.1
+    candidates["maximum_quote_staleness_seconds"] = 600.0
+    candidates["minimum_open_interest"] = 5.0
+    candidates["total_volume"] = 0.0
+
+    summary = summarize_strategy_quality(
+        candidates,
+        _strategy_reports(calibrated=True),
+    )
+
+    assert summary["status"] == "PASS"
+    assert summary["fully_priced_rows"] == 0
+    assert summary["opra_execution_scored_rows"] == len(INTERNAL_HORIZON_ORDER)
+    assert summary["opra_execution_quality_passing_rows"] == len(
+        INTERNAL_HORIZON_ORDER
+    )
+    assert summary["quality_passing_rows"] == len(INTERNAL_HORIZON_ORDER)
+
+
+def test_pricing_strategy_canary_success_keeps_status_as_evidence(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        system_monitor,
+        "run_canary",
+        lambda *_args, **_kwargs: {
+            "status": "PASS",
+            "read_only": True,
+            "orders_placed": 0,
+        },
+    )
+
+    check = system_monitor._pricing_strategy_canary_check(
+        tmp_path,
+        now=pd.Timestamp("2026-08-24T21:00:00Z"),
+        target=pd.Timestamp("2026-08-24T20:00:00Z"),
+        symbols=("AAPL",),
+        strategy_publication=object(),
+    )
+
+    assert check["status"] == "PASS"
+    assert check["details"]["canary_status"] == "PASS"
+    assert check["details"]["orders_placed"] == 0
 
 
 def test_overall_status_ignores_info_but_escalates_warning_and_failure() -> None:

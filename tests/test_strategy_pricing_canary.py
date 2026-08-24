@@ -10,7 +10,10 @@ from ml.strategy_pricing_canary import (
     _candidate_target,
     _strategy_checks,
 )
-from ml.strategy_selection.contracts import SCENARIO_PRIOR_SCORE_BASIS
+from ml.strategy_selection.contracts import (
+    OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS,
+    SCENARIO_PRIOR_SCORE_BASIS,
+)
 
 
 def _heuristic_row() -> dict[str, object]:
@@ -45,6 +48,33 @@ def test_canary_rejects_heuristic_probability_masquerade() -> None:
 
     with pytest.raises(StrategyPricingCanaryError, match="masquerading"):
         _strategy_checks(pd.DataFrame([row]))
+
+
+def test_canary_accepts_quality_passing_opra_execution_probability() -> None:
+    row = _heuristic_row()
+    row.update(
+        {
+            "score_basis": OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS,
+            "raw_profit_probability": 0.25,
+            "calibrated_profit_probability": 0.2,
+            "decision_score": 0.2,
+            "pricing_status": "Unavailable",
+            "pricing_source": "UNAVAILABLE",
+            "pricing_leg_coverage": 0.0,
+            "pricing_mode": "ACTIVE",
+            "max_relative_spread": 0.1,
+            "maximum_quote_staleness_seconds": 600.0,
+            "minimum_open_interest": 5.0,
+            "total_volume": 0.0,
+        }
+    )
+
+    report = _strategy_checks(pd.DataFrame([row]))
+
+    assert report["fully_priced_candidate_rows"] == 0
+    assert report["opra_execution_scored_rows"] == 1
+    assert report["opra_execution_quality_passing_rows"] == 1
+    assert report["calibrated_evidence_quality_rows"] == 1
 
 
 def test_canary_requires_one_exact_target_across_option_legs() -> None:
