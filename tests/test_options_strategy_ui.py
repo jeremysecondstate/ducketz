@@ -1464,6 +1464,191 @@ def test_held_share_impact_does_not_recount_stock_as_new_cash() -> None:
     assert not impact.has_share_shortfall
 
 
+def test_ratio_backspread_risk_combines_ticket_with_current_schwab_shares() -> None:
+    candidate = _candidate(
+        strategy_name="call_ratio_backspread",
+        strategy_display_name="Call Ratio Backspread",
+        underlying_price=1_596.08,
+        max_loss=6_890.0,
+        capital_required=6_890.0,
+        legs=[
+            _option_leg(
+                side="SHORT",
+                option_type="CALL",
+                strike=1_595.0,
+                symbol="GOOG  260918C01595000",
+                bid=66.30,
+                ask=66.50,
+            ),
+            _option_leg(
+                side="LONG",
+                option_type="CALL",
+                strike=1_600.0,
+                symbol="GOOG  260918C01600000",
+                bid=63.40,
+                ask=63.60,
+                quantity=2,
+            ),
+        ],
+    )
+    position = schwab_position_context(
+        {
+            "positions": {
+                "items": [
+                    {
+                        "asset_type": "EQUITY",
+                        "symbol": "GOOG",
+                        "net_quantity": 20,
+                        "price": 1_596.08,
+                        "market_value": 31_921.60,
+                    }
+                ]
+            },
+            "account_values": {"available_funds": 102_866.24},
+        },
+        symbol="GOOG",
+    )
+    draft = build_strategy_order_draft(candidate, position=position)
+
+    impact = calculate_strategy_portfolio_impact(
+        candidate,
+        order_draft=draft,
+        position=position,
+        order_index=0,
+        strategy_quantity=1,
+        order_method=NET_DEBIT_LIMIT,
+        limit_price=63.90,
+        account_label="Schwab",
+    )
+
+    assert position.underlying_price == 1_596.08
+    assert impact.reference_price == 1_596.08
+    assert impact.reference_price_basis == "Current Schwab position price"
+    assert impact.risk_status == "SINGLE_EXPIRATION_PAYOFF"
+    assert impact.ticket_max_loss == 6_890.0
+    assert impact.ticket_worst_case_price == 1_600.0
+    assert impact.combined_max_loss == 38_311.60
+    assert impact.combined_worst_case_price == 0.0
+    assert len(impact.price_scenarios) == 5
+    unchanged = impact.price_scenarios[2]
+    assert unchanged.label == "Unchanged"
+    assert unchanged.existing_shares_profit_loss == 0.0
+    assert unchanged.ticket_profit_loss == -6_498.0
+    assert unchanged.combined_profit_loss == -6_498.0
+    up_ten = impact.price_scenarios[3]
+    assert up_ten.existing_shares_profit_loss == 3_192.16
+    assert up_ten.ticket_profit_loss == 8_678.80
+    assert up_ten.combined_profit_loss == 11_870.96
+    assert "Existing option positions and working orders are excluded" in (
+        impact.risk_basis
+    )
+
+
+def test_short_call_risk_reports_unlimited_ticket_and_combined_loss() -> None:
+    candidate = _candidate(
+        strategy_name="short_call",
+        strategy_display_name="Short Call",
+        underlying_price=100.0,
+        legs=[
+            _option_leg(
+                side="SHORT",
+                option_type="CALL",
+                strike=110.0,
+                symbol="GOOG  260918C00110000",
+                bid=2.0,
+                ask=2.1,
+            )
+        ],
+    )
+    position = schwab_position_context(
+        {
+            "positions": {
+                "items": [
+                    {
+                        "asset_type": "EQUITY",
+                        "symbol": "GOOG",
+                        "net_quantity": 20,
+                        "price": 100.0,
+                    }
+                ]
+            },
+            "account_values": {"available_funds": 10_000.0},
+        },
+        symbol="GOOG",
+    )
+    draft = build_strategy_order_draft(candidate, position=position)
+
+    impact = calculate_strategy_portfolio_impact(
+        candidate,
+        order_draft=draft,
+        position=position,
+        order_index=0,
+        strategy_quantity=1,
+        order_method=LIMIT_ORDER,
+        limit_price=2.0,
+        account_label="Schwab",
+    )
+
+    assert impact.ticket_max_loss is None
+    assert impact.ticket_max_loss_unbounded
+    assert impact.combined_max_loss is None
+    assert impact.combined_max_loss_unbounded
+
+
+def test_multi_expiration_ticket_does_not_claim_exact_max_loss() -> None:
+    candidate = _candidate(
+        strategy_name="long_call_calendar",
+        strategy_display_name="Long Call Calendar",
+        expiration_structure="MULTI",
+        max_loss=250.0,
+        capital_required=250.0,
+        legs=[
+            _option_leg(
+                side="SHORT",
+                option_type="CALL",
+                strike=105.0,
+                symbol="GOOG  260918C00105000",
+                bid=2.0,
+                ask=2.1,
+                expiration="2026-09-18T00:00:00Z",
+            ),
+            _option_leg(
+                side="LONG",
+                option_type="CALL",
+                strike=105.0,
+                symbol="GOOG  261218C00105000",
+                bid=4.5,
+                ask=4.7,
+                expiration="2026-12-18T00:00:00Z",
+            ),
+        ],
+    )
+    position = schwab_position_context(
+        {"account_values": {"available_funds": 10_000.0}},
+        symbol="GOOG",
+    )
+    draft = build_strategy_order_draft(candidate, position=position)
+
+    impact = calculate_strategy_portfolio_impact(
+        candidate,
+        order_draft=draft,
+        position=position,
+        order_index=0,
+        strategy_quantity=1,
+        order_method=NET_DEBIT_LIMIT,
+        limit_price=2.50,
+        account_label="Schwab",
+    )
+
+    assert impact.risk_status == "MULTI_EXPIRATION_REQUIRES_TIME_MODEL"
+    assert impact.ticket_max_loss is None
+    assert not impact.ticket_max_loss_unbounded
+    assert impact.combined_max_loss is None
+    assert impact.price_scenarios == ()
+    assert impact.published_strategy_max_loss == 250.0
+    assert "one expiration payoff would be misleading" in impact.risk_basis
+
+
 def test_decision_evidence_separates_contract_and_quality_notices() -> None:
     legs = (
         SimpleNamespace(bid=4.10, ask=4.30),

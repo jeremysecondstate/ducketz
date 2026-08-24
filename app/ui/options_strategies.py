@@ -4,6 +4,7 @@ import math
 import tkinter as tk
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox, ttk
 
@@ -84,6 +85,61 @@ _DESCENDING_FIRST_CANDIDATE_COLUMNS = frozenset(
     }
 )
 
+_PORTFOLIO_TERM_HELP = {
+    "applicable_funds": (
+        "Applicable Funds",
+        "The Schwab-reported balance this local estimate compares with the "
+        "ticket requirement. Depending on the strategy, this may be Available "
+        "Funds or Non-Marginable Funds. Schwab's order review is authoritative.",
+    ),
+    "estimated_requirement": (
+        "Estimated Requirement",
+        "The largest local estimate from cash collateral, published strategy "
+        "risk capital, or the configured opening debit. This is not a Schwab "
+        "margin or buying-power preview.",
+    ),
+    "estimated_funds_after": (
+        "Estimated Funds After",
+        "Applicable Funds minus the local Estimated Requirement. It is a planning "
+        "estimate, not a promise of the balance Schwab will report after the trade.",
+    ),
+    "cash_balance": (
+        "Cash Balance",
+        "The account cash balance reported by Schwab. It can differ from funds "
+        "available to trade because settlement, holds, collateral, and margin can "
+        "change what is actually usable.",
+    ),
+    "buying_power": (
+        "Buying Power",
+        "Schwab's reported purchasing capacity for the account. In a margin "
+        "account it may include borrowing capacity and can vary by security, "
+        "concentration, and Schwab's current requirements.",
+    ),
+    "opening_cash_flow": (
+        "Opening Cash Flow",
+        "Cash expected to move when the selected ticket opens. A debit means cash "
+        "leaves the account; a credit means cash enters it. This is not profit or "
+        "loss—the position's later payoff is separate.",
+    ),
+    "ticket_max_loss": (
+        "Ticket Max Loss",
+        "The selected Schwab order's modeled worst expiration loss using the "
+        "configured limit or current bid/ask estimate. It excludes your shares and "
+        "is shown only when one expiration payoff can be calculated honestly.",
+    ),
+    "combined_max_loss": (
+        "Position + Ticket Max Loss",
+        "The modeled worst expiration loss after adding the selected ticket to your "
+        "currently reported shares in this stock. Existing option positions and "
+        "working orders are not included.",
+    ),
+    "worst_case_price": (
+        "Worst Case At",
+        "The stock price where the expiration payoff reaches its modeled worst "
+        "loss. 'Rises without bound' means the modeled loss has no finite ceiling.",
+    ),
+}
+
 
 @dataclass(frozen=True)
 class _DecisionEvidence:
@@ -142,10 +198,17 @@ class OptionsStrategiesTab:
         self._decision_status_label: ttk.Label | None = None
         self._decision_funds_after_value: ttk.Label | None = None
         self._decision_cash_flow_value: ttk.Label | None = None
+        self._decision_ticket_max_loss_value: ttk.Label | None = None
+        self._decision_combined_max_loss_value: ttk.Label | None = None
+        self._decision_scenario_table: ttk.Treeview | None = None
         self._decision_pricing_text: tk.Text | None = None
         self._decision_assurance_text: tk.Text | None = None
+        self._metric_help_window: tk.Toplevel | None = None
+        self._current_portfolio_impact: StrategyPortfolioImpact | None = None
         self._candidate_sort_column: str | None = None
         self._candidate_sort_descending = False
+        self._impact_ticket_max_loss_value: ttk.Label | None = None
+        self._impact_combined_max_loss_value: ttk.Label | None = None
 
         self.symbol = tk.StringVar()
         self.horizon_label = tk.StringVar()
@@ -167,6 +230,11 @@ class OptionsStrategiesTab:
         self.impact_cash_balance = tk.StringVar(value="—")
         self.impact_buying_power = tk.StringVar(value="—")
         self.impact_cash_flow = tk.StringVar(value="—")
+        self.impact_ticket_max_loss = tk.StringVar(value="—")
+        self.impact_combined_max_loss = tk.StringVar(value="—")
+        self.impact_worst_case = tk.StringVar(value="—")
+        self.impact_risk_scope = tk.StringVar(value="Expiration risk unavailable")
+        self.impact_risk_basis = tk.StringVar(value="")
         self.impact_requirement_basis = tk.StringVar(value="")
         self.impact_position = tk.StringVar(value="")
         self.impact_decision_summary = tk.StringVar(
@@ -238,6 +306,12 @@ class OptionsStrategiesTab:
             background=SURFACE_ALT,
             foreground=MUTED_TEXT,
             font=("Segoe UI", 8),
+        )
+        style.configure(
+            "StrategyInfo.TLabel",
+            background=SURFACE_ALT,
+            foreground=ACCENT,
+            font=("Segoe UI", 9, "bold"),
         )
         style.configure(
             "StrategyImpactMetricValue.TLabel",
@@ -688,6 +762,7 @@ class OptionsStrategiesTab:
             row=0,
             column=0,
             dynamic_label=True,
+            help_key="applicable_funds",
         )
         self._impact_metric(
             metrics,
@@ -695,6 +770,7 @@ class OptionsStrategiesTab:
             self.impact_requirement,
             row=0,
             column=1,
+            help_key="estimated_requirement",
         )
         self._impact_funds_after_value = self._impact_metric(
             metrics,
@@ -702,6 +778,7 @@ class OptionsStrategiesTab:
             self.impact_funds_after,
             row=0,
             column=2,
+            help_key="estimated_funds_after",
         )
         self._impact_metric(
             metrics,
@@ -709,6 +786,7 @@ class OptionsStrategiesTab:
             self.impact_cash_balance,
             row=1,
             column=0,
+            help_key="cash_balance",
         )
         self._impact_metric(
             metrics,
@@ -716,6 +794,7 @@ class OptionsStrategiesTab:
             self.impact_buying_power,
             row=1,
             column=1,
+            help_key="buying_power",
         )
         self._impact_cash_flow_value = self._impact_metric(
             metrics,
@@ -723,6 +802,31 @@ class OptionsStrategiesTab:
             self.impact_cash_flow,
             row=1,
             column=2,
+            help_key="opening_cash_flow",
+        )
+        self._impact_ticket_max_loss_value = self._impact_metric(
+            metrics,
+            "Ticket Max Loss",
+            self.impact_ticket_max_loss,
+            row=2,
+            column=0,
+            help_key="ticket_max_loss",
+        )
+        self._impact_combined_max_loss_value = self._impact_metric(
+            metrics,
+            "Position + Ticket Loss",
+            self.impact_combined_max_loss,
+            row=2,
+            column=1,
+            help_key="combined_max_loss",
+        )
+        self._impact_metric(
+            metrics,
+            "Worst Case At",
+            self.impact_worst_case,
+            row=2,
+            column=2,
+            help_key="worst_case_price",
         )
 
         impact_context = ttk.Frame(
@@ -750,6 +854,13 @@ class OptionsStrategiesTab:
             wraplength=440,
             justify=tk.LEFT,
         ).pack(fill=tk.X, anchor=tk.W, pady=(2, 4))
+        ttk.Label(
+            impact_section,
+            textvariable=self.impact_risk_basis,
+            style="StrategyMuted.TLabel",
+            wraplength=440,
+            justify=tk.LEFT,
+        ).pack(fill=tk.X, anchor=tk.W, pady=(0, 4))
 
         decision_bar = ttk.Frame(
             impact_section,
@@ -817,8 +928,8 @@ class OptionsStrategiesTab:
             pady=(3, 7),
         )
 
-    @staticmethod
     def _impact_metric(
+        self,
         parent: ttk.Frame,
         label: str | tk.StringVar,
         value: tk.StringVar,
@@ -826,6 +937,7 @@ class OptionsStrategiesTab:
         row: int,
         column: int,
         dynamic_label: bool = False,
+        help_key: str | None = None,
     ) -> ttk.Label:
         card = ttk.Frame(
             parent,
@@ -844,11 +956,44 @@ class OptionsStrategiesTab:
             if dynamic_label
             else {"text": str(label)}
         )
+        header = ttk.Frame(card, style="StrategyImpactMetric.TFrame")
+        header.pack(fill=tk.X)
         ttk.Label(
-            card,
+            header,
             style="StrategyImpactMetricLabel.TLabel",
             **label_options,
-        ).pack(anchor=tk.W)
+        ).pack(side=tk.LEFT, anchor=tk.W)
+        if help_key is not None:
+            info = ttk.Label(
+                header,
+                text="ⓘ",
+                style="StrategyInfo.TLabel",
+                cursor="hand2",
+                takefocus=True,
+            )
+            info.pack(side=tk.RIGHT, anchor=tk.E, padx=(5, 0))
+            info.bind(
+                "<Button-1>",
+                lambda event, key=help_key, anchor=info: (
+                    self._show_metric_help(
+                        key,
+                        anchor,
+                        pointer=(event.x_root, event.y_root),
+                    )
+                ),
+            )
+            info.bind(
+                "<Return>",
+                lambda _event, key=help_key, anchor=info: (
+                    self._show_metric_help(key, anchor)
+                ),
+            )
+            info.bind(
+                "<space>",
+                lambda _event, key=help_key, anchor=info: (
+                    self._show_metric_help(key, anchor)
+                ),
+            )
         value_label = ttk.Label(
             card,
             textvariable=value,
@@ -856,6 +1001,99 @@ class OptionsStrategiesTab:
         )
         value_label.pack(anchor=tk.W, pady=(1, 0))
         return value_label
+
+    def _show_metric_help(
+        self,
+        help_key: str,
+        anchor: tk.Widget,
+        *,
+        pointer: tuple[int, int] | None = None,
+    ) -> None:
+        details = _PORTFOLIO_TERM_HELP.get(help_key)
+        if details is None:
+            return
+        self._close_metric_help()
+        title, explanation = details
+        if help_key == "applicable_funds":
+            title = self.impact_available_label.get() or title
+
+        window = tk.Toplevel(self.root)
+        self._metric_help_window = window
+        window.withdraw()
+        window.overrideredirect(True)
+        window.transient(self.root)
+        window.configure(background=BORDER)
+
+        border = tk.Frame(window, background=BORDER, padx=1, pady=1)
+        border.pack(fill=tk.BOTH, expand=True)
+        body = tk.Frame(
+            border,
+            background=SURFACE_ALT,
+            padx=12,
+            pady=10,
+        )
+        body.pack(fill=tk.BOTH, expand=True)
+        header = tk.Frame(body, background=SURFACE_ALT)
+        header.pack(fill=tk.X)
+        tk.Label(
+            header,
+            text=title,
+            background=SURFACE_ALT,
+            foreground=TEXT,
+            font=("Segoe UI", 10, "bold"),
+        ).pack(side=tk.LEFT, anchor=tk.W)
+        close = tk.Label(
+            header,
+            text="×",
+            background=SURFACE_ALT,
+            foreground=MUTED_TEXT,
+            activeforeground=TEXT,
+            cursor="hand2",
+            font=("Segoe UI", 12, "bold"),
+        )
+        close.pack(side=tk.RIGHT, anchor=tk.E, padx=(8, 0))
+        close.bind("<Button-1>", lambda _event: self._close_metric_help())
+        tk.Label(
+            body,
+            text=explanation,
+            background=SURFACE_ALT,
+            foreground=TEXT,
+            justify=tk.LEFT,
+            anchor=tk.W,
+            wraplength=330,
+            font=("Segoe UI", 9),
+        ).pack(fill=tk.X, anchor=tk.W, pady=(6, 0))
+
+        window.update_idletasks()
+        width = max(350, window.winfo_reqwidth())
+        height = window.winfo_reqheight()
+        if pointer is None:
+            x = anchor.winfo_rootx() + anchor.winfo_width() - width
+            y = anchor.winfo_rooty() + anchor.winfo_height() + 5
+        else:
+            x = pointer[0] + 16 - width
+            y = pointer[1] + 14
+        x = max(6, min(x, window.winfo_screenwidth() - width - 6))
+        if y + height > window.winfo_screenheight() - 6:
+            y = max(6, anchor.winfo_rooty() - height - 5)
+        window.geometry(f"{width}x{height}+{x}+{y}")
+        window.deiconify()
+        window.update_idletasks()
+        window.bind("<Escape>", lambda _event: self._close_metric_help())
+        window.lift()
+        try:
+            window.focus_set()
+        except tk.TclError:
+            pass
+
+    def _close_metric_help(self) -> None:
+        window = self._metric_help_window
+        self._metric_help_window = None
+        if window is not None:
+            try:
+                window.destroy()
+            except tk.TclError:
+                pass
 
     def _open_decision_details(self) -> None:
         if self.selected_candidate is None:
@@ -875,8 +1113,8 @@ class OptionsStrategiesTab:
         self._decision_details_window = window
         window.title("Strategy Decision Details")
         self.root.update_idletasks()
-        width = 980
-        height = 720
+        width = max(760, min(1120, window.winfo_screenwidth() - 80))
+        height = max(720, min(950, window.winfo_screenheight() - 80))
         x = self.root.winfo_rootx() + max(
             16,
             (self.root.winfo_width() - width) // 2,
@@ -886,7 +1124,7 @@ class OptionsStrategiesTab:
             (self.root.winfo_height() - height) // 2,
         )
         window.geometry(f"{width}x{height}+{x}+{y}")
-        window.minsize(740, 520)
+        window.minsize(760, 720)
         window.configure(background=BACKGROUND)
         window.transient(self.root)
         window.protocol("WM_DELETE_WINDOW", self._close_decision_details)
@@ -951,8 +1189,8 @@ class OptionsStrategiesTab:
             padding=(14, 12),
             style="StrategySurface.TFrame",
         )
-        details_panes.add(summary, minsize=205, stretch="always")
-        details_panes.add(evidence_panel, minsize=245, stretch="always")
+        details_panes.add(summary, minsize=480, stretch="always")
+        details_panes.add(evidence_panel, minsize=220, stretch="always")
 
         summary_header = ttk.Frame(summary, style="StrategySurface.TFrame")
         summary_header.pack(fill=tk.X, pady=(0, 7))
@@ -979,6 +1217,7 @@ class OptionsStrategiesTab:
             row=0,
             column=0,
             dynamic_label=True,
+            help_key="applicable_funds",
         )
         self._impact_metric(
             metrics,
@@ -986,6 +1225,7 @@ class OptionsStrategiesTab:
             self.impact_requirement,
             row=0,
             column=1,
+            help_key="estimated_requirement",
         )
         self._decision_funds_after_value = self._impact_metric(
             metrics,
@@ -993,6 +1233,7 @@ class OptionsStrategiesTab:
             self.impact_funds_after,
             row=0,
             column=2,
+            help_key="estimated_funds_after",
         )
         self._impact_metric(
             metrics,
@@ -1000,6 +1241,7 @@ class OptionsStrategiesTab:
             self.impact_cash_balance,
             row=1,
             column=0,
+            help_key="cash_balance",
         )
         self._impact_metric(
             metrics,
@@ -1007,6 +1249,7 @@ class OptionsStrategiesTab:
             self.impact_buying_power,
             row=1,
             column=1,
+            help_key="buying_power",
         )
         self._decision_cash_flow_value = self._impact_metric(
             metrics,
@@ -1014,6 +1257,31 @@ class OptionsStrategiesTab:
             self.impact_cash_flow,
             row=1,
             column=2,
+            help_key="opening_cash_flow",
+        )
+        self._decision_ticket_max_loss_value = self._impact_metric(
+            metrics,
+            "Ticket Max Loss",
+            self.impact_ticket_max_loss,
+            row=2,
+            column=0,
+            help_key="ticket_max_loss",
+        )
+        self._decision_combined_max_loss_value = self._impact_metric(
+            metrics,
+            "Position + Ticket Max Loss",
+            self.impact_combined_max_loss,
+            row=2,
+            column=1,
+            help_key="combined_max_loss",
+        )
+        self._impact_metric(
+            metrics,
+            "Worst Case At",
+            self.impact_worst_case,
+            row=2,
+            column=2,
+            help_key="worst_case_price",
         )
         ttk.Label(
             summary,
@@ -1029,6 +1297,56 @@ class OptionsStrategiesTab:
             justify=tk.LEFT,
             wraplength=850,
         ).pack(fill=tk.X, anchor=tk.W)
+
+        risk_header = ttk.Frame(summary, style="StrategySurface.TFrame")
+        risk_header.pack(fill=tk.X, pady=(9, 5))
+        ttk.Label(
+            risk_header,
+            text="Position Risk at Expiration",
+            style="StrategyHeading.TLabel",
+        ).pack(side=tk.LEFT, anchor=tk.W)
+        ttk.Label(
+            risk_header,
+            textvariable=self.impact_risk_scope,
+            style="StrategyMuted.TLabel",
+            justify=tk.RIGHT,
+        ).pack(side=tk.RIGHT, anchor=tk.E, padx=(14, 0))
+
+        scenarios = ttk.Treeview(
+            summary,
+            columns=(
+                "scenario",
+                "stock_price",
+                "price_move",
+                "shares_pnl",
+                "ticket_pnl",
+                "combined_pnl",
+            ),
+            show="headings",
+            height=5,
+        )
+        for name, label, width, anchor in (
+            ("scenario", "Scenario", 105, tk.W),
+            ("stock_price", "Stock at Exp.", 115, tk.E),
+            ("price_move", "Price Move", 105, tk.E),
+            ("shares_pnl", "Current Shares P/L", 140, tk.E),
+            ("ticket_pnl", "Selected Ticket P/L", 145, tk.E),
+            ("combined_pnl", "Combined P/L", 140, tk.E),
+        ):
+            scenarios.heading(name, text=label)
+            scenarios.column(name, width=width, minwidth=85, anchor=anchor)
+        scenarios.tag_configure("gain", foreground=SUCCESS)
+        scenarios.tag_configure("loss", foreground=DANGER)
+        scenarios.tag_configure("flat", foreground=TEXT)
+        scenarios.pack(fill=tk.X)
+        self._decision_scenario_table = scenarios
+        ttk.Label(
+            summary,
+            textvariable=self.impact_risk_basis,
+            style="StrategyMuted.TLabel",
+            justify=tk.LEFT,
+            wraplength=1020,
+        ).pack(fill=tk.X, anchor=tk.W, pady=(5, 0))
 
         evidence_header = ttk.Frame(
             evidence_panel,
@@ -1100,11 +1418,15 @@ class OptionsStrategiesTab:
         self._refresh_decision_details()
 
     def _close_decision_details(self) -> None:
+        self._close_metric_help()
         window = self._decision_details_window
         self._decision_details_window = None
         self._decision_status_label = None
         self._decision_funds_after_value = None
         self._decision_cash_flow_value = None
+        self._decision_ticket_max_loss_value = None
+        self._decision_combined_max_loss_value = None
+        self._decision_scenario_table = None
         self._decision_pricing_text = None
         self._decision_assurance_text = None
         if window is not None:
@@ -1216,6 +1538,7 @@ class OptionsStrategiesTab:
             or assurance_text is None
         ):
             return
+        self._render_decision_risk(self._current_portfolio_impact)
         if candidate is None:
             window.title("Strategy Decision Details")
             placeholder = [
@@ -1316,6 +1639,53 @@ class OptionsStrategiesTab:
         self._replace_decision_text(assurance_text, assurance_chunks)
         self._sync_decision_detail_tones()
 
+    def _render_decision_risk(
+        self,
+        impact: StrategyPortfolioImpact | None,
+    ) -> None:
+        table = getattr(self, "_decision_scenario_table", None)
+        if table is None:
+            return
+        self._clear_table(table)
+        if impact is None or not impact.price_scenarios:
+            message = (
+                "Select a strategy"
+                if impact is None
+                else "Exact curve unavailable"
+            )
+            table.insert(
+                "",
+                tk.END,
+                values=(message, "—", "—", "—", "—", "—"),
+                tags=("flat",),
+            )
+            return
+        for scenario in impact.price_scenarios:
+            combined = scenario.combined_profit_loss
+            tone = (
+                "gain"
+                if combined > 0.005
+                else "loss"
+                if combined < -0.005
+                else "flat"
+            )
+            table.insert(
+                "",
+                tk.END,
+                values=(
+                    scenario.label,
+                    _money_or_dash(scenario.underlying_price),
+                    _price_move_text(
+                        scenario.price_change,
+                        scenario.price_change_percent,
+                    ),
+                    _profit_loss_text(scenario.existing_shares_profit_loss),
+                    _profit_loss_text(scenario.ticket_profit_loss),
+                    _profit_loss_text(combined),
+                ),
+                tags=(tone,),
+            )
+
     @staticmethod
     def _replace_decision_text(
         widget: tk.Text,
@@ -1347,6 +1717,32 @@ class OptionsStrategiesTab:
             cash_flow.configure(
                 style=_cash_flow_metric_style(self.impact_cash_flow.get())
             )
+        for label, value in (
+            (
+                getattr(self, "_decision_ticket_max_loss_value", None),
+                self.impact_ticket_max_loss.get(),
+            ),
+            (
+                getattr(self, "_decision_combined_max_loss_value", None),
+                self.impact_combined_max_loss.get(),
+            ),
+        ):
+            if label is not None:
+                label.configure(style=_max_loss_metric_style(value))
+
+    def _sync_main_risk_metric_tones(self) -> None:
+        for label, value in (
+            (
+                getattr(self, "_impact_ticket_max_loss_value", None),
+                self.impact_ticket_max_loss.get(),
+            ),
+            (
+                getattr(self, "_impact_combined_max_loss_value", None),
+                self.impact_combined_max_loss.get(),
+            ),
+        ):
+            if label is not None:
+                label.configure(style=_max_loss_metric_style(value))
 
     def refresh(self) -> None:
         if self.past_positions_view is not None:
@@ -1670,6 +2066,7 @@ class OptionsStrategiesTab:
                 account_label=snapshot.account_label,
             )
         except (TypeError, ValueError) as exc:
+            self._current_portfolio_impact = None
             self.impact_status.set("Complete Ticket Details")
             self._impact_status_label.configure(
                 style="StrategyImpactWarning.TLabel"
@@ -1682,9 +2079,16 @@ class OptionsStrategiesTab:
                 self.impact_cash_balance,
                 self.impact_buying_power,
                 self.impact_cash_flow,
+                self.impact_ticket_max_loss,
+                self.impact_combined_max_loss,
+                self.impact_worst_case,
             ):
                 variable.set("—")
             self.impact_requirement_basis.set(str(exc))
+            self.impact_risk_scope.set("Expiration risk unavailable")
+            self.impact_risk_basis.set(
+                "Complete the ticket details to calculate expiration loss scenarios."
+            )
             self.impact_position.set(_position_impact_text(candidate.position))
             self._impact_funds_after_value.configure(
                 style="StrategyImpactMetricValue.TLabel"
@@ -1692,6 +2096,7 @@ class OptionsStrategiesTab:
             self._impact_cash_flow_value.configure(
                 style="StrategyImpactMetricValue.TLabel"
             )
+            self._sync_main_risk_metric_tones()
             self._refresh_decision_details()
             return
         self._render_portfolio_impact(candidate, impact)
@@ -1701,6 +2106,7 @@ class OptionsStrategiesTab:
         candidate: StrategyCandidateView,
         impact: StrategyPortfolioImpact,
     ) -> None:
+        self._current_portfolio_impact = impact
         self.impact_available_label.set(impact.applicable_funds_label)
         self.impact_available.set(_money_or_dash(impact.applicable_funds))
         self.impact_requirement.set(
@@ -1714,6 +2120,48 @@ class OptionsStrategiesTab:
         self.impact_cash_flow.set(
             _cash_flow_text(impact.estimated_opening_cash_flow)
         )
+        self.impact_ticket_max_loss.set(
+            _max_loss_text(
+                impact.ticket_max_loss,
+                unbounded=impact.ticket_max_loss_unbounded,
+            )
+        )
+        self.impact_combined_max_loss.set(
+            _max_loss_text(
+                impact.combined_max_loss,
+                unbounded=impact.combined_max_loss_unbounded,
+            )
+        )
+        combined_worst_available = bool(
+            impact.combined_max_loss_unbounded
+            or impact.combined_max_loss is not None
+        )
+        self.impact_worst_case.set(
+            _worst_case_text(
+                (
+                    impact.combined_worst_case_price
+                    if combined_worst_available
+                    else impact.ticket_worst_case_price
+                ),
+                unbounded=(
+                    impact.combined_max_loss_unbounded
+                    if combined_worst_available
+                    else impact.ticket_max_loss_unbounded
+                ),
+            )
+        )
+        self.impact_risk_scope.set(_risk_scope_text(impact))
+        risk_basis = impact.risk_basis
+        if (
+            not impact.ticket_max_loss_unbounded
+            and impact.ticket_max_loss is None
+            and impact.published_strategy_max_loss is not None
+        ):
+            risk_basis = (
+                f"{risk_basis} Published whole-strategy snapshot max loss: "
+                f"{_money_or_dash(impact.published_strategy_max_loss)}."
+            )
+        self.impact_risk_basis.set(risk_basis)
 
         if impact.has_share_shortfall:
             status = "Share Shortfall"
@@ -1752,6 +2200,7 @@ class OptionsStrategiesTab:
                 else "StrategyImpactMetricValue.TLabel"
             )
         )
+        self._sync_main_risk_metric_tones()
 
         coverage = (
             ""
@@ -1776,6 +2225,7 @@ class OptionsStrategiesTab:
         self._refresh_decision_details()
 
     def _reset_portfolio_impact(self) -> None:
+        self._current_portfolio_impact = None
         self.impact_source.set("Select exact legs to calculate impact")
         self.impact_status.set("No Strategy Selected")
         self.impact_available_label.set("Applicable Funds")
@@ -1786,9 +2236,14 @@ class OptionsStrategiesTab:
             self.impact_cash_balance,
             self.impact_buying_power,
             self.impact_cash_flow,
+            self.impact_ticket_max_loss,
+            self.impact_combined_max_loss,
+            self.impact_worst_case,
         ):
             variable.set("—")
         self.impact_requirement_basis.set("")
+        self.impact_risk_scope.set("Expiration risk unavailable")
+        self.impact_risk_basis.set("")
         self.impact_position.set("")
         self.impact_decision_summary.set(
             "Select a strategy to inspect its decision evidence"
@@ -1802,6 +2257,7 @@ class OptionsStrategiesTab:
         self._impact_cash_flow_value.configure(
             style="StrategyImpactMetricValue.TLabel"
         )
+        self._sync_main_risk_metric_tones()
         self._refresh_decision_details()
 
     def _clear_ticket(self) -> None:
@@ -2239,6 +2695,15 @@ def _cash_flow_metric_style(value: str) -> str:
     return "StrategyImpactMetricValue.TLabel"
 
 
+def _max_loss_metric_style(value: str) -> str:
+    cleaned = str(value).strip()
+    if not cleaned or cleaned == "—":
+        return "StrategyImpactMetricValue.TLabel"
+    if cleaned == "$0.00":
+        return "StrategyImpactMetricGood.TLabel"
+    return "StrategyImpactMetricDanger.TLabel"
+
+
 def _money_or_dash(value: float | None) -> str:
     if value is None:
         return "—"
@@ -2255,6 +2720,61 @@ def _cash_flow_text(value: float | None) -> str:
     if value < 0.0:
         return f"-${abs(value):,.2f} debit"
     return "$0.00"
+
+
+def _max_loss_text(value: float | None, *, unbounded: bool) -> str:
+    if unbounded:
+        return "Unlimited"
+    return _money_or_dash(value)
+
+
+def _worst_case_text(value: float | None, *, unbounded: bool) -> str:
+    if unbounded:
+        return "Rises without bound"
+    return _money_or_dash(value)
+
+
+def _risk_scope_text(impact: StrategyPortfolioImpact) -> str:
+    if impact.risk_expiration:
+        expiration = _expiration_display(impact.risk_expiration)
+        reference = (
+            ""
+            if impact.reference_price is None
+            else f" · Reference {_money_or_dash(impact.reference_price)}"
+        )
+        return f"Expires {expiration}{reference}"
+    return {
+        "OPENING_CASH_FLOW_UNAVAILABLE": "Complete ticket cash flow",
+        "OPTION_CONTRACT_DETAILS_UNAVAILABLE": "Contract details incomplete",
+        "MULTI_EXPIRATION_REQUIRES_TIME_MODEL": "Multi-expiration model needed",
+    }.get(impact.risk_status, "Expiration risk unavailable")
+
+
+def _expiration_display(value: str) -> str:
+    clean = str(value).strip()
+    try:
+        observed = datetime.fromisoformat(clean.replace("Z", "+00:00"))
+    except ValueError:
+        return clean
+    return observed.strftime("%b %d, %Y").replace(" 0", " ")
+
+
+def _profit_loss_text(value: float) -> str:
+    if value > 0.005:
+        return f"+${value:,.2f}"
+    if value < -0.005:
+        return f"-${abs(value):,.2f}"
+    return "$0.00"
+
+
+def _price_move_text(value: float, percent: float) -> str:
+    if value > 0.00005:
+        amount = f"+${value:,.2f}"
+    elif value < -0.00005:
+        amount = f"-${abs(value):,.2f}"
+    else:
+        amount = "$0.00"
+    return f"{amount} ({percent:+.0%})" if percent else f"{amount} (0%)"
 
 
 def _empty_candidate_message(reason: str | None) -> str:

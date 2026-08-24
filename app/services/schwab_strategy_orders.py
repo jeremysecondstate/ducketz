@@ -35,6 +35,7 @@ class SchwabPositionContext:
     buying_power: float | None = None
     liquidation_value: float | None = None
     account_values_status: str = "UNAVAILABLE"
+    underlying_price: float | None = None
 
 
 @dataclass(frozen=True)
@@ -47,6 +48,9 @@ class StrategyOrderLeg:
     bid: float | None
     ask: float | None
     multiplier: float
+    option_type: str | None = None
+    strike: float | None = None
+    expiration: str | None = None
 
 
 @dataclass(frozen=True)
@@ -100,6 +104,7 @@ def schwab_position_context(
     buying_power: float | None = None
     liquidation_value: float | None = None
     account_values_status = "UNAVAILABLE"
+    underlying_price: float | None = None
     facts = account_facts if isinstance(account_facts, Mapping) else {}
 
     positions = facts.get("positions")
@@ -119,6 +124,13 @@ def schwab_position_context(
                     continue
                 if asset_type in {"EQUITY", "STOCK"} and item_symbol == clean_symbol:
                     shares += quantity
+                    observed_price = _finite_number(item.get("price"))
+                    if observed_price is None and quantity != 0.0:
+                        market_value = _finite_number(item.get("market_value"))
+                        if market_value is not None:
+                            observed_price = abs(market_value / quantity)
+                    if observed_price is not None and observed_price > 0.0:
+                        underlying_price = observed_price
                 elif "OPTION" in asset_type and underlying == clean_symbol:
                     option_contracts += abs(quantity)
 
@@ -175,6 +187,7 @@ def schwab_position_context(
         buying_power=buying_power,
         liquidation_value=liquidation_value,
         account_values_status=account_values_status,
+        underlying_price=underlying_price,
     )
 
 
@@ -232,6 +245,15 @@ def build_strategy_order_draft(
             multiplier = _positive_number(
                 raw_leg.get("multiplier"), "Option multiplier"
             )
+            option_type = _required_text(
+                raw_leg.get("option_type"), "Option type"
+            ).upper()
+            if option_type not in {"CALL", "PUT"}:
+                raise ValueError(f"Unsupported option type: {option_type}")
+            strike = _positive_number(raw_leg.get("strike"), "Option strike")
+            expiration = _required_text(
+                raw_leg.get("expiration_date"), "Option expiration"
+            )
             display = _option_display_name(symbol, raw_leg)
             legs.append(
                 StrategyOrderLeg(
@@ -243,6 +265,9 @@ def build_strategy_order_draft(
                     bid=bid,
                     ask=ask,
                     multiplier=multiplier,
+                    option_type=option_type,
+                    strike=strike,
+                    expiration=expiration,
                 )
             )
         elif asset == "STOCK":

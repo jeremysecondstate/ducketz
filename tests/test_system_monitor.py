@@ -105,6 +105,10 @@ def test_monitor_pins_each_current_publication_once_across_checks(
         observed["strategy_check"] = publication
         return ok("strategy_publication")
 
+    def strategy_value_check(*_args, publication, **_kwargs):
+        observed["strategy_values"] = publication
+        return ok("strategy_candidate_value_sanity")
+
     def lineage_check(*_args, loop_b, strategy, **_kwargs):
         observed["lineage"] = (loop_b, strategy)
         return ok("cross_loop_lineage")
@@ -127,6 +131,11 @@ def test_monitor_pins_each_current_publication_once_across_checks(
 
     monkeypatch.setattr(system_monitor, "_loop_b_check", loop_b_check)
     monkeypatch.setattr(system_monitor, "_strategy_check", strategy_check)
+    monkeypatch.setattr(
+        system_monitor,
+        "_strategy_candidate_value_check",
+        strategy_value_check,
+    )
     monkeypatch.setattr(system_monitor, "_lineage_check", lineage_check)
     monkeypatch.setattr(system_monitor, "_ui_check", ui_check)
     monkeypatch.setattr(
@@ -157,6 +166,7 @@ def test_monitor_pins_each_current_publication_once_across_checks(
     assert observed == {
         "loop_b_check": loop_b_a,
         "strategy_check": strategy_a,
+        "strategy_values": strategy_a,
         "lineage": (loop_b_a, strategy_a),
         "ui": (loop_b_a, strategy_a),
         "directional": loop_b_a,
@@ -508,6 +518,98 @@ def test_log_discovery_prefers_current_legacy_runtime_log_over_old_primary(
     assert check["details"]["runtimes"]["strategy_profit_training"][
         "stdout"
     ] == str(trainer_stdout)
+
+
+def _strategy_value_frame() -> pd.DataFrame:
+    expected_returns = [-0.1, 0.05, 0.1, 0.2, 0.3]
+    capital = [100.0] * len(expected_returns)
+    return pd.DataFrame(
+        {
+            "symbol": ["AAPL"] * len(expected_returns),
+            "horizon": ["1d"] * len(expected_returns),
+            "candidate_key": [f"candidate-{index}" for index in range(5)],
+            "candidate_rank": [1, 2, 3, 4, 5],
+            "strategy_name": ["long_call"] * len(expected_returns),
+            "strategy_display_name": ["Long Call"] * len(expected_returns),
+            "model_status": ["MODEL_FIT"] * len(expected_returns),
+            "scenario_coverage_score": [0.45, 0.48, 0.5, 0.52, 0.55],
+            "calibrated_profit_probability": [0.4, 0.45, 0.5, 0.55, 0.6],
+            "expected_net_profit": [
+                value * required for value, required in zip(expected_returns, capital)
+            ],
+            "expected_return_on_risk": expected_returns,
+            "capital_required": capital,
+            "max_profit": [float("nan")] * len(expected_returns),
+            "max_loss": capital,
+        }
+    )
+
+
+def test_strategy_candidate_value_sanity_passes_coherent_values() -> None:
+    summary = system_monitor.summarize_strategy_candidate_values(
+        _strategy_value_frame()
+    )
+
+    assert summary["status"] == "PASS"
+    assert summary["integrity_failure_rows"] == 0
+    assert summary["alert_rows"] == 0
+    assert summary["formula_max_absolute_error"] == 0.0
+    assert summary["automated_action"] == (
+        "REPORT_ONLY_NO_MODEL_OR_CANDIDATE_MUTATION"
+    )
+
+
+def test_strategy_candidate_value_sanity_flags_screenshot_style_tail_profile() -> None:
+    frame = _strategy_value_frame()
+    frame.loc[0, "calibrated_profit_probability"] = 0.01954728995211606
+    frame.loc[0, "scenario_coverage_score"] = 0.636602272261187
+    frame.loc[0, "expected_return_on_risk"] = 5.269765070487699
+    frame.loc[0, "expected_net_profit"] = 526.9765070487699
+
+    summary = system_monitor.summarize_strategy_candidate_values(frame)
+
+    assert summary["status"] == "WARN"
+    assert summary["integrity_failure_rows"] == 0
+    assert summary["alert_rows"] == 1
+    assert summary["alert_counts"] == {
+        "positive_return_with_zero_probability": 0,
+        "tail_payoff_dependency": 1,
+        "high_return_low_probability": 1,
+        "extreme_expected_return": 1,
+        "route_return_outlier": 1,
+    }
+    finding = summary["top_findings"][0]
+    assert finding["ml_profit_probability_percent"] == 1.9547
+    assert finding["expected_return_percent"] == 526.977
+    assert finding["implied_profitable_return_floor_x"] == 269.591
+    assert finding["rules"] == [
+        "tail_payoff_dependency",
+        "high_return_low_probability",
+        "extreme_expected_return",
+        "route_return_outlier",
+    ]
+
+
+def test_strategy_candidate_value_sanity_fails_formula_corruption() -> None:
+    frame = _strategy_value_frame()
+    frame.loc[2, "expected_net_profit"] = 999.0
+
+    summary = system_monitor.summarize_strategy_candidate_values(frame)
+
+    assert summary["status"] == "FAIL"
+    assert summary["integrity_failure_rows"] == 1
+    assert summary["integrity_failure_counts"][
+        "expected_return_formula_mismatch"
+    ] == 1
+
+
+def test_strategy_candidate_value_sanity_fails_closed_on_missing_fields() -> None:
+    summary = system_monitor.summarize_strategy_candidate_values(
+        _strategy_value_frame().drop(columns=["capital_required"])
+    )
+
+    assert summary["status"] == "FAIL"
+    assert summary["missing_columns"] == ["capital_required"]
 
 
 def _weekly_rows(

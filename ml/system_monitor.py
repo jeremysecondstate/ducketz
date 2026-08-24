@@ -57,6 +57,16 @@ _EXPECTED_PUBLICATION_AGE = pd.Timedelta(minutes=45)
 _TARGET_SETTLE_GRACE = pd.Timedelta(minutes=14)
 _RECENT_STDERR_WINDOW = pd.Timedelta(hours=2)
 _WEEKLY_MINIMUM_INDEPENDENT_OBSERVATIONS = 30
+_STRATEGY_VALUE_AUDIT_POLICY_VERSION = "strategy-candidate-value-audit-v1"
+_STRATEGY_EXPECTED_RETURN_EXTREME = 5.0
+_STRATEGY_HIGH_RETURN_LOW_PROBABILITY_RETURN = 3.0
+_STRATEGY_LOW_PROFIT_PROBABILITY = 0.02
+_STRATEGY_TAIL_PAYOFF_FLOOR = 100.0
+_STRATEGY_ROUTE_OUTLIER_MINIMUM_RETURN = 1.0
+_STRATEGY_ROUTE_ROBUST_Z = 10.0
+_STRATEGY_FORMULA_RELATIVE_TOLERANCE = 1e-9
+_STRATEGY_FORMULA_ABSOLUTE_TOLERANCE = 1e-6
+_STRATEGY_VALUE_AUDIT_TOP_FINDINGS = 12
 _WEEKLY_CONTRACT_COLUMNS = (
     "provider",
     "model_name",
@@ -344,6 +354,15 @@ def build_monitor_report(
             lambda: _strategy_check(
                 root,
                 now,
+                publication=publications.require_strategy(),
+            ),
+        )
+    )
+    checks.append(
+        _safe(
+            "strategy_candidate_value_sanity",
+            lambda: _strategy_candidate_value_check(
+                root,
                 publication=publications.require_strategy(),
             ),
         )
@@ -1117,6 +1136,423 @@ def _strategy_check(
         candidate_rows=len(candidates),
         audit_rows=len(audit),
     )
+
+
+def _strategy_candidate_value_check(
+    root: Path,
+    *,
+    publication: StrategyPublication,
+) -> dict[str, object]:
+    source = publication.run_directory / "strategy-candidates.parquet"
+    analysis = dict(summarize_strategy_candidate_values(pd.read_parquet(source)))
+    status = str(analysis.pop("status"))
+    summary = str(analysis.pop("summary"))
+    return _check(
+        "strategy_candidate_value_sanity",
+        status,
+        summary,
+        source=source.relative_to(root).as_posix(),
+        **analysis,
+    )
+
+
+def summarize_strategy_candidate_values(frame: pd.DataFrame) -> dict[str, object]:
+    """Audit candidate value integrity and report unusual payoff-tail profiles."""
+
+    required = {
+        "symbol",
+        "horizon",
+        "candidate_key",
+        "candidate_rank",
+        "strategy_name",
+        "model_status",
+        "scenario_coverage_score",
+        "calibrated_profit_probability",
+        "expected_net_profit",
+        "expected_return_on_risk",
+        "capital_required",
+        "max_profit",
+        "max_loss",
+    }
+    missing = sorted(required.difference(frame.columns))
+    common = {
+        "policy_version": _STRATEGY_VALUE_AUDIT_POLICY_VERSION,
+        "candidate_rows": len(frame),
+        "read_only": True,
+        "automated_action": "REPORT_ONLY_NO_MODEL_OR_CANDIDATE_MUTATION",
+        "interpretation": (
+            "Expected Return is return on risk, not a probability, so values above "
+            "100% can be valid. Alerts identify payoff-tail dependence or cross-model "
+            "coherence questions; they do not clamp, rerank, or delete candidates."
+        ),
+    }
+    if missing:
+        return {
+            "status": _FAIL,
+            "summary": (
+                "Strategy candidate value sanity cannot verify its required fields."
+            ),
+            **common,
+            "missing_columns": missing,
+        }
+    if frame.empty:
+        return {
+            "status": _FAIL,
+            "summary": (
+                "Strategy candidate value sanity cannot inspect an empty publication."
+            ),
+            **common,
+            "missing_columns": [],
+        }
+
+    numeric = {
+        column: pd.to_numeric(frame[column], errors="coerce").astype(float)
+        for column in (
+            "candidate_rank",
+            "scenario_coverage_score",
+            "calibrated_profit_probability",
+            "expected_net_profit",
+            "expected_return_on_risk",
+            "capital_required",
+            "max_profit",
+            "max_loss",
+        )
+    }
+
+    def finite(values: pd.Series) -> pd.Series:
+        return pd.Series(
+            np.isfinite(values.to_numpy(dtype=float)),
+            index=values.index,
+            dtype=bool,
+        )
+
+    scenario = numeric["scenario_coverage_score"]
+    probability = numeric["calibrated_profit_probability"]
+    expected_profit = numeric["expected_net_profit"]
+    expected_return = numeric["expected_return_on_risk"]
+    capital = numeric["capital_required"]
+    maximum_profit = numeric["max_profit"]
+    maximum_loss = numeric["max_loss"]
+    model_status = frame["model_status"].astype("string").fillna("")
+    modeled = model_status.eq("MODEL_FIT")
+    heuristic = model_status.eq("HEURISTIC_ONLY")
+
+    finite_scenario = finite(scenario)
+    finite_probability = finite(probability)
+    finite_expected_profit = finite(expected_profit)
+    finite_expected_return = finite(expected_return)
+    finite_capital = finite(capital)
+    finite_maximum_loss = finite(maximum_loss)
+    finite_maximum_profit = finite(maximum_profit)
+
+    route_identity = (
+        frame["symbol"].astype("string").fillna("").str.strip()
+        + "|"
+        + frame["horizon"].astype("string").fillna("").str.strip()
+        + "|"
+        + frame["candidate_key"].astype("string").fillna("").str.strip()
+    )
+    invalid_route_identity = (
+        route_identity.str.startswith("|")
+        | route_identity.str.contains(r"\|\|", regex=True)
+        | route_identity.str.endswith("|")
+    )
+    invalid_rank = ~finite(numeric["candidate_rank"]) | numeric[
+        "candidate_rank"
+    ].lt(1.0) | ~numeric["candidate_rank"].mod(1.0).eq(0.0)
+    invalid_model_status = ~(modeled | heuristic)
+    invalid_scenario = ~finite_scenario | ~scenario.between(0.0, 1.0)
+    invalid_modeled_probability = modeled & (
+        ~finite_probability | ~probability.between(0.0, 1.0)
+    )
+    heuristic_probability_present = heuristic & frame[
+        "calibrated_profit_probability"
+    ].notna()
+    nonfinite_expected_profit = ~finite_expected_profit
+    nonfinite_expected_return = ~finite_expected_return
+    invalid_capital = ~finite_capital | capital.le(0.0)
+    invalid_maximum_loss = ~finite_maximum_loss | maximum_loss.lt(0.0)
+
+    formula_eligible = (
+        finite_expected_profit
+        & finite_expected_return
+        & finite_capital
+        & capital.gt(0.0)
+    )
+    formula_close = pd.Series(False, index=frame.index, dtype=bool)
+    formula_close.loc[formula_eligible] = np.isclose(
+        expected_profit.loc[formula_eligible].to_numpy(dtype=float),
+        (
+            expected_return.loc[formula_eligible]
+            * capital.loc[formula_eligible]
+        ).to_numpy(dtype=float),
+        rtol=_STRATEGY_FORMULA_RELATIVE_TOLERANCE,
+        atol=_STRATEGY_FORMULA_ABSOLUTE_TOLERANCE,
+    )
+    formula_mismatch = formula_eligible & ~formula_close
+
+    lower_tolerance = (
+        _STRATEGY_FORMULA_ABSOLUTE_TOLERANCE
+        + _STRATEGY_FORMULA_RELATIVE_TOLERANCE * maximum_loss.abs()
+    )
+    expected_below_loss_bound = (
+        finite_expected_profit
+        & finite_maximum_loss
+        & expected_profit.lt(-maximum_loss - lower_tolerance)
+    )
+    upper_tolerance = (
+        _STRATEGY_FORMULA_ABSOLUTE_TOLERANCE
+        + _STRATEGY_FORMULA_RELATIVE_TOLERANCE * maximum_profit.abs()
+    )
+    expected_above_profit_bound = (
+        finite_expected_profit
+        & finite_maximum_profit
+        & expected_profit.gt(maximum_profit + upper_tolerance)
+    )
+
+    integrity_masks = {
+        "invalid_route_identity": invalid_route_identity,
+        "invalid_candidate_rank": invalid_rank,
+        "invalid_model_status": invalid_model_status,
+        "invalid_scenario_coverage": invalid_scenario,
+        "invalid_modeled_probability": invalid_modeled_probability,
+        "heuristic_probability_present": heuristic_probability_present,
+        "nonfinite_expected_net_profit": nonfinite_expected_profit,
+        "nonfinite_expected_return_on_risk": nonfinite_expected_return,
+        "invalid_capital_required": invalid_capital,
+        "invalid_max_loss": invalid_maximum_loss,
+        "expected_return_formula_mismatch": formula_mismatch,
+        "expected_profit_below_loss_bound": expected_below_loss_bound,
+        "expected_profit_above_profit_bound": expected_above_profit_bound,
+    }
+    integrity_union = pd.concat(integrity_masks, axis=1).any(axis=1)
+
+    route_symbol = frame["symbol"].astype("string").fillna("").str.upper().str.strip()
+    route_horizon = frame["horizon"].astype("string").fillna("").str.lower().str.strip()
+    grouping = [route_symbol, route_horizon]
+    route_median = expected_return.groupby(grouping, dropna=False).transform("median")
+    route_mad = expected_return.groupby(grouping, dropna=False).transform(
+        lambda values: (values - values.median()).abs().median()
+    )
+    route_robust_z = (
+        0.6744897501960817
+        * (expected_return - route_median)
+        / route_mad.where(route_mad.gt(0.0))
+    )
+    route_return_outlier = (
+        finite_expected_return
+        & expected_return.ge(_STRATEGY_ROUTE_OUTLIER_MINIMUM_RETURN)
+        & route_robust_z.ge(_STRATEGY_ROUTE_ROBUST_Z)
+    )
+
+    modeled_valid = (
+        modeled
+        & finite_probability
+        & probability.between(0.0, 1.0)
+        & finite_expected_return
+    )
+    positive_probability = modeled_valid & probability.gt(0.0)
+    payoff_floor = pd.Series(np.nan, index=frame.index, dtype=float)
+    payoff_floor.loc[positive_probability] = (
+        expected_return.loc[positive_probability].clip(lower=0.0)
+        / probability.loc[positive_probability]
+    )
+    positive_return_zero_probability = (
+        modeled_valid & probability.eq(0.0) & expected_return.gt(0.0)
+    )
+    tail_payoff_dependency = positive_probability & payoff_floor.ge(
+        _STRATEGY_TAIL_PAYOFF_FLOOR
+    )
+    high_return_low_probability = (
+        modeled_valid
+        & expected_return.ge(_STRATEGY_HIGH_RETURN_LOW_PROBABILITY_RETURN)
+        & probability.le(_STRATEGY_LOW_PROFIT_PROBABILITY)
+    )
+    extreme_expected_return = finite_expected_return & expected_return.ge(
+        _STRATEGY_EXPECTED_RETURN_EXTREME
+    )
+    alert_masks = {
+        "positive_return_with_zero_probability": positive_return_zero_probability,
+        "tail_payoff_dependency": tail_payoff_dependency,
+        "high_return_low_probability": high_return_low_probability,
+        "extreme_expected_return": extreme_expected_return,
+        "route_return_outlier": route_return_outlier,
+    }
+    alert_union = pd.concat(alert_masks, axis=1).any(axis=1)
+
+    priority = (
+        positive_return_zero_probability.astype(int) * 6
+        + high_return_low_probability.astype(int) * 5
+        + tail_payoff_dependency.astype(int) * 4
+        + extreme_expected_return.astype(int) * 3
+        + route_return_outlier.astype(int) * 2
+    )
+
+    def rounded(values: pd.Series, index: object, digits: int) -> float | None:
+        value = values.loc[index]
+        return round(float(value), digits) if math.isfinite(float(value)) else None
+
+    def integer_or_none(values: pd.Series, index: object) -> int | None:
+        value = values.loc[index]
+        return int(value) if math.isfinite(float(value)) else None
+
+    def clean_text(value: object) -> str | None:
+        if value is None or value is pd.NA or pd.isna(value):
+            return None
+        text = str(value).strip()
+        return text or None
+
+    ranked_findings = frame.loc[alert_union].copy()
+    ranked_findings["__priority"] = priority.loc[alert_union]
+    ranked_findings["__payoff_floor"] = payoff_floor.loc[alert_union]
+    ranked_findings["__expected_return"] = expected_return.loc[alert_union]
+    ranked_findings = ranked_findings.sort_values(
+        ["__priority", "__payoff_floor", "__expected_return", "candidate_key"],
+        ascending=[False, False, False, True],
+        na_position="last",
+        kind="mergesort",
+    ).head(_STRATEGY_VALUE_AUDIT_TOP_FINDINGS)
+    top_findings: list[dict[str, object]] = []
+    for index, row in ranked_findings.iterrows():
+        rules = [name for name, mask in alert_masks.items() if bool(mask.loc[index])]
+        display_name = (
+            row.get("strategy_display_name")
+            if "strategy_display_name" in frame.columns
+            else None
+        )
+        top_findings.append(
+            {
+                "symbol": clean_text(row.get("symbol")),
+                "horizon": clean_text(row.get("horizon")),
+                "strategy": clean_text(display_name)
+                or clean_text(row.get("strategy_name")),
+                "candidate_rank": integer_or_none(numeric["candidate_rank"], index),
+                "candidate_key": clean_text(row.get("candidate_key")),
+                "rules": rules,
+                "ml_profit_probability_percent": rounded(probability * 100.0, index, 4),
+                "scenario_coverage_percent": rounded(scenario * 100.0, index, 4),
+                "expected_return_percent": rounded(expected_return * 100.0, index, 3),
+                "expected_net_profit": rounded(expected_profit, index, 4),
+                "capital_required": rounded(capital, index, 4),
+                "implied_profitable_return_floor_x": rounded(payoff_floor, index, 3),
+                "route_return_robust_z": rounded(route_robust_z, index, 3),
+            }
+        )
+
+    def percentile_percent(values: pd.Series, quantile: float) -> float | None:
+        clean = values[finite(values)]
+        return round(float(clean.quantile(quantile)) * 100.0, 4) if len(clean) else None
+
+    by_horizon: list[dict[str, object]] = []
+    for horizon in sorted(set(route_horizon)):
+        horizon_mask = route_horizon.eq(horizon)
+        modeled_horizon = horizon_mask & modeled_valid
+        by_horizon.append(
+            {
+                "horizon": horizon,
+                "candidate_rows": int(horizon_mask.sum()),
+                "modeled_rows": int(modeled_horizon.sum()),
+                "ml_probability_median_percent": percentile_percent(
+                    probability.loc[modeled_horizon], 0.5
+                ),
+                "expected_return_p99_percent": percentile_percent(
+                    expected_return.loc[horizon_mask], 0.99
+                ),
+                "expected_return_max_percent": percentile_percent(
+                    expected_return.loc[horizon_mask], 1.0
+                ),
+                "alert_rows": int((horizon_mask & alert_union).sum()),
+            }
+        )
+
+    formula_error = (expected_profit - expected_return * capital).abs()
+    eligible_formula_error = formula_error.loc[formula_eligible]
+    signal_gap = (scenario - probability).abs()
+    integrity_failure_rows = int(integrity_union.sum())
+    alert_rows = int(alert_union.sum())
+    if integrity_failure_rows:
+        status = _FAIL
+        summary = (
+            f"{integrity_failure_rows} Strategy candidate row(s) "
+            "violate value-integrity or payoff-bound contracts."
+        )
+    elif alert_rows:
+        status = _WARN
+        summary = (
+            f"{alert_rows} Strategy candidate row(s) have mathematically allowed but "
+            "tail-dependent or route-outlier profiles that need model review."
+        )
+    else:
+        status = _PASS
+        summary = (
+            "Strategy candidate values pass integrity and payoff-tail sanity checks."
+        )
+
+    return {
+        "status": status,
+        "summary": summary,
+        **common,
+        "modeled_rows": int(modeled.sum()),
+        "heuristic_rows": int(heuristic.sum()),
+        "integrity_failure_rows": integrity_failure_rows,
+        "integrity_failure_counts": {
+            name: int(mask.sum()) for name, mask in integrity_masks.items()
+        },
+        "formula_max_absolute_error": (
+            round(float(eligible_formula_error.max()), 12)
+            if len(eligible_formula_error)
+            else None
+        ),
+        "alert_rows": alert_rows,
+        "alert_counts": {name: int(mask.sum()) for name, mask in alert_masks.items()},
+        "context_counts": {
+            "modeled_probability_at_or_below_2_percent": int(
+                (modeled_valid & probability.le(0.02)).sum()
+            ),
+            "model_scenario_signal_gap_at_least_50_points": int(
+                (modeled_valid & signal_gap.ge(0.50)).sum()
+            ),
+        },
+        "thresholds": {
+            "extreme_expected_return_on_risk": _STRATEGY_EXPECTED_RETURN_EXTREME,
+            "high_return_low_probability_return": (
+                _STRATEGY_HIGH_RETURN_LOW_PROBABILITY_RETURN
+            ),
+            "low_profit_probability": _STRATEGY_LOW_PROFIT_PROBABILITY,
+            "implied_profitable_return_floor_x": _STRATEGY_TAIL_PAYOFF_FLOOR,
+            "route_outlier_minimum_return": _STRATEGY_ROUTE_OUTLIER_MINIMUM_RETURN,
+            "route_robust_z": _STRATEGY_ROUTE_ROBUST_Z,
+        },
+        "expected_return_distribution_percent": {
+            "minimum": percentile_percent(expected_return, 0.0),
+            "median": percentile_percent(expected_return, 0.5),
+            "p95": percentile_percent(expected_return, 0.95),
+            "p99": percentile_percent(expected_return, 0.99),
+            "maximum": percentile_percent(expected_return, 1.0),
+        },
+        "modeled_probability_distribution_percent": {
+            "minimum": percentile_percent(probability.loc[modeled_valid], 0.0),
+            "median": percentile_percent(probability.loc[modeled_valid], 0.5),
+            "p95": percentile_percent(probability.loc[modeled_valid], 0.95),
+            "maximum": percentile_percent(probability.loc[modeled_valid], 1.0),
+        },
+        "by_horizon": by_horizon,
+        "top_findings": top_findings,
+        "recommended_follow_up": [
+            (
+                "Compare the listed payoff-tail candidates with realized outcomes "
+                "before promotion."
+            ),
+            (
+                "Check expected-return target scale and capital denominators for "
+                "recurring route outliers."
+            ),
+            (
+                "Use daily/weekly evaluation gates for retraining or promotion; keep "
+                "hourly handling report-only."
+            ),
+        ],
+    }
 
 
 def _strategy_profit_model_check(root: Path) -> dict[str, object]:
@@ -2397,6 +2833,7 @@ __all__ = [
     "main",
     "scheduled_monitor_mode",
     "summarize_directional_quality",
+    "summarize_strategy_candidate_values",
     "summarize_strategy_quality",
     "summarize_weekly_evidence",
 ]
