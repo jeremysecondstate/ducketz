@@ -935,6 +935,7 @@ def test_strategy_loader_marks_heuristic_quality_failures_research_only(
     )
     assert not result.manual_order_actionable
     assert result.manual_actionability.startswith("Research only")
+    assert "Manual broker review is required" in result.manual_actionability
 
 
 def test_discover_empty_state_surfaces_matching_publication_audit_reason(
@@ -1310,7 +1311,7 @@ def test_confirmation_copy_is_human_readable() -> None:
     assert "BUY_TO_OPEN" not in message
 
 
-def test_options_strategy_submit_uses_the_existing_schwab_session(
+def test_options_strategy_submit_opens_review_without_direct_submission(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     candidate = _candidate(
@@ -1349,8 +1350,24 @@ def test_options_strategy_submit_uses_the_existing_schwab_session(
     tab = OptionsStrategiesTab.__new__(OptionsStrategiesTab)
     tab.root = object()
     tab.selected_candidate = SimpleNamespace(
+        candidate_id=str(candidate["id"]),
+        row=candidate,
         order_draft=draft,
         manual_order_actionable=True,
+        manual_actionability="Manual review eligible.",
+        position=SimpleNamespace(
+            available_cash=10_000.0,
+            working_option_orders=0,
+        ),
+        portfolio_fit=SimpleNamespace(detail="Fits current account limits."),
+        model_summary="Calibrated profit model active",
+        pricing_summary="Active pricing",
+        quality_warning="Quality policies passed",
+    )
+    tab.snapshot = PortfolioSnapshot(
+        source="schwab",
+        account_label="Schwab account 12345678",
+        synced_at=datetime(2026, 8, 1, 15, 0, tzinfo=timezone.utc),
     )
     tab.selected_order_index = 0
     tab.ticket_quantity = _Value("1")
@@ -1363,58 +1380,93 @@ def test_options_strategy_submit_uses_the_existing_schwab_session(
     tab.ticket_duration = _Value(DAY_ONLY)
     tab.ticket_order_part = _Value(draft.orders[0].display_name)
     tab.session_factory = _Session
-    tab._render_order_part = lambda: None
-    background_calls: list[object] = []
-    confirmations: list[str] = []
-    receipts: list[str] = []
-    monkeypatch.setattr(
-        "app.ui.options_strategies.messagebox.askyesno",
-        lambda _title, message: confirmations.append(message) or True,
-    )
-    monkeypatch.setattr(
-        "app.ui.options_strategies.messagebox.showinfo",
-        lambda _title, message: receipts.append(message),
-    )
+    dialogs: list[object] = []
     monkeypatch.setattr(
         "app.ui.options_strategies.messagebox.showerror",
         lambda _title, message: pytest.fail(message),
     )
     monkeypatch.setattr(
-        "app.ui.options_strategies.run_in_background",
-        lambda root, work, on_success, _on_error: (
-            background_calls.append(root),
-            on_success(work()),
-        ),
+        "app.ui.options_strategies.OptionOrderReviewDialog",
+        lambda *, root, controller: dialogs.append((root, controller)),
     )
 
     tab._submit_order()
 
-    assert len(confirmations) == 1
-    assert background_calls == [tab.root]
-    assert len(submitted) == 1
-    assert submitted[0]["orderType"] == "NET_DEBIT"
-    assert submitted[0]["complexOrderStrategyType"] == "VERTICAL"
-    assert len(receipts) == 1
-    assert "Order ID: 12345" in receipts[0]
+    assert len(dialogs) == 1
+    root, controller = dialogs[0]
+    assert root is tab.root
+    assert controller.review.title == "Review Strategy Order"
+    assert controller.review.account_display_label.endswith("•••5678")
+    assert submitted == []
 
 
-def test_options_strategy_submit_refuses_research_only_candidate(
+def test_options_strategy_submit_routes_research_only_candidate_to_review(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    candidate = _candidate(
+        strategy_name="long_put",
+        strategy_display_name="Long Put",
+        legs=[
+            _option_leg(
+                side="LONG",
+                option_type="PUT",
+                strike=105,
+                symbol="GOOG  260918P00105000",
+                bid=2.40,
+                ask=2.50,
+            )
+        ],
+    )
+    draft = build_strategy_order_draft(
+        candidate,
+        position=schwab_position_context({}, symbol="GOOG"),
+    )
     tab = OptionsStrategiesTab.__new__(OptionsStrategiesTab)
+    tab.root = object()
     tab.selected_candidate = SimpleNamespace(
+        candidate_id=str(candidate["id"]),
+        row=candidate,
+        order_draft=draft,
         manual_order_actionable=False,
         manual_actionability="Research only; calibration is unavailable.",
+        position=SimpleNamespace(
+            available_cash=10_000.0,
+            working_option_orders=0,
+        ),
+        portfolio_fit=SimpleNamespace(detail="Adds downside protection."),
+        model_summary="Scenario coverage only",
+        pricing_summary="Pricing unavailable",
+        quality_warning="Surface policy failed",
     )
-    warnings: list[str] = []
+    tab.snapshot = PortfolioSnapshot(
+        source="schwab",
+        account_label="Schwab account 12345678",
+        synced_at=datetime(2026, 8, 1, 15, 0, tzinfo=timezone.utc),
+    )
+    tab.selected_order_index = 0
+    tab.ticket_quantity = _Value("1")
+    tab.ticket_order_method = _Value(draft.orders[0].suggested_order_method)
+    tab.ticket_limit_price = _Value(
+        f"{draft.orders[0].suggested_limit_price:.2f}"
+    )
+    tab.ticket_duration = _Value(DAY_ONLY)
+    tab.session_factory = lambda: pytest.fail("review must not submit directly")
+    dialogs: list[object] = []
     monkeypatch.setattr(
-        "app.ui.options_strategies.messagebox.showwarning",
-        lambda _title, message: warnings.append(message),
+        "app.ui.options_strategies.messagebox.showerror",
+        lambda _title, message: pytest.fail(message),
+    )
+    monkeypatch.setattr(
+        "app.ui.options_strategies.OptionOrderReviewDialog",
+        lambda *, root, controller: dialogs.append((root, controller)),
     )
 
     tab._submit_order()
 
-    assert warnings == ["Research only; calibration is unavailable."]
+    assert len(dialogs) == 1
+    review = dialogs[0][1].review
+    assert review.title == "Review Strategy Order"
+    assert any(notice.title == "Research-Only Candidate" for notice in review.notices)
 
 
 def _candidate(

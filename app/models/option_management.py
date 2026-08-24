@@ -6,6 +6,7 @@ from enum import Enum
 
 
 class OrderReviewOperation(str, Enum):
+    ENTRY = "ENTRY"
     CLOSE = "CLOSE"
     ROLL = "ROLL"
     EXIT_PLAN = "EXIT_PLAN"

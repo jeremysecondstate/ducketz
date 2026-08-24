@@ -8,6 +8,8 @@ from typing import Mapping, Sequence
 
 import pandas as pd
 
+from app.models.market_data import MarketQuote
+
 
 DAY_ONLY = "Day only"
 GOOD_UNTIL_CANCELED = "Good until canceled"
@@ -314,6 +316,33 @@ def build_strategy_order_payload(
     return payload
 
 
+def refresh_strategy_order_quotes(
+    draft: StrategyOrderDraft,
+    quotes: Mapping[str, MarketQuote],
+) -> StrategyOrderDraft:
+    """Rebuild a strategy draft from current exact-leg Schwab quotes."""
+    refreshed_legs: list[StrategyOrderLeg] = []
+    for leg in draft.legs:
+        quote = quotes.get(leg.symbol)
+        if quote is None:
+            raise ValueError(f"Schwab did not return a current quote for {leg.symbol}.")
+        bid = _finite_number(quote.bid)
+        ask = _finite_number(quote.ask)
+        if bid is None or ask is None or bid < 0.0 or ask <= 0.0 or ask < bid:
+            raise ValueError(
+                f"Schwab returned an unusable bid/ask for {leg.symbol}."
+            )
+        refreshed_legs.append(replace(leg, bid=bid, ask=ask))
+
+    legs = tuple(refreshed_legs)
+    orders = _order_components(
+        draft.strategy_name,
+        legs,
+        stock_included=any(leg.asset_type == "EQUITY" for leg in legs),
+    )
+    return replace(draft, legs=legs, orders=orders)
+
+
 def _order_components(
     strategy_name: str,
     legs: tuple[StrategyOrderLeg, ...],
@@ -526,6 +555,7 @@ __all__ = [
     "SchwabPositionContext",
     "StrategyOrderComponent",
     "StrategyOrderDraft",
+    "refresh_strategy_order_quotes",
     "StrategyOrderLeg",
     "build_strategy_order_draft",
     "build_strategy_order_payload",

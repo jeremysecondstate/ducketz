@@ -448,8 +448,8 @@ def _candidate_views(
                 "Manual review eligible; submission still requires user confirmation."
                 if manual_order_actionable
                 else (
-                    "Research only; manual submission is disabled because calibrated, "
-                    "fully covered, quality-passing pricing evidence is unavailable."
+                    "Research only; calibrated, fully covered, quality-passing pricing "
+                    "evidence is unavailable. Manual broker review is required."
                 )
             )
             expected_net_profit = _required_finite(

@@ -108,7 +108,7 @@ class _ScrollableReviewBody(tk.Frame):
 
 
 class OptionOrderReviewDialog(tk.Toplevel):
-    """One native review surface for Close, Roll, and Exit Plan drafts."""
+    """One native review surface for entry, Close, Roll, and Exit Plan drafts."""
 
     def __init__(
         self,
@@ -334,13 +334,15 @@ class OptionOrderReviewDialog(tk.Toplevel):
         footer.pack(fill=tk.X)
         safety = tk.Frame(footer, background="#091524")
         safety.pack(side=tk.LEFT, fill=tk.X, expand=True, anchor=tk.CENTER)
-        tk.Label(
+        safety_tag = tk.Label(
             safety,
-            text="CLOSE ONLY",
+            text=_safety_tag(self.controller.review.operation),
             background="#091524",
             foreground=MUTED_TEXT,
             font=("Segoe UI", 8, "bold"),
-        ).pack(side=tk.LEFT, padx=(0, 8))
+        )
+        safety_tag.pack(side=tk.LEFT, padx=(0, 8))
+        self.safety_tag_label = safety_tag
         self.safety_label = tk.Label(
             safety,
             text=self.controller.review.safety_copy,
@@ -844,12 +846,15 @@ class OptionOrderReviewDialog(tk.Toplevel):
             operation = self.controller.review.operation
             self._destroy_modal()
             messagebox.showinfo(
-                "Exit order accepted" if operation == OrderReviewOperation.EXIT_PLAN else "Closing order accepted",
+                _accepted_title(operation),
                 order_submitted_message(payload, location),
                 parent=self.root,
             )
             return
-        if outcome.retryable:
+        if outcome.retryable or outcome.status in {
+            OrderReviewOutcomeStatus.BLOCKED,
+            OrderReviewOutcomeStatus.INVALIDATED,
+        }:
             self._placement_dispatched = False
         self._inline_status = outcome.message
         self._sync_from_controller()
@@ -872,7 +877,11 @@ class OptionOrderReviewDialog(tk.Toplevel):
 
         def succeeded(_review: OptionOrderReview) -> None:
             self._refresh_dispatched = False
-            self._inline_status = "Positions and quotes refreshed — confirmation required."
+            self._inline_status = (
+                "Account and exact-leg quotes refreshed — confirmation required."
+                if self.controller.review.operation == OrderReviewOperation.ENTRY
+                else "Positions and quotes refreshed — confirmation required."
+            )
             self._sync_from_controller()
 
         def failed(_exc: Exception) -> None:
@@ -905,6 +914,7 @@ class OptionOrderReviewDialog(tk.Toplevel):
         self.title(review.title)
         self.title_label.configure(text=review.title)
         self.subtitle_label.configure(text=review.subtitle)
+        self.safety_tag_label.configure(text=_safety_tag(review.operation))
         self.safety_label.configure(text=review.safety_copy)
         self.acknowledged_var.set(self.controller.acknowledged)
         enabled = self.controller.primary_action_enabled and not self._placement_dispatched and not self._refresh_dispatched
@@ -1032,6 +1042,24 @@ def _direction_color(direction: OrderReviewCashDirection) -> str:
     if direction == OrderReviewCashDirection.DEBIT:
         return DANGER
     return TEXT
+
+
+def _safety_tag(operation: OrderReviewOperation) -> str:
+    return {
+        OrderReviewOperation.ENTRY: "OPENING ORDER",
+        OrderReviewOperation.CLOSE: "CLOSE ONLY",
+        OrderReviewOperation.ROLL: "ROLL REVIEW",
+        OrderReviewOperation.EXIT_PLAN: "EXIT PLAN",
+    }[operation]
+
+
+def _accepted_title(operation: OrderReviewOperation) -> str:
+    return {
+        OrderReviewOperation.ENTRY: "Strategy Order Accepted",
+        OrderReviewOperation.CLOSE: "Closing Order Accepted",
+        OrderReviewOperation.ROLL: "Roll Order Accepted",
+        OrderReviewOperation.EXIT_PLAN: "Exit Order Accepted",
+    }[operation]
 
 
 def _tone_color(tone: str) -> str:

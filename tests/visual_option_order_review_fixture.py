@@ -1,6 +1,6 @@
 """Manual fake-only visual fixture for the universal option-order review dialog.
 
-Usage: pythonw tests/visual_option_order_review_fixture.py [close|roll|exit|exit_single|stale]
+Usage: pythonw tests/visual_option_order_review_fixture.py [entry|close|roll|exit|exit_single|stale]
        [--ack] [--bottom] [--compact] [--probe]
 The fixture never supplies a working broker submitter.
 """
@@ -23,6 +23,7 @@ from app.services.option_order_review import (
     roll_order_review,
 )
 from app.services.schwab_option_management import build_closing_order_draft, option_position_book
+from app.services.strategy_order_review import StrategyOrderReviewController
 from app.ui.option_order_review import OptionOrderReviewDialog
 from app.ui.theme import BACKGROUND, BORDER, MUTED_TEXT, SURFACE, TABLE_FIELD, TEXT
 
@@ -40,7 +41,30 @@ def main() -> None:
     )
     book = option_position_book(snapshot)
 
-    if fixture_mode == "roll":
+    class NeverSubmit:
+        def submit_order(self, _payload: dict[str, object]) -> None:
+            raise AssertionError("The visual fixture must never submit an order.")
+
+    if fixture_mode == "entry":
+        entry_helpers = runpy.run_path(
+            str(Path(__file__).with_name("test_strategy_order_review.py"))
+        )
+        draft = replace(
+            entry_helpers["_entry_draft"](research_only=True),
+            quote_observed_at=now,
+            reviewed_account_at=now,
+        )
+        controller = StrategyOrderReviewController(
+            draft=draft,
+            refresher=lambda current: replace(
+                current,
+                quote_observed_at=datetime.now(timezone.utc),
+                reviewed_account_at=datetime.now(timezone.utc),
+            ),
+            session_factory=NeverSubmit,
+            now_provider=lambda: datetime.now(timezone.utc),
+        )
+    elif fixture_mode == "roll":
         draft = helpers["_roll_draft"]()
         draft = replace(
             draft,
@@ -67,10 +91,6 @@ def main() -> None:
     else:
         draft = build_closing_order_draft(book, tuple(leg.symbol for leg in book.legs))
         review = closing_order_review(draft, now=now)
-
-        class NeverSubmit:
-            def submit_order(self, _payload: dict[str, object]) -> None:
-                raise AssertionError("The visual fixture must never submit an order.")
 
         controller = OptionOrderReviewController(
             review=review,

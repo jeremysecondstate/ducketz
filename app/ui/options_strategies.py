@@ -15,7 +15,12 @@ from app.services.schwab_strategy_orders import (
     GOOD_UNTIL_CANCELED,
     MARKET_ORDER,
     StrategyOrderDraft,
-    build_strategy_order_payload,
+)
+from app.services.strategy_order_review import (
+    StrategyEntryOrderReviewDraft,
+    StrategyOrderReviewController,
+    build_strategy_entry_review_draft,
+    refresh_strategy_entry_review_draft,
 )
 from app.ui.options_strategy_data import (
     HORIZON_LABELS,
@@ -26,11 +31,8 @@ from app.ui.options_strategy_data import (
 from app.ui.background_tasks import run_in_background
 from app.ui.options_management import OptionsManagementView
 from app.ui.option_templates import OptionsTemplatesView
+from app.ui.option_order_review import OptionOrderReviewDialog
 from app.ui.past_positions import PastPositionsView
-from app.ui.schwab_order_messages import (
-    order_confirmation_message,
-    order_submitted_message,
-)
 from app.ui.theme import (
     ACCENT,
     BACKGROUND,
@@ -541,7 +543,7 @@ class OptionsStrategiesTab:
 
         self.submit_button = ttk.Button(
             parent,
-            text="Submit Order",
+            text="Review Strategy Order",
             style="StrategySubmit.TButton",
             command=self._submit_order,
             state=tk.DISABLED,
@@ -820,16 +822,8 @@ class OptionsStrategiesTab:
         self._render_order_part()
         if self.submit_button is not None:
             self.submit_button.configure(
-                state=(
-                    tk.NORMAL
-                    if candidate.manual_order_actionable
-                    else tk.DISABLED
-                ),
-                text=(
-                    "Submit Order"
-                    if candidate.manual_order_actionable
-                    else "Research Only — Submission Disabled"
-                ),
+                state=tk.NORMAL,
+                text="Review Strategy Order",
             )
 
     def _order_part_changed(self, _event: object = None) -> None:
@@ -902,22 +896,24 @@ class OptionsStrategiesTab:
         if self.submit_button is not None:
             self.submit_button.configure(
                 state=tk.DISABLED,
-                text="Submit Order",
+                text="Review Strategy Order",
             )
 
     def _submit_order(self) -> None:
         candidate = self.selected_candidate
         if candidate is None:
             return
-        if not candidate.manual_order_actionable:
-            messagebox.showwarning(
-                "Option Order Not Actionable",
-                candidate.manual_actionability,
+        snapshot = self.snapshot
+        if snapshot is None:
+            messagebox.showerror(
+                "Strategy Order Review Unavailable",
+                "Refresh the Schwab account before reviewing an entry order.",
             )
             return
         try:
-            payload = build_strategy_order_payload(
-                candidate.order_draft,
+            draft = build_strategy_entry_review_draft(
+                candidate_row=candidate.row,
+                order_draft=candidate.order_draft,
                 order_index=self.selected_order_index,
                 strategy_quantity=int(self.ticket_quantity.get().strip()),
                 order_method=self.ticket_order_method.get(),
@@ -927,61 +923,60 @@ class OptionsStrategiesTab:
                     else self.ticket_limit_price.get().strip()
                 ),
                 duration=self.ticket_duration.get(),
+                account_label=snapshot.account_label,
+                reviewed_account_at=snapshot.synced_at,
+                available_cash=candidate.position.available_cash,
+                working_option_orders=candidate.position.working_option_orders,
+                research_only=not candidate.manual_order_actionable,
+                research_reason=candidate.manual_actionability,
+                portfolio_detail=candidate.portfolio_fit.detail,
+                model_summary=candidate.model_summary,
+                pricing_summary=candidate.pricing_summary,
+                quality_warning=candidate.quality_warning,
             )
-            if not messagebox.askyesno(
-                "Confirm Option Order",
-                order_confirmation_message(payload),
-            ):
-                return
-            submit_button = getattr(self, "submit_button", None)
-            if submit_button is not None:
-                submit_button.configure(state=tk.DISABLED)
-
-            def succeeded(location: str | None) -> None:
-                if submit_button is not None:
-                    submit_button.configure(
-                        state=(
-                            tk.NORMAL
-                            if candidate.manual_order_actionable
-                            else tk.DISABLED
-                        )
-                    )
-                messagebox.showinfo(
-                    "Option Order Submitted",
-                    order_submitted_message(payload, location),
-                )
-                next_index = self.selected_order_index + 1
-                if next_index < candidate.order_draft.order_count:
-                    self.selected_order_index = next_index
-                    next_order = candidate.order_draft.orders[next_index]
-                    self.ticket_order_part.set(next_order.display_name)
-                    self._render_order_part()
-
-            def failed(exc: Exception) -> None:
-                if submit_button is not None:
-                    submit_button.configure(
-                        state=(
-                            tk.NORMAL
-                            if candidate.manual_order_actionable
-                            else tk.DISABLED
-                        )
-                    )
-                messagebox.showerror(
-                    "Option Order Failed",
-                    str(exc) or "The option order could not be submitted.",
-                )
-
-            run_in_background(
-                self.root,
-                lambda: self.session_factory().submit_order(payload),
-                succeeded,
-                failed,
+            controller = StrategyOrderReviewController(
+                draft=draft,
+                refresher=self._refresh_strategy_entry_review,
+                session_factory=self.session_factory,
+                on_accepted=lambda accepted: self.root.after(
+                    0,
+                    lambda: self._strategy_entry_accepted(accepted),
+                ),
+                on_unknown=lambda: self.root.after(0, self.refresh),
             )
+            OptionOrderReviewDialog(root=self.root, controller=controller)
         except Exception as exc:
             messagebox.showerror(
-                "Option Order Failed",
-                str(exc) or "The option order could not be submitted.",
+                "Strategy Order Review Unavailable",
+                str(exc) or "The strategy order could not be reviewed.",
             )
+
+    def _refresh_strategy_entry_review(
+        self,
+        draft: StrategyEntryOrderReviewDraft,
+    ) -> StrategyEntryOrderReviewDraft:
+        return refresh_strategy_entry_review_draft(
+            draft,
+            snapshot=self.snapshot_loader(),
+            session=self.session_factory(),
+        )
+
+    def _strategy_entry_accepted(
+        self,
+        accepted: StrategyEntryOrderReviewDraft,
+    ) -> None:
+        candidate = self.selected_candidate
+        if (
+            candidate is not None
+            and candidate.candidate_id == accepted.order_draft.candidate_id
+            and accepted.order_index + 1 < candidate.order_draft.order_count
+        ):
+            self.selected_order_index = accepted.order_index + 1
+            next_order = candidate.order_draft.orders[self.selected_order_index]
+            self.ticket_order_part.set(next_order.display_name)
+            self._render_order_part()
+            return
+        self.refresh()
 
     @staticmethod
     def _clear_table(table: ttk.Treeview | None) -> None:
