@@ -67,6 +67,7 @@ _STRATEGY_ROUTE_ROBUST_Z = 10.0
 _STRATEGY_FORMULA_RELATIVE_TOLERANCE = 1e-9
 _STRATEGY_FORMULA_ABSOLUTE_TOLERANCE = 1e-6
 _STRATEGY_VALUE_AUDIT_TOP_FINDINGS = 12
+_STRATEGY_VALUE_SHADOW_EXPECTED_CADENCE = pd.Timedelta(minutes=75)
 _WEEKLY_CONTRACT_COLUMNS = (
     "provider",
     "model_name",
@@ -371,6 +372,16 @@ def build_monitor_report(
         _safe(
             "strategy_profit_model_authority",
             lambda: _strategy_profit_model_check(root),
+        )
+    )
+    checks.append(
+        _safe(
+            "strategy_value_shadow",
+            lambda: _strategy_value_shadow_check(
+                root,
+                now=now,
+                publication=publications.require_strategy(),
+            ),
         )
     )
     checks.append(
@@ -1153,6 +1164,87 @@ def _strategy_candidate_value_check(
         summary,
         source=source.relative_to(root).as_posix(),
         **analysis,
+    )
+
+
+def _strategy_value_shadow_check(
+    root: Path,
+    *,
+    now: pd.Timestamp,
+    publication: StrategyPublication,
+) -> dict[str, object]:
+    """Verify the latest scheduled shadow receipt without treating it as authority."""
+
+    # Local import avoids a module cycle: the challenger reuses this module's
+    # candidate-value audit, while the monitor only needs its receipt reader.
+    from ml.strategy_value_challenger import (
+        read_current_strategy_value_challenger,
+        strategy_value_source_fingerprint,
+    )
+
+    try:
+        current_fingerprint = strategy_value_source_fingerprint(
+            root,
+            strategy_publication=publication,
+        )
+        shadow = read_current_strategy_value_challenger(root)
+    except Exception as exc:
+        return _check(
+            "strategy_value_shadow",
+            _WARN,
+            "The scheduled Strategy value shadow has no valid current receipt.",
+            scope="SHADOW_OBSERVABILITY_ONLY",
+            production_authority=False,
+            reason=_error_text(exc),
+        )
+    created_at = _utc(shadow.report.get("created_at"), "shadow created_at")
+    age = max(pd.Timedelta(0), now - created_at)
+    observed_fingerprint = str(
+        shadow.report.get("source_fingerprint_sha256", "")
+    )
+    source_current = observed_fingerprint == current_fingerprint
+    if source_current:
+        status = _PASS
+        summary = "Strategy value shadow has a current checksum-valid receipt."
+    elif age <= _STRATEGY_VALUE_SHADOW_EXPECTED_CADENCE:
+        status = _INFO
+        summary = (
+            "Strategy value shadow is awaiting its next hourly fingerprint-gated run."
+        )
+    else:
+        status = _WARN
+        summary = "Strategy value shadow is behind its scheduled source fingerprint."
+    horizon_health: dict[str, object] = {}
+    raw_horizons = shadow.report.get("horizons")
+    if isinstance(raw_horizons, Mapping):
+        for horizon in ("1d", "1w"):
+            raw = raw_horizons.get(horizon)
+            if isinstance(raw, Mapping):
+                horizon_health[horizon] = {
+                    "model_data_feature_health": raw.get(
+                        "model_data_feature_health"
+                    ),
+                    "challenger_promotion_status": raw.get(
+                        "challenger_promotion_status"
+                    ),
+                }
+    return _check(
+        "strategy_value_shadow",
+        status,
+        summary,
+        scope="SHADOW_OBSERVABILITY_ONLY",
+        production_authority=False,
+        run_path=shadow.directory.relative_to(root).as_posix(),
+        receipt_path=shadow.receipt_path.relative_to(root).as_posix(),
+        created_at=created_at.isoformat(),
+        age_minutes=_minutes(age),
+        source_fingerprint_current=source_current,
+        source_fingerprint_sha256=observed_fingerprint,
+        decision=shadow.report.get("decision"),
+        promotion_eligible=shadow.report.get("promotion_eligible"),
+        promotion_performed=False,
+        orders_placed=0,
+        horizons=horizon_health,
     )
 
 

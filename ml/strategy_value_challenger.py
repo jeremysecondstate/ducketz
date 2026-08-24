@@ -16,9 +16,18 @@ import numpy as np
 import pandas as pd
 
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
-from ml.artifacts import file_checksum, input_inventory, utc_timestamp, verify_manifest
+from ml.artifacts import (
+    file_checksum,
+    input_inventory,
+    semantic_metadata_fingerprint,
+    utc_timestamp,
+    verify_manifest,
+)
 from ml.current_publication import read_publication_receipt
-from ml.strategy_publication import read_current_strategy_publication
+from ml.strategy_publication import (
+    StrategyPublication,
+    read_current_strategy_publication,
+)
 from ml.strategy_selection.candidates import _terminal_profit
 from ml.strategy_selection.contracts import StrategyModel, StrategySelectionPolicy
 from ml.strategy_selection.market_state import (
@@ -44,6 +53,12 @@ from ml.system_monitor import summarize_strategy_candidate_values
 STRATEGY_VALUE_CHALLENGER_VERSION = "strategy-value-shadow-challenger-v1"
 STRATEGY_VALUE_CHALLENGER_RECEIPT_VERSION = (
     "strategy-value-shadow-challenger-receipt-v1"
+)
+STRATEGY_VALUE_CHALLENGER_POINTER_VERSION = (
+    "strategy-value-shadow-observability-pointer-v1"
+)
+STRATEGY_VALUE_CHALLENGER_SOURCE_VERSION = (
+    "strategy-value-shadow-source-fingerprint-v1"
 )
 STRATEGY_VALUE_CHALLENGER_METHOD = "training-support-clipped-prior-plus-residual-v1"
 _PRIOR_FEATURE = "strategy_prior__expected_return_on_risk"
@@ -101,7 +116,7 @@ def run_strategy_value_challenger(
         label="source Loop B run",
     )
     source_manifest = verify_manifest(source_loop_b_run)
-    read_publication_receipt(
+    source_receipt = read_publication_receipt(
         source_loop_b_run,
         source_manifest,
         datastore_root=root,
@@ -111,6 +126,17 @@ def run_strategy_value_challenger(
 
     training_run, training_manifest, training_receipt, training_pointer = (
         _verified_training_authority(root)
+    )
+    source_fingerprint = _source_fingerprint_from_evidence(
+        root,
+        strategy_publication=strategy_publication,
+        source_loop_b_run=source_loop_b_run,
+        source_loop_b_manifest=source_manifest,
+        source_loop_b_receipt=source_receipt,
+        training_run=training_run,
+        training_manifest=training_manifest,
+        training_receipt=training_receipt,
+        training_pointer=training_pointer,
     )
     authority_generation = training_run.name
     source_files: list[Path] = [
@@ -249,6 +275,10 @@ def run_strategy_value_challenger(
         "orders_enabled": False,
         "orders_placed": 0,
         "challenger_method": STRATEGY_VALUE_CHALLENGER_METHOD,
+        "source_fingerprint_schema_version": (
+            STRATEGY_VALUE_CHALLENGER_SOURCE_VERSION
+        ),
+        "source_fingerprint_sha256": source_fingerprint,
         "method_summary": (
             "Keep the promoted return residual fixed and replace only the raw "
             "post-model scenario-prior addition with that prior clipped to the "
@@ -302,6 +332,254 @@ def run_strategy_value_challenger(
         assessment=assessment_comparison,
         source_files=tuple(dict.fromkeys(source_files)),
     )
+
+
+def strategy_value_source_fingerprint(
+    datastore_root: Path,
+    *,
+    strategy_publication: StrategyPublication | None = None,
+) -> str:
+    """Fingerprint only the verified authorities consumed by the shadow run."""
+
+    root = Path(datastore_root).resolve()
+    publication = strategy_publication or read_current_strategy_publication(root)
+    configuration = publication.manifest.get("configuration")
+    if not isinstance(configuration, Mapping):
+        raise ValueError("Strategy publication has no configuration mapping")
+    source_loop_b_run = _safe_datastore_path(
+        root,
+        configuration.get("source_loop_b_run"),
+        label="source Loop B run",
+    )
+    source_manifest = verify_manifest(source_loop_b_run)
+    source_receipt = read_publication_receipt(
+        source_loop_b_run,
+        source_manifest,
+        datastore_root=root,
+    )
+    training_run, training_manifest, training_receipt, training_pointer = (
+        _verified_training_authority(root)
+    )
+    return _source_fingerprint_from_evidence(
+        root,
+        strategy_publication=publication,
+        source_loop_b_run=source_loop_b_run,
+        source_loop_b_manifest=source_manifest,
+        source_loop_b_receipt=source_receipt,
+        training_run=training_run,
+        training_manifest=training_manifest,
+        training_receipt=training_receipt,
+        training_pointer=training_pointer,
+    )
+
+
+def strategy_value_challenger_pointer_path(datastore_root: Path) -> Path:
+    return (
+        Path(datastore_root)
+        / "ml"
+        / "strategy-value-challenger-latest"
+        / "run.json"
+    )
+
+
+def read_current_strategy_value_challenger(
+    datastore_root: Path,
+) -> StrategyValueChallengerResult:
+    """Read the latest checksum-valid shadow receipt, never model authority."""
+
+    root = Path(datastore_root).resolve()
+    pointer_path = strategy_value_challenger_pointer_path(root)
+    pointer = _read_json(pointer_path)
+    if (
+        pointer.get("schema_version") != STRATEGY_VALUE_CHALLENGER_POINTER_VERSION
+        or pointer.get("scope") != "SHADOW_OBSERVABILITY_ONLY"
+        or pointer.get("production_authority") is not False
+        or pointer.get("orders_enabled") is not False
+    ):
+        raise ValueError("Strategy value shadow pointer has an invalid safety contract")
+    current = pointer.get("current")
+    if not isinstance(current, Mapping):
+        raise ValueError("Strategy value shadow pointer has no current record")
+    run = _safe_datastore_path(
+        root,
+        current.get("run_path"),
+        label="Strategy value shadow run",
+    )
+    runs_root = (root / "ml" / "strategy-value-challenger-runs").resolve()
+    if run.parent != runs_root:
+        raise ValueError("Strategy value shadow pointer escapes its immutable runs")
+    manifest_path = run / "manifest.json"
+    receipt_path = run / "receipt.json"
+    report_path = run / "report.json"
+    shadow_path = run / "shadow-candidates.parquet"
+    assessment_path = run / "assessment-comparison.parquet"
+    manifest = _read_json(manifest_path)
+    receipt = _read_json(receipt_path)
+    report = _read_json(report_path)
+    source_fingerprint = str(report.get("source_fingerprint_sha256", ""))
+    expected_current = {
+        "run_path": run.relative_to(root).as_posix(),
+        "created_at": report.get("created_at"),
+        "source_fingerprint_sha256": source_fingerprint,
+        "receipt_checksum_sha256": file_checksum(receipt_path),
+    }
+    if dict(current) != expected_current:
+        raise ValueError("Strategy value shadow pointer does not match its receipt")
+    if (
+        manifest.get("schema_version") != STRATEGY_VALUE_CHALLENGER_VERSION
+        or receipt.get("schema_version")
+        != STRATEGY_VALUE_CHALLENGER_RECEIPT_VERSION
+        or report.get("schema_version") != STRATEGY_VALUE_CHALLENGER_VERSION
+        or manifest.get("status") != "COMPLETE_SHADOW_ONLY"
+        or receipt.get("status") != "COMPLETE_SHADOW_ONLY"
+        or report.get("status") != "COMPLETE_SHADOW_ONLY"
+        or len(source_fingerprint) != 64
+        or manifest.get("source_fingerprint_sha256") != source_fingerprint
+        or receipt.get("source_fingerprint_sha256") != source_fingerprint
+        or receipt.get("run_path") != expected_current["run_path"]
+        or receipt.get("manifest_checksum_sha256") != file_checksum(manifest_path)
+        or receipt.get("report_checksum_sha256") != file_checksum(report_path)
+        or receipt.get("shadow_candidates_checksum_sha256")
+        != file_checksum(shadow_path)
+        or receipt.get("assessment_checksum_sha256")
+        != file_checksum(assessment_path)
+        or receipt.get("promotion_performed") is not False
+        or receipt.get("authority_pointer_written") is not False
+        or receipt.get("production_candidate_mutation") is not False
+        or int(receipt.get("orders_placed", -1)) != 0
+        or manifest.get("production_mutation") is not False
+        or manifest.get("production_authority_mutation") is not False
+        or manifest.get("orders_enabled") is not False
+        or int(manifest.get("orders_placed", -1)) != 0
+        or report.get("production_model_authority_mutation") is not False
+        or report.get("production_candidate_mutation") is not False
+        or report.get("orders_enabled") is not False
+        or int(report.get("orders_placed", -1)) != 0
+    ):
+        raise ValueError("Strategy value shadow receipt failed integrity or safety")
+    outputs = manifest.get("outputs")
+    if not isinstance(outputs, Mapping):
+        raise ValueError("Strategy value shadow manifest output inventory is invalid")
+    for path in (report_path, shadow_path, assessment_path):
+        record = outputs.get(path.name)
+        if (
+            not isinstance(record, Mapping)
+            or path.stat().st_size != int(record.get("size", -1))
+            or file_checksum(path) != record.get("checksum_sha256")
+        ):
+            raise ValueError(
+                f"Strategy value shadow output failed checksum: {path.name}"
+            )
+    return StrategyValueChallengerResult(
+        directory=run,
+        report_path=report_path,
+        shadow_candidates_path=shadow_path,
+        assessment_path=assessment_path,
+        manifest_path=manifest_path,
+        receipt_path=receipt_path,
+        report=report,
+    )
+
+
+def run_strategy_value_challenger_if_changed(
+    datastore_root: Path,
+    *,
+    created_at: object | None = None,
+) -> Mapping[str, object]:
+    """Run once for a new verified source fingerprint; otherwise exit cheaply."""
+
+    root = Path(datastore_root).resolve()
+    source_fingerprint = strategy_value_source_fingerprint(root)
+    try:
+        current = read_current_strategy_value_challenger(root)
+    except (OSError, TypeError, ValueError):
+        current = None
+    if (
+        current is not None
+        and current.report.get("source_fingerprint_sha256") == source_fingerprint
+    ):
+        return {
+            "schema_version": STRATEGY_VALUE_CHALLENGER_VERSION,
+            "status": "UNCHANGED_SKIPPED",
+            "scheduled_action": "SKIPPED_RECEIPT_VALID_SOURCE_UNCHANGED",
+            "source_fingerprint_sha256": source_fingerprint,
+            "run_path": current.directory.relative_to(root).as_posix(),
+            "decision": current.report.get("decision"),
+            "promotion_performed": False,
+            "production_candidate_mutation": False,
+            "production_model_authority_mutation": False,
+            "orders_enabled": False,
+            "orders_placed": 0,
+        }
+    result = run_strategy_value_challenger(root, created_at=created_at)
+    return {
+        "schema_version": STRATEGY_VALUE_CHALLENGER_VERSION,
+        "status": "COMPLETE_SHADOW_ONLY",
+        "scheduled_action": "RAN_VERIFIED_SOURCE_CHANGED",
+        "source_fingerprint_sha256": result.report.get(
+            "source_fingerprint_sha256"
+        ),
+        "run_path": result.directory.relative_to(root).as_posix(),
+        "receipt_path": result.receipt_path.relative_to(root).as_posix(),
+        "decision": result.report.get("decision"),
+        "promotion_eligible": result.report.get("promotion_eligible"),
+        "promotion_performed": False,
+        "production_candidate_mutation": False,
+        "production_model_authority_mutation": False,
+        "orders_enabled": False,
+        "orders_placed": 0,
+    }
+
+
+def _source_fingerprint_from_evidence(
+    root: Path,
+    *,
+    strategy_publication: StrategyPublication,
+    source_loop_b_run: Path,
+    source_loop_b_manifest: Mapping[str, object],
+    source_loop_b_receipt: Mapping[str, object],
+    training_run: Path,
+    training_manifest: Mapping[str, object],
+    training_receipt: Mapping[str, object],
+    training_pointer: Path,
+) -> str:
+    strategy_run = strategy_publication.run_directory
+    payload = {
+        "schema_version": STRATEGY_VALUE_CHALLENGER_SOURCE_VERSION,
+        "challenger_version": STRATEGY_VALUE_CHALLENGER_VERSION,
+        "challenger_method": STRATEGY_VALUE_CHALLENGER_METHOD,
+        "strategy": {
+            "run_path": strategy_run.relative_to(root).as_posix(),
+            "manifest_checksum_sha256": file_checksum(
+                strategy_run / "manifest.json"
+            ),
+            "receipt_checksum_sha256": file_checksum(
+                strategy_run / "publication.json"
+            ),
+        },
+        "source_loop_b": {
+            "run_path": source_loop_b_run.relative_to(root).as_posix(),
+            "manifest_checksum_sha256": file_checksum(
+                source_loop_b_run / "manifest.json"
+            ),
+            "receipt_checksum_sha256": file_checksum(
+                source_loop_b_run / "publication.json"
+            ),
+            "run_timestamp": source_loop_b_manifest.get("run_timestamp"),
+            "promoted_at": source_loop_b_receipt.get("promoted_at"),
+        },
+        "training_authority": {
+            "run_path": training_run.relative_to(root).as_posix(),
+            "manifest_checksum_sha256": file_checksum(
+                training_run / "manifest.json"
+            ),
+            "receipt_checksum_sha256": file_checksum(training_run / "receipt.json"),
+            "pointer_checksum_sha256": file_checksum(training_pointer),
+            "published_at": training_manifest.get("published_at"),
+            "orders_placed": training_receipt.get("orders_placed"),
+        },
+    }
+    return semantic_metadata_fingerprint(payload)
 
 
 def _live_model_frame(
@@ -1157,6 +1435,9 @@ def _publish(
     assessment: pd.DataFrame,
     source_files: Sequence[Path],
 ) -> StrategyValueChallengerResult:
+    source_fingerprint = str(report.get("source_fingerprint_sha256", ""))
+    if len(source_fingerprint) != 64:
+        raise ValueError("Strategy value shadow source fingerprint is invalid")
     parent = (root / "ml" / "strategy-value-challenger-runs").resolve()
     parent.mkdir(parents=True, exist_ok=True)
     destination = parent / created.strftime("%Y%m%dT%H%M%S.%fZ")
@@ -1183,6 +1464,10 @@ def _publish(
             "status": "COMPLETE_SHADOW_ONLY",
             "run_path": destination.relative_to(root).as_posix(),
             "challenger_method": STRATEGY_VALUE_CHALLENGER_METHOD,
+            "source_fingerprint_schema_version": (
+                STRATEGY_VALUE_CHALLENGER_SOURCE_VERSION
+            ),
+            "source_fingerprint_sha256": source_fingerprint,
             "inputs": input_inventory(source_files, relative_to=root),
             "outputs": {
                 path.name: {
@@ -1207,6 +1492,7 @@ def _publish(
             "report_checksum_sha256": file_checksum(report_path),
             "shadow_candidates_checksum_sha256": file_checksum(shadow_path),
             "assessment_checksum_sha256": file_checksum(assessment_path),
+            "source_fingerprint_sha256": source_fingerprint,
             "promotion_performed": False,
             "authority_pointer_written": False,
             "production_candidate_mutation": False,
@@ -1215,6 +1501,22 @@ def _publish(
         receipt_path = staging / "receipt.json"
         _write_json(receipt_path, receipt)
         staging.replace(destination)
+        receipt_path = destination / "receipt.json"
+        _write_json_atomic(
+            strategy_value_challenger_pointer_path(root),
+            {
+                "schema_version": STRATEGY_VALUE_CHALLENGER_POINTER_VERSION,
+                "scope": "SHADOW_OBSERVABILITY_ONLY",
+                "production_authority": False,
+                "orders_enabled": False,
+                "current": {
+                    "run_path": destination.relative_to(root).as_posix(),
+                    "created_at": report.get("created_at"),
+                    "source_fingerprint_sha256": source_fingerprint,
+                    "receipt_checksum_sha256": file_checksum(receipt_path),
+                },
+            },
+        )
     except BaseException:
         if staging.exists() and staging.parent == parent:
             shutil.rmtree(staging)
@@ -1257,6 +1559,17 @@ def _write_json(path: Path, payload: Mapping[str, object]) -> None:
         json.dumps(dict(payload), indent=2, sort_keys=True, default=str) + "\n",
         encoding="utf-8",
     )
+
+
+def _write_json_atomic(path: Path, payload: Mapping[str, object]) -> None:
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary = target.with_suffix(target.suffix + f".tmp-{os.getpid()}")
+    try:
+        _write_json(temporary, payload)
+        temporary.replace(target)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def _utc(value: object, label: str) -> pd.Timestamp:
@@ -1313,14 +1626,25 @@ def main(argv: Sequence[str] | None = None) -> int:
         default="pc",
     )
     parser.add_argument("--compact", action="store_true")
+    parser.add_argument(
+        "--if-changed",
+        action="store_true",
+        help=(
+            "Run only when the verified Strategy/Loop B/model source fingerprint "
+            "changed; otherwise return the current receipt without recomputing."
+        ),
+    )
     args = parser.parse_args(argv)
     root = resolve_datastore_dir(
         root_dir=args.datastore,
         target=None if args.datastore is not None else args.datastore_target,
     )
-    result = run_strategy_value_challenger(root)
-    payload = dict(result.report)
-    payload["run_path"] = result.directory.relative_to(root).as_posix()
+    if args.if_changed:
+        payload = dict(run_strategy_value_challenger_if_changed(root))
+    else:
+        result = run_strategy_value_challenger(root)
+        payload = dict(result.report)
+        payload["run_path"] = result.directory.relative_to(root).as_posix()
     print(
         json.dumps(
             payload,
@@ -1338,8 +1662,14 @@ if __name__ == "__main__":
 
 __all__ = [
     "STRATEGY_VALUE_CHALLENGER_METHOD",
+    "STRATEGY_VALUE_CHALLENGER_POINTER_VERSION",
     "STRATEGY_VALUE_CHALLENGER_RECEIPT_VERSION",
+    "STRATEGY_VALUE_CHALLENGER_SOURCE_VERSION",
     "STRATEGY_VALUE_CHALLENGER_VERSION",
     "StrategyValueChallengerResult",
+    "read_current_strategy_value_challenger",
     "run_strategy_value_challenger",
+    "run_strategy_value_challenger_if_changed",
+    "strategy_value_challenger_pointer_path",
+    "strategy_value_source_fingerprint",
 ]

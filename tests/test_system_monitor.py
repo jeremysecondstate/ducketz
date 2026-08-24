@@ -4,11 +4,13 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
 import pandas as pd
 
 import ml.system_monitor as system_monitor
+import ml.strategy_value_challenger as value_challenger
 from ml.current_publication import CurrentPublication
 from ml.horizons import INTERNAL_HORIZON_ORDER
 from ml.strategy_publication import StrategyPublication
@@ -86,6 +88,7 @@ def test_monitor_pins_each_current_publication_once_across_checks(
         "_alfred_pointer_check",
         "_options_check",
         "_pricing_check",
+        "_strategy_value_shadow_check",
         "_storage_check",
         "_alfred_full_check",
     ):
@@ -610,6 +613,95 @@ def test_strategy_candidate_value_sanity_fails_closed_on_missing_fields() -> Non
 
     assert summary["status"] == "FAIL"
     assert summary["missing_columns"] == ["capital_required"]
+
+
+def test_strategy_value_shadow_monitor_verifies_current_shadow_receipt(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    run = tmp_path / "ml" / "strategy-value-challenger-runs" / "run"
+    receipt = run / "receipt.json"
+    shadow = SimpleNamespace(
+        directory=run,
+        receipt_path=receipt,
+        report={
+            "created_at": "2026-08-24T17:00:00Z",
+            "source_fingerprint_sha256": "d" * 64,
+            "decision": "BLOCKED_KEEP_CURRENT_AUTHORITY",
+            "promotion_eligible": False,
+            "horizons": {},
+        },
+    )
+    publication = StrategyPublication(
+        run_directory=tmp_path / "ml" / "strategy-runs" / "current",
+        manifest={},
+        receipt={},
+        pointer={},
+    )
+    monkeypatch.setattr(
+        value_challenger,
+        "strategy_value_source_fingerprint",
+        lambda *_args, **_kwargs: "d" * 64,
+    )
+    monkeypatch.setattr(
+        value_challenger,
+        "read_current_strategy_value_challenger",
+        lambda _root: shadow,
+    )
+
+    check = system_monitor._strategy_value_shadow_check(
+        tmp_path,
+        now=pd.Timestamp("2026-08-24T17:30:00Z"),
+        publication=publication,
+    )
+
+    assert check["status"] == "PASS"
+    assert check["details"]["source_fingerprint_current"] is True
+    assert check["details"]["production_authority"] is False
+    assert check["details"]["orders_placed"] == 0
+
+
+def test_strategy_value_shadow_monitor_warns_when_scheduler_is_behind(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    run = tmp_path / "ml" / "strategy-value-challenger-runs" / "run"
+    shadow = SimpleNamespace(
+        directory=run,
+        receipt_path=run / "receipt.json",
+        report={
+            "created_at": "2026-08-24T15:00:00Z",
+            "source_fingerprint_sha256": "e" * 64,
+            "decision": "BLOCKED_KEEP_CURRENT_AUTHORITY",
+            "promotion_eligible": False,
+            "horizons": {},
+        },
+    )
+    publication = StrategyPublication(
+        run_directory=tmp_path / "ml" / "strategy-runs" / "current",
+        manifest={},
+        receipt={},
+        pointer={},
+    )
+    monkeypatch.setattr(
+        value_challenger,
+        "strategy_value_source_fingerprint",
+        lambda *_args, **_kwargs: "f" * 64,
+    )
+    monkeypatch.setattr(
+        value_challenger,
+        "read_current_strategy_value_challenger",
+        lambda _root: shadow,
+    )
+
+    check = system_monitor._strategy_value_shadow_check(
+        tmp_path,
+        now=pd.Timestamp("2026-08-24T17:00:00Z"),
+        publication=publication,
+    )
+
+    assert check["status"] == "WARN"
+    assert check["details"]["source_fingerprint_current"] is False
 
 
 def _weekly_rows(

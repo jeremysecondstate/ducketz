@@ -5,17 +5,21 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pandas as pd
+import pytest
 
+import ml.strategy_value_challenger as value_challenger
 from ml.artifacts import file_checksum
 from ml.strategy_selection.contracts import StrategyModel
 from ml.strategy_value_challenger import (
     STRATEGY_VALUE_CHALLENGER_RECEIPT_VERSION,
+    STRATEGY_VALUE_CHALLENGER_VERSION,
     _acceptance_gates,
     _artifact_policy,
     _exact_expiration_stress,
     _heuristic_reason_counts,
     _prior_support,
     _publish,
+    read_current_strategy_value_challenger,
 )
 
 
@@ -211,8 +215,13 @@ def test_publish_creates_receipted_shadow_run_without_authority_pointer(
         tmp_path,
         created=pd.Timestamp("2026-08-24T10:00:00Z"),
         report={
-            "schema_version": "test",
+            "schema_version": STRATEGY_VALUE_CHALLENGER_VERSION,
+            "created_at": "2026-08-24T10:00:00+00:00",
             "status": "COMPLETE_SHADOW_ONLY",
+            "source_fingerprint_sha256": "a" * 64,
+            "production_model_authority_mutation": False,
+            "production_candidate_mutation": False,
+            "orders_enabled": False,
             "orders_placed": 0,
         },
         shadow_candidates=pd.DataFrame({"candidate_key": ["one"]}),
@@ -226,8 +235,77 @@ def test_publish_creates_receipted_shadow_run_without_authority_pointer(
     assert receipt["orders_placed"] == 0
     assert receipt["promotion_performed"] is False
     assert receipt["authority_pointer_written"] is False
+    assert receipt["source_fingerprint_sha256"] == "a" * 64
     assert receipt["manifest_checksum_sha256"] == file_checksum(
         result.manifest_path
     )
     assert manifest["production_authority_mutation"] is False
     assert not (tmp_path / "ml" / "strategy-profit-training-latest").exists()
+    current = read_current_strategy_value_challenger(tmp_path)
+    assert current.directory == result.directory
+    assert current.report["source_fingerprint_sha256"] == "a" * 64
+
+
+def test_shadow_observability_pointer_fails_closed_on_receipt_tamper(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source.txt"
+    source.write_text("immutable evidence\n", encoding="utf-8")
+    result = _publish(
+        tmp_path,
+        created=pd.Timestamp("2026-08-24T10:00:00Z"),
+        report={
+            "schema_version": STRATEGY_VALUE_CHALLENGER_VERSION,
+            "created_at": "2026-08-24T10:00:00+00:00",
+            "status": "COMPLETE_SHADOW_ONLY",
+            "source_fingerprint_sha256": "b" * 64,
+            "production_model_authority_mutation": False,
+            "production_candidate_mutation": False,
+            "orders_enabled": False,
+            "orders_placed": 0,
+        },
+        shadow_candidates=pd.DataFrame({"candidate_key": ["one"]}),
+        assessment=pd.DataFrame({"candidate_key": ["past"]}),
+        source_files=(source,),
+    )
+    result.receipt_path.write_text("{}\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="pointer does not match"):
+        read_current_strategy_value_challenger(tmp_path)
+
+
+def test_if_changed_skips_a_receipt_valid_matching_source(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    run = tmp_path / "ml" / "strategy-value-challenger-runs" / "run"
+    current = SimpleNamespace(
+        directory=run,
+        report={
+            "source_fingerprint_sha256": "c" * 64,
+            "decision": "BLOCKED_KEEP_CURRENT_AUTHORITY",
+        },
+    )
+    monkeypatch.setattr(
+        value_challenger,
+        "strategy_value_source_fingerprint",
+        lambda _root: "c" * 64,
+    )
+    monkeypatch.setattr(
+        value_challenger,
+        "read_current_strategy_value_challenger",
+        lambda _root: current,
+    )
+    monkeypatch.setattr(
+        value_challenger,
+        "run_strategy_value_challenger",
+        lambda *_args, **_kwargs: pytest.fail("unchanged source recomputed"),
+    )
+
+    payload = value_challenger.run_strategy_value_challenger_if_changed(tmp_path)
+
+    assert payload["status"] == "UNCHANGED_SKIPPED"
+    assert payload["scheduled_action"] == (
+        "SKIPPED_RECEIPT_VALID_SOURCE_UNCHANGED"
+    )
+    assert payload["orders_placed"] == 0
