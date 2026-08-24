@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import math
 import tkinter as tk
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from tkinter import messagebox, ttk
 
@@ -49,6 +50,30 @@ OPTIONS_COMMAND_TABS = (
     "Past Positions",
 )
 
+_CANDIDATE_COLUMNS = (
+    ("rank", "Rank", 48, tk.E),
+    ("strategy", "Strategy", 135, tk.W),
+    ("exact_legs", "Exact Legs", 195, tk.W),
+    ("direction_probability_up", "Direction Up (ML)", 135, tk.E),
+    ("calibrated_probability", "ML Profit Probability", 155, tk.E),
+    ("scenario_coverage", "Scenario Coverage", 135, tk.E),
+    ("expected_return", "Expected Return", 115, tk.E),
+    ("portfolio_fit", "Portfolio Fit", 95, tk.W),
+    ("score_basis", "Score Basis", 160, tk.W),
+    ("pricing_quality", "Pricing / Quality", 280, tk.W),
+)
+_CANDIDATE_COLUMN_LABELS = {
+    name: label for name, label, _width, _anchor in _CANDIDATE_COLUMNS
+}
+_DESCENDING_FIRST_CANDIDATE_COLUMNS = frozenset(
+    {
+        "direction_probability_up",
+        "calibrated_probability",
+        "scenario_coverage",
+        "expected_return",
+    }
+)
+
 
 class OptionsStrategiesTab:
     def __init__(
@@ -86,6 +111,8 @@ class OptionsStrategiesTab:
         self.candidate_table: ttk.Treeview | None = None
         self.ticket_legs: ttk.Treeview | None = None
         self.submit_button: ttk.Button | None = None
+        self._candidate_sort_column: str | None = None
+        self._candidate_sort_descending = False
 
         self.symbol = tk.StringVar()
         self.horizon_label = tk.StringVar()
@@ -331,7 +358,8 @@ class OptionsStrategiesTab:
             text=(
                 "Direction Up is Loop B's calibrated price forecast; ML Profit "
                 "Probability is the fitted strategy-outcome model; Scenario "
-                "Coverage is a non-probabilistic fallback."
+                "Coverage is a non-probabilistic fallback. Click any column "
+                "heading to sort; click it again to reverse."
             ),
             style="StrategyMuted.TLabel",
         ).pack(anchor=tk.W, pady=(2, 8))
@@ -354,20 +382,12 @@ class OptionsStrategiesTab:
             show="headings",
             height=18,
         )
-        columns = (
-            ("rank", "Rank", 48, tk.E),
-            ("strategy", "Strategy", 135, tk.W),
-            ("exact_legs", "Exact Legs", 195, tk.W),
-            ("direction_probability_up", "Direction Up (ML)", 125, tk.E),
-            ("calibrated_probability", "ML Profit Probability", 145, tk.E),
-            ("scenario_coverage", "Scenario Coverage", 120, tk.E),
-            ("expected_return", "Expected Return", 100, tk.E),
-            ("portfolio_fit", "Portfolio Fit", 95, tk.W),
-            ("score_basis", "Score Basis", 160, tk.W),
-            ("pricing_quality", "Pricing / Quality", 280, tk.W),
-        )
-        for name, label, width, anchor in columns:
-            table.heading(name, text=label)
+        for name, label, width, anchor in _CANDIDATE_COLUMNS:
+            table.heading(
+                name,
+                text=label,
+                command=lambda column=name: self._sort_candidates(column),
+            )
             table.column(
                 name,
                 width=width,
@@ -655,11 +675,23 @@ class OptionsStrategiesTab:
             ),
             "",
         )
-        self.visible_candidates = tuple(
+        visible_candidates = tuple(
             item
             for item in self.view.candidates
             if item.symbol == self.symbol.get() and item.horizon == horizon
         )
+        sort_column = getattr(self, "_candidate_sort_column", None)
+        if sort_column is not None:
+            visible_candidates = _sort_candidate_views(
+                visible_candidates,
+                column=sort_column,
+                descending=getattr(
+                    self,
+                    "_candidate_sort_descending",
+                    False,
+                ),
+            )
+        self.visible_candidates = visible_candidates
         for index, candidate in enumerate(self.visible_candidates):
             self.candidate_table.insert(
                 "",
@@ -675,10 +707,7 @@ class OptionsStrategiesTab:
                     _percent(candidate.expected_return),
                     candidate.portfolio_fit.label,
                     candidate.score_basis,
-                    (
-                        f"{candidate.model_summary} · {candidate.pricing_summary} "
-                        f"· {candidate.quality_warning}"
-                    ),
+                    _pricing_quality_summary(candidate),
                 ),
             )
         research_only = sum(
@@ -702,6 +731,34 @@ class OptionsStrategiesTab:
                 _empty_candidate_message(diagnosis)
             )
 
+    def _sort_candidates(self, column: str) -> None:
+        if column not in _CANDIDATE_COLUMN_LABELS:
+            return
+        current_column = getattr(self, "_candidate_sort_column", None)
+        if current_column == column:
+            descending = not getattr(
+                self,
+                "_candidate_sort_descending",
+                False,
+            )
+        else:
+            descending = column in _DESCENDING_FIRST_CANDIDATE_COLUMNS
+        self._candidate_sort_column = column
+        self._candidate_sort_descending = descending
+        self._update_candidate_headings()
+        self._render_candidates()
+
+    def _update_candidate_headings(self) -> None:
+        if self.candidate_table is None:
+            return
+        active_column = getattr(self, "_candidate_sort_column", None)
+        descending = getattr(self, "_candidate_sort_descending", False)
+        for name, label, _width, _anchor in _CANDIDATE_COLUMNS:
+            indicator = ""
+            if name == active_column:
+                indicator = " ↓" if descending else " ↑"
+            self.candidate_table.heading(name, text=f"{label}{indicator}")
+
     def _candidate_clicked(self, event: tk.Event[tk.Misc]) -> None:
         if self.candidate_table is None:
             return
@@ -716,8 +773,13 @@ class OptionsStrategiesTab:
             return
         column = self.candidate_table.identify_column(event.x)
         row_id = self.candidate_table.identify_row(event.y)
+        region = self.candidate_table.identify_region(event.x, event.y)
         self.candidate_table.configure(
-            cursor="hand2" if column == "#3" and row_id else ""
+            cursor=(
+                "hand2"
+                if region == "heading" or (column == "#3" and row_id)
+                else ""
+            )
         )
 
     def _candidate_entered(self, _event: object) -> None:
@@ -927,6 +989,60 @@ class OptionsStrategiesTab:
             return
         for item in table.get_children():
             table.delete(item)
+
+
+def _sort_candidate_views(
+    candidates: Iterable[StrategyCandidateView],
+    *,
+    column: str,
+    descending: bool,
+) -> tuple[StrategyCandidateView, ...]:
+    """Sort candidates by their typed values while keeping blanks last."""
+    if column not in _CANDIDATE_COLUMN_LABELS:
+        return tuple(candidates)
+    populated: list[tuple[float | int | str, StrategyCandidateView]] = []
+    missing: list[StrategyCandidateView] = []
+    for candidate in candidates:
+        value = _candidate_sort_value(candidate, column)
+        if value is None or (
+            isinstance(value, float) and math.isnan(value)
+        ):
+            missing.append(candidate)
+            continue
+        normalized = value.casefold() if isinstance(value, str) else value
+        populated.append((normalized, candidate))
+    populated.sort(key=lambda item: item[0], reverse=descending)
+    return tuple(candidate for _value, candidate in populated) + tuple(missing)
+
+
+def _candidate_sort_value(
+    candidate: StrategyCandidateView,
+    column: str,
+) -> float | int | str | None:
+    if column == "portfolio_fit":
+        return candidate.portfolio_fit.label
+    if column == "pricing_quality":
+        return _pricing_quality_summary(candidate)
+    attribute = {
+        "rank": "rank",
+        "strategy": "strategy_display_name",
+        "exact_legs": "exact_legs",
+        "direction_probability_up": "direction_probability_up",
+        "calibrated_probability": "predictive_score",
+        "scenario_coverage": "scenario_coverage",
+        "expected_return": "expected_return",
+        "score_basis": "score_basis",
+    }.get(column)
+    if attribute is None:
+        return None
+    return getattr(candidate, attribute)
+
+
+def _pricing_quality_summary(candidate: StrategyCandidateView) -> str:
+    return (
+        f"{candidate.model_summary} · {candidate.pricing_summary} "
+        f"· {candidate.quality_warning}"
+    )
 
 
 def _position_summary(position: object) -> str:

@@ -20,7 +20,7 @@ from app.services.schwab_strategy_orders import (
     schwab_position_context,
 )
 from app.ui.options_strategy_data import load_strategy_candidates, portfolio_fit
-from app.ui.options_strategies import OptionsStrategiesTab
+from app.ui.options_strategies import OptionsStrategiesTab, _sort_candidate_views
 from app.ui.schwab_order_messages import order_confirmation_message
 from ml.parquet_contracts import (
     STRATEGY_AUDIT_SCHEMA,
@@ -39,6 +39,88 @@ from ml.strategy_selection.contracts import (
     STRATEGY_MODEL_POLICY_VERSION,
     STRATEGY_RANKING_POLICY_VERSION,
 )
+
+
+@pytest.mark.parametrize(
+    ("column", "attribute"),
+    (
+        ("direction_probability_up", "direction_probability_up"),
+        ("calibrated_probability", "predictive_score"),
+        ("scenario_coverage", "scenario_coverage"),
+        ("expected_return", "expected_return"),
+    ),
+)
+def test_ranked_candidate_metrics_sort_numerically_with_blanks_last(
+    column: str,
+    attribute: str,
+) -> None:
+    candidates = tuple(
+        SimpleNamespace(candidate_id=candidate_id, **{attribute: value})
+        for candidate_id, value in (
+            ("middle", 12.04),
+            ("missing", None),
+            ("high", 53.44),
+            ("low", -1.09),
+        )
+    )
+
+    descending = _sort_candidate_views(
+        candidates,
+        column=column,
+        descending=True,
+    )
+    ascending = _sort_candidate_views(
+        candidates,
+        column=column,
+        descending=False,
+    )
+
+    assert [candidate.candidate_id for candidate in descending] == [
+        "high",
+        "middle",
+        "low",
+        "missing",
+    ]
+    assert [candidate.candidate_id for candidate in ascending] == [
+        "low",
+        "middle",
+        "high",
+        "missing",
+    ]
+
+
+def test_ranked_candidate_heading_click_defaults_metrics_to_highest_first() -> None:
+    class _HeadingTable:
+        def __init__(self) -> None:
+            self.labels: dict[str, str] = {}
+
+        def heading(self, column: str, *, text: str) -> None:
+            self.labels[column] = text
+
+    tab = OptionsStrategiesTab.__new__(OptionsStrategiesTab)
+    table = _HeadingTable()
+    tab.candidate_table = table
+    tab._candidate_sort_column = None
+    tab._candidate_sort_descending = False
+    renders: list[bool] = []
+    tab._render_candidates = lambda: renders.append(True)
+
+    tab._sort_candidates("calibrated_probability")
+
+    assert tab._candidate_sort_descending
+    assert table.labels["calibrated_probability"] == "ML Profit Probability ↓"
+
+    tab._sort_candidates("calibrated_probability")
+
+    assert not tab._candidate_sort_descending
+    assert table.labels["calibrated_probability"] == "ML Profit Probability ↑"
+
+    tab._sort_candidates("strategy")
+
+    assert not tab._candidate_sort_descending
+    assert table.labels["calibrated_probability"] == "ML Profit Probability"
+    assert table.labels["strategy"] == "Strategy ↑"
+    assert renders == [True, True, True]
 
 
 @pytest.mark.parametrize(
