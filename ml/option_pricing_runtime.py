@@ -198,6 +198,7 @@ def run_option_pricing_once(
     readiness_sleeper: Callable[[float], None] = time.sleep,
     monotonic_clock: Callable[[], float] = time.monotonic,
     phase_offset_minutes: int = 1,
+    defer_research_tail_when_due: bool = False,
 ) -> OptionPricingRuntimeResult:
     """Publish one independent active Pricing generation with safe fallbacks."""
 
@@ -219,6 +220,7 @@ def run_option_pricing_once(
         readiness_sleeper=readiness_sleeper,
         monotonic_clock=monotonic_clock,
         phase_offset_minutes=phase_offset_minutes,
+        defer_research_tail_when_due=defer_research_tail_when_due,
     )
 
 
@@ -241,6 +243,7 @@ def _run_option_pricing_once_impl(
     readiness_sleeper: Callable[[float], None] = time.sleep,
     monotonic_clock: Callable[[], float] = time.monotonic,
     phase_offset_minutes: int = 1,
+    defer_research_tail_when_due: bool = False,
 ) -> OptionPricingRuntimeResult:
     root = Path(datastore_root).resolve()
     clean_symbols = normalize_symbols(symbols)
@@ -356,6 +359,27 @@ def _run_option_pricing_once_impl(
     )
     stage_timings["target_authority_seconds"] = time.perf_counter() - stage_started
     stage_started = time.perf_counter()
+
+    if defer_research_tail_when_due and _research_tail_would_overlap_next_target(
+        final_target_decision,
+        observed_at=target_publication.published_at,
+        phase_offset_minutes=phase_offset_minutes,
+        runtime_limits=limits,
+        bar_readiness_timeout_seconds=bar_readiness_timeout_seconds,
+    ):
+        return _deferred_research_tail_result(
+            root,
+            decision=final_target_decision,
+            target_publication=target_publication,
+            target_live_samples=target_live_samples,
+            target_live_predictions=target_live_predictions,
+            target_published_now=target_published_now,
+            live_status=live_status,
+            stage_timings=stage_timings,
+            phase_offset_minutes=phase_offset_minutes,
+            runtime_limits=limits,
+            bar_readiness_timeout_seconds=bar_readiness_timeout_seconds,
+        )
 
     # Research eligibility and quality reporting monitor the already-published
     # production target. They cannot prevent a valid Black-Scholes fallback
@@ -1032,6 +1056,88 @@ def _run_option_pricing_once_impl(
     )
 
 
+def _research_tail_would_overlap_next_target(
+    decision: CycleTargetDecision,
+    *,
+    observed_at: object,
+    phase_offset_minutes: int,
+    runtime_limits: RuntimeLimits,
+    bar_readiness_timeout_seconds: float,
+) -> bool:
+    """Keep bounded research work outside the next target-authority deadline."""
+
+    available_seconds = (
+        decision.next_eligible_cycle(phase_offset_minutes=phase_offset_minutes)
+        - utc_timestamp(observed_at)
+    ).total_seconds()
+    required_seconds = (
+        float(runtime_limits.maximum_cycle_seconds)
+        + max(0.0, float(bar_readiness_timeout_seconds))
+        + 60.0
+    )
+    return available_seconds <= required_seconds
+
+
+def _deferred_research_tail_result(
+    root: Path,
+    *,
+    decision: CycleTargetDecision,
+    target_publication: TargetOutcomePublication,
+    target_live_samples: pd.DataFrame,
+    target_live_predictions: pd.DataFrame,
+    target_published_now: bool,
+    live_status: Mapping[str, Mapping[str, object]],
+    stage_timings: Mapping[str, float],
+    phase_offset_minutes: int,
+    runtime_limits: RuntimeLimits,
+    bar_readiness_timeout_seconds: float,
+) -> OptionPricingRuntimeResult:
+    """Return after the receipt-critical target while preserving prior research authority."""
+
+    result = _idle_pricing_result(
+        root,
+        decision=decision,
+        phase_offset_minutes=phase_offset_minutes,
+    )
+    next_cycle = decision.next_eligible_cycle(
+        phase_offset_minutes=phase_offset_minutes
+    )
+    diagnostics = dict(result.authority_diagnostics or {})
+    diagnostics["research_tail"] = {
+        "status": "DEFERRED_FOR_NEXT_TARGET",
+        "next_eligible_cycle": next_cycle.isoformat(),
+        "maximum_cycle_seconds": float(runtime_limits.maximum_cycle_seconds),
+        "bar_readiness_timeout_seconds": float(bar_readiness_timeout_seconds),
+        "authority_unchanged": True,
+    }
+    reason = (
+        f"{decision.reason} The bounded research tail was deferred because the next "
+        "eligible target is due before its full runtime budget; the prior verified "
+        "research authority remains current."
+    )
+    return replace(
+        result,
+        live_routes=live_status,
+        target_snapshot_for=target_publication.target_snapshot_for,
+        target_outcome_directory=target_publication.directory,
+        target_outcome_status=target_publication.terminal_status,
+        target_published_at=target_publication.published_at,
+        stage_timings=dict(stage_timings),
+        cycle_mode=decision.cycle_mode,
+        target_state=decision.target_state.value,
+        reason=reason,
+        next_eligible_cycle=next_cycle,
+        current_target_sample_rows=len(target_live_samples),
+        current_target_prediction_rows=len(target_live_predictions),
+        current_target_evaluation_rows=0,
+        new_prospective_prediction_rows=(
+            len(target_live_predictions) if target_published_now else 0
+        ),
+        new_prospective_evaluation_rows=0,
+        authority_diagnostics=diagnostics,
+    )
+
+
 def _publish_fast_target_outcome(
     root: Path,
     *,
@@ -1648,6 +1754,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                             args.bar_readiness_timeout_seconds
                         ),
                         phase_offset_minutes=args.phase_offset_minutes,
+                        defer_research_tail_when_due=not args.once,
                     )
                     report_pricing_result(
                         result,
@@ -1677,6 +1784,7 @@ def _run_pricing_until_ready(
     runtime_clock: Callable[[], object] | None = None,
     readiness_sleeper: Callable[[float], None] = time.sleep,
     monotonic_clock: Callable[[], float] = time.monotonic,
+    defer_research_tail_when_due: bool = False,
 ) -> OptionPricingRuntimeResult:
     if bar_readiness_timeout_seconds < 0:
         raise ValueError("bar_readiness_timeout_seconds cannot be negative")
@@ -1717,6 +1825,7 @@ def _run_pricing_until_ready(
                 readiness_sleeper=readiness_sleeper,
                 monotonic_clock=monotonic_clock,
                 phase_offset_minutes=phase_offset_minutes,
+                defer_research_tail_when_due=defer_research_tail_when_due,
             )
         except RetryablePricingReadinessError as exc:
             last_error = str(exc)

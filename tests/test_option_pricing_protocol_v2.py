@@ -109,6 +109,7 @@ def test_scheduled_pricing_uses_immutable_readiness_without_heavy_cycle_lock(
     def run_once(*_args: object, **kwargs: object) -> object:
         events.append("pricing")
         assert kwargs["bar_readiness_timeout_seconds"] == 1.0
+        assert kwargs["defer_research_tail_when_due"] is True
         return expected
 
     monkeypatch.setattr(pricing_runtime, "wait_for_bar_readiness", ready)
@@ -123,10 +124,85 @@ def test_scheduled_pricing_uses_immutable_readiness_without_heavy_cycle_lock(
         phase_offset_minutes=1,
         runtime_clock=lambda: pd.Timestamp("2026-08-20T14:01:00Z"),
         monotonic_clock=lambda: 0.0,
+        defer_research_tail_when_due=True,
     )
 
     assert result is expected
     assert events == ["readiness", "pricing"]
+
+
+def test_scheduled_research_tail_stays_outside_intraday_target_deadline() -> None:
+    limits = RuntimeLimits()
+    intraday = cycle_target_decision("2026-08-24T16:45:00Z")
+    session_close = cycle_target_decision("2026-08-24T20:00:00Z")
+
+    assert pricing_runtime._research_tail_would_overlap_next_target(
+        intraday,
+        observed_at="2026-08-24T16:46:00Z",
+        phase_offset_minutes=1,
+        runtime_limits=limits,
+        bar_readiness_timeout_seconds=480.0,
+    )
+    assert not pricing_runtime._research_tail_would_overlap_next_target(
+        session_close,
+        observed_at="2026-08-24T20:01:00Z",
+        phase_offset_minutes=1,
+        runtime_limits=limits,
+        bar_readiness_timeout_seconds=480.0,
+    )
+
+
+def test_scheduled_pricing_returns_after_fast_target_before_research(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    decision = cycle_target_decision("2026-08-24T16:45:00Z")
+    publication = SimpleNamespace(
+        published_at=pd.Timestamp("2026-08-24T16:46:00Z"),
+        manifest_path=tmp_path / "manifest.json",
+        receipt_path=tmp_path / "receipt.json",
+        outcome_path=tmp_path / "target-outcome.json",
+    )
+    expected = object()
+
+    monkeypatch.setattr(
+        pricing_runtime,
+        "_publish_fast_target_outcome",
+        lambda *_args, **_kwargs: (
+            publication,
+            pd.DataFrame(),
+            pd.DataFrame(),
+            {},
+            (),
+            True,
+            decision,
+        ),
+    )
+    monkeypatch.setattr(
+        pricing_runtime,
+        "_deferred_research_tail_result",
+        lambda *_args, **_kwargs: expected,
+    )
+    monkeypatch.setattr(
+        pricing_runtime,
+        "publish_eligibility_policy",
+        lambda *_args, **_kwargs: pytest.fail("research tail entered"),
+    )
+
+    result = pricing_runtime._run_option_pricing_once_impl(
+        tmp_path,
+        symbols=("AAPL",),
+        run_timestamp="2026-08-24T16:46:00Z",
+        runtime_clock=lambda: "2026-08-24T16:46:00Z",
+        rate_observations=pd.DataFrame(),
+        target_snapshot_for="2026-08-24T16:45:00Z",
+        bar_readiness_mode="required",
+        bar_readiness_timeout_seconds=480.0,
+        phase_offset_minutes=1,
+        defer_research_tail_when_due=True,
+    )
+
+    assert result is expected
 
 
 def test_treasury_curve_selection_is_causal_and_maturity_matched(
