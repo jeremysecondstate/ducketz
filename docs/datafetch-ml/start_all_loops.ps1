@@ -5,7 +5,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-# This launcher owns only the seven recurring production runtimes. It consumes
+# This launcher owns the eight recurring production runtimes. It consumes
 # the guardian's closed allowlist, refuses ambiguous/partial ownership, starts
 # missing owners sequentially, and verifies the worker-owned singleton lock.
 # Empty-store imports and provider-history maintenance remain separate commands.

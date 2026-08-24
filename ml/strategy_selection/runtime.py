@@ -50,8 +50,10 @@ from ml.strategy_selection.model import (
 )
 from ml.strategy_selection.opra_cache import (
     ensure_opra_strategy_cache,
+    strategy_entry_bounds,
     strategy_opra_prediction_clocks,
 )
+from ml.strategy_selection.slow_model import load_promoted_strategy_model
 from ml.strategy_selection.outcome_store import (
     publish_strategy_outcome_artifact,
     read_strategy_outcome_artifact,
@@ -76,6 +78,14 @@ _HISTORICAL_OUTCOME_CACHE: OrderedDict[
     str, tuple[pd.DataFrame, int, Mapping[str, int], tuple[Path, ...]]
 ] = OrderedDict()
 _HISTORICAL_OUTCOME_CACHE_LOCK = RLock()
+
+# Daily/weekly inference is allowed to wait for the sequential option-chain
+# capture to finish.  This is deliberately separate from the 15-minute quote
+# age used by the latency-sensitive strategy lanes: the promoted model predicts
+# the next daily/weekly window, and all six production symbols currently finish
+# inside this two-hour evidence window.
+_DAILY_WEEKLY_EXECUTION_EVIDENCE_MAX_LAG_SECONDS = 2.0 * 60.0 * 60.0
+_MODELED_EXECUTION_MINIMUM_VOLUME = 10.0
 
 
 def run_strategy_selection(
@@ -106,12 +116,15 @@ def run_strategy_selection(
     symbols = tuple(
         sorted(set(samples["symbol"].astype("string").str.upper()))
     )
+    profit_samples = samples.loc[
+        ~samples["horizon"].astype("string").isin(("1h", "4h"))
+    ].copy()
     replay_bootstrap_error: str | None = None
     if mode != "off":
         try:
             opra_target_clocks = strategy_opra_prediction_clocks(
                 datastore_root,
-                samples=samples,
+                samples=profit_samples,
                 symbols=symbols,
             )
             ensure_opra_pricing_replay(
@@ -148,7 +161,7 @@ def run_strategy_selection(
     try:
         opra_cache = ensure_opra_strategy_cache(
             datastore_root,
-            samples=samples,
+            samples=profit_samples,
             symbols=symbols,
             published_at=created,
         )
@@ -176,6 +189,7 @@ def run_strategy_selection(
     models: dict[str, object] = {}
     models_trained = 0
     models_reused = 0
+    slow_model_horizons: set[str] = set()
     completed = samples.loc[samples["label_status"].eq("COMPLETE")].copy()
     required_decisions = (
         effective_policy.minimum_train_decisions
@@ -188,6 +202,48 @@ def run_strategy_selection(
         if values:
             lockbox_boundaries[horizon] = min(_utc(value) for value in values)
     for horizon in tuple(dict.fromkeys(samples["horizon"].astype(str))):
+        if horizon in {"1h", "4h"}:
+            model_reports[horizon] = {
+                "status": "MODEL_NOT_FIT",
+                "reason": (
+                    "Strategy profit ML is intentionally disabled for the "
+                    "1h/4h routes; Scenario Coverage remains research-only."
+                ),
+                "calibration_status": "NOT_ATTEMPTED_OUT_OF_SCOPE",
+                "complete_outcome_rows": 0,
+                "pricing_eligible_outcome_rows": 0,
+                "pricing_excluded_outcome_rows": 0,
+                "pricing_exclusion_reason_counts": {},
+                "usable_decision_clusters": 0,
+                "required_decision_clusters": required_decisions,
+                "real_lockbox_used": False,
+            }
+            continue
+        promoted = load_promoted_strategy_model(
+            datastore_root,
+            horizon=horizon,
+        )
+        if promoted is not None:
+            models[horizon] = promoted.model
+            slow_model_horizons.add(horizon)
+            models_reused += 1
+            source_files.extend(promoted.authority_files)
+            model_reports[horizon] = {
+                **dict(promoted.report),
+                "status": "MODEL_FIT",
+                "calibration_status": "AVAILABLE",
+                "model_source": "VERIFIED_SLOW_TRAINING_AUTHORITY",
+                "requested_horizon": horizon,
+                "compatible_model_horizon": promoted.canonical_horizon,
+                "artifact_directory": str(
+                    promoted.model.artifact_directory
+                ),
+                "offline_evaluation": dict(
+                    promoted.model.offline_evaluation
+                ),
+                "real_lockbox_used": False,
+            }
+            continue
         horizon_samples = completed.loc[completed["horizon"].eq(horizon)].copy()
         outcomes, outcome_report, outcome_files = _historical_outcomes(
             horizon_samples,
@@ -388,6 +444,11 @@ def run_strategy_selection(
             candidate_frames.append(candidates)
             continue
         eligible = _pricing_model_eligible(candidates)
+        if horizon in slow_model_horizons:
+            eligible |= _opra_execution_model_eligible(
+                candidates,
+                policy=effective_policy,
+            )
         scored_frames = [candidates.loc[~eligible].copy()]
         if eligible.any():
             scored_frames.append(
@@ -460,13 +521,16 @@ def _historical_outcomes(
         if history is None:
             failures["chain_history_unavailable"] += 1
             continue
+        entry_lower, entry_upper = _historical_entry_bounds(
+            sample,
+            history=history,
+        )
         entry = entry_chain_receipt(
             history,
             minimum_snapshot_for=sample["bar_end_timestamp"],
-            information_available_at=sample["information_available_at"],
-            target_window_start=sample["target_window_start"],
-            known_at=pd.Timestamp(sample["target_window_start"])
-            - pd.Timedelta(nanoseconds=1),
+            information_available_at=entry_lower,
+            target_window_start=entry_upper + pd.Timedelta(nanoseconds=1),
+            known_at=entry_upper,
             receipt_choice="earliest",
         )
         if entry is None:
@@ -484,10 +548,9 @@ def _historical_outcomes(
             continue
         stock_entry = entry_stock_quote(
             history,
-            information_available_at=sample["information_available_at"],
-            target_window_start=sample["target_window_start"],
-            known_at=pd.Timestamp(sample["target_window_start"])
-            - pd.Timedelta(nanoseconds=1),
+            information_available_at=entry_lower,
+            target_window_start=entry_upper + pd.Timedelta(nanoseconds=1),
+            known_at=entry_upper,
             receipt_choice="earliest",
         )
         stock_exit = exit_stock_quote(
@@ -547,9 +610,13 @@ def _historical_outcomes(
         persistent_misses += 1
         cache_misses += 1
         observation_failures: Counter[str] = Counter()
+        strategy_sample = dict(sample)
+        strategy_sample["target_window_start"] = (
+            entry_upper + pd.Timedelta(nanoseconds=1)
+        )
         try:
             candidates, _audit = construct_strategy_candidates(
-                sample,
+                strategy_sample,
                 entry.contracts,
                 surface=entry.surface,
                 stock_quote=stock_entry,
@@ -815,6 +882,57 @@ def _pricing_model_eligible(frame: pd.DataFrame) -> pd.Series:
     return eligible
 
 
+def _opra_execution_model_eligible(
+    frame: pd.DataFrame,
+    *,
+    policy: StrategySelectionPolicy | None = None,
+) -> pd.Series:
+    """Allow the promoted OPRA-execution model without theoretical Pricing.
+
+    The lane remains explicitly BBO-quality gated.  It is only a fallback when
+    no BSGP or Black-Scholes source claims the row; partial theoretical evidence
+    is not relabeled as complete OPRA execution evidence.  The theoretical
+    surface/liquidity flags are intentionally not reused here because those
+    flags are false by construction when theoretical Pricing is unavailable.
+    Orders continue to use the stricter Pricing/actionability gate.
+    """
+
+    effective_policy = policy or StrategySelectionPolicy()
+    source = frame["pricing_source"].astype("string").str.upper()
+    maximum_spread = pd.to_numeric(
+        frame["max_relative_spread"], errors="coerce"
+    )
+    evidence_lag = pd.to_numeric(
+        frame["maximum_quote_staleness_seconds"], errors="coerce"
+    )
+    open_interest = pd.to_numeric(
+        frame["minimum_open_interest"], errors="coerce"
+    )
+    volume = pd.to_numeric(frame["total_volume"], errors="coerce")
+    return (
+        frame["pricing_mode"].astype("string").str.upper().eq("ACTIVE")
+        & ~source.isin(("BSGP", "BLACK_SCHOLES"))
+        & frame["all_option_quotes_valid"].fillna(False).astype(bool)
+        & maximum_spread.between(
+            0.0,
+            effective_policy.maximum_relative_bid_ask_spread,
+            inclusive="both",
+        )
+        & evidence_lag.between(
+            0.0,
+            max(
+                effective_policy.maximum_quote_staleness_seconds,
+                _DAILY_WEEKLY_EXECUTION_EVIDENCE_MAX_LAG_SECONDS,
+            ),
+            inclusive="both",
+        )
+        & (
+            open_interest.ge(effective_policy.minimum_open_interest)
+            | volume.ge(_MODELED_EXECUTION_MINIMUM_VOLUME)
+        )
+    )
+
+
 def _pricing_model_gate_masks(frame: pd.DataFrame) -> dict[str, pd.Series]:
     return {
         "PRICING_MODE_NOT_ACTIVE": frame["pricing_mode"]
@@ -996,19 +1114,25 @@ def _samples_with_possible_receipts(
         bar_end = pd.to_datetime(
             group["bar_end_timestamp"], utc=True, errors="coerce"
         )
-        information = pd.to_datetime(
-            group["information_available_at"], utc=True, errors="coerce"
-        )
-        target_start = pd.to_datetime(
-            group["target_window_start"], utc=True, errors="coerce"
-        )
         target_end = pd.to_datetime(
             group["target_window_end"], utc=True, errors="coerce"
         )
-        entry_upper = target_start - pd.Timedelta(nanoseconds=1)
+        entry_bounds = [
+            _historical_entry_bounds(
+                row,
+                history=history,
+            )
+            for row in group.to_dict("records")
+        ]
+        entry_lower = pd.Series(
+            [value[0] for value in entry_bounds], index=group.index
+        )
+        entry_upper = pd.Series(
+            [value[1] for value in entry_bounds], index=group.index
+        )
         entry_impossible = (
             snapshot_max < bar_end
-        ) | (snapshot_min > entry_upper) | (available_max < information) | (
+        ) | (snapshot_min > entry_upper) | (available_max < entry_lower) | (
             available_min > entry_upper
         )
 
@@ -1034,6 +1158,25 @@ def _samples_with_possible_receipts(
         if retained
         else samples.iloc[0:0].copy(),
         failures,
+    )
+
+
+def _historical_entry_bounds(
+    sample: Mapping[str, object],
+    *,
+    history: OptionChainHistory,
+) -> tuple[pd.Timestamp, pd.Timestamp]:
+    information = _utc(sample["information_available_at"])
+    decision = _utc(sample.get("decision_timestamp", information))
+    prediction_available = max(decision, information)
+    if str(history.provider).strip().lower().startswith("databento-opra"):
+        return strategy_entry_bounds(
+            sample,
+            prediction_available=prediction_available,
+        )
+    return (
+        prediction_available + pd.Timedelta(nanoseconds=1),
+        _utc(sample["target_window_start"]) - pd.Timedelta(nanoseconds=1),
     )
 
 

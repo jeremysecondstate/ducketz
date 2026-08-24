@@ -33,6 +33,7 @@ from ml.strategy_selection.contracts import (
     BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
     BSGP_CALIBRATED_MODEL_SCORE_BASIS,
     CALIBRATED_MODEL_SCORE_BASIS,
+    OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS,
     SCENARIO_PRIOR_SCORE_BASIS,
     STRATEGY_CANDIDATE_SCHEMA_VERSION,
     STRATEGY_MODEL_POLICY_VERSION,
@@ -41,7 +42,14 @@ from ml.strategy_selection.contracts import (
 
 
 @pytest.mark.parametrize(
-    ("basis", "model_status", "pricing_source", "calibrated", "label"),
+    (
+        "basis",
+        "model_status",
+        "pricing_source",
+        "calibrated",
+        "label",
+        "actionable",
+    ),
     (
         (
             BSGP_CALIBRATED_MODEL_SCORE_BASIS,
@@ -49,6 +57,7 @@ from ml.strategy_selection.contracts import (
             "BSGP",
             0.61,
             "BSGP + Strategy ML",
+            True,
         ),
         (
             BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
@@ -56,6 +65,15 @@ from ml.strategy_selection.contracts import (
             "BLACK_SCHOLES",
             0.61,
             "Black-Scholes + ML",
+            True,
+        ),
+        (
+            OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS,
+            "MODEL_FIT",
+            "UNAVAILABLE",
+            0.61,
+            "OPRA Execution + ML",
+            False,
         ),
         (
             SCENARIO_PRIOR_SCORE_BASIS,
@@ -63,6 +81,7 @@ from ml.strategy_selection.contracts import (
             "BLACK_SCHOLES",
             float("nan"),
             "Scenario Coverage",
+            False,
         ),
     ),
 )
@@ -73,6 +92,7 @@ def test_strategy_loader_displays_every_pricing_score_basis(
     pricing_source: str,
     calibrated: float,
     label: str,
+    actionable: bool,
 ) -> None:
     candidate = _candidate(
         strategy_name="long_call",
@@ -99,7 +119,11 @@ def test_strategy_loader_displays_every_pricing_score_basis(
         ),
         scenario_coverage_score=0.61,
         pricing_status=(
-            "Active" if pricing_source == "BSGP" else "Black-Scholes fallback"
+            "Active"
+            if pricing_source == "BSGP"
+            else "Black-Scholes fallback"
+            if pricing_source == "BLACK_SCHOLES"
+            else "Unavailable"
         ),
     )
     path = tmp_path / f"{basis}.parquet"
@@ -118,10 +142,9 @@ def test_strategy_loader_displays_every_pricing_score_basis(
     assert view.candidates[0].score_basis == label
     if model_status == "MODEL_FIT":
         assert view.candidates[0].predictive_score == pytest.approx(61.0)
-        assert view.candidates[0].manual_order_actionable
     else:
         assert view.candidates[0].predictive_score is None
-        assert not view.candidates[0].manual_order_actionable
+    assert view.candidates[0].manual_order_actionable is actionable
     assert view.candidates[0].scenario_coverage == pytest.approx(61.0)
 
 
@@ -802,6 +825,7 @@ def test_strategy_loader_marks_heuristic_quality_failures_research_only(
         surface_quality_pass=False,
         liquidity_policy_pass=False,
         all_option_quotes_valid=True,
+        max_relative_spread=0.50,
     )
     path = tmp_path / "strategy-candidates.parquet"
     write_parquet_with_schema(
@@ -824,6 +848,9 @@ def test_strategy_loader_marks_heuristic_quality_failures_research_only(
     assert result.pricing_summary == "Unavailable pricing · Unavailable · Prediction Missing"
     assert "surface policy failed" in result.quality_warning
     assert "liquidity policy failed" in result.quality_warning
+    assert "50.00% exceeds the 35.00% OPRA execution gate" in (
+        result.quality_warning
+    )
     assert not result.manual_order_actionable
     assert result.manual_actionability.startswith("Research only")
 

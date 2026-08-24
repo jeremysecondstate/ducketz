@@ -39,14 +39,23 @@ from ml.strategy_selection import STRATEGY_SELECTION_OPRA_FIRST_SPREADS_V2
 from ml.strategy_selection.contracts import (
     BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
     BSGP_CALIBRATED_MODEL_SCORE_BASIS,
+    OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS,
     SCENARIO_COVERAGE_SCORE_BASIS,
     STRATEGY_CANDIDATE_SCHEMA_VERSION,
     STRATEGY_MODEL_POLICY_VERSION,
     STRATEGY_RANKING_POLICY_VERSION,
 )
 from ml.strategy_selection.research_trace import strategy_research_trace
-from ml.strategy_selection.runtime import run_strategy_selection
+from ml.strategy_selection.runtime import (
+    _opra_execution_model_eligible,
+    run_strategy_selection,
+)
 from options.publication import SUPPORTED_OPTION_PROVIDERS, option_snapshot_pointer_path
+
+
+STRATEGY_RUNTIME_POLICY_VERSION = (
+    "strategy-runtime-daily-weekly-opra-execution-gate-v1"
+)
 
 
 @dataclass(frozen=True)
@@ -122,6 +131,7 @@ def run_strategy_once(
             evidence_symbols,
             available_not_after=created,
         )
+        strategy_profit_model_head = _strategy_profit_model_head(root)
         selection = run_strategy_selection(
             root,
             samples=samples,
@@ -240,8 +250,10 @@ def run_strategy_once(
             "source_loop_b_run": source.run_directory.relative_to(root).as_posix(),
             "source_loop_b_input_cutoff": input_cutoff.isoformat(),
             "strategy_evidence_cutoff": created.isoformat(),
+            "strategy_runtime_policy_version": STRATEGY_RUNTIME_POLICY_VERSION,
             "source_loop_b_symbols": list(configured_symbols),
             "option_snapshot_heads": option_snapshot_heads,
+            "strategy_profit_model_head": strategy_profit_model_head,
             "option_snapshot_receipts": option_receipts,
             "stock_bbo_source_files": stock_bbo_files,
             "strategy_candidate_contract": _strategy_candidate_contract(),
@@ -453,6 +465,17 @@ def _current_source_already_processed(root: Path, *, pricing_mode: str = "active
         else None
     )
     current_heads = _option_snapshot_heads(root, symbols)
+    observed_profit_model_head = (
+        configuration.get("strategy_profit_model_head")
+        if isinstance(configuration, Mapping)
+        else None
+    )
+    current_profit_model_head = _strategy_profit_model_head(root)
+    observed_runtime_policy = (
+        configuration.get("strategy_runtime_policy_version")
+        if isinstance(configuration, Mapping)
+        else None
+    )
     return (
         isinstance(source, Mapping)
         and isinstance(current, Mapping)
@@ -460,7 +483,14 @@ def _current_source_already_processed(root: Path, *, pricing_mode: str = "active
         and observed_mode == str(pricing_mode).strip().lower()
         and isinstance(observed_heads, Mapping)
         and dict(observed_heads) == current_heads
+        and observed_profit_model_head == current_profit_model_head
+        and observed_runtime_policy == STRATEGY_RUNTIME_POLICY_VERSION
     )
+
+
+def _strategy_profit_model_head(root: Path) -> str:
+    pointer = root / "ml" / "strategy-profit-training-latest" / "run.json"
+    return file_checksum(pointer) if pointer.is_file() else "MISSING"
 
 
 def _strategy_output_frame(
@@ -487,9 +517,21 @@ def _strategy_candidate_contract() -> dict[str, object]:
         "fitted_score_bases": [
             BSGP_CALIBRATED_MODEL_SCORE_BASIS,
             BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
+            OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS,
         ],
         "heuristic_score_basis": SCENARIO_COVERAGE_SCORE_BASIS,
         "pricing_evidence_before_probability": True,
+        "opra_execution_probability_gate": {
+            "all_option_quotes_valid": True,
+            "maximum_relative_bid_ask_spread": 0.35,
+            "maximum_evidence_lag_seconds": 7200.0,
+            "minimum_open_interest_or_volume": {
+                "minimum_open_interest": 1.0,
+                "minimum_total_volume": 10.0,
+            },
+            "theoretical_surface_flags_required": False,
+            "order_actionability_unchanged": True,
+        },
         "heuristic_values_are_not_probabilities": True,
     }
 
@@ -594,7 +636,10 @@ def _validate_strategy_candidate_rows(frame: pd.DataFrame) -> None:
     black_scholes_fitted = frame["score_basis"].eq(
         BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS
     )
-    fitted = bsgp_fitted | black_scholes_fitted
+    opra_execution_fitted = frame["score_basis"].eq(
+        OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS
+    )
+    fitted = bsgp_fitted | black_scholes_fitted | opra_execution_fitted
     prior = frame["score_basis"].eq(
         SCENARIO_COVERAGE_SCORE_BASIS
     )
@@ -644,12 +689,18 @@ def _validate_strategy_candidate_rows(frame: pd.DataFrame) -> None:
         .fillna(False)
         .astype(bool)
     )
+    opra_quality_valid = _opra_execution_model_eligible(frame)
     if (
-        not pricing_coverage.loc[fitted].ge(1.0 - 1e-12).all()
-        or not quality_valid.loc[fitted].all()
+        not pricing_coverage.loc[
+            bsgp_fitted | black_scholes_fitted
+        ].ge(1.0 - 1e-12).all()
+        or not quality_valid.loc[
+            bsgp_fitted | black_scholes_fitted
+        ].all()
+        or not opra_quality_valid.loc[opra_execution_fitted].all()
     ):
         raise ValueError(
-            "Calibrated Strategy scores require full exact-leg pricing and quality"
+            "Calibrated Strategy scores require their declared evidence and quality"
         )
     if (
         not frame.loc[prior, "model_status"].eq("HEURISTIC_ONLY").all()

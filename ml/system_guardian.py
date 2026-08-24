@@ -228,6 +228,19 @@ GUARDIAN_LAUNCHES = (
             "active",
         ),
     ),
+    GuardianLaunchSpec(
+        "strategy_profit_training",
+        "strategy-profit-training",
+        (
+            "-u",
+            "-m",
+            "ml.strategy_profit_training_runtime",
+            "--datastore-target",
+            "pc",
+            "--utc-hour",
+            "22",
+        ),
+    ),
 )
 
 _LAUNCH_BY_RUNTIME = {spec.runtime: spec for spec in GUARDIAN_LAUNCHES}

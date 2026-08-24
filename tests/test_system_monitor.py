@@ -488,6 +488,12 @@ def test_log_discovery_prefers_current_legacy_runtime_log_over_old_primary(
     legacy_stderr.write_text("", encoding="utf-8")
     os.utime(legacy_stdout, (current_time, current_time))
     os.utime(legacy_stderr, (current_time, current_time))
+    # A newer trainer log must not be mistaken for the shorter `strategy`
+    # runtime stem.
+    trainer_stdout = primary / "strategy-profit-training.stdout.log"
+    trainer_stderr = primary / "strategy-profit-training.stderr.log"
+    os.utime(trainer_stdout, (current_time + 30, current_time + 30))
+    os.utime(trainer_stderr, (current_time + 30, current_time + 30))
 
     check = _log_activity_check(tmp_path, now=now, market_actionable=True)
 
@@ -496,6 +502,12 @@ def test_log_discovery_prefers_current_legacy_runtime_log_over_old_primary(
     assert cme["stdout"] == str(legacy_stdout)
     assert cme["stderr"] == str(legacy_stderr)
     assert cme["log_authority"] == "LEGACY_RUNTIME_LOGS"
+    assert check["details"]["runtimes"]["strategy"]["stdout"] == str(
+        primary / "strategy.stdout.log"
+    )
+    assert check["details"]["runtimes"]["strategy_profit_training"][
+        "stdout"
+    ] == str(trainer_stdout)
 
 
 def _weekly_rows(

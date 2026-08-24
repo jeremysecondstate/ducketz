@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import json
+
 import pandas as pd
 
 from ml.strategy_selection.candidates import _prepare_contracts
@@ -9,16 +11,85 @@ from ml.strategy_selection.chain import load_option_chain_history
 from ml.strategy_selection.contracts import StrategySelectionPolicy
 from ml.strategy_selection.opra_cache import (
     _StrategyInterval,
+    _cheap_partitions,
     _publish_cache,
     _selected_surface_times,
     _strategy_intervals,
+    strategy_entry_bounds,
 )
+from datafetching.databento_opra_history import canonical_root
+from ml.artifacts import file_checksum
 from options.features import (
     OPTION_FEATURE_SCHEMA_VERSION,
     OPTION_FEATURE_VERSION,
     OPTION_SURFACE_QUALITY_POLICY_VERSION,
 )
 from options.snapshot import OPTION_CHAIN_SCHEMA_VERSION
+
+
+def test_daily_entry_clock_waits_for_a_tradable_post_open_window() -> None:
+    daily = {
+        "horizon": "1d",
+        "target_window_start": pd.Timestamp("2026-08-24T13:30:00Z"),
+    }
+    lower, upper = strategy_entry_bounds(
+        daily,
+        prediction_available=pd.Timestamp("2026-08-21T20:05:05Z"),
+    )
+    assert lower == pd.Timestamp("2026-08-24T14:00:00Z")
+    assert upper == pd.Timestamp("2026-08-24T14:15:00Z")
+
+    intraday = {
+        "horizon": "4h",
+        "target_window_start": pd.Timestamp("2026-08-24T15:00:00Z"),
+    }
+    lower, upper = strategy_entry_bounds(
+        intraday,
+        prediction_available=pd.Timestamp("2026-08-24T14:05:00Z"),
+    )
+    assert lower == pd.Timestamp("2026-08-24T14:05:00.000000001Z")
+    assert upper == pd.Timestamp("2026-08-24T14:59:59.999999999Z")
+
+
+def test_combined_opra_scope_is_visible_to_every_requested_parent(
+    tmp_path: Path,
+) -> None:
+    directory = (
+        canonical_root(tmp_path)
+        / "cbbo-1m"
+        / "AAPL.OPT_and_NVDA.OPT"
+        / "dates"
+        / "2026-08-21"
+        / "segments"
+        / "full-day"
+    )
+    directory.mkdir(parents=True)
+    parquet = directory / "normalized.parquet"
+    parquet.write_bytes(b"test")
+    manifest = {
+        "request": {"symbols": ["AAPL.OPT", "NVDA.OPT"]},
+        "schema": "cbbo-1m",
+        "partition_start": "2026-08-21T00:00:00Z",
+        "partition_end": "2026-08-22T00:00:00Z",
+        "normalized": {
+            "path": parquet.name,
+            "size_bytes": parquet.stat().st_size,
+        },
+    }
+    manifest_path = directory / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    (directory / "receipt.json").write_text(
+        json.dumps(
+            {"manifest_checksum_sha256": file_checksum(manifest_path)}
+        ),
+        encoding="utf-8",
+    )
+    partitions = _cheap_partitions(
+        tmp_path,
+        schema="cbbo-1m",
+        symbols=("AAPL", "NVDA"),
+    )
+    assert [partition.symbol for partition in partitions] == ["AAPL", "NVDA"]
 
 
 def test_compact_opra_cache_is_used_when_full_replay_is_disabled(

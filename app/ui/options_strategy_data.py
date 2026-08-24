@@ -29,6 +29,7 @@ from ml.strategy_selection.contracts import (
     BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
     BSGP_CALIBRATED_MODEL_SCORE_BASIS,
     COMPATIBLE_STRATEGY_MODEL_POLICY_VERSIONS,
+    OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS,
     SCENARIO_COVERAGE_SCORE_BASIS,
     STRATEGY_CANDIDATE_SCHEMA_VERSION,
     STRATEGY_RANKING_POLICY_VERSION,
@@ -51,6 +52,7 @@ PORTFOLIO_FIT_POLICY_VERSION = "current-schwab-position-fit-v2"
 _SCORE_BASIS_LABELS = {
     BSGP_CALIBRATED_MODEL_SCORE_BASIS: "BSGP + Strategy ML",
     BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS: "Black-Scholes + ML",
+    OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS: "OPRA Execution + ML",
     SCENARIO_COVERAGE_SCORE_BASIS: "Scenario Coverage",
 }
 
@@ -86,6 +88,14 @@ class StrategyCandidateView:
     position: SchwabPositionContext
     order_draft: StrategyOrderDraft
     row: Mapping[str, object]
+
+    @property
+    def model_summary(self) -> str:
+        return (
+            "Calibrated profit model active"
+            if self.predictive_score is not None
+            else "ML unavailable for this row; Scenario Coverage only"
+        )
 
 
 @dataclass(frozen=True)
@@ -307,6 +317,7 @@ def _candidate_views(
             fitted_basis = basis_code in {
                 BSGP_CALIBRATED_MODEL_SCORE_BASIS,
                 BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
+                OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS,
             }
             probability = (
                 _required_probability(
@@ -354,6 +365,9 @@ def _candidate_views(
             ) or (
                 basis_code == BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS
                 and pricing_source != "BLACK_SCHOLES"
+            ) or (
+                basis_code == OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS
+                and pricing_source in {"BSGP", "BLACK_SCHOLES"}
             ):
                 raise ValueError(
                     "Options strategy score basis does not match its pricing source"
@@ -407,6 +421,15 @@ def _candidate_views(
                 if quality_failures
                 else "Quality policies passed"
             )
+            probability_exclusion = _profit_probability_exclusion_reason(
+                row,
+                horizon=clean_horizon,
+                basis_code=basis_code,
+            )
+            if probability_exclusion:
+                quality_warning = (
+                    f"{probability_exclusion} · {quality_warning}"
+                )
             source_label = {
                 "BSGP": "BSGP",
                 "BLACK_SCHOLES": "Black-Scholes",
@@ -751,6 +774,61 @@ def _number(value: object) -> float | None:
     except (TypeError, ValueError):
         return None
     return number if math.isfinite(number) else None
+
+
+def _profit_probability_exclusion_reason(
+    row: Mapping[str, object],
+    *,
+    horizon: str,
+    basis_code: str,
+) -> str | None:
+    """Explain why a daily/weekly row retained Scenario Coverage only."""
+
+    if (
+        horizon in {"1h", "4h"}
+        or basis_code != SCENARIO_COVERAGE_SCORE_BASIS
+    ):
+        return None
+    if str(row.get("pricing_mode") or "").strip().upper() != "ACTIVE":
+        return "ML probability unavailable: active evidence mode is not enabled"
+    pricing_source = str(row.get("pricing_source") or "").strip().upper()
+    if pricing_source in {"BSGP", "BLACK_SCHOLES"}:
+        return (
+            "ML probability unavailable: theoretical Pricing evidence did not "
+            "pass its full-coverage quality gate"
+        )
+    if not _required_bool(
+        row.get("all_option_quotes_valid"),
+        label="Option quote validity",
+    ):
+        return "ML probability unavailable: one or more option quotes are invalid"
+    spread = _number(row.get("max_relative_spread"))
+    if spread is None:
+        return "ML probability unavailable: maximum quoted spread is missing"
+    if spread > 0.35 + 1e-12:
+        return (
+            "ML probability unavailable: maximum quoted spread "
+            f"{spread * 100.0:.2f}% exceeds the 35.00% OPRA execution gate"
+        )
+    evidence_lag = _number(row.get("maximum_quote_staleness_seconds"))
+    if evidence_lag is None:
+        return "ML probability unavailable: option evidence lag is missing"
+    if evidence_lag < 0.0 or evidence_lag > 7_200.0 + 1e-12:
+        return (
+            "ML probability unavailable: option evidence lag "
+            f"{max(evidence_lag, 0.0) / 60.0:.1f} minutes exceeds the "
+            "120-minute daily/weekly gate"
+        )
+    open_interest = _number(row.get("minimum_open_interest"))
+    volume = _number(row.get("total_volume"))
+    if (open_interest is None or open_interest < 1.0) and (
+        volume is None or volume < 10.0
+    ):
+        return (
+            "ML probability unavailable: neither minimum open interest nor "
+            "total volume passed the OPRA execution gate"
+        )
+    return "ML probability unavailable: no verified compatible model was applied"
 
 
 def _human_reason(value: str) -> str:

@@ -515,6 +515,9 @@ def _prepare_contracts(
         pd.Series("", index=frame.index, dtype="string"),
     ).astype("string").str.strip().str.lower()
     opra_bbo_evidence = source_provider.eq("databento-opra")
+    opra_modeled_execution = source_provider.eq(
+        "databento-opra-ohlcv-modeled"
+    )
     structural = (
         ~frame["mini"].fillna(True).astype(bool)
         & ~frame["non_standard"].fillna(True).astype(bool)
@@ -536,17 +539,31 @@ def _prepare_contracts(
         & result["open_interest"].ge(minimum_open_interest)
     )
     opra_result = opra_bbo_evidence.reindex(result.index, fill_value=False)
-    result["__liquidity_policy_pass"] = (
+    modeled_result = opra_modeled_execution.reindex(
+        result.index, fill_value=False
+    )
+    traded_volume = pd.to_numeric(
+        result.get("volume", pd.Series(0.0, index=result.index)),
+        errors="coerce",
+    ).fillna(0.0)
+    common_quote_quality = (
         result["quote_valid"].map(_scalar_true)
-        & np.isfinite(result["relative_bid_ask_spread"])
-        & result["relative_bid_ask_spread"].ge(0.0)
-        & result["relative_bid_ask_spread"].le(maximum_spread)
-        & (open_interest_pass | opra_result)
         & np.isfinite(result["quote_staleness_seconds"])
         & result["quote_staleness_seconds"].ge(0.0)
         & result["quote_staleness_seconds"].le(
             policy.maximum_quote_staleness_seconds
         )
+    )
+    exact_bbo_liquidity = (
+        ~modeled_result
+        & np.isfinite(result["relative_bid_ask_spread"])
+        & result["relative_bid_ask_spread"].ge(0.0)
+        & result["relative_bid_ask_spread"].le(maximum_spread)
+        & (open_interest_pass | opra_result)
+    )
+    modeled_execution_liquidity = modeled_result & traded_volume.ge(10.0)
+    result["__liquidity_policy_pass"] = common_quote_quality & (
+        exact_bbo_liquidity | modeled_execution_liquidity
     )
     return result
 

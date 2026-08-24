@@ -675,7 +675,10 @@ class OptionsStrategiesTab:
                     _percent(candidate.expected_return),
                     candidate.portfolio_fit.label,
                     candidate.score_basis,
-                    f"{candidate.pricing_summary} · {candidate.quality_warning}",
+                    (
+                        f"{candidate.model_summary} · {candidate.pricing_summary} "
+                        f"· {candidate.quality_warning}"
+                    ),
                 ),
             )
         research_only = sum(

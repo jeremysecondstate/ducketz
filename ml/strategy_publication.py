@@ -11,6 +11,7 @@ import pandas as pd
 from ml.artifacts import file_checksum, verify_manifest
 from ml.strategy_selection.contracts import (
     COMPATIBLE_STRATEGY_MODEL_POLICY_VERSIONS,
+    OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS,
     SCENARIO_COVERAGE_SCORE_BASIS,
     STRATEGY_CANDIDATE_SCHEMA_VERSION,
     STRATEGY_MODEL_POLICY_VERSION,
@@ -169,11 +170,23 @@ def _candidate_contract(manifest: Mapping[str, object]) -> dict[str, object]:
         "fitted_score_bases": [
             "BSGP_CALIBRATED_MODEL",
             "BLACK_SCHOLES_CALIBRATED_MODEL",
+            OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS,
         ],
-        "heuristic_score_basis": SCENARIO_COVERAGE_SCORE_BASIS,
-        "pricing_evidence_before_probability": True,
-        "heuristic_values_are_not_probabilities": True,
-    }
+            "heuristic_score_basis": SCENARIO_COVERAGE_SCORE_BASIS,
+            "pricing_evidence_before_probability": True,
+            "opra_execution_probability_gate": {
+                "all_option_quotes_valid": True,
+                "maximum_relative_bid_ask_spread": 0.35,
+                "maximum_evidence_lag_seconds": 7200.0,
+                "minimum_open_interest_or_volume": {
+                    "minimum_open_interest": 1.0,
+                    "minimum_total_volume": 10.0,
+                },
+                "theoretical_surface_flags_required": False,
+                "order_actionability_unchanged": True,
+            },
+            "heuristic_values_are_not_probabilities": True,
+        }
     if not isinstance(observed, Mapping):
         raise StrategyPublicationError(
             "Strategy manifest candidate score contract is incompatible"

@@ -1,6 +1,6 @@
 # Authoritative production startup order
 
-This is the single authoritative command list for the seven independent Duckets
+This is the single authoritative command list for the eight independent Duckets
 runtime owners. Start each numbered command in its own PowerShell terminal and
 in this order. The runtimes coordinate through verified atomic pointers; do not
 replace these commands with guessed per-minute sleeps.
@@ -224,6 +224,20 @@ python -m ml.strategy_runtime `
   --pricing-mode active
 ```
 
+8. Daily/weekly Strategy-profit training. This isolated slow owner uses OPRA
+`ohlcv-1h` only as explicitly modeled execution evidence. It learns conservative
+buy/sell haircuts from overlapping CBBO, checkpoints each decision cohort,
+retains separate chronological training/calibration/assessment partitions, and
+publishes a new model authority only after receipt and quality-gate verification.
+The five weekly day components reuse the compatible one-session `1d` model.
+It never imports or invokes an order path:
+
+```powershell
+python -m ml.strategy_profit_training_runtime `
+  --datastore-target pc `
+  --utc-hour 22
+```
+
 After restarting only Loop A, Active Pricing, and Strategy for a regular-session
 rollout, run the bounded read-only canary in a fourth terminal. Set `$targetUtc`
 to the exact quarter-hour UTC boundary being observed. The canary reads verified
@@ -243,7 +257,7 @@ python -m ml.strategy_pricing_canary `
 For an affected-loop-only restart, first stop the existing Loop A, Active
 Pricing, and Strategy owners with Ctrl+C and verify their three terminals have
 returned to a prompt. Then run commands 2, 4, and 7 above in separate terminals.
-Do not run the seven-owner launcher when unaffected owners are still active.
+Do not run the eight-owner launcher when unaffected owners are still active.
 
 Optional maintenance commands are not startup dependencies. In particular,
 eligibility/quality reports monitor production and cannot block the valid
@@ -278,7 +292,7 @@ python -m ml.option_pricing_opra --datastore-target pc --health-only
 Configured `opra-canonical` mode is not historical-fetch proof. Only nonempty
 verified partitions and their health/consumer records establish stored use.
 
-To open all seven owners in authoritative order from one PowerShell terminal,
+To open all eight owners in authoritative order from one PowerShell terminal,
 run the checked-in launcher. It opens visible child windows and uses the same
 OPRA-enabled Options command above. It does not run the one-time bootstrap or
 the full-universe administrative synchronizer; Options Capture performs only

@@ -592,9 +592,21 @@ def test_directional_publication_does_not_wait_for_active_external_writers_and_s
         "fitted_score_bases": [
             "BSGP_CALIBRATED_MODEL",
             "BLACK_SCHOLES_CALIBRATED_MODEL",
+            "OPRA_EXECUTION_CALIBRATED_MODEL",
         ],
         "heuristic_score_basis": "SCENARIO_COVERAGE_HEURISTIC",
         "pricing_evidence_before_probability": True,
+        "opra_execution_probability_gate": {
+            "all_option_quotes_valid": True,
+            "maximum_relative_bid_ask_spread": 0.35,
+            "maximum_evidence_lag_seconds": 7200.0,
+            "minimum_open_interest_or_volume": {
+                "minimum_open_interest": 1.0,
+                "minimum_total_volume": 10.0,
+            },
+            "theoretical_surface_flags_required": False,
+            "order_actionability_unchanged": True,
+        },
         "heuristic_values_are_not_probabilities": True,
     }
     assert source_checksums == {

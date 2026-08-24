@@ -37,13 +37,16 @@ from options.features import (
 from options.snapshot import OPTION_CHAIN_SCHEMA_VERSION
 
 
-OPRA_STRATEGY_CACHE_VERSION = "strategy-opra-observed-chain-cache-v1"
+OPRA_STRATEGY_CACHE_VERSION = "strategy-opra-observed-chain-cache-v2"
 OPRA_STRATEGY_CACHE_RECEIPT_VERSION = (
     "strategy-opra-observed-chain-cache-receipt-v1"
 )
 OPRA_STRATEGY_CACHE_POINTER_VERSION = (
-    "strategy-opra-observed-chain-cache-pointer-v1"
+    "strategy-opra-observed-chain-cache-pointer-v2"
 )
+
+_DAILY_WEEKLY_ENTRY_DELAY = pd.Timedelta(minutes=30)
+_DAILY_WEEKLY_ENTRY_WINDOW = pd.Timedelta(minutes=15)
 _EXIT_DELAYS = {
     "1h": pd.Timedelta(hours=2),
     "4h": pd.Timedelta(hours=6),
@@ -211,6 +214,12 @@ def ensure_opra_strategy_cache(
         )
         for quote_time, snapshot_for in selected_surfaces:
             surface = normalized.loc[quote_times.eq(quote_time)].copy()
+            surface = surface.loc[
+                surface["contract_symbol"]
+                .astype("string")
+                .map(_occ_parent_symbol)
+                .eq(partition.symbol)
+            ]
             if surface.empty:
                 continue
             surface["parent_symbol"] = partition.symbol
@@ -513,8 +522,12 @@ def _cheap_partitions(
             receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
             normalized = manifest["normalized"]
             parquet = directory / str(normalized["path"])
-            symbol = _parent_symbol(manifest)
-            if symbol not in selected:
+            parent_symbols = tuple(
+                symbol
+                for symbol in _parent_symbols(manifest)
+                if symbol in selected
+            )
+            if not parent_symbols:
                 continue
             if (
                 receipt.get("manifest_checksum_sha256") != file_checksum(manifest_path)
@@ -526,18 +539,19 @@ def _cheap_partitions(
             end = _utc(manifest.get("partition_end"))
         except (KeyError, OSError, ValueError, json.JSONDecodeError):
             continue
-        partitions.append(
-            _Partition(
-                directory,
-                manifest_path,
-                receipt_path,
-                parquet,
-                manifest,
-                symbol,
-                start,
-                end,
+        for symbol in parent_symbols:
+            partitions.append(
+                _Partition(
+                    directory,
+                    manifest_path,
+                    receipt_path,
+                    parquet,
+                    manifest,
+                    symbol,
+                    start,
+                    end,
+                )
             )
-        )
     return tuple(partitions)
 
 
@@ -580,12 +594,13 @@ def _strategy_intervals(
             continue
         _prediction_created, prediction_available = clock
         target_start = _utc(row["target_window_start"])
-        entry_lower = max(
-            prediction_available + pd.Timedelta(nanoseconds=1),
-            archive_start,
+        entry_lower, entry_upper = strategy_entry_bounds(
+            row,
+            prediction_available=prediction_available,
         )
+        entry_lower = max(entry_lower, archive_start)
         entry_upper = min(
-            target_start - pd.Timedelta(nanoseconds=1),
+            entry_upper,
             archive_end - pd.Timedelta(nanoseconds=1),
         )
         if entry_lower <= entry_upper:
@@ -615,6 +630,22 @@ def _strategy_intervals(
                 )
             )
     return tuple(sorted(intervals))
+
+
+def strategy_entry_bounds(
+    sample: Mapping[str, object],
+    *,
+    prediction_available: object,
+) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """Return the causal option-entry search window for one Strategy sample."""
+
+    available = _utc(prediction_available) + pd.Timedelta(nanoseconds=1)
+    target_start = _utc(sample["target_window_start"])
+    horizon = str(sample["horizon"]).strip().lower()
+    if horizon in {"1d", "1w", "1w-d1", "1w-d2", "1w-d3", "1w-d4", "1w-d5"}:
+        lower = max(available, target_start + _DAILY_WEEKLY_ENTRY_DELAY)
+        return lower, target_start + _DAILY_WEEKLY_ENTRY_DELAY + _DAILY_WEEKLY_ENTRY_WINDOW
+    return available, target_start - pd.Timedelta(nanoseconds=1)
 
 
 def _prediction_clocks_from_samples(
@@ -935,10 +966,30 @@ def _verified_replay_seal(
 
 
 def _parent_symbol(manifest: Mapping[str, object]) -> str:
+    values = _parent_symbols(manifest)
+    return values[0] if values else ""
+
+
+def _parent_symbols(manifest: Mapping[str, object]) -> tuple[str, ...]:
     request = manifest.get("request")
     values = request.get("symbols") if isinstance(request, Mapping) else None
-    value = str(values[0] if isinstance(values, list) and values else manifest.get("symbol_scope") or "")
-    return value.upper().removesuffix(".OPT")
+    raw_values = (
+        values
+        if isinstance(values, list) and values
+        else (manifest.get("symbol_scope"),)
+    )
+    return tuple(
+        dict.fromkeys(
+            str(value or "").strip().upper().removesuffix(".OPT")
+            for value in raw_values
+            if str(value or "").strip()
+        )
+    )
+
+
+def _occ_parent_symbol(value: object) -> str:
+    match = re.match(r"^([A-Z.]{1,6})\s*\d{6}[CP]", str(value).strip().upper())
+    return match.group(1) if match else ""
 
 
 def _source_fingerprint(partitions: Iterable[_Partition]) -> str:
@@ -1008,5 +1059,6 @@ __all__ = [
     "OpraStrategyCache",
     "ensure_opra_strategy_cache",
     "load_opra_strategy_cache",
+    "strategy_entry_bounds",
     "strategy_opra_prediction_clocks",
 ]

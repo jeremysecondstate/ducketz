@@ -38,6 +38,7 @@ from ml.strategy_selection.contracts import (
     BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
     BSGP_CALIBRATED_MODEL_SCORE_BASIS,
     MARKET_STATE_POLICY_VERSION,
+    OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS,
     STRATEGY_CANDIDATE_POLICY_VERSION,
     STRATEGY_CANDIDATE_SCHEMA_VERSION,
     STRATEGY_MODEL_POLICY_VERSION,
@@ -316,6 +317,7 @@ def fit_or_reuse_strategy_model(
     policy: StrategySelectionPolicy,
     input_files: Sequence[Path],
     trained_at: object,
+    publish_latest: bool = True,
 ) -> StrategyModel:
     created = utc_timestamp(trained_at)
     missing_pricing = sorted(
@@ -447,10 +449,11 @@ def fit_or_reuse_strategy_model(
         },
     }
     _write_json(directory / "manifest.json", manifest)
-    _write_json(
-        model_root / "latest.json",
-        {"path": directory.name, "trained_at": created.isoformat()},
-    )
+    if publish_latest:
+        _write_json(
+            model_root / "latest.json",
+            {"path": directory.name, "trained_at": created.isoformat()},
+        )
     return StrategyModel(
         horizon=horizon,
         estimator=estimator,
@@ -497,10 +500,16 @@ def score_strategy_candidates(
     pricing_source = output.get(
         "pricing_source", pd.Series("BLACK_SCHOLES", index=output.index)
     ).astype("string").str.upper()
-    output["score_basis"] = np.where(
-        pricing_source.eq("BSGP"),
-        BSGP_CALIBRATED_MODEL_SCORE_BASIS,
-        BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
+    output["score_basis"] = np.select(
+        (
+            pricing_source.eq("BSGP"),
+            pricing_source.eq("BLACK_SCHOLES"),
+        ),
+        (
+            BSGP_CALIBRATED_MODEL_SCORE_BASIS,
+            BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
+        ),
+        default=OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS,
     )
     output["schema_version"] = STRATEGY_CANDIDATE_SCHEMA_VERSION
     output["model_version"] = model.artifact_directory.name
@@ -983,6 +992,11 @@ def _offline_evaluation(
     probability_model_family: str,
 ) -> dict[str, object]:
     assessment_target = partitions.assessment["profitable"].astype(int).to_numpy()
+    training_target = partitions.train["profitable"].astype(int).to_numpy()
+    training_weights = _decision_weights(partitions.train)
+    training_base_rate = float(
+        np.average(training_target, weights=training_weights)
+    )
     assessment_matrix = _matrix(partitions.assessment, numeric, categorical)
     raw = _validated_probability_array(
         estimator.predict_proba(assessment_matrix)[:, 1],
@@ -1055,6 +1069,15 @@ def _offline_evaluation(
             "assessment_above": int((raw > support_max).sum()),
         },
         "metric_weighting": "equal_weight_per_target_window_start",
+        "base_rate_model": {
+            "probability_source": "equal-decision-weighted-training_base_rate",
+            "training_base_rate": training_base_rate,
+            **_probability_metrics(
+                assessment_target,
+                np.full(len(assessment_target), training_base_rate, dtype=float),
+                sample_weight=_decision_weights(partitions.assessment),
+            ),
+        },
         "raw_model": _probability_metrics(
             assessment_target,
             raw,
@@ -1193,6 +1216,49 @@ def _probability_metrics(
         if np.unique(target).size == 2
         else None
     )
+    calibration_bins: list[dict[str, object]] = []
+    expected_calibration_error = 0.0
+    boundaries = np.linspace(0.0, 1.0, 11)
+    total_weight = float(np.sum(weights))
+    for index in range(10):
+        lower = float(boundaries[index])
+        upper = float(boundaries[index + 1])
+        selected = (
+            (probability >= lower)
+            & (
+                probability <= upper
+                if index == 9
+                else probability < upper
+            )
+        )
+        count = int(selected.sum())
+        selected_weight = float(np.sum(weights[selected]))
+        if count:
+            mean_probability = float(
+                np.average(probability[selected], weights=weights[selected])
+            )
+            observed_rate = float(
+                np.average(target[selected], weights=weights[selected])
+            )
+            if total_weight > 0.0:
+                expected_calibration_error += (
+                    selected_weight
+                    / total_weight
+                    * abs(mean_probability - observed_rate)
+                )
+        else:
+            mean_probability = None
+            observed_rate = None
+        calibration_bins.append(
+            {
+                "lower": lower,
+                "upper": upper,
+                "rows": count,
+                "weight": selected_weight,
+                "mean_probability": mean_probability,
+                "observed_rate": observed_rate,
+            }
+        )
     return {
         "rows": len(target),
         "target_base_rate": float(np.average(target, weights=weights)),
@@ -1200,6 +1266,10 @@ def _probability_metrics(
         "brier_score": float(brier),
         "roc_auc": auc,
         "accuracy_0_5": float(accuracy),
+        "expected_calibration_error_10_bin": float(
+            expected_calibration_error
+        ),
+        "reliability_bins": calibration_bins,
     }
 
 

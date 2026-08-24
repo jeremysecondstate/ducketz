@@ -41,8 +41,10 @@ from ml.strategy_publication import (
 from ml.strategy_selection.contracts import (
     BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
     BSGP_CALIBRATED_MODEL_SCORE_BASIS,
+    OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS,
     SCENARIO_COVERAGE_SCORE_BASIS,
 )
+from ml.strategy_selection.slow_model import load_promoted_strategy_model
 from options.publication import read_option_snapshot
 
 
@@ -238,6 +240,14 @@ RUNTIMES = (
         ".ducketz-strategy-runtime.lock",
         ("strategy",),
     ),
+    RuntimeSpec(
+        "strategy_profit_training",
+        "ml.strategy_profit_training_runtime",
+        ("--datastore-target pc", "--utc-hour 22"),
+        ".ducketz-strategy-profit-training-runtime.lock",
+        ("strategy-profit-training",),
+        maximum_log_age=pd.Timedelta(hours=30),
+    ),
 )
 
 
@@ -336,6 +346,12 @@ def build_monitor_report(
                 now,
                 publication=publications.require_strategy(),
             ),
+        )
+    )
+    checks.append(
+        _safe(
+            "strategy_profit_model_authority",
+            lambda: _strategy_profit_model_check(root),
         )
     )
     checks.append(
@@ -582,7 +598,10 @@ def _log_activity_check(
         candidates = [
             path
             for path in stdout_files
-            if any(alias in path.name.lower() for alias in spec.log_aliases)
+            if any(
+                _runtime_log_name_matches(path.name, alias)
+                for alias in spec.log_aliases
+            )
         ]
         if not candidates:
             problems.append(f"{spec.name}:stdout-missing")
@@ -645,6 +664,27 @@ def _paired_stderr_path(stdout: Path) -> Path:
     if name.endswith(".out.log"):
         return stdout.with_name(name[: -len(".out.log")] + ".err.log")
     raise ValueError(f"Unsupported runtime stdout log name: {stdout}")
+
+
+def _runtime_log_name_matches(name: str, alias: str) -> bool:
+    """Match one exact log stem, allowing only a timestamp/prefix separator.
+
+    Substring matching lets the `strategy` runtime accidentally claim the
+    newer `strategy-profit-training` log.  Primary launch logs use the exact
+    stem; legacy logs may prepend a timestamp followed by `-` or `_`.
+    """
+
+    clean_name = str(name).strip().lower()
+    clean_alias = str(alias).strip().lower()
+    for suffix in (".stdout.log", ".out.log"):
+        if clean_name.endswith(suffix):
+            stem = clean_name[: -len(suffix)]
+            return (
+                stem == clean_alias
+                or stem.endswith(f"-{clean_alias}")
+                or stem.endswith(f"_{clean_alias}")
+            )
+    return False
 
 
 def _loop_a_cycle_check(
@@ -1076,6 +1116,40 @@ def _strategy_check(
         age_minutes=_minutes(age),
         candidate_rows=len(candidates),
         audit_rows=len(audit),
+    )
+
+
+def _strategy_profit_model_check(root: Path) -> dict[str, object]:
+    loaded = {
+        horizon: load_promoted_strategy_model(root, horizon=horizon)
+        for horizon in ("1d", "1w")
+    }
+    missing = [horizon for horizon, value in loaded.items() if value is None]
+    status = _WARN if missing else _PASS
+    return _check(
+        "strategy_profit_model_authority",
+        status,
+        (
+            "Daily/weekly Strategy profit model authority is unavailable."
+            if missing
+            else "Daily/weekly Strategy profit models and receipts verify."
+        ),
+        missing_horizons=missing,
+        models={
+            horizon: (
+                {
+                    "canonical_horizon": value.canonical_horizon,
+                    "artifact_directory": str(value.model.artifact_directory),
+                    "promotion_gate": dict(
+                        value.report.get("promotion_gate", {})
+                    ),
+                }
+                if value is not None
+                else None
+            )
+            for horizon, value in loaded.items()
+        },
+        orders_placed=0,
     )
 
 
@@ -1556,6 +1630,7 @@ def summarize_strategy_quality(
         {
             BSGP_CALIBRATED_MODEL_SCORE_BASIS,
             BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
+            OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS,
         }
     )
     heuristic = basis.eq(SCENARIO_COVERAGE_SCORE_BASIS)
@@ -1568,6 +1643,10 @@ def summarize_strategy_quality(
     fully_priced = coverage.ge(1.0 - 1e-12) & candidates[
         "pricing_source"
     ].astype("string").str.upper().isin({"BSGP", "BLACK_SCHOLES"})
+    opra_execution_scored = basis.eq(
+        OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS
+    )
+    declared_evidence = fully_priced | opra_execution_scored
     model_reports = reports.get("model_reports")
     if not isinstance(model_reports, Mapping):
         raise ValueError("Strategy model reports have no model_reports object")
@@ -1621,12 +1700,18 @@ def summarize_strategy_quality(
     elif calibrated_rows == 0:
         status = _WARN
         text = "Strategy is publishing research-only Scenario Coverage, not calibrated probabilities."
-    elif not bool((fitted & fully_priced & quality).any()):
+    elif not bool((fitted & declared_evidence & quality).any()):
         status = _WARN
-        text = "Calibrated Strategy rows exist but none pass full pricing and quality gates."
+        text = (
+            "Calibrated Strategy rows exist but none pass their declared "
+            "pricing/execution and quality gates."
+        )
     else:
         status = _PASS
-        text = "Strategy publishes calibrated, fully priced, quality-passing candidates."
+        text = (
+            "Strategy publishes calibrated, evidence-backed, "
+            "quality-passing candidates."
+        )
     return {
         "status": status,
         "summary": text,
@@ -1642,6 +1727,7 @@ def summarize_strategy_quality(
         "calibrated_candidate_rows": calibrated_rows,
         "scenario_coverage_candidate_rows": heuristic_rows,
         "fully_priced_rows": int(fully_priced.sum()),
+        "opra_execution_scored_rows": int(opra_execution_scored.sum()),
         "quality_passing_rows": int(quality.sum()),
         "complete_observed_outcome_rows": complete_outcomes,
         "pricing_eligible_observed_outcome_rows": total_pricing_eligible,
