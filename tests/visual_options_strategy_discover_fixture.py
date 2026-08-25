@@ -1,6 +1,6 @@
 """Fake-only visual fixture for Options Command Center > Discover.
 
-Usage: pythonw tests/visual_options_strategy_discover_fixture.py [--details] [--probe]
+Usage: pythonw tests/visual_options_strategy_discover_fixture.py [--details] [--chat] [--probe]
 No network-capable Schwab session is supplied.
 """
 
@@ -29,6 +29,7 @@ from ml.strategy_selection.contracts import (
 def main() -> None:
     probe = "--probe" in sys.argv
     show_details = "--details" in sys.argv
+    show_chat = "--chat" in sys.argv
     helpers = runpy.run_path(
         str(Path(__file__).with_name("test_options_strategy_ui.py"))
     )
@@ -185,6 +186,10 @@ def main() -> None:
             tab._fill_ticket(0)
             if show_details:
                 tab._open_decision_details()
+            if show_chat:
+                tab._open_options_chat(
+                    "Decision Details" if show_details else "Options Strategies"
+                )
             if probe:
                 root.update_idletasks()
                 geometry = (
@@ -195,6 +200,11 @@ def main() -> None:
                     geometry += (
                         " details="
                         f"{tab._decision_details_window.winfo_geometry()}"
+                    )
+                if tab.options_chat._window is not None:
+                    geometry += (
+                        " chat="
+                        f"{tab.options_chat._window.winfo_geometry()}"
                     )
                 print(geometry, flush=True)
                 root.after(500, root.destroy)

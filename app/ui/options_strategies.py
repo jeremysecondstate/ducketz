@@ -38,6 +38,10 @@ from app.ui.background_tasks import run_in_background
 from app.ui.options_management import OptionsManagementView
 from app.ui.option_templates import OptionsTemplatesView
 from app.ui.option_order_review import OptionOrderReviewDialog
+from app.ui.options_chat import (
+    OptionsChatController,
+    build_options_chat_context,
+)
 from app.ui.past_positions import PastPositionsView
 from app.ui.theme import (
     ACCENT,
@@ -240,6 +244,10 @@ class OptionsStrategiesTab:
         self.impact_decision_summary = tk.StringVar(
             value="Select a strategy to inspect its decision evidence"
         )
+        self.options_chat = OptionsChatController(
+            root=self.root,
+            context_provider=self._options_chat_context,
+        )
 
         self._apply_styles()
         self._build(parent)
@@ -426,6 +434,12 @@ class OptionsStrategiesTab:
             command=self.refresh,
         )
         self.refresh_button.pack(side=tk.RIGHT, anchor=tk.N)
+        ttk.Button(
+            header,
+            text="ChatGPT ↗",
+            style="StrategyDetails.TButton",
+            command=lambda: self._open_options_chat("Options Strategies"),
+        ).pack(side=tk.RIGHT, anchor=tk.N, padx=(0, 8))
 
         notebook = ttk.Notebook(outer, style="StrategySecondary.TNotebook")
         notebook.pack(fill=tk.BOTH, expand=True)
@@ -1415,7 +1429,135 @@ class OptionsStrategiesTab:
             style="StrategyDetails.TButton",
             command=self._close_decision_details,
         ).pack(side=tk.RIGHT)
+        ttk.Button(
+            footer,
+            text="ChatGPT · Options Desk ↗",
+            style="StrategyDetails.TButton",
+            command=lambda: self._open_options_chat("Decision Details"),
+        ).pack(side=tk.RIGHT, padx=(0, 8))
         self._refresh_decision_details()
+
+    def _open_options_chat(self, entry_point: str) -> None:
+        owner: tk.Misc = self.root
+        if entry_point == "Decision Details":
+            details_window = getattr(self, "_decision_details_window", None)
+            if details_window is not None:
+                owner = details_window
+        self.options_chat.open(entry_point=entry_point, owner=owner)
+
+    def _options_chat_context(self, entry_point: str) -> dict[str, object]:
+        active_workspace = "Options Strategies"
+        notebook = getattr(self, "_secondary_notebook", None)
+        if notebook is not None:
+            try:
+                active_workspace = str(notebook.tab(notebook.select(), "text"))
+            except tk.TclError:
+                pass
+
+        details_open = False
+        details_window = getattr(self, "_decision_details_window", None)
+        if details_window is not None:
+            try:
+                details_open = bool(details_window.winfo_exists())
+            except tk.TclError:
+                pass
+
+        screen = {
+            "chat_entry_point": entry_point,
+            "active_workspace": active_workspace,
+            "decision_details_open": details_open,
+            "symbol": _variable_text(getattr(self, "symbol", None)),
+            "horizon": _variable_text(getattr(self, "horizon_label", None)),
+            "position_summary": _variable_text(
+                getattr(self, "position_summary", None)
+            ),
+            "candidate_summary": _variable_text(
+                getattr(self, "candidate_summary", None)
+            ),
+            "candidate_sort_column": getattr(
+                self,
+                "_candidate_sort_column",
+                None,
+            ),
+            "candidate_sort_descending": bool(
+                getattr(self, "_candidate_sort_descending", False)
+            ),
+        }
+        ticket = {
+            "strategy": _variable_text(getattr(self, "ticket_strategy", None)),
+            "structure": _variable_text(getattr(self, "ticket_structure", None)),
+            "selected_schwab_order": _variable_text(
+                getattr(self, "ticket_order_part", None)
+            ),
+            "strategy_quantity": _variable_text(
+                getattr(self, "ticket_quantity", None)
+            ),
+            "order_method": _variable_text(
+                getattr(self, "ticket_order_method", None)
+            ),
+            "limit_price": _variable_text(
+                getattr(self, "ticket_limit_price", None)
+            ),
+            "duration": _variable_text(getattr(self, "ticket_duration", None)),
+        }
+        impact_display = {
+            "source": _variable_text(getattr(self, "impact_source", None)),
+            "status": _variable_text(getattr(self, "impact_status", None)),
+            "applicable_funds_label": _variable_text(
+                getattr(self, "impact_available_label", None)
+            ),
+            "applicable_funds": _variable_text(
+                getattr(self, "impact_available", None)
+            ),
+            "estimated_requirement": _variable_text(
+                getattr(self, "impact_requirement", None)
+            ),
+            "estimated_funds_after": _variable_text(
+                getattr(self, "impact_funds_after", None)
+            ),
+            "cash_balance": _variable_text(
+                getattr(self, "impact_cash_balance", None)
+            ),
+            "buying_power": _variable_text(
+                getattr(self, "impact_buying_power", None)
+            ),
+            "opening_cash_flow": _variable_text(
+                getattr(self, "impact_cash_flow", None)
+            ),
+            "ticket_max_loss": _variable_text(
+                getattr(self, "impact_ticket_max_loss", None)
+            ),
+            "position_plus_ticket_max_loss": _variable_text(
+                getattr(self, "impact_combined_max_loss", None)
+            ),
+            "worst_case_at": _variable_text(
+                getattr(self, "impact_worst_case", None)
+            ),
+            "risk_scope": _variable_text(
+                getattr(self, "impact_risk_scope", None)
+            ),
+            "risk_basis": _variable_text(
+                getattr(self, "impact_risk_basis", None)
+            ),
+            "requirement_basis": _variable_text(
+                getattr(self, "impact_requirement_basis", None)
+            ),
+            "position": _variable_text(getattr(self, "impact_position", None)),
+            "decision_summary": _variable_text(
+                getattr(self, "impact_decision_summary", None)
+            ),
+        }
+        return build_options_chat_context(
+            snapshot=getattr(self, "snapshot", None),
+            view=getattr(self, "view", None),
+            visible_candidates=getattr(self, "visible_candidates", ()),
+            selected_candidate=getattr(self, "selected_candidate", None),
+            selected_order_index=int(getattr(self, "selected_order_index", 0)),
+            portfolio_impact=getattr(self, "_current_portfolio_impact", None),
+            screen=screen,
+            ticket=ticket,
+            impact_display=impact_display,
+        )
 
     def _close_decision_details(self) -> None:
         self._close_metric_help()
@@ -2382,6 +2524,16 @@ class OptionsStrategiesTab:
             return
         for item in table.get_children():
             table.delete(item)
+
+
+def _variable_text(variable: object) -> str:
+    getter = getattr(variable, "get", None)
+    if not callable(getter):
+        return ""
+    try:
+        return str(getter())
+    except tk.TclError:
+        return ""
 
 
 def _sort_candidate_views(

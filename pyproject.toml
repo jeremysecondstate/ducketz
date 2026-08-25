@@ -39,6 +39,9 @@ ducketz-strategy-profit-training = "ml.strategy_profit_training_runtime:main"
 ducketz-strategy-value-challenger = "ml.strategy_value_challenger:main"
 
 [project.optional-dependencies]
+options-chat = [
+    "openai>=2.45.0,<3",
+]
 ml = [
     "scikit-learn>=1.7",
     "joblib>=1.4",
