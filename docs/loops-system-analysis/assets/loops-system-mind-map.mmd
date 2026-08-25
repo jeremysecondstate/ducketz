@@ -1,56 +1,165 @@
-%% Ducketz recurring production-loop architecture.
-%% Keep transient process IDs, run directories, symbols, and row counts out of this file.
+%% Ducketz recurring production-loop architecture, reconciled 2026-08-24.
+%% Keep transient PIDs, run IDs, symbols, row counts, and live health out of this file.
+%% The hourly :42 operations heartbeat is deliberately shown outside the eight-owner set.
+%%{init: {
+  "theme": "base",
+  "layout": "elk",
+  "fontFamily": "Segoe UI, Arial, sans-serif",
+  "flowchart": {
+    "htmlLabels": true,
+    "curve": "basis",
+    "nodeSpacing": 95,
+    "rankSpacing": 125,
+    "padding": 24,
+    "wrappingWidth": 360
+  },
+  "themeVariables": {
+    "fontFamily": "Inter, Segoe UI, Arial, sans-serif",
+    "fontSize": "18px",
+    "lineColor": "#64748b",
+    "clusterBkg": "#f8fafc",
+    "clusterBorder": "#94a3b8",
+    "edgeLabelBackground": "#ffffff"
+  }
+}}%%
+
 flowchart TB
-  SCHEDULE["Exactly seven independently scheduled owners<br/>phase offsets are not one central transaction"]:::note
+  accTitle: Current Ducketz Loops system architecture
+  accDescr: Eight independent recurring owners, their DATASTORE artifacts and direct dependencies, plus the separate hourly operations and overnight accuracy lane.
 
-  subgraph FOUNDATIONS["Foundational evidence owners"]
-    direction LR
-    CME["1 · CME/L2 runtime<br/>5 s, 15 s, and 60 s lanes"]:::owner
-    A["2 · Loop A<br/>15-minute boundary"]:::owner
-    F["3 · Daily ALFRED runtime<br/>07:00 UTC, once per UTC date"]:::owner
+  SYSTEM["CURRENT PRODUCTION SHAPE<br/>Eight independently scheduled singleton owners exchange verified files and atomic pointers through C:/DATASTORE.<br/>Quarter-hour phase offsets improve freshness; they do not create one central transaction."]:::system
+
+  subgraph RUNTIMES["RUNTIME OWNERSHIP AND DIRECT CONNECTIONS"]
+    direction TB
+
+    subgraph FOUNDATIONS["FOUNDATIONAL EVIDENCE OWNERS"]
+      direction LR
+      CME["1 · CME/L2 RUNTIME<br/>MBP-10 every 5 s · BBO every 15 s · OHLCV every 60 s<br/>Owns current CME events, L2 authority, and 1 h cross-asset context"]:::owner
+      A["2 · LOOP A<br/>15-minute boundary · 20 s recurring pre-start pause<br/>Owns exact bar readiness, provider data, calculated features, and cycle state"]:::owner
+      F["3 · DAILY ALFRED<br/>07:00 UTC · at most once per UTC date<br/>Owns causal macro vintages, release context, readiness, and daily receipt"]:::owner
+    end
+
+    subgraph QUARTER["INDEPENDENT QUARTER-HOUR OWNERS"]
+      direction LR
+      P["4 · ACTIVE PRICING<br/>every 15 min · phase +1<br/>Owns target outcomes and full option-pricing generations"]:::prediction
+      B["5 · DIRECTIONAL LOOP B<br/>every 15 min · phase +5<br/>Owns calibrated 1 h / 4 h / 1 d / 1 w + weekly-component directional publications"]:::prediction
+      O["6 · OPTIONS CAPTURE<br/>every 15 min · phase +6<br/>Owns prospective OPRA-first snapshots and pending fallback reconciliation"]:::owner
+    end
+
+    subgraph STRATEGY_TIER["STRATEGY AUTHORITIES"]
+      direction LR
+      S["7 · STRATEGY RUNTIME<br/>every 15 min · phase +10<br/>Owns exact-leg candidates, audits, scores, ranks, and current Strategy authority"]:::prediction
+      T["8 · STRATEGY-PROFIT TRAINING<br/>daily at 22:00 UTC<br/>Owns promoted 1 d / 1 w profit models; weekly day components reuse the 1 d model"]:::trainer
+    end
+
+    W["OWNED PRICING WORKER<br/>one local materialize/train pass after fast target publication<br/>nonblocking · not independently scheduled"]:::worker
+    H["HISTORY / BOOTSTRAP BOUNDARY<br/>verified OPRA ohlcv-1h + cbbo-1m partitions<br/>one-shot maintenance · not a recurring owner"]:::boundary
+
+    CME -->|"R1 · hourly CME context"| B
+
+    A -->|"R2 · exact bars + readiness"| P
+    A -->|"R3 · readiness, target close, vol + cutoff"| O
+    A -->|"R4 · bars, features + complete cycle"| B
+    A -->|"R5 · stock BBO / liquidity"| S
+    A ==>|"1 h stock bars"| T
+
+    F -->|"R6 · causal FEDFUNDS"| P
+    F -->|"R7 · macro context + readiness"| B
+    B ==>|"R8 · asynchronous decision grid"| F
+
+    P -.->|"R9 · optional target barrier proof"| O
+    O -->|"R10 · earlier chains + later outcomes"| P
+    P ==>|"R11 · optional opx__ surface"| B
+    O -->|"R12 · opt__ quality surface"| B
+
+    B -->|"R13 · exact source + LIVE probabilities"| S
+    O -->|"R14 · chains, BBOs + outcomes"| S
+    P -->|"R15 · exact-leg fair value + uncertainty"| S
+    B -.->|"R16 · phase +5 → +6 only · no artifact"| O
+
+    B -->|"samples + predictions"| T
+    H ==>|"canonical historical OPRA evidence"| T
+    T -->|"verified daily / weekly profit models"| S
+
+    P -.->|"owned launch"| W
+    W ==>|"optional prior residual model"| P
   end
 
-  subgraph QUARTER["Quarter-hour owners with independent supervisors"]
-    direction LR
-    P["4 · Active Pricing<br/>phase +1"]:::prediction
-    B["5 · Directional Loop B<br/>phase +5"]:::prediction
-    O["6 · Options Capture<br/>phase +6"]:::owner
+  subgraph DATASTORE["C:/DATASTORE · VERIFIED FILE BUS — WHAT EACH OWNER READS AND WRITES"]
+    direction TB
+    STORE_NOTE["Loops do not call one another in memory. A solid edge above means the consumer verifies the producer's persisted artifact;<br/>dotted edges are control/readiness/timing; thick edges are optional, historical, fallback, or asynchronous."]:::note
+
+    subgraph DATA_FOUNDATIONS["FOUNDATIONAL DATA"]
+      direction LR
+      CME_D["1 · CME/L2 DATA<br/><b>READS</b> · retained pools/cme cursors/events; optional verified CME archive seed<br/><b>WRITES</b> · pools/cme/events · pools/cme/runtime · pools/cme/snapshots<br/>pools/cme/features/cross-asset-context/databento/1h.parquet"]:::dataOwner
+      A_D["2 · LOOP A DATA<br/><b>READS</b> · retained stocks/{symbol} provider/calculated state and cycle records<br/><b>WRITES</b> · stocks/{symbol}/bars|quotes|fundamentals|technicals|signals<br/>loop-a/bar-readiness + bar-readiness-latest<br/>.ducketz-loop-a-cycle.json + .ducketz-loop-a-complete.json"]:::dataOwner
+      F_D["3 · ALFRED DATA<br/><b>READS</b> · canonical macro vintages + current ml/latest samples decision grid<br/><b>WRITES</b> · pools/macro/features/alfred-release-context/fred<br/>ml/macro-readiness(-latest) · ml/fred-alfred-runtime(-latest)"]:::dataOwner
+    end
+
+    subgraph DATA_QUARTER["QUARTER-HOUR DATA"]
+      direction LR
+      P_D["4 · ACTIVE PRICING DATA<br/><b>READS</b> · Loop A readiness/bars · ALFRED FEDFUNDS · earlier option snapshots<br/>optional ml/option-pricing-loop-native-* model/materialization<br/><b>WRITES</b> · ml/option-pricing-target-outcomes + target-latest<br/>ml/option-pricing-runs + option-pricing-latest · predictions/evaluations/surfaces"]:::dataPrediction
+      B_D["5 · LOOP B DATA<br/><b>READS</b> · Loop A stock evidence · CME context · ALFRED readiness/context<br/>option snapshots/features · optional Pricing surfaces<br/><b>WRITES</b> · immutable ml/runs/{run}/samples|predictions|evaluations|monitoring<br/>authoritative ml/latest/run.json"]:::dataPrediction
+      O_D["6 · OPTIONS DATA<br/><b>READS</b> · Loop A readiness/latest-complete · Pricing target barrier<br/>pending state + verified history cursors<br/><b>WRITES</b> · stocks/{symbol}/options/snapshots/{provider}<br/>stocks/{symbol}/options/latest/{provider}.json · options/pending-captures"]:::dataOwner
+    end
+
+    subgraph DATA_STRATEGY["STRATEGY DATA"]
+      direction LR
+      S_D["7 · STRATEGY DATA<br/><b>READS</b> · ml/latest · option snapshot heads · ml/option-pricing-latest<br/>Loop A stock BBO · ml/strategy-profit-training-latest<br/><b>WRITES</b> · ml/strategy-runs/{run}/strategy-candidates + strategy-audit<br/>authoritative ml/strategy-latest/run.json"]:::dataPrediction
+      T_D["8 · STRATEGY-PROFIT TRAINING DATA<br/><b>READS</b> · Loop B samples/predictions · Loop A 1 h stock bars<br/>market-data/databento/opra/OPRA.PILLAR/{ohlcv-1h,cbbo-1m}<br/><b>WRITES</b> · ml/strategy-profit-modeled-outcomes · ml/strategy-models<br/>ml/strategy-profit-training-runs + strategy-profit-training-latest"]:::dataTrainer
+    end
+
+    subgraph DATA_CONSUMERS["READ-ONLY CONSUMERS"]
+      direction LR
+      UI["Rolling Forecast UI ← ml/latest<br/>Options Strategy UI ← ml/strategy-latest<br/>monitor validates backend value/label parity; visual inspection occurs only when the app is already open"]:::consumer
+    end
+
+    CME_D ~~~ A_D ~~~ F_D
+    P_D ~~~ B_D ~~~ O_D
+    S_D ~~~ T_D
+    B_D -->|"directional authority"| UI
+    S_D -->|"strategy authority"| UI
   end
 
-  S["7 · Strategy runtime<br/>15 minutes at phase +10"]:::prediction
-  W["OWNED WORKER<br/>Pricing residual model<br/>not an independent loop"]:::worker
+  subgraph OPERATIONS["OPERATIONS PLANE — OBSERVES THE SYSTEM; IT IS NOT A NINTH PRODUCTION LOOP"]
+    direction LR
+    HB["loops-hourly-operations<br/>Loops Monitor + Adaptive Trainer<br/>one wake every local hour at :42"]:::operations
+    BASE["EVERY WAKE<br/>run compact scheduled guardian once<br/>verify all 8 process pairs, locks, logs, pointers, receipts, lineage, UI parity, storage<br/>at most one allowlisted liveness repair; zero orders"]:::opsDetail
+    NIGHT["ELIGIBLE XNYS SESSION<br/>one bounded 45-minute overnight stage per wake · 13:42–05:42 PT<br/>17 stable stages; 14:42 selects daily/weekly monitor; only 02:42 may build one shadow experiment<br/>05:42 pre-open freeze · no production model/pointer/order mutation"]:::opsDetail
+    OPS_D["OPERATIONS EVIDENCE<br/><b>READS</b> · root runtime locks · logs/ducketz · current authorities + receipts<br/><b>WRITES ONLY WHEN WARRANTED</b> · logs/ducketz/system-guardian/audit<br/>stage checkpoints / bounded shadow evidence; unchanged or immature evidence is an explicit skip"]:::opsData
 
-  SCHEDULE ~~~ A
+    HB --> BASE
+    HB --> NIGHT
+    BASE -.->|"observe / guarded repair audit"| OPS_D
+    NIGHT ==>|"one receipt-backed stage"| OPS_D
+  end
 
-  CME -->|"R1"| B
+  SYSTEM ~~~ RUNTIMES
+  S ~~~ STORE_NOTE
+  STORE_NOTE ~~~ HB
 
-  A -->|"R2 data"| P
-  A -.->|"R2 control"| P
-  A -->|"R3 data"| O
-  A -.->|"R3 control"| O
-  A -->|"R4 data"| B
-  A -.->|"R4 control"| B
-  A -->|"R5"| S
+  classDef system fill:#0f172a,stroke:#0f172a,color:#ffffff,stroke-width:2px,font-size:20px;
+  classDef owner fill:#e8f1ff,stroke:#315f9d,color:#14233a,stroke-width:2px,font-size:18px;
+  classDef prediction fill:#e8f7ed,stroke:#2f7650,color:#153522,stroke-width:2px,font-size:18px;
+  classDef trainer fill:#f1eafe,stroke:#6d4bb3,color:#2f2053,stroke-width:2px,font-size:18px;
+  classDef worker fill:#fff2cc,stroke:#986a00,color:#3f2d00,stroke-width:2px,stroke-dasharray:7 4,font-size:17px;
+  classDef boundary fill:#fff7ed,stroke:#c2410c,color:#431407,stroke-width:2px,stroke-dasharray:7 4,font-size:17px;
+  classDef dataOwner fill:#f6f9ff,stroke:#315f9d,color:#14233a,stroke-width:1.5px,font-size:17px;
+  classDef dataPrediction fill:#f3fbf5,stroke:#2f7650,color:#153522,stroke-width:1.5px,font-size:17px;
+  classDef dataTrainer fill:#faf7ff,stroke:#6d4bb3,color:#2f2053,stroke-width:1.5px,font-size:17px;
+  classDef operations fill:#ffedd5,stroke:#c2410c,color:#431407,stroke-width:2px,font-size:18px;
+  classDef opsDetail fill:#fff7ed,stroke:#c2410c,color:#431407,stroke-width:1.5px,font-size:17px;
+  classDef opsData fill:#fffaf3,stroke:#9a3412,color:#431407,stroke-width:1.5px,font-size:17px;
+  classDef consumer fill:#f1f5f9,stroke:#475569,color:#0f172a,stroke-width:1.5px,font-size:17px;
+  classDef note fill:#f8fafc,stroke:#64748b,color:#1e293b,stroke-width:1.5px,font-size:17px;
 
-  F -->|"R6"| P
-  F -->|"R7 data"| B
-  F -.->|"R7 control"| B
-  B ==>|"R8 history"| F
-
-  P -.->|"R9 control"| O
-  O -->|"R10 across time"| P
-  P ==>|"R11 optional"| B
-  O -->|"R12"| B
-
-  B -->|"R13"| S
-  O -->|"R14"| S
-  P -->|"R15"| S
-  B -.->|"R16 PHASE ONLY<br/>no artifact"| O
-
-  P -.->|"owned launch"| W
-  W ==>|"optional prior"| P
-
-  classDef owner fill:#e8f1ff,stroke:#315f9d,color:#14233a,stroke-width:1.5px;
-  classDef prediction fill:#e8f7ed,stroke:#2f7650,color:#153522,stroke-width:1.5px;
-  classDef worker fill:#fff2cc,stroke:#986a00,color:#3f2d00,stroke-width:2px,stroke-dasharray:5 3;
-  classDef note fill:#f3f4f6,stroke:#6b7280,color:#1f2937,stroke-width:1px;
+  style RUNTIMES fill:#f8fafc,stroke:#64748b,stroke-width:2px
+  style FOUNDATIONS fill:#f8fbff,stroke:#94a3b8,stroke-width:1px
+  style QUARTER fill:#f6fcf8,stroke:#94a3b8,stroke-width:1px
+  style STRATEGY_TIER fill:#faf8ff,stroke:#94a3b8,stroke-width:1px
+  style DATASTORE fill:#ffffff,stroke:#64748b,stroke-width:2px
+  style DATA_FOUNDATIONS fill:#f8fbff,stroke:#cbd5e1,stroke-width:1px
+  style DATA_QUARTER fill:#f6fcf8,stroke:#cbd5e1,stroke-width:1px
+  style DATA_STRATEGY fill:#faf8ff,stroke:#cbd5e1,stroke-width:1px
+  style DATA_CONSUMERS fill:#f8fafc,stroke:#cbd5e1,stroke-width:1px
+  style OPERATIONS fill:#fffaf3,stroke:#c2410c,stroke-width:2px
