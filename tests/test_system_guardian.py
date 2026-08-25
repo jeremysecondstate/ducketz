@@ -100,6 +100,54 @@ def test_launch_allowlist_covers_each_runtime_once() -> None:
     assert "--skip-historical-catchup" in _LAUNCH_BY_RUNTIME["options"].arguments
 
 
+def test_scheduled_main_surfaces_overnight_stage_in_guardian_and_monitor(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    schedule = {
+        "schema_version": "loops-overnight-accuracy-schedule-v1",
+        "monitor_mode": "hourly",
+        "lane": "OVERNIGHT_ACCURACY",
+        "overnight_stage": {
+            "index": 1,
+            "count": 17,
+            "id": "seal-market-session",
+        },
+    }
+    monkeypatch.setattr(
+        system_guardian,
+        "scheduled_monitor_context",
+        lambda: schedule,
+    )
+    monkeypatch.setattr(
+        system_guardian,
+        "resolve_datastore_dir",
+        lambda **_kwargs: tmp_path,
+    )
+    monkeypatch.setattr(
+        system_guardian,
+        "run_guardian",
+        lambda *_args, **_kwargs: {
+            "schema_version": "loops-system-guardian-v1",
+            "mode": "hourly",
+            "status": "HEALTHY",
+            "monitor": {"status": "HEALTHY"},
+            "orders_placed": 0,
+        },
+    )
+
+    exit_code = system_guardian.main(
+        ["--datastore", str(tmp_path), "--mode", "scheduled", "--compact"]
+    )
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert payload["requested_mode"] == "scheduled"
+    assert payload["schedule"] == schedule
+    assert payload["monitor"]["schedule"] == schedule
+
+
 def test_checked_in_launcher_is_hidden_idempotent_and_allowlist_owned() -> None:
     path = (
         Path(__file__).resolve().parents[1]

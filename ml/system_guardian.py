@@ -23,7 +23,7 @@ from ml.system_monitor import (
     _process_checks,
     _windows_process_rows,
     build_monitor_report,
-    scheduled_monitor_mode,
+    scheduled_monitor_context,
 )
 
 
@@ -1157,7 +1157,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--compact", action="store_true")
     args = parser.parse_args(argv)
-    selected_mode = scheduled_monitor_mode() if args.mode == "scheduled" else args.mode
+    schedule = scheduled_monitor_context() if args.mode == "scheduled" else None
+    selected_mode = str(schedule["monitor_mode"]) if schedule is not None else args.mode
     try:
         root = resolve_datastore_dir(
             root_dir=args.datastore,
@@ -1168,8 +1169,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             mode=selected_mode,
             repair_liveness=args.repair_liveness,
         )
-        if args.mode == "scheduled":
+        if schedule is not None:
             report["requested_mode"] = "scheduled"
+            report["schedule"] = schedule
+            monitor = report.get("monitor")
+            if isinstance(monitor, dict):
+                monitor["schedule"] = schedule
     except Exception as exc:
         report = {
             "schema_version": GUARDIAN_SCHEMA_VERSION,
@@ -1184,6 +1189,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             },
             "orders_placed": 0,
         }
+        if schedule is not None:
+            report["requested_mode"] = "scheduled"
+            report["schedule"] = schedule
     print(
         json.dumps(
             report,

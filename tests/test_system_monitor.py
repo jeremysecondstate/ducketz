@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
 import pandas as pd
+import pytest
 
 import ml.system_monitor as system_monitor
 import ml.strategy_value_challenger as value_challenger
@@ -20,11 +21,13 @@ from ml.strategy_selection.contracts import (
     SCENARIO_COVERAGE_SCORE_BASIS,
 )
 from ml.system_monitor import (
+    OVERNIGHT_ACCURACY_STAGES,
     RUNTIMES,
     _log_activity_check,
     _loop_a_cycle_check,
     _overall_status,
     _process_checks,
+    scheduled_monitor_context,
     scheduled_monitor_mode,
     summarize_directional_quality,
     summarize_strategy_quality,
@@ -524,12 +527,174 @@ def test_scheduled_mode_uses_xnys_post_close_daily_and_final_session_weekly() ->
     assert scheduled_monitor_mode(datetime(2026, 8, 22, 14, 42, tzinfo=pacific)) == "hourly"
 
 
+def test_regular_session_maps_all_seventeen_overnight_accuracy_stages() -> None:
+    pacific = ZoneInfo("America/Los_Angeles")
+    hours = (13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5)
+
+    for index, hour in enumerate(hours, start=1):
+        day = 19 if hour >= 13 else 20
+        context = scheduled_monitor_context(
+            datetime(2026, 8, day, hour, 42, tzinfo=pacific)
+        )
+        stage = context["overnight_stage"]
+
+        assert context["lane"] == "OVERNIGHT_ACCURACY"
+        assert context["session_date"] == "2026-08-19"
+        assert context["final_eligible_session_of_week"] is False
+        assert context["monitor_mode"] == ("daily" if hour == 14 else "hourly")
+        assert isinstance(stage, dict)
+        assert stage["index"] == index
+        assert stage["count"] == len(OVERNIGHT_ACCURACY_STAGES) == 17
+        assert stage["id"] == OVERNIGHT_ACCURACY_STAGES[index - 1].stage_id
+        assert stage["max_runtime_minutes"] == 45
+
+    shadow = scheduled_monitor_context(
+        datetime(2026, 8, 20, 2, 42, tzinfo=pacific)
+    )["overnight_stage"]
+    freeze = scheduled_monitor_context(
+        datetime(2026, 8, 20, 5, 42, tzinfo=pacific)
+    )["overnight_stage"]
+    ui_audit = scheduled_monitor_context(
+        datetime(2026, 8, 19, 15, 42, tzinfo=pacific)
+    )["overnight_stage"]
+    assert ui_audit["id"] == "audit-ui-output-parity"
+    assert ui_audit["action_scope"] == "UI_VALIDATION"
+    assert shadow["id"] == "run-shadow-ablation"
+    assert shadow["shadow_experiment_allowed"] is True
+    assert freeze["id"] == "preopen-freeze"
+    assert freeze["production_freeze"] is True
+
+
+def test_ui_value_parity_checks_forecast_and_strategy_display_units() -> None:
+    forecast_frame = pd.DataFrame(
+        [
+            {
+                "id": "AAPL|1h|2026-08-24T20:00:00Z",
+                "symbol": "AAPL",
+                "horizon": "1h",
+                "actionability_status": "ACTIONABLE",
+                "probability_up": 0.62,
+                "probability_down": 0.38,
+            },
+            {
+                "id": "AAPL|1w-d5|2026-08-21T20:00:00Z",
+                "symbol": "AAPL",
+                "horizon": "1w-d5",
+                "actionability_status": "NOT_ACTIONABLE",
+                "intelligence_status": "NOT_APPLICABLE_TO_REMAINING_WEEK",
+                "probability_up": None,
+                "probability_down": None,
+            },
+        ]
+    )
+    route = SimpleNamespace(
+        id="AAPL|1h|2026-08-24T20:00:00Z",
+        symbol="AAPL",
+        horizon="1h",
+        actionability_status="ACTIONABLE",
+        intelligence_status="CURRENT_PREDICTION",
+        probability_up=0.62,
+        probability_down=0.38,
+        is_actionable=True,
+        is_missing=False,
+    )
+    forecast = SimpleNamespace(
+        symbols=(SimpleNamespace(all_routes=(route,)),),
+    )
+
+    forecast_parity = system_monitor._forecast_ui_value_parity(
+        forecast_frame,
+        forecast,
+    )
+
+    assert forecast_parity["status"] == "PASS"
+    assert forecast_parity["probability_routes_displayed"] == 1
+    assert forecast_parity[
+        "calendar_inapplicable_routes_intentionally_omitted"
+    ] == 1
+
+    strategy_frame = pd.DataFrame(
+        [
+            {
+                "id": "candidate-1",
+                "direction_probability_up": 0.62,
+                "scenario_coverage_score": 0.75,
+                "decision_score": 0.58,
+                "expected_return_on_risk": 0.12,
+                "expected_net_profit": 24.0,
+            }
+        ]
+    )
+    candidate = SimpleNamespace(
+        candidate_id="candidate-1",
+        direction_probability_up=62.0,
+        scenario_coverage=75.0,
+        predictive_score=58.0,
+        expected_return=0.12,
+        expected_net_profit=24.0,
+    )
+    strategy = SimpleNamespace(candidates=(candidate,))
+
+    strategy_parity = system_monitor._strategy_ui_value_parity(
+        strategy_frame,
+        strategy,
+    )
+
+    assert strategy_parity["status"] == "PASS"
+    assert strategy_parity["calibrated_probability_candidates"] == 1
+
+    candidate.predictive_score = 0.58
+    with pytest.raises(ValueError, match="calibrated probability mismatch"):
+        system_monitor._strategy_ui_value_parity(strategy_frame, strategy)
+
+
+def test_overnight_accuracy_cycle_stops_after_one_post_session_night() -> None:
+    pacific = ZoneInfo("America/Los_Angeles")
+
+    final_stage = scheduled_monitor_context(
+        datetime(2026, 8, 22, 5, 42, tzinfo=pacific)
+    )
+    later_weekend = scheduled_monitor_context(
+        datetime(2026, 8, 22, 13, 42, tzinfo=pacific)
+    )
+    monday_preopen = scheduled_monitor_context(
+        datetime(2026, 8, 24, 5, 42, tzinfo=pacific)
+    )
+
+    assert final_stage["monitor_mode"] == "hourly"
+    assert final_stage["final_eligible_session_of_week"] is True
+    assert final_stage["overnight_stage"]["id"] == "preopen-freeze"
+    assert later_weekend["lane"] == "STANDARD_OPERATIONS"
+    assert later_weekend["overnight_stage"] is None
+    assert monday_preopen["lane"] == "STANDARD_OPERATIONS"
+    assert monday_preopen["overnight_stage"] is None
+
+
+def test_overnight_schedule_uses_early_close_evidence_without_shifting_slots() -> None:
+    pacific = ZoneInfo("America/Los_Angeles")
+
+    context = scheduled_monitor_context(
+        datetime(2026, 11, 27, 13, 42, tzinfo=pacific)
+    )
+
+    assert context["lane"] == "OVERNIGHT_ACCURACY"
+    assert context["session_date"] == "2026-11-27"
+    assert str(context["session_close_local"]).startswith("2026-11-27T10:00:00")
+    assert context["overnight_stage"]["id"] == "seal-market-session"
+
+
 def test_scheduled_weekly_mode_uses_holiday_week_final_session_not_friday() -> None:
     pacific = ZoneInfo("America/Los_Angeles")
 
     assert scheduled_monitor_mode(datetime(2026, 4, 1, 14, 42, tzinfo=pacific)) == "daily"
     assert scheduled_monitor_mode(datetime(2026, 4, 2, 14, 42, tzinfo=pacific)) == "weekly"
     assert scheduled_monitor_mode(datetime(2026, 4, 3, 14, 42, tzinfo=pacific)) == "hourly"
+    assert scheduled_monitor_context(
+        datetime(2026, 4, 2, 14, 42, tzinfo=pacific)
+    )["final_eligible_session_of_week"] is True
+    assert scheduled_monitor_context(
+        datetime(2026, 4, 3, 14, 42, tzinfo=pacific)
+    )["overnight_stage"] is None
 
 
 def test_log_discovery_prefers_current_legacy_runtime_log_over_old_primary(

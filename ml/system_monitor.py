@@ -52,6 +52,7 @@ from options.publication import read_option_snapshot
 
 
 MONITOR_SCHEMA_VERSION = "loops-system-monitor-v1"
+OVERNIGHT_SCHEDULE_SCHEMA_VERSION = "loops-overnight-accuracy-schedule-v1"
 _PASS = "PASS"
 _INFO = "INFO"
 _WARN = "WARN"
@@ -85,6 +86,134 @@ _WEEKLY_CLUSTER_COLUMNS = (
     "target_window_start",
     "target_window_end",
 )
+
+
+@dataclass(frozen=True)
+class OvernightStageSpec:
+    stage_id: str
+    title: str
+    objective: str
+    action_scope: str = "READ_ONLY_EVIDENCE"
+    shadow_experiment_allowed: bool = False
+    production_freeze: bool = False
+
+
+_OVERNIGHT_LOCAL_HOURS = (
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+)
+OVERNIGHT_ACCURACY_STAGES = (
+    OvernightStageSpec(
+        "seal-market-session",
+        "Seal the completed market session",
+        "Verify final bars, predictions, options publications, fingerprints, and target boundaries before optimization.",
+    ),
+    OvernightStageSpec(
+        "audit-input-quality",
+        "Audit input quality and lineage",
+        "Measure missing or duplicate bars, stale inputs, timestamp and schema errors, nulls, latency, coverage, and lineage drift.",
+    ),
+    OvernightStageSpec(
+        "audit-ui-output-parity",
+        "Audit Duckets UI output parity",
+        "Verify Rolling Forecast and Options Strategy values, labels, units, freshness, empty states, and visual presentation against receipt-valid publications.",
+        action_scope="UI_VALIDATION",
+    ),
+    OvernightStageSpec(
+        "evaluate-directional-1h",
+        "Evaluate mature 1h predictions",
+        "Evaluate causally mature 1h coverage, calibration, proper scores, hit rate, and cohort-specific errors.",
+    ),
+    OvernightStageSpec(
+        "evaluate-directional-4h",
+        "Evaluate mature 4h predictions",
+        "Evaluate causally mature 4h coverage, calibration, proper scores, hit rate, and horizon-specific failure patterns.",
+    ),
+    OvernightStageSpec(
+        "evaluate-directional-1d",
+        "Evaluate mature 1d predictions",
+        "Evaluate prior causally mature 1d vintages for calibration, drift, coverage, and regime-specific errors.",
+    ),
+    OvernightStageSpec(
+        "evaluate-directional-1w",
+        "Evaluate mature 1w predictions",
+        "Evaluate weekly vintages only when sufficient independent causally mature outcomes exist.",
+    ),
+    OvernightStageSpec(
+        "audit-cross-horizon-coherence",
+        "Audit cross-horizon coherence",
+        "Find unexplained 1h, 4h, 1d, and 1w disagreements without forcing distinct horizons to agree.",
+    ),
+    OvernightStageSpec(
+        "audit-options-inputs",
+        "Audit options inputs",
+        "Check option-chain completeness, quote age, spreads, strikes, expirations, Greeks clocks, liquidity evidence, and missing reasons.",
+    ),
+    OvernightStageSpec(
+        "audit-pricing-execution",
+        "Audit pricing and execution evidence",
+        "Test Pricing coverage, conservative fills, fees, slippage, execution haircuts, and outlier valuations.",
+    ),
+    OvernightStageSpec(
+        "evaluate-strategy-outcomes",
+        "Evaluate exact options-strategy outcomes",
+        "Evaluate mature 1d and 1w exact-strategy positive net return after modeled execution and fees.",
+    ),
+    OvernightStageSpec(
+        "audit-probability-calibration",
+        "Audit probability calibration",
+        "Compare raw and calibrated probabilities, reliability bins, ECE, Brier, log loss, base rates, and probability collapse.",
+    ),
+    OvernightStageSpec(
+        "select-nightly-bottleneck",
+        "Select the nightly accuracy bottleneck",
+        "Choose one evidence-backed problem and preregister its hypothesis, cohort, primary and safety metrics, and rollback rule.",
+    ),
+    OvernightStageSpec(
+        "run-shadow-ablation",
+        "Run one bounded shadow ablation",
+        "Run the session's sole new isolated data, feature, calibration, or model experiment without production wiring.",
+        action_scope="SHADOW_ONLY_BUILD",
+        shadow_experiment_allowed=True,
+    ),
+    OvernightStageSpec(
+        "compare-challenger",
+        "Compare champion and challenger",
+        "Compare identical chronological evidence with assessment isolation, reproducible fingerprints, and no new tuning.",
+        action_scope="READ_ONLY_VALIDATION",
+    ),
+    OvernightStageSpec(
+        "stress-and-gate-review",
+        "Stress results and review gates",
+        "Stress symbols, regimes, windows, missing-data conditions, fees, and execution assumptions, then accept, reject, or propose.",
+        action_scope="READ_ONLY_VALIDATION",
+    ),
+    OvernightStageSpec(
+        "preopen-freeze",
+        "Freeze and verify before market open",
+        "Perform final health and rollback verification, summarize the overnight cycle, and make no new experimental production change.",
+        action_scope="PREOPEN_FREEZE",
+        production_freeze=True,
+    ),
+)
+
+if len(_OVERNIGHT_LOCAL_HOURS) != len(OVERNIGHT_ACCURACY_STAGES):
+    raise RuntimeError("Overnight stage hours and specifications must remain aligned")
 
 
 @dataclass(frozen=True)
@@ -1752,6 +1881,14 @@ def _ui_check(
         ),
         loaded_at=now.to_pydatetime(),
     )
+    forecast_parity = _forecast_ui_value_parity(
+        pd.read_parquet(forecast.source_path),
+        forecast,
+    )
+    strategy_parity = _strategy_ui_value_parity(
+        pd.read_parquet(strategy.source_path),
+        strategy,
+    )
     expected_routes = len(set(symbols)) * len(INTERNAL_HORIZON_ORDER)
     forecast_ok = (
         forecast.source_row_count == expected_routes
@@ -1769,7 +1906,8 @@ def _ui_check(
         "ui_contracts",
         status,
         (
-            "Both production UI adapters load and enforce their visibility contracts."
+            "Both production UI adapters load and preserve authoritative "
+            "output values and visibility semantics."
             if status == _PASS
             else "A production UI adapter returned incomplete current output."
         ),
@@ -1785,7 +1923,264 @@ def _ui_check(
             candidate.manual_order_actionable for candidate in strategy.candidates
         ),
         heuristic_manually_actionable_candidates=heuristic_actionable,
+        forecast_value_parity=forecast_parity,
+        strategy_value_parity=strategy_parity,
+        visual_render_checked=False,
+        visual_render_scope=(
+            "Backend contract check only; the dedicated overnight UI stage may "
+            "inspect an already-open Duckets desktop window."
+        ),
     )
+
+
+def _forecast_ui_value_parity(
+    frame: pd.DataFrame,
+    forecast: object,
+) -> dict[str, object]:
+    """Prove that adapter-visible forecast values match their published rows."""
+
+    raw_rows: dict[tuple[str, str], Mapping[str, object]] = {}
+    for row in frame.to_dict("records"):
+        key = (
+            str(row.get("symbol") or "").strip().upper(),
+            str(row.get("horizon") or "").strip().lower(),
+        )
+        if not all(key) or key in raw_rows:
+            raise ValueError("Forecast UI parity found a blank or duplicate source route")
+        raw_rows[key] = row
+
+    visible_routes: dict[tuple[str, str], object] = {}
+    for symbol_view in getattr(forecast, "symbols", ()):
+        for route in getattr(symbol_view, "all_routes", ()):
+            if bool(getattr(route, "is_missing", False)):
+                continue
+            key = (
+                str(getattr(route, "symbol", "")).strip().upper(),
+                str(getattr(route, "horizon", "")).strip().lower(),
+            )
+            if not all(key) or key in visible_routes:
+                raise ValueError("Forecast UI parity found a blank or duplicate adapter route")
+            visible_routes[key] = route
+
+    missing = sorted(set(raw_rows).difference(visible_routes))
+    extra = sorted(set(visible_routes).difference(raw_rows))
+    intentionally_omitted: list[tuple[str, str]] = []
+    for key in missing:
+        row = raw_rows[key]
+        source_up = _optional_finite_ui_number(
+            row.get("probability_up"),
+            label=f"{key[0]} {key[1]} omitted source probability up",
+        )
+        source_down = _optional_finite_ui_number(
+            row.get("probability_down"),
+            label=f"{key[0]} {key[1]} omitted source probability down",
+        )
+        if (
+            key[1].startswith("1w-d")
+            and str(row.get("actionability_status") or "") == "NOT_ACTIONABLE"
+            and str(row.get("intelligence_status") or "")
+            == "NOT_APPLICABLE_TO_REMAINING_WEEK"
+            and source_up is None
+            and source_down is None
+        ):
+            intentionally_omitted.append(key)
+    unexpected_missing = sorted(set(missing).difference(intentionally_omitted))
+    if unexpected_missing or extra:
+        raise ValueError(
+            "Forecast UI route parity failed: "
+            f"missing={unexpected_missing[:5]!r}, extra={extra[:5]!r}"
+        )
+
+    displayed_routes = 0
+    intentionally_hidden_routes = 0
+    for key, route in visible_routes.items():
+        row = raw_rows[key]
+        if str(getattr(route, "id", "") or "") != str(row.get("id") or ""):
+            raise ValueError(f"Forecast UI ID mismatch for {key[0]} {key[1]}")
+        if str(getattr(route, "actionability_status", "")) != str(
+            row.get("actionability_status") or ""
+        ):
+            raise ValueError(
+                f"Forecast UI actionability mismatch for {key[0]} {key[1]}"
+            )
+
+        source_up = _optional_finite_ui_number(
+            row.get("probability_up"),
+            label=f"{key[0]} {key[1]} source probability up",
+        )
+        source_down = _optional_finite_ui_number(
+            row.get("probability_down"),
+            label=f"{key[0]} {key[1]} source probability down",
+        )
+        visible_up = _optional_finite_ui_number(
+            getattr(route, "probability_up", None),
+            label=f"{key[0]} {key[1]} UI probability up",
+        )
+        visible_down = _optional_finite_ui_number(
+            getattr(route, "probability_down", None),
+            label=f"{key[0]} {key[1]} UI probability down",
+        )
+        if (visible_up is None) != (visible_down is None):
+            raise ValueError(f"Forecast UI exposed a partial probability for {key}")
+        should_show = bool(getattr(route, "is_actionable", False)) or str(
+            getattr(route, "actionability_status", "")
+        ) == "FROZEN_WEEKLY_SNAPSHOT" or (
+            str(getattr(route, "actionability_status", ""))
+            == "TARGET_WINDOW_STARTED"
+            and str(getattr(route, "intelligence_status", ""))
+            == "FORECAST_IN_PROGRESS"
+        )
+        if should_show and visible_up is None:
+            raise ValueError(f"Forecast UI hid a current probability for {key}")
+        if visible_up is None:
+            intentionally_hidden_routes += 1
+            continue
+        if source_up is None or source_down is None:
+            raise ValueError(f"Forecast UI invented a probability for {key}")
+        if not (
+            math.isclose(visible_up, source_up, abs_tol=1e-12)
+            and math.isclose(visible_down, source_down, abs_tol=1e-12)
+        ):
+            raise ValueError(f"Forecast UI probability value mismatch for {key}")
+        if not (
+            0.0 <= visible_up <= 1.0
+            and 0.0 <= visible_down <= 1.0
+            and math.isclose(visible_up + visible_down, 1.0, abs_tol=1e-8)
+        ):
+            raise ValueError(f"Forecast UI exposed an invalid probability pair for {key}")
+        displayed_routes += 1
+
+    return {
+        "status": "PASS",
+        "source_routes": len(raw_rows),
+        "adapter_routes": len(visible_routes),
+        "calendar_inapplicable_routes_intentionally_omitted": len(
+            intentionally_omitted
+        ),
+        "probability_routes_displayed": displayed_routes,
+        "probability_routes_intentionally_hidden": intentionally_hidden_routes,
+        "probability_scale": "0_TO_1_FORMATTED_AS_PERCENT",
+    }
+
+
+def _strategy_ui_value_parity(
+    frame: pd.DataFrame,
+    strategy: object,
+) -> dict[str, object]:
+    """Prove that strategy display units and rows match the publication."""
+
+    raw_rows = {
+        str(row.get("id") or ""): row for row in frame.to_dict("records")
+    }
+    if "" in raw_rows or len(raw_rows) != len(frame):
+        raise ValueError("Strategy UI parity found a blank or duplicate candidate ID")
+    candidates = {
+        str(getattr(candidate, "candidate_id", "") or ""): candidate
+        for candidate in getattr(strategy, "candidates", ())
+    }
+    if "" in candidates or len(candidates) != len(
+        tuple(getattr(strategy, "candidates", ()))
+    ):
+        raise ValueError("Strategy UI parity found a blank or duplicate adapter ID")
+    if set(raw_rows) != set(candidates):
+        missing = sorted(set(raw_rows).difference(candidates))
+        extra = sorted(set(candidates).difference(raw_rows))
+        raise ValueError(
+            "Strategy UI candidate parity failed: "
+            f"missing={missing[:5]!r}, extra={extra[:5]!r}"
+        )
+
+    calibrated = 0
+    scenario_only = 0
+    for candidate_id, row in raw_rows.items():
+        candidate = candidates[candidate_id]
+        checks = (
+            (
+                "direction probability",
+                getattr(candidate, "direction_probability_up", None),
+                row.get("direction_probability_up"),
+                100.0,
+            ),
+            (
+                "scenario coverage",
+                getattr(candidate, "scenario_coverage", None),
+                row.get("scenario_coverage_score"),
+                100.0,
+            ),
+            (
+                "expected return",
+                getattr(candidate, "expected_return", None),
+                row.get("expected_return_on_risk"),
+                1.0,
+            ),
+            (
+                "expected net profit",
+                getattr(candidate, "expected_net_profit", None),
+                row.get("expected_net_profit"),
+                1.0,
+            ),
+        )
+        for label, visible, source, scale in checks:
+            visible_number = _optional_finite_ui_number(
+                visible,
+                label=f"{candidate_id} UI {label}",
+            )
+            source_number = _optional_finite_ui_number(
+                source,
+                label=f"{candidate_id} source {label}",
+            )
+            if visible_number is None or source_number is None or not math.isclose(
+                visible_number,
+                source_number * scale,
+                rel_tol=1e-12,
+                abs_tol=1e-10,
+            ):
+                raise ValueError(f"Strategy UI {label} mismatch for {candidate_id}")
+
+        source_probability = _optional_finite_ui_number(
+            row.get("decision_score"),
+            label=f"{candidate_id} source calibrated probability",
+        )
+        visible_probability = _optional_finite_ui_number(
+            getattr(candidate, "predictive_score", None),
+            label=f"{candidate_id} UI calibrated probability",
+        )
+        if source_probability is None:
+            if visible_probability is not None:
+                raise ValueError(
+                    f"Strategy UI invented calibrated probability for {candidate_id}"
+                )
+            scenario_only += 1
+        else:
+            if visible_probability is None or not math.isclose(
+                visible_probability,
+                source_probability * 100.0,
+                rel_tol=1e-12,
+                abs_tol=1e-10,
+            ):
+                raise ValueError(
+                    f"Strategy UI calibrated probability mismatch for {candidate_id}"
+                )
+            calibrated += 1
+
+    return {
+        "status": "PASS",
+        "source_candidates": len(raw_rows),
+        "adapter_candidates": len(candidates),
+        "calibrated_probability_candidates": calibrated,
+        "scenario_coverage_only_candidates": scenario_only,
+        "probability_scale": "SOURCE_0_TO_1_ADAPTER_PERCENT_POINTS",
+        "expected_return_scale": "SOURCE_FRACTION_FORMATTED_AS_PERCENT",
+    }
+
+
+def _optional_finite_ui_number(value: object, *, label: str) -> float | None:
+    if value is None or pd.isna(value):
+        return None
+    number = float(value)
+    if not math.isfinite(number):
+        raise ValueError(f"{label} is non-finite")
+    return number
 
 
 def _storage_check(root: Path) -> dict[str, object]:
@@ -2831,32 +3226,56 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def scheduled_monitor_mode(value: datetime | None = None) -> str:
-    """Select post-close daily/weekly layers from the XNYS session calendar."""
+def scheduled_monitor_context(value: datetime | None = None) -> dict[str, object]:
+    """Select the monitor layer and deterministic overnight accuracy stage."""
 
-    local = value or datetime.now().astimezone()
-    if local.tzinfo is None:
+    supplied = value or datetime.now().astimezone()
+    if supplied.tzinfo is None:
         raise ValueError("scheduled monitor clock must be timezone-aware")
-    if local.hour != 14:
-        return "hourly"
-    observed = pd.Timestamp(local).tz_convert("UTC")
-    market_date = observed.tz_convert("America/New_York").tz_localize(None).normalize()
+    local = pd.Timestamp(supplied).tz_convert("America/Los_Angeles")
+    observed = local.tz_convert("UTC")
+    base: dict[str, object] = {
+        "schema_version": OVERNIGHT_SCHEDULE_SCHEMA_VERSION,
+        "monitor_mode": "hourly",
+        "lane": "STANDARD_OPERATIONS",
+        "timezone": "America/Los_Angeles",
+        "observed_at": observed.isoformat(),
+        "local_observed_at": local.isoformat(),
+        "session_date": None,
+        "session_close": None,
+        "session_close_local": None,
+        "next_session_open": None,
+        "next_session_open_local": None,
+        "final_eligible_session_of_week": None,
+        "overnight_stage": None,
+    }
+    local_hour = int(local.hour)
+    if local_hour not in _OVERNIGHT_LOCAL_HOURS:
+        base["reason"] = "OUTSIDE_REGULAR_OVERNIGHT_STAGE_HOURS"
+        return base
+
+    session_date = local.tz_localize(None).normalize()
+    if local_hour <= 5:
+        session_date -= pd.Timedelta(days=1)
     calendar = _xnys_monitor_calendar(
-        observed - pd.Timedelta(days=7),
-        observed + pd.Timedelta(days=7),
+        session_date - pd.Timedelta(days=7),
+        session_date + pd.Timedelta(days=10),
     )
     sessions = [
         session
         for session in calendar.sessions
-        if pd.Timestamp(session).tz_localize(None).normalize() == market_date
+        if pd.Timestamp(session).tz_localize(None).normalize() == session_date
     ]
     if len(sessions) != 1:
-        return "hourly"
+        base["reason"] = "NO_ELIGIBLE_XNYS_SESSION_FOR_OVERNIGHT_WINDOW"
+        return base
     session = sessions[0]
     close = pd.Timestamp(calendar.session_close(session)).tz_convert("UTC")
     if observed < close:
-        return "hourly"
-    week_start = market_date - pd.Timedelta(days=int(market_date.weekday()))
+        base["reason"] = "ELIGIBLE_XNYS_SESSION_NOT_YET_CLOSED"
+        return base
+
+    week_start = session_date - pd.Timedelta(days=int(session_date.weekday()))
     week_end = week_start + pd.Timedelta(days=6)
     week_sessions = [
         candidate
@@ -2865,9 +3284,67 @@ def scheduled_monitor_mode(value: datetime | None = None) -> str:
         <= pd.Timestamp(candidate).tz_localize(None).normalize()
         <= week_end
     ]
-    if session == max(week_sessions):
-        return "weekly"
-    return "daily"
+    final_session = bool(week_sessions and session == max(week_sessions))
+    monitor_mode = "hourly"
+    if local_hour == 14:
+        monitor_mode = "weekly" if final_session else "daily"
+
+    later_sessions = [candidate for candidate in calendar.sessions if candidate > session]
+    next_open = (
+        pd.Timestamp(calendar.session_open(min(later_sessions))).tz_convert("UTC")
+        if later_sessions
+        else None
+    )
+    stage_index = _OVERNIGHT_LOCAL_HOURS.index(local_hour)
+    stage = OVERNIGHT_ACCURACY_STAGES[stage_index]
+    scheduled_wake = local.normalize() + pd.Timedelta(
+        hours=local_hour,
+        minutes=42,
+    )
+    window_start = session_date.tz_localize("America/Los_Angeles") + pd.Timedelta(
+        hours=13,
+        minutes=42,
+    )
+    window_end = window_start + pd.Timedelta(hours=16)
+    base.update(
+        {
+            "monitor_mode": monitor_mode,
+            "lane": "OVERNIGHT_ACCURACY",
+            "session_date": session_date.strftime("%Y-%m-%d"),
+            "session_close": close.isoformat(),
+            "session_close_local": close.tz_convert("America/Los_Angeles").isoformat(),
+            "next_session_open": next_open.isoformat() if next_open is not None else None,
+            "next_session_open_local": (
+                next_open.tz_convert("America/Los_Angeles").isoformat()
+                if next_open is not None
+                else None
+            ),
+            "final_eligible_session_of_week": final_session,
+            "overnight_window_start_local": window_start.isoformat(),
+            "overnight_window_end_local": window_end.isoformat(),
+            "overnight_stage": {
+                "index": stage_index + 1,
+                "count": len(OVERNIGHT_ACCURACY_STAGES),
+                "id": stage.stage_id,
+                "title": stage.title,
+                "objective": stage.objective,
+                "action_scope": stage.action_scope,
+                "scheduled_local_wake": scheduled_wake.isoformat(),
+                "requires_healthy_baseline": True,
+                "max_runtime_minutes": 45,
+                "shadow_experiment_allowed": stage.shadow_experiment_allowed,
+                "production_freeze": stage.production_freeze,
+            },
+            "reason": "ELIGIBLE_COMPLETED_XNYS_SESSION_OVERNIGHT_STAGE",
+        }
+    )
+    return base
+
+
+def scheduled_monitor_mode(value: datetime | None = None) -> str:
+    """Select the scheduled monitor layer while preserving the legacy API."""
+
+    return str(scheduled_monitor_context(value)["monitor_mode"])
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -2900,10 +3377,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         root_dir=args.datastore,
         target=None if args.datastore is not None else args.datastore_target,
     )
-    selected_mode = scheduled_monitor_mode() if args.mode == "scheduled" else args.mode
+    schedule = scheduled_monitor_context() if args.mode == "scheduled" else None
+    selected_mode = str(schedule["monitor_mode"]) if schedule is not None else args.mode
     report = build_monitor_report(root, mode=selected_mode)
-    if args.mode == "scheduled":
+    if schedule is not None:
         report["requested_mode"] = "scheduled"
+        report["schedule"] = schedule
     print(
         json.dumps(
             report,
@@ -2921,9 +3400,12 @@ if __name__ == "__main__":
 
 __all__ = [
     "MONITOR_SCHEMA_VERSION",
+    "OVERNIGHT_ACCURACY_STAGES",
+    "OVERNIGHT_SCHEDULE_SCHEMA_VERSION",
     "RUNTIMES",
     "build_monitor_report",
     "main",
+    "scheduled_monitor_context",
     "scheduled_monitor_mode",
     "summarize_directional_quality",
     "summarize_strategy_candidate_values",

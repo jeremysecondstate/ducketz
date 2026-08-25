@@ -47,9 +47,10 @@ time merely to clarify its first result.
 
 ## Runtime ownership and logs
 
-The monitored deployment is seven independently scheduled singleton owners:
+The monitored deployment is eight independently scheduled singleton owners:
 CME/L2, Daily ALFRED, Loop A, Active Pricing, Directional Loop B, Options
-Capture, and Strategy. Health requires all of the following, not a PID alone:
+Capture, Strategy, and Strategy-profit training. Health requires all of the
+following, not a PID alone:
 
 - exactly one allowlisted launcher and one child worker for each owner;
 - the expected module and production arguments in the worker command line;
@@ -170,9 +171,9 @@ never repackages the `1w` prediction route as a system-wide weekly evaluation.
 ## Exchange-calendar-aware scheduled selection
 
 The heartbeat wakes hourly at minute 42, allowing the `+1`, `+5`, `+6`, and
-`+10` phases to settle. Outside the local 2 PM hour, scheduled mode selects
-hourly operations. At the 2:42 PM wake it asks the XNYS calendar whether the
-local market date is an eligible session and already closed:
+`+10` phases to settle. The monitor layer remains lightweight hourly except at
+the local 2:42 PM wake, when it asks the XNYS calendar whether the local market
+date is an eligible session and already closed:
 
 - non-session or not-yet-closed date: hourly;
 - eligible non-final session of the exchange week: daily; and
@@ -180,7 +181,75 @@ local market date is an eligible session and already closed:
 
 Thus an exchange holiday Friday selects weekly evaluation after Thursday's
 eligible close; a hard-coded weekday test is not used.
-`ml/system_monitor.py:1872`
+`ml/system_monitor.py:3229`
+
+Scheduled monitor and guardian JSON also contain a `schedule` object with a
+separate overnight accuracy lane. On a completed eligible session, the regular
+17-stage window is 1:42 PM through 5:42 AM America/Los_Angeles. The local-hour
+mapping is stable across daylight saving changes, while XNYS session evidence
+prevents holidays or non-session dates from starting a stale cycle. An early
+close must already be complete before the 1:42 PM seal stage, but it does not
+shift or duplicate the regular stage catalog. Friday's cycle ends after the
+Saturday 5:42 AM freeze; unchanged Friday evidence is not replayed throughout
+the weekend.
+
+The stage metadata includes the eligible session and close, next session open,
+week-final flag, stable stage ID and objective, action scope, 45-minute bound,
+shadow-experiment permission, and pre-open freeze flag. It is additive: only
+the 2:42 PM stage selects the existing daily/weekly monitor layer, so expensive
+quality and weekly checks are not repeated seventeen times.
+
+## Overnight accuracy pipeline
+
+Every overnight wake first completes the same guardian/health baseline. A
+blocking runtime, provider, publication, integrity, lineage, storage, UI-parity,
+or order-safety incident preempts and defers accuracy work. An explicitly
+report-only prediction/model-quality warning does not authorize liveness repair
+or block the evidence stage; it becomes input to that stage, while the overall
+status remains `DEGRADED`. When operational contracts are established, the
+single stage selected by `schedule.overnight_stage` is:
+
+| Local wake | Stable stage ID | Responsibility |
+|---|---|---|
+| 13:42 | `seal-market-session` | Seal final bars, predictions, options publications, fingerprints, and target boundaries. |
+| 14:42 | `audit-input-quality` | Audit gaps, duplicates, staleness, timestamps, schemas, nulls, latency, coverage, and lineage. |
+| 15:42 | `audit-ui-output-parity` | Verify Duckets values and labels against authoritative outputs, then inspect visual presentation when the desktop app is already open. |
+| 16:42 | `evaluate-directional-1h` | Evaluate causally mature 1h coverage, calibration, proper scores, hit rate, and cohorts. |
+| 17:42 | `evaluate-directional-4h` | Evaluate mature 4h quality and horizon-specific failure patterns. |
+| 18:42 | `evaluate-directional-1d` | Evaluate prior mature 1d vintages, calibration, coverage, and drift. |
+| 19:42 | `evaluate-directional-1w` | Evaluate weekly vintages only with sufficient independent mature outcomes. |
+| 20:42 | `audit-cross-horizon-coherence` | Explain material horizon disagreements without forcing agreement. |
+| 21:42 | `audit-options-inputs` | Audit chains, quote age, spreads, strikes, expirations, Greeks clocks, liquidity, and missing reasons. |
+| 22:42 | `audit-pricing-execution` | Audit Pricing coverage, conservative fills, fees, slippage, haircuts, and outliers. |
+| 23:42 | `evaluate-strategy-outcomes` | Evaluate mature exact 1d/1w strategy net returns after modeled execution and fees. |
+| 00:42 | `audit-probability-calibration` | Audit raw/calibrated reliability, ECE, Brier, log loss, base rates, and collapse. |
+| 01:42 | `select-nightly-bottleneck` | Preregister one evidence-backed hypothesis, cohort, metrics, and rollback rule. |
+| 02:42 | `run-shadow-ablation` | Run the session's sole new bounded shadow-only experiment. |
+| 03:42 | `compare-challenger` | Compare champion and challenger on identical chronological assessment-clean evidence. |
+| 04:42 | `stress-and-gate-review` | Stress symbols, regimes, windows, missing data, fees, and execution; accept, reject, or propose. |
+| 05:42 | `preopen-freeze` | Perform final health/rollback verification, summarize, and prohibit new experimental production change. |
+
+Only the 2:42 AM stage may start a new shadow experiment. Later stages validate
+that same immutable experiment; they do not tune a second candidate. Unchanged
+fingerprints and immature outcomes produce an explicit verified skip. A stage
+must checkpoint or defer rather than overlap the next hourly wake. No stage can
+weaken causal clocks, assessment or lockbox separation, cohort or quality
+thresholds, promotion gates, Pricing requirements, or the zero-order contract.
+The sole checked-in Strategy-profit trainer remains the only production model
+promotion owner.
+
+The hourly `ui_contracts` baseline is data-authoritative even when no desktop
+window is open. It compares every Rolling Forecast route and Options Strategy
+candidate ID, probability, percentage scale, expected value, actionability
+status, and Scenario-Coverage-versus-ML meaning with the exact current Parquet
+publication. It also reports `visual_render_checked=false`, because a backend
+adapter check must not masquerade as a screenshot review. At the 3:42 PM UI
+stage, an already-open Duckets window may be inspected at its canonical size for
+clipping, overlap, truncation, contrast, stale/blank values, and misleading
+empty or error states. The scheduler does not pop open the app, authenticate,
+or touch order controls merely to obtain a screenshot; a closed window is
+reported as `NOT_OBSERVED_APP_CLOSED`, while value-parity failures remain real
+health incidents.
 
 ## Guarded liveness-recovery contract
 
@@ -220,17 +289,18 @@ model, or places an order.
 The existing heartbeat is updated in place, not duplicated:
 
 - ID: `loops-hourly-operations`
-- Name: `Loops Hourly + Daily + Weekly Monitor`
+- Name: `Loops Monitor + Adaptive Trainer`
 - Kind: heartbeat attached to its existing target task
 - Status: `ACTIVE`
 - Cadence: hourly at local minute 42
 - Responsibility: execute the one guardian command, parse its JSON even on
-  exit 2, and report selected mode, status/time/remediation, every WARN/FAIL,
-  and useful evidence with the semantic distinctions above.
+  exit 2, report selected mode/status/remediation and every WARN/FAIL, then run
+  at most the one eligible receipt-backed overnight stage.
 
-The prompt may explain guardian output. It may not improvise process repair,
-lock deletion, backfill, provider maintenance, pointer mutation, model
-promotion, code edits, or orders.
+The prompt may apply the smallest tested behavior-preserving root-cause repair
+under its bounded repair ladder. It may not improvise broad process repair,
+lock deletion, backfill, provider maintenance, pointer mutation, production
+feature/model/policy changes, or orders.
 
 ## Status meaning
 
