@@ -284,18 +284,39 @@ The guardian never edits code, mutates authority pointers, deletes arbitrary
 locks, initiates historical backfills or provider maintenance, promotes a
 model, or places an order.
 
-## Active heartbeat boundary
+## Active standalone scheduler boundary
 
-The existing heartbeat is updated in place, not duplicated:
+The existing automation is updated in place, not duplicated:
 
 - ID: `loops-hourly-operations`
 - Name: `Loops Monitor + Adaptive Trainer`
-- Kind: heartbeat attached to its existing target task
+- Kind: standalone local scheduled task; every run starts a fresh chat
 - Status: `ACTIVE`
 - Cadence: hourly at local minute 42
 - Responsibility: execute the one guardian command, parse its JSON even on
   exit 2, report selected mode/status/remediation and every WARN/FAIL, then run
   at most the one eligible receipt-backed overnight stage.
+
+The standalone scheduler prompt routes every fresh chat to the complete,
+checked-in contract in `HOURLY_AUTOMATION.md`; that file preserves the prior
+production workflow verbatim and adds only the explicit handoff protocol.
+
+Fresh chats resume through the advisory `loops-hourly-scheduler-handoff-v1`
+receipt chain beneath:
+
+```text
+C:\DATASTORE\logs\ducketz\system-guardian\scheduler-handoff
+```
+
+Every wake reads and checksum-verifies `current.json` before the guardian
+baseline, then commits one immutable handoff receipt before ending. The handoff
+captures the prior run sequence, selected schedule metadata, outcome,
+incident/remediation summary, actions already taken, evidence paths, changed
+files, and the next bounded action. It never supplies health, stage, model,
+publication, or order authority: a new run must revalidate every continuation
+against the current guardian schedule and verified production receipts. An
+invalid chain is a scheduling-continuity incident and cannot authorize replay
+of an unfinished repair or experiment. `ml/scheduler_handoff.py`
 
 The prompt may apply the smallest tested behavior-preserving root-cause repair
 under its bounded repair ladder. It may not improvise broad process repair,

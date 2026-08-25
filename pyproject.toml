@@ -35,6 +35,7 @@ ducketz-option-pricing-lockbox = "ml.option_pricing_lockbox:main"
 ducketz-option-pricing-loop-native = "ml.option_pricing_loop_native_worker:main"
 ducketz-system-monitor = "ml.system_monitor:main"
 ducketz-system-guardian = "ml.system_guardian:main"
+ducketz-scheduler-handoff = "ml.scheduler_handoff:main"
 ducketz-strategy-profit-training = "ml.strategy_profit_training_runtime:main"
 ducketz-strategy-value-challenger = "ml.strategy_value_challenger:main"
 

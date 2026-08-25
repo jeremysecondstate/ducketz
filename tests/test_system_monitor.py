@@ -648,6 +648,79 @@ def test_ui_value_parity_checks_forecast_and_strategy_display_units() -> None:
         system_monitor._strategy_ui_value_parity(strategy_frame, strategy)
 
 
+def test_forecast_ui_parity_accepts_expired_in_progress_probability_suppression() -> None:
+    forecast_frame = pd.DataFrame(
+        [
+            {
+                "id": "AAPL|1h|2026-08-25T13:05:00Z",
+                "symbol": "AAPL",
+                "horizon": "1h",
+                "actionability_status": "TARGET_WINDOW_STARTED",
+                "intelligence_status": "FORECAST_IN_PROGRESS",
+                "probability_up": 0.45,
+                "probability_down": 0.55,
+            }
+        ]
+    )
+    route = SimpleNamespace(
+        id="AAPL|1h|2026-08-25T13:05:00Z",
+        symbol="AAPL",
+        horizon="1h",
+        actionability_status="TARGET_WINDOW_STARTED",
+        intelligence_status="FORECAST_IN_PROGRESS",
+        probability_up=None,
+        probability_down=None,
+        target_window_end=datetime.fromisoformat("2026-08-25T14:30:00+00:00"),
+        is_actionable=False,
+        is_missing=False,
+    )
+    forecast = SimpleNamespace(
+        loaded_at=datetime.fromisoformat("2026-08-25T14:30:00+00:00"),
+        symbols=(SimpleNamespace(all_routes=(route,)),),
+    )
+
+    parity = system_monitor._forecast_ui_value_parity(forecast_frame, forecast)
+
+    assert parity["status"] == "PASS"
+    assert parity["probability_routes_displayed"] == 0
+    assert parity["probability_routes_intentionally_hidden"] == 1
+
+
+def test_forecast_ui_parity_rejects_hidden_active_in_progress_probability() -> None:
+    forecast_frame = pd.DataFrame(
+        [
+            {
+                "id": "AAPL|1h|2026-08-25T13:05:00Z",
+                "symbol": "AAPL",
+                "horizon": "1h",
+                "actionability_status": "TARGET_WINDOW_STARTED",
+                "intelligence_status": "FORECAST_IN_PROGRESS",
+                "probability_up": 0.45,
+                "probability_down": 0.55,
+            }
+        ]
+    )
+    route = SimpleNamespace(
+        id="AAPL|1h|2026-08-25T13:05:00Z",
+        symbol="AAPL",
+        horizon="1h",
+        actionability_status="TARGET_WINDOW_STARTED",
+        intelligence_status="FORECAST_IN_PROGRESS",
+        probability_up=None,
+        probability_down=None,
+        target_window_end=datetime.fromisoformat("2026-08-25T14:30:00+00:00"),
+        is_actionable=False,
+        is_missing=False,
+    )
+    forecast = SimpleNamespace(
+        loaded_at=datetime.fromisoformat("2026-08-25T14:29:59+00:00"),
+        symbols=(SimpleNamespace(all_routes=(route,)),),
+    )
+
+    with pytest.raises(ValueError, match="hid a current probability"):
+        system_monitor._forecast_ui_value_parity(forecast_frame, forecast)
+
+
 def test_overnight_accuracy_cycle_stops_after_one_post_session_night() -> None:
     pacific = ZoneInfo("America/Los_Angeles")
 
@@ -914,6 +987,11 @@ def test_strategy_value_shadow_monitor_warns_when_scheduler_is_behind(
         "read_current_strategy_value_challenger",
         lambda _root: shadow,
     )
+    monkeypatch.setattr(
+        system_monitor,
+        "_latest_completed_strategy_value_shadow_wake",
+        lambda _now: pd.Timestamp("2026-08-24T16:00:00Z"),
+    )
 
     check = system_monitor._strategy_value_shadow_check(
         tmp_path,
@@ -923,6 +1001,73 @@ def test_strategy_value_shadow_monitor_warns_when_scheduler_is_behind(
 
     assert check["status"] == "WARN"
     assert check["details"]["source_fingerprint_current"] is False
+    assert check["details"]["receipt_covers_latest_stage"] is False
+
+
+def test_strategy_value_shadow_monitor_waits_for_next_stage_gated_run(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    run = tmp_path / "ml" / "strategy-value-challenger-runs" / "run"
+    shadow = SimpleNamespace(
+        directory=run,
+        receipt_path=run / "receipt.json",
+        report={
+            "created_at": "2026-08-24T16:01:00Z",
+            "source_fingerprint_sha256": "e" * 64,
+            "decision": "BLOCKED_KEEP_CURRENT_AUTHORITY",
+            "promotion_eligible": False,
+            "horizons": {},
+        },
+    )
+    publication = StrategyPublication(
+        run_directory=tmp_path / "ml" / "strategy-runs" / "current",
+        manifest={},
+        receipt={},
+        pointer={},
+    )
+    monkeypatch.setattr(
+        value_challenger,
+        "strategy_value_source_fingerprint",
+        lambda *_args, **_kwargs: "f" * 64,
+    )
+    monkeypatch.setattr(
+        value_challenger,
+        "read_current_strategy_value_challenger",
+        lambda _root: shadow,
+    )
+    monkeypatch.setattr(
+        system_monitor,
+        "_latest_completed_strategy_value_shadow_wake",
+        lambda _now: pd.Timestamp("2026-08-24T16:00:00Z"),
+    )
+
+    check = system_monitor._strategy_value_shadow_check(
+        tmp_path,
+        now=pd.Timestamp("2026-08-25T20:00:00Z"),
+        publication=publication,
+    )
+
+    assert check["status"] == "INFO"
+    assert check["details"]["source_fingerprint_current"] is False
+    assert check["details"]["receipt_covers_latest_stage"] is True
+    assert "stage-gated" in check["summary"]
+
+
+def test_strategy_value_shadow_stage_cadence_tracks_completed_xnys_windows() -> None:
+    wake = system_monitor._latest_completed_strategy_value_shadow_wake(
+        pd.Timestamp("2026-08-25T20:42:52Z")
+    )
+
+    assert wake == pd.Timestamp("2026-08-25T09:42:00Z")
+
+
+def test_strategy_value_shadow_stage_cadence_does_not_expire_over_weekend() -> None:
+    wake = system_monitor._latest_completed_strategy_value_shadow_wake(
+        pd.Timestamp("2026-08-30T20:42:52Z")
+    )
+
+    assert wake == pd.Timestamp("2026-08-29T09:42:00Z")
 
 
 def _weekly_rows(

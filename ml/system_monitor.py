@@ -71,7 +71,6 @@ _STRATEGY_ROUTE_ROBUST_Z = 10.0
 _STRATEGY_FORMULA_RELATIVE_TOLERANCE = 1e-9
 _STRATEGY_FORMULA_ABSOLUTE_TOLERANCE = 1e-6
 _STRATEGY_VALUE_AUDIT_TOP_FINDINGS = 12
-_STRATEGY_VALUE_SHADOW_EXPECTED_CADENCE = pd.Timedelta(minutes=75)
 _WEEKLY_CONTRACT_COLUMNS = (
     "provider",
     "model_name",
@@ -1335,13 +1334,17 @@ def _strategy_value_shadow_check(
         shadow.report.get("source_fingerprint_sha256", "")
     )
     source_current = observed_fingerprint == current_fingerprint
+    latest_required_wake = _latest_completed_strategy_value_shadow_wake(now)
+    receipt_covers_latest_stage = (
+        latest_required_wake is None or created_at >= latest_required_wake
+    )
     if source_current:
         status = _PASS
         summary = "Strategy value shadow has a current checksum-valid receipt."
-    elif age <= _STRATEGY_VALUE_SHADOW_EXPECTED_CADENCE:
+    elif receipt_covers_latest_stage:
         status = _INFO
         summary = (
-            "Strategy value shadow is awaiting its next hourly fingerprint-gated run."
+            "Strategy value shadow is awaiting its next stage-gated fingerprint run."
         )
     else:
         status = _WARN
@@ -1372,12 +1375,52 @@ def _strategy_value_shadow_check(
         age_minutes=_minutes(age),
         source_fingerprint_current=source_current,
         source_fingerprint_sha256=observed_fingerprint,
+        latest_required_stage_wake=(
+            latest_required_wake.isoformat()
+            if latest_required_wake is not None
+            else None
+        ),
+        receipt_covers_latest_stage=receipt_covers_latest_stage,
         decision=shadow.report.get("decision"),
         promotion_eligible=shadow.report.get("promotion_eligible"),
         promotion_performed=False,
         orders_placed=0,
         horizons=horizon_health,
     )
+
+
+def _latest_completed_strategy_value_shadow_wake(
+    now: pd.Timestamp,
+) -> pd.Timestamp | None:
+    """Return the latest stage-14 wake whose 45-minute window has completed."""
+
+    shadow_stage_index = next(
+        index
+        for index, stage in enumerate(OVERNIGHT_ACCURACY_STAGES)
+        if stage.stage_id == "run-shadow-ablation"
+    )
+    shadow_stage_hour = _OVERNIGHT_LOCAL_HOURS[shadow_stage_index]
+    local_now = now.tz_convert("America/Los_Angeles")
+    local_date = local_now.tz_localize(None).normalize()
+    calendar = _xnys_monitor_calendar(
+        local_date - pd.Timedelta(days=14),
+        local_date + pd.Timedelta(days=1),
+    )
+    completed_wakes: list[pd.Timestamp] = []
+    for session in calendar.sessions:
+        session_date = pd.Timestamp(session).tz_localize(None).normalize()
+        wake_date = session_date + pd.Timedelta(
+            days=1 if shadow_stage_hour <= 5 else 0
+        )
+        wake_local = wake_date.tz_localize("America/Los_Angeles") + pd.Timedelta(
+            hours=shadow_stage_hour,
+            minutes=42,
+        )
+        if wake_local + pd.Timedelta(minutes=45) <= local_now:
+            completed_wakes.append(wake_local)
+    if not completed_wakes:
+        return None
+    return max(completed_wakes).tz_convert("UTC")
 
 
 def summarize_strategy_candidate_values(frame: pd.DataFrame) -> dict[str, object]:
@@ -2022,6 +2065,17 @@ def _forecast_ui_value_parity(
         )
         if (visible_up is None) != (visible_down is None):
             raise ValueError(f"Forecast UI exposed a partial probability for {key}")
+        loaded_at = getattr(forecast, "loaded_at", None)
+        target_window_end = getattr(route, "target_window_end", None)
+        in_progress_window_open = True
+        if loaded_at is not None and target_window_end is not None:
+            in_progress_window_open = _utc(
+                loaded_at,
+                f"{key[0]} {key[1]} UI loaded-at timestamp",
+            ) < _utc(
+                target_window_end,
+                f"{key[0]} {key[1]} target-window end",
+            )
         should_show = bool(getattr(route, "is_actionable", False)) or str(
             getattr(route, "actionability_status", "")
         ) == "FROZEN_WEEKLY_SNAPSHOT" or (
@@ -2029,6 +2083,7 @@ def _forecast_ui_value_parity(
             == "TARGET_WINDOW_STARTED"
             and str(getattr(route, "intelligence_status", ""))
             == "FORECAST_IN_PROGRESS"
+            and in_progress_window_open
         )
         if should_show and visible_up is None:
             raise ValueError(f"Forecast UI hid a current probability for {key}")

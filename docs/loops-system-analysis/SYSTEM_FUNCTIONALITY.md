@@ -225,12 +225,17 @@ immutable audit receipts. The guardian never repairs data/model/lineage
 quality, backfills history, changes pointers, promotes models, edits code, or
 places orders. `ml/system_guardian.py:237`
 
-**Active automation:** `loops-hourly-operations` is the single active heartbeat
-at minute 42. It runs the compact scheduled guardian exactly once, parses JSON
-even on exit 2, and reports selected mode/status/time/remediation plus every
-WARN/FAIL while distinguishing process from publication health, immature from
-poor measured outcomes, and Scenario Coverage from Calibrated Probability.
-See `MONITORING.md` for its exact responsibility boundary.
+**Active automation:** `loops-hourly-operations` is the single active standalone
+local scheduled task at minute 42, with a fresh chat for every run. It reads a
+checksum-verified advisory handoff, runs the compact scheduled guardian exactly
+once, parses JSON even on exit 2, and reports selected
+mode/status/time/remediation plus every WARN/FAIL while distinguishing process
+from publication health, immature from poor measured outcomes, and Scenario
+Coverage from Calibrated Probability. Before ending it commits an immutable
+handoff receipt with the next bounded action; current guardian schedule
+metadata and verified production receipts remain the sole authority.
+`ml/scheduler_handoff.py`; see `MONITORING.md` for the exact responsibility
+boundary.
 
 ## Clocks, causality, and authority boundaries
 
