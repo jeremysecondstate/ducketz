@@ -10,14 +10,12 @@ from app.services.schwab_order_fields import (
 )
 
 
-def test_equity_time_in_force_choices_include_thinkorswim_overnight_values() -> None:
+def test_equity_time_in_force_choices_match_supported_trader_api_values() -> None:
     assert SCHWAB_EQUITY_TIME_IN_FORCE_CHOICES == (
         "DAY",
         "GTC",
         "EXT",
         "GTC_EXT",
-        "EXTO",
-        "GTC_EXTO",
         "AM",
         "PM",
     )
@@ -66,14 +64,14 @@ def test_unknown_trader_api_session_duration_cannot_be_edited_as_another_tif() -
 
 
 @pytest.mark.parametrize("time_in_force", ("EXTO", "GTC_EXTO"))
-def test_overnight_time_in_force_fails_closed_for_trader_api(time_in_force: str) -> None:
-    with pytest.raises(ValueError, match="thinkorswim-only overnight TIF"):
+def test_thinkorswim_only_time_in_force_is_not_accepted(time_in_force: str) -> None:
+    with pytest.raises(ValueError, match="not a valid TimeInForce"):
         schwab_equity_session_duration(time_in_force)
 
 
 @pytest.mark.parametrize(
     "time_in_force",
-    ("EXT", "GTC_EXT", "EXTO", "GTC_EXTO", "AM", "PM"),
+    ("EXT", "GTC_EXT", "AM", "PM"),
 )
 def test_extended_hours_time_in_force_requires_limit_order(time_in_force: str) -> None:
     assert schwab_equity_tif_requires_limit_order(time_in_force) is True
