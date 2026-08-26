@@ -42,6 +42,44 @@ def order_submitted_message(
     )
 
 
+def order_replacement_confirmation_message(
+    original_order_id: object,
+    payload: Mapping[str, object],
+) -> str:
+    return "\n".join(
+        [
+            "Review this LIVE Schwab order replacement:",
+            "",
+            f"Original order ID: {str(original_order_id).strip() or '--'}",
+            "Schwab will cancel the original order and create a replacement order.",
+            "",
+            *_order_summary_lines(payload),
+            "",
+            "Replace this order now?",
+        ]
+    )
+
+
+def order_replaced_message(
+    original_order_id: object,
+    payload: Mapping[str, object],
+    location: str | None,
+) -> str:
+    replacement_order_id = _order_id_from_location(location)
+    return "\n".join(
+        [
+            "Schwab accepted the replacement.",
+            "",
+            f"Original order ID: {str(original_order_id).strip() or '--'}",
+            f"Replacement order ID: {replacement_order_id}",
+            "",
+            *_order_summary_lines(payload),
+            "",
+            f"Location: {location or '--'}",
+        ]
+    )
+
+
 def _order_summary_lines(payload: Mapping[str, object]) -> list[str]:
     order_type = _human_value(payload.get("orderType"))
     session = _human_value(payload.get("session"))
@@ -57,6 +95,9 @@ def _order_summary_lines(payload: Mapping[str, object]) -> list[str]:
         lines.append(f"Limit price: ${price}")
     if stop_price:
         lines.append(f"Stop price: ${stop_price}")
+    special_instruction = payload.get("specialInstruction")
+    if special_instruction:
+        lines.append(f"Special instruction: {_human_value(special_instruction)}")
     estimated_value = _estimated_order_value(payload)
     if estimated_value:
         lines.append(f"Estimated value: {estimated_value}")
@@ -75,9 +116,9 @@ def _order_summary_lines(payload: Mapping[str, object]) -> list[str]:
         symbol = str(instrument.get("symbol") or "--")
         asset_type = str(instrument.get("assetType") or "--")
         unit = "contract(s)" if asset_type == "OPTION" else "share(s)"
-        lines.append(
-            f"- {instruction} {quantity} {unit} {symbol}"
-        )
+        position_effect = leg.get("positionEffect")
+        position_copy = f" · {_human_value(position_effect)}" if position_effect else ""
+        lines.append(f"- {instruction} {quantity} {unit} {symbol}{position_copy}")
     return lines
 
 
@@ -147,4 +188,9 @@ def _human_value(value: object) -> str:
     return labels.get(text.upper(), text.replace("_", " ").title())
 
 
-__all__ = ["order_confirmation_message", "order_submitted_message"]
+__all__ = [
+    "order_confirmation_message",
+    "order_replacement_confirmation_message",
+    "order_replaced_message",
+    "order_submitted_message",
+]

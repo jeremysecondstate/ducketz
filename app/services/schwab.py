@@ -391,6 +391,21 @@ class SchwabSession:
         response.raise_for_status()
         return response.headers.get("Location")
 
+    def replace_order(self, order_id: str, order_payload: dict[str, Any]) -> str | None:
+        cleaned_order_id = str(order_id).strip()
+        if not cleaned_order_id:
+            raise ValueError("Order ID is required for replacement.")
+
+        account_hash = self._get_account_hash()
+        response = requests.put(
+            f"{TRADER_BASE_URL}/accounts/{account_hash}/orders/{cleaned_order_id}",
+            headers={**self._headers(), "Content-Type": "application/json"},
+            json=order_payload,
+            timeout=10,
+        )
+        response.raise_for_status()
+        return response.headers.get("Location")
+
 
 def _schwab_order_dedup_key(order: Any) -> tuple[str, str]:
     if isinstance(order, dict):

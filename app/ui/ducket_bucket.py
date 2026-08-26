@@ -13,6 +13,8 @@ from app.ui.rolling_forecasts import RollingForecastTab
 from app.ui.background_tasks import run_in_background
 from app.ui.schwab_order_messages import (
     order_confirmation_message,
+    order_replacement_confirmation_message,
+    order_replaced_message,
     order_submitted_message,
 )
 from app.ui.theme import (
@@ -51,8 +53,14 @@ from app.services.schwab_order_fields import (
     SCHWAB_EQUITY_TIME_IN_FORCE_CHOICES,
     SCHWAB_OPTION_STRATEGY_CHOICES,
     schwab_equity_session_duration,
-    schwab_equity_tif_requires_limit_order,
     schwab_option_strategy_is_supported,
+)
+from app.services.schwab_stock_orders import (
+    SCHWAB_EQUITY_POSITION_EFFECT_CHOICES,
+    SCHWAB_EQUITY_SPECIAL_INSTRUCTION_CHOICES,
+    build_schwab_stock_order_payload,
+    build_schwab_stock_replacement_payload,
+    schwab_stock_order_edit,
 )
 
 HYPERLIQUID_SIDE_CHOICES = ("buy", "sell")
@@ -528,6 +536,7 @@ class SchwabDucketsTab(DucketsTab):
         self.open_orders_table: ttk.Treeview | None = None
         self.recent_orders_table: ttk.Treeview | None = None
         self.option_chain_table: ttk.Treeview | None = None
+        self.schwab_open_order_by_item_id: dict[str, dict[str, object]] = {}
 
         super().__init__(
             root=root,
@@ -601,7 +610,7 @@ class SchwabDucketsTab(DucketsTab):
             stock_frame,
             "Position Effect",
             self.stock_position_effect,
-            ("AUTO", "OPENING", "CLOSING"),
+            SCHWAB_EQUITY_POSITION_EFFECT_CHOICES,
             2,
             0,
         )
@@ -685,7 +694,19 @@ class SchwabDucketsTab(DucketsTab):
         button_row.pack(fill=tk.X, padx=8, pady=8)
 
         ttk.Button(button_row, text="Open Orders", command=self._load_open_orders).pack(side=tk.LEFT, padx=(0, 8))
-        ttk.Button(button_row, text="Recent Orders", command=self._load_recent_orders).pack(side=tk.LEFT)
+        ttk.Button(button_row, text="Recent Orders", command=self._load_recent_orders).pack(
+            side=tk.LEFT,
+            padx=(0, 8),
+        )
+        ttk.Button(
+            button_row,
+            text="Modify Selected Stock / ETF",
+            command=self._edit_selected_schwab_open_order,
+        ).pack(side=tk.LEFT)
+        ttk.Label(
+            orders_frame,
+            text="Select an ID to copy it below; double-click an open Stock/ETF order to modify.",
+        ).pack(anchor=tk.W, padx=8, pady=(0, 6))
 
         tables = ttk.PanedWindow(orders_frame, orient=tk.VERTICAL)
         tables.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
@@ -698,6 +719,11 @@ class SchwabDucketsTab(DucketsTab):
 
         self.open_orders_table = self._orders_table(open_frame)
         self.recent_orders_table = self._orders_table(recent_frame)
+        self.open_orders_table.bind("<<TreeviewSelect>>", self._use_selected_schwab_order)
+        self.open_orders_table.bind("<ButtonRelease-1>", self._use_selected_schwab_order)
+        self.open_orders_table.bind("<Double-1>", self._edit_selected_schwab_open_order)
+        self.recent_orders_table.bind("<<TreeviewSelect>>", self._use_selected_schwab_order)
+        self.recent_orders_table.bind("<ButtonRelease-1>", self._use_selected_schwab_order)
 
     def _build_option_chain_panel(self, parent: ttk.Frame) -> None:
         chain_frame = ttk.LabelFrame(parent, text="Options Chain")
@@ -829,6 +855,228 @@ class SchwabDucketsTab(DucketsTab):
             ),
         )
 
+    def _use_selected_schwab_order(self, event: object) -> None:
+        table = getattr(event, "widget", None)
+        if table not in (self.open_orders_table, self.recent_orders_table):
+            return
+
+        selected = table.selection()
+        if not selected:
+            return
+
+        values = table.item(selected[0], "values")
+        if not values:
+            return
+
+        order_id = str(values[0]).strip()
+        if order_id:
+            self.order_id.set(order_id)
+
+        other_table = self.recent_orders_table if table is self.open_orders_table else self.open_orders_table
+        if other_table is not None:
+            other_selected = other_table.selection()
+            if other_selected:
+                other_table.selection_remove(*other_selected)
+
+    def _selected_schwab_open_order(self) -> dict[str, object] | None:
+        if self.open_orders_table is None:
+            return None
+
+        selected = self.open_orders_table.selection()
+        if not selected:
+            return None
+
+        order = self.schwab_open_order_by_item_id.get(str(selected[0]))
+        return order if isinstance(order, dict) else None
+
+    def _edit_selected_schwab_open_order(self, event: object | None = None) -> None:
+        if event is not None:
+            self._use_selected_schwab_order(event)
+
+        order = self._selected_schwab_open_order()
+        if order is None:
+            messagebox.showinfo(
+                "Modify Schwab Order",
+                "Select an open Stock/ETF order first, then choose Modify or double-click the row.",
+            )
+            return
+
+        try:
+            edit = schwab_stock_order_edit(order)
+        except Exception as exc:
+            messagebox.showerror("Modify Schwab Order", f"{type(exc).__name__}: {exc}")
+            return
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title(f"Modify Schwab Stock / ETF Order {edit.order_id}")
+        dialog.transient(self.root)
+        dialog.resizable(False, False)
+
+        body = ttk.Frame(dialog, padding=16)
+        body.pack(fill=tk.BOTH, expand=True)
+        body.columnconfigure(1, weight=1)
+
+        order_type_var = tk.StringVar(master=dialog, value=edit.order_type)
+        tif_var = tk.StringVar(master=dialog, value=edit.time_in_force)
+        position_effect_var = tk.StringVar(master=dialog, value=edit.position_effect)
+        quantity_var = tk.StringVar(master=dialog, value=str(edit.quantity))
+        price_var = tk.StringVar(master=dialog, value=edit.price)
+        stop_price_var = tk.StringVar(master=dialog, value=edit.stop_price)
+        special_instruction_var = tk.StringVar(master=dialog, value=edit.special_instruction)
+
+        ttk.Label(
+            body,
+            text="Edit this working order. Schwab replaces it with a new Order ID.",
+        ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 12))
+        ttk.Label(body, text="Order ID").grid(row=1, column=0, sticky="w", padx=(0, 12), pady=4)
+        ttk.Label(body, text=edit.order_id).grid(row=1, column=1, sticky="w", pady=4)
+        ttk.Label(body, text="Status").grid(row=2, column=0, sticky="w", padx=(0, 12), pady=4)
+        ttk.Label(body, text=edit.status.replace("_", " ").title()).grid(row=2, column=1, sticky="w", pady=4)
+        ttk.Label(body, text="Symbol").grid(row=3, column=0, sticky="w", padx=(0, 12), pady=4)
+        ttk.Label(body, text=edit.symbol).grid(row=3, column=1, sticky="w", pady=4)
+        ttk.Label(body, text="Side").grid(row=4, column=0, sticky="w", padx=(0, 12), pady=4)
+        ttk.Label(body, text=edit.instruction.replace("_", " ").title()).grid(row=4, column=1, sticky="w", pady=4)
+
+        ttk.Separator(body, orient=tk.HORIZONTAL).grid(
+            row=5,
+            column=0,
+            columnspan=2,
+            sticky="ew",
+            pady=10,
+        )
+
+        ttk.Label(body, text="Order Type").grid(row=6, column=0, sticky="w", padx=(0, 12), pady=5)
+        order_type_box = ttk.Combobox(
+            body,
+            textvariable=order_type_var,
+            values=SCHWAB_EQUITY_ORDER_TYPE_CHOICES,
+            state="readonly",
+            width=32,
+        )
+        order_type_box.grid(row=6, column=1, sticky="ew", pady=5)
+
+        ttk.Label(body, text="TIF").grid(row=7, column=0, sticky="w", padx=(0, 12), pady=5)
+        ttk.Combobox(
+            body,
+            textvariable=tif_var,
+            values=SCHWAB_EQUITY_TIME_IN_FORCE_CHOICES,
+            state="readonly",
+            width=32,
+        ).grid(row=7, column=1, sticky="ew", pady=5)
+
+        ttk.Label(body, text="Position Effect").grid(row=8, column=0, sticky="w", padx=(0, 12), pady=5)
+        ttk.Combobox(
+            body,
+            textvariable=position_effect_var,
+            values=SCHWAB_EQUITY_POSITION_EFFECT_CHOICES,
+            state="readonly",
+            width=32,
+        ).grid(row=8, column=1, sticky="ew", pady=5)
+
+        ttk.Label(body, text="Quantity").grid(row=9, column=0, sticky="w", padx=(0, 12), pady=5)
+        ttk.Entry(body, textvariable=quantity_var, width=34).grid(row=9, column=1, sticky="ew", pady=5)
+
+        ttk.Label(body, text="Limit Price").grid(row=10, column=0, sticky="w", padx=(0, 12), pady=5)
+        price_entry = ttk.Entry(body, textvariable=price_var, width=34)
+        price_entry.grid(row=10, column=1, sticky="ew", pady=5)
+
+        ttk.Label(body, text="Stop Price").grid(row=11, column=0, sticky="w", padx=(0, 12), pady=5)
+        stop_price_entry = ttk.Entry(body, textvariable=stop_price_var, width=34)
+        stop_price_entry.grid(row=11, column=1, sticky="ew", pady=5)
+
+        ttk.Label(body, text="Special Instruction").grid(row=12, column=0, sticky="w", padx=(0, 12), pady=5)
+        ttk.Combobox(
+            body,
+            textvariable=special_instruction_var,
+            values=SCHWAB_EQUITY_SPECIAL_INSTRUCTION_CHOICES,
+            state="readonly",
+            width=32,
+        ).grid(row=12, column=1, sticky="ew", pady=5)
+
+        ttk.Label(
+            body,
+            text="Only unfilled, single-leg orders marked editable by Schwab can be replaced here.",
+        ).grid(row=13, column=0, columnspan=2, sticky="w", pady=(10, 0))
+
+        buttons = ttk.Frame(body)
+        buttons.grid(row=14, column=0, columnspan=2, sticky="ew", pady=(14, 0))
+        buttons.columnconfigure(0, weight=1)
+        buttons.columnconfigure(1, weight=1)
+
+        def update_price_fields(_event: object | None = None) -> None:
+            order_type = order_type_var.get().strip().upper()
+            price_entry.configure(state=tk.NORMAL if order_type in {"LIMIT", "STOP_LIMIT"} else tk.DISABLED)
+            stop_price_entry.configure(state=tk.NORMAL if order_type in {"STOP", "STOP_LIMIT"} else tk.DISABLED)
+
+        def submit_edit() -> None:
+            try:
+                payload = build_schwab_stock_replacement_payload(
+                    edit,
+                    order_type=order_type_var.get(),
+                    time_in_force=tif_var.get(),
+                    position_effect=position_effect_var.get(),
+                    quantity=quantity_var.get(),
+                    price=price_var.get(),
+                    stop_price=stop_price_var.get(),
+                    special_instruction=special_instruction_var.get(),
+                )
+                if not messagebox.askyesno(
+                    "Confirm Schwab Order Replacement",
+                    order_replacement_confirmation_message(edit.order_id, payload),
+                    parent=dialog,
+                ):
+                    return
+            except Exception as exc:
+                messagebox.showerror(
+                    "Schwab Order Replacement Failed",
+                    f"{type(exc).__name__}: {exc}",
+                    parent=dialog,
+                )
+                return
+
+            submit_button.configure(state=tk.DISABLED)
+            close_button.configure(state=tk.DISABLED)
+            dialog.protocol("WM_DELETE_WINDOW", lambda: None)
+
+            def succeeded(location: str | None) -> None:
+                dialog.destroy()
+                self._load_open_orders()
+                messagebox.showinfo(
+                    "Schwab Order Replaced",
+                    order_replaced_message(edit.order_id, payload, location),
+                )
+
+            def failed(exc: Exception) -> None:
+                submit_button.configure(state=tk.NORMAL)
+                close_button.configure(state=tk.NORMAL)
+                dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
+                messagebox.showerror(
+                    "Schwab Order Replacement Failed",
+                    f"{type(exc).__name__}: {exc}",
+                    parent=dialog,
+                )
+
+            run_in_background(
+                self.root,
+                lambda: SchwabSession().replace_order(edit.order_id, payload),
+                succeeded,
+                failed,
+            )
+
+        close_button = ttk.Button(buttons, text="Close", command=dialog.destroy)
+        close_button.grid(
+            row=0,
+            column=0,
+            sticky="ew",
+            padx=(0, 6),
+        )
+        submit_button = ttk.Button(buttons, text="Replace Order", command=submit_edit)
+        submit_button.grid(row=0, column=1, sticky="ew", padx=(6, 0))
+
+        order_type_box.bind("<<ComboboxSelected>>", update_price_fields)
+        update_price_fields()
+        order_type_box.focus_set()
+
     def _submit_stock_order(self) -> None:
         try:
             payload = self._stock_order_payload()
@@ -945,42 +1193,16 @@ class SchwabDucketsTab(DucketsTab):
             self.stock_symbol.set(symbol)
 
     def _stock_order_payload(self) -> dict[str, object]:
-        symbol = self.stock_symbol.get().strip().upper()
-        quantity = _positive_int(self.stock_quantity.get(), "Quantity")
-        order_type = self.stock_order_type.get().strip().upper()
-        side = self.stock_side.get().strip().upper()
-        session, duration = schwab_equity_session_duration(self.stock_tif.get())
-
-        if not symbol:
-            raise ValueError("Stock / ETF symbol is required.")
-
-        if schwab_equity_tif_requires_limit_order(self.stock_tif.get()) and order_type == "MARKET":
-            raise ValueError("Extended-hours Schwab equity orders require a limit price.")
-
-        payload: dict[str, object] = {
-            "orderType": order_type,
-            "session": session,
-            "duration": duration,
-            "orderStrategyType": "SINGLE",
-            "orderLegCollection": [
-                {
-                    "instruction": side,
-                    "quantity": quantity,
-                    "instrument": {
-                        "symbol": symbol,
-                        "assetType": "EQUITY",
-                    },
-                }
-            ],
-        }
-
-        if order_type in {"LIMIT", "STOP_LIMIT"}:
-            payload["price"] = _required_positive_price(self.stock_entry_limit.get(), "Entry / Limit")
-
-        if order_type in {"STOP", "STOP_LIMIT"}:
-            payload["stopPrice"] = _required_positive_price(self.stock_stop_price.get(), "Stop Price")
-
-        return payload
+        return build_schwab_stock_order_payload(
+            symbol=self.stock_symbol.get(),
+            instruction=self.stock_side.get(),
+            order_type=self.stock_order_type.get(),
+            time_in_force=self.stock_tif.get(),
+            position_effect=self.stock_position_effect.get(),
+            quantity=self.stock_quantity.get(),
+            price=self.stock_entry_limit.get(),
+            stop_price=self.stock_stop_price.get(),
+        )
 
     def _option_order_payload(self) -> dict[str, object]:
         symbol = self.option_symbol.get().strip().upper()
@@ -1028,6 +1250,8 @@ class SchwabDucketsTab(DucketsTab):
             return
 
         self._clear_table(table)
+        if table is self.open_orders_table:
+            self.schwab_open_order_by_item_id = {}
 
         if not isinstance(orders, list):
             return
@@ -1045,11 +1269,13 @@ class SchwabDucketsTab(DucketsTab):
             quantity = str(leg.get("quantity") or "")
             price = str(order.get("price") or "")
 
-            table.insert(
+            item_id = table.insert(
                 "",
                 tk.END,
                 values=(order_id, status, entered, symbol, side, quantity, price),
             )
+            if table is self.open_orders_table:
+                self.schwab_open_order_by_item_id[str(item_id)] = order
 
     def _show_option_chain(self, chain: object) -> None:
         if self.option_chain_table is None:

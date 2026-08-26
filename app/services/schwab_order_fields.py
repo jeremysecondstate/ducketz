@@ -20,6 +20,8 @@ class TimeInForce(str, Enum):
     GTC = "GTC"
     EXT = "EXT"
     GTC_EXT = "GTC_EXT"
+    EXTO = "EXTO"
+    GTC_EXTO = "GTC_EXTO"
     AM = "AM"
     PM = "PM"
 
@@ -37,9 +39,15 @@ SCHWAB_EQUITY_TIF_API_MAP = {
     TimeInForce.PM: ("PM", "DAY"),
 }
 
+SCHWAB_EQUITY_OVERNIGHT_TIFS = {
+    TimeInForce.EXTO,
+    TimeInForce.GTC_EXTO,
+}
+
 SCHWAB_EQUITY_LIMIT_TIFS = {
     TimeInForce.EXT,
     TimeInForce.GTC_EXT,
+    *SCHWAB_EQUITY_OVERNIGHT_TIFS,
     TimeInForce.AM,
     TimeInForce.PM,
 }
@@ -65,7 +73,26 @@ def schwab_option_strategy_is_supported(strategy: str) -> bool:
 
 def schwab_equity_session_duration(time_in_force: str) -> tuple[str, str]:
     tif = TimeInForce(str(time_in_force).strip().upper())
+    if tif in SCHWAB_EQUITY_OVERNIGHT_TIFS:
+        raise ValueError(
+            f"{tif.value} is a thinkorswim-only overnight TIF; "
+            "Schwab's Trader API cannot submit EXTO orders."
+        )
     return SCHWAB_EQUITY_TIF_API_MAP[tif]
+
+
+def schwab_equity_tif_from_api(session: object, duration: object) -> str:
+    normalized = (
+        str(session or "").strip().upper(),
+        str(duration or "").strip().upper(),
+    )
+    for tif, api_values in SCHWAB_EQUITY_TIF_API_MAP.items():
+        if api_values == normalized:
+            return tif.value
+    raise ValueError(
+        "This Schwab order uses an unsupported session/duration combination: "
+        f"{normalized[0] or '--'} / {normalized[1] or '--'}."
+    )
 
 
 def schwab_equity_tif_requires_limit_order(time_in_force: str) -> bool:
