@@ -8,7 +8,7 @@
 - Owning package: `ml`
 - Classification: Independent production loop
 - Scheduling mechanism: recurring supervisor gated by the shared Loop A datastore-cycle lock
-- Cadence and phase: every 15 minutes at UTC phase +5 minutes in the production command
+- Cadence and phase: every 30 minutes at UTC phase +5 minutes in the production command; one classified-transient retry; immediate startup recovery at 35 minutes of verified authority age
 - Lock or single-writer mechanism: `.duckets-ml-prediction-runtime.lock` plus Loop A’s shared datastore-cycle lock during each run
 - Primary code evidence: **Confirmed.** `ml/prediction_runtime.py:26`, `ml/prediction_runtime.py:76`, `ml/prediction_runtime.py:189`, `ml/prediction_runtime.py:192`, `ml/prediction_runtime.py:209`
 
@@ -77,7 +77,7 @@ backfill; the v3 macro profile begins only after ALFRED readiness is verified.
 
 ### Timing and control relationships
 
-**Confirmed:** Loop B is phase +5 and waits on Loop A’s shared lock/complete cycle, not on CME, ALFRED’s daily scheduler, Pricing or Options. Its strict action deadline is a publication boundary independent of wall-clock phase. Options is phase +6, but no B → Options artifact exchange exists. `ml/prediction_runtime.py:78`, `ml/prediction_runtime.py:209`, `ml/runtime_pipeline.py:603`, `docs/datafetch-ml/current_start_command:160`, `docs/datafetch-ml/current_start_command:188`
+**Confirmed:** Loop B runs at the 30-minute `:05`/`:35` phase and waits on Loop A’s shared lock/complete cycle, not on CME, ALFRED’s daily scheduler, Pricing or Options. Its strict action deadline is a publication boundary independent of wall-clock phase. Options is phase +6, but no B → Options artifact exchange exists. `ml/prediction_runtime.py`, `ml/runtime_pipeline.py:603`, `docs/datafetch-ml/current_start_command`
 
 ## Prediction contribution
 
@@ -104,6 +104,11 @@ backfill; the v3 macro profile begins only after ALFRED readiness is verified.
   fail. An empty prediction set, `--require-all-routes`, missed action deadline,
   receipt failure, or promotion failure leaves the prior `ml/latest/run.json`
   authority in place.
+- A recurring failure receives at most one retry and only when classified as
+  transient. Deadline, pointer/receipt/checksum integrity, deterministic
+  contract, and explicitly failed Loop A states do not retry. A newly started
+  supervisor performs one immediate recovery cycle only when the last verified
+  authority is at least 35 minutes old; corrupt authority fails closed.
 - An omitted weekly component is not automatically healthy. Without exactly
   one coherent calendar-valid created-LIVE bundle for its symbol, the route
   remains `OPERATIONALLY_STALE`/`NO_CURRENT_FORECAST`; ambiguous bundles also
@@ -136,7 +141,8 @@ owner whose worker owns the executable singleton lock
 `.duckets-ml-prediction-runtime.lock`. The monitor verifies the exact pair,
 lock, immutable run receipt/pointer, freshness, route inventory, Strategy
 source lineage, and UI contract independently. A live PID cannot excuse a stale
-publication. `ml/system_monitor.py:164`,
+publication. Freshness uses the receipt's `promoted_at` availability clock,
+warns after 35 minutes, and fails after 45 minutes. `ml/system_monitor.py`,
 `docs/datafetch-ml/start_all_loops.ps1:18`
 
 Daily monitoring evaluates every public and component route—`1h`, `4h`, `1d`,

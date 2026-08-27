@@ -52,6 +52,14 @@ CME/L2, Daily ALFRED, Loop A, Active Pricing, Directional Loop B, Options
 Capture, Strategy, and Strategy-profit training. Health requires all of the
 following, not a PID alone:
 
+Directional Loop B's canonical cadence is 30 minutes at phase `:05`/`:35`.
+Publication freshness is measured from the receipt-verified `promoted_at`
+availability clock, not the earlier computation start: WARN begins after 35
+minutes and FAIL after 45. This is important at the hourly `:42` wake, when the
+normal `:35` cycle can still be running while the prior verified authority
+remains safely readable. One retry is allowed only for classified transient
+failures; startup recovery runs immediately only at the 35-minute threshold.
+
 - exactly one allowlisted launcher and one child worker for each owner;
 - the expected module and production arguments in the worker command line;
 - a live worker-owned singleton lock with the matching PID;

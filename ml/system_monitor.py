@@ -58,6 +58,7 @@ _INFO = "INFO"
 _WARN = "WARN"
 _FAIL = "FAIL"
 _EXPECTED_PUBLICATION_AGE = pd.Timedelta(minutes=45)
+_LOOP_B_PUBLICATION_WARNING_AGE = pd.Timedelta(minutes=35)
 _TARGET_SETTLE_GRACE = pd.Timedelta(minutes=14)
 _RECENT_STDERR_WINDOW = pd.Timedelta(hours=2)
 _WEEKLY_MINIMUM_INDEPENDENT_OBSERVATIONS = 30
@@ -352,7 +353,11 @@ RUNTIMES = (
             "--horizons 1h 4h 1d 1w",
             "--feature-profile loop-a-all-bsgp-active-v3",
             "--calibration platt",
+            "--interval-minutes 30",
             "--phase-offset-minutes 5",
+            "--failure-retry-attempts 1",
+            "--failure-retry-delay-seconds 60",
+            "--stale-recovery-minutes 35",
         ),
         ".duckets-ml-prediction-runtime.lock",
         ("directional-loop-b", "loop-b"),
@@ -1149,34 +1154,58 @@ def _loop_b_check(
     publication: CurrentPublication,
 ) -> dict[str, object]:
     run_timestamp = _utc(publication.manifest.get("run_timestamp"), "Loop B run timestamp")
-    age = max(pd.Timedelta(0), now - run_timestamp)
+    authoritative_timestamp = (
+        _utc(publication.receipt.get("promoted_at"), "Loop B promoted_at")
+        if publication.receipt is not None
+        else run_timestamp
+    )
+    age = max(pd.Timedelta(0), now - authoritative_timestamp)
     intelligence = pd.read_parquet(publication.run_directory / "intelligence.parquet")
     observed_symbols = set(intelligence["symbol"].astype("string").str.upper())
     observed_horizons = set(intelligence["horizon"].astype("string").str.lower())
     expected_routes = len(set(symbols)) * len(INTERNAL_HORIZON_ORDER)
     failures = []
+    warnings = []
     if age > _EXPECTED_PUBLICATION_AGE:
         failures.append("publication-stale")
+    elif age > _LOOP_B_PUBLICATION_WARNING_AGE:
+        warnings.append("publication-approaching-stale")
     if observed_symbols != set(symbols):
         failures.append("symbol-scope-mismatch")
     if observed_horizons != set(INTERNAL_HORIZON_ORDER):
         failures.append("horizon-scope-mismatch")
     if len(intelligence) != expected_routes:
         failures.append("route-count-mismatch")
+    status = _FAIL if failures else (_WARN if warnings else _PASS)
     return _check(
         "loop_b_publication",
-        _FAIL if failures else _PASS,
+        status,
         (
             "Loop B has a fresh verified all-route prediction publication."
-            if not failures
-            else "Loop B's current prediction publication is incomplete or stale."
+            if status == _PASS
+            else (
+                "Loop B's verified publication is approaching its hard "
+                "freshness limit."
+                if status == _WARN
+                else (
+                    "Loop B's current prediction publication is incomplete "
+                    "or stale."
+                )
+            )
         ),
         run_path=publication.run_directory.relative_to(root).as_posix(),
         run_timestamp=run_timestamp.isoformat(),
+        authoritative_timestamp=authoritative_timestamp.isoformat(),
+        freshness_basis=(
+            "receipt_promoted_at"
+            if publication.receipt is not None
+            else "legacy_run_timestamp"
+        ),
         age_minutes=_minutes(age),
         intelligence_rows=len(intelligence),
         expected_routes=expected_routes,
         failures=failures,
+        warnings=warnings,
     )
 
 

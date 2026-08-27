@@ -28,7 +28,11 @@ python -m ml.prediction_runtime `
   --symbols NVDA GOOG `
   --provider databento `
   --horizons 1h 4h 1d 1w `
-  --interval-minutes 60
+  --interval-minutes 30 `
+  --phase-offset-minutes 5 `
+  --failure-retry-attempts 1 `
+  --failure-retry-delay-seconds 60 `
+  --stale-recovery-minutes 35
 ```
 
 `1w` is the public selection for one weekly family. The runtime expands it to
@@ -39,6 +43,12 @@ operators do not list those internal values manually. The public behavior of
 The supervisor creates `.duckets-ml-prediction-runtime.lock` in the datastore.
 A second Loop B process fails before doing work. `Ctrl+C` stops cleanly and
 removes the lock.
+
+Production runs at `:05`/`:35`. One retry is permitted only for a classified
+transient failure, and a restarted supervisor runs immediately when its last
+receipt-verified publication has been authoritative for at least 35 minutes.
+Deadline, integrity, and deterministic contract failures remain fail-closed;
+the prior verified publication stays authoritative.
 
 Useful runtime choices are:
 

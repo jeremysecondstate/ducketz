@@ -25,6 +25,7 @@ from ml.system_monitor import (
     RUNTIMES,
     _log_activity_check,
     _loop_a_cycle_check,
+    _loop_b_check,
     _overall_status,
     _process_checks,
     scheduled_monitor_context,
@@ -33,6 +34,43 @@ from ml.system_monitor import (
     summarize_strategy_quality,
     summarize_weekly_evidence,
 )
+
+
+def test_loop_b_freshness_uses_authoritative_promotion_time(
+    tmp_path: Path,
+) -> None:
+    run = tmp_path / "ml" / "runs" / "current"
+    run.mkdir(parents=True)
+    pd.DataFrame(
+        {
+            "symbol": ["AAPL"] * len(INTERNAL_HORIZON_ORDER),
+            "horizon": list(INTERNAL_HORIZON_ORDER),
+        }
+    ).to_parquet(run / "intelligence.parquet", index=False)
+    publication = CurrentPublication(
+        run_directory=run,
+        manifest={"run_timestamp": "2026-08-20T20:00:00Z"},
+        receipt={"promoted_at": "2026-08-20T20:10:00Z"},
+        pointer={},
+    )
+
+    warning = _loop_b_check(
+        tmp_path,
+        pd.Timestamp("2026-08-20T20:46:00Z"),
+        ("AAPL",),
+        publication=publication,
+    )
+    failure = _loop_b_check(
+        tmp_path,
+        pd.Timestamp("2026-08-20T20:56:00Z"),
+        ("AAPL",),
+        publication=publication,
+    )
+
+    assert warning["status"] == "WARN"
+    assert warning["details"]["age_minutes"] == 36.0
+    assert warning["details"]["freshness_basis"] == "receipt_promoted_at"
+    assert failure["status"] == "FAIL"
 
 
 def test_monitor_pins_each_current_publication_once_across_checks(

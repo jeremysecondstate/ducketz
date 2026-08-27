@@ -39,10 +39,10 @@ flowchart TB
       F["3 · DAILY ALFRED<br/>07:00 UTC · at most once per UTC date<br/>Owns causal macro vintages, release context, readiness, and daily receipt"]:::owner
     end
 
-    subgraph QUARTER["INDEPENDENT QUARTER-HOUR OWNERS"]
+    subgraph QUARTER["INDEPENDENT STAGGERED OWNERS"]
       direction LR
       P["4 · ACTIVE PRICING<br/>every 15 min · phase +1<br/>Owns target outcomes and full option-pricing generations"]:::prediction
-      B["5 · DIRECTIONAL LOOP B<br/>every 15 min · phase +5<br/>Owns calibrated 1 h / 4 h / 1 d / 1 w + weekly-component directional publications"]:::prediction
+      B["5 · DIRECTIONAL LOOP B<br/>every 30 min · phase +5 · bounded recovery<br/>Owns calibrated 1 h / 4 h / 1 d / 1 w + weekly-component directional publications"]:::prediction
       O["6 · OPTIONS CAPTURE<br/>every 15 min · phase +6<br/>Owns prospective OPRA-first snapshots and pending fallback reconciliation"]:::owner
     end
 

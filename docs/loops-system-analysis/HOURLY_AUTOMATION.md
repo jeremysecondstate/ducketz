@@ -54,6 +54,18 @@ verified production receipts remain the sole operational authority.
 
 Operate the production Loops health workflow from C:\dev\ducketz. On every wake, run exactly one guardian command: `.\.venv\Scripts\python.exe -m ml.system_guardian --datastore-target pc --mode scheduled --repair-liveness --compact`. Parse stdout as JSON even when it exits 2. Never run the guardian twice in one wake.
 
+Deployment cadence contract: Directional Loop B's canonical owner runs every
+30 minutes at UTC-clock phase `:05`/`:35`, permits exactly one retry only for a
+classified transient failure after 60 seconds, and performs an immediate
+startup cycle only when its verified authority age reaches 35 minutes. Its
+freshness clock is the receipt's `promoted_at`: WARN after 35 minutes and FAIL
+after 45. The `:35` cycle may legitimately still be computing at this task's
+`:42` wake; the prior receipt remains authoritative meanwhile. Do not restart,
+duplicate, or classify B as stale merely because that scheduled cycle is in
+flight—use the canonical process/lock/log evidence and the monitor's
+receipt-based freshness result. Deadline, integrity, and deterministic
+contract failures never authorize an automatic retry or pointer rewrite.
+
 After parsing the guardian result, require the top-level `schedule` object with schema `loops-overnight-accuracy-schedule-v1`. Treat `schedule.monitor_mode`, `schedule.lane`, and `schedule.overnight_stage` as the sole routing authority; do not infer a stage from the clock or catch up a missed stage. Missing, malformed, or contradictory schedule metadata is a scheduling incident: preserve the guardian evidence, do not guess, and do not begin accuracy work. `STANDARD_OPERATIONS` means there is no overnight stage. `OVERNIGHT_ACCURACY` means execute at most the one named stage after health is proven. Every stage has a 45-minute ceiling and must checkpoint or defer before the next wake; never overlap stages or start a later stage early.
 
 The bounded shadow challenger command belongs only to stage `run-shadow-ablation`: `.\.venv\Scripts\python.exe -m ml.strategy_value_challenger --datastore-target pc --if-changed --compact`. At that stage run it at most once, parse stdout as JSON, and accept only `COMPLETE_SHADOW_ONLY` or `UNCHANGED_SKIPPED`, with `promotion_performed=false`, both production-mutation fields false, `orders_enabled=false`, and `orders_placed=0`. Preserve its immutable receipt path, source fingerprint, decision, and 1d/1w gate status. At every other stage, do not execute this command; inspect only the existing checksum-valid shadow receipt surfaced by the monitor. A failure, invalid receipt, or source fingerprint stale beyond monitor cadence is an incident, but it never authorizes changes to production candidates, model authority, feature policy, the options prediction loop, or any order path.

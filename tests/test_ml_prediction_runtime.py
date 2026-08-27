@@ -73,6 +73,50 @@ def test_next_boundary_rejects_an_invalid_phase() -> None:
         )
 
 
+def test_startup_recovery_uses_verified_promotion_age(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pointer = tmp_path / "ml" / "latest" / "run.json"
+    pointer.parent.mkdir(parents=True)
+    pointer.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(
+        prediction_runtime,
+        "read_current_publication",
+        lambda _root: SimpleNamespace(
+            receipt={"promoted_at": "2026-07-30T14:20:00Z"},
+            manifest={"run_timestamp": "2026-07-30T14:10:00Z"},
+        ),
+    )
+
+    due, reason = prediction_runtime.publication_recovery_due(
+        tmp_path,
+        now=datetime(2026, 7, 30, 15, 0, tzinfo=timezone.utc),
+        stale_after_minutes=35,
+    )
+
+    assert due is True
+    assert "40.0 minutes" in reason
+
+
+@pytest.mark.parametrize(
+    ("failure", "retryable"),
+    [
+        (TimeoutError("temporary timeout"), True),
+        (RuntimeError("publication deadline passed"), False),
+        (RuntimeError("publication receipt checksum mismatch"), False),
+        (ValueError("invalid feature contract"), False),
+    ],
+)
+def test_failure_retry_is_bounded_to_transient_classes(
+    failure: Exception,
+    retryable: bool,
+) -> None:
+    observed, _reason = prediction_runtime.failure_retry_decision(failure)
+
+    assert observed is retryable
+
+
 def test_runtime_lock_rejects_a_second_process_and_cleans_up(
     tmp_path: Path,
 ) -> None:
@@ -270,6 +314,43 @@ def test_recurring_loop_can_reuse_the_same_complete_input_cycle(
     assert result == 0
     assert calls == 3
     assert not (tmp_path / ".ducketz-ml-prediction-runtime.lock").exists()
+
+
+def test_recurring_loop_retries_one_transient_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _publish_complete_loop_a_cycle(tmp_path)
+    calls = 0
+
+    def run(root: Path, **_kwargs: object) -> SimpleNamespace:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise TimeoutError("temporary local timeout")
+        if calls == 3:
+            raise KeyboardInterrupt
+        return _result(root)
+
+    monkeypatch.setattr(prediction_runtime, "run_loop_b_once", run)
+    monkeypatch.setattr(prediction_runtime, "next_boundary", lambda now, **_: now)
+    monkeypatch.setattr(prediction_runtime.time, "sleep", lambda _seconds: None)
+
+    result = prediction_runtime.main(
+        [
+            "--datastore",
+            str(tmp_path),
+            "--symbols",
+            "GOOG",
+            "--interval-minutes",
+            "30",
+            "--phase-offset-minutes",
+            "5",
+        ]
+    )
+
+    assert result == 0
+    assert calls == 3
 
 
 def test_failed_once_cycle_returns_nonzero_and_removes_process_lock(

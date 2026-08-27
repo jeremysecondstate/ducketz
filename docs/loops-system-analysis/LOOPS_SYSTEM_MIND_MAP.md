@@ -45,10 +45,10 @@ flowchart TB
     F["3 · Daily ALFRED runtime<br/>07:00 UTC, once per UTC date"]:::owner
   end
 
-  subgraph QUARTER["Quarter-hour owners with independent supervisors"]
+  subgraph QUARTER["Staggered owners with independent supervisors"]
     direction LR
     P["4 · Active Pricing<br/>phase +1"]:::prediction
-    B["5 · Directional Loop B<br/>phase +5"]:::prediction
+    B["5 · Directional Loop B<br/>30 minutes at phase +5"]:::prediction
     O["6 · Options Capture<br/>phase +6"]:::owner
   end
 
@@ -248,7 +248,7 @@ mindmap
 | 2 | Loop A — `python -m datafetching.orchestrate` | Immediate first cycle; then each 15-minute boundary with the implemented 20 s pre-start pause | `.ducketz-orchestration.lock`; shared datastore-cycle lock with Loop B | Exact bar-readiness receipt/pointer, current/latest-complete cycle records, provider and calculated Parquets | Pricing, Options, Loop B, Strategy |
 | 3 | Daily ALFRED — `python -m datafetching.fred_alfred_runtime` | 07:00 UTC; at most one successful run per UTC date | `.ducketz-fred-alfred-import.lock` | Sealed import, vintage context, readiness pointer, daily receipt pointer | Pricing, Loop B |
 | 4 | Active Pricing — `python -m ml.option_pricing_runtime` | Every 15 minutes at UTC phase +1 | `.ducketz-option-pricing-runtime.lock` | Target-outcome pointer and full `ml/option-pricing-latest/run.json` authority | Options, Loop B, Strategy |
-| 5 | Directional Loop B — `python -m ml.prediction_runtime` | Every 15 minutes at UTC phase +5 | `.duckets-ml-prediction-runtime.lock`; shared datastore-cycle lock with Loop A | Immutable ML run and `ml/latest/run.json` | Strategy, Daily ALFRED historical scope, Rolling Forecast UI; phase-only association with Options |
+| 5 | Directional Loop B — `python -m ml.prediction_runtime` | Every 30 minutes at UTC phase +5; one classified-transient retry; 35-minute startup recovery threshold | `.duckets-ml-prediction-runtime.lock`; shared datastore-cycle lock with Loop A | Immutable ML run and `ml/latest/run.json` | Strategy, Daily ALFRED historical scope, Rolling Forecast UI; phase-only association with Options |
 | 6 | Options Capture — `python -m datafetching.options_runtime` | Every 15 minutes at UTC phase +6; pending reconciliation while waiting | `.ducketz-options-writer.lock` | Immutable provider/symbol/target snapshots and per-provider pointers | Pricing, Loop B, Strategy |
 | 7 | Strategy — `python -m ml.strategy_runtime` | Every 15 minutes at UTC phase +10 | `.ducketz-strategy-runtime.lock` | Immutable strategy run and `ml/strategy-latest/run.json` | Options Strategy UI |
 
