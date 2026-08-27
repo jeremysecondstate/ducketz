@@ -22,6 +22,7 @@ from ml.horizons import (
 )
 from ml.live_evidence import minimum_live_decisions
 from ml.parquet_contracts import (
+    EVALUATION_SCHEMA,
     INTELLIGENCE_SCHEMA,
     verify_parquet_schema,
 )
@@ -88,6 +89,22 @@ LEGACY_INTELLIGENCE_SCHEMA: Final = _schema_without_fields(
 
 
 @dataclass(frozen=True)
+class LivePerformanceView:
+    evidence_count: int
+    scored_count: int
+    correct_count: int
+    hit_rate: float | None
+    down_only_rate: float | None
+    lift_over_down_only: float | None
+    rolling_window_size: int
+    rolling_count: int
+    rolling_correct_count: int
+    rolling_hit_rate: float | None
+    rolling_down_only_rate: float | None
+    rolling_lift_over_down_only: float | None
+
+
+@dataclass(frozen=True)
 class ForecastRouteView:
     id: str | None
     symbol: str
@@ -111,6 +128,7 @@ class ForecastRouteView:
     live_evidence_label: str
     completed_decision_count: int | None
     minimum_live_decision_count: int
+    live_performance: LivePerformanceView | None
     operational_status: str
     intelligence_status: str
     automated_action_allowed: bool | None
@@ -286,11 +304,13 @@ def load_forecast_dashboard(
             else INTELLIGENCE_SCHEMA
         )
         verify_parquet_schema(source, expected_schema)
+        evaluations = _load_evaluations_for_source(source)
     except Exception as exc:
         raise _structured_read_error(source, exc) from exc
 
     return adapt_forecast_frame(
         frame,
+        evaluations=evaluations,
         source_path=source,
         loaded_at=loaded_at,
     )
@@ -299,12 +319,14 @@ def load_forecast_dashboard(
 def adapt_forecast_frame(
     frame: pd.DataFrame,
     *,
+    evaluations: pd.DataFrame | None = None,
     source_path: Path = Path("rolling-predictions.parquet"),
     loaded_at: datetime | None = None,
 ) -> ForecastDashboardView:
     loaded = _utc_datetime(loaded_at or datetime.now(timezone.utc))
     rows = _meaningful_rows(frame)
     route_rows: dict[tuple[str, str], dict[str, object]] = {}
+    live_performance = _live_performance_by_route(evaluations)
 
     for row in rows.to_dict("records"):
         raw_symbol = _text(row.get("symbol"))
@@ -339,7 +361,13 @@ def adapt_forecast_frame(
         for horizon in STANDARD_HORIZON_ORDER:
             row = route_rows.get((symbol, horizon))
             route = (
-                _route_view(symbol, horizon, row, as_of=loaded)
+                _route_view(
+                    symbol,
+                    horizon,
+                    row,
+                    as_of=loaded,
+                    live_performance=live_performance.get((symbol, horizon)),
+                )
                 if row is not None
                 else _missing_route(symbol, horizon)
             )
@@ -348,6 +376,7 @@ def adapt_forecast_frame(
         weekly_outlook = _weekly_outlook_view(
             symbol,
             route_rows,
+            live_performance=live_performance,
             source_path=source_path,
             as_of=loaded,
         )
@@ -536,6 +565,49 @@ def route_accessible_status_labels(
     )
 
 
+def route_live_performance_labels(
+    route: ForecastRouteView,
+) -> tuple[str, str]:
+    performance = route.live_performance
+    window_size = route.minimum_live_decision_count
+    if performance is None or performance.scored_count == 0:
+        state = (
+            "Awaiting First Scored Forecast"
+            if route.completed_decision_count == 0
+            else "Unavailable"
+        )
+        return (
+            f"Cumulative Live Performance: {state}",
+            f"Rolling {window_size} Performance: {state}",
+        )
+
+    cumulative = _performance_label(
+        "Cumulative Live",
+        correct_count=performance.correct_count,
+        count=performance.scored_count,
+        hit_rate=performance.hit_rate,
+        down_only_rate=performance.down_only_rate,
+        lift=performance.lift_over_down_only,
+    )
+    rolling_prefix = (
+        f"Rolling {performance.rolling_window_size}"
+        if performance.rolling_count >= performance.rolling_window_size
+        else (
+            f"Rolling {performance.rolling_count}/"
+            f"{performance.rolling_window_size}"
+        )
+    )
+    rolling = _performance_label(
+        rolling_prefix,
+        correct_count=performance.rolling_correct_count,
+        count=performance.rolling_count,
+        hit_rate=performance.rolling_hit_rate,
+        down_only_rate=performance.rolling_down_only_rate,
+        lift=performance.rolling_lift_over_down_only,
+    )
+    return cumulative, rolling
+
+
 def _resolve_authoritative_current_source(source: Path) -> Path:
     """Route the canonical compatibility path through the atomic pointer."""
 
@@ -553,6 +625,197 @@ def _resolve_authoritative_current_source(source: Path) -> Path:
                 "intelligence.parquet",
             )
     return candidate
+
+
+def _load_evaluations_for_source(source: Path) -> pd.DataFrame | None:
+    evaluations_path = Path(source).with_name("evaluations.parquet")
+    if not evaluations_path.is_file():
+        return None
+    evaluations = pd.read_parquet(evaluations_path)
+    verify_parquet_schema(evaluations_path, EVALUATION_SCHEMA)
+    return evaluations
+
+
+def _live_performance_by_route(
+    evaluations: pd.DataFrame | None,
+) -> dict[tuple[str, str], LivePerformanceView]:
+    if evaluations is None or evaluations.empty:
+        return {}
+    required = {
+        "symbol",
+        "horizon",
+        "decision_timestamp",
+        "prediction_created_at",
+        "prediction_mode",
+        "evaluation_status",
+        "observed_target",
+        "prediction_correct_0_5",
+    }
+    missing = sorted(required - set(evaluations.columns))
+    if missing:
+        raise ValueError(
+            "Evaluation data is missing live-performance columns: "
+            + ", ".join(missing)
+        )
+
+    live = evaluations.loc[
+        evaluations["prediction_mode"].astype("string").eq("LIVE")
+        & evaluations["evaluation_status"].astype("string").eq("EVALUATED")
+    ].copy()
+    if live.empty:
+        return {}
+    live["symbol"] = live["symbol"].astype("string").str.strip().str.upper()
+    live["horizon"] = live["horizon"].astype("string").str.strip().str.lower()
+    live["prediction_created_at"] = pd.to_datetime(
+        live["prediction_created_at"],
+        utc=True,
+        errors="coerce",
+    )
+    live["decision_timestamp"] = pd.to_datetime(
+        live["decision_timestamp"],
+        utc=True,
+        errors="coerce",
+    )
+    live = live.loc[
+        live["symbol"].ne("")
+        & live["horizon"].isin(SUPPORTED_HORIZON_ORDER)
+        & live["prediction_created_at"].notna()
+        & live["decision_timestamp"].notna()
+    ]
+    canonical = (
+        live.sort_values("prediction_created_at", kind="mergesort")
+        .drop_duplicates(
+            ["symbol", "horizon", "decision_timestamp"],
+            keep="first",
+        )
+        .reset_index(drop=True)
+    )
+
+    output: dict[tuple[str, str], LivePerformanceView] = {}
+    for (symbol, horizon), route in canonical.groupby(
+        ["symbol", "horizon"],
+        sort=False,
+    ):
+        scored = route.copy()
+        scored["_observed_target"] = pd.to_numeric(
+            scored["observed_target"],
+            errors="coerce",
+        )
+        scored["_prediction_correct"] = scored[
+            "prediction_correct_0_5"
+        ].astype("boolean")
+        scored = scored.loc[
+            scored["_observed_target"].isin((0, 1))
+            & scored["_prediction_correct"].notna()
+        ].sort_values("decision_timestamp", kind="mergesort")
+        window_size = minimum_live_decisions(str(horizon))
+        rolling = scored.tail(window_size)
+        (
+            scored_count,
+            correct_count,
+            hit_rate,
+            down_only_rate,
+            lift,
+        ) = _performance_values(scored)
+        (
+            rolling_count,
+            rolling_correct_count,
+            rolling_hit_rate,
+            rolling_down_only_rate,
+            rolling_lift,
+        ) = _performance_values(rolling)
+        output[(str(symbol), str(horizon))] = LivePerformanceView(
+            evidence_count=len(route),
+            scored_count=scored_count,
+            correct_count=correct_count,
+            hit_rate=hit_rate,
+            down_only_rate=down_only_rate,
+            lift_over_down_only=lift,
+            rolling_window_size=window_size,
+            rolling_count=rolling_count,
+            rolling_correct_count=rolling_correct_count,
+            rolling_hit_rate=rolling_hit_rate,
+            rolling_down_only_rate=rolling_down_only_rate,
+            rolling_lift_over_down_only=rolling_lift,
+        )
+    return output
+
+
+def _performance_values(
+    evaluated: pd.DataFrame,
+) -> tuple[int, int, float | None, float | None, float | None]:
+    count = len(evaluated)
+    if count == 0:
+        return 0, 0, None, None, None
+    correct_count = int(evaluated["_prediction_correct"].sum())
+    down_count = int(evaluated["_observed_target"].eq(0).sum())
+    hit_rate = correct_count / count
+    down_only_rate = down_count / count
+    return (
+        count,
+        correct_count,
+        hit_rate,
+        down_only_rate,
+        hit_rate - down_only_rate,
+    )
+
+
+def _performance_label(
+    prefix: str,
+    *,
+    correct_count: int,
+    count: int,
+    hit_rate: float | None,
+    down_only_rate: float | None,
+    lift: float | None,
+) -> str:
+    if (
+        count <= 0
+        or hit_rate is None
+        or down_only_rate is None
+        or lift is None
+    ):
+        return f"{prefix}: Unavailable"
+    return (
+        f"{prefix}: Hit {_format_ratio_percentage(hit_rate)} "
+        f"({correct_count}/{count}) · Down-Only "
+        f"{_format_ratio_percentage(down_only_rate)} · "
+        f"Lift {lift * 100:+.1f} pp"
+    )
+
+
+def _format_ratio_percentage(value: float) -> str:
+    return f"{value * 100:.1f}%"
+
+
+def _live_performance_debug_fields(
+    performance: LivePerformanceView | None,
+) -> tuple[tuple[str, str], ...]:
+    if performance is None:
+        return (("live_performance", "Unavailable"),)
+    return (
+        ("live_performance_evidence_count", str(performance.evidence_count)),
+        ("live_performance_scored_count", str(performance.scored_count)),
+        ("live_performance_correct_count", str(performance.correct_count)),
+        ("live_hit_rate", _debug_value(performance.hit_rate)),
+        ("live_down_only_rate", _debug_value(performance.down_only_rate)),
+        (
+            "live_lift_over_down_only",
+            _debug_value(performance.lift_over_down_only),
+        ),
+        ("rolling_window_size", str(performance.rolling_window_size)),
+        ("rolling_count", str(performance.rolling_count)),
+        ("rolling_correct_count", str(performance.rolling_correct_count)),
+        ("rolling_hit_rate", _debug_value(performance.rolling_hit_rate)),
+        (
+            "rolling_down_only_rate",
+            _debug_value(performance.rolling_down_only_rate),
+        ),
+        (
+            "rolling_lift_over_down_only",
+            _debug_value(performance.rolling_lift_over_down_only),
+        ),
+    )
 
 
 def dashboard_layout(width: int) -> int:
@@ -593,6 +856,7 @@ def _weekly_outlook_view(
     symbol: str,
     route_rows: dict[tuple[str, str], dict[str, object]],
     *,
+    live_performance: dict[tuple[str, str], LivePerformanceView],
     source_path: Path,
     as_of: datetime,
 ) -> WeeklyOutlookView | None:
@@ -635,7 +899,13 @@ def _weekly_outlook_view(
     horizons = ("1w", *component_horizons)
 
     routes = tuple(
-        _route_view(symbol, horizon, present[horizon], as_of=as_of)
+        _route_view(
+            symbol,
+            horizon,
+            present[horizon],
+            as_of=as_of,
+            live_performance=live_performance.get((symbol, horizon)),
+        )
         for horizon in horizons
     )
     for route in routes:
@@ -766,6 +1036,7 @@ def _route_view(
     row: dict[str, object],
     *,
     as_of: datetime,
+    live_performance: LivePerformanceView | None,
 ) -> ForecastRouteView:
     actionability_status = (
         _text(row.get("actionability_status")) or "STATUS_UNAVAILABLE"
@@ -862,6 +1133,17 @@ def _route_view(
         if persisted_minimum is not None and persisted_minimum > 0
         else minimum_live_decisions(horizon)
     )
+    if (
+        live_performance is not None
+        and completed_count is not None
+        and live_performance.evidence_count != completed_count
+    ):
+        warnings.append(
+            f"{symbol} {horizon} live-performance evidence count "
+            f"({live_performance.evidence_count}) does not match the published "
+            f"Live Evidence count ({completed_count}); performance was suppressed."
+        )
+        live_performance = None
     debug_names = (
         "id",
         "symbol",
@@ -916,6 +1198,7 @@ def _route_view(
         ),
         completed_decision_count=completed_count,
         minimum_live_decision_count=minimum_count,
+        live_performance=live_performance,
         operational_status=(
             _text(row.get("operational_status"))
             or "OPERATIONAL_STATUS_UNAVAILABLE"
@@ -927,7 +1210,8 @@ def _route_view(
         warnings=tuple(warnings),
         debug_fields=tuple(
             (name, _debug_value(row.get(name))) for name in debug_names
-        ),
+        )
+        + _live_performance_debug_fields(live_performance),
     )
 
 
@@ -958,6 +1242,7 @@ def _missing_route(
         live_evidence_label="Unavailable",
         completed_decision_count=None,
         minimum_live_decision_count=minimum_live_decisions(horizon),
+        live_performance=None,
         operational_status="ROUTE_UNAVAILABLE",
         intelligence_status="NO_CURRENT_FORECAST",
         automated_action_allowed=None,

@@ -241,6 +241,16 @@ pre-entry prediction before live performance or evidence counting. Pooled
 evidence count. Meeting a threshold changes the readable evidence status only;
 automated action remains disabled.
 
+The Rolling Forecasts UI also reads the receipt-verified sibling
+`evaluations.parquet` and shows descriptive route performance immediately below
+Live Evidence. `Cumulative Live` uses every unique compatible matured decision.
+`Rolling` uses the most recent route threshold (60 decisions for `1h`/`4h`, 30
+for daily and weekly routes), or all available decisions while that window is
+still filling. Both views show hit rate, the Down-only baseline, and lift over
+that baseline. The tab refreshes these read-only values hourly; they change only
+when a new outcome has causally matured. These display metrics do not authorize
+model changes, promotion, automated action, or orders.
+
 A model error is diagnosed at its horizon. By default, valid routes still
 publish and limitations remain visible; `--require-all-routes` opts into strict
 whole-cycle rejection. Selecting public `1w` materializes the six internal

@@ -342,21 +342,22 @@ class DucketsTab:
         summary = ttk.Frame(root_frame)
         summary.pack(fill=tk.X, pady=(16, 12))
 
-        for label_var in (
-            self.cash_value,
-            self.holdings_value,
-            self.total_value,
-            self.unrealized_pnl,
-            self.day_pnl,
-        ):
-            card = ttk.LabelFrame(summary, text="", style="Summary.TLabelframe")
-            card.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
-            ttk.Label(
-                card,
-                textvariable=label_var,
-                font=("Segoe UI", 11, "bold"),
-                style="Summary.TLabel",
-            ).pack(anchor=tk.W, padx=10, pady=10)
+        summary_rows = self._summary_rows()
+        for row_index, label_vars in enumerate(summary_rows):
+            summary_row = ttk.Frame(summary)
+            summary_row.pack(
+                fill=tk.X,
+                pady=(0, 8 if row_index < len(summary_rows) - 1 else 0),
+            )
+            for label_var in label_vars:
+                card = ttk.LabelFrame(summary_row, text="", style="Summary.TLabelframe")
+                card.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
+                ttk.Label(
+                    card,
+                    textvariable=label_var,
+                    font=("Segoe UI", 11, "bold"),
+                    style="Summary.TLabel",
+                ).pack(anchor=tk.W, padx=10, pady=10)
 
         content_panes = ttk.PanedWindow(root_frame, orient=tk.VERTICAL)
         content_panes.pack(fill=tk.BOTH, expand=True)
@@ -397,6 +398,15 @@ class DucketsTab:
         self.holdings_table.tag_configure("pnl_positive", foreground=SUCCESS)
         self.holdings_table.tag_configure("pnl_negative", foreground=DANGER)
         self.holdings_table.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+
+    def _summary_rows(self) -> tuple[tuple[tk.StringVar, ...], ...]:
+        return ((
+            self.cash_value,
+            self.holdings_value,
+            self.total_value,
+            self.unrealized_pnl,
+            self.day_pnl,
+        ),)
 
     def _setup_column(
         self,
@@ -502,6 +512,8 @@ class DucketsTab:
 
 class SchwabDucketsTab(DucketsTab):
     def __init__(self, root: tk.Tk, parent: ttk.Frame) -> None:
+        self.stock_etf_value = tk.StringVar(value="Stocks / ETFs: --")
+        self.options_value = tk.StringVar(value="Options: --")
         self.order_id = tk.StringVar()
 
         self.chain_symbol = tk.StringVar()
@@ -545,6 +557,24 @@ class SchwabDucketsTab(DucketsTab):
             sync_button_text="Sync Schwab",
             sync_snapshots=lambda: [sync_schwab_portfolio()],
         )
+        self.cash_value.set("Cash & sweep: --")
+        self.holdings_value.set("Net positions: --")
+        self.total_value.set("Net liquidation: --")
+
+    def _summary_rows(self) -> tuple[tuple[tk.StringVar, ...], ...]:
+        return (
+            (
+                self.cash_value,
+                self.stock_etf_value,
+                self.options_value,
+                self.total_value,
+            ),
+            (
+                self.holdings_value,
+                self.unrealized_pnl,
+                self.day_pnl,
+            ),
+        )
 
     def _build(self, parent: ttk.Frame, title: str, sync_button_text: str) -> None:
         root_panes = ttk.PanedWindow(parent, orient=tk.VERTICAL)
@@ -559,6 +589,7 @@ class SchwabDucketsTab(DucketsTab):
         super()._build(balances_frame, title, sync_button_text)
 
         if self.holdings_table is not None:
+            self.holdings_table.heading("price", text="Mark")
             self.holdings_table.bind("<<TreeviewSelect>>", self._use_selected_holding)
 
         actions_panes = ttk.PanedWindow(actions_frame, orient=tk.HORIZONTAL)
@@ -579,6 +610,18 @@ class SchwabDucketsTab(DucketsTab):
         self._build_ticket_panel(left_panes)
         self._build_orders_panel(right_panes)
         self._build_option_chain_panel(right_panes)
+
+    def _show_bucket(self, bucket: DucketBucketSnapshot) -> None:
+        super()._show_bucket(bucket)
+        self.cash_value.set(f"Cash & sweep: {_money(bucket.cash_value)}")
+        self.stock_etf_value.set(
+            f"Stocks / ETFs: {_money(bucket.holdings_value_for('Stock', 'ETF'))}"
+        )
+        self.options_value.set(
+            f"Options: {_money(bucket.holdings_value_for('Option'))}"
+        )
+        self.holdings_value.set(f"Net positions: {_money(bucket.holdings_value)}")
+        self.total_value.set(f"Net liquidation: {_money(bucket.total_value)}")
 
     def _build_ticket_panel(self, parent: ttk.Frame) -> None:
         ticket_frame = ttk.LabelFrame(parent, text="Schwab Stock / ETF Ticket")
@@ -1189,8 +1232,10 @@ class SchwabDucketsTab(DucketsTab):
         if not symbol:
             return
 
-        if bucket == "EQUITY":
+        if bucket in {"EQUITY", "ETF", "STOCK"}:
             self.stock_symbol.set(symbol)
+        elif bucket == "OPTION":
+            self.option_symbol.set(symbol)
 
     def _stock_order_payload(self) -> dict[str, object]:
         return build_schwab_stock_order_payload(
@@ -2396,7 +2441,8 @@ def _to_float(value: object) -> float | None:
 
 
 def _money(value: float) -> str:
-    return f"${value:,.2f}"
+    sign = "-" if value < 0 else ""
+    return f"{sign}${abs(value):,.2f}"
 
 
 def _money_or_dash(value: float | None) -> str:
@@ -2404,7 +2450,7 @@ def _money_or_dash(value: float | None) -> str:
 
 
 def _number(value: float) -> str:
-    return f"{value:g}"
+    return f"{value:,.8f}".rstrip("0").rstrip(".")
 
 
 def _coverage_or_dash(labels: list[str]) -> str:

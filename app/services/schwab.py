@@ -433,6 +433,7 @@ def sync_schwab_portfolio() -> PortfolioSnapshot:
         orders_error=orders_error,
     )
     option_symbols = _normalized_option_symbols(account_facts)
+    option_quotes: dict[str, dict[str, Any]] = {}
     if option_symbols:
         try:
             option_quotes = session.get_equity_quotes(option_symbols)
@@ -454,20 +455,31 @@ def sync_schwab_portfolio() -> PortfolioSnapshot:
     if not isinstance(account_values, dict):
         raise RuntimeError("Normalized Schwab account values were unavailable.")
 
-    holdings = [_holding_from_schwab(row) for row in _position_rows(account)]
-    holdings = [holding for holding in holdings if holding is not None]
+    holdings: list[Holding] = []
+    for row in _position_rows(account):
+        instrument = row.get("instrument") if isinstance(row.get("instrument"), dict) else {}
+        symbol = str(instrument.get("symbol") or row.get("symbol") or "").strip().upper()
+        holding = _holding_from_schwab(
+            row,
+            option_quote=option_quotes.get(symbol),
+        )
+        if holding is not None:
+            holdings.append(holding)
+    holdings.sort(key=lambda holding: holding.bucket == "Option")
 
     liquidation_value = _to_float(account_values.get("liquidation_value"))
     cash_balance = _to_float(account_values.get("cash_balance"))
+    short_balance = _to_float(account_values.get("short_balance"))
     cash: list[CashBalance] = []
     if cash_balance is not None:
+        cash_and_sweep = cash_balance + (short_balance or 0.0)
         cash.append(
             CashBalance(
                 symbol="USD",
-                amount=round(cash_balance, 2),
-                value=round(cash_balance, 2),
+                amount=round(cash_and_sweep, 2),
+                value=round(cash_and_sweep, 2),
                 source="schwab",
-                bucket="Cash balance",
+                bucket="Cash & sweep",
             )
         )
 
@@ -522,10 +534,15 @@ def _position_rows(account: dict[str, Any]) -> list[dict[str, Any]]:
     return [row for row in positions if isinstance(row, dict)] if isinstance(positions, list) else []
 
 
-def _holding_from_schwab(row: dict[str, Any]) -> Holding | None:
+def _holding_from_schwab(
+    row: dict[str, Any],
+    *,
+    option_quote: dict[str, Any] | None = None,
+) -> Holding | None:
     instrument = row.get("instrument") if isinstance(row.get("instrument"), dict) else {}
 
     symbol = str(instrument.get("symbol") or row.get("symbol") or "").strip().upper()
+    asset_type = str(instrument.get("assetType") or row.get("assetType") or "").strip().upper()
     quantity = _net_quantity(row)
 
     if not symbol or abs(quantity) <= 0.00000001:
@@ -533,6 +550,14 @@ def _holding_from_schwab(row: dict[str, Any]) -> Holding | None:
 
     market_value = _to_float(row.get("marketValue"))
     price = _first_number(row, ("marketPrice", "lastPrice", "currentPrice", "markPrice"))
+
+    if "OPTION" in asset_type and option_quote is not None:
+        price = _first_number(option_quote, ("mark", "markPrice"))
+        if price is None:
+            bid = _first_number(option_quote, ("bidPrice", "bid"))
+            ask = _first_number(option_quote, ("askPrice", "ask"))
+            if bid is not None and ask is not None:
+                price = (bid + ask) / 2.0
 
     if price is None and market_value is not None and abs(quantity) > 0.00000001:
         price = abs(market_value / quantity)
@@ -546,10 +571,20 @@ def _holding_from_schwab(row: dict[str, Any]) -> Holding | None:
         price=round(price or 0.0, 8),
         value=round(market_value, 2),
         source="schwab",
-        bucket="Equity",
+        bucket=_schwab_holding_bucket(asset_type),
         unrealized_pnl=_schwab_unrealized_pnl(row),
-        day_pnl=_schwab_day_pnl(row),
+        day_pnl=_schwab_day_pnl(row, quantity),
     )
+
+
+def _schwab_holding_bucket(asset_type: str) -> str:
+    if "OPTION" in asset_type:
+        return "Option"
+    if asset_type == "COLLECTIVE_INVESTMENT":
+        return "ETF"
+    if asset_type in {"EQUITY", "STOCK"}:
+        return "Stock"
+    return asset_type.title() or "Other"
 
 
 def _net_quantity(row: dict[str, Any]) -> float:
@@ -578,7 +613,20 @@ def _schwab_unrealized_pnl(row: dict[str, Any]) -> float | None:
     return round(value, 2) if value is not None else None
 
 
-def _schwab_day_pnl(row: dict[str, Any]) -> float | None:
+def _schwab_day_pnl(row: dict[str, Any], quantity: float) -> float | None:
+    instrument = row.get("instrument") if isinstance(row.get("instrument"), dict) else {}
+    asset_type = str(instrument.get("assetType") or row.get("assetType") or "").strip().upper()
+    net_change = _to_float(instrument.get("netChange"))
+
+    # thinkorswim's P/L Day marks stock and ETF exposure from the prior close.
+    # Schwab's position-level currentDayProfitLoss can instead switch to a
+    # cost-basis convention after exercises, assignments, or other same-day
+    # position changes.  The instrument net change preserves TOS semantics for
+    # both long and short shares.  Options retain the position-level field so
+    # contracts opened today are measured from their actual fill price.
+    if asset_type in {"COLLECTIVE_INVESTMENT", "EQUITY", "STOCK"} and net_change is not None:
+        return round(net_change * quantity, 2)
+
     value = _first_number(row, ("currentDayProfitLoss", "dayProfitLoss"))
 
     if value is not None:

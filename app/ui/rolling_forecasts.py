@@ -25,6 +25,7 @@ from app.ui.rolling_forecast_data import (
     format_timestamp_utc,
     load_forecast_dashboard,
     route_accessible_status_labels,
+    route_live_performance_labels,
     route_outcome_evidence_label,
     route_publication_summary,
 )
@@ -40,6 +41,8 @@ from app.ui.theme import (
     TEXT,
     WARNING,
 )
+
+HOURLY_AUTO_REFRESH_MS = 60 * 60 * 1000
 
 
 @dataclass
@@ -130,10 +133,12 @@ class RollingForecastTab:
         self._symbol_expanded: dict[str, bool] = {}
         self._layout_columns: int | None = None
         self._width = 1180
+        self._hourly_refresh_job: str | None = None
 
         self._apply_styles()
         self._build(parent)
         self.root.after_idle(self.refresh)
+        self._schedule_hourly_refresh()
 
     def _apply_styles(self) -> None:
         style = ttk.Style(self.root)
@@ -327,6 +332,19 @@ class RollingForecastTab:
             daemon=True,
         )
         thread.start()
+
+    def _schedule_hourly_refresh(self) -> None:
+        if self._hourly_refresh_job is not None:
+            return
+        self._hourly_refresh_job = self.root.after(
+            HOURLY_AUTO_REFRESH_MS,
+            self._run_hourly_refresh,
+        )
+
+    def _run_hourly_refresh(self) -> None:
+        self._hourly_refresh_job = None
+        self.refresh()
+        self._schedule_hourly_refresh()
 
     def _load_in_background(self, generation: int) -> None:
         try:
@@ -729,6 +747,16 @@ class RollingForecastTab:
             wraplength=330,
             justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(10, 0))
+        cumulative_performance, rolling_performance = (
+            route_live_performance_labels(route)
+        )
+        ttk.Label(
+            card,
+            text=f"{cumulative_performance}\n{rolling_performance}",
+            style="ForecastBody.TLabel",
+            wraplength=330,
+            justify=tk.LEFT,
+        ).pack(anchor=tk.W, pady=(5, 0))
         if route.is_missing:
             ttk.Label(
                 card,
@@ -851,6 +879,16 @@ class RollingForecastTab:
             wraplength=960,
             justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(7, 0))
+        aggregate_cumulative, aggregate_rolling = (
+            route_live_performance_labels(aggregate)
+        )
+        ttk.Label(
+            aggregate_panel,
+            text=f"{aggregate_cumulative}\n{aggregate_rolling}",
+            style="ForecastBody.TLabel",
+            wraplength=960,
+            justify=tk.LEFT,
+        ).pack(anchor=tk.W, pady=(5, 0))
 
         for route in outlook.sessions:
             session_panel = ttk.Frame(
@@ -913,6 +951,16 @@ class RollingForecastTab:
                 wraplength=960,
                 justify=tk.LEFT,
             ).pack(anchor=tk.W, pady=(7, 0))
+            session_cumulative, session_rolling = (
+                route_live_performance_labels(route)
+            )
+            ttk.Label(
+                session_panel,
+                text=f"{session_cumulative}\n{session_rolling}",
+                style="ForecastBody.TLabel",
+                wraplength=960,
+                justify=tk.LEFT,
+            ).pack(anchor=tk.W, pady=(5, 0))
         return card
 
     def _clear_dashboard(self) -> None:

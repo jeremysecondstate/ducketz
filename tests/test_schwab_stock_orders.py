@@ -10,7 +10,7 @@ from app.services.schwab_stock_orders import (
     build_schwab_stock_replacement_payload,
     schwab_stock_order_edit,
 )
-from app.ui.ducket_bucket import SchwabDucketsTab
+from app.ui.ducket_bucket import SchwabDucketsTab, _money, _number
 from app.ui.schwab_order_messages import (
     order_replacement_confirmation_message,
     order_replaced_message,
@@ -268,6 +268,44 @@ def test_selecting_rendered_order_copies_id_and_retains_open_order_for_edit() ->
 
     assert tab.order_id.value == "1007713091518"
     assert tab._selected_schwab_open_order() is order
+
+
+@pytest.mark.parametrize(
+    ("bucket", "symbol", "stock_symbol", "option_symbol"),
+    [
+        ("Stock", "NVDA", "NVDA", ""),
+        ("ETF", "VXUS", "VXUS", ""),
+        ("Option", "AAPL  260828C00312500", "", "AAPL  260828C00312500"),
+    ],
+)
+def test_selecting_schwab_position_routes_to_its_asset_ticket(
+    bucket: str,
+    symbol: str,
+    stock_symbol: str,
+    option_symbol: str,
+) -> None:
+    tab = object.__new__(SchwabDucketsTab)
+    table = _Table()
+    table.rows["position"] = ("Schwab", bucket, symbol)
+    table.selected = ("position",)
+    tab.holdings_table = table
+    tab.stock_symbol = _Value()
+    tab.option_symbol = _Value()
+
+    tab._use_selected_holding(None)
+
+    assert tab.stock_symbol.value == stock_symbol
+    assert tab.option_symbol.value == option_symbol
+
+
+def test_balance_amount_formatting_preserves_cents_without_padding() -> None:
+    assert _number(130_468.76) == "130,468.76"
+    assert _number(15.0) == "15"
+    assert _number(0.12345678) == "0.12345678"
+
+
+def test_negative_money_places_sign_before_currency_symbol() -> None:
+    assert _money(-4_200.70) == "-$4,200.70"
 
 
 def test_replacement_messages_name_original_and_new_order_ids() -> None:

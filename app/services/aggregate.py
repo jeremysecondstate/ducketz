@@ -17,6 +17,18 @@ class DucketBucketSnapshot:
     def holdings_value(self) -> float:
         return round(sum(snapshot.holdings_value for snapshot in self.snapshots), 2)
 
+    def holdings_value_for(self, *buckets: str) -> float:
+        selected = {bucket.strip().upper() for bucket in buckets}
+        return round(
+            sum(
+                holding.value
+                for snapshot in self.snapshots
+                for holding in snapshot.holdings
+                if holding.bucket.strip().upper() in selected
+            ),
+            2,
+        )
+
     @property
     def total_value(self) -> float:
         return round(sum(snapshot.total_value for snapshot in self.snapshots), 2)

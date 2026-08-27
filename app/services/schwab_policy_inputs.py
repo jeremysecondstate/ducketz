@@ -21,6 +21,7 @@ _REVIEWED_NON_OPTION_ASSET_TYPES = frozenset({
 _ACCOUNT_VALUE_FIELDS: tuple[tuple[str, tuple[str, ...], str], ...] = (
     ("liquidation_value", ("liquidationValue", "currentLiquidationValue", "accountValue"), "liquidation/account value"),
     ("cash_balance", ("cashBalance",), "cash balance"),
+    ("short_balance", ("shortBalance",), "short-sale cash credit"),
     ("settled_cash", ("settledCash",), "settled cash"),
     ("cash_available_for_trading", ("cashAvailableForTrading",), "cash available for trading"),
     ("cash_available_for_withdrawal", ("cashAvailableForWithdrawal",), "cash available for withdrawal"),

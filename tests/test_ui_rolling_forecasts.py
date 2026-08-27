@@ -25,10 +25,12 @@ from app.ui.rolling_forecast_data import (
     format_timestamp_utc,
     load_forecast_dashboard,
     route_accessible_status_labels,
+    route_live_performance_labels,
     route_outcome_evidence_label,
     route_publication_summary,
 )
 from app.ui.rolling_forecasts import (
+    HOURLY_AUTO_REFRESH_MS,
     RollingForecastTab,
     forecast_symbol_header_text,
     forecast_symbol_section_summary,
@@ -36,6 +38,7 @@ from app.ui.rolling_forecasts import (
 )
 from ml.live_evidence import minimum_live_decisions
 from ml.parquet_contracts import (
+    EVALUATION_SCHEMA,
     INTELLIGENCE_SCHEMA,
     write_parquet_with_schema,
 )
@@ -682,6 +685,113 @@ def test_live_evidence_wording_and_threshold_boundaries(
     )
 
 
+def test_live_performance_shows_cumulative_and_rolling_percentages(
+    tmp_path: Path,
+) -> None:
+    path = _write(
+        tmp_path,
+        [
+            _row(
+                horizon="1d",
+                live_evidence_status="LIVE_EVIDENCE_AVAILABLE",
+                completed_count=32,
+                minimum_count=30,
+            )
+        ],
+    )
+    evaluations = [
+        _evaluation_row(
+            horizon="1d",
+            decision_index=index,
+            observed_target=index % 2,
+            correct=index >= 2,
+        )
+        for index in range(32)
+    ]
+    evaluations.append(
+        _evaluation_row(
+            horizon="1d",
+            decision_index=0,
+            observed_target=0,
+            correct=True,
+            publication_offset_minutes=30,
+        )
+    )
+    write_parquet_with_schema(
+        pd.DataFrame(evaluations),
+        tmp_path / "evaluations.parquet",
+        EVALUATION_SCHEMA,
+    )
+
+    route = next(
+        item
+        for item in load_forecast_dashboard(path).symbols[0].routes
+        if item.horizon == "1d"
+    )
+
+    assert route.live_performance is not None
+    assert route.live_performance.evidence_count == 32
+    assert route.live_performance.scored_count == 32
+    assert route.live_performance.correct_count == 30
+    assert route.live_performance.rolling_window_size == 30
+    assert route.live_performance.rolling_count == 30
+    assert route.live_performance.rolling_correct_count == 30
+    assert route_live_performance_labels(route) == (
+        "Cumulative Live: Hit 93.8% (30/32) · Down-Only 50.0% · "
+        "Lift +43.8 pp",
+        "Rolling 30: Hit 100.0% (30/30) · Down-Only 50.0% · "
+        "Lift +50.0 pp",
+    )
+
+
+def test_live_performance_is_available_for_every_displayed_horizon(
+    tmp_path: Path,
+) -> None:
+    standard_rows = [
+        _row(
+            horizon=horizon,
+            live_evidence_status="INSUFFICIENT_LIVE_EVIDENCE",
+            completed_count=1,
+        )
+        for horizon in STANDARD_HORIZON_ORDER
+    ]
+    weekly_rows = _weekly_rows()
+    for row in weekly_rows:
+        row["live_evidence_status"] = "INSUFFICIENT_LIVE_EVIDENCE"
+        row["completed_decision_count"] = 1
+    path = _write(tmp_path, [*standard_rows, *weekly_rows])
+    write_parquet_with_schema(
+        pd.DataFrame(
+            [
+                _evaluation_row(
+                    horizon=horizon,
+                    decision_index=index,
+                    observed_target=index % 2,
+                    correct=True,
+                )
+                for index, horizon in enumerate(SUPPORTED_HORIZON_ORDER)
+            ]
+        ),
+        tmp_path / "evaluations.parquet",
+        EVALUATION_SCHEMA,
+    )
+
+    symbol = load_forecast_dashboard(path).symbols[0]
+    routes = {route.horizon: route for route in symbol.all_routes}
+
+    assert set(routes) == set(SUPPORTED_HORIZON_ORDER)
+    for horizon, route in routes.items():
+        assert route.live_performance is not None
+        assert route.live_performance.rolling_window_size == (
+            minimum_live_decisions(horizon)
+        )
+        cumulative, rolling = route_live_performance_labels(route)
+        assert cumulative.startswith("Cumulative Live: Hit ")
+        assert rolling.startswith(
+            f"Rolling 1/{minimum_live_decisions(horizon)}: Hit "
+        )
+
+
 def test_utc_and_local_timestamp_rendering() -> None:
     timestamp = datetime(
         2026,
@@ -891,6 +1001,7 @@ def test_weekly_card_source_contains_required_frozen_outlook_content() -> None:
         "Outcome/evidence",
     ):
         assert required_text in source
+    assert source.count("route_live_performance_labels(") == 2
 
 
 def test_forecast_action_labels_use_title_capitalization() -> None:
@@ -1002,7 +1113,18 @@ def test_route_card_has_no_model_status_row_or_unused_separator() -> None:
     assert "model_evidence" not in source
     assert "ttk.Separator" not in source
     assert "text=live_evidence" in source
+    assert "route_live_performance_labels(route)" in source
     assert "route.is_actionable or route.is_in_progress" in source
+
+
+def test_rolling_forecasts_refresh_live_performance_hourly() -> None:
+    source = inspect.getsource(RollingForecastTab)
+
+    assert HOURLY_AUTO_REFRESH_MS == 3_600_000
+    assert "self._schedule_hourly_refresh()" in source
+    assert "self.root.after(" in inspect.getsource(
+        RollingForecastTab._schedule_hourly_refresh
+    )
 
 
 def test_view_and_debug_output_use_the_readable_intelligence_fields(
@@ -1221,6 +1343,59 @@ def _row(
             "disabled."
         ),
         "schema_version": "one-id-v2",
+    }
+
+
+def _evaluation_row(
+    *,
+    horizon: str,
+    decision_index: int,
+    observed_target: int,
+    correct: bool,
+    symbol: str = "GOOG",
+    publication_offset_minutes: int = 0,
+) -> dict[str, object]:
+    decision_timestamp = pd.Timestamp("2026-05-01T14:00:00Z") + pd.Timedelta(
+        hours=decision_index
+    )
+    prediction_created_at = decision_timestamp + pd.Timedelta(
+        minutes=5 + publication_offset_minutes
+    )
+    predicted_up = bool(observed_target) if correct else not bool(observed_target)
+    probability = 0.75 if predicted_up else 0.25
+    brier_score = (probability - observed_target) ** 2
+    return {
+        "id": (
+            f"{symbol}|{horizon}|{decision_timestamp.isoformat()}|"
+            f"{prediction_created_at.isoformat()}"
+        ),
+        "symbol": symbol,
+        "provider": "databento",
+        "horizon": horizon,
+        "decision_timestamp": decision_timestamp,
+        "target_window_start": decision_timestamp + pd.Timedelta(hours=1),
+        "target_window_end": decision_timestamp + pd.Timedelta(hours=2),
+        "prediction_created_at": prediction_created_at,
+        "evaluated_at": decision_timestamp + pd.Timedelta(hours=3),
+        "model_name": f"logistic-{horizon}",
+        "model_version": "test-v1",
+        "prediction_mode": "LIVE",
+        "evaluation_status": "EVALUATED",
+        "target_definition_version": "test-target-v1",
+        "target_specification": "test-target-specification",
+        "assumed_round_trip_cost": 0.001,
+        "observed_target": observed_target,
+        "observed_forward_raw_return": 0.01 if observed_target else -0.01,
+        "observed_forward_cost_adjusted_return": (
+            0.009 if observed_target else -0.011
+        ),
+        "raw_probability": probability,
+        "calibrated_probability": probability,
+        "raw_log_loss": 0.25 if correct else 1.25,
+        "log_loss": 0.25 if correct else 1.25,
+        "raw_brier_score": brier_score,
+        "brier_score": brier_score,
+        "prediction_correct_0_5": correct,
     }
 
 
