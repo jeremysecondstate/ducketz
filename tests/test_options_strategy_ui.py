@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import inspect
 import math
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,17 +25,20 @@ from app.services.strategy_portfolio_impact import (
     calculate_strategy_portfolio_impact,
 )
 from app.ui.options_strategy_data import (
+    HORIZON_LABELS as STRATEGY_HORIZON_LABELS,
     _human_reason,
     load_strategy_candidates,
     portfolio_fit,
 )
 from app.ui.options_strategies import (
+    _CANDIDATE_COLUMNS,
     OptionsStrategiesTab,
     _decision_evidence,
     _inline_decision_summary,
     _publication_notice_display,
     _sort_candidate_views,
 )
+from app.ui.rolling_forecast_data import HORIZON_LABELS as FORECAST_HORIZON_LABELS
 from app.ui.schwab_order_messages import order_confirmation_message
 from ml.parquet_contracts import (
     STRATEGY_AUDIT_SCHEMA,
@@ -61,6 +65,7 @@ from ml.strategy_selection.contracts import (
         ("direction_probability_up", "direction_probability_up"),
         ("calibrated_probability", "predictive_score"),
         ("scenario_coverage", "scenario_coverage"),
+        ("expected_net_profit", "expected_net_profit"),
         ("expected_return", "expected_return"),
     ),
 )
@@ -135,6 +140,19 @@ def test_ranked_candidate_heading_click_defaults_metrics_to_highest_first() -> N
     assert table.labels["calibrated_probability"] == "ML Profit Probability"
     assert table.labels["strategy"] == "Strategy ↑"
     assert renders == [True, True, True]
+
+
+def test_options_strategy_weekly_labels_match_rolling_forecast_labels() -> None:
+    assert STRATEGY_HORIZON_LABELS == FORECAST_HORIZON_LABELS
+
+
+def test_candidate_table_preserves_declared_widths_for_horizontal_scroll() -> None:
+    source = inspect.getsource(OptionsStrategiesTab._build_ranking)
+    render_source = inspect.getsource(OptionsStrategiesTab._render_candidates)
+
+    assert "minwidth=width" in source
+    assert any(name == "expected_net_profit" for name, *_rest in _CANDIDATE_COLUMNS)
+    assert "_money(candidate.expected_net_profit)" in render_source
 
 
 @pytest.mark.parametrize(
@@ -965,6 +983,57 @@ def test_strategy_loader_marks_heuristic_quality_failures_research_only(
         "Publication model-pricing checks are incomplete"
     )
     assert "current account facts" in result.manual_actionability
+
+
+def test_opra_model_evidence_uses_its_own_quality_gate_and_shows_ev(
+    tmp_path: Path,
+) -> None:
+    candidate = _candidate(
+        strategy_name="long_call",
+        strategy_display_name="Long Call",
+        legs=[
+            _option_leg(
+                side="LONG",
+                option_type="CALL",
+                strike=105,
+                symbol="GOOG  260918C00105000",
+                bid=2.40,
+                ask=2.50,
+            )
+        ],
+        score_basis=OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS,
+        pricing_source="UNAVAILABLE",
+        pricing_status="Unavailable",
+        pricing_leg_coverage=0.0,
+        surface_quality_pass=False,
+        liquidity_policy_pass=False,
+        all_option_quotes_valid=True,
+        expected_net_profit=12.34,
+    )
+    path = tmp_path / "strategy-candidates.parquet"
+    write_parquet_with_schema(
+        pd.DataFrame([candidate]),
+        path,
+        STRATEGY_CANDIDATE_SCHEMA,
+    )
+
+    result = load_strategy_candidates(
+        path,
+        snapshot=PortfolioSnapshot(
+            source="schwab",
+            account_label="Schwab",
+            account_facts={},
+        ),
+    ).candidates[0]
+    evidence = _decision_evidence(result)
+
+    assert result.quality_warning == "OPRA execution evidence gate passed"
+    assert not result.manual_order_actionable
+    assert evidence.expected_net_profit == pytest.approx(12.34)
+    assert evidence.publication_checks == (
+        ("Contract quote fields", True),
+        ("OPRA execution evidence gate", True),
+    )
 
 
 def test_discover_empty_state_surfaces_matching_publication_audit_reason(

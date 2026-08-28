@@ -40,12 +40,12 @@ HORIZON_LABELS = {
     "1h": "1 Hour",
     "4h": "4 Hour",
     "1d": "1 Day",
-    "1w": "Five-Session Aggregate",
-    "1w-d1": "Week Day 1",
-    "1w-d2": "Week Day 2",
-    "1w-d3": "Week Day 3",
-    "1w-d4": "Week Day 4",
-    "1w-d5": "Week Day 5",
+    "1w": "Remaining-Week Aggregate",
+    "1w-d1": "Day 1",
+    "1w-d2": "Day 2",
+    "1w-d3": "Day 3",
+    "1w-d4": "Day 4",
+    "1w-d5": "Day 5",
 }
 HORIZON_ORDER = tuple(HORIZON_LABELS)
 PORTFOLIO_FIT_POLICY_VERSION = "current-schwab-position-fit-v2"
@@ -416,11 +416,18 @@ def _candidate_views(
                 quality_failures.append("liquidity policy failed")
             if not quotes_pass:
                 quality_failures.append("quote validity failed")
-            quality_warning = (
-                "Quality warning: " + ", ".join(quality_failures)
-                if quality_failures
-                else "Quality policies passed"
-            )
+            if basis_code == OPRA_EXECUTION_CALIBRATED_MODEL_SCORE_BASIS:
+                quality_warning = (
+                    "Quality warning: quote validity failed"
+                    if not quotes_pass
+                    else "OPRA execution evidence gate passed"
+                )
+            else:
+                quality_warning = (
+                    "Quality warning: " + ", ".join(quality_failures)
+                    if quality_failures
+                    else "Quality policies passed"
+                )
             probability_exclusion = _profit_probability_exclusion_reason(
                 row,
                 horizon=clean_horizon,

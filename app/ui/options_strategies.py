@@ -72,6 +72,7 @@ _CANDIDATE_COLUMNS = (
     ("direction_probability_up", "Direction Up (ML)", 135, tk.E),
     ("calibrated_probability", "ML Profit Probability", 155, tk.E),
     ("scenario_coverage", "Scenario Coverage", 135, tk.E),
+    ("expected_net_profit", "Expected Net Profit", 125, tk.E),
     ("expected_return", "Expected Return", 115, tk.E),
     ("portfolio_fit", "Portfolio Fit", 95, tk.W),
     ("score_basis", "Score Basis", 160, tk.W),
@@ -85,6 +86,7 @@ _DESCENDING_FIRST_CANDIDATE_COLUMNS = frozenset(
         "direction_probability_up",
         "calibrated_probability",
         "scenario_coverage",
+        "expected_net_profit",
         "expected_return",
     }
 )
@@ -156,6 +158,7 @@ class _DecisionEvidence:
     direction_probability_up: float
     predictive_score: float | None
     scenario_coverage: float
+    expected_net_profit: float | None
     expected_return: float | None
     execution_status: str
     execution_detail: str
@@ -576,6 +579,7 @@ class OptionsStrategiesTab:
                 "direction_probability_up",
                 "calibrated_probability",
                 "scenario_coverage",
+                "expected_net_profit",
                 "expected_return",
                 "portfolio_fit",
                 "score_basis",
@@ -593,7 +597,7 @@ class OptionsStrategiesTab:
             table.column(
                 name,
                 width=width,
-                minwidth=50,
+                minwidth=width,
                 anchor=anchor,
                 stretch=name in {"strategy", "exact_legs", "pricing_quality"},
             )
@@ -1754,7 +1758,12 @@ class OptionsStrategiesTab:
             ),
             (
                 "• Scenario Coverage: "
-                f"{_percentage_points(evidence.scenario_coverage)}   "
+                f"{_percentage_points(evidence.scenario_coverage)}\n",
+                "bullet",
+            ),
+            (
+                "• Expected Net Profit: "
+                f"{_money(evidence.expected_net_profit)}   "
                 f"• Expected Return: {_percent(evidence.expected_return)}\n",
                 "bullet",
             ),
@@ -2013,6 +2022,7 @@ class OptionsStrategiesTab:
                     _percentage_points(candidate.direction_probability_up),
                     _percentage_points(candidate.predictive_score),
                     _percentage_points(candidate.scenario_coverage),
+                    _money(candidate.expected_net_profit),
                     _percent(candidate.expected_return),
                     candidate.portfolio_fit.label,
                     candidate.score_basis,
@@ -2575,6 +2585,7 @@ def _candidate_sort_value(
         "direction_probability_up": "direction_probability_up",
         "calibrated_probability": "predictive_score",
         "scenario_coverage": "scenario_coverage",
+        "expected_net_profit": "expected_net_profit",
         "expected_return": "expected_return",
         "score_basis": "score_basis",
     }.get(column)
@@ -2691,13 +2702,20 @@ def _decision_evidence(
                     )
                 ),
             ),
-            (
-                "Volatility surface screen",
-                bool(row.get("surface_quality_pass", False)),
-            ),
-            (
-                "Liquidity screen",
-                bool(row.get("liquidity_policy_pass", False)),
+            *(
+                (("OPRA execution evidence gate", True),)
+                if str(getattr(candidate, "score_basis", ""))
+                == "OPRA Execution + ML"
+                else (
+                    (
+                        "Volatility surface screen",
+                        bool(row.get("surface_quality_pass", False)),
+                    ),
+                    (
+                        "Liquidity screen",
+                        bool(row.get("liquidity_policy_pass", False)),
+                    ),
+                )
             ),
         ),
         direction_probability_up=float(candidate.direction_probability_up),
@@ -2707,6 +2725,11 @@ def _decision_evidence(
             else float(candidate.predictive_score)
         ),
         scenario_coverage=float(candidate.scenario_coverage),
+        expected_net_profit=(
+            None
+            if getattr(candidate, "expected_net_profit", None) is None
+            else float(candidate.expected_net_profit)
+        ),
         expected_return=(
             None
             if candidate.expected_return is None

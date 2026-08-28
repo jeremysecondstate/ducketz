@@ -43,6 +43,8 @@ from app.ui.theme import (
 )
 
 HOURLY_AUTO_REFRESH_MS = 60 * 60 * 1000
+LIVE_PERFORMANCE_ACCENT = "#72c1ff"
+LIVE_PERFORMANCE_TEXT = "#ffffff"
 
 
 @dataclass
@@ -165,6 +167,13 @@ class RollingForecastTab:
             background=SURFACE,
         )
         style.configure(
+            "ForecastPerformance.TFrame",
+            background=SURFACE_ALT,
+            bordercolor=LIVE_PERFORMANCE_ACCENT,
+            borderwidth=1,
+            relief=tk.SOLID,
+        )
+        style.configure(
             "ForecastTitle.TLabel",
             background=BACKGROUND,
             foreground=TEXT,
@@ -199,6 +208,24 @@ class RollingForecastTab:
             background=SURFACE,
             foreground=TEXT,
             font=("Segoe UI", 9),
+        )
+        style.configure(
+            "ForecastPerformanceHeading.TLabel",
+            background=SURFACE_ALT,
+            foreground=LIVE_PERFORMANCE_ACCENT,
+            font=("Segoe UI", 10, "bold"),
+        )
+        style.configure(
+            "ForecastPerformanceCumulative.TLabel",
+            background=SURFACE_ALT,
+            foreground=LIVE_PERFORMANCE_TEXT,
+            font=("Segoe UI", 11, "bold"),
+        )
+        style.configure(
+            "ForecastPerformanceRolling.TLabel",
+            background=SURFACE_ALT,
+            foreground=LIVE_PERFORMANCE_ACCENT,
+            font=("Segoe UI", 11, "bold"),
         )
         style.configure(
             "ForecastMuted.TLabel",
@@ -747,16 +774,11 @@ class RollingForecastTab:
             wraplength=330,
             justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(10, 0))
-        cumulative_performance, rolling_performance = (
-            route_live_performance_labels(route)
-        )
-        ttk.Label(
+        self._build_live_performance_panel(
             card,
-            text=f"{cumulative_performance}\n{rolling_performance}",
-            style="ForecastBody.TLabel",
-            wraplength=330,
-            justify=tk.LEFT,
-        ).pack(anchor=tk.W, pady=(5, 0))
+            route,
+            wraplength=310,
+        )
         if route.is_missing:
             ttk.Label(
                 card,
@@ -879,16 +901,11 @@ class RollingForecastTab:
             wraplength=960,
             justify=tk.LEFT,
         ).pack(anchor=tk.W, pady=(7, 0))
-        aggregate_cumulative, aggregate_rolling = (
-            route_live_performance_labels(aggregate)
-        )
-        ttk.Label(
+        self._build_live_performance_panel(
             aggregate_panel,
-            text=f"{aggregate_cumulative}\n{aggregate_rolling}",
-            style="ForecastBody.TLabel",
-            wraplength=960,
-            justify=tk.LEFT,
-        ).pack(anchor=tk.W, pady=(5, 0))
+            aggregate,
+            wraplength=930,
+        )
 
         for route in outlook.sessions:
             session_panel = ttk.Frame(
@@ -951,17 +968,50 @@ class RollingForecastTab:
                 wraplength=960,
                 justify=tk.LEFT,
             ).pack(anchor=tk.W, pady=(7, 0))
-            session_cumulative, session_rolling = (
-                route_live_performance_labels(route)
-            )
-            ttk.Label(
+            self._build_live_performance_panel(
                 session_panel,
-                text=f"{session_cumulative}\n{session_rolling}",
-                style="ForecastBody.TLabel",
-                wraplength=960,
-                justify=tk.LEFT,
-            ).pack(anchor=tk.W, pady=(5, 0))
+                route,
+                wraplength=930,
+            )
         return card
+
+    def _build_live_performance_panel(
+        self,
+        parent: ttk.Frame,
+        route: ForecastRouteView,
+        *,
+        wraplength: int,
+    ) -> ttk.Frame:
+        panel = ttk.Frame(
+            parent,
+            padding=(10, 8),
+            style="ForecastPerformance.TFrame",
+        )
+        panel.pack(fill=tk.X, pady=(7, 0))
+        ttk.Label(
+            panel,
+            text="LIVE PERFORMANCE",
+            style="ForecastPerformanceHeading.TLabel",
+        ).pack(anchor=tk.W)
+
+        cumulative_performance, rolling_performance = (
+            route_live_performance_labels(route)
+        )
+        ttk.Label(
+            panel,
+            text=cumulative_performance,
+            style="ForecastPerformanceCumulative.TLabel",
+            wraplength=wraplength,
+            justify=tk.LEFT,
+        ).pack(anchor=tk.W, pady=(6, 0))
+        ttk.Label(
+            panel,
+            text=rolling_performance,
+            style="ForecastPerformanceRolling.TLabel",
+            wraplength=wraplength,
+            justify=tk.LEFT,
+        ).pack(anchor=tk.W, pady=(5, 0))
+        return panel
 
     def _clear_dashboard(self) -> None:
         for container in (

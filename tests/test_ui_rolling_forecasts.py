@@ -1001,7 +1001,7 @@ def test_weekly_card_source_contains_required_frozen_outlook_content() -> None:
         "Outcome/evidence",
     ):
         assert required_text in source
-    assert source.count("route_live_performance_labels(") == 2
+    assert source.count("self._build_live_performance_panel(") == 2
 
 
 def test_forecast_action_labels_use_title_capitalization() -> None:
@@ -1113,8 +1113,24 @@ def test_route_card_has_no_model_status_row_or_unused_separator() -> None:
     assert "model_evidence" not in source
     assert "ttk.Separator" not in source
     assert "text=live_evidence" in source
-    assert "route_live_performance_labels(route)" in source
+    assert "self._build_live_performance_panel(" in source
     assert "route.is_actionable or route.is_in_progress" in source
+
+
+def test_live_performance_panel_is_high_contrast_large_and_bold() -> None:
+    style_source = inspect.getsource(RollingForecastTab._apply_styles)
+    panel_source = inspect.getsource(
+        RollingForecastTab._build_live_performance_panel
+    )
+
+    assert '"ForecastPerformance.TFrame"' in style_source
+    assert '"ForecastPerformanceHeading.TLabel"' in style_source
+    assert '"ForecastPerformanceCumulative.TLabel"' in style_source
+    assert '"ForecastPerformanceRolling.TLabel"' in style_source
+    assert style_source.count('font=("Segoe UI", 11, "bold")') >= 2
+    assert 'text="LIVE PERFORMANCE"' in panel_source
+    assert "route_live_performance_labels(route)" in panel_source
+    assert "panel.pack(fill=tk.X" in panel_source
 
 
 def test_rolling_forecasts_refresh_live_performance_hourly() -> None:
