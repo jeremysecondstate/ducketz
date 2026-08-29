@@ -91,6 +91,17 @@ _DESCENDING_FIRST_CANDIDATE_COLUMNS = frozenset(
     }
 )
 
+_DISCOVER_TICKET_MIN_WIDTH = 360
+
+
+def _discover_sash_position(width: int) -> int:
+    """Keep the canonical Discover ticket readable beside a scrollable table."""
+    if width <= 1:
+        return 0
+    proportional_position = int(round(width * 0.66))
+    ticket_safe_position = width - _DISCOVER_TICKET_MIN_WIDTH
+    return max(1, min(proportional_position, ticket_safe_position))
+
 _PORTFOLIO_TERM_HELP = {
     "applicable_funds": (
         "Applicable Funds",
@@ -216,6 +227,7 @@ class OptionsStrategiesTab:
         self._candidate_sort_descending = False
         self._impact_ticket_max_loss_value: ttk.Label | None = None
         self._impact_combined_max_loss_value: ttk.Label | None = None
+        self._discover_panes: ttk.PanedWindow | None = None
 
         self.symbol = tk.StringVar()
         self.horizon_label = tk.StringVar()
@@ -549,8 +561,25 @@ class OptionsStrategiesTab:
         )
         panes.add(ranking, weight=3)
         panes.add(ticket, weight=2)
+        panes.bind("<Configure>", self._resize_discover_panes, add="+")
+        self._discover_panes = panes
         self._build_ranking(ranking)
         self._build_ticket(ticket)
+
+    def _resize_discover_panes(self, event: object = None) -> None:
+        panes = self._discover_panes
+        if panes is None:
+            return
+        width = int(getattr(event, "width", panes.winfo_width()))
+        position = _discover_sash_position(width)
+        if position <= 0:
+            return
+        try:
+            if abs(int(panes.sashpos(0)) - position) > 1:
+                panes.sashpos(0, position)
+        except tk.TclError:
+            # The hidden notebook page can be configured before its sash exists.
+            return
 
     def _build_ranking(self, parent: ttk.Frame) -> None:
         ttk.Label(

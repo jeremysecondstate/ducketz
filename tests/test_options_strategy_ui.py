@@ -33,6 +33,7 @@ from app.ui.options_strategy_data import (
 from app.ui.options_strategies import (
     _CANDIDATE_COLUMNS,
     OptionsStrategiesTab,
+    _discover_sash_position,
     _decision_evidence,
     _inline_decision_summary,
     _publication_notice_display,
@@ -153,6 +154,36 @@ def test_candidate_table_preserves_declared_widths_for_horizontal_scroll() -> No
     assert "minwidth=width" in source
     assert any(name == "expected_net_profit" for name, *_rest in _CANDIDATE_COLUMNS)
     assert "_money(candidate.expected_net_profit)" in render_source
+
+
+def test_discover_layout_reserves_readable_ticket_at_canonical_width() -> None:
+    width = 1120
+    position = _discover_sash_position(width)
+
+    assert position == 739
+    assert width - position >= 360
+
+
+def test_discover_resize_applies_the_readable_split() -> None:
+    class _Panes:
+        def __init__(self) -> None:
+            self.position = 900
+
+        def winfo_width(self) -> int:
+            return 1120
+
+        def sashpos(self, _index: int, position: int | None = None) -> int:
+            if position is not None:
+                self.position = position
+            return self.position
+
+    panes = _Panes()
+    tab = OptionsStrategiesTab.__new__(OptionsStrategiesTab)
+    tab._discover_panes = panes
+
+    tab._resize_discover_panes()
+
+    assert panes.position == 739
 
 
 @pytest.mark.parametrize(
