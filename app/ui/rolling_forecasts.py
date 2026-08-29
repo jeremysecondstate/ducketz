@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import threading
 import tkinter as tk
 from dataclasses import dataclass
@@ -25,7 +26,6 @@ from app.ui.rolling_forecast_data import (
     format_timestamp_utc,
     load_forecast_dashboard,
     route_accessible_status_labels,
-    route_live_performance_labels,
     route_outcome_evidence_label,
     route_publication_summary,
 )
@@ -43,8 +43,340 @@ from app.ui.theme import (
 )
 
 HOURLY_AUTO_REFRESH_MS = 60 * 60 * 1000
-LIVE_PERFORMANCE_ACCENT = "#72c1ff"
-LIVE_PERFORMANCE_TEXT = "#ffffff"
+ANALYTIC_BLUE = "#5aaeff"
+UP_COLOR = "#58c76b"
+DOWN_COLOR = "#ff684a"
+PERFORMANCE_SURFACE = "#0d1929"
+TRACK_COLOR = "#26384e"
+TRACK_REMAINDER = "#34485f"
+SUCCESS_BADGE = "#173a2a"
+WARNING_BADGE = "#3b3018"
+DANGER_BADGE = "#3d2426"
+NEUTRAL_BADGE = "#263344"
+
+
+def probability_segment_fractions(
+    probability_up: float | None,
+    probability_down: float | None,
+) -> tuple[float, float] | None:
+    """Return safe proportional geometry without inventing either probability."""
+
+    if not _is_finite_number(probability_up) or not _is_finite_number(
+        probability_down
+    ):
+        return None
+    up = max(0.0, float(probability_up))
+    down = max(0.0, float(probability_down))
+    total = up + down
+    if total <= 0.0:
+        return None
+    return up / total, down / total
+
+
+def evidence_progress_fraction(
+    completed_count: int | None,
+    minimum_count: int,
+) -> float | None:
+    """Return clamped drawing progress while leaving displayed counts untouched."""
+
+    if completed_count is None or minimum_count <= 0:
+        return None
+    return max(0.0, min(1.0, float(completed_count) / float(minimum_count)))
+
+
+def live_performance_lift_tone(lift: float | None) -> str:
+    if not _is_finite_number(lift):
+        return "neutral"
+    if float(lift) > 0.0:
+        return "success"
+    if float(lift) < 0.0:
+        return "danger"
+    return "neutral"
+
+
+def rolling_performance_heading(
+    rolling_count: int,
+    rolling_window_size: int,
+) -> str:
+    count = max(0, int(rolling_count))
+    window = max(0, int(rolling_window_size))
+    if window == 0:
+        return "ROLLING"
+    if count >= window:
+        return f"ROLLING {window}"
+    return f"ROLLING {count}/{window}"
+
+
+def weekly_session_details_header_text(
+    session_count: int,
+    *,
+    expanded: bool,
+) -> str:
+    count = max(0, int(session_count))
+    noun = "Session" if count == 1 else "Sessions"
+    state = "Expanded" if expanded else "Collapsed"
+    marker = "▼" if expanded else "▶"
+    return f"{marker} Weekly Session Details · {count} Published {noun} · {state}"
+
+
+def _is_finite_number(value: object) -> bool:
+    try:
+        return value is not None and math.isfinite(float(value))
+    except (TypeError, ValueError):
+        return False
+
+
+def _percentage_text(value: float | None) -> str:
+    return "Unavailable" if not _is_finite_number(value) else f"{float(value):.1%}"
+
+
+def _lift_text(value: float | None) -> str:
+    return (
+        "Unavailable"
+        if not _is_finite_number(value)
+        else f"{float(value) * 100:+.1f} pp"
+    )
+
+
+def _stacked_utc_timestamp(value: datetime | None) -> str:
+    text = format_timestamp_utc(value)
+    if text == "Unavailable":
+        return text
+    date, clock, zone = text.rsplit(" ", maxsplit=2)
+    return f"{date}\n{clock} {zone}"
+
+
+def _compact_local_timestamp(
+    value: datetime | None,
+    *,
+    local_timezone: tzinfo | None,
+) -> str:
+    text = format_timestamp_local(value, local_timezone=local_timezone)
+    if text == "Unavailable":
+        return text
+    parts = text.split()
+    if len(parts) <= 5:
+        return text
+    zone = "".join(word[0].upper() for word in parts[4:] if word)
+    return " ".join((*parts[:4], zone))
+
+
+class _StatusMark(tk.Canvas):
+    def __init__(self, parent: tk.Misc, tone: str) -> None:
+        super().__init__(
+            parent,
+            width=30,
+            height=30,
+            background=SURFACE,
+            borderwidth=0,
+            highlightthickness=0,
+            takefocus=False,
+        )
+        color = _tone_color(tone)
+        self.create_oval(4, 4, 26, 26, outline=color, width=2)
+        self.create_oval(12, 12, 18, 18, fill=color, outline=color)
+
+
+class _ProbabilityBar(tk.Canvas):
+    def __init__(
+        self,
+        parent: tk.Misc,
+        probability_up: float | None,
+        probability_down: float | None,
+    ) -> None:
+        super().__init__(
+            parent,
+            height=20,
+            background=SURFACE,
+            borderwidth=0,
+            highlightthickness=0,
+            takefocus=False,
+        )
+        self._probability_up = probability_up
+        self._probability_down = probability_down
+        self.bind("<Configure>", self._redraw, add="+")
+
+    def _redraw(self, _event: object | None = None) -> None:
+        self.delete("all")
+        width = max(1, self.winfo_width())
+        height = max(1, self.winfo_height())
+        inset = 1
+        self.create_rectangle(
+            inset,
+            inset,
+            width - inset,
+            height - inset,
+            fill=TRACK_COLOR,
+            outline=BORDER,
+            width=1,
+        )
+        fractions = probability_segment_fractions(
+            self._probability_up,
+            self._probability_down,
+        )
+        if fractions is None:
+            self.create_text(
+                width / 2,
+                height / 2,
+                text="Probability unavailable",
+                fill=MUTED_TEXT,
+                font=("Segoe UI", 8),
+            )
+            return
+        up_fraction, _down_fraction = fractions
+        usable_width = max(0.0, width - (2 * inset))
+        split = inset + (usable_width * up_fraction)
+        self.create_rectangle(
+            inset,
+            inset,
+            split,
+            height - inset,
+            fill=UP_COLOR,
+            outline="",
+        )
+        self.create_rectangle(
+            split,
+            inset,
+            width - inset,
+            height - inset,
+            fill=DOWN_COLOR,
+            outline="",
+        )
+        if split - inset >= 50:
+            self.create_text(
+                (inset + split) / 2,
+                height / 2,
+                text=format_probability(self._probability_up),
+                fill="#f7fbff",
+                font=("Segoe UI", 8, "bold"),
+            )
+        if width - inset - split >= 50:
+            self.create_text(
+                (split + width - inset) / 2,
+                height / 2,
+                text=format_probability(self._probability_down),
+                fill="#f7fbff",
+                font=("Segoe UI", 8, "bold"),
+            )
+
+
+class _EvidenceBar(tk.Canvas):
+    def __init__(
+        self,
+        parent: tk.Misc,
+        completed_count: int | None,
+        minimum_count: int,
+        tone: str,
+    ) -> None:
+        super().__init__(
+            parent,
+            height=7,
+            background=SURFACE,
+            borderwidth=0,
+            highlightthickness=0,
+            takefocus=False,
+        )
+        self._fraction = evidence_progress_fraction(completed_count, minimum_count)
+        self._tone = tone
+        self.bind("<Configure>", self._redraw, add="+")
+
+    def _redraw(self, _event: object | None = None) -> None:
+        self.delete("all")
+        width = max(1, self.winfo_width())
+        height = max(1, self.winfo_height())
+        center = height / 2
+        self.create_line(2, center, width - 2, center, fill=TRACK_COLOR, width=4)
+        if self._fraction is None:
+            return
+        fill_end = 2 + (max(0, width - 4) * self._fraction)
+        self.create_line(
+            2,
+            center,
+            fill_end,
+            center,
+            fill=_tone_color(self._tone),
+            width=4,
+        )
+        self.create_oval(
+            0,
+            center - 3,
+            6,
+            center + 3,
+            fill=_tone_color(self._tone),
+            outline="",
+        )
+
+
+class _AccuracyGauge(tk.Canvas):
+    def __init__(self, parent: tk.Misc, hit_rate: float) -> None:
+        super().__init__(
+            parent,
+            width=82,
+            height=52,
+            background=PERFORMANCE_SURFACE,
+            borderwidth=0,
+            highlightthickness=0,
+            takefocus=False,
+        )
+        self._hit_rate = float(hit_rate)
+        self.bind("<Configure>", self._redraw, add="+")
+
+    def _redraw(self, _event: object | None = None) -> None:
+        self.delete("all")
+        width = max(1, self.winfo_width())
+        height = max(1, self.winfo_height())
+        pad = 8
+        box = (pad, 5, width - pad, (height * 1.6) - 3)
+        self.create_arc(
+            *box,
+            start=0,
+            extent=180,
+            style=tk.ARC,
+            outline=TRACK_REMAINDER,
+            width=9,
+        )
+        fraction = max(0.0, min(1.0, self._hit_rate))
+        if fraction > 0.0:
+            self.create_arc(
+                *box,
+                start=180,
+                extent=-(180 * fraction),
+                style=tk.ARC,
+                outline=ANALYTIC_BLUE,
+                width=9,
+            )
+
+
+class _TimelineMark(tk.Canvas):
+    def __init__(self, parent: tk.Misc) -> None:
+        super().__init__(
+            parent,
+            height=30,
+            background=SURFACE,
+            borderwidth=0,
+            highlightthickness=0,
+            takefocus=False,
+        )
+        self.bind("<Configure>", self._redraw, add="+")
+
+    def _redraw(self, _event: object | None = None) -> None:
+        self.delete("all")
+        width = max(1, self.winfo_width())
+        y = 15
+        points = (16, width / 2, width - 16)
+        self.create_line(points[0], y, points[2], y, fill=MUTED_TEXT, width=2)
+        for index, x in enumerate(points):
+            color = ANALYTIC_BLUE if index == 1 else MUTED_TEXT
+            radius = 6 if index == 1 else 4
+            self.create_oval(
+                x - radius,
+                y - radius,
+                x + radius,
+                y + radius,
+                fill=color,
+                outline=("#dceeff" if index == 1 else color),
+                width=1,
+            )
 
 
 @dataclass
@@ -56,6 +388,22 @@ class _SymbolSectionWidgets:
     cards: tuple[ttk.Frame, ...]
     weekly_card: ttk.Frame
     collapsed_summary: str
+
+
+@dataclass
+class _WeeklyLayoutWidgets:
+    container: ttk.Frame
+    summary: ttk.Frame
+    timeline: ttk.Frame
+    performance: ttk.Frame
+
+
+@dataclass
+class _WeeklyDetailsWidgets:
+    symbol: str
+    button: tk.Button
+    body: ttk.Frame
+    cards: tuple[ttk.Frame, ...]
 
 
 def forecast_symbol_section_summary(
@@ -124,6 +472,10 @@ class RollingForecastTab:
         self.state = ForecastRefreshState()
         self.refresh_button: ttk.Button | None = None
         self.debug_button: ttk.Button | None = None
+        self.header_frame: ttk.Frame | None = None
+        self.header_title_area: ttk.Frame | None = None
+        self.header_actions: ttk.Frame | None = None
+        self.subtitle_label: ttk.Label | None = None
         self.summary_frame: ttk.Frame | None = None
         self.message_frame: ttk.Frame | None = None
         self.canvas: tk.Canvas | None = None
@@ -131,9 +483,14 @@ class RollingForecastTab:
         self.content_frame: ttk.Frame | None = None
         self.source_label: ttk.Label | None = None
         self._summary_cards: list[ttk.Frame] = []
+        self._summary_labels: list[tuple[ttk.Label, ttk.Label]] = []
         self._symbol_sections: list[_SymbolSectionWidgets] = []
         self._symbol_expanded: dict[str, bool] = {}
+        self._weekly_layouts: list[_WeeklyLayoutWidgets] = []
+        self._weekly_details: list[_WeeklyDetailsWidgets] = []
+        self._weekly_details_expanded: dict[str, bool] = {}
         self._layout_columns: int | None = None
+        self._layout_signature: tuple[int, int, int, int] | None = None
         self._width = 1180
         self._hourly_refresh_job: str | None = None
 
@@ -144,10 +501,8 @@ class RollingForecastTab:
 
     def _apply_styles(self) -> None:
         style = ttk.Style(self.root)
-        style.configure(
-            "Forecast.TFrame",
-            background=BACKGROUND,
-        )
+        style.configure("Forecast.TFrame", background=BACKGROUND)
+        style.configure("ForecastToolbar.TFrame", background=BACKGROUND)
         style.configure(
             "ForecastSurface.TFrame",
             background=SURFACE,
@@ -156,23 +511,36 @@ class RollingForecastTab:
             relief=tk.SOLID,
         )
         style.configure(
+            "ForecastSymbolSection.TFrame",
+            background=SURFACE_ALT,
+            bordercolor=BORDER,
+            borderwidth=1,
+            relief=tk.SOLID,
+        )
+        style.configure("ForecastSectionBody.TFrame", background=SURFACE_ALT)
+        style.configure(
             "ForecastCard.TFrame",
             background=SURFACE,
             bordercolor=BORDER,
             borderwidth=1,
             relief=tk.SOLID,
         )
+        style.configure("ForecastCardBody.TFrame", background=SURFACE)
+        style.configure("ForecastProbability.TFrame", background=SURFACE)
+        style.configure("ForecastWindow.TFrame", background=SURFACE)
+        style.configure("ForecastEvidence.TFrame", background=SURFACE)
+        style.configure("ForecastPerformance.TFrame", background=SURFACE)
         style.configure(
-            "ForecastCardBody.TFrame",
-            background=SURFACE,
-        )
-        style.configure(
-            "ForecastPerformance.TFrame",
-            background=SURFACE_ALT,
-            bordercolor=LIVE_PERFORMANCE_ACCENT,
+            "ForecastMetric.TFrame",
+            background=PERFORMANCE_SURFACE,
+            bordercolor=BORDER,
             borderwidth=1,
             relief=tk.SOLID,
         )
+        style.configure("ForecastMetricBody.TFrame", background=PERFORMANCE_SURFACE)
+        style.configure("ForecastHealthBorder.TFrame", background=BORDER)
+        style.configure("ForecastHealthCell.TFrame", background=SURFACE)
+        style.configure("ForecastDivider.TFrame", background=BORDER)
         style.configure(
             "ForecastTitle.TLabel",
             background=BACKGROUND,
@@ -187,9 +555,9 @@ class RollingForecastTab:
         )
         style.configure(
             "ForecastSection.TLabel",
-            background=SURFACE,
+            background=SURFACE_ALT,
             foreground=TEXT,
-            font=("Segoe UI", 15, "bold"),
+            font=("Segoe UI", 13, "bold"),
         )
         style.configure(
             "ForecastCardTitle.TLabel",
@@ -211,27 +579,105 @@ class RollingForecastTab:
         )
         style.configure(
             "ForecastPerformanceHeading.TLabel",
-            background=SURFACE_ALT,
-            foreground=LIVE_PERFORMANCE_ACCENT,
-            font=("Segoe UI", 10, "bold"),
+            background=SURFACE,
+            foreground=ANALYTIC_BLUE,
+            font=("Segoe UI", 9, "bold"),
         )
         style.configure(
             "ForecastPerformanceCumulative.TLabel",
-            background=SURFACE_ALT,
-            foreground=LIVE_PERFORMANCE_TEXT,
+            background=PERFORMANCE_SURFACE,
+            foreground=TEXT,
             font=("Segoe UI", 11, "bold"),
         )
         style.configure(
             "ForecastPerformanceRolling.TLabel",
-            background=SURFACE_ALT,
-            foreground=LIVE_PERFORMANCE_ACCENT,
+            background=PERFORMANCE_SURFACE,
+            foreground=ANALYTIC_BLUE,
             font=("Segoe UI", 11, "bold"),
+        )
+        style.configure(
+            "ForecastMetricHeading.TLabel",
+            background=PERFORMANCE_SURFACE,
+            foreground="#a9c8ed",
+            font=("Segoe UI", 9),
+        )
+        style.configure(
+            "ForecastMetricValue.TLabel",
+            background=PERFORMANCE_SURFACE,
+            foreground=TEXT,
+            font=("Segoe UI", 13, "bold"),
+        )
+        style.configure(
+            "ForecastMetricText.TLabel",
+            background=PERFORMANCE_SURFACE,
+            foreground=TEXT,
+            font=("Segoe UI", 8),
+        )
+        style.configure(
+            "ForecastMetricMuted.TLabel",
+            background=PERFORMANCE_SURFACE,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 9),
         )
         style.configure(
             "ForecastMuted.TLabel",
             background=SURFACE,
             foreground=MUTED_TEXT,
             font=("Segoe UI", 9),
+        )
+        style.configure(
+            "ForecastHealthHeading.TLabel",
+            background=SURFACE,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 9),
+        )
+        style.configure(
+            "ForecastHealthValue.TLabel",
+            background=SURFACE,
+            foreground=TEXT,
+            font=("Segoe UI", 10, "bold"),
+        )
+        style.configure(
+            "ForecastHealthDetail.TLabel",
+            background=SURFACE,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 8),
+        )
+        style.configure(
+            "ForecastProbabilityLabel.TLabel",
+            background=SURFACE,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 9),
+        )
+        style.configure(
+            "ForecastUpValue.TLabel",
+            background=SURFACE,
+            foreground=UP_COLOR,
+            font=("Segoe UI", 16, "bold"),
+        )
+        style.configure(
+            "ForecastDownValue.TLabel",
+            background=SURFACE,
+            foreground=DOWN_COLOR,
+            font=("Segoe UI", 16, "bold"),
+        )
+        style.configure(
+            "ForecastUnavailableValue.TLabel",
+            background=SURFACE,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 12, "bold"),
+        )
+        style.configure(
+            "ForecastCompactHeading.TLabel",
+            background=SURFACE,
+            foreground=MUTED_TEXT,
+            font=("Segoe UI", 8, "bold"),
+        )
+        style.configure(
+            "ForecastWeeklyTitle.TLabel",
+            background=SURFACE,
+            foreground=TEXT,
+            font=("Segoe UI", 13, "bold"),
         )
         for tone, color in (
             ("Success", SUCCESS),
@@ -245,12 +691,61 @@ class RollingForecastTab:
                 foreground=color,
                 font=("Segoe UI", 9, "bold"),
             )
+        for tone, foreground, background in (
+            ("Success", "#aaf0b8", SUCCESS_BADGE),
+            ("Warning", "#ffd27a", WARNING_BADGE),
+            ("Danger", "#ffb2aa", DANGER_BADGE),
+            ("Neutral", "#c2cbd7", NEUTRAL_BADGE),
+        ):
+            style.configure(
+                f"ForecastBadge{tone}.TLabel",
+                background=background,
+                foreground=foreground,
+                font=("Segoe UI", 8, "bold"),
+                padding=(8, 3),
+            )
+        for tone, foreground, background in (
+            ("Success", "#b6f3c1", SUCCESS_BADGE),
+            ("Danger", "#ffb8b0", DANGER_BADGE),
+            ("Neutral", "#d1d7df", NEUTRAL_BADGE),
+        ):
+            style.configure(
+                f"ForecastLift{tone}.TLabel",
+                background=background,
+                foreground=foreground,
+                font=("Segoe UI", 8, "bold"),
+                padding=(5, 2),
+            )
         style.configure(
             "ForecastBanner.TLabel",
             background=SURFACE_ALT,
             foreground=TEXT,
             font=("Segoe UI", 9),
             padding=(10, 8),
+        )
+        style.configure(
+            "ForecastPrimary.TButton",
+            background=SURFACE_ALT,
+            foreground=TEXT,
+            bordercolor="#53667f",
+            padding=(14, 7),
+        )
+        style.map(
+            "ForecastPrimary.TButton",
+            background=[("active", ACCENT), ("disabled", SURFACE)],
+            foreground=[("disabled", MUTED_TEXT)],
+        )
+        style.configure(
+            "ForecastSecondary.TButton",
+            background=BACKGROUND,
+            foreground=MUTED_TEXT,
+            bordercolor=BORDER,
+            padding=(10, 7),
+        )
+        style.map(
+            "ForecastSecondary.TButton",
+            background=[("active", SURFACE_ALT), ("disabled", BACKGROUND)],
+            foreground=[("active", TEXT), ("disabled", MUTED_TEXT)],
         )
 
     def _build(self, parent: ttk.Frame) -> None:
@@ -262,42 +757,61 @@ class RollingForecastTab:
         outer.pack(fill=tk.BOTH, expand=True)
         outer.bind("<Configure>", self._on_resize, add="+")
 
-        header = ttk.Frame(outer, style="Forecast.TFrame")
-        header.pack(fill=tk.X)
-        title_area = ttk.Frame(header, style="Forecast.TFrame")
-        title_area.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.header_frame = ttk.Frame(outer, style="Forecast.TFrame")
+        self.header_frame.pack(fill=tk.X)
+        self.header_frame.grid_columnconfigure(0, weight=1)
+        self.header_title_area = ttk.Frame(
+            self.header_frame,
+            style="Forecast.TFrame",
+        )
+        self.header_title_area.grid(row=0, column=0, sticky=tk.EW)
         ttk.Label(
-            title_area,
+            self.header_title_area,
             text="Rolling Forecasts",
             style="ForecastTitle.TLabel",
         ).pack(anchor=tk.W)
-        ttk.Label(
-            title_area,
+        self.subtitle_label = ttk.Label(
+            self.header_title_area,
             text=FORECAST_SUBTITLE,
             style="ForecastSubtitle.TLabel",
-        ).pack(anchor=tk.W, pady=(2, 0))
+            justify=tk.LEFT,
+        )
+        self.subtitle_label.pack(anchor=tk.W, pady=(2, 0))
 
-        actions = ttk.Frame(header, style="Forecast.TFrame")
-        actions.pack(side=tk.RIGHT, anchor=tk.N)
+        self.header_actions = ttk.Frame(
+            self.header_frame,
+            style="Forecast.TFrame",
+        )
+        self.header_actions.grid(row=0, column=1, sticky=tk.NE)
         self.debug_button = ttk.Button(
-            actions,
+            self.header_actions,
             text="Debug Details",
             command=self._show_debug,
             state=tk.DISABLED,
+            style="ForecastSecondary.TButton",
         )
         self.debug_button.pack(side=tk.LEFT, padx=(0, 8))
         self.refresh_button = ttk.Button(
-            actions,
+            self.header_actions,
             text="Refresh",
             command=self.refresh,
+            style="ForecastPrimary.TButton",
         )
         self.refresh_button.pack(side=tk.LEFT)
 
         self.summary_frame = ttk.Frame(outer, style="Forecast.TFrame")
-        self.summary_frame.pack(fill=tk.X, pady=(14, 8))
+        self.summary_frame.pack(fill=tk.X, pady=(12, 8))
 
         self.message_frame = ttk.Frame(outer, style="Forecast.TFrame")
         self.message_frame.pack(fill=tk.X)
+
+        self.source_label = ttk.Label(
+            outer,
+            text=f"Current-Output Source: {self.predictions_path}",
+            style="ForecastSubtitle.TLabel",
+            justify=tk.LEFT,
+        )
+        self.source_label.pack(side=tk.BOTTOM, fill=tk.X, pady=(7, 0))
 
         canvas_frame = ttk.Frame(outer, style="Forecast.TFrame")
         canvas_frame.pack(fill=tk.BOTH, expand=True, pady=(4, 0))
@@ -336,13 +850,6 @@ class RollingForecastTab:
             add="+",
         )
         self.canvas.bind_all("<MouseWheel>", self._on_mousewheel, add="+")
-
-        self.source_label = ttk.Label(
-            outer,
-            text=f"Current-Output Source: {self.predictions_path}",
-            style="ForecastSubtitle.TLabel",
-        )
-        self.source_label.pack(fill=tk.X, pady=(7, 0))
 
     def refresh(self) -> None:
         if self.state.loading:
@@ -446,6 +953,10 @@ class RollingForecastTab:
 
     def _render_loading(self) -> None:
         self._clear_dashboard()
+        if self.source_label is not None:
+            self.source_label.configure(
+                text=f"Current-Output Source: {self.predictions_path}"
+            )
         if self.content_frame is None:
             return
         panel = ttk.Frame(
@@ -470,6 +981,10 @@ class RollingForecastTab:
 
     def _render_error(self, error: ForecastDataError) -> None:
         self._clear_dashboard()
+        if self.source_label is not None:
+            self.source_label.configure(
+                text=f"Current-Output Source: {error.path}"
+            )
         if self.content_frame is None:
             return
         panel = ttk.Frame(
@@ -507,6 +1022,10 @@ class RollingForecastTab:
         self._clear_dashboard()
         self._render_summary(view)
         self._render_messages(view)
+        if self.source_label is not None:
+            self.source_label.configure(
+                text=f"Current-Output Source: {self.predictions_path}"
+            )
         if self.content_frame is None:
             return
         if not view.symbols:
@@ -536,31 +1055,22 @@ class RollingForecastTab:
                 self._symbol_expanded,
                 (symbol.symbol for symbol in view.symbols),
             )
-            controls = ttk.Frame(self.content_frame, style="Forecast.TFrame")
-            controls.pack(fill=tk.X, pady=(0, 7))
-            ttk.Button(
-                controls,
-                text="Expand All",
-                command=lambda: self._set_all_symbols_expanded(True),
-                width=12,
-            ).pack(side=tk.RIGHT)
-            ttk.Button(
-                controls,
-                text="Collapse All",
-                command=lambda: self._set_all_symbols_expanded(False),
-                width=12,
-            ).pack(side=tk.RIGHT, padx=(0, 6))
-            for symbol in view.symbols:
+            for symbol_index, symbol in enumerate(view.symbols):
                 symbol_name = str(symbol.symbol).strip().upper()
                 section = ttk.Frame(
                     self.content_frame,
-                    style="ForecastSurface.TFrame",
+                    style="ForecastSymbolSection.TFrame",
                 )
                 section.pack(fill=tk.X, pady=(0, 10))
+                header_row = ttk.Frame(
+                    section,
+                    style="ForecastSectionBody.TFrame",
+                )
+                header_row.pack(fill=tk.X)
                 body = ttk.Frame(
                     section,
-                    padding=(12, 0, 12, 12),
-                    style="ForecastCardBody.TFrame",
+                    padding=(10, 0, 10, 10),
+                    style="ForecastSectionBody.TFrame",
                 )
                 collapsed_summary = forecast_symbol_section_summary(
                     symbol_name,
@@ -571,13 +1081,13 @@ class RollingForecastTab:
                     remaining_week_available=symbol.weekly_outlook is not None,
                 )
                 header = tk.Button(
-                    section,
+                    header_row,
                     command=lambda name=symbol_name: self._toggle_symbol(name),
-                    background=SURFACE,
+                    background=SURFACE_ALT,
                     foreground=TEXT,
-                    activebackground=SURFACE_ALT,
+                    activebackground="#20334b",
                     activeforeground=TEXT,
-                    font=("Segoe UI", 11, "bold"),
+                    font=("Segoe UI", 12, "bold"),
                     anchor=tk.W,
                     justify=tk.LEFT,
                     relief=tk.FLAT,
@@ -587,10 +1097,11 @@ class RollingForecastTab:
                     highlightcolor=ACCENT,
                     takefocus=True,
                     cursor="hand2",
-                    padx=11,
-                    pady=8,
+                    padx=12,
+                    pady=9,
+                    wraplength=max(180, self._width - 300),
                 )
-                header.pack(fill=tk.X)
+                header.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
                 header.bind(
                     "<Return>",
                     lambda _event, name=symbol_name: self._toggle_symbol_from_key(name),
@@ -599,6 +1110,27 @@ class RollingForecastTab:
                     "<KP_Enter>",
                     lambda _event, name=symbol_name: self._toggle_symbol_from_key(name),
                 )
+                if symbol_index == 0:
+                    controls = ttk.Frame(
+                        header_row,
+                        padding=(0, 5, 6, 5),
+                        style="ForecastSectionBody.TFrame",
+                    )
+                    controls.pack(side=tk.RIGHT)
+                    ttk.Button(
+                        controls,
+                        text="Collapse All",
+                        command=lambda: self._set_all_symbols_expanded(False),
+                        width=12,
+                        style="ForecastSecondary.TButton",
+                    ).pack(side=tk.LEFT, padx=(0, 6))
+                    ttk.Button(
+                        controls,
+                        text="Expand All",
+                        command=lambda: self._set_all_symbols_expanded(True),
+                        width=12,
+                        style="ForecastSecondary.TButton",
+                    ).pack(side=tk.LEFT)
                 cards = tuple(
                     self._build_route_card(body, route)
                     for route in symbol.routes
@@ -627,6 +1159,7 @@ class RollingForecastTab:
     def _render_summary(self, view: ForecastDashboardView) -> None:
         if self.summary_frame is None:
             return
+        self.summary_frame.configure(style="ForecastHealthBorder.TFrame")
         refresh_detail = (
             "Local: "
             + format_timestamp_local(
@@ -656,7 +1189,7 @@ class RollingForecastTab:
             ),
             (
                 "Automated Action",
-                "Off" if not view.automated_action_allowed else "Flag on",
+                "On" if view.automated_action_allowed else "Off",
                 view.automation_label,
                 view.automation_tone,
             ),
@@ -664,29 +1197,35 @@ class RollingForecastTab:
         for heading, value, detail, tone in cards:
             card = ttk.Frame(
                 self.summary_frame,
-                padding=11,
-                style="ForecastCard.TFrame",
+                padding=(12, 9),
+                style="ForecastHealthCell.TFrame",
             )
+            _StatusMark(card, tone).pack(side=tk.LEFT, padx=(0, 10))
+            copy = ttk.Frame(card, style="ForecastHealthCell.TFrame")
+            copy.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
             ttk.Label(
-                card,
+                copy,
                 text=heading,
-                style="ForecastMuted.TLabel",
+                style="ForecastHealthHeading.TLabel",
             ).pack(anchor=tk.W)
-            ttk.Label(
-                card,
+            value_label = ttk.Label(
+                copy,
                 text=value,
                 style=_tone_style(tone, value=True),
-                wraplength=260,
+                wraplength=250,
                 justify=tk.LEFT,
-            ).pack(anchor=tk.W, pady=(4, 0))
-            ttk.Label(
-                card,
+            )
+            value_label.pack(anchor=tk.W, pady=(2, 0))
+            detail_label = ttk.Label(
+                copy,
                 text=detail,
-                style="ForecastMuted.TLabel",
-                wraplength=260,
+                style="ForecastHealthDetail.TLabel",
+                wraplength=265,
                 justify=tk.LEFT,
-            ).pack(anchor=tk.W, pady=(4, 0))
+            )
+            detail_label.pack(anchor=tk.W, pady=(2, 0))
             self._summary_cards.append(card)
+            self._summary_labels.append((value_label, detail_label))
 
     def _render_messages(self, view: ForecastDashboardView) -> None:
         if self.message_frame is None:
@@ -710,74 +1249,50 @@ class RollingForecastTab:
             padding=12,
             style="ForecastCard.TFrame",
         )
+        header = ttk.Frame(card, style="ForecastCardBody.TFrame")
+        header.pack(fill=tk.X)
+        header.grid_columnconfigure(0, weight=1)
         ttk.Label(
-            card,
+            header,
             text=f"{route.horizon_label} Forecast",
             style="ForecastCardTitle.TLabel",
-        ).pack(anchor=tk.W)
+        ).grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
 
-        actionability, live_evidence = (
+        _actionability, live_evidence = (
             route_accessible_status_labels(route)
         )
         ttk.Label(
-            card,
-            text=actionability,
-            style=_tone_style(route.actionability_tone),
-            wraplength=330,
-            justify=tk.LEFT,
-        ).pack(anchor=tk.W, pady=(7, 0))
+            header,
+            text=route.actionability_label,
+            style=_badge_style(route.actionability_tone),
+            wraplength=260,
+            justify=tk.RIGHT,
+        ).grid(row=0, column=1, sticky=tk.E)
 
         if route.is_actionable or route.is_in_progress:
-            probability_text = (
-                "Probability Up: "
-                f"{format_probability(route.probability_up)}\n"
-                "Probability Down: "
-                f"{format_probability(route.probability_down)}"
-            )
+            probability_up = route.probability_up
+            probability_down = route.probability_down
         else:
-            probability_text = "No Current Probability"
-        ttk.Label(
+            probability_up = None
+            probability_down = None
+        self._build_probability_block(
             card,
-            text=probability_text,
-            style="ForecastCardValue.TLabel",
-            wraplength=330,
-            justify=tk.LEFT,
-        ).pack(anchor=tk.W, pady=(8, 0))
-
-        window_text = (
-            "Forecast Window\n"
-            f"UTC Start: {format_timestamp_utc(route.target_window_start)}\n"
-            f"UTC End: {format_timestamp_utc(route.target_window_end)}\n"
-            "Local Start: "
-            + format_timestamp_local(
-                route.target_window_start,
-                local_timezone=self.local_timezone,
-            )
-            + "\nLocal End: "
-            + format_timestamp_local(
-                route.target_window_end,
-                local_timezone=self.local_timezone,
-            )
+            probability_up,
+            probability_down,
         )
-        ttk.Label(
+        self._add_divider(card)
+        self._build_window_block(
             card,
-            text=window_text,
-            style="ForecastBody.TLabel",
-            wraplength=330,
-            justify=tk.LEFT,
-        ).pack(anchor=tk.W, pady=(10, 0))
-
-        ttk.Label(
-            card,
-            text=live_evidence,
-            style=_tone_style(_live_tone(route)),
-            wraplength=330,
-            justify=tk.LEFT,
-        ).pack(anchor=tk.W, pady=(10, 0))
+            route.target_window_start,
+            route.target_window_end,
+            title="Forecast Window",
+        )
+        self._add_divider(card)
+        self._build_evidence_block(card, route, live_evidence)
         self._build_live_performance_panel(
             card,
             route,
-            wraplength=310,
+            wraplength=280,
         )
         if route.is_missing:
             ttk.Label(
@@ -788,6 +1303,135 @@ class RollingForecastTab:
                 justify=tk.LEFT,
             ).pack(anchor=tk.W, pady=(8, 0))
         return card
+
+    def _build_probability_block(
+        self,
+        parent: ttk.Frame,
+        probability_up: float | None,
+        probability_down: float | None,
+    ) -> ttk.Frame:
+        block = ttk.Frame(parent, style="ForecastProbability.TFrame")
+        block.pack(fill=tk.X, pady=(10, 0))
+        block.grid_columnconfigure(0, weight=1)
+        block.grid_columnconfigure(1, weight=1)
+        ttk.Label(
+            block,
+            text="Probability Up",
+            style="ForecastProbabilityLabel.TLabel",
+        ).grid(row=0, column=0, sticky=tk.W)
+        ttk.Label(
+            block,
+            text="Probability Down",
+            style="ForecastProbabilityLabel.TLabel",
+        ).grid(row=0, column=1, sticky=tk.E)
+        ttk.Label(
+            block,
+            text=f"UP {format_probability(probability_up)}",
+            style=(
+                "ForecastUpValue.TLabel"
+                if probability_up is not None
+                else "ForecastUnavailableValue.TLabel"
+            ),
+        ).grid(row=1, column=0, sticky=tk.W, pady=(2, 0))
+        ttk.Label(
+            block,
+            text=f"DOWN {format_probability(probability_down)}",
+            style=(
+                "ForecastDownValue.TLabel"
+                if probability_down is not None
+                else "ForecastUnavailableValue.TLabel"
+            ),
+        ).grid(row=1, column=1, sticky=tk.E, pady=(2, 0))
+        bar = _ProbabilityBar(block, probability_up, probability_down)
+        bar.grid(row=2, column=0, columnspan=2, sticky=tk.EW, pady=(6, 0))
+        return block
+
+    def _build_window_block(
+        self,
+        parent: ttk.Frame,
+        start: datetime | None,
+        end: datetime | None,
+        *,
+        title: str,
+        open_close: bool = False,
+    ) -> ttk.Frame:
+        block = ttk.Frame(parent, style="ForecastWindow.TFrame")
+        block.pack(fill=tk.X)
+        ttk.Label(
+            block,
+            text=title,
+            style="ForecastCompactHeading.TLabel",
+        ).pack(anchor=tk.W)
+        start_word = "Open" if open_close else "Start"
+        end_word = "Close" if open_close else "End"
+        text = (
+            f"UTC {start_word}: {format_timestamp_utc(start)}  —  "
+            f"{end_word}: {format_timestamp_utc(end)}\n"
+            f"Local {start_word}: "
+            + _compact_local_timestamp(
+                start,
+                local_timezone=self.local_timezone,
+            )
+            + f"  —  {end_word}: "
+            + _compact_local_timestamp(
+                end,
+                local_timezone=self.local_timezone,
+            )
+        )
+        ttk.Label(
+            block,
+            text=text,
+            style="ForecastBody.TLabel",
+            wraplength=525,
+            justify=tk.LEFT,
+        ).pack(fill=tk.X, pady=(3, 0))
+        return block
+
+    def _build_evidence_block(
+        self,
+        parent: ttk.Frame,
+        route: ForecastRouteView,
+        live_evidence: str,
+        *,
+        outcome_prefix: str | None = None,
+        tone: str | None = None,
+    ) -> ttk.Frame:
+        block = ttk.Frame(parent, style="ForecastEvidence.TFrame")
+        block.pack(fill=tk.X)
+        block.grid_columnconfigure(1, weight=1)
+        ttk.Label(
+            block,
+            text="Evidence",
+            style="ForecastCompactHeading.TLabel",
+        ).grid(row=0, column=0, sticky=tk.W, padx=(0, 12))
+        evidence_text = live_evidence
+        if outcome_prefix:
+            evidence_text = f"{outcome_prefix} · {live_evidence}"
+        display_tone = tone or _live_tone(route)
+        ttk.Label(
+            block,
+            text=evidence_text,
+            style=_tone_style(display_tone),
+            wraplength=430,
+            justify=tk.LEFT,
+        ).grid(row=0, column=1, sticky=tk.W)
+        bar = _EvidenceBar(
+            block,
+            route.completed_decision_count,
+            route.minimum_live_decision_count,
+            display_tone,
+        )
+        bar.grid(row=1, column=0, columnspan=2, sticky=tk.EW, pady=(5, 0))
+        return block
+
+    def _add_divider(self, parent: ttk.Frame) -> None:
+        divider = ttk.Frame(
+            parent,
+            height=1,
+            style="ForecastDivider.TFrame",
+        )
+        divider.pack(fill=tk.X, pady=(8, 7))
+        divider.pack_propagate(False)
 
     def _build_weekly_outlook_card(
         self,
@@ -801,18 +1445,19 @@ class RollingForecastTab:
         )
         header = ttk.Frame(card, style="ForecastCardBody.TFrame")
         header.pack(fill=tk.X)
+        header.grid_columnconfigure(0, weight=1)
         ttk.Label(
             header,
             text="Remaining-Week Outlook",
-            style="ForecastCardTitle.TLabel",
-        ).pack(side=tk.LEFT, anchor=tk.W)
+            style="ForecastWeeklyTitle.TLabel",
+        ).grid(row=0, column=0, sticky=tk.W, padx=(0, 12))
 
         if outlook is None:
             ttk.Label(
                 header,
                 text="No Current Snapshot",
-                style="ForecastNeutral.TLabel",
-            ).pack(side=tk.RIGHT, anchor=tk.E)
+                style="ForecastBadgeNeutral.TLabel",
+            ).grid(row=0, column=1, sticky=tk.E)
             ttk.Label(
                 card,
                 text=(
@@ -828,15 +1473,14 @@ class RollingForecastTab:
         ttk.Label(
             header,
             text="Current Remaining-Week Snapshot",
-            style="ForecastSuccess.TLabel",
-        ).pack(side=tk.RIGHT, anchor=tk.E)
+            style="ForecastBadgeSuccess.TLabel",
+        ).grid(row=0, column=1, sticky=tk.E)
         ttk.Label(
-            card,
+            header,
             text=(
-                    "Snapshot Issued: "
-                f"{format_timestamp_utc(outlook.issued_at)}\n"
-                    "Local Issuance: "
-                + format_timestamp_local(
+                "Snapshot Issued: "
+                f"{format_timestamp_utc(outlook.issued_at)}  ·  Local: "
+                + _compact_local_timestamp(
                     outlook.issued_at,
                     local_timezone=self.local_timezone,
                 )
@@ -844,136 +1488,264 @@ class RollingForecastTab:
             style="ForecastMuted.TLabel",
             wraplength=980,
             justify=tk.LEFT,
-        ).pack(anchor=tk.W, pady=(7, 0))
+        ).grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
 
         aggregate = outlook.aggregate
-        aggregate_panel = ttk.Frame(
-            card,
-            padding=10,
+        regions = ttk.Frame(card, style="ForecastCardBody.TFrame")
+        regions.pack(fill=tk.X, pady=(10, 0))
+
+        summary = ttk.Frame(
+            regions,
+            padding=(10, 8),
             style="ForecastCard.TFrame",
         )
-        aggregate_panel.pack(fill=tk.X, pady=(10, 4))
         ttk.Label(
-            aggregate_panel,
+            summary,
             text="Aggregate (Remaining Week)",
             style="ForecastCardTitle.TLabel",
         ).pack(anchor=tk.W)
-        ttk.Label(
-            aggregate_panel,
-            text=(
-                f"Probability Up: {format_probability(aggregate.probability_up)}   "
-                f"Probability Down: {format_probability(aggregate.probability_down)}"
+        self._build_probability_block(
+            summary,
+            aggregate.probability_up,
+            aggregate.probability_down,
+        )
+        self._add_divider(summary)
+        _aggregate_actionability, aggregate_live_evidence = (
+            route_accessible_status_labels(aggregate)
+        )
+        self._build_evidence_block(
+            summary,
+            aggregate,
+            aggregate_live_evidence,
+            outcome_prefix=(
+                "Outcome/evidence: "
+                f"{route_outcome_evidence_label(aggregate)}"
             ),
-            style="ForecastCardValue.TLabel",
-            wraplength=960,
-            justify=tk.LEFT,
-        ).pack(anchor=tk.W, pady=(5, 0))
+            tone=_outcome_tone(aggregate),
+        )
+
+        timeline = ttk.Frame(
+            regions,
+            padding=(10, 8),
+            style="ForecastCard.TFrame",
+        )
         ttk.Label(
-            aggregate_panel,
+            timeline,
+            text="Remaining Week Timeline",
+            style="ForecastCompactHeading.TLabel",
+        ).pack(anchor=tk.CENTER)
+        _TimelineMark(timeline).pack(fill=tk.X, pady=(5, 0))
+        milestones = ttk.Frame(timeline, style="ForecastCardBody.TFrame")
+        milestones.pack(fill=tk.X)
+        for column in range(3):
+            milestones.grid_columnconfigure(column, weight=1, uniform="timeline")
+        for column, (heading, value, anchor) in enumerate(
+            (
+                ("Start", aggregate.target_window_start, tk.W),
+                ("Snapshot", outlook.issued_at, ""),
+                ("End", aggregate.target_window_end, tk.E),
+            )
+        ):
+            ttk.Label(
+                milestones,
+                text=f"{heading}\n{_stacked_utc_timestamp(value)}",
+                style="ForecastBody.TLabel",
+                justify=tk.CENTER,
+            ).grid(row=0, column=column, sticky=anchor)
+        ttk.Label(
+            timeline,
             text=(
-                "UTC Start: "
-                f"{format_timestamp_utc(aggregate.target_window_start)}\n"
-                "UTC End: "
-                f"{format_timestamp_utc(aggregate.target_window_end)}\n"
-                "Local Start: "
-                + format_timestamp_local(
+                "Local Window: "
+                + _compact_local_timestamp(
                     aggregate.target_window_start,
                     local_timezone=self.local_timezone,
                 )
-                + "\nLocal End: "
-                + format_timestamp_local(
+                + "  —  "
+                + _compact_local_timestamp(
                     aggregate.target_window_end,
                     local_timezone=self.local_timezone,
                 )
             ),
-            style="ForecastBody.TLabel",
-            wraplength=960,
-            justify=tk.LEFT,
-        ).pack(anchor=tk.W, pady=(6, 0))
-        ttk.Label(
-            aggregate_panel,
-            text=(
-                "Outcome/evidence: "
-                f"{route_outcome_evidence_label(aggregate)} · "
-                f"{aggregate.live_evidence_label}"
-            ),
-            style=_tone_style(_outcome_tone(aggregate)),
-            wraplength=960,
-            justify=tk.LEFT,
-        ).pack(anchor=tk.W, pady=(7, 0))
+            style="ForecastMuted.TLabel",
+            wraplength=470,
+            justify=tk.CENTER,
+        ).pack(fill=tk.X, pady=(8, 0))
+
+        performance = ttk.Frame(
+            regions,
+            padding=(10, 8),
+            style="ForecastCard.TFrame",
+        )
         self._build_live_performance_panel(
-            aggregate_panel,
+            performance,
             aggregate,
-            wraplength=930,
+            wraplength=300,
+        )
+        self._weekly_layouts.append(
+            _WeeklyLayoutWidgets(
+                container=regions,
+                summary=summary,
+                timeline=timeline,
+                performance=performance,
+            )
         )
 
-        for route in outlook.sessions:
-            session_panel = ttk.Frame(
-                card,
-                padding=10,
-                style="ForecastCard.TFrame",
-            )
-            session_panel.pack(fill=tk.X, pady=(4, 0))
-            ttk.Label(
-                session_panel,
-                text=(
-                    f"{route.horizon_label} · "
-                    + format_session_date(
-                        route.target_window_start,
-                        local_timezone=self.local_timezone,
-                    )
-                ),
-                style="ForecastCardTitle.TLabel",
-            ).pack(anchor=tk.W)
-            ttk.Label(
-                session_panel,
-                text=(
-                    f"Probability Up: {format_probability(route.probability_up)}   "
-                    f"Probability Down: {format_probability(route.probability_down)}"
-                ),
-                style="ForecastCardValue.TLabel",
-                wraplength=960,
-                justify=tk.LEFT,
-            ).pack(anchor=tk.W, pady=(5, 0))
-            ttk.Label(
-                session_panel,
-                text=(
-                    "UTC Open: "
-                    f"{format_timestamp_utc(route.target_window_start)}\n"
-                    "UTC Close: "
-                    f"{format_timestamp_utc(route.target_window_end)}\n"
-                    "Local Open: "
-                    + format_timestamp_local(
-                        route.target_window_start,
-                        local_timezone=self.local_timezone,
-                    )
-                    + "\nLocal Close: "
-                    + format_timestamp_local(
-                        route.target_window_end,
-                        local_timezone=self.local_timezone,
-                    )
-                ),
-                style="ForecastBody.TLabel",
-                wraplength=960,
-                justify=tk.LEFT,
-            ).pack(anchor=tk.W, pady=(6, 0))
-            ttk.Label(
-                session_panel,
-                text=(
-                    "Outcome/Evidence: "
-                    f"{route_outcome_evidence_label(route)} · "
-                    f"{route.live_evidence_label}"
-                ),
-                style=_tone_style(_outcome_tone(route)),
-                wraplength=960,
-                justify=tk.LEFT,
-            ).pack(anchor=tk.W, pady=(7, 0))
-            self._build_live_performance_panel(
-                session_panel,
-                route,
-                wraplength=930,
-            )
+        self._add_divider(card)
+        symbol = str(aggregate.symbol).strip().upper()
+        expanded = self._weekly_details_expanded.setdefault(symbol, False)
+        details_button = tk.Button(
+            card,
+            command=lambda name=symbol: self._toggle_weekly_details(name),
+            text=weekly_session_details_header_text(
+                len(outlook.sessions),
+                expanded=expanded,
+            ),
+            background=SURFACE,
+            foreground=TEXT,
+            activebackground=SURFACE_ALT,
+            activeforeground=TEXT,
+            font=("Segoe UI", 10, "bold"),
+            anchor=tk.W,
+            justify=tk.LEFT,
+            relief=tk.FLAT,
+            borderwidth=0,
+            highlightthickness=1,
+            highlightbackground=BORDER,
+            highlightcolor=ACCENT,
+            takefocus=True,
+            cursor="hand2",
+            padx=8,
+            pady=7,
+        )
+        details_button.pack(fill=tk.X)
+        details_button.bind(
+            "<Return>",
+            lambda _event, name=symbol: self._toggle_weekly_details_from_key(name),
+        )
+        details_button.bind(
+            "<KP_Enter>",
+            lambda _event, name=symbol: self._toggle_weekly_details_from_key(name),
+        )
+        details_body = ttk.Frame(
+            card,
+            style="ForecastCardBody.TFrame",
+        )
+        session_cards = tuple(
+            self._build_weekly_session_card(details_body, route)
+            for route in outlook.sessions
+        )
+        details = _WeeklyDetailsWidgets(
+            symbol=symbol,
+            button=details_button,
+            body=details_body,
+            cards=session_cards,
+        )
+        self._weekly_details.append(details)
+        if expanded:
+            details_body.pack(fill=tk.X, pady=(8, 0))
         return card
+
+    def _build_weekly_session_card(
+        self,
+        parent: ttk.Frame,
+        route: ForecastRouteView,
+    ) -> ttk.Frame:
+        card = ttk.Frame(
+            parent,
+            padding=10,
+            style="ForecastCard.TFrame",
+        )
+        header = ttk.Frame(card, style="ForecastCardBody.TFrame")
+        header.pack(fill=tk.X)
+        header.grid_columnconfigure(0, weight=1)
+        ttk.Label(
+            header,
+            text=route.horizon_label,
+            style="ForecastCardTitle.TLabel",
+        ).grid(row=0, column=0, sticky=tk.W)
+        ttk.Label(
+            header,
+            text=format_session_date(
+                route.target_window_start,
+                local_timezone=self.local_timezone,
+            ),
+            style="ForecastMuted.TLabel",
+        ).grid(row=0, column=1, sticky=tk.E, padx=(8, 0))
+
+        self._build_probability_block(
+            card,
+            route.probability_up,
+            route.probability_down,
+        )
+        self._add_divider(card)
+        self._build_window_block(
+            card,
+            route.target_window_start,
+            route.target_window_end,
+            title="Session Window",
+            open_close=True,
+        )
+        self._add_divider(card)
+        _actionability, live_evidence = route_accessible_status_labels(route)
+        self._build_evidence_block(
+            card,
+            route,
+            live_evidence,
+            outcome_prefix=(
+                "Outcome/evidence: "
+                f"{route_outcome_evidence_label(route)}"
+            ),
+            tone=_outcome_tone(route),
+        )
+        self._build_live_performance_panel(
+            card,
+            route,
+            wraplength=280,
+        )
+        return card
+
+    def _toggle_weekly_details(self, symbol: str) -> None:
+        name = str(symbol or "").strip().upper()
+        self._set_weekly_details_expanded(
+            name,
+            not self._weekly_details_expanded.get(name, False),
+        )
+
+    def _toggle_weekly_details_from_key(self, symbol: str) -> str:
+        self._toggle_weekly_details(symbol)
+        return "break"
+
+    def _set_weekly_details_expanded(
+        self,
+        symbol: str,
+        expanded: bool,
+        *,
+        refresh_layout: bool = True,
+    ) -> None:
+        name = str(symbol or "").strip().upper()
+        if not name:
+            return
+        self._weekly_details_expanded[name] = bool(expanded)
+        details = next(
+            (item for item in self._weekly_details if item.symbol == name),
+            None,
+        )
+        if details is None:
+            return
+        details.button.configure(
+            text=weekly_session_details_header_text(
+                len(details.cards),
+                expanded=bool(expanded),
+            )
+        )
+        if expanded:
+            details.body.pack(fill=tk.X, pady=(8, 0))
+        else:
+            details.body.pack_forget()
+        if refresh_layout:
+            self._apply_responsive_layout(force=True)
+        else:
+            self._refresh_scroll_region()
 
     def _build_live_performance_panel(
         self,
@@ -984,34 +1756,149 @@ class RollingForecastTab:
     ) -> ttk.Frame:
         panel = ttk.Frame(
             parent,
-            padding=(10, 8),
             style="ForecastPerformance.TFrame",
         )
-        panel.pack(fill=tk.X, pady=(7, 0))
+        panel.pack(fill=tk.X, pady=(8, 0))
         ttk.Label(
             panel,
             text="LIVE PERFORMANCE",
             style="ForecastPerformanceHeading.TLabel",
-        ).pack(anchor=tk.W)
+        ).pack(anchor=tk.W, pady=(0, 3))
 
-        cumulative_performance, rolling_performance = (
-            route_live_performance_labels(route)
+        metrics = ttk.Frame(panel, style="ForecastPerformance.TFrame")
+        metrics.pack(fill=tk.X)
+        metrics.grid_columnconfigure(0, weight=1, uniform="live-performance")
+        metrics.grid_columnconfigure(1, weight=1, uniform="live-performance")
+
+        performance = route.live_performance
+        state = (
+            "Awaiting First Scored Forecast"
+            if route.completed_decision_count == 0
+            else "Unavailable"
+        )
+        if performance is None or performance.scored_count <= 0:
+            cumulative = self._build_performance_metric(
+                metrics,
+                heading="CUMULATIVE",
+                hit_rate=None,
+                correct_count=0,
+                scored_count=0,
+                down_only_rate=None,
+                lift=None,
+                unavailable_text=state,
+                wraplength=wraplength,
+            )
+            rolling = self._build_performance_metric(
+                metrics,
+                heading=f"ROLLING {route.minimum_live_decision_count}",
+                hit_rate=None,
+                correct_count=0,
+                scored_count=0,
+                down_only_rate=None,
+                lift=None,
+                unavailable_text=state,
+                wraplength=wraplength,
+            )
+        else:
+            cumulative = self._build_performance_metric(
+                metrics,
+                heading="CUMULATIVE",
+                hit_rate=performance.hit_rate,
+                correct_count=performance.correct_count,
+                scored_count=performance.scored_count,
+                down_only_rate=performance.down_only_rate,
+                lift=performance.lift_over_down_only,
+                unavailable_text="Unavailable",
+                wraplength=wraplength,
+            )
+            rolling = self._build_performance_metric(
+                metrics,
+                heading=rolling_performance_heading(
+                    performance.rolling_count,
+                    performance.rolling_window_size,
+                ),
+                hit_rate=performance.rolling_hit_rate,
+                correct_count=performance.rolling_correct_count,
+                scored_count=performance.rolling_count,
+                down_only_rate=performance.rolling_down_only_rate,
+                lift=performance.rolling_lift_over_down_only,
+                unavailable_text="Unavailable",
+                wraplength=wraplength,
+            )
+        cumulative.grid(row=0, column=0, sticky=tk.NSEW, padx=(0, 3))
+        rolling.grid(row=0, column=1, sticky=tk.NSEW, padx=(3, 0))
+        return panel
+
+    def _build_performance_metric(
+        self,
+        parent: ttk.Frame,
+        *,
+        heading: str,
+        hit_rate: float | None,
+        correct_count: int,
+        scored_count: int,
+        down_only_rate: float | None,
+        lift: float | None,
+        unavailable_text: str,
+        wraplength: int,
+    ) -> ttk.Frame:
+        metric = ttk.Frame(
+            parent,
+            padding=(7, 6),
+            style="ForecastMetric.TFrame",
         )
         ttk.Label(
-            panel,
-            text=cumulative_performance,
-            style="ForecastPerformanceCumulative.TLabel",
-            wraplength=wraplength,
-            justify=tk.LEFT,
-        ).pack(anchor=tk.W, pady=(6, 0))
+            metric,
+            text=heading,
+            style="ForecastMetricHeading.TLabel",
+        ).pack(anchor=tk.CENTER)
+
+        if (
+            scored_count <= 0
+            or not _is_finite_number(hit_rate)
+            or not _is_finite_number(down_only_rate)
+        ):
+            ttk.Label(
+                metric,
+                text=unavailable_text,
+                style="ForecastMetricMuted.TLabel",
+                wraplength=max(110, wraplength // 2),
+                justify=tk.CENTER,
+            ).pack(fill=tk.X, pady=(10, 9))
+            return metric
+
+        body = ttk.Frame(metric, style="ForecastMetricBody.TFrame")
+        body.pack(fill=tk.X, pady=(3, 0))
+        _AccuracyGauge(body, float(hit_rate)).pack(
+            side=tk.LEFT,
+            padx=(0, 7),
+            anchor=tk.N,
+        )
+        copy = ttk.Frame(body, style="ForecastMetricBody.TFrame")
+        copy.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         ttk.Label(
-            panel,
-            text=rolling_performance,
-            style="ForecastPerformanceRolling.TLabel",
-            wraplength=wraplength,
-            justify=tk.LEFT,
-        ).pack(anchor=tk.W, pady=(5, 0))
-        return panel
+            copy,
+            text=_percentage_text(hit_rate),
+            style="ForecastMetricValue.TLabel",
+        ).pack(anchor=tk.W)
+        ttk.Label(
+            copy,
+            text=f"({int(correct_count)}/{int(scored_count)})",
+            style="ForecastMetricText.TLabel",
+        ).pack(anchor=tk.W)
+        footer = ttk.Frame(metric, style="ForecastMetricBody.TFrame")
+        footer.pack(fill=tk.X, pady=(3, 0))
+        ttk.Label(
+            footer,
+            text=f"Down-only {_percentage_text(down_only_rate)}",
+            style="ForecastMetricText.TLabel",
+        ).pack(side=tk.LEFT, anchor=tk.W)
+        ttk.Label(
+            footer,
+            text=f"Lift {_lift_text(lift)}",
+            style=_lift_style(live_performance_lift_tone(lift)),
+        ).pack(side=tk.RIGHT, anchor=tk.E)
+        return metric
 
     def _clear_dashboard(self) -> None:
         for container in (
@@ -1024,8 +1911,14 @@ class RollingForecastTab:
             for child in container.winfo_children():
                 child.destroy()
         self._summary_cards.clear()
+        self._summary_labels.clear()
         self._symbol_sections.clear()
+        self._weekly_layouts.clear()
+        self._weekly_details.clear()
         self._layout_columns = None
+        self._layout_signature = None
+        if self.summary_frame is not None:
+            self.summary_frame.configure(style="Forecast.TFrame")
 
     def _toggle_symbol(self, symbol: str) -> None:
         name = str(symbol or "").strip().upper()
@@ -1104,8 +1997,18 @@ class RollingForecastTab:
 
     def _apply_responsive_layout(self, *, force: bool = False) -> None:
         columns = dashboard_layout(self._width)
-        if columns == self._layout_columns and not force:
+        health_columns = 4 if self._width >= 1080 else (2 if self._width >= 520 else 1)
+        weekly_mode = 3 if self._width >= 1220 else (2 if self._width >= 760 else 1)
+        signature = (
+            columns,
+            health_columns,
+            weekly_mode,
+            1 if self._width < 760 else 0,
+        )
+        self._layout_header()
+        if signature == self._layout_signature and not force:
             return
+        self._layout_signature = signature
         self._layout_columns = columns
         self._layout_summary()
         for widgets in self._symbol_sections:
@@ -1144,14 +2047,152 @@ class RollingForecastTab:
                 sticky=tk.NSEW,
                 pady=(1, 7),
             )
+        self._layout_weekly_regions(weekly_mode)
+        self._layout_weekly_details(columns)
         self._refresh_scroll_region()
+
+    def _layout_header(self) -> None:
+        if (
+            self.header_frame is None
+            or self.header_actions is None
+            or self.subtitle_label is None
+        ):
+            return
+        self.header_actions.grid_forget()
+        if self._width < 760:
+            self.header_actions.grid(
+                row=1,
+                column=0,
+                sticky=tk.E,
+                pady=(8, 0),
+            )
+            subtitle_width = max(280, self._width - 45)
+        else:
+            self.header_actions.grid(
+                row=0,
+                column=1,
+                sticky=tk.NE,
+                padx=(12, 0),
+            )
+            subtitle_width = max(360, self._width - 320)
+        self.subtitle_label.configure(wraplength=subtitle_width)
+        symbol_wrap = max(180, self._width - 300)
+        for widgets in self._symbol_sections:
+            widgets.header.configure(wraplength=symbol_wrap)
+        if self.source_label is not None:
+            self.source_label.configure(wraplength=max(280, self._width - 45))
+
+    def _layout_weekly_regions(self, mode: int) -> None:
+        for widgets in self._weekly_layouts:
+            for region in (
+                widgets.summary,
+                widgets.timeline,
+                widgets.performance,
+            ):
+                region.grid_forget()
+            for column in range(3):
+                widgets.container.grid_columnconfigure(
+                    column,
+                    weight=0,
+                    uniform="",
+                )
+            if mode == 3:
+                for column, weight in enumerate((4, 5, 6)):
+                    widgets.container.grid_columnconfigure(
+                        column,
+                        weight=weight,
+                        uniform="weekly-region",
+                    )
+                widgets.summary.grid(
+                    row=0,
+                    column=0,
+                    sticky=tk.NSEW,
+                    padx=(0, 4),
+                )
+                widgets.timeline.grid(
+                    row=0,
+                    column=1,
+                    sticky=tk.NSEW,
+                    padx=4,
+                )
+                widgets.performance.grid(
+                    row=0,
+                    column=2,
+                    sticky=tk.NSEW,
+                    padx=(4, 0),
+                )
+            elif mode == 2:
+                for column in range(2):
+                    widgets.container.grid_columnconfigure(
+                        column,
+                        weight=1,
+                        uniform="weekly-region",
+                    )
+                widgets.summary.grid(
+                    row=0,
+                    column=0,
+                    sticky=tk.NSEW,
+                    padx=(0, 4),
+                )
+                widgets.timeline.grid(
+                    row=0,
+                    column=1,
+                    sticky=tk.NSEW,
+                    padx=(4, 0),
+                )
+                widgets.performance.grid(
+                    row=1,
+                    column=0,
+                    columnspan=2,
+                    sticky=tk.NSEW,
+                    pady=(8, 0),
+                )
+            else:
+                widgets.container.grid_columnconfigure(0, weight=1)
+                widgets.summary.grid(row=0, column=0, sticky=tk.NSEW)
+                widgets.timeline.grid(
+                    row=1,
+                    column=0,
+                    sticky=tk.NSEW,
+                    pady=(8, 0),
+                )
+                widgets.performance.grid(
+                    row=2,
+                    column=0,
+                    sticky=tk.NSEW,
+                    pady=(8, 0),
+                )
+
+    def _layout_weekly_details(self, columns: int) -> None:
+        for details in self._weekly_details:
+            for card in details.cards:
+                card.grid_forget()
+            for column in range(len(STANDARD_HORIZON_ORDER)):
+                details.body.grid_columnconfigure(
+                    column,
+                    weight=1 if column < columns else 0,
+                    uniform=(
+                        "weekly-session"
+                        if column < columns
+                        else ""
+                    ),
+                )
+            for index, card in enumerate(details.cards):
+                row, column = divmod(index, columns)
+                card.grid(
+                    row=row,
+                    column=column,
+                    sticky=tk.NSEW,
+                    padx=(0 if column == 0 else 5, 0),
+                    pady=(0, 7),
+                )
 
     def _layout_summary(self) -> None:
         if self.summary_frame is None:
             return
         if self._width >= 1080:
             columns = 4
-        elif self._width >= 650:
+        elif self._width >= 520:
             columns = 2
         else:
             columns = 1
@@ -1161,15 +2202,25 @@ class RollingForecastTab:
             self.summary_frame.grid_columnconfigure(
                 column,
                 weight=1 if column < columns else 0,
+                uniform="forecast-health" if column < columns else "",
             )
+        rows = (
+            (len(self._summary_cards) + columns - 1) // columns
+            if self._summary_cards
+            else 0
+        )
+        health_wrap = max(150, min(265, int(self._width / columns) - 90))
+        for value_label, detail_label in self._summary_labels:
+            value_label.configure(wraplength=health_wrap)
+            detail_label.configure(wraplength=health_wrap)
         for index, card in enumerate(self._summary_cards):
             row, column = divmod(index, columns)
             card.grid(
                 row=row,
                 column=column,
                 sticky=tk.NSEW,
-                padx=(0 if column == 0 else 5, 0),
-                pady=(0, 5),
+                padx=(0, 1) if column < columns - 1 else 0,
+                pady=(0, 1) if row < rows - 1 else 0,
             )
 
     def _update_scroll_region(self) -> None:
@@ -1253,6 +2304,34 @@ def _tone_style(tone: str, *, value: bool = False) -> str:
     if value and tone == "neutral":
         return "ForecastCardValue.TLabel"
     return styles.get(tone, "ForecastNeutral.TLabel")
+
+
+def _badge_style(tone: str) -> str:
+    styles = {
+        "success": "ForecastBadgeSuccess.TLabel",
+        "warning": "ForecastBadgeWarning.TLabel",
+        "danger": "ForecastBadgeDanger.TLabel",
+        "neutral": "ForecastBadgeNeutral.TLabel",
+    }
+    return styles.get(tone, "ForecastBadgeNeutral.TLabel")
+
+
+def _lift_style(tone: str) -> str:
+    styles = {
+        "success": "ForecastLiftSuccess.TLabel",
+        "danger": "ForecastLiftDanger.TLabel",
+        "neutral": "ForecastLiftNeutral.TLabel",
+    }
+    return styles.get(tone, "ForecastLiftNeutral.TLabel")
+
+
+def _tone_color(tone: str) -> str:
+    return {
+        "success": UP_COLOR,
+        "warning": WARNING,
+        "danger": DOWN_COLOR,
+        "neutral": MUTED_TEXT,
+    }.get(tone, MUTED_TEXT)
 
 
 def _live_tone(route: ForecastRouteView) -> str:

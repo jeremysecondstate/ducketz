@@ -8,9 +8,14 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import sys
 import tkinter as tk
 from pathlib import Path
 from tkinter import ttk
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from app.ui.rolling_forecasts import RollingForecastTab
 from app.ui.theme import (
@@ -32,6 +37,13 @@ def main() -> None:
     parser.add_argument("--collapse", action="append", default=[], metavar="SYMBOL")
     parser.add_argument("--refresh-after-collapse", action="store_true")
     parser.add_argument("--resize-after-collapse", metavar="WIDTHxHEIGHT")
+    parser.add_argument("--expand-weekly-details", action="store_true")
+    parser.add_argument("--scroll-to-bottom", action="store_true")
+    parser.add_argument(
+        "--predictions-path",
+        type=Path,
+        help="Optional offline current-output path, including a missing path for error QA.",
+    )
     parser.add_argument("--capture", type=Path)
     args = parser.parse_args()
     try:
@@ -66,7 +78,11 @@ def main() -> None:
     )
     parent = ttk.Frame(root)
     parent.pack(fill=tk.BOTH, expand=True)
-    tab = RollingForecastTab(root=root, parent=parent)
+    tab = RollingForecastTab(
+        root=root,
+        parent=parent,
+        predictions_path=args.predictions_path,
+    )
 
     if args.capture is not None:
         root.after(
@@ -79,6 +95,8 @@ def main() -> None:
                 collapsed_symbols=tuple(args.collapse),
                 refresh_after_collapse=args.refresh_after_collapse,
                 resize_after_collapse=args.resize_after_collapse,
+                expand_weekly_details=args.expand_weekly_details,
+                scroll_to_bottom=args.scroll_to_bottom,
             ),
         )
     root.mainloop()
@@ -93,11 +111,16 @@ def _stage_capture(
     collapsed_symbols: tuple[str, ...],
     refresh_after_collapse: bool,
     resize_after_collapse: str | None,
+    expand_weekly_details: bool,
+    scroll_to_bottom: bool,
 ) -> None:
     if collapse_all:
         tab._set_all_symbols_expanded(False)
     for symbol in collapsed_symbols:
         tab._set_symbol_expanded(symbol, False)
+    if expand_weekly_details:
+        for details in tuple(tab._weekly_details):
+            tab._set_weekly_details_expanded(details.symbol, True)
     if refresh_after_collapse:
         tab.refresh()
     if resize_after_collapse:
@@ -110,6 +133,9 @@ def _stage_capture(
             raise ValueError("--resize-after-collapse must be WIDTHxHEIGHT.") from exc
         root.geometry(f"{width}x{height}+0+0")
     root.update_idletasks()
+    if scroll_to_bottom and tab.canvas is not None:
+        tab.canvas.yview_moveto(1.0)
+        root.update_idletasks()
     root.after(
         900 if refresh_after_collapse else 250,
         lambda: _capture_and_exit(root, path),

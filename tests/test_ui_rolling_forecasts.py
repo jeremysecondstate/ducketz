@@ -32,9 +32,14 @@ from app.ui.rolling_forecast_data import (
 from app.ui.rolling_forecasts import (
     HOURLY_AUTO_REFRESH_MS,
     RollingForecastTab,
+    evidence_progress_fraction,
     forecast_symbol_header_text,
     forecast_symbol_section_summary,
+    live_performance_lift_tone,
     merge_symbol_expansion_state,
+    probability_segment_fractions,
+    rolling_performance_heading,
+    weekly_session_details_header_text,
 )
 from ml.live_evidence import minimum_live_decisions
 from ml.parquet_contracts import (
@@ -103,6 +108,72 @@ def test_symbol_expansion_state_survives_refresh_and_new_symbols_default_open() 
     assert second_refresh["MSFT"] is True
     assert second_refresh["NVDA"] is True
     assert second_refresh["AAPL"] is False
+
+
+@pytest.mark.parametrize(
+    ("probability_up", "probability_down", "expected"),
+    (
+        (0.43, 0.57, pytest.approx((0.43, 0.57))),
+        (0.40, 0.40, pytest.approx((0.50, 0.50))),
+        (0.40, 0.60, pytest.approx((0.40, 0.60))),
+        (0.40, None, None),
+        (None, 0.60, None),
+        (float("nan"), 0.60, None),
+        (0.0, 0.0, None),
+    ),
+)
+def test_probability_segments_use_both_published_values_or_render_unavailable(
+    probability_up: float | None,
+    probability_down: float | None,
+    expected: object,
+) -> None:
+    result = probability_segment_fractions(probability_up, probability_down)
+
+    if expected is None:
+        assert result is None
+    else:
+        assert result == expected
+
+
+@pytest.mark.parametrize(
+    ("completed", "minimum", "expected"),
+    (
+        (7, 60, pytest.approx(7 / 60)),
+        (60, 60, 1.0),
+        (83, 60, 1.0),
+        (0, 60, 0.0),
+        (None, 60, None),
+        (7, 0, None),
+    ),
+)
+def test_evidence_progress_clamps_geometry_without_rewriting_counts(
+    completed: int | None,
+    minimum: int,
+    expected: float | None,
+) -> None:
+    assert evidence_progress_fraction(completed, minimum) == expected
+
+
+@pytest.mark.parametrize(
+    ("lift", "tone"),
+    (
+        (0.01, "success"),
+        (0.0, "neutral"),
+        (-0.01, "danger"),
+        (None, "neutral"),
+    ),
+)
+def test_live_performance_lift_tones_keep_zero_and_unavailable_neutral(
+    lift: float | None,
+    tone: str,
+) -> None:
+    assert live_performance_lift_tone(lift) == tone
+
+
+def test_partial_rolling_window_heading_uses_numeric_counts() -> None:
+    assert rolling_performance_heading(8, 30) == "ROLLING 8/30"
+    assert rolling_performance_heading(30, 30) == "ROLLING 30"
+    assert rolling_performance_heading(83, 60) == "ROLLING 60"
 
 
 def test_three_standard_cards_and_complete_weekly_outlook_are_grouped(
@@ -990,18 +1061,40 @@ def test_weekly_bundle_requires_explicit_frozen_runtime_status(
 
 def test_weekly_card_source_contains_required_frozen_outlook_content() -> None:
     source = inspect.getsource(RollingForecastTab._build_weekly_outlook_card)
+    session_source = inspect.getsource(
+        RollingForecastTab._build_weekly_session_card
+    )
 
     for required_text in (
         "Remaining-Week Outlook",
         "Current Remaining-Week Snapshot",
         "Snapshot Issued",
         "Aggregate (Remaining Week)",
-        "UTC Open",
-        "Local Open",
         "Outcome/evidence",
+        "Remaining Week Timeline",
+        "Snapshot",
     ):
         assert required_text in source
-    assert source.count("self._build_live_performance_panel(") == 2
+    assert "open_close=True" in session_source
+    assert "format_session_date(" in session_source
+    assert "Outcome/evidence" in session_source
+    assert source.count("self._build_live_performance_panel(") == 1
+    assert session_source.count("self._build_live_performance_panel(") == 1
+
+
+def test_weekly_session_details_disclosure_is_textual_and_stateful() -> None:
+    assert weekly_session_details_header_text(
+        5,
+        expanded=False,
+    ) == "▶ Weekly Session Details · 5 Published Sessions · Collapsed"
+    assert weekly_session_details_header_text(
+        1,
+        expanded=True,
+    ) == "▼ Weekly Session Details · 1 Published Session · Expanded"
+    source = inspect.getsource(RollingForecastTab._build_weekly_outlook_card)
+    assert "details_button.bind(" in source
+    assert '"<Return>"' in source
+    assert '"<KP_Enter>"' in source
 
 
 def test_forecast_action_labels_use_title_capitalization() -> None:
@@ -1112,7 +1205,7 @@ def test_route_card_has_no_model_status_row_or_unused_separator() -> None:
 
     assert "model_evidence" not in source
     assert "ttk.Separator" not in source
-    assert "text=live_evidence" in source
+    assert "self._build_evidence_block(card, route, live_evidence)" in source
     assert "self._build_live_performance_panel(" in source
     assert "route.is_actionable or route.is_in_progress" in source
 
@@ -1129,7 +1222,11 @@ def test_live_performance_panel_is_high_contrast_large_and_bold() -> None:
     assert '"ForecastPerformanceRolling.TLabel"' in style_source
     assert style_source.count('font=("Segoe UI", 11, "bold")') >= 2
     assert 'text="LIVE PERFORMANCE"' in panel_source
-    assert "route_live_performance_labels(route)" in panel_source
+    assert "route.live_performance" in panel_source
+    assert "performance.hit_rate" in panel_source
+    assert "performance.rolling_hit_rate" in panel_source
+    assert "rolling_performance_heading(" in panel_source
+    assert "route_live_performance_labels" not in panel_source
     assert "panel.pack(fill=tk.X" in panel_source
 
 
