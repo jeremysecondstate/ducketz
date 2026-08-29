@@ -75,6 +75,13 @@ source Loop B directory:
 python -m ml.strategy_runtime --datastore C:\data\duckets --once
 ```
 
+Loop B and Options Strategies also record a non-authoritative coverage report
+from the pooled causal sequence encoder when a checksum-valid shadow
+publication is available. The shared encoder is independently published,
+cannot change either production ranking, and feeds only the observe-only Loop C
+risk engine. See the
+[pooled sequence and Loop C contract](../docs/loops-system-analysis/POOLED_SEQUENCE_LOOP_C.md).
+
 See the [Strategy runtime audit](../docs/loops-system-analysis/loops/strategy-runtime.md)
 and [Loops relationship map](../docs/loops-system-analysis/LOOP_RELATIONSHIPS.md).
 

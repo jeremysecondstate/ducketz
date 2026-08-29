@@ -68,6 +68,11 @@ from ml.parquet_contracts import (
     write_parquet_with_schema,
 )
 from ml.rolling_materialization import RollingMaterialization, materialize_rolling_samples
+from ml.sequence_encoder.consumer import (
+    safe_load_sequence_distributions,
+    sequence_source_files,
+    shadow_consumer_summary,
+)
 from ml.strategy_selection import (
     STRATEGY_SELECTION_OPRA_FIRST_SPREADS_V2,
 )
@@ -751,6 +756,23 @@ def _run_loop_b_once(
         INTELLIGENCE_SCHEMA,
     )
 
+    sequence_routes = current_run_predictions.loc[
+        current_run_predictions["prediction_mode"].eq("LIVE"),
+        ["symbol", "horizon", "decision_timestamp"],
+    ].drop_duplicates()
+    sequence_shadow = safe_load_sequence_distributions(
+        root,
+        routes=sequence_routes,
+        consumer="LOOP_B",
+        as_of=publication_checked_at,
+    )
+    sequence_shadow_summary = shadow_consumer_summary(sequence_shadow)
+    sequence_shadow_name = "sequence-encoder-shadow.json"
+    _write_json_durable(
+        run_directory / sequence_shadow_name,
+        sequence_shadow_summary,
+    )
+
     fresh_live_ids = set(
         fresh_live_predictions["id"].dropna().astype(str)
     )
@@ -797,13 +819,17 @@ def _run_loop_b_once(
         "evaluations.parquet",
         "monitoring.parquet",
         "intelligence.parquet",
+        sequence_shadow_name,
     )
     write_manifest(
         run_directory,
         run_timestamp=created,
         input_files=tuple(
             dict.fromkeys(
-                materialization.source_files
+                (
+                    *materialization.source_files,
+                    *sequence_source_files(sequence_shadow),
+                )
             )
         ),
         output_files=output_names,
@@ -835,6 +861,7 @@ def _run_loop_b_once(
                 model_admission_by_horizon=pricing_model_admission,
             ),
             "publication_counts": publication_counts,
+            "pooled_sequence_encoder": sequence_shadow_summary,
             "strategy_selection": {
                 "policy": STRATEGY_SELECTION_OPRA_FIRST_SPREADS_V2,
                 "account_authorization": "SPREADS",

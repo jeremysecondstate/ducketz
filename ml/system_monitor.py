@@ -33,6 +33,17 @@ from ml.option_pricing.target_outcome import (
     read_current_target_outcome,
     target_outcome_pointer_path,
 )
+from ml.loop_c.publication import (
+    LoopCPublicationError,
+    loop_c_pointer_path,
+    read_current_loop_c_publication,
+)
+from ml.sequence_encoder.publication import (
+    SequencePublicationError,
+    read_current_sequence_publication,
+    resolve_current_sequence_output,
+    sequence_pointer_path,
+)
 from ml.strategy_pricing_canary import (
     _strategy_score_evidence_masks,
     run_canary,
@@ -187,14 +198,14 @@ OVERNIGHT_ACCURACY_STAGES = (
     OvernightStageSpec(
         "run-shadow-ablation",
         "Run one bounded shadow ablation",
-        "Run the session's sole new isolated data, feature, calibration, or model experiment without production wiring.",
+        "Run the session's sole new isolated data, feature, calibration, pooled-sequence, or model experiment without production wiring.",
         action_scope="SHADOW_ONLY_BUILD",
         shadow_experiment_allowed=True,
     ),
     OvernightStageSpec(
         "compare-challenger",
         "Compare champion and challenger",
-        "Compare identical chronological evidence with assessment isolation, reproducible fingerprints, and no new tuning.",
+        "Compare identical chronological evidence, including any pooled-sequence challenger, with assessment isolation, reproducible fingerprints, and no new tuning.",
         action_scope="READ_ONLY_VALIDATION",
     ),
     OvernightStageSpec(
@@ -518,6 +529,12 @@ def build_monitor_report(
                 now=now,
                 publication=publications.require_strategy(),
             ),
+        )
+    )
+    checks.append(
+        _safe(
+            "sequence_encoder_loop_c",
+            lambda: _sequence_encoder_loop_c_check(root, now=now),
         )
     )
     checks.append(
@@ -3120,6 +3137,126 @@ def _pricing_strategy_canary_check(
         _PASS,
         "The latest regular target passes the exact Pricing-to-Strategy canary.",
         canary_status=canary_status,
+        **details,
+    )
+
+
+def _sequence_encoder_loop_c_check(
+    root: Path,
+    *,
+    now: pd.Timestamp,
+) -> dict[str, object]:
+    """Monitor optional shadow sequence and Loop C observe authorities.
+
+    Absence is informational until an authority has been published.  Once a
+    pointer exists, corruption or any order-authority drift is a warning even
+    though neither shadow component is part of production model authority.
+    """
+
+    sequence_pointer = sequence_pointer_path(root)
+    loop_c_pointer = loop_c_pointer_path(root)
+    if not sequence_pointer.is_file() and not loop_c_pointer.is_file():
+        return _check(
+            "sequence_encoder_loop_c",
+            _INFO,
+            "The pooled sequence encoder and Loop C observe lane are not yet published.",
+            sequence_status="NOT_PUBLISHED",
+            loop_c_status="NOT_PUBLISHED",
+            authority="NONE",
+            orders_enabled=False,
+            orders_placed=0,
+        )
+
+    details: dict[str, object] = {
+        "sequence_status": "NOT_PUBLISHED",
+        "loop_c_status": "NOT_PUBLISHED",
+        "orders_enabled": False,
+        "orders_placed": 0,
+    }
+    warnings: list[str] = []
+    if sequence_pointer.is_file():
+        try:
+            publication = read_current_sequence_publication(root)
+            distributions_path = resolve_current_sequence_output(
+                root, "distributions.parquet"
+            )
+            distributions = pd.read_parquet(
+                distributions_path,
+                columns=[
+                    "prediction_created_at",
+                    "prediction_mode",
+                    "prediction_status",
+                    "automated_action_allowed",
+                ],
+            )
+            if distributions["automated_action_allowed"].astype("boolean").fillna(True).any():
+                raise SequencePublicationError(
+                    "a sequence shadow row authorizes automated action"
+                )
+            published_at = _utc(publication.receipt.get("published_at"), "sequence published_at")
+            details.update(
+                {
+                    "sequence_status": "VERIFIED_SHADOW",
+                    "sequence_run": str(publication.run_directory),
+                    "sequence_published_at": published_at.isoformat(),
+                    "sequence_age_minutes": _minutes(now - published_at),
+                    "sequence_distribution_rows": len(distributions),
+                    "sequence_authority": publication.receipt.get("authority"),
+                }
+            )
+        except Exception as exc:
+            details["sequence_status"] = "INVALID"
+            warnings.append(_error_text(exc))
+
+    if loop_c_pointer.is_file():
+        try:
+            publication = read_current_loop_c_publication(root)
+            outputs = publication.manifest.get("output_files")
+            if not isinstance(outputs, Mapping) or "decisions.parquet" not in outputs:
+                raise LoopCPublicationError("Loop C decisions output is missing")
+            decisions = pd.read_parquet(
+                publication.run_directory / "decisions.parquet",
+                columns=["automated_action_allowed", "orders_enabled", "orders_placed"],
+            )
+            if (
+                decisions["automated_action_allowed"].astype("boolean").fillna(True).any()
+                or decisions["orders_enabled"].astype("boolean").fillna(True).any()
+                or pd.to_numeric(decisions["orders_placed"], errors="coerce").fillna(1).ne(0).any()
+            ):
+                raise LoopCPublicationError("Loop C observe output violates zero-order safety")
+            published_at = _utc(publication.receipt.get("published_at"), "Loop C published_at")
+            details.update(
+                {
+                    "loop_c_status": "VERIFIED_OBSERVE_ONLY",
+                    "loop_c_run": str(publication.run_directory),
+                    "loop_c_published_at": published_at.isoformat(),
+                    "loop_c_age_minutes": _minutes(now - published_at),
+                    "loop_c_decision_rows": len(decisions),
+                    "loop_c_authority": publication.receipt.get("authority"),
+                }
+            )
+        except Exception as exc:
+            details["loop_c_status"] = "INVALID"
+            warnings.append(_error_text(exc))
+
+    if warnings:
+        return _check(
+            "sequence_encoder_loop_c",
+            _WARN,
+            "A published sequence-encoder or Loop C observe authority is invalid.",
+            warnings=warnings,
+            **details,
+        )
+    status = _PASS if details["sequence_status"] == "VERIFIED_SHADOW" else _INFO
+    summary = (
+        "The pooled sequence encoder and Loop C observe authorities verify with zero order authority."
+        if details["loop_c_status"] == "VERIFIED_OBSERVE_ONLY"
+        else "The pooled sequence encoder verifies; Loop C observe is not yet published."
+    )
+    return _check(
+        "sequence_encoder_loop_c",
+        status,
+        summary,
         **details,
     )
 

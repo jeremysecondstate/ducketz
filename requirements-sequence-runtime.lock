@@ -1,0 +1,11 @@
+# Overlay for the pooled causal sequence-encoder runtime.
+# Install after requirements-ml-runtime.lock.  Kept separate so the existing
+# Loop B and Strategy owners do not acquire a PyTorch dependency merely to load
+# their current champion models.
+fsspec==2026.6.0
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+mpmath==1.3.0
+networkx==3.6.1
+sympy==1.14.0
+torch==2.13.0

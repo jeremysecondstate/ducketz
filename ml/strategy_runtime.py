@@ -29,6 +29,11 @@ from ml.parquet_contracts import (
     frame_with_readable_id,
     write_parquet_with_schema,
 )
+from ml.sequence_encoder.consumer import (
+    safe_load_sequence_distributions,
+    sequence_source_files,
+    shadow_consumer_summary,
+)
 from ml.option_pricing.strategy_shadow import STRATEGY_PRICING_MODES
 from ml.strategy_publication import (
     STRATEGY_PUBLICATION_VERSION,
@@ -188,6 +193,15 @@ def run_strategy_once(
         run_directory,
         selection.model_reports,
     )
+    sequence_shadow = safe_load_sequence_distributions(
+        root,
+        routes=candidates.loc[
+            :, ["symbol", "horizon", "decision_timestamp"]
+        ].drop_duplicates(),
+        consumer="OPTIONS_STRATEGY",
+        as_of=created,
+    )
+    sequence_shadow_summary = shadow_consumer_summary(sequence_shadow)
     reports_name = "strategy-model-reports.json"
     reports_payload = {
         "policy": STRATEGY_SELECTION_OPRA_FIRST_SPREADS_V2,
@@ -202,6 +216,7 @@ def run_strategy_once(
             selection.pricing_report,
         ),
         "strategy_candidate_contract": _strategy_candidate_contract(),
+        "pooled_sequence_encoder": sequence_shadow_summary,
     }
     (run_directory / reports_name).write_text(
         json.dumps(reports_payload, indent=2, sort_keys=True, default=str) + "\n",
@@ -238,6 +253,7 @@ def run_strategy_once(
                     predictions_path,
                     source.run_directory / "publication.json",
                     *selection.source_files,
+                    *sequence_source_files(sequence_shadow),
                 )
             )
         ),
@@ -257,6 +273,7 @@ def run_strategy_once(
             "option_snapshot_receipts": option_receipts,
             "stock_bbo_source_files": stock_bbo_files,
             "strategy_candidate_contract": _strategy_candidate_contract(),
+            "pooled_sequence_encoder": sequence_shadow_summary,
             "publication_contract": {
                 "version": STRATEGY_PUBLICATION_VERSION,
                 "authority": "ml/strategy-latest/run.json",

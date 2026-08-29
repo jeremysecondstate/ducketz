@@ -38,6 +38,9 @@ ducketz-system-guardian = "ml.system_guardian:main"
 ducketz-scheduler-handoff = "ml.scheduler_handoff:main"
 ducketz-strategy-profit-training = "ml.strategy_profit_training_runtime:main"
 ducketz-strategy-value-challenger = "ml.strategy_value_challenger:main"
+ducketz-sequence-encoder = "ml.sequence_encoder.runtime:main"
+ducketz-sequence-inference = "ml.sequence_encoder.inference_runtime:main"
+ducketz-loop-c-observe = "ml.loop_c.runtime:main"
 
 [project.optional-dependencies]
 options-chat = [
@@ -51,6 +54,9 @@ ml = [
 ml-tree = [
     "lightgbm>=4.3,<5",
     "xgboost>=2.1,<4",
+]
+ml-sequence = [
+    "torch>=2.13,<2.14",
 ]
 ml-test = [
     "pytest>=8.0",

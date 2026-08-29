@@ -95,6 +95,137 @@ def _schema(fields: Iterable[tuple[str, pa.DataType]]) -> pa.Schema:
     return schema
 
 
+SEQUENCE_STATE_FEATURE_COLUMNS = (
+    "stock_log_return_1h",
+    "stock_intrabar_range",
+    "stock_body_return",
+    "stock_log_volume",
+    "option_log_contract_count",
+    "option_log_volume",
+    "option_call_contract_fraction",
+    "option_call_volume_fraction",
+    "option_put_call_volume_log_ratio",
+    "option_median_price_to_spot",
+    "option_price_to_spot_iqr",
+    "option_median_intrabar_range",
+    "option_missing_fraction",
+    "call_itm_volume_fraction",
+    "call_atm_volume_fraction",
+    "call_otm_volume_fraction",
+    "put_itm_volume_fraction",
+    "put_atm_volume_fraction",
+    "put_otm_volume_fraction",
+    "short_dte_volume_fraction",
+    "medium_dte_volume_fraction",
+    "long_dte_volume_fraction",
+    "call_itm_price_to_spot",
+    "call_atm_price_to_spot",
+    "call_otm_price_to_spot",
+    "put_itm_price_to_spot",
+    "put_atm_price_to_spot",
+    "put_otm_price_to_spot",
+    "minutes_since_prior_state",
+    "session_progress",
+    "option_log_raw_row_count",
+    "option_median_dte",
+    "option_median_absolute_log_moneyness",
+)
+SEQUENCE_EMBEDDING_VALUE_COLUMNS = tuple(
+    f"embedding_{index:02d}" for index in range(32)
+)
+
+SEQUENCE_STATE_SCHEMA = _schema(
+    (
+        ("id", TEXT),
+        ("symbol", TEXT),
+        ("bar_timestamp", UTC_TIMESTAMP),
+        ("information_available_at", UTC_TIMESTAMP),
+        ("underlying_close", FLOAT),
+        ("source_contract_count", INTEGER),
+        ("source_raw_row_count", INTEGER),
+        *((name, FLOAT) for name in SEQUENCE_STATE_FEATURE_COLUMNS),
+        ("schema_version", TEXT),
+    )
+)
+
+SEQUENCE_DISTRIBUTION_SCHEMA = _schema(
+    (
+        ("id", TEXT),
+        ("symbol", TEXT),
+        ("horizon", TEXT),
+        ("decision_timestamp", UTC_TIMESTAMP),
+        ("information_available_at", UTC_TIMESTAMP),
+        ("target_window_start", UTC_TIMESTAMP),
+        ("target_window_end", UTC_TIMESTAMP),
+        ("sequence_window_start", UTC_TIMESTAMP),
+        ("sequence_window_end", UTC_TIMESTAMP),
+        ("prediction_created_at", UTC_TIMESTAMP),
+        ("model_name", TEXT),
+        ("model_version", TEXT),
+        ("prediction_mode", TEXT),
+        ("prediction_status", TEXT),
+        ("raw_probability_up", FLOAT),
+        ("calibrated_probability_up", FLOAT),
+        ("expected_return", FLOAT),
+        ("return_standard_deviation", FLOAT),
+        ("return_quantile_10", FLOAT),
+        ("return_quantile_50", FLOAT),
+        ("return_quantile_90", FLOAT),
+        ("aleatoric_uncertainty", FLOAT),
+        ("epistemic_uncertainty", FLOAT),
+        ("total_uncertainty", FLOAT),
+        ("calibration_method", TEXT),
+        ("ensemble_size", INTEGER),
+        ("source_observation_count", INTEGER),
+        ("automated_action_allowed", BOOLEAN),
+        ("limitations", TEXT),
+        ("schema_version", TEXT),
+    )
+)
+
+SEQUENCE_EMBEDDING_SCHEMA = _schema(
+    (
+        ("id", TEXT),
+        ("symbol", TEXT),
+        ("decision_timestamp", UTC_TIMESTAMP),
+        ("information_available_at", UTC_TIMESTAMP),
+        ("sequence_window_start", UTC_TIMESTAMP),
+        ("sequence_window_end", UTC_TIMESTAMP),
+        ("model_version", TEXT),
+        ("embedding_status", TEXT),
+        *((name, FLOAT) for name in SEQUENCE_EMBEDDING_VALUE_COLUMNS),
+        ("schema_version", TEXT),
+    )
+)
+
+LOOP_C_DECISION_SCHEMA = _schema(
+    (
+        ("id", TEXT),
+        ("decision_timestamp", UTC_TIMESTAMP),
+        ("mode", TEXT),
+        ("action", TEXT),
+        ("status", TEXT),
+        ("reason_codes_json", TEXT),
+        ("candidate_key", TEXT),
+        ("symbol", TEXT),
+        ("horizon", TEXT),
+        ("quantity", INTEGER),
+        ("calibrated_probability", FLOAT),
+        ("sequence_directional_probability", FLOAT),
+        ("sequence_expected_return", FLOAT),
+        ("sequence_adverse_return", FLOAT),
+        ("expected_return_on_risk", FLOAT),
+        ("total_uncertainty", FLOAT),
+        ("expected_utility", FLOAT),
+        ("modeled_maximum_loss", FLOAT),
+        ("automated_action_allowed", BOOLEAN),
+        ("orders_enabled", BOOLEAN),
+        ("orders_placed", INTEGER),
+        ("policy_version", TEXT),
+    )
+)
+
+
 def _schema_fields_with_insertions(
     schema: pa.Schema,
     *,

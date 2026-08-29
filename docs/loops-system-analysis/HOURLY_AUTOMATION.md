@@ -81,6 +81,59 @@ For every run, verify and report:
 - current checksum-valid Options Capture, Active Pricing, Strategy, CME, and ALFRED publications;
 - cross-loop lineage, both UI contracts including authoritative value/scale parity, and storage health.
 
+Pooled sequence encoder and Loop C shadow lane:
+
+- Treat `sequence_encoder_loop_c` as a required monitor inventory item on every
+  wake. `NOT_PUBLISHED` is informational before the first approved shadow
+  generation. Once either pointer exists, require its manifest, receipt,
+  checksums, causal timestamps, `SHADOW_ONLY`/`OBSERVE_ONLY` authority,
+  `automated_action_allowed=false`, `orders_enabled=false`, and
+  `orders_placed=0`. An invalid published pointer is a contract warning and
+  never authorizes a pointer repair, model fallback, ranking change, or order.
+- The ordinary hourly path is inference-only. When the guardian baseline has
+  no blocking incident, XNYS is open, a verified sequence-model publication
+  already exists, and the current Loop B source generation changed, run at
+  most once:
+
+  `.\.venv\Scripts\python.exe -m ml.sequence_encoder.inference_runtime --datastore-target pc --information-cutoff <exact-current-Loop-B-causal_input_cutoff> --run-timestamp <current-UTC> --require-market-open --compact`.
+
+  Parse the JSON. Accept only `READY_SHADOW`, `PARTIAL_SHADOW`,
+  `UNCHANGED_SKIPPED`, or `MARKET_CLOSED_SKIPPED`, with
+  `orders_enabled=false` and `orders_placed=0`. Preserve the immutable run,
+  manifest, and publication receipt when one was produced. Do not run training
+  in this path, and do not run inference while a verified current model is
+  absent or the Loop B cutoff is missing/invalid.
+- Loop B and Options Strategies may consume the same verified distributions
+  only through their checked-in shadow-report seams. Missing, partial, future,
+  or invalid sequence evidence must remain visible and must not delay Loop B,
+  change either production model/ranking, or acquire action authority. The
+  intended causal order is current Loop B publication, sequence shadow
+  inference, subsequent Strategy consumption, then optional Loop C observe
+  evaluation; independently scheduled owners may consume the latest prior
+  verified shadow generation without pretending it is same-cycle evidence.
+- Loop C remains observe-only. Run it only during an open XNYS session and only
+  when all four operator-approved inputs exist: explicit versioned risk limits,
+  a fresh reconciled portfolio snapshot, a fresh reconciled broker snapshot,
+  and a halt-control snapshot. Never invent limits, cash, exposure, positions,
+  working orders, reconciliation, or halt state. If any input is absent, stale,
+  or invalid, record `LOOP_C_INPUTS_UNAVAILABLE` and skip without publishing.
+  If all inputs are present, run `ml.loop_c.runtime` at most once after sequence
+  inference. Its only acceptable authority is `OBSERVE_ONLY`; it contains no
+  broker submission path and every output must keep zero-order safety.
+- Pooled encoder training is eligible only inside
+  `run-shadow-ablation`, only when stage 13's immutable preregistration names
+  this exact challenger and supplies its causal cutoff, cohort, compute bound,
+  metrics, and stop conditions. Training must use
+  `ml.sequence_encoder.runtime`, chronological train/calibration/assessment
+  partitions, equal decision-cluster weighting, causal next-state pretraining,
+  and shadow publication. No ordinary wake may train it, and no scheduler wake
+  may promote it to active authority.
+- This lane never supersedes the checksum-valid scheduler handoff. In
+  particular, if the handoff says the prior stage-14 experiment is awaiting
+  `compare-challenger`, perform that exact stage-15 comparison; do not replace
+  it with a new encoder run, repeat stage 14, or advance the handoff out of
+  sequence.
+
 If the baseline has a blocking health incident, treat the wake as an incident and continue working rather than merely summarizing it; defer the accuracy stage. Preserve the guardian JSON and relevant log, receipt, pointer, and publication paths. Identify the producing runtime and the first bad target/boundary. Inspect process command lines and parent/worker PIDs, exact locks, recent stdout/stderr, provider availability and errors, configuration, latest Loop A cycle/bar receipts, Databento source lineage, and prediction/publication receipts. Distinguish process health from publication health and diagnose the root cause before mutating anything. Report-only accuracy/model WARNs with intact operational contracts are not liveness incidents and do not authorize a restart, pointer change, or gate weakening; route them into the named overnight evidence stage.
 
 Use this bounded repair ladder:
@@ -110,7 +163,7 @@ Execute exactly the stage named by the guardian:
 11. `evaluate-strategy-outcomes` (23:42): evaluate causally mature exact 1d/1w options constructions for positive net return after modeled execution and fees, by symbol, strategy family, pricing eligibility, model generation, and regime.
 12. `audit-probability-calibration` (00:42): compare raw and calibrated probability distributions, reliability bins, ECE, Brier score, log loss, base rates, coverage, and probability collapse; keep Scenario Coverage non-probabilistic.
 13. `select-nightly-bottleneck` (01:42): rank the single highest-value unresolved accuracy bottleneck and preregister one hypothesis, exact eligible cohort and causal cutoff, primary metric, safety metrics, baseline, checked-in gates, leakage/regime risks, compute/data bound, and rollback condition.
-14. `run-shadow-ablation` (02:42): run the session's sole new bounded, isolated, shadow-only experiment using the preregistration and immutable inputs. Prefer the checked-in strategy-value challenger when it matches the bottleneck; otherwise a small offline harness is allowed, but it must remain disconnected from production authority, runtime ownership, UI ranking, and orders.
+14. `run-shadow-ablation` (02:42): run the session's sole new bounded, isolated, shadow-only experiment using the preregistration and immutable inputs. Prefer the checked-in strategy-value challenger when it matches the bottleneck; when the preregistration explicitly selects the pooled sequence encoder, use its checked-in shadow trainer and preserve its model/calibration/distribution receipts. Otherwise a small offline harness is allowed, but it must remain disconnected from production authority, runtime ownership, UI ranking, and orders.
 15. `compare-challenger` (03:42): compare the exact immutable challenger from stage 14 against champion/baseline on identical chronological assessment-clean evidence. Do not retune, select a new cohort, or start another challenger.
 16. `stress-and-gate-review` (04:42): stress the same result across symbols, regimes, windows, missing-data conditions, fees, and execution assumptions; accept, reject, or produce an approval-gated proposal. A favorable slice or post-hoc threshold is not a pass.
 17. `preopen-freeze` (05:42): perform final health, rollback, receipt, and authority verification; summarize the overnight evidence and remaining trigger; prohibit new experimental or production change.
