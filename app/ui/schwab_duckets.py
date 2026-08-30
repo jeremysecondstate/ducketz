@@ -6,6 +6,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from tkinter import font as tkfont
 from tkinter import messagebox, ttk
 
 from app.models.portfolio import CashBalance, Holding, PortfolioSnapshot
@@ -543,6 +544,7 @@ class SchwabDucketsTab:
         self._sync_in_progress = False
         self._order_submission_in_progress = False
         self._last_layout: tuple[int, bool] | None = None
+        self._canvas_viewport_height = 1
         self._inside_canvas = False
         self._row_icons: dict[str, tk.PhotoImage] = {}
         self._order_xscrolls: list[ttk.Scrollbar] = []
@@ -676,6 +678,57 @@ class SchwabDucketsTab:
             background=[("selected", "#164e7a")],
             foreground=[("selected", TEXT)],
         )
+        portfolio_font = ("Segoe UI", 11)
+        portfolio_rowheight = max(
+            40,
+            tkfont.Font(root=self.root, font=portfolio_font).metrics("linespace") + 18,
+        )
+        style.configure(
+            "SchwabPortfolio.Treeview",
+            background=TABLE_FIELD,
+            foreground=TEXT,
+            fieldbackground=TABLE_FIELD,
+            bordercolor=BORDER,
+            lightcolor=TABLE_FIELD,
+            darkcolor=TABLE_FIELD,
+            borderwidth=1,
+            relief=tk.FLAT,
+            rowheight=portfolio_rowheight,
+            font=portfolio_font,
+        )
+        style.configure(
+            "SchwabPortfolio.Treeview.Heading",
+            background=TABLE_FIELD,
+            foreground=MUTED_TEXT,
+            bordercolor=TABLE_FIELD,
+            lightcolor=TABLE_FIELD,
+            darkcolor=TABLE_FIELD,
+            borderwidth=0,
+            relief=tk.FLAT,
+            padding=(8, 7),
+            font=("Segoe UI", 9, "bold"),
+        )
+        style.layout(
+            "SchwabPortfolio.Treeview.Heading",
+            [
+                ("Treeheading.cell", {"sticky": "nswe"}),
+                (
+                    "Treeheading.padding",
+                    {
+                        "sticky": "nswe",
+                        "children": [
+                            ("Treeheading.image", {"side": "right", "sticky": ""}),
+                            ("Treeheading.text", {"sticky": "we"}),
+                        ],
+                    },
+                ),
+            ],
+        )
+        style.map(
+            "SchwabPortfolio.Treeview",
+            background=[("selected", "#164e7a")],
+            foreground=[("selected", TEXT)],
+        )
         style.configure(
             "Schwab.TNotebook",
             background=SURFACE,
@@ -723,6 +776,7 @@ class SchwabDucketsTab:
         self.body = ttk.Frame(self.canvas, style="SchwabPage.TFrame", padding=(18, 14, 18, 20))
         self._body_window = self.canvas.create_window((0, 0), window=self.body, anchor="nw")
         self.body.columnconfigure(0, weight=1)
+        self.body.rowconfigure(2, weight=0)
 
         self._build_header()
         self._build_summary_strip()
@@ -830,10 +884,15 @@ class SchwabDucketsTab:
         self.content.columnconfigure(0, weight=2)
         self.content.columnconfigure(1, weight=1)
 
-        self.portfolio_card = self._card(self.content)
-        self.ticket_card = self._card(self.content)
-        self.orders_card = self._card(self.content)
-        self.selected_card = self._card(self.content)
+        self.left_stack = ttk.Frame(self.content, style="SchwabPage.TFrame")
+        self.right_stack = ttk.Frame(self.content, style="SchwabPage.TFrame")
+        self.left_stack.columnconfigure(0, weight=1)
+        self.right_stack.columnconfigure(0, weight=1)
+
+        self.portfolio_card = self._card(self.left_stack)
+        self.ticket_card = self._card(self.right_stack)
+        self.orders_card = self._card(self.left_stack)
+        self.selected_card = self._card(self.right_stack)
         self._build_portfolio_card()
         self._build_ticket_card()
         self._build_orders_card()
@@ -842,8 +901,10 @@ class SchwabDucketsTab:
     def _build_portfolio_card(self) -> None:
         card = self.portfolio_card
         card.columnconfigure(0, weight=1)
-        card.rowconfigure(2, weight=1)
+        card.columnconfigure(1, weight=0)
+        card.rowconfigure(1, weight=1)
         header = ttk.Frame(card, style="SchwabCard.TFrame")
+        self.portfolio_header = header
         header.grid(row=0, column=0, sticky="ew", padx=12, pady=(8, 4))
         ttk.Label(header, text="Portfolio", style="SchwabCardTitle.TLabel").pack(side=tk.LEFT)
         tabs = ttk.Frame(header, style="SchwabCard.TFrame")
@@ -865,17 +926,9 @@ class SchwabDucketsTab:
             style="SchwabSide.TRadiobutton",
         ).pack(side=tk.LEFT, padx=(4, 0))
 
-        self.positions_view = ttk.Frame(card, style="SchwabCard.TFrame")
-        self.cash_view = ttk.Frame(card, style="SchwabCard.TFrame")
-        self.positions_view.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 6))
-        self.cash_view.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 6))
-        self.positions_view.columnconfigure(0, weight=1)
-        self.positions_view.rowconfigure(3, weight=1)
-        self.cash_view.columnconfigure(0, weight=1)
-        self.cash_view.rowconfigure(1, weight=1)
-
-        filters = ttk.Frame(self.positions_view, style="SchwabCard.TFrame")
-        filters.grid(row=0, column=0, sticky="ew", pady=(0, 7))
+        filters = ttk.Frame(card, style="SchwabCard.TFrame")
+        self.portfolio_filters = filters
+        filters.grid(row=0, column=1, sticky="ew", padx=12, pady=(5, 4))
         filters.columnconfigure(0, weight=1)
         filters.columnconfigure(1, weight=1)
         account_box = ttk.Frame(filters, style="SchwabCard.TFrame")
@@ -886,6 +939,7 @@ class SchwabDucketsTab:
             textvariable=self.account_filter,
             values=(NO_ACCOUNTS,),
             state="readonly",
+            width=19,
         )
         self.account_combo.pack(fill=tk.X, pady=(2, 0))
         self.account_combo.bind("<<ComboboxSelected>>", self._filters_changed)
@@ -897,12 +951,26 @@ class SchwabDucketsTab:
             textvariable=self.asset_filter,
             values=ASSET_FILTER_CHOICES,
             state="readonly",
+            width=14,
         )
         self.asset_combo.pack(fill=tk.X, pady=(2, 0))
         self.asset_combo.bind("<<ComboboxSelected>>", self._filters_changed)
 
+        self.positions_view = ttk.Frame(card, style="SchwabCard.TFrame")
+        self.cash_view = ttk.Frame(card, style="SchwabCard.TFrame")
+        self.positions_view.grid(
+            row=1, column=0, columnspan=2, sticky="nsew", padx=12, pady=(0, 6)
+        )
+        self.cash_view.grid(
+            row=1, column=0, columnspan=2, sticky="nsew", padx=12, pady=(0, 6)
+        )
+        self.positions_view.columnconfigure(0, weight=1)
+        self.positions_view.rowconfigure(1, weight=1)
+        self.cash_view.columnconfigure(0, weight=1)
+        self.cash_view.rowconfigure(0, weight=1)
+
         allocation = ttk.Frame(self.positions_view, style="SchwabCard.TFrame")
-        allocation.grid(row=1, column=0, sticky="ew", pady=(2, 6))
+        allocation.grid(row=0, column=0, sticky="ew", pady=(2, 6))
         allocation.columnconfigure(0, weight=1)
         allocation.columnconfigure(1, weight=1)
         ttk.Label(
@@ -917,14 +985,15 @@ class SchwabDucketsTab:
         ).grid(row=0, column=1, sticky="e")
         self.allocation_bar = _AllocationBar(allocation)
         self.allocation_bar.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(4, 1))
-        ttk.Label(
+        self.allocation_status_label = ttk.Label(
             allocation,
             textvariable=self.allocation_status,
             style="SchwabMuted.TLabel",
-        ).grid(row=2, column=0, columnspan=2, sticky="w")
+        )
+        self.allocation_status_label.grid(row=2, column=0, columnspan=2, sticky="w")
 
         table_frame = ttk.Frame(self.positions_view, style="SchwabCard.TFrame")
-        table_frame.grid(row=3, column=0, sticky="nsew")
+        table_frame.grid(row=1, column=0, sticky="nsew")
         table_frame.columnconfigure(0, weight=1)
         table_frame.rowconfigure(0, weight=1)
         self.holdings_table = ttk.Treeview(
@@ -932,7 +1001,7 @@ class SchwabDucketsTab:
             columns=("symbol", "type", "qty", "mark", "value", "open", "day"),
             show="tree headings",
             height=6,
-            style="Schwab.Treeview",
+            style="SchwabPortfolio.Treeview",
             selectmode="browse",
         )
         self.holdings_table.heading("#0", text="")
@@ -952,22 +1021,24 @@ class SchwabDucketsTab:
         yscroll.grid(row=0, column=1, sticky="ns")
         xscroll.grid(row=1, column=0, sticky="ew")
         self.holdings_table.bind("<<TreeviewSelect>>", self._use_selected_holding)
-        ttk.Label(
-            self.positions_view,
+        footer = ttk.Frame(self.positions_view, style="SchwabCard.TFrame")
+        footer.grid(row=2, column=0, sticky="ew", pady=(6, 0))
+        footer.columnconfigure(1, weight=1)
+        self.position_status_label = ttk.Label(
+            footer,
             textvariable=self.position_status,
             style="SchwabMuted.TLabel",
-        ).grid(row=4, column=0, sticky="w", pady=(4, 0))
-        ttk.Separator(self.positions_view, orient=tk.HORIZONTAL).grid(
-            row=5, column=0, sticky="ew", pady=(6, 4)
         )
-        ttk.Label(
-            self.positions_view,
+        self.position_status_label.grid(row=0, column=0, sticky="w")
+        self.portfolio_footer_label = ttk.Label(
+            footer,
             textvariable=self.portfolio_footer,
             style="SchwabCard.TLabel",
-        ).grid(row=6, column=0, sticky="w")
+        )
+        self.portfolio_footer_label.grid(row=0, column=1, sticky="e")
 
         cash_table_frame = ttk.Frame(self.cash_view, style="SchwabCard.TFrame")
-        cash_table_frame.grid(row=1, column=0, sticky="nsew")
+        cash_table_frame.grid(row=0, column=0, sticky="nsew")
         cash_table_frame.columnconfigure(0, weight=1)
         cash_table_frame.rowconfigure(0, weight=1)
         self.cash_table = ttk.Treeview(
@@ -975,7 +1046,7 @@ class SchwabDucketsTab:
             columns=("account", "bucket", "symbol", "amount", "value"),
             show="headings",
             height=8,
-            style="Schwab.Treeview",
+            style="SchwabPortfolio.Treeview",
         )
         self._table_column(self.cash_table, "account", "Account", 150)
         self._table_column(self.cash_table, "bucket", "Bucket", 120)
@@ -990,7 +1061,7 @@ class SchwabDucketsTab:
             self.cash_view,
             textvariable=self.cash_status,
             style="SchwabMuted.TLabel",
-        ).grid(row=2, column=0, sticky="w", pady=(6, 0))
+        ).grid(row=1, column=0, sticky="w", pady=(6, 0))
         self._switch_portfolio_view()
 
     def _build_ticket_card(self) -> None:
@@ -1412,16 +1483,22 @@ class SchwabDucketsTab:
         self.summary_value_labels["equities"].configure(foreground=_value_color(summary.stocks_and_etfs))
         self.summary_value_labels["open"].configure(foreground=_value_color(summary.open_pnl.value))
         self.summary_value_labels["day"].configure(foreground=_value_color(summary.day_pnl.value))
-        self.allocation_cash.set(f"Cash & Sweep {_money(summary.cash_and_sweep)}")
-        self.allocation_equities.set(f"Stocks / ETFs {_money(summary.stocks_and_etfs)}")
         segments = safe_allocation_segments(summary.cash_and_sweep, summary.stocks_and_etfs)
         self.allocation_bar.set_values(summary.cash_and_sweep, summary.stocks_and_etfs)
         if segments is None:
+            self.allocation_cash.set(f"Cash & Sweep {_money(summary.cash_and_sweep)}")
+            self.allocation_equities.set(f"Stocks / ETFs {_money(summary.stocks_and_etfs)}")
             self.allocation_status.set("Allocation unavailable for negative or nonpositive net values")
+            self.allocation_status_label.grid()
         else:
-            self.allocation_status.set(
-                f"Cash {segments.cash_fraction:.1%} · Stocks / ETFs {segments.equities_fraction:.1%}"
+            self.allocation_cash.set(
+                f"Cash & Sweep {_money(summary.cash_and_sweep)} ({segments.cash_fraction:.1%})"
             )
+            self.allocation_equities.set(
+                f"Stocks / ETFs {_money(summary.stocks_and_etfs)} ({segments.equities_fraction:.1%})"
+            )
+            self.allocation_status.set("")
+            self.allocation_status_label.grid_remove()
 
     def _render_portfolio(self) -> None:
         table = self.holdings_table
@@ -2047,8 +2124,50 @@ class SchwabDucketsTab:
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
     def _on_canvas_resize(self, event: tk.Event[tk.Canvas]) -> None:
+        self._canvas_viewport_height = max(self.canvas.winfo_height(), 1)
         self.canvas.itemconfigure(self._body_window, width=max(event.width, 1))
         self._apply_responsive_layout()
+        self.root.after_idle(self._sync_body_window_height)
+
+    def _sync_body_window_height(self) -> None:
+        """Give wide content a viewport-sized row without creating a sizing loop."""
+        wide = bool(self._last_layout and self._last_layout[1])
+        if wide:
+            # The canvas window keeps its natural height.  A minimum on the
+            # content row makes that natural height fill the visible viewport,
+            # while still allowing intrinsically taller content to scroll.
+            fixed_height = (
+                14
+                + 20
+                + self.header.winfo_reqheight()
+                + 12
+                + self.summary_frame.winfo_reqheight()
+                + 12
+            )
+            natural_content_height = max(
+                self.portfolio_card.winfo_reqheight()
+                + 10
+                + self.orders_card.winfo_reqheight(),
+                self.ticket_card.winfo_reqheight()
+                + 10
+                + self.selected_card.winfo_reqheight(),
+            )
+            content_height = max(
+                natural_content_height,
+                self._canvas_viewport_height - fixed_height,
+            )
+        else:
+            content_height = 0
+        content_height = max(content_height, 0)
+        current_height = int(self.body.grid_rowconfigure(2)["minsize"])
+        self.body.rowconfigure(2, minsize=content_height, weight=0)
+        self.canvas.itemconfigure(self._body_window, height=0)
+        if current_height != content_height:
+            # A short follow-up observes final notebook/header geometry rather
+            # than the provisional sizes from the first Configure event.
+            self.root.after(20, self._sync_body_window_height)
+        else:
+            self.root.after_idle(self._update_scroll_region)
 
     def _apply_responsive_layout(self, *, force: bool = False) -> None:
         width = max(self.canvas.winfo_width(), self.root.winfo_width(), 1)
@@ -2082,21 +2201,83 @@ class SchwabDucketsTab:
             self.header_title.grid(row=0, column=0, columnspan=2, sticky="w")
             self.header_actions.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
 
+        self.portfolio_header.grid_forget()
+        self.portfolio_filters.grid_forget()
+        for row in range(3):
+            self.portfolio_card.rowconfigure(row, weight=0)
+        if width >= 900:
+            portfolio_view_row = 1
+            self.portfolio_header.grid(
+                row=0, column=0, sticky="ew", padx=(12, 6), pady=(8, 4)
+            )
+            self.portfolio_filters.grid(
+                row=0, column=1, sticky="e", padx=(6, 12), pady=(5, 4)
+            )
+        else:
+            portfolio_view_row = 2
+            self.portfolio_header.grid(
+                row=0, column=0, columnspan=2, sticky="ew", padx=12, pady=(8, 4)
+            )
+            self.portfolio_filters.grid(
+                row=1, column=0, columnspan=2, sticky="ew", padx=12, pady=(0, 7)
+            )
+        self.portfolio_card.rowconfigure(portfolio_view_row, weight=1)
+        for view in (self.positions_view, self.cash_view):
+            view.grid(
+                row=portfolio_view_row,
+                column=0,
+                columnspan=2,
+                sticky="nsew",
+                padx=12,
+                pady=(0, 6),
+            )
+        if self.portfolio_view.get() == "Cash":
+            self.positions_view.grid_remove()
+        else:
+            self.cash_view.grid_remove()
+
+        self.position_status_label.grid_forget()
+        self.portfolio_footer_label.grid_forget()
+        if width >= 900:
+            self.position_status_label.grid(row=0, column=0, sticky="w")
+            self.portfolio_footer_label.grid(row=0, column=1, sticky="e")
+        else:
+            self.position_status_label.grid(row=0, column=0, columnspan=2, sticky="w")
+            self.portfolio_footer_label.grid(
+                row=1, column=0, columnspan=2, sticky="w", pady=(3, 0)
+            )
+
         for widget in (self.portfolio_card, self.ticket_card, self.orders_card, self.selected_card):
             widget.grid_forget()
+        for stack in (self.left_stack, self.right_stack):
+            stack.grid_forget()
+            for row in range(2):
+                stack.rowconfigure(row, weight=0)
+        for row in range(4):
+            self.content.rowconfigure(row, weight=0)
         if wide:
             self.content.columnconfigure(0, weight=2, uniform="")
             self.content.columnconfigure(1, weight=1, uniform="")
-            self.portfolio_card.grid(row=0, column=0, sticky="nsew", padx=(0, 5), pady=(0, 5))
-            self.ticket_card.grid(row=0, column=1, sticky="new", padx=(5, 0), pady=(0, 5))
-            self.orders_card.grid(row=1, column=0, sticky="nsew", padx=(0, 5), pady=(5, 0))
-            self.selected_card.grid(row=1, column=1, sticky="new", padx=(5, 0), pady=(5, 0))
+            self.content.rowconfigure(0, weight=1)
+            self.left_stack.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
+            self.right_stack.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
+            # Independent column stacks preserve the concept's masonry-like
+            # alignment: orders follow Portfolio and Selected Holding follows
+            # the naturally taller ticket instead of sharing rigid grid rows.
+            self.left_stack.rowconfigure(0, weight=3)
+            self.left_stack.rowconfigure(1, weight=1)
+            self.right_stack.rowconfigure(0, weight=3)
+            self.right_stack.rowconfigure(1, weight=1)
         else:
             self.content.columnconfigure(0, weight=1)
             self.content.columnconfigure(1, weight=0)
-            for row, widget in enumerate((self.portfolio_card, self.ticket_card, self.orders_card, self.selected_card)):
-                widget.grid(row=row, column=0, sticky="nsew", pady=(0 if row == 0 else 6, 0))
-        self.root.after_idle(self._update_scroll_region)
+            self.left_stack.grid(row=0, column=0, sticky="nsew")
+            self.right_stack.grid(row=1, column=0, sticky="nsew", pady=(6, 0))
+        self.portfolio_card.grid(row=0, column=0, sticky="nsew", pady=(0, 5))
+        self.orders_card.grid(row=1, column=0, sticky="nsew", pady=(5, 0))
+        self.ticket_card.grid(row=0, column=0, sticky="nsew", pady=(0, 5))
+        self.selected_card.grid(row=1, column=0, sticky="nsew", pady=(5, 0))
+        self.root.after_idle(self._sync_body_window_height)
 
 
 def _pnl_summary(

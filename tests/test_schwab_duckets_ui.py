@@ -274,6 +274,64 @@ def test_responsive_layout_boundaries(width: int, expected: tuple[int, bool]) ->
     assert schwab_layout(width) == expected
 
 
+def test_portfolio_rows_use_airier_unboxed_style_without_enlarging_orders(root: tk.Tk) -> None:
+    parent = ttk.Frame(root)
+    parent.pack(fill=tk.BOTH, expand=True)
+    try:
+        tab = SchwabDucketsTab(root, parent, background_runner=_immediate_background)
+        style = ttk.Style(root)
+
+        assert int(style.lookup("SchwabPortfolio.Treeview", "rowheight")) >= 40
+        assert "Treeheading.border" not in repr(
+            style.layout("SchwabPortfolio.Treeview.Heading")
+        )
+        assert str(tab.holdings_table.cget("style")) == "SchwabPortfolio.Treeview"
+        assert str(tab.cash_table.cget("style")) == "SchwabPortfolio.Treeview"
+        assert str(tab.open_orders_table.cget("style")) == "Schwab.Treeview"
+    finally:
+        parent.destroy()
+
+
+def test_wide_layout_fills_viewport_and_compact_layout_remains_scrollable(
+    root: tk.Tk,
+) -> None:
+    window = tk.Toplevel(root)
+    window.geometry("1906x1030")
+    parent = ttk.Frame(window)
+    parent.pack(fill=tk.BOTH, expand=True)
+    try:
+        tab = SchwabDucketsTab(window, parent, background_runner=_immediate_background)
+        window.deiconify()
+        window.update()
+
+        for _ in range(3):
+            tab._canvas_viewport_height = tab.canvas.winfo_height()
+            tab._apply_responsive_layout(force=True)
+            window.update_idletasks()
+            tab._sync_body_window_height()
+            window.update()
+
+        assert tab._last_layout == (5, True)
+        assert abs(tab.body.winfo_height() - tab.canvas.winfo_height()) <= 1
+        assert tab.holdings_table.winfo_height() > tab.holdings_table.winfo_reqheight()
+        assert tab.orders_card.winfo_rooty() < tab.selected_card.winfo_rooty()
+
+        window.geometry("1180x760")
+        window.update()
+        for _ in range(3):
+            tab._canvas_viewport_height = tab.canvas.winfo_height()
+            tab._apply_responsive_layout(force=True)
+            window.update_idletasks()
+            tab._sync_body_window_height()
+            window.update()
+
+        assert tab._last_layout == (3, False)
+        assert int(tab.body.grid_rowconfigure(2)["minsize"]) == 0
+        assert tab.body.winfo_height() > tab.canvas.winfo_height()
+    finally:
+        window.destroy()
+
+
 def test_real_tab_contains_no_option_ticket_chain_or_options_summary(root: tk.Tk) -> None:
     parent = ttk.Frame(root)
     parent.pack(fill=tk.BOTH, expand=True)

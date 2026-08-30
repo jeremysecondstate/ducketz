@@ -5,6 +5,9 @@ Usage examples:
         --capture artifacts/validation/schwab-duckets-equities-wide.png
     python tests/visual_schwab_duckets_fixture.py --size 1180x760 \
         --capture artifacts/validation/schwab-duckets-equities-1180.png
+    python tests/visual_schwab_duckets_fixture.py --size 1906x1030 \
+        --position-count 17 \
+        --capture artifacts/validation/schwab-duckets-equities-1906.png
 
 Every account, position, quote, and order is deterministic fixture data. The
 fixture does not read credentials, perform network calls, or permit mutations.
@@ -86,6 +89,7 @@ def main() -> None:
     parser.add_argument("--size", default="1672x941")
     parser.add_argument("--capture", type=Path)
     parser.add_argument("--scroll-bottom", action="store_true")
+    parser.add_argument("--position-count", type=int, choices=(6, 17), default=6)
     parser.add_argument(
         "--state",
         choices=("normal", "empty", "error", "unknown"),
@@ -113,7 +117,10 @@ def main() -> None:
         frames[title] = frame
         notebook.add(frame, text=title)
 
-    snapshots = _fixture_snapshots(unknown=args.state == "unknown")
+    snapshots = _fixture_snapshots(
+        unknown=args.state == "unknown",
+        position_count=args.position_count,
+    )
     open_orders = _fixture_open_orders()
     recent_orders = _fixture_recent_orders()
     session = FakeSchwabSession(open_orders, recent_orders)
@@ -196,7 +203,11 @@ def _capture_and_exit(root: tk.Tk, path: Path, *, scroll_bottom: bool) -> None:
         root.destroy()
 
 
-def _fixture_snapshots(*, unknown: bool = False) -> tuple[PortfolioSnapshot, ...]:
+def _fixture_snapshots(
+    *,
+    unknown: bool = False,
+    position_count: int = 6,
+) -> tuple[PortfolioSnapshot, ...]:
     synced_at = datetime(2026, 8, 29, 17, 21, 34, tzinfo=timezone.utc)
     first_symbol = "ZZZZ" if unknown else "AAPL"
     primary_holdings = [
@@ -210,6 +221,23 @@ def _fixture_snapshots(*, unknown: bool = False) -> tuple[PortfolioSnapshot, ...
         _holding("NVDA", 30, 945.12, 28_353.6, 642.0, 198.0, "Stock"),
         _holding("IWM", 200, 206.78, 41_356.0, 64.06, -139.29, "ETF"),
     ]
+    extra_holdings = [
+        _holding("AMD", 24, 162.40, 3_897.60, 218.40, 42.24, "Stock"),
+        _holding("AMZN", 18, 178.20, 3_207.60, 117.00, -21.60, "Stock"),
+        _holding("META", 8, 512.75, 4_102.00, 302.40, 36.80, "Stock"),
+        _holding("GOOGL", 20, 171.30, 3_426.00, 186.00, 24.00, "Stock"),
+        _holding("TSLA", 12, 216.50, 2_598.00, -144.00, -38.40, "Stock"),
+        _holding("VTI", 14, 276.25, 3_867.50, 91.00, 16.80, "ETF"),
+        _holding("DIA", 7, 405.80, 2_840.60, 54.60, -8.40, "ETF"),
+        _holding("XLE", 30, 91.45, 2_743.50, 73.50, 12.00, "ETF"),
+        _holding("JPM", 16, 224.10, 3_585.60, 128.00, 27.20, "Stock"),
+        _holding("KO", 40, 69.20, 2_768.00, 84.00, 8.00, "Stock"),
+        _holding("XLK", 15, 232.60, 3_489.00, 139.50, 19.50, "ETF"),
+    ]
+    requested_extras = max(position_count - 6, 0)
+    selected_extras = extra_holdings[:requested_extras]
+    primary_holdings.extend(selected_extras)
+    extra_value = sum(holding.value for holding in selected_extras)
     return (
         PortfolioSnapshot(
             source="schwab",
@@ -218,7 +246,7 @@ def _fixture_snapshots(*, unknown: bool = False) -> tuple[PortfolioSnapshot, ...
             holdings=primary_holdings,
             synced_at=synced_at,
             status="Fixture current",
-            reported_total_value=168_137.5,
+            reported_total_value=168_137.5 + extra_value,
         ),
         PortfolioSnapshot(
             source="schwab",
