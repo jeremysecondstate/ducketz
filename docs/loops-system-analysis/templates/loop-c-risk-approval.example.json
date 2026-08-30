@@ -1,0 +1,69 @@
+{
+  "approval": {
+    "approval_id": "REPLACE_WITH_OPERATOR_APPROVAL_ID",
+    "approved_at": null,
+    "approved_by": null,
+    "expires_at": null,
+    "rationale": null,
+    "scope": "LOOP_C_OBSERVE_ONLY",
+    "status": "PENDING_OPERATOR_APPROVAL"
+  },
+  "limits": {
+    "maximum_candidate_quantity": null,
+    "maximum_daily_loss": null,
+    "maximum_gross_exposure": null,
+    "maximum_model_age_seconds": null,
+    "maximum_open_positions": null,
+    "maximum_snapshot_age_seconds": null,
+    "maximum_symbol_exposure": null,
+    "maximum_trade_loss": null,
+    "maximum_working_orders": null,
+    "policy_version": "deterministic-risk-authority-observe-v2",
+    "predictive_thresholds_by_horizon": {
+      "1d": {
+        "maximum_total_uncertainty": null,
+        "minimum_strategy_calibrated_probability": null,
+        "minimum_expected_return_on_risk": null,
+        "minimum_sequence_directional_probability": null,
+        "uncertainty_penalty": null
+      },
+      "1h": {
+        "maximum_total_uncertainty": null,
+        "minimum_strategy_calibrated_probability": null,
+        "minimum_expected_return_on_risk": null,
+        "minimum_sequence_directional_probability": null,
+        "uncertainty_penalty": null
+      },
+      "1w": {
+        "maximum_total_uncertainty": null,
+        "minimum_strategy_calibrated_probability": null,
+        "minimum_expected_return_on_risk": null,
+        "minimum_sequence_directional_probability": null,
+        "uncertainty_penalty": null
+      },
+      "4h": {
+        "maximum_total_uncertainty": null,
+        "minimum_strategy_calibrated_probability": null,
+        "minimum_expected_return_on_risk": null,
+        "minimum_sequence_directional_probability": null,
+        "uncertainty_penalty": null
+      }
+    }
+  },
+  "model_binding": {
+    "configuration_fingerprint": "0c3242b0ecbffa1a44c9a0cd2b2b3936c4c28b8e650ea22c5316887583c93e17",
+    "consumer": "LOOP_C_OBSERVE",
+    "distribution_schema_version": "pooled-causal-distribution-v1",
+    "horizons": [
+      "1h",
+      "4h",
+      "1d",
+      "1w"
+    ],
+    "model_name": "pooled-causal-sequence-encoder",
+    "required_authority": "SHADOW_ONLY",
+    "schema_version": "loop-c-sequence-model-binding-v1",
+    "sequence_policy_version": "pooled-causal-hourly-surface-lstm-v1"
+  },
+  "schema_version": "loop-c-risk-approval-v2"
+}

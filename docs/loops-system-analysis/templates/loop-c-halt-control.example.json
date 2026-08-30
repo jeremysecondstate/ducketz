@@ -1,0 +1,8 @@
+{
+  "control_id": "REPLACE_WITH_CONTROL_ID",
+  "expires_at": null,
+  "halt_requested": true,
+  "issued_at": null,
+  "schema_version": "loop-c-halt-control-v2",
+  "set_by": "REPLACE_WITH_OPERATOR_OR_SYSTEM_IDENTITY"
+}

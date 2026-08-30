@@ -1,0 +1,14 @@
+{
+  "authority": "PENDING_READ_ONLY_SNAPSHOT",
+  "observed_at": null,
+  "reconciled": false,
+  "reserved_cash": null,
+  "schema_version": "loop-c-broker-snapshot-v2",
+  "source": {
+    "policy_version": "loop-c-schwab-read-only-snapshot-v1",
+    "receipt_path": "REPLACE_WITH_DATASTORE_RELATIVE_RECEIPT_PATH",
+    "receipt_sha256": "REPLACE_WITH_RECEIPT_SHA256"
+  },
+  "unknown_submission_status": true,
+  "working_orders": null
+}

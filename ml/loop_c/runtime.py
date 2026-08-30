@@ -12,9 +12,19 @@ import pandas as pd
 from datafetching.ids import add_readable_id
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from datafetching.runtime_lock import exclusive_runtime_lock
-from ml.artifacts import create_timestamp_directory, utc_timestamp, write_manifest
+from ml.artifacts import (
+    create_timestamp_directory,
+    semantic_metadata_fingerprint,
+    utc_timestamp,
+    write_manifest,
+)
 from ml.loop_c.engine import evaluate_loop_c
-from ml.loop_c.policy import LoopCMode, LoopCRiskLimits
+from ml.loop_c.inputs import load_loop_c_inputs
+from ml.loop_c.policy import (
+    LoopCMode,
+    LoopCRiskLimits,
+    LoopCSequenceModelBinding,
+)
 from ml.loop_c.publication import publish_loop_c_observe_run
 from ml.parquet_contracts import LOOP_C_DECISION_SCHEMA, write_parquet_with_schema
 from ml.sequence_encoder.consumer import load_sequence_distributions
@@ -27,9 +37,11 @@ def run_loop_c_observe_once(
     *,
     decision_timestamp: object,
     risk_limits: LoopCRiskLimits,
+    model_binding: LoopCSequenceModelBinding,
     portfolio: Mapping[str, object] | None = None,
     broker: Mapping[str, object] | None = None,
     halt_requested: bool = False,
+    input_contracts: Mapping[str, object] | None = None,
     source_files: Sequence[Path] = (),
     publish: bool = False,
 ) -> dict[str, object]:
@@ -41,28 +53,34 @@ def run_loop_c_observe_once(
     routes = candidates.loc[
         :, ["symbol", "horizon", "decision_timestamp"]
     ].drop_duplicates()
+    sequence_publication = read_current_sequence_publication(root)
+    binding_summary = _validate_sequence_model_binding(
+        sequence_publication,
+        model_binding,
+    )
     sequence = load_sequence_distributions(
         root,
         routes=routes,
         consumer="LOOP_C_OBSERVE",
         as_of=now,
     )
-    merged = _merge_candidates(candidates, sequence.distributions)
-    try:
-        sequence_publication = read_current_sequence_publication(root)
-        model_authority = str(sequence_publication.receipt.get("authority", "NONE"))
-        model_published_at = sequence_publication.receipt.get("published_at")
-        sequence_path = sequence_publication.run_directory / "distributions.parquet"
-        sequence_inputs = (
-            sequence_publication.run_directory / "manifest.json",
-            sequence_publication.run_directory / "publication.json",
-            sequence_path,
+    if sequence.status not in {"READY_SHADOW", "PARTIAL_SHADOW"}:
+        raise ValueError(f"Loop C sequence distribution is unavailable: {sequence.status}")
+    if not sequence.distributions.empty:
+        schema_values = set(
+            sequence.distributions["schema_version"].astype("string").dropna()
         )
-    except Exception:
-        model_authority = "NONE"
-        model_published_at = None
-        sequence_path = None
-        sequence_inputs = ()
+        if schema_values != {model_binding.distribution_schema_version}:
+            raise ValueError("Loop C sequence distribution schema differs from its binding")
+    merged = _merge_candidates(candidates, sequence.distributions)
+    model_authority = str(sequence_publication.receipt.get("authority", "NONE"))
+    model_published_at = sequence_publication.receipt.get("published_at")
+    sequence_path = sequence_publication.run_directory / "distributions.parquet"
+    sequence_inputs = (
+        sequence_publication.run_directory / "manifest.json",
+        sequence_publication.run_directory / "publication.json",
+        sequence_path,
+    )
     decision = evaluate_loop_c(
         merged,
         decision_timestamp=now,
@@ -92,7 +110,9 @@ def run_loop_c_observe_once(
             "status": sequence.status,
             "matched_routes": sequence.matched_routes,
             "requested_routes": sequence.requested_routes,
+            "model_binding": binding_summary,
         },
+        "input_contracts": dict(input_contracts or {}),
         "safety": {
             "authority": "OBSERVE_ONLY",
             "orders_enabled": False,
@@ -128,7 +148,9 @@ def run_loop_c_observe_once(
             "risk_limits": asdict(risk_limits),
             "strategy_source": dict(strategy.pointer.get("current", {})),
             "sequence_status": sequence.status,
+            "sequence_model_binding": binding_summary,
             "halt_requested": bool(halt_requested),
+            "input_contracts": dict(input_contracts or {}),
         },
         datastore_root=root,
     )
@@ -220,25 +242,17 @@ def _market_open(now: pd.Timestamp) -> bool:
         return False
 
 
-def _load_mapping(path: Path | None) -> Mapping[str, object] | None:
-    if path is None:
-        return None
-    value = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(value, Mapping):
-        raise ValueError(f"Snapshot must be an object: {path}")
-    return value
-
-
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run Loop C in observe-only mode.")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--root-dir", type=Path)
     group.add_argument("--datastore-target", choices=sorted(DATASTORE_TARGETS))
     parser.add_argument("--decision-timestamp", required=True)
-    parser.add_argument("--portfolio-snapshot", type=Path)
-    parser.add_argument("--broker-snapshot", type=Path)
-    parser.add_argument("--halt-control", type=Path)
+    parser.add_argument("--portfolio-snapshot", type=Path, required=True)
+    parser.add_argument("--broker-snapshot", type=Path, required=True)
+    parser.add_argument("--halt-control", type=Path, required=True)
     parser.add_argument("--risk-limits", type=Path, required=True)
+    parser.add_argument("--validate-inputs-only", action="store_true")
     parser.add_argument("--publish", action="store_true")
     parser.add_argument("--compact", action="store_true")
     return parser
@@ -248,37 +262,41 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         root = resolve_datastore_dir(root_dir=args.root_dir, target=args.datastore_target)
-        limits_value = _load_mapping(args.risk_limits)
-        if limits_value is None:
-            raise ValueError("Risk limits are required")
-        halt_control = _load_mapping(args.halt_control)
-        with exclusive_runtime_lock(
-            root / ".ducketz-loop-c-observe.lock",
-            process_name="Duckets Loop C observe runtime",
-        ):
-            result = run_loop_c_observe_once(
-                root,
-                decision_timestamp=args.decision_timestamp,
-                risk_limits=LoopCRiskLimits(**dict(limits_value)),
-                portfolio=_load_mapping(args.portfolio_snapshot),
-                broker=_load_mapping(args.broker_snapshot),
-                halt_requested=(
-                    bool(halt_control.get("halt_requested"))
-                    if isinstance(halt_control, Mapping)
-                    else False
-                ),
-                source_files=tuple(
-                    path
-                    for path in (
-                        args.risk_limits,
-                        args.portfolio_snapshot,
-                        args.broker_snapshot,
-                        args.halt_control,
-                    )
-                    if path is not None
-                ),
-                publish=args.publish,
-            )
+        inputs = load_loop_c_inputs(
+            root,
+            risk_limits_path=args.risk_limits,
+            portfolio_snapshot_path=args.portfolio_snapshot,
+            broker_snapshot_path=args.broker_snapshot,
+            halt_control_path=args.halt_control,
+            as_of=args.decision_timestamp,
+        )
+        if args.validate_inputs_only:
+            if args.publish:
+                raise ValueError("--publish cannot be used with --validate-inputs-only")
+            result = {
+                "status": "READY_INPUTS",
+                "input_contracts": dict(inputs.public_summary),
+                "halt_requested": inputs.halt_requested,
+                "orders_enabled": False,
+                "orders_placed": 0,
+            }
+        else:
+            with exclusive_runtime_lock(
+                root / ".ducketz-loop-c-observe.lock",
+                process_name="Duckets Loop C observe runtime",
+            ):
+                result = run_loop_c_observe_once(
+                    root,
+                    decision_timestamp=args.decision_timestamp,
+                    risk_limits=inputs.risk_limits,
+                    model_binding=inputs.model_binding,
+                    portfolio=inputs.portfolio,
+                    broker=inputs.broker,
+                    halt_requested=inputs.halt_requested,
+                    input_contracts=inputs.public_summary,
+                    source_files=inputs.source_files,
+                    publish=args.publish,
+                )
         exit_code = 0
     except Exception as exc:
         result = {
@@ -290,6 +308,43 @@ def main(argv: Sequence[str] | None = None) -> int:
         exit_code = 2
     print(json.dumps(result, separators=(",", ":") if args.compact else None))
     return exit_code
+
+
+def _validate_sequence_model_binding(
+    publication: object,
+    binding: LoopCSequenceModelBinding,
+) -> dict[str, object]:
+    manifest = getattr(publication, "manifest", None)
+    receipt = getattr(publication, "receipt", None)
+    if not isinstance(manifest, Mapping) or not isinstance(receipt, Mapping):
+        raise ValueError("Loop C sequence publication is malformed")
+    configuration = manifest.get("configuration")
+    if not isinstance(configuration, Mapping):
+        raise ValueError("Loop C sequence manifest configuration is missing")
+    runtime_configuration = configuration.get("configuration")
+    if not isinstance(runtime_configuration, Mapping):
+        raise ValueError("Loop C sequence runtime configuration is missing")
+    fingerprint = semantic_metadata_fingerprint(runtime_configuration)
+    consumers = configuration.get("consumers")
+    if (
+        manifest.get("model_name") != binding.model_name
+        or configuration.get("policy_version") != binding.sequence_policy_version
+        or fingerprint != binding.configuration_fingerprint
+        or receipt.get("authority") != binding.required_authority
+        or not isinstance(consumers, list)
+        or binding.consumer not in consumers
+    ):
+        raise ValueError("Current sequence publication differs from the approved Loop C binding")
+    return {
+        "schema_version": binding.schema_version,
+        "model_name": binding.model_name,
+        "sequence_policy_version": binding.sequence_policy_version,
+        "configuration_fingerprint": fingerprint,
+        "distribution_schema_version": binding.distribution_schema_version,
+        "authority": binding.required_authority,
+        "consumer": binding.consumer,
+        "horizons": list(binding.horizons),
+    }
 
 
 if __name__ == "__main__":

@@ -226,6 +226,10 @@ def _screen_candidate(
     risk_limits: LoopCRiskLimits,
     portfolio: Mapping[str, object],
 ) -> dict[str, object] | None:
+    try:
+        thresholds = risk_limits.thresholds_for(row.get("horizon"))
+    except ValueError:
+        return None
     probability = _number(row.get("calibrated_probability"))
     sequence_probability = _number(row.get("sequence_directional_probability"))
     sequence_expected_return = _number(row.get("sequence_expected_return"))
@@ -252,11 +256,11 @@ def _screen_candidate(
     assert maximum_loss is not None
     assert capital_required is not None
     if (
-        probability < risk_limits.minimum_calibrated_probability
+        probability < thresholds.minimum_strategy_calibrated_probability
         or sequence_probability
-        < risk_limits.minimum_sequence_directional_probability
-        or expected_return < risk_limits.minimum_expected_return_on_risk
-        or uncertainty > risk_limits.maximum_total_uncertainty
+        < thresholds.minimum_sequence_directional_probability
+        or expected_return < thresholds.minimum_expected_return_on_risk
+        or uncertainty > thresholds.maximum_total_uncertainty
         or maximum_loss <= 0.0
         or maximum_loss > risk_limits.maximum_trade_loss
         or capital_required <= 0.0
@@ -290,7 +294,7 @@ def _screen_candidate(
     )
     if quantity < 1:
         return None
-    utility = expected_return - risk_limits.uncertainty_penalty * uncertainty
+    utility = expected_return - thresholds.uncertainty_penalty * uncertainty
     if not np.isfinite(utility) or utility <= 0.0:
         return None
     output = dict(row)

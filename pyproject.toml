@@ -39,8 +39,12 @@ ducketz-scheduler-handoff = "ml.scheduler_handoff:main"
 ducketz-strategy-profit-training = "ml.strategy_profit_training_runtime:main"
 ducketz-strategy-value-challenger = "ml.strategy_value_challenger:main"
 ducketz-sequence-encoder = "ml.sequence_encoder.runtime:main"
+ducketz-sequence-preregistration = "ml.sequence_encoder.preregistration_proposal:main"
 ducketz-sequence-inference = "ml.sequence_encoder.inference_runtime:main"
 ducketz-loop-c-observe = "ml.loop_c.runtime:main"
+ducketz-loop-c-schwab-snapshot = "ml.loop_c.schwab_snapshot:main"
+ducketz-loop-c-risk-proposal = "ml.loop_c.risk_proposal:main"
+ducketz-loop-c-weekly-review = "ml.loop_c.weekly_review:main"
 
 [project.optional-dependencies]
 options-chat = [

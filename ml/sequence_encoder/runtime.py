@@ -45,6 +45,11 @@ from ml.sequence_encoder.dataset import (
     pretraining_windows,
 )
 from ml.sequence_encoder.model import model_contract
+from ml.sequence_encoder.preregistration import (
+    SequencePreregistration,
+    claim_sequence_preregistration,
+    validate_sequence_preregistration,
+)
 from ml.sequence_encoder.publication import publish_sequence_run
 from ml.sequence_encoder.surface import (
     loop_b_supervised_labels,
@@ -74,6 +79,7 @@ class SequenceTrainingResult:
 def run_sequence_training_once(
     datastore_root: Path,
     *,
+    preregistration: SequencePreregistration,
     symbols: Sequence[str] | None = None,
     information_cutoff: object,
     run_timestamp: object | None = None,
@@ -89,12 +95,37 @@ def run_sequence_training_once(
     cutoff = utc_timestamp(information_cutoff)
     if created < cutoff:
         raise ValueError("run_timestamp cannot precede information_cutoff")
+    selected_symbols = tuple(
+        dict.fromkeys(
+            str(value).strip().upper()
+            for value in (symbols or preregistration.symbols)
+            if str(value).strip()
+        )
+    )
+    preregistration.require_runtime_contract(
+        symbols=selected_symbols,
+        information_cutoff=cutoff,
+        maximum_sessions_per_symbol=(
+            preregistration.maximum_sessions_per_symbol
+            if maximum_sessions_per_symbol is None
+            else maximum_sessions_per_symbol
+        ),
+        config=runtime,
+    )
+    maximum_sessions_per_symbol = preregistration.maximum_sessions_per_symbol
     loop_b = read_current_publication(root)
+    if loop_b.run_directory.resolve() != preregistration.source_run_directory.resolve():
+        raise ValueError("Current Loop B authority differs from the preregistered run")
     source_record = _current_record(loop_b.pointer)
     samples_path = loop_b.run_directory / "samples.parquet"
     predictions_path = loop_b.run_directory / "predictions.parquet"
     if not samples_path.is_file() or not predictions_path.is_file():
         raise FileNotFoundError("Current Loop B samples or predictions are missing")
+    preregistration_claim = claim_sequence_preregistration(
+        root,
+        preregistration=preregistration,
+        claimed_at=created,
+    )
     samples = pd.read_parquet(samples_path)
     labels = loop_b_supervised_labels(samples, horizons=runtime.horizons)
     partitions = chronological_partitions(labels, config=runtime)
@@ -104,13 +135,6 @@ def run_sequence_training_once(
             "Sequence encoder has insufficient chronological partitions for: "
             + ", ".join(missing_horizons)
         )
-    selected_symbols = tuple(
-        dict.fromkeys(
-            str(value).strip().upper()
-            for value in (symbols or sorted(labels["symbol"].astype(str).unique()))
-            if str(value).strip()
-        )
-    )
     earliest_train = min(
         partition.train["bar_end_timestamp"].min() for partition in partitions.values()
     )
@@ -298,6 +322,14 @@ def run_sequence_training_once(
         ).isoformat(),
         "live_inference_status": live_inference_status,
         "source_loop_b": source_record,
+        "preregistration": {
+            "schema_version": preregistration.canonical["schema_version"],
+            "fingerprint_sha256": preregistration.fingerprint_sha256,
+            "eligible_session": preregistration.eligible_session,
+            "handoff_sequence": preregistration.handoff_sequence,
+            "handoff_receipt_checksum_sha256": preregistration.receipt_sha256,
+            "claim_checksum_sha256": file_checksum(preregistration_claim),
+        },
         "counts": {
             "states": len(states),
             "pretraining_windows": len(pretrain_x),
@@ -344,7 +376,14 @@ def run_sequence_training_once(
     write_manifest(
         run_directory,
         run_timestamp=created,
-        input_files=(samples_path, predictions_path, *state_inputs),
+        input_files=(
+            preregistration.receipt_path,
+            preregistration_claim,
+            *preregistration.source_files,
+            samples_path,
+            predictions_path,
+            *state_inputs,
+        ),
         output_files=output_names,
         model_name="pooled-causal-sequence-encoder",
         feature_columns=runtime.feature_columns,
@@ -355,6 +394,14 @@ def run_sequence_training_once(
             "orders_enabled": False,
             "orders_placed": 0,
             "source_loop_b": source_record,
+            "preregistration": {
+                "schema_version": preregistration.canonical["schema_version"],
+                "fingerprint_sha256": preregistration.fingerprint_sha256,
+                "eligible_session": preregistration.eligible_session,
+                "handoff_sequence": preregistration.handoff_sequence,
+                "handoff_receipt_checksum_sha256": preregistration.receipt_sha256,
+                "claim_checksum_sha256": file_checksum(preregistration_claim),
+            },
             "model_contract": contract,
             "configuration": runtime.semantic_contract(),
             "consumers": ["LOOP_B", "OPTIONS_STRATEGY", "LOOP_C_OBSERVE"],
@@ -656,7 +703,8 @@ def _parser() -> argparse.ArgumentParser:
         description="Train the pooled causal sequence encoder as a shadow-only challenger."
     )
     _add_root_arguments(parser)
-    parser.add_argument("--information-cutoff", required=True)
+    parser.add_argument("--preregistration-receipt", type=Path, required=True)
+    parser.add_argument("--information-cutoff")
     parser.add_argument("--run-timestamp")
     parser.add_argument("--symbol", action="append", default=[])
     parser.add_argument("--maximum-sessions-per-symbol", type=int)
@@ -672,16 +720,36 @@ def main(argv: Sequence[str] | None = None) -> int:
             root_dir=args.root_dir,
             target=args.datastore_target,
         )
+        runtime = SequenceEncoderConfig()
+        preregistration = validate_sequence_preregistration(
+            root,
+            receipt_path=args.preregistration_receipt,
+            config=runtime,
+            as_of=args.run_timestamp,
+        )
+        information_cutoff = (
+            args.information_cutoff
+            if args.information_cutoff is not None
+            else preregistration.information_cutoff
+        )
+        symbols = args.symbol or list(preregistration.symbols)
+        maximum_sessions = (
+            args.maximum_sessions_per_symbol
+            if args.maximum_sessions_per_symbol is not None
+            else preregistration.maximum_sessions_per_symbol
+        )
         with exclusive_runtime_lock(
             root / ".ducketz-sequence-encoder-runtime.lock",
             process_name="Duckets pooled sequence encoder",
         ):
             result = run_sequence_training_once(
                 root,
-                symbols=args.symbol or None,
-                information_cutoff=args.information_cutoff,
+                preregistration=preregistration,
+                symbols=symbols,
+                information_cutoff=information_cutoff,
                 run_timestamp=args.run_timestamp,
-                maximum_sessions_per_symbol=args.maximum_sessions_per_symbol,
+                config=runtime,
+                maximum_sessions_per_symbol=maximum_sessions,
                 publish_shadow=args.publish_shadow,
             )
         payload = {

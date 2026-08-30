@@ -103,6 +103,13 @@ Pooled sequence encoder and Loop C shadow lane:
   manifest, and publication receipt when one was produced. Do not run training
   in this path, and do not run inference while a verified current model is
   absent or the Loop B cutoff is missing/invalid.
+- Hourly adaptation means fresh inference plus receipt-first calibration,
+  maturity, drift, and lineage monitoring; it does not mean refitting or
+  retuning on each wake. Outcomes for `1h`, `4h`, `1d`, and `1w` mature on
+  different clocks, and overlapping hourly rows are not independent evidence.
+  Keep pooled-encoder changes inside the stage-13 preregistration and stage-14
+  bounded shadow-ablation path below. Do not run the separate weekly Loop C
+  review command from this hourly task.
 - Loop B and Options Strategies may consume the same verified distributions
   only through their checked-in shadow-report seams. Missing, partial, future,
   or invalid sequence evidence must remain visible and must not delay Loop B,
@@ -112,22 +119,89 @@ Pooled sequence encoder and Loop C shadow lane:
   evaluation; independently scheduled owners may consume the latest prior
   verified shadow generation without pretending it is same-cycle evidence.
 - Loop C remains observe-only. Run it only during an open XNYS session and only
-  when all four operator-approved inputs exist: explicit versioned risk limits,
+  when all four operator-approved inputs exist: an exact model-bound versioned
+  risk record,
   a fresh reconciled portfolio snapshot, a fresh reconciled broker snapshot,
-  and a halt-control snapshot. Never invent limits, cash, exposure, positions,
-  working orders, reconciliation, or halt state. If any input is absent, stale,
-  or invalid, record `LOOP_C_INPUTS_UNAVAILABLE` and skip without publishing.
-  If all inputs are present, run `ml.loop_c.runtime` at most once after sequence
-  inference. Its only acceptable authority is `OBSERVE_ONLY`; it contains no
-  broker submission path and every output must keep zero-order safety.
+  and a halt-control snapshot. Look only at
+  `C:\DATASTORE\controls\loop-c\current\risk-approval.json`,
+  `portfolio-snapshot.json`, `broker-snapshot.json`, and `halt-control.json` in
+  that same directory. The strict `ml.loop_c.inputs` contracts require an
+  unexpired explicit `APPROVED` observe-only risk record whose model name,
+  policy, semantic configuration fingerprint, distribution schema, authority,
+  consumer, and ordered `1h`/`4h`/`1d`/`1w` horizon set match the current
+  sequence publication exactly; horizon-specific predictive gates; fresh read-only,
+  reconciled portfolio and broker state bound to checksum-valid datastore
+  source receipts; and an independently issued unexpired halt control. At the
+  start of each eligible open-session wake, before input validation, invoke the
+  checked-in `ml.loop_c.schwab_snapshot --datastore-target pc --compact` once.
+  This is the only authorized automated account refresh: it reuses the Schwab
+  Duckets integration and may call only read-only account, working-order,
+  bounded order-history, and transaction-history methods. Require its receipt
+  to state `broker_data_http_methods=[GET]`, no persisted account/order/
+  transaction identifiers, and zero orders. Never call any submit, replace,
+  cancel, transfer, or other broker mutation method. Do not run
+  `ml.loop_c.risk_proposal` hourly or rewrite an approved limit from changing
+  balances/history; that command creates operator-review material only.
+  Never invent limits,
+  cash, exposure, positions, working orders, reconciliation, approval, or halt
+  state. If any input is absent, stale, or invalid, record
+  `LOOP_C_INPUTS_UNAVAILABLE` and skip without publishing. If all inputs are
+  present, run `ml.loop_c.runtime` at most once after sequence inference. Start
+  this observe-only operation immediately on the first eligible open-session
+  wake; there is no evidence waiting period before it may compute. Its only
+  acceptable authority is `OBSERVE_ONLY`; it contains no broker submission path
+  and every output must keep zero-order safety.
 - Pooled encoder training is eligible only inside
   `run-shadow-ablation`, only when stage 13's immutable preregistration names
   this exact challenger and supplies its causal cutoff, cohort, compute bound,
   metrics, and stop conditions. Training must use
   `ml.sequence_encoder.runtime`, chronological train/calibration/assessment
   partitions, equal decision-cluster weighting, causal next-state pretraining,
-  and shadow publication. No ordinary wake may train it, and no scheduler wake
-  may promote it to active authority.
+  and shadow publication. When stage 13 selects this challenger, encode one
+  canonical sorted compact JSON object using schema
+  `pooled-causal-sequence-preregistration-v1` and exactly these fields:
+  `schema_version`, `challenger`, `authority`, `eligible_session`,
+  `source_loop_b_run_path`, `source_loop_b_manifest_sha256`,
+  `source_loop_b_samples_sha256`, `source_loop_b_predictions_sha256`,
+  `causal_input_cutoff`, `symbols`, `maximum_sessions_per_symbol`,
+  `configuration_fingerprint`, `hypothesis`, `primary_metric`, `safety_metrics`,
+  `baseline`, `compute_bound`, `leakage_and_regime_risks`, `stop_conditions`,
+  `rollback_condition`, `orders_enabled`, and `orders_placed`.
+  Freeze the current receipt-verified Loop B generation and exact source
+  checksums; set `challenger=pooled-causal-sequence-encoder`,
+  `authority=SHADOW_ONLY`, `orders_enabled=false`, and `orders_placed=0`.
+  Generate, do not hand-assemble, this object with the checked-in read-only
+  proposal builder:
+
+  `.\.venv\Scripts\python.exe -m ml.sequence_encoder.preregistration_proposal --datastore-target pc --eligible-session <guardian-eligible-session> --symbol <each-exact-symbol> --maximum-sessions-per-symbol <bounded-positive-count> --compact`.
+
+  Accept only `PROPOSAL_ONLY` with zero-order safety and copy its
+  `handoff_actions` verbatim into the stage-13 successor receipt.
+  Split the canonical UTF-8 string into ordered handoff actions named
+  `SEQUENCE_PREREG_CANONICAL_<n>_OF_<count>=<fragment>` and include
+  `SEQUENCE_PREREG_SHA256=<sha256-of-the-unsplit-string>`. Stage 14 must pass
+  that still-current stage-13 receipt using `--preregistration-receipt`; the
+  trainer rejects stale receipts, changed source authority, checksum drift, and
+  any runtime argument mismatch before fitting. It atomically consumes that
+  fingerprint once before fitting; failure or interruption is terminal evidence
+  for the preregistration and does not authorize an automatic retry. No
+  ordinary wake may train it, and no scheduler wake may promote it to active
+  authority. Loop B and Options Strategies may begin their existing verified
+  shadow consumption immediately after the first valid publication; no
+  additional time embargo applies.
+- Start the Loop C prospective evidence clock at its first successfully
+  published open-session observe run, not at code deployment, risk approval, or
+  sequence training. Continue running Loop C every eligible hourly wake while
+  inputs remain valid. `loop-c-observe-evidence-gate-v1` allows only an operator
+  review after all floors pass: 40 completed XNYS sessions, 60 mature 1h and 4h
+  independent clusters, 30 mature 1d clusters, eight non-overlapping weekly
+  cohorts, 20 reconciled observations, two halt drills, one rollback drill,
+  all declared calibration/coverage/stress/stability/integrity/paper-broker
+  gates, zero deterministic-gate violations, and zero orders. Before those
+  floors, report `OBSERVE_ONLY_EVIDENCE_ACCUMULATING`; afterward report at most
+  `ELIGIBLE_FOR_OPERATOR_REVIEW`. Never infer authority expansion or automatic
+  promotion from elapsed time, evidence, a favorable proposal, or an approved
+  observe-only risk file.
 - This lane never supersedes the checksum-valid scheduler handoff. In
   particular, if the handoff says the prior stage-14 experiment is awaiting
   `compare-challenger`, perform that exact stage-15 comparison; do not replace
@@ -163,7 +237,7 @@ Execute exactly the stage named by the guardian:
 11. `evaluate-strategy-outcomes` (23:42): evaluate causally mature exact 1d/1w options constructions for positive net return after modeled execution and fees, by symbol, strategy family, pricing eligibility, model generation, and regime.
 12. `audit-probability-calibration` (00:42): compare raw and calibrated probability distributions, reliability bins, ECE, Brier score, log loss, base rates, coverage, and probability collapse; keep Scenario Coverage non-probabilistic.
 13. `select-nightly-bottleneck` (01:42): rank the single highest-value unresolved accuracy bottleneck and preregister one hypothesis, exact eligible cohort and causal cutoff, primary metric, safety metrics, baseline, checked-in gates, leakage/regime risks, compute/data bound, and rollback condition.
-14. `run-shadow-ablation` (02:42): run the session's sole new bounded, isolated, shadow-only experiment using the preregistration and immutable inputs. Prefer the checked-in strategy-value challenger when it matches the bottleneck; when the preregistration explicitly selects the pooled sequence encoder, use its checked-in shadow trainer and preserve its model/calibration/distribution receipts. Otherwise a small offline harness is allowed, but it must remain disconnected from production authority, runtime ownership, UI ranking, and orders.
+14. `run-shadow-ablation` (02:42): run the session's sole new bounded, isolated, shadow-only experiment using the preregistration and immutable inputs. Prefer the checked-in strategy-value challenger when it matches the bottleneck; when the preregistration explicitly selects the pooled sequence encoder, invoke its checked-in shadow trainer with `--preregistration-receipt <the-current-stage-13-receipt>` and preserve its model/calibration/distribution receipts. The trainer must validate the current handoff and use the receipt-bound cutoff, symbols, source checksums, configuration fingerprint, and data/compute bound; do not reconstruct or substitute them. Otherwise a small offline harness is allowed, but it must remain disconnected from production authority, runtime ownership, UI ranking, and orders.
 15. `compare-challenger` (03:42): compare the exact immutable challenger from stage 14 against champion/baseline on identical chronological assessment-clean evidence. Do not retune, select a new cohort, or start another challenger.
 16. `stress-and-gate-review` (04:42): stress the same result across symbols, regimes, windows, missing-data conditions, fees, and execution assumptions; accept, reject, or produce an approval-gated proposal. A favorable slice or post-hoc threshold is not a pass.
 17. `preopen-freeze` (05:42): perform final health, rollback, receipt, and authority verification; summarize the overnight evidence and remaining trigger; prohibit new experimental or production change.
@@ -173,6 +247,11 @@ Across stages, preserve prediction vintage and model generation, evaluate labels
 Also summarize both UI contracts, live-label maturity, Strategy model/Pricing coverage, and the Pricing-to-Strategy canary. Scenario Coverage is a heuristic grid pass fraction, never a probability; Calibrated Probability stays null until a fitted causal model and its declared evidence gate passes: full eligible Pricing for BSGP/Black-Scholes, or quality-passing OPRA execution evidence for the promoted daily/weekly model.
 
 In weekly mode, include the immutable-evidence roll-up only where definitions match and both periods have sufficient independent observations; otherwise report INSUFFICIENT_WEEKLY_EVIDENCE or INCOMPATIBLE_WEEKLY_DEFINITIONS without manufacturing a trend. Review the prior comparable daily/weekly evidence, identify persistent versus one-session issues, rank the single highest-value unresolved bottleneck, retire failed or stale shadow ideas, and state the next evidence trigger. Do not repeatedly tune against the same assessment or ever open the sealed lockbox.
+
+The user-facing Loop C portfolio meeting is owned by a separate Saturday task
+whose durable contract is `docs\loops-system-analysis\WEEKLY_REVIEW_AUTOMATION.md`.
+This hourly task may supply immutable receipts to it but must not generate a
+weekly risk proposal, renew an approval, or apply a weekly threshold decision.
 
 ML Profit Probability model-health and improvement lane (Strategy 1d and 1w only; do not create 1h/4h Strategy-profit scope):
 On every wake, after the guardian result, perform a lightweight receipt-first audit of the current slow Strategy model authority and current Strategy model reports. Do not rescan the full OPRA archive every hour. Use immutable manifests, receipts, checksums, fingerprints, and incremental/current publications; do deeper work only when the authority or evidence fingerprint changed, a gate failed, or the selected mode is daily/weekly.

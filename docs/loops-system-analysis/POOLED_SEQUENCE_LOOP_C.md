@@ -5,7 +5,9 @@
 This is a production-hardened **shadow and observe-only** lane. It is designed
 to accumulate prospective evidence safely before any separate activation
 proposal. It does not replace Directional Loop B, alter Options Strategies
-ranking, synchronize an account, or expose a broker order method.
+ranking, or expose a broker order method. Its Schwab lane is limited to the
+existing Duckets read-only account, order-history, and transaction-history
+methods and persists only identifier-free evidence.
 
 The immutable authority chain is:
 
@@ -89,11 +91,13 @@ candidate must then pass explicit, versioned deterministic limits for:
 - model-publication freshness, market-session status, daily loss, unknown
   broker submission state, and the independent halt control.
 
-Position size is the minimum integer capacity allowed by maximum trade loss,
+The thresholds are split by `1h`, `4h`, `1d`, and `1w`; a candidate cannot
+borrow a looser probability or uncertainty gate from another horizon. Position
+size is the minimum integer capacity allowed by maximum trade loss,
 available cash, remaining gross exposure, remaining symbol exposure, and the
 explicit quantity cap. The model cannot modify any limit. Missing inputs block
 the candidate or the entire decision. A daily-loss breach or halt request
-produces `HALT`. Version 1 still emits only `RESEARCH_PROPOSAL`, `NO_TRADE`,
+produces `HALT`. Version 2 still emits only `RESEARCH_PROPOSAL`, `NO_TRADE`,
 review, or halt records and always records zero orders.
 
 Historical replay is ordered by event availability time, event time, source
@@ -105,8 +109,17 @@ replay cannot make evidence arrive earlier than it did historically.
 Ordinary open-market wakes may run only bounded inference against an already
 verified model and only when the current Loop B source changed. Training is
 reserved for a stage-13-preregistered `run-shadow-ablation`; it is never an
-ordinary hourly job. Loop C is skipped unless operator-approved risk limits and
-fresh reconciled portfolio, broker, and halt snapshots all exist.
+ordinary hourly job. Loop C is skipped unless an operator-approved exact model
+binding and risk limits plus fresh reconciled portfolio, broker, and halt
+snapshots all exist.
+
+This is an authority boundary, not a waiting period for useful computation.
+Loop B and Options Strategies begin consuming verified sequence distributions
+through their checked-in report seams as soon as the first stage-14 model run
+publishes. Loop C begins emitting observe-only decisions on the first open
+session wake for which all four inputs validate. The prospective evidence clock
+starts with that first successful Loop C observation; it limits only a later
+authority-expansion proposal.
 
 The durable source of truth is
 [`HOURLY_AUTOMATION.md`](HOURLY_AUTOMATION.md). The scheduler must preserve its
@@ -115,17 +128,39 @@ experiment to displace an in-progress compare/stress/freeze sequence.
 
 ## Commands
 
+At a scheduler-selected stage 13, construct the receipt actions from the
+current verified source without mutation:
+
+```powershell
+.\.venv\Scripts\python.exe -m ml.sequence_encoder.preregistration_proposal `
+  --datastore-target pc `
+  --eligible-session <guardian-eligible-session> `
+  --symbol <each-preregistered-symbol> `
+  --maximum-sessions-per-symbol <preregistered-bound> `
+  --compact
+```
+
+The scheduler copies the returned `handoff_actions` verbatim into its stage-13
+receipt. Merely running this read-only builder is not a preregistration and does
+not select the experiment.
+
 Train a preregistered bounded challenger without publishing a shadow pointer:
 
 ```powershell
 .\.venv\Scripts\python.exe -m ml.sequence_encoder.runtime `
   --datastore-target pc `
-  --information-cutoff <preregistered-causal-cutoff> `
-  --maximum-sessions-per-symbol <preregistered-bound> `
+  --preregistration-receipt <current-stage-13-handoff-receipt.json> `
   --compact
 ```
 
-Add `--publish-shadow` only after the complete immutable run verifies. Current
+The receipt is the source of the exact cutoff, symbols, data bound, frozen Loop
+B checksums, configuration fingerprint, metrics, and stop conditions. Optional
+CLI duplicates of the cutoff, symbols, or bound must match it exactly. A stale,
+non-current, non-stage-13, checksum-invalid, or source-mismatched receipt fails
+before training. The accepted fingerprint is atomically consumed once before
+fitting; a failure or interruption is terminal evidence and cannot silently
+retry the same experiment. Add `--publish-shadow` only for the same bounded
+stage-14 run; publication still grants only `SHADOW_ONLY` authority. Current
 open-market inference is idempotent by source Loop B generation:
 
 ```powershell
@@ -150,16 +185,82 @@ Loop C requires explicit JSON inputs and remains observe-only:
   --compact
 ```
 
-No risk-limit values are checked in or silently defaulted: they are an explicit
-operator decision and a prerequisite to running even the observe lane.
+Before validation, refresh the existing Schwab Duckets read-only evidence:
+
+```powershell
+.\.venv\Scripts\python.exe -m ml.loop_c.schwab_snapshot `
+  --datastore-target pc `
+  --compact
+```
+
+This command may use authenticated GET-only account, working-order, bounded
+order-history, and transaction-history calls. It cannot call submit, replace,
+or cancel. It writes receipt-backed, identifier-free portfolio and broker
+snapshots. Build an auditable proposal from those snapshots without approving
+it:
+
+```powershell
+.\.venv\Scripts\python.exe -m ml.loop_c.risk_proposal `
+  --datastore-target pc `
+  --compact
+```
+
+The proposal binds the exact planned sequence configuration fingerprint,
+calculates equity-relative caps, applies only a downward history throttle, and
+writes `PENDING_OPERATOR_APPROVAL`. It never writes the canonical approved risk
+file or an unhalt control. The full math is documented in
+[`LOOP_C_RISK_CALCULUS.md`](LOOP_C_RISK_CALCULUS.md).
+
+The separate Saturday review captures the week's read-only account context,
+joins Loop C proposals only to causally mature receipt-matched outcomes, and
+builds the next pending proposal:
+
+```powershell
+.\.venv\Scripts\python.exe -m ml.loop_c.weekly_review `
+  --datastore-target pc `
+  --capture-schwab `
+  --build-risk-proposal `
+  --compact
+```
+
+Its durable authority and attribution rules are in
+[`WEEKLY_REVIEW_AUTOMATION.md`](WEEKLY_REVIEW_AUTOMATION.md). It cannot approve
+the proposal, unhalt Loop C, retrain or swap the bound model, or call a broker
+mutation.
+
+No risk-limit proposal is self-approved: every value remains an explicit
+operator decision and a prerequisite to running even the observe lane. The
+scheduler looks only at these canonical current-input locations:
+
+```text
+C:\DATASTORE\controls\loop-c\current\risk-approval.json
+C:\DATASTORE\controls\loop-c\current\portfolio-snapshot.json
+C:\DATASTORE\controls\loop-c\current\broker-snapshot.json
+C:\DATASTORE\controls\loop-c\current\halt-control.json
+```
+
+The four non-authoritative examples in [`templates`](templates) contain no
+approved numeric values. The version-2 risk file requires an unexpired
+`APPROVED` record scoped to `LOOP_C_OBSERVE_ONLY`, an exact pooled-sequence model
+binding, and all four horizon threshold records. Portfolio and broker files
+require fresh `OBSERVED_READ_ONLY`, reconciled state plus a checksum-valid
+source receipt under the datastore; their schemas intentionally exclude
+account identifiers. The halt control has an independent issue time and expiry
+and cannot be inferred from the risk approval. Validate all four without
+running Loop C by adding `--validate-inputs-only` to the command above.
 
 ## Activation gates
 
 Any future request to let this lane affect rankings or orders is a separate
-production change. At minimum it requires prospective shadow evidence across
-multiple regimes, calibration and interval coverage by horizon, comparison to
-the existing base-rate and production models, cost/slippage stress, missing
-data and latency stress, stable symbol/cohort behavior, reproducible immutable
-receipts, explicit risk-limit approval, broker paper-trading reconciliation,
-kill-switch drills, rollback tests, and direct user approval. No scheduler
-stage can infer that approval from favorable metrics.
+production change. `loop-c-observe-evidence-gate-v1` permits an operator review
+no sooner than 40 completed XNYS sessions (about eight trading weeks) and also
+requires at least 60 mature independent 1h clusters, 60 mature 4h clusters, 30
+mature 1d clusters, eight non-overlapping weekly cohorts, 20 reconciled
+observations, two halt drills, one rollback drill, passing calibration and
+interval coverage, cost/latency/missing-data stress, symbol/regime stability,
+publication integrity, paper-broker reconciliation, zero deterministic-gate
+violations, and zero orders. These are conjunctive floors, not a countdown to
+automatic activation. `ml.loop_c.rollout` can return only
+`ELIGIBLE_FOR_OPERATOR_REVIEW`; it always withholds authority and automatic
+promotion. A separate production change and direct user approval remain
+mandatory, regardless of favorable metrics or scheduler stage.

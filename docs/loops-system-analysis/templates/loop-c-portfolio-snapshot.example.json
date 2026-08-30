@@ -1,0 +1,19 @@
+{
+  "account_equity": null,
+  "authority": "PENDING_READ_ONLY_SNAPSHOT",
+  "available_cash": null,
+  "available_cash_source": "UNAVAILABLE",
+  "daily_pnl": null,
+  "gross_exposure": null,
+  "observed_at": null,
+  "open_positions": null,
+  "reconciled": false,
+  "schema_version": "loop-c-portfolio-snapshot-v2",
+  "source": {
+    "policy_version": "loop-c-schwab-read-only-snapshot-v1",
+    "receipt_path": "REPLACE_WITH_DATASTORE_RELATIVE_RECEIPT_PATH",
+    "receipt_sha256": "REPLACE_WITH_RECEIPT_SHA256"
+  },
+  "symbol_exposure": {},
+  "trade_history_status": "UNAVAILABLE"
+}
