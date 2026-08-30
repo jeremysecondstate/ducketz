@@ -271,18 +271,17 @@ def test_selecting_rendered_order_copies_id_and_retains_open_order_for_edit() ->
 
 
 @pytest.mark.parametrize(
-    ("bucket", "symbol", "stock_symbol", "option_symbol"),
+    ("bucket", "symbol", "stock_symbol"),
     [
-        ("Stock", "NVDA", "NVDA", ""),
-        ("ETF", "VXUS", "VXUS", ""),
-        ("Option", "AAPL  260828C00312500", "", "AAPL  260828C00312500"),
+        ("Stock", "NVDA", "NVDA"),
+        ("ETF", "VXUS", "VXUS"),
+        ("Option", "AAPL  260828C00312500", ""),
     ],
 )
-def test_selecting_schwab_position_routes_to_its_asset_ticket(
+def test_selecting_schwab_position_routes_only_equities_to_the_ticket(
     bucket: str,
     symbol: str,
     stock_symbol: str,
-    option_symbol: str,
 ) -> None:
     tab = object.__new__(SchwabDucketsTab)
     table = _Table()
@@ -290,12 +289,10 @@ def test_selecting_schwab_position_routes_to_its_asset_ticket(
     table.selected = ("position",)
     tab.holdings_table = table
     tab.stock_symbol = _Value()
-    tab.option_symbol = _Value()
 
     tab._use_selected_holding(None)
 
     assert tab.stock_symbol.value == stock_symbol
-    assert tab.option_symbol.value == option_symbol
 
 
 def test_balance_amount_formatting_preserves_cents_without_padding() -> None:
