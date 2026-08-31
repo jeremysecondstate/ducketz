@@ -267,6 +267,48 @@ def test_security_mark_known_asset_path_and_unknown_monogram_fallback(tmp_path: 
 
 
 @pytest.mark.parametrize(
+    ("symbol", "filename"),
+    (
+        ("AAPL", "aapl.png"),
+        ("AMZN", "amzn.png"),
+        ("GOOG", "goog.png"),
+        ("GOOGL", "goog.png"),
+        ("MU", "mu.png"),
+        ("NVDA", "nvda.png"),
+        ("SNDK", "sndk.png"),
+    ),
+)
+def test_bundled_security_marks_are_loadable_square_pngs(
+    root: tk.Tk,
+    symbol: str,
+    filename: str,
+) -> None:
+    path = security_mark_path(symbol)
+
+    assert path is not None
+    assert path.name == filename
+    root.update_idletasks()
+    photo = tk.PhotoImage(master=root, file=str(path))
+    assert (photo.width(), photo.height()) == (512, 512)
+
+
+def test_bundled_security_mark_renders_in_row_and_selected_holding(root: tk.Tk) -> None:
+    parent = ttk.Frame(root)
+    parent.pack(fill=tk.BOTH, expand=True)
+    try:
+        tab = SchwabDucketsTab(root, parent, background_runner=_immediate_background)
+        row_mark = tab._tree_mark("AAPL")
+        tab.selected_mark_widget.show("AAPL")
+        selected_mark = tab.selected_mark_widget._photo
+
+        assert 16 <= max(row_mark.width(), row_mark.height()) <= 18
+        assert selected_mark is not None
+        assert 32 <= max(selected_mark.width(), selected_mark.height()) <= 38
+    finally:
+        parent.destroy()
+
+
+@pytest.mark.parametrize(
     ("width", "expected"),
     ((1672, (5, True)), (1450, (5, True)), (1180, (3, False)), (700, (2, False)), (500, (1, False))),
 )

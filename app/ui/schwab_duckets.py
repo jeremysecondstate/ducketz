@@ -62,7 +62,13 @@ ASSET_FILTER_CHOICES = ("All", "Stocks", "ETFs")
 SECURITY_MARK_ASSET_DIR = Path(__file__).with_name("assets") / "security_marks"
 SECURITY_MARK_FILENAMES = {
     "AAPL": "aapl.png",
+    "AMZN": "amzn.png",
+    "GOOG": "goog.png",
+    "GOOGL": "goog.png",
+    "MU": "mu.png",
     "MSFT": "msft.png",
+    "NVDA": "nvda.png",
+    "SNDK": "sndk.png",
 }
 
 
