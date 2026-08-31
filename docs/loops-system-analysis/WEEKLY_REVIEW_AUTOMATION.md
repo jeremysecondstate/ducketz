@@ -1,11 +1,68 @@
 # Loop C weekly operator-review automation
 
-This file is the durable contract for the separate Loop C weekly review task.
+This file is the durable contract for the separate Loop C weekly review
+**standalone scheduled task**. Every scheduled wake starts in a fresh chat and
+ends after its final response. No chat transcript is continuity authority.
 The review is the machine equivalent of a weekly portfolio meeting: gather the
 week's immutable evidence, distinguish actual account activity from Loop C
 counterfactuals, calculate a pending next-period proposal, and return the
 decision to the operator. It has no approval, model-mutation, or broker-mutation
 authority.
+
+## Fresh-chat continuity protocol
+
+Continuity is carried by an independent checksum-verified weekly scheduler
+memory chain plus the authoritative review and broker receipts. It never shares
+or advances the hourly guardian's scheduler-handoff chain.
+
+1. At the start of the task, before the review command or any other workflow
+   command, capture the UTC run-start timestamp and run exactly once:
+
+   ```powershell
+   .\.venv\Scripts\python.exe -m ml.loop_c.weekly_scheduler_memory read `
+     --datastore-target pc `
+     --compact
+   ```
+
+   Parse stdout as JSON even when it exits 2. `EMPTY` is the valid first-run
+   state. `VALID` supplies only advisory prior-week context and exact evidence
+   paths; revalidate them against the current checksum-valid weekly-review
+   pointer, current controls, and current broker evidence. `INVALID` or `ERROR`
+   is a continuity incident. Preserve it, do not trust its summary or next
+   action, and never repair the chain or pointer by hand. The bounded review
+   may still run because it cannot change active controls or place orders.
+2. Run the one bounded weekly command below exactly once. Do not repeat work
+   merely because it appears in the prior memory.
+3. After the review and all verification, but before the final response, commit
+   exactly one successor memory and perform no further workflow mutation:
+
+   ```powershell
+   .\.venv\Scripts\python.exe -m ml.loop_c.weekly_scheduler_memory commit `
+     --datastore-target pc `
+     --wake-id <captured-run-start-UTC> `
+     --review-window <exact-review-window-or-UNRESOLVED> `
+     --final-status <exact-review-status-or-ERROR> `
+     --incident-status <NONE-or-exact-incident-token> `
+     --summary <compact-summary> `
+     --next-action <one-bounded-next-action> `
+     [--action <completed-or-attempted-action>] `
+     [--evidence <exact-path>] `
+     [--changed-file <exact-path>] `
+     --compact
+   ```
+
+   Include all material actions and useful review, receipt, proposal, and
+   control paths. Never include account identifiers, order identifiers,
+   transaction identifiers, credentials, or other secrets. Keep
+   `automatic_change_allowed=false`, `orders_enabled=false`, and
+   `orders_placed=0`. Parse and report `COMMITTED` or `ALREADY_COMMITTED` plus
+   its sequence, pointer, receipt, and checksum. A failed commit leaves the
+   prior pointer authoritative and is an unresolved continuity incident; do
+   not edit or replace the pointer manually.
+
+This chain is an advisory memory log only. Verified weekly-review receipts,
+current explicit operator controls, and live read-only broker evidence remain
+the operational authority.
 
 ## Schedule and review window
 
@@ -121,9 +178,10 @@ week into an unreviewed model or policy change.
 
 ## Final task response
 
-Lead with the week, status, review artifact, receipt, and pending proposal. Then
-give the actual-account and Loop C-counterfactual summaries under explicit
-labels. State how many outcomes are still immature, whether model/risk cohort
-definitions were comparable, and the single most defensible next discussion
-item. End with `automatic_change_allowed=false`, `orders_enabled=false`, and
+Lead with the memory sequence, memory receipt, week, status, review artifact,
+review receipt, and pending proposal. Then give the actual-account and Loop C
+counterfactual summaries under explicit labels. State how many outcomes are
+still immature, whether model/risk cohort definitions were comparable, and the
+single most defensible next discussion item. End with
+`automatic_change_allowed=false`, `orders_enabled=false`, and
 `orders_placed=0`.
