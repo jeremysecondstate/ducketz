@@ -7,10 +7,12 @@ from pathlib import Path
 from typing import Mapping, Sequence
 
 import numpy as np
+import pandas as pd
 
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.artifacts import create_timestamp_directory, file_checksum, utc_timestamp, verify_manifest, write_manifest
+from ml.current_publication import read_current_publication
 from ml.stock_trader.contracts import canonical_sha256, finite
 from ml.stock_trader.model import (
     ENRICHMENT_FEATURE_NAMES,
@@ -129,15 +131,77 @@ def train_and_publish_enrichment_model(
     trained_at: object | None = None,
     minimum_rows: int = 40,
     ridge_penalty: float = 5.0,
+    include_loop_b_bootstrap: bool = True,
+    live_adaptation_weight: int = 2,
 ) -> Path:
     root = Path(datastore_root).resolve()
-    pairs, source_files = load_verified_audit_pairs(root)
+    if live_adaptation_weight < 1:
+        raise ValueError("live_adaptation_weight must be positive")
+    audit_pairs, audit_sources = load_verified_audit_pairs(root)
+    audit_pairs = _unique_audit_pairs(audit_pairs)
+    if include_loop_b_bootstrap:
+        bootstrap_pairs, bootstrap_sources = load_verified_loop_b_bootstrap_pairs(root)
+    else:
+        bootstrap_pairs, bootstrap_sources = [], ()
+    adapted_prediction_ids = {
+        str(pair.get("prediction_id"))
+        for pair in audit_pairs
+        if pair.get("prediction_id")
+    }
+    bootstrap_pairs = [
+        pair
+        for pair in bootstrap_pairs
+        if str(pair.get("prediction_id") or "") not in adapted_prediction_ids
+    ]
+    pairs = [
+        *bootstrap_pairs,
+        *[
+            pair
+            for pair in audit_pairs
+            for _repeat in range(live_adaptation_weight)
+        ],
+    ]
+    source_files = tuple(dict.fromkeys((*bootstrap_sources, *audit_sources)))
+    bootstrap_target_windows = {
+        str(pair.get("target_window_start"))
+        for pair in bootstrap_pairs
+        if pair.get("target_window_start")
+    }
+    bootstrap_sessions = {
+        str(pair.get("target_window_start"))[:10]
+        for pair in bootstrap_pairs
+        if pair.get("target_window_start")
+    }
     timestamp = utc_timestamp(trained_at)
     payload, report = fit_enrichment_model_payload(
         pairs,
         trained_at=timestamp,
         minimum_rows=minimum_rows,
         ridge_penalty=ridge_penalty,
+    )
+    payload["training"].update(
+        {
+            "loop_b_bootstrap_rows": len(bootstrap_pairs),
+            "loop_b_bootstrap_target_windows": len(bootstrap_target_windows),
+            "loop_b_bootstrap_sessions": len(bootstrap_sessions),
+            "unique_live_adaptation_rows": len(audit_pairs),
+            "live_adaptation_weight": live_adaptation_weight,
+        }
+    )
+    payload["model_fingerprint"] = canonical_sha256(
+        {key: value for key, value in payload.items() if key != "model_fingerprint"}
+    )
+    model_from_payload(payload)
+    report.update(
+        {
+            "loop_b_bootstrap_rows": len(bootstrap_pairs),
+            "loop_b_bootstrap_target_windows": len(bootstrap_target_windows),
+            "loop_b_bootstrap_sessions": len(bootstrap_sessions),
+            "unique_live_adaptation_rows": len(audit_pairs),
+            "live_adaptation_weight": live_adaptation_weight,
+            "effective_training_rows": len(pairs),
+            "model_fingerprint": payload["model_fingerprint"],
+        }
     )
     run = create_timestamp_directory(
         root / "ml" / "stock-trader-model-runs", timestamp=timestamp
@@ -159,7 +223,12 @@ def train_and_publish_enrichment_model(
             "model_fingerprint": payload["model_fingerprint"],
             "minimum_rows": minimum_rows,
             "ridge_penalty": ridge_penalty,
-            "automatic_activation_allowed": False,
+            "loop_b_bootstrap_rows": len(bootstrap_pairs),
+            "loop_b_bootstrap_target_windows": len(bootstrap_target_windows),
+            "loop_b_bootstrap_sessions": len(bootstrap_sessions),
+            "unique_live_adaptation_rows": len(audit_pairs),
+            "live_adaptation_weight": live_adaptation_weight,
+            "automatic_activation_allowed": True,
         },
         datastore_root=root,
     )
@@ -188,6 +257,168 @@ def train_and_publish_enrichment_model(
         },
     )
     return run
+
+
+def load_verified_loop_b_bootstrap_pairs(
+    datastore_root: Path,
+) -> tuple[list[dict[str, object]], tuple[Path, ...]]:
+    """Build a deduplicated prospective 1h bootstrap cohort from Loop B.
+
+    Loop B republishes the same natural target as new information arrives.  The
+    bootstrap keeps only the last prospective prediction for each
+    symbol/target window so repeated publications cannot masquerade as
+    independent evidence.
+    """
+
+    root = Path(datastore_root).resolve()
+    publication = read_current_publication(root)
+    evaluations_path = publication.run_directory / "evaluations.parquet"
+    if not evaluations_path.is_file():
+        raise ValueError("Current Loop B publication has no evaluations.parquet")
+    frame = pd.read_parquet(evaluations_path)
+    required = {
+        "id",
+        "symbol",
+        "horizon",
+        "prediction_mode",
+        "evaluation_status",
+        "decision_timestamp",
+        "prediction_created_at",
+        "target_window_start",
+        "target_window_end",
+        "calibrated_probability",
+        "assumed_round_trip_cost",
+        "observed_forward_raw_return",
+    }
+    missing = sorted(required.difference(frame.columns))
+    if missing:
+        raise ValueError(
+            "Loop B bootstrap evaluations are missing columns: " + ", ".join(missing)
+        )
+    data = frame.copy()
+    data["symbol"] = data["symbol"].astype("string").str.upper()
+    data = data.loc[
+        data["symbol"].isin(("AAPL", "AMZN", "GOOG", "MU", "NVDA", "SNDK"))
+        & data["horizon"].astype("string").eq("1h")
+        & data["prediction_mode"].astype("string").str.upper().eq("LIVE")
+        & data["evaluation_status"].astype("string").str.upper().eq("EVALUATED")
+    ].copy()
+    data["prediction_created_at"] = pd.to_datetime(
+        data["prediction_created_at"], utc=True, errors="coerce"
+    )
+    data = (
+        data.sort_values("prediction_created_at", kind="mergesort")
+        .groupby(
+            ["symbol", "target_window_start", "target_window_end"],
+            sort=False,
+            dropna=False,
+        )
+        .tail(1)
+    )
+    pairs: list[dict[str, object]] = []
+    for row in data.to_dict("records"):
+        probability = finite(row.get("calibrated_probability"))
+        observed_raw = finite(row.get("observed_forward_raw_return"))
+        cost = finite(row.get("assumed_round_trip_cost"), default=0.0)
+        if probability is None or observed_raw is None or cost is None:
+            continue
+        if not 0.0 <= probability <= 1.0:
+            continue
+        sign = 1.0 if probability >= 0.5 else -1.0
+        aligned_raw = sign * observed_raw
+        prediction_id = str(row.get("id") or "")
+        if not prediction_id:
+            continue
+        pairs.append(
+            {
+                "decision_id": f"loop-b-bootstrap:{prediction_id}",
+                "prediction_id": prediction_id,
+                "decision_lane": "LOOP_B_BOOTSTRAP",
+                "decided_at": row.get("prediction_created_at"),
+                "target_window_start": row.get("target_window_start"),
+                "target_window_end": row.get("target_window_end"),
+                "symbol": row.get("symbol"),
+                "model": {"feature_values": _bootstrap_feature_values(row)},
+                "market_reality": {
+                    "status": "EVALUATED",
+                    "direction_aligned_raw_return": aligned_raw,
+                    "direction_aligned_net_return": aligned_raw - max(0.0, cost),
+                },
+            }
+        )
+    sources = tuple(
+        path
+        for path in (
+            evaluations_path,
+            publication.run_directory / "manifest.json",
+            publication.run_directory / "publication.json",
+            root / "ml" / "latest" / "run.json",
+        )
+        if path.is_file()
+    )
+    return pairs, sources
+
+
+def _bootstrap_feature_values(row: Mapping[str, object]) -> dict[str, float]:
+    probability = float(row["calibrated_probability"])
+    created = utc_timestamp(row.get("prediction_created_at"))
+    target_start = utc_timestamp(row.get("target_window_start"))
+    minute_of_day = target_start.hour * 60 + target_start.minute
+    angle = 2.0 * math.pi * minute_of_day / (24.0 * 60.0)
+    symbol = str(row.get("symbol") or "").upper()
+    values = {
+        "calibrated_probability": probability,
+        "signed_signal": 2.0 * probability - 1.0,
+        "signal_strength": abs(2.0 * probability - 1.0),
+        "probability_4h": 0.5,
+        "probability_1d": 0.5,
+        "probability_1w": 0.5,
+        "horizon_agreement": 1.0,
+        "assumed_round_trip_cost": max(
+            0.0, finite(row.get("assumed_round_trip_cost"), default=0.0) or 0.0
+        ),
+        "relative_spread": 0.0,
+        "log_volume": 0.0,
+        "available_cash_fraction": 1.0,
+        "symbol_exposure_fraction": 0.0,
+        "gross_exposure_fraction": 0.0,
+        "held_value_fraction": 0.0,
+        "pending_buy_value_fraction": 0.0,
+        "pending_sell_value_fraction": 0.0,
+        "daily_pnl_fraction": 0.0,
+        "prediction_age_minutes": max(
+            0.0, (target_start - created).total_seconds() / 60.0
+        ),
+        "time_of_day_sin": math.sin(angle),
+        "time_of_day_cos": math.cos(angle),
+    }
+    values.update(
+        {
+            f"symbol_{candidate}": 1.0 if symbol == candidate else 0.0
+            for candidate in ("AAPL", "AMZN", "GOOG", "MU", "NVDA", "SNDK")
+        }
+    )
+    if set(values) != set(ENRICHMENT_FEATURE_NAMES):
+        raise ValueError("Loop B bootstrap feature contract differs")
+    return values
+
+
+def _unique_audit_pairs(
+    pairs: Sequence[Mapping[str, object]],
+) -> list[dict[str, object]]:
+    by_prediction: dict[str, dict[str, object]] = {}
+    without_prediction: dict[str, dict[str, object]] = {}
+    for pair in pairs:
+        copied = dict(pair)
+        prediction_id = str(pair.get("prediction_id") or "")
+        decision_id = str(pair.get("decision_id") or "")
+        if prediction_id:
+            existing = by_prediction.get(prediction_id)
+            if existing is None or str(pair.get("decision_lane") or "LIVE") == "LIVE":
+                by_prediction[prediction_id] = copied
+        elif decision_id:
+            without_prediction[decision_id] = copied
+    return [*by_prediction.values(), *without_prediction.values()]
 
 
 def load_verified_audit_pairs(
@@ -294,6 +525,17 @@ def _parser() -> argparse.ArgumentParser:
     group.add_argument("--datastore-target", choices=sorted(DATASTORE_TARGETS))
     parser.add_argument("--minimum-rows", type=int, default=40)
     parser.add_argument("--ridge-penalty", type=float, default=5.0)
+    parser.add_argument(
+        "--live-adaptation-weight",
+        type=int,
+        default=2,
+        help="Relative weight for each unique mature live/shadow prediction pair.",
+    )
+    parser.add_argument(
+        "--no-loop-b-bootstrap",
+        action="store_true",
+        help="Train only from stock-trader audit pairs.",
+    )
     parser.add_argument("--trained-at")
     return parser
 
@@ -313,6 +555,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 trained_at=args.trained_at,
                 minimum_rows=args.minimum_rows,
                 ridge_penalty=args.ridge_penalty,
+                include_loop_b_bootstrap=not args.no_loop_b_bootstrap,
+                live_adaptation_weight=args.live_adaptation_weight,
             )
     except Exception as exc:
         print(json.dumps({"status": "FAILED", "error": f"{type(exc).__name__}: {exc}"}))
@@ -327,6 +571,7 @@ if __name__ == "__main__":
 
 __all__ = [
     "fit_enrichment_model_payload",
+    "load_verified_loop_b_bootstrap_pairs",
     "load_verified_audit_pairs",
     "main",
     "train_and_publish_enrichment_model",

@@ -50,6 +50,7 @@ ducketz-stock-trader = "ml.stock_trader.runtime:main"
 ducketz-stock-trader-audit = "ml.stock_trader.audit:main"
 ducketz-stock-trader-reconcile = "ml.stock_trader.reconciliation:main"
 ducketz-stock-trader-training = "ml.stock_trader.training:main"
+ducketz-stock-trader-daily-adaptation = "ml.stock_trader.daily_adaptation:main"
 
 [project.optional-dependencies]
 options-chat = [

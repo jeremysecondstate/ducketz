@@ -1,6 +1,7 @@
 # Six-symbol hourly stock trader
 
-Status: implemented, default-disabled, not deployed or activated.
+Status: deployed and operator-activated on 2026-08-31. The persistent switch
+remains the immediate operator stop/start control.
 
 ## Scope
 
@@ -23,8 +24,9 @@ outcomes, and no Schwab options submission path.
 4. Fetch account/positions, working orders, and all six quotes concurrently.
 5. Run one multi-head enrichment inference per symbol from the same snapshot.
 6. Jointly convert model allocations into feasible whole-share quantities.
-7. Publish the complete immutable six-symbol decision run.
-8. If deployment execution is enabled, reserve each decision ID once and send
+7. Publish the complete immutable six-symbol LIVE lane and six-symbol SHADOW
+   challenger from that same snapshot.
+8. If deployment execution is enabled, reserve each LIVE decision ID once and send
    its selected order immediately. Reconciliation and outcome evaluation are
    outside the pre-submit critical path.
 
@@ -38,7 +40,7 @@ an exclusive per-decision submission-intent artifact.
 Loop B's actionable 1h calibrated probability is the primary direction input;
 4h, 1d, and 1w probabilities provide context. The enrichment model also sees
 spread, volume, cash/equity, current and pending symbol exposure, gross
-exposure, held shares, day P/L, prediction age, and time of day.
+exposure, held shares, day P/L, prediction age, time of day, and exact symbol.
 
 The model emits:
 
@@ -87,7 +89,9 @@ requires the deployment command's `--execute` flag, preventing an undeployed
 developer invocation from becoming active merely because the persistent
 production switch is true.
 
-No production switch was created or changed as part of implementation.
+The production switch is currently `TRUE`. Changing it to `FALSE` prevents new
+submissions without changing the checked-in deployment or silently cancelling
+already-working orders.
 
 ## Commands
 
@@ -103,7 +107,8 @@ Deployment command (still inert unless the operator switch is `TRUE`):
 ```powershell
 .\.venv\Scripts\python.exe -m ml.stock_trader.runtime `
   --datastore-target pc `
-  --execute
+  --execute `
+  --queue-at-open
 ```
 
 Weekly paired audit for the latest completed XNYS week:
@@ -134,9 +139,24 @@ least 40 mature paired observations by default:
   --datastore-target pc
 ```
 
-Training publishes a new model artifact but never changes the operator switch
-or submits an order. It uses both taken and abstained decisions with mature
-counterfactual outcomes so NO_TRADE behavior remains measurable.
+The bootstrap deduplicates repeated Loop B publications to the final
+prospective prediction for each natural symbol/target window. The initial
+production cohort contains 212 rows across 36 independent hourly target
+windows and 8 sessions. Training publishes a new model artifact but never
+changes the operator switch or submits an order. It uses both taken and
+abstained decisions with mature counterfactual outcomes so NO_TRADE behavior
+remains measurable.
+
+After each completed session, the daily adaptation command audits the live and
+shadow lanes, deduplicates them by Loop B prediction, and publishes the model
+for the next session. New unique observations receive weight two while the
+historical cohort remains the anchor:
+
+```powershell
+.\.venv\Scripts\python.exe -m ml.stock_trader.daily_adaptation `
+  --datastore-target pc `
+  --live-adaptation-weight 2
+```
 
 ## Decision-to-reality audit
 
@@ -166,10 +186,18 @@ counterfactual. Even with a fill, the registered forward market outcome is not
 mislabelled as tax-lot/account P/L; that stronger claim requires a matched exit
 or position-history attribution.
 
-## Deployment boundary
+## Production deployment
 
-Implementation did not edit the existing `loops-hourly-operations` scheduler,
-write the production TRUE/FALSE file, publish a production enrichment model,
-or call Schwab. Deployment should first run the command without `--execute`,
-review receipts, publish a trained model, add the `--execute` command to the
-hourly owner, and only then use the operator file to activate it.
+The existing `loops-hourly-operations` monitor/trainer remains unchanged. Two
+separate stock owners are active:
+
+- `Loops Stock Trader — Live + Shadow` runs at 06:20 PT and hourly through
+  12:20 PT on weekdays. The runtime's XNYS calendar blocks holidays, closed
+  sessions, and inappropriate opening queues.
+- `Loops Stock Trader — Daily Adaptation` runs at 14:20 PT on weekdays and
+  publishes only when an XNYS session completed that day.
+
+The exact scheduler contract is
+`docs/loops-system-analysis/STOCK_TRADER_AUTOMATION.md`. A production-root dry
+run on 2026-08-31 published six LIVE plus six SHADOW decisions, selected live
+orders, and submitted zero orders as expected without `--execute`.

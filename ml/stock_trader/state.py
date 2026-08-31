@@ -53,12 +53,15 @@ def capture_portfolio_state(
     working = _mapping(normalized.get("working_orders"), "working_orders")
     if not bool(positions.get("stock_policy_row_set_complete")):
         raise ValueError("Schwab stock position rows are not complete enough for sizing")
-    if str(working.get("status")) != "CURRENT":
-        raise ValueError("Schwab working orders are not complete enough for sizing")
+    (
+        reserved_cash,
+        pending_buys,
+        pending_sells,
+        stock_working_status,
+    ) = _stock_working_order_effects(working)
     equity = finite(account.get("liquidation_value"))
     if equity is None or equity <= 0.0:
         raise ValueError("Schwab liquidation value is unavailable or nonpositive")
-    reserved_cash = finite(working.get("reserved_cash"), default=0.0) or 0.0
     preferred_cash_candidates = [
         value
         for key in (
@@ -99,8 +102,6 @@ def capture_portfolio_state(
         if asset_type in {"EQUITY", "STOCK"} and symbol in held_shares:
             quantity = finite(raw_item.get("net_quantity"), default=0.0) or 0.0
             held_shares[symbol] += max(0.0, quantity)
-    pending_buys = _symbol_map(working.get("pending_buy_shares_by_symbol"))
-    pending_sells = _symbol_map(working.get("pending_sell_shares_by_symbol"))
     if not isinstance(quotes_payload, Mapping):
         raise ValueError("Schwab quote response is not an object")
     quotes: dict[str, QuoteState] = {}
@@ -134,6 +135,7 @@ def capture_portfolio_state(
         "pending_buy_shares": pending_buys,
         "pending_sell_shares": pending_sells,
         "working_order_count": working_count,
+        "stock_working_status": stock_working_status,
         "quotes": {
             symbol: {
                 "bid": quote.bid,
@@ -173,6 +175,73 @@ def _symbol_map(value: object) -> dict[str, float]:
         symbol: max(0.0, finite(source.get(symbol), default=0.0) or 0.0)
         for symbol in STOCK_TRADER_SYMBOLS
     }
+
+
+def _stock_working_order_effects(
+    working: Mapping[str, object],
+) -> tuple[float, dict[str, float], dict[str, float], str]:
+    """Resolve stock-only pending effects without inheriting option metadata gaps.
+
+    Schwab can omit contract multipliers from otherwise valid working option
+    orders.  That prevents exact option-risk normalization, but it does not make
+    the symbol, side, quantity, or reserve of a separate stock order ambiguous.
+    The stock trader therefore requires every non-option working row to be
+    complete while allowing option-only completeness errors to remain in their
+    own lane.  Broker-reported non-marginable buying power remains the primary
+    cash bound and already reflects account-wide commitments.
+    """
+
+    status = str(working.get("status") or "").upper()
+    if status == "CURRENT":
+        reserved = max(0.0, finite(working.get("reserved_cash"), default=0.0) or 0.0)
+        return (
+            reserved,
+            _symbol_map(working.get("pending_buy_shares_by_symbol")),
+            _symbol_map(working.get("pending_sell_shares_by_symbol")),
+            "CURRENT",
+        )
+    if status != "INCOMPLETE":
+        raise ValueError("Schwab working orders are not complete enough for stock sizing")
+
+    raw_items = working.get("items")
+    if not isinstance(raw_items, list):
+        raise ValueError("Schwab working orders did not include an items list")
+    reserved_cash = 0.0
+    pending_buys = {symbol: 0.0 for symbol in STOCK_TRADER_SYMBOLS}
+    pending_sells = {symbol: 0.0 for symbol in STOCK_TRADER_SYMBOLS}
+    for item in raw_items:
+        if not isinstance(item, Mapping):
+            raise ValueError("A Schwab working-order row was not structured")
+        asset_type = str(item.get("asset_type") or "").upper()
+        if asset_type == "OPTION":
+            continue
+        if asset_type not in {"EQUITY", "ETF", "STOCK"}:
+            raise ValueError(
+                "A non-option Schwab working order had unknown asset identity"
+            )
+        if str(item.get("status") or "").upper() != "CURRENT" or item.get(
+            "unavailable_reasons"
+        ):
+            raise ValueError(
+                "A Schwab stock working order is not complete enough for sizing"
+            )
+        symbol = str(item.get("symbol") or "").upper()
+        effect = finite(item.get("pending_stock_share_effect"))
+        if not symbol or effect is None:
+            raise ValueError("A Schwab stock working order has no exact pending effect")
+        reserved_cash += max(
+            0.0, finite(item.get("reserved_cash"), default=0.0) or 0.0
+        )
+        if symbol in pending_buys and effect > 0.0:
+            pending_buys[symbol] += effect
+        elif symbol in pending_sells and effect < 0.0:
+            pending_sells[symbol] += abs(effect)
+    return (
+        reserved_cash,
+        pending_buys,
+        pending_sells,
+        "CURRENT_STOCK_SCOPE_OPTION_METADATA_INCOMPLETE",
+    )
 
 
 def _first_number(row: Mapping[str, object], *keys: str) -> float | None:

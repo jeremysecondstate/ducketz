@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Mapping, Protocol, Sequence
 
@@ -19,6 +19,11 @@ from ml.stock_trader.publication import (
     publish_decision_run,
     record_execution_result,
     reserve_execution_intent,
+)
+from ml.stock_trader.session import (
+    StockExecutionWindow,
+    decision_targets_open,
+    stock_execution_window,
 )
 from ml.stock_trader.state import SchwabReadSession, capture_portfolio_state
 
@@ -61,6 +66,8 @@ def run_stock_trader_once(
     session: SchwabTradingSession | None = None,
     policy: StockTraderPolicy | None = None,
     parallel_state: bool = True,
+    shadow_observe: bool = True,
+    allow_open_queue: bool = False,
 ) -> StockTraderRunResult:
     """Run one hourly stock decision cycle.
 
@@ -160,7 +167,7 @@ def run_stock_trader_once(
                 activation_active=True,
                 error=detail,
             )
-        decisions = build_trade_decisions(
+        live_decisions = build_trade_decisions(
             signals,
             portfolio,
             model,
@@ -168,7 +175,34 @@ def run_stock_trader_once(
             policy=active_policy,
             decided_at=timestamp,
             model_unavailable_reason=model_error,
+            decision_lane="LIVE",
         )
+        shadow_decisions: tuple[TradeDecision, ...] = ()
+        if shadow_observe:
+            shadow_policy = replace(
+                active_policy,
+                policy_version="stock-trader-shadow-challenger-v1",
+                minimum_trade_probability=max(
+                    0.0, active_policy.minimum_trade_probability - 0.10
+                ),
+                maximum_symbol_equity_fraction=min(
+                    1.0, active_policy.maximum_symbol_equity_fraction * 1.25
+                ),
+                maximum_single_order_equity_fraction=min(
+                    1.0, active_policy.maximum_single_order_equity_fraction * 1.50
+                ),
+            )
+            shadow_decisions = build_trade_decisions(
+                signals,
+                portfolio,
+                model,
+                activation,
+                policy=shadow_policy,
+                decided_at=timestamp,
+                model_unavailable_reason=model_error,
+                decision_lane="SHADOW",
+            )
+        decisions = (*live_decisions, *shadow_decisions)
         publication = publish_decision_run(
             root,
             decisions,
@@ -182,16 +216,35 @@ def run_stock_trader_once(
             return StockTraderRunResult(
                 status=(
                     "DRY_RUN_ORDERS_SELECTED"
-                    if any(decision.quantity > 0 for decision in decisions)
+                    if any(decision.quantity > 0 for decision in live_decisions)
                     else "DRY_RUN_NO_TRADE"
                 ),
                 run_directory=publication.run_directory,
-                selected_orders=sum(decision.quantity > 0 for decision in decisions),
+                selected_orders=sum(
+                    decision.quantity > 0 for decision in live_decisions
+                ),
                 submitted_orders=0,
                 duplicate_suppressions=0,
                 stopped_after_error=False,
                 execution_requested=False,
                 activation_active=True,
+            )
+        execution_window = stock_execution_window(
+            timestamp, allow_open_queue=allow_open_queue
+        )
+        if not execution_window.executable:
+            return StockTraderRunResult(
+                status="EXECUTION_WINDOW_CLOSED_SHADOW_RECORDED",
+                run_directory=publication.run_directory,
+                selected_orders=sum(
+                    decision.quantity > 0 for decision in live_decisions
+                ),
+                submitted_orders=0,
+                duplicate_suppressions=0,
+                stopped_after_error=False,
+                execution_requested=True,
+                activation_active=True,
+                error=execution_window.reason,
             )
         return _submit_selected_orders(
             root,
@@ -199,6 +252,7 @@ def run_stock_trader_once(
             decisions,
             publication,
             timestamp=timestamp,
+            execution_window=execution_window,
         )
 
 
@@ -209,8 +263,17 @@ def _submit_selected_orders(
     publication: DecisionPublication,
     *,
     timestamp: object,
+    execution_window: StockExecutionWindow,
 ) -> StockTraderRunResult:
-    selected = [decision for decision in decisions if decision.quantity > 0]
+    selected = [
+        decision
+        for decision in decisions
+        if decision.decision_lane == "LIVE"
+        and decision.quantity > 0
+        and decision_targets_open(
+            decision.prediction.get("target_window_start"), execution_window
+        )
+    ]
     submitted = 0
     duplicates = 0
     stopped = False
@@ -301,6 +364,19 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--decided-at")
+    parser.add_argument(
+        "--queue-at-open",
+        action="store_true",
+        help=(
+            "Permit NORMAL/DAY orders during the XNYS pre-open only when "
+            "their prediction target starts at the core open."
+        ),
+    )
+    parser.add_argument(
+        "--no-shadow-observe",
+        action="store_true",
+        help="Disable the paired shadow challenger for this invocation.",
+    )
     return parser
 
 
@@ -314,6 +390,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             root,
             decided_at=args.decided_at,
             execute=bool(args.execute),
+            shadow_observe=not args.no_shadow_observe,
+            allow_open_queue=bool(args.queue_at_open),
         )
     except Exception as exc:
         print(json.dumps({"status": "FAILED", "error": f"{type(exc).__name__}: {exc}"}))

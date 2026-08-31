@@ -349,6 +349,7 @@ def _pair_decision_with_reality(
         "pair_status": pair_status,
         "decided_at": decision.get("decided_at"),
         "symbol": decision.get("symbol"),
+        "decision_lane": decision.get("decision_lane", "LIVE"),
         "prediction_id": prediction_row.get("prediction_id"),
         "prediction_horizon": prediction_row.get("primary_horizon"),
         "suggested_action": suggested_action,
@@ -408,6 +409,7 @@ def _audit_summary(pairs: Sequence[Mapping[str, object]]) -> dict[str, object]:
     decision_reasons: Counter[str] = Counter()
     order_styles: Counter[str] = Counter()
     actions: Counter[str] = Counter()
+    lanes: Counter[str] = Counter()
     reason_results: dict[str, list[float]] = defaultdict(list)
     style_results: dict[str, list[float]] = defaultdict(list)
     mature = 0
@@ -420,9 +422,11 @@ def _audit_summary(pairs: Sequence[Mapping[str, object]]) -> dict[str, object]:
         reason = str(pair.get("decision_reason_code") or "UNKNOWN")
         style = str(pair.get("order_style_reason_code") or "UNKNOWN")
         action = str(pair.get("decision_action") or "UNKNOWN")
+        lane = str(pair.get("decision_lane") or "LIVE")
         decision_reasons[reason] += 1
         order_styles[style] += 1
         actions[action] += 1
+        lanes[lane] += 1
         reality = pair.get("market_reality")
         if pair.get("pair_status") == "NOT_EVALUABLE":
             non_evaluable += 1
@@ -451,6 +455,7 @@ def _audit_summary(pairs: Sequence[Mapping[str, object]]) -> dict[str, object]:
         "pending_pair_count": pending,
         "non_evaluable_pair_count": non_evaluable,
         "actions": dict(sorted(actions.items())),
+        "decision_lanes": dict(sorted(lanes.items())),
         "decision_reason_counts": dict(sorted(decision_reasons.items())),
         "order_style_reason_counts": dict(sorted(order_styles.items())),
         "decision_reason_outcomes": _group_results(decision_reasons, reason_results),

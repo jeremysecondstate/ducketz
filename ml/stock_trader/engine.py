@@ -58,6 +58,7 @@ def build_trade_decisions(
     policy: StockTraderPolicy | None = None,
     decided_at: object,
     model_unavailable_reason: str | None = None,
+    decision_lane: str = "LIVE",
 ) -> tuple[TradeDecision, ...]:
     """Create six auditable decisions from one shared state snapshot.
 
@@ -68,6 +69,9 @@ def build_trade_decisions(
 
     active_policy = policy or StockTraderPolicy()
     active_policy.validate()
+    lane = str(decision_lane or "").upper()
+    if lane not in {"LIVE", "SHADOW"}:
+        raise ValueError("decision_lane must be LIVE or SHADOW")
     timestamp = utc(decided_at)
     decided_at_iso = timestamp.isoformat()
     candidates: dict[str, _Candidate] = {}
@@ -84,6 +88,7 @@ def build_trade_decisions(
                 activation,
                 active_policy,
                 decided_at_iso,
+                decision_lane=lane,
                 code="TRADER_INACTIVE",
                 reason=f"Active trading is disabled: {activation.reason}.",
             )
@@ -97,6 +102,7 @@ def build_trade_decisions(
                 activation,
                 active_policy,
                 decided_at_iso,
+                decision_lane=lane,
                 code="ACTIONABLE_1H_PREDICTION_UNAVAILABLE",
                 reason="No current actionable LIVE 1h Loop B prediction was available.",
             )
@@ -110,6 +116,7 @@ def build_trade_decisions(
                 activation,
                 active_policy,
                 decided_at_iso,
+                decision_lane=lane,
                 code="USABLE_QUOTE_UNAVAILABLE",
                 reason="The shared Schwab snapshot had no usable bid/ask quote.",
             )
@@ -124,6 +131,7 @@ def build_trade_decisions(
                 activation,
                 active_policy,
                 decided_at_iso,
+                decision_lane=lane,
                 code="ENRICHMENT_MODEL_UNAVAILABLE",
                 reason=(
                     "No verified stock-trader enrichment model was published."
@@ -153,6 +161,7 @@ def build_trade_decisions(
                 activation,
                 active_policy,
                 decided_at_iso,
+                decision_lane=lane,
                 code="ENRICHMENT_INFERENCE_FAILED",
                 reason=f"Enrichment inference failed: {type(exc).__name__}: {exc}",
             )
@@ -207,6 +216,7 @@ def build_trade_decisions(
             activation,
             active_policy,
             decided_at_iso,
+            decision_lane=lane,
         )
         for symbol in STOCK_TRADER_SYMBOLS
     )
@@ -222,7 +232,14 @@ def _model_quantity(
 ) -> int:
     allocation = min(1.0, max(0.0, enrichment.allocation_fraction))
     if side == "SELL":
-        return max(0, math.floor(portfolio.available_sell_shares(symbol) * allocation))
+        model_quantity = portfolio.available_sell_shares(symbol) * allocation
+        single_order_cap = (
+            portfolio.account_equity * policy.maximum_single_order_equity_fraction
+        )
+        return max(
+            0,
+            math.floor(min(model_quantity, single_order_cap / quote.midpoint)),
+        )
     equity = portfolio.account_equity
     desired_symbol_exposure = (
         equity * policy.maximum_symbol_equity_fraction * allocation
@@ -397,6 +414,8 @@ def _decision_from_candidate(
     activation: ActivationIntent,
     policy: StockTraderPolicy,
     decided_at: str,
+    *,
+    decision_lane: str,
 ) -> TradeDecision:
     action = candidate.side if candidate.quantity > 0 else "NO_TRADE"
     protective_price = (
@@ -437,6 +456,7 @@ def _decision_from_candidate(
         "prediction": prediction,
         "policy_fingerprint": policy.fingerprint,
         "activation_checksum_sha256": activation.checksum_sha256,
+        "decision_lane": decision_lane,
     }
     decision_id = decision_identifier(base)
     expected_dollars = (
@@ -476,6 +496,7 @@ def _decision_from_candidate(
         policy_version=policy.policy_version,
         policy_fingerprint=policy.fingerprint,
         activation_checksum_sha256=activation.checksum_sha256,
+        decision_lane=decision_lane,
     )
 
 
@@ -488,6 +509,7 @@ def _direct_no_trade(
     policy: StockTraderPolicy,
     decided_at: str,
     *,
+    decision_lane: str,
     code: str,
     reason: str,
     enrichment: Mapping[str, object] | None = None,
@@ -499,6 +521,7 @@ def _direct_no_trade(
         "prediction": prediction,
         "policy_fingerprint": policy.fingerprint,
         "activation_checksum_sha256": activation.checksum_sha256,
+        "decision_lane": decision_lane,
     }
     return TradeDecision(
         decision_id=decision_identifier(base),
@@ -528,6 +551,7 @@ def _direct_no_trade(
         policy_version=policy.policy_version,
         policy_fingerprint=policy.fingerprint,
         activation_checksum_sha256=activation.checksum_sha256,
+        decision_lane=decision_lane,
     )
 
 

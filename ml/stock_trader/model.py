@@ -14,6 +14,7 @@ from ml.stock_trader.contracts import (
     PortfolioState,
     PredictionSignal,
     QuoteState,
+    STOCK_TRADER_SYMBOLS,
     canonical_sha256,
     finite,
     utc,
@@ -43,6 +44,12 @@ ENRICHMENT_FEATURE_NAMES: tuple[str, ...] = (
     "prediction_age_minutes",
     "time_of_day_sin",
     "time_of_day_cos",
+    "symbol_AAPL",
+    "symbol_AMZN",
+    "symbol_GOOG",
+    "symbol_MU",
+    "symbol_NVDA",
+    "symbol_SNDK",
 )
 _HEAD_LINKS: Mapping[str, str] = {
     "trade_probability": "sigmoid",
@@ -150,7 +157,7 @@ def build_feature_values(
     held = max(0.0, float(portfolio.held_shares.get(signal.symbol, 0.0)))
     pending_buy = max(0.0, float(portfolio.pending_buy_shares.get(signal.symbol, 0.0)))
     pending_sell = max(0.0, float(portfolio.pending_sell_shares.get(signal.symbol, 0.0)))
-    return {
+    values = {
         "calibrated_probability": signal.calibrated_probability,
         "signed_signal": 2.0 * signal.calibrated_probability - 1.0,
         "signal_strength": abs(2.0 * signal.calibrated_probability - 1.0),
@@ -174,6 +181,13 @@ def build_feature_values(
         "time_of_day_sin": math.sin(angle),
         "time_of_day_cos": math.cos(angle),
     }
+    values.update(
+        {
+            f"symbol_{symbol}": 1.0 if signal.symbol == symbol else 0.0
+            for symbol in STOCK_TRADER_SYMBOLS
+        }
+    )
+    return values
 
 
 def load_current_enrichment_model(datastore_root: Path) -> LinearEnrichmentModel:

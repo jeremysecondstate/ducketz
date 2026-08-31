@@ -12,8 +12,8 @@ from ml.universe import PRODUCTION_LOOPS_SYMBOLS
 
 
 STOCK_TRADER_SYMBOLS: tuple[str, ...] = PRODUCTION_LOOPS_SYMBOLS
-STOCK_TRADER_DECISION_SCHEMA_VERSION = "stock-trader-decision-v1"
-STOCK_TRADER_DECISION_RUN_SCHEMA_VERSION = "stock-trader-decision-run-v1"
+STOCK_TRADER_DECISION_SCHEMA_VERSION = "stock-trader-decision-v2"
+STOCK_TRADER_DECISION_RUN_SCHEMA_VERSION = "stock-trader-decision-run-v2"
 STOCK_TRADER_EXECUTION_EVENT_SCHEMA_VERSION = "stock-trader-execution-event-v1"
 STOCK_TRADER_OUTCOME_SCHEMA_VERSION = "stock-trader-outcome-v1"
 STOCK_TRADER_WEEKLY_AUDIT_SCHEMA_VERSION = "stock-trader-weekly-audit-v1"
@@ -225,6 +225,7 @@ class TradeDecision:
     policy_version: str
     policy_fingerprint: str
     activation_checksum_sha256: str | None
+    decision_lane: str = "LIVE"
 
     def to_dict(self) -> dict[str, object]:
         payload = asdict(self)
@@ -254,6 +255,7 @@ def decision_identifier(payload: Mapping[str, object]) -> str:
         "decision_anchor": decision_anchor,
         "policy_fingerprint": payload.get("policy_fingerprint"),
         "activation_checksum_sha256": payload.get("activation_checksum_sha256"),
+        "decision_lane": str(payload.get("decision_lane") or "LIVE").upper(),
     }
     return canonical_sha256(identity)
 

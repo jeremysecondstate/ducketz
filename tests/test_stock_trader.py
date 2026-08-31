@@ -30,6 +30,7 @@ from ml.stock_trader.publication import (
     reserve_execution_intent,
 )
 from ml.stock_trader.reconciliation import reconcile_submitted_orders
+from ml.stock_trader.session import stock_execution_window
 from ml.stock_trader.state import capture_portfolio_state
 from ml.stock_trader.training import fit_enrichment_model_payload
 
@@ -187,6 +188,49 @@ def test_state_capture_reads_each_shared_input_once_and_sizes_cash(tmp_path: Pat
     assert state.held_shares["AAPL"] == 10.0
     assert state.symbol_exposure["AAPL"] == 1_000.0
     assert set(state.quotes) == set(STOCK_TRADER_SYMBOLS)
+
+
+def test_option_only_working_metadata_gap_does_not_block_stock_state() -> None:
+    schwab = FakeSchwab()
+    schwab.get_open_orders = lambda: [
+        {
+            "orderId": "option-order",
+            "status": "WORKING",
+            "orderType": "NET_DEBIT",
+            "orderStrategyType": "SINGLE",
+            "complexOrderStrategyType": "VERTICAL",
+            "quantity": 1.0,
+            "filledQuantity": 0.0,
+            "remainingQuantity": 1.0,
+            "price": 1.25,
+            "childOrderStrategies": [],
+            "orderLegCollection": [
+                {
+                    "instruction": "BUY_TO_OPEN",
+                    "quantity": 1.0,
+                    "instrument": {
+                        "assetType": "OPTION",
+                        "symbol": "MU260918C00100000",
+                    },
+                },
+                {
+                    "instruction": "SELL_TO_OPEN",
+                    "quantity": 1.0,
+                    "instrument": {
+                        "assetType": "OPTION",
+                        "symbol": "MU260918C00110000",
+                    },
+                },
+            ],
+        }
+    ]
+
+    state = capture_portfolio_state(schwab, observed_at=NOW, parallel=False)
+
+    assert state.available_cash == 24_000.0
+    assert state.working_order_count == 1
+    assert state.pending_buy_shares == {symbol: 0.0 for symbol in STOCK_TRADER_SYMBOLS}
+    assert state.pending_sell_shares == {symbol: 0.0 for symbol in STOCK_TRADER_SYMBOLS}
 
 
 def test_prediction_loader_uses_only_current_actionable_live_loop_b_rows(
@@ -418,6 +462,14 @@ def test_runtime_requires_execute_and_true_toggle_for_submission(
     )
     assert live.status == "ORDERS_SUBMITTED"
     assert live.submitted_orders == live.selected_orders
+    payload, _receipt = read_decision_run(tmp_path, live.run_directory)
+    assert payload["live_decision_count"] == 6
+    assert payload["shadow_decision_count"] == 6
+    assert {row["decision_lane"] for row in payload["decisions"]} == {
+        "LIVE",
+        "SHADOW",
+    }
+    assert len({row["decision_id"] for row in payload["decisions"]}) == 12
     assert all(
         payload["orderLegCollection"][0]["instruction"] in {"BUY", "SELL"}
         for payload in schwab.submitted
@@ -426,6 +478,18 @@ def test_runtime_requires_execute_and_true_toggle_for_submission(
         payload["orderLegCollection"][0]["instrument"]["assetType"] == "EQUITY"
         for payload in schwab.submitted
     )
+
+
+def test_execution_window_allows_explicit_open_queue_and_core_only() -> None:
+    queued = stock_execution_window(
+        "2026-08-31T13:20:00+00:00", allow_open_queue=True
+    )
+    core = stock_execution_window("2026-08-31T16:00:00+00:00")
+    closed = stock_execution_window("2026-08-31T21:00:00+00:00")
+
+    assert (queued.executable, queued.mode) == (True, "OPEN_QUEUE")
+    assert (core.executable, core.mode) == (True, "CORE")
+    assert (closed.executable, closed.mode) == (False, "CLOSED")
 
 
 def test_decision_publication_is_checksum_verified(tmp_path: Path) -> None:

@@ -49,6 +49,12 @@ def publish_decision_run(
 ) -> DecisionPublication:
     root = Path(datastore_root).resolve()
     timestamp = utc(decided_at)
+    live_decisions = [
+        decision for decision in decisions if decision.decision_lane == "LIVE"
+    ]
+    shadow_decisions = [
+        decision for decision in decisions if decision.decision_lane == "SHADOW"
+    ]
     run = create_timestamp_directory(
         root / "ml" / "stock-trader-decision-runs", timestamp=timestamp
     )
@@ -57,7 +63,7 @@ def publish_decision_run(
         "schema_version": STOCK_TRADER_DECISION_RUN_SCHEMA_VERSION,
         "status": status or _run_status(decisions),
         "decided_at": timestamp.isoformat(),
-        "universe": [decision.symbol for decision in decisions],
+        "universe": list(dict.fromkeys(decision.symbol for decision in decisions)),
         "activation": {
             "active": activation.active,
             "status": activation.status,
@@ -66,7 +72,12 @@ def publish_decision_run(
             "checksum_sha256": activation.checksum_sha256,
         },
         "execution_requested": bool(execution_requested),
-        "orders_selected": sum(decision.quantity > 0 for decision in decisions),
+        "orders_selected": sum(decision.quantity > 0 for decision in live_decisions),
+        "shadow_orders_selected": sum(
+            decision.quantity > 0 for decision in shadow_decisions
+        ),
+        "live_decision_count": len(live_decisions),
+        "shadow_decision_count": len(shadow_decisions),
         "decisions": [decision.to_dict() for decision in decisions],
     }
     _write_json_atomic(decisions_path, payload)
@@ -87,6 +98,8 @@ def publish_decision_run(
             "execution_requested": bool(execution_requested),
             "activation_active": activation.active,
             "activation_checksum_sha256": activation.checksum_sha256,
+            "live_decision_count": len(live_decisions),
+            "shadow_decision_count": len(shadow_decisions),
             "policy_version": policy.policy_version,
             "policy_fingerprint": policy.fingerprint,
         },
@@ -103,6 +116,7 @@ def publish_decision_run(
         "decisions_sha256": file_checksum(decisions_path),
         "execution_requested": bool(execution_requested),
         "orders_selected": payload["orders_selected"],
+        "shadow_orders_selected": payload["shadow_orders_selected"],
     }
     _write_json_atomic(receipt_path, receipt)
     receipt_checksum = file_checksum(receipt_path)
@@ -257,8 +271,16 @@ def _read_latest_reconciliation(directory: Path) -> dict[str, object] | None:
 
 
 def _run_status(decisions: Sequence[TradeDecision]) -> str:
-    if any(decision.quantity > 0 for decision in decisions):
+    if any(
+        decision.decision_lane == "LIVE" and decision.quantity > 0
+        for decision in decisions
+    ):
         return "ORDERS_SELECTED"
+    if any(
+        decision.decision_lane == "SHADOW" and decision.quantity > 0
+        for decision in decisions
+    ):
+        return "SHADOW_ORDERS_SELECTED"
     return "NO_TRADE"
 
 
