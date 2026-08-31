@@ -10,6 +10,7 @@ import pytest
 from ml.artifacts import write_manifest
 from ml.loop_c.publication import publish_loop_c_observe_run
 from ml.loop_c.risk_proposal import build_pending_risk_proposal
+from ml.loop_c.operator_controls import issue_loop_c_operator_controls
 from ml.loop_c.schwab_snapshot import capture_schwab_read_only_state
 from ml.loop_c.weekly_review import (
     build_loop_c_weekly_review,
@@ -124,6 +125,73 @@ def test_pending_proposal_derives_caps_but_cannot_approve_itself(tmp_path: Path)
     assert calculus["history_governance"]["usable_to_increase_risk"] is False
     assert calculus["safety"]["orders_enabled"] is False
     assert calculus["safety"]["orders_placed"] == 0
+
+
+def test_operator_controls_issue_only_the_verified_weekly_observe_lease(
+    tmp_path: Path,
+) -> None:
+    session = _ReadOnlySession()
+    capture_schwab_read_only_state(
+        tmp_path,
+        observed_at="2026-08-03T16:00:00Z",
+        session_factory=lambda: session,
+    )
+    pending = build_pending_risk_proposal(
+        tmp_path,
+        as_of="2026-08-03T16:01:00Z",
+    )
+
+    result = issue_loop_c_operator_controls(
+        tmp_path,
+        pending_risk_approval_path=Path(pending["risk_approval_path"]),
+        approved_by="operator:pytest-owner",
+        approved_at="2026-08-03T16:02:00Z",
+        expires_at="2026-08-08T00:00:00Z",
+        rationale="Approve the immutable weekly observe-only proposal.",
+        halt_requested=False,
+    )
+    approval = json.loads(
+        Path(result["risk_approval_path"]).read_text(encoding="utf-8")
+    )
+    halt = json.loads(Path(result["halt_control_path"]).read_text(encoding="utf-8"))
+    receipt = json.loads(Path(result["receipt_path"]).read_text(encoding="utf-8"))
+
+    assert result["status"] == "OBSERVE_ONLY_LEASE_ISSUED"
+    assert approval["approval"]["status"] == "APPROVED"
+    assert approval["approval"]["scope"] == "LOOP_C_OBSERVE_ONLY"
+    assert approval["limits"]["maximum_daily_loss"] == pytest.approx(151.50)
+    assert halt["halt_requested"] is False
+    assert receipt["safety"] == {
+        "authority": "OBSERVE_ONLY",
+        "automated_action_allowed": False,
+        "broker_submission_path_present": False,
+        "orders_enabled": False,
+        "orders_placed": 0,
+    }
+
+
+def test_operator_controls_reject_non_friday_pilot_expiry(tmp_path: Path) -> None:
+    session = _ReadOnlySession()
+    capture_schwab_read_only_state(
+        tmp_path,
+        observed_at="2026-08-03T16:00:00Z",
+        session_factory=lambda: session,
+    )
+    pending = build_pending_risk_proposal(
+        tmp_path,
+        as_of="2026-08-03T16:01:00Z",
+    )
+
+    with pytest.raises(ValueError, match="Friday at 17:00"):
+        issue_loop_c_operator_controls(
+            tmp_path,
+            pending_risk_approval_path=Path(pending["risk_approval_path"]),
+            approved_by="operator:pytest-owner",
+            approved_at="2026-08-03T16:02:00Z",
+            expires_at="2026-08-07T23:00:00Z",
+            rationale="This expiry is intentionally one hour early.",
+            halt_requested=False,
+        )
 
 
 def test_weekly_review_separates_account_context_and_never_changes_controls(

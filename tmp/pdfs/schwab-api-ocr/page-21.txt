@@ -1,0 +1,69 @@
+charles
+
+SCHWAB
+
+404
+
+500
+
+Developer Portal
+
++
+]
++
+Headers:
+Name Type
+This Correlation
+ID is unique to
+the operation. string
+Schwab- The GUID that is Example:
+Client- generated can be 977dbd7f-
+Correltd used to track an 992e-44d2-
+individual asfa-
+service call if e213d29¢8691
+support is
+needed.
+
+Schwab- This is the
+Resource- pequested API
+Version version.
+
+string
+Example: 1
+
+No links
+Error response for 404 Not Found
+Media type
+application/json
+Example Value Schema
+{
+"errors": [
+{
+"status": 404,
+"title": "Not Found"
+"id": "@be22ae7-efdf-44d9-99F4-F1
+38049d76ca"
++
+]
++
+Headers:
+Name Desc! Type
+This Correlation
+ID is unique to
+the operation. string
+Schwab- The GUID that is Example:
+Client- generated can be 977dbd7f-
+Correltd used to track an 992e-44d2-
+individual asfa-
+service call if e213d29¢8691
+support is
+needed.
+Schwab- This is the stein
+Resource- pequested API cxam eo: 1
+Version — yension. ple:
+No links
+
+Error response for 500 Internal Server Error
+
+Media type
+

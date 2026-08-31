@@ -211,6 +211,13 @@ writes `PENDING_OPERATOR_APPROVAL`. It never writes the canonical approved risk
 file or an unhalt control. The full math is documented in
 [`LOOP_C_RISK_CALCULUS.md`](LOOP_C_RISK_CALCULUS.md).
 
+After the operator reviews one exact pending artifact, the receipt-backed
+`ml.loop_c.operator_controls` issuer may apply only that immutable proposal as
+a weekly `LOOP_C_OBSERVE_ONLY` lease. It requires the identity, rationale,
+Friday 17:00 Pacific expiry, and an explicit halt/unhalt choice; archives the
+issuance lineage; and still has no broker-order capability. The exact command
+is documented in [`LOOP_C_ROLLOUT_PLAN.md`](LOOP_C_ROLLOUT_PLAN.md).
+
 The separate Saturday review captures the week's read-only account context,
 joins Loop C proposals only to causally mature receipt-matched outcomes, and
 builds the next pending proposal:

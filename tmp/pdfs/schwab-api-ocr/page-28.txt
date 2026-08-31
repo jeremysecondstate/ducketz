@@ -1,0 +1,105 @@
+charles Developer Portal
+
+SCHWAB
+
+wrcwie ye
+
+application/json
+
+Example Value Schema
+
+{
+
+"errors": [
+
+{
+
+"id": "6808262e-52bb-4421-9d31
+-6c0e762e7dd5",
+"status": "400",
+
+jad Request",
+
+itle
+
+jetai
+
+“Missing header",
+{
+
+“source
+
+“header": "Authorizatio!
+
+"id" be22ae7-efdf-44d9-99F4
+-#138049d76ca",
+“statu
+
+"400",
+jad Request",
+"Search combination
+
+itle
+
+letai
+
+should have min of 1.",
+
+{
+
+“pointer”: [
+"/data/attributes/symbol
+
+“source
+
+Headers:
+
+Name
+
+Type
+
+This Correlation
+
+ID is unique to
+
+the operation. string
+Schwab- | The GUID that is Example:
+Client- generated can be 977dbd7f-
+Correlid used to track an 992e-44d2-
+
+individual asfa-
+
+service call if e213d29c8691
+
+support is
+
+needed.
+
+Schwab- This is the strin
+Resource- nequested API 8
+Example: 1
+
+Version version.
+
+401 No links
+Error response for 401 Unauthorized
+
+Media type
+
+application/json
+
+Example Value Schema
+
+{
+errors": [
+{
+"status": 401,
+"title": "Unauthorized",
+"id": "@be22ae7-efdf-44d9-99f4-f1
+38049d76ca"
++
+]
++
+
+Headers:
+

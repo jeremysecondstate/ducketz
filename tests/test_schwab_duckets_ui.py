@@ -271,11 +271,17 @@ def test_security_mark_known_asset_path_and_unknown_monogram_fallback(tmp_path: 
     (
         ("AAPL", "aapl.png"),
         ("AMZN", "amzn.png"),
+        ("EWY", "ewy.png"),
         ("GOOG", "goog.png"),
         ("GOOGL", "goog.png"),
+        ("MRNA", "mrna.png"),
         ("MU", "mu.png"),
+        ("NBIS", "nbis.png"),
         ("NVDA", "nvda.png"),
         ("SNDK", "sndk.png"),
+        ("TENB", "tenb.png"),
+        ("VXUS", "vxus.png"),
+        ("ZETA", "zeta.png"),
     ),
 )
 def test_bundled_security_marks_are_loadable_square_pngs(
@@ -297,13 +303,30 @@ def test_bundled_security_mark_renders_in_row_and_selected_holding(root: tk.Tk) 
     parent.pack(fill=tk.BOTH, expand=True)
     try:
         tab = SchwabDucketsTab(root, parent, background_runner=_immediate_background)
-        row_mark = tab._tree_mark("AAPL")
-        tab.selected_mark_widget.show("AAPL")
-        selected_mark = tab.selected_mark_widget._photo
+        for symbol in (
+            "AAPL",
+            "AMZN",
+            "EWY",
+            "GOOG",
+            "MRNA",
+            "MU",
+            "NBIS",
+            "NVDA",
+            "SNDK",
+            "TENB",
+            "VXUS",
+            "ZETA",
+        ):
+            row_mark = tab._tree_mark(symbol)
+            tab.selected_mark_widget.show(symbol)
+            selected_mark = tab.selected_mark_widget._photo
 
-        assert 16 <= max(row_mark.width(), row_mark.height()) <= 18
-        assert selected_mark is not None
-        assert 32 <= max(selected_mark.width(), selected_mark.height()) <= 38
+            assert 16 <= max(row_mark.width(), row_mark.height()) <= 18
+            assert row_mark.transparency_get(row_mark.width() // 2, 0) is True
+            assert selected_mark is not None
+            assert 32 <= max(selected_mark.width(), selected_mark.height()) <= 38
+            assert selected_mark.transparency_get(selected_mark.width() // 2, 0) is True
+            assert len(tab.selected_mark_widget.find_all()) == 1
     finally:
         parent.destroy()
 

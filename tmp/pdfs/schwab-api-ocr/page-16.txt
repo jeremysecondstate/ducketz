@@ -1,0 +1,68 @@
+fae Developer Portal
+
+SCHWAB
+
+"errors": [
+
+{
+"status": 4@1,
+"title": "Unauthorized",
+"id": "@be22ae7-efdf-aad9-99F4-£1
+380a9d76ca"
++
+]
+?
+Headers:
+Name Descri Type
+This Correlation
+ID is unique to
+the operation. string
+Schwab- The GUID that is Example:
+Client- generated can be 977dbd7f-
+Correltd used to track an 992e-44d2-
+individual asfa-
+service call if e213d29c8691
+support is
+needed.
+Schwab- This is the
+Resource- requested apr *tTiné
+Version yencion. Example: 1
+404 No links
+
+Error response for 404 Not Found
+
+Media type
+
+application/json
+
+Example Value Schema
+
+{
+errors": [
+{
+"status": 404,
+"title": "Not Found"
+"id": "@be22ae7-efdf-44d9-99F4-F1
+38049d76ca"
++
+]
++
+Headers:
+Name Deseri Type
+This Correlation
+ID is unique to
+the operation. string
+Schwab- The GUID that is Example:
+Client- generated can be 977dbd7f-
+Correltd used to track an 992e-44d2-
+individual asfa-
+service call if e213d29c8691
+support is
+needed.
+
+Schwab- This is the
+Resource- string
+
+requested API pag
+Version Version. ple:
+

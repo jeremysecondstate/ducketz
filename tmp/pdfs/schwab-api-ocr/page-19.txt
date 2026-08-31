@@ -1,0 +1,75 @@
+ar Developer Portal
+
+SCHWAB
+
+deen
+
+startDate
+int intea The start date, Time in milliseconds
+nteger(Sintea) since the UNIX epoch eg 1451624400000
+(query) If not specified startDate will be (endDate
+- period) excluding weekends and
+holidays.
+startDate
+endDate
+The end date, Time in milliseconds since
+integer ($int6a)
+the UNIX epoch eg 1451624400000
+(query) If not specified, the endDate will default to
+the market close of previous business
+day.
+endDate
+needExtendedHoursData
+Need extended hours data
+boolean
+(query)
+
+needPreviousClose
+Need previous close price/date
+
+boolean
+
+(query) - |
+Responses
+
+Code Description Links
+200 No links
+
+Get all candles for given date range
+
+Media type Examples
+
+applicatio Search by symt
+
+Controls Accept header.
+
+Example Value Schema
+
+{
+
+>
+
+"symbol": "AAPL",
+
+"empty": false,
+
+“previousClose": 174.56,
+“previousCloseDate”: 163902960000
+
+"candles": [
+{
+"open": 175.01,
+175.15,
+175.01,
+175.04,
+“volume”: 10719,
+
+“datetime”: 1639137600000
+
+“high”:
+"Lo
+
+“clos
+
+"open": 175.08,
+

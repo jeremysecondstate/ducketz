@@ -1,0 +1,62 @@
+charles Developer Portal
+
+SCHWAB
+
+symbol_id * "=
+~ Symbol of instrument
+
+string
+(path) Example : TSLA
+TSLA
+fields
+tri Request for subset of data by passing coma
+strin|
+e separated list of root nodes, possible root
+(query) nodes are quote, fundamental, extended,
+reference, regular. Sending quote,
+fundamental in request will return quote and
+fundamental data in response. Dont send this
+attribute for full response.
+Default value : all
+quote,reference
+Responses
+Code Description Links
+200 No links
+
+Quote Response
+
+Media type Examples
+
+applicatio Search by symt
+
+Controls Accept header.
+
+Example Value Schema
+
+{ a
+"symbol": "AAPL",
+"empty": false,
+“previousClose": 174.56,
+“previousCloseDate”: 163902960000
+°
+"candles": [
+{
+"open": 175.01,
+"high": 175.15,
+"low": 175.01,
+175.04,
+10719,
+: 1639137600000
+ts
+{
+175.08,
+175.09,
+175.05,
+175.05,
+: 500,
+v
+
+“datetime”: 1639137660000
+
+Headers:
+

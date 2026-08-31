@@ -1,0 +1,63 @@
+charles Developer Portal
+
+SCHWAB
+
+Error response for 500 Internal Server Error
+
+Media type
+
+application/json
+
+Example Value Schema
+
+‘@be22ae7-efd¥-44d9-99F4-F1
+
+38049d76ca",
+“status 500,
+“title Internal Server Error"
++
+]
++
+Headers:
+Name Description Type
+
+This Correlation
+ID is unique to
+the operation. string
+
+Schwab- The GUID that is Example:
+Client- generated can be 977dbd7f-
+Correltd used to track an 992e-44d2-
+individual asfa-
+service call if e213d29c8691
+support is
+needed.
+
+Schwab- This is the
+
+strin
+Resource- nequested API 8
+Example: 1
+
+Version version.
+
+MarketHours Get MarketHours Web Service.
+
+GET /markets Get Market Hours for different markets.
+
+Get Market Hours for dates in the future across different markets.
+
+Parameters Try it out
+Name Description
+markets * "euired
+List of markets
+array[string]
+(query) Available values : equity, option, bond, future,
+forex
+equity
+option
+bond
+future
+
+forex
+

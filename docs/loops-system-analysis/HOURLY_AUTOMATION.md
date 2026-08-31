@@ -173,7 +173,7 @@ Pooled sequence encoder and Loop C shadow lane:
   Generate, do not hand-assemble, this object with the checked-in read-only
   proposal builder:
 
-  `.\.venv\Scripts\python.exe -m ml.sequence_encoder.preregistration_proposal --datastore-target pc --eligible-session <guardian-eligible-session> --symbol <each-exact-symbol> --maximum-sessions-per-symbol <bounded-positive-count> --compact`.
+  `.\.venv\Scripts\python.exe -m ml.sequence_encoder.preregistration_proposal --datastore-target pc --eligible-session <guardian-eligible-session> --symbol <each-exact-symbol> --maximum-sessions-per-symbol 252 --compact`.
 
   Accept only `PROPOSAL_ONLY` with zero-order safety and copy its
   `handoff_actions` verbatim into the stage-13 successor receipt.
@@ -189,6 +189,19 @@ Pooled sequence encoder and Loop C shadow lane:
   authority. Loop B and Options Strategies may begin their existing verified
   shadow consumption immediately after the first valid publication; no
   additional time embargo applies.
+- First-publication bootstrap is an explicit deployment objective, not an
+  open-ended model-shopping exception. While
+  `sequence_encoder_loop_c.sequence_status=NOT_PUBLISHED`, treat the missing
+  pooled encoder as the next eligible stage-13 bottleneck and preregister this
+  exact checked-in challenger, provided the baseline is healthy and there is no
+  current or terminal consumed attempt for its exact configuration fingerprint.
+  For this bootstrap only, use the guardian's exact normalized watchlist and a
+  frozen bound of `maximum_sessions_per_symbol=252` (one nominal trading year
+  per symbol); do not expand the cohort or data bound during stage 14.
+  Never displace an already-started handoff stage, bypass the guardian schedule,
+  catch up a missed stage, or retry a consumed/failed fingerprint. After the
+  first checksum-valid `SHADOW_ONLY` publication, this bootstrap rule is spent
+  and stage 13 returns to evidence-ranked bottleneck selection.
 - Start the Loop C prospective evidence clock at its first successfully
   published open-session observe run, not at code deployment, risk approval, or
   sequence training. Continue running Loop C every eligible hourly wake while
@@ -236,7 +249,7 @@ Execute exactly the stage named by the guardian:
 10. `audit-pricing-execution` (22:42): audit Pricing coverage, conservative fills, fees, slippage, execution haircuts, surface/liquidity policy, and outlier valuations.
 11. `evaluate-strategy-outcomes` (23:42): evaluate causally mature exact 1d/1w options constructions for positive net return after modeled execution and fees, by symbol, strategy family, pricing eligibility, model generation, and regime.
 12. `audit-probability-calibration` (00:42): compare raw and calibrated probability distributions, reliability bins, ECE, Brier score, log loss, base rates, coverage, and probability collapse; keep Scenario Coverage non-probabilistic.
-13. `select-nightly-bottleneck` (01:42): rank the single highest-value unresolved accuracy bottleneck and preregister one hypothesis, exact eligible cohort and causal cutoff, primary metric, safety metrics, baseline, checked-in gates, leakage/regime risks, compute/data bound, and rollback condition.
+13. `select-nightly-bottleneck` (01:42): if the one-time first-publication bootstrap above is eligible, select and preregister the pooled causal sequence encoder; otherwise rank the single highest-value unresolved accuracy bottleneck. Preregister exactly one hypothesis, exact eligible cohort and causal cutoff, primary metric, safety metrics, baseline, checked-in gates, leakage/regime risks, compute/data bound, and rollback condition.
 14. `run-shadow-ablation` (02:42): run the session's sole new bounded, isolated, shadow-only experiment using the preregistration and immutable inputs. Prefer the checked-in strategy-value challenger when it matches the bottleneck; when the preregistration explicitly selects the pooled sequence encoder, invoke its checked-in shadow trainer with `--preregistration-receipt <the-current-stage-13-receipt>` and preserve its model/calibration/distribution receipts. The trainer must validate the current handoff and use the receipt-bound cutoff, symbols, source checksums, configuration fingerprint, and data/compute bound; do not reconstruct or substitute them. Otherwise a small offline harness is allowed, but it must remain disconnected from production authority, runtime ownership, UI ranking, and orders.
 15. `compare-challenger` (03:42): compare the exact immutable challenger from stage 14 against champion/baseline on identical chronological assessment-clean evidence. Do not retune, select a new cohort, or start another challenger.
 16. `stress-and-gate-review` (04:42): stress the same result across symbols, regimes, windows, missing-data conditions, fees, and execution assumptions; accept, reject, or produce an approval-gated proposal. A favorable slice or post-hoc threshold is not a pass.

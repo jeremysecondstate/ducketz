@@ -1,0 +1,61 @@
+charles
+
+SCHWAB Developer Portal
+
+cusip_id * ‘sre ; ;
+cusip of a security
+
+string
+(path)
+cusip_id
+Responses
+Code Description Links
+200 No links
+OK
+Media type Examples
+applicati Get getinstrumer
+Controls Accept
+header.
+Example Value Schema
+{
+"cusip": "@37833100",,
+“symbo: AAPL",
+"description": "Apple Inc"
+"exchange": "NASDAQ",
+“assetType": "EQUITY"
++
+Headers:
+Name Description Type
+Used to
+Schwab- identify
+Resource- desired and integer
+Version returned Example: 3
+version of an
+API resource
+Used to
+identify an
+string
+schwab- individual Example:
+Cgreeiid throughout the 007F4460-7476-
+Correlid eI 49¢8-ale5-
+lifetime of the
+ca8ed5903386
+request and
+across systems.
+400 No links
+
+Error response for generic client error 400
+
+Media type
+
+application/json
+
+Example Value Schema
+
+"id":
+-6c0e762e7dd5",
+
+>
+
+"6808262e-52bb-4421-9d31
+

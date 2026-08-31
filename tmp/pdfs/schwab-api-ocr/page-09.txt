@@ -1,0 +1,93 @@
+char Developer Portal
+
+SCHWAB
+
+(query)
+
+strikeCount
+integer
+
+(query)
+
+includeUnderlyingQuote
+boolean
+
+(query)
+
+strategy
+string
+(query)
+
+interval
+number ($double)
+
+(query)
+
+strike
+number ($double)
+
+(query)
+
+range
+string
+(query)
+
+fromDate
+string($date)
+(query)
+
+toDate
+string($date)
+(query)
+
+volatility
+number ($double)
+
+(query)
+
+The Number of strikes to return above or
+below the at-the-money price
+
+strikeCount
+
+Underlying quotes to be included
+
+OptionChain strategy. Default is SINGLE.
+ANALYTICAL allows the use of volatility,
+underlyingPrice, interestRate, and
+
+days ToExpiration params to calculate
+theoretical values.
+
+Available values : SINGLE, ANALYTICAL,
+COVERED, VERTICAL, CALENDAR,
+STRANGLE, STRADDLE, BUTTERFLY,
+CONDOR, DIAGONAL, COLLAR, ROLL
+
+Strike interval for spread strategy chains
+(see strategy param)
+
+interval
+
+Strike Price
+
+strike
+
+Range(ITWNTMOTM etc.)
+
+range
+
+From date(pattern: yyyy-MM-dd)
+
+fromDate
+
+To date (pattern: yyyy-MM-dd)
+
+toDate
+
+Volatility to use in calculations. Applies only
+to ANALYTICAL strategy chains (see
+strategy param)
+
+volatility
+

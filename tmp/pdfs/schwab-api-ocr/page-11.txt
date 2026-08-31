@@ -1,0 +1,78 @@
+charles Developer Portal
+
+SCHWAB
+
+symbol"
+
+tring"
+“string”,
+"underlying": {
+
+"ask": @,
+asksize:
+"bid": @,
+“bidsize":
+
+“status”
+
+"delayed": true,
+“description”: "string",
+IND",
+
+“exchangeName”
+“fiftyTwoWeekHigh
+“fiftyTwoWeekLow": @,
+“highPrice": @,
+
+last": @,
+“lowPrice e,
+“mark": @,
+“markChange": @,
+markPercentChange": @,
+“openPrice": @, Vv
+Headers:
+Name Description Type
+Used to identify
+an individual string
+Schwab- request Example:
+Client- throughout the @a7f446a-7d74-
+Correlld lifetime of the 49c8-ale5-
+request and ca8ed59a3386
+across systems.
+400 No links
+
+Error response for generic client error 400
+
+Media type
+
+application/json
+
+Example Value Schema
+
+{ a
+"errors": [
+{
+"id": "6808262e-52bb-4421-9d31
+-6c0e762e7dd!
+"status": "40",
+"title": "Bad Request",
+"detail": "Missing header",
+"source": {
+header": “Authorization”
++
+ts
+{
+"id": "@be22ae7-efdf-44d9-99F4
+-#138049d76ca",
+"status": "40",
+itle’ jad Request",
+“detail”: "Search combination
+should have min of 1.",
+"source": {
+pointer": [
+v
+
+"/data/attributes/symbol
+
+Headers:
+

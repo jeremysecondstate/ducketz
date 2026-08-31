@@ -1,0 +1,70 @@
+charles Developer Portal
+
+SCHWAB
+
+wrcwie ye
+
+application/json
+
+Example Value Schema
+
+{
+. C
+{
+"id": "@be22ae7-efdf-aad9-99F4-£2
+380a9d76ca",
+"status": 5@0,
+"title": "Internal Server Error”
++
+]
+?
+Headers:
+Name Description Type
+This Correlation
+ID is unique to
+the operation. string
+Schwab- The GUID that is Example:
+Client- generated can be 977dbd7f-
+Correltd used to track an 992e-44d2-
+individual asfa-
+service call if e213d29c8691
+support is
+needed.
+Schwab- This is the
+Resource- requested apr *tTiné
+Version yencion. Example: 1
+
+Instruments. Get instruments Web Service.
+
+/instrument — Get Instruments by symbols and
+
+GET
+s projections.
+
+Aa
+
+Get Instruments details by using different projections. Get more specific
+fundamental instrument data by using fundamental as the projection.
+
+Parameters Try it out
+Name Description
+symbol * "°s"=¢
+
+tri symbol of a security
+string
+
+(query)
+
+symbol
+
+projection * s'"e¢
+
+tri search by
+string
+
+(query) Available values : symbol-search, symbol-
+
+regex, desc-search, desc-regex, search,
+
+fundamental
+

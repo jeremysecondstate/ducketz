@@ -1,0 +1,87 @@
+charles Developer Portal
+
+SCHWAB
+
+Valid date range is from currentdate to 1 year
+
+tring ($dat:
+string(Sdate) from today. It will default to current day if not
+(query) entered. Date format:YYYY-MM-DD
+date
+
+Responses
+Code Description Links
+200 No links
+
+OK
+
+Media type Examples
+
+appli Get getMarketHours
+
+Controls Accept
+
+header.
+
+Example Value Schema
+{
+"equit
+"EQ": {
+"date": "2022-04-14",
+EQUITY",
+
+“marketType"
+“product”:
+
+"El
+“productName"
+“isOpen": true,
+
+equity",
+
+“sessionHours": {
+“preMarket": [
+
+{
+
+start”
+0:00-04:00",
+"end": "2022-@4-14T99:3
+
+"2022-04-14T07:
+
+0:00-04:00"
+
++
+
+1,
+“regularMarket": [
+
+{
+
+"start"
+3:00-4:00"
+"end
+
+"2022-04-14T@9:
+
+"2022-04-14T16:0
+
+Headers:
+
+Name Description Type
+
+This Correlation
+ID is unique to
+the operation. string
+Schwab- The generated — Example:
+Client- GUID can be used 977dbd7f-
+Correlid to track an 992e-44d2-
+individual asfa-
+service call if e213d29c8691
+support is
+needed.
+
+400 No links
+Error response for generic client error 400
+

@@ -1,0 +1,60 @@
+ar Developer Portal
+
+SCHWAB
+
+Sort by a particular attribute
+
+string
+(query) Available values : VOLUME, TRADES,
+PERCENT_CHANGE_UP,
+PERCENT_CHANGE_DOWN
+Example : VOLUME
+VOLUME
+frequency
+To return movers with the specified directions
+integer ($int32)
+of up or down
+(query)
+Available values : 0, 1, 5, 10, 30, 60
+Default value : 0
+O
+Responses
+Code Description Links
+200 No links
+
+Analytics for the symbol was returned
+successfully.
+
+Media type Examples
+application/j Search by "$I
+Controls Accept header.
+Example Value Schema
+{ a
+"screeners": [
+{
+"change": 10,
+"description": “Dow jones",
+"direction": "up",
+"last": 100,
+"symbol": "$DII",
+“totalVolume": 100
+ts
+{
+"change": 10
+"description": “Dow jones",
+"direction": "up",
+"last": 100,
+"symbol": "$DII",
+“totalVolume": 100
+ts
+{
+"change": 10,
+"description": “Dow jones",
+v
+
+"direction":
+
+Headers:
+
+up",
+

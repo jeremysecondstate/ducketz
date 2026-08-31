@@ -1,0 +1,89 @@
+char
+SCHWAB Developer Portal
+
+(query)
+
+period
+integer($int32)
+(query)
+
+frequencyType
+string
+(query)
+
+frequency
+integer($int32)
+(query)
+
+The chart period being requested.
+
+Available values : day, month, year, ytd
+
+The number of chart period types.
+
+If the periodType is
+
++ day - valid values are 1, 2, 3, 4, 5, 10
+
+* month - valid values are 1, 2, 3,6
+
+* year - valid values are 1, 2, 3, 5, 10, 15,
+20
+
++ ytd - valid values are 1
+
+If the period is not specified and the
+periodType is
+
++ day - default period is 10.
+
+* month - default period is 1.
+
++ year - default period is 1.
+
++ ytd - default period is 1.
+
+period
+
+The time frequencyType
+
+If the periodType is
+
++ day - valid value is minute
+
++ month - valid values are daily, weekly
+* year - valid values are daily, weekly,
+monthly
+
++ ytd - valid values are daily, weekly
+
+If frequencyType is not specified, default
+value depends on the periodType
+
++ day - defaulted to minute.
+
+* month - defaulted to weekly.
+
+* year - defaulted to monthly.
+
++ ytd - defaulted to weekly.
+
+Available values : minute, daily, weekly,
+monthly
+
+The time frequency duration
+
+If the frequencyType is
+
+* minute - valid values are 1, 5, 10, 15,
+30
+
++ daily - valid value is 1
+
++ weekly - valid value is 1
+
+* monthly - valid value is 1
+
+If frequency is not specified, default value
+is 1
+

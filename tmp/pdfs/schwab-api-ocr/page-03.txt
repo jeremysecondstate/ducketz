@@ -1,0 +1,66 @@
+charles Developer Portal
+
+SCHWAB
+
+Error response for generic client error 400
+
+Media type
+
+application/json
+
+Example Value Schema
+
+{ a
+“errors”: [
+{
+“id": "6808262e-52bb-4421-9d31
+-6c@e762e7dd5",
+“statu: "400",
+“title jad Request",
+“detail “Missing header",
+“Authorization”
++
+ts
+{
+"id" be22ae7-ef df -44d9-99F4
+-£138049d76ca",
+"400",
+jad Request",
+"Search combination
+should have min of 1.",
+"sourc {
+"pointer": [
+/data/attributes/symbol
+Headers:
+Name Type
+This Correlation
+ID is unique to
+the operation. string
+Schwab- | The GUID that is Example:
+Client- generated can be 977dbd7f-
+Correlid used to track an 992e-44d2-
+individual asfa-
+service call if e213d29c8691
+support is
+needed.
+Schwab- This is the
+Resource- pequested API string
+Version Vension. Example: 1
+401 No links
+
+Error response for 401 Unauthorized
+
+Media type
+
+application/json
+
+Example Value Schema
+
+{
+"errors": [
+{
+"status": 401,
+"title": "Unauthorized",
+
+‘@be22ae7-efd¥-44d9-99F4-F1
+

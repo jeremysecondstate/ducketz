@@ -224,15 +224,15 @@ def _fixture_snapshots(
     extra_holdings = [
         _holding("AMD", 24, 162.40, 3_897.60, 218.40, 42.24, "Stock"),
         _holding("AMZN", 18, 178.20, 3_207.60, 117.00, -21.60, "Stock"),
-        _holding("META", 8, 512.75, 4_102.00, 302.40, 36.80, "Stock"),
+        _holding("EWY", 22, 74.65, 1_642.30, 82.50, 14.30, "ETF"),
         _holding("GOOGL", 20, 171.30, 3_426.00, 186.00, 24.00, "Stock"),
-        _holding("TSLA", 12, 216.50, 2_598.00, -144.00, -38.40, "Stock"),
-        _holding("VTI", 14, 276.25, 3_867.50, 91.00, 16.80, "ETF"),
-        _holding("DIA", 7, 405.80, 2_840.60, 54.60, -8.40, "ETF"),
-        _holding("XLE", 30, 91.45, 2_743.50, 73.50, 12.00, "ETF"),
-        _holding("JPM", 16, 224.10, 3_585.60, 128.00, 27.20, "Stock"),
-        _holding("KO", 40, 69.20, 2_768.00, 84.00, 8.00, "Stock"),
-        _holding("XLK", 15, 232.60, 3_489.00, 139.50, 19.50, "ETF"),
+        _holding("MRNA", 8, 137.99, 1_103.92, -23.55, -7.30, "Stock"),
+        _holding("MU", 30, 142.25, 4_267.50, 173.40, 31.20, "Stock"),
+        _holding("NBIS", 25, 20.918, 522.95, -73.12, -13.50, "Stock"),
+        _holding("SNDK", 20, 148.40, 2_968.00, 184.00, 22.00, "Stock"),
+        _holding("TENB", 10, 41.75, 417.50, -18.50, 3.20, "Stock"),
+        _holding("VXUS", 30, 87.52, 2_625.60, 112.25, 0.00, "ETF"),
+        _holding("ZETA", 10, 30.54, 305.40, 92.90, -1.40, "Stock"),
     ]
     requested_extras = max(position_count - 6, 0)
     selected_extras = extra_holdings[:requested_extras]

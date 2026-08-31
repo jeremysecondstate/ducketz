@@ -63,12 +63,18 @@ SECURITY_MARK_ASSET_DIR = Path(__file__).with_name("assets") / "security_marks"
 SECURITY_MARK_FILENAMES = {
     "AAPL": "aapl.png",
     "AMZN": "amzn.png",
+    "EWY": "ewy.png",
     "GOOG": "goog.png",
     "GOOGL": "goog.png",
+    "MRNA": "mrna.png",
     "MU": "mu.png",
     "MSFT": "msft.png",
+    "NBIS": "nbis.png",
     "NVDA": "nvda.png",
     "SNDK": "sndk.png",
+    "TENB": "tenb.png",
+    "VXUS": "vxus.png",
+    "ZETA": "zeta.png",
 }
 
 

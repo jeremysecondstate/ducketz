@@ -44,6 +44,7 @@ ducketz-sequence-inference = "ml.sequence_encoder.inference_runtime:main"
 ducketz-loop-c-observe = "ml.loop_c.runtime:main"
 ducketz-loop-c-schwab-snapshot = "ml.loop_c.schwab_snapshot:main"
 ducketz-loop-c-risk-proposal = "ml.loop_c.risk_proposal:main"
+ducketz-loop-c-operator-controls = "ml.loop_c.operator_controls:main"
 ducketz-loop-c-weekly-review = "ml.loop_c.weekly_review:main"
 
 [project.optional-dependencies]

@@ -1,0 +1,70 @@
+charles Developer Portal
+
+SCHWAB
+
+The GUID that is 992e-44d2-
+generated can be a5f4-
+
+used to track an e213d29c8691
+individual
+
+service call if
+
+support is
+
+needed.
+
+Schwab-
+Resource-
+Version
+
+This is the
+requested API
+version.
+
+string
+Example: 1
+
+500 No links
+Error response for 500 Internal Server Error
+
+Media type
+
+application/json
+
+Example Value Schema
+
+{
+“errors”
+{
+. ‘be22ae7-efdf-44d9-99F4-F1
+38049d76ca",
+"status": 500,
+“title”: "Internal Server Error”
++
+]
++
+Headers:
+Name Description Type
+This Correlation
+ID is unique to
+the operation. string
+Schwab- The GUID that is Example:
+Client- generated can be 977dbd7f-
+Correltd used to track an 992e-44d2-
+individual asfa-
+service call if e213d29c8691
+support is
+needed.
+
+Schwab- This is the
+
+Resource- pequested API serine 1
+version version. p
+GET /instruments Get Instrument by specific a
+/{cusip_id} cusip
+
+Get basic instrument details by cusip
+
+Parameters Try it out
+

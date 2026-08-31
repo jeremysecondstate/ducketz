@@ -1,0 +1,88 @@
+charles
+
+SCHWAB
+
+401
+
+404
+
+Developer Portal
+
+This Correlation
+ID is unique to
+the operation.
+
+The GUID that is
+
+Schwab-
+
+Client- generated can be
+
+Correlid used to track an
+individual
+service call if
+support is
+needed.
+
+Schwab- this is the
+
+Resource- pequested API
+
+Version version.
+
+string
+Example:
+977dbd7f-
+992e-44d2-
+asfa-
+€213d29¢8691
+
+string
+Example: 1
+
+No links
+Error response for 401 Unauthorized
+Media type
+application/json
+Example Value Schema
+{
+"errors": [
+{
+"status": 401,
+"title": "Unauthorized",
+"id": "@be22ae7-efdf-44d9-99F4-F1
+38049d76ca"
++
+]
++
+Headers:
+Name Description Type
+This Correlation
+ID is unique to
+the operation. string
+Schwab- The GUID that is Example
+Client- generated can be 977dbd7f-
+Correltd used to track an 992e-44d2-
+individual asfa-
+service call if e213d29c8691
+support is
+needed.
+Schwab- This is the tri
+strin|
+Resource- pequested API cxam eo: 1
+version version. ple:
+No links
+
+Error response for 404 Not Found
+
+Media type
+
+application/json
+
+Example Value Schema
+
+{
+"errors": [
+
+{
+

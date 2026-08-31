@@ -1,0 +1,82 @@
+charles Developer Portal
+
+SCHWAB
+
+yee ee eee
+
+indicative
+bool Include indicative symbol quotes for all ETF symbols in
+joolean
+request. If ETF symbol ABC is in request and
+(query) indicative=true API will return quotes for ABC and its
+corresponding indicative quote for $ABC.IV
+Available values : true, false
+Example : false
+false
+Responses
+Code Description Links
+200 No links
+
+Quote Response
+
+Media type Examples
+
+applica Search by Symbol:
+
+Controls Accept
+
+header.
+
+Example Value Schema
+
+{
+AAPL": {
+“assetMainType": "EQUITY",
+"symbol": "AAPL",
+“quoteType": "NBBO",
+realtime": true,
+"ssid": 1973757747,
+{
+": "937833100"
+“Apple Inc",
+
+@>
+
+“description
+“exchange :
+“exchangeName": "NASDAQ"
+
+ts
+"quote": {
+
+"52WeekHigh": 169,
+2WeekLow": 4.1,
+skMICId": "MEMX",
+askPrice": 168.41,
+
+: 400,
+1644854683672,
+"TEGX",
+168.4,
+
+“bidPrice
+
+Headers:
+
+Name Description Type
+
+Used to identify
+
+an individual string
+
+request Example:
+
+throughout the @a7f446a-7d74-
+
+Correlld  jifetime of the 49c8-a1e5-
+request and ca8ed59a3386
+across systems.
+
+Schwab-
+Client-
+

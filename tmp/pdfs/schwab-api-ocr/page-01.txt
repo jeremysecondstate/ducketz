@@ -1,0 +1,52 @@
+char
+
+SCHWAB
+
+Developer Portal
+
+API Products Trader API - Individual Market Data Production
+
+Specifications
+
+Market Data Production
+
+APIs to access Market Data
+
+Market Data |
+
+0.0 OAS3
+
+Trader API - Market data
+
+Contact Schwab Trader API team
+
+Servers Authorize
+https://api.schwabapi.com/marketdata/v1 a
+Quotes Get Quotes Web Service. A
+GET /quotes Get Quotes by list of symbols. na
+Parameters Try it out
+Name Description
+symbols
+Comma separated list of symbol(s) to look up a quote
+
+string
+
+(query) Example :
+MRAD,EATOF,EBIZ,AAPL,BAC,AAAHX,AAAIX,$DJI,$SPX.
+,MVEN,SOBS, TOITF,CNSWF,AMZN
+230317C01360000,DJX
+231215C00290000,/ESH23,./ADUF23C0.55,AUD/CAD
+
+MRAD,EATOF,EBIZ,AAPL,BAC,AAAHX,AAAIX,$D,
+
+fields
+
+tri Request for subset of data by passing coma separated
+serine list of root nodes, possible root nodes are quote,
+
+(query) fundamental, extended, reference, regular. Sending
+quote, fundamental in request will return quote and
+fundamental data in response. Dont send this attribute
+for full response.
+Default value : all
+

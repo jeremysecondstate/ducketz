@@ -1,0 +1,66 @@
+char Developer Portal
+
+SCHWAB
+
+tg ee
+
+Underlying price to use in calculations.
+
+number ($double) Applies only to ANALYTICAL strategy
+(query) .
+
+chains (see strategy param)
+
+underlyingPrice
+
+interestRate
+
+Interest rate to use in calculations. Applies
+number ($double) ‘
+
+only to ANALYTICAL strategy chains (see
+(query)
+
+strategy param)
+
+interestRate
+
+daysToExpiration
+Days to expiration to use in calculations.
+
+i i
+nteger($int32) Applies only to ANALYTICAL strategy
+(query) .
+chains (see strategy param)
+days ToExpiration
+expMonth
+Expiration month
+string
+(query) Available values : JAN, FEB, MAR, APR,
+MAY, JUN, JUL, AUG, SEP, OCT, NOV,
+DEC, ALL
+optionType
+P P Option Type
+string
+(query)
+optionType
+entitlement
+‘ Applicable only if its retail token,
+string entitlement of client PP-PayingPro, NP-
+(query) NonPro and PN-NonPayingPro
+Available values : PN, NP, PP
+Responses
+Code Description Links
+200 No links
+
+The Chain for the symbol was returned
+successfully.
+
+Media type
+
+application/json
+
+Controls Accept header.
+
+Example Value Schema
+

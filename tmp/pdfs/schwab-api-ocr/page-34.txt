@@ -1,0 +1,56 @@
+Developer Portal
+
+Responses
+Code Description Links
+200 No links
+OK
+Media type Examples
+appli symbol=AAPL,BAC&p
+Controls Accept
+header.
+Example Value Schema
+{
+[
+{
+“cusip": "@37833100",
+"symbol": "AAPL",
+"description": “Apple Inc”
+"exchange": "NASDAQ"
+“assetType": "EQUITY"
+ts
+{
+“cusip": "@60505104",
+"symbol": "BAC",
+“description”: "Bank Of America C
+orp",
+"exchange": "NYSE"
+“assetType": "EQUITY"
++
+]
++
+Headers:
+Name Description Type
+Used to
+Schwab- identify
+Resource- desired and integer
+Version returned Example: 3
+version of an
+API resource
+Used to
+identify an
+string
+Schwab- individual Example:
+Cgreeiid throughout the 007F4460-7476-
+Correlid eI 49¢8-ale5-
+lifetime of the
+ca8ed5903386
+request and
+across systems.
+400 No links
+
+Error response for generic client error 400
+
+Media type
+
+application/json
+

@@ -1,0 +1,67 @@
+Developer Portal
+
+/expirationch Get option expiration chain for an
+P: pti pi A a
+
+GET ain optionable symbol
+
+Get Option Expiration (Series) information for an optionable symbol.
+Does not include individual options contracts for the underlying.
+
+Parameters
+
+Name Description
+
+symbol * "aired
+Enter one symbol
+
+string
+(query) Example : AAPL
+AAPL
+Responses
+Code Description Links
+200 No links
+
+The Expiration Chain for the symbol was
+returned successfully.
+
+Media type Examples
+
+applicati Get ExpirationCh
+
+Controls Accept
+
+header.
+
+Example Value Schema
+
+{
+
+“expirationList":
+
+2022-01-0
+
+xpirationDate
+
+“daysToExpiration": 2
+xpirationType"
+tandard": true
+
+“expirationDate"
+
+“daysToExpiration": 9
+xpirationType":
+tandard": true
+
+"2022-01-2
+
+“expirationDate"
+
+“daysToExpiration": 16,
+“expirationType":
+true
+
+“standard
+
+Headers:
+

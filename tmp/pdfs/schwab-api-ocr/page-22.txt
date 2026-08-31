@@ -1,0 +1,59 @@
+charles Developer Portal
+
+SCHWAB
+
+a
+
+Example Value Schema
+
+{
+"errors": [
+{
+"id": "@be22ae7-efdf-44d9-99F4-F1
+38049d76ca",
+"status": 500,
+“title”: "Internal Server Error”
++
+]
++
+Headers:
+Name Description Type
+This Correlation
+ID is unique to
+the operation. string
+Schwab- The GUID that is Example:
+Client- generated can be 977dbd7f-
+Correltd used to track an 992e-44d2-
+individual asfa-
+service call if e213d29c8691
+support is
+needed.
+
+Schwab- This is the
+
+tril
+Resource- pequested API beomtes 1
+Version version. iple:
+Movers Get Movers Web Service. A
+
+GET /movers/{symbol_id} Get Movers for a specific index. MA a
+
+Get a list of top 10 securities movement for a specific index.
+
+Parameters Try it out
+
+Name Description
+
+symbol_id * "=
+~ Index Symbol
+string
+(path) Available values : $DJI, $SCOMPX, $SPX,
+NYSE, NASDAQ, OTCBB, INDEX_ALL,
+EQUITY_ALL, OPTION_ALL, OPTION_PUT,
+
+OPTION_CALL
+
+Example : $DJI
+
+$DJI
+

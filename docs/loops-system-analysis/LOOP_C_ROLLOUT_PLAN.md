@@ -76,7 +76,28 @@ identity, and rationale. The proposal may derive conservative values from
 account equity and may use account history only to ratchet the pending loss
 budget down. It cannot claim that Loop C itself works, raise risk, tune a model,
 or approve itself. The independent halt control also requires an issue time,
-expiry, state, and identity. A safe preflight is:
+expiry, state, and identity.
+
+Promote only a reviewed immutable proposal through the checked-in issuer. The
+issuer requires the operator identity, rationale, explicit halt state, and the
+Friday 17:00 Pacific lease expiry; verifies the proposal manifest and exact
+model binding; and archives an immutable issuance receipt before atomically
+refreshing the canonical controls:
+
+```powershell
+.\.venv\Scripts\python.exe -m ml.loop_c.operator_controls `
+  --datastore-target pc `
+  --pending-risk-approval <reviewed-risk-approval.pending.json> `
+  --approved-by <operator-identity> `
+  --expires-at <friday-17:00-pacific-as-ISO-8601> `
+  --rationale <operator-rationale> `
+  --unhalt `
+  --approve-observe-only `
+  --compact
+```
+
+This grants only `LOOP_C_OBSERVE_ONLY`. It cannot enable, stage, submit,
+replace, or cancel orders. A safe preflight is:
 
 ```powershell
 .\.venv\Scripts\python.exe -m ml.loop_c.runtime `

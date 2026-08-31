@@ -1,0 +1,90 @@
+charles Developer Portal
+
+SCHWAB
+
+“errors”
+{
+
+"id": "6808262e-52bb-4421-9d31
+
+-6c0e762e7dd!
+
+"status": "400",
+
+"title": "Bad Request",
+"Missing header",
+{
+
+“Authorization”
+
+"id": "@be22ae7-efdf-44d9-99F4
+-#138049d76c
+tatu
+title:
+
+"400",
+
+Bad Request",
+“detail”: "Search combination
+
+should have min of 1.",
+
+{
+
+“pointer”: [
+
+ourc
+
+"/data/attributes/symbol1
+Headers:
+Name Description Type
+
+This Correlation
+
+ID is unique to
+
+the operation. string
+Schwab- | The GUID that is Example:
+Client- generated can be 977dbd7f-
+Correlid used to track an 992e-44d2-
+
+individual asfa-
+
+service call if e213d29c8691
+
+support is
+
+needed.
+Schwab- This is the strin
+Resource- requested API cxam eo: 1
+Version Vension. ple:
+
+401
+Error response for 401 Unauthorized
+
+Media type
+
+application/json
+
+Example Value Schema
+
+{
+“errors”: [
+{
+“statu 401,
+"title": "Unauthorized",
+“id": "@be22ae7-efdf-44d9-99f4-f1
+38049d76c;
++
+]
+?
+Headers:
+Name Description Type
+Schwab- string
+Client. This Correlation eeample:
+Correitd 12 is unique to g7rgna7¢_
+
+the operation.
+
+No links
+

@@ -1,0 +1,71 @@
+charles Developer Portal
+
+SCHWAB
+
+"title": "Bad Request",
+"Missing header",
+
+{
+“authorization”
++
+ts
+{
+"id": “@be22ae7-efdf-4ad9-99F4
+-£138049d76c
+"status": "400",
+"title": "Bad Request",
+"detail": "Search combination
+should have min of 1.",
+"source": {
+“pointer”: [
+Headers:
+Name Type
+v
+This Correlation
+ID is unique to
+the operation. string
+Schwab- The GUID that is Example:
+Client- generated can be 977dbd7f-
+Correltd used to track an 992e-44d2-
+individual asfa-
+service call if 213d29c8691
+support is
+needed.
+Schwab- This is the
+Resource- pequested API string
+Version —yension. Example: 1
+401 No links
+
+Error response for 401 Unauthorized
+
+Media type
+
+application/json
+
+Example Value Schema
+
+{
+“errors”: [
+{
+“status 401,
+“title": "Unauthorized",
+“id": "@be22ae7-efdf-44d9-99f4-f1
+38049d76ca"
++
+]
++
+Headers:
+Name Description Type
+Schwab- string
+Client- This Correlation p.anpie;
+
+Correltd 2D is unique to g77qna7¢-
+the operation. 9996. 44q2-
+The GUID that is a5fa-
+generated can be 25439 79c9691
+used to track an
+individual
+service call if
+support is
+needed.
+
