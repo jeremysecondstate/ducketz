@@ -202,12 +202,17 @@ Pooled sequence encoder and Loop C shadow lane:
   catch up a missed stage, or retry a consumed/failed fingerprint. After the
   first checksum-valid `SHADOW_ONLY` publication, this bootstrap rule is spent
   and stage 13 returns to evidence-ranked bottleneck selection.
+- Loop C's option paper lane may select only `1d` and `1w` Strategy candidates.
+  The pooled encoder remains bound to all four directional horizons because it
+  is shared with Loop B, but `1h` and `4h` option candidates are explicitly
+  ineligible and receive `OPTIONS_SHADOW_HORIZON_BELOW_1D`. Loop C continues to
+  have no options broker path.
 - Start the Loop C prospective evidence clock at its first successfully
   published open-session observe run, not at code deployment, risk approval, or
   sequence training. Continue running Loop C every eligible hourly wake while
-  inputs remain valid. `loop-c-observe-evidence-gate-v1` allows only an operator
-  review after all floors pass: 40 completed XNYS sessions, 60 mature 1h and 4h
-  independent clusters, 30 mature 1d clusters, eight non-overlapping weekly
+  inputs remain valid. `loop-c-options-1d-plus-observe-evidence-gate-v2` allows only an operator
+  review after all floors pass: 40 completed XNYS sessions, 30 mature 1d
+  independent clusters, eight non-overlapping weekly
   cohorts, 20 reconciled observations, two halt drills, one rollback drill,
   all declared calibration/coverage/stress/stability/integrity/paper-broker
   gates, zero deterministic-gate violations, and zero orders. Before those

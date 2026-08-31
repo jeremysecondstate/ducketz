@@ -71,6 +71,7 @@ SECURITY_MARK_FILENAMES = {
     "MSFT": "msft.png",
     "NBIS": "nbis.png",
     "NVDA": "nvda.png",
+    "SLS": "sls.png",
     "SNDK": "sndk.png",
     "TENB": "tenb.png",
     "VXUS": "vxus.png",

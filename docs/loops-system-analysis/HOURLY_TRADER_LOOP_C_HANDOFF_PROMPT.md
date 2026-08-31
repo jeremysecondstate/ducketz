@@ -1,5 +1,10 @@
 # Codex handoff prompt: hourly trade-decision planner and Loop C audit
 
+> Historical design prompt, superseded 2026-08-31. The approved stock-only,
+> human-intervention-free implementation contract is now
+> `STOCK_TRADER_RUNTIME.md`. Do not use the human-confirmation or live-options
+> assumptions below as current authority.
+
 Continue the Duckets Loops-system design work in `C:\dev\ducketz`.
 
 ## Operating mode for this task

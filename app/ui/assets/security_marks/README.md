@@ -17,6 +17,7 @@ also shown as text.
 | MU | `mu.png` | `docs/logos-icons/micron-logo.png` |
 | NBIS | `nbis.png` | `docs/logos-icons/nbis-logo.png` |
 | NVDA | `nvda.png` | `docs/logos-icons/nvda-logo.png` |
+| SLS | `sls.png` | `docs/logos-icons/sls-logo.png` |
 | SNDK | `sndk.png` | `docs/logos-icons/sndk-logo.png` |
 | TENB | `tenb.png` | `docs/logos-icons/tenb-logo.png` |
 | VXUS | `vxus.png` | `docs/logos-icons/vxus-logo.png` |

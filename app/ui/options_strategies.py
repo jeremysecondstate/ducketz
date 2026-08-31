@@ -140,15 +140,17 @@ _PORTFOLIO_TERM_HELP = {
     ),
     "ticket_max_loss": (
         "Ticket Max Loss",
-        "The selected Schwab order's modeled worst expiration loss using the "
-        "configured limit or current bid/ask estimate. It excludes your shares and "
-        "is shown only when one expiration payoff can be calculated honestly.",
+        "The selected Schwab order's modeled worst loss using the configured limit "
+        "or current bid/ask estimate. A ≤ value is the candidate's conservative "
+        "path-dependent assignment-risk bound adjusted to the configured opening "
+        "cash flow. It excludes your shares.",
     ),
     "combined_max_loss": (
         "Position + Ticket Max Loss",
         "The modeled worst expiration loss after adding the selected ticket to your "
-        "currently reported shares in this stock. Existing option positions and "
-        "working orders are not included.",
+        "currently reported shares in this stock. A ≤ value adds the conservative "
+        "multi-expiration assignment-risk bound to the shares' full downside. "
+        "Existing option positions and working orders are not included.",
     ),
     "worst_case_price": (
         "Worst Case At",
@@ -1840,6 +1842,7 @@ class OptionsStrategiesTab:
                 tags=("flat",),
             )
             return
+        is_floor = impact.risk_status == "MULTI_EXPIRATION_INTRINSIC_FLOOR"
         for scenario in impact.price_scenarios:
             combined = scenario.combined_profit_loss
             tone = (
@@ -1860,8 +1863,11 @@ class OptionsStrategiesTab:
                         scenario.price_change_percent,
                     ),
                     _profit_loss_text(scenario.existing_shares_profit_loss),
-                    _profit_loss_text(scenario.ticket_profit_loss),
-                    _profit_loss_text(combined),
+                    _profit_loss_text(
+                        scenario.ticket_profit_loss,
+                        lower_bound=is_floor,
+                    ),
+                    _profit_loss_text(combined, lower_bound=is_floor),
                 ),
                 tags=(tone,),
             )
@@ -2301,16 +2307,21 @@ class OptionsStrategiesTab:
         self.impact_cash_flow.set(
             _cash_flow_text(impact.estimated_opening_cash_flow)
         )
+        loss_is_ceiling = (
+            impact.risk_status == "MULTI_EXPIRATION_INTRINSIC_FLOOR"
+        )
         self.impact_ticket_max_loss.set(
             _max_loss_text(
                 impact.ticket_max_loss,
                 unbounded=impact.ticket_max_loss_unbounded,
+                upper_bound=loss_is_ceiling,
             )
         )
         self.impact_combined_max_loss.set(
             _max_loss_text(
                 impact.combined_max_loss,
                 unbounded=impact.combined_max_loss_unbounded,
+                upper_bound=loss_is_ceiling,
             )
         )
         combined_worst_available = bool(
@@ -2329,6 +2340,7 @@ class OptionsStrategiesTab:
                     if combined_worst_available
                     else impact.ticket_max_loss_unbounded
                 ),
+                path_dependent=loss_is_ceiling,
             )
         )
         self.impact_risk_scope.set(_risk_scope_text(impact))
@@ -2903,7 +2915,7 @@ def _max_loss_metric_style(value: str) -> str:
     cleaned = str(value).strip()
     if not cleaned or cleaned == "—":
         return "StrategyImpactMetricValue.TLabel"
-    if cleaned == "$0.00":
+    if cleaned in {"$0.00", "≤ $0.00"}:
         return "StrategyImpactMetricGood.TLabel"
     return "StrategyImpactMetricDanger.TLabel"
 
@@ -2926,19 +2938,43 @@ def _cash_flow_text(value: float | None) -> str:
     return "$0.00"
 
 
-def _max_loss_text(value: float | None, *, unbounded: bool) -> str:
+def _max_loss_text(
+    value: float | None,
+    *,
+    unbounded: bool,
+    upper_bound: bool = False,
+) -> str:
     if unbounded:
         return "Unlimited"
-    return _money_or_dash(value)
+    formatted = _money_or_dash(value)
+    return f"≤ {formatted}" if upper_bound and value is not None else formatted
 
 
-def _worst_case_text(value: float | None, *, unbounded: bool) -> str:
+def _worst_case_text(
+    value: float | None,
+    *,
+    unbounded: bool,
+    path_dependent: bool = False,
+) -> str:
     if unbounded:
         return "Rises without bound"
+    if path_dependent:
+        return "Path-dependent"
     return _money_or_dash(value)
 
 
 def _risk_scope_text(impact: StrategyPortfolioImpact) -> str:
+    if (
+        impact.risk_status == "MULTI_EXPIRATION_INTRINSIC_FLOOR"
+        and impact.risk_expiration
+    ):
+        expiration = _expiration_display(impact.risk_expiration)
+        reference = (
+            ""
+            if impact.reference_price is None
+            else f" · Reference {_money_or_dash(impact.reference_price)}"
+        )
+        return f"First-expiry intrinsic floor · {expiration}{reference}"
     if impact.risk_expiration:
         expiration = _expiration_display(impact.risk_expiration)
         reference = (
@@ -2963,12 +2999,14 @@ def _expiration_display(value: str) -> str:
     return observed.strftime("%b %d, %Y").replace(" 0", " ")
 
 
-def _profit_loss_text(value: float) -> str:
+def _profit_loss_text(value: float, *, lower_bound: bool = False) -> str:
     if value > 0.005:
-        return f"+${value:,.2f}"
-    if value < -0.005:
-        return f"-${abs(value):,.2f}"
-    return "$0.00"
+        formatted = f"+${value:,.2f}"
+    elif value < -0.005:
+        formatted = f"-${abs(value):,.2f}"
+    else:
+        formatted = "$0.00"
+    return f"≥ {formatted}" if lower_bound else formatted
 
 
 def _price_move_text(value: float, percent: float) -> str:

@@ -577,7 +577,7 @@ def _summarize_shadow_performance(
     losses = sum(value < 0.0 for value in values)
     breakeven = len(values) - wins - losses
     per_horizon: dict[str, dict[str, object]] = {}
-    for horizon in ("1h", "4h", "1d", "1w"):
+    for horizon in ("1d", "1w"):
         rows = [row for row in mature if row.get("horizon") == horizon]
         horizon_values = [float(row["counterfactual_realized_net_pnl"]) for row in rows]
         per_horizon[horizon] = {

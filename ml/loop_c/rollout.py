@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Mapping
 
 
-LOOP_C_ROLLOUT_POLICY_VERSION = "loop-c-observe-evidence-gate-v1"
+LOOP_C_ROLLOUT_POLICY_VERSION = "loop-c-options-1d-plus-observe-evidence-gate-v2"
 
 
 @dataclass(frozen=True)
@@ -12,7 +12,6 @@ class LoopCRolloutPolicy:
     """Minimum evidence for a proposal; never an authority grant."""
 
     minimum_completed_xnys_sessions: int = 40
-    minimum_intraday_clusters: int = 60
     minimum_daily_clusters: int = 30
     minimum_nonoverlapping_weekly_cohorts: int = 8
     minimum_reconciled_observations: int = 20
@@ -60,11 +59,6 @@ def evaluate_loop_c_rollout(
     failed: list[str] = []
     if evidence.completed_xnys_sessions < rules.minimum_completed_xnys_sessions:
         failed.append("MINIMUM_40_COMPLETED_XNYS_SESSIONS")
-    for horizon in ("1h", "4h"):
-        if int(evidence.mature_decision_clusters.get(horizon, 0)) < (
-            rules.minimum_intraday_clusters
-        ):
-            failed.append(f"MINIMUM_60_{horizon.upper()}_MATURE_CLUSTERS")
     if int(evidence.mature_decision_clusters.get("1d", 0)) < (
         rules.minimum_daily_clusters
     ):

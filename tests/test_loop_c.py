@@ -195,7 +195,7 @@ def test_predictive_thresholds_are_selected_by_exact_horizon() -> None:
     )
 
     assert decision.action == "NO_TRADE"
-    assert decision.reason_codes == ("NO_CANDIDATE_PASSED_RISK_GATES",)
+    assert decision.reason_codes == ("OPTIONS_SHADOW_HORIZON_BELOW_1D",)
 
 
 def test_exact_sequence_model_binding_rejects_configuration_drift() -> None:

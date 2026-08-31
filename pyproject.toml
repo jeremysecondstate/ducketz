@@ -46,6 +46,10 @@ ducketz-loop-c-schwab-snapshot = "ml.loop_c.schwab_snapshot:main"
 ducketz-loop-c-risk-proposal = "ml.loop_c.risk_proposal:main"
 ducketz-loop-c-operator-controls = "ml.loop_c.operator_controls:main"
 ducketz-loop-c-weekly-review = "ml.loop_c.weekly_review:main"
+ducketz-stock-trader = "ml.stock_trader.runtime:main"
+ducketz-stock-trader-audit = "ml.stock_trader.audit:main"
+ducketz-stock-trader-reconcile = "ml.stock_trader.reconciliation:main"
+ducketz-stock-trader-training = "ml.stock_trader.training:main"
 
 [project.optional-dependencies]
 options-chat = [

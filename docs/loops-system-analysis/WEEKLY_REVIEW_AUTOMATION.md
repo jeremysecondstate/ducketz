@@ -31,8 +31,8 @@ or advances the hourly guardian's scheduler-handoff chain.
    is a continuity incident. Preserve it, do not trust its summary or next
    action, and never repair the chain or pointer by hand. The bounded review
    may still run because it cannot change active controls or place orders.
-2. Run the one bounded weekly command below exactly once. Do not repeat work
-   merely because it appears in the prior memory.
+2. Run the bounded weekly review sequence below exactly once per command. Do
+   not repeat work merely because it appears in the prior memory.
 3. After the review and all verification, but before the final response, commit
    exactly one successor memory and perform no further workflow mutation:
 
@@ -77,7 +77,7 @@ review may create a pending proposal, but only a later explicit operator
 message containing identity, approval time, expiry, rationale, exact accepted
 values, and independent halt state may create current controls.
 
-## One bounded command
+## Bounded weekly review sequence
 
 From `C:\dev\ducketz`, run exactly once:
 
@@ -104,6 +104,39 @@ Parse stdout as JSON even when it exits 2. The command:
 6. creates a fresh `PENDING_OPERATOR_APPROVAL` risk proposal; and
 7. publishes JSON and Markdown review artifacts with an immutable receipt and
    latest pointer.
+
+Before the stock audit, reconcile any submitted stock decisions exactly once
+through Schwab's read-only recent-order history:
+
+```powershell
+.\.venv\Scripts\python.exe -m ml.stock_trader.reconciliation `
+  --datastore-target pc
+```
+
+Accept `RECONCILED`, `PARTIAL_RECONCILIATION`, or `NO_SUBMITTED_ORDERS`. This
+command may only read broker order history and append immutable sanitized fill
+snapshots; it must not submit, cancel, or replace an order.
+
+Then run the separate stock-trader decision/outcome audit exactly once:
+
+```powershell
+.\.venv\Scripts\python.exe -m ml.stock_trader.audit `
+  --datastore-target pc
+```
+
+The audit resolves the same latest completed XNYS week, verifies every
+stock-trader decision receipt, and joins each stable `decision_id` and its
+reason/order-style explanation to the causally mature Loop B evaluation. It
+must retain BUY, SELL, and NO_TRADE decisions, including hypothetical quantity
+economics for abstentions. Accept `WEEKLY_AUDIT_COMPLETE`, `OUTCOMES_PENDING`,
+or `NO_STOCK_TRADER_DECISIONS`. This command is evaluation-only: it must not
+contact Schwab, submit an order, activate the trader, train a model, or mutate
+policy. Preserve its JSON, Markdown, manifest, receipt, and latest-pointer
+paths in the weekly memory.
+
+Do not run `ml.stock_trader.training` from this scheduler. A weekly audit can
+inform later model work but cannot turn one week into an automatic refit or
+authority change.
 
 Accept review statuses `WEEKLY_OPERATOR_DISCUSSION_READY`,
 `INSUFFICIENT_MATURE_LOOP_C_OUTCOMES`,
@@ -141,6 +174,8 @@ Present the operator with:
 - actual weekly closed-option P/L, wins, losses, drawdown, and strategy and
   underlying breakdowns;
 - Loop C run, proposal, no-trade, halt, reason-code, horizon, and symbol counts;
+- Loop C option-paper outcomes only for 1d and 1w candidates; 1h/4h options are
+  outside the approved paper lane;
 - mature counterfactual P/L after modeled execution costs, with pending outcomes
   kept separate;
 - exact model fingerprint, risk approval ID, expiry, policy version, and exact

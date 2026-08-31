@@ -325,20 +325,29 @@ def _strategy_risk_profile(
         for leg in option_legs
         if leg.expiration is not None
     }
-    if len(expirations) > 1:
+    multi_expiration = len(expirations) > 1
+    risk_expiration = min(expirations) if expirations else None
+    later_short_legs = tuple(
+        leg.display_name
+        for leg in option_legs
+        if multi_expiration
+        and _expiration_key(leg.expiration) != risk_expiration
+        and leg.instruction.startswith("SELL")
+    )
+    if later_short_legs:
         return _unavailable_risk_profile(
             reference_price=reference_price,
             reference_price_basis=reference_price_basis,
             published_strategy_max_loss=published_strategy_max_loss,
             status="MULTI_EXPIRATION_REQUIRES_TIME_MODEL",
             basis=(
-                "The selected order spans multiple expirations; one expiration "
-                "payoff would be misleading. Use Schwab review and the published "
+                "The selected order has short option exposure after its first "
+                "expiration, so an intrinsic-value floor would not bound the later "
+                "liability honestly. Use Schwab review and the published "
                 "whole-strategy risk estimate instead."
             ),
         )
 
-    risk_expiration = next(iter(expirations), None)
     strikes = sorted(
         {
             float(leg.strike)
@@ -395,6 +404,27 @@ def _strategy_risk_profile(
             )
             for move in _RISK_SCENARIO_MOVES
         )
+    if multi_expiration:
+        ticket_max_loss = _configured_assignment_risk_bound(
+            candidate_row,
+            published_strategy_max_loss=published_strategy_max_loss,
+            strategy_quantity=strategy_quantity,
+            opening_cash_flow=opening_cash_flow,
+        )
+        ticket_unbounded = False
+        ticket_worst_price = None
+        combined_max_loss = None
+        combined_unbounded = shares_held < -1e-12
+        combined_worst_price = None
+        if (
+            ticket_max_loss is not None
+            and reference_price is not None
+            and not combined_unbounded
+        ):
+            combined_max_loss = round(
+                ticket_max_loss + max(0.0, shares_held * reference_price),
+                2,
+            )
 
     expiration_label = (
         _expiration_display(risk_expiration)
@@ -411,11 +441,47 @@ def _strategy_risk_profile(
         if reference_price is not None
         else " Existing-share P/L is unavailable without a reference stock price."
     )
+    if multi_expiration:
+        assignment_bound_text = (
+            " No validated assignment-risk bound is available for the max-loss "
+            "cards."
+            if ticket_max_loss is None
+            else (
+                " The max-loss cards use a conservative path-dependent assignment-"
+                f"risk bound of ${ticket_max_loss:,.2f}, adjusted to the configured "
+                "opening cash flow."
+            )
+        )
+        published_bound_text = (
+            ""
+            if published_strategy_max_loss is None
+            else (
+                " The published strategy risk-capital estimate is "
+                f"${published_strategy_max_loss:,.2f} and remains the "
+                "buying-power requirement input."
+            )
+        )
+        risk_status = "MULTI_EXPIRATION_INTRINSIC_FLOOR"
+        risk_basis = (
+            f"Conservative P/L floor at the first expiration, {expiration_label}, "
+            f"using {opening_cash_flow_basis.lower()}. Later-dated long options are "
+            "valued at intrinsic only; their remaining time value is excluded, so "
+            "the displayed scenario P/L may improve but should not be worse under "
+            "these assumptions."
+            f"{reference_text} {exclusions}{assignment_bound_text}"
+            f"{published_bound_text}"
+        )
+    else:
+        risk_status = "SINGLE_EXPIRATION_PAYOFF"
+        risk_basis = (
+            f"Expiration payoff at {expiration_label} using "
+            f"{opening_cash_flow_basis.lower()}.{reference_text} {exclusions}"
+        )
     return _StrategyRiskProfile(
         reference_price=reference_price,
         reference_price_basis=reference_price_basis,
         risk_expiration=risk_expiration,
-        risk_status="SINGLE_EXPIRATION_PAYOFF",
+        risk_status=risk_status,
         published_strategy_max_loss=published_strategy_max_loss,
         ticket_max_loss=ticket_max_loss,
         ticket_max_loss_unbounded=ticket_unbounded,
@@ -423,10 +489,7 @@ def _strategy_risk_profile(
         combined_max_loss=combined_max_loss,
         combined_max_loss_unbounded=combined_unbounded,
         combined_worst_case_price=combined_worst_price,
-        risk_basis=(
-            f"Expiration payoff at {expiration_label} using "
-            f"{opening_cash_flow_basis.lower()}.{reference_text} {exclusions}"
-        ),
+        risk_basis=risk_basis,
         price_scenarios=scenarios,
     )
 
@@ -453,6 +516,33 @@ def _unavailable_risk_profile(
         combined_worst_case_price=None,
         risk_basis=basis,
         price_scenarios=(),
+    )
+
+
+def _configured_assignment_risk_bound(
+    candidate_row: Mapping[str, object],
+    *,
+    published_strategy_max_loss: float | None,
+    strategy_quantity: int,
+    opening_cash_flow: float,
+) -> float | None:
+    status = str(candidate_row.get("risk_calculation_status") or "").strip().upper()
+    if (
+        status != "PATH_DEPENDENT_CONSERVATIVE_ASSIGNMENT_BOUND"
+        or published_strategy_max_loss is None
+    ):
+        return None
+    published_cash_flow = _finite_number(candidate_row.get("entry_cash_flow"))
+    if published_cash_flow is None:
+        return published_strategy_max_loss
+    published_debit = max(-published_cash_flow * strategy_quantity, 0.0)
+    configured_debit = max(-opening_cash_flow, 0.0)
+    return round(
+        max(
+            0.0,
+            published_strategy_max_loss - published_debit + configured_debit,
+        ),
+        2,
     )
 
 
@@ -663,6 +753,14 @@ def _nonnegative_number(value: object) -> float | None:
     except (TypeError, ValueError):
         return None
     return number if math.isfinite(number) and number >= 0.0 else None
+
+
+def _finite_number(value: object) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
 
 
 __all__ = [

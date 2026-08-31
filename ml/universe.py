@@ -9,11 +9,9 @@ import pandas as pd
 from ml.contracts import MLContractError
 
 
-# This is the single production option universe used by Active Pricing, Options
-# Capture, Loop B option/pricing joins, Strategy option evidence, OPRA planning,
-# and eligibility.  Keep research benchmarks separate: membership in a benchmark
-# set must never imply membership in a production route.
-PRODUCTION_OPTION_SYMBOLS: tuple[str, ...] = (
+# This is the shared six-underlying Loops universe. Stock and option consumers
+# use distinct execution contracts even though they share these symbols.
+PRODUCTION_LOOPS_SYMBOLS: tuple[str, ...] = (
     "AAPL",
     "AMZN",
     "GOOG",
@@ -21,6 +19,8 @@ PRODUCTION_OPTION_SYMBOLS: tuple[str, ...] = (
     "NVDA",
     "SNDK",
 )
+# Compatibility name for the existing options stack.
+PRODUCTION_OPTION_SYMBOLS: tuple[str, ...] = PRODUCTION_LOOPS_SYMBOLS
 OPTION_CALL_PUTS: tuple[str, ...] = ("CALL", "PUT")
 PRODUCTION_OPTION_ROUTES: tuple[tuple[str, str], ...] = tuple(
     (symbol, call_put)
@@ -176,6 +176,7 @@ __all__ = [
     "PRODUCTION_OPTION_ROUTE_COUNT",
     "PRODUCTION_OPTION_ROUTES",
     "PRODUCTION_OPTION_SYMBOLS",
+    "PRODUCTION_LOOPS_SYMBOLS",
     "RESEARCH_OPTION_BENCHMARK_SYMBOLS",
     "ResearchInstrument",
     "canonical_production_option_symbols",

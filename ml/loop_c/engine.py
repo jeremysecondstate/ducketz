@@ -10,6 +10,9 @@ import pandas as pd
 from ml.loop_c.policy import LOOP_C_POLICY_VERSION, LoopCMode, LoopCRiskLimits
 
 
+LOOP_C_OPTION_SHADOW_HORIZONS: tuple[str, ...] = ("1d", "1w")
+
+
 @dataclass(frozen=True)
 class LoopCDecision:
     decision_timestamp: pd.Timestamp
@@ -107,8 +110,17 @@ def evaluate_loop_c(
             "NO_TRADE",
             ("CANDIDATE_SCHEMA_INVALID",),
         )
+    candidate_horizons = candidates["horizon"].astype("string").str.lower()
+    horizon_eligible = candidate_horizons.isin(LOOP_C_OPTION_SHADOW_HORIZONS)
+    if not bool(horizon_eligible.any()):
+        return _empty_decision(
+            now,
+            selected_mode,
+            "NO_TRADE",
+            ("OPTIONS_SHADOW_HORIZON_BELOW_1D",),
+        )
     eligible: list[dict[str, object]] = []
-    for row in candidates.to_dict(orient="records"):
+    for row in candidates.loc[horizon_eligible].to_dict(orient="records"):
         screened = _screen_candidate(row, risk_limits=risk_limits, portfolio=portfolio or {})
         if screened is not None:
             eligible.append(screened)
@@ -358,4 +370,8 @@ def _utc(value: object, label: str) -> pd.Timestamp:
     return pd.Timestamp(parsed)
 
 
-__all__ = ["LoopCDecision", "evaluate_loop_c"]
+__all__ = [
+    "LOOP_C_OPTION_SHADOW_HORIZONS",
+    "LoopCDecision",
+    "evaluate_loop_c",
+]

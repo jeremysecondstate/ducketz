@@ -259,10 +259,10 @@ running Loop C by adding `--validate-inputs-only` to the command above.
 ## Activation gates
 
 Any future request to let this lane affect rankings or orders is a separate
-production change. `loop-c-observe-evidence-gate-v1` permits an operator review
-no sooner than 40 completed XNYS sessions (about eight trading weeks) and also
-requires at least 60 mature independent 1h clusters, 60 mature 4h clusters, 30
-mature 1d clusters, eight non-overlapping weekly cohorts, 20 reconciled
+production change. `loop-c-options-1d-plus-observe-evidence-gate-v2` permits an
+operator review no sooner than 40 completed XNYS sessions (about eight trading
+weeks) and also requires at least 30 mature independent 1d option-paper
+clusters, eight non-overlapping weekly option-paper cohorts, 20 reconciled
 observations, two halt drills, one rollback drill, passing calibration and
 interval coverage, cost/latency/missing-data stress, symbol/regime stability,
 publication integrity, paper-broker reconciliation, zero deterministic-gate
@@ -271,3 +271,8 @@ automatic activation. `ml.loop_c.rollout` can return only
 `ELIGIBLE_FOR_OPERATOR_REVIEW`; it always withholds authority and automatic
 promotion. A separate production change and direct user approval remain
 mandatory, regardless of favorable metrics or scheduler stage.
+
+The shared encoder still publishes `1h`, `4h`, `1d`, and `1w` distributions for
+Loop B and other shadow consumers. Loop C's options paper lane selects only
+`1d` and `1w` Strategy candidates; shorter option horizons are logged as
+`OPTIONS_SHADOW_HORIZON_BELOW_1D` and cannot become a research proposal.

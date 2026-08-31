@@ -36,8 +36,12 @@ from app.ui.options_strategies import (
     _discover_sash_position,
     _decision_evidence,
     _inline_decision_summary,
+    _max_loss_text,
+    _profit_loss_text,
     _publication_notice_display,
+    _risk_scope_text,
     _sort_candidate_views,
+    _worst_case_text,
 )
 from app.ui.rolling_forecast_data import HORIZON_LABELS as FORECAST_HORIZON_LABELS
 from app.ui.schwab_order_messages import order_confirmation_message
@@ -1695,16 +1699,109 @@ def test_short_call_risk_reports_unlimited_ticket_and_combined_loss() -> None:
     assert impact.combined_max_loss_unbounded
 
 
-def test_multi_expiration_ticket_does_not_claim_exact_max_loss() -> None:
+def test_multi_expiration_ticket_uses_conservative_front_expiration_floor() -> None:
     candidate = _candidate(
-        strategy_name="long_call_calendar",
-        strategy_display_name="Long Call Calendar",
+        strategy_name="bear_put_diagonal",
+        strategy_display_name="Bear Put Diagonal",
         expiration_structure="MULTI",
-        max_loss=250.0,
-        capital_required=250.0,
+        underlying_price=342.88,
+        entry_cash_flow=-431.30,
+        max_loss=34_181.30,
+        capital_required=34_181.30,
+        risk_calculation_status="PATH_DEPENDENT_CONSERVATIVE_ASSIGNMENT_BOUND",
         legs=[
             _option_leg(
                 side="SHORT",
+                option_type="PUT",
+                strike=337.5,
+                symbol="GOOG  260904P00337500",
+                bid=2.35,
+                ask=2.60,
+                expiration="2026-09-04T00:00:00Z",
+            ),
+            _option_leg(
+                side="LONG",
+                option_type="PUT",
+                strike=342.5,
+                symbol="GOOG  260911P00342500",
+                bid=5.90,
+                ask=6.65,
+                expiration="2026-09-11T00:00:00Z",
+            ),
+        ],
+    )
+    position = schwab_position_context(
+        {
+            "positions": {
+                "items": [
+                    {
+                        "asset_type": "EQUITY",
+                        "symbol": "GOOG",
+                        "net_quantity": 120,
+                        "price": 342.88,
+                    }
+                ]
+            },
+            "account_values": {"available_funds": 65_702.90},
+        },
+        symbol="GOOG",
+    )
+    draft = build_strategy_order_draft(candidate, position=position)
+
+    impact = calculate_strategy_portfolio_impact(
+        candidate,
+        order_draft=draft,
+        position=position,
+        order_index=0,
+        strategy_quantity=1,
+        order_method=NET_DEBIT_LIMIT,
+        limit_price=4.30,
+        account_label="Schwab",
+    )
+
+    assert impact.risk_status == "MULTI_EXPIRATION_INTRINSIC_FLOOR"
+    assert impact.risk_expiration == "2026-09-04"
+    assert impact.ticket_max_loss == 34_180.0
+    assert not impact.ticket_max_loss_unbounded
+    assert impact.ticket_worst_case_price is None
+    assert impact.combined_max_loss == 75_325.60
+    assert impact.combined_worst_case_price is None
+    assert impact.published_strategy_max_loss == 34_181.30
+    assert len(impact.price_scenarios) == 5
+    assert impact.price_scenarios[0].ticket_profit_loss == 70.0
+    assert impact.price_scenarios[0].combined_profit_loss == -8_159.12
+    assert impact.price_scenarios[2].ticket_profit_loss == -430.0
+    assert impact.price_scenarios[2].combined_profit_loss == -430.0
+    assert "Later-dated long options are valued at intrinsic only" in impact.risk_basis
+    assert "assignment-risk bound of $34,180.00" in impact.risk_basis
+    assert "buying-power requirement input" in impact.risk_basis
+    assert _max_loss_text(
+        impact.ticket_max_loss,
+        unbounded=False,
+        upper_bound=True,
+    ) == "≤ $34,180.00"
+    assert _profit_loss_text(-430.0, lower_bound=True) == "≥ -$430.00"
+    assert _worst_case_text(
+        impact.combined_worst_case_price,
+        unbounded=False,
+        path_dependent=True,
+    ) == "Path-dependent"
+    assert _risk_scope_text(impact) == (
+        "First-expiry intrinsic floor · Sep 4, 2026 · Reference $342.88"
+    )
+
+
+def test_multi_expiration_ticket_with_later_short_exposure_stays_unavailable() -> None:
+    candidate = _candidate(
+        strategy_name="unsupported_reverse_calendar",
+        strategy_display_name="Unsupported Reverse Calendar",
+        expiration_structure="MULTI",
+        max_loss=500.0,
+        capital_required=500.0,
+        risk_calculation_status="PATH_DEPENDENT_CONSERVATIVE_ASSIGNMENT_BOUND",
+        legs=[
+            _option_leg(
+                side="LONG",
                 option_type="CALL",
                 strike=105.0,
                 symbol="GOOG  260918C00105000",
@@ -1713,7 +1810,7 @@ def test_multi_expiration_ticket_does_not_claim_exact_max_loss() -> None:
                 expiration="2026-09-18T00:00:00Z",
             ),
             _option_leg(
-                side="LONG",
+                side="SHORT",
                 option_type="CALL",
                 strike=105.0,
                 symbol="GOOG  261218C00105000",
@@ -1742,11 +1839,9 @@ def test_multi_expiration_ticket_does_not_claim_exact_max_loss() -> None:
 
     assert impact.risk_status == "MULTI_EXPIRATION_REQUIRES_TIME_MODEL"
     assert impact.ticket_max_loss is None
-    assert not impact.ticket_max_loss_unbounded
     assert impact.combined_max_loss is None
     assert impact.price_scenarios == ()
-    assert impact.published_strategy_max_loss == 250.0
-    assert "one expiration payoff would be misleading" in impact.risk_basis
+    assert "short option exposure after its first expiration" in impact.risk_basis
 
 
 def test_decision_evidence_separates_contract_and_quality_notices() -> None:

@@ -87,15 +87,17 @@ but cannot raise one.
 The observe-only seed values are predeclared rather than chosen after seeing a
 sequence assessment:
 
-| Horizon | Strategy probability | Sequence direction | Net return on risk | Maximum total uncertainty | Uncertainty penalty |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| 1h | 0.60 | 0.56 | 0.03 | 0.020 | 1.25 |
-| 4h | 0.60 | 0.57 | 0.04 | 0.035 | 1.35 |
-| 1d | 0.62 | 0.58 | 0.06 | 0.060 | 1.50 |
-| 1w | 0.65 | 0.60 | 0.10 | 0.120 | 1.75 |
+| Horizon | Option-paper eligibility | Strategy probability | Sequence direction | Net return on risk | Maximum total uncertainty | Uncertainty penalty |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| 1h | Ineligible; shared-sequence context only | 0.60 | 0.56 | 0.03 | 0.020 | 1.25 |
+| 4h | Ineligible; shared-sequence context only | 0.60 | 0.57 | 0.04 | 0.035 | 1.35 |
+| 1d | Eligible paper option | 0.62 | 0.58 | 0.06 | 0.060 | 1.50 |
+| 1w | Eligible paper option | 0.65 | 0.60 | 0.10 | 0.120 | 1.75 |
 
-These values are proposal inputs, not evidence of quality. They may filter
-observe-only rows after explicit approval, but they cannot be silently tuned.
+These values are proposal inputs, not evidence of quality. Only the 1d and 1w
+rows may filter option-paper candidates after explicit approval; 1h/4h values
+remain in the exact shared-model binding and do not make short-horizon options
+eligible. They cannot be silently tuned.
 The assessment reports must show their coverage, calibration, realized net
 return after modeled costs, and stability before a later change is considered.
 

@@ -143,12 +143,12 @@ report can approve itself or unhalt Loop C.
 ## Evidence floor
 
 The evidence clock starts at the first successful open-session Loop C
-publication. `loop-c-observe-evidence-gate-v1` requires all of the following
+publication. `loop-c-options-1d-plus-observe-evidence-gate-v2` requires all of the following
 before an authority-expansion proposal may even be presented for review:
 
 - 40 completed XNYS sessions with valid observations;
-- 60 mature independent 1h clusters, 60 mature independent 4h clusters, 30
-  mature independent 1d clusters, and eight non-overlapping weekly cohorts;
+- 30 mature independent 1d option-paper clusters and eight non-overlapping
+  weekly option-paper cohorts;
 - 20 reconciled observations, two successful halt drills, and one rollback
   drill;
 - passing preregistered calibration, interval-coverage,
