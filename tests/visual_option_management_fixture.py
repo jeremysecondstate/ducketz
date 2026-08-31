@@ -444,7 +444,7 @@ def _global_header(root: tk.Tk) -> None:
         padx=12,
         pady=9,
     ).pack(side=tk.LEFT)
-    for label in ("Rolling Forecasts", "Options Strategies", "Ducket Bucket", "Schwab Duckets"):
+    for label in ("Rolling Forecasts", "Options Strategies", "Schwab Duckets"):
         tk.Label(
             header,
             text=label,

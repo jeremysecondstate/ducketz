@@ -80,8 +80,29 @@ def decision_targets_open(
     return abs((target - window.session_open).total_seconds()) < 60.0
 
 
+def next_stock_target_start(as_of: object) -> pd.Timestamp | None:
+    """Return the next exchange-defined intraday target start after ``as_of``."""
+
+    timestamp = utc(as_of)
+    local_date = timestamp.tz_convert("America/New_York").date()
+    calendar = ExchangeSessionCalendar(
+        "XNYS",
+        start=pd.Timestamp(local_date) - pd.Timedelta(days=7),
+        end=pd.Timestamp(local_date) + pd.Timedelta(days=14),
+    )
+    return next(
+        (
+            candidate
+            for candidate in calendar.target_start_candidates()
+            if candidate > timestamp
+        ),
+        None,
+    )
+
+
 __all__ = [
     "StockExecutionWindow",
     "decision_targets_open",
+    "next_stock_target_start",
     "stock_execution_window",
 ]

@@ -15,21 +15,52 @@ options-trading authority.
 - `CONFIRM_ACTIVE_TRADING=TRUE` permits the checked-in runtime to submit;
   `FALSE`, missing, or malformed prevents every new submission.
 
-## Hourly live + shadow owner
+## Receipt-driven live + shadow owners
 
-At each scheduled wake, run exactly once from `C:\dev\ducketz`:
+Loop B computes at `:05`/`:35`, but its receipt-verified publication normally
+becomes authoritative later. The stock trader therefore wakes before the next
+target and waits for publication authority instead of guessing from the wall
+clock.
+
+At the weekday opening wake (`06:17` PT), run exactly once from
+`C:\dev\ducketz`:
 
 ```powershell
 .\.venv\Scripts\python.exe -m ml.stock_trader.runtime `
   --datastore-target pc `
   --execute `
-  --queue-at-open
+  --queue-at-open `
+  --wait-for-actionable-prediction
 ```
+
+At each weekday intraday wake (`07:47` through `11:47` PT), run exactly once:
+
+```powershell
+.\.venv\Scripts\python.exe -m ml.stock_trader.runtime `
+  --datastore-target pc `
+  --execute `
+  --wait-for-actionable-prediction
+```
+
+The waiter resolves the next XNYS target from the same versioned exchange
+calendar used by Loop B. It accepts only an unconsumed LIVE 1h prediction from
+the checksum-verified current publication whose target is still ahead. The
+expected fresh generation begins 25 minutes before that target. The waiter
+polls every 15 seconds and stops 90 seconds before the target so account state,
+quotes, sizing, and submission still occur before the predicted window begins.
+
+An older receipt for the exact same future target is retained while waiting. If
+the expected fresh generation has not promoted by the deadline, that still-
+actionable receipt becomes the explicit `FALLBACK_ACTIONABLE_RECEIPT`; the
+enrichment model receives its real `prediction_age_minutes`. Expired targets
+are never fallbacks. A prior execution-requested LIVE decision consumes its
+prediction ID, including a NO_TRADE decision, so later wakes cannot reuse it.
 
 The runtime itself resolves the XNYS calendar. The opening-queue path is valid
 only during the official pre-open and only for a prediction whose target starts
 at that session's core open. During the day it submits only inside the XNYS core
-session. Closed sessions publish observation evidence but submit nothing.
+session. A target more than 45 minutes away is not a near-term hourly target and
+cannot keep the waiter alive or create an overnight scheduling accident.
 
 One invocation creates both lanes from the same prediction, account, working
 orders, and quote snapshot:
@@ -39,7 +70,9 @@ orders, and quote snapshot:
 
 The submission loop explicitly filters for `decision_lane=LIVE`. All live and
 shadow decisions, including `NO_TRADE`, are immutable and later paired to the
-same receipt-verified Loop B market outcome.
+same receipt-verified Loop B market outcome. The handoff status, wait duration,
+source run and promotion clocks, fallback use, missing symbols, and consumed
+prediction IDs are stored in the decision receipt and weekly audit.
 
 After the runtime, run the read-only reconciliation exactly once:
 

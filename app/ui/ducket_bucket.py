@@ -40,8 +40,6 @@ from app.services.hyperliquid_trading import (
     normalize_hyperliquid_spot_market,
 )
 
-from app.services.schwab import sync_schwab_portfolio
-
 HYPERLIQUID_SIDE_CHOICES = ("buy", "sell")
 HYPERLIQUID_ORDER_TYPE_CHOICES = ("limit", "market", "trigger")
 HYPERLIQUID_TIF_CHOICES = ("Gtc", "Ioc", "Alo")
@@ -235,13 +233,11 @@ class DucketBucketApp:
 
         forecasts_frame = ttk.Frame(notebook)
         strategies_frame = ttk.Frame(notebook)
-        bucket_frame = ttk.Frame(notebook)
         schwab_frame = ttk.Frame(notebook)
         hyperliquid_frame = ttk.Frame(notebook)
 
         notebook.add(forecasts_frame, text="Rolling Forecasts")
         notebook.add(strategies_frame, text="Options Strategies")
-        notebook.add(bucket_frame, text="Ducket Bucket")
         notebook.add(schwab_frame, text="Schwab Duckets")
         notebook.add(hyperliquid_frame, text="Hyperliquid Duckets")
 
@@ -253,14 +249,6 @@ class DucketBucketApp:
         OptionsStrategiesTab(
             root=self.root,
             parent=strategies_frame,
-        )
-
-        DucketsTab(
-            root=self.root,
-            parent=bucket_frame,
-            title="Ducket Bucket",
-            sync_button_text="Sync Bucket",
-            sync_snapshots=lambda: [sync_schwab_portfolio(), *sync_hyperliquid_portfolios()],
         )
 
         SchwabDucketsTab(

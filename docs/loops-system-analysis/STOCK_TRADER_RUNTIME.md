@@ -17,16 +17,21 @@ outcomes, and no Schwab options submission path.
 
 ## Hourly critical path
 
-1. Read the persistent operator switch once.
+1. Read the persistent operator switch.
 2. If inactive, publish an inactive receipt and make no Schwab request.
-3. Load the receipt-verified current Loop B publication and current enrichment
-   model.
-4. Fetch account/positions, working orders, and all six quotes concurrently.
-5. Run one multi-head enrichment inference per symbol from the same snapshot.
-6. Jointly convert model allocations into feasible whole-share quantities.
-7. Publish the complete immutable six-symbol LIVE lane and six-symbol SHADOW
+3. Resolve the next XNYS target and wait for its unconsumed checksum-verified
+   Loop B publication until 90 seconds before that target.
+4. Prefer the expected fresh generation; if it is delayed, retain only an older
+   still-actionable receipt for that exact target as an age-aware fallback.
+5. Re-read the operator switch so a `FALSE` toggle during the wait stops before
+   any Schwab request.
+6. Load the current enrichment model, then fetch account/positions, working
+   orders, and all six quotes concurrently.
+7. Run one multi-head enrichment inference per symbol from the same snapshot.
+8. Jointly convert model allocations into feasible whole-share quantities.
+9. Publish the complete immutable six-symbol LIVE lane and six-symbol SHADOW
    challenger from that same snapshot.
-8. If deployment execution is enabled, reserve each LIVE decision ID once and send
+10. If deployment execution is enabled, reserve each LIVE decision ID once and send
    its selected order immediately. Reconciliation and outcome evaluation are
    outside the pre-submit critical path.
 
@@ -108,7 +113,8 @@ Deployment command (still inert unless the operator switch is `TRUE`):
 .\.venv\Scripts\python.exe -m ml.stock_trader.runtime `
   --datastore-target pc `
   --execute `
-  --queue-at-open
+  --queue-at-open `
+  --wait-for-actionable-prediction
 ```
 
 Weekly paired audit for the latest completed XNYS week:
@@ -179,7 +185,9 @@ Thus a record such as
 `WEAK_EXPECTED_VALUE_AFTER_WAITING_AND_SLIPPAGE -> NO_TRADE` remains directly
 paired with what the market subsequently did. JSON contains the full pairs;
 Markdown contains a compact row-by-row audit table and grouped reason/order-
-style performance.
+style performance. It also contains the receipt-handoff status and reports
+fallback decisions separately, allowing fresh-versus-fallback performance to
+be evaluated from the same mature outcomes.
 
 Exact broker fill reconciliation is labeled separately from the midpoint
 counterfactual. Even with a fill, the registered forward market outcome is not
@@ -188,12 +196,15 @@ or position-history attribution.
 
 ## Production deployment
 
-The existing `loops-hourly-operations` monitor/trainer remains unchanged. Two
+The existing `loops-hourly-operations` monitor/trainer remains unchanged. Three
 separate stock owners are active:
 
-- `Loops Stock Trader — Live + Shadow` runs at 06:20 PT and hourly through
-  12:20 PT on weekdays. The runtime's XNYS calendar blocks holidays, closed
-  sessions, and inappropriate opening queues.
+- `Loops Stock Trader — Opening Live + Shadow` wakes at 06:17 PT on weekdays,
+  waits for the opening-target receipt, and may use the explicit opening queue.
+- `Loops Stock Trader — Live + Shadow` wakes at 07:47 PT and hourly through
+  11:47 PT on weekdays, then acts immediately when the next target's receipt is
+  promoted. The runtime's XNYS calendar blocks holidays and inappropriate
+  targets.
 - `Loops Stock Trader — Daily Adaptation` runs at 14:20 PT on weekdays and
   publishes only when an XNYS session completed that day.
 

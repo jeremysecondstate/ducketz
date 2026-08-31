@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from types import SimpleNamespace
 
 import pandas as pd
 import pytest
 
-from ml.stock_trader import audit, inputs
+from ml.stock_trader import audit, handoff, inputs
 from ml.stock_trader import runtime
 from ml.stock_trader.audit import _pair_decision_with_reality
 from ml.stock_trader.contracts import (
@@ -30,7 +30,7 @@ from ml.stock_trader.publication import (
     reserve_execution_intent,
 )
 from ml.stock_trader.reconciliation import reconcile_submitted_orders
-from ml.stock_trader.session import stock_execution_window
+from ml.stock_trader.session import next_stock_target_start, stock_execution_window
 from ml.stock_trader.state import capture_portfolio_state
 from ml.stock_trader.training import fit_enrichment_model_payload
 
@@ -425,6 +425,60 @@ def test_runtime_logs_prediction_input_failure_without_contacting_broker(
     assert receipt["orders_selected"] == 0
 
 
+def test_runtime_prediction_deadline_expiry_never_contacts_broker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    waited = _handoff_result(
+        {},
+        status="PREDICTION_DEADLINE_EXPIRED",
+        completed_at="2026-08-31T16:58:30+00:00",
+    )
+    monkeypatch.setattr(runtime, "wait_for_actionable_prediction", lambda *_a, **_k: waited)
+
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at="2026-08-31T16:47:00+00:00",
+        execute=True,
+        session=NeverCalledSchwab(),
+        wait_for_prediction=True,
+    )
+
+    assert result.status == "PREDICTION_DEADLINE_EXPIRED"
+    assert result.prediction_handoff_status == "PREDICTION_DEADLINE_EXPIRED"
+    payload, _receipt = read_decision_run(tmp_path, result.run_directory)
+    assert payload["prediction_handoff"]["poll_count"] == waited.poll_count
+    assert payload["decisions"] == []
+
+
+def test_false_toggle_during_prediction_wait_stops_before_broker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    target = pd.Timestamp("2026-08-31T17:00:00+00:00")
+
+    def wait_then_deactivate(*_args, **_kwargs):
+        write_activation_intent(tmp_path, active=False)
+        return _handoff_result(
+            _signals_for_target(target, fingerprint="fresh"),
+            status="FRESH_ACTIONABLE_RECEIPT",
+            completed_at="2026-08-31T16:50:00+00:00",
+        )
+
+    monkeypatch.setattr(runtime, "wait_for_actionable_prediction", wait_then_deactivate)
+
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at="2026-08-31T16:47:00+00:00",
+        execute=True,
+        session=NeverCalledSchwab(),
+        wait_for_prediction=True,
+    )
+
+    assert result.status == "TRADER_INACTIVE_AFTER_PREDICTION_WAIT"
+    assert result.activation_active is False
+
+
 def test_runtime_requires_execute_and_true_toggle_for_submission(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -490,6 +544,125 @@ def test_execution_window_allows_explicit_open_queue_and_core_only() -> None:
     assert (queued.executable, queued.mode) == (True, "OPEN_QUEUE")
     assert (core.executable, core.mode) == (True, "CORE")
     assert (closed.executable, closed.mode) == (False, "CLOSED")
+
+
+def test_next_stock_target_start_resolves_open_and_local_clock_hour() -> None:
+    assert next_stock_target_start("2026-08-31T13:17:00+00:00") == pd.Timestamp(
+        "2026-08-31T13:30:00+00:00"
+    )
+    assert next_stock_target_start("2026-08-31T14:47:00+00:00") == pd.Timestamp(
+        "2026-08-31T15:00:00+00:00"
+    )
+
+
+def test_prediction_handoff_waits_for_fresh_receipt_after_keeping_fallback(
+    tmp_path: Path,
+) -> None:
+    clock = _FakeClock("2026-08-31T16:47:00+00:00")
+    target = pd.Timestamp("2026-08-31T17:00:00+00:00")
+    fallback_sources = _prediction_receipt_sources(
+        tmp_path,
+        "fallback",
+        run_timestamp="2026-08-31T16:06:00+00:00",
+        promoted_at="2026-08-31T16:20:00+00:00",
+    )
+    fresh_sources = _prediction_receipt_sources(
+        tmp_path,
+        "fresh",
+        run_timestamp="2026-08-31T16:36:00+00:00",
+        promoted_at="2026-08-31T16:50:00+00:00",
+    )
+    calls = 0
+
+    def loader(_root: Path, *, as_of: object):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return _signals_for_target(target, fingerprint="fallback"), fallback_sources
+        return _signals_for_target(target, fingerprint="fresh"), fresh_sources
+
+    result = handoff.wait_for_actionable_prediction(
+        tmp_path,
+        started_at=clock(),
+        expected_target_window_start=target,
+        poll_seconds=15.0,
+        clock=clock,
+        sleeper=clock.sleep,
+        consumed_prediction_ids=set(),
+        signal_loader=loader,
+    )
+
+    assert result.status == "FRESH_ACTIONABLE_RECEIPT"
+    assert result.fallback_used is False
+    assert result.fallback_candidate_observed is True
+    assert result.source_run_path == "ml/runs/fresh"
+    assert result.poll_count == 2
+    assert set(result.signals) == set(STOCK_TRADER_SYMBOLS)
+
+
+def test_prediction_handoff_uses_age_aware_fallback_at_deadline(
+    tmp_path: Path,
+) -> None:
+    clock = _FakeClock("2026-08-31T16:47:00+00:00")
+    target = pd.Timestamp("2026-08-31T17:00:00+00:00")
+    sources = _prediction_receipt_sources(
+        tmp_path,
+        "fallback-only",
+        run_timestamp="2026-08-31T16:06:00+00:00",
+        promoted_at="2026-08-31T16:20:00+00:00",
+    )
+
+    result = handoff.wait_for_actionable_prediction(
+        tmp_path,
+        started_at=clock(),
+        expected_target_window_start=target,
+        poll_seconds=900.0,
+        clock=clock,
+        sleeper=clock.sleep,
+        consumed_prediction_ids=set(),
+        signal_loader=lambda _root, *, as_of: (
+            _signals_for_target(target, fingerprint="fallback-only"),
+            sources,
+        ),
+    )
+
+    assert result.status == "FALLBACK_ACTIONABLE_RECEIPT"
+    assert result.fallback_used is True
+    assert result.completed_at == pd.Timestamp("2026-08-31T16:58:30+00:00")
+    assert result.to_dict()["poll_policy"]["fallback_age_feature"] == (
+        "prediction_age_minutes"
+    )
+
+
+def test_prediction_handoff_does_not_reconsume_live_prediction_generation(
+    tmp_path: Path,
+) -> None:
+    clock = _FakeClock("2026-08-31T16:47:00+00:00")
+    target = pd.Timestamp("2026-08-31T17:00:00+00:00")
+    signals = _signals_for_target(target, fingerprint="already-used")
+    sources = _prediction_receipt_sources(
+        tmp_path,
+        "already-used",
+        run_timestamp="2026-08-31T16:36:00+00:00",
+        promoted_at="2026-08-31T16:50:00+00:00",
+    )
+
+    result = handoff.wait_for_actionable_prediction(
+        tmp_path,
+        started_at=clock(),
+        expected_target_window_start=target,
+        poll_seconds=900.0,
+        clock=clock,
+        sleeper=clock.sleep,
+        consumed_prediction_ids={signal.prediction_id for signal in signals.values()},
+        signal_loader=lambda _root, *, as_of: (signals, sources),
+    )
+
+    assert result.status == "PREDICTION_GENERATION_ALREADY_CONSUMED"
+    assert result.signals == {}
+    assert set(result.consumed_prediction_ids) == {
+        signal.prediction_id for signal in signals.values()
+    }
 
 
 def test_decision_publication_is_checksum_verified(tmp_path: Path) -> None:
@@ -625,6 +798,12 @@ def test_weekly_audit_publishes_row_by_row_decision_reality_pairs(
         activation=_activation(True),
         policy=policy,
         execution_requested=False,
+        prediction_handoff={
+            "schema_version": "stock-trader-prediction-handoff-v1",
+            "status": "FALLBACK_ACTIONABLE_RECEIPT",
+            "wait_seconds": 690.0,
+            "fallback_used": True,
+        },
     )
     evaluations = {
         f"prediction-{symbol}": {
@@ -657,11 +836,18 @@ def test_weekly_audit_publishes_row_by_row_decision_reality_pairs(
     assert result.pair_count == 6
     assert result.mature_pair_count == 6
     assert len(report["decision_outcome_pairs"]) == 6
+    assert report["summary"]["fallback_decision_count"] == 6
+    assert report["summary"]["prediction_handoff_runs"]["fallback_run_count"] == 1
+    assert (
+        report["decision_outcome_pairs"][0]["prediction_handoff"]["status"]
+        == "FALLBACK_ACTIONABLE_RECEIPT"
+    )
     assert (
         report["decision_outcome_pairs"][0]["order_style_reason_code"]
         == "NO_ORDER_WEAK_EXPECTED_VALUE_AFTER_WAITING_AND_SLIPPAGE"
     )
     assert "NO_ORDER_WEAK_EXPECTED_VALUE_AFTER_WAITING_AND_SLIPPAGE" in markdown
+    assert "FALLBACK_ACTIONABLE_RECEIPT (fallback)" in markdown
 
 
 def test_multihead_training_uses_mature_decision_outcome_pairs() -> None:
@@ -732,6 +918,96 @@ def _signals(
         )
         for symbol in STOCK_TRADER_SYMBOLS
     }
+
+
+class _FakeClock:
+    def __init__(self, value: object) -> None:
+        self.value = pd.Timestamp(value)
+
+    def __call__(self) -> pd.Timestamp:
+        return self.value
+
+    def sleep(self, seconds: float) -> None:
+        self.value += pd.Timedelta(seconds=seconds)
+
+
+def _signals_for_target(
+    target: pd.Timestamp, *, fingerprint: str
+) -> dict[str, PredictionSignal]:
+    target_timestamp = pd.Timestamp(target)
+    return {
+        symbol: replace(
+            signal,
+            prediction_id=f"{fingerprint}-{symbol}",
+            target_window_start=target_timestamp.isoformat(),
+            target_window_end=(target_timestamp + pd.Timedelta(hours=1)).isoformat(),
+            actionable_until=target_timestamp.isoformat(),
+            source_fingerprint=fingerprint,
+        )
+        for symbol, signal in _signals().items()
+    }
+
+
+def _prediction_receipt_sources(
+    root: Path,
+    name: str,
+    *,
+    run_timestamp: str,
+    promoted_at: str,
+) -> tuple[Path, ...]:
+    run = root / "ml" / "runs" / name
+    run.mkdir(parents=True)
+    publication = run / "publication.json"
+    publication.write_text(
+        json.dumps(
+            {
+                "run_path": run.relative_to(root).as_posix(),
+                "run_timestamp": run_timestamp,
+                "promoted_at": promoted_at,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return (publication,)
+
+
+def _handoff_result(
+    signals: dict[str, PredictionSignal],
+    *,
+    status: str,
+    completed_at: object,
+) -> handoff.PredictionHandoffResult:
+    target = pd.Timestamp("2026-08-31T17:00:00+00:00")
+    completed = pd.Timestamp(completed_at)
+    return handoff.PredictionHandoffResult(
+        status=status,
+        signals=signals,
+        source_files=(),
+        started_at=pd.Timestamp("2026-08-31T16:47:00+00:00"),
+        completed_at=completed,
+        expected_target_window_start=target,
+        deadline=target - pd.Timedelta(seconds=90),
+        fresh_generation_not_before=target - pd.Timedelta(minutes=25),
+        poll_count=2,
+        fallback_used=status == "FALLBACK_ACTIONABLE_RECEIPT",
+        fallback_candidate_observed=False,
+        source_run_path=("ml/runs/fresh" if signals else None),
+        source_run_timestamp=(
+            pd.Timestamp("2026-08-31T16:36:00+00:00") if signals else None
+        ),
+        source_promoted_at=(completed if signals else None),
+        source_fingerprint=("fresh" if signals else None),
+        selected_prediction_ids=tuple(
+            signal.prediction_id for signal in signals.values()
+        ),
+        consumed_prediction_ids=(),
+        missing_symbols=tuple(
+            symbol for symbol in STOCK_TRADER_SYMBOLS if symbol not in signals
+        ),
+        publication_error_count=0,
+        last_error=None,
+    )
 
 
 def _portfolio(

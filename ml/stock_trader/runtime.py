@@ -12,6 +12,12 @@ from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.stock_trader.contracts import StockTraderPolicy, TradeDecision, utc
 from ml.stock_trader.control import read_activation_intent
 from ml.stock_trader.engine import build_trade_decisions
+from ml.stock_trader.handoff import (
+    DEFAULT_CUTOFF_LEAD_SECONDS,
+    DEFAULT_MAXIMUM_TARGET_LEAD_SECONDS,
+    DEFAULT_POLL_SECONDS,
+    wait_for_actionable_prediction,
+)
 from ml.stock_trader.inputs import load_current_prediction_signals
 from ml.stock_trader.model import load_current_enrichment_model
 from ml.stock_trader.publication import (
@@ -42,6 +48,8 @@ class StockTraderRunResult:
     stopped_after_error: bool
     execution_requested: bool
     activation_active: bool
+    prediction_handoff_status: str | None = None
+    target_window_start: str | None = None
     error: str | None = None
 
     def to_dict(self) -> dict[str, object]:
@@ -54,6 +62,8 @@ class StockTraderRunResult:
             "stopped_after_error": self.stopped_after_error,
             "execution_requested": self.execution_requested,
             "activation_active": self.activation_active,
+            "prediction_handoff_status": self.prediction_handoff_status,
+            "target_window_start": self.target_window_start,
             "error": self.error,
         }
 
@@ -68,6 +78,12 @@ def run_stock_trader_once(
     parallel_state: bool = True,
     shadow_observe: bool = True,
     allow_open_queue: bool = False,
+    wait_for_prediction: bool = False,
+    prediction_poll_seconds: float = DEFAULT_POLL_SECONDS,
+    prediction_cutoff_lead_seconds: float = DEFAULT_CUTOFF_LEAD_SECONDS,
+    prediction_maximum_target_lead_seconds: float = (
+        DEFAULT_MAXIMUM_TARGET_LEAD_SECONDS
+    ),
 ) -> StockTraderRunResult:
     """Run one hourly stock decision cycle.
 
@@ -80,6 +96,9 @@ def run_stock_trader_once(
     active_policy = policy or StockTraderPolicy()
     active_policy.validate()
     activation = read_activation_intent(root)
+    prediction_handoff: dict[str, object] = {}
+    handoff_status: str | None = None
+    target_window_start: str | None = None
     with exclusive_runtime_lock(
         root / "locks" / "stock-trader-hourly.lock",
         process_name="stock-trader-hourly",
@@ -105,9 +124,83 @@ def run_stock_trader_once(
                 activation_active=False,
             )
         try:
-            signals, prediction_sources = load_current_prediction_signals(
-                root, as_of=timestamp
-            )
+            if wait_for_prediction:
+                handoff = wait_for_actionable_prediction(
+                    root,
+                    started_at=timestamp,
+                    poll_seconds=prediction_poll_seconds,
+                    cutoff_lead_seconds=prediction_cutoff_lead_seconds,
+                    maximum_target_lead_seconds=(
+                        prediction_maximum_target_lead_seconds
+                    ),
+                )
+                timestamp = handoff.completed_at
+                prediction_handoff = handoff.to_dict()
+                handoff_status = handoff.status
+                target_window_start = (
+                    handoff.expected_target_window_start.isoformat()
+                    if handoff.expected_target_window_start is not None
+                    else None
+                )
+                signals = dict(handoff.signals)
+                prediction_sources = handoff.source_files
+                if not signals:
+                    publication = publish_decision_run(
+                        root,
+                        (),
+                        decided_at=timestamp,
+                        activation=activation,
+                        policy=active_policy,
+                        execution_requested=execute,
+                        source_files=(
+                            prediction_sources or _prediction_pointer_sources(root)
+                        ),
+                        status=handoff.status,
+                        prediction_handoff=prediction_handoff,
+                    )
+                    return StockTraderRunResult(
+                        status=handoff.status,
+                        run_directory=publication.run_directory,
+                        selected_orders=0,
+                        submitted_orders=0,
+                        duplicate_suppressions=0,
+                        stopped_after_error=False,
+                        execution_requested=execute,
+                        activation_active=True,
+                        prediction_handoff_status=handoff.status,
+                        target_window_start=target_window_start,
+                        error=handoff.last_error,
+                    )
+                activation = read_activation_intent(root)
+                if not activation.active:
+                    status = "TRADER_INACTIVE_AFTER_PREDICTION_WAIT"
+                    publication = publish_decision_run(
+                        root,
+                        (),
+                        decided_at=timestamp,
+                        activation=activation,
+                        policy=active_policy,
+                        execution_requested=execute,
+                        source_files=prediction_sources,
+                        status=status,
+                        prediction_handoff=prediction_handoff,
+                    )
+                    return StockTraderRunResult(
+                        status=status,
+                        run_directory=publication.run_directory,
+                        selected_orders=0,
+                        submitted_orders=0,
+                        duplicate_suppressions=0,
+                        stopped_after_error=False,
+                        execution_requested=execute,
+                        activation_active=False,
+                        prediction_handoff_status=handoff.status,
+                        target_window_start=target_window_start,
+                    )
+            else:
+                signals, prediction_sources = load_current_prediction_signals(
+                    root, as_of=timestamp
+                )
         except Exception as exc:
             detail = f"{type(exc).__name__}: {exc}"
             publication = publish_decision_run(
@@ -119,6 +212,7 @@ def run_stock_trader_once(
                 execution_requested=execute,
                 source_files=_prediction_pointer_sources(root),
                 status="PREDICTION_INPUTS_UNAVAILABLE",
+                prediction_handoff=prediction_handoff,
             )
             return StockTraderRunResult(
                 status="PREDICTION_INPUTS_UNAVAILABLE",
@@ -129,6 +223,8 @@ def run_stock_trader_once(
                 stopped_after_error=False,
                 execution_requested=execute,
                 activation_active=True,
+                prediction_handoff_status=handoff_status,
+                target_window_start=target_window_start,
                 error=detail,
             )
         try:
@@ -155,6 +251,7 @@ def run_stock_trader_once(
                 execution_requested=execute,
                 source_files=(*prediction_sources, *model_sources),
                 status="BROKER_STATE_UNAVAILABLE",
+                prediction_handoff=prediction_handoff,
             )
             return StockTraderRunResult(
                 status="BROKER_STATE_UNAVAILABLE",
@@ -165,6 +262,8 @@ def run_stock_trader_once(
                 stopped_after_error=False,
                 execution_requested=execute,
                 activation_active=True,
+                prediction_handoff_status=handoff_status,
+                target_window_start=target_window_start,
                 error=detail,
             )
         live_decisions = build_trade_decisions(
@@ -211,6 +310,7 @@ def run_stock_trader_once(
             policy=active_policy,
             execution_requested=execute,
             source_files=(*prediction_sources, *model_sources),
+            prediction_handoff=prediction_handoff,
         )
         if not execute:
             return StockTraderRunResult(
@@ -228,6 +328,8 @@ def run_stock_trader_once(
                 stopped_after_error=False,
                 execution_requested=False,
                 activation_active=True,
+                prediction_handoff_status=handoff_status,
+                target_window_start=target_window_start,
             )
         execution_window = stock_execution_window(
             timestamp, allow_open_queue=allow_open_queue
@@ -244,15 +346,22 @@ def run_stock_trader_once(
                 stopped_after_error=False,
                 execution_requested=True,
                 activation_active=True,
+                prediction_handoff_status=handoff_status,
+                target_window_start=target_window_start,
                 error=execution_window.reason,
             )
-        return _submit_selected_orders(
+        result = _submit_selected_orders(
             root,
             broker,
             decisions,
             publication,
             timestamp=timestamp,
             execution_window=execution_window,
+        )
+        return replace(
+            result,
+            prediction_handoff_status=handoff_status,
+            target_window_start=target_window_start,
         )
 
 
@@ -373,6 +482,29 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--wait-for-actionable-prediction",
+        action="store_true",
+        help=(
+            "Wait for an unconsumed checksum-verified 1h Loop B receipt for "
+            "the next target, then execute before its bounded cutoff."
+        ),
+    )
+    parser.add_argument(
+        "--prediction-poll-seconds",
+        type=float,
+        default=DEFAULT_POLL_SECONDS,
+    )
+    parser.add_argument(
+        "--prediction-cutoff-lead-seconds",
+        type=float,
+        default=DEFAULT_CUTOFF_LEAD_SECONDS,
+    )
+    parser.add_argument(
+        "--prediction-maximum-target-lead-seconds",
+        type=float,
+        default=DEFAULT_MAXIMUM_TARGET_LEAD_SECONDS,
+    )
+    parser.add_argument(
         "--no-shadow-observe",
         action="store_true",
         help="Disable the paired shadow challenger for this invocation.",
@@ -382,6 +514,10 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.wait_for_actionable_prediction and args.decided_at:
+        raise SystemExit(
+            "--decided-at cannot be combined with --wait-for-actionable-prediction"
+        )
     try:
         root = resolve_datastore_dir(
             root_dir=args.root_dir, target=args.datastore_target
@@ -392,6 +528,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             execute=bool(args.execute),
             shadow_observe=not args.no_shadow_observe,
             allow_open_queue=bool(args.queue_at_open),
+            wait_for_prediction=bool(args.wait_for_actionable_prediction),
+            prediction_poll_seconds=args.prediction_poll_seconds,
+            prediction_cutoff_lead_seconds=args.prediction_cutoff_lead_seconds,
+            prediction_maximum_target_lead_seconds=(
+                args.prediction_maximum_target_lead_seconds
+            ),
         )
     except Exception as exc:
         print(json.dumps({"status": "FAILED", "error": f"{type(exc).__name__}: {exc}"}))
@@ -402,6 +544,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         if result.status
         in {
             "PREDICTION_INPUTS_UNAVAILABLE",
+            "PREDICTION_DEADLINE_EXPIRED",
+            "PREDICTION_EXECUTION_DEADLINE_PASSED",
             "BROKER_STATE_UNAVAILABLE",
             "SUBMISSION_STOPPED_AFTER_ERROR",
         }

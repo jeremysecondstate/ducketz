@@ -109,7 +109,6 @@ def main() -> None:
     for title in (
         "Rolling Forecasts",
         "Options Strategies",
-        "Ducket Bucket",
         "Schwab Duckets",
         "Hyperliquid Duckets",
     ):

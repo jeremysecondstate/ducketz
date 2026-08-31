@@ -49,6 +49,9 @@ def build_stock_trader_weekly_audit(
     decisions, decision_sources = load_verified_decisions(
         root, window_start=start, window_end=end
     )
+    prediction_handoffs = load_verified_prediction_handoffs(
+        root, window_start=start, window_end=end
+    )
     prediction_ids = {
         str(prediction.get("prediction_id"))
         for decision in decisions
@@ -66,6 +69,9 @@ def build_stock_trader_weekly_audit(
         for decision in decisions
     ]
     summary = _audit_summary(pairs)
+    summary["prediction_handoff_runs"] = _prediction_handoff_run_summary(
+        prediction_handoffs
+    )
     status = (
         "NO_STOCK_TRADER_DECISIONS"
         if not pairs
@@ -89,6 +95,7 @@ def build_stock_trader_weekly_audit(
             "market_outcome_source": "receipt-verified Loop B evaluations",
         },
         "summary": summary,
+        "prediction_handoffs": prediction_handoffs,
         "decision_outcome_pairs": pairs,
     }
     run = create_timestamp_directory(
@@ -162,6 +169,10 @@ def load_verified_decisions(
         return [], ()
     for run in sorted(path for path in runs_root.iterdir() if path.is_dir()):
         payload, _receipt = read_decision_run(root, run)
+        raw_handoff = payload.get("prediction_handoff")
+        prediction_handoff = (
+            dict(raw_handoff) if isinstance(raw_handoff, Mapping) else {}
+        )
         raw_decisions = payload.get("decisions")
         if not isinstance(raw_decisions, list):
             raise ValueError(f"Stock trader decision run has no decisions array: {run}")
@@ -177,6 +188,7 @@ def load_verified_decisions(
                 if existing is None:
                     decision = dict(raw_decision)
                     decision["duplicate_decision_receipt_count"] = 0
+                    decision["prediction_handoff"] = prediction_handoff
                     decisions_by_id[decision_id] = decision
                 else:
                     existing["duplicate_decision_receipt_count"] = (
@@ -188,6 +200,34 @@ def load_verified_decisions(
     output = list(decisions_by_id.values())
     output.sort(key=lambda item: (str(item.get("decided_at")), str(item.get("symbol"))))
     return output, tuple(dict.fromkeys(sources))
+
+
+def load_verified_prediction_handoffs(
+    datastore_root: Path,
+    *,
+    window_start: object,
+    window_end: object,
+) -> list[dict[str, object]]:
+    root = Path(datastore_root).resolve()
+    start = utc(window_start)
+    end = utc(window_end)
+    output: list[dict[str, object]] = []
+    runs_root = root / "ml" / "stock-trader-decision-runs"
+    if not runs_root.is_dir():
+        return output
+    for run in sorted(path for path in runs_root.iterdir() if path.is_dir()):
+        payload, _receipt = read_decision_run(root, run)
+        decided_at = utc(payload.get("decided_at"))
+        handoff = payload.get("prediction_handoff")
+        if start <= decided_at < end and isinstance(handoff, Mapping) and handoff:
+            output.append(
+                {
+                    "run_path": run.relative_to(root).as_posix(),
+                    "decided_at": decided_at.isoformat(),
+                    **dict(handoff),
+                }
+            )
+    return output
 
 
 def _load_loop_b_evaluations(
@@ -368,6 +408,11 @@ def _pair_decision_with_reality(
         "trade_probability": decision.get("trade_probability"),
         "allocation_fraction": decision.get("allocation_fraction"),
         "execution_urgency": decision.get("execution_urgency"),
+        "prediction_handoff": (
+            dict(decision.get("prediction_handoff"))
+            if isinstance(decision.get("prediction_handoff"), Mapping)
+            else {}
+        ),
         "execution_status": execution_result.get("status", "NOT_SUBMITTED"),
         "broker_order_id": execution_result.get("broker_order_id"),
         "broker_reconciliation": {
@@ -410,8 +455,11 @@ def _audit_summary(pairs: Sequence[Mapping[str, object]]) -> dict[str, object]:
     order_styles: Counter[str] = Counter()
     actions: Counter[str] = Counter()
     lanes: Counter[str] = Counter()
+    handoff_statuses: Counter[str] = Counter()
     reason_results: dict[str, list[float]] = defaultdict(list)
     style_results: dict[str, list[float]] = defaultdict(list)
+    handoff_results: dict[str, list[float]] = defaultdict(list)
+    fallback_decisions = 0
     mature = 0
     pending = 0
     non_evaluable = 0
@@ -427,6 +475,11 @@ def _audit_summary(pairs: Sequence[Mapping[str, object]]) -> dict[str, object]:
         order_styles[style] += 1
         actions[action] += 1
         lanes[lane] += 1
+        handoff = pair.get("prediction_handoff")
+        handoff_row = handoff if isinstance(handoff, Mapping) else {}
+        handoff_status = str(handoff_row.get("status") or "NOT_RECORDED")
+        handoff_statuses[handoff_status] += 1
+        fallback_decisions += int(bool(handoff_row.get("fallback_used")))
         reality = pair.get("market_reality")
         if pair.get("pair_status") == "NOT_EVALUABLE":
             non_evaluable += 1
@@ -439,6 +492,7 @@ def _audit_summary(pairs: Sequence[Mapping[str, object]]) -> dict[str, object]:
         if aligned is not None:
             reason_results[reason].append(aligned)
             style_results[style].append(aligned)
+            handoff_results[handoff_status].append(aligned)
         total_counterfactual += finite(
             reality.get("hypothetical_quantity_result_dollars"), default=0.0
         ) or 0.0
@@ -456,10 +510,15 @@ def _audit_summary(pairs: Sequence[Mapping[str, object]]) -> dict[str, object]:
         "non_evaluable_pair_count": non_evaluable,
         "actions": dict(sorted(actions.items())),
         "decision_lanes": dict(sorted(lanes.items())),
+        "prediction_handoff_status_counts": dict(sorted(handoff_statuses.items())),
+        "fallback_decision_count": fallback_decisions,
         "decision_reason_counts": dict(sorted(decision_reasons.items())),
         "order_style_reason_counts": dict(sorted(order_styles.items())),
         "decision_reason_outcomes": _group_results(decision_reasons, reason_results),
         "order_style_outcomes": _group_results(order_styles, style_results),
+        "prediction_handoff_outcomes": _group_results(
+            handoff_statuses, handoff_results
+        ),
         "aggregate_hypothetical_result_dollars": round(total_counterfactual, 2),
         "aggregate_selected_quantity_result_dollars": round(total_selected, 2),
         "aggregate_filled_quantity_slippage_adjusted_result_dollars": round(
@@ -487,6 +546,24 @@ def _group_results(
     return output
 
 
+def _prediction_handoff_run_summary(
+    handoffs: Sequence[Mapping[str, object]],
+) -> dict[str, object]:
+    statuses = Counter(str(row.get("status") or "UNKNOWN") for row in handoffs)
+    waits = [
+        value
+        for row in handoffs
+        if (value := finite(row.get("wait_seconds"))) is not None
+    ]
+    return {
+        "run_count": len(handoffs),
+        "status_counts": dict(sorted(statuses.items())),
+        "fallback_run_count": sum(bool(row.get("fallback_used")) for row in handoffs),
+        "mean_wait_seconds": sum(waits) / len(waits) if waits else None,
+        "maximum_wait_seconds": max(waits) if waits else None,
+    }
+
+
 def _render_markdown(report: Mapping[str, object]) -> str:
     window = report.get("window") if isinstance(report.get("window"), Mapping) else {}
     summary = report.get("summary") if isinstance(report.get("summary"), Mapping) else {}
@@ -498,11 +575,12 @@ def _render_markdown(report: Mapping[str, object]) -> str:
         f"Status: `{report.get('status')}`  ",
         f"Window: `{window.get('start')}` to `{window.get('end_exclusive')}`  ",
         f"Decisions / mature outcomes: `{summary.get('decision_count', 0)} / {summary.get('mature_pair_count', 0)}`",
+        f"Receipt handoffs / fallback handoffs: `{summary.get('prediction_handoff_runs', {}).get('run_count', 0) if isinstance(summary.get('prediction_handoff_runs'), Mapping) else 0} / {summary.get('prediction_handoff_runs', {}).get('fallback_run_count', 0) if isinstance(summary.get('prediction_handoff_runs'), Mapping) else 0}`",
         "",
         "Every explanation is joined to its later market result by the stable `decision_id`.",
         "",
-        "| Time | Symbol | Decision | Decision reason | Order-style reason | Outcome | Aligned net return | Hypothetical result |",
-        "|---|---:|---:|---|---|---|---:|---:|",
+        "| Time | Symbol | Decision | Handoff | Decision reason | Order-style reason | Outcome | Aligned net return | Hypothetical result |",
+        "|---|---:|---:|---|---|---|---|---:|---:|",
     ]
     for pair in rows:
         if not isinstance(pair, Mapping):
@@ -511,6 +589,11 @@ def _render_markdown(report: Mapping[str, object]) -> str:
         reality_row = reality if isinstance(reality, Mapping) else {}
         aligned = finite(reality_row.get("direction_aligned_net_return"))
         dollars = finite(reality_row.get("hypothetical_quantity_result_dollars"))
+        handoff = pair.get("prediction_handoff")
+        handoff_row = handoff if isinstance(handoff, Mapping) else {}
+        handoff_label = str(handoff_row.get("status") or "NOT_RECORDED")
+        if handoff_row.get("fallback_used"):
+            handoff_label += " (fallback)"
         lines.append(
             "| "
             + " | ".join(
@@ -518,6 +601,7 @@ def _render_markdown(report: Mapping[str, object]) -> str:
                     _cell(pair.get("decided_at")),
                     _cell(pair.get("symbol")),
                     _cell(pair.get("decision_action")),
+                    _cell(handoff_label),
                     _cell(pair.get("decision_reason_code")),
                     _cell(pair.get("order_style_reason_code")),
                     _cell(reality_row.get("status")),
@@ -659,5 +743,6 @@ __all__ = [
     "StockTraderWeeklyAuditResult",
     "build_stock_trader_weekly_audit",
     "load_verified_decisions",
+    "load_verified_prediction_handoffs",
     "main",
 ]

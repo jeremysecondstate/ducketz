@@ -46,6 +46,7 @@ def publish_decision_run(
     execution_requested: bool,
     source_files: Sequence[Path] = (),
     status: str | None = None,
+    prediction_handoff: Mapping[str, object] | None = None,
 ) -> DecisionPublication:
     root = Path(datastore_root).resolve()
     timestamp = utc(decided_at)
@@ -78,6 +79,7 @@ def publish_decision_run(
         ),
         "live_decision_count": len(live_decisions),
         "shadow_decision_count": len(shadow_decisions),
+        "prediction_handoff": dict(prediction_handoff or {}),
         "decisions": [decision.to_dict() for decision in decisions],
     }
     _write_json_atomic(decisions_path, payload)
@@ -100,6 +102,14 @@ def publish_decision_run(
             "activation_checksum_sha256": activation.checksum_sha256,
             "live_decision_count": len(live_decisions),
             "shadow_decision_count": len(shadow_decisions),
+            "prediction_handoff_status": (
+                prediction_handoff.get("status") if prediction_handoff else None
+            ),
+            "prediction_handoff_fallback_used": bool(
+                prediction_handoff.get("fallback_used", False)
+                if prediction_handoff
+                else False
+            ),
             "policy_version": policy.policy_version,
             "policy_fingerprint": policy.fingerprint,
         },
@@ -117,6 +127,7 @@ def publish_decision_run(
         "execution_requested": bool(execution_requested),
         "orders_selected": payload["orders_selected"],
         "shadow_orders_selected": payload["shadow_orders_selected"],
+        "prediction_handoff": dict(prediction_handoff or {}),
     }
     _write_json_atomic(receipt_path, receipt)
     receipt_checksum = file_checksum(receipt_path)
