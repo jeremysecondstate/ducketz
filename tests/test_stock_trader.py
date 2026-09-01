@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
-from ml.stock_trader import audit, handoff, inputs
+from ml.stock_trader import audit, daily_adaptation, handoff, inputs
 from ml.stock_trader import runtime
 from ml.stock_trader.audit import _pair_decision_with_reality
 from ml.stock_trader.contracts import (
@@ -30,7 +30,13 @@ from ml.stock_trader.publication import (
     reserve_execution_intent,
 )
 from ml.stock_trader.reconciliation import reconcile_submitted_orders
-from ml.stock_trader.session import next_stock_target_start, stock_execution_window
+from ml.stock_trader.session import (
+    checkpoint_session_for_target,
+    decision_targets_open,
+    next_stock_target_start,
+    stock_execution_window,
+    time_in_force_for_checkpoint,
+)
 from ml.stock_trader.state import capture_portfolio_state
 from ml.stock_trader.training import fit_enrichment_model_payload
 
@@ -241,6 +247,11 @@ def test_prediction_loader_uses_only_current_actionable_live_loop_b_rows(
     rows: list[dict[str, object]] = []
     for symbol in STOCK_TRADER_SYMBOLS:
         for horizon in ("1h", "4h", "1d", "1w"):
+            target_start = (
+                "2026-08-31T18:00:00+00:00"
+                if horizon == "1h"
+                else "2026-08-31T17:00:00+00:00"
+            )
             rows.append(
                 {
                     "id": f"{symbol}-{horizon}",
@@ -249,9 +260,11 @@ def test_prediction_loader_uses_only_current_actionable_live_loop_b_rows(
                     "horizon": horizon,
                     "decision_timestamp": "2026-08-31T15:55:00+00:00",
                     "information_available_at": "2026-08-31T15:57:00+00:00",
-                    "target_window_start": "2026-08-31T17:00:00+00:00",
-                    "target_window_end": "2026-08-31T18:00:00+00:00",
-                    "actionable_until": "2026-08-31T17:00:00+00:00",
+                    "target_window_start": target_start,
+                    "target_window_end": (
+                        pd.Timestamp(target_start) + pd.Timedelta(hours=1)
+                    ).isoformat(),
+                    "actionable_until": target_start,
                     "target_definition_version": "test-v1",
                     "target_specification": "test",
                     "prediction_created_at": "2026-08-31T15:58:00+00:00",
@@ -286,7 +299,10 @@ def test_prediction_loader_uses_only_current_actionable_live_loop_b_rows(
     signals, sources = inputs.load_current_prediction_signals(tmp_path, as_of=NOW)
 
     assert set(signals) == set(STOCK_TRADER_SYMBOLS)
-    assert signals["AAPL"].prediction_id == "AAPL-1h"
+    assert signals["AAPL"].prediction_id == "AAPL-4h"
+    assert signals["AAPL"].primary_horizon == "4h"
+    assert signals["AAPL"].checkpoint_session == "REGULAR"
+    assert signals["AAPL"].target_definition_version == "test-v1"
     assert signals["AAPL"].horizon_probabilities == {
         "1h": 0.70,
         "4h": 0.70,
@@ -324,6 +340,51 @@ def test_ml_sizing_produces_buy_sell_and_auditable_order_style() -> None:
     assert buy.order_payload is not None
     assert buy.order_payload["orderLegCollection"][0]["instruction"] == "BUY"
     assert buy.protective_price == 97.0
+
+
+def test_extended_hours_force_limit_orders_and_explicit_schwab_session() -> None:
+    decisions = build_trade_decisions(
+        _signals(),
+        _portfolio(),
+        ConstantModel(allocation_fraction=0.20, urgency=0.99),
+        _activation(True),
+        policy=StockTraderPolicy(allow_market_orders=True),
+        decided_at="2026-08-31T12:00:00+00:00",
+        time_in_force="AM",
+    )
+
+    selected = [decision for decision in decisions if decision.quantity > 0]
+    assert selected
+    assert all(decision.order_type == "LIMIT" for decision in selected)
+    assert all(decision.order_payload["session"] == "AM" for decision in selected)
+    assert all(decision.order_payload["duration"] == "DAY" for decision in selected)
+    assert all(
+        decision.order_style_reason_code
+        == "VERY_HIGH_URGENCY_EXTENDED_MARKETABLE_LIMIT"
+        for decision in selected
+    )
+
+
+def test_extended_hours_wide_spread_fails_closed() -> None:
+    portfolio = _portfolio()
+    wide_quotes = {
+        symbol: replace(quote, bid=99.0, ask=101.0)
+        for symbol, quote in portfolio.quotes.items()
+    }
+    decisions = build_trade_decisions(
+        _signals(),
+        replace(portfolio, quotes=wide_quotes),
+        ConstantModel(allocation_fraction=0.20),
+        _activation(True),
+        decided_at="2026-08-31T21:00:00+00:00",
+        time_in_force="PM",
+    )
+
+    assert all(decision.action == "NO_TRADE" for decision in decisions)
+    assert all(
+        decision.decision_reason_code == "EXTENDED_SPREAD_TOO_WIDE"
+        for decision in decisions
+    )
 
 
 def test_weak_expected_value_logs_no_order_and_keeps_hypothetical_size() -> None:
@@ -534,25 +595,146 @@ def test_runtime_requires_execute_and_true_toggle_for_submission(
     )
 
 
-def test_execution_window_allows_explicit_open_queue_and_core_only() -> None:
+def test_execution_window_labels_open_queue_pre_core_post_and_gaps() -> None:
+    premarket_queue = stock_execution_window(
+        "2026-08-31T10:47:00+00:00",
+        allow_premarket_queue=True,
+    )
     queued = stock_execution_window(
         "2026-08-31T13:20:00+00:00", allow_open_queue=True
     )
+    premarket = stock_execution_window("2026-08-31T12:00:00+00:00")
+    morning_gap = stock_execution_window("2026-08-31T13:27:00+00:00")
     core = stock_execution_window("2026-08-31T16:00:00+00:00")
-    closed = stock_execution_window("2026-08-31T21:00:00+00:00")
+    afternoon_gap = stock_execution_window("2026-08-31T20:02:00+00:00")
+    postmarket = stock_execution_window("2026-08-31T21:00:00+00:00")
+    closed = stock_execution_window("2026-09-01T00:00:00+00:00")
 
-    assert (queued.executable, queued.mode) == (True, "OPEN_QUEUE")
-    assert (core.executable, core.mode) == (True, "CORE")
+    assert (
+        premarket_queue.executable,
+        premarket_queue.mode,
+        premarket_queue.time_in_force,
+    ) == (True, "PREMARKET_QUEUE", "AM")
+    assert premarket_queue.queue_target_start == pd.Timestamp(
+        "2026-08-31T11:00:00Z"
+    )
+    assert decision_targets_open(
+        "2026-08-31T11:00:00Z", premarket_queue
+    ) is True
+    assert decision_targets_open(
+        "2026-08-31T13:30:00Z", premarket_queue
+    ) is False
+    assert (queued.executable, queued.mode, queued.time_in_force) == (
+        True,
+        "OPEN_QUEUE",
+        "DAY",
+    )
+    assert (premarket.executable, premarket.mode, premarket.time_in_force) == (
+        True,
+        "PREMARKET",
+        "AM",
+    )
+    assert (morning_gap.executable, morning_gap.mode) == (False, "CLOSED")
+    assert (core.executable, core.mode, core.time_in_force) == (
+        True,
+        "CORE",
+        "DAY",
+    )
+    assert (afternoon_gap.executable, afternoon_gap.mode) == (False, "CLOSED")
+    assert (postmarket.executable, postmarket.mode, postmarket.time_in_force) == (
+        True,
+        "AFTER_HOURS",
+        "PM",
+    )
     assert (closed.executable, closed.mode) == (False, "CLOSED")
 
 
-def test_next_stock_target_start_resolves_open_and_local_clock_hour() -> None:
+def test_early_close_day_does_not_invent_extended_stock_sessions() -> None:
+    before_core = stock_execution_window(
+        "2026-11-27T13:00:00+00:00",
+        allow_premarket_queue=True,
+    )
+    after_early_close = stock_execution_window("2026-11-27T19:00:00+00:00")
+
+    assert (before_core.executable, before_core.mode) == (False, "CLOSED")
+    assert (after_early_close.executable, after_early_close.mode) == (
+        False,
+        "CLOSED",
+    )
+
+
+def test_daily_adaptation_waits_for_the_full_actionable_stock_day(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    before_close = daily_adaptation.adapt_after_latest_completed_session(
+        tmp_path,
+        as_of="2026-08-31T23:30:00+00:00",
+    )
+    assert before_close["status"] == "NO_COMPLETED_XNYS_SESSION_TODAY"
+
+    observed: dict[str, object] = {}
+
+    def fake_audit(root: Path, **kwargs):
+        observed.update(kwargs)
+        return SimpleNamespace(
+            run_directory=root / "ml" / "stock-trader-weekly-audits" / "test",
+            pair_count=12,
+            mature_pair_count=8,
+        )
+
+    monkeypatch.setattr(
+        daily_adaptation,
+        "build_stock_trader_weekly_audit",
+        fake_audit,
+    )
+    monkeypatch.setattr(
+        daily_adaptation,
+        "train_and_publish_enrichment_model",
+        lambda root, **_kwargs: root / "ml" / "stock-trader-model-runs" / "test",
+    )
+
+    after_close = daily_adaptation.adapt_after_latest_completed_session(
+        tmp_path,
+        as_of="2026-09-01T00:01:00+00:00",
+    )
+
+    assert after_close["status"] == "DAILY_ADAPTATION_PUBLISHED"
+    assert after_close["session"] == "2026-08-31"
+    assert after_close["equity_actionable_open"] == (
+        "2026-08-31T11:00:00+00:00"
+    )
+    assert after_close["equity_actionable_close"] == (
+        "2026-09-01T00:00:00+00:00"
+    )
+    assert observed["window_start"] == pd.Timestamp("2026-08-31T11:00:00Z")
+    assert observed["window_end"] > pd.Timestamp("2026-09-01T00:00:00Z")
+
+
+def test_next_stock_target_start_includes_hourly_and_four_hour_checkpoints() -> None:
     assert next_stock_target_start("2026-08-31T13:17:00+00:00") == pd.Timestamp(
         "2026-08-31T13:30:00+00:00"
     )
     assert next_stock_target_start("2026-08-31T14:47:00+00:00") == pd.Timestamp(
         "2026-08-31T15:00:00+00:00"
     )
+    assert next_stock_target_start("2026-08-31T15:05:00+00:00") == pd.Timestamp(
+        "2026-08-31T15:30:00+00:00"
+    )
+    assert next_stock_target_start("2026-08-31T23:17:00+00:00") == pd.Timestamp(
+        "2026-08-31T23:30:00+00:00"
+    )
+    assert checkpoint_session_for_target("2026-08-31T11:30:00+00:00") == "PRE"
+    assert checkpoint_session_for_target("2026-08-31T15:30:00+00:00") == (
+        "REGULAR"
+    )
+    assert checkpoint_session_for_target("2026-08-31T23:30:00+00:00") == "POST"
+    assert time_in_force_for_checkpoint("PRE") == "AM"
+    assert time_in_force_for_checkpoint("REGULAR") == "DAY"
+    assert time_in_force_for_checkpoint("POST") == "PM"
+    assert time_in_force_for_checkpoint(
+        "POST", current_checkpoint_session="REGULAR"
+    ) == "EXT"
 
 
 def test_prediction_handoff_waits_for_fresh_receipt_after_keeping_fallback(
@@ -799,7 +981,7 @@ def test_weekly_audit_publishes_row_by_row_decision_reality_pairs(
         policy=policy,
         execution_requested=False,
         prediction_handoff={
-            "schema_version": "stock-trader-prediction-handoff-v1",
+            "schema_version": "stock-trader-prediction-handoff-v2",
             "status": "FALLBACK_ACTIONABLE_RECEIPT",
             "wait_seconds": 690.0,
             "fallback_used": True,

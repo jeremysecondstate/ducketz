@@ -15,6 +15,27 @@ Options remain a separate paper-only research lane. Any future Loop C options
 shadow trader must use 1d/1w-or-longer strategies, separate receipts and
 outcomes, and no Schwab options submission path.
 
+The stock day is explicitly broader than the official regular session:
+
+| Checkpoint session | Pacific window on an ordinary XNYS day | Schwab route |
+|---|---:|---|
+| `PRE` | 04:00--06:25 | `AM` limit |
+| `REGULAR` | 06:30--13:00 | `DAY` |
+| `POST` | 13:05--17:00 | `PM` limit |
+
+The five-minute AM/core and core/PM transitions are closed. Early-close days
+remain core-only because Schwab does not promise ordinary extended sessions on
+those dates. A core decision targeting the first POST checkpoint uses the
+`EXT` seamless limit route so it can be entered before PM-only entry opens.
+Extended/seamless orders are always limits and fail closed when the relative
+bid/ask spread exceeds `0.5%`.
+
+Databento and broker clocks are separate. Standard-plan `EQUS.MINI` supplies
+live non-empty OHLCV for the six-symbol prediction watchlist; Loop B accepts
+completed source hours from 01:00--17:00 Pacific (04:00--20:00 Eastern). That
+extra source context prepares the 04:30 PRE prediction but does not authorize a
+Schwab order before 04:00 Pacific.
+
 ## Hourly critical path
 
 1. Read the persistent operator switch.
@@ -42,8 +63,9 @@ an exclusive per-decision submission-intent artifact.
 
 ## ML enrichment contract
 
-Loop B's actionable 1h calibrated probability is the primary direction input;
-4h, 1d, and 1w probabilities provide context. The enrichment model also sees
+The nearest actionable Loop B 1h or 4h checkpoint is the primary direction
+input, with 1h preferred only on an exact target-time tie; the other 1h/4h and
+1d/1w probabilities provide context. The enrichment model also sees
 spread, volume, cash/equity, current and pending symbol exposure, gross
 exposure, held shares, day P/L, prediction age, time of day, and exact symbol.
 
@@ -107,13 +129,24 @@ Non-mutating decision run:
   --datastore-target pc
 ```
 
-Deployment command (still inert unless the operator switch is `TRUE`):
+Regular-opening deployment command (still inert unless the operator switch is
+`TRUE`):
 
 ```powershell
 .\.venv\Scripts\python.exe -m ml.stock_trader.runtime `
   --datastore-target pc `
   --execute `
   --queue-at-open `
+  --wait-for-actionable-prediction
+```
+
+PRE-opening deployment command:
+
+```powershell
+.\.venv\Scripts\python.exe -m ml.stock_trader.runtime `
+  --datastore-target pc `
+  --execute `
+  --queue-at-premarket-open `
   --wait-for-actionable-prediction
 ```
 
@@ -153,10 +186,10 @@ changes the operator switch or submits an order. It uses both taken and
 abstained decisions with mature counterfactual outcomes so NO_TRADE behavior
 remains measurable.
 
-After each completed session, the daily adaptation command audits the live and
-shadow lanes, deduplicates them by Loop B prediction, and publishes the model
-for the next session. New unique observations receive weight two while the
-historical cohort remains the anchor:
+After the 17:00 PT actionable stock close, the daily adaptation command audits
+the PRE/REGULAR/POST live and shadow lanes, deduplicates them by Loop B
+prediction, and publishes the model for the next session. New unique
+observations receive weight two while the historical cohort remains the anchor:
 
 ```powershell
 .\.venv\Scripts\python.exe -m ml.stock_trader.daily_adaptation `
@@ -187,7 +220,10 @@ paired with what the market subsequently did. JSON contains the full pairs;
 Markdown contains a compact row-by-row audit table and grouped reason/order-
 style performance. It also contains the receipt-handoff status and reports
 fallback decisions separately, allowing fresh-versus-fallback performance to
-be evaluated from the same mature outcomes.
+be evaluated from the same mature outcomes. JSON additionally groups counts
+and mature results by `PRE`/`REGULAR`/`POST` checkpoint session and by exact
+Loop B target-definition version, so the broadened contract is not silently
+blended with legacy regular-only evidence.
 
 Exact broker fill reconciliation is labeled separately from the midpoint
 counterfactual. Even with a fill, the registered forward market outcome is not
@@ -196,17 +232,26 @@ or position-history attribution.
 
 ## Production deployment
 
-The existing `loops-hourly-operations` monitor/trainer remains unchanged. Three
-separate stock owners are active:
+The existing `loops-hourly-operations` monitor/trainer now distinguishes the
+13:00 PT official close from the 17:00 PT actionable stock close. Five stock
+schedules are active:
 
+- `Loops Stock Trader — Premarket Opening` wakes at 03:47 PT, waits for the
+  04:00 PRE-opening receipt, and may queue only that exact AM target.
 - `Loops Stock Trader — Opening Live + Shadow` wakes at 06:17 PT on weekdays,
   waits for the opening-target receipt, and may use the explicit opening queue.
-- `Loops Stock Trader — Live + Shadow` wakes at 07:47 PT and hourly through
-  11:47 PT on weekdays, then acts immediately when the next target's receipt is
-  promoted. The runtime's XNYS calendar blocks holidays and inappropriate
-  targets.
-- `Loops Stock Trader — Daily Adaptation` runs at 14:20 PT on weekdays and
-  publishes only when an XNYS session completed that day.
+- `Loops Stock Trader — Live + Shadow` wakes at 04:47 PT, skips the separately
+  owned 05:47/opening slot, and wakes hourly from 06:47 through 15:47 PT.
+- `Loops Stock Trader — Four-Hour Checkpoints` wakes at 04:17, 08:17, 12:17,
+  and 16:17 PT for the 04:30, 08:30, 12:30, and 16:30 targets.
+- `Loops Stock Trader — Daily Adaptation` runs at 17:20 PT on weekdays and
+  publishes only after that day's complete actionable stock window closes.
+
+The runtime's XNYS calendar blocks holidays, five-minute transitions, and
+extended execution on early-close days. All six configured symbols participate
+in every eligible wake, but an absent usable quote, excessive spread, lack of
+trading interest, or ordinary risk gate remains an explicit `NO_TRADE` rather
+than a promise of a fill.
 
 The exact scheduler contract is
 `docs/loops-system-analysis/STOCK_TRADER_AUTOMATION.md`. A production-root dry

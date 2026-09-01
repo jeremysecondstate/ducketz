@@ -136,7 +136,9 @@ One Loop B iteration:
 6. partitions completed samples chronologically by `target_window_start`
    cluster into training, calibration, assessment, and a latest closed lockbox,
    purging target-window overlap and never reading lockbox targets; the bounded
-   100-calendar-day minute input uses 160/40/40/80 clusters for `1h`/`4h`,
+   100-calendar-day minute input uses 160/40/40/80 clusters for `1h` and
+   128/32/32/64 for the lower-frequency, overnight-overlapping four-checkpoint
+   `4h` route,
    while daily and weekly routes retain 252/63/63/126;
 7. reuses a compatible model or fits and calibrates a new model;
 8. writes the point-in-time sample view, including complete and not-yet-mature
@@ -164,45 +166,46 @@ One Loop B iteration:
     runtime consume the run.
 
 The versioned intraday target contracts are
-`next-60-eligible-regular-minutes-open-close-v3` for `1h` and
-`next-180-eligible-regular-minutes-open-close-v3` for `4h`. Both use completed
-canonical `1h` bars as the decision and feature source. The `1h` route selects
-the latest completed full regular or standard US extended-hours bar available
-between 04:00 and 20:00 exchange-local time; when no extended bar exists it
-naturally retains the official-close decision. The `4h` route remains bounded
-to completed regular-session bars. Native Databento rows win duplicate
-timestamps, while an all-60-minute derived hour fills only a native publication
-lag. The calendar fixes the
-target before price lookup using
-`session-open-break-resume-plus-full-local-clock-anchor-v1`: each continuous
-regular-session segment contributes its exact start (the official session open
-or post-break resume) and every full exchange-local clock-hour start wholly
-contained in that segment. The first candidate strictly after
-`information_available_at` wins; equality is too late.
+`next-60-eligible-equity-minutes-open-close-v4` for `1h` and
+`next-180-eligible-equity-minutes-four-checkpoints-v4` for `4h`. Both use
+completed canonical `1h` bars as the decision and feature source and may select
+the latest completed full regular or standard US extended source hour between
+04:00 and 20:00 Eastern. Native Databento rows win duplicate timestamps, while
+an all-60-minute derived hour fills only a native publication lag.
 
-From that fixed start, the calendar accumulates exactly 60 or 180 eligible
-regular-session one-minute intervals. Breaks and closures pause accumulation,
-while the open-to-close return includes any intervening price gap. The target
-price source is canonical adjusted native Databento `1m`, version
-`canonical-adjusted-native-1m-interval-open-v1`: `target_open` is the first
-selected minute's open and `target_close` is the final selected minute's close.
-Every predetermined minute must exist. A missing first, middle, or final minute
-keeps the window fixed and the label incomplete; Loop B never substitutes a
-later minute. Target minutes do not enter the feature matrix, and
+Source context and broker-actionable targets have separate policies. On an
+ordinary US equity day, target minutes are PRE 07:00--09:25, REGULAR
+09:30--16:00, and POST 16:05--20:00 Eastern. The five-minute transitions,
+weekends, holidays, and closed periods pause accumulation. Early-close days do
+not receive synthetic extended segments. Non-US calendars retain their prior
+regular-session hybrid behavior.
+
+The `1h` route contributes each actionable segment start and each complete
+exchange-local clock hour wholly inside the segment. The `4h` route contributes
+only 07:30, 11:30, 15:30, and 19:30 Eastern—04:30, 08:30, 12:30, and 16:30
+Pacific. The first candidate strictly after `information_available_at` wins;
+equality is too late. The 19:30 Eastern checkpoint accumulates 30 POST minutes,
+pauses overnight, consumes the next PRE segment, pauses the 09:25--09:30 gap,
+and normally reaches its 180th eligible minute at 09:35 Eastern the next
+eligible day.
+
+Target marks use canonical adjusted native Databento `1m`, version
+`canonical-adjusted-native-1m-causal-no-trade-marks-v2`. Databento emits
+trade-bearing OHLCV only for non-empty minutes. A selected minute therefore
+uses its native open/close when present or the latest strictly prior native
+close when no trade bar exists. It is never backfilled from a future row, and
+collection coverage must extend through the target end before the label can
+mature. `target_open` is the first selected mark and `target_close` is the final
+selected mark. Target values do not enter the feature matrix, and
 `previous_period_direction` continues to come from the completed canonical
 `1h` source bar.
 
-On an ordinary XNAS session this makes a pre-open `1h` target
-09:30–10:30 Eastern and a pre-open `4h` checkpoint target 09:30–12:30 Eastern. In summer,
-those starts are 13:30 UTC / 09:30 ET / 06:30 Pacific; in winter they are
-14:30 UTC / 09:30 ET / 06:30 Pacific. This is a full 60-eligible-minute opening
-target, not the 09:30–10:00 opening fragment. Ordinary intraday decisions
-retain the full local-clock candidates (for example, information available at
-11:05 Eastern selects 12:00). `target_window_start` and `actionable_until` are the
-selected start, `target_window_end` follows the 60th or 180th eligible minute,
-and `label_available_at` is that end plus five minutes. The raw return receives
-the configured round-trip-cost subtraction exactly once, and the positive
-class is strictly greater than zero.
+`target_window_start` and `actionable_until` are the selected start,
+`target_window_end` follows the 60th or 180th eligible minute, and
+`label_available_at` is that end plus five minutes. The raw return receives the
+configured round-trip-cost subtraction exactly once, and the positive class is
+strictly greater than zero. The official regular-session definition remains
+unchanged for options, Pricing, Strategy, daily, and weekly contracts.
 
 The weekly family creates historical rolling candidates after every eligible
 daily decision so each of its six single-target models retains daily training

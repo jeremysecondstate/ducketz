@@ -221,6 +221,17 @@ publication that has been authoritative for 35 minutes triggers one immediate
 recovery cycle. Every failed attempt leaves the prior verified pointer in
 place.
 
+The same command now owns the broadened intraday contract without another
+long-running process. For both `1h` and `4h`, completed US-equity source hours
+may come from 04:00--20:00 Eastern Databento context. Stock targets use the
+broker-actionable PRE 07:00--09:25, REGULAR 09:30--16:00, and POST
+16:05--20:00 Eastern segments. The `1h` route uses segment/full-clock starts;
+the `4h` route uses 07:30/11:30/15:30/19:30 Eastern checkpoints. Options,
+Pricing, Strategy, daily, and weekly session authority remains unchanged. The
+production Loop B owner is launched hidden by `start_all_loops.ps1`; restart
+only that verified owner after an intraday-contract deployment so the loaded
+Python process adopts the new policy.
+
 7. Strategy. Exact contract pricing is attached to historical and live
 candidates before the profitable-outcome classifier is fit or scored. Only a
 fitted, Platt-calibrated model populates calibrated probability. Otherwise the

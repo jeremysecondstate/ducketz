@@ -16,6 +16,44 @@ TARGET_MINUTE_POLICY_VERSION = (
     "session-open-break-resume-plus-full-local-clock-anchor-v1"
 )
 
+# Intraday source and target clocks are deliberately separate. Databento's
+# standard US-equity context runs from 04:00 through 20:00 Eastern, while the
+# broker-actionable stock windows begin at 07:00 and pause for Schwab's
+# five-minute AM/core and core/PM transitions. ``REGULAR`` retains its exact
+# exchange meaning for options, Pricing, and every non-US calendar.
+REGULAR_INTRADAY_SOURCE_POLICY = "regular-session-source-v1"
+US_EQUITY_EXTENDED_SOURCE_POLICY = (
+    "us-equity-standard-extended-source-0400-2000-et-v1"
+)
+REGULAR_INTRADAY_TARGET_POLICY = "regular-session-target-v1"
+US_EQUITY_ACTIONABLE_TARGET_POLICY = (
+    "us-equity-actionable-target-0700-0925-0930-1600-1605-2000-et-v1"
+)
+HYBRID_TARGET_START_POLICY = (
+    "segment-open-plus-full-local-clock-hour-start-v1"
+)
+FOUR_HOUR_CHECKPOINT_START_POLICY = (
+    "four-hour-checkpoints-0730-1130-1530-1930-et-v1"
+)
+
+CHECKPOINT_SESSION_PRE = "PRE"
+CHECKPOINT_SESSION_REGULAR = "REGULAR"
+CHECKPOINT_SESSION_POST = "POST"
+CHECKPOINT_SESSION_CLOSED = "CLOSED"
+CHECKPOINT_SESSION_LABELS = (
+    CHECKPOINT_SESSION_PRE,
+    CHECKPOINT_SESSION_REGULAR,
+    CHECKPOINT_SESSION_POST,
+)
+
+_US_EQUITY_CALENDARS = frozenset({"XNAS", "XNYS"})
+_FOUR_HOUR_CHECKPOINT_OFFSETS = (
+    pd.Timedelta(hours=7, minutes=30),
+    pd.Timedelta(hours=11, minutes=30),
+    pd.Timedelta(hours=15, minutes=30),
+    pd.Timedelta(hours=19, minutes=30),
+)
+
 
 @dataclass(frozen=True)
 class SessionHorizon:
@@ -80,9 +118,15 @@ class ExchangeSessionCalendar:
         self.session_policy_version = SESSION_POLICY_VERSION
         self.daily_bar_label_policy_version = DAILY_BAR_LABEL_POLICY_VERSION
         self.target_minute_policy_version = TARGET_MINUTE_POLICY_VERSION
-        self._target_start_candidates_cache: tuple[pd.Timestamp, ...] | None = None
-        self._eligible_minute_timestamps_cache: tuple[pd.Timestamp, ...] | None = None
-        self._eligible_minute_positions_cache: dict[pd.Timestamp, int] | None = None
+        self._target_start_candidates_cache: dict[
+            tuple[str, str], tuple[pd.Timestamp, ...]
+        ] = {}
+        self._eligible_minute_timestamps_cache: dict[
+            str, tuple[pd.Timestamp, ...]
+        ] = {}
+        self._eligible_minute_positions_cache: dict[
+            str, dict[pd.Timestamp, int]
+        ] = {}
 
     @property
     def sessions(self) -> pd.DatetimeIndex:
@@ -178,35 +222,64 @@ class ExchangeSessionCalendar:
         *,
         start_session: object | None = None,
         end_session: object | None = None,
+        session_policy: str = REGULAR_INTRADAY_TARGET_POLICY,
+        start_policy: str = HYBRID_TARGET_START_POLICY,
     ) -> tuple[pd.Timestamp, ...]:
-        """Return the versioned hybrid starts for intraday target windows.
+        """Return versioned starts for one intraday target policy.
 
-        Each continuous regular-session segment contributes its exact start
-        (the official session open or post-break resume) plus every complete
-        exchange-local clock hour wholly contained in that segment.  The
-        calendar fixes these candidates before any target-price lookup.
+        The ordinary hybrid policy contributes each continuous segment start
+        plus every complete exchange-local clock hour wholly inside it. The
+        four-hour stock policy contributes the explicit 07:30, 11:30, 15:30,
+        and 19:30 Eastern checkpoints when they lie inside an eligible segment.
+        Non-US calendars always retain their regular-session hybrid behavior.
         """
 
+        clean_session_policy = _intraday_target_policy(session_policy)
+        clean_start_policy = _intraday_start_policy(start_policy)
+        if self.exchange_calendar not in _US_EQUITY_CALENDARS:
+            clean_session_policy = REGULAR_INTRADAY_TARGET_POLICY
+            clean_start_policy = HYBRID_TARGET_START_POLICY
         use_cache = start_session is None and end_session is None
-        if use_cache and self._target_start_candidates_cache is not None:
-            return self._target_start_candidates_cache
+        cache_key = (clean_session_policy, clean_start_policy)
+        if use_cache and cache_key in self._target_start_candidates_cache:
+            return self._target_start_candidates_cache[cache_key]
 
         candidates: set[pd.Timestamp] = set()
-        for _session, segment_start, segment_end in self._regular_segments(
+        segments = self._intraday_target_segments(
             start_session=start_session,
             end_session=end_session,
-        ):
-            candidates.add(segment_start)
-            cursor = _ceil_exchange_hour(
-                segment_start,
-                timezone_name=self.exchange_timezone,
-            )
-            while cursor + pd.Timedelta(hours=1) <= segment_end:
-                candidates.add(cursor)
-                cursor += pd.Timedelta(hours=1)
+            session_policy=clean_session_policy,
+        )
+        if clean_start_policy == FOUR_HOUR_CHECKPOINT_START_POLICY:
+            by_session: dict[
+                pd.Timestamp, list[tuple[pd.Timestamp, pd.Timestamp]]
+            ] = {}
+            for session, segment_start, segment_end, _label in segments:
+                by_session.setdefault(session, []).append(
+                    (segment_start, segment_end)
+                )
+            for session, session_segments in by_session.items():
+                local_midnight = session.tz_localize(self.exchange_timezone)
+                for offset in _FOUR_HOUR_CHECKPOINT_OFFSETS:
+                    candidate = (local_midnight + offset).tz_convert("UTC")
+                    if any(
+                        segment_start <= candidate < segment_end
+                        for segment_start, segment_end in session_segments
+                    ):
+                        candidates.add(candidate)
+        else:
+            for _session, segment_start, segment_end, _label in segments:
+                candidates.add(segment_start)
+                cursor = _ceil_exchange_hour(
+                    segment_start,
+                    timezone_name=self.exchange_timezone,
+                )
+                while cursor + pd.Timedelta(hours=1) <= segment_end:
+                    candidates.add(cursor)
+                    cursor += pd.Timedelta(hours=1)
         result = tuple(sorted(candidates))
         if use_cache:
-            self._target_start_candidates_cache = result
+            self._target_start_candidates_cache[cache_key] = result
         return result
 
     def eligible_minute_timestamps(
@@ -214,18 +287,23 @@ class ExchangeSessionCalendar:
         *,
         start_session: object | None = None,
         end_session: object | None = None,
+        session_policy: str = REGULAR_INTRADAY_TARGET_POLICY,
     ) -> tuple[pd.Timestamp, ...]:
-        """Return exact interval-open timestamps for regular-session minutes."""
+        """Return exact interval-open timestamps for the target session policy."""
 
+        clean_policy = _intraday_target_policy(session_policy)
+        if self.exchange_calendar not in _US_EQUITY_CALENDARS:
+            clean_policy = REGULAR_INTRADAY_TARGET_POLICY
         use_cache = start_session is None and end_session is None
-        if use_cache and self._eligible_minute_timestamps_cache is not None:
-            return self._eligible_minute_timestamps_cache
+        if use_cache and clean_policy in self._eligible_minute_timestamps_cache:
+            return self._eligible_minute_timestamps_cache[clean_policy]
 
         timestamps: list[pd.Timestamp] = []
         minute = pd.Timedelta(minutes=1)
-        for _session, segment_start, segment_end in self._regular_segments(
+        for _session, segment_start, segment_end, _label in self._intraday_target_segments(
             start_session=start_session,
             end_session=end_session,
+            session_policy=clean_policy,
         ):
             if (
                 segment_start.floor("min") != segment_start
@@ -242,7 +320,7 @@ class ExchangeSessionCalendar:
                 cursor += minute
         result = tuple(timestamps)
         if use_cache:
-            self._eligible_minute_timestamps_cache = result
+            self._eligible_minute_timestamps_cache[clean_policy] = result
         return result
 
     def target_window_after(
@@ -250,6 +328,8 @@ class ExchangeSessionCalendar:
         information_available_at: object,
         *,
         eligible_minute_count: int,
+        session_policy: str = REGULAR_INTRADAY_TARGET_POLICY,
+        start_policy: str = HYBRID_TARGET_START_POLICY,
     ) -> EligibleMinuteTargetWindow:
         """Select the first hybrid start strictly after information availability.
 
@@ -262,7 +342,15 @@ class ExchangeSessionCalendar:
         if eligible_minute_count < 1:
             raise ValueError("eligible_minute_count must be positive")
         available = _utc_timestamp(information_available_at)
-        candidates = self.target_start_candidates()
+        clean_session_policy = _intraday_target_policy(session_policy)
+        if self.exchange_calendar not in _US_EQUITY_CALENDARS:
+            clean_session_policy = REGULAR_INTRADAY_TARGET_POLICY
+            start_policy = HYBRID_TARGET_START_POLICY
+        clean_start_policy = _intraday_start_policy(start_policy)
+        candidates = self.target_start_candidates(
+            session_policy=clean_session_policy,
+            start_policy=clean_start_policy,
+        )
         location = bisect_right(candidates, available)
         if location >= len(candidates):
             raise MLContractError(
@@ -270,14 +358,18 @@ class ExchangeSessionCalendar:
                 "strictly after information availability"
             )
         target_start = candidates[location]
-        eligible_minutes = self.eligible_minute_timestamps()
-        if self._eligible_minute_positions_cache is None:
-            self._eligible_minute_positions_cache = {
+        eligible_minutes = self.eligible_minute_timestamps(
+            session_policy=clean_session_policy
+        )
+        if clean_session_policy not in self._eligible_minute_positions_cache:
+            self._eligible_minute_positions_cache[clean_session_policy] = {
                 timestamp: index
                 for index, timestamp in enumerate(eligible_minutes)
             }
         try:
-            minute_location = self._eligible_minute_positions_cache[target_start]
+            minute_location = self._eligible_minute_positions_cache[
+                clean_session_policy
+            ][target_start]
         except KeyError as exc:  # pragma: no cover - invariant guard
             raise MLContractError(
                 f"Target start {target_start} is not an eligible regular "
@@ -297,6 +389,124 @@ class ExchangeSessionCalendar:
             end_timestamp=selected[-1] + pd.Timedelta(minutes=1),
             constituent_timestamps=tuple(selected),
         )
+
+    def _intraday_target_segments(
+        self,
+        *,
+        start_session: object | None = None,
+        end_session: object | None = None,
+        session_policy: str,
+    ) -> tuple[
+        tuple[pd.Timestamp, pd.Timestamp, pd.Timestamp, str], ...
+    ]:
+        clean_policy = _intraday_target_policy(session_policy)
+        regular = tuple(
+            (session, start, end, CHECKPOINT_SESSION_REGULAR)
+            for session, start, end in self._regular_segments(
+                start_session=start_session,
+                end_session=end_session,
+            )
+        )
+        if (
+            clean_policy == REGULAR_INTRADAY_TARGET_POLICY
+            or self.exchange_calendar not in _US_EQUITY_CALENDARS
+        ):
+            return regular
+
+        records = list(regular)
+        sessions = self.sessions
+        if start_session is not None:
+            sessions = sessions[sessions >= _session_label(start_session)]
+        if end_session is not None:
+            sessions = sessions[sessions <= _session_label(end_session)]
+        for session in sessions:
+            if not self._is_standard_us_equity_session(session):
+                # The broker does not promise ordinary extended sessions on
+                # exchange early-close days. Retain only the official core.
+                continue
+            local_midnight = pd.Timestamp(session).tz_localize(
+                self.exchange_timezone
+            )
+            records.extend(
+                (
+                    (
+                        pd.Timestamp(session),
+                        (local_midnight + pd.Timedelta(hours=7)).tz_convert("UTC"),
+                        (
+                            local_midnight
+                            + pd.Timedelta(hours=9, minutes=25)
+                        ).tz_convert("UTC"),
+                        CHECKPOINT_SESSION_PRE,
+                    ),
+                    (
+                        pd.Timestamp(session),
+                        (
+                            local_midnight
+                            + pd.Timedelta(hours=16, minutes=5)
+                        ).tz_convert("UTC"),
+                        (local_midnight + pd.Timedelta(hours=20)).tz_convert("UTC"),
+                        CHECKPOINT_SESSION_POST,
+                    ),
+                )
+            )
+        return tuple(sorted(records, key=lambda item: item[1]))
+
+    def _is_standard_us_equity_session(self, session: object) -> bool:
+        if self.exchange_calendar not in _US_EQUITY_CALENDARS:
+            return False
+        opened = self.session_open(session).tz_convert(self.exchange_timezone)
+        closed = self.session_close(session).tz_convert(self.exchange_timezone)
+        return (
+            opened.hour,
+            opened.minute,
+            closed.hour,
+            closed.minute,
+        ) == (9, 30, 16, 0)
+
+    def checkpoint_session_at(
+        self,
+        value: object,
+        *,
+        session_policy: str = US_EQUITY_ACTIONABLE_TARGET_POLICY,
+    ) -> str:
+        """Classify one instant as PRE, REGULAR, POST, or CLOSED."""
+
+        timestamp = _utc_timestamp(value)
+        local_session = (
+            timestamp.tz_convert(self.exchange_timezone)
+            .tz_localize(None)
+            .normalize()
+        )
+        if local_session not in self.sessions:
+            return CHECKPOINT_SESSION_CLOSED
+        for _session, start, end, label in self._intraday_target_segments(
+            start_session=local_session,
+            end_session=local_session,
+            session_policy=session_policy,
+        ):
+            if start <= timestamp < end:
+                return label
+        return CHECKPOINT_SESSION_CLOSED
+
+    def intraday_target_bounds(
+        self,
+        session: object,
+        *,
+        session_policy: str = REGULAR_INTRADAY_TARGET_POLICY,
+    ) -> tuple[pd.Timestamp, pd.Timestamp]:
+        """Return the first open and final close for one target policy day."""
+
+        label = self._require_session(session)
+        segments = self._intraday_target_segments(
+            start_session=label,
+            end_session=label,
+            session_policy=session_policy,
+        )
+        if not segments:  # pragma: no cover - exchange-calendar invariant
+            raise MLContractError(
+                f"No intraday target segments exist for {label.date()}."
+            )
+        return min(item[1] for item in segments), max(item[2] for item in segments)
 
     def _regular_segments(
         self,
@@ -532,18 +742,34 @@ def attach_official_intraday_sessions(
     bar_end_column: str = "operational_bar_end_timestamp",
     processing_delay: pd.Timedelta = pd.Timedelta(0),
     future_padding_days: int = 45,
-    include_extended_hours: bool = False,
+    include_extended_hours: bool | None = None,
+    source_session_policy: str | None = None,
 ) -> pd.DataFrame:
     """Attach exchange sessions to eligible full-hour decision intervals.
 
-    Regular-market intervals are always eligible.  When explicitly enabled for
-    a US equity calendar, completed full hours wholly inside 04:00--09:30 or
-    the official close--20:00 exchange-local time are eligible too.  Intervals
-    crossing the open/close or extending beyond those bounds remain excluded.
+    Regular-market intervals are always eligible. Under the explicit US-equity
+    extended source policy, completed full hours wholly inside 04:00--09:30 or
+    the official close--20:00 exchange-local context are eligible too. Source
+    rows are labeled ``PRE``, ``REGULAR``, or ``POST``. Intervals crossing a
+    boundary or extending beyond the bounds remain excluded.
     """
 
     if processing_delay < pd.Timedelta(0):
         raise ValueError("processing_delay cannot be negative")
+    if source_session_policy is None:
+        clean_source_policy = (
+            US_EQUITY_EXTENDED_SOURCE_POLICY
+            if bool(include_extended_hours)
+            else REGULAR_INTRADAY_SOURCE_POLICY
+        )
+    else:
+        clean_source_policy = _intraday_source_policy(source_session_policy)
+        if include_extended_hours is not None and bool(include_extended_hours) != (
+            clean_source_policy == US_EQUITY_EXTENDED_SOURCE_POLICY
+        ):
+            raise ValueError(
+                "include_extended_hours conflicts with source_session_policy"
+            )
     required = {calendar_column, bar_timestamp_column, bar_end_column}
     missing = sorted(required.difference(frame.columns))
     if missing:
@@ -582,7 +808,10 @@ def attach_official_intraday_sessions(
             calendar.exchange_timezone
         ).dt.tz_localize(None).dt.normalize()
         interval_lookup = {
-            (item.start_timestamp, item.end_timestamp): item.exchange_session
+            (item.start_timestamp, item.end_timestamp): (
+                item.exchange_session,
+                CHECKPOINT_SESSION_REGULAR,
+            )
             for item in calendar.eligible_hour_intervals(
                 start_session=local_labels.min() - pd.Timedelta(days=7),
                 end_session=local_labels.max() + pd.Timedelta(days=7),
@@ -591,6 +820,7 @@ def attach_official_intraday_sessions(
 
         part = group.copy()
         resolved_sessions: list[pd.Timestamp | None] = []
+        checkpoint_sessions: list[str] = []
         eligible: list[bool] = []
         for start, end in zip(
             part[bar_timestamp_column],
@@ -599,18 +829,25 @@ def attach_official_intraday_sessions(
         ):
             start_timestamp = pd.Timestamp(start)
             end_timestamp = pd.Timestamp(end)
-            session = interval_lookup.get((start_timestamp, end_timestamp))
+            resolved = interval_lookup.get((start_timestamp, end_timestamp))
+            session = resolved[0] if resolved is not None else None
+            checkpoint_session = (
+                resolved[1] if resolved is not None else CHECKPOINT_SESSION_CLOSED
+            )
             if (
                 session is None
-                and include_extended_hours
-                and str(calendar_name).upper() in {"XNAS", "XNYS"}
+                and clean_source_policy == US_EQUITY_EXTENDED_SOURCE_POLICY
+                and str(calendar_name).upper() in _US_EQUITY_CALENDARS
                 and end_timestamp - start_timestamp == pd.Timedelta(hours=1)
             ):
                 local_start = start_timestamp.tz_convert(
                     calendar.exchange_timezone
                 )
                 session_candidate = local_start.tz_localize(None).normalize()
-                if session_candidate in calendar.sessions:
+                if (
+                    session_candidate in calendar.sessions
+                    and calendar._is_standard_us_equity_session(session_candidate)
+                ):
                     official_open = calendar.session_open(session_candidate)
                     official_close = calendar.session_close(session_candidate)
                     local_midnight = session_candidate.tz_localize(
@@ -628,10 +865,18 @@ def attach_official_intraday_sessions(
                     )
                     if is_premarket or is_aftermarket:
                         session = session_candidate
+                        checkpoint_session = (
+                            CHECKPOINT_SESSION_PRE
+                            if is_premarket
+                            else CHECKPOINT_SESSION_POST
+                        )
             resolved_sessions.append(session)
+            checkpoint_sessions.append(checkpoint_session)
             eligible.append(session is not None)
         part["intraday_interval_eligible"] = eligible
         part["exchange_session"] = resolved_sessions
+        part["checkpoint_session"] = checkpoint_sessions
+        part["intraday_source_session_policy"] = clean_source_policy
         part["bar_end_timestamp"] = part[bar_end_column]
         part["decision_timestamp"] = (
             part["bar_end_timestamp"] + processing_delay
@@ -711,6 +956,48 @@ def _optional_utc_timestamp(value: object) -> pd.Timestamp | None:
     except (TypeError, ValueError):
         pass
     return _utc_timestamp(value)
+
+
+def _intraday_source_policy(value: object) -> str:
+    clean = str(value or "").strip().lower()
+    allowed = {
+        REGULAR_INTRADAY_SOURCE_POLICY,
+        US_EQUITY_EXTENDED_SOURCE_POLICY,
+    }
+    if clean not in allowed:
+        raise ValueError(
+            "Unsupported intraday source session policy: "
+            f"{value!r}; expected {', '.join(sorted(allowed))}."
+        )
+    return clean
+
+
+def _intraday_target_policy(value: object) -> str:
+    clean = str(value or "").strip().lower()
+    allowed = {
+        REGULAR_INTRADAY_TARGET_POLICY,
+        US_EQUITY_ACTIONABLE_TARGET_POLICY,
+    }
+    if clean not in allowed:
+        raise ValueError(
+            "Unsupported intraday target session policy: "
+            f"{value!r}; expected {', '.join(sorted(allowed))}."
+        )
+    return clean
+
+
+def _intraday_start_policy(value: object) -> str:
+    clean = str(value or "").strip().lower()
+    allowed = {
+        HYBRID_TARGET_START_POLICY,
+        FOUR_HOUR_CHECKPOINT_START_POLICY,
+    }
+    if clean not in allowed:
+        raise ValueError(
+            "Unsupported intraday target start policy: "
+            f"{value!r}; expected {', '.join(sorted(allowed))}."
+        )
+    return clean
 
 
 def _ceil_exchange_hour(

@@ -63,7 +63,7 @@ from options.publication import read_option_snapshot
 
 
 MONITOR_SCHEMA_VERSION = "loops-system-monitor-v1"
-OVERNIGHT_SCHEDULE_SCHEMA_VERSION = "loops-overnight-accuracy-schedule-v1"
+OVERNIGHT_SCHEDULE_SCHEMA_VERSION = "loops-overnight-accuracy-schedule-v2"
 _PASS = "PASS"
 _INFO = "INFO"
 _WARN = "WARN"
@@ -130,9 +130,9 @@ _OVERNIGHT_LOCAL_HOURS = (
 )
 OVERNIGHT_ACCURACY_STAGES = (
     OvernightStageSpec(
-        "seal-market-session",
-        "Seal the completed market session",
-        "Verify final bars, predictions, options publications, fingerprints, and target boundaries before optimization.",
+        "seal-core-options-session",
+        "Seal the completed core and options session",
+        "Verify final regular-session bars, options publications, fingerprints, and target boundaries while keeping PRE/REGULAR/POST stock evidence provisional until the 17:00 Pacific actionable close.",
     ),
     OvernightStageSpec(
         "audit-input-quality",
@@ -148,12 +148,12 @@ OVERNIGHT_ACCURACY_STAGES = (
     OvernightStageSpec(
         "evaluate-directional-1h",
         "Evaluate mature 1h predictions",
-        "Evaluate causally mature 1h coverage, calibration, proper scores, hit rate, and cohort-specific errors.",
+        "Evaluate causally mature 1h coverage, calibration, proper scores, hit rate, and PRE/REGULAR/POST cohort-specific errors without treating the still-open stock day as complete.",
     ),
     OvernightStageSpec(
         "evaluate-directional-4h",
-        "Evaluate mature 4h predictions",
-        "Evaluate causally mature 4h coverage, calibration, proper scores, hit rate, and horizon-specific failure patterns.",
+        "Seal the extended stock day and evaluate mature 4h predictions",
+        "First verify the complete PRE/REGULAR/POST stock day through the 17:00 Pacific actionable close, then evaluate causally mature 4h coverage, calibration, proper scores, hit rate, and checkpoint-specific failure patterns.",
     ),
     OvernightStageSpec(
         "evaluate-directional-1d",
@@ -3465,6 +3465,9 @@ def scheduled_monitor_context(value: datetime | None = None) -> dict[str, object
         "session_date": None,
         "session_close": None,
         "session_close_local": None,
+        "equity_actionable_close": None,
+        "equity_actionable_close_local": None,
+        "equity_actionable_day_complete": None,
         "next_session_open": None,
         "next_session_open_local": None,
         "final_eligible_session_of_week": None,
@@ -3506,6 +3509,18 @@ def scheduled_monitor_context(value: datetime | None = None) -> dict[str, object
         <= week_end
     ]
     final_session = bool(week_sessions and session == max(week_sessions))
+    opened = pd.Timestamp(calendar.session_open(session)).tz_convert("UTC")
+    opened_eastern = opened.tz_convert("America/New_York")
+    close_eastern = close.tz_convert("America/New_York")
+    standard_equity_day = (
+        opened_eastern.hour,
+        opened_eastern.minute,
+        close_eastern.hour,
+        close_eastern.minute,
+    ) == (9, 30, 16, 0)
+    equity_actionable_close = (
+        close + pd.Timedelta(hours=4) if standard_equity_day else close
+    )
     monitor_mode = "hourly"
     if local_hour == 14:
         monitor_mode = "weekly" if final_session else "daily"
@@ -3534,6 +3549,11 @@ def scheduled_monitor_context(value: datetime | None = None) -> dict[str, object
             "session_date": session_date.strftime("%Y-%m-%d"),
             "session_close": close.isoformat(),
             "session_close_local": close.tz_convert("America/Los_Angeles").isoformat(),
+            "equity_actionable_close": equity_actionable_close.isoformat(),
+            "equity_actionable_close_local": equity_actionable_close.tz_convert(
+                "America/Los_Angeles"
+            ).isoformat(),
+            "equity_actionable_day_complete": observed >= equity_actionable_close,
             "next_session_open": next_open.isoformat() if next_open is not None else None,
             "next_session_open_local": (
                 next_open.tz_convert("America/Los_Angeles").isoformat()

@@ -15,9 +15,11 @@ from ml.stock_trader.contracts import (
     finite,
     utc,
 )
+from ml.stock_trader.session import checkpoint_session_for_target
 
 
 PRIMARY_STOCK_HORIZON = "1h"
+PRIMARY_STOCK_HORIZONS: tuple[str, ...] = ("1h", "4h")
 CONTEXT_HORIZONS: tuple[str, ...] = ("1h", "4h", "1d", "1w")
 
 
@@ -58,12 +60,22 @@ def load_current_prediction_signals(
     signals: dict[str, PredictionSignal] = {}
     for symbol in STOCK_TRADER_SYMBOLS:
         rows = eligible.loc[eligible["symbol"].eq(symbol)]
-        primary = rows.loc[rows["horizon"].eq(PRIMARY_STOCK_HORIZON)]
+        primary = rows.loc[rows["horizon"].isin(PRIMARY_STOCK_HORIZONS)].copy()
         if primary.empty:
             continue
+        primary["__horizon_priority"] = primary["horizon"].map(
+            {horizon: index for index, horizon in enumerate(PRIMARY_STOCK_HORIZONS)}
+        )
         primary_row = primary.sort_values(
-            ["decision_timestamp", "prediction_created_at"], kind="mergesort"
-        ).iloc[-1]
+            [
+                "target_window_start",
+                "__horizon_priority",
+                "decision_timestamp",
+                "prediction_created_at",
+            ],
+            ascending=[True, True, False, False],
+            kind="mergesort",
+        ).iloc[0]
         horizon_probabilities: dict[str, float] = {}
         for horizon, horizon_rows in rows.groupby("horizon", sort=False):
             latest = horizon_rows.sort_values(
@@ -78,7 +90,7 @@ def load_current_prediction_signals(
             continue
         signals[symbol] = PredictionSignal(
             symbol=symbol,
-            primary_horizon=PRIMARY_STOCK_HORIZON,
+            primary_horizon=str(primary_row["horizon"]),
             prediction_id=str(primary_row["id"]),
             decision_timestamp=_iso(primary_row["decision_timestamp"]),
             target_window_start=_iso(primary_row["target_window_start"]),
@@ -91,6 +103,12 @@ def load_current_prediction_signals(
             model_name=str(primary_row.get("model_name") or ""),
             model_version=str(primary_row.get("model_version") or ""),
             source_fingerprint=source_fingerprint,
+            checkpoint_session=checkpoint_session_for_target(
+                primary_row["target_window_start"]
+            ),
+            target_definition_version=str(
+                primary_row.get("target_definition_version") or ""
+            ),
         )
     return signals, source_files
 
@@ -130,5 +148,6 @@ def _iso(value: object) -> str:
 __all__ = [
     "CONTEXT_HORIZONS",
     "PRIMARY_STOCK_HORIZON",
+    "PRIMARY_STOCK_HORIZONS",
     "load_current_prediction_signals",
 ]

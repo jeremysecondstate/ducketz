@@ -17,8 +17,8 @@ from ml.stock_trader.contracts import STOCK_TRADER_WEEKLY_AUDIT_SCHEMA_VERSION, 
 from ml.stock_trader.publication import read_decision_run, read_execution_event
 
 
-STOCK_TRADER_WEEKLY_AUDIT_RECEIPT_VERSION = "stock-trader-weekly-audit-receipt-v1"
-STOCK_TRADER_WEEKLY_AUDIT_POINTER_VERSION = "stock-trader-weekly-audit-pointer-v1"
+STOCK_TRADER_WEEKLY_AUDIT_RECEIPT_VERSION = "stock-trader-weekly-audit-receipt-v2"
+STOCK_TRADER_WEEKLY_AUDIT_POINTER_VERSION = "stock-trader-weekly-audit-pointer-v2"
 
 
 @dataclass(frozen=True)
@@ -392,6 +392,12 @@ def _pair_decision_with_reality(
         "decision_lane": decision.get("decision_lane", "LIVE"),
         "prediction_id": prediction_row.get("prediction_id"),
         "prediction_horizon": prediction_row.get("primary_horizon"),
+        "target_definition_version": prediction_row.get(
+            "target_definition_version"
+        ),
+        "checkpoint_session": prediction_row.get(
+            "checkpoint_session", "REGULAR"
+        ),
         "suggested_action": suggested_action,
         "decision_action": action,
         "quantity": selected_quantity,
@@ -455,10 +461,14 @@ def _audit_summary(pairs: Sequence[Mapping[str, object]]) -> dict[str, object]:
     order_styles: Counter[str] = Counter()
     actions: Counter[str] = Counter()
     lanes: Counter[str] = Counter()
+    checkpoint_sessions: Counter[str] = Counter()
+    target_definitions: Counter[str] = Counter()
     handoff_statuses: Counter[str] = Counter()
     reason_results: dict[str, list[float]] = defaultdict(list)
     style_results: dict[str, list[float]] = defaultdict(list)
     handoff_results: dict[str, list[float]] = defaultdict(list)
+    checkpoint_session_results: dict[str, list[float]] = defaultdict(list)
+    target_definition_results: dict[str, list[float]] = defaultdict(list)
     fallback_decisions = 0
     mature = 0
     pending = 0
@@ -471,10 +481,18 @@ def _audit_summary(pairs: Sequence[Mapping[str, object]]) -> dict[str, object]:
         style = str(pair.get("order_style_reason_code") or "UNKNOWN")
         action = str(pair.get("decision_action") or "UNKNOWN")
         lane = str(pair.get("decision_lane") or "LIVE")
+        checkpoint_session = str(
+            pair.get("checkpoint_session") or "REGULAR"
+        ).upper()
+        target_definition = str(
+            pair.get("target_definition_version") or "UNRECORDED"
+        )
         decision_reasons[reason] += 1
         order_styles[style] += 1
         actions[action] += 1
         lanes[lane] += 1
+        checkpoint_sessions[checkpoint_session] += 1
+        target_definitions[target_definition] += 1
         handoff = pair.get("prediction_handoff")
         handoff_row = handoff if isinstance(handoff, Mapping) else {}
         handoff_status = str(handoff_row.get("status") or "NOT_RECORDED")
@@ -493,6 +511,8 @@ def _audit_summary(pairs: Sequence[Mapping[str, object]]) -> dict[str, object]:
             reason_results[reason].append(aligned)
             style_results[style].append(aligned)
             handoff_results[handoff_status].append(aligned)
+            checkpoint_session_results[checkpoint_session].append(aligned)
+            target_definition_results[target_definition].append(aligned)
         total_counterfactual += finite(
             reality.get("hypothetical_quantity_result_dollars"), default=0.0
         ) or 0.0
@@ -510,6 +530,8 @@ def _audit_summary(pairs: Sequence[Mapping[str, object]]) -> dict[str, object]:
         "non_evaluable_pair_count": non_evaluable,
         "actions": dict(sorted(actions.items())),
         "decision_lanes": dict(sorted(lanes.items())),
+        "checkpoint_session_counts": dict(sorted(checkpoint_sessions.items())),
+        "target_definition_counts": dict(sorted(target_definitions.items())),
         "prediction_handoff_status_counts": dict(sorted(handoff_statuses.items())),
         "fallback_decision_count": fallback_decisions,
         "decision_reason_counts": dict(sorted(decision_reasons.items())),
@@ -518,6 +540,12 @@ def _audit_summary(pairs: Sequence[Mapping[str, object]]) -> dict[str, object]:
         "order_style_outcomes": _group_results(order_styles, style_results),
         "prediction_handoff_outcomes": _group_results(
             handoff_statuses, handoff_results
+        ),
+        "checkpoint_session_outcomes": _group_results(
+            checkpoint_sessions, checkpoint_session_results
+        ),
+        "target_definition_outcomes": _group_results(
+            target_definitions, target_definition_results
         ),
         "aggregate_hypothetical_result_dollars": round(total_counterfactual, 2),
         "aggregate_selected_quantity_result_dollars": round(total_selected, 2),
@@ -579,8 +607,8 @@ def _render_markdown(report: Mapping[str, object]) -> str:
         "",
         "Every explanation is joined to its later market result by the stable `decision_id`.",
         "",
-        "| Time | Symbol | Decision | Handoff | Decision reason | Order-style reason | Outcome | Aligned net return | Hypothetical result |",
-        "|---|---:|---:|---|---|---|---|---:|---:|",
+        "| Time | Session | Symbol | Decision | Handoff | Decision reason | Order-style reason | Outcome | Aligned net return | Hypothetical result |",
+        "|---|---|---:|---:|---|---|---|---|---:|---:|",
     ]
     for pair in rows:
         if not isinstance(pair, Mapping):
@@ -599,6 +627,7 @@ def _render_markdown(report: Mapping[str, object]) -> str:
             + " | ".join(
                 (
                     _cell(pair.get("decided_at")),
+                    _cell(pair.get("checkpoint_session")),
                     _cell(pair.get("symbol")),
                     _cell(pair.get("decision_action")),
                     _cell(handoff_label),

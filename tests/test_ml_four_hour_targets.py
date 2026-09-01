@@ -7,7 +7,13 @@ import pandas as pd
 import pytest
 
 from ml.artifacts import semantic_metadata_fingerprint
-from ml.calendars import ExchangeSessionCalendar
+from ml.calendars import (
+    FOUR_HOUR_CHECKPOINT_START_POLICY,
+    HYBRID_TARGET_START_POLICY,
+    US_EQUITY_ACTIONABLE_TARGET_POLICY,
+    US_EQUITY_EXTENDED_SOURCE_POLICY,
+    ExchangeSessionCalendar,
+)
 from ml.contracts import MLContractError
 from ml.horizons import (
     DEFAULT_HORIZON_SPECIFICATIONS,
@@ -44,12 +50,12 @@ def test_every_closed_feature_profile_uses_canonical_horizon_order() -> None:
     (
         (
             "1h",
-            "next-60-eligible-regular-minutes-open-close-v3",
+            "next-60-eligible-equity-minutes-open-close-v4",
             "60",
         ),
         (
             "4h",
-            "next-180-eligible-regular-minutes-open-close-v3",
+            "next-180-eligible-equity-minutes-four-checkpoints-v4",
             "180",
         ),
     ),
@@ -65,29 +71,30 @@ def test_intraday_contracts_are_explicit_and_horizon_scoped(
     assert specification.target_price_provider == "databento"
     assert specification.target_price_timeframe == "1m"
     assert specification.target_price_source_version == (
-        "canonical-adjusted-native-1m-interval-open-v1"
+        "canonical-adjusted-native-1m-causal-no-trade-marks-v2"
     )
     assert minute_count in specification.target_window_end_rule
     assert specification.processing_delay == pd.Timedelta(minutes=5)
     assert specification.target_calendar_policy_version == (
-        "session-open-break-resume-plus-full-local-clock-anchor-v1"
+        "us-equity-actionable-segments-plus-versioned-start-v1"
+    )
+    assert specification.intraday_source_session_policy == (
+        US_EQUITY_EXTENDED_SOURCE_POLICY
+    )
+    assert specification.intraday_target_session_policy == (
+        US_EQUITY_ACTIONABLE_TARGET_POLICY
+    )
+    assert specification.intraday_target_start_policy == (
+        HYBRID_TARGET_START_POLICY
+        if horizon == "1h"
+        else FOUR_HOUR_CHECKPOINT_START_POLICY
     )
     with pytest.raises(ValueError, match="expected 1h, 4h, 1d, 1w"):
         horizon_specification("unknown")
 
 
-@pytest.mark.parametrize(
-    ("session", "expected_open", "expected_clock_start"),
-    (
-        ("2026-01-05", "2026-01-05T14:30:00Z", "2026-01-05T15:00:00Z"),
-        ("2026-07-27", "2026-07-27T13:30:00Z", "2026-07-27T14:00:00Z"),
-    ),
-)
-def test_hybrid_candidates_include_exact_open_and_full_local_clock_hours(
-    session: str,
-    expected_open: str,
-    expected_clock_start: str,
-) -> None:
+def test_us_equity_candidates_cover_pre_regular_and_post_checkpoints() -> None:
+    session = "2026-07-27"
     calendar = ExchangeSessionCalendar(
         "XNAS",
         start=pd.Timestamp(session) - pd.Timedelta(days=7),
@@ -96,20 +103,58 @@ def test_hybrid_candidates_include_exact_open_and_full_local_clock_hours(
     candidates = calendar.target_start_candidates(
         start_session=session,
         end_session=session,
+        session_policy=US_EQUITY_ACTIONABLE_TARGET_POLICY,
+        start_policy=HYBRID_TARGET_START_POLICY,
     )
-    assert candidates[0] == pd.Timestamp(expected_open)
-    assert pd.Timestamp(expected_clock_start) in candidates
+    assert candidates == tuple(
+        pd.to_datetime(
+            [
+                "2026-07-27T11:00:00Z",
+                "2026-07-27T12:00:00Z",
+                "2026-07-27T13:30:00Z",
+                "2026-07-27T14:00:00Z",
+                "2026-07-27T15:00:00Z",
+                "2026-07-27T16:00:00Z",
+                "2026-07-27T17:00:00Z",
+                "2026-07-27T18:00:00Z",
+                "2026-07-27T19:00:00Z",
+                "2026-07-27T20:05:00Z",
+                "2026-07-27T21:00:00Z",
+                "2026-07-27T22:00:00Z",
+                "2026-07-27T23:00:00Z",
+            ],
+            utc=True,
+        )
+    )
+    four_hour = calendar.target_start_candidates(
+        start_session=session,
+        end_session=session,
+        session_policy=US_EQUITY_ACTIONABLE_TARGET_POLICY,
+        start_policy=FOUR_HOUR_CHECKPOINT_START_POLICY,
+    )
+    assert four_hour == tuple(
+        pd.to_datetime(
+            [
+                "2026-07-27T11:30:00Z",
+                "2026-07-27T15:30:00Z",
+                "2026-07-27T19:30:00Z",
+                "2026-07-27T23:30:00Z",
+            ],
+            utc=True,
+        )
+    )
 
 
 @pytest.mark.parametrize(
-    ("horizon", "expected_end"),
+    ("horizon", "expected_start", "expected_end"),
     (
-        ("1h", "2026-07-27T14:30:00Z"),
-        ("4h", "2026-07-27T16:30:00Z"),
+        ("1h", "2026-07-24T21:00:00Z", "2026-07-24T22:00:00Z"),
+        ("4h", "2026-07-24T23:30:00Z", "2026-07-27T13:35:00Z"),
     ),
 )
-def test_prior_session_decision_targets_exact_xnas_summer_open(
+def test_late_regular_decision_targets_same_day_postmarket(
     horizon: str,
+    expected_start: str,
     expected_end: str,
 ) -> None:
     feature = _feature(
@@ -119,9 +164,7 @@ def test_prior_session_decision_targets_exact_xnas_summer_open(
         decision="2026-07-24T20:05:00Z",
     )
     sample = _build(feature)
-    assert sample["target_window_start"] == pd.Timestamp(
-        "2026-07-27T13:30:00Z"
-    )
+    assert sample["target_window_start"] == pd.Timestamp(expected_start)
     assert sample["target_window_end"] == pd.Timestamp(expected_end)
     assert sample["actionable_until"] == sample["target_window_start"]
 
@@ -138,15 +181,15 @@ def test_one_hour_aftermarket_decision_uses_latest_completed_extended_bar() -> N
 
     assert sample["decision_timestamp"] == pd.Timestamp("2026-07-27T21:05:00Z")
     assert sample["target_window_start"] == pd.Timestamp(
-        "2026-07-28T13:30:00Z"
+        "2026-07-27T22:00:00Z"
     )
     assert sample["target_window_end"] == pd.Timestamp(
-        "2026-07-28T14:30:00Z"
+        "2026-07-27T23:00:00Z"
     )
     assert sample["previous_period_direction"] == 1.0
 
 
-def test_four_hour_ordinary_target_retains_safe_next_clock_anchor() -> None:
+def test_four_hour_ordinary_target_uses_the_0830_pacific_checkpoint() -> None:
     feature = _feature(
         horizon="4h",
         session="2026-07-27",
@@ -163,13 +206,13 @@ def test_four_hour_ordinary_target_retains_safe_next_clock_anchor() -> None:
         cost=0.001,
     )
     assert sample["target_window_start"] == pd.Timestamp(
-        "2026-07-27T16:00:00Z"
+        "2026-07-27T15:30:00Z"
     )
     assert sample["target_window_end"] == pd.Timestamp(
-        "2026-07-27T19:00:00Z"
+        "2026-07-27T18:30:00Z"
     )
     assert sample["label_available_at"] == pd.Timestamp(
-        "2026-07-27T19:05:00Z"
+        "2026-07-27T18:35:00Z"
     )
     assert sample["target_open"] == 102.0
     assert sample["target_close"] == 108.0
@@ -219,14 +262,14 @@ def test_exact_target_start_equality_is_too_late() -> None:
     )
     sample = _build(feature)
     assert sample["target_window_start"] == pd.Timestamp(
-        "2026-07-27T17:00:00Z"
+        "2026-07-27T19:30:00Z"
     )
     assert sample["target_window_end"] == pd.Timestamp(
-        "2026-07-27T20:00:00Z"
+        "2026-07-27T22:35:00Z"
     )
 
 
-def test_late_day_four_hour_target_pauses_across_session_close() -> None:
+def test_midday_four_hour_target_pauses_across_core_to_post_gap() -> None:
     feature = _feature(
         horizon="4h",
         session="2026-07-27",
@@ -235,10 +278,10 @@ def test_late_day_four_hour_target_pauses_across_session_close() -> None:
     )
     sample = _build(feature, source_open=100.0, source_close=99.0)
     assert sample["target_window_start"] == pd.Timestamp(
-        "2026-07-27T19:00:00Z"
+        "2026-07-27T19:30:00Z"
     )
     assert sample["target_window_end"] == pd.Timestamp(
-        "2026-07-28T15:30:00Z"
+        "2026-07-27T22:35:00Z"
     )
     assert sample["previous_period_direction"] == 0.0
 
@@ -252,10 +295,10 @@ def test_four_hour_target_crosses_weekend_and_xnas_holiday() -> None:
     )
     sample = _build(feature)
     assert sample["target_window_start"] == pd.Timestamp(
-        "2026-07-06T13:30:00Z"
+        "2026-07-02T23:30:00Z"
     )
     assert sample["target_window_end"] == pd.Timestamp(
-        "2026-07-06T16:30:00Z"
+        "2026-07-06T13:35:00Z"
     )
 
 
@@ -268,14 +311,14 @@ def test_four_hour_target_respects_early_close_before_crossing_weekend() -> None
     )
     sample = _build(feature)
     assert sample["target_window_start"] == pd.Timestamp(
-        "2026-11-27T17:00:00Z"
+        "2026-11-27T16:30:00Z"
     )
     assert sample["target_window_end"] == pd.Timestamp(
-        "2026-11-30T16:30:00Z"
+        "2026-11-30T13:30:00Z"
     )
 
 
-def test_four_hour_target_uses_exchange_dst_schedule_across_weekend() -> None:
+def test_four_hour_target_uses_exchange_dst_schedule_for_postmarket() -> None:
     feature = _feature(
         horizon="4h",
         session="2026-03-06",
@@ -284,10 +327,10 @@ def test_four_hour_target_uses_exchange_dst_schedule_across_weekend() -> None:
     )
     sample = _build(feature)
     assert sample["target_window_start"] == pd.Timestamp(
-        "2026-03-09T13:30:00Z"
+        "2026-03-06T20:30:00Z"
     )
     assert sample["target_window_end"] == pd.Timestamp(
-        "2026-03-09T16:30:00Z"
+        "2026-03-06T23:35:00Z"
     )
 
 
@@ -308,8 +351,8 @@ def test_four_hour_target_pauses_across_exchange_break() -> None:
     )
 
 
-@pytest.mark.parametrize("missing_target_index", (0, 90, 179))
-def test_missing_four_hour_constituent_keeps_window_and_label_incomplete(
+@pytest.mark.parametrize("missing_target_index", (0, 179))
+def test_missing_boundary_mark_keeps_four_hour_label_incomplete(
     missing_target_index: int,
 ) -> None:
     feature = _feature(
@@ -320,10 +363,10 @@ def test_missing_four_hour_constituent_keeps_window_and_label_incomplete(
     )
     sample = _build(feature, missing_indices=(missing_target_index,))
     assert sample["target_window_start"] == pd.Timestamp(
-        "2026-07-27T16:00:00Z"
+        "2026-07-27T15:30:00Z"
     )
     assert sample["target_window_end"] == pd.Timestamp(
-        "2026-07-27T19:00:00Z"
+        "2026-07-27T18:30:00Z"
     )
     assert sample["label_status"] == "INCOMPLETE_LABEL"
     assert sample["label_exclusion_reason"] == (
@@ -335,6 +378,26 @@ def test_missing_four_hour_constituent_keeps_window_and_label_incomplete(
     assert pd.isna(sample["target_cost_adjusted_positive"])
 
 
+def test_missing_middle_no_trade_minute_uses_only_a_prior_close_mark() -> None:
+    feature = _feature(
+        horizon="4h",
+        session="2026-07-27",
+        bar_start="2026-07-27T14:00:00Z",
+        decision="2026-07-27T15:05:00Z",
+    )
+    sample = _build(feature, missing_indices=(90,))
+
+    assert sample["target_window_start"] == pd.Timestamp(
+        "2026-07-27T15:30:00Z"
+    )
+    assert sample["target_window_end"] == pd.Timestamp(
+        "2026-07-27T18:30:00Z"
+    )
+    assert sample["label_status"] == "COMPLETE"
+    assert sample["target_open"] == 100.0
+    assert sample["target_close"] == 106.0
+
+
 def test_four_hour_label_matures_only_at_end_plus_five_minutes() -> None:
     feature = _feature(
         horizon="4h",
@@ -344,11 +407,11 @@ def test_four_hour_label_matures_only_at_end_plus_five_minutes() -> None:
     )
     immature = _build(
         feature,
-        materialized_at="2026-07-27T19:04:59.999999Z",
+        materialized_at="2026-07-27T18:34:59.999999Z",
     )
     mature = _build(
         feature,
-        materialized_at="2026-07-27T19:05:00Z",
+        materialized_at="2026-07-27T18:35:00Z",
     )
     assert immature["label_status"] == "INCOMPLETE_LABEL"
     assert immature["label_exclusion_reason"] == "target_window_not_mature"
@@ -618,7 +681,7 @@ def test_materialization_reuses_source_and_target_caches_for_1h_and_4h(
     ]
     assert decision_policies == [
         ("technical-all", True),
-        ("technical-all-4h", False),
+        ("technical-all-4h", True),
     ]
     assert materialized.samples["horizon"].tolist() == ["1h", "4h"]
 
@@ -684,6 +747,7 @@ def _window_and_target_prices(
 ) -> tuple[object, pd.DataFrame]:
     decision = pd.Timestamp(feature.iloc[0]["decision_timestamp"])
     exchange_calendar = str(feature.iloc[0]["exchange_calendar"])
+    specification = horizon_specification(str(feature.iloc[0]["horizon"]))
     calendar = ExchangeSessionCalendar(
         exchange_calendar,
         start=decision.tz_convert("UTC").tz_localize(None).normalize()
@@ -694,6 +758,10 @@ def _window_and_target_prices(
     window = calendar.target_window_after(
         decision,
         eligible_minute_count=minute_count,
+        session_policy=(
+            specification.intraday_target_session_policy
+        ),
+        start_policy=specification.intraday_target_start_policy,
     )
     missing = set(missing_indices)
     rows = [

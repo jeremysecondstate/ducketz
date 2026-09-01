@@ -1152,6 +1152,22 @@ def test_exact_contract_matching_and_stale_fallback_are_isolated() -> None:
     assert rejected_missing_age["pricing_status"] == "Unavailable"
     assert rejected_missing_age["pricing_source"] == "UNAVAILABLE"
 
+    invalid_interval = dict(exact)
+    invalid_interval["fair_value_95_lower"] = float(exact["fair_value"]) + 0.01
+    rejected_interval = attach_strategy_pricing_evidence(
+        candidate,
+        catalog=StrategyPricingEvidenceCatalog(
+            pd.DataFrame([invalid_interval]), ()
+        ),
+        pricing_mode="active",
+        per_contract_fee=0.65,
+        allow_offline_replay=False,
+    ).candidates.iloc[0]
+    assert rejected_interval["pricing_status"] == "Unavailable"
+    assert rejected_interval["pricing_source"] == "UNAVAILABLE"
+    assert "PRICING_VALUE_INVALID" in rejected_interval["pricing_missing_reason"]
+    assert rejected_interval["candidate_rank"] == 1
+
     offline_bsgp = dict(exact)
     offline_bsgp["evidence_lane"] = "OFFLINE_SCHWAB_BOOTSTRAP"
     rejected_offline = attach_strategy_pricing_evidence(

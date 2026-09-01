@@ -67,7 +67,8 @@ the operational authority.
 ## Schedule and review window
 
 Run once each Saturday at 09:00 America/Los_Angeles. This is after Friday's
-post-close processing and before the next XNYS open. The runtime resolves the
+17:00 Pacific actionable stock close and post-close processing, and before the
+next XNYS open. The runtime resolves the
 most recent completed XNYS calendar week, so exchange holidays do not require
 hand-authored dates.
 
@@ -128,7 +129,10 @@ The audit resolves the same latest completed XNYS week, verifies every
 stock-trader decision receipt, and joins each stable `decision_id` and its
 reason/order-style explanation to the causally mature Loop B evaluation. It
 must retain BUY, SELL, and NO_TRADE decisions, including hypothetical quantity
-economics for abstentions. Accept `WEEKLY_AUDIT_COMPLETE`, `OUTCOMES_PENDING`,
+economics for abstentions. Review counts and mature results separately by
+`PRE`, `REGULAR`, and `POST` checkpoint session and by exact target-definition
+version; never blend the new extended contract with legacy regular-only rows
+when making a comparative claim. Accept `WEEKLY_AUDIT_COMPLETE`, `OUTCOMES_PENDING`,
 or `NO_STOCK_TRADER_DECISIONS`. This command is evaluation-only: it must not
 contact Schwab, submit an order, activate the trader, train a model, or mutate
 policy. Preserve its JSON, Markdown, manifest, receipt, and latest-pointer

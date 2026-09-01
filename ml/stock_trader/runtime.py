@@ -30,6 +30,7 @@ from ml.stock_trader.session import (
     StockExecutionWindow,
     decision_targets_open,
     stock_execution_window,
+    time_in_force_for_checkpoint,
 )
 from ml.stock_trader.state import SchwabReadSession, capture_portfolio_state
 
@@ -78,6 +79,7 @@ def run_stock_trader_once(
     parallel_state: bool = True,
     shadow_observe: bool = True,
     allow_open_queue: bool = False,
+    allow_premarket_queue: bool = False,
     wait_for_prediction: bool = False,
     prediction_poll_seconds: float = DEFAULT_POLL_SECONDS,
     prediction_cutoff_lead_seconds: float = DEFAULT_CUTOFF_LEAD_SECONDS,
@@ -201,6 +203,12 @@ def run_stock_trader_once(
                 signals, prediction_sources = load_current_prediction_signals(
                     root, as_of=timestamp
                 )
+            execution_time_in_force = _signal_time_in_force(
+                signals,
+                as_of=timestamp,
+                allow_open_queue=allow_open_queue,
+                allow_premarket_queue=allow_premarket_queue,
+            )
         except Exception as exc:
             detail = f"{type(exc).__name__}: {exc}"
             publication = publish_decision_run(
@@ -275,6 +283,7 @@ def run_stock_trader_once(
             decided_at=timestamp,
             model_unavailable_reason=model_error,
             decision_lane="LIVE",
+            time_in_force=execution_time_in_force,
         )
         shadow_decisions: tuple[TradeDecision, ...] = ()
         if shadow_observe:
@@ -300,6 +309,7 @@ def run_stock_trader_once(
                 decided_at=timestamp,
                 model_unavailable_reason=model_error,
                 decision_lane="SHADOW",
+                time_in_force=execution_time_in_force,
             )
         decisions = (*live_decisions, *shadow_decisions)
         publication = publish_decision_run(
@@ -332,7 +342,9 @@ def run_stock_trader_once(
                 target_window_start=target_window_start,
             )
         execution_window = stock_execution_window(
-            timestamp, allow_open_queue=allow_open_queue
+            timestamp,
+            allow_open_queue=allow_open_queue,
+            allow_premarket_queue=allow_premarket_queue,
         )
         if not execution_window.executable:
             return StockTraderRunResult(
@@ -452,6 +464,36 @@ def _model_source_files(root: Path) -> tuple[Path, ...]:
     )
 
 
+def _signal_time_in_force(
+    signals: Mapping[str, object],
+    *,
+    as_of: object,
+    allow_open_queue: bool,
+    allow_premarket_queue: bool,
+) -> str:
+    checkpoint_sessions = {
+        str(getattr(signal, "checkpoint_session", "") or "").strip().upper()
+        for signal in signals.values()
+    }
+    checkpoint_sessions.discard("")
+    if not checkpoint_sessions:
+        return "DAY"
+    if len(checkpoint_sessions) != 1:
+        raise ValueError(
+            "Actionable stock signals disagree on checkpoint session: "
+            + ", ".join(sorted(checkpoint_sessions))
+        )
+    current = stock_execution_window(
+        as_of,
+        allow_open_queue=allow_open_queue,
+        allow_premarket_queue=allow_premarket_queue,
+    ).checkpoint_session
+    return time_in_force_for_checkpoint(
+        next(iter(checkpoint_sessions)),
+        current_checkpoint_session=current,
+    )
+
+
 def _prediction_pointer_sources(root: Path) -> tuple[Path, ...]:
     pointer = root / "ml" / "latest" / "run.json"
     return (pointer,) if pointer.is_file() else ()
@@ -482,10 +524,18 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--queue-at-premarket-open",
+        action="store_true",
+        help=(
+            "Permit AM limit orders before the Schwab PRE open only when "
+            "their prediction target starts at that 07:00 Eastern boundary."
+        ),
+    )
+    parser.add_argument(
         "--wait-for-actionable-prediction",
         action="store_true",
         help=(
-            "Wait for an unconsumed checksum-verified 1h Loop B receipt for "
+            "Wait for an unconsumed checksum-verified 1h/4h Loop B receipt for "
             "the next target, then execute before its bounded cutoff."
         ),
     )
@@ -514,6 +564,10 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.queue_at_open and args.queue_at_premarket_open:
+        raise SystemExit(
+            "--queue-at-open and --queue-at-premarket-open are mutually exclusive"
+        )
     if args.wait_for_actionable_prediction and args.decided_at:
         raise SystemExit(
             "--decided-at cannot be combined with --wait-for-actionable-prediction"
@@ -528,6 +582,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             execute=bool(args.execute),
             shadow_observe=not args.no_shadow_observe,
             allow_open_queue=bool(args.queue_at_open),
+            allow_premarket_queue=bool(args.queue_at_premarket_open),
             wait_for_prediction=bool(args.wait_for_actionable_prediction),
             prediction_poll_seconds=args.prediction_poll_seconds,
             prediction_cutoff_lead_seconds=args.prediction_cutoff_lead_seconds,

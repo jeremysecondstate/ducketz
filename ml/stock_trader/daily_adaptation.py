@@ -9,7 +9,10 @@ import pandas as pd
 
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from datafetching.runtime_lock import exclusive_runtime_lock
-from ml.calendars import ExchangeSessionCalendar
+from ml.calendars import (
+    ExchangeSessionCalendar,
+    US_EQUITY_ACTIONABLE_TARGET_POLICY,
+)
 from ml.stock_trader.audit import build_stock_trader_weekly_audit
 from ml.stock_trader.contracts import utc
 from ml.stock_trader.training import train_and_publish_enrichment_model
@@ -28,11 +31,14 @@ def adapt_after_latest_completed_session(
         start=timestamp - pd.Timedelta(days=14),
         end=timestamp + pd.Timedelta(days=2),
     )
-    completed = [
-        session
-        for session in calendar.sessions
-        if calendar.session_close(session) <= timestamp
-    ]
+    completed = []
+    for candidate in calendar.sessions:
+        _actionable_open, actionable_close = calendar.intraday_target_bounds(
+            candidate,
+            session_policy=US_EQUITY_ACTIONABLE_TARGET_POLICY,
+        )
+        if actionable_close <= timestamp:
+            completed.append(candidate)
     if not completed:
         raise ValueError("No completed XNYS session is available for adaptation")
     session = completed[-1]
@@ -44,12 +50,16 @@ def adapt_after_latest_completed_session(
         }
     opened = calendar.session_open(session)
     closed = calendar.session_close(session)
-    # Include the explicitly supported opening-queue decisions in the same
-    # session audit as the regular-session hourly decisions.
+    actionable_open, actionable_close = calendar.intraday_target_bounds(
+        session,
+        session_policy=US_EQUITY_ACTIONABLE_TARGET_POLICY,
+    )
+    # Audit the complete broker-actionable PRE/REGULAR/POST stock day. The
+    # official exchange open/close remain separately reported below.
     audit = build_stock_trader_weekly_audit(
         root,
-        window_start=opened - pd.Timedelta(hours=3),
-        window_end=closed + pd.Timedelta(nanoseconds=1),
+        window_start=actionable_open,
+        window_end=actionable_close + pd.Timedelta(nanoseconds=1),
         evaluated_at=timestamp,
     )
     model_run = train_and_publish_enrichment_model(
@@ -65,6 +75,8 @@ def adapt_after_latest_completed_session(
         "session": str(pd.Timestamp(session).date()),
         "session_open": opened.isoformat(),
         "session_close": closed.isoformat(),
+        "equity_actionable_open": actionable_open.isoformat(),
+        "equity_actionable_close": actionable_close.isoformat(),
         "audit_run_directory": str(audit.run_directory),
         "pair_count": audit.pair_count,
         "mature_pair_count": audit.mature_pair_count,

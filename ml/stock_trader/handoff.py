@@ -14,11 +14,12 @@ from ml.stock_trader.contracts import (
     utc,
 )
 from ml.stock_trader.inputs import load_current_prediction_signals
+from ml.stock_trader.inputs import PRIMARY_STOCK_HORIZONS
 from ml.stock_trader.publication import read_decision_run
 from ml.stock_trader.session import next_stock_target_start
 
 
-PREDICTION_HANDOFF_SCHEMA_VERSION = "stock-trader-prediction-handoff-v1"
+PREDICTION_HANDOFF_SCHEMA_VERSION = "stock-trader-prediction-handoff-v2"
 DEFAULT_POLL_SECONDS = 15.0
 DEFAULT_CUTOFF_LEAD_SECONDS = 90.0
 DEFAULT_MAXIMUM_TARGET_LEAD_SECONDS = 45.0 * 60.0
@@ -68,7 +69,7 @@ class PredictionHandoffResult:
             "poll_count": self.poll_count,
             "poll_policy": {
                 "receipt_authority": "checksum-verified-current-Loop-B-publication",
-                "primary_horizon": "1h",
+                "primary_horizons": list(PRIMARY_STOCK_HORIZONS),
                 "fallback_age_feature": "prediction_age_minutes",
             },
             "fallback_used": self.fallback_used,
@@ -113,10 +114,10 @@ def wait_for_actionable_prediction(
 ) -> PredictionHandoffResult:
     """Wait for the newest unconsumed actionable Loop B receipt for one target.
 
-    The expected fresh generation is the Loop B ``:35`` generation for a
-    top-of-hour target, or the ``:05`` generation for the opening target. Both
-    are exactly 25 minutes before their target. An older receipt that still
-    targets the same future window is retained as an age-aware fallback.
+    The expected fresh generation is the Loop B generation 25 minutes before
+    the selected 1h or 4h checkpoint (``:35`` for a top-of-hour target and
+    ``:05`` for a half-hour target). An older receipt that still targets the
+    same future window is retained as an age-aware fallback.
     """
 
     if poll_seconds <= 0.0:
@@ -333,7 +334,7 @@ def _matching_target_signals(
     matching: dict[str, PredictionSignal] = {}
     for symbol in STOCK_TRADER_SYMBOLS:
         signal = signals.get(symbol)
-        if signal is None or signal.primary_horizon != "1h":
+        if signal is None or signal.primary_horizon not in PRIMARY_STOCK_HORIZONS:
             continue
         try:
             signal_target = utc(signal.target_window_start)

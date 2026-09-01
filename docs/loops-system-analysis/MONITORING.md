@@ -191,9 +191,10 @@ Thus an exchange holiday Friday selects weekly evaluation after Thursday's
 eligible close; a hard-coded weekday test is not used.
 `ml/system_monitor.py:3229`
 
-Scheduled monitor and guardian JSON also contain a `schedule` object with a
-separate overnight accuracy lane. On a completed eligible session, the regular
-17-stage window is 1:42 PM through 5:42 AM America/Los_Angeles. The local-hour
+Scheduled monitor and guardian JSON also contain a
+`loops-overnight-accuracy-schedule-v2` object with a separate overnight accuracy
+lane. On a completed eligible official session, the regular 17-stage window is
+1:42 PM through 5:42 AM America/Los_Angeles. The local-hour
 mapping is stable across daylight saving changes, while XNYS session evidence
 prevents holidays or non-session dates from starting a stale cycle. An early
 close must already be complete before the 1:42 PM seal stage, but it does not
@@ -201,9 +202,11 @@ shift or duplicate the regular stage catalog. Friday's cycle ends after the
 Saturday 5:42 AM freeze; unchanged Friday evidence is not replayed throughout
 the weekend.
 
-The stage metadata includes the eligible session and close, next session open,
-week-final flag, stable stage ID and objective, action scope, 45-minute bound,
-shadow-experiment permission, and pre-open freeze flag. It is additive: only
+The stage metadata includes the eligible session and official close, the
+separate stock `equity_actionable_close`, whether that broader day is complete,
+the next session open, week-final flag, stable stage ID and objective, action
+scope, 45-minute bound, shadow-experiment permission, and pre-open freeze flag.
+It is additive: only
 the 2:42 PM stage selects the existing daily/weekly monitor layer, so expensive
 quality and weekly checks are not repeated seventeen times.
 
@@ -219,11 +222,11 @@ single stage selected by `schedule.overnight_stage` is:
 
 | Local wake | Stable stage ID | Responsibility |
 |---|---|---|
-| 13:42 | `seal-market-session` | Seal final bars, predictions, options publications, fingerprints, and target boundaries. |
-| 14:42 | `audit-input-quality` | Audit gaps, duplicates, staleness, timestamps, schemas, nulls, latency, coverage, and lineage. |
+| 13:42 | `seal-core-options-session` | Seal official core/options evidence while leaving the still-open stock POST lane provisional. |
+| 14:42 | `audit-input-quality` | Audit gaps, duplicates, staleness, timestamps, schemas, nulls, latency, coverage, and lineage by PRE/REGULAR/POST without calling the open tail missing. |
 | 15:42 | `audit-ui-output-parity` | Verify Duckets values and labels against authoritative outputs, then inspect visual presentation when the desktop app is already open. |
-| 16:42 | `evaluate-directional-1h` | Evaluate causally mature 1h coverage, calibration, proper scores, hit rate, and cohorts. |
-| 17:42 | `evaluate-directional-4h` | Evaluate mature 4h quality and horizon-specific failure patterns. |
+| 16:42 | `evaluate-directional-1h` | Evaluate only causally mature 1h coverage, calibration, proper scores, hit rate, and checkpoint-session cohorts. |
+| 17:42 | `evaluate-directional-4h` | Seal the complete actionable stock day, then evaluate mature 4h quality by PRE/REGULAR/POST checkpoint. |
 | 18:42 | `evaluate-directional-1d` | Evaluate prior mature 1d vintages, calibration, coverage, and drift. |
 | 19:42 | `evaluate-directional-1w` | Evaluate weekly vintages only with sufficient independent mature outcomes. |
 | 20:42 | `audit-cross-horizon-coherence` | Explain material horizon disagreements without forcing agreement. |

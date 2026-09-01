@@ -75,12 +75,13 @@ class ModelPartitionConfig:
 
 DEFAULT_PARTITION_CONFIGS: Mapping[str, ModelPartitionConfig] = {
     # Intraday decisions are sourced from the deliberately bounded 100-calendar-day
-    # native one-minute history.  A full regular session contributes roughly five
-    # target-start clusters, so the daily 504-cluster policy can never be satisfied
-    # by the production input contract.  Keep the same 4:1:1:2 partition proportions
-    # while leaving enough room for holiday/half-day and overlap-boundary purging.
+    # native one-minute history. The hourly route retains enough target starts for
+    # 160/40/40/80. The explicit four-checkpoint route has fewer independent starts
+    # and overnight-overlapping windows, so it uses the same 4:1:1:2 proportions at
+    # 128/32/32/64. This leaves holiday/half-day and boundary-purge headroom while
+    # still training on every older eligible cluster rather than truncating to 128.
     "1h": ModelPartitionConfig(160, 40, 40, 80),
-    "4h": ModelPartitionConfig(160, 40, 40, 80),
+    "4h": ModelPartitionConfig(128, 32, 32, 64),
     "1d": ModelPartitionConfig(252, 63, 63, 126),
     **{
         horizon: ModelPartitionConfig(252, 63, 63, 126)

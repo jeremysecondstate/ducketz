@@ -3,6 +3,10 @@ from __future__ import annotations
 import pandas as pd
 
 from ml.calendars import (
+    FOUR_HOUR_CHECKPOINT_START_POLICY,
+    HYBRID_TARGET_START_POLICY,
+    US_EQUITY_ACTIONABLE_TARGET_POLICY,
+    US_EQUITY_EXTENDED_SOURCE_POLICY,
     ExchangeSessionCalendar,
     attach_official_daily_sessions,
     attach_official_intraday_sessions,
@@ -77,21 +81,33 @@ def test_horizon_contracts_are_readable_and_share_feature_columns() -> None:
     )
     four_hour = contracts["4h"]
     assert four_hour["target_definition_version"] == (
-        "next-180-eligible-regular-minutes-open-close-v3"
+        "next-180-eligible-equity-minutes-four-checkpoints-v4"
     )
     assert four_hour["source_timeframe"] == "1h"
     assert four_hour["target_price_timeframe"] == "1m"
     assert four_hour["target_calendar_policy_version"] == (
-        "session-open-break-resume-plus-full-local-clock-anchor-v1"
+        "us-equity-actionable-segments-plus-versioned-start-v1"
+    )
+    assert four_hour["intraday_source_session_policy"] == (
+        US_EQUITY_EXTENDED_SOURCE_POLICY
+    )
+    assert four_hour["intraday_target_session_policy"] == (
+        US_EQUITY_ACTIONABLE_TARGET_POLICY
+    )
+    assert four_hour["intraday_target_start_policy"] == (
+        FOUR_HOUR_CHECKPOINT_START_POLICY
     )
     assert four_hour["processing_delay"] == "0 days 00:05:00"
     one_hour = contracts["1h"]
     assert one_hour["target_definition_version"] == (
-        "next-60-eligible-regular-minutes-open-close-v3"
+        "next-60-eligible-equity-minutes-open-close-v4"
     )
     assert one_hour["target_price_timeframe"] == "1m"
     assert one_hour["target_calendar_policy_version"] == (
-        "session-open-break-resume-plus-full-local-clock-anchor-v1"
+        "us-equity-actionable-segments-plus-versioned-start-v1"
+    )
+    assert one_hour["intraday_target_start_policy"] == (
+        HYBRID_TARGET_START_POLICY
     )
     for unaffected_horizon in ("1d", "1w"):
         assert "target_price_timeframe" not in contracts[unaffected_horizon]
@@ -269,6 +285,15 @@ def test_one_hour_decisions_admit_only_bounded_us_extended_full_hours() -> None:
     assert with_extended.loc[1:2, "exchange_session"].eq(
         pd.Timestamp("2026-07-27")
     ).all()
+    assert with_extended["checkpoint_session"].tolist() == [
+        "REGULAR",
+        "POST",
+        "POST",
+        "CLOSED",
+    ]
+    assert with_extended["intraday_source_session_policy"].eq(
+        US_EQUITY_EXTENDED_SOURCE_POLICY
+    ).all()
 
 
 def test_hour_target_skips_the_interval_already_started_during_processing() -> None:
@@ -442,7 +467,10 @@ def test_distinct_completed_source_bars_remain_distinct_decisions() -> None:
     assert not any(
         column.endswith(("_id", "_ids")) for column in samples.columns
     )
-    assert samples["target_window_start"].nunique() == 1
+    assert samples["target_window_start"].tolist() == [
+        pd.Timestamp("2026-07-27T20:05:00Z"),
+        pd.Timestamp("2026-07-27T21:00:00Z"),
+    ]
 
 
 def test_daily_calendar_uses_the_actual_early_close_for_availability() -> None:

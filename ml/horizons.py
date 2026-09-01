@@ -5,6 +5,13 @@ from typing import Final, Iterable, Mapping
 
 import pandas as pd
 
+from ml.calendars import (
+    FOUR_HOUR_CHECKPOINT_START_POLICY,
+    HYBRID_TARGET_START_POLICY,
+    US_EQUITY_ACTIONABLE_TARGET_POLICY,
+    US_EQUITY_EXTENDED_SOURCE_POLICY,
+)
+
 
 HORIZON_ORDER: Final[tuple[str, ...]] = ("1h", "4h", "1d", "1w")
 WEEKLY_HORIZON_ORDER: Final[tuple[str, ...]] = (
@@ -57,6 +64,9 @@ class HorizonSpecification:
     target_price_source_version: str | None = None
     target_constituent_rule: str | None = None
     target_calendar_policy_version: str | None = None
+    intraday_source_session_policy: str | None = None
+    intraday_target_session_policy: str | None = None
+    intraday_target_start_policy: str | None = None
 
     def __post_init__(self) -> None:
         if self.horizon not in INTERNAL_HORIZON_ORDER:
@@ -104,6 +114,33 @@ class HorizonSpecification:
                 "Intraday target-price metadata must be complete; missing "
                 + missing
             )
+        intraday_policy_fields = (
+            "intraday_source_session_policy",
+            "intraday_target_session_policy",
+            "intraday_target_start_policy",
+        )
+        configured_intraday_policy_fields = tuple(
+            field_name
+            for field_name in intraday_policy_fields
+            if getattr(self, field_name) is not None
+        )
+        if self.source_timeframe == "1h":
+            if len(configured_intraday_policy_fields) != len(
+                intraday_policy_fields
+            ):
+                missing = ", ".join(
+                    field_name
+                    for field_name in intraday_policy_fields
+                    if getattr(self, field_name) is None
+                )
+                raise ValueError(
+                    "Intraday source/target session policies must be complete; "
+                    "missing " + missing
+                )
+        elif configured_intraday_policy_fields:
+            raise ValueError(
+                "Intraday session policies apply only to 1h source timeframes"
+            )
 
     def as_dict(self) -> dict[str, object]:
         payload = asdict(self)
@@ -121,7 +158,7 @@ DEFAULT_HORIZON_SPECIFICATIONS: Final[
     "1h": HorizonSpecification(
         horizon="1h",
         target_definition_version=(
-            "next-60-eligible-regular-minutes-open-close-v3"
+            "next-60-eligible-equity-minutes-open-close-v4"
         ),
         source_timeframe="1h",
         information_availability_rule=(
@@ -137,88 +174,104 @@ DEFAULT_HORIZON_SPECIFICATIONS: Final[
             "strictly_after_information_availability"
         ),
         target_window_end_rule=(
-            "end_after_60_calendar_selected_eligible_regular_session_minutes"
+            "end_after_60_calendar_selected_eligible_equity_actionable_minutes"
         ),
         return_definition=(
             "first_target_minute_open_to_final_target_minute_close_simple_"
             "return_including_intervening_price_gaps"
         ),
         label_definition=(
-            "all_calendar_selected_native_1m_records_required_no_shifting_"
-            "missing_any_is_incomplete_label_available_at_end_plus_processing_"
-            "delay_and_one_time_cost_adjusted_return_strictly_positive"
+            "calendar_selected_1m_marks_use_native_trade_bars_or_strictly_"
+            "causal_prior_close_for_no_trade_minutes_never_future_fill_and_"
+            "require_collection_coverage_through_window_end_label_available_"
+            "at_end_plus_processing_delay_and_one_time_cost_adjusted_return_"
+            "strictly_positive"
         ),
         cost_convention=(
             "explicit_round_trip_rate_subtracted_once_from_simple_return"
         ),
         exchange_calendar_rule=(
-            "calendar_selects_hybrid_start_before_price_lookup_and_accumulates_"
-            "eligible_regular_minutes_pausing_breaks_and_closed_periods"
+            "us_equity_calendar_selects_actionable_segment_or_full_hour_start_"
+            "before_price_lookup_and_accumulates_eligible_premarket_regular_"
+            "and_postmarket_minutes_pausing_transition_gaps_and_closures"
         ),
         actionability_deadline="strictly_before_target_window_start",
         feature_set="technical-all",
         target_price_provider="databento",
         target_price_timeframe="1m",
         target_price_source_version=(
-            "canonical-adjusted-native-1m-interval-open-v1"
+            "canonical-adjusted-native-1m-causal-no-trade-marks-v2"
         ),
         target_constituent_rule=(
-            "every_calendar_predetermined_eligible_native_1m_record_required_"
-            "with_no_substitution_or_shift"
+            "each_calendar_predetermined_eligible_minute_uses_its_native_open_"
+            "and_close_when_present_otherwise_latest_strictly_prior_native_"
+            "close_with_no_future_fill_and_coverage_through_window_end_required"
         ),
         target_calendar_policy_version=(
-            "session-open-break-resume-plus-full-local-clock-anchor-v1"
+            "us-equity-actionable-segments-plus-versioned-start-v1"
         ),
+        intraday_source_session_policy=US_EQUITY_EXTENDED_SOURCE_POLICY,
+        intraday_target_session_policy=US_EQUITY_ACTIONABLE_TARGET_POLICY,
+        intraday_target_start_policy=HYBRID_TARGET_START_POLICY,
     ),
     "4h": HorizonSpecification(
         horizon="4h",
         target_definition_version=(
-            "next-180-eligible-regular-minutes-open-close-v3"
+            "next-180-eligible-equity-minutes-four-checkpoints-v4"
         ),
         source_timeframe="1h",
         information_availability_rule=(
-            "completed_native_1h_source_bar_end_plus_processing_delay"
+            "completed_native_regular_or_available_us_extended_hour_bar_end_"
+            "plus_processing_delay"
         ),
         decision_time_rule=(
-            "after_each_completed_eligible_1h_source_bar_and_required_processing_delay"
+            "after_each_completed_regular_or_available_us_extended_1h_source_"
+            "bar_and_required_processing_delay"
         ),
         target_window_start_rule=(
-            "first_session_open_break_resume_or_full_local_clock_hour_start_"
-            "strictly_after_information_availability"
+            "first_0730_1130_1530_or_1930_eastern_equity_checkpoint_strictly_"
+            "after_information_availability"
         ),
         target_window_end_rule=(
-            "end_after_180_calendar_selected_eligible_regular_session_minutes"
+            "end_after_180_calendar_selected_eligible_equity_actionable_minutes"
         ),
         return_definition=(
             "first_target_minute_open_to_final_target_minute_close_simple_"
             "return_including_intervening_price_gaps"
         ),
         label_definition=(
-            "all_calendar_selected_native_1m_records_required_no_shifting_"
-            "missing_any_is_incomplete_label_available_at_end_plus_processing_"
-            "delay_and_one_time_cost_adjusted_return_strictly_positive"
+            "calendar_selected_1m_marks_use_native_trade_bars_or_strictly_"
+            "causal_prior_close_for_no_trade_minutes_never_future_fill_and_"
+            "require_collection_coverage_through_window_end_label_available_"
+            "at_end_plus_processing_delay_and_one_time_cost_adjusted_return_"
+            "strictly_positive"
         ),
         cost_convention=(
             "explicit_round_trip_rate_subtracted_once_from_simple_return"
         ),
         exchange_calendar_rule=(
-            "calendar_selects_hybrid_start_before_price_lookup_and_accumulates_"
-            "eligible_regular_minutes_pausing_breaks_and_closed_periods"
+            "us_equity_calendar_selects_four_daily_checkpoint_starts_before_"
+            "price_lookup_and_accumulates_eligible_premarket_regular_and_"
+            "postmarket_minutes_pausing_transition_gaps_and_closures"
         ),
         actionability_deadline="strictly_before_target_window_start",
         feature_set="technical-all-4h",
         target_price_provider="databento",
         target_price_timeframe="1m",
         target_price_source_version=(
-            "canonical-adjusted-native-1m-interval-open-v1"
+            "canonical-adjusted-native-1m-causal-no-trade-marks-v2"
         ),
         target_constituent_rule=(
-            "every_calendar_predetermined_eligible_native_1m_record_required_"
-            "with_no_substitution_or_shift"
+            "each_calendar_predetermined_eligible_minute_uses_its_native_open_"
+            "and_close_when_present_otherwise_latest_strictly_prior_native_"
+            "close_with_no_future_fill_and_coverage_through_window_end_required"
         ),
         target_calendar_policy_version=(
-            "session-open-break-resume-plus-full-local-clock-anchor-v1"
+            "us-equity-actionable-segments-plus-versioned-start-v1"
         ),
+        intraday_source_session_policy=US_EQUITY_EXTENDED_SOURCE_POLICY,
+        intraday_target_session_policy=US_EQUITY_ACTIONABLE_TARGET_POLICY,
+        intraday_target_start_policy=FOUR_HOUR_CHECKPOINT_START_POLICY,
     ),
     "1d": HorizonSpecification(
         horizon="1d",

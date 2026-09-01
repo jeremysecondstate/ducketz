@@ -580,6 +580,10 @@ def test_regular_session_maps_all_seventeen_overnight_accuracy_stages() -> None:
         assert context["session_date"] == "2026-08-19"
         assert context["final_eligible_session_of_week"] is False
         assert context["monitor_mode"] == ("daily" if hour == 14 else "hourly")
+        assert str(context["equity_actionable_close_local"]).startswith(
+            "2026-08-19T17:00:00"
+        )
+        assert context["equity_actionable_day_complete"] is (hour >= 17 or hour <= 5)
         assert isinstance(stage, dict)
         assert stage["index"] == index
         assert stage["count"] == len(OVERNIGHT_ACCURACY_STAGES) == 17
@@ -791,7 +795,11 @@ def test_overnight_schedule_uses_early_close_evidence_without_shifting_slots() -
     assert context["lane"] == "OVERNIGHT_ACCURACY"
     assert context["session_date"] == "2026-11-27"
     assert str(context["session_close_local"]).startswith("2026-11-27T10:00:00")
-    assert context["overnight_stage"]["id"] == "seal-market-session"
+    assert str(context["equity_actionable_close_local"]).startswith(
+        "2026-11-27T10:00:00"
+    )
+    assert context["equity_actionable_day_complete"] is True
+    assert context["overnight_stage"]["id"] == "seal-core-options-session"
 
 
 def test_scheduled_weekly_mode_uses_holiday_week_final_session_not_friday() -> None:

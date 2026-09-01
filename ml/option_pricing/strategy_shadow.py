@@ -1180,15 +1180,20 @@ def _matching_prediction(
     ]
     if matches.empty:
         return None, "PRICING_INPUT_STALE"
+    fair_value = pd.to_numeric(matches["fair_value"], errors="coerce")
+    fair_lower = pd.to_numeric(
+        matches["fair_value_95_lower"], errors="coerce"
+    )
+    fair_upper = pd.to_numeric(
+        matches["fair_value_95_upper"], errors="coerce"
+    )
     matches = matches.loc[
         matches["pricing_source"].astype("string").isin(_PRICING_SOURCES)
-        & pd.to_numeric(matches["fair_value"], errors="coerce").notna()
-        & pd.to_numeric(
-            matches["fair_value_95_lower"], errors="coerce"
-        ).notna()
-        & pd.to_numeric(
-            matches["fair_value_95_upper"], errors="coerce"
-        ).notna()
+        & fair_value.notna()
+        & fair_lower.notna()
+        & fair_upper.notna()
+        & fair_lower.le(fair_value)
+        & fair_value.le(fair_upper)
     ]
     if matches.empty:
         return None, "PRICING_VALUE_INVALID"

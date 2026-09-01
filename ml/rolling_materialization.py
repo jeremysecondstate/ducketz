@@ -39,6 +39,7 @@ from ml.datasets.technical import (
     assemble_technical_feature_frame,
 )
 from ml.feature_registry import DEFAULT_FEATURE_REGISTRY
+from ml.calendars import US_EQUITY_EXTENDED_SOURCE_POLICY
 from ml.horizons import (
     DEFAULT_HORIZON_SPECIFICATIONS,
     INTERNAL_HORIZON_ORDER,
@@ -269,7 +270,10 @@ def _materialize_rolling_samples(
                             if specification.source_timeframe == "1h"
                             else "daily"
                         ),
-                        include_extended_hours=(horizon == "1h"),
+                        include_extended_hours=(
+                            specification.intraday_source_session_policy
+                            == US_EQUITY_EXTENDED_SOURCE_POLICY
+                        ),
                     ),
                 )
                 features["horizon"] = horizon

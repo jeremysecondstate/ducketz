@@ -59,6 +59,7 @@ def build_trade_decisions(
     decided_at: object,
     model_unavailable_reason: str | None = None,
     decision_lane: str = "LIVE",
+    time_in_force: str = "DAY",
 ) -> tuple[TradeDecision, ...]:
     """Create six auditable decisions from one shared state snapshot.
 
@@ -72,6 +73,10 @@ def build_trade_decisions(
     lane = str(decision_lane or "").upper()
     if lane not in {"LIVE", "SHADOW"}:
         raise ValueError("decision_lane must be LIVE or SHADOW")
+    clean_time_in_force = str(time_in_force or "").strip().upper()
+    if clean_time_in_force not in {"DAY", "AM", "PM", "EXT", "GTC_EXT"}:
+        raise ValueError(f"Unsupported stock trader time in force: {time_in_force!r}")
+    extended_session = clean_time_in_force in {"AM", "PM", "EXT", "GTC_EXT"}
     timestamp = utc(decided_at)
     decided_at_iso = timestamp.isoformat()
     candidates: dict[str, _Candidate] = {}
@@ -103,8 +108,8 @@ def build_trade_decisions(
                 active_policy,
                 decided_at_iso,
                 decision_lane=lane,
-                code="ACTIONABLE_1H_PREDICTION_UNAVAILABLE",
-                reason="No current actionable LIVE 1h Loop B prediction was available.",
+                code="ACTIONABLE_STOCK_PREDICTION_UNAVAILABLE",
+                reason="No current actionable LIVE 1h/4h Loop B prediction was available.",
             )
             continue
         if quote is None:
@@ -180,6 +185,7 @@ def build_trade_decisions(
             hypothetical_quantity,
             quote,
             active_policy,
+            extended_session=extended_session,
         )
         quantity = hypothetical_quantity if code == "ELIGIBLE" else 0
         candidates[symbol] = _Candidate(
@@ -203,7 +209,11 @@ def build_trade_decisions(
                 candidate.limit_price,
                 candidate.order_style_code,
                 candidate.order_style_reason,
-            ) = _order_style(candidate, active_policy)
+            ) = _order_style(
+                candidate,
+                active_policy,
+                force_limit=extended_session,
+            )
         else:
             candidate.order_style_code, candidate.order_style_reason = _no_order_style(
                 candidate.eligibility_code
@@ -217,6 +227,7 @@ def build_trade_decisions(
             active_policy,
             decided_at_iso,
             decision_lane=lane,
+            time_in_force=clean_time_in_force,
         )
         for symbol in STOCK_TRADER_SYMBOLS
     )
@@ -264,7 +275,17 @@ def _eligibility(
     quantity: int,
     quote: QuoteState,
     policy: StockTraderPolicy,
+    *,
+    extended_session: bool,
 ) -> tuple[str, str]:
+    if (
+        extended_session
+        and quote.relative_spread > policy.maximum_extended_relative_spread
+    ):
+        return (
+            "EXTENDED_SPREAD_TOO_WIDE",
+            "The extended-hours quote spread exceeded the explicit policy cap.",
+        )
     if enrichment.trade_probability < policy.minimum_trade_probability:
         return (
             "LOW_TRADE_PROBABILITY",
@@ -349,7 +370,10 @@ def _limit_order_count(
 
 
 def _order_style(
-    candidate: _Candidate, policy: StockTraderPolicy
+    candidate: _Candidate,
+    policy: StockTraderPolicy,
+    *,
+    force_limit: bool,
 ) -> tuple[str, float | None, str, str]:
     urgency = candidate.enrichment.execution_urgency
     quote = candidate.quote
@@ -381,7 +405,7 @@ def _order_style(
             "HIGH_URGENCY_DECAYING_OPPORTUNITY_MARKETABLE_LIMIT",
             "High urgency and faster opportunity decay selected a marketable limit order.",
         )
-    if policy.allow_market_orders:
+    if policy.allow_market_orders and not force_limit:
         return (
             "MARKET",
             None,
@@ -391,8 +415,17 @@ def _order_style(
     return (
         "LIMIT",
         round(marketable, policy.price_decimals),
-        "VERY_HIGH_URGENCY_MARKETABLE_LIMIT_MARKET_DISABLED",
-        "Very high urgency selected a marketable limit because market orders are disabled.",
+        (
+            "VERY_HIGH_URGENCY_EXTENDED_MARKETABLE_LIMIT"
+            if force_limit
+            else "VERY_HIGH_URGENCY_MARKETABLE_LIMIT_MARKET_DISABLED"
+        ),
+        (
+            "Very high urgency selected a marketable limit because extended-hours "
+            "orders must be limit orders."
+            if force_limit
+            else "Very high urgency selected a marketable limit because market orders are disabled."
+        ),
     )
 
 
@@ -416,6 +449,7 @@ def _decision_from_candidate(
     decided_at: str,
     *,
     decision_lane: str,
+    time_in_force: str,
 ) -> TradeDecision:
     action = candidate.side if candidate.quantity > 0 else "NO_TRADE"
     protective_price = (
@@ -441,7 +475,7 @@ def _decision_from_candidate(
             symbol=candidate.symbol,
             instruction=candidate.side,
             order_type=candidate.order_type,
-            time_in_force="DAY",
+            time_in_force=time_in_force,
             position_effect="AUTO" if candidate.side == "BUY" else "CLOSING",
             quantity=candidate.quantity,
             price=candidate.limit_price if candidate.limit_price is not None else "",

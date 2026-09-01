@@ -34,9 +34,10 @@ _PARTITIONS = ModelPartitionConfig(
 
 
 def test_intraday_defaults_fit_bounded_minute_history_without_weakening_daily() -> None:
-    expected_intraday = ModelPartitionConfig(160, 40, 40, 80)
-    assert DEFAULT_PARTITION_CONFIGS["4h"] == expected_intraday
-    assert DEFAULT_PARTITION_CONFIGS["4h"] == DEFAULT_PARTITION_CONFIGS["1h"]
+    expected_one_hour = ModelPartitionConfig(160, 40, 40, 80)
+    expected_four_hour = ModelPartitionConfig(128, 32, 32, 64)
+    assert DEFAULT_PARTITION_CONFIGS["1h"] == expected_one_hour
+    assert DEFAULT_PARTITION_CONFIGS["4h"] == expected_four_hour
     assert DEFAULT_PARTITION_CONFIGS["1d"] == ModelPartitionConfig(
         252,
         63,
@@ -45,8 +46,13 @@ def test_intraday_defaults_fit_bounded_minute_history_without_weakening_daily() 
     )
     assert MINIMUM_LIVE_DECISIONS["4h"] == 60
 
-    for horizon, window in (("1h", pd.Timedelta(hours=1)), ("4h", pd.Timedelta(hours=3))):
-        samples = _overlapping_samples(cluster_count=343).copy()
+    for horizon, window, cluster_count in (
+        ("1h", pd.Timedelta(hours=1), 343),
+        # Mirrors the 308 completed target starts observed in the bounded
+        # production four-checkpoint materialization.
+        ("4h", pd.Timedelta(hours=3), 308),
+    ):
+        samples = _overlapping_samples(cluster_count=cluster_count).copy()
         samples["horizon"] = horizon
         samples["id"] = [
             f"GOOG|{horizon}|{_iso_z(value)}"
@@ -59,10 +65,20 @@ def test_intraday_defaults_fit_bounded_minute_history_without_weakening_daily() 
             config=DEFAULT_PARTITION_CONFIGS[horizon],
         )
 
-        assert partitions.train["target_window_start"].nunique() >= 160
-        assert partitions.calibration["target_window_start"].nunique() == 40
-        assert partitions.assessment["target_window_start"].nunique() == 40
-        assert partitions.lockbox_cluster_count == 80
+        expected = DEFAULT_PARTITION_CONFIGS[horizon]
+        assert (
+            partitions.train["target_window_start"].nunique()
+            >= expected.minimum_train_clusters
+        )
+        assert (
+            partitions.calibration["target_window_start"].nunique()
+            == expected.calibration_clusters
+        )
+        assert (
+            partitions.assessment["target_window_start"].nunique()
+            == expected.assessment_clusters
+        )
+        assert partitions.lockbox_cluster_count == expected.lockbox_clusters
 
 
 def test_four_hour_overlaps_are_purged_across_every_partition_boundary() -> None:
@@ -287,7 +303,7 @@ def test_four_hour_target_contract_is_model_compatibility_metadata(
         specification=replace(
             specification,
             target_definition_version=(
-                "next-180-eligible-regular-minutes-open-close-test-change"
+                "next-180-eligible-equity-minutes-four-checkpoints-test-change"
             ),
         ),
         trained_at="2026-07-30T12:03:00Z",
@@ -306,7 +322,7 @@ def test_four_hour_target_contract_is_model_compatibility_metadata(
     assert changed.artifact_directory != first.artifact_directory
     target_definition = manifest["target_definition"]
     assert target_definition["version"] == (
-        "next-180-eligible-regular-minutes-open-close-v3"
+        "next-180-eligible-equity-minutes-four-checkpoints-v4"
     )
     assert target_definition["horizon_specification"] == specification.as_dict()
     assert target_definition["calendar_policy"] == (
@@ -373,7 +389,7 @@ def test_four_hour_contract_change_does_not_invalidate_one_hour_model(
     four_hour_specification = replace(
         horizon_specification("4h"),
         target_definition_version=(
-            "next-180-eligible-regular-minutes-open-close-isolation-test"
+            "next-180-eligible-equity-minutes-four-checkpoints-isolation-test"
         ),
     )
     four_hour_features = resolve_model_feature_set(
@@ -417,7 +433,7 @@ def test_four_hour_contract_change_does_not_invalidate_one_hour_model(
         )
     )
     assert one_hour_manifest["target_definition"]["version"] == (
-        "next-60-eligible-regular-minutes-open-close-v3"
+        "next-60-eligible-equity-minutes-open-close-v4"
     )
     assert one_hour_manifest["target_definition"][
         "horizon_specification"
@@ -464,7 +480,7 @@ def test_one_hour_target_contract_change_invalidates_only_one_hour_reuse(
         specification=replace(
             specification,
             target_definition_version=(
-                "next-60-eligible-regular-minutes-open-close-test-change"
+                "next-60-eligible-equity-minutes-open-close-test-change"
             ),
         ),
         trained_at="2026-07-30T14:01:00Z",

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from bisect import bisect_right
 import json
 from math import isfinite
 from typing import Final
@@ -25,6 +26,7 @@ ROLLING_SAMPLE_CONTEXT_COLUMNS: Final = (
     "provider",
     "exchange_calendar",
     "exchange_session",
+    "checkpoint_session",
     "horizon",
 )
 ROLLING_SAMPLE_TIME_COLUMNS: Final = (
@@ -241,6 +243,8 @@ def _build_symbol_samples(
             source_prices=source_prices,
             calendar=calendar,
             target_minute_count=60,
+            target_session_policy=specification.intraday_target_session_policy,
+            target_start_policy=specification.intraday_target_start_policy,
         )
     elif specification.horizon == "4h":
         windows = _hour_windows(
@@ -249,6 +253,8 @@ def _build_symbol_samples(
             source_prices=source_prices,
             calendar=calendar,
             target_minute_count=180,
+            target_session_policy=specification.intraday_target_session_policy,
+            target_start_policy=specification.intraday_target_start_policy,
         )
     elif specification.horizon == "1d":
         windows = _daily_windows(features, target_prices, calendar=calendar)
@@ -348,13 +354,27 @@ def _hour_windows(
     source_prices: pd.DataFrame,
     calendar: ExchangeSessionCalendar,
     target_minute_count: int,
+    target_session_policy: str | None,
+    target_start_policy: str | None,
 ) -> list[tuple[int, dict[str, object]]]:
     if target_minute_count < 1:
         raise ValueError("target_minute_count must be positive")
+    if target_session_policy is None or target_start_policy is None:
+        raise MLContractError(
+            "Intraday rolling targets require explicit session and start policies"
+        )
     target_price_lookup = {
         pd.Timestamp(row.bar_timestamp): row
         for row in target_prices.itertuples(index=False)
     }
+    ordered_target_timestamps = tuple(sorted(target_price_lookup))
+    target_coverage_end = max(
+        (
+            pd.Timestamp(row.bar_end_timestamp)
+            for row in target_prices.itertuples(index=False)
+        ),
+        default=pd.Timestamp.min.tz_localize("UTC"),
+    )
     source_lookup = {
         pd.Timestamp(row.bar_timestamp): row
         for row in source_prices.itertuples(index=False)
@@ -366,13 +386,19 @@ def _hour_windows(
         target_window = calendar.target_window_after(
             available,
             eligible_minute_count=target_minute_count,
+            session_policy=target_session_policy,
+            start_policy=target_start_policy,
         )
-        constituent_prices = [
-            target_price_lookup.get(timestamp)
+        constituent_marks = [
+            _causal_target_mark(
+                timestamp,
+                target_price_lookup=target_price_lookup,
+                ordered_timestamps=ordered_target_timestamps,
+            )
             for timestamp in target_window.constituent_timestamps
         ]
-        first_price = constituent_prices[0]
-        final_price = constituent_prices[-1]
+        first_mark = constituent_marks[0]
+        final_mark = constituent_marks[-1]
         source_price = source_lookup.get(pd.Timestamp(row["bar_timestamp"]))
         records.append(
             (
@@ -381,24 +407,49 @@ def _hour_windows(
                     "target_window_start": target_window.start_timestamp,
                     "target_window_end": target_window.end_timestamp,
                     "target_open": (
-                        getattr(first_price, "open", None)
-                        if first_price is not None
+                        first_mark[0]
+                        if first_mark is not None
                         else None
                     ),
                     "target_close": (
-                        getattr(final_price, "close", None)
-                        if final_price is not None
+                        final_mark[1]
+                        if final_mark is not None
                         else None
                     ),
                     "constituent_prices_complete": all(
-                        target_price is not None
-                        for target_price in constituent_prices
-                    ),
+                        target_mark is not None
+                        for target_mark in constituent_marks
+                    ) and target_coverage_end >= target_window.end_timestamp,
                     "previous_period_direction": _direction(source_price),
                 },
             )
         )
     return records
+
+
+def _causal_target_mark(
+    timestamp: pd.Timestamp,
+    *,
+    target_price_lookup: dict[pd.Timestamp, object],
+    ordered_timestamps: tuple[pd.Timestamp, ...],
+) -> tuple[object, object] | None:
+    """Return native open/close or a past-close no-trade mark.
+
+    Databento OHLCV omits a minute when no trade occurs. A missing eligible
+    minute is therefore stated by the latest strictly prior native close; a
+    future row is never used. The caller separately proves that collection has
+    advanced through the complete target window before the label can mature.
+    """
+
+    native = target_price_lookup.get(timestamp)
+    if native is not None:
+        return getattr(native, "open", None), getattr(native, "close", None)
+    location = bisect_right(ordered_timestamps, timestamp) - 1
+    if location < 0:
+        return None
+    previous = target_price_lookup[ordered_timestamps[location]]
+    close = getattr(previous, "close", None)
+    return close, close
 
 
 def _daily_windows(
@@ -673,7 +724,9 @@ def _prepare_prices(
                 calendar_column="exchange_calendar",
                 bar_timestamp_column="bar_timestamp",
                 bar_end_column="bar_end_timestamp",
-                include_extended_hours=specification.horizon == "1h",
+                source_session_policy=(
+                    specification.intraday_source_session_policy
+                ),
             )
         else:
             daily_sessions = group["bar_timestamp"].dt.tz_convert(

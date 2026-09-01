@@ -16,7 +16,7 @@ STOCK_TRADER_DECISION_SCHEMA_VERSION = "stock-trader-decision-v2"
 STOCK_TRADER_DECISION_RUN_SCHEMA_VERSION = "stock-trader-decision-run-v2"
 STOCK_TRADER_EXECUTION_EVENT_SCHEMA_VERSION = "stock-trader-execution-event-v1"
 STOCK_TRADER_OUTCOME_SCHEMA_VERSION = "stock-trader-outcome-v1"
-STOCK_TRADER_WEEKLY_AUDIT_SCHEMA_VERSION = "stock-trader-weekly-audit-v1"
+STOCK_TRADER_WEEKLY_AUDIT_SCHEMA_VERSION = "stock-trader-weekly-audit-v2"
 
 
 def canonical_json(value: object) -> str:
@@ -119,6 +119,8 @@ class PredictionSignal:
     model_name: str
     model_version: str
     source_fingerprint: str
+    checkpoint_session: str = "REGULAR"
+    target_definition_version: str = ""
 
     @property
     def suggested_action(self) -> str:
@@ -154,6 +156,7 @@ class StockTraderPolicy:
     maximum_orders_per_wake: int = 6
     allow_market_orders: bool = False
     maximum_limit_offset_bps: float = 20.0
+    maximum_extended_relative_spread: float = 0.005
     maximum_protective_distance_fraction: float = 0.15
     passive_urgency_ceiling: float = 0.25
     midpoint_urgency_ceiling: float = 0.55
@@ -186,6 +189,10 @@ class StockTraderPolicy:
             raise ValueError("minimum_order_notional cannot be negative")
         if self.maximum_limit_offset_bps < 0.0:
             raise ValueError("maximum_limit_offset_bps cannot be negative")
+        if not 0.0 <= self.maximum_extended_relative_spread < 1.0:
+            raise ValueError(
+                "maximum_extended_relative_spread must be within [0, 1)"
+            )
         if not 0.0 < self.maximum_protective_distance_fraction < 1.0:
             raise ValueError(
                 "maximum_protective_distance_fraction must be within (0, 1)"

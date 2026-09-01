@@ -106,13 +106,13 @@ def test_scheduled_main_surfaces_overnight_stage_in_guardian_and_monitor(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     schedule = {
-        "schema_version": "loops-overnight-accuracy-schedule-v1",
+        "schema_version": "loops-overnight-accuracy-schedule-v2",
         "monitor_mode": "hourly",
         "lane": "OVERNIGHT_ACCURACY",
         "overnight_stage": {
             "index": 1,
             "count": 17,
-            "id": "seal-market-session",
+            "id": "seal-core-options-session",
         },
     }
     monkeypatch.setattr(

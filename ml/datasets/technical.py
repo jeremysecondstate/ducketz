@@ -403,6 +403,8 @@ def _attach_point_in_time_universe(
             "session_open_timestamp",
             "session_close_timestamp",
             "intraday_interval_eligible",
+            "checkpoint_session",
+            "intraday_source_session_policy",
         )
         if column in candidates.columns
     )
