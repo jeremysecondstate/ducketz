@@ -22,3 +22,15 @@ A read-only catalog load after the change produced 433,917 verified offline OPRA
 ## Safety boundary
 
 The upgrade does not automate order submission, lower the causal cohort requirements, use assessment data for model choice, substitute Scenario Coverage for calibrated probability, or allow offline OPRA replay to authorize a live candidate. Existing v6 candidate files remain readable during the v7 transition; new Strategy publications use the v7 model policy.
+
+## Prospective Loops paper evaluation
+
+Loop C now evaluates systematic selection separately from the operator's prior
+Schwab Options Strategy choices. Only exact generated `1d` One-Session and
+dynamic `1w` Remaining-Week Aggregate candidates may enter the paper lane. Each
+entry freezes exact legs, entry BBO/fee economics, model and sequence evidence,
+quantity, expiration, and signed/gross exercise-or-assignment share obligations.
+It uses the receipt-proven target-window exit no later than expiration session;
+missing exits remain pending. The daily paper ledger and Saturday review never
+create a broker order or reattribute personal account history. See
+[Options Strategy paper automation](OPTIONS_STRATEGY_PAPER_AUTOMATION.md).

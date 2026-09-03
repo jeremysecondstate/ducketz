@@ -28,6 +28,10 @@ flowchart LR
         STR["Strategy runtime"]
     end
 
+    subgraph MODEL_OWNER[Asynchronous model owner]
+        SPT["Strategy-profit training<br/>daily 22:00 UTC"]
+    end
+
     subgraph OWNED[Owned work, not an independent loop]
         W["Loop-native residual worker<br/>one-shot; no provider calls"]
     end
@@ -47,6 +51,7 @@ flowchart LR
     B -->|"D+M+C · exact current source + direction probabilities"| STR
     OPT -->|"D+M · exact entry/exit chains and outcomes"| STR
     PR ==>|"D+M+F · leg pricing / scenario coverage"| STR
+    SPT -->|"M · receipt-gated 1d/1w fitted-model authority"| STR
     B ==>|"T(doc) · +5 precedes +6; no artifact"| OPT
     PR -->|"OWNED · launch after fast target"| W
     W -->|"OWNED · prior verified shadow model for later target"| PR
@@ -63,7 +68,7 @@ flowchart LR
     classDef both fill:#e4dcff,stroke:#6842c2,color:#25164d,stroke-width:2px;
     classDef support fill:#eeeeee,stroke:#666666,color:#222222,stroke-dasharray:5 4;
     class CME,A,FRED,OPT,PR,B both;
-    class STR options;
+    class STR,SPT options;
     class W,OPRAL,BOOT,OPRAH,EQA,CMEA support;
 ```
 
@@ -98,6 +103,7 @@ Every edge in the map is supported on both its producer and consumer sides. `T(d
 | B → Strategy | `D+M+C`: samples, LIVE probability and exact current source authority | `ml/runtime_pipeline.py:704`, `ml/runtime_pipeline.py:876` | `ml/strategy_runtime.py:63`, `ml/strategy_runtime.py:235`, `ml/strategy_publication.py:41` | **Confirmed, mandatory and checksum-bound** |
 | Options → Strategy | `D+M`: exact entry/exit chains/outcomes | `options/publication.py:92`, `options/snapshot.py:499` | `ml/strategy_selection/runtime.py:240`, `ml/strategy_selection/runtime.py:395` | **Confirmed** |
 | Pricing → Strategy | `D+M+F`: per-leg fair value/edge/uncertainty | `ml/option_pricing/publication.py`, `ml/option_pricing/strategy_shadow.py` | `ml/strategy_selection/runtime.py` | **Confirmed, separately typed scenario coverage when fitted scoring is unavailable** |
+| Strategy-profit training → Strategy | `M`: receipt-gated fitted model for 1d/1w | `ml/strategy_profit_training_runtime.py`, `ml/strategy_profit_training.py` | `ml/strategy_runtime.py`, `ml/strategy_selection/model.py` | **Confirmed, asynchronous; no order authority** |
 | B → Options | `T(doc)`: +5 then +6 only | `docs/datafetch-ml/current_start_command:188` | `docs/datafetch-ml/current_start_command:99`, `docs/datafetch-ml/current_start_command:160`, `datafetching/options_runtime.py:700` | **Documented only; no exchanged artifact** |
 | Pricing ↔ worker | owned launch and future shadow model | `ml/option_pricing_runtime.py:418`, `ml/option_pricing_runtime.py:440` | `ml/option_pricing_loop_native_worker.py:38`, `ml/option_pricing_loop_native_worker.py:135` | **Confirmed owned worker** |
 | Prospective OPRA adapter → Options | canonical `D`: scoped `OPRA.PILLAR` definitions plus a watermarked `cbbo-1s` final pretarget BBO; one shared live transport whose callback yields cooperatively | `options/databento_live.py:34`, `options/databento_live.py:244`, `options/databento_live.py:280` | `datafetching/options_runtime.py:430`, `options/snapshot.py:122` | **Confirmed production transport; target-watermark unavailability permits labeled Schwab fallback, while integrity errors do not** |

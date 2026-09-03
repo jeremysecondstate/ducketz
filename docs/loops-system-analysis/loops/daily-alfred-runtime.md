@@ -121,7 +121,7 @@ The importer’s pagination is internal. The one-time `ml.option_pricing_fred --
 
 ## Runtime and monitoring observation
 
-**Confirmed deployment contract:** Daily ALFRED is one of the seven independent
+**Confirmed deployment contract:** Daily ALFRED is one of the eight independent
 hidden owners, even though its work is at most once per UTC date. The canonical
 launcher/guardian command is unbuffered, uses an explicit working directory and
 redirected monitor-visible logs, and requires one launcher/worker pair whose

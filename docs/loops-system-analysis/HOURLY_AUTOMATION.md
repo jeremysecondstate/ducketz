@@ -195,7 +195,15 @@ Pooled sequence encoder and Loop C shadow lane:
   this observe-only operation immediately on the first eligible open-session
   wake; there is no evidence waiting period before it may compute. Its only
   acceptable authority is `OBSERVE_ONLY`; it contains no broker submission path
-  and every output must keep zero-order safety.
+  and every output must keep zero-order safety. A `RESEARCH_PROPOSAL` must freeze
+  the one exact selected Strategy candidate: candidate ID/key, strategy family
+  and name, exact option/stock legs, BBO-derived entry economics, modeled fees,
+  capital/max-loss fields, quantity, source receipts, and Loops/sequence
+  selection evidence. It must also freeze every option expiration and multiplier,
+  potential long/short share obligation, and an exact target-window exit no later
+  than the earliest expiration session. A candidate with a stateful lifecycle, missing
+  expiration, or target beyond expiration is ineligible and must not become a
+  paper entry.
 - Pooled encoder training is eligible only inside
   `run-shadow-ablation`, only when stage 13's immutable preregistration names
   this exact challenger and supplies its causal cutoff, cohort, compute bound,
@@ -251,7 +259,18 @@ Pooled sequence encoder and Loop C shadow lane:
   The pooled encoder remains bound to all four directional horizons because it
   is shared with Loop B, but `1h` and `4h` option candidates are explicitly
   ineligible and receive `OPTIONS_SHADOW_HORIZON_BELOW_1D`. Loop C continues to
-  have no options broker path.
+  have no options broker path. The `1w` route is the Strategy system's dynamic
+  `Remaining-Week Aggregate`; do not relabel a midweek candidate as a fixed
+  five-session trade.
+- Do not rebuild the cumulative Options Strategy paper ledger inside the hourly
+  wake. The separate Tuesday-through-Saturday daily task reads all immutable
+  Loop C proposals and runs
+  `ml.loop_c.paper_ledger --datastore-target pc --compact`; stage 11 supplies
+  causally mature exact Strategy outcomes for that tracker. The hourly monitor
+  verifies its latest receipt when one exists, but neither lane contacts a
+  broker or models assignment as an execution. Missing target-window outcome
+  evidence stays pending; it is never replaced by an expiration assignment or
+  a current mark.
 - Start the Loop C prospective evidence clock at its first successfully
   published open-session observe run, not at code deployment, risk approval, or
   sequence training. Continue running Loop C every eligible hourly wake while
@@ -297,7 +316,7 @@ Execute exactly the stage named by the guardian:
 8. `audit-cross-horizon-coherence` (20:42): explain material 1h/4h/1d/1w disagreements through horizon definitions, inputs, regimes, and vintages without forcing distinct horizons to agree.
 9. `audit-options-inputs` (21:42): audit chain completeness, quote age, spreads, strikes, expirations, Greeks availability clocks, liquidity evidence, and explicit missing reasons.
 10. `audit-pricing-execution` (22:42): audit Pricing coverage, conservative fills, fees, slippage, execution haircuts, surface/liquidity policy, and outlier valuations.
-11. `evaluate-strategy-outcomes` (23:42): evaluate causally mature exact 1d/1w options constructions for positive net return after modeled execution and fees, by symbol, strategy family, pricing eligibility, model generation, and regime.
+11. `evaluate-strategy-outcomes` (23:42): evaluate causally mature exact 1d/1w options constructions for positive net return after modeled execution and fees, by symbol, strategy family, pricing eligibility, model generation, and regime. Publish receipt-bound exact outcomes for the separate daily Options Strategy paper ledger; do not mutate the ledger or substitute an expiration/assignment result in this stage.
 12. `audit-probability-calibration` (00:42): compare raw and calibrated probability distributions, reliability bins, ECE, Brier score, log loss, base rates, coverage, and probability collapse; keep Scenario Coverage non-probabilistic.
 13. `select-nightly-bottleneck` (01:42): if the one-time first-publication bootstrap above is eligible, select and preregister the pooled causal sequence encoder; otherwise rank the single highest-value unresolved accuracy bottleneck. Preregister exactly one hypothesis, exact eligible cohort and causal cutoff, primary metric, safety metrics, baseline, checked-in gates, leakage/regime risks, compute/data bound, and rollback condition.
 14. `run-shadow-ablation` (02:42): run the session's sole new bounded, isolated, shadow-only experiment using the preregistration and immutable inputs. Prefer the checked-in strategy-value challenger when it matches the bottleneck; when the preregistration explicitly selects the pooled sequence encoder, invoke its checked-in shadow trainer with `--preregistration-receipt <the-current-stage-13-receipt>` and preserve its model/calibration/distribution receipts. The trainer must validate the current handoff and use the receipt-bound cutoff, symbols, source checksums, configuration fingerprint, and data/compute bound; do not reconstruct or substitute them. Otherwise a small offline harness is allowed, but it must remain disconnected from production authority, runtime ownership, UI ranking, and orders.

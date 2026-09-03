@@ -38,6 +38,10 @@ from ml.loop_c.publication import (
     loop_c_pointer_path,
     read_current_loop_c_publication,
 )
+from ml.loop_c.paper_ledger import (
+    paper_ledger_pointer_path,
+    read_current_paper_ledger,
+)
 from ml.sequence_encoder.publication import (
     SequencePublicationError,
     read_current_sequence_publication,
@@ -3155,13 +3159,19 @@ def _sequence_encoder_loop_c_check(
 
     sequence_pointer = sequence_pointer_path(root)
     loop_c_pointer = loop_c_pointer_path(root)
-    if not sequence_pointer.is_file() and not loop_c_pointer.is_file():
+    paper_pointer = paper_ledger_pointer_path(root)
+    if (
+        not sequence_pointer.is_file()
+        and not loop_c_pointer.is_file()
+        and not paper_pointer.is_file()
+    ):
         return _check(
             "sequence_encoder_loop_c",
             _INFO,
             "The pooled sequence encoder and Loop C observe lane are not yet published.",
             sequence_status="NOT_PUBLISHED",
             loop_c_status="NOT_PUBLISHED",
+            paper_ledger_status="NOT_PUBLISHED",
             authority="NONE",
             automated_action_allowed=False,
             orders_enabled=False,
@@ -3171,6 +3181,7 @@ def _sequence_encoder_loop_c_check(
     details: dict[str, object] = {
         "sequence_status": "NOT_PUBLISHED",
         "loop_c_status": "NOT_PUBLISHED",
+        "paper_ledger_status": "NOT_PUBLISHED",
         "automated_action_allowed": False,
         "orders_enabled": False,
         "orders_placed": 0,
@@ -3210,6 +3221,55 @@ def _sequence_encoder_loop_c_check(
             details["sequence_status"] = "INVALID"
             warnings.append(_error_text(exc))
 
+    if paper_pointer.is_file():
+        try:
+            paper = read_current_paper_ledger(root)
+            tracked_at = _utc(
+                paper.report.get("tracked_at"), "Loop C paper-ledger tracked_at"
+            )
+            summary = paper.report.get("summary")
+            if not isinstance(summary, Mapping):
+                raise ValueError("Loop C paper ledger has no summary")
+            details.update(
+                {
+                    "paper_ledger_status": "VERIFIED_OBSERVE_ONLY",
+                    "paper_ledger_run": str(paper.run_directory),
+                    "paper_ledger_tracked_at": tracked_at.isoformat(),
+                    "paper_ledger_age_minutes": _minutes(now - tracked_at),
+                    "paper_trade_count": int(summary.get("paper_trade_count", 0)),
+                    "paper_mature_trade_count": int(
+                        summary.get("mature_trade_count", 0)
+                    ),
+                    "paper_pending_trade_count": int(
+                        summary.get("pending_trade_count", 0)
+                    ),
+                    "paper_open_trade_count": int(
+                        summary.get("open_paper_trade_count", 0)
+                    ),
+                    "paper_open_gross_potential_share_obligation": summary.get(
+                        "open_gross_potential_share_obligation", 0.0
+                    ),
+                    "paper_maximum_single_open_trade_gross_share_obligation": summary.get(
+                        "maximum_single_open_trade_gross_share_obligation", 0.0
+                    ),
+                    "paper_open_potential_buy_share_obligation": summary.get(
+                        "open_potential_buy_share_obligation", 0.0
+                    ),
+                    "paper_open_potential_sell_share_obligation": summary.get(
+                        "open_potential_sell_share_obligation", 0.0
+                    ),
+                    "paper_earliest_open_option_expiration": summary.get(
+                        "earliest_open_option_expiration"
+                    ),
+                    "paper_counterfactual_realized_net_pnl": summary.get(
+                        "counterfactual_realized_net_pnl", 0.0
+                    ),
+                }
+            )
+        except Exception as exc:
+            details["paper_ledger_status"] = "INVALID"
+            warnings.append(_error_text(exc))
+
     if loop_c_pointer.is_file():
         try:
             publication = read_current_loop_c_publication(root)
@@ -3245,16 +3305,25 @@ def _sequence_encoder_loop_c_check(
         return _check(
             "sequence_encoder_loop_c",
             _WARN,
-            "A published sequence-encoder or Loop C observe authority is invalid.",
+            "A published sequence-encoder, Loop C observe, or paper-ledger artifact is invalid.",
             warnings=warnings,
             **details,
         )
     status = _PASS if details["sequence_status"] == "VERIFIED_SHADOW" else _INFO
-    summary = (
-        "The pooled sequence encoder and Loop C observe authorities verify with zero order authority."
-        if details["loop_c_status"] == "VERIFIED_OBSERVE_ONLY"
-        else "The pooled sequence encoder verifies; Loop C observe is not yet published."
-    )
+    if details["loop_c_status"] == "VERIFIED_OBSERVE_ONLY":
+        summary = (
+            "The pooled sequence encoder, Loop C observe, and paper ledger verify "
+            "with zero order authority."
+            if details["paper_ledger_status"] == "VERIFIED_OBSERVE_ONLY"
+            else "The pooled sequence encoder and Loop C observe authority verify; the daily paper ledger is not yet published."
+        )
+    elif details["sequence_status"] == "VERIFIED_SHADOW":
+        summary = "The pooled sequence encoder verifies; Loop C observe is not yet published."
+    else:
+        summary = (
+            "The paper ledger verifies; the pooled sequence encoder and Loop C "
+            "observe lane are not yet published."
+        )
     return _check(
         "sequence_encoder_loop_c",
         status,

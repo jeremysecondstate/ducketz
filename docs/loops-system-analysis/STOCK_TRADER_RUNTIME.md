@@ -166,9 +166,10 @@ on the following wake):
 ```
 
 This makes one bounded recent-order-history read and appends immutable broker
-status, filled quantity, average fill, remaining quantity, and fill-count
-snapshots to existing execution events. It never cancels, replaces, or submits
-an order.
+status, filled quantity, average fill, remaining quantity, fill count, and
+sanitized per-fill quantity/price/execution-time snapshots to existing execution
+events. It never persists broker fill/order identifiers and never cancels,
+replaces, or submits an order.
 
 Model fitting is deliberately separate from hourly inference and requires at
 least 40 mature paired observations by default:
@@ -226,9 +227,30 @@ Loop B target-definition version, so the broadened contract is not silently
 blended with legacy regular-only evidence.
 
 Exact broker fill reconciliation is labeled separately from the midpoint
-counterfactual. Even with a fill, the registered forward market outcome is not
-mislabelled as tax-lot/account P/L; that stronger claim requires a matched exit
-or position-history attribution.
+counterfactual. The audit now also pairs receipt-matched BUY and SELL fills FIFO
+by symbol across the complete immutable reconciliation history. Each closed
+local lifecycle retains both decision IDs, both Loop B prediction IDs, entry and
+exit sessions/timestamps/prices, matched quantity, holding time, and gross
+realized P/L before unavailable broker fees. Unmatched buys remain explicit
+open tracked inventory; unmatched sells remain explicit rather than being
+silently forced into a round trip.
+
+This lifecycle is labeled
+`LOCAL_FIFO_STOCK_TRADER_FILLS_NOT_BROKER_TAX_LOTS`. It is more granular than
+the prior forward-window estimate, but it is not Schwab's official lot selection,
+fee-inclusive account P/L, or tax record. Schwab statements remain authoritative
+for those claims, and the audit never blends local FIFO realized P/L with the
+prediction counterfactual.
+
+**Observed 2026-09-03 07:46 UTC:** the first production audit under this
+contract verified 82 decisions, with 46 mature prediction pairs and 24 pending.
+Eleven sanitized LIVE fill records contained two system BUY fills totaling 25
+still-open shares and nine SELL fills totaling 101 shares with no earlier
+receipt-matched system BUY lot. The FIFO result therefore correctly reported
+zero closed system-owned round trips and left those sells attributed to
+pre-existing/manual inventory rather than inventing realized P/L. This is an
+attribution-integrity check, not a profitability conclusion. Evidence:
+`C:\DATASTORE\ml\stock-trader-weekly-audits\20260903T074629.212357Z\receipt.json`.
 
 ## Production deployment
 

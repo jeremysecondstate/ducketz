@@ -116,8 +116,10 @@ After the runtime, run the read-only reconciliation exactly once:
   --datastore-target pc
 ```
 
-Reconciliation may read order history and fills. It may not submit, replace, or
-cancel anything.
+Reconciliation may read order history and fills. It appends sanitized per-fill
+quantity, price, and execution time alongside aggregate fill status, without
+persisting broker order/fill identifiers. It may not submit, replace, or cancel
+anything.
 
 Do not modify code, controls, models, scheduler definitions, unrelated orders,
 or options from the scheduled task. Report the two command statuses and exit.
@@ -148,6 +150,14 @@ The adaptation job:
 One session is incremental evidence, not standalone statistical validation.
 Weekly evaluation remains responsible for longer-run comparisons, reason/style
 breakdowns, and paper-options review.
+
+The Saturday stock audit also builds a local receipt-matched FIFO lifecycle
+from reconciled LIVE fills. It links each matched entry and exit back to both
+stock-trader decisions and Loop B predictions, reports gross realized P/L
+before unavailable fees, and keeps open inventory explicit. This evidence is
+always labeled `LOCAL_FIFO_STOCK_TRADER_FILLS_NOT_BROKER_TAX_LOTS`; it does not
+replace Schwab's official statements, tax lots, fee accounting, or account
+P/L, and it must not be blended with forward-window prediction economics.
 
 ## Current execution semantics
 

@@ -9,6 +9,11 @@ counterfactuals, calculate a pending next-period proposal, and return the
 decision to the operator. It has no approval, model-mutation, or broker-mutation
 authority.
 
+The same task refreshes the exact Options Strategy paper ledger and audits
+receipt-matched live-stock fills using local FIFO pairing. Personal/account
+option history, Loops paper positions, and live-stock executions remain
+separate evidence lanes throughout the review.
+
 ## Fresh-chat continuity protocol
 
 Continuity is carried by an independent checksum-verified weekly scheduler
@@ -83,6 +88,21 @@ values, and independent halt state may create current controls.
 From `C:\dev\ducketz`, run exactly once:
 
 ```powershell
+.\.venv\Scripts\python.exe -m ml.loop_c.paper_ledger `
+  --datastore-target pc `
+  --compact
+```
+
+Accept `TRACKING` or `NO_PAPER_TRADES_YET`. This is a receipt-backed paper
+ledger refresh only: it must not contact Schwab or place, cancel, replace, or
+simulate broker orders. Preserve its JSON, manifest, receipt, and latest-pointer
+paths in weekly memory. Every recorded position must retain its exact Strategy
+candidate and legs, planned target-window exit, expiration, and maximum
+assignment/share obligation.
+
+Then run the weekly review exactly once:
+
+```powershell
 .\.venv\Scripts\python.exe -m ml.loop_c.weekly_review `
   --datastore-target pc `
   --capture-schwab `
@@ -138,6 +158,13 @@ contact Schwab, submit an order, activate the trader, train a model, or mutate
 policy. Preserve its JSON, Markdown, manifest, receipt, and latest-pointer
 paths in the weekly memory.
 
+The stock audit also reports receipt-matched fill lifecycle evidence. Pair BUY
+and SELL fills FIFO by symbol, retain the entry and exit decision/prediction
+IDs, and report gross realized P/L before unavailable broker fees. Label this
+`LOCAL_FIFO_STOCK_TRADER_FILLS_NOT_BROKER_TAX_LOTS`; unmatched inventory stays
+open and must not be counted as realized. Schwab statements remain the
+authority for official tax lots, fees, and account P/L.
+
 Do not run `ml.stock_trader.training` from this scheduler. A weekly audit can
 inform later model work but cannot turn one week into an automatic refit or
 authority change.
@@ -152,7 +179,7 @@ receipt or rerun with weakened verification.
 
 ## Required attribution split
 
-The review must never blend these three quantities:
+The review must never blend these four quantities:
 
 - `actual_account_context`: reconstructed closed Schwab option positions for
   the week. These are real account results but are labeled
@@ -166,6 +193,10 @@ The review must never blend these three quantities:
   exit, fee, and spread assumptions. This is labeled
   `LOOP_C_COUNTERFACTUAL_NOT_BROKER_EXECUTIONS`; it is not money made or lost in
   the account.
+- `options_strategy_paper_tracking`: the cumulative receipt-backed paper ledger
+  for exact Loops-selected 1d/1w Options Strategies, including open, pending,
+  and mature positions. It is labeled paper-only and is never merged with the
+  operator's historical Schwab option positions or treated as broker activity.
 
 For immature 1h, 4h, 1d, or 1w targets, report `PENDING_OR_UNAVAILABLE` rather
 than using current marks as final outcomes. Never manufacture an outcome from
@@ -180,6 +211,14 @@ Present the operator with:
 - Loop C run, proposal, no-trade, halt, reason-code, horizon, and symbol counts;
 - Loop C option-paper outcomes only for 1d and 1w candidates; 1h/4h options are
   outside the approved paper lane;
+- treat `1w` as the Strategy system's dynamic `Remaining-Week Aggregate`, not
+  as an assumed fixed five-session contract when the candidate is issued after
+  Monday;
+- show each paper position's standard-contract multiplier, contract quantity,
+  signed potential `BUY_SHARES`/`SELL_SHARES` obligation, gross obligation,
+  expiration, and target-window exit no later than expiration session; any
+  missing bounded exit is ineligible for entry rather than accepted
+  as assignment risk;
 - mature counterfactual P/L after modeled execution costs, with pending outcomes
   kept separate;
 - exact model fingerprint, risk approval ID, expiry, policy version, and exact
@@ -218,9 +257,11 @@ week into an unreviewed model or policy change.
 ## Final task response
 
 Lead with the memory sequence, memory receipt, week, status, review artifact,
-review receipt, and pending proposal. Then give the actual-account and Loop C
-counterfactual summaries under explicit labels. State how many outcomes are
-still immature, whether model/risk cohort definitions were comparable, and the
+review receipt, paper-ledger artifact, and pending proposal. Then give the
+personal/account option history, Loops Options Strategy paper performance,
+Loop C counterfactuals, and live-stock FIFO lifecycle results under explicit
+labels. State how many outcomes are still immature, whether model/risk cohort
+definitions were comparable, the maximum open paper share obligation, and the
 single most defensible next discussion item. End with
 `automatic_change_allowed=false`, `orders_enabled=false`, and
 `orders_placed=0`.

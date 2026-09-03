@@ -165,6 +165,23 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 - **Consumer behavior:** none; Options proceeds independently based on Loop A, Pricing barrier, pending state, and provider evidence.
 - **Evidence:** `docs/datafetch-ml/current_start_command:99`, `docs/datafetch-ml/current_start_command:160`, `docs/datafetch-ml/current_start_command:188`, `datafetching/options_runtime.py:700`, `datafetching/options_runtime.py:821`
 
+### R17 — Strategy-profit training → Strategy
+
+- **Status:** Confirmed; asynchronous model authority, not a same-cycle barrier.
+- **Type:** M.
+- **Exchange:** receipt-gated fitted-model artifacts and conservative execution
+  evidence for the exact 1d/1w Strategy scope; compatible weekly components
+  reuse the one-session model.
+- **Availability:** the daily owner runs at 22:00 UTC. A later Strategy cycle may
+  consume only a checksum-valid compatible authority.
+- **Consumer behavior:** missing, immature, or incompatible authority leaves
+  candidates on explicit nonprobabilistic Scenario Coverage; it never grants an
+  order path.
+- **Producer evidence:** `ml/strategy_profit_training_runtime.py`,
+  `ml/strategy_profit_training.py`
+- **Consumer evidence:** `ml/strategy_runtime.py`,
+  `ml/strategy_selection/model.py`
+
 ## Owned-worker relationships
 
 **Confirmed:** Active Pricing launches the one-shot loop-native worker after fast target publication without blocking Options. The worker reads ALFRED/FRED rates and verified local OPRA-first/Schwab-fallback history, publishes a local materialization/model/status under its own lock, and makes no provider request. A later Pricing cycle may load that prior model; Strategy may also read verified replay evidence, but live fitted scoring does not relabel offline replay as prospective. `ml/option_pricing_runtime.py`, `ml/option_pricing_loop_native_worker.py`, `ml/option_pricing/strategy_shadow.py`
@@ -213,10 +230,14 @@ Rows are producers; columns are consumers. Empty cells mean no direct exchange. 
 - **Confirmed:** CME/L2 and Loop A both use Databento but do not coordinate or consume each other; external CME ownership is deliberately isolated. `datafetching/orchestrate.py:90`, `tests/test_independent_loop_isolation.py:17`
 - **Confirmed:** Options does not consume Loop B despite the +5/+6 phase ordering. Its implemented upstreams are Loop A readiness, Pricing barrier, pending state, and providers. `datafetching/options_runtime.py:250`, `datafetching/options_runtime.py:266`
 - **Confirmed:** Strategy is not an inline stage of Loop B; Loop B’s manifest declares independent strategy authority, and tests assert directional publication does not wait for Strategy. `ml/runtime_pipeline.py:838`, `tests/test_ml_runtime_pipeline.py:454`
+- **Confirmed:** Loop C, the exact Options Strategy paper ledger, stock-trader
+  checkpoints, and weekly review are bounded Codex Scheduled invocations, not
+  persistent ninth owners. Their scoped broker/mutation boundaries do not flow
+  through the loop relationship matrix.
 
 ## Operational monitoring relationship
 
-The monitor is not an eighth production owner and does not join the dataflow
+The monitor is not a ninth production owner and does not join the dataflow
 matrix. Hourly mode independently proves exact process pairs, worker locks,
 active logs, publications, lineage, UI contracts, and storage. Daily mode adds
 all route/output evaluations. Weekly mode adds a source-grounded comparison of

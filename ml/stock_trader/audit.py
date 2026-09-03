@@ -14,6 +14,9 @@ from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.artifacts import create_timestamp_directory, file_checksum, utc_timestamp, write_manifest
 from ml.current_publication import authoritative_receipt_runs
 from ml.stock_trader.contracts import STOCK_TRADER_WEEKLY_AUDIT_SCHEMA_VERSION, finite, utc
+from ml.stock_trader.execution_lifecycle import (
+    build_stock_trader_execution_lifecycle,
+)
 from ml.stock_trader.publication import read_decision_run, read_execution_event
 
 
@@ -68,10 +71,24 @@ def build_stock_trader_weekly_audit(
         )
         for decision in decisions
     ]
+    lifecycle_decisions, lifecycle_decision_sources = load_verified_decisions(
+        root,
+        window_start="1970-01-01T00:00:00Z",
+        window_end=end,
+    )
+    execution_lifecycle, execution_sources = (
+        build_stock_trader_execution_lifecycle(
+            root,
+            lifecycle_decisions,
+            window_start=start,
+            window_end=end,
+        )
+    )
     summary = _audit_summary(pairs)
     summary["prediction_handoff_runs"] = _prediction_handoff_run_summary(
         prediction_handoffs
     )
+    summary["live_execution_lifecycle"] = execution_lifecycle["summary"]
     status = (
         "NO_STOCK_TRADER_DECISIONS"
         if not pairs
@@ -97,6 +114,7 @@ def build_stock_trader_weekly_audit(
         "summary": summary,
         "prediction_handoffs": prediction_handoffs,
         "decision_outcome_pairs": pairs,
+        "live_execution_lifecycle": execution_lifecycle,
     }
     run = create_timestamp_directory(
         root / "ml" / "stock-trader-weekly-audits", timestamp=timestamp
@@ -108,12 +126,24 @@ def build_stock_trader_weekly_audit(
     manifest_path = write_manifest(
         run,
         run_timestamp=timestamp,
-        input_files=tuple(dict.fromkeys((*decision_sources, *evaluation_sources))),
+        input_files=tuple(
+            dict.fromkeys(
+                (
+                    *decision_sources,
+                    *evaluation_sources,
+                    *lifecycle_decision_sources,
+                    *execution_sources,
+                )
+            )
+        ),
         output_files=(report_path.name, markdown_path.name),
         configuration={
             "authority": "EVALUATION_ONLY",
             "window": report["window"],
             "pairing_key": "decision_id",
+            "execution_lifecycle_attribution": (
+                "LOCAL_FIFO_STOCK_TRADER_FILLS_NOT_BROKER_TAX_LOTS"
+            ),
             "broker_mutation_performed": False,
             "model_mutation_performed": False,
         },
@@ -597,6 +627,12 @@ def _render_markdown(report: Mapping[str, object]) -> str:
     summary = report.get("summary") if isinstance(report.get("summary"), Mapping) else {}
     pairs = report.get("decision_outcome_pairs")
     rows = pairs if isinstance(pairs, list) else []
+    lifecycle = report.get("live_execution_lifecycle")
+    lifecycle_row = lifecycle if isinstance(lifecycle, Mapping) else {}
+    lifecycle_summary = lifecycle_row.get("summary")
+    lifecycle_summary_row = (
+        lifecycle_summary if isinstance(lifecycle_summary, Mapping) else {}
+    )
     lines = [
         "# Stock trader weekly decision/outcome audit",
         "",
@@ -606,6 +642,20 @@ def _render_markdown(report: Mapping[str, object]) -> str:
         f"Receipt handoffs / fallback handoffs: `{summary.get('prediction_handoff_runs', {}).get('run_count', 0) if isinstance(summary.get('prediction_handoff_runs'), Mapping) else 0} / {summary.get('prediction_handoff_runs', {}).get('fallback_run_count', 0) if isinstance(summary.get('prediction_handoff_runs'), Mapping) else 0}`",
         "",
         "Every explanation is joined to its later market result by the stable `decision_id`.",
+        "",
+        "## Receipt-matched live fill lifecycle",
+        "",
+        (
+            "Local FIFO matched quantity / gross realized P/L before unavailable fees: "
+            f"`{lifecycle_summary_row.get('matched_round_trip_quantity', 0)} / "
+            f"${float(lifecycle_summary_row.get('gross_realized_pnl_before_unavailable_fees', 0.0)):,.2f}`"
+        ),
+        (
+            "Unmatched sells / open tracked shares at window end: "
+            f"`{lifecycle_summary_row.get('unmatched_sell_quantity', 0)} / "
+            f"{lifecycle_summary_row.get('open_tracked_quantity_at_window_end', 0)}`"
+        ),
+        "This is receipt-matched local FIFO attribution, not Schwab tax-lot P/L.",
         "",
         "| Time | Session | Symbol | Decision | Handoff | Decision reason | Order-style reason | Outcome | Aligned net return | Hypothetical result |",
         "|---|---|---:|---:|---|---|---|---|---:|---:|",

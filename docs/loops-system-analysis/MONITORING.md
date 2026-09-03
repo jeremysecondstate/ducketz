@@ -105,11 +105,14 @@ Run IDs and process IDs are transient evidence, not architecture.
 
 Hourly mode verifies:
 
-- the seven exact owner/worker pairs, command arguments, locks, and active logs;
+- the eight exact owner/worker pairs, command arguments, locks, and active logs;
 - Loop A complete-cycle and exact-target readiness, CME L2, ALFRED, and all
   symbol option-snapshot authority;
 - fresh immutable Loop B and Strategy publications, applicable Pricing target
   and full authorities, and Strategy-to-Loop-B lineage;
+- the current pooled sequence-encoder, Loop C observe, and exact Options
+  Strategy paper-ledger pointers when published, including checksum/receipt
+  integrity, shadow/observe-only authority, and zero-order safety;
 - the Rolling Forecast and Options Strategy UI adapters, including the rule
   that heuristic Scenario Coverage cannot enable manual order submission; and
 - datastore free capacity and total logs across both recognized log roots.
@@ -151,6 +154,32 @@ The daily inventory still names all five weekly component slots. This does not
 require a Wednesday LIVE bundle to fabricate Monday-through-Wednesday routes:
 only the remaining calendar prefix is forecast, while later suffix slots are
 classified as inapplicable under the coherent-bundle rule above.
+
+## Options Strategy paper-ledger contract
+
+The independent `loops-options-strategy-paper-tracking` Scheduled task runs at
+00:17 America/Los_Angeles Tuesday through Saturday, after the prior session's
+stage-11 exact Strategy outcome evaluation. It runs exactly once:
+
+```powershell
+.\.venv\Scripts\python.exe -m ml.loop_c.paper_ledger --datastore-target pc --compact
+```
+
+`TRACKING` and `NO_PAPER_TRADES_YET` are valid. The immutable receipt-backed
+ledger reconstructs exact Loops-selected 1d/1w Options Strategy entries, keeps
+open and evidence-pending positions separate from mature receipt-matched
+outcomes, and exposes cumulative modeled net P/L plus current gross, signed,
+and maximum single-position share obligations. Each entry carries its exact
+legs, expirations, contract multiplier and quantity, maximum share obligation,
+and target-window exit no later than expiration session. The task cannot contact Schwab, create an
+option order, model an assignment as an execution, or attribute the operator's
+personal Schwab positions to Loops.
+
+Once the ledger pointer exists, `sequence_encoder_loop_c` validates its report,
+manifest, receipt, checksums, safety fields, counts, pending/mature split, and
+counterfactual net P/L. A missing never-published ledger is informational; an
+invalid published artifact is a warning and never authorizes pointer repair or
+broker action.
 
 ## Weekly evaluation contract
 

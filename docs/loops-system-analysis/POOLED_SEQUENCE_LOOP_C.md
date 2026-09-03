@@ -104,6 +104,15 @@ Historical replay is ordered by event availability time, event time, source
 sequence, and type. Replay wall-clock speed is deliberately absent, so a fast
 replay cannot make evidence arrive earlier than it did historically.
 
+Every successful `RESEARCH_PROPOSAL` is an exact Options Strategy paper entry,
+not a generic directional option bet. The immutable report freezes its Strategy
+run, candidate ID and key, complete stock/option legs, entry BBO assumptions,
+fees, paper quantity, capital, modeled loss, model evidence, target window, and
+per-leg signed BUY/SELL plus gross exercise/assignment share obligations.
+Stateful constructions without
+a bounded receipt-proven target exit are ineligible. The paper lane creates no
+broker payload and cannot cause exercise or assignment.
+
 ## Scheduler behavior
 
 Ordinary open-market wakes may run only bounded inference against an already
@@ -230,6 +239,26 @@ builds the next pending proposal:
   --compact
 ```
 
+The independent daily paper ledger materializes the lifecycle of those exact
+selections without contacting Schwab:
+
+```powershell
+.\.venv\Scripts\python.exe -m ml.loop_c.paper_ledger `
+  --datastore-target pc `
+  --compact
+```
+
+Its summary keeps open targets separate from mature and evidence-pending rows
+and exposes current BUY-share, SELL-share, total gross, maximum single-position,
+and earliest-expiration obligations for Saturday review.
+
+It is scheduled at 00:17 Pacific Tuesday through Saturday, after the prior
+market day's causally mature Strategy-outcome evaluation. It distinguishes
+`OPEN_PENDING_TARGET`, `PENDING_MATURE_OUTCOME_EVIDENCE`, and
+`MATURE_RECEIPT_MATCHED`; an interim mark is never used as a final result. The
+durable task contract is
+[`OPTIONS_STRATEGY_PAPER_AUTOMATION.md`](OPTIONS_STRATEGY_PAPER_AUTOMATION.md).
+
 Its durable authority and attribution rules are in
 [`WEEKLY_REVIEW_AUTOMATION.md`](WEEKLY_REVIEW_AUTOMATION.md). It cannot approve
 the proposal, unhalt Loop C, retrain or swap the bound model, or call a broker
@@ -276,3 +305,7 @@ The shared encoder still publishes `1h`, `4h`, `1d`, and `1w` distributions for
 Loop B and other shadow consumers. Loop C's options paper lane selects only
 `1d` and `1w` Strategy candidates; shorter option horizons are logged as
 `OPTIONS_SHADOW_HORIZON_BELOW_1D` and cannot become a research proposal.
+Here `1w` means the canonical dynamic **Remaining-Week Aggregate**. It spans a
+full five sessions only when issued before that complete exchange week; a
+midweek `1w` entry covers the remaining eligible sessions and must not be
+reported as a fixed five-session contract.

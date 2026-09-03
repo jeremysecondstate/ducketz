@@ -18,7 +18,7 @@
 
 **Confirmed `BLACK-SCHOLES-OP` implementation:** the reference model sets `f(x)=BS(x)+delta(x)` over `(S,K,r,sigma,t,d)`. Ducketz implements that same mean-plus-residual structure with six semantic inputs and predictive uncertainty, but replaces the reference's exact GP/MCMC with a production-bounded 128-component Nyström RBF map and Bayesian-ridge posterior. The exact-GP SPY implementation is separate and research-only. `docs/edu/BLACK-SCHOLES-OP.md:327`, `docs/edu/BLACK-SCHOLES-OP.md:441`, `ml/option_pricing/policies.py:21`, `ml/option_pricing/model.py:68`, `ml/option_pricing/research_benchmark.py:34`
 
-**Confirmed non-ownership:** it does not obtain live option chains from providers, declare Loop A bars ready, build directional labels, rank strategies, or make automated trading decisions. The owned worker performs no external provider requests and is not an eighth loop. `ml/option_pricing_loop_native_worker.py:126`, `ml/option_pricing_loop_native_worker.py:141`
+**Confirmed non-ownership:** it does not obtain live option chains from providers, declare Loop A bars ready, build directional labels, rank strategies, or make automated trading decisions. The owned worker performs no external provider requests and is not a ninth loop. `ml/option_pricing_loop_native_worker.py:126`, `ml/option_pricing_loop_native_worker.py:141`
 
 **Startup/bootstrap boundary:** Pricing is a computation and publication owner,
 not a Databento history owner. On an empty datastore it waits for verified Loop
@@ -176,7 +176,7 @@ settling cycles do not backdate one. This was intentional market-aware behavior,
 not stale Pricing. The 22:59:29 UTC read-only follow-up produced the same benign
 `INFO` while all other checks remained `PASS`. Hidden future starts use the
 closed guardian command; the one-shot residual child remains owned work, not an
-eighth supervisor. `ml/system_monitor.py:830`,
+ninth supervisor. `ml/system_monitor.py:830`,
 `docs/datafetch-ml/start_all_loops.ps1:18`, `ml/system_guardian.py:81`
 
 

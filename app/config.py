@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 
 DEFAULT_HYPERLIQUID_INFO_URL = "https://api.hyperliquid.xyz/info"
+DEFAULT_HYPEREVM_RPC_URL = "https://rpc.hyperliquid.xyz/evm"
 
 
 load_dotenv()
@@ -33,6 +34,10 @@ def hyperliquid_accounts() -> list[HyperliquidAccountConfig]:
 
 def hyperliquid_info_url() -> str:
     return os.getenv("HYPERLIQUID_INFO_URL", DEFAULT_HYPERLIQUID_INFO_URL).strip()
+
+
+def hyperevm_rpc_url() -> str:
+    return os.getenv("HYPEREVM_RPC_URL", DEFAULT_HYPEREVM_RPC_URL).strip()
 
 
 def _required_env(name: str) -> str:

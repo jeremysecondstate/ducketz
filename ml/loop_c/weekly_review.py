@@ -24,6 +24,10 @@ from ml.artifacts import (
     write_manifest,
 )
 from ml.loop_c.publication import LOOP_C_PUBLICATION_VERSION
+from ml.loop_c.paper_ledger import (
+    paper_ledger_pointer_path,
+    read_current_paper_ledger,
+)
 from ml.loop_c.risk_proposal import build_pending_risk_proposal
 from ml.loop_c.schwab_snapshot import (
     LOOP_C_SCHWAB_RECEIPT_SCHEMA_VERSION,
@@ -142,6 +146,9 @@ def build_loop_c_weekly_review(
         outcome_frame=outcome_frame,
         outcome_evidence_status=outcome_status,
     )
+    paper_tracking, paper_tracking_sources = _paper_tracking_snapshot(
+        root, reviewed_at=timestamp
+    )
     equity_bridge, equity_sources = _equity_bridge(
         root,
         start=window.session_open,
@@ -187,6 +194,7 @@ def build_loop_c_weekly_review(
                 "reason": "Loop C has no broker submission path and every verified run placed zero orders.",
             },
             "shadow_counterfactual_performance": shadow,
+            "options_strategy_paper_tracking": paper_tracking,
             "decision_summary": _decision_summary(decisions),
             "model_and_risk_cohorts": cohorts,
         },
@@ -233,6 +241,7 @@ def build_loop_c_weekly_review(
                 *decision_sources,
                 *outcome_sources,
                 *shadow_sources,
+                *paper_tracking_sources,
                 *equity_sources,
                 *proposal_sources,
             )
@@ -777,6 +786,84 @@ def _equity_bridge(
     )
 
 
+def _paper_tracking_snapshot(
+    root: Path,
+    *,
+    reviewed_at: pd.Timestamp,
+) -> tuple[dict[str, object], tuple[Path, ...]]:
+    pointer_path = paper_ledger_pointer_path(root)
+    if not pointer_path.is_file():
+        return (
+            {
+                "status": "NOT_PUBLISHED",
+                "daily_tracking_configured": False,
+                "orders_placed": 0,
+            },
+            (),
+        )
+    publication = read_current_paper_ledger(root)
+    tracked_at = _required_utc(
+        publication.report.get("tracked_at"), "paper-ledger tracked_at"
+    )
+    if tracked_at > reviewed_at:
+        raise ValueError("Loop C paper ledger is future-dated")
+    summary = publication.report.get("summary")
+    if not isinstance(summary, Mapping):
+        raise ValueError("Loop C paper ledger summary is missing")
+    safety = publication.report.get("safety")
+    if (
+        not isinstance(safety, Mapping)
+        or safety.get("authority") != "OBSERVE_ONLY"
+        or safety.get("broker_contact_performed") is not False
+        or safety.get("orders_enabled") is not False
+        or int(safety.get("orders_placed", -1)) != 0
+    ):
+        raise ValueError("Loop C paper ledger violates zero-order safety")
+    return (
+        {
+            "status": publication.report.get("status"),
+            "daily_tracking_configured": True,
+            "tracked_at": tracked_at.isoformat(),
+            "run_path": publication.run_directory.relative_to(root).as_posix(),
+            "paper_trade_count": summary.get("paper_trade_count", 0),
+            "mature_trade_count": summary.get("mature_trade_count", 0),
+            "pending_trade_count": summary.get("pending_trade_count", 0),
+            "open_paper_trade_count": summary.get("open_paper_trade_count", 0),
+            "open_gross_potential_share_obligation": summary.get(
+                "open_gross_potential_share_obligation", 0.0
+            ),
+            "maximum_single_open_trade_gross_share_obligation": summary.get(
+                "maximum_single_open_trade_gross_share_obligation", 0.0
+            ),
+            "open_potential_buy_share_obligation": summary.get(
+                "open_potential_buy_share_obligation", 0.0
+            ),
+            "open_potential_sell_share_obligation": summary.get(
+                "open_potential_sell_share_obligation", 0.0
+            ),
+            "earliest_open_option_expiration": summary.get(
+                "earliest_open_option_expiration"
+            ),
+            "future_live_exit_buffer_required": summary.get(
+                "future_live_exit_buffer_required", True
+            ),
+            "independent_decision_cluster_count": summary.get(
+                "independent_decision_cluster_count", 0
+            ),
+            "counterfactual_realized_net_pnl": summary.get(
+                "counterfactual_realized_net_pnl", 0.0
+            ),
+            "orders_placed": 0,
+        },
+        (
+            pointer_path,
+            publication.run_directory / "manifest.json",
+            publication.report_path,
+            publication.receipt_path,
+        ),
+    )
+
+
 def _decision_summary(decisions: Sequence[Mapping[str, object]]) -> dict[str, object]:
     actions: Counter[str] = Counter()
     statuses: Counter[str] = Counter()
@@ -941,10 +1028,12 @@ def _render_markdown(report: Mapping[str, object]) -> str:
     assert isinstance(loop_c, Mapping)
     performance = account.get("performance", {})
     shadow = loop_c.get("shadow_counterfactual_performance", {})
+    paper_tracking = loop_c.get("options_strategy_paper_tracking", {})
     decisions = loop_c.get("decision_summary", {})
     proposal = report.get("pending_risk_proposal", {})
     assert isinstance(performance, Mapping)
     assert isinstance(shadow, Mapping)
+    assert isinstance(paper_tracking, Mapping)
     assert isinstance(decisions, Mapping)
     assert isinstance(proposal, Mapping)
     return (
@@ -965,6 +1054,20 @@ def _render_markdown(report: Mapping[str, object]) -> str:
         f"- Mature receipt-matched proposals: `{shadow.get('mature_receipt_matched_proposals', 0)}`\n"
         f"- Pending outcomes: `{shadow.get('pending_or_unavailable_proposals', 0)}`\n"
         f"- Counterfactual net P/L after modeled execution: `{_currency(shadow.get('net_counterfactual_pnl'))}`\n\n"
+        "## Daily Options Strategy paper ledger\n\n"
+        f"- Tracking status: `{paper_tracking.get('status', 'NOT_PUBLISHED')}`\n"
+        f"- Paper trades / mature / pending: `{paper_tracking.get('paper_trade_count', 0)} / "
+        f"{paper_tracking.get('mature_trade_count', 0)} / "
+        f"{paper_tracking.get('pending_trade_count', 0)}`\n"
+        f"- Ledger counterfactual net P/L: `{_currency(paper_tracking.get('counterfactual_realized_net_pnl'))}`\n"
+        f"- Open paper trades: `{paper_tracking.get('open_paper_trade_count', 0)}`\n"
+        f"- Open gross potential share obligation: `{paper_tracking.get('open_gross_potential_share_obligation', 0)}`\n"
+        f"- Open potential BUY / SELL share obligations: "
+        f"`{paper_tracking.get('open_potential_buy_share_obligation', 0)} / "
+        f"{paper_tracking.get('open_potential_sell_share_obligation', 0)}`\n"
+        f"- Earliest open option expiration: "
+        f"`{paper_tracking.get('earliest_open_option_expiration') or 'NONE'}`\n"
+        "- Future live-options exit buffer required: `true`\n\n"
         "## Decision boundary\n\n"
         "No threshold, risk limit, model binding, halt control, or broker state was changed. "
         "Any next-period values require discussion, a frozen proposal, and explicit operator approval.\n\n"

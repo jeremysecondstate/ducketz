@@ -126,8 +126,10 @@ def _reconciliation_snapshot(
     observed_at: str,
 ) -> dict[str, object]:
     fills = _execution_fills(order)
-    fill_quantity = sum(quantity for quantity, _price in fills)
-    fill_notional = sum(quantity * price for quantity, price in fills)
+    fill_quantity = sum(float(fill["quantity"]) for fill in fills)
+    fill_notional = sum(
+        float(fill["quantity"]) * float(fill["price"]) for fill in fills
+    )
     top_level_filled = finite(order.get("filledQuantity"))
     if fill_quantity <= 0.0 and top_level_filled is not None:
         fill_quantity = max(0.0, top_level_filled)
@@ -150,13 +152,16 @@ def _reconciliation_snapshot(
         "remaining_quantity": finite(order.get("remainingQuantity")),
         "average_fill_price": average_fill,
         "fill_count": len(fills),
+        "fills": fills,
         "limit_price": finite(order.get("price")),
         "stop_price": finite(order.get("stopPrice")),
     }
 
 
-def _execution_fills(order: Mapping[str, object]) -> list[tuple[float, float]]:
-    fills: list[tuple[float, float]] = []
+def _execution_fills(order: Mapping[str, object]) -> list[dict[str, object]]:
+    """Return sanitized per-fill economics without broker identifiers."""
+
+    fills: list[dict[str, object]] = []
     activities = order.get("orderActivityCollection")
     if not isinstance(activities, list):
         return fills
@@ -172,7 +177,17 @@ def _execution_fills(order: Mapping[str, object]) -> list[tuple[float, float]]:
             quantity = finite(leg.get("quantity"))
             price = finite(leg.get("price"))
             if quantity is not None and price is not None and quantity > 0.0 and price > 0.0:
-                fills.append((quantity, price))
+                fills.append(
+                    {
+                        "quantity": quantity,
+                        "price": price,
+                        "executed_at": (
+                            leg.get("executionTime")
+                            or activity.get("executionTime")
+                            or order.get("closeTime")
+                        ),
+                    }
+                )
     return fills
 
 

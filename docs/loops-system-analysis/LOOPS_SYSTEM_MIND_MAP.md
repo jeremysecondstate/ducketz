@@ -2,7 +2,7 @@
 
 ## Executive overview
 
-The implemented production system has **exactly seven recurring owners**. Each has its own supervisor and singleton lock; there is no central transaction that starts at Loop A and commits all seven together. The quarter-hour phase offsets improve the chance that fresh evidence is available, but each owner independently decides whether to publish, skip, degrade, or retain its previous authority. The seven-owner conclusion is independently supported by the runtime monitor inventory, guardian launch inventory, production commands, and top-level recurring supervisors. `ml/system_monitor.py:80-163`, `ml/system_guardian.py:81-154`, `docs/datafetch-ml/current_start_command:3-223`
+The implemented production system has **exactly eight recurring owners**. Each has its own supervisor and singleton lock; there is no central transaction that starts at Loop A and commits all eight together. The quarter-hour phase offsets improve the chance that fresh evidence is available, but each owner independently decides whether to publish, skip, degrade, or retain its previous authority. The eighth owner is the isolated daily Strategy-profit trainer; bounded Codex Scheduled invocations such as Loop C, the paper ledger, and stock-trader checkpoints are not persistent supervisors. `ml/system_monitor.py`, `ml/system_guardian.py`, `docs/datafetch-ml/current_start_command`
 
 The three prediction authorities are distinct:
 
@@ -12,7 +12,7 @@ The three prediction authorities are distinct:
 
 Every other prediction contribution is indirect through a verified data, model, or readiness path. Temporal proximity alone is not a contribution. In particular, **Loop B at phase +5 does not send an artifact to Options at phase +6**; that edge is phase-only. Conversely, Pricing and Options form a real cycle across time: Pricing consumes earlier Options receipts and later Options receipts evaluate prior Pricing predictions, while Options can record a nonblocking Pricing-before-request barrier proof.
 
-Historical OPRA bootstrap/cold-start commands, Pricing's residual-model worker, monitor, guardian, UI readers, provider adapters, cold archives, and one-shot migration or administrative commands are shown only as boundaries or owned components. None is an eighth loop. `tests/test_independent_loop_isolation.py:17-66`, `ml/option_pricing_loop_native_worker.py:36-141`, `tests/test_ml_runtime_pipeline.py:454-610`
+Historical OPRA bootstrap/cold-start commands, Pricing's residual-model worker, monitor, guardian, UI readers, provider adapters, cold archives, and one-shot migration or Scheduled commands are shown only as boundaries or owned components. None is a ninth loop. `tests/test_independent_loop_isolation.py:17-66`, `ml/option_pricing_loop_native_worker.py:36-141`, `tests/test_ml_runtime_pipeline.py:454-610`
 
 The numbering in this map is a readable functional/phase order, not an instruction to start the processes in that order and not a transaction boundary.
 
@@ -36,7 +36,7 @@ The canonical editable source for this diagram is [assets/loops-system-mind-map.
 
 ```mermaid
 flowchart TB
-  SCHEDULE["Exactly seven independently scheduled owners<br/>phase offsets are not one central transaction"]:::note
+  SCHEDULE["Exactly eight independently scheduled owners<br/>phase offsets are not one central transaction"]:::note
 
   subgraph FOUNDATIONS["Foundational evidence owners"]
     direction LR
@@ -53,6 +53,7 @@ flowchart TB
   end
 
   S["7 · Strategy runtime<br/>15 minutes at phase +10"]:::prediction
+  T["8 · Strategy-profit training<br/>daily at 22:00 UTC"]:::owner
   W["OWNED WORKER<br/>Pricing residual model<br/>not an independent loop"]:::worker
 
   SCHEDULE ~~~ A
@@ -84,6 +85,7 @@ flowchart TB
 
   P -.->|"owned launch"| W
   W ==>|"optional prior"| P
+  T ==>|"R17 trained model authority"| S
 
   classDef owner fill:#e8f1ff,stroke:#315f9d,color:#14233a,stroke-width:1.5px;
   classDef prediction fill:#e8f7ed,stroke:#2f7650,color:#153522,stroke-width:1.5px;
@@ -251,8 +253,9 @@ mindmap
 | 5 | Directional Loop B — `python -m ml.prediction_runtime` | Every 30 minutes at UTC phase +5; one classified-transient retry; 35-minute startup recovery threshold | `.duckets-ml-prediction-runtime.lock`; shared datastore-cycle lock with Loop A | Immutable ML run and `ml/latest/run.json` | Strategy, Daily ALFRED historical scope, Rolling Forecast UI; phase-only association with Options |
 | 6 | Options Capture — `python -m datafetching.options_runtime` | Every 15 minutes at UTC phase +6; pending reconciliation while waiting | `.ducketz-options-writer.lock` | Immutable provider/symbol/target snapshots and per-provider pointers | Pricing, Loop B, Strategy |
 | 7 | Strategy — `python -m ml.strategy_runtime` | Every 15 minutes at UTC phase +10 | `.ducketz-strategy-runtime.lock` | Immutable strategy run and `ml/strategy-latest/run.json` | Options Strategy UI |
+| 8 | Strategy-profit training — `python -m ml.strategy_profit_training_runtime` | Daily at 22:00 UTC | `.ducketz-strategy-profit-training-runtime.lock` | Receipt-gated 1d/1w Strategy fitted-model authority and reports | Strategy |
 
-Cadence and lock evidence: `datafetching/cme_runtime.py:497-564`, `datafetching/orchestrate.py:169-236`, `datafetching/fred_alfred_runtime.py:150-188`, `ml/option_pricing_runtime.py:1502-1571`, `ml/prediction_runtime.py:76-204`, `datafetching/options_runtime.py:717-860`, `ml/strategy_runtime.py:342-421`, `docs/datafetch-ml/current_start_command:60-223`.
+Cadence and lock evidence: `datafetching/cme_runtime.py`, `datafetching/orchestrate.py`, `datafetching/fred_alfred_runtime.py`, `ml/option_pricing_runtime.py`, `ml/prediction_runtime.py`, `datafetching/options_runtime.py`, `ml/strategy_runtime.py`, `ml/strategy_profit_training_runtime.py`, `docs/datafetch-ml/current_start_command`.
 
 ## Loop behavior contracts
 
@@ -326,6 +329,25 @@ Implementation and test evidence: `datafetching/options_runtime.py:250-614`, `da
 
 Implementation and test evidence: `ml/strategy_runtime.py:63-265`, `ml/strategy_selection/runtime.py:84-425`, `ml/strategy_selection/chain.py:699-901`, `ml/strategy_publication.py:41-204`, `tests/test_ml_runtime_pipeline.py:486-610`, `tests/test_ml_strategy_selection.py:121-335`.
 
+### 8. Strategy-profit training
+
+- **Consumes:** immutable Loop B/Strategy history, exact receipt-backed Strategy
+  outcomes, and bounded OPRA execution evidence for the modeled 1d/1w scope.
+- **Calculates and decides:** learns conservative execution haircuts, maintains
+  chronological training/calibration/assessment separation, and applies the
+  checked-in quality/promotion gates.
+- **Publishes:** checksum-verified Strategy profit-model artifacts and authority
+  that later Strategy runs may consume; weekly day components reuse the
+  compatible one-session model.
+- **Degradation:** missing or immature evidence leaves the prior verified model
+  authority unchanged. It never opens the lockbox, calls a broker, or submits
+  an order.
+- **Prediction contribution:** directional **none**, Pricing **none**, Strategy
+  **indirect** through the fitted probability model.
+
+Implementation evidence: `ml/strategy_profit_training_runtime.py`,
+`ml/strategy_profit_training.py`, `docs/datafetch-ml/current_start_command:249`.
+
 ## Prediction-contribution classification
 
 `Direct` means the owner publishes that prediction family's authority. `Indirect` means an implemented data/control chain reaches that authority. `None` means no implemented path was found.
@@ -339,6 +361,7 @@ Implementation and test evidence: `ml/strategy_runtime.py:63-265`, `ml/strategy_
 | Directional Loop B | Direct | None | Indirect |
 | Options Capture | Indirect | Indirect | Indirect |
 | Strategy | None | None | Direct |
+| Strategy-profit training | None | None | Indirect |
 
 ## Causal entry gate versus Research Only / Actionable
 
@@ -394,10 +417,11 @@ Each cross-loop arrow below was checked at both ends: the producer publication/c
 | R14 | **Options → Strategy — required live-entry data/model; historical exits for model outcomes.** Prospective receipts are OPRA-first per natural target with verified Schwab fallback. Live entry forbids full historical replay; missing entry/exit evidence is audited and skipped. | Producer: `options/publication.py:402-535`. Consumer: `ml/strategy_selection/chain.py:111-470`, `ml/strategy_selection/chain.py:699-798`, `ml/strategy_selection/runtime.py:303-367`, `ml/strategy_selection/runtime.py:461-590`. Tests: `tests/test_ml_strategy_selection.py:121-414`, `tests/test_ml_strategy_selection.py:1383-1415`. |
 | R15 | **Pricing → Strategy — direct model data with explicit fallback.** Strategy matches exact option legs to receipt-proven live BSGP or Black-Scholes evidence. Full causal coverage and quality admit fitted scoring; otherwise the row stays nonprobabilistic Scenario Coverage. | Producer: `ml/option_pricing/target_outcome.py:93-333`, `ml/option_pricing/publication.py:379-530`. Consumer: `ml/option_pricing/strategy_shadow.py:84-317`, `ml/option_pricing/strategy_shadow.py:927-1203`, `ml/strategy_selection/runtime.py:368-405`. Tests: `tests/test_option_pricing_shadow_consumers.py:999-1388`, `tests/test_strategy_pricing_canary.py:33-56`. |
 | R16 | **Loop B → Options — phase-only.** B is configured at +5 and Options at +6, but Options imports/reads no Loop B publication. Its implemented inputs are provider evidence, Loop A readiness/state, Pricing barrier, and pending/history state. | Schedules: `docs/datafetch-ml/current_start_command:176-210`, `ml/prediction_runtime.py:76-204`, `datafetching/options_runtime.py:717-860`. Input path: `datafetching/options_runtime.py:250-614`. Tests: `tests/test_independent_loop_isolation.py:17-66`, `tests/test_pricing_options_sequencing.py:737-809`. |
+| R17 | **Strategy-profit training → Strategy — asynchronous model authority.** The daily owner fits and receipt-gates only the modeled 1d/1w scope; later Strategy cycles may consume the verified authority. It is not a same-cycle barrier and has no order path. | Producer: `ml/strategy_profit_training_runtime.py`, `ml/strategy_profit_training.py`. Consumer: `ml/strategy_runtime.py`, `ml/strategy_selection/model.py`. Schedule: `docs/datafetch-ml/current_start_command:249`. |
 
 ### Owned-worker relationship
 
-Active Pricing launches `ml.option_pricing_loop_native_worker` after publishing the fast target and does not wait for it. The worker performs one local materialize/train/status pass under its own collision lock, makes no provider request, and has no recurring scheduler. A later Pricing cycle may consume its verified prior residual generation; live Pricing can always retain the constrained Black-Scholes baseline. This is an **owned-worker** edge, not an eighth owner. `ml/option_pricing_runtime.py:327-440`, `ml/option_pricing_loop_native_worker.py:36-141`, `tests/test_option_pricing_loop_native_bsgp.py:728-978`.
+Active Pricing launches `ml.option_pricing_loop_native_worker` after publishing the fast target and does not wait for it. The worker performs one local materialize/train/status pass under its own collision lock, makes no provider request, and has no recurring scheduler. A later Pricing cycle may consume its verified prior residual generation; live Pricing can always retain the constrained Black-Scholes baseline. This is an **owned-worker** edge, not a ninth owner. `ml/option_pricing_runtime.py:327-440`, `ml/option_pricing_loop_native_worker.py:36-141`, `tests/test_option_pricing_loop_native_bsgp.py:728-978`.
 
 ## Boundaries that are not independent loops
 
@@ -410,6 +434,7 @@ Active Pricing launches `ml.option_pricing_loop_native_worker` after publishing 
 | Provider adapters | Transports injected into an owning loop; the live OPRA adapter shares Options Capture's lifecycle. |
 | Cold archives | Historical retained state. A verified compatible CME archive can seed/history-feed CME; the differently identified equity cold archive is not merged into Loop A's current operational dataset. |
 | Migration, diagnostic, backfill, lockbox, and administrative commands | Requested operations that terminate. They do not have a top-level recurring schedule plus exclusive production authority. |
+| Codex Scheduled commands (Loop C, paper ledger, stock trader, weekly review) | Bounded fresh-task invocations. They read/write their scoped evidence and controls but are not persistent application supervisors and cannot inherit another lane's broker authority. |
 
 Exclusion evidence: `datafetching/options_history.py`, `datafetching/databento_cold_start.py`, `datafetching/databento_archive.py:213-620`, `ml/option_pricing_loop_native_worker.py:36-141`, `ml/system_monitor.py:80-164`, `ml/system_guardian.py:81-237`, `app/ui/rolling_forecast_data.py:403-539`, `app/ui/options_strategy_data.py:628-792`.
 
@@ -417,7 +442,11 @@ Exclusion evidence: `datafetching/options_history.py`, `datafetching/databento_c
 
 Everything above this section is durable architecture derived primarily from executable code and verified publication contracts. It intentionally contains no transient PID, current run directory, current contract symbol, or row count.
 
-**Observed 2026-08-20 05:12:04 UTC:** a read-only hourly `ml.system_monitor` run returned `HEALTHY`, with 19 `PASS`, one market-aware `INFO`, zero `WARN`, and zero `FAIL`. It verified exactly one canonical launcher/worker pair and one matching singleton lock for each of the seven owners. The sole `INFO` was the legitimate closed-market absence of a new Pricing target; no backdated target was fabricated. The report declared `read_only=true`, `orders_placed=0`, and no attention item. No production process was started, stopped, restarted, signaled, or repaired during this audit.
+**Observed 2026-08-20 05:12:04 UTC:** before Strategy-profit training became the
+eighth owner, a read-only hourly `ml.system_monitor` run returned `HEALTHY`, with
+19 `PASS`, one market-aware `INFO`, zero `WARN`, and zero `FAIL`. It verified
+the then-current seven owner pairs and locks. This historical observation does
+not override the current eight-owner executable inventory.
 
 That timestamped observation corroborates deployment state only. It is not part of the owner inventory, relationship contract, cadence, or diagram.
 
@@ -432,4 +461,4 @@ The map follows this evidence order:
 
 Every relationship ID maps to one producer and one consumer implementation above. When a contract changes, update the relationship row and both diagrams together; do not infer an edge from a phase offset, shared provider, shared directory, or UI presentation alone.
 
-The repository establishes exactly seven in-tree recurring production owners. It cannot prove that untracked operating-system schedulers or external deployment wrappers do not exist. It also does not establish current provider entitlement, empirical feature lift, current model maturity, or profitability; those require current receipts and chronological evaluation evidence rather than an architecture map.
+The repository establishes exactly eight in-tree recurring production owners. It cannot prove that untracked operating-system schedulers or external deployment wrappers do not exist. It also does not establish current provider entitlement, empirical feature lift, current model maturity, or profitability; those require current receipts and chronological evaluation evidence rather than an architecture map.

@@ -18,20 +18,26 @@ the first open-session hourly wake after both prerequisites exist:
 Every Loop C result remains a research proposal, no-trade, review, or halt
 record with `orders_enabled=false` and `orders_placed=0`.
 
-## Earliest current schedule
+A research proposal now freezes an exact generated Options Strategy as a paper
+entry. Its daily lifecycle is materialized by `ml.loop_c.paper_ledger`; that
+ledger never chooses a candidate, contacts a broker, or grants authority. The
+eligible labels are `1d` One-Session and `1w` Remaining-Week Aggregate. The
+weekly aggregate is dynamic rather than always five sessions.
 
-This schedule assumes the current date of Saturday, August 29, 2026, no
-blocking operational incident, Monday's session completes, stage 13 selects the
-pooled encoder as the sole nightly bottleneck, the bounded run passes, and the
-four operator inputs have been configured.
+## Activation sequence
 
-| Milestone | Earliest Pacific time | Meaning |
+The first-publication path is governed by the current checksum-valid scheduler
+handoff. Do not infer missed work from a wall-clock date or catch up a stage.
+When the guardian selects the normal sequence, these are the eligible windows:
+
+| Milestone | Pacific schedule | Meaning |
 | --- | --- | --- |
-| Freeze the eligible market evidence | Monday, August 31 after 13:00 | Monday becomes the completed session available to the overnight lane. |
-| Stage-13 preregistration | Tuesday, September 1 at 01:42 | The current handoff freezes the exact source generation, checksums, cohort, cutoff, metrics, and bound. |
-| Stage-14 encoder run | Tuesday, September 1 at 02:42 | The receipt-bound trainer may fit and publish only `SHADOW_ONLY` output. |
-| First Loop C observation | Tuesday, September 1 at 06:42 | The first hourly wake after the 06:30 XNYS open; it runs only if all four inputs validate. |
-| Earliest evidence-floor review | Tuesday, October 27 after the close | This is the 40th XNYS session from September 1. Missing observations or failed gates move the date later. |
+| Freeze eligible evidence | After the completed 13:00 regular close | The completed session becomes available to the overnight lane. |
+| Stage-13 preregistration | 01:42 | The current handoff freezes the exact source generation, checksums, cohort, cutoff, metrics, and bound. |
+| Stage-14 encoder run | 02:42 | The receipt-bound trainer may fit and publish only `SHADOW_ONLY` output. |
+| First Loop C observation | First eligible open-session hourly wake | It runs only after the sequence publication and all four inputs validate. |
+| Daily paper ledger | 00:17 Tuesday-Saturday | It checks the prior market day's exact paper entries and newly mature outcomes. |
+| Evidence-floor review | No sooner than the 40th completed observed session | Missing observations or any failed gate move review later. |
 
 The stage-13 and stage-14 times are eligibility windows, not promises. A
 guardian-selected incident or a different higher-value bottleneck correctly
@@ -126,6 +132,14 @@ At 09:00 Pacific each Saturday, the separate task defined in
 weekly review:
 
 ```powershell
+.\.venv\Scripts\python.exe -m ml.loop_c.paper_ledger `
+  --datastore-target pc `
+  --compact
+```
+
+It then runs the review:
+
+```powershell
 .\.venv\Scripts\python.exe -m ml.loop_c.weekly_review `
   --datastore-target pc `
   --capture-schwab `
@@ -139,6 +153,15 @@ fingerprint, risk approval, policy, and threshold set used, and creates only a
 new pending proposal. The operator then discusses hold/tighten/halt/test choices
 and supplies a new explicit approval if satisfied. No scheduler-generated
 report can approve itself or unhalt Loop C.
+
+The ledger records every option leg's multiplier, exercise/assignment event,
+signed BUY/SELL share change, and gross potential share obligation. Its daily
+summary exposes total and maximum single-position open obligations. Paper status
+guarantees that no real exercise or assignment occurs.
+The modeled lifecycle closes exact legs at the target-window BBO no later than
+their expiration session; missing exit evidence stays unresolved and is never
+treated as a harmless zero-value expiration. Live option execution, earlier
+exit buffers, and assignment controls remain outside this rollout.
 
 ## Evidence floor
 

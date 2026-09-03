@@ -126,7 +126,7 @@ No additional owned worker exists. Query splitting is an internal queue, not a p
 
 ## Runtime and datastore observation
 
-**Confirmed deployment contract:** CME is one of the seven independently
+**Confirmed deployment contract:** CME is one of the eight independently
 scheduled owners. Hidden launch uses the guardian allowlist, resolved paths,
 redirected monitor-visible logs, and the worker-owned
 `.ducketz-cme-writer.lock`; no archive command becomes another owner.

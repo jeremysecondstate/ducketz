@@ -119,6 +119,20 @@ def evaluate_loop_c(
             "NO_TRADE",
             ("OPTIONS_SHADOW_HORIZON_BELOW_1D",),
         )
+    if "paper_outcome_eligible" in candidates.columns:
+        bounded_exit = (
+            candidates["paper_outcome_eligible"]
+            .astype("boolean")
+            .fillna(False)
+        )
+        horizon_eligible &= bounded_exit
+        if not bool(horizon_eligible.any()):
+            return _empty_decision(
+                now,
+                selected_mode,
+                "NO_TRADE",
+                ("NO_BOUNDED_OPTIONS_STRATEGY_EXIT_PATH",),
+            )
     eligible: list[dict[str, object]] = []
     for row in candidates.loc[horizon_eligible].to_dict(orient="records"):
         screened = _screen_candidate(row, risk_limits=risk_limits, portfolio=portfolio or {})

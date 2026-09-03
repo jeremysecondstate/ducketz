@@ -98,6 +98,9 @@ These values are proposal inputs, not evidence of quality. Only the 1d and 1w
 rows may filter option-paper candidates after explicit approval; 1h/4h values
 remain in the exact shared-model binding and do not make short-horizon options
 eligible. They cannot be silently tuned.
+The `1w` candidate is the dynamic Strategy `Remaining-Week Aggregate`; it is a
+five-session target only when its issuance and exchange calendar actually make
+five sessions remain.
 The assessment reports must show their coverage, calibration, realized net
 return after modeled costs, and stability before a later change is considered.
 
@@ -134,14 +137,25 @@ The candidate must pass every global, horizon, and capital gate, have
 stable candidate ID breaks an exact tie. The result remains a
 `RESEARCH_PROPOSAL` with `orders_placed=0`.
 
-No stop-loss order is configured. Observe-only records the strategy's modeled
-maximum loss; that is not a promise about a future realized fill. Any future
-entry, exit, stop, profit-taking, assignment, early-exercise, or reconciliation
-policy requires a separately reviewed broker-execution design.
+The proposal also freezes the exact candidate legs and entry economics. Every
+option leg records long/short side, call/put type, multiplier, expiration,
+exercise-versus-assignment event, signed potential `BUY_SHARES` or
+`SELL_SHARES`, and gross share obligation after paper quantity. A candidate is
+ineligible when its lifecycle is stateful, an expiration is missing, or the
+target window ends after any option's expiration session.
+
+No stop-loss order is configured. Paper tracking closes every exact leg under
+the receipt-proven target-window exit policy no later than expiration session;
+missing exit evidence remains pending and is never replaced with an assumed
+zero-value expiry. Observe-only records the strategy's modeled maximum loss and
+assignment exposure, neither of which is a promise about a future realized fill.
+Any future entry, exit, stop, profit-taking, assignment, early-exercise, or
+reconciliation policy requires a separately reviewed broker-execution design,
+explicit authority, and an earlier live exit buffer.
 
 ## Weekly profit-and-loss attribution
 
-The weekly review keeps three ledgers separate:
+The weekly review keeps four quantities separate:
 
 ```text
 actual account closed-option P/L
@@ -155,6 +169,11 @@ account equity bridge
 Loop C counterfactual P/L
     = sum(receipt-matched conservative Strategy outcome * proposed quantity)
     = shadow research evidence, not a broker execution
+
+Options Strategy paper ledger
+    = cumulative exact 1d/1w Loop C entries, open/pending/mature lifecycle,
+      assignment obligations, and receipt-matched counterfactual P/L
+    = Loops paper continuity, never personal Schwab or broker activity
 ```
 
 A Loop C proposal enters the counterfactual sum only after its exact Strategy

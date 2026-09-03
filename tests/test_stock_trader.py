@@ -22,6 +22,9 @@ from ml.stock_trader.contracts import (
 )
 from ml.stock_trader.control import read_activation_intent, write_activation_intent
 from ml.stock_trader.engine import build_trade_decisions
+from ml.stock_trader.execution_lifecycle import (
+    build_stock_trader_execution_lifecycle,
+)
 from ml.stock_trader.model import ENRICHMENT_FEATURE_NAMES, model_from_payload
 from ml.stock_trader.publication import publish_decision_run, read_decision_run
 from ml.stock_trader.publication import (
@@ -922,6 +925,165 @@ def test_async_reconciliation_attaches_fill_quantity_price_and_status(
     assert snapshot["broker_status"] == "FILLED"
     assert snapshot["filled_quantity"] == 10.0
     assert snapshot["average_fill_price"] == pytest.approx(100.21)
+    assert snapshot["fills"] == [
+        {"quantity": 4.0, "price": 100.15, "executed_at": None},
+        {"quantity": 6.0, "price": 100.25, "executed_at": None},
+    ]
+
+
+def test_live_fill_lifecycle_pairs_stock_trader_round_trips_fifo(
+    tmp_path: Path,
+) -> None:
+    policy = StockTraderPolicy()
+    buy = build_trade_decisions(
+        _signals(),
+        _portfolio(),
+        ConstantModel(allocation_fraction=0.10),
+        _activation(True),
+        policy=policy,
+        decided_at=NOW,
+    )[0]
+    buy = replace(
+        buy,
+        quantity=10,
+        order_payload={
+            **dict(buy.order_payload or {}),
+            "orderLegCollection": [
+                {
+                    **dict((buy.order_payload or {})["orderLegCollection"][0]),
+                    "quantity": 10,
+                }
+            ],
+        },
+    )
+    buy_publication = publish_decision_run(
+        tmp_path,
+        (buy,),
+        decided_at=NOW,
+        activation=_activation(True),
+        policy=policy,
+        execution_requested=True,
+    )
+    buy_event = reserve_execution_intent(
+        tmp_path,
+        buy,
+        submitted_at=NOW,
+        decision_publication=buy_publication,
+    )
+    assert buy_event is not None
+    record_execution_result(
+        buy_event,
+        status="SUBMITTED",
+        completed_at=NOW,
+        broker_location="https://example.test/orders/buy-1",
+    )
+
+    sell_time = "2026-08-31T17:00:00Z"
+    sell_signals = _signals(probability_by_symbol={"AAPL": 0.30})
+    sell = build_trade_decisions(
+        sell_signals,
+        _portfolio(held={"AAPL": 10.0}),
+        ConstantModel(allocation_fraction=0.10),
+        _activation(True),
+        policy=policy,
+        decided_at=sell_time,
+    )[0]
+    sell = replace(
+        sell,
+        quantity=10,
+        order_payload={
+            **dict(sell.order_payload or {}),
+            "orderLegCollection": [
+                {
+                    **dict((sell.order_payload or {})["orderLegCollection"][0]),
+                    "quantity": 10,
+                }
+            ],
+        },
+    )
+    sell_publication = publish_decision_run(
+        tmp_path,
+        (sell,),
+        decided_at=sell_time,
+        activation=_activation(True),
+        policy=policy,
+        execution_requested=True,
+    )
+    sell_event = reserve_execution_intent(
+        tmp_path,
+        sell,
+        submitted_at=sell_time,
+        decision_publication=sell_publication,
+    )
+    assert sell_event is not None
+    record_execution_result(
+        sell_event,
+        status="SUBMITTED",
+        completed_at=sell_time,
+        broker_location="https://example.test/orders/sell-1",
+    )
+
+    class _RoundTripHistory:
+        def get_recent_orders(self) -> list[dict[str, object]]:
+            return [
+                {
+                    "orderId": "buy-1",
+                    "status": "FILLED",
+                    "quantity": 10.0,
+                    "filledQuantity": 10.0,
+                    "remainingQuantity": 0.0,
+                    "closeTime": "2026-08-31T16:01:00Z",
+                    "orderActivityCollection": [
+                        {
+                            "executionTime": "2026-08-31T16:01:00Z",
+                            "executionLegs": [{"quantity": 10.0, "price": 100.0}],
+                        }
+                    ],
+                },
+                {
+                    "orderId": "sell-1",
+                    "status": "FILLED",
+                    "quantity": 10.0,
+                    "filledQuantity": 10.0,
+                    "remainingQuantity": 0.0,
+                    "closeTime": "2026-08-31T17:01:00Z",
+                    "orderActivityCollection": [
+                        {
+                            "executionTime": "2026-08-31T17:01:00Z",
+                            "executionLegs": [{"quantity": 10.0, "price": 105.0}],
+                        }
+                    ],
+                },
+            ]
+
+    reconcile_submitted_orders(
+        tmp_path,
+        session=_RoundTripHistory(),
+        observed_at="2026-08-31T17:10:00Z",
+    )
+    decisions, _sources = audit.load_verified_decisions(
+        tmp_path,
+        window_start="1970-01-01T00:00:00Z",
+        window_end="2026-08-31T18:00:00Z",
+    )
+    lifecycle, sources = build_stock_trader_execution_lifecycle(
+        tmp_path,
+        decisions,
+        window_start="2026-08-31T15:00:00Z",
+        window_end="2026-08-31T18:00:00Z",
+    )
+
+    assert lifecycle["status"] == "RECEIPT_MATCHED_ROUND_TRIPS"
+    assert lifecycle["summary"]["matched_round_trip_quantity"] == 10.0
+    assert (
+        lifecycle["summary"]["gross_realized_pnl_before_unavailable_fees"]
+        == 50.0
+    )
+    assert lifecycle["summary"]["unmatched_sell_quantity"] == 0
+    assert lifecycle["summary"]["open_tracked_quantity_at_window_end"] == 0
+    assert lifecycle["matched_fifo_segments"][0]["entry_prediction_id"]
+    assert lifecycle["matched_fifo_segments"][0]["exit_prediction_id"]
+    assert any(path.name == "snapshot.json" for path in sources)
 
 
 def test_no_trade_reason_is_paired_with_actual_market_reality(tmp_path: Path) -> None:

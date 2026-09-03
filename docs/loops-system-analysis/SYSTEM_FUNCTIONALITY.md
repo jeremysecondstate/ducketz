@@ -2,7 +2,7 @@
 
 ## System-wide operating model
 
-**Confirmed:** Ducketz is a set of seven single-writer, independently scheduled processes that exchange immutable data products and checksum-bound authority pointers through the datastore. The processes are not a single in-memory pipeline and are not coordinated by a central scheduler. `docs/datafetch-ml/current_start_command:3`, `docs/datafetch-ml/current_start_command:5`
+**Confirmed:** Ducketz is a set of eight single-writer, independently scheduled processes that exchange immutable data products and checksum-bound authority pointers through the datastore. The processes are not a single in-memory pipeline and are not coordinated by a central scheduler. `docs/datafetch-ml/current_start_command:3`, `docs/datafetch-ml/current_start_command:5`
 
 The checked-in deployment path audits exact Win32 launcher/worker pairs and
 worker-owned locks before acting, starts only a completely missing owner, and
@@ -35,7 +35,7 @@ explicit historical maintenance commands are listed separately and terminate:
 
 **Confirmed scope:** the checked-in production watchlist is `AAPL AMZN GOOG MU NVDA SNDK`; CALL and PUT create twelve Pricing routes, while `SPY` is research-only. `docs/datafetch-ml/current_start_command:16`
 
-**Confirmed OPRA implementation status:** historical bootstrap/catch-up and prospective live capture are distinct. The seven-loop launcher starts only the prospective Options owner; it does not bootstrap a missing symbol. A configured `opra-canonical` adapter is therefore not proof of historical acquisition. Current population must be established from nonempty `normalized.parquet` files, matching manifests/receipts/checksums, `health/current.json`, and consumer-usage records beneath `C:\DATASTORE\market-data\databento\opra\OPRA.PILLAR`.
+**Confirmed OPRA implementation status:** historical bootstrap/catch-up and prospective live capture are distinct. The eight-owner launcher starts only the prospective Options owner; it does not bootstrap a missing symbol. A configured `opra-canonical` adapter is therefore not proof of historical acquisition. Current population must be established from nonempty `normalized.parquet` files, matching manifests/receipts/checksums, `health/current.json`, and consumer-usage records beneath `C:\DATASTORE\market-data\databento\opra\OPRA.PILLAR`.
 
 ### 2. Normalization and persistence
 
@@ -178,6 +178,38 @@ Strategy authorities with the same exact-lineage contract.
 
 **Confirmed:** the Rolling Forecast UI resolves the authoritative Loop B pointer; the Options Strategy UI resolves the Strategy pointer and validates candidate schema/policy. Neither is a writer or an automated-action owner. `app/ui/rolling_forecast_data.py:539`, `app/ui/options_strategy_data.py:628`, `app/ui/rolling_forecast_data.py:408`
 
+### 11. Sequence shadow, Loop C Options Strategy paper tracking, and live-stock evaluation
+
+**Confirmed:** the pooled sequence encoder publishes only `SHADOW_ONLY`
+evidence. With explicit current observe-only controls, Loop C may select one
+exact receipt-bound Strategy candidate during an open XNYS session, but it has
+no options broker path and cannot submit an order. Only `1d` and dynamic `1w`
+(`Remaining-Week Aggregate`) candidates enter the options-paper lane; `1h` and
+`4h` remain ineligible. `ml/sequence_encoder/runtime.py`, `ml/loop_c/runtime.py`
+
+A Loop C `RESEARCH_PROPOSAL` freezes the selected candidate's exact legs and
+entry economics, Loops/sequence evidence, quantity, expirations, standard
+contract multipliers, maximum potential share obligation, and planned
+target-window exit. A stateful lifecycle, missing expiration, or target beyond
+the earliest expiration is rejected. This makes expiration/assignment exposure
+visible without pretending that a paper position was assigned or exercised.
+`ml/loop_c/paper_ledger.py`
+
+The separate Tuesday-through-Saturday daily paper tracker reconstructs all
+verified proposals and joins them only to causally mature exact Strategy outcome
+receipts. It keeps open, evidence-pending, and mature paper positions separate
+from the operator's Schwab Options Strategy history and from actual account P/L.
+The Saturday Loop C review consumes this ledger. `ml/loop_c/paper_ledger.py`,
+`ml/loop_c/weekly_review.py`
+
+The autonomous stock trader is a separate real-order system. Every LIVE and
+SHADOW decision retains its Loop B prediction link; reconciliation adds
+sanitized fill quantity, price, and execution time. The weekly audit reports
+both forward-window prediction economics and a separate receipt-matched local
+FIFO fill lifecycle. The latter is explicitly not Schwab tax-lot or fee-inclusive
+account P/L. `ml/stock_trader/reconciliation.py`,
+`ml/stock_trader/execution_lifecycle.py`, `ml/stock_trader/audit.py`
+
 ## Scheduling and ordinary phase order
 
 | Loop | Implemented production cadence/phase | Same-cycle relationship | Status |
@@ -188,6 +220,7 @@ Strategy authorities with the same exact-lineage contract.
 | Directional Loop B | 30 minutes, +5 | Reads only a complete Loop A cycle; permits one classified-transient retry and a 35-minute startup freshness recovery | **Confirmed.** `docs/datafetch-ml/current_start_command`, `ml/prediction_runtime.py` |
 | Options Capture | 15 minutes, +6 | Bounded 45 s Pricing barrier; documented after B’s +5 clock but no B artifact read | **Confirmed timing; documented-only B association.** `docs/datafetch-ml/current_start_command:99`, `docs/datafetch-ml/current_start_command:160`, `docs/datafetch-ml/current_start_command:161` |
 | Strategy | 15 minutes, +10 | Reads current Loop B and evidence; skip fingerprint is Loop B pointer + pricing mode + both OPRA and Schwab per-symbol snapshot heads | **Confirmed.** A new prospective receipt from either provider wakes the otherwise unchanged cycle. `ml/strategy_runtime.py` |
+| Strategy-profit training | Daily at 22:00 UTC | Owns the bounded 1d/1w fitted-model training and promotion path; no order authority | **Confirmed.** `docs/datafetch-ml/current_start_command:249` |
 | Daily ALFRED | at most once per date; 07:00 UTC next boundary | Asynchronous historical authority, not a quarter-hour phase | **Confirmed.** `datafetching/fred_alfred_runtime.py:53`, `docs/datafetch-ml/current_start_command:72` |
 
 **Inferred:** under normal latency the ordinary quarter-hour flow is Loop A bar readiness at about `+00:20`, Pricing at `+01`, Loop B at `+05`, Options at `+06`, Strategy at `+10`. The exact completion order is not guaranteed: readiness and pricing barriers are bounded, each process has its own clock, and no central orchestrator enforces this sequence. `datafetching/bar_readiness.py:245`, `datafetching/pricing_barrier.py:77`
@@ -195,7 +228,7 @@ Strategy authorities with the same exact-lineage contract.
 ## Operational monitoring and guarded recovery
 
 **Confirmed:** `ml.system_monitor` has three nested layers. Hourly verifies the
-seven exact process pairs, worker locks, active logs, publications, lineage,
+eight exact process pairs, worker locks, active logs, publications, lineage,
 UI contracts, and storage. Daily adds post-close ALFRED, directional, Strategy,
 and Pricing/Strategy evaluation for all nine routes, explicitly including `1d`
 and `1w`. Weekly contains both baselines and adds a comparison of the last two
@@ -228,17 +261,17 @@ immutable audit receipts. The guardian never repairs data/model/lineage
 quality, backfills history, changes pointers, promotes models, edits code, or
 places orders. `ml/system_guardian.py:237`
 
-**Active automation:** `loops-hourly-operations` is the single active standalone
-local scheduled task at minute 42, with a fresh chat for every run. It reads a
+**Active automation:** `loops-hourly-operations` is the singleton operational
+guardian at minute 42, with a fresh chat for every run. It reads a
 checksum-verified advisory handoff, runs the compact scheduled guardian exactly
-once, parses JSON even on exit 2, and reports selected
-mode/status/time/remediation plus every WARN/FAIL while distinguishing process
-from publication health, immature from poor measured outcomes, and Scenario
-Coverage from Calibrated Probability. Before ending it commits an immutable
-handoff receipt with the next bounded action; current guardian schedule
-metadata and verified production receipts remain the sole authority.
-`ml/scheduler_handoff.py`; see `MONITORING.md` for the exact responsibility
-boundary.
+once, parses JSON even on exit 2, and reports selected mode/stage/status plus
+every WARN/FAIL. Separate Scheduled tasks own stock-trader checkpoint execution,
+daily stock adaptation, the Tuesday-through-Saturday Options Strategy paper
+ledger, and the Saturday Loop C/operator review. Those tasks do not share or
+advance the hourly guardian handoff and cannot borrow one another's mutation or
+broker authority. `ml/scheduler_handoff.py`; see `MONITORING.md`,
+`STOCK_TRADER_AUTOMATION.md`, `OPTIONS_STRATEGY_PAPER_AUTOMATION.md`, and
+`WEEKLY_REVIEW_AUTOMATION.md` for exact responsibility boundaries.
 
 ## Clocks, causality, and authority boundaries
 

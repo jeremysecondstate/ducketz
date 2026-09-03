@@ -85,6 +85,8 @@ include = [
 
 [tool.setuptools.package-data]
 "app.ui" = [
+    "assets/hyperliquid/*.png",
+    "assets/hyperliquid/*.md",
     "assets/security_marks/*.png",
     "assets/security_marks/*.md",
 ]

@@ -20,6 +20,10 @@ from ml.artifacts import (
 )
 from ml.loop_c.engine import evaluate_loop_c
 from ml.loop_c.inputs import load_loop_c_inputs
+from ml.loop_c.paper_ledger import (
+    build_paper_trade_snapshot,
+    paper_candidate_has_bounded_exit,
+)
 from ml.loop_c.policy import (
     LoopCMode,
     LoopCRiskLimits,
@@ -73,6 +77,10 @@ def run_loop_c_observe_once(
         if schema_values != {model_binding.distribution_schema_version}:
             raise ValueError("Loop C sequence distribution schema differs from its binding")
     merged = _merge_candidates(candidates, sequence.distributions)
+    merged["paper_outcome_eligible"] = [
+        paper_candidate_has_bounded_exit(row)
+        for row in merged.to_dict(orient="records")
+    ]
     model_authority = str(sequence_publication.receipt.get("authority", "NONE"))
     model_published_at = sequence_publication.receipt.get("published_at")
     sequence_path = sequence_publication.run_directory / "distributions.parquet"
@@ -94,6 +102,19 @@ def run_loop_c_observe_once(
         halt_requested=halt_requested,
     )
     run_directory = create_timestamp_directory(root / "ml" / "loop-c-runs", timestamp=now)
+    paper_trade: dict[str, object] | None = None
+    if decision.action == "RESEARCH_PROPOSAL" and decision.candidate_id is not None:
+        selected = merged.loc[
+            merged["id"].astype("string").eq(decision.candidate_id)
+        ]
+        if len(selected) != 1:
+            raise ValueError("Loop C selected candidate is not unique")
+        paper_trade = build_paper_trade_snapshot(
+            selected.iloc[0].to_dict(),
+            decision=decision.as_record(),
+            strategy_run_path=strategy.run_directory.relative_to(root).as_posix(),
+            loop_c_run_path=run_directory.relative_to(root).as_posix(),
+        )
     record = decision.as_record()
     record["reason_codes_json"] = json.dumps(record.pop("reason_codes"))
     record["candidate_key"] = record.pop("candidate_id")
@@ -106,6 +127,7 @@ def run_loop_c_observe_once(
         "schema_version": "loop-c-observe-report-v1",
         "status": decision.status,
         "decision": decision.as_record(),
+        "paper_trade": paper_trade,
         "sequence_consumer": {
             "status": sequence.status,
             "matched_routes": sequence.matched_routes,
@@ -149,6 +171,13 @@ def run_loop_c_observe_once(
             "strategy_source": dict(strategy.pointer.get("current", {})),
             "sequence_status": sequence.status,
             "sequence_model_binding": binding_summary,
+            "paper_trade_id": (
+                paper_trade.get("paper_trade_id")
+                if isinstance(paper_trade, Mapping)
+                else None
+            ),
+            "paper_trade_asset_class": "OPTIONS_STRATEGY",
+            "paper_trade_eligible_horizons": ["1d", "1w"],
             "halt_requested": bool(halt_requested),
             "input_contracts": dict(input_contracts or {}),
         },
