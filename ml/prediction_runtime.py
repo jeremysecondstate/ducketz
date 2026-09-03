@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import errno
 import os
+import secrets
 import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
@@ -14,6 +15,7 @@ from datafetching.loop_a_cycle import (
     require_complete_loop_a_cycle,
 )
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
+from datafetching.runtime_lock import runtime_lock_maintenance_gate
 from ml.current_publication import CurrentPublicationError, read_current_publication
 from ml.horizons import (
     DEFAULT_FEATURE_PROFILE,
@@ -533,32 +535,46 @@ def next_boundary(
 def runtime_lock(path: Path) -> Iterator[None]:
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor: int | None = None
-    try:
-        descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        payload = (
-            f"pid={os.getpid()}\n"
-            f"started_at={datetime.now(timezone.utc).isoformat()}\n"
-        ).encode("utf-8")
-        os.write(descriptor, payload)
-        os.close(descriptor)
-        descriptor = None
-    except FileExistsError as exc:
-        detail = (
-            path.read_text(encoding="utf-8", errors="replace")
-            if path.is_file()
-            else ""
-        )
-        raise RuntimeError(
-            "Another Duckets Loop B process appears to be running. "
-            f"Lock: {path}\n{detail}"
-        ) from exc
+    owned_payload: bytes | None = None
+    with runtime_lock_maintenance_gate(path.parent):
+        try:
+            descriptor = os.open(
+                path,
+                os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_BINARY", 0),
+            )
+            payload = (
+                f"pid={os.getpid()}\n"
+                f"started_at={datetime.now(timezone.utc).isoformat()}\n"
+                f"token={secrets.token_hex(16)}\n"
+            ).encode("utf-8")
+            os.write(descriptor, payload)
+            os.close(descriptor)
+            descriptor = None
+            owned_payload = payload
+        except FileExistsError as exc:
+            detail = (
+                path.read_text(encoding="utf-8", errors="replace")
+                if path.is_file()
+                else ""
+            )
+            raise RuntimeError(
+                "Another Duckets Loop B process appears to be running. "
+                f"Lock: {path}\n{detail}"
+            ) from exc
 
     try:
         yield
     finally:
         if descriptor is not None:
             os.close(descriptor)
-        path.unlink(missing_ok=True)
+        with runtime_lock_maintenance_gate(path.parent):
+            if owned_payload is not None:
+                try:
+                    unchanged = path.read_bytes() == owned_payload
+                except FileNotFoundError:
+                    unchanged = False
+                if unchanged:
+                    path.unlink()
 
 
 if __name__ == "__main__":

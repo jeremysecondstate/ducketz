@@ -52,7 +52,52 @@ verified production receipts remain the sole operational authority.
 
 ## Production workflow
 
-Operate the production Loops health workflow from C:\dev\ducketz. On every wake, run exactly one guardian command: `.\.venv\Scripts\python.exe -m ml.system_guardian --datastore-target pc --mode scheduled --repair-liveness --compact`. Parse stdout as JSON even when it exits 2. Never run the guardian twice in one wake.
+Operate the production Loops health workflow from C:\dev\ducketz. On every wake, run exactly one guardian command: `.\.venv\Scripts\python.exe -m ml.system_guardian --datastore-target pc --mode scheduled --repair-liveness --repair-codex-forced-update --compact`. Parse stdout as JSON even when it exits 2. Never run the guardian twice in one wake.
+
+Standing Codex forced-update recovery authorization:
+
+- The operator grants durable, unattended authority for exactly one whole-stack
+  recovery transaction when, and only when, the opt-in guardian flag proves
+  `CODEX_APPX_FORCED_UPDATE_ALL_EIGHT`. This narrow exception does not apply to
+  an ordinary shutdown, reboot, logoff, provider failure, code failure, partial
+  owner set, duplicate owner, ambiguous process tree, live/foreign lock,
+  unreadable Windows event log, or any other multi-runtime incident.
+- The exact signature requires the configured `pc` datastore to resolve to
+  exactly `C:\DATASTORE`; all eight allowlisted modules to have zero processes;
+  all eight exact singleton locks to exist directly beneath that root, parse to
+  dead PIDs, predate the event, and remain unchanged on race revalidation;
+  checksum-valid retained authorities and zero-order safety; empty current
+  runtime stderr; no post-event runtime-log activity; and clustered
+  active-runtime stdout cutoffs immediately before a recent Windows AppX event
+  603 for `OpenAI.Codex_2p2nqsd0c76g0` with `DeploymentOperation=20` and the
+  `FlagsHigh` force-shutdown bit `0x40000`. The same AppX activity must prove the
+  exact old-to-new Codex package transition and successful registration, while
+  AppModel events must bind destruction to that exact old package and container
+  creation/process launch to that exact new package. Any nearby reboot,
+  shutdown, or logoff evidence rejects the signature.
+- Before mutation, the guardian must acquire its recovery mutex and then the
+  bounded shared runtime-lock maintenance gate. Gate contention consumes
+  nothing and is retryable on a later wake. While holding that gate, it must
+  atomically consume one normalized event fingerprint, revalidate the complete
+  process/lock signature, quarantine the locks, and retain the gate through any
+  pre-launch rollback. A consumed event, partial launch, failed launch, changed
+  lock, newly appeared process, or missing prerequisite is terminal for that
+  event and never authorizes an automatic retry.
+- For an eligible event only, the guardian may recoverably quarantine exactly
+  the eight revalidated lock files beneath
+  `C:\DATASTORE\logs\ducketz\manual-recovery\<UTC>-codex-appx-update`, invoke
+  `docs\datafetch-ml\start_all_loops.ps1 -RequireAllMissing` exactly once, and
+  require all eight results to be `STARTED_VERIFIED` with canonical commands,
+  one launcher/worker pair each, worker-owned locks, and clean startup stderr.
+  It may not stop a process, remove any other path, retry the launcher, run a
+  cold start/backfill, change authority, or touch a broker or order path.
+- The selected accuracy stage is always `DEFERRED_HEALTH_INCIDENT` during this
+  recovery and is never caught up. After pair recovery, wait within the wake's
+  existing 45-minute ceiling for a genuinely new zero-failure Loop A complete
+  cycle, fresh Databento evidence, a new checksum-valid Loop B publication, and
+  a new checksum-valid Strategy publication bound to that Loop B generation.
+  Use the one final monitor normally required below. Receipt convergence may
+  remain pending without another restart; keep `orders_placed=0` throughout.
 
 Deployment cadence contract: Directional Loop B's canonical owner runs every
 30 minutes at UTC-clock phase `:05`/`:35`, permits exactly one retry only for a
@@ -234,7 +279,7 @@ Use this bounded repair ladder:
 3. For a code or configuration defect, preserve unrelated work, make the smallest root-cause patch, run focused tests or a direct repro, restart only the affected verified runtime when needed, and wait for a genuinely new eligible publication.
 4. Finish with one read-only verification command using `.\.venv\Scripts\python.exe -m ml.system_monitor --datastore-target pc --mode <selected guardian mode> --compact`. Call the incident resolved only if that report is HEALTHY with no WARN/FAIL and its receipts prove fresh Databento bars and new/current predictions.
 
-Fail closed instead of taking broad action when ownership is duplicated or ambiguous, multiple runtimes are wholly missing, the system appears intentionally shut down, credentials/entitlements/capacity block progress, an integrity or checksum failure lacks a proven repair, or a safe bounded fix cannot be established. Never run bulk history downloads, cold starts, OPRA bootstraps, unbounded backfills, broad datastore cleanup/deletion, authority-pointer rewrites, model promotion, or any order path. Do not expose secrets. Do not discard or overwrite unrelated work. Report the exact blocker and next bounded action when unresolved.
+Fail closed instead of taking broad action when ownership is duplicated or ambiguous, multiple runtimes are wholly missing except for the exact opt-in `CODEX_APPX_FORCED_UPDATE_ALL_EIGHT` transaction above, the system appears intentionally shut down, credentials/entitlements/capacity block progress, an integrity or checksum failure lacks a proven repair, or a safe bounded fix cannot be established. Never run bulk history downloads, cold starts, OPRA bootstraps, unbounded backfills, broad datastore cleanup/deletion, authority-pointer rewrites, model promotion, or any order path. Do not expose secrets. Do not discard or overwrite unrelated work. Report the exact blocker and next bounded action when unresolved.
 
 Lead the update with selected monitor mode, schedule lane, stage ID/index (or NONE), eligible session, final status, checked-at time, incident/remediation status, and whether fresh Databento fetching and fresh predictions were proven. List every initial and final WARN/FAIL with exact summaries and useful evidence. State the stage disposition and all receipt/report/screenshot paths used. For a repair, report root cause, files/config changed, tests, PIDs, lock handling, new receipt/publication paths, and verification. Keep healthy unchanged wakes compact so the task history remains useful.
 

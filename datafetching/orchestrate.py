@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import secrets
 import sys
 import time
 from contextlib import contextmanager, nullcontext
@@ -29,6 +30,7 @@ from datafetching.decision_time import cycle_target_decision
 from datafetching.observability import timed_stage
 from datafetching.parquet_store import DATASTORE_TARGETS, ParquetStore
 from datafetching.readiness_lane import running_readiness_lane
+from datafetching.runtime_lock import runtime_lock_maintenance_gate
 from fundamentals.main import main as run_fundamentals
 from signals.main import main as run_signals
 from technicals.main import main as run_technicals
@@ -609,32 +611,46 @@ def next_boundary(now: datetime, *, interval_minutes: int) -> datetime:
 def orchestration_lock(path: Path) -> Iterator[None]:
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor: int | None = None
-    try:
-        descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        payload = (
-            f"pid={os.getpid()}\n"
-            f"started_at={datetime.now(timezone.utc).isoformat()}\n"
-        ).encode("utf-8")
-        os.write(descriptor, payload)
-        os.close(descriptor)
-        descriptor = None
-    except FileExistsError as exc:
-        detail = (
-            path.read_text(encoding="utf-8", errors="replace")
-            if path.is_file()
-            else ""
-        )
-        raise RuntimeError(
-            f"Another Duckets orchestration process appears to be running. "
-            f"Lock: {path}\n{detail}"
-        ) from exc
+    owned_payload: bytes | None = None
+    with runtime_lock_maintenance_gate(path.parent):
+        try:
+            descriptor = os.open(
+                path,
+                os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_BINARY", 0),
+            )
+            payload = (
+                f"pid={os.getpid()}\n"
+                f"started_at={datetime.now(timezone.utc).isoformat()}\n"
+                f"token={secrets.token_hex(16)}\n"
+            ).encode("utf-8")
+            os.write(descriptor, payload)
+            os.close(descriptor)
+            descriptor = None
+            owned_payload = payload
+        except FileExistsError as exc:
+            detail = (
+                path.read_text(encoding="utf-8", errors="replace")
+                if path.is_file()
+                else ""
+            )
+            raise RuntimeError(
+                f"Another Duckets orchestration process appears to be running. "
+                f"Lock: {path}\n{detail}"
+            ) from exc
 
     try:
         yield
     finally:
         if descriptor is not None:
             os.close(descriptor)
-        path.unlink(missing_ok=True)
+        with runtime_lock_maintenance_gate(path.parent):
+            if owned_payload is not None:
+                try:
+                    unchanged = path.read_bytes() == owned_payload
+                except FileNotFoundError:
+                    unchanged = False
+                if unchanged:
+                    path.unlink()
 
 
 if __name__ == "__main__":

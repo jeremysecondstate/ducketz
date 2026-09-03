@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+import ml.runtime_pipeline as runtime_module
 from ml.calibration import IdentityCalibrator
 from ml.artifacts import write_manifest
 from ml.contracts import FeatureSet, FeatureSpec
@@ -565,6 +566,67 @@ def test_duplicate_verified_copies_select_one_bundle_without_multiplying_rows(
     assert reused["id"].is_unique
     assert fresh.empty
     assert _frozen_bytes(reused) == _frozen_bytes(issued)
+
+
+def test_precomputed_verified_bundle_index_preserves_live_selection(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    samples = _sample_bundle(
+        decision_session="2026-07-31",
+        decision_timestamp=_FRIDAY_DECISION,
+        target_sessions=_FIRST_TARGET_SESSIONS,
+    )
+    models = _models(tmp_path, probability_base=0.57, version="origin")
+    issued, _fresh = _weekly_live_predictions(
+        samples,
+        models=models,
+        verified_runs=(),
+        specifications=_SPECIFICATIONS,
+        symbols=(_SYMBOL,),
+        assumed_round_trip_cost=_COST,
+        prediction_created_at=_ISSUED_AT,
+    )
+    verified_runs = (
+        _verified_run(tmp_path, issued, suffix="origin", minutes=1),
+    )
+    verified_bundles = runtime_module._weekly_prediction_bundles(
+        verified_runs,
+        samples=samples,
+        specifications=_SPECIFICATIONS,
+        assumed_round_trip_cost=_COST,
+    )
+    expected, expected_fresh = _weekly_live_predictions(
+        samples,
+        models=models,
+        verified_runs=verified_runs,
+        specifications=_SPECIFICATIONS,
+        symbols=(_SYMBOL,),
+        assumed_round_trip_cost=_COST,
+        prediction_created_at=pd.Timestamp("2026-08-04T15:00:00Z"),
+    )
+
+    def fail_rebuild(*_args: object, **_kwargs: object) -> object:
+        raise AssertionError("verified weekly bundle index was rebuilt")
+
+    monkeypatch.setattr(
+        runtime_module,
+        "_weekly_prediction_bundles",
+        fail_rebuild,
+    )
+    selected, fresh = _weekly_live_predictions(
+        samples,
+        models=models,
+        verified_runs=verified_runs,
+        verified_bundles=verified_bundles,
+        specifications=_SPECIFICATIONS,
+        symbols=(_SYMBOL,),
+        assumed_round_trip_cost=_COST,
+        prediction_created_at=pd.Timestamp("2026-08-04T15:00:00Z"),
+    )
+
+    pd.testing.assert_frame_equal(selected, expected)
+    pd.testing.assert_frame_equal(fresh, expected_fresh)
 
 
 def test_active_original_survives_independent_maturity_and_evidence_updates(

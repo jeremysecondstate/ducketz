@@ -386,12 +386,24 @@ def _run_loop_b_once(
         if any(is_weekly_horizon(value) for value in effective_specifications)
         else ()
     )
-    if verified_weekly_runs:
+    weekly_specifications = _weekly_specifications(effective_specifications)
+    verified_weekly_bundles = (
+        _weekly_prediction_bundles(
+            verified_weekly_runs,
+            samples=samples,
+            specifications=weekly_specifications,
+            assumed_round_trip_cost=runtime.assumed_round_trip_cost,
+        )
+        if weekly_specifications
+        else {}
+    )
+    if verified_weekly_bundles:
         verified_weekly_predictions = _verified_weekly_prediction_rows(
             verified_weekly_runs,
             samples=samples,
             specifications=effective_specifications,
             assumed_round_trip_cost=runtime.assumed_round_trip_cost,
+            verified_bundles=verified_weekly_bundles,
         )
         prior_predictions = pd.concat(
             [prior_predictions, verified_weekly_predictions],
@@ -545,6 +557,7 @@ def _run_loop_b_once(
                     samples,
                     models=models,
                     verified_runs=verified_weekly_runs,
+                    verified_bundles=verified_weekly_bundles,
                     specifications=effective_specifications,
                     symbols=(symbol,),
                     assumed_round_trip_cost=runtime.assumed_round_trip_cost,
@@ -1253,17 +1266,25 @@ def _verified_weekly_prediction_rows(
     samples: pd.DataFrame,
     specifications: Mapping[str, HorizonSpecification],
     assumed_round_trip_cost: float,
+    verified_bundles: Mapping[
+        str, Sequence[tuple[pd.Timestamp, pd.DataFrame]]
+    ]
+    | None = None,
 ) -> pd.DataFrame:
     """Return calendar-proven receipt-chain remaining-week origins."""
 
     weekly_specifications = _weekly_specifications(specifications)
     if not weekly_specifications:
         return empty_frame(PREDICTION_SCHEMA)
-    bundles = _weekly_prediction_bundles(
-        runs,
-        samples=samples,
-        specifications=weekly_specifications,
-        assumed_round_trip_cost=assumed_round_trip_cost,
+    bundles = (
+        verified_bundles
+        if verified_bundles is not None
+        else _weekly_prediction_bundles(
+            runs,
+            samples=samples,
+            specifications=weekly_specifications,
+            assumed_round_trip_cost=assumed_round_trip_cost,
+        )
     )
     frames = [
         bundle
@@ -1288,6 +1309,10 @@ def _weekly_live_predictions(
     *,
     models: Mapping[str, RuntimeModel],
     verified_runs: Sequence[VerifiedWeeklyPredictionRun],
+    verified_bundles: Mapping[
+        str, Sequence[tuple[pd.Timestamp, pd.DataFrame]]
+    ]
+    | None = None,
     specifications: Mapping[str, HorizonSpecification],
     symbols: Sequence[str],
     assumed_round_trip_cost: float,
@@ -1306,11 +1331,15 @@ def _weekly_live_predictions(
         as_of=prediction_created_at,
         assumed_round_trip_cost=assumed_round_trip_cost,
     )
-    verified = _weekly_prediction_bundles(
-        verified_runs,
-        samples=samples,
-        specifications=weekly_specifications,
-        assumed_round_trip_cost=assumed_round_trip_cost,
+    verified = (
+        verified_bundles
+        if verified_bundles is not None
+        else _weekly_prediction_bundles(
+            verified_runs,
+            samples=samples,
+            specifications=weekly_specifications,
+            assumed_round_trip_cost=assumed_round_trip_cost,
+        )
     )
     selected: list[pd.DataFrame] = []
     newly_issued: list[pd.DataFrame] = []

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import json
 import os
 import subprocess
@@ -69,6 +70,8 @@ def _plan(
     monitor: Mapping[str, object] | None = None,
     now: str = "2026-08-19T18:42:00Z",
     live_pids: set[int] | None = None,
+    allow_codex_forced_update: bool = False,
+    codex_update_events: tuple[Mapping[str, object], ...] = (),
 ) -> dict[str, object]:
     alive = live_pids if live_pids is not None else {
         int(row["pid"]) for row in rows
@@ -80,7 +83,207 @@ def _plan(
         observed_at=now,
         pid_exists=lambda process_id: process_id in alive,
         audit_directory=_audit_directory(tmp_path),
+        allow_codex_forced_update=allow_codex_forced_update,
+        codex_update_events=codex_update_events,
     )
+
+
+def _forced_update_event(**overrides: object) -> dict[str, object]:
+    event: dict[str, object] = {
+        "event_id": 603,
+        "event_record_id": 481728,
+        "occurred_at": "2026-08-19T18:41:00Z",
+        "package_family": "OpenAI.Codex_2p2nqsd0c76g0",
+        "deployment_operation": 20,
+        "flags": 18496,
+        "flags_high": 262144,
+        "calling_process": "svchost.exe,wuauserv",
+        "deployment_activity_id": "{d2c996d9-394a-000f-9eee-3fd34a39dd01}",
+        "update_event_id": 855,
+        "update_event_record_id": 481732,
+        "update_occurred_at": "2026-08-19T18:41:00.020000Z",
+        "update_activity_id": "{d2c996d9-394a-000f-9eee-3fd34a39dd01}",
+        "update_old_package": "OpenAI.Codex_26.831.1445.0_x64__2p2nqsd0c76g0",
+        "update_new_package": "OpenAI.Codex_26.901.1978.0_x64__2p2nqsd0c76g0",
+        "old_container_destroyed": True,
+        "destroyed_event_id": 217,
+        "destroyed_event_record_id": 387443,
+        "destroyed_occurred_at": "2026-08-19T18:41:00.600000Z",
+        "destroyed_package": "OpenAI.Codex_26.831.1445.0_x64__2p2nqsd0c76g0",
+        "registration_succeeded": True,
+        "register_event_id": 400,
+        "register_event_record_id": 481745,
+        "register_occurred_at": "2026-08-19T18:41:00.900000Z",
+        "register_activity_id": "{d2c996d9-394a-000f-9eee-3fd34a39dd01}",
+        "register_package": "OpenAI.Codex_26.901.1978.0_x64__2p2nqsd0c76g0",
+        "register_deployment_operation": 6,
+        "register_calling_process": "svchost.exe,wuauserv",
+        "replacement_container_created": True,
+        "replacement_container_event_id": 210,
+        "replacement_container_event_record_id": 387446,
+        "replacement_container_occurred_at": "2026-08-19T18:41:01Z",
+        "replacement_container_package": "OpenAI.Codex_26.901.1978.0_x64__2p2nqsd0c76g0",
+        "replacement_container_id": "{8EA303BC-A719-11F1-92AE-4C82A910044C}",
+        "replacement_process_launched": True,
+        "replacement_process_event_id": 201,
+        "replacement_process_event_record_id": 387448,
+        "replacement_process_occurred_at": "2026-08-19T18:41:01.100000Z",
+        "replacement_process_package": "OpenAI.Codex_26.901.1978.0_x64__2p2nqsd0c76g0",
+        "replacement_application_name": "OpenAI.Codex_2p2nqsd0c76g0!App",
+        "replacement_image_name": "ChatGPT.exe",
+        "old_package": "OpenAI.Codex_26.831.1445.0_x64__2p2nqsd0c76g0",
+        "new_package": "OpenAI.Codex_26.901.1978.0_x64__2p2nqsd0c76g0",
+        "boundary_exclusions_verified": True,
+        "competing_system_boundary_events": [],
+        "competing_logoff_events": [],
+        "last_boot_up_at": "2026-08-01T00:00:00Z",
+    }
+    event.update(overrides)
+    return event
+
+
+def _forced_update_monitor(tmp_path: Path) -> dict[str, object]:
+    runtime_views: dict[str, object] = {}
+    log_root = tmp_path / "logs" / "ducketz" / "background-launch" / "prior"
+    log_root.mkdir(parents=True)
+    modified = pd.Timestamp("2026-08-19T18:40:00Z").timestamp()
+    for runtime in RUNTIMES:
+        stdout = log_root / f"{runtime.name}.stdout.log"
+        stderr = log_root / f"{runtime.name}.stderr.log"
+        stdout.write_text(f"{runtime.name} active work\n", encoding="utf-8")
+        stderr.write_bytes(b"")
+        os.utime(stdout, (modified, modified))
+        os.utime(stderr, (modified, modified))
+        runtime_views[runtime.name] = {
+            "stdout": str(stdout),
+            "stderr": str(stderr),
+            "recent_stderr": False,
+        }
+    return {
+        "status": "UNHEALTHY",
+        "checked_at": "2026-08-19T18:42:00Z",
+        "read_only": True,
+        "orders_placed": 0,
+        "automated_action_allowed": False,
+        "checks": [
+            {
+                "name": "runtime_logs",
+                "status": "WARN",
+                "summary": "Runtime logs stopped at a shared boundary.",
+                "details": {"runtimes": runtime_views},
+            },
+            {
+                "name": "loop_a_cycle",
+                "status": "FAIL",
+                "summary": "Loop A's latest complete-cycle authority is unhealthy.",
+                "details": {
+                    "generation": "loop-a-writing",
+                    "active_cycle_status": "WRITING",
+                    "active_cycle_age_minutes": 47.0,
+                    "last_complete_generation": "loop-a-complete",
+                    "finished_at": "2026-08-19T17:50:00Z",
+                    "age_minutes": 52.0,
+                    "failure_count": 0,
+                    "failures": [
+                        "active-cycle-running-too-long",
+                        "latest-complete-cycle-stale",
+                    ],
+                },
+            },
+            {
+                "name": "loop_b_publication",
+                "status": "FAIL",
+                "summary": "Loop B's current prediction publication is incomplete or stale.",
+                "details": {
+                    "run_path": "loop-b/runs/prior",
+                    "run_timestamp": "2026-08-19T17:35:00Z",
+                    "authoritative_timestamp": "2026-08-19T17:40:00Z",
+                    "age_minutes": 62.0,
+                    "intelligence_rows": 63,
+                    "expected_routes": 63,
+                    "failures": ["publication-stale"],
+                    "warnings": [],
+                },
+            },
+            {
+                "name": "strategy_publication",
+                "status": "FAIL",
+                "summary": "Strategy's candidate publication is empty or stale.",
+                "details": {
+                    "run_path": "strategy/runs/prior",
+                    "run_timestamp": "2026-08-19T17:40:00Z",
+                    "age_minutes": 62.0,
+                    "candidate_rows": 21,
+                    "audit_rows": 21,
+                },
+            },
+            {
+                "name": "pricing_publications",
+                "status": "PASS",
+                "summary": "Pricing authorities are verified.",
+                "details": {
+                    "expected_target": "2026-08-19T18:30:00Z",
+                    "target_authority": {
+                        "target_snapshot_for": "2026-08-19T18:30:00Z",
+                        "published_at": "2026-08-19T18:35:00Z",
+                        "terminal_status": "PREDICTIONS_PUBLISHED",
+                        "prediction_rows": 21,
+                        "shadow_rows": 21,
+                    },
+                    "full_generation": {
+                        "status": "VERIFIED",
+                        "run_path": "pricing/runs/prior",
+                        "published_at": "2026-08-19T18:35:00Z",
+                        "age_minutes": 7.0,
+                    },
+                },
+            },
+            {
+                "name": "sequence_encoder_loop_c",
+                "status": "INFO",
+                "summary": "The pooled sequence encoder and Loop C observe lane are not yet published.",
+                "details": {
+                    "sequence_status": "NOT_PUBLISHED",
+                    "loop_c_status": "NOT_PUBLISHED",
+                    "authority": "NONE",
+                    "automated_action_allowed": False,
+                    "orders_enabled": False,
+                    "orders_placed": 0,
+                },
+            },
+            *[
+                {
+                    "name": name,
+                    "status": "PASS",
+                    "summary": f"{name} is verified.",
+                    "details": {},
+                }
+                for name in (
+                    "loop_a_bar_readiness",
+                    "cme_publication",
+                    "alfred_publication",
+                    "options_publications",
+                    "strategy_profit_model_authority",
+                    "cross_loop_lineage",
+                    "ui_contracts",
+                )
+            ],
+            {
+                "name": "storage_capacity",
+                "status": "PASS",
+                "summary": "Storage is healthy.",
+                "details": {},
+            },
+        ],
+    }
+
+
+def _write_forced_update_locks(tmp_path: Path) -> None:
+    for runtime in RUNTIMES:
+        (tmp_path / runtime.lock_name).write_text(
+            f"pid={90000 + len(runtime.name)}\nstarted_at=2026-08-19T17:00:00Z\n",
+            encoding="utf-8",
+        )
 
 
 def test_launch_allowlist_covers_each_runtime_once() -> None:
@@ -98,6 +301,54 @@ def test_launch_allowlist_covers_each_runtime_once() -> None:
         for runtime in (_RUNTIME_BY_NAME[launch.runtime],)
     )
     assert "--skip-historical-catchup" in _LAUNCH_BY_RUNTIME["options"].arguments
+
+
+def test_all_runtime_lock_paths_share_the_maintenance_gate() -> None:
+    repository = Path(__file__).resolve().parents[1]
+    shared_lock_owners = (
+        "datafetching/cme_runtime.py",
+        "datafetching/fred_alfred_runtime.py",
+        "ml/option_pricing_runtime.py",
+        "datafetching/options_runtime.py",
+        "ml/strategy_runtime.py",
+        "ml/strategy_profit_training_runtime.py",
+    )
+    for relative in shared_lock_owners:
+        assert "exclusive_runtime_lock" in (repository / relative).read_text(
+            encoding="utf-8"
+        )
+    for relative in ("datafetching/orchestrate.py", "ml/prediction_runtime.py"):
+        assert "runtime_lock_maintenance_gate" in (repository / relative).read_text(
+            encoding="utf-8"
+        )
+
+
+def test_forced_update_command_verification_rejects_trailing_override() -> None:
+    launch = _LAUNCH_BY_RUNTIME["strategy"]
+    canonical = {
+        "command_line": '"C:\\dev\\ducketz\\.venv\\Scripts\\python.exe" '
+        + " ".join(launch.arguments)
+    }
+    overridden = {
+        "command_line": str(canonical["command_line"]) + " --once"
+    }
+    foreign_python = {
+        "command_line": '"C:\\Python\\python.exe" ' + " ".join(launch.arguments)
+    }
+
+    assert system_guardian._is_exact_allowlisted_command(canonical, launch)
+    assert not system_guardian._is_exact_allowlisted_command(overridden, launch)
+    assert not system_guardian._is_exact_allowlisted_command(foreign_python, launch)
+    assert not system_guardian._is_allowlisted_command(overridden, launch)
+
+
+def test_stop_side_revalidates_exact_argv_before_process_termination() -> None:
+    source = inspect.getsource(system_guardian._stop_windows_process_tree)
+
+    assert "CommandLineToArgvW" in source
+    assert "Target executable no longer matches" in source
+    assert "Target arguments no longer match" in source
+    assert ".Contains(" not in source
 
 
 def test_scheduled_main_surfaces_overnight_stage_in_guardian_and_monitor(
@@ -148,6 +399,43 @@ def test_scheduled_main_surfaces_overnight_stage_in_guardian_and_monitor(
     assert payload["monitor"]["schedule"] == schedule
 
 
+def test_main_forwards_explicit_codex_forced_update_flag(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    observed: dict[str, object] = {}
+
+    def fake_guardian(*_args: object, **kwargs: object) -> dict[str, object]:
+        observed.update(kwargs)
+        return {
+            "schema_version": "loops-system-guardian-v1",
+            "mode": "hourly",
+            "status": "HEALTHY",
+            "checked_at": "2026-08-19T18:42:00Z",
+            "monitor": {"status": "HEALTHY"},
+            "orders_placed": 0,
+        }
+
+    monkeypatch.setattr(system_guardian, "resolve_datastore_dir", lambda **_kwargs: tmp_path)
+    monkeypatch.setattr(system_guardian, "run_guardian", fake_guardian)
+
+    exit_code = system_guardian.main(
+        [
+            "--datastore",
+            str(tmp_path),
+            "--mode",
+            "hourly",
+            "--repair-codex-forced-update",
+            "--compact",
+        ]
+    )
+    json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert observed["repair_codex_forced_update"] is True
+
+
 def test_checked_in_launcher_is_hidden_idempotent_and_allowlist_owned() -> None:
     path = (
         Path(__file__).resolve().parents[1]
@@ -165,6 +453,15 @@ def test_checked_in_launcher_is_hidden_idempotent_and_allowlist_owned() -> None:
     assert "-RedirectStandardOutput $stdout" in source
     assert "-RedirectStandardError $stderr" in source
     assert "logs\\ducketz\\background-launch" in source
+    assert "[switch]$RequireAllMissing" in source
+    assert "MISSING_VERIFIED" in source
+    assert "BLOCKED_NOT_MISSING" in source
+    assert "CommandLineToArgvW" in source
+    assert "$executable," in source
+    assert "$python," in source
+    assert "Global\\DucketzAllLoopsCanonicalLauncherV1" in source
+    assert "$launcherMutex.WaitOne(0)" in source
+    assert "[int]$after.LauncherPid -ne [int]$started.Id" in source
     assert "-NoExit" not in source
 
 
@@ -271,6 +568,509 @@ def test_multiple_missing_runtimes_are_report_only(tmp_path: Path) -> None:
     assert decision["affected_runtimes"] == ["loop_b", "strategy"]
 
 
+def test_exact_codex_forced_update_all_eight_signature_is_eligible(
+    tmp_path: Path,
+) -> None:
+    _write_forced_update_locks(tmp_path)
+    event = _forced_update_event()
+
+    decision = _plan(
+        tmp_path,
+        [],
+        monitor=_forced_update_monitor(tmp_path),
+        live_pids=set(),
+        allow_codex_forced_update=True,
+        codex_update_events=(event,),
+    )
+
+    assert decision["status"] == "ELIGIBLE_CODEX_APPX_FORCED_UPDATE_ALL_EIGHT"
+    assert decision["fault"] == "CODEX_APPX_FORCED_UPDATE_ALL_EIGHT"
+    assert decision["affected_runtimes"] == [runtime.name for runtime in RUNTIMES]
+    assert len(decision["locks"]) == 8
+    assert len(decision["logs"]) == 8
+    assert len(str(decision["event_fingerprint"])) == 64
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("event_id", 604),
+        ("package_family", "Other.App_family"),
+        ("deployment_operation", 6),
+        ("flags_high", 0),
+        ("update_event_id", 0),
+        ("register_activity_id", "{different-activity}"),
+        ("destroyed_package", "OpenAI.Codex_1.2.3.4_x64__2p2nqsd0c76g0"),
+        ("replacement_application_name", "OpenAI.Codex_2p2nqsd0c76g0!Other"),
+        ("destroyed_event_id", 0),
+        ("register_event_id", 0),
+        ("replacement_container_event_id", 0),
+        ("replacement_process_event_id", 0),
+    ),
+)
+def test_codex_forced_update_requires_every_exact_event_field(
+    tmp_path: Path, field: str, value: object
+) -> None:
+    _write_forced_update_locks(tmp_path)
+
+    decision = _plan(
+        tmp_path,
+        [],
+        monitor=_forced_update_monitor(tmp_path),
+        live_pids=set(),
+        allow_codex_forced_update=True,
+        codex_update_events=(_forced_update_event(**{field: value}),),
+    )
+
+    assert decision["status"] == "REPORT_ONLY"
+    assert "forced-update event" in str(decision["summary"])
+
+
+def test_codex_forced_update_rejects_shutdown_or_logoff_boundary(
+    tmp_path: Path,
+) -> None:
+    _write_forced_update_locks(tmp_path)
+    monitor = _forced_update_monitor(tmp_path)
+    for field, boundary in (
+        (
+            "competing_system_boundary_events",
+            [{"event_id": 1074, "occurred_at": "2026-08-19T18:20:00Z"}],
+        ),
+        (
+            "competing_logoff_events",
+            [{"event_id": 4647, "occurred_at": "2026-08-19T18:20:00Z"}],
+        ),
+    ):
+        decision = _plan(
+            tmp_path,
+            [],
+            monitor=monitor,
+            live_pids=set(),
+            allow_codex_forced_update=True,
+            codex_update_events=(_forced_update_event(**{field: boundary}),),
+        )
+        assert decision["status"] == "REPORT_ONLY"
+        assert "forced-update event" in str(decision["summary"])
+
+
+def test_codex_forced_update_evaluates_all_events_before_attribution(
+    tmp_path: Path,
+) -> None:
+    _write_forced_update_locks(tmp_path)
+    correct = _forced_update_event()
+    decoy = _forced_update_event(
+        event_record_id=481828,
+        update_event_record_id=481832,
+        register_event_record_id=481845,
+        occurred_at="2026-08-19T18:41:30Z",
+        update_occurred_at="2026-08-19T18:41:30.020000Z",
+        destroyed_occurred_at="2026-08-19T18:41:30.600000Z",
+        register_occurred_at="2026-08-19T18:41:30.900000Z",
+        replacement_container_occurred_at="2026-08-19T18:41:31Z",
+        replacement_process_occurred_at="2026-08-19T18:41:31.100000Z",
+        last_boot_up_at="2026-08-19T17:30:00Z",
+    )
+
+    decision = _plan(
+        tmp_path,
+        [],
+        monitor=_forced_update_monitor(tmp_path),
+        live_pids=set(),
+        allow_codex_forced_update=True,
+        codex_update_events=(decoy, correct),
+    )
+
+    assert decision["status"] == "ELIGIBLE_CODEX_APPX_FORCED_UPDATE_ALL_EIGHT"
+    assert decision["event"]["event_record_id"] == correct["event_record_id"]
+    assert decision["event_fingerprint"] == system_guardian._codex_update_fingerprint(
+        decision["event"]
+    )
+
+
+def test_consumed_older_update_does_not_block_distinct_newer_update(
+    tmp_path: Path,
+) -> None:
+    _write_forced_update_locks(tmp_path)
+    newer = _forced_update_event()
+    older = _forced_update_event(
+        event_record_id=481628,
+        update_event_record_id=481632,
+        destroyed_event_record_id=387343,
+        register_event_record_id=481645,
+        replacement_container_event_record_id=387346,
+        replacement_process_event_record_id=387348,
+        occurred_at="2026-08-19T18:40:30Z",
+        update_occurred_at="2026-08-19T18:40:30.020000Z",
+        destroyed_occurred_at="2026-08-19T18:40:30.600000Z",
+        register_occurred_at="2026-08-19T18:40:30.900000Z",
+        replacement_container_occurred_at="2026-08-19T18:40:31Z",
+        replacement_process_occurred_at="2026-08-19T18:40:31.100000Z",
+        deployment_activity_id="{d2c996d9-394a-000f-9eee-3fd34a39dd00}",
+        update_activity_id="{d2c996d9-394a-000f-9eee-3fd34a39dd00}",
+        register_activity_id="{d2c996d9-394a-000f-9eee-3fd34a39dd00}",
+    )
+    audit = _audit_directory(tmp_path)
+    validated_older = system_guardian._validated_codex_forced_update_events(
+        (older,), now=pd.Timestamp("2026-08-19T18:42:00Z")
+    )[0]
+    older_fingerprint = system_guardian._codex_update_fingerprint(validated_older)
+    older_attempt = system_guardian._codex_update_attempt_path(
+        audit, older_fingerprint
+    )
+    system_guardian._atomic_write_unique_json(
+        older_attempt,
+        {"event_fingerprint": older_fingerprint, "status": "TERMINAL_FAILURE"},
+    )
+
+    decision = _plan(
+        tmp_path,
+        [],
+        monitor=_forced_update_monitor(tmp_path),
+        live_pids=set(),
+        allow_codex_forced_update=True,
+        codex_update_events=(older, newer),
+    )
+
+    assert decision["status"] == "ELIGIBLE_CODEX_APPX_FORCED_UPDATE_ALL_EIGHT"
+    assert decision["event"]["event_record_id"] == newer["event_record_id"]
+    assert decision["event_fingerprint"] != older_fingerprint
+
+
+def test_codex_forced_update_rejects_unverified_retained_authority(
+    tmp_path: Path,
+) -> None:
+    _write_forced_update_locks(tmp_path)
+    monitor = _forced_update_monitor(tmp_path)
+    cme = next(
+        check for check in monitor["checks"] if check.get("name") == "cme_publication"
+    )
+    cme.update(
+        {
+            "status": "FAIL",
+            "summary": "No CME snapshot exists.",
+            "details": {},
+        }
+    )
+
+    decision = _plan(
+        tmp_path,
+        [],
+        monitor=monitor,
+        live_pids=set(),
+        allow_codex_forced_update=True,
+        codex_update_events=(_forced_update_event(),),
+    )
+
+    assert decision["status"] == "REPORT_ONLY"
+    assert "cme_publication" in decision["blockers"]
+
+
+def test_codex_forced_update_rejects_invalid_full_pricing_generation(
+    tmp_path: Path,
+) -> None:
+    _write_forced_update_locks(tmp_path)
+    monitor = _forced_update_monitor(tmp_path)
+    pricing = next(
+        check
+        for check in monitor["checks"]
+        if check.get("name") == "pricing_publications"
+    )
+    pricing["details"]["full_generation"] = {
+        "status": "MISSING_OR_INVALID",
+        "reason": "not published",
+    }
+
+    decision = _plan(
+        tmp_path,
+        [],
+        monitor=monitor,
+        live_pids=set(),
+        allow_codex_forced_update=True,
+        codex_update_events=(_forced_update_event(),),
+    )
+
+    assert decision["status"] == "REPORT_ONLY"
+    assert "pricing_publications" in decision["blockers"]
+
+
+def test_codex_forced_update_rejects_loop_c_zero_order_warning(
+    tmp_path: Path,
+) -> None:
+    _write_forced_update_locks(tmp_path)
+    monitor = _forced_update_monitor(tmp_path)
+    loop_c = next(
+        check
+        for check in monitor["checks"]
+        if check.get("name") == "sequence_encoder_loop_c"
+    )
+    loop_c.update(
+        {
+            "status": "WARN",
+            "summary": "A published sequence-encoder or Loop C observe authority is invalid.",
+            "details": {
+                "sequence_status": "VERIFIED_SHADOW",
+                "loop_c_status": "INVALID",
+                "warnings": ["Loop C observe output violates zero-order safety"],
+                "automated_action_allowed": False,
+                "orders_enabled": False,
+                "orders_placed": 0,
+            },
+        }
+    )
+
+    decision = _plan(
+        tmp_path,
+        [],
+        monitor=monitor,
+        live_pids=set(),
+        allow_codex_forced_update=True,
+        codex_update_events=(_forced_update_event(),),
+    )
+
+    assert decision["status"] == "REPORT_ONLY"
+    assert "sequence_encoder_loop_c" in decision["blockers"]
+
+
+def test_codex_forced_update_rejects_live_changed_lock_and_nonempty_stderr(
+    tmp_path: Path,
+) -> None:
+    _write_forced_update_locks(tmp_path)
+    strategy_lock = tmp_path / _RUNTIME_BY_NAME["strategy"].lock_name
+    strategy_lock.write_text(
+        "pid=77777\nstarted_at=2026-08-19T17:00:00Z\n", encoding="utf-8"
+    )
+    monitor = _forced_update_monitor(tmp_path)
+
+    live = _plan(
+        tmp_path,
+        [],
+        monitor=monitor,
+        live_pids={77777},
+        allow_codex_forced_update=True,
+        codex_update_events=(_forced_update_event(),),
+    )
+    assert live["status"] == "REPORT_ONLY"
+    assert "lock-pid-still-alive" in str(live["signature_errors"])
+
+    strategy_lock.write_text(
+        "pid=77777\nstarted_at=2026-08-19T19:00:00Z\n", encoding="utf-8"
+    )
+    future = _plan(
+        tmp_path,
+        [],
+        monitor=monitor,
+        live_pids=set(),
+        allow_codex_forced_update=True,
+        codex_update_events=(_forced_update_event(),),
+    )
+    assert future["status"] == "REPORT_ONLY"
+    assert "lock-does-not-predate-event" in str(future["signature_errors"])
+
+    strategy_lock.write_text(
+        "pid=77777\nstarted_at=2026-08-19T17:00:00Z\n", encoding="utf-8"
+    )
+    stderr = Path(
+        monitor["checks"][0]["details"]["runtimes"]["strategy"]["stderr"]
+    )
+    stderr.write_text("credential failure\n", encoding="utf-8")
+    dirty = _plan(
+        tmp_path,
+        [],
+        monitor=monitor,
+        live_pids=set(),
+        allow_codex_forced_update=True,
+        codex_update_events=(_forced_update_event(),),
+    )
+    assert dirty["status"] == "REPORT_ONLY"
+    assert "stderr-not-empty" in str(dirty["signature_errors"])
+
+
+def test_codex_forced_update_executes_one_launcher_and_quarantines_exact_locks(
+    tmp_path: Path,
+) -> None:
+    _write_forced_update_locks(tmp_path)
+    decision = _plan(
+        tmp_path,
+        [],
+        monitor=_forced_update_monitor(tmp_path),
+        live_pids=set(),
+        allow_codex_forced_update=True,
+        codex_update_events=(_forced_update_event(),),
+    )
+    rows: list[dict[str, object]] = []
+    alive: set[int] = set()
+    calls: list[Path] = []
+
+    def launcher(root: Path, _now: pd.Timestamp) -> Mapping[str, object]:
+        calls.append(root)
+        log_root = root / "logs" / "ducketz" / "background-launch"
+        launch_dir = log_root / "new"
+        launch_dir.mkdir(parents=True)
+        owners: list[dict[str, object]] = []
+        for index, launch in enumerate(GUARDIAN_LAUNCHES):
+            parent = 20000 + index * 10
+            worker = parent + 1
+            command = (
+                '"C:\\dev\\ducketz\\.venv\\Scripts\\python.exe" '
+                + " ".join(launch.arguments)
+            )
+            rows.extend(
+                (
+                    {
+                        "pid": parent,
+                        "ppid": 42,
+                        "created_at": "2026-08-19T18:42:01Z",
+                        "command_line": command,
+                    },
+                    {
+                        "pid": worker,
+                        "ppid": parent,
+                        "created_at": "2026-08-19T18:42:02Z",
+                        "command_line": command,
+                    },
+                )
+            )
+            alive.update({parent, worker})
+            runtime = _RUNTIME_BY_NAME[launch.runtime]
+            (root / runtime.lock_name).write_text(
+                f"pid={worker}\nstarted_at=2026-08-19T18:42:02Z\n",
+                encoding="utf-8",
+            )
+            stderr = launch_dir / f"{launch.log_stem}.stderr.log"
+            stdout = launch_dir / f"{launch.log_stem}.stdout.log"
+            stderr.write_bytes(b"")
+            stdout.write_text("started\n", encoding="utf-8")
+            owners.append(
+                {
+                    "runtime": launch.runtime,
+                    "status": "STARTED_VERIFIED",
+                    "stderr": str(stderr),
+                    "stdout": str(stdout),
+                }
+            )
+        return {
+            "schema_version": "ducketz-background-launch-v1",
+            "exit_code": 0,
+            "audit_only": False,
+            "require_all_missing": True,
+            "datastore": str(root),
+            "canonical_log_root": str(log_root),
+            "issues": [],
+            "owners": owners,
+        }
+
+    result, final_rows = system_guardian._execute_codex_forced_update_recovery(
+        tmp_path,
+        decision=decision,
+        observed_at=pd.Timestamp("2026-08-19T18:42:00Z"),
+        process_reader=lambda: list(rows),
+        pid_exists=lambda process_id: process_id in alive,
+        launch_all_runtimes=launcher,
+        audit_directory=_audit_directory(tmp_path),
+        expected_recovery_root_for_test=tmp_path,
+    )
+
+    assert result["status"] == "CODEX_FORCED_UPDATE_RECOVERED"
+    assert result["launcher_invocations"] == 1
+    assert calls == [tmp_path]
+    assert len(result["quarantined_locks"]) == 8
+    assert all("logs\\ducketz\\manual-recovery" in path for path in result["quarantined_locks"])
+    assert len(list(final_rows or [])) == 16
+    assert Path(result["event_attempt_receipt"]).is_file()
+
+
+def test_codex_forced_update_attempt_is_consumed_even_when_launcher_fails(
+    tmp_path: Path,
+) -> None:
+    _write_forced_update_locks(tmp_path)
+    monitor = _forced_update_monitor(tmp_path)
+    event = _forced_update_event()
+    decision = _plan(
+        tmp_path,
+        [],
+        monitor=monitor,
+        live_pids=set(),
+        allow_codex_forced_update=True,
+        codex_update_events=(event,),
+    )
+    calls = 0
+
+    def failed_launcher(_root: Path, _now: pd.Timestamp) -> Mapping[str, object]:
+        nonlocal calls
+        calls += 1
+        return {"exit_code": 2, "owners": [], "issues": ["failed"]}
+
+    result, _rows = system_guardian._execute_codex_forced_update_recovery(
+        tmp_path,
+        decision=decision,
+        observed_at=pd.Timestamp("2026-08-19T18:42:00Z"),
+        process_reader=lambda: [],
+        pid_exists=lambda _process_id: False,
+        launch_all_runtimes=failed_launcher,
+        audit_directory=_audit_directory(tmp_path),
+        expected_recovery_root_for_test=tmp_path,
+    )
+    assert result["status"] == "CODEX_FORCED_UPDATE_RECOVERY_FAILED"
+    assert result["launcher_invocations"] == 1
+    assert calls == 1
+    assert Path(result["event_attempt_receipt"]).is_file()
+
+    repeated = _plan(
+        tmp_path,
+        [],
+        monitor=monitor,
+        live_pids=set(),
+        allow_codex_forced_update=True,
+        codex_update_events=(event,),
+    )
+    assert repeated["status"] == "REPORT_ONLY"
+    assert repeated["prior_attempt"] == result["event_attempt_receipt"]
+
+
+def test_codex_forced_update_gate_contention_does_not_consume_event(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _write_forced_update_locks(tmp_path)
+    event = _forced_update_event()
+    decision = _plan(
+        tmp_path,
+        [],
+        monitor=_forced_update_monitor(tmp_path),
+        live_pids=set(),
+        allow_codex_forced_update=True,
+        codex_update_events=(event,),
+    )
+
+    class BusyGate:
+        def __enter__(self) -> None:
+            raise system_guardian.Timeout("maintenance busy")
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+    monkeypatch.setattr(
+        system_guardian,
+        "runtime_lock_maintenance_gate",
+        lambda *_args, **_kwargs: BusyGate(),
+    )
+
+    result, _rows = system_guardian._execute_codex_forced_update_recovery(
+        tmp_path,
+        decision=decision,
+        observed_at=pd.Timestamp("2026-08-19T18:42:00Z"),
+        process_reader=lambda: [],
+        pid_exists=lambda _process_id: False,
+        launch_all_runtimes=lambda *_args: pytest.fail("launcher must not run"),
+        audit_directory=_audit_directory(tmp_path),
+        expected_recovery_root_for_test=tmp_path,
+    )
+
+    assert result["verification"] == "LOCK_MAINTENANCE_BUSY"
+    assert "event_attempt_receipt" not in result
+    assert all((tmp_path / runtime.lock_name).is_file() for runtime in RUNTIMES)
+
+
 def test_duplicate_owner_is_never_auto_killed(tmp_path: Path) -> None:
     rows = _production_process_rows()
     loop_a = next(
@@ -301,6 +1101,36 @@ def test_live_foreign_lock_blocks_a_missing_runtime_restart(tmp_path: Path) -> N
 
     assert decision["status"] == "REPORT_ONLY"
     assert decision["lock"]["status"] == "FOREIGN_LIVE"
+
+
+def test_targeted_lock_prepare_preserves_a_racing_live_owner(tmp_path: Path) -> None:
+    runtime = _RUNTIME_BY_NAME["strategy"]
+    lock = tmp_path / runtime.lock_name
+    lock.write_text("pid=77777\n", encoding="utf-8")
+    launch = _LAUNCH_BY_RUNTIME[runtime.name]
+
+    def racing_processes() -> list[dict[str, object]]:
+        lock.write_text("pid=88888\n", encoding="utf-8")
+        return [
+            {
+                "pid": 88888,
+                "ppid": 42,
+                "created_at": "2026-08-19T18:42:00Z",
+                "command_line": '"C:\\dev\\ducketz\\.venv\\Scripts\\python.exe" '
+                + " ".join(launch.arguments),
+            }
+        ]
+
+    with pytest.raises(RuntimeError, match="owner appeared"):
+        system_guardian._prepare_exact_lock_for_restart(
+            tmp_path,
+            runtime,
+            expected={"status": "STALE_DEAD", "pid": 77777},
+            process_reader=racing_processes,
+            pid_exists=lambda process_id: process_id == 88888,
+        )
+
+    assert lock.read_text(encoding="utf-8") == "pid=88888\n"
 
 
 def test_integrity_failure_blocks_even_an_unambiguous_missing_runtime(

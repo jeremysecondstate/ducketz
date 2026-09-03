@@ -29,7 +29,7 @@ from ml.current_publication import (
     resolve_current_output,
 )
 from ml.feature_registry import DEFAULT_FEATURE_REGISTRY
-from ml.horizons import horizon_specification
+from ml.horizons import horizon_specification, horizon_specifications_for_profile
 from ml.parquet_contracts import (
     CONTROL_PLANE_COLUMN_NAMES,
     EVALUATION_SCHEMA,
@@ -775,6 +775,54 @@ def test_loop_b_reuses_model_then_reconciles_matured_live_predictions(
 
     for path in _all_parquets(tmp_path):
         _assert_one_readable_id(path)
+
+
+def test_loop_b_builds_verified_weekly_bundle_index_once_per_run(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _write_synthetic_loop_a_outputs(tmp_path)
+    specifications = {
+        horizon: replace(specification, feature_set="technical-all")
+        for horizon, specification in horizon_specifications_for_profile(
+            "loop-a-all-v1",
+            horizons=("1w",),
+        ).items()
+    }
+    run_loop_b_once(
+        tmp_path,
+        symbols=("GOOG",),
+        config=_CONFIG,
+        specifications=specifications,
+        run_timestamp=_FIRST_RUN,
+        input_available_at=_FIRST_RUN,
+        reporter=None,
+    )
+    original = runtime_module._weekly_prediction_bundles
+    calls = 0
+
+    def counted_bundle_index(*args: object, **kwargs: object) -> object:
+        nonlocal calls
+        calls += 1
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(
+        runtime_module,
+        "_weekly_prediction_bundles",
+        counted_bundle_index,
+    )
+
+    run_loop_b_once(
+        tmp_path,
+        symbols=("GOOG",),
+        config=_CONFIG,
+        specifications=specifications,
+        run_timestamp=_SECOND_RUN,
+        input_available_at=_SECOND_RUN,
+        reporter=None,
+    )
+
+    assert calls == 1
 
 
 def test_distinct_live_decisions_increase_evidence_but_duplicate_cycles_do_not(

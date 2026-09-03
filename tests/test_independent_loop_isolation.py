@@ -5,12 +5,14 @@ import time
 from pathlib import Path
 
 import pytest
+from filelock import Timeout
 
 import datafetching.orchestrate as orchestration
+import ml.prediction_runtime as prediction_runtime
 from datafetching import schwab_fetch
 from datafetching import FetchResult
 from datafetching.parquet_store import ParquetStore
-from datafetching.runtime_lock import exclusive_runtime_lock
+from datafetching.runtime_lock import exclusive_runtime_lock, runtime_lock_maintenance_gate
 from options.publication import option_writer_lock_path
 
 
@@ -85,6 +87,44 @@ def test_writer_lock_rejects_double_writer_and_recovers_dead_owner(
         assert f"pid={os.getpid()}" in lock.read_text(encoding="utf-8")
     assert not lock.exists()
 
+
+def test_runtime_lock_maintenance_gate_is_shared_and_reacquirable(
+    tmp_path: Path,
+) -> None:
+    gate_path = tmp_path / ".ducketz-runtime-lock-maintenance.lock"
+
+    with runtime_lock_maintenance_gate(tmp_path):
+        assert gate_path.is_file()
+        with pytest.raises(Timeout):
+            with runtime_lock_maintenance_gate(tmp_path, timeout=0):
+                raise AssertionError("unreachable")
+
+    with runtime_lock_maintenance_gate(tmp_path, timeout=0):
+        assert gate_path.is_file()
+
+
+@pytest.mark.parametrize("lock_kind", ("shared", "loop_a", "loop_b"))
+def test_runtime_lock_cleanup_preserves_changed_owner(
+    tmp_path: Path,
+    lock_kind: str,
+) -> None:
+    lock = tmp_path / f".{lock_kind}.lock"
+    if lock_kind == "shared":
+        context = exclusive_runtime_lock(lock, process_name="test writer")
+    elif lock_kind == "loop_a":
+        context = orchestration.orchestration_lock(lock)
+    else:
+        context = prediction_runtime.runtime_lock(lock)
+
+    with context:
+        lock.write_text(
+            "pid=2147483646\n"
+            "started_at=2026-08-19T18:42:00Z\n"
+            "token=replacement\n",
+            encoding="utf-8",
+        )
+
+    assert "token=replacement" in lock.read_text(encoding="utf-8")
 
 def test_inline_options_conflict_fails_before_slow_chain_request(
     tmp_path: Path,

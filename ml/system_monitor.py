@@ -3163,6 +3163,7 @@ def _sequence_encoder_loop_c_check(
             sequence_status="NOT_PUBLISHED",
             loop_c_status="NOT_PUBLISHED",
             authority="NONE",
+            automated_action_allowed=False,
             orders_enabled=False,
             orders_placed=0,
         )
@@ -3170,6 +3171,7 @@ def _sequence_encoder_loop_c_check(
     details: dict[str, object] = {
         "sequence_status": "NOT_PUBLISHED",
         "loop_c_status": "NOT_PUBLISHED",
+        "automated_action_allowed": False,
         "orders_enabled": False,
         "orders_placed": 0,
     }

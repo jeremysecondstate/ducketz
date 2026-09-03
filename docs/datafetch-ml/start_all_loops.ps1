@@ -1,5 +1,6 @@
 param(
-    [switch]$AuditOnly
+    [switch]$AuditOnly,
+    [switch]$RequireAllMissing
 )
 
 $ErrorActionPreference = 'Stop'
@@ -43,10 +44,75 @@ $metadata = $metadataText | ConvertFrom-Json
 $datastoreRoot = (Resolve-Path -LiteralPath ([string]$metadata.datastore)).Path
 $primaryLogRoot = Join-Path $datastoreRoot 'logs\ducketz\background-launch'
 
+Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+
+public static class DucketzNativeCommandLine {
+    [DllImport("shell32.dll", SetLastError = true)]
+    private static extern IntPtr CommandLineToArgvW(
+        [MarshalAs(UnmanagedType.LPWStr)] string commandLine,
+        out int argumentCount
+    );
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr LocalFree(IntPtr memory);
+
+    public static string[] Split(string commandLine) {
+        int count;
+        IntPtr values = CommandLineToArgvW(commandLine, out count);
+        if (values == IntPtr.Zero) {
+            throw new Win32Exception(Marshal.GetLastWin32Error());
+        }
+        try {
+            var result = new List<string>(count);
+            for (int index = 0; index < count; index++) {
+                IntPtr value = Marshal.ReadIntPtr(values, index * IntPtr.Size);
+                result.Add(Marshal.PtrToStringUni(value));
+            }
+            return result.ToArray();
+        } finally {
+            LocalFree(values);
+        }
+    }
+}
+'@
+
 function ConvertTo-NormalizedCommand {
     param([AllowNull()][string]$CommandLine)
     if (-not $CommandLine) { return '' }
     return ([regex]::Replace($CommandLine, '\s+', ' ')).Trim().ToLowerInvariant()
+}
+
+function Test-ExactOwnerCommand {
+    param(
+        [AllowNull()][string]$CommandLine,
+        [Parameter(Mandatory)]$Owner
+    )
+    if (-not $CommandLine) { return $false }
+    $actual = @([DucketzNativeCommandLine]::Split($CommandLine))
+    $expected = @($Owner.arguments | ForEach-Object { [string]$_ })
+    if ($actual.Count -ne $expected.Count + 1) { return $false }
+    $executable = [System.IO.Path]::GetFullPath([string]$actual[0])
+    if (-not [string]::Equals(
+        $executable,
+        $python,
+        [System.StringComparison]::OrdinalIgnoreCase
+    )) {
+        return $false
+    }
+    for ($index = 0; $index -lt $expected.Count; $index++) {
+        if (-not [string]::Equals(
+            [string]$actual[$index + 1],
+            [string]$expected[$index],
+            [System.StringComparison]::Ordinal
+        )) {
+            return $false
+        }
+    }
+    return $true
 }
 
 function Get-OwnerProcesses {
@@ -79,10 +145,9 @@ function Get-OwnerState {
             }
         }
     }
-    $canonicalFragment = ConvertTo-NormalizedCommand -CommandLine ((@($Owner.arguments) -join ' '))
     $canonical = $processes.Count -eq 2 -and @(
         $processes | Where-Object {
-            (ConvertTo-NormalizedCommand -CommandLine ([string]$_.CommandLine)) -like "*$canonicalFragment*"
+            Test-ExactOwnerCommand -CommandLine ([string]$_.CommandLine) -Owner $Owner
         }
     ).Count -eq 2
     $lockPath = Join-Path $datastoreRoot ([string]$Owner.lock_name)
@@ -115,6 +180,66 @@ function Get-OwnerState {
     }
 }
 
+$launcherMutex = [System.Threading.Mutex]::new(
+    $false,
+    'Global\DucketzAllLoopsCanonicalLauncherV1'
+)
+$launcherMutexAcquired = $false
+try {
+    $launcherMutexAcquired = $launcherMutex.WaitOne(0)
+} catch [System.Threading.AbandonedMutexException] {
+    $launcherMutexAcquired = $true
+}
+if (-not $launcherMutexAcquired) {
+    [pscustomobject]@{
+        schema_version = 'ducketz-background-launch-v1'
+        audit_only = [bool]$AuditOnly
+        require_all_missing = [bool]$RequireAllMissing
+        repository = $repoRoot
+        datastore = $datastoreRoot
+        canonical_log_root = $primaryLogRoot
+        issues = @('launcher-mutex-busy')
+        owners = @()
+    } | ConvertTo-Json -Depth 8
+    $launcherMutex.Dispose()
+    exit 2
+}
+
+$preflightResults = [System.Collections.Generic.List[object]]::new()
+$preflightIssues = [System.Collections.Generic.List[string]]::new()
+if ($RequireAllMissing) {
+    foreach ($owner in @($metadata.owners)) {
+        $state = Get-OwnerState -Owner $owner
+        $lockExists = Test-Path -LiteralPath $state.LockPath
+        if ($state.ProcessCount -ne 0 -or $lockExists) {
+            $preflightIssues.Add("$($owner.runtime):not-completely-missing")
+        }
+        $preflightResults.Add([pscustomobject]@{
+            runtime = [string]$owner.runtime
+            status = if ($state.ProcessCount -eq 0 -and -not $lockExists) { 'MISSING_VERIFIED' } else { 'BLOCKED_NOT_MISSING' }
+            process_ids = $state.ProcessIds
+            lock_path = $state.LockPath
+            lock_exists = [bool]$lockExists
+            lock_pid = $state.LockPid
+        })
+    }
+    if ($preflightIssues.Count -gt 0) {
+        [pscustomobject]@{
+            schema_version = 'ducketz-background-launch-v1'
+            audit_only = [bool]$AuditOnly
+            require_all_missing = $true
+            repository = $repoRoot
+            datastore = $datastoreRoot
+            canonical_log_root = $primaryLogRoot
+            issues = @($preflightIssues)
+            owners = @($preflightResults)
+        } | ConvertTo-Json -Depth 8
+        $launcherMutex.ReleaseMutex()
+        $launcherMutex.Dispose()
+        exit 2
+    }
+}
+
 $results = [System.Collections.Generic.List[object]]::new()
 $issues = [System.Collections.Generic.List[string]]::new()
 $launchDirectory = $null
@@ -134,6 +259,7 @@ foreach ($owner in @($metadata.owners)) {
             lock_path = $before.LockPath
             log_directory = $null
         })
+        if (-not $before.CanonicalCommand) { break }
         continue
     }
 
@@ -147,7 +273,7 @@ foreach ($owner in @($metadata.owners)) {
             lock_pid = $before.LockPid
             missing_required_arguments = $before.MissingRequiredArguments
         })
-        continue
+        break
     }
     if (Test-Path -LiteralPath $before.LockPath) {
         $issues.Add("$($owner.runtime):lock-needs-guardian-review")
@@ -158,7 +284,7 @@ foreach ($owner in @($metadata.owners)) {
             lock_path = $before.LockPath
             lock_pid = $before.LockPid
         })
-        continue
+        break
     }
     if ($AuditOnly) {
         $issues.Add("$($owner.runtime):missing")
@@ -193,7 +319,11 @@ foreach ($owner in @($metadata.owners)) {
         Start-Sleep -Milliseconds 500
         $after = Get-OwnerState -Owner $owner
     } while (-not $after.ValidPairAndLock -and [DateTime]::UtcNow -lt $deadline)
-    if (-not $after.ValidPairAndLock -or -not $after.CanonicalCommand) {
+    if (
+        -not $after.ValidPairAndLock -or
+        -not $after.CanonicalCommand -or
+        [int]$after.LauncherPid -ne [int]$started.Id
+    ) {
         $issues.Add("$($owner.runtime):launch-verification-failed")
         $results.Add([pscustomobject]@{
             runtime = [string]$owner.runtime
@@ -205,7 +335,7 @@ foreach ($owner in @($metadata.owners)) {
             stdout = $stdout
             stderr = $stderr
         })
-        continue
+        break
     }
     $results.Add([pscustomobject]@{
         runtime = [string]$owner.runtime
@@ -218,14 +348,18 @@ foreach ($owner in @($metadata.owners)) {
     })
 }
 
-[pscustomobject]@{
+$payload = [pscustomobject]@{
     schema_version = 'ducketz-background-launch-v1'
     audit_only = [bool]$AuditOnly
+    require_all_missing = [bool]$RequireAllMissing
     repository = $repoRoot
     datastore = $datastoreRoot
     canonical_log_root = $primaryLogRoot
     issues = @($issues)
     owners = @($results)
-} | ConvertTo-Json -Depth 8
+}
+$launcherMutex.ReleaseMutex()
+$launcherMutex.Dispose()
+$payload | ConvertTo-Json -Depth 8
 
 if ($issues.Count -gt 0) { exit 2 }
