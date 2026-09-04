@@ -18,6 +18,7 @@ from app.ui.rolling_forecast_data import (
     STANDARD_HORIZON_ORDER,
     SUPPORTED_HORIZON_ORDER,
     WEEKLY_HORIZON_ORDER,
+    _live_performance_by_route,
     dashboard_debug_text,
     dashboard_layout,
     format_session_date,
@@ -37,6 +38,11 @@ from app.ui.rolling_forecasts import (
     forecast_symbol_section_summary,
     live_performance_lift_tone,
     merge_symbol_expansion_state,
+    prediction_pulse_columns,
+    prediction_pulse_mark_path,
+    prediction_pulse_probabilities,
+    prediction_pulse_probability_text,
+    prediction_pulse_tone,
     probability_segment_fractions,
     rolling_performance_heading,
     weekly_session_details_header_text,
@@ -94,6 +100,79 @@ def test_collapsed_symbol_summary_and_header_copy_are_explicit() -> None:
         forecast_count=1,
         remaining_week_available=False,
     ) == "MSFT · 1 Forecast · No Remaining-Week Snapshot"
+
+
+@pytest.mark.parametrize(
+    ("probability", "tone", "text"),
+    (
+        (0.5001, "up", "50.0%"),
+        (0.5, "neutral", "50.0%"),
+        (0.4999, "down", "50.0%"),
+        (0.0, "down", "0.0%"),
+        (1.0, "up", "100.0%"),
+        (None, "unavailable", "N/A"),
+        (float("nan"), "unavailable", "N/A"),
+        (-0.01, "unavailable", "N/A"),
+        (1.01, "unavailable", "N/A"),
+    ),
+)
+def test_prediction_pulse_thresholds_do_not_invent_values(
+    probability: float | None,
+    tone: str,
+    text: str,
+) -> None:
+    assert prediction_pulse_tone(probability) == tone
+    assert prediction_pulse_probability_text(probability) == text
+
+
+@pytest.mark.parametrize(
+    ("width", "columns"),
+    (
+        (1900, 6),
+        (1180, 6),
+        (1039, 3),
+        (720, 3),
+        (719, 2),
+        (520, 2),
+        (519, 1),
+    ),
+)
+def test_prediction_pulse_stacks_at_narrow_widths(
+    width: int,
+    columns: int,
+) -> None:
+    assert prediction_pulse_columns(width) == columns
+
+
+def test_prediction_pulse_uses_standard_routes_in_horizon_order(
+    tmp_path: Path,
+) -> None:
+    path = _write(
+        tmp_path,
+        [
+            _row(horizon="1d", probability_up=0.48),
+            _row(horizon="1h", probability_up=0.62),
+            _row(horizon="4h", probability_up=0.50),
+        ],
+    )
+    routes = load_forecast_dashboard(
+        path,
+        loaded_at=datetime(2026, 7, 27, 14, 45, tzinfo=timezone.utc),
+    ).symbols[0].routes
+
+    assert prediction_pulse_probabilities(routes) == (
+        ("1h", pytest.approx(0.62)),
+        ("4h", pytest.approx(0.50)),
+        ("1d", pytest.approx(0.48)),
+    )
+
+
+def test_prediction_pulse_reuses_local_security_marks() -> None:
+    aapl = prediction_pulse_mark_path("aapl")
+
+    assert aapl is not None
+    assert aapl.name == "aapl.png"
+    assert prediction_pulse_mark_path("unknown") is None
 
 
 def test_symbol_expansion_state_survives_refresh_and_new_symbols_default_open() -> None:
@@ -189,7 +268,10 @@ def test_three_standard_cards_and_complete_weekly_outlook_are_grouped(
         ],
     )
 
-    view = load_forecast_dashboard(path)
+    view = load_forecast_dashboard(
+        path,
+        loaded_at=datetime(2026, 7, 27, 14, 45, tzinfo=timezone.utc),
+    )
 
     assert view.actionable_route_count == 3
     assert view.published_route_count == 9
@@ -207,6 +289,32 @@ def test_three_standard_cards_and_complete_weekly_outlook_are_grouped(
         route.horizon for route in view.symbols[0].weekly_outlook.sessions
     ] == ["1w-d1", "1w-d2", "1w-d3", "1w-d4", "1w-d5"]
     assert view.freshness_label == "Data Pipeline Is Current"
+
+
+def test_missing_standard_route_warns_while_frozen_weekly_outlook_remains(
+    tmp_path: Path,
+) -> None:
+    path = _write(
+        tmp_path,
+        [
+            *_weekly_rows(),
+            _row(horizon="1h", probability_up=0.61),
+            _row(horizon="4h", probability_up=0.59),
+        ],
+    )
+
+    view = load_forecast_dashboard(
+        path,
+        loaded_at=datetime(2026, 7, 27, 14, 45, tzinfo=timezone.utc),
+    )
+
+    assert view.freshness_label == "Current Outlooks with Route Gaps"
+    assert view.freshness_tone == "warning"
+    assert view.operational_label == "Operational with Route Timing Gaps"
+    assert view.operational_tone == "warning"
+    assert view.frozen_weekly_snapshot_count == 1
+    assert view.symbols[0].weekly_outlook is not None
+    assert view.symbols[0].routes[2].is_missing
 
 
 def test_monday_decision_renders_dynamic_tuesday_through_friday_outlook(
@@ -266,7 +374,10 @@ def test_legacy_short_horizon_output_has_missing_cards(
         [_row(horizon=horizon) for horizon in ("1h", "1d")],
     )
 
-    view = load_forecast_dashboard(path)
+    view = load_forecast_dashboard(
+        path,
+        loaded_at=datetime(2026, 7, 27, 14, 45, tzinfo=timezone.utc),
+    )
     routes = view.symbols[0].routes
 
     assert [route.horizon for route in routes] == [
@@ -300,7 +411,10 @@ def test_mixed_actionable_and_unavailable_horizons_preserve_statuses(
         ],
     )
 
-    view = load_forecast_dashboard(path)
+    view = load_forecast_dashboard(
+        path,
+        loaded_at=datetime(2026, 7, 27, 14, 45, tzinfo=timezone.utc),
+    )
     routes = {
         route.horizon: route for route in view.symbols[0].routes
     }
@@ -371,7 +485,10 @@ def test_null_probability_is_never_fabricated(
         [_row(horizon="1h", probability_up=None)],
     )
 
-    view = load_forecast_dashboard(path)
+    view = load_forecast_dashboard(
+        path,
+        loaded_at=datetime(2026, 7, 27, 14, 45, tzinfo=timezone.utc),
+    )
     route = view.symbols[0].routes[0]
 
     assert route.is_actionable
@@ -518,10 +635,171 @@ def test_in_progress_probability_is_suppressed_at_target_window_end(
         loaded_at=datetime(2026, 8, 5, 17, 0, tzinfo=timezone.utc),
     ).symbols[0].routes[0]
 
+    assert route.published_actionability_status == "TARGET_WINDOW_STARTED"
+    assert route.actionability_status == "TARGET_WINDOW_PASSED"
+    assert route.published_intelligence_status == "FORECAST_IN_PROGRESS"
     assert route.probability_up is None
     assert route.probability_down is None
+    assert route.automated_action_allowed is False
     assert not route.is_in_progress
     assert "dashboard suppressed it" in route.warnings[0]
+
+
+def test_actionable_route_remains_actionable_before_deadline(
+    tmp_path: Path,
+) -> None:
+    row = _row(horizon="4h", probability_up=0.61)
+    row.update(
+        {
+            "forecast_created_at": "2026-08-05T15:42:00Z",
+            "target_window_start": "2026-08-05T16:00:00Z",
+            "target_window_end": "2026-08-05T20:00:00Z",
+            "actionable_until": "2026-08-05T16:00:00Z",
+            "automated_action_allowed": True,
+        }
+    )
+
+    view = load_forecast_dashboard(
+        _write(tmp_path, [row]),
+        loaded_at=datetime(2026, 8, 5, 15, 59, tzinfo=timezone.utc),
+    )
+    route = view.symbols[0].routes[1]
+
+    assert route.published_actionability_status == "ACTIONABLE"
+    assert route.actionability_status == "ACTIONABLE"
+    assert route.published_intelligence_status == "RISK_ANALYSIS_SUPPORT"
+    assert route.intelligence_status == "RISK_ANALYSIS_SUPPORT"
+    assert route.probability_up == pytest.approx(0.61)
+    assert route.published_automated_action_allowed is True
+    assert route.automated_action_allowed is True
+    assert view.automated_action_allowed is True
+    assert view.actionable_route_count == 1
+
+
+def test_actionable_route_becomes_read_only_in_progress_at_deadline(
+    tmp_path: Path,
+) -> None:
+    row = _row(horizon="4h", probability_up=0.61)
+    row.update(
+        {
+            "forecast_created_at": "2026-08-05T15:42:00Z",
+            "target_window_start": "2026-08-05T16:05:00Z",
+            "target_window_end": "2026-08-05T20:00:00Z",
+            "actionable_until": "2026-08-05T16:00:00Z",
+            "automated_action_allowed": True,
+        }
+    )
+
+    view = load_forecast_dashboard(
+        _write(tmp_path, [row]),
+        loaded_at=datetime(2026, 8, 5, 16, 0, tzinfo=timezone.utc),
+    )
+    route = view.symbols[0].routes[1]
+
+    assert route.published_actionability_status == "ACTIONABLE"
+    assert route.actionability_status == "TARGET_WINDOW_STARTED"
+    assert route.published_intelligence_status == "RISK_ANALYSIS_SUPPORT"
+    assert route.intelligence_status == "FORECAST_IN_PROGRESS"
+    assert route.probability_up == pytest.approx(0.61)
+    assert route.probability_down == pytest.approx(0.39)
+    assert route.published_automated_action_allowed is True
+    assert route.automated_action_allowed is False
+    assert view.automated_action_allowed is False
+    assert view.automation_label == "Automated action is off"
+    assert route.is_in_progress
+    assert not route.is_actionable
+    assert view.actionable_route_count == 0
+
+
+def test_actionable_route_requires_ordered_timestamps_for_ui_transition(
+    tmp_path: Path,
+) -> None:
+    row = _row(horizon="4h", probability_up=0.61)
+    row.update(
+        {
+            "forecast_created_at": "2026-08-05T15:42:00Z",
+            "target_window_start": "2026-08-05T16:00:00Z",
+            "target_window_end": "2026-08-05T20:00:00Z",
+            "actionable_until": "2026-08-05T16:05:00Z",
+            "automated_action_allowed": True,
+        }
+    )
+
+    view = load_forecast_dashboard(
+        _write(tmp_path, [row]),
+        loaded_at=datetime(2026, 8, 5, 16, 10, tzinfo=timezone.utc),
+    )
+    route = view.symbols[0].routes[1]
+
+    assert route.published_actionability_status == "ACTIONABLE"
+    assert route.actionability_status == "TARGET_TIMESTAMP_INVALID"
+    assert route.probability_up is None
+    assert route.published_automated_action_allowed is True
+    assert route.automated_action_allowed is False
+    assert view.actionable_route_count == 0
+    assert view.automated_action_allowed is False
+
+
+def test_actionable_route_is_suppressed_at_target_window_end(
+    tmp_path: Path,
+) -> None:
+    row = _row(horizon="4h", probability_up=0.61)
+    row.update(
+        {
+            "forecast_created_at": "2026-08-05T15:42:00Z",
+            "target_window_start": "2026-08-05T16:00:00Z",
+            "target_window_end": "2026-08-05T20:00:00Z",
+            "actionable_until": "2026-08-05T16:00:00Z",
+            "automated_action_allowed": True,
+        }
+    )
+
+    view = load_forecast_dashboard(
+        _write(tmp_path, [row]),
+        loaded_at=datetime(2026, 8, 5, 20, 0, tzinfo=timezone.utc),
+    )
+    route = view.symbols[0].routes[1]
+
+    assert route.published_actionability_status == "ACTIONABLE"
+    assert route.actionability_status == "TARGET_WINDOW_PASSED"
+    assert route.published_intelligence_status == "RISK_ANALYSIS_SUPPORT"
+    assert route.probability_up is None
+    assert route.probability_down is None
+    assert route.published_automated_action_allowed is True
+    assert route.automated_action_allowed is False
+    assert view.automated_action_allowed is False
+    assert not route.is_in_progress
+    assert not route.is_actionable
+    assert view.actionable_route_count == 0
+    assert "dashboard suppressed it" in route.warnings[0]
+
+
+def test_expired_standard_probability_downgrades_current_dashboard(
+    tmp_path: Path,
+) -> None:
+    expired = _row(horizon="4h", probability_up=0.61)
+    expired["target_window_end"] = "2026-07-27T15:30:00Z"
+    path = _write(
+        tmp_path,
+        [
+            _row(horizon="1h", probability_up=0.63),
+            expired,
+            _row(horizon="1d", probability_up=0.57),
+        ],
+    )
+
+    view = load_forecast_dashboard(
+        path,
+        loaded_at=datetime(2026, 7, 27, 15, 30, tzinfo=timezone.utc),
+    )
+    routes = {route.horizon: route for route in view.symbols[0].routes}
+
+    assert routes["4h"].actionability_status == "TARGET_WINDOW_PASSED"
+    assert routes["4h"].probability_up is None
+    assert view.freshness_label == "Current Outlooks with Route Gaps"
+    assert view.freshness_tone == "warning"
+    assert view.operational_label == "Operational with Route Timing Gaps"
+    assert view.operational_tone == "warning"
 
 
 def test_stale_data_uses_backend_operational_status(
@@ -616,15 +894,23 @@ def test_operationally_current_can_still_be_non_actionable(
         tmp_path,
         [
             _row(
+                horizon=horizon,
                 actionability_status="TARGET_WINDOW_STARTED",
                 operational_status="OPERATIONALLY_CURRENT",
+                intelligence_status="FORECAST_IN_PROGRESS",
+                retain_probability=True,
             )
+            for horizon in STANDARD_HORIZON_ORDER
         ],
     )
 
-    view = load_forecast_dashboard(path)
+    view = load_forecast_dashboard(
+        path,
+        loaded_at=datetime(2026, 7, 27, 15, 30, tzinfo=timezone.utc),
+    )
 
     assert view.operational_label == "Operationally Current"
+    assert view.operational_tone == "success"
     assert view.actionable_route_count == 0
     assert "no actionable forecast" in view.empty_message.lower()
 
@@ -813,6 +1099,55 @@ def test_live_performance_shows_cumulative_and_rolling_percentages(
         "Rolling 30: Hit 100.0% (30/30) · Down-Only 50.0% · "
         "Lift +50.0 pp",
     )
+
+
+def test_live_performance_counts_one_hour_sibling_targets_only() -> None:
+    first_one_hour = _evaluation_row(
+        horizon="1h",
+        decision_index=0,
+        observed_target=1,
+        correct=True,
+    )
+    second_one_hour = {
+        **first_one_hour,
+        "id": f"{first_one_hour['id']}|later-target",
+        "target_window_start": first_one_hour["target_window_start"]
+        + pd.Timedelta(minutes=30),
+        "target_window_end": first_one_hour["target_window_end"]
+        + pd.Timedelta(minutes=30),
+        "prediction_created_at": first_one_hour["prediction_created_at"]
+        + pd.Timedelta(minutes=1),
+    }
+    first_four_hour = _evaluation_row(
+        horizon="4h",
+        decision_index=1,
+        observed_target=0,
+        correct=True,
+    )
+    second_four_hour = {
+        **first_four_hour,
+        "id": f"{first_four_hour['id']}|later-target",
+        "target_window_start": first_four_hour["target_window_start"]
+        + pd.Timedelta(hours=1),
+        "target_window_end": first_four_hour["target_window_end"]
+        + pd.Timedelta(hours=1),
+        "prediction_created_at": first_four_hour["prediction_created_at"]
+        + pd.Timedelta(minutes=1),
+    }
+
+    performance = _live_performance_by_route(
+        pd.DataFrame(
+            [
+                first_one_hour,
+                second_one_hour,
+                first_four_hour,
+                second_four_hour,
+            ]
+        )
+    )
+
+    assert performance[("GOOG", "1h")].evidence_count == 2
+    assert performance[("GOOG", "4h")].evidence_count == 1
 
 
 def test_live_performance_is_available_for_every_displayed_horizon(
@@ -1190,7 +1525,10 @@ def test_status_labels_are_textual_and_accessible(
     tmp_path: Path,
 ) -> None:
     path = _write(tmp_path, [_row(completed_count=11)])
-    route = load_forecast_dashboard(path).symbols[0].routes[0]
+    route = load_forecast_dashboard(
+        path,
+        loaded_at=datetime(2026, 7, 27, 14, 45, tzinfo=timezone.utc),
+    ).symbols[0].routes[0]
 
     labels = route_accessible_status_labels(route)
 
@@ -1317,6 +1655,35 @@ def test_dashboard_responsive_layout_boundaries(
     columns: int,
 ) -> None:
     assert dashboard_layout(width) == columns
+
+
+def test_one_hour_sibling_routes_display_nearest_future_target(
+    tmp_path: Path,
+) -> None:
+    started = _row(horizon="1h")
+    started["id"] = "GOOG|1h|2026-07-27T14:00:00Z|2026-07-27T15:00:00Z"
+    future = {
+        **started,
+        "id": "GOOG|1h|2026-07-27T14:00:00Z|2026-07-27T16:00:00Z",
+        "target_window_start": "2026-07-27T16:00:00Z",
+        "target_window_end": "2026-07-27T17:00:00Z",
+        "actionable_until": "2026-07-27T16:00:00Z",
+    }
+    path = _write(tmp_path, [started, future])
+
+    route = next(
+        item
+        for item in load_forecast_dashboard(
+            path,
+            loaded_at=datetime(2026, 7, 27, 15, 30, tzinfo=timezone.utc),
+        ).symbols[0].routes
+        if item.horizon == "1h"
+    )
+
+    assert route.target_window_start == datetime(
+        2026, 7, 27, 16, 0, tzinfo=timezone.utc
+    )
+    assert route.actionability_status == "ACTIONABLE"
 
 
 def test_duplicate_current_route_is_rejected(tmp_path: Path) -> None:

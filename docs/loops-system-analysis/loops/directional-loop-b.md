@@ -8,7 +8,7 @@
 - Owning package: `ml`
 - Classification: Independent production loop
 - Scheduling mechanism: recurring supervisor gated by the shared Loop A datastore-cycle lock
-- Cadence and phase: every 30 minutes at UTC phase +5 minutes in the production command; one classified-transient retry; immediate startup recovery at 35 minutes of verified authority age
+- Cadence and phase: every 30 minutes at UTC phase +6 minutes in the production command; one classified-transient retry; immediate startup recovery at 35 minutes of verified authority age
 - Lock or single-writer mechanism: `.duckets-ml-prediction-runtime.lock` plus Loop A’s shared datastore-cycle lock during each run
 - Primary code evidence: **Confirmed.** `ml/prediction_runtime.py:26`, `ml/prediction_runtime.py:76`, `ml/prediction_runtime.py:189`, `ml/prediction_runtime.py:192`, `ml/prediction_runtime.py:209`
 
@@ -77,7 +77,7 @@ backfill; the v3 macro profile begins only after ALFRED readiness is verified.
 
 ### Timing and control relationships
 
-**Confirmed:** Loop B runs at the 30-minute `:05`/`:35` phase and waits on Loop A’s shared lock/complete cycle, not on CME, ALFRED’s daily scheduler, Pricing or Options. Its strict action deadline is a publication boundary independent of wall-clock phase. Options is phase +6, but no B → Options artifact exchange exists. `ml/prediction_runtime.py`, `ml/runtime_pipeline.py:603`, `docs/datafetch-ml/current_start_command`
+**Confirmed:** Loop B runs at the 30-minute `:06`/`:36` phase and waits on Loop A’s shared lock/complete cycle, not on CME, ALFRED’s daily scheduler, Pricing or Options. Its strict action deadline is a publication boundary independent of wall-clock phase. Options also uses phase +6, but no B → Options artifact exchange exists. `ml/prediction_runtime.py`, `ml/runtime_pipeline.py:603`, `docs/datafetch-ml/current_start_command`
 
 ## Prediction contribution
 
@@ -91,9 +91,11 @@ backfill; the v3 macro profile begins only after ALFRED readiness is verified.
 
 ## Failure and degradation behavior
 
-- `.duckets-ml-prediction-runtime.lock` rejects a second supervisor and has no
-  stale-PID recovery. The shared OS datastore-cycle lock prevents a complete B
-  read from overlapping Loop A mutation and releases when either process exits.
+- `.duckets-ml-prediction-runtime.lock` rejects a second supervisor and can be
+  replaced only after its recorded PID is positively confirmed dead. Live,
+  malformed, or unqueryable ownership remains fail-closed. The shared OS
+  datastore-cycle lock prevents a complete B read from overlapping Loop A
+  mutation and releases when either process exits.
 - Missing, `WRITING`, or `FAILED` current Loop A cycle state aborts the attempt.
   B does not silently fall back to `.ducketz-loop-a-complete.json`.
 - Structurally valid missing/stale optional feature values become audited null.

@@ -125,6 +125,24 @@ function Get-OwnerProcesses {
     )
 }
 
+function Get-LockOwnerState {
+    param([AllowNull()]$OwnerPid)
+    if ($null -eq $OwnerPid) { return 'UNVERIFIABLE' }
+    $numericPid = [int]$OwnerPid
+    if ($numericPid -le 0) { return 'UNVERIFIABLE' }
+    try {
+        $matches = @(
+            Get-CimInstance Win32_Process `
+                -Filter "ProcessId = $numericPid" `
+                -ErrorAction Stop
+        )
+    } catch {
+        return 'UNVERIFIABLE'
+    }
+    if ($matches.Count -eq 0) { return 'DEAD' }
+    return 'LIVE'
+}
+
 function Get-OwnerState {
     param([Parameter(Mandatory)]$Owner)
     $processes = @(Get-OwnerProcesses -Owner $Owner)
@@ -152,12 +170,20 @@ function Get-OwnerState {
     ).Count -eq 2
     $lockPath = Join-Path $datastoreRoot ([string]$Owner.lock_name)
     $lockPid = $null
+    $lockOwnerState = 'MISSING'
     if (Test-Path -LiteralPath $lockPath -PathType Leaf) {
         $lockMatch = [regex]::Match(
             (Get-Content -LiteralPath $lockPath -Raw -ErrorAction Stop),
             '(?m)^pid=(\d+)\s*$'
         )
-        if ($lockMatch.Success) { $lockPid = [int]$lockMatch.Groups[1].Value }
+        if ($lockMatch.Success) {
+            try {
+                $lockPid = [int]$lockMatch.Groups[1].Value
+            } catch {
+                $lockPid = $null
+            }
+        }
+        $lockOwnerState = Get-LockOwnerState -OwnerPid $lockPid
     }
     $validPair = (
         $processes.Count -eq 2 -and
@@ -176,6 +202,7 @@ function Get-OwnerState {
         WorkerPid = if ($workers.Count -eq 1) { [int]$workers[0].ProcessId } else { $null }
         LockPath = $lockPath
         LockPid = $lockPid
+        LockOwnerState = $lockOwnerState
         MissingRequiredArguments = @($missingArguments | Sort-Object -Unique)
     }
 }
@@ -221,6 +248,7 @@ if ($RequireAllMissing) {
             lock_path = $state.LockPath
             lock_exists = [bool]$lockExists
             lock_pid = $state.LockPid
+            lock_owner_state = $state.LockOwnerState
         })
     }
     if ($preflightIssues.Count -gt 0) {
@@ -275,24 +303,40 @@ foreach ($owner in @($metadata.owners)) {
         })
         break
     }
-    if (Test-Path -LiteralPath $before.LockPath) {
-        $issues.Add("$($owner.runtime):lock-needs-guardian-review")
+    if (
+        (Test-Path -LiteralPath $before.LockPath) -and
+        $before.LockOwnerState -ne 'DEAD'
+    ) {
+        $lockIssue = if ($before.LockOwnerState -eq 'LIVE') {
+            'lock-owned-by-live-pid'
+        } else {
+            'lock-needs-guardian-review'
+        }
+        $issues.Add("$($owner.runtime):$lockIssue")
         $results.Add([pscustomobject]@{
             runtime = [string]$owner.runtime
             status = 'BLOCKED_EXISTING_LOCK'
             process_ids = @()
             lock_path = $before.LockPath
             lock_pid = $before.LockPid
+            lock_owner_state = $before.LockOwnerState
         })
         break
     }
     if ($AuditOnly) {
+        $auditStatus = if ($before.LockOwnerState -eq 'DEAD') {
+            'MISSING_WITH_DEAD_LOCK_AUDIT_ONLY'
+        } else {
+            'MISSING_AUDIT_ONLY'
+        }
         $issues.Add("$($owner.runtime):missing")
         $results.Add([pscustomobject]@{
             runtime = [string]$owner.runtime
-            status = 'MISSING_AUDIT_ONLY'
+            status = $auditStatus
             process_ids = @()
             lock_path = $before.LockPath
+            lock_pid = $before.LockPid
+            lock_owner_state = $before.LockOwnerState
         })
         continue
     }
@@ -345,6 +389,8 @@ foreach ($owner in @($metadata.owners)) {
         lock_path = $after.LockPath
         stdout = $stdout
         stderr = $stderr
+        dead_lock_observed_before_start = ($before.LockOwnerState -eq 'DEAD')
+        prior_lock_pid = $before.LockPid
     })
 }
 

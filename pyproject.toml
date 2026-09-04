@@ -16,7 +16,7 @@ dependencies = [
     "python-dateutil>=2.9.0",
     "pyarrow>=16.0.0",
     "exchange-calendars",
-    "filelock>=3.16",
+    "filelock>=3.30",
     "databento>=0.81,<1",
 ]
 

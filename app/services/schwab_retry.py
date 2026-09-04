@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import re
 import time
 from collections.abc import Callable
 from typing import TypeVar
 
 import requests
+from filelock import Timeout as FileLockTimeout
 
 from datafetching.observability import timed_stage
 
@@ -86,7 +88,14 @@ def call_with_persistent_schwab_retry(
 
 
 def is_retryable_schwab_error(exc: Exception) -> bool:
+    retry_override = getattr(exc, "schwab_retry_safe", None)
+    if retry_override is False:
+        return False
+    if retry_override is True:
+        return True
     if isinstance(exc, (requests.Timeout, requests.ConnectionError)):
+        return True
+    if isinstance(exc, FileLockTimeout):
         return True
 
     status = _http_status(exc)
@@ -96,7 +105,14 @@ def is_retryable_schwab_error(exc: Exception) -> bool:
     message = str(exc).strip().lower()
     if any(marker in message for marker in _RETRYABLE_MESSAGE_MARKERS):
         return True
-    return any(str(status_code) in message for status_code in _RETRYABLE_HTTP_STATUSES)
+    status_pattern = "|".join(str(code) for code in sorted(_RETRYABLE_HTTP_STATUSES))
+    return bool(
+        re.search(
+            rf"(?:^|\bhttp(?:\s+status)?\s*[:=]?\s*|\bstatus(?:\s+code)?\s*[:=]?\s*)"
+            rf"(?:{status_pattern})\b",
+            message,
+        )
+    )
 
 
 def _http_status(exc: Exception) -> int | None:

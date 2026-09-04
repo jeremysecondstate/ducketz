@@ -91,12 +91,21 @@ only a timestamp the native file has not published yet. Aggregation:
 
 1. receives finalized normalized-source candidates;
 2. independently discards an incomplete one-minute bar;
-3. groups by Eastern market date and session type;
-4. aggregates OHLCV without crossing session boundaries;
-5. requires every expected one-minute constituent, so a continuation tail can
-   never overwrite a complete interval with a partial aggregate;
-6. emits the larger bar only after that interval has closed;
-7. writes `id, timestamp, open, high, low, close, volume`.
+3. keeps `5m`/`10m`/`15m`/`30m` on the strict all-constituent session rule;
+4. allows `1h` sparse continuity only when a successful Databento `1m` request
+   supplies an explicit selected-range start and end;
+5. caps that proof at the fetch observation time and emits only whole XNAS
+   trading-date clock hours inside the v6 04:00--20:00 ET source envelope;
+6. aggregates every actual trade-bearing minute in a proven hour, or emits a
+   flat prior-close/zero-volume bar when that completed hour is truly empty;
+7. never fills from a future trade, never emits a partial trailing hour, and
+   retains the continuous 09:00--10:00 ET source hour across the open boundary;
+8. writes `id, timestamp, open, high, low, close, volume`.
+
+Without explicit provider coverage, including direct library calls and legacy
+callers, `1h` retains the strict 60-constituent rule. Holidays, weekends, and
+hours outside the XNAS source envelope are never synthesized. On nonstandard
+early-close sessions, only full official regular-session hours are eligible.
 
 Outputs use the normal stock layout:
 

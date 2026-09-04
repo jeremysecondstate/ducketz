@@ -150,20 +150,23 @@ def build_rolling_samples(
     if result.empty:
         return result
     result = result.reset_index(drop=True)
+    sample_key_columns = (
+        ("symbol", "horizon", "decision_timestamp", "target_window_start")
+        if specification.horizon == "1h"
+        else ("symbol", "horizon", "decision_timestamp")
+    )
     result = add_readable_id(
         result,
-        key_columns=("symbol", "horizon", "decision_timestamp"),
+        key_columns=sample_key_columns,
     )
     result["target_cost_adjusted_positive"] = pd.to_numeric(
         result["target_cost_adjusted_positive"], errors="coerce"
     ).astype("Int8")
     if result["id"].duplicated().any():
         raise MLContractError("Rolling sample id must be unique")
-    if result.duplicated(
-        ["symbol", "horizon", "decision_timestamp"]
-    ).any():
+    if result.duplicated(list(sample_key_columns)).any():
         raise MLContractError(
-            "Rolling samples must be unique by symbol, horizon, and decision timestamp"
+            "Rolling samples must be unique at their versioned natural grain"
         )
     complete = result["label_status"].eq("COMPLETE")
     if (
@@ -245,6 +248,7 @@ def _build_symbol_samples(
             target_minute_count=60,
             target_session_policy=specification.intraday_target_session_policy,
             target_start_policy=specification.intraday_target_start_policy,
+            additional_target_start_horizon=pd.Timedelta(hours=2),
         )
     elif specification.horizon == "4h":
         windows = _hour_windows(
@@ -356,6 +360,7 @@ def _hour_windows(
     target_minute_count: int,
     target_session_policy: str | None,
     target_start_policy: str | None,
+    additional_target_start_horizon: pd.Timedelta | None = None,
 ) -> list[tuple[int, dict[str, object]]]:
     if target_minute_count < 1:
         raise ValueError("target_minute_count must be positive")
@@ -383,47 +388,49 @@ def _hour_windows(
     records: list[tuple[int, dict[str, object]]] = []
     for index, row in features.iterrows():
         available = pd.Timestamp(row["decision_timestamp"])
-        target_window = calendar.target_window_after(
+        target_windows = calendar.target_windows_after(
             available,
             eligible_minute_count=target_minute_count,
+            additional_start_horizon=additional_target_start_horizon,
             session_policy=target_session_policy,
             start_policy=target_start_policy,
         )
-        constituent_marks = [
-            _causal_target_mark(
-                timestamp,
-                target_price_lookup=target_price_lookup,
-                ordered_timestamps=ordered_target_timestamps,
-            )
-            for timestamp in target_window.constituent_timestamps
-        ]
-        first_mark = constituent_marks[0]
-        final_mark = constituent_marks[-1]
         source_price = source_lookup.get(pd.Timestamp(row["bar_timestamp"]))
-        records.append(
-            (
-                int(index),
-                {
-                    "target_window_start": target_window.start_timestamp,
-                    "target_window_end": target_window.end_timestamp,
-                    "target_open": (
-                        first_mark[0]
-                        if first_mark is not None
-                        else None
-                    ),
-                    "target_close": (
-                        final_mark[1]
-                        if final_mark is not None
-                        else None
-                    ),
-                    "constituent_prices_complete": all(
-                        target_mark is not None
-                        for target_mark in constituent_marks
-                    ) and target_coverage_end >= target_window.end_timestamp,
-                    "previous_period_direction": _direction(source_price),
-                },
+        for target_window in target_windows:
+            constituent_marks = [
+                _causal_target_mark(
+                    timestamp,
+                    target_price_lookup=target_price_lookup,
+                    ordered_timestamps=ordered_target_timestamps,
+                )
+                for timestamp in target_window.constituent_timestamps
+            ]
+            first_mark = constituent_marks[0]
+            final_mark = constituent_marks[-1]
+            records.append(
+                (
+                    int(index),
+                    {
+                        "target_window_start": target_window.start_timestamp,
+                        "target_window_end": target_window.end_timestamp,
+                        "target_open": (
+                            first_mark[0]
+                            if first_mark is not None
+                            else None
+                        ),
+                        "target_close": (
+                            final_mark[1]
+                            if final_mark is not None
+                            else None
+                        ),
+                        "constituent_prices_complete": all(
+                            target_mark is not None
+                            for target_mark in constituent_marks
+                        ) and target_coverage_end >= target_window.end_timestamp,
+                        "previous_period_direction": _direction(source_price),
+                    },
+                )
             )
-        )
     return records
 
 

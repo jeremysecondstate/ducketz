@@ -161,7 +161,7 @@ The catalog includes only direct artifact/control exchanges or an explicit phase
 
 - **Status:** Documented only as a relative timing relationship; no direct data/control dependency.
 - **Type:** T.
-- **Exchange:** none. Startup says Options starts after Loop B’s +5 information clock; code schedules B at +5 and Options at +6, but Options never reads the Loop B pointer.
+- **Exchange:** none. Code schedules both Loop B and Options at +6, but Options never reads the Loop B pointer.
 - **Consumer behavior:** none; Options proceeds independently based on Loop A, Pricing barrier, pending state, and provider evidence.
 - **Evidence:** `docs/datafetch-ml/current_start_command:99`, `docs/datafetch-ml/current_start_command:160`, `docs/datafetch-ml/current_start_command:188`, `datafetching/options_runtime.py:700`, `datafetching/options_runtime.py:821`
 
@@ -228,7 +228,7 @@ Rows are producers; columns are consumers. Empty cells mean no direct exchange. 
 ## Explicit non-relationships
 
 - **Confirmed:** CME/L2 and Loop A both use Databento but do not coordinate or consume each other; external CME ownership is deliberately isolated. `datafetching/orchestrate.py:90`, `tests/test_independent_loop_isolation.py:17`
-- **Confirmed:** Options does not consume Loop B despite the +5/+6 phase ordering. Its implemented upstreams are Loop A readiness, Pricing barrier, pending state, and providers. `datafetching/options_runtime.py:250`, `datafetching/options_runtime.py:266`
+- **Confirmed:** Options does not consume Loop B despite their shared +6 phase. Its implemented upstreams are Loop A readiness, Pricing barrier, pending state, and providers. `datafetching/options_runtime.py:250`, `datafetching/options_runtime.py:266`
 - **Confirmed:** Strategy is not an inline stage of Loop B; Loop B’s manifest declares independent strategy authority, and tests assert directional publication does not wait for Strategy. `ml/runtime_pipeline.py:838`, `tests/test_ml_runtime_pipeline.py:454`
 - **Confirmed:** Loop C, the exact Options Strategy paper ledger, stock-trader
   checkpoints, and weekly review are bounded Codex Scheduled invocations, not

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 import time
+from collections.abc import Callable
+from contextlib import AbstractContextManager
 from pathlib import Path
 
 import pytest
@@ -101,6 +103,70 @@ def test_runtime_lock_maintenance_gate_is_shared_and_reacquirable(
 
     with runtime_lock_maintenance_gate(tmp_path, timeout=0):
         assert gate_path.is_file()
+
+
+@pytest.mark.parametrize(
+    ("lock_kind", "lock_context"),
+    (
+        pytest.param("loop_a", orchestration.orchestration_lock, id="loop-a"),
+        pytest.param("loop_b", prediction_runtime.runtime_lock, id="loop-b"),
+    ),
+)
+def test_loop_supervisor_lock_recovers_only_a_confirmed_dead_pid(
+    tmp_path: Path,
+    lock_kind: str,
+    lock_context: Callable[[Path], AbstractContextManager[None]],
+) -> None:
+    lock = tmp_path / f".{lock_kind}.lock"
+    stale_payload = (
+        "process=dead test owner\n"
+        "pid=2147483647\n"
+        "started_at=2020-01-01T00:00:00+00:00\n"
+        "token=stale\n"
+    )
+    lock.write_text(stale_payload, encoding="utf-8")
+
+    with lock_context(lock):
+        replacement = lock.read_text(encoding="utf-8")
+        assert f"pid={os.getpid()}" in replacement
+        assert "token=stale" not in replacement
+
+    assert not lock.exists()
+
+
+@pytest.mark.parametrize(
+    ("lock_kind", "lock_context"),
+    (
+        pytest.param("loop_a", orchestration.orchestration_lock, id="loop-a"),
+        pytest.param("loop_b", prediction_runtime.runtime_lock, id="loop-b"),
+    ),
+)
+@pytest.mark.parametrize("owner_kind", ("live", "malformed", "zero"))
+def test_loop_supervisor_lock_never_reclaims_live_or_unverifiable_owner(
+    tmp_path: Path,
+    lock_kind: str,
+    lock_context: Callable[[Path], AbstractContextManager[None]],
+    owner_kind: str,
+) -> None:
+    lock = tmp_path / f".{lock_kind}.lock"
+    owner = {
+        "live": str(os.getpid()),
+        "malformed": "not-a-pid",
+        "zero": "0",
+    }[owner_kind]
+    payload = (
+        "process=existing test owner\n"
+        f"pid={owner}\n"
+        "started_at=2026-09-03T00:00:00+00:00\n"
+        "token=existing\n"
+    )
+    lock.write_text(payload, encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="Another Duckets"):
+        with lock_context(lock):
+            raise AssertionError("unreachable")
+
+    assert lock.read_text(encoding="utf-8") == payload
 
 
 @pytest.mark.parametrize("lock_kind", ("shared", "loop_a", "loop_b"))

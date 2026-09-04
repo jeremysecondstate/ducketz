@@ -615,6 +615,13 @@ def test_ui_value_parity_checks_forecast_and_strategy_display_units() -> None:
                 "symbol": "AAPL",
                 "horizon": "1h",
                 "actionability_status": "ACTIONABLE",
+                "intelligence_status": "CURRENT_PREDICTION",
+                "forecast_created_at": "2026-08-24T19:00:00Z",
+                "actionable_until": "2026-08-24T20:00:00Z",
+                "target_window_start": "2026-08-24T20:00:00Z",
+                "target_window_end": "2026-08-24T21:00:00Z",
+                "automated_action_allowed": False,
+                "operational_status": "OPERATIONAL",
                 "probability_up": 0.62,
                 "probability_down": 0.38,
             },
@@ -633,15 +640,29 @@ def test_ui_value_parity_checks_forecast_and_strategy_display_units() -> None:
         id="AAPL|1h|2026-08-24T20:00:00Z",
         symbol="AAPL",
         horizon="1h",
+        published_actionability_status="ACTIONABLE",
         actionability_status="ACTIONABLE",
+        published_intelligence_status="CURRENT_PREDICTION",
         intelligence_status="CURRENT_PREDICTION",
+        published_automated_action_allowed=False,
+        automated_action_allowed=False,
         probability_up=0.62,
         probability_down=0.38,
         is_actionable=True,
         is_missing=False,
     )
     forecast = SimpleNamespace(
-        symbols=(SimpleNamespace(all_routes=(route,)),),
+        loaded_at=datetime.fromisoformat("2026-08-24T19:30:00+00:00"),
+        symbols=(SimpleNamespace(routes=(route,), all_routes=(route,)),),
+        operational_statuses=("OPERATIONAL",),
+        actionable_route_count=1,
+        automated_action_allowed=False,
+        freshness_label="Data Pipeline Is Current",
+        freshness_tone="success",
+        operational_label="Operationally Current",
+        operational_tone="success",
+        automation_label="Automated action is off",
+        automation_tone="neutral",
     )
 
     forecast_parity = system_monitor._forecast_ui_value_parity(
@@ -699,6 +720,12 @@ def test_forecast_ui_parity_accepts_expired_in_progress_probability_suppression(
                 "horizon": "1h",
                 "actionability_status": "TARGET_WINDOW_STARTED",
                 "intelligence_status": "FORECAST_IN_PROGRESS",
+                "forecast_created_at": "2026-08-25T12:30:00Z",
+                "actionable_until": "2026-08-25T13:05:00Z",
+                "target_window_start": "2026-08-25T13:05:00Z",
+                "target_window_end": "2026-08-25T14:30:00Z",
+                "automated_action_allowed": False,
+                "operational_status": "OPERATIONALLY_CURRENT",
                 "probability_up": 0.45,
                 "probability_down": 0.55,
             }
@@ -708,8 +735,12 @@ def test_forecast_ui_parity_accepts_expired_in_progress_probability_suppression(
         id="AAPL|1h|2026-08-25T13:05:00Z",
         symbol="AAPL",
         horizon="1h",
-        actionability_status="TARGET_WINDOW_STARTED",
+        published_actionability_status="TARGET_WINDOW_STARTED",
+        actionability_status="TARGET_WINDOW_PASSED",
+        published_intelligence_status="FORECAST_IN_PROGRESS",
         intelligence_status="FORECAST_IN_PROGRESS",
+        published_automated_action_allowed=False,
+        automated_action_allowed=False,
         probability_up=None,
         probability_down=None,
         target_window_end=datetime.fromisoformat("2026-08-25T14:30:00+00:00"),
@@ -718,7 +749,16 @@ def test_forecast_ui_parity_accepts_expired_in_progress_probability_suppression(
     )
     forecast = SimpleNamespace(
         loaded_at=datetime.fromisoformat("2026-08-25T14:30:00+00:00"),
-        symbols=(SimpleNamespace(all_routes=(route,)),),
+        symbols=(SimpleNamespace(routes=(route,), all_routes=(route,)),),
+        operational_statuses=("OPERATIONALLY_CURRENT",),
+        actionable_route_count=0,
+        automated_action_allowed=False,
+        freshness_label="Current Outlooks with Route Gaps",
+        freshness_tone="warning",
+        operational_label="Operational with Route Timing Gaps",
+        operational_tone="warning",
+        automation_label="Automated action is off",
+        automation_tone="neutral",
     )
 
     parity = system_monitor._forecast_ui_value_parity(forecast_frame, forecast)
@@ -726,6 +766,7 @@ def test_forecast_ui_parity_accepts_expired_in_progress_probability_suppression(
     assert parity["status"] == "PASS"
     assert parity["probability_routes_displayed"] == 0
     assert parity["probability_routes_intentionally_hidden"] == 1
+    assert parity["wall_clock_transition_routes"] == 1
 
 
 def test_forecast_ui_parity_rejects_hidden_active_in_progress_probability() -> None:
@@ -737,6 +778,12 @@ def test_forecast_ui_parity_rejects_hidden_active_in_progress_probability() -> N
                 "horizon": "1h",
                 "actionability_status": "TARGET_WINDOW_STARTED",
                 "intelligence_status": "FORECAST_IN_PROGRESS",
+                "forecast_created_at": "2026-08-25T12:30:00Z",
+                "actionable_until": "2026-08-25T13:05:00Z",
+                "target_window_start": "2026-08-25T13:05:00Z",
+                "target_window_end": "2026-08-25T14:30:00Z",
+                "automated_action_allowed": False,
+                "operational_status": "OPERATIONALLY_CURRENT",
                 "probability_up": 0.45,
                 "probability_down": 0.55,
             }
@@ -746,8 +793,12 @@ def test_forecast_ui_parity_rejects_hidden_active_in_progress_probability() -> N
         id="AAPL|1h|2026-08-25T13:05:00Z",
         symbol="AAPL",
         horizon="1h",
+        published_actionability_status="TARGET_WINDOW_STARTED",
         actionability_status="TARGET_WINDOW_STARTED",
+        published_intelligence_status="FORECAST_IN_PROGRESS",
         intelligence_status="FORECAST_IN_PROGRESS",
+        published_automated_action_allowed=False,
+        automated_action_allowed=False,
         probability_up=None,
         probability_down=None,
         target_window_end=datetime.fromisoformat("2026-08-25T14:30:00+00:00"),
@@ -756,11 +807,98 @@ def test_forecast_ui_parity_rejects_hidden_active_in_progress_probability() -> N
     )
     forecast = SimpleNamespace(
         loaded_at=datetime.fromisoformat("2026-08-25T14:29:59+00:00"),
-        symbols=(SimpleNamespace(all_routes=(route,)),),
+        symbols=(SimpleNamespace(routes=(route,), all_routes=(route,)),),
+        operational_statuses=("OPERATIONALLY_CURRENT",),
+        actionable_route_count=0,
+        automated_action_allowed=False,
+        freshness_label="Current Outlooks with Route Gaps",
+        freshness_tone="warning",
+        operational_label="Operational with Route Timing Gaps",
+        operational_tone="warning",
+        automation_label="Automated action is off",
+        automation_tone="neutral",
     )
 
     with pytest.raises(ValueError, match="hid a current probability"):
         system_monitor._forecast_ui_value_parity(forecast_frame, forecast)
+
+
+def test_forecast_ui_parity_accepts_bounded_wall_clock_lifecycle_transition() -> None:
+    row = {
+        "id": "AAPL|4h|2026-09-03T19:05:00Z",
+        "symbol": "AAPL",
+        "horizon": "4h",
+        "actionability_status": "ACTIONABLE",
+        "intelligence_status": "RISK_ANALYSIS_SUPPORT",
+        "forecast_created_at": "2026-09-03T19:05:00Z",
+        "actionable_until": "2026-09-03T19:30:00Z",
+        "target_window_start": "2026-09-03T19:30:00Z",
+        "target_window_end": "2026-09-03T22:35:00Z",
+        "automated_action_allowed": False,
+        "operational_status": "OPERATIONALLY_CURRENT",
+        "probability_up": 0.373,
+        "probability_down": 0.627,
+    }
+    route = SimpleNamespace(
+        id=row["id"],
+        symbol="AAPL",
+        horizon="4h",
+        published_actionability_status="ACTIONABLE",
+        actionability_status="TARGET_WINDOW_STARTED",
+        published_intelligence_status="RISK_ANALYSIS_SUPPORT",
+        intelligence_status="FORECAST_IN_PROGRESS",
+        published_automated_action_allowed=False,
+        automated_action_allowed=False,
+        probability_up=0.373,
+        probability_down=0.627,
+        is_actionable=False,
+        is_missing=False,
+    )
+    forecast = SimpleNamespace(
+        loaded_at=datetime.fromisoformat("2026-09-03T20:57:24+00:00"),
+        symbols=(SimpleNamespace(routes=(route,), all_routes=(route,)),),
+        operational_statuses=("OPERATIONALLY_CURRENT",),
+        actionable_route_count=0,
+        automated_action_allowed=False,
+        freshness_label="Data Pipeline Is Current",
+        freshness_tone="success",
+        operational_label="Operationally Current",
+        operational_tone="success",
+        automation_label="Automated action is off",
+        automation_tone="neutral",
+    )
+
+    parity = system_monitor._forecast_ui_value_parity(
+        pd.DataFrame([row]),
+        forecast,
+    )
+
+    assert parity["published_status_routes_verified"] == 1
+    assert parity["effective_lifecycle_routes_verified"] == 1
+    assert parity["wall_clock_transition_routes"] == 1
+    assert parity["effective_actionable_routes"] == 0
+    assert parity["probability_routes_displayed"] == 1
+
+    route.published_actionability_status = "TARGET_WINDOW_STARTED"
+    with pytest.raises(ValueError, match="published actionability mismatch"):
+        system_monitor._forecast_ui_value_parity(pd.DataFrame([row]), forecast)
+
+    route.published_actionability_status = "ACTIONABLE"
+    route.actionability_status = "ACTIONABLE"
+    route.is_actionable = True
+    with pytest.raises(ValueError, match="effective actionability mismatch"):
+        system_monitor._forecast_ui_value_parity(pd.DataFrame([row]), forecast)
+
+    route.actionability_status = "TARGET_WINDOW_STARTED"
+    route.is_actionable = False
+    forecast.actionable_route_count = 1
+    with pytest.raises(ValueError, match="actionable-route count mismatch"):
+        system_monitor._forecast_ui_value_parity(pd.DataFrame([row]), forecast)
+
+    forecast.actionable_route_count = 0
+    forecast.freshness_label = "Data Pipeline Has Limitations"
+    with pytest.raises(ValueError, match="freshness banner mismatch"):
+        system_monitor._forecast_ui_value_parity(pd.DataFrame([row]), forecast)
 
 
 def test_overnight_accuracy_cycle_stops_after_one_post_session_night() -> None:

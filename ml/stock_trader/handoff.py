@@ -15,8 +15,14 @@ from ml.stock_trader.contracts import (
 )
 from ml.stock_trader.inputs import load_current_prediction_signals
 from ml.stock_trader.inputs import PRIMARY_STOCK_HORIZONS
-from ml.stock_trader.publication import read_decision_run
-from ml.stock_trader.session import next_stock_target_start
+from ml.stock_trader.publication import (
+    read_decision_run,
+    reserved_live_prediction_ids,
+)
+from ml.stock_trader.session import (
+    next_stock_target_start,
+    normalize_stock_target_horizon,
+)
 
 
 PREDICTION_HANDOFF_SCHEMA_VERSION = "stock-trader-prediction-handoff-v2"
@@ -70,6 +76,7 @@ class PredictionHandoffResult:
             "poll_policy": {
                 "receipt_authority": "checksum-verified-current-Loop-B-publication",
                 "primary_horizons": list(PRIMARY_STOCK_HORIZONS),
+                "acceptance": "immediate-exact-target-actionable-unconsumed",
                 "fallback_age_feature": "prediction_age_minutes",
             },
             "fallback_used": self.fallback_used,
@@ -101,6 +108,7 @@ def wait_for_actionable_prediction(
     *,
     started_at: object | None = None,
     expected_target_window_start: object | None = None,
+    target_horizon: object | None = None,
     poll_seconds: float = DEFAULT_POLL_SECONDS,
     cutoff_lead_seconds: float = DEFAULT_CUTOFF_LEAD_SECONDS,
     maximum_target_lead_seconds: float = DEFAULT_MAXIMUM_TARGET_LEAD_SECONDS,
@@ -112,12 +120,13 @@ def wait_for_actionable_prediction(
         load_current_prediction_signals
     ),
 ) -> PredictionHandoffResult:
-    """Wait for the newest unconsumed actionable Loop B receipt for one target.
+    """Wait for an unconsumed actionable Loop B receipt for one exact target.
 
-    The expected fresh generation is the Loop B generation 25 minutes before
-    the selected 1h or 4h checkpoint (``:35`` for a top-of-hour target and
-    ``:05`` for a half-hour target). An older receipt that still targets the
-    same future window is retained as an age-aware fallback.
+    Receipt age is descriptive, not an acceptance barrier.  A checksum-verified
+    current publication is accepted immediately when its prediction has the
+    exact target and horizon, remains actionable, and has not been consumed.
+    Predictions created before the expected generation window retain the
+    explicit fallback label so their real age remains available to the model.
     """
 
     if poll_seconds <= 0.0:
@@ -131,11 +140,22 @@ def wait_for_actionable_prediction(
 
     root = Path(datastore_root).resolve()
     start = utc(started_at if started_at is not None else clock())
+    clean_target_horizon = normalize_stock_target_horizon(target_horizon)
     target = (
         utc(expected_target_window_start)
         if expected_target_window_start is not None
-        else next_stock_target_start(start)
+        else next_stock_target_start(start, horizon=clean_target_horizon)
     )
+    if expected_target_window_start is not None:
+        resolved_target = next_stock_target_start(
+            target - pd.Timedelta(seconds=1),
+            horizon=clean_target_horizon,
+        )
+        if resolved_target != target:
+            label = clean_target_horizon or "1h/4h"
+            raise ValueError(
+                f"Expected target {target.isoformat()} is not a {label} checkpoint"
+            )
     if target is None:
         return _empty_result(
             "NO_UPCOMING_INTRADAY_TARGET",
@@ -156,7 +176,7 @@ def wait_for_actionable_prediction(
             deadline=deadline,
             fresh_not_before=fresh_not_before,
         )
-    if start > deadline:
+    if start >= deadline:
         return _empty_result(
             "PREDICTION_EXECUTION_DEADLINE_PASSED",
             start=start,
@@ -172,7 +192,6 @@ def wait_for_actionable_prediction(
         else consumed_live_prediction_ids(root)
     )
     consumed_seen: set[str] = set()
-    fallback: _Candidate | None = None
     polls = 0
     errors = 0
     last_error: str | None = None
@@ -181,11 +200,19 @@ def wait_for_actionable_prediction(
         now = utc(clock())
         polls += 1
         try:
-            signals, source_files = signal_loader(root, as_of=now)
+            loader_kwargs: dict[str, object] = {"as_of": now}
+            if clean_target_horizon is not None:
+                loader_kwargs["target_horizon"] = clean_target_horizon
+            signals, source_files = signal_loader(root, **loader_kwargs)
             run_path, run_timestamp, promoted_at = _receipt_metadata(
                 root, source_files
             )
-            matching = _matching_target_signals(signals, target=target, as_of=now)
+            matching = _matching_target_signals(
+                signals,
+                target=target,
+                as_of=now,
+                target_horizon=clean_target_horizon,
+            )
             consumed_seen.update(
                 signal.prediction_id
                 for signal in matching.values()
@@ -196,11 +223,7 @@ def wait_for_actionable_prediction(
                 for symbol, signal in matching.items()
                 if signal.prediction_id not in consumed
             }
-            if available:
-                older_fallback_observed = (
-                    fallback is not None
-                    and fallback.run_timestamp < fresh_not_before
-                )
+            if available and now < deadline:
                 fingerprint = next(iter(available.values())).source_fingerprint
                 candidate = _Candidate(
                     signals=available,
@@ -210,46 +233,36 @@ def wait_for_actionable_prediction(
                     promoted_at=promoted_at,
                     source_fingerprint=fingerprint,
                 )
-                if fallback is None or candidate.run_timestamp > fallback.run_timestamp:
-                    fallback = candidate
-                if run_timestamp >= fresh_not_before and now <= deadline:
-                    return _selected_result(
-                        "FRESH_ACTIONABLE_RECEIPT",
-                        candidate,
-                        start=start,
-                        completed=now,
-                        target=target,
-                        deadline=deadline,
-                        fresh_not_before=fresh_not_before,
-                        polls=polls,
-                        fallback_used=False,
-                        fallback_observed=older_fallback_observed,
-                        consumed_seen=consumed_seen,
-                        errors=errors,
-                        last_error=last_error,
-                    )
-            last_error = None
-        except Exception as exc:
-            errors += 1
-            last_error = f"{type(exc).__name__}: {exc}"
-
-        if now >= deadline:
-            if fallback is not None:
+                prediction_created_at = min(
+                    utc(signal.prediction_created_at)
+                    for signal in available.values()
+                )
+                fallback_used = prediction_created_at < fresh_not_before
                 return _selected_result(
-                    "FALLBACK_ACTIONABLE_RECEIPT",
-                    fallback,
+                    (
+                        "FALLBACK_ACTIONABLE_RECEIPT"
+                        if fallback_used
+                        else "FRESH_ACTIONABLE_RECEIPT"
+                    ),
+                    candidate,
                     start=start,
                     completed=now,
                     target=target,
                     deadline=deadline,
                     fresh_not_before=fresh_not_before,
                     polls=polls,
-                    fallback_used=True,
-                    fallback_observed=True,
+                    fallback_used=fallback_used,
+                    fallback_observed=fallback_used,
                     consumed_seen=consumed_seen,
                     errors=errors,
                     last_error=last_error,
                 )
+            last_error = None
+        except Exception as exc:
+            errors += 1
+            last_error = f"{type(exc).__name__}: {exc}"
+
+        if now >= deadline:
             status = (
                 "PREDICTION_GENERATION_ALREADY_CONSUMED"
                 if consumed_seen
@@ -277,7 +290,7 @@ def consumed_live_prediction_ids(datastore_root: Path) -> set[str]:
 
     root = Path(datastore_root).resolve()
     runs_root = root / "ml" / "stock-trader-decision-runs"
-    consumed: set[str] = set()
+    consumed = reserved_live_prediction_ids(root)
     if not runs_root.is_dir():
         return consumed
     for run in sorted(path for path in runs_root.iterdir() if path.is_dir()):
@@ -330,11 +343,14 @@ def _matching_target_signals(
     *,
     target: pd.Timestamp,
     as_of: pd.Timestamp,
+    target_horizon: str | None,
 ) -> dict[str, PredictionSignal]:
     matching: dict[str, PredictionSignal] = {}
     for symbol in STOCK_TRADER_SYMBOLS:
         signal = signals.get(symbol)
         if signal is None or signal.primary_horizon not in PRIMARY_STOCK_HORIZONS:
+            continue
+        if target_horizon is not None and signal.primary_horizon != target_horizon:
             continue
         try:
             signal_target = utc(signal.target_window_start)

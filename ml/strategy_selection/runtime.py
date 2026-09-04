@@ -349,7 +349,7 @@ def run_strategy_selection(
             "real_lockbox_used": False,
         }
 
-    live_predictions = _canonical_live_predictions(predictions)
+    live_predictions = _canonical_live_predictions(predictions, as_of=input_cutoff)
     candidate_frames: list[pd.DataFrame] = []
     audit_frames: list[pd.DataFrame] = []
     for prediction in live_predictions.to_dict("records"):
@@ -1180,7 +1180,11 @@ def _historical_entry_bounds(
     )
 
 
-def _canonical_live_predictions(predictions: pd.DataFrame) -> pd.DataFrame:
+def _canonical_live_predictions(
+    predictions: pd.DataFrame,
+    *,
+    as_of: object,
+) -> pd.DataFrame:
     live = predictions.loc[
         predictions["prediction_mode"].eq("LIVE")
         & predictions["prediction_status"].isin({"CREATED", "PREDICTED"})
@@ -1190,9 +1194,51 @@ def _canonical_live_predictions(predictions: pd.DataFrame) -> pd.DataFrame:
     live["prediction_created_at"] = pd.to_datetime(
         live["prediction_created_at"], utc=True, errors="coerce"
     )
+    ordered = live.sort_values("prediction_created_at", kind="mergesort").reset_index(
+        drop=True
+    )
+    ordered["_canonical_order"] = range(len(ordered))
+    one_hour = ordered["horizon"].astype("string").eq("1h").fillna(False)
+    if one_hour.any():
+        if "target_window_start" not in ordered.columns:
+            raise ValueError("One-hour live predictions require target_window_start")
+        ordered["target_window_start"] = pd.to_datetime(
+            ordered["target_window_start"], utc=True, errors="coerce"
+        )
+        if ordered.loc[one_hour, "target_window_start"].isna().any():
+            raise ValueError("One-hour live predictions require target_window_start")
+        ordered["information_available_at"] = pd.to_datetime(
+            ordered["information_available_at"], utc=True, errors="coerce"
+        )
+        ordered["decision_timestamp"] = pd.to_datetime(
+            ordered["decision_timestamp"], utc=True, errors="coerce"
+        )
+    base_keys = ["symbol", "horizon", "decision_timestamp"]
+    one_hour_rows = ordered.iloc[0:0].copy()
+    if one_hour.any():
+        one_hour_rows = (
+            ordered.loc[
+                one_hour & ordered["target_window_start"].gt(_utc(as_of))
+            ]
+            .sort_values(
+                [
+                    "symbol",
+                    "horizon",
+                    "target_window_start",
+                    "information_available_at",
+                    "decision_timestamp",
+                    "prediction_created_at",
+                ],
+                ascending=[True, True, True, False, False, False],
+                kind="mergesort",
+            )
+            .drop_duplicates(["symbol", "horizon"], keep="first")
+        )
+    legacy_rows = ordered.loc[~one_hour].drop_duplicates(base_keys, keep="first")
     return (
-        live.sort_values("prediction_created_at", kind="mergesort")
-        .drop_duplicates(["symbol", "horizon", "decision_timestamp"], keep="first")
+        pd.concat([one_hour_rows, legacy_rows], sort=False)
+        .sort_values("_canonical_order", kind="stable")
+        .drop(columns="_canonical_order")
         .reset_index(drop=True)
     )
 

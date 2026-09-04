@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from urllib.parse import parse_qs, urlparse
 
 
 def main() -> None:
@@ -8,10 +9,17 @@ def main() -> None:
         from app.services.schwab import SchwabSession
 
         session = SchwabSession()
-        authorization_url, _state = session.build_authorization_url()
-        print("Open this URL, log in, approve access, then copy the code from the redirect URL:")
+        authorization_url, state = session.build_authorization_url()
+        print("Open this URL and approve access:")
         print(authorization_url)
-        code = input("Schwab authorization code: ").strip()
+        response = input(
+            "Paste the complete Schwab redirect URL (preferred), or the authorization code: "
+        )
+        code = _schwab_authorization_code(
+            response,
+            expected_state=state,
+            expected_redirect_uri=session.config.redirect_uri,
+        )
         session.exchange_authorization_code(code)
         print("Schwab authorization saved.")
         return
@@ -71,6 +79,53 @@ def _money_or_dash(value: float | None) -> str:
 
 def _coverage_or_dash(labels: list[str]) -> str:
     return " + ".join(labels) if labels else "no account day PnL available"
+
+
+def _schwab_authorization_code(
+    value: str,
+    *,
+    expected_state: str | None,
+    expected_redirect_uri: str,
+) -> str:
+    """Extract a code while binding a pasted callback to this auth attempt."""
+
+    raw = str(value).strip()
+    if not raw:
+        raise ValueError("Schwab authorization response is required.")
+    parsed = urlparse(raw)
+    if not parsed.scheme and not parsed.netloc:
+        return raw
+    expected = urlparse(str(expected_redirect_uri).strip())
+    observed_redirect = (
+        parsed.scheme.casefold(),
+        parsed.netloc.casefold(),
+        parsed.path.rstrip("/"),
+    )
+    configured_redirect = (
+        expected.scheme.casefold(),
+        expected.netloc.casefold(),
+        expected.path.rstrip("/"),
+    )
+    if observed_redirect != configured_redirect:
+        raise ValueError("Schwab redirect URL does not match the configured callback.")
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    codes = [str(item).strip() for item in query.get("code", [])]
+    if len(codes) != 1 or not codes[0]:
+        raise ValueError("Schwab redirect URL must contain exactly one authorization code.")
+    # Schwab's current documented authorize request does not carry state.  If
+    # support for state is reintroduced, fail closed unless the callback binds
+    # to the exact value generated for this attempt.
+    if expected_state is not None:
+        import hmac
+
+        states = [str(item).strip() for item in query.get("state", [])]
+        if (
+            len(states) != 1
+            or not states[0]
+            or not hmac.compare_digest(states[0], expected_state)
+        ):
+            raise ValueError("Schwab redirect state does not match this authorization attempt.")
+    return codes[0]
 
 
 if __name__ == "__main__":

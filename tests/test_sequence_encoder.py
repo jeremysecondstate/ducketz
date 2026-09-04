@@ -13,9 +13,11 @@ from ml.sequence_encoder.consumer import (
 )
 from ml.sequence_encoder.contracts import (
     EMBEDDING_COLUMNS,
+    SEQUENCE_DISTRIBUTION_SCHEMA_VERSION,
     SEQUENCE_ENCODER_POLICY_VERSION,
     SEQUENCE_FEATURE_COLUMNS,
     SequenceEncoderConfig,
+    frame_with_sequence_distribution_id,
 )
 from ml.sequence_encoder.dataset import (
     RobustSequenceScaler,
@@ -24,6 +26,8 @@ from ml.sequence_encoder.dataset import (
     chronological_partitions,
 )
 from ml.sequence_encoder.publication import publish_sequence_run
+from ml.sequence_encoder.inference import _inference_labels
+from ml.sequence_encoder.runtime import _live_route_labels
 from ml.sequence_encoder.surface import (
     loop_b_supervised_labels,
     materialize_hourly_surface_states,
@@ -139,27 +143,90 @@ def test_loop_b_labels_equal_weight_shared_decision_clusters() -> None:
     decision = pd.Timestamp("2026-08-03T15:35:00Z")
     target_start = pd.Timestamp("2026-08-03T16:30:00Z")
     target_end = pd.Timestamp("2026-08-03T17:30:00Z")
+    later_start = target_start + pd.Timedelta(hours=1)
+    later_end = target_end + pd.Timedelta(hours=1)
     samples = pd.DataFrame(
         {
-            "symbol": ["AAPL", "MSFT"],
-            "horizon": ["1h", "1h"],
-            "decision_timestamp": [decision, decision],
-            "information_available_at": [decision, decision],
-            "bar_end_timestamp": [decision - pd.Timedelta(minutes=5)] * 2,
-            "target_window_start": [target_start, target_start],
-            "target_window_end": [target_end, target_end],
-            "label_available_at": [target_end, target_end],
-            "label_status": ["COMPLETE", "COMPLETE"],
-            "target_cost_adjusted_positive": [1.0, 0.0],
-            "forward_cost_adjusted_return": [0.02, -0.01],
+            "symbol": ["AAPL", "MSFT", "AAPL"],
+            "horizon": ["1h", "1h", "1h"],
+            "decision_timestamp": [decision, decision, decision],
+            "information_available_at": [decision, decision, decision],
+            "bar_end_timestamp": [decision - pd.Timedelta(minutes=5)] * 3,
+            "target_window_start": [target_start, target_start, later_start],
+            "target_window_end": [target_end, target_end, later_end],
+            "label_available_at": [target_end, target_end, later_end],
+            "label_status": ["COMPLETE", "COMPLETE", "COMPLETE"],
+            "target_cost_adjusted_positive": [1.0, 0.0, 1.0],
+            "forward_cost_adjusted_return": [0.02, -0.01, 0.01],
         }
     )
 
     labels = loop_b_supervised_labels(samples, horizons=("1h",))
 
-    assert labels["decision_cluster_size"].tolist() == [2, 2]
-    assert labels["decision_weight"].tolist() == [0.5, 0.5]
-    assert math.isclose(float(labels["decision_weight"].sum()), 1.0)
+    assert labels["decision_cluster_size"].tolist() == [2, 2, 1]
+    assert labels["decision_weight"].tolist() == [0.5, 0.5, 1.0]
+    assert labels.loc[labels["symbol"].eq("AAPL"), "target_window_start"].tolist() == [
+        target_start,
+        later_start,
+    ]
+    assert math.isclose(float(labels["decision_weight"].sum()), 2.0)
+
+
+def test_sequence_live_label_joins_keep_same_decision_targets_distinct() -> None:
+    decision = pd.Timestamp("2026-08-03T13:05:00Z")
+    starts = pd.to_datetime(
+        ["2026-08-03T13:30:00Z", "2026-08-03T14:00:00Z"], utc=True
+    )
+    samples = pd.DataFrame(
+        {
+            "symbol": ["AAPL", "AAPL"],
+            "horizon": ["1h", "1h"],
+            "decision_timestamp": [decision, decision],
+            "information_available_at": [decision, decision],
+            "bar_end_timestamp": [decision - pd.Timedelta(minutes=5)] * 2,
+            "target_window_start": starts,
+            "target_window_end": starts + pd.Timedelta(hours=1),
+        }
+    )
+    predictions = samples.loc[
+        :, ["symbol", "horizon", "decision_timestamp", "target_window_start"]
+    ].copy()
+    predictions["prediction_mode"] = "LIVE"
+    predictions["prediction_status"] = "ACTIVE"
+
+    for builder in (_live_route_labels, _inference_labels):
+        labels = builder(samples, predictions, horizons=("1h",))
+        assert len(labels) == 2
+        assert labels["target_window_start"].tolist() == list(starts)
+        assert labels["target_window_end"].tolist() == list(
+            starts + pd.Timedelta(hours=1)
+        )
+
+
+def test_sequence_distribution_ids_are_target_aware_only_for_one_hour() -> None:
+    decision = pd.Timestamp("2026-08-03T13:05:00Z")
+    starts = pd.to_datetime(
+        ["2026-08-03T13:30:00Z", "2026-08-03T14:00:00Z"], utc=True
+    )
+    frame = pd.DataFrame(
+        {
+            "symbol": ["AAPL", "AAPL", "AAPL"],
+            "horizon": ["1h", "1h", "4h"],
+            "decision_timestamp": [decision, decision, decision],
+            "target_window_start": [starts[0], starts[1], starts[0]],
+        }
+    )
+
+    identified = frame_with_sequence_distribution_id(frame)
+
+    assert identified["id"].is_unique
+    assert identified.loc[identified["horizon"].eq("1h"), "id"].str.count(
+        r"\|"
+    ).eq(3).all()
+    assert identified.loc[identified["horizon"].eq("4h"), "id"].str.count(
+        r"\|"
+    ).eq(2).all()
+    assert SEQUENCE_DISTRIBUTION_SCHEMA_VERSION == "pooled-causal-distribution-v2"
 
 
 def test_partitions_and_windows_are_chronological_and_causal() -> None:
@@ -317,15 +384,20 @@ def test_shadow_publication_is_causal_and_never_grants_action_authority(
     run = tmp_path / "ml" / "sequence-encoder-runs" / "20260803T160000Z"
     run.mkdir(parents=True)
     decision = pd.Timestamp("2026-08-03T15:35:00Z")
+    target_starts = pd.to_datetime(
+        ["2026-08-03T16:30:00Z", "2026-08-03T17:00:00Z"], utc=True
+    )
     distributions = pd.DataFrame(
         {
-            "symbol": ["AAPL"],
-            "horizon": ["1h"],
-            "decision_timestamp": [decision],
-            "information_available_at": [decision],
-            "prediction_created_at": [pd.Timestamp("2026-08-03T15:40:00Z")],
-            "prediction_status": ["SHADOW_READY"],
-            "automated_action_allowed": [False],
+            "symbol": ["AAPL", "AAPL"],
+            "horizon": ["1h", "1h"],
+            "decision_timestamp": [decision, decision],
+            "target_window_start": target_starts,
+            "target_window_end": target_starts + pd.Timedelta(hours=1),
+            "information_available_at": [decision, decision],
+            "prediction_created_at": [pd.Timestamp("2026-08-03T15:40:00Z")] * 2,
+            "prediction_status": ["SHADOW_READY", "SHADOW_READY"],
+            "automated_action_allowed": [False, False],
         }
     )
     distributions.to_parquet(run / "distributions.parquet", index=False)
@@ -353,7 +425,9 @@ def test_shadow_publication_is_causal_and_never_grants_action_authority(
         published_at="2026-08-03T16:00:00Z",
         source_loop_b=source,
     )
-    routes = distributions.loc[:, ["symbol", "horizon", "decision_timestamp"]]
+    routes = distributions.loc[
+        :, ["symbol", "horizon", "decision_timestamp", "target_window_start"]
+    ]
 
     future = load_sequence_distributions(
         tmp_path,
@@ -370,7 +444,8 @@ def test_shadow_publication_is_causal_and_never_grants_action_authority(
 
     assert future.status == "UNAVAILABLE"
     assert ready.status == "READY_SHADOW"
-    assert ready.matched_routes == 1
+    assert ready.matched_routes == ready.requested_routes == 2
+    assert ready.distributions["target_window_start"].tolist() == list(target_starts)
     assert ready.details["authority"] == "SHADOW_ONLY"
     assert not bool(ready.distributions["automated_action_allowed"].any())
 
@@ -385,4 +460,3 @@ def test_shadow_publication_is_causal_and_never_grants_action_authority(
     )
     assert invalid.status == "INVALID_SHADOW"
     assert invalid.details["authority"] == "NONE"
-

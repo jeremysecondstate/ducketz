@@ -1,8 +1,9 @@
 # Rolling Forecasts quick-look concepts
 
-These are design concepts only. No Rolling Forecasts runtime or UI behavior has
-been implemented from them yet. The displayed percentages are representative
-mock data, not predictions or recommendations.
+Concept A is implemented in the Rolling Forecasts UI. Concepts B and C remain
+design alternatives only. Percentages shown in the reference images are
+representative mock data, not predictions or recommendations; the implemented
+matrix reads the current published 1h, 4h, and 1d probabilities.
 
 All three concepts use the same strict visual rule:
 
@@ -11,6 +12,8 @@ All three concepts use the same strict visual rule:
 - exactly 50%: neutral gray with an amber accent.
 
 ## Concept A — Prediction Pulse matrix
+
+Implementation status: active in `app/ui/rolling_forecasts.py`.
 
 ![Prediction Pulse matrix](concept-quick-look-a-signal-matrix.png)
 

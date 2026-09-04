@@ -36,6 +36,7 @@ from ml.sequence_encoder.contracts import (
     SEQUENCE_ENCODER_POLICY_VERSION,
     STATE_SCHEMA,
     SequenceEncoderConfig,
+    frame_with_sequence_distribution_id,
 )
 from ml.sequence_encoder.dataset import (
     RobustSequenceScaler,
@@ -52,6 +53,7 @@ from ml.sequence_encoder.preregistration import (
 )
 from ml.sequence_encoder.publication import publish_sequence_run
 from ml.sequence_encoder.surface import (
+    attach_sequence_sample_windows,
     loop_b_supervised_labels,
     materialize_hourly_surface_states,
 )
@@ -470,23 +472,7 @@ def _live_route_labels(
             predictions["horizon"].astype("string").isin(horizons)
             & predictions["prediction_mode"].astype("string").eq("LIVE")
         ].copy()
-    keys = ["symbol", "horizon", "decision_timestamp"]
-    sample_columns = [
-        *keys,
-        "information_available_at",
-        "bar_end_timestamp",
-        "target_window_start",
-        "target_window_end",
-    ]
-    source = samples.loc[:, sample_columns].drop_duplicates(keys)
-    joined = live.loc[:, keys].drop_duplicates().merge(
-        source,
-        on=keys,
-        how="inner",
-        validate="one_to_one",
-    )
-    if len(joined) != len(live.loc[:, keys].drop_duplicates()):
-        raise ValueError("Current Loop B LIVE routes do not map to exact samples")
+    joined = attach_sequence_sample_windows(samples, live)
     joined["target_cost_adjusted_positive"] = 0.0
     joined["forward_cost_adjusted_return"] = 0.0
     joined["decision_weight"] = 1.0
@@ -603,10 +589,7 @@ def _distribution_frame(
         "Shadow-only; no Loop B, Strategy ranking, portfolio, broker, or order authority."
     )
     output["schema_version"] = SEQUENCE_DISTRIBUTION_SCHEMA_VERSION
-    return frame_with_readable_id(
-        output,
-        key_columns=("symbol", "horizon", "decision_timestamp"),
-    )
+    return frame_with_sequence_distribution_id(output)
 
 
 def _embedding_frame(

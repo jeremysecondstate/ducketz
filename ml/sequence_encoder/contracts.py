@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Mapping
 
+import pandas as pd
+
 from ml.artifacts import semantic_metadata_fingerprint
 from ml.parquet_contracts import (
     SEQUENCE_DISTRIBUTION_SCHEMA as DISTRIBUTION_SCHEMA,
@@ -10,18 +12,52 @@ from ml.parquet_contracts import (
     SEQUENCE_EMBEDDING_VALUE_COLUMNS as EMBEDDING_COLUMNS,
     SEQUENCE_STATE_FEATURE_COLUMNS as SEQUENCE_FEATURE_COLUMNS,
     SEQUENCE_STATE_SCHEMA as STATE_SCHEMA,
+    frame_with_readable_id,
 )
 
 
 SEQUENCE_ENCODER_POLICY_VERSION = "pooled-causal-hourly-surface-lstm-v1"
 SEQUENCE_STATE_SCHEMA_VERSION = "pooled-causal-sequence-state-v1"
-SEQUENCE_DISTRIBUTION_SCHEMA_VERSION = "pooled-causal-distribution-v1"
+SEQUENCE_DISTRIBUTION_SCHEMA_VERSION = "pooled-causal-distribution-v2"
 SEQUENCE_EMBEDDING_SCHEMA_VERSION = "pooled-causal-embedding-v1"
 SEQUENCE_PUBLICATION_SCHEMA_VERSION = "pooled-causal-sequence-publication-v1"
 SEQUENCE_POINTER_SCHEMA_VERSION = "pooled-causal-sequence-pointer-v1"
 SEQUENCE_MODEL_RECEIPT_VERSION = "pooled-causal-sequence-model-receipt-v1"
 
 SUPPORTED_HORIZONS = ("1h", "4h", "1d", "1w")
+
+
+def frame_with_sequence_distribution_id(frame: pd.DataFrame) -> pd.DataFrame:
+    """Identify 1h target routes while preserving legacy IDs elsewhere."""
+
+    output = frame.reset_index(drop=True)
+    one_hour = output["horizon"].astype("string").eq("1h")
+    pieces: list[pd.DataFrame] = []
+    if one_hour.any():
+        pieces.append(
+            frame_with_readable_id(
+                output.loc[one_hour],
+                key_columns=(
+                    "symbol",
+                    "horizon",
+                    "decision_timestamp",
+                    "target_window_start",
+                ),
+            )
+        )
+    if (~one_hour).any():
+        pieces.append(
+            frame_with_readable_id(
+                output.loc[~one_hour],
+                key_columns=("symbol", "horizon", "decision_timestamp"),
+            )
+        )
+    if not pieces:
+        return frame_with_readable_id(
+            output,
+            key_columns=("symbol", "horizon", "decision_timestamp"),
+        )
+    return pd.concat(pieces).sort_index().reset_index(drop=True)
 
 
 @dataclass(frozen=True)
@@ -106,4 +142,5 @@ __all__ = [
     "STATE_SCHEMA",
     "SUPPORTED_HORIZONS",
     "SequenceEncoderConfig",
+    "frame_with_sequence_distribution_id",
 ]

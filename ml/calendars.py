@@ -25,12 +25,15 @@ REGULAR_INTRADAY_SOURCE_POLICY = "regular-session-source-v1"
 US_EQUITY_EXTENDED_SOURCE_POLICY = (
     "us-equity-standard-extended-source-0400-2000-et-v1"
 )
+US_EQUITY_CONTINUOUS_EXTENDED_SOURCE_POLICY = (
+    "us-equity-standard-continuous-hour-source-0400-2000-et-v2"
+)
 REGULAR_INTRADAY_TARGET_POLICY = "regular-session-target-v1"
 US_EQUITY_ACTIONABLE_TARGET_POLICY = (
     "us-equity-actionable-target-0700-0925-0930-1600-1605-2000-et-v1"
 )
 HYBRID_TARGET_START_POLICY = (
-    "segment-open-plus-full-local-clock-hour-start-v1"
+    "segment-open-plus-every-eligible-local-clock-hour-start-v2"
 )
 FOUR_HOUR_CHECKPOINT_START_POLICY = (
     "four-hour-checkpoints-0730-1130-1530-1930-et-v1"
@@ -228,7 +231,10 @@ class ExchangeSessionCalendar:
         """Return versioned starts for one intraday target policy.
 
         The ordinary hybrid policy contributes each continuous segment start
-        plus every complete exchange-local clock hour wholly inside it. The
+        plus every exchange-local clock hour that starts inside an eligible
+        US-equity segment. Its 60 eligible minutes may continue after a closed
+        transition gap; this preserves the distinct 09:00 Eastern PRE target.
+        Other exchanges retain complete-hour-only behavior. The
         four-hour stock policy contributes the explicit 07:30, 11:30, 15:30,
         and 19:30 Eastern checkpoints when they lie inside an eligible segment.
         Non-US calendars always retain their regular-session hybrid behavior.
@@ -268,13 +274,21 @@ class ExchangeSessionCalendar:
                     ):
                         candidates.add(candidate)
         else:
+            allow_cross_segment_hour = (
+                self.exchange_calendar in _US_EQUITY_CALENDARS
+                and clean_session_policy == US_EQUITY_ACTIONABLE_TARGET_POLICY
+            )
             for _session, segment_start, segment_end, _label in segments:
                 candidates.add(segment_start)
                 cursor = _ceil_exchange_hour(
                     segment_start,
                     timezone_name=self.exchange_timezone,
                 )
-                while cursor + pd.Timedelta(hours=1) <= segment_end:
+                while (
+                    cursor < segment_end
+                    if allow_cross_segment_hour
+                    else cursor + pd.Timedelta(hours=1) <= segment_end
+                ):
                     candidates.add(cursor)
                     cursor += pd.Timedelta(hours=1)
         result = tuple(sorted(candidates))
@@ -389,6 +403,56 @@ class ExchangeSessionCalendar:
             end_timestamp=selected[-1] + pd.Timedelta(minutes=1),
             constituent_timestamps=tuple(selected),
         )
+
+    def target_windows_after(
+        self,
+        information_available_at: object,
+        *,
+        eligible_minute_count: int,
+        additional_start_horizon: pd.Timedelta | None = None,
+        session_policy: str = REGULAR_INTRADAY_TARGET_POLICY,
+        start_policy: str = HYBRID_TARGET_START_POLICY,
+    ) -> tuple[EligibleMinuteTargetWindow, ...]:
+        """Return the next target plus bounded additional eligible starts.
+
+        The first target is always retained so closures keep their established
+        next-session behavior. When ``additional_start_horizon`` is supplied,
+        later starts are included only through that bounded source-information
+        horizon. Every returned start remains strictly after availability.
+        """
+
+        if (
+            additional_start_horizon is not None
+            and additional_start_horizon < pd.Timedelta(0)
+        ):
+            raise ValueError("additional_start_horizon cannot be negative")
+        available = _utc_timestamp(information_available_at)
+        first = self.target_window_after(
+            available,
+            eligible_minute_count=eligible_minute_count,
+            session_policy=session_policy,
+            start_policy=start_policy,
+        )
+        if additional_start_horizon is None:
+            return (first,)
+
+        limit = available + additional_start_horizon
+        windows = [first]
+        if first.start_timestamp > limit:
+            return tuple(windows)
+        cursor = first.start_timestamp
+        while True:
+            candidate = self.target_window_after(
+                cursor,
+                eligible_minute_count=eligible_minute_count,
+                session_policy=session_policy,
+                start_policy=start_policy,
+            )
+            if candidate.start_timestamp > limit:
+                break
+            windows.append(candidate)
+            cursor = candidate.start_timestamp
+        return tuple(windows)
 
     def _intraday_target_segments(
         self,
@@ -747,11 +811,13 @@ def attach_official_intraday_sessions(
 ) -> pd.DataFrame:
     """Attach exchange sessions to eligible full-hour decision intervals.
 
-    Regular-market intervals are always eligible. Under the explicit US-equity
+    Regular-market intervals are always eligible. Under the legacy US-equity
     extended source policy, completed full hours wholly inside 04:00--09:30 or
-    the official close--20:00 exchange-local context are eligible too. Source
-    rows are labeled ``PRE``, ``REGULAR``, or ``POST``. Intervals crossing a
-    boundary or extending beyond the bounds remain excluded.
+    the official close--20:00 exchange-local context are eligible too. The
+    continuous-hour policy also admits exchange-local clock hours wholly inside
+    04:00--20:00, including the 09:00--10:00 PRE/REGULAR crossing. Source rows
+    are labeled ``PRE``, ``REGULAR``, or ``POST``; out-of-envelope intervals
+    remain excluded.
     """
 
     if processing_delay < pd.Timedelta(0):
@@ -836,13 +902,18 @@ def attach_official_intraday_sessions(
             )
             if (
                 session is None
-                and clean_source_policy == US_EQUITY_EXTENDED_SOURCE_POLICY
+                and clean_source_policy
+                in {
+                    US_EQUITY_EXTENDED_SOURCE_POLICY,
+                    US_EQUITY_CONTINUOUS_EXTENDED_SOURCE_POLICY,
+                }
                 and str(calendar_name).upper() in _US_EQUITY_CALENDARS
                 and end_timestamp - start_timestamp == pd.Timedelta(hours=1)
             ):
                 local_start = start_timestamp.tz_convert(
                     calendar.exchange_timezone
                 )
+                local_end = end_timestamp.tz_convert(calendar.exchange_timezone)
                 session_candidate = local_start.tz_localize(None).normalize()
                 if (
                     session_candidate in calendar.sessions
@@ -863,12 +934,24 @@ def attach_official_intraday_sessions(
                         start_timestamp >= official_close
                         and end_timestamp <= extended_close
                     )
-                    if is_premarket or is_aftermarket:
+                    is_continuous_clock_hour = (
+                        clean_source_policy
+                        == US_EQUITY_CONTINUOUS_EXTENDED_SOURCE_POLICY
+                        and local_start.floor("h") == local_start
+                        and local_end == local_start + pd.Timedelta(hours=1)
+                        and start_timestamp >= extended_open
+                        and end_timestamp <= extended_close
+                    )
+                    if is_premarket or is_aftermarket or is_continuous_clock_hour:
                         session = session_candidate
                         checkpoint_session = (
                             CHECKPOINT_SESSION_PRE
-                            if is_premarket
-                            else CHECKPOINT_SESSION_POST
+                            if end_timestamp <= official_open
+                            else (
+                                CHECKPOINT_SESSION_POST
+                                if start_timestamp >= official_close
+                                else CHECKPOINT_SESSION_REGULAR
+                            )
                         )
             resolved_sessions.append(session)
             checkpoint_sessions.append(checkpoint_session)
@@ -963,6 +1046,7 @@ def _intraday_source_policy(value: object) -> str:
     allowed = {
         REGULAR_INTRADAY_SOURCE_POLICY,
         US_EQUITY_EXTENDED_SOURCE_POLICY,
+        US_EQUITY_CONTINUOUS_EXTENDED_SOURCE_POLICY,
     }
     if clean not in allowed:
         raise ValueError(

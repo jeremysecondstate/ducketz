@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Mapping, Protocol
+from typing import Any, Callable, Mapping, Protocol, TypeVar
 
 from app.services.schwab_policy_inputs import normalize_schwab_policy_inputs
+from app.services.schwab_retry import is_retryable_schwab_error
 from ml.stock_trader.contracts import (
     PortfolioState,
     QuoteState,
@@ -14,7 +15,14 @@ from ml.stock_trader.contracts import (
 )
 
 
+_T = TypeVar("_T")
+
+
 class SchwabReadSession(Protocol):
+    def prepare_read_snapshot(self) -> str | None: ...
+
+    def verify_read_snapshot(self, expected_identity_fingerprint: str) -> None: ...
+
     def get_account(self) -> Any: ...
 
     def get_open_orders(self) -> Any: ...
@@ -31,18 +39,65 @@ def capture_portfolio_state(
     """Capture one coherent pre-decision input set without serial symbol reads."""
 
     timestamp = utc(observed_at)
+    broker_identity_fingerprint: str | None = None
+    prepare = getattr(session, "prepare_read_snapshot", None)
+    if callable(prepare):
+        prepared_identity = _read_schwab_component("session_preflight", prepare)
+        if prepared_identity is not None:
+            broker_identity_fingerprint = str(prepared_identity).strip() or None
     if parallel:
         with ThreadPoolExecutor(max_workers=3, thread_name_prefix="stock-trader-state") as pool:
-            account_future = pool.submit(session.get_account)
-            orders_future = pool.submit(session.get_open_orders)
-            quotes_future = pool.submit(session.get_equity_quotes, STOCK_TRADER_SYMBOLS)
-            account_payload = account_future.result()
-            orders_payload = orders_future.result()
-            quotes_payload = quotes_future.result()
+            account_future = pool.submit(
+                _read_schwab_component, "account", session.get_account
+            )
+            orders_future = pool.submit(
+                _read_schwab_component, "open_orders", session.get_open_orders
+            )
+            quotes_future = pool.submit(
+                _read_schwab_component,
+                "equity_quotes",
+                lambda: session.get_equity_quotes(STOCK_TRADER_SYMBOLS),
+            )
+            payloads: dict[str, Any] = {}
+            failures: list[Exception] = []
+            for operation_name, future in (
+                ("account", account_future),
+                ("open_orders", orders_future),
+                ("equity_quotes", quotes_future),
+            ):
+                try:
+                    payloads[operation_name] = future.result()
+                except Exception as exc:
+                    failures.append(exc)
+            if failures:
+                failure = next(
+                    (
+                        exc
+                        for exc in failures
+                        if not is_retryable_schwab_error(exc)
+                    ),
+                    failures[0],
+                )
+                raise failure
+            account_payload = payloads["account"]
+            orders_payload = payloads["open_orders"]
+            quotes_payload = payloads["equity_quotes"]
     else:
-        account_payload = session.get_account()
-        orders_payload = session.get_open_orders()
-        quotes_payload = session.get_equity_quotes(STOCK_TRADER_SYMBOLS)
+        account_payload = _read_schwab_component("account", session.get_account)
+        orders_payload = _read_schwab_component("open_orders", session.get_open_orders)
+        quotes_payload = _read_schwab_component(
+            "equity_quotes", lambda: session.get_equity_quotes(STOCK_TRADER_SYMBOLS)
+        )
+    if broker_identity_fingerprint is not None:
+        verify = getattr(session, "verify_read_snapshot", None)
+        if not callable(verify):
+            raise RuntimeError(
+                "Schwab snapshot identity was captured but cannot be verified."
+            )
+        _read_schwab_component(
+            "account_identity",
+            lambda: verify(broker_identity_fingerprint),
+        )
     normalized = normalize_schwab_policy_inputs(
         account_payload,
         orders_payload,
@@ -136,6 +191,7 @@ def capture_portfolio_state(
         "pending_sell_shares": pending_sells,
         "working_order_count": working_count,
         "stock_working_status": stock_working_status,
+        "broker_identity_fingerprint": broker_identity_fingerprint,
         "quotes": {
             symbol: {
                 "bid": quote.bid,
@@ -160,7 +216,22 @@ def capture_portfolio_state(
         working_order_count=working_count,
         quotes=quotes,
         source_fingerprint=canonical_sha256(fingerprint_payload),
+        broker_identity_fingerprint=broker_identity_fingerprint,
     )
+
+
+def _read_schwab_component(
+    operation_name: str, operation: Callable[[], _T]
+) -> _T:
+    try:
+        return operation()
+    except Exception as exc:
+        try:
+            if not getattr(exc, "stock_trader_operation", None):
+                setattr(exc, "stock_trader_operation", operation_name)
+        except (AttributeError, TypeError):
+            pass
+        raise
 
 
 def _mapping(value: object, label: str) -> Mapping[str, object]:

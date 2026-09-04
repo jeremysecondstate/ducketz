@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.services.schwab import SchwabSession
+from app.services.schwab import SchwabOrderSubmissionContext, SchwabSession
 from app.services.schwab_stock_orders import (
     build_schwab_stock_order_payload,
     build_schwab_stock_replacement_payload,
@@ -202,8 +202,11 @@ def test_schwab_session_replace_order_uses_put_and_returns_new_location(
         return Response()
 
     session = object.__new__(SchwabSession)
-    monkeypatch.setattr(session, "_get_account_hash", lambda: "hash")
-    monkeypatch.setattr(session, "_headers", lambda: {"Authorization": "Bearer test"})
+    monkeypatch.setattr(
+        session,
+        "_account_request_context",
+        lambda: ("hash", {"Authorization": "Bearer test"}),
+    )
     monkeypatch.setattr("app.services.schwab.requests.put", put)
     payload = {"orderType": "LIMIT"}
 
@@ -220,6 +223,40 @@ def test_schwab_session_replace_order_uses_put_and_returns_new_location(
         "timeout": 10,
         "raised": True,
     }
+
+
+def test_prepared_order_runs_safety_callback_immediately_before_post(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[str] = []
+
+    class Response:
+        headers = {"Location": "/orders/1"}
+
+        @staticmethod
+        def raise_for_status() -> None:
+            return None
+
+    def post(*_args, **_kwargs) -> Response:
+        events.append("post")
+        return Response()
+
+    monkeypatch.setattr("app.services.schwab.requests.post", post)
+    session = object.__new__(SchwabSession)
+    context = SchwabOrderSubmissionContext(
+        account_hash="account-hash",
+        access_token="access-token",
+        identity_fingerprint="identity-fingerprint",
+    )
+
+    location = session.submit_prepared_order(
+        {"orderType": "LIMIT"},
+        context,
+        before_post=lambda: events.append("safety"),
+    )
+
+    assert location == "/orders/1"
+    assert events == ["safety", "post"]
 
 
 class _Value:

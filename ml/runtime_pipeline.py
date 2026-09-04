@@ -67,7 +67,11 @@ from ml.parquet_contracts import (
     sample_schema,
     write_parquet_with_schema,
 )
-from ml.rolling_materialization import RollingMaterialization, materialize_rolling_samples
+from ml.rolling_materialization import (
+    RollingMaterialization,
+    RouteMaterialization,
+    materialize_rolling_samples,
+)
 from ml.sequence_encoder.consumer import (
     safe_load_sequence_distributions,
     sequence_source_files,
@@ -405,17 +409,18 @@ def _run_loop_b_once(
             assumed_round_trip_cost=runtime.assumed_round_trip_cost,
             verified_bundles=verified_weekly_bundles,
         )
-        prior_predictions = pd.concat(
-            [prior_predictions, verified_weekly_predictions],
-            ignore_index=True,
-            sort=False,
-        ).drop_duplicates(
-            [
+        prior_predictions = _drop_duplicate_target_routes(
+            pd.concat(
+                [prior_predictions, verified_weekly_predictions],
+                ignore_index=True,
+                sort=False,
+            ),
+            key_columns=(
                 "symbol",
                 "horizon",
                 "decision_timestamp",
                 "prediction_created_at",
-            ],
+            ),
             keep="last",
         ).reset_index(drop=True)
 
@@ -610,6 +615,22 @@ def _run_loop_b_once(
     # never re-published at or beyond its target-window end.
     evaluated_at = utc_timestamp(clock())
     publication_checked_at = utc_timestamp(clock())
+    (
+        current_run_predictions,
+        fresh_live_predictions,
+        expired_fresh_live_rows,
+    ) = _prune_expired_fresh_live_predictions(
+        current_run_predictions,
+        fresh_live_predictions,
+        publication_checked_at=publication_checked_at,
+    )
+    if expired_fresh_live_rows:
+        _report(
+            reporter,
+            "[Loop B] Excluded "
+            f"{expired_fresh_live_rows} fresh LIVE prediction(s) whose "
+            "actionability deadline passed before publication",
+        )
     live_deadlines = pd.to_datetime(
         fresh_live_predictions["actionable_until"],
         utc=True,
@@ -728,8 +749,14 @@ def _run_loop_b_once(
         sort=False,
     )
     if not evaluation_predictions.empty:
-        evaluation_predictions = evaluation_predictions.drop_duplicates(
-            ["symbol", "horizon", "decision_timestamp", "prediction_created_at"],
+        evaluation_predictions = _drop_duplicate_target_routes(
+            evaluation_predictions,
+            key_columns=(
+                "symbol",
+                "horizon",
+                "decision_timestamp",
+                "prediction_created_at",
+            ),
             keep="last",
         )
     evaluations = _evaluation_frame(
@@ -771,7 +798,7 @@ def _run_loop_b_once(
 
     sequence_routes = current_run_predictions.loc[
         current_run_predictions["prediction_mode"].eq("LIVE"),
-        ["symbol", "horizon", "decision_timestamp"],
+        ["symbol", "horizon", "decision_timestamp", "target_window_start"],
     ].drop_duplicates()
     sequence_shadow = safe_load_sequence_distributions(
         root,
@@ -818,6 +845,7 @@ def _run_loop_b_once(
         "total_prediction_rows": len(predictions),
         "backtest_prediction_rows": backtest_prediction_rows,
         "fresh_live_rows": fresh_live_prediction_rows,
+        "expired_fresh_live_rows_pruned": expired_fresh_live_rows,
         "carried_active_live_rows": carried_active_live_prediction_rows,
         "retained_frozen_weekly_live_rows": (
             retained_weekly_live_prediction_rows
@@ -2473,6 +2501,70 @@ def _strategy_output_frame(
     return _project(identified, names)
 
 
+def _frame_with_target_aware_id(
+    frame: pd.DataFrame,
+    *,
+    key_columns: Sequence[str],
+) -> pd.DataFrame:
+    """Keep legacy IDs outside 1h while disambiguating fanned-out 1h targets."""
+
+    if frame.empty or "target_window_start" not in frame.columns:
+        return frame_with_readable_id(frame, key_columns=key_columns)
+    base_keys = list(key_columns)
+    target_keys = list(base_keys)
+    location = (
+        target_keys.index("decision_timestamp") + 1
+        if "decision_timestamp" in target_keys
+        else len(target_keys)
+    )
+    target_keys.insert(location, "target_window_start")
+    one_hour = frame["horizon"].astype("string").eq("1h")
+    parts = []
+    if (~one_hour).any():
+        parts.append(
+            frame_with_readable_id(
+                frame.loc[~one_hour],
+                key_columns=base_keys,
+            )
+        )
+    if one_hour.any():
+        parts.append(
+            frame_with_readable_id(
+                frame.loc[one_hour],
+                key_columns=target_keys,
+            )
+        )
+    return pd.concat(parts, axis=0).sort_index(kind="mergesort")
+
+
+def _drop_duplicate_target_routes(
+    frame: pd.DataFrame,
+    *,
+    key_columns: Sequence[str],
+    keep: str,
+) -> pd.DataFrame:
+    """Deduplicate 1h at target grain and retain legacy grain elsewhere."""
+
+    if frame.empty or "target_window_start" not in frame.columns:
+        return frame.drop_duplicates(list(key_columns), keep=keep)
+    base_keys = list(key_columns)
+    target_keys = list(base_keys)
+    location = (
+        target_keys.index("decision_timestamp") + 1
+        if "decision_timestamp" in target_keys
+        else len(target_keys)
+    )
+    target_keys.insert(location, "target_window_start")
+    one_hour = frame["horizon"].astype("string").eq("1h").fillna(False)
+    return pd.concat(
+        [
+            frame.loc[one_hour].drop_duplicates(target_keys, keep=keep),
+            frame.loc[~one_hour].drop_duplicates(base_keys, keep=keep),
+        ],
+        axis=0,
+    ).sort_index(kind="mergesort")
+
+
 def _live_candidates(
     samples: pd.DataFrame,
     *,
@@ -2492,14 +2584,33 @@ def _live_candidates(
     ].copy()
     if candidates.empty or not latest_per_symbol:
         return candidates
-    return (
-        candidates.sort_values(
+    one_hour = candidates["horizon"].astype("string").eq("1h").fillna(False)
+    one_hour_candidates = (
+        candidates.loc[one_hour]
+        .sort_values(
+            [
+                "symbol",
+                "target_window_start",
+                "information_available_at",
+                "decision_timestamp",
+            ],
+            ascending=[True, True, False, False],
+            kind="mergesort",
+        )
+        .groupby("symbol", sort=False, as_index=False)
+        .head(1)
+    )
+    legacy_candidates = (
+        candidates.loc[~one_hour]
+        .sort_values(
             ["symbol", "information_available_at", "decision_timestamp"],
             kind="mergesort",
         )
         .groupby("symbol", sort=False, as_index=False)
         .tail(1)
-        .reset_index(drop=True)
+    )
+    return pd.concat(
+        [one_hour_candidates, legacy_candidates], ignore_index=True, sort=False
     )
 
 
@@ -2541,7 +2652,7 @@ def _prediction_frame(
     output["prediction_status"] = "CREATED"
     output["raw_probability"] = raw
     output["calibrated_probability"] = calibrated
-    return frame_with_readable_id(
+    return _frame_with_target_aware_id(
         output,
         key_columns=(
             "symbol",
@@ -2550,6 +2661,55 @@ def _prediction_frame(
             "prediction_created_at",
         ),
     )
+
+
+def _prune_expired_fresh_live_predictions(
+    current_run_predictions: pd.DataFrame,
+    fresh_live_predictions: pd.DataFrame,
+    *,
+    publication_checked_at: pd.Timestamp,
+) -> tuple[pd.DataFrame, pd.DataFrame, int]:
+    """Drop individually expired fresh LIVE rows before publication.
+
+    Model scoring can straddle a target boundary.  A near target that expires
+    while the remaining horizons are being scored must not veto a later target,
+    but it must never reach a published generation either.  The atomic
+    promotion guard still protects every retained row from a boundary crossed
+    after this pruning point.
+    """
+
+    if fresh_live_predictions.empty:
+        return current_run_predictions, fresh_live_predictions, 0
+
+    deadlines = pd.to_datetime(
+        fresh_live_predictions["actionable_until"],
+        utc=True,
+        errors="coerce",
+    )
+    if deadlines.isna().any():
+        raise RuntimeError(
+            "Loop B fresh LIVE predictions contain an invalid actionability "
+            "deadline; the prior current files remain unchanged."
+        )
+
+    publishable = deadlines.gt(utc_timestamp(publication_checked_at))
+    expired = fresh_live_predictions.loc[~publishable]
+    if expired.empty:
+        return current_run_predictions, fresh_live_predictions, 0
+    if expired["id"].isna().any():
+        raise RuntimeError(
+            "Loop B expired fresh LIVE predictions contain a missing ID; "
+            "the prior current files remain unchanged."
+        )
+
+    expired_ids = frozenset(expired["id"].astype(str))
+    current_ids = current_run_predictions["id"].astype("string")
+    current_live = current_run_predictions["prediction_mode"].eq("LIVE")
+    retained_current = current_run_predictions.loc[
+        ~(current_live & current_ids.isin(expired_ids))
+    ].reset_index(drop=True)
+    retained_fresh = fresh_live_predictions.loc[publishable].reset_index(drop=True)
+    return retained_current, retained_fresh, len(expired)
 
 
 def _load_verified_weekly_prediction_runs(
@@ -2723,8 +2883,14 @@ def _load_prior_live_predictions(
     if not frames:
         return empty_frame(PREDICTION_SCHEMA)
     combined = pd.concat(frames, ignore_index=True, sort=False)
-    return combined.drop_duplicates(
-        ["symbol", "horizon", "decision_timestamp", "prediction_created_at"],
+    return _drop_duplicate_target_routes(
+        combined,
+        key_columns=(
+            "symbol",
+            "horizon",
+            "decision_timestamp",
+            "prediction_created_at",
+        ),
         keep="last",
     ).reset_index(drop=True)
 
@@ -2863,7 +3029,7 @@ def _load_verified_active_prior_ordinary_forecasts(
     candidates["decision_timestamp"] = pd.to_datetime(
         candidates["decision_timestamp"], utc=True, errors="coerce"
     )
-    candidates = (
+    candidates = _drop_duplicate_target_routes(
         candidates.sort_values(
             [
                 "symbol",
@@ -2875,11 +3041,10 @@ def _load_verified_active_prior_ordinary_forecasts(
                 "_source_run",
             ],
             kind="mergesort",
-        )
-        .groupby(["symbol", "horizon"], sort=False, as_index=False)
-        .tail(1)
-        .reset_index(drop=True)
-    )
+        ),
+        key_columns=("symbol", "horizon"),
+        keep="last",
+    ).reset_index(drop=True)
 
     current_valid = _valid_archived_live_rows(
         current_predictions,
@@ -2905,19 +3070,23 @@ def _load_verified_active_prior_ordinary_forecasts(
             utc=True,
             errors="coerce",
         )
-        latest_current = (
-            current_compatible.groupby(["symbol", "horizon"])[
-                "prediction_created_at"
-            ]
-            .max()
-            .to_dict()
-        )
+
+        def route_key(row: Mapping[str, object]) -> tuple[object, ...]:
+            base = (row["symbol"], row["horizon"])
+            if str(row["horizon"]).strip().lower() != "1h":
+                return base
+            return (*base, utc_timestamp(row["target_window_start"]))
+
+        latest_current: dict[tuple[object, ...], pd.Timestamp] = {}
+        for _, row in current_compatible.iterrows():
+            key = route_key(row)
+            created = pd.Timestamp(row["prediction_created_at"])
+            observed = latest_current.get(key)
+            if observed is None or created > observed:
+                latest_current[key] = created
 
         def current_is_not_newer(row: pd.Series) -> bool:
-            latest = latest_current.get(
-                (row["symbol"], row["horizon"]),
-                pd.NaT,
-            )
+            latest = latest_current.get(route_key(row), pd.NaT)
             return pd.isna(latest) or latest <= row["prediction_created_at"]
 
         candidates = candidates.loc[
@@ -3228,9 +3397,11 @@ def _evaluation_frame(
                 frame[column] = pd.NA
     if "model_version" not in predictions:
         predictions["model_version"] = pd.NA
-    natural = ["symbol", "horizon", "decision_timestamp"]
+    source_natural = ["symbol", "horizon", "decision_timestamp"]
+    target_route_key = "__one_hour_target_window_start"
+    natural = [*source_natural, target_route_key]
     label_columns = [
-        *natural,
+        *source_natural,
         "label_status",
         "target_window_start",
         "target_window_end",
@@ -3241,12 +3412,34 @@ def _evaluation_frame(
         "forward_raw_return",
         "forward_cost_adjusted_return",
     ]
+    labels = samples.loc[:, label_columns].copy()
+    prediction_rows = predictions.drop(columns=["id"]).copy()
+    for frame in (prediction_rows, labels):
+        for column in ("decision_timestamp", "target_window_start"):
+            frame[column] = pd.to_datetime(
+                frame[column],
+                utc=True,
+                errors="coerce",
+            )
+        frame[target_route_key] = frame["target_window_start"].where(
+            frame["horizon"].astype("string").eq("1h"),
+            pd.NaT,
+        )
+    if (
+        prediction_rows["decision_timestamp"].isna().any()
+        or labels["decision_timestamp"].isna().any()
+    ):
+        raise ValueError(
+            "Predictions and labels require valid UTC decision timestamps"
+        )
+    source_presence = labels.loc[:, source_natural].drop_duplicates().copy()
+    source_presence["__source_sample_present"] = True
+    labels["observed_target_window_start"] = labels["target_window_start"]
     labels = (
-        samples.loc[:, label_columns]
+        labels.drop(columns="target_window_start")
         .drop_duplicates(natural, keep="last")
         .rename(
             columns={
-                "target_window_start": "observed_target_window_start",
                 "target_window_end": "observed_target_window_end",
                 "assumed_round_trip_cost": "observed_round_trip_cost",
                 "target_definition_version": (
@@ -3256,34 +3449,29 @@ def _evaluation_frame(
             }
         )
     )
-    prediction_rows = predictions.drop(columns=["id"]).copy()
-    prediction_rows["decision_timestamp"] = pd.to_datetime(
-        prediction_rows["decision_timestamp"],
-        utc=True,
-        errors="coerce",
+    prediction_rows = prediction_rows.merge(
+        source_presence,
+        on=source_natural,
+        how="left",
+        validate="many_to_one",
     )
-    labels["decision_timestamp"] = pd.to_datetime(
-        labels["decision_timestamp"],
-        utc=True,
-        errors="coerce",
-    )
-    if (
-        prediction_rows["decision_timestamp"].isna().any()
-        or labels["decision_timestamp"].isna().any()
-    ):
-        raise ValueError(
-            "Predictions and labels require valid UTC decision timestamps"
-        )
     merged = prediction_rows.merge(
         labels,
         on=natural,
         how="left",
         validate="many_to_one",
     )
+    merged = merged.drop(columns=target_route_key)
+    source_sample_present = merged.pop("__source_sample_present").fillna(False)
+    exact_target_present = merged["observed_target_window_start"].notna()
     observed = pd.to_numeric(
         merged["target_cost_adjusted_positive"], errors="coerce"
     )
-    matured = merged["label_status"].eq("COMPLETE") & observed.notna()
+    matured = (
+        exact_target_present
+        & merged["label_status"].eq("COMPLETE")
+        & observed.notna()
+    )
     predicted_start = pd.to_datetime(
         merged["target_window_start"],
         utc=True,
@@ -3433,6 +3621,7 @@ def _evaluation_frame(
     output["evaluation_status"] = np.select(
         (
             ~prediction_valid,
+            source_sample_present & ~exact_target_present,
             ~matured,
             matured & ~contract_matches,
             matured & contract_matches & ~window_matches,
@@ -3447,6 +3636,7 @@ def _evaluation_frame(
         ),
         (
             "INVALID_PREDICTION",
+            "TARGET_WINDOW_MISMATCH",
             "PENDING",
             "TARGET_CONTRACT_MISMATCH",
             "TARGET_WINDOW_MISMATCH",
@@ -3469,7 +3659,7 @@ def _evaluation_frame(
     output["prediction_correct_0_5"] = (
         calibrated.ge(0.5).eq(observed.eq(1))
     ).where(scoreable)
-    output = frame_with_readable_id(
+    output = _frame_with_target_aware_id(
         output,
         key_columns=(
             "symbol",
@@ -3770,14 +3960,11 @@ def _canonical_live_evaluations(evaluations: pd.DataFrame) -> pd.DataFrame:
         utc=True,
         errors="coerce",
     )
-    return (
-        live.sort_values("prediction_created_at", kind="mergesort")
-        .drop_duplicates(
-            ["symbol", "horizon", "decision_timestamp"],
-            keep="first",
-        )
-        .reset_index(drop=True)
-    )
+    return _drop_duplicate_target_routes(
+        live.sort_values("prediction_created_at", kind="mergesort"),
+        key_columns=("symbol", "horizon", "decision_timestamp"),
+        keep="first",
+    ).reset_index(drop=True)
 
 
 def _calibration_gap_or_none(evaluated: pd.DataFrame) -> float | None:
@@ -3836,7 +4023,87 @@ def _intelligence_frame(
     carried_ids = set(
         carried_frame["id"].dropna().astype(str)
     )
+    route_inputs: list[tuple[RouteMaterialization, pd.Series | None]] = []
     for route in materialization.routes:
+        if route.horizon == "1h":
+            route_live = predictions.loc[
+                predictions["symbol"].eq(route.symbol)
+                & predictions["horizon"].eq(route.horizon)
+                & predictions["prediction_mode"].eq("LIVE")
+            ].copy()
+            if not route_live.empty:
+                for column in (
+                    "target_window_start",
+                    "target_window_end",
+                    "information_available_at",
+                    "decision_timestamp",
+                    "prediction_created_at",
+                ):
+                    route_live[column] = pd.to_datetime(
+                        route_live[column], utc=True, errors="coerce"
+                    )
+                route_live = _drop_duplicate_target_routes(
+                    route_live.sort_values(
+                        [
+                            "symbol",
+                            "horizon",
+                            "target_window_start",
+                            "information_available_at",
+                            "decision_timestamp",
+                            "prediction_created_at",
+                        ],
+                        kind="mergesort",
+                    ),
+                    key_columns=("symbol", "horizon"),
+                    keep="last",
+                ).sort_values("target_window_start", kind="mergesort")
+                future = route_live.loc[
+                    route_live["target_window_start"].gt(created_at)
+                ]
+                active = route_live.loc[
+                    route_live["target_window_start"].le(created_at)
+                    & route_live["target_window_end"].gt(created_at)
+                ]
+                if not future.empty:
+                    prediction = future.sort_values(
+                        [
+                            "target_window_start",
+                            "information_available_at",
+                            "decision_timestamp",
+                            "prediction_created_at",
+                        ],
+                        ascending=[True, False, False, False],
+                        kind="mergesort",
+                    ).iloc[0]
+                elif not active.empty:
+                    prediction = active.sort_values(
+                        [
+                            "target_window_start",
+                            "information_available_at",
+                            "decision_timestamp",
+                            "prediction_created_at",
+                        ],
+                        ascending=[False, False, False, False],
+                        kind="mergesort",
+                    ).iloc[0]
+                else:
+                    prediction = route_live.sort_values(
+                        [
+                            "target_window_start",
+                            "information_available_at",
+                            "decision_timestamp",
+                            "prediction_created_at",
+                        ],
+                        ascending=[False, False, False, False],
+                        kind="mergesort",
+                    ).iloc[0]
+                route_inputs.append(
+                    (route, prediction)
+                )
+                continue
+        route_inputs.append((route, None))
+
+    for route, forced_prediction in route_inputs:
         symbol = route.symbol
         horizon = route.horizon
         route_samples = samples.loc[
@@ -3847,8 +4114,25 @@ def _intelligence_frame(
             & predictions["horizon"].eq(horizon)
             & predictions["prediction_mode"].eq("LIVE")
         ].sort_values("prediction_created_at")
-        prediction = live.iloc[-1] if not live.empty else None
-        sample = route_samples.iloc[-1] if not route_samples.empty else None
+        prediction = (
+            forced_prediction
+            if forced_prediction is not None
+            else (live.iloc[-1] if not live.empty else None)
+        )
+        target_samples = route_samples
+        if prediction is not None and horizon == "1h" and not route_samples.empty:
+            prediction_target_start = utc_timestamp(
+                prediction["target_window_start"]
+            )
+            sample_target_starts = pd.to_datetime(
+                route_samples["target_window_start"], utc=True, errors="coerce"
+            )
+            matching_target_samples = route_samples.loc[
+                sample_target_starts.eq(prediction_target_start)
+            ]
+            if not matching_target_samples.empty:
+                target_samples = matching_target_samples
+        sample = target_samples.iloc[-1] if not target_samples.empty else None
         decision_timestamp = (
             prediction["decision_timestamp"]
             if prediction is not None

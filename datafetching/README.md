@@ -201,13 +201,21 @@ Each cycle:
    calculation advisories and, unless `--once` was used, waits for the next
    interval.
 
-Only hard failures mark a Loop A generation `FAILED`. Optional project-local
-feature quality skips are stored under `diagnostics`, leave fetched provider
-rows intact, and do not block Loop B from validating the available inputs.
+Only failures in required Loop A lanes mark a generation `FAILED`. Recurring
+Schwab equity quote/liquidity capture is best-effort enrichment: its failures
+remain persisted and reported as optional capture failures, but do not suppress
+an otherwise valid Databento-backed directional generation. The stock trader
+still performs its own current Schwab account, orders, and quote capture and
+fails closed before any order when that broker state is unavailable. Optional
+project-local feature quality skips are stored under `diagnostics`, leave
+fetched provider rows intact, and do not block Loop B from validating the
+available inputs.
 
 The supervisor creates `.ducketz-orchestration.lock` in the datastore so two
 Loop A processes cannot write the same files. `Ctrl+C` exits the loop and removes
-the lock.
+the lock. A later supervisor may replace the lock only when its recorded PID is
+positively confirmed dead; live, missing, malformed, or unqueryable ownership
+remains fail-closed.
 
 Provider endpoints that only accept one symbol remain isolated: FMP statements
 and filings, optional/manual Schwab price history and option chains, and SEC

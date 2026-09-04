@@ -196,7 +196,8 @@ def run_strategy_once(
     sequence_shadow = safe_load_sequence_distributions(
         root,
         routes=candidates.loc[
-            :, ["symbol", "horizon", "decision_timestamp"]
+            :,
+            ["symbol", "horizon", "decision_timestamp", "target_window_start"],
         ].drop_duplicates(),
         consumer="OPTIONS_STRATEGY",
         as_of=created,

@@ -118,6 +118,47 @@ _EXPECTED_STRATEGIES = {
 }
 
 
+def test_canonical_live_predictions_choose_future_one_hour_target_only() -> None:
+    decision = pd.Timestamp("2026-09-03T13:05:00Z")
+    created = pd.to_datetime(
+        [
+            "2026-09-03T13:06:00Z",
+            "2026-09-03T13:07:00Z",
+            "2026-09-03T13:08:00Z",
+            "2026-09-03T13:09:00Z",
+        ],
+        utc=True,
+    )
+    predictions = pd.DataFrame(
+        {
+            "route": ["1h-0930", "1h-1000", "4h-first", "4h-duplicate"],
+            "symbol": ["AAPL"] * 4,
+            "horizon": ["1h", "1h", "4h", "4h"],
+            "decision_timestamp": [decision] * 4,
+            "information_available_at": [decision] * 4,
+            "target_window_start": pd.to_datetime(
+                [
+                    "2026-09-03T13:30:00Z",
+                    "2026-09-03T14:00:00Z",
+                    "2026-09-03T14:00:00Z",
+                    "2026-09-03T15:00:00Z",
+                ],
+                utc=True,
+            ),
+            "prediction_created_at": created,
+            "prediction_mode": ["LIVE"] * 4,
+            "prediction_status": ["PREDICTED"] * 4,
+        }
+    )
+
+    canonical = strategy_runtime._canonical_live_predictions(
+        predictions,
+        as_of="2026-09-03T13:36:00Z",
+    )
+
+    assert canonical["route"].tolist() == ["1h-1000", "4h-first"]
+
+
 def test_pricing_model_exclusions_publish_reconciled_primary_reasons() -> None:
     frame = pd.DataFrame(
         {

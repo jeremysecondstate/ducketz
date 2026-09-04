@@ -433,7 +433,7 @@ def test_four_hour_contract_change_does_not_invalidate_one_hour_model(
         )
     )
     assert one_hour_manifest["target_definition"]["version"] == (
-        "next-60-eligible-equity-minutes-open-close-v4"
+        "next-60-eligible-equity-minutes-open-close-v6"
     )
     assert one_hour_manifest["target_definition"][
         "horizon_specification"

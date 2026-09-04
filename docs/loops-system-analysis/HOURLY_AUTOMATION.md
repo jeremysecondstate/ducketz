@@ -75,6 +75,14 @@ Standing Codex forced-update recovery authorization:
   AppModel events must bind destruction to that exact old package and container
   creation/process launch to that exact new package. Any nearby reboot,
   shutdown, or logoff evidence rejects the signature.
+- Only after that exact all-eight signature is proven, a receipt-verified
+  Pricing target or complete Options snapshot set may remain behind the
+  monitor's expected target when the expected target occurs after the update
+  event and every retained target is at or before the event. This is a narrow
+  outage-freshness exception for restarting dead producers, not permission to
+  accept missing, malformed, future, checksum-invalid, incomplete-coverage, or
+  zero-row predictive authority. All integrity and zero-order gates remain
+  blocking.
 - Before mutation, the guardian must acquire its recovery mutex and then the
   bounded shared runtime-lock maintenance gate. Gate contention consumes
   nothing and is retryable on a later wake. While holding that gate, it must
@@ -100,11 +108,11 @@ Standing Codex forced-update recovery authorization:
   remain pending without another restart; keep `orders_placed=0` throughout.
 
 Deployment cadence contract: Directional Loop B's canonical owner runs every
-30 minutes at UTC-clock phase `:05`/`:35`, permits exactly one retry only for a
+30 minutes at UTC-clock phase `:06`/`:36`, permits exactly one retry only for a
 classified transient failure after 60 seconds, and performs an immediate
 startup cycle only when its verified authority age reaches 35 minutes. Its
 freshness clock is the receipt's `promoted_at`: WARN after 35 minutes and FAIL
-after 45. The `:35` cycle may legitimately still be computing at this task's
+after 45. The `:36` cycle may legitimately still be computing at this task's
 `:42` wake; the prior receipt remains authoritative meanwhile. Do not restart,
 duplicate, or classify B as stale merely because that scheduled cycle is in
 flight—use the canonical process/lock/log evidence and the monitor's

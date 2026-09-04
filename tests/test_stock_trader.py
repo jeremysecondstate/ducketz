@@ -7,8 +7,9 @@ from types import SimpleNamespace
 
 import pandas as pd
 import pytest
+import requests
 
-from ml.stock_trader import audit, daily_adaptation, handoff, inputs
+from ml.stock_trader import audit, daily_adaptation, handoff, inputs, publication
 from ml.stock_trader import runtime
 from ml.stock_trader.audit import _pair_decision_with_reality
 from ml.stock_trader.contracts import (
@@ -44,7 +45,7 @@ from ml.stock_trader.state import capture_portfolio_state
 from ml.stock_trader.training import fit_enrichment_model_payload
 
 
-NOW = "2026-08-31T16:00:00+00:00"
+NOW = "2026-08-31T16:30:00+00:00"
 
 
 @dataclass
@@ -79,6 +80,17 @@ class FakeSchwab:
         self.order_calls = 0
         self.quote_calls = 0
         self.submitted: list[dict[str, object]] = []
+        self.identity_fingerprint = "fake-broker-identity"
+
+    def prepare_read_snapshot(self) -> str:
+        return self.identity_fingerprint
+
+    def verify_read_snapshot(self, expected_identity_fingerprint: str) -> None:
+        if expected_identity_fingerprint != self.identity_fingerprint:
+            error = RuntimeError("broker identity changed during snapshot")
+            error.schwab_retry_safe = True
+            error.stock_trader_operation = "account_identity"
+            raise error
 
     def get_account(self) -> dict[str, object]:
         self.account_calls += 1
@@ -133,6 +145,19 @@ class FakeSchwab:
     def submit_order(self, order_payload: dict[str, object]) -> str:
         self.submitted.append(order_payload)
         return f"https://api.schwabapi.com/trader/v1/accounts/hidden/orders/{len(self.submitted)}"
+
+    def prepare_order_submission(self) -> object:
+        return SimpleNamespace(identity_fingerprint=self.identity_fingerprint)
+
+    def submit_prepared_order(
+        self,
+        order_payload: dict[str, object],
+        _context: object,
+        *,
+        before_post,
+    ) -> str:
+        before_post()
+        return self.submit_order(order_payload)
 
 
 class NeverCalledSchwab(FakeSchwab):
@@ -197,6 +222,27 @@ def test_state_capture_reads_each_shared_input_once_and_sizes_cash(tmp_path: Pat
     assert state.held_shares["AAPL"] == 10.0
     assert state.symbol_exposure["AAPL"] == 1_000.0
     assert set(state.quotes) == set(STOCK_TRADER_SYMBOLS)
+
+
+def test_parallel_state_capture_prioritizes_nonretryable_sibling_failure() -> None:
+    class MixedFailureSchwab(FakeSchwab):
+        def get_account(self) -> dict[str, object]:
+            raise requests.ReadTimeout("account read timed out")
+
+        def get_open_orders(self) -> list[object]:
+            error = requests.ReadTimeout("ambiguous authentication timeout")
+            error.schwab_retry_safe = False
+            error.stock_trader_operation = "authentication"
+            raise error
+
+    with pytest.raises(requests.ReadTimeout) as failure:
+        capture_portfolio_state(
+            MixedFailureSchwab(), observed_at=NOW, parallel=True
+        )
+
+    assert str(failure.value) == "ambiguous authentication timeout"
+    assert getattr(failure.value, "schwab_retry_safe") is False
+    assert getattr(failure.value, "stock_trader_operation") == "authentication"
 
 
 def test_option_only_working_metadata_gap_does_not_block_stock_state() -> None:
@@ -300,6 +346,16 @@ def test_prediction_loader_uses_only_current_actionable_live_loop_b_rows(
     )
 
     signals, sources = inputs.load_current_prediction_signals(tmp_path, as_of=NOW)
+    one_hour_signals, _ = inputs.load_current_prediction_signals(
+        tmp_path,
+        as_of=NOW,
+        target_horizon="1h",
+    )
+    four_hour_signals, _ = inputs.load_current_prediction_signals(
+        tmp_path,
+        as_of=NOW,
+        target_horizon="4h",
+    )
 
     assert set(signals) == set(STOCK_TRADER_SYMBOLS)
     assert signals["AAPL"].prediction_id == "AAPL-4h"
@@ -313,6 +369,10 @@ def test_prediction_loader_uses_only_current_actionable_live_loop_b_rows(
         "1w": 0.70,
     }
     assert run / "predictions.parquet" in sources
+    assert one_hour_signals["AAPL"].prediction_id == "AAPL-1h"
+    assert one_hour_signals["AAPL"].primary_horizon == "1h"
+    assert four_hour_signals["AAPL"].prediction_id == "AAPL-4h"
+    assert four_hour_signals["AAPL"].primary_horizon == "4h"
 
 
 def test_ml_sizing_produces_buy_sell_and_auditable_order_style() -> None:
@@ -455,6 +515,7 @@ def test_runtime_false_toggle_never_contacts_broker(tmp_path: Path) -> None:
         decided_at=NOW,
         execute=True,
         session=NeverCalledSchwab(),
+        runtime_clock=_FakeClock(NOW),
     )
 
     assert result.status == "TRADER_INACTIVE"
@@ -463,6 +524,16 @@ def test_runtime_false_toggle_never_contacts_broker(tmp_path: Path) -> None:
     assert payload["status"] == "TRADER_INACTIVE"
     assert payload["decisions"] == []
     assert receipt["orders_selected"] == 0
+
+
+def test_runtime_refuses_historical_clock_for_live_execution(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="decided_at cannot be used for live execution"):
+        runtime.run_stock_trader_once(
+            tmp_path,
+            decided_at=NOW,
+            execute=True,
+            session=NeverCalledSchwab(),
+        )
 
 
 def test_runtime_logs_prediction_input_failure_without_contacting_broker(
@@ -480,6 +551,7 @@ def test_runtime_logs_prediction_input_failure_without_contacting_broker(
         decided_at=NOW,
         execute=True,
         session=NeverCalledSchwab(),
+        runtime_clock=_FakeClock(NOW),
     )
 
     assert result.status == "PREDICTION_INPUTS_UNAVAILABLE"
@@ -506,6 +578,7 @@ def test_runtime_prediction_deadline_expiry_never_contacts_broker(
         execute=True,
         session=NeverCalledSchwab(),
         wait_for_prediction=True,
+        runtime_clock=_FakeClock("2026-08-31T16:58:30+00:00"),
     )
 
     assert result.status == "PREDICTION_DEADLINE_EXPIRED"
@@ -537,6 +610,7 @@ def test_false_toggle_during_prediction_wait_stops_before_broker(
         execute=True,
         session=NeverCalledSchwab(),
         wait_for_prediction=True,
+        runtime_clock=_FakeClock("2026-08-31T16:50:00+00:00"),
     )
 
     assert result.status == "TRADER_INACTIVE_AFTER_PREDICTION_WAIT"
@@ -573,10 +647,11 @@ def test_runtime_requires_execute_and_true_toggle_for_submission(
 
     live = runtime.run_stock_trader_once(
         tmp_path,
-        decided_at="2026-08-31T17:00:00+00:00",
+        decided_at="2026-08-31T16:31:00+00:00",
         execute=True,
         session=schwab,
         parallel_state=False,
+        runtime_clock=_FakeClock("2026-08-31T16:31:00+00:00"),
     )
     assert live.status == "ORDERS_SUBMITTED"
     assert live.submitted_orders == live.selected_orders
@@ -596,6 +671,872 @@ def test_runtime_requires_execute_and_true_toggle_for_submission(
         payload["orderLegCollection"][0]["instrument"]["assetType"] == "EQUITY"
         for payload in schwab.submitted
     )
+
+
+def test_runtime_does_not_implicitly_queue_regular_order_during_premarket(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    target = pd.Timestamp("2026-08-31T13:30:00+00:00")
+    monkeypatch.setattr(
+        runtime,
+        "load_current_prediction_signals",
+        lambda *_args, **_kwargs: (
+            _signals_for_target(target, fingerprint="regular-open"),
+            (),
+        ),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "load_current_enrichment_model",
+        lambda *_args, **_kwargs: ConstantModel(allocation_fraction=0.20),
+    )
+    monkeypatch.setattr(runtime, "_model_source_files", lambda *_args: ())
+    schwab = FakeSchwab()
+
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at="2026-08-31T13:20:00+00:00",
+        execute=True,
+        session=schwab,
+        parallel_state=False,
+        runtime_clock=_FakeClock("2026-08-31T13:20:00+00:00"),
+    )
+
+    assert result.status == "NO_ORDERS_SUBMITTED"
+    assert result.submitted_orders == 0
+    assert schwab.submitted == []
+
+
+@pytest.mark.parametrize(
+    ("current_time", "future_target", "checkpoint_session"),
+    (
+        (
+            "2026-08-31T11:30:00+00:00",
+            "2026-09-01T11:30:00+00:00",
+            "PRE",
+        ),
+        (
+            "2026-08-31T16:00:00+00:00",
+            "2026-09-01T16:00:00+00:00",
+            "REGULAR",
+        ),
+        (
+            "2026-08-31T21:30:00+00:00",
+            "2026-09-01T21:30:00+00:00",
+            "POST",
+        ),
+    ),
+)
+def test_runtime_never_submits_future_session_prediction_a_day_early(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    current_time: str,
+    future_target: str,
+    checkpoint_session: str,
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    target = pd.Timestamp(future_target)
+    signals = {
+        symbol: replace(signal, checkpoint_session=checkpoint_session)
+        for symbol, signal in _signals_for_target(
+            target, fingerprint=f"future-{checkpoint_session.lower()}"
+        ).items()
+    }
+    monkeypatch.setattr(
+        runtime,
+        "load_current_prediction_signals",
+        lambda *_args, **_kwargs: (signals, ()),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "load_current_enrichment_model",
+        lambda *_args, **_kwargs: ConstantModel(allocation_fraction=0.20),
+    )
+    monkeypatch.setattr(runtime, "_model_source_files", lambda *_args: ())
+    schwab = FakeSchwab()
+
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at=current_time,
+        execute=True,
+        session=schwab,
+        parallel_state=False,
+        runtime_clock=_FakeClock(current_time),
+    )
+
+    assert result.status in {
+        "NO_MATCHING_ACTIONABLE_PREDICTION",
+        "NO_NEAR_TERM_INTRADAY_TARGET",
+    }
+    assert result.selected_orders == 0
+    assert result.submitted_orders == 0
+    assert schwab.submitted == []
+    assert schwab.account_calls == 0
+
+
+def test_runtime_retries_transient_broker_state_reads_every_three_seconds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    monkeypatch.setattr(
+        runtime,
+        "load_current_prediction_signals",
+        lambda *_args, **_kwargs: (_signals(), ()),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "load_current_enrichment_model",
+        lambda *_args, **_kwargs: ConstantModel(allocation_fraction=0.20),
+    )
+    monkeypatch.setattr(runtime, "_model_source_files", lambda *_args: ())
+    clock = _RetryClock()
+
+    class FlakySchwab(FakeSchwab):
+        def get_account(self) -> dict[str, object]:
+            if self.account_calls < 2:
+                self.account_calls += 1
+                raise requests.ReadTimeout("Schwab account read timed out")
+            return super().get_account()
+
+    schwab = FlakySchwab()
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at=NOW,
+        execute=True,
+        session=schwab,
+        parallel_state=True,
+        broker_state_retry_sleep=clock.sleep,
+        broker_state_retry_clock=clock,
+        runtime_clock=lambda: pd.Timestamp(NOW)
+        + pd.Timedelta(seconds=clock.value),
+    )
+
+    assert result.status == "ORDERS_SUBMITTED"
+    assert schwab.account_calls == 3
+    assert schwab.order_calls == 3
+    assert schwab.quote_calls == 3
+    assert clock.sleeps == [3.0, 3.0]
+    assert result.broker_state_capture == {
+        "schema_version": "stock-trader-broker-state-capture-v1",
+        "status": "CURRENT_AFTER_RETRY",
+        "attempts": 3,
+        "transient_failures": 2,
+        "retry_delay_seconds": 3.0,
+        "retry_wait_seconds": 6.0,
+        "maximum_retry_seconds": 120.0,
+        "elapsed_seconds": 6.0,
+        "last_error_type": "ReadTimeout",
+        "last_error_operation": "account",
+    }
+    payload, receipt = read_decision_run(tmp_path, result.run_directory)
+    assert payload["broker_state_capture"] == result.broker_state_capture
+    assert receipt["broker_state_capture"] == result.broker_state_capture
+
+
+def test_runtime_retries_whole_snapshot_when_broker_identity_changes_mid_capture(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    monkeypatch.setattr(
+        runtime,
+        "load_current_prediction_signals",
+        lambda *_args, **_kwargs: (_signals(), ()),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "load_current_enrichment_model",
+        lambda *_args, **_kwargs: ConstantModel(allocation_fraction=0.20),
+    )
+    monkeypatch.setattr(runtime, "_model_source_files", lambda *_args: ())
+    clock = _RetryClock()
+
+    class ReauthorizedDuringSnapshotSchwab(FakeSchwab):
+        def __init__(self) -> None:
+            super().__init__()
+            self.changed = False
+
+        def get_account(self) -> dict[str, object]:
+            payload = super().get_account()
+            if not self.changed:
+                self.changed = True
+                self.identity_fingerprint = "replacement-broker-identity"
+            return payload
+
+    schwab = ReauthorizedDuringSnapshotSchwab()
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at=NOW,
+        execute=True,
+        session=schwab,
+        parallel_state=True,
+        broker_state_retry_sleep=clock.sleep,
+        broker_state_retry_clock=clock,
+        runtime_clock=lambda: pd.Timestamp(NOW)
+        + pd.Timedelta(seconds=clock.value),
+    )
+
+    assert result.status == "ORDERS_SUBMITTED"
+    assert result.broker_state_capture["attempts"] == 2
+    assert result.broker_state_capture["transient_failures"] == 1
+    assert result.broker_state_capture["last_error_operation"] == "account_identity"
+    assert clock.sleeps == [3.0]
+    assert (schwab.account_calls, schwab.order_calls, schwab.quote_calls) == (2, 2, 2)
+
+
+def test_runtime_aborts_if_account_identity_changes_after_snapshot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    monkeypatch.setattr(
+        runtime,
+        "load_current_prediction_signals",
+        lambda *_args, **_kwargs: (_signals(), ()),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "load_current_enrichment_model",
+        lambda *_args, **_kwargs: ConstantModel(allocation_fraction=0.20),
+    )
+    monkeypatch.setattr(runtime, "_model_source_files", lambda *_args: ())
+
+    class ReauthorizedBeforeSubmissionSchwab(FakeSchwab):
+        def __init__(self) -> None:
+            super().__init__()
+            self.post_calls = 0
+
+        def prepare_order_submission(self) -> object:
+            self.identity_fingerprint = "replacement-broker-identity"
+            return super().prepare_order_submission()
+
+        def submit_prepared_order(self, *args, **kwargs) -> str:
+            self.post_calls += 1
+            return super().submit_prepared_order(*args, **kwargs)
+
+    schwab = ReauthorizedBeforeSubmissionSchwab()
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at=NOW,
+        execute=True,
+        session=schwab,
+        parallel_state=False,
+        runtime_clock=_FakeClock(NOW),
+    )
+
+    assert result.status == "SUBMISSION_STOPPED_SAFETY_CHECK"
+    assert result.error == "BROKER_ACCOUNT_IDENTITY_CHANGED_BEFORE_SUBMISSION"
+    assert result.submitted_orders == 0
+    assert schwab.post_calls == 0
+    assert schwab.submitted == []
+    assert not (
+        tmp_path / "stock-trader-execution-reservations.sqlite3"
+    ).exists()
+
+
+def test_runtime_fails_closed_without_broker_identity_binding(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    monkeypatch.setattr(
+        runtime,
+        "load_current_prediction_signals",
+        lambda *_args, **_kwargs: (_signals(), ()),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "load_current_enrichment_model",
+        lambda *_args, **_kwargs: ConstantModel(allocation_fraction=0.20),
+    )
+    monkeypatch.setattr(runtime, "_model_source_files", lambda *_args: ())
+
+    class UnboundBroker(FakeSchwab):
+        def prepare_read_snapshot(self) -> None:
+            return None
+
+    schwab = UnboundBroker()
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at=NOW,
+        execute=True,
+        session=schwab,
+        parallel_state=False,
+        runtime_clock=_FakeClock(NOW),
+    )
+
+    assert result.status == "SUBMISSION_STOPPED_SAFETY_CHECK"
+    assert result.error == "BROKER_IDENTITY_BINDING_UNAVAILABLE"
+    assert result.submitted_orders == 0
+    assert schwab.submitted == []
+
+
+def test_runtime_uses_elapsed_budget_for_fast_transient_broker_failures(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    monkeypatch.setattr(
+        runtime,
+        "load_current_prediction_signals",
+        lambda *_args, **_kwargs: (_signals(), ()),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "load_current_enrichment_model",
+        lambda *_args, **_kwargs: ConstantModel(allocation_fraction=0.20),
+    )
+    monkeypatch.setattr(runtime, "_model_source_files", lambda *_args: ())
+    clock = _RetryClock()
+
+    class FrequentlyUnavailableSchwab(FakeSchwab):
+        def get_account(self) -> dict[str, object]:
+            if self.account_calls < 13:
+                self.account_calls += 1
+                raise requests.ConnectionError("Schwab connection reset")
+            return super().get_account()
+
+    schwab = FrequentlyUnavailableSchwab()
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at=NOW,
+        execute=True,
+        session=schwab,
+        parallel_state=False,
+        broker_state_retry_sleep=clock.sleep,
+        broker_state_retry_clock=clock,
+        runtime_clock=lambda: pd.Timestamp(NOW)
+        + pd.Timedelta(seconds=clock.value),
+    )
+
+    assert result.status == "ORDERS_SUBMITTED"
+    assert schwab.account_calls == 14
+    assert clock.sleeps == [3.0] * 13
+    assert result.broker_state_capture is not None
+    assert result.broker_state_capture["attempts"] == 14
+    assert result.broker_state_capture["elapsed_seconds"] == 39.0
+
+
+def test_runtime_stops_transient_broker_retries_at_bounded_budget(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    monkeypatch.setattr(
+        runtime,
+        "load_current_prediction_signals",
+        lambda *_args, **_kwargs: (_signals(), ()),
+    )
+    monkeypatch.setattr(runtime, "_model_source_files", lambda *_args: ())
+    clock = _RetryClock()
+
+    class UnavailableSchwab(FakeSchwab):
+        def get_account(self) -> dict[str, object]:
+            self.account_calls += 1
+            raise requests.ReadTimeout("Schwab account read timed out")
+
+    schwab = UnavailableSchwab()
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at=NOW,
+        execute=True,
+        session=schwab,
+        parallel_state=False,
+        broker_state_retry_max_seconds=7.0,
+        broker_state_retry_sleep=clock.sleep,
+        broker_state_retry_clock=clock,
+        runtime_clock=lambda: pd.Timestamp(NOW)
+        + pd.Timedelta(seconds=clock.value),
+    )
+
+    assert result.status == "BROKER_STATE_UNAVAILABLE"
+    assert result.selected_orders == 0
+    assert result.submitted_orders == 0
+    assert schwab.submitted == []
+    assert schwab.account_calls == 3
+    assert clock.sleeps == [3.0, 3.0]
+    assert result.broker_state_capture is not None
+    assert result.broker_state_capture["status"] == "UNAVAILABLE_AFTER_RETRIES"
+    assert result.broker_state_capture["attempts"] == 3
+    payload, _receipt = read_decision_run(tmp_path, result.run_directory)
+    assert pd.Timestamp(payload["decided_at"]) == pd.Timestamp(NOW) + pd.Timedelta(
+        seconds=6
+    )
+
+
+def test_runtime_does_not_retry_nontransient_broker_state_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    monkeypatch.setattr(
+        runtime,
+        "load_current_prediction_signals",
+        lambda *_args, **_kwargs: (_signals(), ()),
+    )
+    monkeypatch.setattr(runtime, "_model_source_files", lambda *_args: ())
+    clock = _RetryClock()
+
+    class InvalidSchwab(FakeSchwab):
+        def get_account(self) -> dict[str, object]:
+            self.account_calls += 1
+            raise ValueError("Malformed account response")
+
+    schwab = InvalidSchwab()
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at=NOW,
+        execute=True,
+        session=schwab,
+        parallel_state=False,
+        broker_state_retry_sleep=clock.sleep,
+        broker_state_retry_clock=clock,
+        runtime_clock=lambda: pd.Timestamp(NOW)
+        + pd.Timedelta(seconds=clock.value),
+    )
+
+    assert result.status == "BROKER_STATE_UNAVAILABLE"
+    assert schwab.account_calls == 1
+    assert clock.sleeps == []
+    assert result.broker_state_capture is not None
+    assert result.broker_state_capture["transient_failures"] == 0
+
+
+def test_runtime_never_submits_after_broker_retries_reach_target_boundary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    target = pd.Timestamp("2026-08-31T17:00:00+00:00")
+    waited = _handoff_result(
+        _signals_for_target(target, fingerprint="fresh"),
+        status="FRESH_ACTIONABLE_RECEIPT",
+        completed_at="2026-08-31T16:58:30+00:00",
+    )
+    monkeypatch.setattr(runtime, "wait_for_actionable_prediction", lambda *_a, **_k: waited)
+    monkeypatch.setattr(
+        runtime,
+        "load_current_enrichment_model",
+        lambda *_args, **_kwargs: ConstantModel(allocation_fraction=0.20),
+    )
+    monkeypatch.setattr(runtime, "_model_source_files", lambda *_args: ())
+    clock = _RetryClock()
+
+    class SlowRecoverySchwab(FakeSchwab):
+        def get_account(self) -> dict[str, object]:
+            if self.account_calls == 0:
+                self.account_calls += 1
+                clock.advance(60.0)
+                raise requests.ReadTimeout("Schwab account read timed out")
+            clock.advance(20.0)
+            return super().get_account()
+
+    schwab = SlowRecoverySchwab()
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at="2026-08-31T16:47:00+00:00",
+        execute=True,
+        session=schwab,
+        parallel_state=False,
+        wait_for_prediction=True,
+        broker_state_retry_sleep=clock.sleep,
+        broker_state_retry_clock=clock,
+        runtime_clock=lambda: pd.Timestamp("2026-08-31T16:58:30+00:00")
+        + pd.Timedelta(seconds=clock.value),
+    )
+
+    assert result.status == "PREDICTION_EXECUTION_DEADLINE_PASSED"
+    assert result.selected_orders == 0
+    assert result.submitted_orders == 0
+    assert schwab.submitted == []
+    assert clock.sleeps == [3.0]
+
+
+def test_runtime_rechecks_operator_switch_after_broker_retry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    monkeypatch.setattr(
+        runtime,
+        "load_current_prediction_signals",
+        lambda *_args, **_kwargs: (_signals(), ()),
+    )
+    monkeypatch.setattr(runtime, "_model_source_files", lambda *_args: ())
+    clock = _RetryClock()
+
+    class FlakySchwab(FakeSchwab):
+        def get_account(self) -> dict[str, object]:
+            if self.account_calls == 0:
+                self.account_calls += 1
+                raise requests.ReadTimeout("Schwab account read timed out")
+            return super().get_account()
+
+    def deactivate_during_retry(seconds: float) -> None:
+        clock.sleep(seconds)
+        write_activation_intent(tmp_path, active=False)
+
+    schwab = FlakySchwab()
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at=NOW,
+        execute=True,
+        session=schwab,
+        parallel_state=False,
+        broker_state_retry_sleep=deactivate_during_retry,
+        broker_state_retry_clock=clock,
+        runtime_clock=lambda: pd.Timestamp(NOW)
+        + pd.Timedelta(seconds=clock.value),
+    )
+
+    assert result.status == "TRADER_INACTIVE_AFTER_BROKER_STATE_CAPTURE"
+    assert result.activation_active is False
+    assert result.submitted_orders == 0
+    assert schwab.submitted == []
+
+
+def test_runtime_reports_deactivation_when_broker_retries_exhaust(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    monkeypatch.setattr(
+        runtime,
+        "load_current_prediction_signals",
+        lambda *_args, **_kwargs: (_signals(), ()),
+    )
+    monkeypatch.setattr(runtime, "_model_source_files", lambda *_args: ())
+    clock = _RetryClock()
+
+    class UnavailableSchwab(FakeSchwab):
+        def get_account(self) -> dict[str, object]:
+            self.account_calls += 1
+            raise requests.ReadTimeout("Schwab account read timed out")
+
+    def deactivate_during_retry(seconds: float) -> None:
+        clock.sleep(seconds)
+        write_activation_intent(tmp_path, active=False)
+
+    schwab = UnavailableSchwab()
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at=NOW,
+        execute=True,
+        session=schwab,
+        parallel_state=False,
+        broker_state_retry_max_seconds=3.0,
+        broker_state_retry_sleep=deactivate_during_retry,
+        broker_state_retry_clock=clock,
+        runtime_clock=lambda: pd.Timestamp(NOW)
+        + pd.Timedelta(seconds=clock.value),
+    )
+
+    assert result.status == "TRADER_INACTIVE_DURING_BROKER_STATE_CAPTURE"
+    assert result.activation_active is False
+    assert result.submitted_orders == 0
+    assert schwab.submitted == []
+
+
+def test_runtime_never_retries_ambiguous_order_submission(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    monkeypatch.setattr(
+        runtime,
+        "load_current_prediction_signals",
+        lambda *_args, **_kwargs: (_signals(), ()),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "load_current_enrichment_model",
+        lambda *_args, **_kwargs: ConstantModel(allocation_fraction=0.20),
+    )
+    monkeypatch.setattr(runtime, "_model_source_files", lambda *_args: ())
+
+    class SubmissionTimeoutSchwab(FakeSchwab):
+        def __init__(self) -> None:
+            super().__init__()
+            self.submit_calls = 0
+
+        def submit_order(self, order_payload: dict[str, object]) -> str:
+            self.submit_calls += 1
+            raise requests.ReadTimeout("Ambiguous order submission timeout")
+
+    schwab = SubmissionTimeoutSchwab()
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at=NOW,
+        execute=True,
+        session=schwab,
+        parallel_state=False,
+        runtime_clock=_FakeClock(NOW),
+    )
+
+    assert result.status == "SUBMISSION_STOPPED_AFTER_ERROR"
+    assert schwab.submit_calls == 1
+
+
+def test_runtime_rechecks_actual_clock_after_decision_publication(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    monkeypatch.setattr(
+        runtime,
+        "load_current_prediction_signals",
+        lambda *_args, **_kwargs: (_signals(), ()),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "load_current_enrichment_model",
+        lambda *_args, **_kwargs: ConstantModel(allocation_fraction=0.20),
+    )
+    monkeypatch.setattr(runtime, "_model_source_files", lambda *_args: ())
+    clock = _FakeClock(NOW)
+    original_publish = runtime.publish_decision_run
+
+    def publish_then_reach_target_boundary(*args, **kwargs):
+        publication = original_publish(*args, **kwargs)
+        if args[1]:
+            clock.value = pd.Timestamp("2026-08-31T16:59:50+00:00")
+        return publication
+
+    monkeypatch.setattr(
+        runtime, "publish_decision_run", publish_then_reach_target_boundary
+    )
+    schwab = FakeSchwab()
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at=NOW,
+        execute=True,
+        session=schwab,
+        parallel_state=False,
+        runtime_clock=clock,
+    )
+
+    assert result.status == "SUBMISSION_STOPPED_SAFETY_CHECK"
+    assert result.error == "PREDICTION_TARGET_SAFETY_BOUNDARY_REACHED"
+    assert result.selected_orders > 0
+    assert result.submitted_orders == 0
+    assert schwab.submitted == []
+    events = tmp_path / "ml" / "stock-trader-execution-events"
+    assert not events.exists()
+
+
+def test_runtime_rechecks_safety_after_execution_intent_reservation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    monkeypatch.setattr(
+        runtime,
+        "load_current_prediction_signals",
+        lambda *_args, **_kwargs: (_signals(), ()),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "load_current_enrichment_model",
+        lambda *_args, **_kwargs: ConstantModel(allocation_fraction=0.20),
+    )
+    monkeypatch.setattr(runtime, "_model_source_files", lambda *_args: ())
+    original_reserve = runtime.reserve_execution_intent
+
+    def reserve_then_deactivate(*args, **kwargs):
+        event = original_reserve(*args, **kwargs)
+        write_activation_intent(tmp_path, active=False)
+        return event
+
+    monkeypatch.setattr(runtime, "reserve_execution_intent", reserve_then_deactivate)
+    schwab = FakeSchwab()
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at=NOW,
+        execute=True,
+        session=schwab,
+        parallel_state=False,
+        runtime_clock=_FakeClock(NOW),
+    )
+
+    assert result.status == "SUBMISSION_STOPPED_SAFETY_CHECK"
+    assert result.error == "OPERATOR_INTENT_NOT_ACTIVE_AT_SUBMISSION"
+    assert result.submitted_orders == 0
+    assert schwab.submitted == []
+    result_files = list(
+        (tmp_path / "ml" / "stock-trader-execution-events").glob("*/result.json")
+    )
+    assert len(result_files) == 1
+    reserved_result = json.loads(result_files[0].read_text(encoding="utf-8"))
+    assert reserved_result["status"] == "NOT_SUBMITTED_SAFETY_CHECK"
+
+
+def test_runtime_rechecks_deadline_after_blocking_order_preflight(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    target = pd.Timestamp("2026-08-31T17:00:00+00:00")
+    monkeypatch.setattr(
+        runtime,
+        "load_current_prediction_signals",
+        lambda *_args, **_kwargs: (
+            _signals_for_target(target, fingerprint="preflight-boundary"),
+            (),
+        ),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "load_current_enrichment_model",
+        lambda *_args, **_kwargs: ConstantModel(allocation_fraction=0.20),
+    )
+    monkeypatch.setattr(runtime, "_model_source_files", lambda *_args: ())
+    clock = _FakeClock("2026-08-31T16:59:30+00:00")
+
+    class SlowSubmissionPreflightSchwab(FakeSchwab):
+        def __init__(self) -> None:
+            super().__init__()
+            self.prepared_submissions = 0
+
+        def prepare_order_submission(self) -> object:
+            clock.value += pd.Timedelta(seconds=20)
+            return SimpleNamespace(
+                identity_fingerprint=self.identity_fingerprint
+            )
+
+        def submit_prepared_order(
+            self,
+            _order_payload: dict[str, object],
+            _context: object,
+            *,
+            before_post,
+        ) -> str:
+            before_post()
+            self.prepared_submissions += 1
+            return "/orders/should-not-submit"
+
+    schwab = SlowSubmissionPreflightSchwab()
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at="2026-08-31T16:59:30+00:00",
+        execute=True,
+        session=schwab,
+        parallel_state=False,
+        runtime_clock=clock,
+    )
+
+    assert result.status == "SUBMISSION_STOPPED_SAFETY_CHECK"
+    assert result.error == "PREDICTION_TARGET_SAFETY_BOUNDARY_REACHED"
+    assert result.submitted_orders == 0
+    assert schwab.prepared_submissions == 0
+    assert schwab.submitted == []
+    assert not (tmp_path / "ml" / "stock-trader-execution-events").exists()
+
+
+def test_runtime_rechecks_operator_switch_between_submissions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    monkeypatch.setattr(
+        runtime,
+        "load_current_prediction_signals",
+        lambda *_args, **_kwargs: (_signals(), ()),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "load_current_enrichment_model",
+        lambda *_args, **_kwargs: ConstantModel(allocation_fraction=0.20),
+    )
+    monkeypatch.setattr(runtime, "_model_source_files", lambda *_args: ())
+
+    class DeactivatingSchwab(FakeSchwab):
+        def submit_order(self, order_payload: dict[str, object]) -> str:
+            location = super().submit_order(order_payload)
+            write_activation_intent(tmp_path, active=False)
+            return location
+
+    schwab = DeactivatingSchwab()
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at=NOW,
+        execute=True,
+        session=schwab,
+        parallel_state=False,
+        runtime_clock=_FakeClock(NOW),
+    )
+
+    assert result.status == "SUBMISSION_STOPPED_SAFETY_CHECK"
+    assert result.error == "OPERATOR_INTENT_NOT_ACTIVE_AT_SUBMISSION"
+    assert result.activation_active is False
+    assert result.submitted_orders == 1
+    assert len(schwab.submitted) == 1
+
+
+def test_direct_live_run_does_not_reconsume_prediction_generation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    monkeypatch.setattr(
+        runtime,
+        "load_current_prediction_signals",
+        lambda *_args, **_kwargs: (_signals(), ()),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "load_current_enrichment_model",
+        lambda *_args, **_kwargs: ConstantModel(allocation_fraction=0.20),
+    )
+    monkeypatch.setattr(runtime, "_model_source_files", lambda *_args: ())
+    schwab = FakeSchwab()
+
+    first = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at=NOW,
+        execute=True,
+        session=schwab,
+        parallel_state=False,
+        runtime_clock=_FakeClock(NOW),
+    )
+    broker_reads_after_first = (
+        schwab.account_calls,
+        schwab.order_calls,
+        schwab.quote_calls,
+    )
+    second_time = "2026-08-31T16:31:00+00:00"
+    second = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at=second_time,
+        execute=True,
+        session=schwab,
+        parallel_state=False,
+        runtime_clock=_FakeClock(second_time),
+    )
+
+    assert first.status == "ORDERS_SUBMITTED"
+    assert second.status == "PREDICTION_GENERATION_ALREADY_CONSUMED"
+    assert second.submitted_orders == 0
+    assert (
+        schwab.account_calls,
+        schwab.order_calls,
+        schwab.quote_calls,
+    ) == broker_reads_after_first
+
+
+def test_direct_live_run_rejects_later_same_day_target_before_broker_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    far_target = pd.Timestamp("2026-08-31T20:00:00+00:00")
+    monkeypatch.setattr(
+        runtime,
+        "load_current_prediction_signals",
+        lambda *_args, **_kwargs: (
+            _signals_for_target(far_target, fingerprint="far-target"),
+            (),
+        ),
+    )
+    schwab = FakeSchwab()
+
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at=NOW,
+        execute=True,
+        session=schwab,
+        parallel_state=False,
+        runtime_clock=_FakeClock(NOW),
+    )
+
+    assert result.status == "NO_MATCHING_ACTIONABLE_PREDICTION"
+    assert result.submitted_orders == 0
+    assert schwab.account_calls == 0
+    assert schwab.submitted == []
 
 
 def test_execution_window_labels_open_queue_pre_core_post_and_gaps() -> None:
@@ -627,6 +1568,8 @@ def test_execution_window_labels_open_queue_pre_core_post_and_gaps() -> None:
     assert decision_targets_open(
         "2026-08-31T13:30:00Z", premarket_queue
     ) is False
+    assert decision_targets_open("2026-08-31T13:30:00Z", premarket) is False
+    assert decision_targets_open("2026-08-31T13:30:00Z", queued) is True
     assert (queued.executable, queued.mode, queued.time_in_force) == (
         True,
         "OPEN_QUEUE",
@@ -727,6 +1670,23 @@ def test_next_stock_target_start_includes_hourly_and_four_hour_checkpoints() -> 
     assert next_stock_target_start("2026-08-31T23:17:00+00:00") == pd.Timestamp(
         "2026-08-31T23:30:00+00:00"
     )
+    assert next_stock_target_start(
+        "2026-08-31T13:17:00+00:00", horizon="1h"
+    ) == pd.Timestamp("2026-08-31T13:30:00+00:00")
+    assert next_stock_target_start(
+        "2026-08-31T13:17:00+00:00", horizon="4h"
+    ) == pd.Timestamp("2026-08-31T15:30:00+00:00")
+    assert next_stock_target_start(
+        "2026-08-31T15:05:00+00:00", horizon="1h"
+    ) == pd.Timestamp("2026-08-31T16:00:00+00:00")
+    assert next_stock_target_start(
+        "2026-08-31T12:47:00+00:00", horizon="1h"
+    ) == pd.Timestamp("2026-08-31T13:00:00+00:00")
+    assert next_stock_target_start(
+        "2026-08-31T15:05:00+00:00", horizon="4h"
+    ) == pd.Timestamp("2026-08-31T15:30:00+00:00")
+    with pytest.raises(ValueError, match="expected 1h, 4h"):
+        next_stock_target_start("2026-08-31T15:05:00+00:00", horizon="1d")
     assert checkpoint_session_for_target("2026-08-31T11:30:00+00:00") == "PRE"
     assert checkpoint_session_for_target("2026-08-31T15:30:00+00:00") == (
         "REGULAR"
@@ -740,7 +1700,106 @@ def test_next_stock_target_start_includes_hourly_and_four_hour_checkpoints() -> 
     ) == "EXT"
 
 
-def test_prediction_handoff_waits_for_fresh_receipt_after_keeping_fallback(
+def test_opening_queue_binds_exact_one_hour_target_and_rejects_four_hour_owner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_activation_intent(tmp_path, active=True)
+    observed: dict[str, object] = {}
+
+    def fake_wait(_root: Path, **kwargs):
+        observed.update(kwargs)
+        return replace(
+            _handoff_result(
+                {},
+                status="PREDICTION_DEADLINE_EXPIRED",
+                completed_at="2026-08-31T13:28:30+00:00",
+            ),
+            started_at=pd.Timestamp("2026-08-31T13:20:00+00:00"),
+            expected_target_window_start=pd.Timestamp(
+                "2026-08-31T13:30:00+00:00"
+            ),
+            deadline=pd.Timestamp("2026-08-31T13:28:30+00:00"),
+        )
+
+    monkeypatch.setattr(runtime, "wait_for_actionable_prediction", fake_wait)
+    result = runtime.run_stock_trader_once(
+        tmp_path,
+        decided_at="2026-08-31T13:20:00+00:00",
+        allow_open_queue=True,
+        wait_for_prediction=True,
+        target_horizon="1h",
+    )
+
+    assert result.status == "PREDICTION_DEADLINE_EXPIRED"
+    assert observed["target_horizon"] == "1h"
+    assert observed["expected_target_window_start"] == pd.Timestamp(
+        "2026-08-31T13:30:00Z"
+    )
+
+    with pytest.raises(ValueError, match="Opening queues require"):
+        runtime.run_stock_trader_once(
+            tmp_path,
+            decided_at="2026-08-31T13:20:00+00:00",
+            allow_open_queue=True,
+            wait_for_prediction=True,
+            target_horizon="4h",
+        )
+
+
+def test_stock_trader_cli_accepts_only_explicit_stock_target_horizons(
+    tmp_path: Path,
+) -> None:
+    parsed = runtime._parser().parse_args(
+        ["--root-dir", str(tmp_path), "--target-horizon", "4h"]
+    )
+
+    assert parsed.target_horizon == "4h"
+    with pytest.raises(SystemExit):
+        runtime._parser().parse_args(
+            ["--root-dir", str(tmp_path), "--target-horizon", "1d"]
+        )
+
+
+def test_prediction_handoff_rejects_wrong_horizon_for_exact_target(
+    tmp_path: Path,
+) -> None:
+    clock = _FakeClock("2026-08-31T15:17:00+00:00")
+    target = pd.Timestamp("2026-08-31T15:30:00+00:00")
+    wrong_horizon_signals = _signals_for_target(
+        target,
+        fingerprint="wrong-horizon",
+        prediction_created_at="2026-08-31T15:10:00+00:00",
+    )
+    sources = _prediction_receipt_sources(
+        tmp_path,
+        "wrong-horizon",
+        run_timestamp="2026-08-31T15:05:00+00:00",
+        promoted_at="2026-08-31T15:15:00+00:00",
+    )
+    observed_horizons: list[object] = []
+
+    def loader(_root: Path, *, as_of: object, target_horizon: object):
+        observed_horizons.append(target_horizon)
+        return wrong_horizon_signals, sources
+
+    result = handoff.wait_for_actionable_prediction(
+        tmp_path,
+        started_at=clock(),
+        expected_target_window_start=target,
+        target_horizon="4h",
+        poll_seconds=900.0,
+        clock=clock,
+        sleeper=clock.sleep,
+        consumed_prediction_ids=set(),
+        signal_loader=loader,
+    )
+
+    assert result.status == "PREDICTION_DEADLINE_EXPIRED"
+    assert result.signals == {}
+    assert set(observed_horizons) == {"4h"}
+
+
+def test_prediction_handoff_accepts_exact_target_fallback_immediately(
     tmp_path: Path,
 ) -> None:
     clock = _FakeClock("2026-08-31T16:47:00+00:00")
@@ -751,20 +1810,19 @@ def test_prediction_handoff_waits_for_fresh_receipt_after_keeping_fallback(
         run_timestamp="2026-08-31T16:06:00+00:00",
         promoted_at="2026-08-31T16:20:00+00:00",
     )
-    fresh_sources = _prediction_receipt_sources(
-        tmp_path,
-        "fresh",
-        run_timestamp="2026-08-31T16:36:00+00:00",
-        promoted_at="2026-08-31T16:50:00+00:00",
-    )
     calls = 0
 
     def loader(_root: Path, *, as_of: object):
         nonlocal calls
         calls += 1
-        if calls == 1:
-            return _signals_for_target(target, fingerprint="fallback"), fallback_sources
-        return _signals_for_target(target, fingerprint="fresh"), fresh_sources
+        return (
+            _signals_for_target(
+                target,
+                fingerprint="fallback",
+                prediction_created_at="2026-08-31T16:20:00+00:00",
+            ),
+            fallback_sources,
+        )
 
     result = handoff.wait_for_actionable_prediction(
         tmp_path,
@@ -777,24 +1835,26 @@ def test_prediction_handoff_waits_for_fresh_receipt_after_keeping_fallback(
         signal_loader=loader,
     )
 
-    assert result.status == "FRESH_ACTIONABLE_RECEIPT"
-    assert result.fallback_used is False
+    assert result.status == "FALLBACK_ACTIONABLE_RECEIPT"
+    assert result.fallback_used is True
     assert result.fallback_candidate_observed is True
-    assert result.source_run_path == "ml/runs/fresh"
-    assert result.poll_count == 2
+    assert result.source_run_path == "ml/runs/fallback"
+    assert result.completed_at == pd.Timestamp("2026-08-31T16:47:00+00:00")
+    assert result.poll_count == 1
+    assert calls == 1
     assert set(result.signals) == set(STOCK_TRADER_SYMBOLS)
 
 
-def test_prediction_handoff_uses_age_aware_fallback_at_deadline(
+def test_prediction_handoff_accepts_fresh_exact_target_immediately(
     tmp_path: Path,
 ) -> None:
     clock = _FakeClock("2026-08-31T16:47:00+00:00")
     target = pd.Timestamp("2026-08-31T17:00:00+00:00")
     sources = _prediction_receipt_sources(
         tmp_path,
-        "fallback-only",
-        run_timestamp="2026-08-31T16:06:00+00:00",
-        promoted_at="2026-08-31T16:20:00+00:00",
+        "fresh",
+        run_timestamp="2026-08-31T16:36:00+00:00",
+        promoted_at="2026-08-31T16:46:00+00:00",
     )
 
     result = handoff.wait_for_actionable_prediction(
@@ -806,17 +1866,51 @@ def test_prediction_handoff_uses_age_aware_fallback_at_deadline(
         sleeper=clock.sleep,
         consumed_prediction_ids=set(),
         signal_loader=lambda _root, *, as_of: (
-            _signals_for_target(target, fingerprint="fallback-only"),
+            _signals_for_target(
+                target,
+                fingerprint="fresh",
+                prediction_created_at="2026-08-31T16:46:00+00:00",
+            ),
             sources,
         ),
     )
 
-    assert result.status == "FALLBACK_ACTIONABLE_RECEIPT"
-    assert result.fallback_used is True
-    assert result.completed_at == pd.Timestamp("2026-08-31T16:58:30+00:00")
+    assert result.status == "FRESH_ACTIONABLE_RECEIPT"
+    assert result.fallback_used is False
+    assert result.fallback_candidate_observed is False
+    assert result.completed_at == pd.Timestamp("2026-08-31T16:47:00+00:00")
+    assert result.poll_count == 1
     assert result.to_dict()["poll_policy"]["fallback_age_feature"] == (
         "prediction_age_minutes"
     )
+
+
+def test_prediction_handoff_never_accepts_at_execution_cutoff(
+    tmp_path: Path,
+) -> None:
+    clock = _FakeClock("2026-08-31T16:58:30+00:00")
+    target = pd.Timestamp("2026-08-31T17:00:00+00:00")
+    loader_calls = 0
+
+    def loader(_root: Path, *, as_of: object):
+        nonlocal loader_calls
+        loader_calls += 1
+        return _signals_for_target(target, fingerprint="too-late"), ()
+
+    result = handoff.wait_for_actionable_prediction(
+        tmp_path,
+        started_at=clock(),
+        expected_target_window_start=target,
+        clock=clock,
+        sleeper=clock.sleep,
+        consumed_prediction_ids=set(),
+        signal_loader=loader,
+    )
+
+    assert result.status == "PREDICTION_EXECUTION_DEADLINE_PASSED"
+    assert result.signals == {}
+    assert result.completed_at == pd.Timestamp("2026-08-31T16:58:30+00:00")
+    assert loader_calls == 0
 
 
 def test_prediction_handoff_does_not_reconsume_live_prediction_generation(
@@ -931,6 +2025,97 @@ def test_async_reconciliation_attaches_fill_quantity_price_and_status(
     ]
 
 
+def test_durable_prediction_reservation_survives_lost_execution_artifacts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    policy = StockTraderPolicy()
+    target = pd.Timestamp("2026-08-31T19:00:00+00:00")
+    signals = _signals_for_target(target, fingerprint="crash-stable-generation")
+    first = build_trade_decisions(
+        signals,
+        _portfolio(),
+        ConstantModel(allocation_fraction=0.10),
+        _activation(True),
+        policy=policy,
+        decided_at=NOW,
+    )[0]
+    first_run = publish_decision_run(
+        tmp_path,
+        (first,),
+        decided_at=NOW,
+        activation=_activation(True),
+        policy=policy,
+        execution_requested=True,
+    )
+    original_writer = publication._write_json_exclusive
+
+    def fail_intent_artifact(*_args, **_kwargs) -> None:
+        raise OSError("injected intent artifact failure after ledger commit")
+
+    monkeypatch.setattr(
+        publication,
+        "_write_json_exclusive",
+        fail_intent_artifact,
+    )
+    with pytest.raises(OSError, match="after ledger commit"):
+        reserve_execution_intent(
+            tmp_path,
+            first,
+            submitted_at=NOW,
+            decision_publication=first_run,
+        )
+
+    event_directory = (
+        tmp_path / "ml" / "stock-trader-execution-events" / first.decision_id
+    )
+    assert event_directory.is_dir()
+    assert not (event_directory / "intent.json").exists()
+    assert (
+        tmp_path / "stock-trader-execution-reservations.sqlite3"
+    ).is_file()
+
+    # Model a host loss that preserves the durable root ledger but loses both
+    # ordinary artifact directories. A later hourly decision gets a new ID,
+    # yet the same prediction generation must remain consumed.
+    event_directory.rmdir()
+    for path in first_run.run_directory.iterdir():
+        path.unlink()
+    first_run.run_directory.rmdir()
+    monkeypatch.setattr(publication, "_write_json_exclusive", original_writer)
+
+    next_hour = "2026-08-31T17:30:00+00:00"
+    second = build_trade_decisions(
+        signals,
+        _portfolio(),
+        ConstantModel(allocation_fraction=0.10),
+        _activation(True),
+        policy=policy,
+        decided_at=next_hour,
+    )[0]
+    second_run = publish_decision_run(
+        tmp_path,
+        (second,),
+        decided_at=next_hour,
+        activation=_activation(True),
+        policy=policy,
+        execution_requested=True,
+    )
+
+    assert second.decision_id != first.decision_id
+    assert first.prediction["prediction_id"] in handoff.consumed_live_prediction_ids(
+        tmp_path
+    )
+    assert (
+        reserve_execution_intent(
+            tmp_path,
+            second,
+            submitted_at=next_hour,
+            decision_publication=second_run,
+        )
+        is None
+    )
+
+
 def test_live_fill_lifecycle_pairs_stock_trader_round_trips_fifo(
     tmp_path: Path,
 ) -> None:
@@ -979,7 +2164,12 @@ def test_live_fill_lifecycle_pairs_stock_trader_round_trips_fifo(
     )
 
     sell_time = "2026-08-31T17:00:00Z"
-    sell_signals = _signals(probability_by_symbol={"AAPL": 0.30})
+    sell_signals = {
+        symbol: replace(signal, prediction_id=f"sell-generation-{symbol}")
+        for symbol, signal in _signals(
+            probability_by_symbol={"AAPL": 0.30}
+        ).items()
+    }
     sell = build_trade_decisions(
         sell_signals,
         _portfolio(held={"AAPL": 10.0}),
@@ -1275,8 +2465,27 @@ class _FakeClock:
         self.value += pd.Timedelta(seconds=seconds)
 
 
+class _RetryClock:
+    def __init__(self) -> None:
+        self.value = 0.0
+        self.sleeps: list[float] = []
+
+    def __call__(self) -> float:
+        return self.value
+
+    def advance(self, seconds: float) -> None:
+        self.value += float(seconds)
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(float(seconds))
+        self.advance(seconds)
+
+
 def _signals_for_target(
-    target: pd.Timestamp, *, fingerprint: str
+    target: pd.Timestamp,
+    *,
+    fingerprint: str,
+    prediction_created_at: object | None = None,
 ) -> dict[str, PredictionSignal]:
     target_timestamp = pd.Timestamp(target)
     return {
@@ -1286,6 +2495,11 @@ def _signals_for_target(
             target_window_start=target_timestamp.isoformat(),
             target_window_end=(target_timestamp + pd.Timedelta(hours=1)).isoformat(),
             actionable_until=target_timestamp.isoformat(),
+            prediction_created_at=(
+                pd.Timestamp(prediction_created_at).isoformat()
+                if prediction_created_at is not None
+                else signal.prediction_created_at
+            ),
             source_fingerprint=fingerprint,
         )
         for symbol, signal in _signals().items()

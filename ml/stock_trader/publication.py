@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Sequence
@@ -25,6 +27,8 @@ from ml.stock_trader.contracts import (
 
 STOCK_TRADER_DECISION_RECEIPT_VERSION = "stock-trader-decision-receipt-v1"
 STOCK_TRADER_DECISION_POINTER_VERSION = "stock-trader-decision-pointer-v1"
+_EXECUTION_RESERVATION_DATABASE = "stock-trader-execution-reservations.sqlite3"
+_EXECUTION_RESERVATION_TABLE = "execution_reservations_v2"
 
 
 @dataclass(frozen=True)
@@ -47,6 +51,7 @@ def publish_decision_run(
     source_files: Sequence[Path] = (),
     status: str | None = None,
     prediction_handoff: Mapping[str, object] | None = None,
+    broker_state_capture: Mapping[str, object] | None = None,
 ) -> DecisionPublication:
     root = Path(datastore_root).resolve()
     timestamp = utc(decided_at)
@@ -80,6 +85,7 @@ def publish_decision_run(
         "live_decision_count": len(live_decisions),
         "shadow_decision_count": len(shadow_decisions),
         "prediction_handoff": dict(prediction_handoff or {}),
+        "broker_state_capture": dict(broker_state_capture or {}),
         "decisions": [decision.to_dict() for decision in decisions],
     }
     _write_json_atomic(decisions_path, payload)
@@ -110,6 +116,12 @@ def publish_decision_run(
                 if prediction_handoff
                 else False
             ),
+            "broker_state_capture_status": (
+                broker_state_capture.get("status") if broker_state_capture else None
+            ),
+            "broker_state_capture_attempts": (
+                broker_state_capture.get("attempts") if broker_state_capture else 0
+            ),
             "policy_version": policy.policy_version,
             "policy_fingerprint": policy.fingerprint,
         },
@@ -128,6 +140,7 @@ def publish_decision_run(
         "orders_selected": payload["orders_selected"],
         "shadow_orders_selected": payload["shadow_orders_selected"],
         "prediction_handoff": dict(prediction_handoff or {}),
+        "broker_state_capture": dict(broker_state_capture or {}),
     }
     _write_json_atomic(receipt_path, receipt)
     receipt_checksum = file_checksum(receipt_path)
@@ -190,17 +203,21 @@ def reserve_execution_intent(
     """Reserve a decision exactly once before making the broker mutation."""
 
     root = Path(datastore_root).resolve()
-    event_directory = (
-        root / "ml" / "stock-trader-execution-events" / decision.decision_id
-    )
-    try:
-        event_directory.mkdir(parents=True, exist_ok=False)
-    except FileExistsError:
+    events_root = root / "ml" / "stock-trader-execution-events"
+    event_directory = events_root / decision.decision_id
+
+    # Keep recognizing reservations made by releases that predate the durable
+    # ledger.  The SQLite primary key below is the cross-process authority for
+    # new reservations; synchronous=EXTRA makes its commit survive a host crash
+    # before any broker POST can begin.
+    if event_directory.exists():
         return None
     payload = {
         "schema_version": STOCK_TRADER_EXECUTION_EVENT_SCHEMA_VERSION,
         "event": "SUBMISSION_INTENT_RESERVED",
         "decision_id": decision.decision_id,
+        "prediction_id": str(decision.prediction.get("prediction_id") or ""),
+        "decision_lane": decision.decision_lane,
         "symbol": decision.symbol,
         "action": decision.action,
         "quantity": decision.quantity,
@@ -210,8 +227,105 @@ def reserve_execution_intent(
         "order_payload_sha256": _payload_checksum(decision.order_payload),
         "order_payload": decision.order_payload,
     }
+    if not _reserve_execution_decision(root, decision.decision_id, payload):
+        return None
+
+    # The durable reservation deliberately precedes the human-readable event
+    # artifact.  An artifact failure therefore suppresses a trade rather than
+    # risking a duplicate after restart.
+    try:
+        event_directory.mkdir(parents=True, exist_ok=False)
+    except FileExistsError:
+        return None
     _write_json_exclusive(event_directory / "intent.json", payload)
     return event_directory
+
+
+def _reserve_execution_decision(
+    datastore_root: Path,
+    decision_id: str,
+    payload: Mapping[str, object],
+) -> bool:
+    # Keep the authority directly in the already-established datastore root.
+    # A newly-created events subdirectory could itself disappear from its
+    # parent after a first-use power loss, taking an otherwise-synced ledger
+    # with it. SQLite EXTRA can durably sync this file's root directory.
+    database = Path(datastore_root) / _EXECUTION_RESERVATION_DATABASE
+    encoded = json.dumps(
+        dict(payload), sort_keys=True, separators=(",", ":"), default=str
+    )
+    connection = sqlite3.connect(database, timeout=30.0, isolation_level=None)
+    try:
+        connection.execute("PRAGMA busy_timeout = 30000")
+        connection.execute("PRAGMA synchronous = EXTRA")
+        connection.execute("BEGIN IMMEDIATE")
+        connection.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS {_EXECUTION_RESERVATION_TABLE} (
+                decision_id TEXT PRIMARY KEY,
+                prediction_id TEXT NOT NULL,
+                symbol TEXT NOT NULL,
+                decision_lane TEXT NOT NULL,
+                reserved_at TEXT NOT NULL,
+                intent_json TEXT NOT NULL,
+                intent_sha256 TEXT NOT NULL,
+                UNIQUE (prediction_id, symbol, decision_lane)
+            ) WITHOUT ROWID
+            """
+        )
+        try:
+            connection.execute(
+                """
+                INSERT INTO execution_reservations_v2 (
+                    decision_id, prediction_id, symbol, decision_lane,
+                    reserved_at, intent_json, intent_sha256
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    decision_id,
+                    str(payload["prediction_id"]),
+                    str(payload["symbol"]),
+                    str(payload["decision_lane"]),
+                    str(payload["reserved_at"]),
+                    encoded,
+                    hashlib.sha256(encoded.encode("utf-8")).hexdigest(),
+                ),
+            )
+        except sqlite3.IntegrityError:
+            connection.execute("ROLLBACK")
+            return False
+        connection.execute("COMMIT")
+        return True
+    except BaseException:
+        if connection.in_transaction:
+            connection.execute("ROLLBACK")
+        raise
+    finally:
+        connection.close()
+
+
+def reserved_live_prediction_ids(datastore_root: Path) -> set[str]:
+    """Read prediction generations durably reserved for live execution."""
+
+    database = Path(datastore_root).resolve() / _EXECUTION_RESERVATION_DATABASE
+    if not database.is_file():
+        return set()
+    connection = sqlite3.connect(database, timeout=30.0)
+    try:
+        rows = connection.execute(
+            f"""
+            SELECT DISTINCT prediction_id
+            FROM {_EXECUTION_RESERVATION_TABLE}
+            WHERE UPPER(decision_lane) = 'LIVE' AND prediction_id <> ''
+            """
+        ).fetchall()
+    except sqlite3.OperationalError as exc:
+        if "no such table" in str(exc).lower():
+            return set()
+        raise
+    finally:
+        connection.close()
+    return {str(row[0]) for row in rows if row and str(row[0]).strip()}
 
 
 def record_execution_result(
@@ -324,9 +438,37 @@ def _write_json_atomic(path: Path, payload: Mapping[str, object]) -> None:
 
 
 def _write_json_exclusive(path: Path, payload: Mapping[str, object]) -> None:
-    with Path(path).open("x", encoding="utf-8") as handle:
-        json.dump(dict(payload), handle, indent=2, sort_keys=True, default=str)
-        handle.write("\n")
+    target = Path(path)
+    descriptor: int | None = None
+    try:
+        descriptor = os.open(
+            target,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            0o600,
+        )
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            descriptor = None
+            json.dump(dict(payload), handle, indent=2, sort_keys=True, default=str)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        _fsync_directory(target.parent)
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+
+
+def _fsync_directory(directory: Path) -> None:
+    if os.name == "nt":
+        # os.fsync on the file above maps to FlushFileBuffers.  The durable
+        # exact-once authority is SQLite's synchronous=EXTRA transaction.
+        return
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    descriptor = os.open(directory, flags)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def _read_object(path: Path, label: str) -> dict[str, object]:
@@ -345,5 +487,6 @@ __all__ = [
     "read_decision_run",
     "read_execution_event",
     "record_execution_result",
+    "reserved_live_prediction_ids",
     "reserve_execution_intent",
 ]

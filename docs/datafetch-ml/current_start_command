@@ -112,8 +112,8 @@ python -m ml.option_pricing_runtime `
   --bar-readiness-timeout-seconds 480
 ```
 
-5. Independent Options Capture (logical Loop 4). It starts after Loop B's +5
-information clock and waits briefly on the target pointer. Its v2 publication
+5. Independent Options Capture (logical Loop 4). It shares Loop B's +6 clock
+phase but does not consume Loop B, and waits briefly on the target pointer. Its v2 publication
 identity is `(provider, symbol, target_snapshot_for)`: a committed target is
 reused without another provider call, and divergent duplicate content fails
 closed. Production mode constructs one bounded, reconnecting Databento live
@@ -207,13 +207,13 @@ python -m ml.prediction_runtime `
   --calibration platt `
   --round-trip-cost 0.001 `
   --interval-minutes 30 `
-  --phase-offset-minutes 5 `
+  --phase-offset-minutes 6 `
   --failure-retry-attempts 1 `
   --failure-retry-delay-seconds 60 `
   --stale-recovery-minutes 35
 ```
 
-The normal Loop B cadence is therefore `:05`/`:35` UTC-clock phase rather than
+The normal Loop B cadence is therefore `:06`/`:36` UTC-clock phase rather than
 every quarter-hour. A recurring failure is retried once only when it is
 classified as transient; deadline, integrity, contract, and explicitly failed
 Loop A states do not retry. On supervisor startup, a receipt-verified

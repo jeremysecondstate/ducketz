@@ -17,7 +17,10 @@ import pandas as pd
 
 from app.models.portfolio import PortfolioSnapshot
 from app.ui.options_strategy_data import load_strategy_candidates
-from app.ui.rolling_forecast_data import load_forecast_dashboard
+from app.ui.rolling_forecast_data import (
+    STANDARD_HORIZON_ORDER,
+    load_forecast_dashboard,
+)
 from datafetching.bar_readiness import read_bar_readiness
 from datafetching.decision_time import (
     cycle_target_decision,
@@ -27,11 +30,19 @@ from datafetching.orchestrate import DEFAULT_WATCHLIST, read_watchlist
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from ml.artifacts import file_checksum
 from ml.current_publication import CurrentPublication, read_current_publication
-from ml.horizons import INTERNAL_HORIZON_ORDER
+from ml.horizons import (
+    INTERNAL_HORIZON_ORDER,
+    INTERNAL_HORIZON_SPECIFICATIONS,
+    WEEKLY_HORIZON_ORDER,
+)
 from ml.option_pricing.publication import read_current_option_pricing_publication
 from ml.option_pricing.target_outcome import (
     read_current_target_outcome,
     target_outcome_pointer_path,
+)
+from ml.prediction_runtime import (
+    DEFAULT_INTERVAL_MINUTES as LOOP_B_INTERVAL_MINUTES,
+    DEFAULT_PHASE_OFFSET_MINUTES as LOOP_B_PHASE_OFFSET_MINUTES,
 )
 from ml.loop_c.publication import (
     LoopCPublicationError,
@@ -368,8 +379,8 @@ RUNTIMES = (
             "--horizons 1h 4h 1d 1w",
             "--feature-profile loop-a-all-bsgp-active-v3",
             "--calibration platt",
-            "--interval-minutes 30",
-            "--phase-offset-minutes 5",
+            f"--interval-minutes {LOOP_B_INTERVAL_MINUTES}",
+            f"--phase-offset-minutes {LOOP_B_PHASE_OFFSET_MINUTES}",
             "--failure-retry-attempts 1",
             "--failure-retry-delay-seconds 60",
             "--stale-recovery-minutes 35",
@@ -2030,7 +2041,12 @@ def _forecast_ui_value_parity(
     frame: pd.DataFrame,
     forecast: object,
 ) -> dict[str, object]:
-    """Prove that adapter-visible forecast values match their published rows."""
+    """Prove published-value parity and deterministic effective UI state."""
+
+    loaded_at = _utc(
+        getattr(forecast, "loaded_at", None),
+        "forecast UI loaded-at timestamp",
+    )
 
     raw_rows: dict[tuple[str, str], Mapping[str, object]] = {}
     for row in frame.to_dict("records"):
@@ -2086,16 +2102,89 @@ def _forecast_ui_value_parity(
 
     displayed_routes = 0
     intentionally_hidden_routes = 0
+    published_status_routes_verified = 0
+    effective_lifecycle_routes_verified = 0
+    wall_clock_transition_routes = 0
+    expected_actionable_routes = 0
+    expected_automated_action_allowed = False
     for key, route in visible_routes.items():
         row = raw_rows[key]
         if str(getattr(route, "id", "") or "") != str(row.get("id") or ""):
             raise ValueError(f"Forecast UI ID mismatch for {key[0]} {key[1]}")
-        if str(getattr(route, "actionability_status", "")) != str(
-            row.get("actionability_status") or ""
+
+        expected_lifecycle = _expected_forecast_ui_lifecycle(
+            row,
+            horizon=key[1],
+            loaded_at=loaded_at,
+        )
+        source_actionability = expected_lifecycle[
+            "published_actionability_status"
+        ]
+        source_intelligence = expected_lifecycle["published_intelligence_status"]
+        source_automated_action_allowed = expected_lifecycle[
+            "published_automated_action_allowed"
+        ]
+        if (
+            getattr(route, "published_actionability_status", None)
+            != source_actionability
         ):
             raise ValueError(
-                f"Forecast UI actionability mismatch for {key[0]} {key[1]}"
+                f"Forecast UI published actionability mismatch for {key[0]} {key[1]}"
             )
+        if (
+            getattr(route, "published_intelligence_status", None)
+            != source_intelligence
+        ):
+            raise ValueError(
+                f"Forecast UI published intelligence mismatch for {key[0]} {key[1]}"
+            )
+        if (
+            getattr(route, "published_automated_action_allowed", None)
+            is not source_automated_action_allowed
+        ):
+            raise ValueError(
+                f"Forecast UI published automation mismatch for {key[0]} {key[1]}"
+            )
+        published_status_routes_verified += 1
+
+        if getattr(route, "actionability_status", None) != expected_lifecycle[
+            "actionability_status"
+        ]:
+            raise ValueError(
+                f"Forecast UI effective actionability mismatch for {key[0]} {key[1]}"
+            )
+        if getattr(route, "intelligence_status", None) != expected_lifecycle[
+            "intelligence_status"
+        ]:
+            raise ValueError(
+                f"Forecast UI effective intelligence mismatch for {key[0]} {key[1]}"
+            )
+        if (
+            getattr(route, "automated_action_allowed", None)
+            is not expected_lifecycle["automated_action_allowed"]
+        ):
+            raise ValueError(
+                f"Forecast UI effective automation mismatch for {key[0]} {key[1]}"
+            )
+        expected_is_actionable = (
+            expected_lifecycle["actionability_status"] == "ACTIONABLE"
+        )
+        if (
+            bool(getattr(route, "is_actionable", False))
+            is not expected_is_actionable
+        ):
+            raise ValueError(
+                f"Forecast UI effective actionability flag mismatch for {key[0]} {key[1]}"
+            )
+        expected_actionable_routes += int(expected_is_actionable)
+        expected_automated_action_allowed = (
+            expected_automated_action_allowed
+            or expected_lifecycle["automated_action_allowed"] is True
+        )
+        effective_lifecycle_routes_verified += 1
+        wall_clock_transition_routes += int(
+            bool(expected_lifecycle["wall_clock_transition"])
+        )
 
         source_up = _optional_finite_ui_number(
             row.get("probability_up"),
@@ -2115,26 +2204,7 @@ def _forecast_ui_value_parity(
         )
         if (visible_up is None) != (visible_down is None):
             raise ValueError(f"Forecast UI exposed a partial probability for {key}")
-        loaded_at = getattr(forecast, "loaded_at", None)
-        target_window_end = getattr(route, "target_window_end", None)
-        in_progress_window_open = True
-        if loaded_at is not None and target_window_end is not None:
-            in_progress_window_open = _utc(
-                loaded_at,
-                f"{key[0]} {key[1]} UI loaded-at timestamp",
-            ) < _utc(
-                target_window_end,
-                f"{key[0]} {key[1]} target-window end",
-            )
-        should_show = bool(getattr(route, "is_actionable", False)) or str(
-            getattr(route, "actionability_status", "")
-        ) == "FROZEN_WEEKLY_SNAPSHOT" or (
-            str(getattr(route, "actionability_status", ""))
-            == "TARGET_WINDOW_STARTED"
-            and str(getattr(route, "intelligence_status", ""))
-            == "FORECAST_IN_PROGRESS"
-            and in_progress_window_open
-        )
+        should_show = bool(expected_lifecycle["probability_visible"])
         if should_show and visible_up is None:
             raise ValueError(f"Forecast UI hid a current probability for {key}")
         if visible_up is None:
@@ -2155,6 +2225,33 @@ def _forecast_ui_value_parity(
             raise ValueError(f"Forecast UI exposed an invalid probability pair for {key}")
         displayed_routes += 1
 
+    if getattr(forecast, "actionable_route_count", None) != expected_actionable_routes:
+        raise ValueError("Forecast UI effective actionable-route count mismatch")
+    if (
+        getattr(forecast, "automated_action_allowed", None)
+        is not expected_automated_action_allowed
+    ):
+        raise ValueError("Forecast UI effective automation banner mismatch")
+
+    published_operational_statuses = tuple(
+        sorted(
+            {
+                status
+                for status in (
+                    _optional_ui_text(row.get("operational_status"))
+                    for row in raw_rows.values()
+                )
+                if status is not None
+            }
+        )
+    )
+    if (
+        tuple(getattr(forecast, "operational_statuses", ()))
+        != published_operational_statuses
+    ):
+        raise ValueError("Forecast UI published operational-status mismatch")
+    _verify_forecast_ui_banner_parity(forecast)
+
     return {
         "status": "PASS",
         "source_routes": len(raw_rows),
@@ -2164,8 +2261,228 @@ def _forecast_ui_value_parity(
         ),
         "probability_routes_displayed": displayed_routes,
         "probability_routes_intentionally_hidden": intentionally_hidden_routes,
+        "published_status_routes_verified": published_status_routes_verified,
+        "effective_lifecycle_routes_verified": effective_lifecycle_routes_verified,
+        "wall_clock_transition_routes": wall_clock_transition_routes,
+        "effective_actionable_routes": expected_actionable_routes,
+        "effective_automated_action_allowed": expected_automated_action_allowed,
         "probability_scale": "0_TO_1_FORMATTED_AS_PERCENT",
     }
+
+
+def _expected_forecast_ui_lifecycle(
+    row: Mapping[str, object],
+    *,
+    horizon: str,
+    loaded_at: pd.Timestamp,
+) -> dict[str, object]:
+    """Derive the only wall-clock transition the UI may apply to a row."""
+
+    published_actionability = (
+        _optional_ui_text(row.get("actionability_status"))
+        or "STATUS_UNAVAILABLE"
+    )
+    published_intelligence = (
+        _optional_ui_text(row.get("intelligence_status"))
+        or "INTELLIGENCE_STATUS_UNAVAILABLE"
+    )
+    published_automation = _optional_ui_bool(
+        row.get("automated_action_allowed"),
+        label=f"{horizon} published automated-action flag",
+    )
+    actionability = published_actionability
+    intelligence = published_intelligence
+    automated_action_allowed = published_automation
+    wall_clock_transition = False
+    derived_in_progress = False
+
+    target_start = _optional_ui_timestamp(row.get("target_window_start"))
+    target_end = _optional_ui_timestamp(row.get("target_window_end"))
+    actionable_until = _optional_ui_timestamp(row.get("actionable_until"))
+    forecast_created_at = _optional_ui_timestamp(row.get("forecast_created_at"))
+    actionable_lifecycle_timestamps_valid = (
+        forecast_created_at is not None
+        and actionable_until is not None
+        and target_start is not None
+        and target_end is not None
+        and forecast_created_at <= loaded_at
+        and forecast_created_at < actionable_until
+        and actionable_until <= target_start
+        and target_start < target_end
+    )
+
+    if horizon in STANDARD_HORIZON_ORDER and published_actionability == "ACTIONABLE":
+        if not actionable_lifecycle_timestamps_valid:
+            actionability = "TARGET_TIMESTAMP_INVALID"
+            automated_action_allowed = False
+            wall_clock_transition = True
+        elif loaded_at >= target_end:
+            actionability = "TARGET_WINDOW_PASSED"
+            automated_action_allowed = False
+            wall_clock_transition = True
+        elif loaded_at >= actionable_until:
+            actionability = "TARGET_WINDOW_STARTED"
+            intelligence = "FORECAST_IN_PROGRESS"
+            automated_action_allowed = False
+            wall_clock_transition = True
+            derived_in_progress = True
+    elif (
+        horizon in STANDARD_HORIZON_ORDER
+        and published_actionability == "TARGET_WINDOW_STARTED"
+        and published_intelligence == "FORECAST_IN_PROGRESS"
+        and actionable_lifecycle_timestamps_valid
+        and loaded_at >= target_end
+    ):
+        actionability = "TARGET_WINDOW_PASSED"
+        automated_action_allowed = False
+        wall_clock_transition = True
+
+    trusted_in_progress = (
+        horizon in STANDARD_HORIZON_ORDER
+        and actionability == "TARGET_WINDOW_STARTED"
+        and intelligence == "FORECAST_IN_PROGRESS"
+        and automated_action_allowed is False
+        and forecast_created_at is not None
+        and actionable_until is not None
+        and target_start is not None
+        and target_end is not None
+        and actionable_lifecycle_timestamps_valid
+        and (
+            target_start <= loaded_at < target_end
+            or (
+                derived_in_progress
+                and actionable_until <= loaded_at < target_end
+            )
+        )
+    )
+    frozen_weekly_probability = (
+        horizon in WEEKLY_HORIZON_ORDER
+        and actionability == "FROZEN_WEEKLY_SNAPSHOT"
+        and _optional_ui_text(row.get("target_definition_version"))
+        == INTERNAL_HORIZON_SPECIFICATIONS[horizon].target_definition_version
+    )
+    probability_visible = (
+        actionability == "ACTIONABLE"
+        or frozen_weekly_probability
+        or trusted_in_progress
+    )
+    return {
+        "published_actionability_status": published_actionability,
+        "published_intelligence_status": published_intelligence,
+        "published_automated_action_allowed": published_automation,
+        "actionability_status": actionability,
+        "intelligence_status": intelligence,
+        "automated_action_allowed": automated_action_allowed,
+        "wall_clock_transition": wall_clock_transition,
+        "probability_visible": probability_visible,
+    }
+
+
+def _verify_forecast_ui_banner_parity(forecast: object) -> None:
+    standard_routes = tuple(
+        route
+        for symbol in getattr(forecast, "symbols", ())
+        for route in getattr(symbol, "routes", ())
+        if getattr(route, "horizon", None) in STANDARD_HORIZON_ORDER
+    )
+    has_route_gaps = any(
+        bool(getattr(route, "is_missing", False))
+        or getattr(route, "probability_up", None) is None
+        or getattr(route, "probability_down", None) is None
+        for route in standard_routes
+    )
+    statuses = tuple(getattr(forecast, "operational_statuses", ()))
+    expected_freshness = _expected_forecast_freshness(statuses)
+    expected_operational = _expected_forecast_operational_summary(statuses)
+    if has_route_gaps and expected_freshness[1] == "success":
+        expected_freshness = ("Current Outlooks with Route Gaps", "warning")
+    if has_route_gaps and expected_operational[1] == "success":
+        expected_operational = (
+            "Operational with Route Timing Gaps",
+            "warning",
+        )
+    actual_freshness = (
+        getattr(forecast, "freshness_label", None),
+        getattr(forecast, "freshness_tone", None),
+    )
+    actual_operational = (
+        getattr(forecast, "operational_label", None),
+        getattr(forecast, "operational_tone", None),
+    )
+    if actual_freshness != expected_freshness:
+        raise ValueError("Forecast UI effective freshness banner mismatch")
+    if actual_operational != expected_operational:
+        raise ValueError("Forecast UI effective operational banner mismatch")
+
+    automation_enabled = bool(
+        getattr(forecast, "automated_action_allowed", False)
+    )
+    expected_automation = (
+        (
+            "Automation flag reported on; this dashboard remains read-only",
+            "danger",
+        )
+        if automation_enabled
+        else ("Automated action is off", "neutral")
+    )
+    actual_automation = (
+        getattr(forecast, "automation_label", None),
+        getattr(forecast, "automation_tone", None),
+    )
+    if actual_automation != expected_automation:
+        raise ValueError("Forecast UI effective automation label mismatch")
+
+
+def _expected_forecast_freshness(
+    statuses: tuple[str, ...],
+) -> tuple[str, str]:
+    if not statuses:
+        return "No Forecast Data", "neutral"
+    if "REFRESH_FAILED" in statuses:
+        return "Latest Refresh Failed", "danger"
+    if "REFRESH_IN_PROGRESS" in statuses:
+        return "Refresh in Progress", "warning"
+    has_stale = any("STALE" in status for status in statuses)
+    has_current = any(
+        status in {"OPERATIONAL", "OPERATIONALLY_CURRENT"}
+        for status in statuses
+    )
+    if has_stale and has_current:
+        return "Current Outlooks with Route Gaps", "warning"
+    if has_stale:
+        return "Data Is Stale", "danger"
+    if all(
+        status in {"OPERATIONAL", "OPERATIONALLY_CURRENT"}
+        for status in statuses
+    ):
+        return "Data Pipeline Is Current", "success"
+    return "Data Pipeline Has Limitations", "warning"
+
+
+def _expected_forecast_operational_summary(
+    statuses: tuple[str, ...],
+) -> tuple[str, str]:
+    if not statuses:
+        return "Operational Status Unavailable", "neutral"
+    if "REFRESH_FAILED" in statuses:
+        return "Refresh Failed", "danger"
+    if "REFRESH_IN_PROGRESS" in statuses:
+        return "Refreshing Current Output", "warning"
+    has_stale = any("STALE" in status for status in statuses)
+    has_current = any(
+        status in {"OPERATIONAL", "OPERATIONALLY_CURRENT"}
+        for status in statuses
+    )
+    if has_stale and has_current:
+        return "Operational with Route Timing Gaps", "warning"
+    if has_stale:
+        return "Operational Data Is Stale", "danger"
+    if all(
+        status in {"OPERATIONAL", "OPERATIONALLY_CURRENT"}
+        for status in statuses
+    ):
+        return "Operationally Current", "success"
+    return "Operational with Limitations", "warning"
 
 
 def _strategy_ui_value_parity(
@@ -2286,6 +2603,35 @@ def _optional_finite_ui_number(value: object, *, label: str) -> float | None:
     if not math.isfinite(number):
         raise ValueError(f"{label} is non-finite")
     return number
+
+
+def _optional_ui_bool(value: object, *, label: str) -> bool | None:
+    if value is None or pd.isna(value):
+        return None
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value)
+    if isinstance(value, (int, float, np.integer, np.floating)):
+        return bool(value)
+    text = str(value).strip().casefold()
+    if text in {"true", "1", "yes"}:
+        return True
+    if text in {"false", "0", "no"}:
+        return False
+    raise ValueError(f"{label} is not Boolean")
+
+
+def _optional_ui_text(value: object) -> str | None:
+    if value is None or pd.isna(value):
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _optional_ui_timestamp(value: object) -> pd.Timestamp | None:
+    if value is None or pd.isna(value):
+        return None
+    timestamp = pd.to_datetime(value, utc=True, errors="coerce")
+    return None if pd.isna(timestamp) else pd.Timestamp(timestamp)
 
 
 def _storage_check(root: Path) -> dict[str, object]:

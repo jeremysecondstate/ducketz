@@ -5,7 +5,7 @@ import os
 from dataclasses import dataclass
 from datetime import datetime, timezone, tzinfo
 from pathlib import Path
-from typing import Final
+from typing import Final, Mapping
 
 import pandas as pd
 import pyarrow as pa
@@ -120,6 +120,9 @@ class ForecastRouteView:
     target_definition_version: str | None
     probability_up: float | None
     probability_down: float | None
+    # Published fields preserve the immutable Parquet values.  The unprefixed
+    # lifecycle fields below are the effective UI state at ``loaded_at``.
+    published_actionability_status: str | None
     actionability_status: str
     actionability_label: str
     actionability_tone: str
@@ -130,7 +133,9 @@ class ForecastRouteView:
     minimum_live_decision_count: int
     live_performance: LivePerformanceView | None
     operational_status: str
+    published_intelligence_status: str | None
     intelligence_status: str
+    published_automated_action_allowed: bool | None
     automated_action_allowed: bool | None
     limitation: str | None
     is_missing: bool
@@ -345,6 +350,15 @@ def adapt_forecast_frame(
             )
         key = (symbol, horizon)
         if key in route_rows:
+            if horizon == "1h":
+                route_rows[key] = min(
+                    (route_rows[key], row),
+                    key=lambda candidate: _one_hour_display_priority(
+                        candidate,
+                        as_of=loaded,
+                    ),
+                )
+                continue
             raise _contract_error(
                 source_path,
                 f"Duplicate current-output route: {symbol} {horizon}",
@@ -425,13 +439,28 @@ def adapt_forecast_frame(
     last_successful_refresh = (
         None if refresh_is_incomplete else forecast_created_at
     )
+    has_standard_route_gaps = any(
+        route.is_missing
+        or route.probability_up is None
+        or route.probability_down is None
+        for symbol in symbols
+        for route in symbol.routes
+        if route.horizon in STANDARD_HORIZON_ORDER
+    )
     freshness_label, freshness_tone = _freshness(operational_statuses)
     operational_label, operational_tone = _operational_summary(
         operational_statuses
     )
+    if has_standard_route_gaps and freshness_tone == "success":
+        freshness_label = "Current Outlooks with Route Gaps"
+        freshness_tone = "warning"
+    if has_standard_route_gaps and operational_tone == "success":
+        operational_label = "Operational with Route Timing Gaps"
+        operational_tone = "warning"
     automated_action_allowed = any(
-        _boolean(row.get("automated_action_allowed")) is True
-        for row in route_rows.values()
+        route.automated_action_allowed is True
+        for symbol in symbols
+        for route in symbol.all_routes
     )
     automation_label = (
         "Automation flag reported on; this dashboard remains read-only"
@@ -440,8 +469,9 @@ def adapt_forecast_frame(
     )
     automation_tone = "danger" if automated_action_allowed else "neutral"
     actionable_count = sum(
-        _text(row.get("actionability_status")) == ACTIONABLE_STATUS
-        for row in route_rows.values()
+        route.is_actionable
+        for symbol in symbols
+        for route in symbol.all_routes
     )
     frozen_weekly_count = sum(
         symbol.weekly_outlook is not None for symbol in symbols
@@ -645,6 +675,7 @@ def _live_performance_by_route(
         "symbol",
         "horizon",
         "decision_timestamp",
+        "target_window_start",
         "prediction_created_at",
         "prediction_mode",
         "evaluation_status",
@@ -676,18 +707,38 @@ def _live_performance_by_route(
         utc=True,
         errors="coerce",
     )
+    live["target_window_start"] = pd.to_datetime(
+        live["target_window_start"],
+        utc=True,
+        errors="coerce",
+    )
+    one_hour = live["horizon"].eq("1h").fillna(False)
+    if live.loc[one_hour, "target_window_start"].isna().any():
+        raise ValueError("One-hour live evaluations require target_window_start")
     live = live.loc[
         live["symbol"].ne("")
         & live["horizon"].isin(SUPPORTED_HORIZON_ORDER)
         & live["prediction_created_at"].notna()
         & live["decision_timestamp"].notna()
     ]
+    ordered = live.sort_values(
+        "prediction_created_at", kind="mergesort"
+    ).reset_index(drop=True)
+    ordered_one_hour = ordered["horizon"].eq("1h").fillna(False)
+    base_keys = ["symbol", "horizon", "decision_timestamp"]
     canonical = (
-        live.sort_values("prediction_created_at", kind="mergesort")
-        .drop_duplicates(
-            ["symbol", "horizon", "decision_timestamp"],
-            keep="first",
+        pd.concat(
+            [
+                ordered.loc[ordered_one_hour].drop_duplicates(
+                    [*base_keys, "target_window_start"], keep="first"
+                ),
+                ordered.loc[~ordered_one_hour].drop_duplicates(
+                    base_keys, keep="first"
+                ),
+            ],
+            sort=False,
         )
+        .sort_index(kind="stable")
         .reset_index(drop=True)
     )
 
@@ -1038,9 +1089,10 @@ def _route_view(
     as_of: datetime,
     live_performance: LivePerformanceView | None,
 ) -> ForecastRouteView:
-    actionability_status = (
+    published_actionability_status = (
         _text(row.get("actionability_status")) or "STATUS_UNAVAILABLE"
     )
+    actionability_status = published_actionability_status
     target_definition_version = _text(row.get("target_definition_version"))
     frozen_weekly_probability = (
         horizon in WEEKLY_HORIZON_ORDER
@@ -1048,17 +1100,54 @@ def _route_view(
         and target_definition_version
         == _WEEKLY_TARGET_DEFINITION_VERSIONS[horizon]
     )
-    intelligence_status = (
+    published_intelligence_status = (
         _text(row.get("intelligence_status"))
         or "INTELLIGENCE_STATUS_UNAVAILABLE"
     )
+    intelligence_status = published_intelligence_status
     target_window_start = _timestamp(row.get("target_window_start"))
     target_window_end = _timestamp(row.get("target_window_end"))
     actionable_until = _timestamp(row.get("actionable_until"))
     forecast_created_at = _timestamp(row.get("forecast_created_at"))
-    automated_action_allowed = _boolean(
+    published_automated_action_allowed = _boolean(
         row.get("automated_action_allowed")
     )
+    automated_action_allowed = published_automated_action_allowed
+    derived_in_progress_from_actionable = False
+    actionable_lifecycle_timestamps_valid = (
+        forecast_created_at is not None
+        and actionable_until is not None
+        and target_window_start is not None
+        and target_window_end is not None
+        and forecast_created_at <= as_of
+        and forecast_created_at < actionable_until
+        and actionable_until <= target_window_start
+        and target_window_start < target_window_end
+    )
+    if (
+        horizon in STANDARD_HORIZON_ORDER
+        and published_actionability_status == ACTIONABLE_STATUS
+    ):
+        if not actionable_lifecycle_timestamps_valid:
+            actionability_status = "TARGET_TIMESTAMP_INVALID"
+            automated_action_allowed = False
+        elif as_of >= target_window_end:
+            actionability_status = "TARGET_WINDOW_PASSED"
+            automated_action_allowed = False
+        elif as_of >= actionable_until:
+            actionability_status = "TARGET_WINDOW_STARTED"
+            intelligence_status = "FORECAST_IN_PROGRESS"
+            automated_action_allowed = False
+            derived_in_progress_from_actionable = True
+    elif (
+        horizon in STANDARD_HORIZON_ORDER
+        and published_actionability_status == "TARGET_WINDOW_STARTED"
+        and published_intelligence_status == "FORECAST_IN_PROGRESS"
+        and actionable_lifecycle_timestamps_valid
+        and as_of >= target_window_end
+    ):
+        actionability_status = "TARGET_WINDOW_PASSED"
+        automated_action_allowed = False
     trusted_in_progress_probability = (
         horizon in STANDARD_HORIZON_ORDER
         and actionability_status == "TARGET_WINDOW_STARTED"
@@ -1068,9 +1157,14 @@ def _route_view(
         and actionable_until is not None
         and target_window_start is not None
         and target_window_end is not None
-        and forecast_created_at < actionable_until
-        and actionable_until <= target_window_start
-        and target_window_start <= as_of < target_window_end
+        and actionable_lifecycle_timestamps_valid
+        and (
+            target_window_start <= as_of < target_window_end
+            or (
+                derived_in_progress_from_actionable
+                and actionable_until <= as_of < target_window_end
+            )
+        )
     )
     raw_probability_up = _number(row.get("probability_up"))
     raw_probability_down = _number(row.get("probability_down"))
@@ -1186,6 +1280,7 @@ def _route_view(
         target_definition_version=target_definition_version,
         probability_up=probability_up,
         probability_down=probability_down,
+        published_actionability_status=published_actionability_status,
         actionability_status=actionability_status,
         actionability_label=_actionability_label(actionability_status),
         actionability_tone=_actionability_tone(actionability_status),
@@ -1203,7 +1298,11 @@ def _route_view(
             _text(row.get("operational_status"))
             or "OPERATIONAL_STATUS_UNAVAILABLE"
         ),
+        published_intelligence_status=published_intelligence_status,
         intelligence_status=intelligence_status,
+        published_automated_action_allowed=(
+            published_automated_action_allowed
+        ),
         automated_action_allowed=automated_action_allowed,
         limitation=_text(row.get("limitations")),
         is_missing=False,
@@ -1234,6 +1333,7 @@ def _missing_route(
         target_definition_version=None,
         probability_up=None,
         probability_down=None,
+        published_actionability_status=None,
         actionability_status="MISSING_HORIZON",
         actionability_label="No Current Forecast",
         actionability_tone="neutral",
@@ -1244,7 +1344,9 @@ def _missing_route(
         minimum_live_decision_count=minimum_live_decisions(horizon),
         live_performance=None,
         operational_status="ROUTE_UNAVAILABLE",
+        published_intelligence_status=None,
         intelligence_status="NO_CURRENT_FORECAST",
+        published_automated_action_allowed=None,
         automated_action_allowed=None,
         limitation="No current-output row was published for this horizon.",
         is_missing=True,
@@ -1492,6 +1594,26 @@ def _timestamp(value: object) -> datetime | None:
     if pd.isna(parsed):
         return None
     return parsed.to_pydatetime()
+
+
+def _one_hour_display_priority(
+    row: Mapping[str, object],
+    *,
+    as_of: datetime,
+) -> tuple[int, float, float]:
+    """Prefer the nearest future 1h target, then the latest active target."""
+
+    start = _timestamp(row.get("target_window_start"))
+    end = _timestamp(row.get("target_window_end"))
+    created = _timestamp(row.get("forecast_created_at"))
+    freshness = created.timestamp() if created is not None else float("-inf")
+    if start is None:
+        return (3, float("inf"), -freshness)
+    if start > as_of:
+        return (0, (start - as_of).total_seconds(), -freshness)
+    if end is not None and start <= as_of < end:
+        return (1, -start.timestamp(), -freshness)
+    return (2, -start.timestamp(), -freshness)
 
 
 def _utc_datetime(value: datetime) -> datetime:

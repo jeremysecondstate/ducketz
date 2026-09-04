@@ -41,7 +41,7 @@ consolidated EQUS rows. The 2026-08-19 switch is checksum-receipted under
 | Cold US-equity archive | One-shot Databento archive coordinator | provenance under `market-data/databento/us-equities/XNAS.ITCH`; operational EQUS targets under `stocks` | source receipts/checksums and independent operational migration receipts | different dataset identities remain separate; a bridge is eligible only when identities match | Not a recurring Loop A input while operational dataset is `EQUS.MINI` | **Confirmed.** `datafetching/databento_archive.py:213`, `datafetching/databento_fetch.py:544`, `datafetching/equity_dataset_migration.py:537` |
 | Corporate/fundamental/macro/commodity metadata | FMP | stable provider routes | statements, ratios, market cap, filing metadata, energy/commodity context and provider timestamps | point-in-time statement/publication/receipt rules; current values cannot be presumed historical | Required only for configured feature families; lane failures count toward cycle failure | **Confirmed.** `datafetching/main.py:14`, `datafetching/orchestrate.py:389`, `ml/feature_registry.py:659` |
 | Current FRED observations | FRED CSV lane | GDP/CPIAUCSL/UNRATE/FEDFUNDS normalized Parquets | current/revised values, observation and fetch/availability clocks | prospective-rate/monitoring only; not ALFRED historical Loop B evidence | One eligible source for Pricing's required causal live FRED/ALFRED rate; never historical macro authority | **Confirmed.** `datafetching/fred_fetch.py:64`, `ml/option_pricing/causal.py:264`, `docs/datafetch-ml/current_start_command:39` |
-| Equity quotes | Schwab | batched quote endpoint; price-history remains an explicit compatibility/manual mode | bid/ask/mid, quote event/receipt, spread, quote-quality flags | receipt-bound, quote staleness and crossed/locked quality | Required for active quote/liquidity; recurring Loop A does not refresh Schwab OHLCV | **Confirmed.** `datafetching/schwab_fetch.py:113`, `datafetching/orchestrate.py:243`, `ml/datasets/families.py:383` |
+| Equity quotes | Schwab | batched quote endpoint; price-history remains an explicit compatibility/manual mode | bid/ask/mid, quote event/receipt, spread, quote-quality flags | receipt-bound, quote staleness and crossed/locked quality | Best-effort directional enrichment; recurring Loop A persists/reports capture failures without invalidating an otherwise valid Databento-backed generation. The stock trader independently requires current Schwab broker state before submission. | **Confirmed.** `datafetching/schwab_fetch.py:113`, `datafetching/orchestrate.py`, `ml/datasets/families.py:383`, `ml/stock_trader/runtime.py` |
 | Filing document text/events | SEC, with FMP metadata | normalized corporate/SEC paths | accepted/receipt/extraction clocks; dilution/offering/filing impulse and size ratio | `available_at` cannot precede any component clock | Optional by horizon/profile; failures count | **Confirmed.** `datafetching/main.py:21`, `ml/datasets/families.py:1051`, `ml/datasets/families.py:1108` |
 | Prior canonical Parquets | Loop A prior cycles | datastore provider/category/symbol paths | stable natural keys and IDs, current-revised versions, `available_at` | idempotent continuation/upsert; exact temporal keys normalized to UTC | Optional bootstrap state; required for incremental continuity when present | **Confirmed.** `datafetching/parquet_store.py:106`, `datafetching/parquet_store.py:468`, `datafetching/parquet_store.py:1006` |
 
@@ -51,7 +51,7 @@ consolidated EQUS rows. The 2026-08-19 switch is checksum-receipted under
 2. **Confirmed:** compute the calendar-owned target decision. Only eligible XNYS regular-session quarter-hour targets can receive readiness; a closed/non-actionable cycle reports `target=NONE` and creates no readiness. `datafetching/orchestrate.py:277`, `datafetching/orchestrate.py:300`, `datafetching/bar_readiness.py:94`
 3. **Confirmed:** run Databento `EQUS.MINI` first across the watchlist. Each native request begins at an overlap of the latest same-dataset operational timestamp rather than rebuilding history. The different-dataset XNAS cold archive remains provenance-only. Prematurely ended responses are transient-retry eligible; authentication, entitlement, malformed-request, and validation failures are immediate. `datafetching/databento_fetch.py:544`, `app/services/databento_retry.py:14`, `app/services/databento_retry.py:24`
 4. **Confirmed:** the one-minute completion callback attempts all-symbol readiness before unrelated providers and calculated stages. `publish_bar_readiness` resolves the exact completed one-minute bar and close, constructs semantic checksums, writes private manifest/receipt files, renames the immutable directory, verifies it, and updates the pointer. A missing exact row may use provider-aware bounded recovery; contradictory/corrupt readiness does not. Failure leaves Pricing to its own deadline and does not abort the remaining Loop A work. `datafetching/orchestrate.py:300`, `datafetching/orchestrate.py:344`, `datafetching/orchestrate.py:395`, `datafetching/bar_readiness.py:82`
-5. **Confirmed:** fetch the remaining provider lanes in batched watchlist form; shared FRED runs once for the first symbol. Normalize/upsert data and errors. `datafetching/main.py:214`, `datafetching/main.py:217`, `datafetching/parquet_store.py:290`
+5. **Confirmed:** fetch the remaining provider lanes in batched watchlist form; shared FRED runs once for the first symbol. Normalize/upsert data and errors. In production quote-only mode, Schwab quote capture is best-effort enrichment: capture errors remain persisted and logged but are excluded from the directional generation's blocking failure count. Explicit inline Schwab options or price-history modes remain blocking. `datafetching/main.py:214`, `datafetching/main.py:217`, `datafetching/parquet_store.py:290`, `datafetching/orchestrate.py`
 6. **Confirmed:** run fundamental calculations when FMP is configured, then technicals, then cross-domain signals for each symbol. A nonzero stage exit increments failure count. `datafetching/orchestrate.py:389`, `datafetching/orchestrate.py:409`, `datafetching/orchestrate.py:429`
 7. **Confirmed:** publish terminal `COMPLETE` only when failure count is zero; otherwise `FAILED`. `.ducketz-loop-a-complete.json` remains the last successful generation. `datafetching/loop_a_cycle.py:118`, `datafetching/loop_a_cycle.py:127`
 8. **Confirmed:** release the shared lock, wait for the next boundary, then pause 20 seconds. `datafetching/orchestrate.py:196`, `datafetching/orchestrate.py:209`
@@ -100,17 +100,20 @@ The one-shot provider/fundamental/technical/signal CLIs are owned stages, not in
 ## Failure and degradation behavior
 
 - `.ducketz-orchestration.lock` rejects a second Loop A supervisor. It is a
-  separate `O_EXCL` implementation without stale-PID recovery; the shared
-  `.ducketz-loop-a-cycle.lock` is OS-held and releases when its owner exits even
-  though the marker file remains.
+  shared-helper `O_EXCL` lock that can be replaced only after its recorded PID
+  is positively confirmed dead. Live, malformed, or unqueryable ownership
+  remains fail-closed. The separate `.ducketz-loop-a-cycle.lock` is OS-held and
+  releases when its owner exits even though the marker file remains.
 - Bar-readiness publication is attempted only from the completed Databento
   all-symbol fast lane. A publish failure is reported and later Loop A stages
   may continue, but no readiness receipt is synthesized.
 - Premature stream termination is a bounded transient retry condition. Provider
   identity, entitlement, malformed request, validation, or readiness-integrity
   failures remain fail-closed and are not relabeled as transport recovery.
-- Any provider/calculation failure increments the cycle failure count and makes
-  the current `.ducketz-loop-a-cycle.json` `FAILED`. Only a zero-failure cycle
+- Any required-provider or calculation failure increments the cycle failure
+  count and makes the current `.ducketz-loop-a-cycle.json` `FAILED`. A Schwab
+  error in production quote-only mode remains an observable optional-capture
+  failure and does not increment that count. Only a zero-blocking-failure cycle
   advances `.ducketz-loop-a-complete.json`.
 - Independent readers may retain the prior latest-complete record while a new
   cycle is writing or failed. Directional Loop B deliberately requires the

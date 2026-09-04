@@ -95,7 +95,10 @@ def exclusive_runtime_lock(path: Path, *, process_name: str) -> Iterator[None]:
 
 def _lock_pid(payload: str) -> int | None:
     match = re.search(r"(?m)^pid=(\d+)$", payload)
-    return int(match.group(1)) if match else None
+    if match is None:
+        return None
+    owner = int(match.group(1))
+    return owner if owner > 0 else None
 
 
 def _pid_is_running(pid: int) -> bool:
@@ -127,11 +130,14 @@ def _pid_is_running(pid: int) -> bool:
             pid,
         )
         if not handle:
-            return False
+            # ERROR_INVALID_PARAMETER is the documented result for a PID that
+            # does not exist. Access-denied and other query failures are not
+            # proof of death, so preserve the lock.
+            return ctypes.get_last_error() != 87
         try:
             exit_code = wintypes.DWORD()
             if not kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
-                return False
+                return True
             return int(exit_code.value) == still_active
         finally:
             kernel32.CloseHandle(handle)
@@ -142,7 +148,7 @@ def _pid_is_running(pid: int) -> bool:
     except ProcessLookupError:
         return False
     except OSError:
-        return False
+        return True
     return True
 
 

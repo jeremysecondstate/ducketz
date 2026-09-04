@@ -1,9 +1,9 @@
-# Schwab Duckets security marks
+# Shared equity security marks
 
-The Schwab Duckets UI loads optional, locally bundled PNG security marks from
-this directory. At runtime it never downloads marks. Missing, invalid, and
-unknown-symbol assets use the built-in ticker-monogram fallback, with the ticker
-also shown as text.
+The Schwab Duckets and Rolling Forecasts UIs load optional, locally bundled PNG
+security marks from this directory. At runtime they never download marks.
+Missing, invalid, and unknown-symbol assets use a built-in ticker-monogram
+fallback, with the ticker also shown as text.
 
 ## Current local assets
 
@@ -28,8 +28,10 @@ These 512x512 transparent PNGs were supplied by the project owner on
 record does not grant or independently verify trademark or redistribution
 rights; confirm those rights before redistributing the image files.
 
-The UI preserves aspect ratio and downsamples each image to a maximum of 18x18
-pixels in portfolio rows and 38x38 pixels in the Selected Holding card. PNG
-transparency is preserved without adding a white or black backing plate. New
-assets should use a transparent 1:1 canvas and be added to
-`SECURITY_MARK_FILENAMES` in `app/ui/schwab_duckets.py`.
+The UIs preserve aspect ratio and downsample each image to a maximum of 18x18
+pixels in portfolio rows, 38x38 pixels in the Selected Holding card, and 80x80
+pixels in the Rolling Forecasts Prediction Pulse matrix. PNG transparency is
+preserved without adding a white or black backing plate. New assets should use
+a transparent 1:1 canvas, a lowercase ticker filename, and be added to
+`SECURITY_MARK_FILENAMES` in `app/ui/schwab_duckets.py` when Schwab Duckets also
+uses the symbol.

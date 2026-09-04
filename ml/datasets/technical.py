@@ -37,6 +37,7 @@ class TechnicalDatasetConfig:
     strict_key_alignment: bool = True
     temporal_mode: str = "daily"
     include_extended_hours: bool = False
+    intraday_source_session_policy: str | None = None
 
     def __post_init__(self) -> None:
         if self.processing_delay < pd.Timedelta(0):
@@ -143,6 +144,7 @@ def assemble_technical_feature_frame(
         processing_delay=config.processing_delay,
         temporal_mode=config.temporal_mode,
         include_extended_hours=config.include_extended_hours,
+        intraday_source_session_policy=config.intraday_source_session_policy,
     )
     merged["mr__source_available_at"] = (
         merged["bar_end_timestamp"] + config.processing_delay
@@ -307,6 +309,7 @@ def _attach_point_in_time_universe(
     processing_delay: pd.Timedelta,
     temporal_mode: str,
     include_extended_hours: bool,
+    intraday_source_session_policy: str | None,
 ) -> pd.DataFrame:
     if membership.columns.has_duplicates:
         raise MLContractError("Universe membership contains duplicate columns")
@@ -354,7 +357,12 @@ def _attach_point_in_time_universe(
                 bar_timestamp_column="bar_timestamp",
                 bar_end_column="operational_bar_end_timestamp",
                 processing_delay=processing_delay,
-                include_extended_hours=include_extended_hours,
+                include_extended_hours=(
+                    include_extended_hours
+                    if intraday_source_session_policy is None
+                    else None
+                ),
+                source_session_policy=intraday_source_session_policy,
             )
             candidates = candidates.loc[
                 candidates["intraday_interval_eligible"].fillna(False)

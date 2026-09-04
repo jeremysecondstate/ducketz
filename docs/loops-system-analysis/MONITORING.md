@@ -37,7 +37,7 @@ Explicit weekly roll-up for deterministic inspection or testing:
 The active Codex heartbeat runs exactly one command per wake:
 
 ```powershell
-.\.venv\Scripts\python.exe -m ml.system_guardian --datastore-target pc --mode scheduled --repair-liveness --compact
+.\.venv\Scripts\python.exe -m ml.system_guardian --datastore-target pc --mode scheduled --repair-liveness --repair-codex-forced-update --compact
 ```
 
 Callers must parse the JSON even when the process exits 2. Exit 2 means the
@@ -52,11 +52,11 @@ CME/L2, Daily ALFRED, Loop A, Active Pricing, Directional Loop B, Options
 Capture, Strategy, and Strategy-profit training. Health requires all of the
 following, not a PID alone:
 
-Directional Loop B's canonical cadence is 30 minutes at phase `:05`/`:35`.
+Directional Loop B's canonical cadence is 30 minutes at phase `:06`/`:36`.
 Publication freshness is measured from the receipt-verified `promoted_at`
 availability clock, not the earlier computation start: WARN begins after 35
 minutes and FAIL after 45. This is important at the hourly `:42` wake, when the
-normal `:35` cycle can still be running while the prior verified authority
+normal `:36` cycle can still be running while the prior verified authority
 remains safely readable. One retry is allowed only for classified transient
 failures; startup recovery runs immediately only at the 35-minute threshold.
 

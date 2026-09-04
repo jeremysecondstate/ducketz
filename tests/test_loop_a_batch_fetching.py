@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 import pandas as pd
 import pytest
+import requests
 
 from app.models.market_data import MarketBar
 from app.services.databento_market_data import (
@@ -18,6 +19,8 @@ from app.services.market_fetch_specs import (
     databento_analysis_source_specs,
 )
 from app.services.schwab import SchwabSession
+import app.services.schwab as schwab_module
+import app.services.schwab_token_store as schwab_token_store
 from datafetching import FetchResult
 from datafetching import (
     databento_fetch,
@@ -534,6 +537,82 @@ def test_schwab_quotes_fifteen_symbols_in_one_request(
     }
     assert len(quotes) == 15
     assert quotes[SYMBOLS[-1]]["lastPrice"] == 15.0
+
+
+def test_schwab_refresh_rejection_posts_once_across_batch_fallback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    token_path = tmp_path / "credentials" / "schwab_tokens.json"
+    monkeypatch.setattr(schwab_token_store, "TOKEN_CACHE_PATH", token_path)
+    schwab_token_store.write_token_payload_atomic(
+        {
+            "access_token": "expired-access-token",
+            "access_token_expires_at": "2020-01-01T00:00:00+00:00",
+            "refresh_token": "rejected-refresh-token",
+            "refresh_token_expires_at": "2099-01-01T00:00:00+00:00",
+        }
+    )
+    calls = 0
+    sensitive_description = "provider-description-must-not-leak"
+
+    class Response:
+        status_code = 400
+
+        @staticmethod
+        def json() -> dict[str, str]:
+            return {
+                "error": "invalid_grant",
+                "error_description": sensitive_description,
+            }
+
+        def raise_for_status(self) -> None:
+            raise requests.HTTPError(sensitive_description, response=self)
+
+    def post(*_args: object, **_kwargs: object) -> Response:
+        nonlocal calls
+        calls += 1
+        return Response()
+
+    def unexpected_get(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("market-data GET must not run after refresh rejection")
+
+    session_type = schwab_fetch.DataFetchingSchwabSession
+    monkeypatch.setattr(
+        schwab_fetch,
+        "DataFetchingSchwabSession",
+        lambda: session_type(
+            config=SimpleNamespace(
+                client_id="client",
+                client_secret="secret",
+                redirect_uri="https://example.test/callback",
+            )
+        ),
+    )
+    monkeypatch.setattr(schwab_module.requests, "post", post)
+    monkeypatch.setattr(schwab_module.requests, "get", unexpected_get)
+    symbols = ("AAPL", "AMZN", "GOOG", "MU", "NVDA", "SNDK")
+
+    results = fetching_main.run_symbols_fetch(
+        symbols,
+        ParquetStore(tmp_path / "datastore"),
+        providers=("schwab",),
+        profile="continuation",
+        include_cme=False,
+        include_fmp_macro=False,
+        include_options=False,
+        include_schwab_price_history=False,
+    )
+
+    assert calls == 1
+    assert all(result[0] == FetchResult("schwab", 0, 1) for result in results.values())
+    output = capsys.readouterr().out
+    assert "error=invalid_grant" in output
+    assert sensitive_description not in output
+    cached = schwab_token_store.load_token_payload(strict=True)
+    assert cached is not None
+    assert schwab_token_store.refresh_reauthorization_required(cached)
 
 
 def test_schwab_loop_a_uses_only_maximal_non_overlapping_history_windows() -> None:

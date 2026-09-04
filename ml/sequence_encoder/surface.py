@@ -223,9 +223,12 @@ def loop_b_supervised_labels(
         output["label_available_at"].ge(output["target_window_end"])
         & output["decision_timestamp"].ge(output["information_available_at"])
     ]
-    keys = ["symbol", "horizon", "decision_timestamp"]
-    if output.duplicated(keys, keep=False).any():
-        raise ValueError("Loop B mature labels are not unique by decision route")
+    base_keys = ["symbol", "horizon", "decision_timestamp"]
+    one_hour = output["horizon"].astype("string").eq("1h")
+    if output.loc[one_hour].duplicated(
+        [*base_keys, "target_window_start"], keep=False
+    ).any() or output.loc[~one_hour].duplicated(base_keys, keep=False).any():
+        raise ValueError("Loop B mature labels are not unique by target route")
     output["decision_cluster_size"] = output.groupby(
         ["horizon", "target_window_start", "target_window_end"],
         sort=False,
@@ -234,6 +237,63 @@ def loop_b_supervised_labels(
     return output.sort_values(
         ["target_window_start", "horizon", "symbol"]
     ).reset_index(drop=True)
+
+
+def attach_sequence_sample_windows(
+    samples: pd.DataFrame,
+    routes: pd.DataFrame,
+) -> pd.DataFrame:
+    """Attach exact 1h target windows while retaining legacy route grain."""
+
+    base_keys = ["symbol", "horizon", "decision_timestamp"]
+    one_hour_keys = [*base_keys, "target_window_start"]
+    sample_columns = [
+        *one_hour_keys,
+        "information_available_at",
+        "bar_end_timestamp",
+        "target_window_end",
+    ]
+    missing_routes = sorted(set(one_hour_keys).difference(routes.columns))
+    missing_samples = sorted(set(sample_columns).difference(samples.columns))
+    if missing_routes:
+        raise ValueError("Sequence routes are missing: " + ", ".join(missing_routes))
+    if missing_samples:
+        raise ValueError("Sequence samples are missing: " + ", ".join(missing_samples))
+
+    clean_routes = routes.loc[:, one_hour_keys].copy()
+    clean_samples = samples.loc[:, sample_columns].copy()
+    for frame in (clean_routes, clean_samples):
+        frame["decision_timestamp"] = pd.to_datetime(
+            frame["decision_timestamp"], utc=True, errors="coerce"
+        )
+        frame["target_window_start"] = pd.to_datetime(
+            frame["target_window_start"], utc=True, errors="coerce"
+        )
+    pieces: list[pd.DataFrame] = []
+    requested_count = 0
+    for is_one_hour, keys in ((True, one_hour_keys), (False, base_keys)):
+        route_mask = clean_routes["horizon"].astype("string").eq("1h").fillna(False)
+        sample_mask = (
+            clean_samples["horizon"].astype("string").eq("1h").fillna(False)
+        )
+        if not is_one_hour:
+            route_mask = ~route_mask
+            sample_mask = ~sample_mask
+        requested = clean_routes.loc[route_mask, keys].dropna().drop_duplicates()
+        if requested.empty:
+            continue
+        source = clean_samples.loc[sample_mask, sample_columns].drop_duplicates(keys)
+        joined = requested.merge(source, on=keys, how="inner", validate="one_to_one")
+        if len(joined) != len(requested):
+            raise ValueError("LIVE Loop B routes do not map to exact sequence samples")
+        pieces.append(joined)
+        requested_count += len(requested)
+    if not pieces:
+        return clean_samples.iloc[0:0].copy()
+    output = pd.concat(pieces, ignore_index=True, sort=False)
+    if len(output) != requested_count:
+        raise ValueError("LIVE Loop B routes do not map to exact sequence samples")
+    return output
 
 
 def _load_stock_hourly(
@@ -560,6 +620,7 @@ def _empty_state_frame() -> pd.DataFrame:
 
 
 __all__ = [
+    "attach_sequence_sample_windows",
     "canonical_opra_hourly_files",
     "canonical_stock_hourly_path",
     "loop_b_supervised_labels",

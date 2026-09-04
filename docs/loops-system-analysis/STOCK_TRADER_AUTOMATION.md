@@ -28,7 +28,7 @@ trade aggregate was emitted, not permission to future-fill a label. See the
 
 ## Receipt-driven live + shadow owners
 
-Loop B computes at `:05`/`:35`, but its receipt-verified publication normally
+Loop B computes at `:06`/`:36`, but its receipt-verified publication normally
 becomes authoritative later. The stock trader therefore wakes before the next
 target and waits for publication authority instead of guessing from the wall
 clock.
@@ -39,6 +39,7 @@ At the weekday PRE-opening wake (`03:47` PT), run exactly once:
 .\.venv\Scripts\python.exe -m ml.stock_trader.runtime `
   --datastore-target pc `
   --execute `
+  --target-horizon 1h `
   --queue-at-premarket-open `
   --wait-for-actionable-prediction
 ```
@@ -54,40 +55,110 @@ At the weekday opening wake (`06:17` PT), run exactly once from
 .\.venv\Scripts\python.exe -m ml.stock_trader.runtime `
   --datastore-target pc `
   --execute `
+  --target-horizon 1h `
   --queue-at-open `
   --wait-for-actionable-prediction
 ```
 
-At each weekday 1h wake (`04:47`, then `06:47` through `15:47` PT), run
-exactly once. The `05:47` slot is intentionally owned by the separate `06:17`
-opening-queue task so the 06:30 regular-open prediction is not consumed twice:
+At each weekday 1h wake (`04:47` through `15:47` PT), run exactly once. The
+`05:47` wake owns the distinct `06:00` PRE target; the separate `06:17`
+opening-queue task owns the `06:30` regular-open target:
 
 ```powershell
 .\.venv\Scripts\python.exe -m ml.stock_trader.runtime `
   --datastore-target pc `
   --execute `
+  --target-horizon 1h `
   --wait-for-actionable-prediction
 ```
 
 At the four weekday 4h-checkpoint wakes (`04:17`, `08:17`, `12:17`, and
-`16:17` PT), run the same command without `--queue-at-open`. These wakes target
-the explicit `04:30 PRE`, `08:30 REGULAR`, `12:30 REGULAR`, and `16:30 POST`
-Pacific checkpoints.
+`16:17` PT), run the command with `--target-horizon 4h` and without an opening
+queue flag. These wakes target the explicit `04:30 PRE`, `08:30 REGULAR`,
+`12:30 REGULAR`, and `16:30 POST` Pacific checkpoints.
 
-The waiter resolves the next 1h or 4h XNYS target from the same versioned
-exchange calendar used by Loop B. It accepts only an unconsumed LIVE primary
+The waiter resolves the next XNYS target for the explicitly selected horizon
+from the same versioned exchange calendar used by Loop B. It accepts only an
+unconsumed LIVE primary
 prediction from the checksum-verified current publication whose target is
 still ahead. The nearest target wins, with 1h preferred only on an exact tie.
-The expected fresh generation begins 25 minutes before that target. The waiter
-polls every 15 seconds and stops 90 seconds before the target so account state,
-quotes, sizing, and submission still occur before the predicted window begins.
+The waiter immediately accepts a checksum-valid, unconsumed prediction for the
+exact target and horizon while it remains actionable. It polls every 15 seconds
+only when no such prediction is available, and stops 90 seconds before the
+target so account state, quotes, sizing, and submission still occur before the
+predicted window begins.
 
-An older receipt for the exact same future target is retained while waiting. If
-the expected fresh generation has not promoted by the deadline, that still-
-actionable receipt becomes the explicit `FALLBACK_ACTIONABLE_RECEIPT`; the
-enrichment model receives its real `prediction_age_minutes`. Expired targets
-are never fallbacks. A prior execution-requested LIVE decision consumes its
-prediction ID, including a NO_TRADE decision, so later wakes cannot reuse it.
+Receipt age is descriptive rather than an acceptance barrier. A prediction
+created before the expected generation window is accepted immediately as an
+explicit `FALLBACK_ACTIONABLE_RECEIPT`, and the enrichment model receives its
+real `prediction_age_minutes`. Expired targets are never fallbacks. A prior
+execution-requested LIVE decision consumes its prediction ID, including a
+NO_TRADE decision, so later wakes cannot reuse it.
+Live submissions additionally reserve prediction ID, symbol, and lane in a
+durable datastore-root SQLite ledger before the broker POST. That stable key
+prevents a later hourly decision ID from reusing the generation even if a crash
+loses ordinary receipt artifacts. Non-waiting live entry points enforce the
+same exact-next-target, near-term, and consumption rules.
+
+After prediction handoff, the runtime retries only the complete read-only
+Schwab state snapshot (account/positions, working orders, and all six quotes)
+when a failure is classified as transient. Each retry recaptures all three
+inputs together after a fixed three-second pause. The retry-start window is
+capped at 120 seconds and shortened when necessary to preserve a 15-second
+pre-target decision/submission reserve. An in-flight Schwab request may finish
+after that budget, but the fresh clock check still prevents a late decision or
+submission. Before parallel reads, authentication and account identity are
+initialized once so one failed initialization cannot fan out into simultaneous
+calls. The runtime fingerprints that account/OAuth generation before the reads,
+verifies it after the complete snapshot, and requires the prepared submission
+to match it. A concurrent reauthorization therefore retries the read snapshot
+or stops before POST rather than mixing or trading the wrong account. OAuth is
+Schwab's authorization mechanism. A cache-lock timeout,
+pre-connect timeout, or definite rate-limit response is retryable because no
+token mutation was accepted; an ambiguous post-send/read timeout, malformed
+success payload, or authorization failure is fail-closed and is not retried.
+After any retry,
+the runtime advances the decision clock, re-reads the operator switch, and
+revalidates prediction actionability, the current PRE/REGULAR/POST window, and
+time in force. If the
+safe target boundary has been reached, it publishes
+`PREDICTION_EXECUTION_DEADLINE_PASSED` and submits nothing.
+The decision artifact and receipt store the broker-state attempt count,
+transient-failure count, elapsed and fixed-delay time, final error type, and the
+sanitized failing component (`authentication`, `account_identity`, `account`,
+`open_orders`, or `equity_quotes`).
+
+Token refresh is single-flight across threads and processes that share the
+credential cache. The refresh transaction reloads the cache under an OS lock,
+writes it by durable atomic replacement, and lets waiters adopt a token another
+process already refreshed. On Windows, the cache lives in the user's protected
+LocalAppData `Ducket` directory; other platforms use the user's state directory.
+An old repository-local cache is never imported; if detected, the runtime stops
+with instructions to retire it and reauthorize so its refresh token is rotated.
+Before the OAuth POST it records a non-secret in-progress marker. An ambiguous
+timeout or crash leaves that marker fail-closed so no waiter repeats an
+ambiguously committed refresh; Schwab must then be authorized again.
+A definite credential rejection records a separate reauthorization-required
+marker, preventing every symbol or process from reposting the same rejected
+refresh credential. A successful authorization-code exchange clears either
+marker by replacing the cached credential generation.
+
+The scheduled command is still invoked exactly once. “No retry” at the task
+level prohibits launching a second runtime process; it does not prohibit these
+bounded, idempotent Schwab GET retries inside that one process. Broker writes
+are different: order submission, replacement, and cancellation are never
+blindly retried because a timeout can leave the mutation outcome ambiguous.
+Live execution cannot use a historical `--decided-at` clock. The runtime also
+checks the wall clock, session, target deadline, and operator switch both before
+and immediately after reserving each exact-once submission intent; a failed
+post-reservation gate is recorded as `NOT_SUBMITTED_SAFETY_CHECK`.
+Potentially blocking token/account preflight is completed first and frozen as a
+matching account-hash/token context. A synchronous durable reservation keyed by
+both decision ID and stable prediction generation is committed before POST.
+The same gates and identity match run again inside the prepared submission path
+immediately before the order POST.
+PREMARKET reads cannot implicitly stage a REGULAR/DAY order: only the explicit
+opening-queue modes may cross that session boundary.
 
 The runtime itself resolves the XNYS calendar. On an ordinary full session the
 stock execution clock is `PRE` 04:00--06:25 PT, `REGULAR` 06:30--13:00 PT, and

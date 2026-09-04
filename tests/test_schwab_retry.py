@@ -76,8 +76,15 @@ def test_retryable_statuses_and_transport_failures_are_recognized() -> None:
     for status in (408, 425, 429, 500, 502, 503, 504):
         assert is_retryable_schwab_error(FakeHttpError(status, "server failure"))
     assert is_retryable_schwab_error(RuntimeError("500 Internal Server Error"))
+    assert is_retryable_schwab_error(RuntimeError("HTTP status 503"))
     assert is_retryable_schwab_error(requests.Timeout("request timed out"))
     assert is_retryable_schwab_error(requests.ConnectionError("connection reset"))
+    ambiguous_refresh = requests.Timeout("token refresh timed out")
+    ambiguous_refresh.schwab_retry_safe = False
+    assert not is_retryable_schwab_error(ambiguous_refresh)
+    assert not is_retryable_schwab_error(
+        ValueError("Validation rejected a 5000-share quantity")
+    )
 
 
 def test_non_retryable_failure_is_not_repeated() -> None:

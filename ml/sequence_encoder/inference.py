@@ -17,6 +17,7 @@ from ml.sequence_encoder.contracts import (
     SEQUENCE_EMBEDDING_SCHEMA_VERSION,
     EMBEDDING_COLUMNS,
     SequenceEncoderConfig,
+    frame_with_sequence_distribution_id,
 )
 from ml.sequence_encoder.dataset import (
     RobustSequenceScaler,
@@ -27,7 +28,10 @@ from ml.sequence_encoder.publication import (
     SequencePublication,
     read_current_sequence_publication,
 )
-from ml.sequence_encoder.surface import materialize_hourly_surface_states
+from ml.sequence_encoder.surface import (
+    attach_sequence_sample_windows,
+    materialize_hourly_surface_states,
+)
 from ml.sequence_encoder.training import (
     TrainedSequenceEnsemble,
     calibrated_prediction,
@@ -218,23 +222,11 @@ def _inference_labels(
     *,
     horizons: tuple[str, ...],
 ) -> pd.DataFrame:
-    keys = ["symbol", "horizon", "decision_timestamp"]
     live = predictions.loc[
         predictions["horizon"].astype("string").isin(horizons)
         & predictions["prediction_mode"].astype("string").eq("LIVE"),
-        keys,
-    ].drop_duplicates()
-    sample_columns = [
-        *keys,
-        "information_available_at",
-        "bar_end_timestamp",
-        "target_window_start",
-        "target_window_end",
-    ]
-    source = samples.loc[:, sample_columns].drop_duplicates(keys)
-    output = live.merge(source, on=keys, how="inner", validate="one_to_one")
-    if len(output) != len(live):
-        raise ValueError("LIVE Loop B routes do not map to exact sequence samples")
+    ].copy()
+    output = attach_sequence_sample_windows(samples, live)
     output["target_cost_adjusted_positive"] = 0.0
     output["forward_cost_adjusted_return"] = 0.0
     output["decision_weight"] = 1.0
@@ -275,10 +267,7 @@ def _distribution_frame(
         "Shared shadow representation; existing Loop B and Strategy authorities remain unchanged."
     )
     output["schema_version"] = SEQUENCE_DISTRIBUTION_SCHEMA_VERSION
-    return frame_with_readable_id(
-        output,
-        key_columns=("symbol", "horizon", "decision_timestamp"),
-    )
+    return frame_with_sequence_distribution_id(output)
 
 
 def _embedding_frame(

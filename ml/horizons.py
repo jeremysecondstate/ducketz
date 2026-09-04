@@ -8,6 +8,7 @@ import pandas as pd
 from ml.calendars import (
     FOUR_HOUR_CHECKPOINT_START_POLICY,
     HYBRID_TARGET_START_POLICY,
+    US_EQUITY_CONTINUOUS_EXTENDED_SOURCE_POLICY,
     US_EQUITY_ACTIONABLE_TARGET_POLICY,
     US_EQUITY_EXTENDED_SOURCE_POLICY,
 )
@@ -158,7 +159,7 @@ DEFAULT_HORIZON_SPECIFICATIONS: Final[
     "1h": HorizonSpecification(
         horizon="1h",
         target_definition_version=(
-            "next-60-eligible-equity-minutes-open-close-v4"
+            "next-60-eligible-equity-minutes-open-close-v6"
         ),
         source_timeframe="1h",
         information_availability_rule=(
@@ -170,8 +171,9 @@ DEFAULT_HORIZON_SPECIFICATIONS: Final[
             "and_required_processing_delay"
         ),
         target_window_start_rule=(
-            "first_session_open_break_resume_or_full_local_clock_hour_start_"
-            "strictly_after_information_availability"
+            "first_session_open_break_resume_or_eligible_local_clock_hour_start_"
+            "strictly_after_information_availability_plus_later_starts_not_"
+            "after_two_hours_from_information_availability"
         ),
         target_window_end_rule=(
             "end_after_60_calendar_selected_eligible_equity_actionable_minutes"
@@ -210,7 +212,9 @@ DEFAULT_HORIZON_SPECIFICATIONS: Final[
         target_calendar_policy_version=(
             "us-equity-actionable-segments-plus-versioned-start-v1"
         ),
-        intraday_source_session_policy=US_EQUITY_EXTENDED_SOURCE_POLICY,
+        intraday_source_session_policy=(
+            US_EQUITY_CONTINUOUS_EXTENDED_SOURCE_POLICY
+        ),
         intraday_target_session_policy=US_EQUITY_ACTIONABLE_TARGET_POLICY,
         intraday_target_start_policy=HYBRID_TARGET_START_POLICY,
     ),

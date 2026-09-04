@@ -11,6 +11,7 @@ from ml.calendars import (
     FOUR_HOUR_CHECKPOINT_START_POLICY,
     HYBRID_TARGET_START_POLICY,
     US_EQUITY_ACTIONABLE_TARGET_POLICY,
+    US_EQUITY_CONTINUOUS_EXTENDED_SOURCE_POLICY,
     US_EQUITY_EXTENDED_SOURCE_POLICY,
     ExchangeSessionCalendar,
 )
@@ -50,7 +51,7 @@ def test_every_closed_feature_profile_uses_canonical_horizon_order() -> None:
     (
         (
             "1h",
-            "next-60-eligible-equity-minutes-open-close-v4",
+            "next-60-eligible-equity-minutes-open-close-v6",
             "60",
         ),
         (
@@ -79,7 +80,9 @@ def test_intraday_contracts_are_explicit_and_horizon_scoped(
         "us-equity-actionable-segments-plus-versioned-start-v1"
     )
     assert specification.intraday_source_session_policy == (
-        US_EQUITY_EXTENDED_SOURCE_POLICY
+        US_EQUITY_CONTINUOUS_EXTENDED_SOURCE_POLICY
+        if horizon == "1h"
+        else US_EQUITY_EXTENDED_SOURCE_POLICY
     )
     assert specification.intraday_target_session_policy == (
         US_EQUITY_ACTIONABLE_TARGET_POLICY
@@ -111,6 +114,7 @@ def test_us_equity_candidates_cover_pre_regular_and_post_checkpoints() -> None:
             [
                 "2026-07-27T11:00:00Z",
                 "2026-07-27T12:00:00Z",
+                "2026-07-27T13:00:00Z",
                 "2026-07-27T13:30:00Z",
                 "2026-07-27T14:00:00Z",
                 "2026-07-27T15:00:00Z",
@@ -142,6 +146,31 @@ def test_us_equity_candidates_cover_pre_regular_and_post_checkpoints() -> None:
             ],
             utc=True,
         )
+    )
+
+
+def test_nine_eastern_hourly_target_pauses_the_open_transition_gap() -> None:
+    calendar = ExchangeSessionCalendar(
+        "XNAS",
+        start="2026-07-20",
+        end="2026-08-03",
+    )
+
+    target = calendar.target_window_after(
+        "2026-07-27T12:47:00Z",
+        eligible_minute_count=60,
+        session_policy=US_EQUITY_ACTIONABLE_TARGET_POLICY,
+        start_policy=HYBRID_TARGET_START_POLICY,
+    )
+
+    assert target.start_timestamp == pd.Timestamp("2026-07-27T13:00:00Z")
+    assert target.end_timestamp == pd.Timestamp("2026-07-27T14:05:00Z")
+    assert len(target.constituent_timestamps) == 60
+    assert target.constituent_timestamps[24] == pd.Timestamp(
+        "2026-07-27T13:24:00Z"
+    )
+    assert target.constituent_timestamps[25] == pd.Timestamp(
+        "2026-07-27T13:30:00Z"
     )
 
 
@@ -820,5 +849,10 @@ def _build(
             close_value=source_close,
         ),
     )
-    assert len(samples) == 1
-    return samples.iloc[0]
+    selected = samples.loc[
+        pd.to_datetime(samples["target_window_start"], utc=True).eq(
+            window.start_timestamp
+        )
+    ]
+    assert len(selected) == 1
+    return selected.iloc[0]

@@ -11,6 +11,10 @@ import pandas as pd
 import pytest
 
 import ml.system_guardian as system_guardian
+from ml.prediction_runtime import (
+    DEFAULT_INTERVAL_MINUTES as LOOP_B_INTERVAL_MINUTES,
+    DEFAULT_PHASE_OFFSET_MINUTES as LOOP_B_PHASE_OFFSET_MINUTES,
+)
 from ml.system_guardian import (
     GUARDIAN_LAUNCHES,
     _audit_directory,
@@ -278,6 +282,46 @@ def _forced_update_monitor(tmp_path: Path) -> dict[str, object]:
     }
 
 
+def _mark_pricing_and_options_stale_from_update_outage(
+    monitor: dict[str, object],
+) -> None:
+    pricing = next(
+        check
+        for check in monitor["checks"]
+        if check.get("name") == "pricing_publications"
+    )
+    pricing.update(
+        {
+            "status": "FAIL",
+            "summary": "Pricing target authority is behind the actionable regular target.",
+        }
+    )
+    pricing["details"].update(
+        {
+            "expected_target": "2026-08-19T19:30:00Z",
+            "settling": False,
+        }
+    )
+    options = next(
+        check
+        for check in monitor["checks"]
+        if check.get("name") == "options_publications"
+    )
+    options.update(
+        {
+            "status": "FAIL",
+            "summary": "Current option snapshots are behind the actionable regular target.",
+            "details": {
+                "expected_target": "2026-08-19T19:30:00Z",
+                "observed_targets": ["2026-08-19T18:30:00Z"],
+                "provider_counts": {"databento-opra": 6},
+                "symbol_count": 6,
+                "settling": False,
+            },
+        }
+    )
+
+
 def _write_forced_update_locks(tmp_path: Path) -> None:
     for runtime in RUNTIMES:
         (tmp_path / runtime.lock_name).write_text(
@@ -303,22 +347,50 @@ def test_launch_allowlist_covers_each_runtime_once() -> None:
     assert "--skip-historical-catchup" in _LAUNCH_BY_RUNTIME["options"].arguments
 
 
+def test_loop_b_canonical_cadence_matches_runtime_monitor_guardian_and_command(
+) -> None:
+    runtime = _RUNTIME_BY_NAME["loop_b"]
+    launch = _LAUNCH_BY_RUNTIME["loop_b"]
+    repository = Path(__file__).resolve().parents[1]
+    start_command = (
+        repository / "docs" / "datafetch-ml" / "current_start_command"
+    ).read_text(encoding="utf-8")
+
+    assert LOOP_B_INTERVAL_MINUTES == 30
+    assert LOOP_B_PHASE_OFFSET_MINUTES == 6
+    assert (
+        f"--interval-minutes {LOOP_B_INTERVAL_MINUTES}"
+        in runtime.required_arguments
+    )
+    assert (
+        f"--phase-offset-minutes {LOOP_B_PHASE_OFFSET_MINUTES}"
+        in runtime.required_arguments
+    )
+    interval_index = launch.arguments.index("--interval-minutes")
+    phase_index = launch.arguments.index("--phase-offset-minutes")
+    assert launch.arguments[interval_index + 1] == str(LOOP_B_INTERVAL_MINUTES)
+    assert launch.arguments[phase_index + 1] == str(LOOP_B_PHASE_OFFSET_MINUTES)
+    assert f"--interval-minutes {LOOP_B_INTERVAL_MINUTES} `" in start_command
+    assert (
+        f"--phase-offset-minutes {LOOP_B_PHASE_OFFSET_MINUTES} `"
+        in start_command
+    )
+
+
 def test_all_runtime_lock_paths_share_the_maintenance_gate() -> None:
     repository = Path(__file__).resolve().parents[1]
     shared_lock_owners = (
         "datafetching/cme_runtime.py",
         "datafetching/fred_alfred_runtime.py",
+        "datafetching/orchestrate.py",
         "ml/option_pricing_runtime.py",
+        "ml/prediction_runtime.py",
         "datafetching/options_runtime.py",
         "ml/strategy_runtime.py",
         "ml/strategy_profit_training_runtime.py",
     )
     for relative in shared_lock_owners:
         assert "exclusive_runtime_lock" in (repository / relative).read_text(
-            encoding="utf-8"
-        )
-    for relative in ("datafetching/orchestrate.py", "ml/prediction_runtime.py"):
-        assert "runtime_lock_maintenance_gate" in (repository / relative).read_text(
             encoding="utf-8"
         )
 
@@ -348,6 +420,7 @@ def test_stop_side_revalidates_exact_argv_before_process_termination() -> None:
     assert "CommandLineToArgvW" in source
     assert "Target executable no longer matches" in source
     assert "Target arguments no longer match" in source
+    assert "only rethrow if it still lives" in source
     assert ".Contains(" not in source
 
 
@@ -461,6 +534,9 @@ def test_checked_in_launcher_is_hidden_idempotent_and_allowlist_owned() -> None:
     assert "$python," in source
     assert "Global\\DucketzAllLoopsCanonicalLauncherV1" in source
     assert "$launcherMutex.WaitOne(0)" in source
+    assert "function Get-LockOwnerState" in source
+    assert "$before.LockOwnerState -ne 'DEAD'" in source
+    assert "dead_lock_observed_before_start" in source
     assert "[int]$after.LauncherPid -ne [int]$started.Id" in source
     assert "-NoExit" not in source
 
@@ -589,6 +665,148 @@ def test_exact_codex_forced_update_all_eight_signature_is_eligible(
     assert len(decision["locks"]) == 8
     assert len(decision["logs"]) == 8
     assert len(str(decision["event_fingerprint"])) == 64
+
+
+def test_codex_forced_update_allows_verified_target_gaps_caused_by_outage(
+    tmp_path: Path,
+) -> None:
+    _write_forced_update_locks(tmp_path)
+    monitor = _forced_update_monitor(tmp_path)
+    _mark_pricing_and_options_stale_from_update_outage(monitor)
+
+    decision = _plan(
+        tmp_path,
+        [],
+        monitor=monitor,
+        now="2026-08-19T19:42:00Z",
+        live_pids=set(),
+        allow_codex_forced_update=True,
+        codex_update_events=(_forced_update_event(),),
+    )
+
+    assert decision["status"] == "ELIGIBLE_CODEX_APPX_FORCED_UPDATE_ALL_EIGHT"
+    assert decision["fault"] == "CODEX_APPX_FORCED_UPDATE_ALL_EIGHT"
+
+
+def test_codex_forced_update_target_gap_requires_exact_event_signature(
+    tmp_path: Path,
+) -> None:
+    _write_forced_update_locks(tmp_path)
+    monitor = _forced_update_monitor(tmp_path)
+    _mark_pricing_and_options_stale_from_update_outage(monitor)
+
+    decision = _plan(
+        tmp_path,
+        [],
+        monitor=monitor,
+        now="2026-08-19T19:42:00Z",
+        live_pids=set(),
+        allow_codex_forced_update=True,
+        codex_update_events=(
+            _forced_update_event(package_family="Other.App_family"),
+        ),
+    )
+
+    assert decision["status"] == "REPORT_ONLY"
+    assert "forced-update event" in str(decision["summary"])
+
+
+@pytest.mark.parametrize(
+    "unsafe_mutation",
+    (
+        "pricing-integrity",
+        "pricing-zero-rows",
+        "options-coverage",
+        "orders-placed",
+        "automated-action-enabled",
+        "not-read-only",
+    ),
+)
+def test_codex_forced_update_target_gap_never_waives_integrity_or_order_safety(
+    tmp_path: Path,
+    unsafe_mutation: str,
+) -> None:
+    _write_forced_update_locks(tmp_path)
+    monitor = _forced_update_monitor(tmp_path)
+    _mark_pricing_and_options_stale_from_update_outage(monitor)
+    if unsafe_mutation == "pricing-integrity":
+        pricing = next(
+            check
+            for check in monitor["checks"]
+            if check.get("name") == "pricing_publications"
+        )
+        pricing["details"]["full_generation"] = {
+            "status": "MISSING_OR_INVALID",
+            "reason": "receipt checksum disagrees",
+        }
+    elif unsafe_mutation == "pricing-zero-rows":
+        pricing = next(
+            check
+            for check in monitor["checks"]
+            if check.get("name") == "pricing_publications"
+        )
+        pricing["details"]["target_authority"]["prediction_rows"] = 0
+    elif unsafe_mutation == "options-coverage":
+        options = next(
+            check
+            for check in monitor["checks"]
+            if check.get("name") == "options_publications"
+        )
+        options["details"]["missing_symbols"] = ["NVDA"]
+    elif unsafe_mutation == "orders-placed":
+        monitor["orders_placed"] = 1
+    elif unsafe_mutation == "automated-action-enabled":
+        monitor["automated_action_allowed"] = True
+    else:
+        monitor["read_only"] = False
+
+    decision = _plan(
+        tmp_path,
+        [],
+        monitor=monitor,
+        now="2026-08-19T19:42:00Z",
+        live_pids=set(),
+        allow_codex_forced_update=True,
+        codex_update_events=(_forced_update_event(),),
+    )
+
+    assert decision["status"] == "REPORT_ONLY"
+    expected = {
+        "pricing-integrity": "pricing_publications",
+        "pricing-zero-rows": "pricing_publications",
+        "options-coverage": "options_publications",
+        "orders-placed": "orders_placed",
+        "automated-action-enabled": "automated_action_allowed",
+        "not-read-only": "read_only",
+    }[unsafe_mutation]
+    assert expected in decision["blockers"]
+
+
+def test_codex_forced_update_does_not_excuse_target_lag_that_predates_event(
+    tmp_path: Path,
+) -> None:
+    _write_forced_update_locks(tmp_path)
+    monitor = _forced_update_monitor(tmp_path)
+    _mark_pricing_and_options_stale_from_update_outage(monitor)
+    pricing = next(
+        check
+        for check in monitor["checks"]
+        if check.get("name") == "pricing_publications"
+    )
+    pricing["details"]["expected_target"] = "2026-08-19T18:40:00Z"
+
+    decision = _plan(
+        tmp_path,
+        [],
+        monitor=monitor,
+        now="2026-08-19T19:42:00Z",
+        live_pids=set(),
+        allow_codex_forced_update=True,
+        codex_update_events=(_forced_update_event(),),
+    )
+
+    assert decision["status"] == "REPORT_ONLY"
+    assert "pricing_publications" in decision["blockers"]
 
 
 @pytest.mark.parametrize(

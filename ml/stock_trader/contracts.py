@@ -87,6 +87,7 @@ class PortfolioState:
     working_order_count: int
     quotes: Mapping[str, QuoteState]
     source_fingerprint: str
+    broker_identity_fingerprint: str | None = None
 
     def effective_shares(self, symbol: str) -> float:
         return (

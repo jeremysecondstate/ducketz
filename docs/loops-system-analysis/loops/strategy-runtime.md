@@ -72,7 +72,7 @@ a prospective live receipt or live Pricing authority.
 
 ### Timing and control relationships
 
-**Confirmed:** Strategy’s +10 phase follows Loop B +5 and Options +6, but it does not wait on a named Options barrier; it reads the current verified Loop B and evidence available by its own creation clock. Its unchanged-work test uses the Loop B pointer, pricing mode, and both prospective provider heads. `ml/strategy_runtime.py`
+**Confirmed:** Strategy’s +10 phase follows Loop B and Options at +6, but it does not wait on a named Options barrier; it reads the current verified Loop B and evidence available by its own creation clock. Its unchanged-work test uses the Loop B pointer, pricing mode, and both prospective provider heads. `ml/strategy_runtime.py`
 
 ## Prediction contribution
 

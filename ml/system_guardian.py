@@ -19,6 +19,10 @@ from filelock import FileLock, Timeout
 
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from datafetching.runtime_lock import runtime_lock_maintenance_gate
+from ml.prediction_runtime import (
+    DEFAULT_INTERVAL_MINUTES as LOOP_B_INTERVAL_MINUTES,
+    DEFAULT_PHASE_OFFSET_MINUTES as LOOP_B_PHASE_OFFSET_MINUTES,
+)
 from ml.system_monitor import (
     RUNTIMES,
     RuntimeSpec,
@@ -52,8 +56,6 @@ _CODEX_FORCED_UPDATE_REQUIRED_PASS_CHECKS = frozenset(
         "loop_a_bar_readiness",
         "cme_publication",
         "alfred_publication",
-        "options_publications",
-        "pricing_publications",
         "strategy_profit_model_authority",
         "cross_loop_lineage",
         "ui_contracts",
@@ -219,9 +221,9 @@ GUARDIAN_LAUNCHES = (
             "--round-trip-cost",
             "0.001",
             "--interval-minutes",
-            "30",
+            str(LOOP_B_INTERVAL_MINUTES),
             "--phase-offset-minutes",
-            "5",
+            str(LOOP_B_PHASE_OFFSET_MINUTES),
             "--failure-retry-attempts",
             "1",
             "--failure-retry-delay-seconds",
@@ -695,17 +697,6 @@ def _plan_codex_forced_update_recovery(
         )
     candidates = tuple(unconsumed_candidates)
 
-    blockers = _codex_forced_update_monitor_blockers(monitor_report)
-    if blockers:
-        return _decision(
-            "REPORT_ONLY",
-            "Storage, order-safety, or receipt-integrity evidence blocks whole-stack recovery.",
-            blockers=blockers,
-            candidate_event_record_ids=[
-                int(event["event_record_id"]) for event in candidates
-            ],
-        )
-
     matches: list[tuple[dict[str, object], list[dict[str, object]], list[dict[str, object]]]] = []
     signature_errors: list[dict[str, object]] = []
     for event in candidates:
@@ -739,6 +730,17 @@ def _plan_codex_forced_update_recovery(
             signature_errors=signature_errors,
         )
     event, locks, logs = matches[0]
+    blockers = _codex_forced_update_monitor_blockers(
+        monitor_report,
+        event=event,
+    )
+    if blockers:
+        return _decision(
+            "REPORT_ONLY",
+            "Storage, order-safety, or receipt-integrity evidence blocks whole-stack recovery.",
+            blockers=blockers,
+            candidate_event_record_ids=[int(event["event_record_id"])],
+        )
     fingerprint = _codex_update_fingerprint(event)
     return _decision(
         "ELIGIBLE_CODEX_APPX_FORCED_UPDATE_ALL_EIGHT",
@@ -955,6 +957,8 @@ def _codex_forced_update_signature_for_event(
 
 def _codex_forced_update_monitor_blockers(
     monitor_report: Mapping[str, object],
+    *,
+    event: Mapping[str, object],
 ) -> list[str]:
     blockers = list(_integrity_blockers(monitor_report))
     try:
@@ -977,9 +981,15 @@ def _codex_forced_update_monitor_blockers(
         if not isinstance(check, Mapping) or check.get("status") != "PASS":
             blockers.append(name)
     if not _forced_update_pricing_authorities_are_valid(
-        checks.get("pricing_publications")
+        checks.get("pricing_publications"),
+        event=event,
     ):
         blockers.append("pricing_publications")
+    if not _forced_update_options_authorities_are_valid(
+        checks.get("options_publications"),
+        event=event,
+    ):
+        blockers.append("options_publications")
     if not _forced_update_loop_a_publication_is_valid(checks.get("loop_a_cycle")):
         blockers.append("loop_a_cycle")
     if not _forced_update_loop_b_publication_is_valid(
@@ -997,8 +1007,12 @@ def _codex_forced_update_monitor_blockers(
     return sorted(set(blockers))
 
 
-def _forced_update_pricing_authorities_are_valid(check: object) -> bool:
-    if not isinstance(check, Mapping) or check.get("status") != "PASS":
+def _forced_update_pricing_authorities_are_valid(
+    check: object,
+    *,
+    event: Mapping[str, object],
+) -> bool:
+    if not isinstance(check, Mapping):
         return False
     details = check.get("details")
     if not isinstance(details, Mapping):
@@ -1010,20 +1024,139 @@ def _forced_update_pricing_authorities_are_valid(check: object) -> bool:
     try:
         expected_target = _utc(details["expected_target"])
         target_snapshot = _utc(target["target_snapshot_for"])
-        _utc(target["published_at"])
+        target_published = _utc(target["published_at"])
         prediction_rows = int(target.get("prediction_rows", 0))
         shadow_rows = int(target.get("shadow_rows", 0))
         _utc(full["published_at"])
     except (KeyError, TypeError, ValueError):
         return False
-    return (
-        target_snapshot == expected_target
-        and target.get("terminal_status")
+    authority_valid = (
+        target.get("terminal_status")
         in {"PREDICTIONS_PUBLISHED", "MIXED_TERMINAL"}
         and prediction_rows > 0
         and shadow_rows > 0
         and full.get("status") == "VERIFIED"
         and bool(full.get("run_path"))
+    )
+    if not authority_valid:
+        return False
+    if check.get("status") == "PASS":
+        return target_snapshot == expected_target
+    allowed_noncurrent_states = {
+        (
+            "FAIL",
+            "Pricing target authority is behind the actionable regular target.",
+        ),
+        (
+            "INFO",
+            "The latest Pricing target is still inside its settle window.",
+        ),
+        (
+            "INFO",
+            "Market is closed; Pricing retains its last verified target authority.",
+        ),
+    }
+    noncurrent_state = (str(check.get("status")), str(check.get("summary")))
+    if noncurrent_state not in allowed_noncurrent_states:
+        return False
+    settling = details.get("settling")
+    expected_settling = "settle window" in noncurrent_state[1]
+    if settling is not expected_settling:
+        return False
+    return _target_gap_is_explained_by_forced_update(
+        event=event,
+        expected_target=expected_target,
+        retained_targets=(target_snapshot,),
+        published_at=target_published,
+    )
+
+
+def _forced_update_options_authorities_are_valid(
+    check: object,
+    *,
+    event: Mapping[str, object],
+) -> bool:
+    if not isinstance(check, Mapping):
+        return False
+    if check.get("status") == "PASS":
+        return True
+    allowed_noncurrent_states = {
+        (
+            "FAIL",
+            "Current option snapshots are behind the actionable regular target.",
+        ),
+        (
+            "INFO",
+            "The latest option target is still inside its settle window.",
+        ),
+        (
+            "WARN",
+            "Closed-market option authorities do not all end at the last regular target.",
+        ),
+    }
+    noncurrent_state = (str(check.get("status")), str(check.get("summary")))
+    if noncurrent_state not in allowed_noncurrent_states:
+        return False
+    details = check.get("details")
+    if not isinstance(details, Mapping) or details.get("missing_symbols") not in (
+        None,
+        [],
+        (),
+    ):
+        return False
+    settling = details.get("settling")
+    expected_settling = "settle window" in noncurrent_state[1]
+    if settling is not expected_settling:
+        return False
+    try:
+        expected_target = _utc(details["expected_target"])
+        retained_targets = tuple(_utc(value) for value in details["observed_targets"])
+        symbol_count = int(details.get("symbol_count", 0))
+        providers = details["provider_counts"]
+    except (KeyError, TypeError, ValueError):
+        return False
+    if not retained_targets or symbol_count <= 0 or not isinstance(providers, Mapping):
+        return False
+    if not providers or not set(map(str, providers)) <= {"databento-opra", "schwab"}:
+        return False
+    try:
+        provider_counts = tuple(int(value) for value in providers.values())
+    except (TypeError, ValueError):
+        return False
+    if (
+        any(value <= 0 for value in provider_counts)
+        or sum(provider_counts) != symbol_count
+    ):
+        return False
+    return _target_gap_is_explained_by_forced_update(
+        event=event,
+        expected_target=expected_target,
+        retained_targets=retained_targets,
+    )
+
+
+def _target_gap_is_explained_by_forced_update(
+    *,
+    event: Mapping[str, object],
+    expected_target: pd.Timestamp,
+    retained_targets: Sequence[pd.Timestamp],
+    published_at: pd.Timestamp | None = None,
+) -> bool:
+    try:
+        event_time = _utc(event["occurred_at"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    if expected_target <= event_time or not retained_targets:
+        return False
+    if any(
+        target >= expected_target
+        or target > event_time + _CODEX_FORCED_UPDATE_FUTURE_TOLERANCE
+        for target in retained_targets
+    ):
+        return False
+    return (
+        published_at is None
+        or published_at <= event_time + _CODEX_FORCED_UPDATE_FUTURE_TOLERANCE
     )
 
 
@@ -2455,8 +2588,18 @@ while ($frontier.Count -gt 0) {{
   )
 }}
 $selected | Sort-Object depth -Descending | ForEach-Object {{
-  if (Get-Process -Id $_.process_id -ErrorAction SilentlyContinue) {{
-    Stop-Process -Id $_.process_id -Force -ErrorAction Stop
+  $selectedProcessId = [int]$_.process_id
+  $selectedProcess = Get-Process -Id $selectedProcessId -ErrorAction SilentlyContinue
+  if ($null -ne $selectedProcess) {{
+    try {{
+      $selectedProcess | Stop-Process -Force -ErrorAction Stop
+    }} catch {{
+      # A launcher may exit naturally after its worker is stopped.  That is a
+      # successful stop, not a recovery failure; only rethrow if it still lives.
+      if (Get-Process -Id $selectedProcessId -ErrorAction SilentlyContinue) {{
+        throw
+      }}
+    }}
   }}
 }}
 @($selected.process_id) | ConvertTo-Json -Compress

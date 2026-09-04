@@ -124,6 +124,110 @@ def test_loop_a_batches_the_watchlist_across_every_configured_lane(
     ]
 
 
+def test_schwab_quote_capture_failure_does_not_block_directional_generation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    def fetch(
+        symbols: tuple[str, ...],
+        _store: ParquetStore,
+        **_kwargs: object,
+    ) -> dict[str, tuple[FetchResult, ...]]:
+        return {
+            symbol: (
+                FetchResult("databento", 1, 0),
+                FetchResult("schwab", 0, 1),
+            )
+            for symbol in symbols
+        }
+
+    monkeypatch.setattr(orchestrate, "run_symbols_fetch", fetch)
+
+    failures = orchestrate.run_cycle(
+        ("GOOG", "NVDA"),
+        ParquetStore(tmp_path),
+        providers=("databento", "schwab"),
+        requested_profile="continuation",
+        include_cme=False,
+        include_options=False,
+        run_technical_calculations=False,
+        run_fundamental_calculations=False,
+        run_signal_calculations=False,
+        datastore_target=None,
+        datastore_path=tmp_path,
+    )
+
+    assert failures == 0
+    output = capsys.readouterr().out
+    assert "blocking provider failures: 0" in output
+    assert "optional capture failures: 1 (schwab=1)" in output
+
+
+def test_authoritative_price_failure_still_blocks_directional_generation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        orchestrate,
+        "run_symbols_fetch",
+        lambda symbols, _store, **_kwargs: {
+            symbol: (
+                FetchResult("databento", 0, 1),
+                FetchResult("schwab", 0, 1),
+            )
+            for symbol in symbols
+        },
+    )
+
+    failures = orchestrate.run_cycle(
+        ("GOOG", "NVDA"),
+        ParquetStore(tmp_path),
+        providers=("databento", "schwab"),
+        requested_profile="continuation",
+        include_cme=False,
+        include_options=False,
+        run_technical_calculations=False,
+        run_fundamental_calculations=False,
+        run_signal_calculations=False,
+        datastore_target=None,
+        datastore_path=tmp_path,
+    )
+
+    assert failures == 2
+
+
+def test_explicit_inline_schwab_capture_failure_remains_blocking(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        orchestrate,
+        "run_symbols_fetch",
+        lambda symbols, _store, **_kwargs: {
+            symbol: (FetchResult("schwab", 0, 1),)
+            for symbol in symbols
+        },
+    )
+
+    failures = orchestrate.run_cycle(
+        ("GOOG", "NVDA"),
+        ParquetStore(tmp_path),
+        providers=("schwab",),
+        requested_profile="continuation",
+        include_cme=False,
+        include_options=True,
+        include_schwab_price_history=False,
+        run_technical_calculations=False,
+        run_fundamental_calculations=False,
+        run_signal_calculations=False,
+        datastore_target=None,
+        datastore_path=tmp_path,
+    )
+
+    assert failures == 2
+
+
 def test_databento_readiness_precedes_unrelated_provider_and_calculation_work(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

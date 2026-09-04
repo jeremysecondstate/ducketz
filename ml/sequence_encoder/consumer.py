@@ -40,18 +40,31 @@ def load_sequence_distributions(
     clean_consumer = str(consumer).strip().upper()
     if clean_consumer not in {"LOOP_B", "OPTIONS_STRATEGY", "LOOP_C_OBSERVE"}:
         raise ValueError(f"Unsupported sequence consumer: {consumer}")
-    keys = ("symbol", "horizon", "decision_timestamp")
-    required = set(keys)
+    base_keys = ("symbol", "horizon", "decision_timestamp")
+    one_hour_keys = (*base_keys, "target_window_start")
+    required = set(one_hour_keys)
     missing = sorted(required.difference(routes.columns))
     if missing:
         raise ValueError("Sequence routes are missing: " + ", ".join(missing))
-    requested = routes.loc[:, list(keys)].copy()
+    requested = routes.loc[:, list(one_hour_keys)].copy()
     requested["symbol"] = requested["symbol"].astype("string").str.upper()
     requested["horizon"] = requested["horizon"].astype("string")
     requested["decision_timestamp"] = pd.to_datetime(
         requested["decision_timestamp"], utc=True, errors="coerce"
     )
-    requested = requested.dropna().drop_duplicates()
+    requested["target_window_start"] = pd.to_datetime(
+        requested["target_window_start"], utc=True, errors="coerce"
+    )
+    requested_one_hour_mask = requested["horizon"].eq("1h").fillna(False)
+    requested_one_hour = requested.loc[requested_one_hour_mask].dropna(
+        subset=list(one_hour_keys)
+    ).drop_duplicates(list(one_hour_keys))
+    requested_legacy = requested.loc[~requested_one_hour_mask].dropna(
+        subset=list(base_keys)
+    ).drop_duplicates(list(base_keys))
+    requested = pd.concat(
+        [requested_one_hour, requested_legacy], ignore_index=True, sort=False
+    )
     cutoff = _utc(as_of, "as_of")
     if requested.empty:
         return SequenceConsumerResult(
@@ -99,6 +112,7 @@ def load_sequence_distributions(
         "symbol",
         "horizon",
         "decision_timestamp",
+        "target_window_start",
         "information_available_at",
         "prediction_created_at",
         "prediction_status",
@@ -114,6 +128,7 @@ def load_sequence_distributions(
         )
     for column in (
         "decision_timestamp",
+        "target_window_start",
         "information_available_at",
         "prediction_created_at",
     ):
@@ -138,13 +153,36 @@ def load_sequence_distributions(
         distributions = distributions.loc[
             distributions["prediction_created_at"].le(cutoff)
         ].copy()
-    if distributions.duplicated(list(keys), keep=False).any():
+    distribution_one_hour = distributions["horizon"].eq("1h")
+    if distributions.loc[distribution_one_hour].duplicated(
+        list(one_hour_keys), keep=False
+    ).any() or distributions.loc[~distribution_one_hour].duplicated(
+        list(base_keys), keep=False
+    ).any():
         raise SequencePublicationError("Sequence distributions have duplicate routes")
-    matched = requested.merge(
-        distributions,
-        on=list(keys),
-        how="inner",
-        validate="one_to_one",
+    matched_frames: list[pd.DataFrame] = []
+    if not requested_one_hour.empty:
+        matched_frames.append(
+            requested_one_hour.loc[:, list(one_hour_keys)].merge(
+                distributions.loc[distribution_one_hour],
+                on=list(one_hour_keys),
+                how="inner",
+                validate="one_to_one",
+            )
+        )
+    if not requested_legacy.empty:
+        matched_frames.append(
+            requested_legacy.loc[:, list(base_keys)].merge(
+                distributions.loc[~distribution_one_hour],
+                on=list(base_keys),
+                how="inner",
+                validate="one_to_one",
+            )
+        )
+    matched = (
+        pd.concat(matched_frames, ignore_index=True, sort=False)
+        if matched_frames
+        else distributions.iloc[0:0].copy()
     )
     status = "READY_SHADOW" if len(matched) == len(requested) else "PARTIAL_SHADOW"
     return SequenceConsumerResult(

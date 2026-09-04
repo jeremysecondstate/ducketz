@@ -55,7 +55,7 @@ def run_loop_c_observe_once(
     candidates_path = strategy.run_directory / "strategy-candidates.parquet"
     candidates = pd.read_parquet(candidates_path)
     routes = candidates.loc[
-        :, ["symbol", "horizon", "decision_timestamp"]
+        :, ["symbol", "horizon", "decision_timestamp", "target_window_start"]
     ].drop_duplicates()
     sequence_publication = read_current_sequence_publication(root)
     binding_summary = _validate_sequence_model_binding(
@@ -212,18 +212,31 @@ def _merge_candidates(candidates: pd.DataFrame, distributions: pd.DataFrame) -> 
                 "capital_required",
             )
         )
-    keys = ["symbol", "horizon", "decision_timestamp"]
-    sequence = distributions.loc[
-        :,
-        [
-            *keys,
+    base_keys = ["symbol", "horizon", "decision_timestamp"]
+    one_hour_keys = [*base_keys, "target_window_start"]
+    one_hour_candidates = candidates["horizon"].astype("string").eq("1h").any()
+    one_hour_distributions = (
+        distributions["horizon"].astype("string").eq("1h").any()
+    )
+    if (one_hour_candidates or one_hour_distributions) and (
+        "target_window_start" not in candidates.columns
+        or "target_window_start" not in distributions.columns
+    ):
+        raise ValueError("One-hour Loop C routes require target_window_start")
+    sequence_columns = [
+        *base_keys,
+        *(
+            ["target_window_start"]
+            if "target_window_start" in distributions.columns
+            else []
+        ),
             "calibrated_probability_up",
             "expected_return",
             "return_quantile_10",
             "return_quantile_90",
             "total_uncertainty",
-        ],
-    ].rename(
+    ]
+    sequence = distributions.loc[:, sequence_columns].rename(
         columns={
             "calibrated_probability_up": "sequence_probability_up",
             "expected_return": "sequence_expected_return",
@@ -231,7 +244,35 @@ def _merge_candidates(candidates: pd.DataFrame, distributions: pd.DataFrame) -> 
             "return_quantile_90": "sequence_quantile_90",
         }
     )
-    output = candidates.merge(sequence, on=keys, how="inner", validate="many_to_one")
+    ordered_candidates = candidates.copy()
+    ordered_candidates["_sequence_candidate_order"] = range(len(ordered_candidates))
+    outputs: list[pd.DataFrame] = []
+    for is_one_hour, keys in ((True, one_hour_keys), (False, base_keys)):
+        candidate_mask = ordered_candidates["horizon"].astype("string").eq("1h")
+        sequence_mask = sequence["horizon"].astype("string").eq("1h")
+        if not is_one_hour:
+            candidate_mask = ~candidate_mask
+            sequence_mask = ~sequence_mask
+        candidate_part = ordered_candidates.loc[candidate_mask]
+        if candidate_part.empty:
+            continue
+        sequence_part = sequence.loc[sequence_mask]
+        if not is_one_hour and "target_window_start" in sequence_part.columns:
+            sequence_part = sequence_part.drop(columns="target_window_start")
+        outputs.append(
+            candidate_part.merge(
+                sequence_part,
+                on=keys,
+                how="inner",
+                validate="many_to_one",
+            )
+        )
+    output = (
+        pd.concat(outputs, ignore_index=True, sort=False)
+        .sort_values("_sequence_candidate_order", kind="stable")
+        .drop(columns="_sequence_candidate_order")
+        .reset_index(drop=True)
+    )
     output["calibrated_probability"] = pd.to_numeric(
         output["calibrated_profit_probability"], errors="coerce"
     )

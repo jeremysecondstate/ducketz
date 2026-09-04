@@ -604,6 +604,7 @@ def _portfolio_summary(portfolio: PortfolioState, symbol: str) -> dict[str, obje
         "pending_sell_shares": float(portfolio.pending_sell_shares.get(symbol, 0.0)),
         "working_order_count": portfolio.working_order_count,
         "source_fingerprint": portfolio.source_fingerprint,
+        "broker_identity_fingerprint": portfolio.broker_identity_fingerprint,
     }
 
 

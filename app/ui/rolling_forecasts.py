@@ -53,6 +53,16 @@ SUCCESS_BADGE = "#173a2a"
 WARNING_BADGE = "#3b3018"
 DANGER_BADGE = "#3d2426"
 NEUTRAL_BADGE = "#263344"
+PREDICTION_PULSE_MARK_ASSET_DIR = (
+    Path(__file__).with_name("assets") / "security_marks"
+)
+PREDICTION_PULSE_UP_BACKGROUND = "#123721"
+PREDICTION_PULSE_UP_BORDER = "#43d65c"
+PREDICTION_PULSE_NEUTRAL_BACKGROUND = "#343331"
+PREDICTION_PULSE_NEUTRAL_BORDER = "#e6b83f"
+PREDICTION_PULSE_DOWN_BACKGROUND = "#412326"
+PREDICTION_PULSE_DOWN_BORDER = "#ff514f"
+PREDICTION_PULSE_UNAVAILABLE_BACKGROUND = "#172334"
 
 
 def probability_segment_fractions(
@@ -159,6 +169,171 @@ def _compact_local_timestamp(
         return text
     zone = "".join(word[0].upper() for word in parts[4:] if word)
     return " ".join((*parts[:4], zone))
+
+
+def prediction_pulse_tone(probability_up: float | None) -> str:
+    """Classify a published up probability without inventing a fallback."""
+
+    if not _is_finite_number(probability_up):
+        return "unavailable"
+    probability = float(probability_up)
+    if probability < 0.0 or probability > 1.0:
+        return "unavailable"
+    if math.isclose(probability, 0.5, rel_tol=0.0, abs_tol=1e-12):
+        return "neutral"
+    return "up" if probability > 0.5 else "down"
+
+
+def prediction_pulse_probability_text(probability_up: float | None) -> str:
+    if prediction_pulse_tone(probability_up) == "unavailable":
+        return "N/A"
+    return f"{float(probability_up):.1%}"
+
+
+def prediction_pulse_probabilities(
+    routes: Iterable[ForecastRouteView],
+) -> tuple[tuple[str, float | None], ...]:
+    """Return the three standard published values in visual horizon order."""
+
+    by_horizon = {
+        route.horizon: route.probability_up
+        for route in routes
+        if route.horizon in STANDARD_HORIZON_ORDER
+    }
+    return tuple(
+        (horizon, by_horizon.get(horizon))
+        for horizon in STANDARD_HORIZON_ORDER
+    )
+
+
+def prediction_pulse_columns(width: int) -> int:
+    """Keep the six-symbol concept intact while stacking it on narrow screens."""
+
+    if width >= 1040:
+        return 6
+    if width >= 720:
+        return 3
+    if width >= 520:
+        return 2
+    return 1
+
+
+def prediction_pulse_mark_path(
+    symbol: object,
+    *,
+    asset_root: Path = PREDICTION_PULSE_MARK_ASSET_DIR,
+) -> Path | None:
+    name = str(symbol or "").strip().upper()
+    if not name:
+        return None
+    asset_name = "GOOG" if name == "GOOGL" else name
+    candidate = asset_root / f"{asset_name.casefold()}.png"
+    return candidate if candidate.is_file() else None
+
+
+def _prediction_pulse_monogram(symbol: object) -> str:
+    cleaned = "".join(
+        character
+        for character in str(symbol or "").strip().upper()
+        if character.isalnum()
+    )
+    return cleaned[:2] or "--"
+
+
+def _prediction_pulse_symbol_color(symbol: object) -> str:
+    palette = (
+        "#2563eb",
+        "#0f766e",
+        "#7c3aed",
+        "#b45309",
+        "#be123c",
+        "#0369a1",
+    )
+    cleaned = str(symbol or "").strip().upper()
+    if not cleaned:
+        return BORDER
+    return palette[sum(ord(character) for character in cleaned) % len(palette)]
+
+
+def _prediction_pulse_palette(tone: str) -> tuple[str, str, str]:
+    return {
+        "up": (
+            PREDICTION_PULSE_UP_BACKGROUND,
+            PREDICTION_PULSE_UP_BORDER,
+            "#eefbf0",
+        ),
+        "neutral": (
+            PREDICTION_PULSE_NEUTRAL_BACKGROUND,
+            PREDICTION_PULSE_NEUTRAL_BORDER,
+            "#fff8e5",
+        ),
+        "down": (
+            PREDICTION_PULSE_DOWN_BACKGROUND,
+            PREDICTION_PULSE_DOWN_BORDER,
+            "#fff0ef",
+        ),
+        "unavailable": (
+            PREDICTION_PULSE_UNAVAILABLE_BACKGROUND,
+            BORDER,
+            MUTED_TEXT,
+        ),
+    }.get(
+        tone,
+        (PREDICTION_PULSE_UNAVAILABLE_BACKGROUND, BORDER, MUTED_TEXT),
+    )
+
+
+class _PredictionPulseMark(tk.Canvas):
+    def __init__(self, parent: tk.Misc, symbol: str, *, size: int = 64) -> None:
+        super().__init__(
+            parent,
+            width=size,
+            height=size,
+            background=SURFACE,
+            borderwidth=0,
+            highlightthickness=0,
+            takefocus=False,
+        )
+        self._size = size
+        self._photo: tk.PhotoImage | None = None
+        self._show(symbol)
+
+    def _show(self, symbol: str) -> None:
+        path = prediction_pulse_mark_path(symbol)
+        if path is not None:
+            try:
+                source = tk.PhotoImage(master=self, file=str(path))
+            except tk.TclError:
+                source = None
+            if source is not None:
+                factor = max(
+                    1,
+                    math.ceil(max(source.width(), source.height()) / self._size),
+                )
+                self._photo = source.subsample(factor, factor)
+                self.create_image(
+                    self._size / 2,
+                    self._size / 2,
+                    image=self._photo,
+                )
+                return
+        color = _prediction_pulse_symbol_color(symbol)
+        self.create_oval(
+            3,
+            3,
+            self._size - 3,
+            self._size - 3,
+            fill=color,
+            outline=BORDER,
+            width=2,
+        )
+        self.create_text(
+            self._size / 2,
+            self._size / 2,
+            text=_prediction_pulse_monogram(symbol),
+            fill=TEXT,
+            font=("Segoe UI", max(10, self._size // 4), "bold"),
+        )
 
 
 class _StatusMark(tk.Canvas):
@@ -482,6 +657,10 @@ class RollingForecastTab:
         self.canvas_window: int | None = None
         self.content_frame: ttk.Frame | None = None
         self.source_label: ttk.Label | None = None
+        self._prediction_pulse_frame: ttk.Frame | None = None
+        self._prediction_pulse_symbols: tuple[
+            tuple[str, tuple[tuple[str, float | None], ...]], ...
+        ] = ()
         self._summary_cards: list[ttk.Frame] = []
         self._summary_labels: list[tuple[ttk.Label, ttk.Label]] = []
         self._symbol_sections: list[_SymbolSectionWidgets] = []
@@ -490,7 +669,7 @@ class RollingForecastTab:
         self._weekly_details: list[_WeeklyDetailsWidgets] = []
         self._weekly_details_expanded: dict[str, bool] = {}
         self._layout_columns: int | None = None
-        self._layout_signature: tuple[int, int, int, int] | None = None
+        self._layout_signature: tuple[int, int, int, int, int] | None = None
         self._width = 1180
         self._hourly_refresh_job: str | None = None
 
@@ -518,6 +697,7 @@ class RollingForecastTab:
             relief=tk.SOLID,
         )
         style.configure("ForecastSectionBody.TFrame", background=SURFACE_ALT)
+        style.configure("ForecastPulse.TFrame", background=BACKGROUND)
         style.configure(
             "ForecastCard.TFrame",
             background=SURFACE,
@@ -1153,8 +1333,177 @@ class RollingForecastTab:
                 if self._symbol_expanded[symbol_name]:
                     body.pack(fill=tk.X)
                 self._update_symbol_header(widgets)
+        self._render_prediction_pulse(view)
         self._apply_responsive_layout(force=True)
         self._update_scroll_region()
+
+    def _render_prediction_pulse(self, view: ForecastDashboardView) -> None:
+        if self.content_frame is None or not view.symbols:
+            return
+        self._prediction_pulse_symbols = tuple(
+            (
+                str(symbol.symbol).strip().upper(),
+                prediction_pulse_probabilities(symbol.routes),
+            )
+            for symbol in view.symbols
+        )
+        self._prediction_pulse_frame = ttk.Frame(
+            self.content_frame,
+            style="ForecastPulse.TFrame",
+        )
+        self._prediction_pulse_frame.pack(fill=tk.X, pady=(0, 4))
+
+    def _layout_prediction_pulse(self, max_columns: int) -> None:
+        frame = self._prediction_pulse_frame
+        if frame is None or not self._prediction_pulse_symbols:
+            return
+        for child in frame.winfo_children():
+            child.destroy()
+
+        group_size = max(1, int(max_columns))
+        mark_size = 80 if group_size >= 6 else 64
+        label_width = (
+            210 if group_size >= 6 else (136 if group_size >= 3 else 112)
+        )
+        title = "Prediction Pulse" if group_size >= 6 else "Prediction\nPulse"
+        symbols = self._prediction_pulse_symbols
+        for group_index, start in enumerate(range(0, len(symbols), group_size)):
+            group = symbols[start : start + group_size]
+            matrix = tk.Frame(frame, background=BACKGROUND, borderwidth=0)
+            matrix.pack(
+                fill=tk.X,
+                pady=(0, 8 if start + group_size < len(symbols) else 0),
+            )
+            matrix.grid_columnconfigure(0, weight=0, minsize=label_width)
+            for column in range(1, group_size + 1):
+                matrix.grid_columnconfigure(
+                    column,
+                    weight=1,
+                    uniform=f"prediction-pulse-{group_index}",
+                    minsize=70,
+                )
+
+            corner = tk.Frame(
+                matrix,
+                background=SURFACE,
+                highlightbackground=BORDER,
+                highlightcolor=BORDER,
+                highlightthickness=1,
+            )
+            corner.grid(row=0, column=0, sticky=tk.NSEW)
+            tk.Label(
+                corner,
+                text=title,
+                background=SURFACE,
+                foreground=TEXT,
+                font=("Segoe UI", 15, "bold"),
+                anchor=tk.NW,
+                justify=tk.LEFT,
+                wraplength=label_width - 20,
+            ).pack(fill=tk.BOTH, expand=True, padx=12, pady=10)
+
+            probabilities_by_symbol: dict[
+                str,
+                dict[str, float | None],
+            ] = {}
+            for column, (symbol, probabilities) in enumerate(group, start=1):
+                probabilities_by_symbol[symbol] = dict(probabilities)
+                header = tk.Frame(
+                    matrix,
+                    background=SURFACE,
+                    highlightbackground=BORDER,
+                    highlightcolor=BORDER,
+                    highlightthickness=1,
+                )
+                header.grid(row=0, column=column, sticky=tk.NSEW)
+                _PredictionPulseMark(
+                    header,
+                    symbol,
+                    size=mark_size,
+                ).pack(pady=(8, 1))
+                tk.Label(
+                    header,
+                    text=symbol,
+                    background=SURFACE,
+                    foreground=TEXT,
+                    font=("Segoe UI", 12, "bold"),
+                ).pack(pady=(0, 7))
+
+            for row, horizon in enumerate(STANDARD_HORIZON_ORDER, start=1):
+                row_heading = tk.Label(
+                    matrix,
+                    text=horizon.upper(),
+                    background=BACKGROUND,
+                    foreground=TEXT,
+                    font=("Segoe UI", 13, "bold"),
+                    anchor=tk.CENTER,
+                    highlightbackground=BORDER,
+                    highlightcolor=BORDER,
+                    highlightthickness=1,
+                )
+                row_heading.grid(row=row, column=0, sticky=tk.NSEW)
+                for column, (symbol, _probabilities) in enumerate(
+                    group,
+                    start=1,
+                ):
+                    probability = probabilities_by_symbol[symbol].get(horizon)
+                    tone = prediction_pulse_tone(probability)
+                    background, outline, foreground = (
+                        _prediction_pulse_palette(tone)
+                    )
+                    cell = tk.Frame(
+                        matrix,
+                        background=background,
+                        highlightbackground=outline,
+                        highlightcolor=outline,
+                        highlightthickness=2,
+                    )
+                    cell.grid(row=row, column=column, sticky=tk.NSEW)
+                    tk.Label(
+                        cell,
+                        text=prediction_pulse_probability_text(probability),
+                        background=background,
+                        foreground=foreground,
+                        font=("Segoe UI", 16, "bold"),
+                        anchor=tk.CENTER,
+                    ).pack(fill=tk.BOTH, expand=True, padx=8, pady=10)
+
+        legend = tk.Frame(frame, background=BACKGROUND, borderwidth=0)
+        legend.pack(pady=(10, 4))
+        for label, tone in (
+            ("UP > 50%", "up"),
+            ("NEUTRAL = 50%", "neutral"),
+            ("DOWN < 50%", "down"),
+        ):
+            item = tk.Frame(legend, background=BACKGROUND, borderwidth=0)
+            item.pack(side=tk.LEFT, padx=12)
+            background, outline, _foreground = _prediction_pulse_palette(tone)
+            swatch = tk.Canvas(
+                item,
+                width=28,
+                height=20,
+                background=BACKGROUND,
+                borderwidth=0,
+                highlightthickness=0,
+                takefocus=False,
+            )
+            swatch.create_rectangle(
+                2,
+                2,
+                26,
+                18,
+                fill=background,
+                outline=outline,
+                width=2,
+            )
+            swatch.pack(side=tk.LEFT, padx=(0, 6))
+            tk.Label(
+                item,
+                text=label,
+                background=BACKGROUND,
+                foreground=TEXT,
+                font=("Segoe UI", 10),
+            ).pack(side=tk.LEFT)
 
     def _render_summary(self, view: ForecastDashboardView) -> None:
         if self.summary_frame is None:
@@ -1915,6 +2264,8 @@ class RollingForecastTab:
         self._symbol_sections.clear()
         self._weekly_layouts.clear()
         self._weekly_details.clear()
+        self._prediction_pulse_frame = None
+        self._prediction_pulse_symbols = ()
         self._layout_columns = None
         self._layout_signature = None
         if self.summary_frame is not None:
@@ -1999,11 +2350,13 @@ class RollingForecastTab:
         columns = dashboard_layout(self._width)
         health_columns = 4 if self._width >= 1080 else (2 if self._width >= 520 else 1)
         weekly_mode = 3 if self._width >= 1220 else (2 if self._width >= 760 else 1)
+        pulse_columns = prediction_pulse_columns(self._width)
         signature = (
             columns,
             health_columns,
             weekly_mode,
             1 if self._width < 760 else 0,
+            pulse_columns,
         )
         self._layout_header()
         if signature == self._layout_signature and not force:
@@ -2011,6 +2364,7 @@ class RollingForecastTab:
         self._layout_signature = signature
         self._layout_columns = columns
         self._layout_summary()
+        self._layout_prediction_pulse(pulse_columns)
         for widgets in self._symbol_sections:
             if not self._symbol_expanded.get(widgets.symbol, True):
                 continue

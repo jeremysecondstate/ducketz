@@ -6,6 +6,7 @@ from ml.calendars import (
     FOUR_HOUR_CHECKPOINT_START_POLICY,
     HYBRID_TARGET_START_POLICY,
     US_EQUITY_ACTIONABLE_TARGET_POLICY,
+    US_EQUITY_CONTINUOUS_EXTENDED_SOURCE_POLICY,
     US_EQUITY_EXTENDED_SOURCE_POLICY,
     ExchangeSessionCalendar,
     attach_official_daily_sessions,
@@ -100,7 +101,7 @@ def test_horizon_contracts_are_readable_and_share_feature_columns() -> None:
     assert four_hour["processing_delay"] == "0 days 00:05:00"
     one_hour = contracts["1h"]
     assert one_hour["target_definition_version"] == (
-        "next-60-eligible-equity-minutes-open-close-v4"
+        "next-60-eligible-equity-minutes-open-close-v6"
     )
     assert one_hour["target_price_timeframe"] == "1m"
     assert one_hour["target_calendar_policy_version"] == (
@@ -108,6 +109,9 @@ def test_horizon_contracts_are_readable_and_share_feature_columns() -> None:
     )
     assert one_hour["intraday_target_start_policy"] == (
         HYBRID_TARGET_START_POLICY
+    )
+    assert one_hour["intraday_source_session_policy"] == (
+        US_EQUITY_CONTINUOUS_EXTENDED_SOURCE_POLICY
     )
     for unaffected_horizon in ("1d", "1w"):
         assert "target_price_timeframe" not in contracts[unaffected_horizon]
@@ -242,9 +246,10 @@ def test_hourly_calendar_uses_exchange_dst_schedule() -> None:
 def test_one_hour_decisions_admit_only_bounded_us_extended_full_hours() -> None:
     intervals = pd.DataFrame(
         {
-            "exchange_calendar": ["XNAS"] * 4,
+            "exchange_calendar": ["XNAS"] * 5,
             "bar_timestamp": pd.to_datetime(
                 [
+                    "2026-07-27T13:00:00Z",
                     "2026-07-27T19:00:00Z",
                     "2026-07-27T20:00:00Z",
                     "2026-07-27T23:00:00Z",
@@ -254,6 +259,7 @@ def test_one_hour_decisions_admit_only_bounded_us_extended_full_hours() -> None:
             ),
             "operational_bar_end_timestamp": pd.to_datetime(
                 [
+                    "2026-07-27T14:00:00Z",
                     "2026-07-27T20:00:00Z",
                     "2026-07-27T21:00:00Z",
                     "2026-07-28T00:00:00Z",
@@ -269,30 +275,44 @@ def test_one_hour_decisions_admit_only_bounded_us_extended_full_hours() -> None:
         intervals,
         include_extended_hours=True,
     )
+    with_continuous_hours = attach_official_intraday_sessions(
+        intervals,
+        source_session_policy=US_EQUITY_CONTINUOUS_EXTENDED_SOURCE_POLICY,
+    )
 
     assert regular_only["intraday_interval_eligible"].tolist() == [
+        False,
         True,
         False,
         False,
         False,
     ]
     assert with_extended["intraday_interval_eligible"].tolist() == [
+        False,
         True,
         True,
         True,
         False,
     ]
-    assert with_extended.loc[1:2, "exchange_session"].eq(
+    assert with_continuous_hours["intraday_interval_eligible"].tolist() == [
+        True,
+        True,
+        True,
+        True,
+        False,
+    ]
+    assert with_continuous_hours.loc[0:3, "exchange_session"].eq(
         pd.Timestamp("2026-07-27")
     ).all()
-    assert with_extended["checkpoint_session"].tolist() == [
+    assert with_continuous_hours["checkpoint_session"].tolist() == [
+        "REGULAR",
         "REGULAR",
         "POST",
         "POST",
         "CLOSED",
     ]
-    assert with_extended["intraday_source_session_policy"].eq(
-        US_EQUITY_EXTENDED_SOURCE_POLICY
+    assert with_continuous_hours["intraday_source_session_policy"].eq(
+        US_EQUITY_CONTINUOUS_EXTENDED_SOURCE_POLICY
     ).all()
 
 
@@ -328,6 +348,127 @@ def test_hour_target_skips_the_interval_already_started_during_processing() -> N
     assert row["target_open"] == 102.0
     assert row["target_close"] == 103.0
     assert row["label_status"] == "COMPLETE"
+
+
+def test_one_hour_source_fans_out_only_to_causal_nearby_targets() -> None:
+    before_open = _feature(
+        horizon="1h",
+        session="2026-07-27",
+        bar_start="2026-07-27T12:00:00Z",
+        bar_end="2026-07-27T13:00:00Z",
+        decision="2026-07-27T13:05:00Z",
+    )
+    crossing_open = _feature(
+        horizon="1h",
+        session="2026-07-27",
+        bar_start="2026-07-27T13:00:00Z",
+        bar_end="2026-07-27T14:00:00Z",
+        decision="2026-07-27T14:05:00Z",
+    )
+    samples = build_rolling_samples(
+        pd.concat([before_open, crossing_open], ignore_index=True),
+        pd.DataFrame(
+            _minute_prices(
+                "2026-07-27T13:30:00Z",
+                150,
+                open_value=102.0,
+                close_value=103.0,
+            )
+        ),
+        specification=horizon_specification("1h"),
+        assumed_round_trip_cost=0.001,
+        materialized_at="2026-07-27T16:05:00Z",
+        source_adjusted_prices=pd.DataFrame(
+            [
+                _hour_price("2026-07-27T12:00:00Z", 100.0, 101.0),
+                _hour_price("2026-07-27T13:00:00Z", 101.0, 102.0),
+            ]
+        ),
+    )
+
+    assert samples["decision_timestamp"].tolist() == [
+        pd.Timestamp("2026-07-27T13:05:00Z"),
+        pd.Timestamp("2026-07-27T13:05:00Z"),
+        pd.Timestamp("2026-07-27T13:05:00Z"),
+        pd.Timestamp("2026-07-27T14:05:00Z"),
+        pd.Timestamp("2026-07-27T14:05:00Z"),
+    ]
+    assert samples["target_window_start"].tolist() == [
+        pd.Timestamp("2026-07-27T13:30:00Z"),
+        pd.Timestamp("2026-07-27T14:00:00Z"),
+        pd.Timestamp("2026-07-27T15:00:00Z"),
+        pd.Timestamp("2026-07-27T15:00:00Z"),
+        pd.Timestamp("2026-07-27T16:00:00Z"),
+    ]
+    assert (
+        samples["information_available_at"] < samples["target_window_start"]
+    ).all()
+    assert samples["id"].is_unique
+    assert samples.loc[:1, "id"].tolist() == [
+        "GOOG|1h|2026-07-27T13:05:00Z|2026-07-27T13:30:00Z",
+        "GOOG|1h|2026-07-27T13:05:00Z|2026-07-27T14:00:00Z",
+    ]
+
+
+def test_one_hour_fanout_covers_one_source_hour_lag_with_unique_rows() -> None:
+    lagging_source = _feature(
+        horizon="1h",
+        session="2026-07-27",
+        bar_start="2026-07-27T20:00:00Z",
+        bar_end="2026-07-27T21:00:00Z",
+        decision="2026-07-27T21:05:00Z",
+    )
+    freshest_source = _feature(
+        horizon="1h",
+        session="2026-07-27",
+        bar_start="2026-07-27T21:00:00Z",
+        bar_end="2026-07-27T22:00:00Z",
+        decision="2026-07-27T22:05:00Z",
+    )
+    samples = build_rolling_samples(
+        pd.concat([lagging_source, freshest_source], ignore_index=True),
+        pd.DataFrame(
+            _minute_prices(
+                "2026-07-27T22:00:00Z",
+                120,
+                open_value=102.0,
+                close_value=103.0,
+            )
+        ),
+        specification=horizon_specification("1h"),
+        assumed_round_trip_cost=0.001,
+        materialized_at="2026-07-28T00:05:00Z",
+        source_adjusted_prices=pd.DataFrame(
+            [
+                _hour_price("2026-07-27T20:00:00Z", 100.0, 101.0),
+                _hour_price("2026-07-27T21:00:00Z", 101.0, 102.0),
+            ]
+        ),
+    )
+
+    assert samples["target_window_start"].tolist() == list(
+        pd.to_datetime(
+            [
+                "2026-07-27T22:00:00Z",
+                "2026-07-27T23:00:00Z",
+                "2026-07-27T23:00:00Z",
+            ],
+            utc=True,
+        )
+    )
+    target_23 = samples.loc[
+        samples["target_window_start"].eq(
+            pd.Timestamp("2026-07-27T23:00:00Z")
+        )
+    ]
+    assert target_23["information_available_at"].tolist() == list(
+        pd.to_datetime(
+            ["2026-07-27T21:05:00Z", "2026-07-27T22:05:00Z"],
+            utc=True,
+        )
+    )
+    assert samples["id"].is_unique
+    assert target_23["id"].is_unique
 
 
 def test_target_bar_values_never_enter_feature_columns() -> None:
@@ -413,12 +554,16 @@ def test_future_source_information_is_excluded_point_in_time() -> None:
     )
 
     assert samples["id"].tolist() == [
-        "GOOG|1h|2026-07-27T15:05:00Z"
+        "GOOG|1h|2026-07-27T15:05:00Z|2026-07-27T16:00:00Z",
+        "GOOG|1h|2026-07-27T15:05:00Z|2026-07-27T17:00:00Z",
     ]
-    assert samples.iloc[0]["label_status"] == "INCOMPLETE_LABEL"
-    assert pd.isna(samples.iloc[0]["target_cost_adjusted_positive"])
-    assert pd.isna(samples.iloc[0]["target_open"])
-    assert pd.isna(samples.iloc[0]["target_close"])
+    assert samples["decision_timestamp"].eq(
+        pd.Timestamp("2026-07-27T15:05:00Z")
+    ).all()
+    assert samples["label_status"].eq("INCOMPLETE_LABEL").all()
+    assert samples["target_cost_adjusted_positive"].isna().all()
+    assert samples["target_open"].isna().all()
+    assert samples["target_close"].isna().all()
 
 
 def test_distinct_completed_source_bars_remain_distinct_decisions() -> None:
@@ -458,11 +603,13 @@ def test_distinct_completed_source_bars_remain_distinct_decisions() -> None:
         ),
     )
 
-    assert len(samples) == 2
-    assert samples["id"].nunique() == 2
+    assert len(samples) == 4
+    assert samples["id"].nunique() == 4
     assert samples["id"].tolist() == [
-        "GOOG|1h|2026-07-27T19:05:00Z",
-        "GOOG|1h|2026-07-27T20:05:00Z",
+        "GOOG|1h|2026-07-27T19:05:00Z|2026-07-27T20:05:00Z",
+        "GOOG|1h|2026-07-27T19:05:00Z|2026-07-27T21:00:00Z",
+        "GOOG|1h|2026-07-27T20:05:00Z|2026-07-27T21:00:00Z",
+        "GOOG|1h|2026-07-27T20:05:00Z|2026-07-27T22:00:00Z",
     ]
     assert not any(
         column.endswith(("_id", "_ids")) for column in samples.columns
@@ -470,6 +617,8 @@ def test_distinct_completed_source_bars_remain_distinct_decisions() -> None:
     assert samples["target_window_start"].tolist() == [
         pd.Timestamp("2026-07-27T20:05:00Z"),
         pd.Timestamp("2026-07-27T21:00:00Z"),
+        pd.Timestamp("2026-07-27T21:00:00Z"),
+        pd.Timestamp("2026-07-27T22:00:00Z"),
     ]
 
 

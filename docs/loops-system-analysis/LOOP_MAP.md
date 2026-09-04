@@ -145,7 +145,7 @@ sequenceDiagram
     S->>S: Fit/reuse, score, rank and atomically publish
 ```
 
-**Confirmed phase evidence:** CME schema phases are +0/+2/+1 seconds; Loop A applies a 20-second prestart wait after recurring boundaries; Pricing/B/Options/Strategy use +1/+5/+6/+10 minutes; ALFRED’s production next boundary is 07:00 UTC. `datafetching/cme_runtime.py:42`, `datafetching/orchestrate.py:210`, `docs/datafetch-ml/current_start_command:72`, `docs/datafetch-ml/current_start_command:94`, `docs/datafetch-ml/current_start_command:160`, `docs/datafetch-ml/current_start_command:188`, `docs/datafetch-ml/current_start_command:199`
+**Confirmed phase evidence:** CME schema phases are +0/+2/+1 seconds; Loop A applies a 20-second prestart wait after recurring boundaries; Pricing/B/Options/Strategy use +1/+6/+6/+10 minutes; ALFRED’s production next boundary is 07:00 UTC. `datafetching/cme_runtime.py:42`, `datafetching/orchestrate.py:210`, `docs/datafetch-ml/current_start_command:72`, `docs/datafetch-ml/current_start_command:94`, `docs/datafetch-ml/current_start_command:160`, `docs/datafetch-ml/current_start_command:188`, `docs/datafetch-ml/current_start_command:199`
 
 **Inferred ordinary order:** Loop A readiness normally precedes Pricing, while the complete Loop A cycle precedes B; Options then captures and Strategy consumes the current evidence. The processes remain independently scheduled and the two bounded barriers do not guarantee completion in this order. `datafetching/bar_readiness.py:245`, `datafetching/pricing_barrier.py:77`
 

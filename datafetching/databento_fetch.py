@@ -420,6 +420,7 @@ def _persist_native_results(
     advisory_files = 0
     source_bars_by_frequency: dict[str, list] = {}
     source_specs_by_frequency = {}
+    source_ranges_by_frequency = {}
     declared_specs_by_frequency = {}
 
     for spec, bars, raw_frame, available_range, exc in native_results:
@@ -454,6 +455,7 @@ def _persist_native_results(
                 )
                 source_bars_by_frequency[spec.frequency] = completed_bars
                 source_specs_by_frequency[spec.frequency] = spec
+                source_ranges_by_frequency[spec.frequency] = available_range
             continue
 
         request_key = f"{spec.key}_{spec.schema}_{spec.frequency}"
@@ -477,6 +479,7 @@ def _persist_native_results(
         )
         source_bars_by_frequency[spec.frequency] = completed_bars
         source_specs_by_frequency[spec.frequency] = spec
+        source_ranges_by_frequency[spec.frequency] = available_range
 
         raw_path = None
         if raw_frame is not None:
@@ -521,6 +524,7 @@ def _persist_native_results(
             profile=profile,
             source_bars=source_bars_by_frequency.get("1m", []),
             source_spec=source_specs_by_frequency.get("1m"),
+            source_range=source_ranges_by_frequency.get("1m"),
             observed_at=observed_at,
         )
         data_files += derived_files
@@ -597,6 +601,7 @@ def _save_derived_intraday_bars(
     profile: str,
     source_bars: list,
     source_spec,
+    source_range,
     observed_at: datetime,
 ) -> tuple[int, int]:
     if not source_bars or source_spec is None:
@@ -606,24 +611,51 @@ def _save_derived_intraday_bars(
     error_files = 0
     for output_frequency in DERIVED_INTRADAY_FREQUENCIES:
         request_key = f"derived_1m_{output_frequency}"
+        use_proven_sparse_hour = output_frequency == "1h" and source_range is not None
         metadata = {
             "provider_dataset": provider.dataset,
             "source_schema": source_spec.schema,
             "source_frequency": "1m",
             "output_frequency": output_frequency,
-            "aggregation_method": "session_resampled_from_complete_1m",
+            "aggregation_method": (
+                "coverage_proven_sparse_hour_from_complete_1m"
+                if use_proven_sparse_hour
+                else "session_resampled_from_complete_1m"
+            ),
             "fetch_profile": profile,
             "price_basis": "unadjusted_market_scale",
-            "volume_basis": "summed_from_complete_1m",
+            "volume_basis": (
+                "summed_trade_volume_or_zero_for_proven_empty_hour"
+                if use_proven_sparse_hour
+                else "summed_from_complete_1m"
+            ),
             "corporate_action_adjustment": "none",
-            "normalized_bar_policy": "completed_intervals_only",
+            "normalized_bar_policy": (
+                "completed_coverage_proven_sparse_intervals_only"
+                if use_proven_sparse_hour
+                else "completed_intervals_only"
+            ),
         }
+        if use_proven_sparse_hour:
+            metadata.update(
+                {
+                    "range_start": source_range.start.isoformat(),
+                    "range_end": source_range.end.isoformat(),
+                    "no_trade_price_policy": "strictly_prior_close_never_future_fill",
+                }
+            )
         try:
             bars = derive_intraday_bars(
                 symbol,
                 source_bars,
                 output_frequency,
                 as_of=observed_at,
+                coverage_start=(
+                    source_range.start if use_proven_sparse_hour else None
+                ),
+                coverage_end=(
+                    source_range.end if use_proven_sparse_hour else None
+                ),
             )
             if store.save_bars(
                 "databento",

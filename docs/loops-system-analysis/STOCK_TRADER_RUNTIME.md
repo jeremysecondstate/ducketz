@@ -47,19 +47,62 @@ Schwab order before 04:00 Pacific.
 5. Re-read the operator switch so a `FALSE` toggle during the wait stops before
    any Schwab request.
 6. Load the current enrichment model, then fetch account/positions, working
-   orders, and all six quotes concurrently.
-7. Run one multi-head enrichment inference per symbol from the same snapshot.
-8. Jointly convert model allocations into feasible whole-share quantities.
-9. Publish the complete immutable six-symbol LIVE lane and six-symbol SHADOW
+   orders, and all six quotes concurrently. A classified transient failure
+   recaptures that complete read-only snapshot after a three-second pause, for
+   up to a 120-second retry-start budget when the target leaves enough safe
+   time. An already-running Schwab request may finish beyond that budget, but
+   it cannot bypass the later clock gate. Non-transient authentication,
+   payload, and validation failures fail immediately. Authentication and
+   account identity are initialized once before the parallel fan-out. A
+   non-secret account/OAuth-generation fingerprint is verified again after all
+   three reads, so a concurrent reauthorization makes the whole snapshot retry
+   instead of mixing two accounts. OAuth
+   cache-lock contention, pre-connect timeouts, and definite rate limits are
+   retryable; ambiguous post-send/read outcomes are not. Refresh is serialized
+   across threads and processes, the shared token cache is durably replaced,
+   and an in-progress/uncertain marker prevents a waiter from repeating an
+   ambiguous OAuth mutation. That state requires fresh Schwab authorization.
+7. After broker-read recovery, advance the decision clock, re-read the operator
+   switch, and revalidate prediction actionability, session, and time in force.
+   Retry time is shortened to retain 15 seconds before the target; reaching that
+   boundary publishes `PREDICTION_EXECUTION_DEADLINE_PASSED` with no order.
+8. Run one multi-head enrichment inference per symbol from the same snapshot.
+9. Jointly convert model allocations into feasible whole-share quantities.
+10. Publish the complete immutable six-symbol LIVE lane and six-symbol SHADOW
    challenger from that same snapshot.
-10. If deployment execution is enabled, reserve each LIVE decision ID once and send
-   its selected order immediately. Reconciliation and outcome evaluation are
-   outside the pre-submit critical path.
+11. If deployment execution is enabled, prepare and freeze a matching Schwab
+   token/account context, require its fingerprint to match the captured
+   snapshot, and re-run all safety gates. Before each POST, durably reserve both
+   the decision ID and the stable prediction-generation/symbol/LIVE identity in
+   a synchronous SQLite ledger at the datastore root. Re-run the gates and
+   identity check inside the prepared submission immediately before its POST.
+   Reconciliation and outcome evaluation are outside the pre-submit critical
+   path.
 
 There is no repeated confirmation ceremony or sequential checksum/reload chain
 between a published eligible decision and submission. Integrity and duplicate
-suppression are implemented by publishing the decision before mutation and by
-an exclusive per-decision submission-intent artifact.
+suppression are implemented by publishing the decision before mutation, then
+committing the datastore-root reservation ledger before creating the readable
+per-decision intent artifact. The durable prediction-generation uniqueness
+survives a restart even if ordinary decision or execution artifacts are lost.
+
+The scheduler still starts exactly one runtime process per checkpoint. Bounded
+internal retries apply only to idempotent Schwab reads. An order submission,
+replacement, or cancellation is never automatically repeated after an error or
+timeout because the broker-side outcome may be ambiguous.
+Broker-state metadata in both the decision artifact and receipt records the
+attempt count, retry wait, elapsed time, error type, and sanitized failing
+component without storing account identifiers or response payloads.
+Non-waiting live invocations apply the same exact-next-target, near-term, and
+already-consumed prediction checks as the scheduled handoff path.
+Historical `--decided-at` timestamps are dry-run-only. For live execution, the
+operator switch, wall-clock target deadline, and market session are checked
+before and immediately after each exact-once intent reservation, directly ahead
+of the Schwab POST. A reserved intent stopped by that final gate receives a
+terminal `NOT_SUBMITTED_SAFETY_CHECK` result.
+Prediction checkpoint eligibility is checked against the current session, so a
+PREMARKET run cannot implicitly queue a REGULAR/DAY order without the explicit
+opening-queue flag.
 
 ## ML enrichment contract
 
@@ -126,7 +169,8 @@ Non-mutating decision run:
 
 ```powershell
 .\.venv\Scripts\python.exe -m ml.stock_trader.runtime `
-  --datastore-target pc
+  --datastore-target pc `
+  --target-horizon 1h
 ```
 
 Regular-opening deployment command (still inert unless the operator switch is
@@ -136,6 +180,7 @@ Regular-opening deployment command (still inert unless the operator switch is
 .\.venv\Scripts\python.exe -m ml.stock_trader.runtime `
   --datastore-target pc `
   --execute `
+  --target-horizon 1h `
   --queue-at-open `
   --wait-for-actionable-prediction
 ```
@@ -146,6 +191,7 @@ PRE-opening deployment command:
 .\.venv\Scripts\python.exe -m ml.stock_trader.runtime `
   --datastore-target pc `
   --execute `
+  --target-horizon 1h `
   --queue-at-premarket-open `
   --wait-for-actionable-prediction
 ```
@@ -262,8 +308,9 @@ schedules are active:
   04:00 PRE-opening receipt, and may queue only that exact AM target.
 - `Loops Stock Trader — Opening Live + Shadow` wakes at 06:17 PT on weekdays,
   waits for the opening-target receipt, and may use the explicit opening queue.
-- `Loops Stock Trader — Live + Shadow` wakes at 04:47 PT, skips the separately
-  owned 05:47/opening slot, and wakes hourly from 06:47 through 15:47 PT.
+- `Loops Stock Trader — Live + Shadow` wakes hourly from 04:47 through 15:47
+  PT. Its 05:47 wake owns the distinct 06:00 PRE target; the separate 06:17
+  opening task owns the 06:30 regular-open target.
 - `Loops Stock Trader — Four-Hour Checkpoints` wakes at 04:17, 08:17, 12:17,
   and 16:17 PT for the 04:30, 08:30, 12:30, and 16:30 targets.
 - `Loops Stock Trader — Daily Adaptation` runs at 17:20 PT on weekdays and

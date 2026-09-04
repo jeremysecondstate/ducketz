@@ -48,12 +48,36 @@ def _result(root: Path) -> SimpleNamespace:
     )
 
 
-def test_next_boundary_aligns_hourly_runtime() -> None:
+@pytest.mark.parametrize(
+    ("observed", "expected"),
+    (
+        (
+            datetime(2026, 7, 29, 10, 5, 59, tzinfo=timezone.utc),
+            datetime(2026, 7, 29, 10, 6, tzinfo=timezone.utc),
+        ),
+        (
+            datetime(2026, 7, 29, 10, 6, tzinfo=timezone.utc),
+            datetime(2026, 7, 29, 10, 36, tzinfo=timezone.utc),
+        ),
+        (
+            datetime(2026, 7, 29, 10, 35, 59, tzinfo=timezone.utc),
+            datetime(2026, 7, 29, 10, 36, tzinfo=timezone.utc),
+        ),
+        (
+            datetime(2026, 7, 29, 10, 36, tzinfo=timezone.utc),
+            datetime(2026, 7, 29, 11, 6, tzinfo=timezone.utc),
+        ),
+    ),
+)
+def test_next_boundary_aligns_canonical_half_hour_runtime(
+    observed: datetime,
+    expected: datetime,
+) -> None:
     assert prediction_runtime.next_boundary(
-        datetime(2026, 7, 29, 10, 14, 30, tzinfo=timezone.utc),
-        interval_minutes=60,
-        phase_offset_minutes=5,
-    ) == datetime(2026, 7, 29, 11, 5, tzinfo=timezone.utc)
+        observed,
+        interval_minutes=prediction_runtime.DEFAULT_INTERVAL_MINUTES,
+        phase_offset_minutes=prediction_runtime.DEFAULT_PHASE_OFFSET_MINUTES,
+    ) == expected
 
 
 def test_next_boundary_accepts_zero_phase_without_coordination() -> None:
@@ -314,6 +338,36 @@ def test_recurring_loop_can_reuse_the_same_complete_input_cycle(
     assert result == 0
     assert calls == 3
     assert not (tmp_path / ".ducketz-ml-prediction-runtime.lock").exists()
+
+
+def test_recurring_defaults_use_the_canonical_cadence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed: dict[str, int] = {}
+
+    def capture_boundary(_now: datetime, **cadence: int) -> datetime:
+        observed.update(cadence)
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(
+        prediction_runtime,
+        "publication_recovery_due",
+        lambda *_args, **_kwargs: (False, "verified publication is fresh"),
+    )
+    monkeypatch.setattr(prediction_runtime, "next_boundary", capture_boundary)
+
+    result = prediction_runtime.main(
+        ["--datastore", str(tmp_path), "--symbols", "GOOG"]
+    )
+
+    assert result == 0
+    assert observed == {
+        "interval_minutes": prediction_runtime.DEFAULT_INTERVAL_MINUTES,
+        "phase_offset_minutes": prediction_runtime.DEFAULT_PHASE_OFFSET_MINUTES,
+    }
+    assert observed == {"interval_minutes": 30, "phase_offset_minutes": 6}
+    assert not (tmp_path / ".duckets-ml-prediction-runtime.lock").exists()
 
 
 def test_recurring_loop_retries_one_transient_failure(

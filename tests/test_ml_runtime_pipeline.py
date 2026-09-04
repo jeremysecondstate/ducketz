@@ -102,6 +102,239 @@ def test_strategy_uses_normalized_current_loop_b_symbol_scope() -> None:
     assert _configured_symbols({}) == ()
 
 
+def test_live_candidates_choose_nearest_target_then_freshest_source() -> None:
+    samples = pd.DataFrame(
+        {
+            "symbol": ["GOOG", "GOOG", "GOOG"],
+            "horizon": ["1h", "1h", "1h"],
+            "decision_timestamp": pd.to_datetime(
+                [
+                    "2026-07-27T12:05:00Z",
+                    "2026-07-27T13:05:00Z",
+                    "2026-07-27T13:05:00Z",
+                ],
+                utc=True,
+            ),
+            "information_available_at": pd.to_datetime(
+                [
+                    "2026-07-27T12:05:00Z",
+                    "2026-07-27T13:05:00Z",
+                    "2026-07-27T13:05:00Z",
+                ],
+                utc=True,
+            ),
+            "target_window_start": pd.to_datetime(
+                [
+                    "2026-07-27T13:30:00Z",
+                    "2026-07-27T13:30:00Z",
+                    "2026-07-27T14:00:00Z",
+                ],
+                utc=True,
+            ),
+            "label_status": ["INCOMPLETE_LABEL"] * 3,
+        }
+    )
+
+    before_open = runtime_module._live_candidates(
+        samples,
+        as_of=pd.Timestamp("2026-07-27T13:20:00Z"),
+        latest_per_symbol=True,
+    ).sort_values("target_window_start")
+    after_open = runtime_module._live_candidates(
+        samples,
+        as_of=pd.Timestamp("2026-07-27T13:31:00Z"),
+        latest_per_symbol=True,
+    ).sort_values("target_window_start")
+
+    assert len(before_open) == 1
+    assert before_open.iloc[0]["target_window_start"] == pd.Timestamp(
+        "2026-07-27T13:30:00Z"
+    )
+    assert before_open.iloc[0]["information_available_at"] == pd.Timestamp(
+        "2026-07-27T13:05:00Z"
+    )
+    assert len(after_open) == 1
+    assert after_open.iloc[0]["target_window_start"] == pd.Timestamp(
+        "2026-07-27T14:00:00Z"
+    )
+
+
+def test_live_candidates_select_exact_target_for_current_and_one_bar_lag_symbols() -> None:
+    target = pd.Timestamp("2026-09-03T23:00:00Z")
+    later_target = pd.Timestamp("2026-09-04T11:00:00Z")
+    current_symbols = ["AAPL", "GOOG", "NVDA"]
+    lagged_symbols = ["AMZN", "MU", "SNDK"]
+    rows: list[dict[str, object]] = []
+    for symbol in current_symbols:
+        rows.extend(
+            [
+                {
+                    "symbol": symbol,
+                    "horizon": "1h",
+                    "decision_timestamp": pd.Timestamp("2026-09-03T21:05:00Z"),
+                    "information_available_at": pd.Timestamp(
+                        "2026-09-03T21:05:00Z"
+                    ),
+                    "target_window_start": target,
+                    "label_status": "INCOMPLETE_LABEL",
+                },
+                {
+                    "symbol": symbol,
+                    "horizon": "1h",
+                    "decision_timestamp": pd.Timestamp("2026-09-03T22:05:00Z"),
+                    "information_available_at": pd.Timestamp(
+                        "2026-09-03T22:05:00Z"
+                    ),
+                    "target_window_start": target,
+                    "label_status": "INCOMPLETE_LABEL",
+                },
+                {
+                    "symbol": symbol,
+                    "horizon": "1h",
+                    "decision_timestamp": pd.Timestamp("2026-09-03T22:05:00Z"),
+                    "information_available_at": pd.Timestamp(
+                        "2026-09-03T22:05:00Z"
+                    ),
+                    "target_window_start": later_target,
+                    "label_status": "INCOMPLETE_LABEL",
+                },
+            ]
+        )
+    for symbol in lagged_symbols:
+        rows.extend(
+            [
+                {
+                    "symbol": symbol,
+                    "horizon": "1h",
+                    "decision_timestamp": pd.Timestamp("2026-09-03T21:05:00Z"),
+                    "information_available_at": pd.Timestamp(
+                        "2026-09-03T21:05:00Z"
+                    ),
+                    "target_window_start": target,
+                    "label_status": "INCOMPLETE_LABEL",
+                },
+                {
+                    "symbol": symbol,
+                    "horizon": "1h",
+                    "decision_timestamp": pd.Timestamp("2026-09-03T21:05:00Z"),
+                    "information_available_at": pd.Timestamp(
+                        "2026-09-03T21:05:00Z"
+                    ),
+                    "target_window_start": later_target,
+                    "label_status": "INCOMPLETE_LABEL",
+                },
+            ]
+        )
+
+    selected = runtime_module._live_candidates(
+        pd.DataFrame(rows),
+        as_of=pd.Timestamp("2026-09-03T22:47:00Z"),
+        latest_per_symbol=True,
+    ).sort_values("symbol")
+
+    assert selected["symbol"].tolist() == sorted(current_symbols + lagged_symbols)
+    assert selected["target_window_start"].eq(target).all()
+    information_available_at = selected.set_index("symbol")[
+        "information_available_at"
+    ]
+    assert information_available_at.loc[current_symbols].eq(
+        pd.Timestamp("2026-09-03T22:05:00Z")
+    ).all()
+    assert information_available_at.loc[lagged_symbols].eq(
+        pd.Timestamp("2026-09-03T21:05:00Z")
+    ).all()
+
+
+def test_live_candidates_preserve_legacy_non_one_hour_selection() -> None:
+    samples = pd.DataFrame(
+        {
+            "symbol": ["GOOG", "GOOG"],
+            "horizon": ["4h", "4h"],
+            "decision_timestamp": pd.to_datetime(
+                ["2026-07-27T12:05:00Z", "2026-07-27T13:05:00Z"], utc=True
+            ),
+            "information_available_at": pd.to_datetime(
+                ["2026-07-27T12:05:00Z", "2026-07-27T13:05:00Z"], utc=True
+            ),
+            "target_window_start": pd.to_datetime(
+                ["2026-07-27T13:30:00Z", "2026-07-27T14:00:00Z"], utc=True
+            ),
+            "label_status": ["INCOMPLETE_LABEL", "INCOMPLETE_LABEL"],
+        }
+    )
+
+    selected = runtime_module._live_candidates(
+        samples,
+        as_of=pd.Timestamp("2026-07-27T13:20:00Z"),
+        latest_per_symbol=True,
+    )
+
+    assert len(selected) == 1
+    assert selected.iloc[0]["information_available_at"] == pd.Timestamp(
+        "2026-07-27T13:05:00Z"
+    )
+
+
+def test_evaluation_keeps_same_decision_targets_distinct() -> None:
+    decision = pd.Timestamp("2026-07-27T13:05:00Z")
+    starts = pd.to_datetime(
+        ["2026-07-27T13:30:00Z", "2026-07-27T14:00:00Z"],
+        utc=True,
+    )
+    ends = starts + pd.Timedelta(hours=1)
+    samples = pd.DataFrame(
+        {
+            "symbol": ["GOOG", "GOOG"],
+            "horizon": ["1h", "1h"],
+            "decision_timestamp": [decision, decision],
+            "target_window_start": starts,
+            "target_window_end": ends,
+            "label_status": ["COMPLETE", "COMPLETE"],
+            "assumed_round_trip_cost": [0.001, 0.001],
+            "target_definition_version": ["test-v5", "test-v5"],
+            "target_specification": ["{}", "{}"],
+            "target_cost_adjusted_positive": [1, 0],
+            "forward_raw_return": [0.02, -0.01],
+            "forward_cost_adjusted_return": [0.019, -0.011],
+        }
+    )
+    predictions = pd.DataFrame(
+        {
+            "id": ["placeholder-1", "placeholder-2"],
+            "symbol": ["GOOG", "GOOG"],
+            "provider": ["databento", "databento"],
+            "horizon": ["1h", "1h"],
+            "decision_timestamp": [decision, decision],
+            "information_available_at": [decision, decision],
+            "target_window_start": starts,
+            "target_window_end": ends,
+            "actionable_until": starts,
+            "prediction_created_at": [decision, decision],
+            "model_name": ["test-model", "test-model"],
+            "model_version": ["test-version", "test-version"],
+            "calibration_method": ["none", "none"],
+            "prediction_mode": ["BACKTEST", "BACKTEST"],
+            "prediction_status": ["CREATED", "CREATED"],
+            "target_definition_version": ["test-v5", "test-v5"],
+            "target_specification": ["{}", "{}"],
+            "assumed_round_trip_cost": [0.001, 0.001],
+            "raw_probability": [0.7, 0.4],
+            "calibrated_probability": [0.7, 0.4],
+        }
+    )
+
+    evaluated = _evaluation_frame(
+        predictions,
+        samples,
+        evaluated_at=pd.Timestamp("2026-07-27T16:00:00Z"),
+    ).sort_values("target_window_start")
+
+    assert evaluated["evaluation_status"].tolist() == ["EVALUATED", "EVALUATED"]
+    assert evaluated["observed_target"].tolist() == [1.0, 0.0]
+    assert evaluated["id"].is_unique
+    assert evaluated["id"].str.count(r"\|").eq(4).all()
+
+
 def test_loop_b_materializes_trains_predicts_and_persists_readable_ids(
     tmp_path: Path,
 ) -> None:
@@ -138,6 +371,7 @@ def test_loop_b_materializes_trains_predicts_and_persists_readable_ids(
         "total_prediction_rows": _CONFIG.assessment_clusters + 1,
         "backtest_prediction_rows": _CONFIG.assessment_clusters,
         "fresh_live_rows": 1,
+        "expired_fresh_live_rows_pruned": 0,
         "carried_active_live_rows": 0,
         "retained_frozen_weekly_live_rows": 0,
         "actionable_ordinary_routes": 1,
@@ -958,7 +1192,7 @@ def test_loop_b_can_require_every_requested_symbol_route(tmp_path: Path) -> None
         )
 
 
-def test_publication_deadline_guard_preserves_current_files(
+def test_expired_fresh_live_row_is_pruned_without_blocking_publication(
     tmp_path: Path,
 ) -> None:
     _write_synthetic_loop_a_outputs(tmp_path)
@@ -971,8 +1205,6 @@ def test_publication_deadline_guard_preserves_current_files(
         input_available_at=_FIRST_RUN,
         reporter=None,
     )
-    current_path = first.latest_intelligence_path
-    before = current_path.read_bytes()
     clock_values = iter(
         (
             pd.Timestamp("2024-06-03T12:02:00Z"),
@@ -981,30 +1213,93 @@ def test_publication_deadline_guard_preserves_current_files(
         )
     )
 
-    with pytest.raises(RuntimeError, match="publication deadline passed"):
-        run_loop_b_once(
-            tmp_path,
-            symbols=("GOOG",),
-            config=_CONFIG,
-            specifications=_SPECIFICATIONS,
-            run_timestamp=_SECOND_RUN,
-            input_available_at=_SECOND_RUN,
-            runtime_clock=lambda: next(clock_values),
-            reporter=None,
-        )
-
-    failed_run = (
-        tmp_path / "ml" / "runs" / "20240603T120100.000000Z"
+    second = run_loop_b_once(
+        tmp_path,
+        symbols=("GOOG",),
+        config=_CONFIG,
+        specifications=_SPECIFICATIONS,
+        run_timestamp=_SECOND_RUN,
+        input_available_at=_SECOND_RUN,
+        runtime_clock=lambda: next(
+            clock_values,
+            pd.Timestamp("2024-06-03T14:00:01Z"),
+        ),
+        reporter=None,
     )
-    assert failed_run.is_dir()
-    assert not (failed_run / "manifest.json").exists()
-    assert current_path.read_bytes() == before
+    predictions = pd.read_parquet(second.run_directory / "predictions.parquet")
+    live = predictions.loc[predictions["prediction_mode"].eq("LIVE")]
+    assert live["prediction_created_at"].eq(_FIRST_RUN).all()
+    assert not live["prediction_created_at"].eq(
+        pd.Timestamp("2024-06-03T12:02:00Z")
+    ).any()
+    manifest = verify_manifest(second.run_directory)
+    assert manifest["configuration"]["publication_counts"][
+        "expired_fresh_live_rows_pruned"
+    ] == 1
+    assert runtime_module._verify_publication_receipt(
+        second.run_directory,
+        manifest,
+    )
     latest_pointer = json.loads(
         (tmp_path / "ml" / "latest" / "run.json").read_text(
             encoding="utf-8"
         )
     )
-    assert latest_pointer["path"].endswith(first.run_directory.name)
+    assert latest_pointer["path"].endswith(second.run_directory.name)
+    assert not latest_pointer["path"].endswith(first.run_directory.name)
+
+
+def test_expired_nearest_live_target_does_not_veto_later_target() -> None:
+    checked_at = pd.Timestamp("2026-07-27T13:30:00Z")
+    live = pd.DataFrame(
+        {
+            "id": ["near", "later"],
+            "prediction_mode": ["LIVE", "LIVE"],
+            "actionable_until": pd.to_datetime(
+                ["2026-07-27T13:30:00Z", "2026-07-27T14:00:00Z"],
+                utc=True,
+            ),
+        }
+    )
+    backtest = pd.DataFrame(
+        {
+            "id": ["backtest"],
+            "prediction_mode": ["BACKTEST"],
+            "actionable_until": pd.to_datetime(
+                ["2026-07-27T13:30:00Z"], utc=True
+            ),
+        }
+    )
+    current = pd.concat([backtest, live], ignore_index=True)
+
+    retained_current, retained_fresh, pruned = (
+        runtime_module._prune_expired_fresh_live_predictions(
+            current,
+            live,
+            publication_checked_at=checked_at,
+        )
+    )
+
+    assert retained_current["id"].tolist() == ["backtest", "later"]
+    assert retained_fresh["id"].tolist() == ["later"]
+    assert pruned == 1
+
+
+def test_malformed_fresh_live_deadline_fails_closed() -> None:
+    fresh = pd.DataFrame(
+        {
+            "id": ["bad-deadline"],
+            "prediction_mode": ["LIVE"],
+            "actionable_until": ["not-a-timestamp"],
+        }
+    )
+
+    with pytest.raises(RuntimeError, match="invalid actionability deadline"):
+        runtime_module._prune_expired_fresh_live_predictions(
+            fresh.copy(),
+            fresh,
+            publication_checked_at=pd.Timestamp("2026-07-27T13:30:00Z"),
+        )
 
 def test_current_output_promotion_failure_rolls_back_every_file(
     tmp_path: Path,
@@ -1596,6 +1891,15 @@ def test_verified_active_ordinary_forecasts_are_carried_once_and_expire(
         specifications=specifications,
         probability=0.61,
     )
+    earlier_target_one_hour = {
+        **one_hour,
+        "target_window_start": pd.Timestamp("2026-08-05T15:30:00Z"),
+        "target_window_end": pd.Timestamp("2026-08-05T16:30:00Z"),
+        "actionable_until": pd.Timestamp("2026-08-05T15:30:00Z"),
+        "prediction_created_at": pd.Timestamp("2026-08-05T15:22:00Z"),
+        "raw_probability": 0.59,
+        "calibrated_probability": 0.59,
+    }
     older_one_hour = {
         **one_hour,
         "prediction_created_at": pd.Timestamp("2026-08-05T15:41:00Z"),
@@ -1629,6 +1933,12 @@ def test_verified_active_ordinary_forecasts_are_carried_once_and_expire(
     )
     _publish_prediction_fixture_run(
         tmp_path,
+        run_timestamp="2026-08-05T15:20:00Z",
+        promoted_at="2026-08-05T15:23:00Z",
+        rows=[earlier_target_one_hour],
+    )
+    _publish_prediction_fixture_run(
+        tmp_path,
         run_timestamp="2026-08-05T15:40:00Z",
         promoted_at="2026-08-05T15:43:00Z",
         rows=[older_one_hour, one_hour, four_hour],
@@ -1642,7 +1952,10 @@ def test_verified_active_ordinary_forecasts_are_carried_once_and_expire(
         rows=[one_day, one_hour, four_hour],
     )
     samples = pd.DataFrame(
-        [_sample_for_prediction(row) for row in (one_hour, four_hour, one_day)]
+        [
+            _sample_for_prediction(row)
+            for row in (earlier_target_one_hour, one_hour, four_hour, one_day)
+        ]
     )
     current_run = tmp_path / "ml" / "runs" / "20260805T161000.000000Z"
 
@@ -1656,16 +1969,24 @@ def test_verified_active_ordinary_forecasts_are_carried_once_and_expire(
         assumed_round_trip_cost=0.001,
     ).sort_values("horizon")
 
-    assert list(selected["horizon"]) == ["1d", "1h", "4h"]
+    assert list(selected["horizon"]) == ["1d", "1h", "1h", "4h"]
     assert selected["prediction_mode"].eq("LIVE").all()
     assert selected["prediction_status"].eq("CREATED").all()
     assert selected["id"].is_unique
-    assert selected.loc[
-        selected["horizon"].eq("1h"), "prediction_created_at"
-    ].iloc[0] == pd.Timestamp("2026-08-05T15:42:00Z")
-    assert selected.loc[
-        selected["horizon"].eq("1h"), "calibrated_probability"
-    ].iloc[0] == 0.61
+    selected_one_hour = selected.loc[selected["horizon"].eq("1h")].sort_values(
+        "target_window_start"
+    )
+    assert selected_one_hour["target_window_start"].tolist() == list(
+        pd.to_datetime(
+            ["2026-08-05T15:30:00Z", "2026-08-05T16:00:00Z"], utc=True
+        )
+    )
+    assert selected_one_hour["prediction_created_at"].tolist() == list(
+        pd.to_datetime(
+            ["2026-08-05T15:22:00Z", "2026-08-05T15:42:00Z"], utc=True
+        )
+    )
+    assert selected_one_hour["calibrated_probability"].tolist() == [0.59, 0.61]
     reconciled_history = runtime_module._load_prior_live_predictions(
         tmp_path / "ml" / "runs",
         current_run,
@@ -1712,6 +2033,11 @@ def test_verified_active_ordinary_forecasts_are_carried_once_and_expire(
     assert intelligence["automated_action_allowed"].eq(False).all()
     assert intelligence["completed_decision_count"].eq(0).all()
     assert set(intelligence["minimum_live_decision_count"]) == {30, 60}
+    assert intelligence["id"].is_unique
+    assert intelligence["id"].str.count(r"\|").eq(2).all()
+    assert intelligence.loc[
+        intelligence["horizon"].eq("1h"), "target_window_start"
+    ].tolist() == [pd.Timestamp("2026-08-05T16:00:00Z")]
 
     at_one_hour_end = (
         runtime_module._load_verified_active_prior_ordinary_forecasts(
@@ -1752,7 +2078,7 @@ def test_verified_active_ordinary_forecasts_are_carried_once_and_expire(
             )
         ]
     )
-    without_superseded = (
+    without_cross_target_suppression = (
         runtime_module._load_verified_active_prior_ordinary_forecasts(
             tmp_path,
             current_run=current_run,
@@ -1763,7 +2089,40 @@ def test_verified_active_ordinary_forecasts_are_carried_once_and_expire(
             assumed_round_trip_cost=0.001,
         )
     )
-    assert set(without_superseded["horizon"]) == {"4h", "1d"}
+    assert set(without_cross_target_suppression["horizon"]) == {"1h", "4h", "1d"}
+    assert without_cross_target_suppression.loc[
+        without_cross_target_suppression["horizon"].eq("1h"),
+        "target_window_start",
+    ].sort_values().tolist() == list(
+        pd.to_datetime(
+            ["2026-08-05T15:30:00Z", "2026-08-05T16:00:00Z"], utc=True
+        )
+    )
+
+    replacement_current = _prediction_frame_from_rows(
+        [
+            {
+                **one_hour,
+                "prediction_created_at": pd.Timestamp("2026-08-05T15:50:00Z"),
+                "raw_probability": 0.64,
+                "calibrated_probability": 0.64,
+            }
+        ]
+    )
+    without_same_target_prior = (
+        runtime_module._load_verified_active_prior_ordinary_forecasts(
+            tmp_path,
+            current_run=current_run,
+            publication_time=pd.Timestamp("2026-08-05T16:10:00Z"),
+            samples=samples,
+            current_predictions=replacement_current,
+            specifications=specifications,
+            assumed_round_trip_cost=0.001,
+        )
+    )
+    assert without_same_target_prior.loc[
+        without_same_target_prior["horizon"].eq("1h"), "target_window_start"
+    ].tolist() == [pd.Timestamp("2026-08-05T15:30:00Z")]
 
 
 def test_active_forecast_carry_rejects_untrusted_and_incompatible_rows(
@@ -2016,7 +2375,7 @@ def _ordinary_live_prediction(
 def _prediction_frame_from_rows(
     rows: list[dict[str, object]],
 ) -> pd.DataFrame:
-    frame = frame_with_readable_id(
+    frame = runtime_module._frame_with_target_aware_id(
         pd.DataFrame(rows).drop(columns="id", errors="ignore"),
         key_columns=(
             "symbol",

@@ -15,11 +15,15 @@ from ml.stock_trader.contracts import (
     finite,
     utc,
 )
-from ml.stock_trader.session import checkpoint_session_for_target
+from ml.stock_trader.session import (
+    STOCK_TARGET_HORIZONS,
+    checkpoint_session_for_target,
+    normalize_stock_target_horizon,
+)
 
 
 PRIMARY_STOCK_HORIZON = "1h"
-PRIMARY_STOCK_HORIZONS: tuple[str, ...] = ("1h", "4h")
+PRIMARY_STOCK_HORIZONS: tuple[str, ...] = STOCK_TARGET_HORIZONS
 CONTEXT_HORIZONS: tuple[str, ...] = ("1h", "4h", "1d", "1w")
 
 
@@ -27,11 +31,18 @@ def load_current_prediction_signals(
     datastore_root: Path,
     *,
     as_of: object,
+    target_horizon: object | None = None,
 ) -> tuple[dict[str, PredictionSignal], tuple[Path, ...]]:
     """Load the newest actionable LIVE Loop B route for each trader symbol."""
 
     root = Path(datastore_root).resolve()
     timestamp = utc(as_of)
+    clean_target_horizon = normalize_stock_target_horizon(target_horizon)
+    primary_horizons = (
+        PRIMARY_STOCK_HORIZONS
+        if clean_target_horizon is None
+        else (clean_target_horizon,)
+    )
     publication = read_current_publication(root)
     path = publication.run_directory / "predictions.parquet"
     if not path.is_file():
@@ -60,11 +71,11 @@ def load_current_prediction_signals(
     signals: dict[str, PredictionSignal] = {}
     for symbol in STOCK_TRADER_SYMBOLS:
         rows = eligible.loc[eligible["symbol"].eq(symbol)]
-        primary = rows.loc[rows["horizon"].isin(PRIMARY_STOCK_HORIZONS)].copy()
+        primary = rows.loc[rows["horizon"].isin(primary_horizons)].copy()
         if primary.empty:
             continue
         primary["__horizon_priority"] = primary["horizon"].map(
-            {horizon: index for index, horizon in enumerate(PRIMARY_STOCK_HORIZONS)}
+            {horizon: index for index, horizon in enumerate(primary_horizons)}
         )
         primary_row = primary.sort_values(
             [

@@ -61,8 +61,8 @@ def test_runtime_intelligence_evidence_is_rendered_by_dashboard_loader(
     )
 
     assert dashboard.operational_statuses == ("OPERATIONALLY_CURRENT",)
-    assert dashboard.operational_label == "Operationally Current"
-    assert dashboard.freshness_label == "Data Pipeline Is Current"
+    assert dashboard.operational_label == "Operational with Route Timing Gaps"
+    assert dashboard.freshness_label == "Current Outlooks with Route Gaps"
     assert dashboard.automated_action_allowed is False
     assert dashboard.automation_label == "Automated action is off"
     assert dashboard.published_route_count == 1

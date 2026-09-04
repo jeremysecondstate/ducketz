@@ -29,7 +29,7 @@ python -m ml.prediction_runtime `
   --provider databento `
   --horizons 1h 4h 1d 1w `
   --interval-minutes 30 `
-  --phase-offset-minutes 5 `
+  --phase-offset-minutes 6 `
   --failure-retry-attempts 1 `
   --failure-retry-delay-seconds 60 `
   --stale-recovery-minutes 35
@@ -42,9 +42,11 @@ operators do not list those internal values manually. The public behavior of
 
 The supervisor creates `.duckets-ml-prediction-runtime.lock` in the datastore.
 A second Loop B process fails before doing work. `Ctrl+C` stops cleanly and
-removes the lock.
+removes the lock. A later supervisor may replace the lock only when its recorded
+PID is positively confirmed dead; live, missing, malformed, or unqueryable
+ownership remains fail-closed.
 
-Production runs at `:05`/`:35`. One retry is permitted only for a classified
+Production runs at `:06`/`:36`. One retry is permitted only for a classified
 transient failure, and a restarted supervisor runs immediately when its last
 receipt-verified publication has been authoritative for at least 35 minutes.
 Deadline, integrity, and deterministic contract failures remain fail-closed;
@@ -166,12 +168,17 @@ One Loop B iteration:
     runtime consume the run.
 
 The versioned intraday target contracts are
-`next-60-eligible-equity-minutes-open-close-v4` for `1h` and
+`next-60-eligible-equity-minutes-open-close-v6` for `1h` and
 `next-180-eligible-equity-minutes-four-checkpoints-v4` for `4h`. Both use
 completed canonical `1h` bars as the decision and feature source and may select
 the latest completed full regular or standard US extended source hour between
 04:00 and 20:00 Eastern. Native Databento rows win duplicate timestamps, while
-an all-60-minute derived hour fills only a native publication lag.
+a coverage-proven derived hour fills native publication gaps. A successful
+Databento `1m` selected range permits sparse trade-bearing aggregation and a
+strictly prior-close, zero-volume mark for a wholly empty completed hour; no
+future trade, partial trailing hour, holiday, weekend, or out-of-envelope hour
+is synthesized. Without explicit provider-range proof, the derived lane keeps
+the strict all-60-minute rule.
 
 Source context and broker-actionable targets have separate policies. On an
 ordinary US equity day, target minutes are PRE 07:00--09:25, REGULAR
@@ -180,8 +187,13 @@ weekends, holidays, and closed periods pause accumulation. Early-close days do
 not receive synthetic extended segments. Non-US calendars retain their prior
 regular-session hybrid behavior.
 
-The `1h` route contributes each actionable segment start and each complete
-exchange-local clock hour wholly inside the segment. The `4h` route contributes
+The `1h` route contributes each actionable segment start and each eligible
+exchange-local clock-hour start. Its 60 eligible target minutes may pause over
+a closed transition gap, preserving the distinct 09:00 Eastern target. Each
+source hour may also emit bounded target siblings through two hours after its
+information-availability timestamp so a one-source-hour publication lag does
+not erase the next exact hourly target; a newer source row still wins when it
+exists. The `4h` route contributes
 only 07:30, 11:30, 15:30, and 19:30 Eastern—04:30, 08:30, 12:30, and 16:30
 Pacific. The first candidate strictly after `information_available_at` wins;
 equality is too late. The 19:30 Eastern checkpoint accumulates 30 POST minutes,
