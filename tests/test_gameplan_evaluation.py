@@ -6,7 +6,7 @@ import pytest
 
 from ml.artifacts import write_manifest
 from ml.gameplan_evaluation import evaluate_saved_gameplans, read_evaluation_history
-from ml.nightly_gameplan import _publish_gameplan
+from ml.nightly_gameplan import _intraday_outcomes, _publish_gameplan
 
 
 def saved_plan(root, name, action_date, *, end="2026-09-10T20:00:00Z"):
@@ -98,3 +98,35 @@ def test_future_outcomes_are_not_scored_early(tmp_path):
     saved_plan(tmp_path, "first", "2026-09-04")
     result = evaluate_saved_gameplans(tmp_path, observed_groups=outcomes(), evaluated_at="2026-09-05T16:00:00Z")
     assert result.evaluations.iloc[0].evaluation_status == "PENDING_MATURITY"
+
+
+def test_four_hour_evaluation_waits_for_an_actual_window_end_price(tmp_path):
+    run = tmp_path / "ml/nightly-gameplan-runs/four-hour"
+    run.mkdir(parents=True)
+    forecasts = pd.DataFrame([{
+        "id": "2026-09-04:AAPL:4h@16:00", "symbol": "AAPL", "route": "4h@16:00",
+        "target_window_start": pd.Timestamp("2026-09-04T19:00:00Z"),
+        "target_window_end": pd.Timestamp("2026-09-04T23:00:00Z"),
+        "calibrated_probability": 0.5, "model_group": "4h", "model_status": "PROMOTED",
+    }])
+    forecasts.to_parquet(run / "forecasts.parquet", index=False)
+    write_manifest(run, run_timestamp="2026-09-04T10:00:00Z", input_files=(),
+                   output_files=("forecasts.parquet",), configuration={"action_date": "2026-09-04"}, datastore_root=tmp_path)
+    _publish_gameplan(tmp_path, run=run, action_date=date(2026, 9, 4),
+                      published_at=pd.Timestamp("2026-09-04T10:01:00Z"), source_loop_b="test", source_strategy="test")
+    sources = pd.DataFrame([{
+        "symbol": "AAPL", "action_date": date(2026, 9, 4),
+        "decision_timestamp": pd.Timestamp("2026-09-04T00:05:00Z"),
+    }])
+    bars = pd.DataFrame({
+        "symbol": "AAPL", "open": 100.0, "close": 101.0,
+        "timestamp": pd.to_datetime(["2026-09-04T19:00:00Z", "2026-09-04T19:59:00Z"]),
+    })
+    _, incomplete = _intraday_outcomes(sources=sources, feature_columns=(), minute_bars=bars)
+    waiting = evaluate_saved_gameplans(tmp_path, observed_groups={"4h": incomplete}, evaluated_at="2026-09-05T01:00:00Z")
+    assert waiting.evaluations.iloc[0].evaluation_status == "MATURE_AWAITING_DATA"
+    bars.loc[1, "timestamp"] = pd.Timestamp("2026-09-04T22:59:00Z")
+    _, complete = _intraday_outcomes(sources=sources, feature_columns=(), minute_bars=bars)
+    scored = evaluate_saved_gameplans(tmp_path, observed_groups={"4h": complete}, evaluated_at="2026-09-05T02:00:00Z")
+    assert scored.evaluations.iloc[0].evaluation_status == "EVALUATED"
+    assert scored.evaluations.iloc[0].brier_score == 0.25

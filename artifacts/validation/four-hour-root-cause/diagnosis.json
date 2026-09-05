@@ -1,0 +1,679 @@
+{
+  "run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260904T105944.876700Z",
+  "feature_columns": [
+    "mr__trend_atr",
+    "mr__momentum_risk_adjusted",
+    "mr__range_position",
+    "mr__volume_score",
+    "mr__volatility_ratio",
+    "bp__compression_score",
+    "bp__range_contraction_score",
+    "bp__direction_score",
+    "bp__upside_pressure_score",
+    "bp__downside_pressure_score",
+    "bp__breakout_magnitude_atr",
+    "bp__volume_participation_score",
+    "mr__technical_score",
+    "mr__regime_strength",
+    "bp__breakout_readiness_score",
+    "bp__breakout_strength_score",
+    "bp__setup_quality",
+    "mr__confidence_score",
+    "mr__atr_percent",
+    "mr__technical_score_change_5",
+    "bp__bars_since_state_change",
+    "mr__trend_score",
+    "mr__momentum_score",
+    "mr__range_score",
+    "bp__boundary_proximity_score",
+    "bar__intrabar_range_atr",
+    "bar__close_location"
+  ],
+  "partition_metrics": {
+    "train": {
+      "decision_start": "2026-05-08 23:05:00+00:00",
+      "decision_end": "2026-07-17 00:05:00+00:00",
+      "target_start": "2026-05-11 11:00:00+00:00",
+      "target_end": "2026-07-17 23:00:00+00:00",
+      "unique_decisions": 75,
+      "unique_sessions": 47,
+      "feature_null_fraction": 0.010441493587561003,
+      "raw": {
+        "rows": 979,
+        "positive_rate": 0.4514811031664964,
+        "mean_probability": 0.47384556870570194,
+        "brier_score": 0.17283838090742015,
+        "log_loss": 0.5303265242895451,
+        "expected_calibration_error_10_bin": 0.17551790605144416,
+        "direction_accuracy_at_0_5": 0.8018386108273748,
+        "auc": 0.8858119096370822,
+        "probability_min": 0.15464677326098125,
+        "probability_max": 0.8242857771767808
+      },
+      "tree": {
+        "rows": 979,
+        "positive_rate": 0.4514811031664964,
+        "mean_probability": 0.4837291485259059,
+        "brier_score": 0.1583227033793449,
+        "log_loss": 0.4939291575530443,
+        "expected_calibration_error_10_bin": 0.14946761879451712,
+        "direction_accuracy_at_0_5": 0.8079673135852911,
+        "auc": 0.893551404231654,
+        "probability_min": 0.06903553311001688,
+        "probability_max": 0.9241960774556285
+      },
+      "neural": {
+        "rows": 979,
+        "positive_rate": 0.4514811031664964,
+        "mean_probability": 0.44419482924508974,
+        "brier_score": 0.24166393704341602,
+        "log_loss": 0.6759969247636722,
+        "expected_calibration_error_10_bin": 0.023865573153683806,
+        "direction_accuracy_at_0_5": 0.5648621041879469,
+        "auc": 0.5857495555162331,
+        "probability_min": 0.20856712837887953,
+        "probability_max": 0.643760578251099
+      },
+      "saved_calibrated": {
+        "rows": 979,
+        "positive_rate": 0.4514811031664964,
+        "mean_probability": 0.5,
+        "brier_score": 0.25,
+        "log_loss": 0.6931471805599454,
+        "expected_calibration_error_10_bin": 0.04851889683350358,
+        "direction_accuracy_at_0_5": 0.4514811031664964,
+        "auc": 0.5,
+        "probability_min": 0.5,
+        "probability_max": 0.5
+      },
+      "training_base_rate": {
+        "rows": 979,
+        "positive_rate": 0.4514811031664964,
+        "mean_probability": 0.45704753961634714,
+        "brier_score": 0.2476769018648101,
+        "log_loss": 0.6884940695351501,
+        "expected_calibration_error_10_bin": 0.00556643644985072,
+        "direction_accuracy_at_0_5": 0.5485188968335035,
+        "auc": 0.5,
+        "probability_min": 0.457047539616347,
+        "probability_max": 0.457047539616347
+      }
+    },
+    "selection": {
+      "decision_start": "2026-07-18 00:05:00+00:00",
+      "decision_end": "2026-07-31 00:05:00+00:00",
+      "target_start": "2026-07-18 00:00:00+00:00",
+      "target_end": "2026-07-31 23:00:00+00:00",
+      "unique_decisions": 14,
+      "unique_sessions": 10,
+      "feature_null_fraction": 0.008754208754208754,
+      "raw": {
+        "rows": 220,
+        "positive_rate": 0.4818181818181818,
+        "mean_probability": 0.502797224711915,
+        "brier_score": 0.1648509582421918,
+        "log_loss": 0.512358775029762,
+        "expected_calibration_error_10_bin": 0.21390391343375093,
+        "direction_accuracy_at_0_5": 0.8454545454545455,
+        "auc": 0.9106256206554121,
+        "probability_min": 0.16017597439798956,
+        "probability_max": 0.852403985640973
+      },
+      "tree": {
+        "rows": 220,
+        "positive_rate": 0.4818181818181818,
+        "mean_probability": 0.5127221567250236,
+        "brier_score": 0.1493033732787842,
+        "log_loss": 0.471715900594041,
+        "expected_calibration_error_10_bin": 0.17384181813977756,
+        "direction_accuracy_at_0_5": 0.8409090909090909,
+        "auc": 0.9166666666666666,
+        "probability_min": 0.07733441615785097,
+        "probability_max": 0.942647861663491
+      },
+      "neural": {
+        "rows": 220,
+        "positive_rate": 0.4818181818181818,
+        "mean_probability": 0.473022428672589,
+        "brier_score": 0.24025210971399713,
+        "log_loss": 0.6730618976355416,
+        "expected_calibration_error_10_bin": 0.03253830607371655,
+        "direction_accuracy_at_0_5": 0.5954545454545455,
+        "auc": 0.6113869579609401,
+        "probability_min": 0.2862762173311148,
+        "probability_max": 0.6857978478965415
+      },
+      "saved_calibrated": {
+        "rows": 220,
+        "positive_rate": 0.4818181818181818,
+        "mean_probability": 0.5,
+        "brier_score": 0.25,
+        "log_loss": 0.6931471805599454,
+        "expected_calibration_error_10_bin": 0.018181818181818188,
+        "direction_accuracy_at_0_5": 0.4818181818181818,
+        "auc": 0.5,
+        "probability_min": 0.5,
+        "probability_max": 0.5
+      },
+      "training_base_rate": {
+        "rows": 220,
+        "positive_rate": 0.4818181818181818,
+        "mean_probability": 0.4570475396163471,
+        "brier_score": 0.25028300620269467,
+        "log_loss": 0.6937191567172117,
+        "expected_calibration_error_10_bin": 0.024770642201834725,
+        "direction_accuracy_at_0_5": 0.5181818181818182,
+        "auc": 0.5,
+        "probability_min": 0.457047539616347,
+        "probability_max": 0.457047539616347
+      }
+    },
+    "calibration": {
+      "decision_start": "2026-07-31 23:05:00+00:00",
+      "decision_end": "2026-08-14 00:05:00+00:00",
+      "target_start": "2026-08-01 00:00:00+00:00",
+      "target_end": "2026-08-14 23:00:00+00:00",
+      "unique_decisions": 14,
+      "unique_sessions": 10,
+      "feature_null_fraction": 0.011396011396011397,
+      "raw": {
+        "rows": 208,
+        "positive_rate": 0.5,
+        "mean_probability": 0.4786419474033084,
+        "brier_score": 0.2680543305623165,
+        "log_loss": 0.7309240258411875,
+        "expected_calibration_error_10_bin": 0.12318238865297912,
+        "direction_accuracy_at_0_5": 0.47596153846153844,
+        "auc": 0.45654585798816566,
+        "probability_min": 0.21264370794381876,
+        "probability_max": 0.7143075457037456
+      },
+      "tree": {
+        "rows": 208,
+        "positive_rate": 0.5,
+        "mean_probability": 0.4898022683364211,
+        "brier_score": 0.2750494196362457,
+        "log_loss": 0.7468138367240089,
+        "expected_calibration_error_10_bin": 0.13042477359978916,
+        "direction_accuracy_at_0_5": 0.47596153846153844,
+        "auc": 0.45404955621301774,
+        "probability_min": 0.14901154066371766,
+        "probability_max": 0.7746171306545435
+      },
+      "neural": {
+        "rows": 208,
+        "positive_rate": 0.5,
+        "mean_probability": 0.4451609846039703,
+        "brier_score": 0.2617157754232408,
+        "log_loss": 0.7180526407837701,
+        "expected_calibration_error_10_bin": 0.097470322162912,
+        "direction_accuracy_at_0_5": 0.4855769230769231,
+        "auc": 0.4928809171597633,
+        "probability_min": 0.23673956635104818,
+        "probability_max": 0.6581662778512535
+      },
+      "saved_calibrated": {
+        "rows": 208,
+        "positive_rate": 0.5,
+        "mean_probability": 0.5,
+        "brier_score": 0.25,
+        "log_loss": 0.6931471805599453,
+        "expected_calibration_error_10_bin": 0.0,
+        "direction_accuracy_at_0_5": 0.5,
+        "auc": 0.5,
+        "probability_min": 0.5,
+        "probability_max": 0.5
+      },
+      "training_base_rate": {
+        "rows": 208,
+        "positive_rate": 0.5,
+        "mean_probability": 0.4570475396163471,
+        "brier_score": 0.25184491385300933,
+        "log_loss": 0.696850690449222,
+        "expected_calibration_error_10_bin": 0.04295246038365291,
+        "direction_accuracy_at_0_5": 0.5,
+        "auc": 0.5,
+        "probability_min": 0.457047539616347,
+        "probability_max": 0.457047539616347
+      }
+    },
+    "assessment": {
+      "decision_start": "2026-08-14 23:05:00+00:00",
+      "decision_end": "2026-08-27 00:05:00+00:00",
+      "target_start": "2026-08-15 00:00:00+00:00",
+      "target_end": "2026-08-27 23:00:00+00:00",
+      "unique_decisions": 14,
+      "unique_sessions": 9,
+      "feature_null_fraction": 0.013687600644122382,
+      "raw": {
+        "rows": 184,
+        "positive_rate": 0.42391304347826086,
+        "mean_probability": 0.4494557818730348,
+        "brier_score": 0.2517673140905295,
+        "log_loss": 0.6969485536196384,
+        "expected_calibration_error_10_bin": 0.1316126197348125,
+        "direction_accuracy_at_0_5": 0.483695652173913,
+        "auc": 0.5231011127237543,
+        "probability_min": 0.23856539032492213,
+        "probability_max": 0.6783137445314089
+      },
+      "tree": {
+        "rows": 184,
+        "positive_rate": 0.42391304347826086,
+        "mean_probability": 0.44971849801811936,
+        "brier_score": 0.2567870707860606,
+        "log_loss": 0.7094200601808717,
+        "expected_calibration_error_10_bin": 0.14976492333110725,
+        "direction_accuracy_at_0_5": 0.4891304347826087,
+        "auc": 0.53096274794388,
+        "probability_min": 0.15234286747933443,
+        "probability_max": 0.7875124592432277
+      },
+      "neural": {
+        "rows": 184,
+        "positive_rate": 0.42391304347826086,
+        "mean_probability": 0.44866763343778104,
+        "brier_score": 0.24863871959223385,
+        "log_loss": 0.6895906580145673,
+        "expected_calibration_error_10_bin": 0.08498678042991184,
+        "direction_accuracy_at_0_5": 0.5,
+        "auc": 0.4926221577164973,
+        "probability_min": 0.21225043710793207,
+        "probability_max": 0.6388322469503411
+      },
+      "saved_calibrated": {
+        "rows": 184,
+        "positive_rate": 0.42391304347826086,
+        "mean_probability": 0.5,
+        "brier_score": 0.25,
+        "log_loss": 0.6931471805599453,
+        "expected_calibration_error_10_bin": 0.07608695652173914,
+        "direction_accuracy_at_0_5": 0.42391304347826086,
+        "auc": 0.5,
+        "probability_min": 0.5,
+        "probability_max": 0.5
+      },
+      "training_base_rate": {
+        "rows": 184,
+        "positive_rate": 0.42391304347826086,
+        "mean_probability": 0.45704753961634703,
+        "brier_score": 0.24530866988158384,
+        "log_loss": 0.6837459025489624,
+        "expected_calibration_error_10_bin": 0.03313449613808617,
+        "direction_accuracy_at_0_5": 0.5760869565217391,
+        "auc": 0.5,
+        "probability_min": 0.457047539616347,
+        "probability_max": 0.457047539616347
+      }
+    }
+  },
+  "calibration_comparisons": {
+    "none_constrained": {
+      "assessment": {
+        "rows": 184,
+        "positive_rate": 0.42391304347826086,
+        "mean_probability": 0.4494557818730348,
+        "brier_score": 0.2517673140905295,
+        "log_loss": 0.6969485536196384,
+        "expected_calibration_error_10_bin": 0.1316126197348125,
+        "direction_accuracy_at_0_5": 0.483695652173913,
+        "auc": 0.5231011127237543,
+        "probability_min": 0.23856539032492213,
+        "probability_max": 0.6783137445314089
+      },
+      "slope": null
+    },
+    "platt_unconstrained": {
+      "assessment": {
+        "rows": 184,
+        "positive_rate": 0.42391304347826086,
+        "mean_probability": 0.5047565165620536,
+        "brier_score": 0.25165166668558764,
+        "log_loss": 0.6964551109240975,
+        "expected_calibration_error_10_bin": 0.08084347308379278,
+        "direction_accuracy_at_0_5": 0.5163043478260869,
+        "auc": 0.47689888727624574,
+        "probability_min": 0.4668048442084603,
+        "probability_max": 0.5423241692041809
+      },
+      "slope": -0.15875377440420946
+    },
+    "platt_constrained": {
+      "assessment": {
+        "rows": 184,
+        "positive_rate": 0.42391304347826086,
+        "mean_probability": 0.5,
+        "brier_score": 0.25,
+        "log_loss": 0.6931471805599453,
+        "expected_calibration_error_10_bin": 0.07608695652173914,
+        "direction_accuracy_at_0_5": 0.42391304347826086,
+        "auc": 0.5,
+        "probability_min": 0.5,
+        "probability_max": 0.5
+      },
+      "slope": 0.0
+    },
+    "isotonic_constrained": {
+      "assessment": {
+        "rows": 184,
+        "positive_rate": 0.42391304347826086,
+        "mean_probability": 0.507319047616681,
+        "brier_score": 0.2584616179947675,
+        "log_loss": 0.7137462008889807,
+        "expected_calibration_error_10_bin": 0.09713946165244142,
+        "direction_accuracy_at_0_5": 0.5706521739130435,
+        "auc": 0.5019351717464926,
+        "probability_min": 0.23652190871003864,
+        "probability_max": 0.8631770728748491
+      },
+      "slope": null
+    }
+  },
+  "bar_coverage": "{\"('entry_lag_minutes', 'min')\":{\"4h@08:00\":0.0,\"4h@12:00\":0.0,\"4h@16:00\":0.0},\"('entry_lag_minutes', 'median')\":{\"4h@08:00\":2.0,\"4h@12:00\":0.0,\"4h@16:00\":0.0},\"('entry_lag_minutes', 'max')\":{\"4h@08:00\":112.0,\"4h@12:00\":0.0,\"4h@16:00\":0.0},\"('exit_gap_minutes', 'min')\":{\"4h@08:00\":0.0,\"4h@12:00\":0.0,\"4h@16:00\":0.0},\"('exit_gap_minutes', 'median')\":{\"4h@08:00\":0.0,\"4h@12:00\":0.0,\"4h@16:00\":14.0},\"('exit_gap_minutes', 'max')\":{\"4h@08:00\":0.0,\"4h@12:00\":0.0,\"4h@16:00\":180.0},\"('bars', 'min')\":{\"4h@08:00\":93,\"4h@12:00\":238,\"4h@16:00\":60},\"('bars', 'median')\":{\"4h@08:00\":132.0,\"4h@12:00\":240.0,\"4h@16:00\":83.0},\"('bars', 'max')\":{\"4h@08:00\":237,\"4h@12:00\":240,\"4h@16:00\":219}}",
+  "by_route": {
+    "4h@04:00": {
+      "calibration_raw": {
+        "rows": 52,
+        "positive_rate": 0.5576923076923077,
+        "mean_probability": 0.5074774178169634,
+        "brier_score": 0.26749770555833285,
+        "log_loss": 0.7301931367740527,
+        "expected_calibration_error_10_bin": 0.17876690240722587,
+        "direction_accuracy_at_0_5": 0.5192307692307693,
+        "auc": 0.4527736131934033,
+        "probability_min": 0.23505073142935648,
+        "probability_max": 0.7143075457037456
+      },
+      "assessment_raw": {
+        "rows": 46,
+        "positive_rate": 0.5,
+        "mean_probability": 0.47154547222163684,
+        "brier_score": 0.2779820537905589,
+        "log_loss": 0.7499922986798161,
+        "expected_calibration_error_10_bin": 0.25337151882960773,
+        "direction_accuracy_at_0_5": 0.3695652173913043,
+        "auc": 0.41776937618147447,
+        "probability_min": 0.2732109140785734,
+        "probability_max": 0.6783137445314089
+      },
+      "unconstrained_calibration_slope": -0.047780752731155486
+    },
+    "4h@08:00": {
+      "calibration_raw": {
+        "rows": 52,
+        "positive_rate": 0.5,
+        "mean_probability": 0.48431002559519415,
+        "brier_score": 0.28129188257681015,
+        "log_loss": 0.7575995220422997,
+        "expected_calibration_error_10_bin": 0.21417803673713465,
+        "direction_accuracy_at_0_5": 0.36538461538461536,
+        "auc": 0.3550295857988166,
+        "probability_min": 0.24642476006263903,
+        "probability_max": 0.6301652204725516
+      },
+      "assessment_raw": {
+        "rows": 46,
+        "positive_rate": 0.34782608695652173,
+        "mean_probability": 0.46516638858798054,
+        "brier_score": 0.2328839842919835,
+        "log_loss": 0.6571251256632193,
+        "expected_calibration_error_10_bin": 0.13247691920770233,
+        "direction_accuracy_at_0_5": 0.5434782608695652,
+        "auc": 0.59375,
+        "probability_min": 0.2890511076848273,
+        "probability_max": 0.6725460941739081
+      },
+      "unconstrained_calibration_slope": -0.1940532074070956
+    },
+    "4h@12:00": {
+      "calibration_raw": {
+        "rows": 52,
+        "positive_rate": 0.46153846153846156,
+        "mean_probability": 0.4947618321136916,
+        "brier_score": 0.2723389161237892,
+        "log_loss": 0.7408998735629564,
+        "expected_calibration_error_10_bin": 0.1728758344304243,
+        "direction_accuracy_at_0_5": 0.46153846153846156,
+        "auc": 0.4523809523809524,
+        "probability_min": 0.2424040149320879,
+        "probability_max": 0.6570268314831959
+      },
+      "assessment_raw": {
+        "rows": 46,
+        "positive_rate": 0.32608695652173914,
+        "mean_probability": 0.4639665839758483,
+        "brier_score": 0.23575963988939178,
+        "log_loss": 0.6632496697471176,
+        "expected_calibration_error_10_bin": 0.14222120749019057,
+        "direction_accuracy_at_0_5": 0.5652173913043478,
+        "auc": 0.5612903225806452,
+        "probability_min": 0.297734532541422,
+        "probability_max": 0.6504427235327693
+      },
+      "unconstrained_calibration_slope": -0.12295226541968156
+    },
+    "4h@16:00": {
+      "calibration_raw": {
+        "rows": 52,
+        "positive_rate": 0.4807692307692308,
+        "mean_probability": 0.4280185140873844,
+        "brier_score": 0.2510888179903338,
+        "log_loss": 0.6950035709854413,
+        "expected_calibration_error_10_bin": 0.15783284902204364,
+        "direction_accuracy_at_0_5": 0.5576923076923077,
+        "auc": 0.5333333333333334,
+        "probability_min": 0.21264370794381876,
+        "probability_max": 0.6019669199051563
+      },
+      "assessment_raw": {
+        "rows": 46,
+        "positive_rate": 0.5217391304347826,
+        "mean_probability": 0.39714468270667347,
+        "brier_score": 0.2604435783901838,
+        "log_loss": 0.7174271203884003,
+        "expected_calibration_error_10_bin": 0.19651492940381232,
+        "direction_accuracy_at_0_5": 0.45652173913043476,
+        "auc": 0.5757575757575758,
+        "probability_min": 0.23856539032492213,
+        "probability_max": 0.5986181220835783
+      },
+      "unconstrained_calibration_slope": 0.08000005822546224
+    }
+  },
+  "by_symbol": {
+    "AAPL": {
+      "calibration_raw": {
+        "rows": 40,
+        "positive_rate": 0.425,
+        "mean_probability": 0.517214332034053,
+        "brier_score": 0.26316548580612753,
+        "log_loss": 0.7202585814670911,
+        "expected_calibration_error_10_bin": 0.10001510214647827,
+        "direction_accuracy_at_0_5": 0.475,
+        "auc": 0.4578005115089514,
+        "probability_min": 0.3164443047139433,
+        "probability_max": 0.6352121617491104
+      },
+      "assessment_raw": {
+        "rows": 28,
+        "positive_rate": 0.4642857142857143,
+        "mean_probability": 0.4219970009993336,
+        "brier_score": 0.24003539422427536,
+        "log_loss": 0.6737663946977932,
+        "expected_calibration_error_10_bin": 0.12602401516302347,
+        "direction_accuracy_at_0_5": 0.5714285714285714,
+        "auc": 0.6153846153846153,
+        "probability_min": 0.26908448075200114,
+        "probability_max": 0.5833936560828634
+      },
+      "unconstrained_calibration_slope": -0.025450462447512482
+    },
+    "AMZN": {
+      "calibration_raw": {
+        "rows": 28,
+        "positive_rate": 0.2857142857142857,
+        "mean_probability": 0.49441546979365236,
+        "brier_score": 0.25576056700329747,
+        "log_loss": 0.7045583510322048,
+        "expected_calibration_error_10_bin": 0.2734308683438344,
+        "direction_accuracy_at_0_5": 0.42857142857142855,
+        "auc": 0.45,
+        "probability_min": 0.34117817360760466,
+        "probability_max": 0.6362921643489701
+      },
+      "assessment_raw": {
+        "rows": 28,
+        "positive_rate": 0.39285714285714285,
+        "mean_probability": 0.44768521807579004,
+        "brier_score": 0.23870203400760498,
+        "log_loss": 0.6696605499571737,
+        "expected_calibration_error_10_bin": 0.08216840998128984,
+        "direction_accuracy_at_0_5": 0.5714285714285714,
+        "auc": 0.53475935828877,
+        "probability_min": 0.2829066766404759,
+        "probability_max": 0.6172353133230026
+      },
+      "unconstrained_calibration_slope": -0.01351603271751906
+    },
+    "GOOG": {
+      "calibration_raw": {
+        "rows": 20,
+        "positive_rate": 0.55,
+        "mean_probability": 0.4551567098274151,
+        "brier_score": 0.3004774461533096,
+        "log_loss": 0.7972699716633537,
+        "expected_calibration_error_10_bin": 0.2331411959365923,
+        "direction_accuracy_at_0_5": 0.35,
+        "auc": 0.2525252525252525,
+        "probability_min": 0.31159152622233555,
+        "probability_max": 0.580716528544888
+      },
+      "assessment_raw": {
+        "rows": 20,
+        "positive_rate": 0.35,
+        "mean_probability": 0.5480206590523461,
+        "brier_score": 0.28759671979095486,
+        "log_loss": 0.7690691639151852,
+        "expected_calibration_error_10_bin": 0.2768789542391114,
+        "direction_accuracy_at_0_5": 0.3,
+        "auc": 0.42857142857142855,
+        "probability_min": 0.3928470655145051,
+        "probability_max": 0.6488144844133783
+      },
+      "unconstrained_calibration_slope": -0.14020128319300032
+    },
+    "MU": {
+      "calibration_raw": {
+        "rows": 40,
+        "positive_rate": 0.525,
+        "mean_probability": 0.5124878267655083,
+        "brier_score": 0.25947974593199447,
+        "log_loss": 0.7126212921254319,
+        "expected_calibration_error_10_bin": 0.17320076236701282,
+        "direction_accuracy_at_0_5": 0.5,
+        "auc": 0.48120300751879697,
+        "probability_min": 0.3432105408647207,
+        "probability_max": 0.6544857680489602
+      },
+      "assessment_raw": {
+        "rows": 36,
+        "positive_rate": 0.4722222222222222,
+        "mean_probability": 0.4488563249331902,
+        "brier_score": 0.2642630046222359,
+        "log_loss": 0.7224394950877351,
+        "expected_calibration_error_10_bin": 0.2291412071422946,
+        "direction_accuracy_at_0_5": 0.3888888888888889,
+        "auc": 0.47058823529411764,
+        "probability_min": 0.23856539032492213,
+        "probability_max": 0.6725460941739081
+      },
+      "unconstrained_calibration_slope": -0.02306026248507801
+    },
+    "NVDA": {
+      "calibration_raw": {
+        "rows": 40,
+        "positive_rate": 0.525,
+        "mean_probability": 0.3822123606134834,
+        "brier_score": 0.2884197766016968,
+        "log_loss": 0.7754330538389388,
+        "expected_calibration_error_10_bin": 0.243087231992184,
+        "direction_accuracy_at_0_5": 0.475,
+        "auc": 0.44611528822055135,
+        "probability_min": 0.21264370794381876,
+        "probability_max": 0.6274218034231192
+      },
+      "assessment_raw": {
+        "rows": 36,
+        "positive_rate": 0.3611111111111111,
+        "mean_probability": 0.43218718791241495,
+        "brier_score": 0.254118151966125,
+        "log_loss": 0.7044285736621132,
+        "expected_calibration_error_10_bin": 0.16882721174011026,
+        "direction_accuracy_at_0_5": 0.5277777777777778,
+        "auc": 0.44147157190635455,
+        "probability_min": 0.24620161784992725,
+        "probability_max": 0.6264501659763282
+      },
+      "unconstrained_calibration_slope": -0.05072464438479624
+    },
+    "SNDK": {
+      "calibration_raw": {
+        "rows": 40,
+        "positive_rate": 0.65,
+        "mean_probability": 0.5033544233148948,
+        "brier_score": 0.25354639060526385,
+        "log_loss": 0.7006661753884933,
+        "expected_calibration_error_10_bin": 0.18727028236779106,
+        "direction_accuracy_at_0_5": 0.55,
+        "auc": 0.5192307692307693,
+        "probability_min": 0.3391176605830861,
+        "probability_max": 0.7143075457037456
+      },
+      "assessment_raw": {
+        "rows": 36,
+        "positive_rate": 0.4722222222222222,
+        "mean_probability": 0.4352995024179511,
+        "brier_score": 0.2363022713656856,
+        "log_loss": 0.663165157288226,
+        "expected_calibration_error_10_bin": 0.13893436277788088,
+        "direction_accuracy_at_0_5": 0.5,
+        "auc": 0.6718266253869969,
+        "probability_min": 0.2634181798810905,
+        "probability_max": 0.6783137445314089
+      },
+      "unconstrained_calibration_slope": 0.02676731337896939
+    }
+  },
+  "tree_fit": {
+    "classes": [
+      0,
+      1
+    ],
+    "iterations": 120,
+    "loss": null,
+    "best_validation_score": null
+  },
+  "neural_fit": {
+    "classes": [
+      0,
+      1
+    ],
+    "iterations": 20,
+    "loss": 0.6485132638894561,
+    "best_validation_score": 0.5888888888888889
+  },
+  "duplicate_bar_rows": 0,
+  "conflicting_duplicate_bar_timestamps": 0,
+  "label_reconstruction_mismatches": [],
+  "natural_key_duplicates": 0,
+  "rows_with_boundary_gap_over_5_minutes": 409,
+  "original_promotion_gate": {
+    "checks": {
+      "assessment_has_at_least_10_decision_clusters": true,
+      "brier_not_materially_worse_than_training_base_rate": true,
+      "expected_calibration_error_at_most_0_15": true,
+      "log_loss_not_materially_worse_than_training_base_rate": true
+    },
+    "status": "PROMOTED"
+  }
+}

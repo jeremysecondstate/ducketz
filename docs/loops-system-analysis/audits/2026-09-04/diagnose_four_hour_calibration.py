@@ -49,6 +49,7 @@ def main() -> None:
     bars = bars.loc[bars.timestamp.lt(frozen_at)]
     group = _build_training_groups(
         samples, sources=sources, feature_columns=model["feature_columns"], minute_bars=bars,
+        enforce_boundary_alignment=False,  # Reconstruct the September 4 training cohort.
     )["4h"]
     partitions = _chronological_partitions(group, group="4h")
     counts = {name + "_rows": len(frame) for name, frame in partitions.items()}

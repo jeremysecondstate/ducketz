@@ -155,6 +155,29 @@ class ForecastRouteView:
     option_reason: str | None = None
     option_pricing_source: str | None = None
     probability_warning: str | None = None
+    raw_probability_up: float | None = None
+
+    @property
+    def uses_raw_display_probability(self) -> bool:
+        return bool(
+            self.probability_warning and not self.is_missing
+            and self.probability_up is not None
+            and self.raw_probability_up is not None
+            and math.isfinite(self.raw_probability_up)
+            and 0.0 <= self.raw_probability_up <= 1.0
+        )
+
+    @property
+    def display_probability_up(self) -> float | None:
+        if self.uses_raw_display_probability:
+            return self.raw_probability_up
+        return self.probability_up
+
+    @property
+    def display_probability_down(self) -> float | None:
+        if self.uses_raw_display_probability:
+            return 1.0 - self.raw_probability_up
+        return self.probability_down
 
     @property
     def is_actionable(self) -> bool:
@@ -778,9 +801,6 @@ def _gameplan_route_view(
         tone = "neutral"
         actionable_until = start
     probability_warning = _text(row.get("_calibration_warning"))
-    if probability_warning:
-        label = f"No model signal · {route}"
-        tone = "warning"
     model_status = str(row.get("model_status") or "MODEL_STATUS_UNAVAILABLE")
     evidence_label = (
         f"Frozen route {route} · model promoted"
@@ -792,9 +812,6 @@ def _gameplan_route_view(
         if promoted
         else "Research-only forecast; the independent promotion gate did not pass."
     )
-    if probability_warning:
-        evidence_label += " · no model signal"
-        limitation = probability_warning
     option_status = _text(intent.get("plan_status")) if intent is not None else None
     option_label, option_tone = _gameplan_option_status(option_status)
     option_probability = (
@@ -885,6 +902,7 @@ def _gameplan_route_view(
             _text(intent.get("pricing_source")) if intent is not None else None
         ),
         probability_warning=probability_warning,
+        raw_probability_up=_number(row.get("raw_probability")),
     )
 
 
@@ -900,14 +918,16 @@ def _annotate_gameplan_calibration(frame: pd.DataFrame) -> tuple[pd.DataFrame, t
         # Older immutable plans have no diagnostics. Infer only what their
         # complete saved grid proves: varying raw scores became one probability.
         inferred_flat = bool(
-            len(rows) > 1 and raw.notna().all() and len(raw)
+            len(rows) > 1 and len(raw) and raw.between(0.0, 1.0).all()
             and raw.max() - raw.min() > 1e-12
             and calibrated.max() - calibrated.min() <= 1e-12
         )
         if explicit_flat or inferred_flat:
+            fallback = float(calibrated.iloc[0])
             message = (
-                f"{str(group).upper()}: All saved forecasts have the same probability; "
-                "no model signal is available."
+                f"{str(group).upper()}: Shared calibration reduced the saved forecasts "
+                f"to a {fallback:.1%} fallback. Raw scores are uncalibrated, "
+                "not validated probabilities."
             )
             frame.loc[rows.index, "_calibration_warning"] = message
             warnings.append(message)
@@ -1506,6 +1526,13 @@ def dashboard_debug_text(view: ForecastDashboardView) -> str:
         lines.extend(("", symbol.symbol))
         for route in symbol.all_routes:
             lines.append(f"  {route.horizon}")
+            lines.extend((
+                f"    displayed_probability_up: {_debug_value(route.display_probability_up)}",
+                "    displayed_probability_source: " + (
+                    "raw_probability (flat calibration)"
+                    if route.uses_raw_display_probability else "published probability"
+                ),
+            ))
             lines.extend(
                 f"    {name}: {value}" for name, value in route.debug_fields
             )

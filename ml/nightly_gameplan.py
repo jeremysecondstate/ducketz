@@ -46,7 +46,7 @@ GAMEPLAN_VERSION = "immutable-overnight-gameplan-v2"
 GAMEPLAN_POINTER_VERSION = "immutable-overnight-gameplan-pointer-v1"
 GAMEPLAN_RECEIPT_VERSION = "immutable-overnight-gameplan-receipt-v1"
 FORECAST_CONTRACT_VERSION = "overnight-path-forecast-grid-v1"
-TARGET_CONTRACT_VERSION = "overnight-path-targets-v1"
+TARGET_CONTRACT_VERSION = "overnight-path-targets-v2"
 EXECUTION_AUTHORITY = "ADVISORY_PAPER_ONLY"
 SCHEDULE_TIMEZONE = ZoneInfo("America/Los_Angeles")
 ACTION_START_HOUR = 4
@@ -58,6 +58,7 @@ MODEL_GROUPS = ("1h", "4h", "1d", "1w")
 EXPECTED_FORECASTS_PER_SYMBOL = 24
 EXPECTED_OPTION_INTENTS_PER_SYMBOL = 24
 ASSUMED_ROUND_TRIP_COST = 0.001
+TARGET_BOUNDARY_TOLERANCE = pd.Timedelta(minutes=5)
 MINIMUM_OPTION_PROFIT_PROBABILITY = 0.55
 MINIMUM_OPTION_DIRECTION_EDGE = 0.05
 
@@ -523,11 +524,13 @@ def _build_training_groups(
     sources: pd.DataFrame,
     feature_columns: Sequence[str],
     minute_bars: pd.DataFrame,
+    enforce_boundary_alignment: bool = True,
 ) -> dict[str, pd.DataFrame]:
     hourly, four_hour = _intraday_outcomes(
         sources=sources,
         feature_columns=feature_columns,
         minute_bars=minute_bars,
+        enforce_boundary_alignment=enforce_boundary_alignment,
     )
     daily, weekly = _daily_weekly_outcomes(
         samples,
@@ -545,7 +548,10 @@ def _intraday_outcomes(
     sources: pd.DataFrame,
     feature_columns: Sequence[str],
     minute_bars: pd.DataFrame,
+    enforce_boundary_alignment: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    # The opt-out exists only to reproduce historical artifacts in audit scripts.
+    # Training and cumulative evaluation always use the default policy.
     bars = minute_bars.copy()
     timestamps = pd.to_datetime(bars["timestamp"], utc=True, errors="coerce")
     local = timestamps.dt.tz_convert(SCHEDULE_TIMEZONE)
@@ -596,7 +602,65 @@ def _intraday_outcomes(
     four_frames = [gaps.assign(route="4h@04:00"), four_windows]
     four_output = pd.concat(four_frames, ignore_index=True, sort=False)
     four_output["model_group"] = "4h"
-    return _clean_outcomes(hourly_output), _clean_outcomes(four_output)
+    return tuple(
+        _admit_boundary_aligned_outcomes(
+            _clean_outcomes(frame), enforce=enforce_boundary_alignment,
+        )
+        for frame in (hourly_output, four_output)
+    )
+
+
+def _boundary_observations(
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+    observed_open: pd.Timestamp,
+    observed_close: pd.Timestamp,
+) -> dict[str, object]:
+    start_gap = abs(observed_open - start)
+    end_gap = abs(observed_close - end)
+    return {
+        "observed_open_timestamp": observed_open,
+        "observed_close_timestamp": observed_close,
+        "target_start_gap_seconds": start_gap.total_seconds(),
+        "target_end_gap_seconds": end_gap.total_seconds(),
+        "target_boundary_aligned": bool(
+            start_gap <= TARGET_BOUNDARY_TOLERANCE
+            and end_gap <= TARGET_BOUNDARY_TOLERANCE
+            and observed_open < observed_close
+        ),
+    }
+
+
+def _admit_boundary_aligned_outcomes(
+    frame: pd.DataFrame, *, enforce: bool = True,
+) -> pd.DataFrame:
+    aligned = frame.get(
+        "target_boundary_aligned", pd.Series(False, index=frame.index, dtype=bool),
+    ).fillna(False).astype(bool)
+    rejected = frame.loc[~aligned]
+    output = frame.loc[aligned].copy() if enforce else frame.copy()
+    example_columns = [
+        "symbol", "route", "action_date", "target_window_start", "target_window_end",
+        "observed_open_timestamp", "observed_close_timestamp",
+        "target_start_gap_seconds", "target_end_gap_seconds",
+    ]
+    output.attrs["target_boundary_quality"] = {
+        "policy": "clock-window-boundaries-within-five-minutes-v1",
+        "enforced": enforce,
+        "maximum_boundary_gap_seconds": TARGET_BOUNDARY_TOLERANCE.total_seconds(),
+        "candidate_rows": len(frame),
+        "aligned_rows": int(aligned.sum()),
+        "excluded_rows": len(rejected) if enforce else 0,
+        "misaligned_rows_by_route": {
+            str(route): int(count)
+            for route, count in rejected.groupby("route").size().items()
+        },
+        "misaligned_examples": [
+            {column: str(row[column]) for column in example_columns if column in row}
+            for row in rejected.head(12).to_dict("records")
+        ],
+    }
+    return output.reset_index(drop=True)
 
 
 def _clock_window_outcomes(
@@ -624,8 +688,13 @@ def _clock_window_outcomes(
                 continue
             open_price = _finite_or_none(group.iloc[0].get("open"))
             close_price = _finite_or_none(group.iloc[-1].get("close"))
-            if open_price is None or close_price is None or open_price <= 0.0:
+            if (
+                open_price is None or close_price is None
+                or open_price <= 0.0 or close_price <= 0.0
+            ):
                 continue
+            start = _local_timestamp(action, start_hour)
+            end = _local_timestamp(action, end_hour)
             raw_return = close_price / open_price - 1.0
             cost = _finite_or_none(source.get("assumed_round_trip_cost"))
             cost = ASSUMED_ROUND_TRIP_COST if cost is None else cost
@@ -636,8 +705,12 @@ def _clock_window_outcomes(
                     "action_date": action,
                     "decision_timestamp": source["decision_timestamp"],
                     "route": f"{route_prefix}@{anchor:02d}:00",
-                    "target_window_start": _local_timestamp(action, start_hour),
-                    "target_window_end": _local_timestamp(action, end_hour),
+                    "target_window_start": start,
+                    "target_window_end": end,
+                    **_boundary_observations(
+                        start, end, group.iloc[0]["timestamp"],
+                        group.iloc[-1]["timestamp"] + pd.Timedelta(minutes=1),
+                    ),
                     "observed_return": raw_return,
                     "target": int(raw_return - cost > 0.0),
                 }
@@ -670,8 +743,13 @@ def _overnight_gap_outcomes_from_minutes(
         prior = symbol_days[max(prior_dates)]
         open_price = _finite_or_none(current.iloc[0].get("open"))
         close_price = _finite_or_none(prior.iloc[-1].get("close"))
-        if open_price is None or close_price is None or close_price <= 0.0:
+        if (
+            open_price is None or close_price is None
+            or open_price <= 0.0 or close_price <= 0.0
+        ):
             continue
+        start = _local_timestamp(max(prior_dates), 17)
+        end = _local_timestamp(action, 4)
         raw_return = open_price / close_price - 1.0
         cost = _finite_or_none(source.get("assumed_round_trip_cost"))
         cost = ASSUMED_ROUND_TRIP_COST if cost is None else cost
@@ -681,8 +759,12 @@ def _overnight_gap_outcomes_from_minutes(
                 "symbol": symbol,
                 "action_date": action,
                 "decision_timestamp": source["decision_timestamp"],
-                "target_window_start": _local_timestamp(max(prior_dates), 17),
-                "target_window_end": _local_timestamp(action, 4),
+                "target_window_start": start,
+                "target_window_end": end,
+                **_boundary_observations(
+                    start, end, prior.iloc[-1]["timestamp"] + pd.Timedelta(minutes=1),
+                    current.iloc[0]["timestamp"],
+                ),
                 "observed_return": raw_return,
                 "target": int(raw_return - cost > 0.0),
             }
@@ -811,6 +893,8 @@ def _clean_outcomes(frame: pd.DataFrame) -> pd.DataFrame:
         "model_group",
     ]
     output = frame.copy()
+    if output.empty:
+        output = output.reindex(columns=list(dict.fromkeys([*output.columns, *required])))
     for column in ("decision_timestamp", "target_window_start", "target_window_end"):
         output[column] = pd.to_datetime(output[column], utc=True, errors="coerce")
     output["target"] = pd.to_numeric(output["target"], errors="coerce")
@@ -964,6 +1048,13 @@ def _fit_group_model(
     model_directory: Path,
     trained_at: pd.Timestamp,
 ) -> dict[str, object]:
+    target_quality = samples.attrs.get("target_boundary_quality")
+    if target_quality and target_quality.get("excluded_rows", 0):
+        print(json.dumps({
+            "training_event": "FIT_WARNING", "fit": f"gameplan/{group}/target-quality",
+            "message": "Excluded returns whose price observations miss the target boundaries.",
+            "target_boundary_quality": target_quality,
+        }), flush=True)
     partitions = _chronological_partitions(samples, group=group)
     minimum_non_null = max(20, int(math.ceil(len(partitions["train"]) * 0.01)))
     admitted = tuple(
@@ -1060,6 +1151,8 @@ def _fit_group_model(
             "calibration": calibration_diagnostics,
         }), flush=True)
     assessment = _proper_scores(assessment_target, assessment_probability)
+    assessment_raw_scores = _proper_scores(assessment_target, assessment_raw)
+    calibration_raw_scores = _proper_scores(calibration_target, calibration_raw)
     base_rate = float(fit_target.mean())
     baseline = _proper_scores(
         assessment_target,
@@ -1070,11 +1163,11 @@ def _fit_group_model(
         "assessment_has_at_least_10_decision_clusters": (
             partitions["assessment"]["decision_timestamp"].nunique() >= 10
         ),
-        "brier_not_materially_worse_than_training_base_rate": (
-            assessment["brier_score"] <= baseline["brier_score"] + 0.01
+        "brier_beats_training_base_rate": (
+            assessment["brier_score"] < baseline["brier_score"]
         ),
-        "log_loss_not_materially_worse_than_training_base_rate": (
-            assessment["log_loss"] <= baseline["log_loss"] + 0.02
+        "log_loss_beats_training_base_rate": (
+            assessment["log_loss"] < baseline["log_loss"]
         ),
         "expected_calibration_error_at_most_0_15": (
             assessment["expected_calibration_error_10_bin"] <= 0.15
@@ -1084,6 +1177,14 @@ def _fit_group_model(
         "status": "PROMOTED" if all(gate_checks.values()) else "RESEARCH_NOT_PROMOTED",
         "checks": gate_checks,
     }
+    if not all(gate_checks.values()):
+        print(json.dumps({
+            "training_event": "FIT_WARNING", "fit": f"gameplan/{group}/assessment",
+            "message": "Held-out assessment did not support promotion; inspect data and model quality before retrying.",
+            "failed_checks": [name for name, passed in gate_checks.items() if not passed],
+            "raw": assessment_raw_scores, "calibrated": assessment,
+            "training_base_rate": baseline,
+        }), flush=True)
     route_metrics: dict[str, object] = {}
     assessment_frame = partitions["assessment"].copy()
     assessment_frame["probability"] = assessment_probability
@@ -1145,6 +1246,14 @@ def _fit_group_model(
         "selection_metrics": selection_metrics,
         "calibration_method": getattr(calibrator, "method", "none"),
         "calibration_diagnostics": calibration_diagnostics,
+        "target_boundary_quality": target_quality,
+        "calibration_raw_scores": calibration_raw_scores,
+        "assessment_raw_scores": assessment_raw_scores,
+        "calibration_assessment_change": {
+            "brier_score": assessment["brier_score"] - assessment_raw_scores["brier_score"],
+            "log_loss": assessment["log_loss"] - assessment_raw_scores["log_loss"],
+            "interpretation": "Negative changes mean calibration improved the raw scores on held-out assessment.",
+        },
         "assessment": assessment,
         "training_base_rate_assessment": baseline,
         "assessment_by_route": route_metrics,

@@ -82,6 +82,10 @@ automatically invalidate a model. Assessment/promotion criteria remain enforced.
 Flat calibration emits an immediate `FIT_WARNING` and keeps that model group
 research-only. This is a model-quality result, not a crashed training process:
 inspect and report it without blindly restarting or weakening the promotion gate.
+Target-boundary exclusions are reported before fitting, and assessment failures
+report raw, calibrated, and training-base-rate scores immediately after scoring.
+Investigate missing price coverage or model performance before restarting; an
+unchanged rerun will not repair either condition.
 
 Read progress without starting work:
 
@@ -276,7 +280,25 @@ never relabeled as promoted.
 Promotion also requires varying calibrated probabilities on both the calibration
 and assessment partitions, with both target classes available. A constant
 base-rate fallback cannot pass as a promoted directional model. The report saves
-the calibration status, slope, positive rate, and probability ranges.
+the calibration status, slope, positive rate, and probability ranges. Promotion
+now requires lower Brier score **and** lower log loss than a constant probability
+estimated from training plus selection rows. The former tolerances could promote
+a model that performed worse than that baseline. Varying output alone is insufficient.
+
+Intraday target contract `overnight-path-targets-v2` requires the observed prices
+to be within five minutes of both stated window boundaries. Minute-bar closing
+prices are observed at the bar's timestamp plus one minute. The same rule applies
+to the prior close/current open used for opening gaps. Sparse interior bars are
+allowed; a stale endpoint cannot stand in for a different forecast horizon.
+Rejected labels are excluded from fitting and from new evaluation scores. Mature
+forecasts without valid boundary data stay `MATURE_AWAITING_DATA` for later retry;
+existing saved evaluations and frozen forecasts remain immutable.
+
+Reports retain boundary timestamps, exclusion counts by route, bounded examples,
+raw-versus-calibrated assessment scores, and changes in Brier score and log loss.
+The [controlled four-hour diagnosis](audits/2026-09-04/FOUR_HOUR_CALIBRATION.md)
+documents the label defect and separates its repair from evidence of predictive
+quality. The existing raw-score UI display remains a display preference.
 
 ## Immutable publication
 
@@ -352,6 +374,12 @@ wait for, or activate, the paused daytime executor.
   route advances at 04:00, 08:00, and 12:00 for forward four-hour windows; the
   16:00 endpoint remains visibly completed because no artificial 16:00–20:00
   route exists beyond the 17:00 action close.
+- The pulse grid shows one percentage per cell. When a group's calibration is
+  flat, the UI displays its valid saved raw scores, with colors based on those
+  scores. Other groups retain their published probabilities. Expanded cards
+  use the same display values; Debug Details retains the raw/calibrated values,
+  calibration diagnostic, and display source. This display choice changes no
+  frozen artifact, promotion status, evaluation input, or trader input.
 - The ordinary `1d` card shows D+1. The remaining-week card shows the direct
   `1w` prediction plus all five frozen D+1 through D+5 daily predictions.
 - Every displayed route also shows its checksum-bound options intent: the
@@ -428,8 +456,9 @@ The later [four-hour calibration audit](audits/2026-09-04/FOUR_HOUR_CALIBRATION.
 found that the direction model's 24 four-hour probabilities were all exactly
 50%: its calibration fell back to a constant base rate. The original promotion
 gate missed that condition. Future publications reject that promotion, and the
-UI now labels the saved flat output **No model signal**. The original Gameplan
-and its published status remain intact for evaluation.
+UI displays the saved raw scores when calibration is flat, with diagnostic
+details available in Debug Details. The original Gameplan and its published
+status remain intact for evaluation.
 
 A pre-correction bounded-reader check at 04:08 PT wrote
 `C:\DATASTORE\ml\gameplan-decision-runs\20260904T110818.182966Z`. It consumed

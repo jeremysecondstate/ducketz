@@ -1,0 +1,14 @@
+........................................................................ [ 39%]
+........................................................................ [ 79%]
+......................................                                   [100%]
+============================== warnings summary ===============================
+tests/test_ml_calibration.py::test_bounded_platt_calibration_does_not_extrapolate_past_fit_support
+tests/test_ml_calibration.py::test_bounded_platt_calibration_does_not_extrapolate_past_fit_support
+tests/test_ml_calibration.py::test_bounded_platt_calibration_does_not_extrapolate_past_fit_support
+tests/test_ml_calibration.py::test_bounded_platt_calibration_does_not_extrapolate_past_fit_support
+  C:\dev\ducketz\.venv\Lib\site-packages\joblib\numpy_pickle.py:207: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    array.shape = self.shape
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+182 passed, 4 warnings in 9.37s

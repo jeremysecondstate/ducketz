@@ -1549,8 +1549,8 @@ def test_route_card_has_no_model_status_row_or_unused_separator() -> None:
     assert "ttk.Separator" not in source
     assert "self._build_evidence_block(card, route, live_evidence)" in source
     assert "self._build_live_performance_panel(" in source
-    assert "route.probability_up is not None" in source
-    assert "route.probability_down is not None" in source
+    assert "route.display_probability_up is not None" in source
+    assert "route.display_probability_down is not None" in source
 
 
 def test_live_performance_panel_is_high_contrast_large_and_bold() -> None:
@@ -1665,7 +1665,7 @@ def test_gameplan_dashboard_rotates_frozen_hourly_and_four_hour_routes() -> None
     assert at_0830.symbols[0].routes[1].id == "2026-09-04:AAPL:4h@12:00"
 
 
-def test_gameplan_ui_explains_flat_calibration_without_rewriting_probabilities() -> None:
+def test_gameplan_ui_displays_raw_when_calibration_is_flat_without_rewriting_saved_probabilities() -> None:
     frame = _nightly_gameplan_rows()
     frame.loc[frame.model_group.eq("4h"), "calibrated_probability"] = 0.5
     original = frame.copy(deep=True)
@@ -1675,7 +1675,13 @@ def test_gameplan_ui_explains_flat_calibration_without_rewriting_probabilities()
     assert route.probability_up == route.probability_down == 0.5
     assert route.probability_warning and "4H:" in route.probability_warning
     assert route.actionability_tone == "warning"
-    assert "No model signal" in route.actionability_label
+    assert route.actionability_label == "In Progress · 4h@12:00"
+    assert route.display_probability_up == pytest.approx(0.62)
+    assert route.display_probability_down == pytest.approx(0.38)
+    assert prediction_pulse_probabilities((route,))[1] == ("4h", pytest.approx(0.62))
+    debug = dashboard_debug_text(view)
+    assert "displayed_probability_source: raw_probability (flat calibration)" in debug
+    assert "calibrated_probability: 0.5" in debug
     assert route.model_evidence_status == "PROMOTED"  # Preserve what this old artifact published.
     assert any("4H:" in warning for warning in view.warnings)
     assert view.symbols[0].routes[0].probability_warning is None
@@ -1690,6 +1696,8 @@ def test_one_neutral_four_hour_window_is_not_a_flat_calibration_failure() -> Non
         loaded_at=datetime(2026, 9, 4, 15, 30, tzinfo=timezone.utc))
     assert view.symbols[0].routes[1].probability_up == 0.5
     assert view.symbols[0].routes[1].probability_warning is None
+    assert view.symbols[0].routes[1].display_probability_up == 0.5
+    assert view.symbols[0].routes[1].uses_raw_display_probability is False
 
 
 def test_new_gameplan_calibration_diagnostic_is_shown_for_a_constant_model() -> None:
@@ -1701,6 +1709,62 @@ def test_new_gameplan_calibration_diagnostic_is_shown_for_a_constant_model() -> 
         loaded_at=datetime(2026, 9, 4, 15, 30, tzinfo=timezone.utc))
     assert view.symbols[0].routes[1].probability_up == 0.45
     assert view.symbols[0].routes[1].probability_warning
+
+
+@pytest.mark.parametrize("day", [5, 6, 7])
+def test_closed_market_retains_last_four_hour_window_and_its_distinct_raw_score(day: int) -> None:
+    frame = _nightly_gameplan_rows()
+    frame.loc[frame.model_group.eq("4h"), "calibrated_probability"] = 0.5
+    view = adapt_gameplan_forecasts(
+        frame, source_path=Path("run.json"), action_date="2026-09-04",
+        loaded_at=datetime(2026, 9, day, 2, 0, tzinfo=timezone.utc),
+    )
+    route = view.symbols[0].routes[1]
+
+    assert route.id == "2026-09-04:AAPL:4h@16:00"
+    assert route.target_window_start == datetime(2026, 9, 4, 19, tzinfo=timezone.utc)
+    assert route.target_window_end == datetime(2026, 9, 4, 23, tzinfo=timezone.utc)
+    assert route.probability_up == 0.5
+    assert route.raw_probability_up == pytest.approx(0.66)
+    assert prediction_pulse_probabilities((route,))[1] == ("4h", pytest.approx(0.66))
+    assert route.display_probability_down == pytest.approx(0.34)
+    assert "50.0% fallback" in route.probability_warning
+    assert "uncalibrated" in route.probability_warning
+
+
+@pytest.mark.parametrize("raw,tone", [(0.37, "down"), (0.64, "up")])
+def test_flat_calibration_display_color_follows_the_saved_raw_score(raw: float, tone: str) -> None:
+    frame = _nightly_gameplan_rows()
+    four = frame.model_group.eq("4h")
+    frame.loc[four, "calibrated_probability"] = 0.5
+    frame.loc[four, "raw_probability"] = raw
+    frame.loc[four, "calibration_status"] = "FLAT_CALIBRATION"
+    view = adapt_gameplan_forecasts(
+        frame, source_path=Path("run.json"), action_date="2026-09-04",
+        loaded_at=datetime(2026, 9, 5, 2, tzinfo=timezone.utc),
+    )
+    route = view.symbols[0].routes[1]
+    displayed = dict(prediction_pulse_probabilities((route,)))["4h"]
+    assert displayed == raw
+    assert prediction_pulse_tone(displayed) == tone
+    assert prediction_pulse_probability_text(displayed) == f"{raw:.1%}"
+    assert route.probability_up == 0.5
+
+
+@pytest.mark.parametrize("raw", [None, float("nan"), float("inf"), -0.01, 1.01])
+def test_flat_calibration_display_does_not_use_missing_or_invalid_raw_scores(raw: float | None) -> None:
+    frame = _nightly_gameplan_rows()
+    four = frame.model_group.eq("4h")
+    frame.loc[four, "calibrated_probability"] = 0.5
+    frame.loc[four, "calibration_status"] = "FLAT_CALIBRATION"
+    frame.loc[four, "raw_probability"] = raw
+    view = adapt_gameplan_forecasts(
+        frame, source_path=Path("run.json"), action_date="2026-09-04",
+        loaded_at=datetime(2026, 9, 5, 2, tzinfo=timezone.utc),
+    )
+    route = view.symbols[0].routes[1]
+    assert route.uses_raw_display_probability is False
+    assert route.display_probability_up == route.display_probability_down == 0.5
 
 
 def test_gameplan_dashboard_overlays_matching_frozen_options_intents() -> None:

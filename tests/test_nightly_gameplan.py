@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pandas as pd
 import numpy as np
+import pytest
 
 from ml.gameplan_executor import _routes_for_action_anchor, run_gameplan_decision_once
 from ml.artifacts import file_checksum
@@ -359,7 +360,7 @@ def test_scheduled_holiday_noop_preserves_pointer_and_runs_no_stage(tmp_path) ->
     assert receipt["orders_placed"] == 0
 
 
-def test_flat_calibration_cannot_be_promoted_as_a_directional_model(tmp_path, monkeypatch) -> None:
+def test_flat_calibration_cannot_be_promoted_as_a_directional_model(tmp_path, monkeypatch, capsys) -> None:
     from sklearn.dummy import DummyClassifier
     monkeypatch.setattr("ml.nightly_gameplan._estimator", lambda *args: DummyClassifier(strategy="prior"))
     starts = pd.date_range("2026-01-01", periods=120, freq="D", tz="UTC")
@@ -371,14 +372,25 @@ def test_flat_calibration_cannot_be_promoted_as_a_directional_model(tmp_path, mo
         "target_semantics": "test", "target": np.arange(120) % 2,
         "mr__x": np.arange(120, dtype=float),
     })
+    samples.attrs["target_boundary_quality"] = {"excluded_rows": 7, "enforced": True}
     result = _fit_group_model(samples, current=samples.tail(2), feature_columns=("mr__x",),
         group="4h", model_directory=tmp_path / "models/4h", trained_at=starts[-1])
     gate = result["report"]["promotion_gate"]
     assert gate["status"] == "RESEARCH_NOT_PROMOTED"
     assert gate["checks"]["calibration_retains_directional_information"] is False
-    assert all(value for name, value in gate["checks"].items() if name != "calibration_retains_directional_information")
+    assert gate["checks"]["brier_beats_training_base_rate"] is False
+    assert gate["checks"]["log_loss_beats_training_base_rate"] is False
     assert set(result["forecasts"].model_status) == {"RESEARCH_NOT_PROMOTED"}
     assert set(result["forecasts"].calibration_status) == {"FLAT_CALIBRATION"}
+    report = result["report"]
+    assert report["assessment_raw_scores"]["brier_score"] == 0.25
+    assert report["calibration_assessment_change"]["brier_score"] == pytest.approx(1 / 300)
+    events = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    assert events[0]["fit"] == "gameplan/4h/target-quality"
+    assert events[0]["target_boundary_quality"]["excluded_rows"] == 7
+    assert report["target_boundary_quality"] == samples.attrs["target_boundary_quality"]
+    warning = next(event for event in events if event.get("fit") == "gameplan/4h/assessment")
+    assert "brier_beats_training_base_rate" in warning["failed_checks"]
 
 
 def test_calibration_diagnostics_distinguish_reversed_and_supported_rankings() -> None:
@@ -389,6 +401,38 @@ def test_calibration_diagnostics_distinguish_reversed_and_supported_rankings() -
         report = _calibration_signal_diagnostics(calibrator, raw, target, calibrator.predict(raw))
         assert report["information_available"] is expected
         assert report["nondecreasing_constraint_active"] is (not expected)
+
+
+def test_varying_calibration_still_needs_to_beat_a_baseline(tmp_path, monkeypatch) -> None:
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.tree import DecisionTreeClassifier
+
+    def estimator(*args):
+        return Pipeline([
+            ("features", ColumnTransformer([("x", "passthrough", ["mr__x"])])),
+            ("classifier", DecisionTreeClassifier(max_depth=1, random_state=0)),
+        ])
+
+    monkeypatch.setattr("ml.nightly_gameplan._estimator", estimator)
+    starts = pd.date_range("2026-01-01", periods=120, freq="D", tz="UTC")
+    signal = np.arange(120) % 2
+    target = signal.copy()
+    target[-15:] = 1 - target[-15:]  # The later assessment regime reverses.
+    samples = pd.DataFrame({
+        "symbol": "AAPL", "model_group": "4h", "route": "4h@08:00",
+        "forecast_anchor_local": "08:00", "decision_timestamp": starts,
+        "information_available_at": starts, "target_window_start": starts,
+        "target_window_end": starts + pd.Timedelta(hours=4),
+        "target_semantics": "test", "target": target, "mr__x": signal.astype(float),
+    })
+    result = _fit_group_model(samples, current=samples.tail(2), feature_columns=("mr__x",),
+        group="4h", model_directory=tmp_path / "models/4h", trained_at=starts[-1])
+    checks = result["report"]["promotion_gate"]["checks"]
+    assert checks["calibration_retains_directional_information"] is True
+    assert checks["brier_beats_training_base_rate"] is False
+    assert checks["log_loss_beats_training_base_rate"] is False
+    assert set(result["forecasts"].model_status) == {"RESEARCH_NOT_PROMOTED"}
 
 
 def test_flat_assessment_does_not_claim_the_calibrator_itself_is_constant() -> None:

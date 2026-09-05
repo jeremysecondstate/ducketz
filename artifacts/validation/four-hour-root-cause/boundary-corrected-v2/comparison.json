@@ -1,0 +1,412 @@
+{
+  "experiment": "Boundary-aligned labels with fixed original time partitions; no publication",
+  "corrected": {
+    "schema_version": "immutable-overnight-gameplan-v2",
+    "group": "4h",
+    "selected_family": "hist-gradient-mlp-0.75",
+    "selected_neural_weight": 0.75,
+    "both_hist_gradient_and_mlp_trained": true,
+    "selection_metrics": {
+      "hist-gradient": {
+        "rows": 122,
+        "positive_rate": 0.5081967213114754,
+        "mean_probability": 0.4869342818130243,
+        "brier_score": 0.2660905853753498,
+        "log_loss": 0.7373665724727494,
+        "expected_calibration_error_10_bin": 0.14016371121237978,
+        "direction_accuracy_at_0_5": 0.5163934426229508
+      },
+      "mlp": {
+        "rows": 122,
+        "positive_rate": 0.5081967213114754,
+        "mean_probability": 0.4625375536067718,
+        "brier_score": 0.2570670434588947,
+        "log_loss": 0.7075840262371514,
+        "expected_calibration_error_10_bin": 0.12230566046178756,
+        "direction_accuracy_at_0_5": 0.48360655737704916
+      },
+      "hist-gradient-mlp-0.25": {
+        "rows": 122,
+        "positive_rate": 0.5081967213114754,
+        "mean_probability": 0.48083509976146116,
+        "brier_score": 0.2585211083966093,
+        "log_loss": 0.7135769620134312,
+        "expected_calibration_error_10_bin": 0.08743955499529808,
+        "direction_accuracy_at_0_5": 0.5327868852459017
+      },
+      "hist-gradient-mlp-0.50": {
+        "rows": 122,
+        "positive_rate": 0.5081967213114754,
+        "mean_probability": 0.47473591770989804,
+        "brier_score": 0.25449402575095326,
+        "log_loss": 0.702705089337196,
+        "expected_calibration_error_10_bin": 0.07358493225151375,
+        "direction_accuracy_at_0_5": 0.5245901639344263
+      },
+      "hist-gradient-mlp-0.75": {
+        "rows": 122,
+        "positive_rate": 0.5081967213114754,
+        "mean_probability": 0.4686367356583349,
+        "brier_score": 0.2540093374383817,
+        "log_loss": 0.701096698904459,
+        "expected_calibration_error_10_bin": 0.1028909587886007,
+        "direction_accuracy_at_0_5": 0.5
+      }
+    },
+    "calibration_method": "platt",
+    "calibration_diagnostics": {
+      "status": "DIRECTIONAL_INFORMATION_AVAILABLE",
+      "information_available": true,
+      "nondecreasing_constraint_active": false,
+      "calibration_rows": 131,
+      "calibration_positive_rate": 0.5114503816793893,
+      "raw_probability_range": [
+        0.24708689320110305,
+        0.6034403135112687
+      ],
+      "calibrated_probability_range": [
+        0.49357674808794777,
+        0.5265890943703464
+      ],
+      "assessment_probability_range": [
+        0.49357674808794777,
+        0.5265890943703464
+      ],
+      "platt_slope": 0.08614642258067667
+    },
+    "target_boundary_quality": {
+      "policy": "clock-window-boundaries-within-five-minutes-v1",
+      "enforced": true,
+      "maximum_boundary_gap_seconds": 300.0,
+      "candidate_rows": 1595,
+      "aligned_rows": 925,
+      "excluded_rows": 670,
+      "misaligned_rows_by_route": {
+        "4h@04:00": 261,
+        "4h@08:00": 135,
+        "4h@16:00": 274
+      },
+      "misaligned_examples": [
+        {
+          "symbol": "AAPL",
+          "route": "4h@08:00",
+          "action_date": "2026-05-11",
+          "target_window_start": "2026-05-11 11:00:00+00:00",
+          "target_window_end": "2026-05-11 15:00:00+00:00",
+          "observed_open_timestamp": "2026-05-11 11:10:00+00:00",
+          "observed_close_timestamp": "2026-05-11 15:00:00+00:00",
+          "target_start_gap_seconds": "600.0",
+          "target_end_gap_seconds": "0.0"
+        },
+        {
+          "symbol": "AAPL",
+          "route": "4h@16:00",
+          "action_date": "2026-05-11",
+          "target_window_start": "2026-05-11 19:00:00+00:00",
+          "target_window_end": "2026-05-11 23:00:00+00:00",
+          "observed_open_timestamp": "2026-05-11 19:00:00+00:00",
+          "observed_close_timestamp": "2026-05-11 20:39:00+00:00",
+          "target_start_gap_seconds": "0.0",
+          "target_end_gap_seconds": "8460.0"
+        },
+        {
+          "symbol": "AMZN",
+          "route": "4h@16:00",
+          "action_date": "2026-05-11",
+          "target_window_start": "2026-05-11 19:00:00+00:00",
+          "target_window_end": "2026-05-11 23:00:00+00:00",
+          "observed_open_timestamp": "2026-05-11 19:00:00+00:00",
+          "observed_close_timestamp": "2026-05-11 22:45:00+00:00",
+          "target_start_gap_seconds": "0.0",
+          "target_end_gap_seconds": "900.0"
+        },
+        {
+          "symbol": "MU",
+          "route": "4h@16:00",
+          "action_date": "2026-05-11",
+          "target_window_start": "2026-05-11 19:00:00+00:00",
+          "target_window_end": "2026-05-11 23:00:00+00:00",
+          "observed_open_timestamp": "2026-05-11 19:00:00+00:00",
+          "observed_close_timestamp": "2026-05-11 22:54:00+00:00",
+          "target_start_gap_seconds": "0.0",
+          "target_end_gap_seconds": "360.0"
+        },
+        {
+          "symbol": "NVDA",
+          "route": "4h@16:00",
+          "action_date": "2026-05-11",
+          "target_window_start": "2026-05-11 19:00:00+00:00",
+          "target_window_end": "2026-05-11 23:00:00+00:00",
+          "observed_open_timestamp": "2026-05-11 19:00:00+00:00",
+          "observed_close_timestamp": "2026-05-11 22:45:00+00:00",
+          "target_start_gap_seconds": "0.0",
+          "target_end_gap_seconds": "900.0"
+        },
+        {
+          "symbol": "GOOG",
+          "route": "4h@04:00",
+          "action_date": "2026-05-12",
+          "target_window_start": "2026-05-12 00:00:00+00:00",
+          "target_window_end": "2026-05-12 11:00:00+00:00",
+          "observed_open_timestamp": "2026-05-11 22:35:00+00:00",
+          "observed_close_timestamp": "2026-05-12 11:05:00+00:00",
+          "target_start_gap_seconds": "5100.0",
+          "target_end_gap_seconds": "300.0"
+        },
+        {
+          "symbol": "GOOG",
+          "route": "4h@16:00",
+          "action_date": "2026-05-12",
+          "target_window_start": "2026-05-12 19:00:00+00:00",
+          "target_window_end": "2026-05-12 23:00:00+00:00",
+          "observed_open_timestamp": "2026-05-12 19:00:00+00:00",
+          "observed_close_timestamp": "2026-05-12 22:42:00+00:00",
+          "target_start_gap_seconds": "0.0",
+          "target_end_gap_seconds": "1080.0"
+        },
+        {
+          "symbol": "AMZN",
+          "route": "4h@04:00",
+          "action_date": "2026-05-12",
+          "target_window_start": "2026-05-12 00:00:00+00:00",
+          "target_window_end": "2026-05-12 11:00:00+00:00",
+          "observed_open_timestamp": "2026-05-11 23:30:00+00:00",
+          "observed_close_timestamp": "2026-05-12 12:07:00+00:00",
+          "target_start_gap_seconds": "1800.0",
+          "target_end_gap_seconds": "4020.0"
+        },
+        {
+          "symbol": "AMZN",
+          "route": "4h@08:00",
+          "action_date": "2026-05-12",
+          "target_window_start": "2026-05-12 11:00:00+00:00",
+          "target_window_end": "2026-05-12 15:00:00+00:00",
+          "observed_open_timestamp": "2026-05-12 12:07:00+00:00",
+          "observed_close_timestamp": "2026-05-12 15:00:00+00:00",
+          "target_start_gap_seconds": "4020.0",
+          "target_end_gap_seconds": "0.0"
+        },
+        {
+          "symbol": "AMZN",
+          "route": "4h@16:00",
+          "action_date": "2026-05-12",
+          "target_window_start": "2026-05-12 19:00:00+00:00",
+          "target_window_end": "2026-05-12 23:00:00+00:00",
+          "observed_open_timestamp": "2026-05-12 19:00:00+00:00",
+          "observed_close_timestamp": "2026-05-12 22:22:00+00:00",
+          "target_start_gap_seconds": "0.0",
+          "target_end_gap_seconds": "2280.0"
+        },
+        {
+          "symbol": "MU",
+          "route": "4h@04:00",
+          "action_date": "2026-05-12",
+          "target_window_start": "2026-05-12 00:00:00+00:00",
+          "target_window_end": "2026-05-12 11:00:00+00:00",
+          "observed_open_timestamp": "2026-05-11 23:54:00+00:00",
+          "observed_close_timestamp": "2026-05-12 11:03:00+00:00",
+          "target_start_gap_seconds": "360.0",
+          "target_end_gap_seconds": "180.0"
+        },
+        {
+          "symbol": "NVDA",
+          "route": "4h@16:00",
+          "action_date": "2026-05-12",
+          "target_window_start": "2026-05-12 19:00:00+00:00",
+          "target_window_end": "2026-05-12 23:00:00+00:00",
+          "observed_open_timestamp": "2026-05-12 19:00:00+00:00",
+          "observed_close_timestamp": "2026-05-12 22:52:00+00:00",
+          "target_start_gap_seconds": "0.0",
+          "target_end_gap_seconds": "480.0"
+        }
+      ]
+    },
+    "calibration_raw_scores": {
+      "rows": 131,
+      "positive_rate": 0.5114503816793893,
+      "mean_probability": 0.4317969677035046,
+      "brier_score": 0.2591453764762987,
+      "log_loss": 0.713014789757215,
+      "expected_calibration_error_10_bin": 0.0796534139758846,
+      "direction_accuracy_at_0_5": 0.5267175572519084
+    },
+    "assessment_raw_scores": {
+      "rows": 100,
+      "positive_rate": 0.4,
+      "mean_probability": 0.4155791812845949,
+      "brier_score": 0.2486192638705565,
+      "log_loss": 0.6887797288519744,
+      "expected_calibration_error_10_bin": 0.13764430045730724,
+      "direction_accuracy_at_0_5": 0.52
+    },
+    "calibration_assessment_change": {
+      "brier_score": 0.0033837905499368715,
+      "log_loss": 0.008376173983386637,
+      "interpretation": "Negative changes mean calibration improved the raw scores on held-out assessment."
+    },
+    "assessment": {
+      "rows": 100,
+      "positive_rate": 0.4,
+      "mean_probability": 0.5100013358315695,
+      "brier_score": 0.25200305442049337,
+      "log_loss": 0.697155902835361,
+      "expected_calibration_error_10_bin": 0.11000133583156943,
+      "direction_accuracy_at_0_5": 0.51
+    },
+    "training_base_rate_assessment": {
+      "rows": 100,
+      "positive_rate": 0.4,
+      "mean_probability": 0.46320346320346323,
+      "brier_score": 0.24399467776091158,
+      "log_loss": 0.6811172373740088,
+      "expected_calibration_error_10_bin": 0.0632034632034632,
+      "direction_accuracy_at_0_5": 0.6
+    },
+    "assessment_by_route": {
+      "4h@04:00": {
+        "rows": 14,
+        "positive_rate": 0.7142857142857143,
+        "mean_probability": 0.507808307153038,
+        "brier_score": 0.24708066693640757,
+        "log_loss": 0.6873084059676419,
+        "expected_calibration_error_10_bin": 0.2756378173814265,
+        "direction_accuracy_at_0_5": 0.7857142857142857
+      },
+      "4h@08:00": {
+        "rows": 29,
+        "positive_rate": 0.3103448275862069,
+        "mean_probability": 0.5084183689296453,
+        "brier_score": 0.25362591107549565,
+        "log_loss": 0.7004040052914448,
+        "expected_calibration_error_10_bin": 0.19807354134343852,
+        "direction_accuracy_at_0_5": 0.4827586206896552
+      },
+      "4h@12:00": {
+        "rows": 46,
+        "positive_rate": 0.32608695652173914,
+        "mean_probability": 0.5118295579790305,
+        "brier_score": 0.25367353249653035,
+        "log_loss": 0.7004970042168716,
+        "expected_calibration_error_10_bin": 0.18574260145729127,
+        "direction_accuracy_at_0_5": 0.391304347826087
+      },
+      "4h@16:00": {
+        "rows": 11,
+        "positive_rate": 0.5454545454545454,
+        "mean_probability": 0.5093204470017546,
+        "brier_score": 0.24700383535544146,
+        "log_loss": 0.6871540229601033,
+        "expected_calibration_error_10_bin": 0.21593087872187983,
+        "direction_accuracy_at_0_5": 0.7272727272727273
+      }
+    },
+    "promotion_gate": {
+      "status": "RESEARCH_NOT_PROMOTED",
+      "checks": {
+        "calibration_retains_directional_information": true,
+        "assessment_has_at_least_10_decision_clusters": true,
+        "brier_beats_training_base_rate": false,
+        "log_loss_beats_training_base_rate": false,
+        "expected_calibration_error_at_most_0_15": true
+      }
+    },
+    "features": {
+      "admitted_count": 27,
+      "admitted": [
+        "mr__trend_atr",
+        "mr__momentum_risk_adjusted",
+        "mr__range_position",
+        "mr__volume_score",
+        "mr__volatility_ratio",
+        "bp__compression_score",
+        "bp__range_contraction_score",
+        "bp__direction_score",
+        "bp__upside_pressure_score",
+        "bp__downside_pressure_score",
+        "bp__breakout_magnitude_atr",
+        "bp__volume_participation_score",
+        "mr__technical_score",
+        "mr__regime_strength",
+        "bp__breakout_readiness_score",
+        "bp__breakout_strength_score",
+        "bp__setup_quality",
+        "mr__confidence_score",
+        "mr__atr_percent",
+        "mr__technical_score_change_5",
+        "bp__bars_since_state_change",
+        "mr__trend_score",
+        "mr__momentum_score",
+        "mr__range_score",
+        "bp__boundary_proximity_score",
+        "bar__intrabar_range_atr",
+        "bar__close_location"
+      ],
+      "option_market_features": []
+    },
+    "partitions": {
+      "train_rows": 571,
+      "selection_rows": 122,
+      "calibration_rows": 131,
+      "assessment_rows": 100
+    },
+    "partition_decision_clusters": {
+      "train": 75,
+      "selection": 14,
+      "calibration": 14,
+      "assessment": 14
+    },
+    "model_file": {
+      "path": "models/4h/model.joblib",
+      "size": 357999,
+      "checksum_sha256": "89c1841c39216bb43e2054c17bf482fb5b3712e6ec9a362ee64bd197d0ab200d"
+    }
+  },
+  "original_on_same_valid_assessment": {
+    "raw": {
+      "rows": 100,
+      "positive_rate": 0.4,
+      "mean_probability": 0.44539314815736836,
+      "brier_score": 0.24109359424962856,
+      "log_loss": 0.6742124787785884,
+      "expected_calibration_error_10_bin": 0.1287390426855141,
+      "direction_accuracy_at_0_5": 0.5
+    },
+    "calibrated": {
+      "rows": 100,
+      "positive_rate": 0.4,
+      "mean_probability": 0.5,
+      "brier_score": 0.25,
+      "log_loss": 0.6931471805599453,
+      "expected_calibration_error_10_bin": 0.09999999999999998,
+      "direction_accuracy_at_0_5": 0.4
+    }
+  },
+  "original_partition_rows": {
+    "train": 979,
+    "selection": 220,
+    "calibration": 208,
+    "assessment": 184
+  },
+  "corrected_current_calibrated_range": [
+    0.496643701877901,
+    0.5183978570158956
+  ],
+  "source_files_sha256": {
+    "C:\\DATASTORE\\ml\\runs\\20260904T044138.477594Z\\samples.parquet": "d9f9fe2605b54b7c0f0374108f5d24ed161da250076ba9de8aee0ac4394cac1c",
+    "C:\\DATASTORE\\stocks\\AAPL\\bars\\1m\\databento\\normalized\\AAPL_source_100d_1m_ohlcv-1m_1m.parquet": "2607ba62d069254647fdf68b185648561ed7a7d5af1efa1efd0c3b4f50bb2ee4",
+    "C:\\DATASTORE\\stocks\\AMZN\\bars\\1m\\databento\\normalized\\AMZN_source_100d_1m_ohlcv-1m_1m.parquet": "03a87b5911d8adc88473d9dc2f6e09fb31d8bdcf2102e5542bd77297ac8e91f6",
+    "C:\\DATASTORE\\stocks\\GOOG\\bars\\1m\\databento\\normalized\\GOOG_source_100d_1m_ohlcv-1m_1m.parquet": "1e7b1625b0f237dc4fca382ce7601c7ee0b98b93e80e44b341097a6183509376",
+    "C:\\DATASTORE\\stocks\\MU\\bars\\1m\\databento\\normalized\\MU_source_100d_1m_ohlcv-1m_1m.parquet": "59ad15f5c8e7bb62f9d5854f5c6f6d3cf665604fa192433c4e01c04c0f60fe18",
+    "C:\\DATASTORE\\stocks\\NVDA\\bars\\1m\\databento\\normalized\\NVDA_source_100d_1m_ohlcv-1m_1m.parquet": "b736aa346d396ef9fc5d428b305824ea81d978ef4b08323020a643e2a92e4787",
+    "C:\\DATASTORE\\stocks\\SNDK\\bars\\1m\\databento\\normalized\\SNDK_source_100d_1m_ohlcv-1m_1m.parquet": "ea3f40be8f72f99d3421d74bd6d6b47d7b7bc6aea0561dfaf614b148a7cbf6c8"
+  },
+  "original_gameplan_files_sha256": {
+    "gameplan.json": "395f2d2887ca32876d7503d03b1bd1d1b41fdbf3c27063044ca7214913c73583",
+    "forecasts.parquet": "90c34dd286ff0e209bd88b701634819c15601d0c30280e2d25c52f3b9504a0ba",
+    "models/4h/model.joblib": "9184f6d0d6dfdab4a51451c3c493861a0f5722654fdbf8366a4122b23edfc2cf",
+    "model-reports.json": "4e604319bed25e9967600f8e791b39fe36653dae661e524d4a6d78fec89fd3fe",
+    "manifest.json": "fcfd468ce4d50880a9506cbe65f39bd3b8fca75e7aaa4902a2cf87f6d8a82096",
+    "receipt.json": "7f2a349277a1af011626f2a44608fada3211cb3c9e355cefefdb7cb96adfcbf5"
+  },
+  "original_gameplan_unchanged": true
+}

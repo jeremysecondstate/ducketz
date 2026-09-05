@@ -206,10 +206,10 @@ def prediction_pulse_probability_text(probability_up: float | None) -> str:
 def prediction_pulse_probabilities(
     routes: Iterable[ForecastRouteView],
 ) -> tuple[tuple[str, float | None], ...]:
-    """Return the three standard published values in visual horizon order."""
+    """Return displayed values, using saved raw scores when calibration is flat."""
 
     by_horizon = {
-        route.horizon: route.probability_up
+        route.horizon: route.display_probability_up
         for route in routes
         if route.horizon in STANDARD_HORIZON_ORDER
     }
@@ -674,7 +674,6 @@ class RollingForecastTab:
         self._prediction_pulse_symbols: tuple[
             tuple[str, tuple[tuple[str, float | None], ...]], ...
         ] = ()
-        self._prediction_pulse_warnings: dict[tuple[str, str], str] = {}
         self._summary_cards: list[ttk.Frame] = []
         self._summary_labels: list[tuple[ttk.Label, ttk.Label]] = []
         self._symbol_sections: list[_SymbolSectionWidgets] = []
@@ -1365,11 +1364,6 @@ class RollingForecastTab:
             )
             for symbol in view.symbols
         )
-        self._prediction_pulse_warnings = {
-            (str(symbol.symbol).strip().upper(), route.horizon): route.probability_warning
-            for symbol in view.symbols for route in symbol.routes
-            if route.probability_warning
-        }
         self._prediction_pulse_frame = ttk.Frame(
             self.content_frame,
             style="ForecastPulse.TFrame",
@@ -1470,8 +1464,7 @@ class RollingForecastTab:
                     start=1,
                 ):
                     probability = probabilities_by_symbol[symbol].get(horizon)
-                    warning = getattr(self, "_prediction_pulse_warnings", {}).get((symbol, horizon))
-                    tone = "neutral" if warning else prediction_pulse_tone(probability)
+                    tone = prediction_pulse_tone(probability)
                     background, outline, foreground = (
                         _prediction_pulse_palette(tone)
                     )
@@ -1490,26 +1483,13 @@ class RollingForecastTab:
                         foreground=foreground,
                         font=("Segoe UI", 16, "bold"),
                         anchor=tk.CENTER,
-                    ).pack(fill=tk.BOTH, expand=True, padx=8, pady=(8, 2) if warning else 10)
-                    if warning:
-                        tk.Label(
-                            cell, text="No model signal", background=background,
-                            foreground=WARNING, font=("Segoe UI", 10),
-                            wraplength=140, justify=tk.CENTER,
-                        ).pack(fill=tk.X, padx=4, pady=(0, 8))
-
-        for warning in sorted(set(getattr(self, "_prediction_pulse_warnings", {}).values())):
-            tk.Label(
-                frame, text=warning, background=BACKGROUND, foreground=WARNING,
-                font=("Segoe UI", 10), wraplength=max(360, self._width - 100),
-                justify=tk.LEFT, anchor=tk.W,
-            ).pack(fill=tk.X, pady=(6, 2))
+                    ).pack(fill=tk.BOTH, expand=True, padx=8, pady=10)
 
         legend = tk.Frame(frame, background=BACKGROUND, borderwidth=0)
         legend.pack(pady=(10, 4))
         for label, tone in (
             ("UP > 50%", "up"),
-            ("NEUTRAL / LIMITED", "neutral"),
+            ("NEUTRAL = 50%", "neutral"),
             ("DOWN < 50%", "down"),
         ):
             item = tk.Frame(legend, background=BACKGROUND, borderwidth=0)
@@ -1655,9 +1635,9 @@ class RollingForecastTab:
             justify=tk.RIGHT,
         ).grid(row=0, column=1, sticky=tk.E)
 
-        if route.probability_up is not None and route.probability_down is not None:
-            probability_up = route.probability_up
-            probability_down = route.probability_down
+        if route.display_probability_up is not None and route.display_probability_down is not None:
+            probability_up = route.display_probability_up
+            probability_down = route.display_probability_down
         else:
             probability_up = None
             probability_down = None
@@ -1666,11 +1646,6 @@ class RollingForecastTab:
             probability_up,
             probability_down,
         )
-        if route.probability_warning:
-            ttk.Label(
-                card, text=route.probability_warning, style="ForecastWarning.TLabel",
-                wraplength=300, justify=tk.LEFT,
-            ).pack(fill=tk.X, pady=(6, 0))
         self._add_divider(card)
         self._build_window_block(
             card,
@@ -1955,8 +1930,8 @@ class RollingForecastTab:
         ).pack(anchor=tk.W)
         self._build_probability_block(
             summary,
-            aggregate.probability_up,
-            aggregate.probability_down,
+            aggregate.display_probability_up,
+            aggregate.display_probability_down,
         )
         if aggregate.option_plan_status is not None:
             self._add_divider(summary)
@@ -2126,8 +2101,8 @@ class RollingForecastTab:
 
         self._build_probability_block(
             card,
-            route.probability_up,
-            route.probability_down,
+            route.display_probability_up,
+            route.display_probability_down,
         )
         self._add_divider(card)
         self._build_window_block(
@@ -2372,7 +2347,6 @@ class RollingForecastTab:
         self._weekly_details.clear()
         self._prediction_pulse_frame = None
         self._prediction_pulse_symbols = ()
-        self._prediction_pulse_warnings = {}
         self._layout_columns = None
         self._layout_signature = None
         if self.summary_frame is not None:
