@@ -22,11 +22,16 @@ from app.ui.rolling_forecast_data import (
     load_forecast_dashboard,
 )
 from datafetching.bar_readiness import read_bar_readiness
+from datafetching.databento_opra_history import OPRA_STRATEGY_HISTORY_SCHEMAS
 from datafetching.decision_time import (
     cycle_target_decision,
     latest_eligible_option_target,
 )
-from datafetching.orchestrate import DEFAULT_WATCHLIST, read_watchlist
+from datafetching.orchestrate import (
+    DEFAULT_OPRA_HISTORY_UTC_HOUR,
+    DEFAULT_WATCHLIST,
+    read_watchlist,
+)
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from ml.artifacts import file_checksum
 from ml.current_publication import CurrentPublication, read_current_publication
@@ -352,6 +357,11 @@ RUNTIMES = (
             "--providers databento fmp fred schwab sec",
             "--cme-mode external",
             "--options-mode external",
+            "--opra-history-mode daily",
+            "--opra-history-utc-hour 21",
+            "--opra-history-max-estimated-download-bytes 20000000000",
+            "--opra-history-max-estimated-cost-usd 1",
+            "--opra-history-max-catchup-days 30",
             "--bar-readiness-recovery-timeout-seconds 420",
             "--bar-readiness-recovery-poll-seconds 10",
         ),
@@ -465,6 +475,17 @@ def build_monitor_report(
     checks.append(_safe("loop_a_cycle", lambda: _loop_a_cycle_check(root, now, watchlist)))
     checks.append(
         _safe(
+            "opra_strategy_history",
+            lambda: _opra_strategy_history_check(
+                root,
+                now=now,
+                latest_target=latest_target,
+                symbols=watchlist,
+            ),
+        )
+    )
+    checks.append(
+        _safe(
             "loop_a_bar_readiness",
             lambda: _bar_readiness_check(
                 root,
@@ -532,6 +553,15 @@ def build_monitor_report(
     )
     checks.append(
         _safe(
+            "strategy_prediction_quality",
+            lambda: _strategy_quality_check(
+                root,
+                publication=publications.require_strategy(),
+            ),
+        )
+    )
+    checks.append(
+        _safe(
             "strategy_profit_model_authority",
             lambda: _strategy_profit_model_check(root),
         )
@@ -584,15 +614,6 @@ def build_monitor_report(
                 lambda: _directional_quality_check(
                     root,
                     publication=publications.require_loop_b(),
-                ),
-            )
-        )
-        checks.append(
-            _safe(
-                "strategy_prediction_quality",
-                lambda: _strategy_quality_check(
-                    root,
-                    publication=publications.require_strategy(),
                 ),
             )
         )
@@ -937,6 +958,93 @@ def _loop_a_cycle_check(
         failure_count=complete.get("failure_count"),
         symbols=sorted(observed_symbols),
         failures=failures,
+    )
+
+
+def _opra_strategy_history_check(
+    root: Path,
+    *,
+    now: pd.Timestamp,
+    latest_target: pd.Timestamp,
+    symbols: Sequence[str],
+) -> dict[str, object]:
+    """Verify Loop A's three production OPRA history cursors are current."""
+
+    daily_boundary = now.normalize() + pd.Timedelta(
+        hours=DEFAULT_OPRA_HISTORY_UTC_HOUR
+    )
+    effective_target = latest_target
+    if latest_target.date() == now.date() and now < daily_boundary:
+        effective_target = latest_eligible_option_target(
+            now.normalize() - pd.Timedelta(nanoseconds=1)
+        )
+    required_completion = (effective_target.normalize() + pd.Timedelta(days=1)).date()
+    cursor_root = (
+        root
+        / "market-data"
+        / "databento"
+        / "opra"
+        / "OPRA.PILLAR"
+        / "state"
+        / "symbol-history"
+    )
+    cursors: list[dict[str, object]] = []
+    missing: list[str] = []
+    invalid: list[str] = []
+    stale: list[str] = []
+    for symbol in symbols:
+        clean_symbol = str(symbol).strip().upper()
+        for schema in OPRA_STRATEGY_HISTORY_SCHEMAS:
+            identity = f"{clean_symbol}/{schema}"
+            path = cursor_root / clean_symbol / f"{schema}.json"
+            if not path.is_file():
+                missing.append(identity)
+                continue
+            try:
+                cursor = _read_json(path)
+                completed = pd.Timestamp(str(cursor["completed_through"])).date()
+                if (
+                    str(cursor.get("dataset")) != "OPRA.PILLAR"
+                    or str(cursor.get("symbol")).strip().upper() != clean_symbol
+                    or str(cursor.get("schema")) != schema
+                ):
+                    raise ValueError("cursor identity mismatch")
+            except Exception as exc:
+                invalid.append(f"{identity}: {type(exc).__name__}: {exc}")
+                continue
+            if completed < required_completion:
+                stale.append(identity)
+            cursors.append(
+                {
+                    "symbol": clean_symbol,
+                    "schema": schema,
+                    "completed_through": completed.isoformat(),
+                    "updated_at": cursor.get("updated_at"),
+                }
+            )
+    if missing or invalid:
+        status = _FAIL
+        summary = "Production OPRA strategy-history cursor evidence is incomplete or invalid."
+    elif stale:
+        status = _WARN
+        summary = "Production OPRA strategy history trails the latest maintenance boundary."
+    else:
+        status = _PASS
+        summary = "All production OPRA strategy-history cursors cover the required session."
+    return _check(
+        "opra_strategy_history",
+        status,
+        summary,
+        required_session=effective_target.date().isoformat(),
+        required_completed_through=required_completion.isoformat(),
+        maintenance_utc_hour=DEFAULT_OPRA_HISTORY_UTC_HOUR,
+        schemas=list(OPRA_STRATEGY_HISTORY_SCHEMAS),
+        expected_scope_count=len(symbols) * len(OPRA_STRATEGY_HISTORY_SCHEMAS),
+        verified_cursor_count=len(cursors),
+        missing_scopes=missing,
+        invalid_scopes=invalid,
+        stale_scopes=stale,
+        cursors=cursors,
     )
 
 

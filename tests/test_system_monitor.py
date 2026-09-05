@@ -26,6 +26,7 @@ from ml.system_monitor import (
     _log_activity_check,
     _loop_a_cycle_check,
     _loop_b_check,
+    _opra_strategy_history_check,
     _overall_status,
     _process_checks,
     scheduled_monitor_context,
@@ -34,6 +35,58 @@ from ml.system_monitor import (
     summarize_strategy_quality,
     summarize_weekly_evidence,
 )
+
+
+def test_opra_strategy_history_check_requires_all_three_current_cursors(
+    tmp_path: Path,
+) -> None:
+    cursor_root = (
+        tmp_path
+        / "market-data"
+        / "databento"
+        / "opra"
+        / "OPRA.PILLAR"
+        / "state"
+        / "symbol-history"
+        / "AAPL"
+    )
+    cursor_root.mkdir(parents=True)
+    for schema in ("ohlcv-1h", "cbbo-1m", "definition"):
+        (cursor_root / f"{schema}.json").write_text(
+            json.dumps(
+                {
+                    "dataset": "OPRA.PILLAR",
+                    "symbol": "AAPL",
+                    "schema": schema,
+                    "completed_through": "2026-09-04",
+                    "updated_at": "2026-09-04T05:00:00Z",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    current = _opra_strategy_history_check(
+        tmp_path,
+        now=pd.Timestamp("2026-09-04T05:00:00Z"),
+        latest_target=pd.Timestamp("2026-09-03T20:00:00Z"),
+        symbols=("AAPL",),
+    )
+    assert current["status"] == "PASS"
+    assert current["details"]["verified_cursor_count"] == 3
+
+    stale_cursor = json.loads((cursor_root / "ohlcv-1h.json").read_text())
+    stale_cursor["completed_through"] = "2026-08-19"
+    (cursor_root / "ohlcv-1h.json").write_text(
+        json.dumps(stale_cursor), encoding="utf-8"
+    )
+    stale = _opra_strategy_history_check(
+        tmp_path,
+        now=pd.Timestamp("2026-09-04T05:00:00Z"),
+        latest_target=pd.Timestamp("2026-09-03T20:00:00Z"),
+        symbols=("AAPL",),
+    )
+    assert stale["status"] == "WARN"
+    assert stale["details"]["stale_scopes"] == ["AAPL/ohlcv-1h"]
 
 
 def test_loop_b_freshness_uses_authoritative_promotion_time(

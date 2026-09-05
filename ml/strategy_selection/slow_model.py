@@ -15,15 +15,17 @@ from ml.strategy_selection.contracts import (
 )
 
 
-SLOW_STRATEGY_MODEL_VERSION = "daily-weekly-strategy-profit-slow-model-v1"
+SLOW_STRATEGY_MODEL_VERSION = "multi-horizon-strategy-profit-slow-model-v2"
 SLOW_STRATEGY_RECEIPT_VERSION = (
-    "daily-weekly-strategy-profit-slow-model-receipt-v1"
+    "multi-horizon-strategy-profit-slow-model-receipt-v2"
 )
 SLOW_STRATEGY_POINTER_VERSION = (
-    "daily-weekly-strategy-profit-slow-model-pointer-v1"
+    "multi-horizon-strategy-profit-slow-model-pointer-v2"
 )
-CANONICAL_PROFIT_HORIZONS = ("1d", "1w")
+CANONICAL_PROFIT_HORIZONS = ("1h", "4h", "1d", "1w")
 HORIZON_MODEL_ALIASES = {
+    "1h": "1h",
+    "4h": "4h",
     "1d": "1d",
     "1w": "1w",
     "1w-d1": "1d",
@@ -49,6 +51,8 @@ def canonical_profit_horizon(horizon: str) -> str | None:
 
 def strategy_model_promotion_gate(
     evaluation: Mapping[str, object],
+    *,
+    minimum_assessment_decisions: int = 63,
 ) -> dict[str, object]:
     """Apply a predeclared assessment-only quality gate.
 
@@ -74,8 +78,13 @@ def strategy_model_promotion_gate(
             "status": "REJECTED",
             "reason": f"INCOMPLETE_ASSESSMENT_METRICS:{type(exc).__name__}",
         }
+    required_assessment = int(minimum_assessment_decisions)
+    if required_assessment <= 0:
+        raise ValueError("minimum_assessment_decisions must be positive")
     checks = {
-        "assessment_decisions_at_least_63": assessment_decisions >= 63,
+        "assessment_decisions_meets_minimum": (
+            assessment_decisions >= required_assessment
+        ),
         "brier_not_worse_than_training_base_rate": (
             brier <= baseline_brier + 1e-12
         ),
@@ -93,6 +102,7 @@ def strategy_model_promotion_gate(
         "base_rate_log_loss": baseline_log_loss,
         "expected_calibration_error_10_bin": calibration_error,
         "assessment_decisions": assessment_decisions,
+        "minimum_assessment_decisions": required_assessment,
         "assessment_used_for_promotion_only": True,
         "assessment_used_for_training": False,
         "assessment_used_for_calibration": False,
@@ -112,10 +122,18 @@ def publish_slow_strategy_authority(
     run = Path(run_directory).resolve()
     if root not in run.parents:
         raise ValueError("Slow Strategy run escapes the datastore root")
-    if set(models) != set(CANONICAL_PROFIT_HORIZONS):
-        raise ValueError("Slow Strategy authority requires both 1d and 1w models")
+    model_horizons = set(models)
+    canonical_horizons = set(CANONICAL_PROFIT_HORIZONS)
+    if not model_horizons or not model_horizons.issubset(canonical_horizons):
+        raise ValueError(
+            "Slow Strategy authority requires at least one canonical promoted model"
+        )
+    if not model_horizons.issubset(set(reports)):
+        raise ValueError("Every promoted Strategy model requires a report")
     model_inventory: dict[str, object] = {}
     for horizon in CANONICAL_PROFIT_HORIZONS:
+        if horizon not in models:
+            continue
         model = models[horizon]
         report = reports[horizon]
         gate = _mapping(report.get("promotion_gate"))
@@ -162,6 +180,9 @@ def publish_slow_strategy_authority(
         "published_at": created.isoformat(),
         "model_policy_version": STRATEGY_MODEL_POLICY_VERSION,
         "canonical_horizons": list(CANONICAL_PROFIT_HORIZONS),
+        "published_horizons": [
+            horizon for horizon in CANONICAL_PROFIT_HORIZONS if horizon in models
+        ],
         "horizon_aliases": dict(HORIZON_MODEL_ALIASES),
         "models": model_inventory,
         "outputs": outputs,
@@ -180,6 +201,7 @@ def publish_slow_strategy_authority(
                 "model_file_checksum_sha256"
             )
             for horizon in CANONICAL_PROFIT_HORIZONS
+            if horizon in model_inventory
         },
         "orders_placed": 0,
     }

@@ -1,103 +1,127 @@
 # Ducketz Loops system analysis
 
-This directory documents the current production Loops implementation. Code, immutable receipts, and the datastore health output are authoritative; these pages are explanatory and are not operational proof that a provider is connected or that a partition still exists.
+This directory documents the current Loops implementation. Code, immutable
+receipts, provider cursors, and datastore health are authoritative; prose alone
+is not proof that a provider is connected or an artifact is current.
 
-## Current baseline
+## Current operating model
 
-- **Confirmed:** the startup document declares eight independent runtime owners and says they coordinate through verified atomic pointers. `docs/datafetch-ml/current_start_command:3`, `docs/datafetch-ml/current_start_command:5`
-- **Confirmed by code census:** exactly eight recurring production supervisors exist: CME/L2, Loop A, Daily ALFRED, Active Pricing, Options Capture, Directional Loop B, Strategy, and Strategy-profit training.
-- **Confirmed:** `ml.option_pricing_loop_native_worker` is a one-shot, non-blocking child owned by Active Pricing, not a ninth independent loop. `ml/option_pricing_loop_native_worker.py:38`, `ml/option_pricing_loop_native_worker.py:135`, `ml/option_pricing_runtime.py:440`
-- **Confirmed deployment:** the checked-in launcher derives its eight commands from `ml.system_guardian.GUARDIAN_LAUNCHES`, verifies `ml.system_monitor.RUNTIMES`, existing process pairs, and worker-owned locks before acting, and starts only an owner with no matching process and either no lock or a parseable PID independently confirmed dead. It never deletes that lock: the worker revalidates and atomically replaces it under the shared maintenance gate. Live or unverifiable locks remain blocked. The launcher uses resolved paths, an explicit working directory, redirected primary logs, unbuffered Python, and hidden windows. Options retains `--skip-historical-catchup`. `docs/datafetch-ml/start_all_loops.ps1`, `datafetching/runtime_lock.py`, `ml/system_guardian.py`
-- **Confirmed:** `datafetching.options_history` is the one-time per-symbol OPRA bootstrap. `datafetching.databento_cold_start` is the optional one-time all-dataset bootstrap and hands verified OPRA scopes to Options through v5 symbol/schema history cursors. Both normal paths use the included Standard-plan windows, validate free capacity with a 5 GiB reserve and 2× expansion allowance, and fail closed on scope or evidence mismatch. Options Capture owns recurring catch-up for completed cursors; none of these maintenance paths creates another supervisor. `datafetching/options_history.py`, `datafetching/databento_cold_start.py`, `datafetching/options_runtime.py`
-- **Confirmed provider boundaries:** Loop A uses Databento `EQUS.MINI` for canonical operational equity OHLCV under `stocks`; the different-dataset `XNAS.ITCH` archive remains cold provenance and is not timestamp-merged into that view. Schwab supplies quotes, chains, broker evidence, and explicitly labeled option fallback evidence, never canonical equity OHLCV or OPRA. CME's current `GLBX.MDP3` authority is published independently from its verified archive seed and bounded recovery work. `datafetching/databento_fetch.py:544`, `datafetching/databento_archive.py:213`, `datafetching/cme_runtime.py:104`, `datafetching/cme_history.py:288`
-- **Confirmed changed runtime contracts:** prematurely ended Databento responses are transient-retry eligible; the OPRA callback cooperatively yields during dense replay and target selection requires a per-symbol target watermark; CME publishes a strict configured-symbol current lane before at most one older recovery chunk; and omitted weekly component slots become calendar-inapplicable only when one coherent created-LIVE bundle proves the valid remaining-week prefix. `app/services/databento_retry.py:14`, `options/databento_live.py:244`, `options/databento_live.py:280`, `datafetching/cme_runtime.py:157`, `ml/runtime_pipeline.py:4005`
-- **Confirmed broadened stock day:** Directional Loop B now gives both 1h and 4h routes standard US extended source context, while stock targets and execution use explicit `PRE` 04:00--06:25 PT, `REGULAR` 06:30--13:00 PT, and `POST` 13:05--17:00 PT sessions. Four-hour checkpoints are 04:30, 08:30, 12:30, and 16:30 PT. Options, Pricing, Strategy, daily, and weekly contracts retain their official regular-session authority. `ml/calendars.py`, `ml/horizons.py`, `ml/stock_trader/session.py`
-- **Confirmed scheduled stock owners:** the opening, 1h, 4h-checkpoint, daily-adaptation, and weekly-audit jobs are bounded scheduled invocations, not additional recurring supervisors. The hidden eight-owner launcher still owns Directional Loop B. `docs/loops-system-analysis/STOCK_TRADER_AUTOMATION.md`, `docs/datafetch-ml/start_all_loops.ps1`
-- **Confirmed options-paper lane:** Loop C freezes exact 1d/1w Options Strategy paper entries with target-window exits no later than expiration session and signed assignment/share obligations; a separate daily Scheduled task tracks them against mature exact outcomes for Saturday review. This lane has zero broker authority and remains separate from personal Schwab option history. Any future live-options lane would require a separate earlier exit buffer. `ml/loop_c/paper_ledger.py`, `docs/loops-system-analysis/OPTIONS_STRATEGY_PAPER_AUTOMATION.md`
-- **Confirmed monitoring:** hourly mode covers ownership, locks, logs, publications, lineage, UIs, storage, and any published sequence/Loop C/paper-ledger evidence; daily adds every directional route plus Strategy/Pricing outcome evaluation; weekly adds a comparable immutable-evidence roll-up after the final eligible XNYS session of the week. Insufficient weekly observations are reported explicitly rather than converted into a trend. `ml/system_monitor.py`, `ml/loop_c/paper_ledger.py`
-- **Operational boundary:** historical files are mutable production state. Verify the current state with `python -m ml.option_pricing_opra --datastore-target pc --health-only` and the receipts beneath `C:\DATASTORE\market-data\databento\opra\OPRA.PILLAR`; do not infer population from these docs or from `provider-mode=opra-canonical`.
+As of 2026-09-04, normal operation is one sequential overnight workflow plus a
+lightweight daytime consumer:
 
-**Observed 2026-08-19 22:45:36 UTC:** the preserved read-only monitor proof was
-`HEALTHY`: 19 `PASS`, 1 benign `INFO`, 0 `WARN`, 0 `FAIL`, no stale condition,
-`read_only=true`, and `orders_placed=0`. All seven then-current owner pairs, locks, primary
-logs, immutable publications, exact Strategy-to-current-Loop-B lineage, and
-both UI contracts verified. The sole `INFO` correctly reported that closed XNYS
-conditions provided no eligible Active Pricing target; the runtime did not
-backdate or fabricate one. The immutable report is
-`C:\DATASTORE\logs\ducketz\restart-proof\20260819T200349.8245990Z\20260819T224536.737912+0000-monitor-post-activation-stale-free-healthy.json`.
+- 17:05 PT: fetch and append the latest completed session, including production
+  OPRA history; build Loop B; train four Options Strategy profit horizons;
+  generate candidates; publish the immutable next-session Gameplan. The Scheduled
+  operator watches progress/errors, repairs verified failures, and resumes the
+  failed stage. A ten-minute health watch covers abandoned work.
+- 04:00–17:00 PT: the Duckets `Rolling Forecasts` tab reads the frozen plan and
+  rotates its displayed 1-hour and 4-hour routes on wall-clock boundaries. No
+  provider fetch, training, or replanning occurs in the UI consumer; D+1 through
+  D+5 and the direct weekly forecast remain available in the weekly detail. The
+  same cards expose each route's frozen options intent, including its Strategy,
+  modeled profit probability, pricing source, and explicit no-trade/revalidation
+  reason.
+- The active stock-only gameplan trader consumes each forward hourly boundary
+  once. It began at 10:00 PT on September 4; missed earlier routes were not
+  replayed. A simultaneously active 4-hour route confirms the hourly entry,
+  with an opposite direction vetoing a new order instead of creating two
+  competing orders.
+- Every Gameplan from September 4 stays in durable evaluation history, including
+  longer forecasts from older plans. Saturday reviews this history.
+- After the next 17:00 close: evaluate all matured directional forecasts against
+  the completed day, then build the successor plan. Options intents retain their
+  lifecycle status; realized option P/L requires exact-leg execution receipts,
+  and any future non-executed outcome study must be labeled counterfactual.
 
-That dated proof predates deployment of Strategy-profit training as the eighth
-owner; it is historical evidence, not the current inventory.
+The authoritative contract is [Overnight immutable gameplan](NIGHTLY_GAMEPLAN.md).
+The [September 4 supervision update](audits/2026-09-04/SUPERVISION_UPDATE.md) records
+the deployed fixes, Scheduled changes, verification, and remaining trader proposal.
+The [four-hour calibration audit](audits/2026-09-04/FOUR_HOUR_CALIBRATION.md)
+explains the first Gameplan's all-50% four-hour row and the corrected promotion
+check and display warning.
 
-**Follow-up observed 2026-08-19 22:59:29 UTC:** the exact allowed scheduled
-read-only monitor command remained `HEALTHY` with the same 19/1/0/0 totals and
-no attention item. Loop B and Strategy had advanced normally to newer exact,
-checksum-valid authorities while preserving current cross-loop lineage. These
-are timestamped observations; no PID or run path is an architectural constant.
+The former eight recurring supervisors remain implemented for diagnosis and
+explicit recovery, but they are stopped and are not the production scheduling
+model. The former hourly guardian/adaptive trainer, standalone OPRA history,
+Options Strategy paper tracker and prior intraday stock tasks are paused.
+The former stock daily-adaptation schedule now hosts the overnight health watch. The two new immutable-gameplan stock schedules
+are the only daytime broker-mutation owners. No document authorizes restarting
+the old stack or enabling options orders.
+
+## Current data authority
+
+- The production universe is `AAPL AMZN GOOG MU NVDA SNDK`.
+- Canonical operational equity bars remain Databento `EQUS.MINI` under
+  `C:\DATASTORE\stocks`. Schwab history and the differently identified
+  `XNAS.ITCH` archive remain separate evidence families; an audit found no exact
+  OHLC/OHLCV equality supporting a blind cross-provider merge.
+- Loop A owns production OPRA `definition`, `cbbo-1m`, and `ohlcv-1h` maintenance
+  for all six parents. Other OPRA schemas are retained research history without
+  a freshness promise.
+- Overnight currentness means complete data from the most recently finished
+  session. Final closed-market quotes may be hours old and still be the newest
+  correct planning evidence.
+- Options Strategy outcome training uses exact historical `cbbo-1m` entry/exit
+  snapshots wherever available; `1h` requires exact CBBO, while older
+  `4h`/`1d`/`1w` rows may use explicitly labeled conservative hourly fallback
+  evidence. A future live order must separately revalidate the same frozen legs
+  at execution time and may execute or skip only.
+- The source gameplan and paper reader remain advisory-only. Stock execution is
+  a separate adapter over the established risk engine and requires two explicit
+  persistent switches plus `--execute`; options remain paper/no-trade only.
+
+The current OPRA cursor/coverage observations and data cleanup boundaries are in
+[OPRA maintenance](OPRA_HISTORY_MAINTENANCE_AUTOMATION.md) and
+[Datastore hygiene](DATASTORE_HYGIENE.md).
+
+## Prediction authorities
+
+The overnight pipeline produces or refreshes four related authorities:
+
+1. Directional Loop B data/features and compatible predictions.
+2. Options Strategy profitable-outcome models for `1h`, `4h`, `1d`, and `1w`,
+   each with histogram-gradient and MLP challenger selection.
+3. Exact Strategy candidates using completed-session option evidence for
+   planning.
+4. One 144-row immutable gameplan: 24 forecasts and 24 options intents per
+   symbol.
+
+The first observed generation for action date 2026-09-04 is
+`ml/nightly-gameplan-runs/20260904T105944.876700Z`. It contains all 288 rows and
+zero order actions. See the gameplan contract for its measured model statuses,
+explicit all-`NO_TRADE` option result, and the corrected nine-second initial
+publication-boundary miss.
+
+The old option-pricing, option-capture, CME, ALFRED, Loop B, Strategy, and
+training supervisors remain described in the per-loop reports because their
+modules and artifacts still form the bounded overnight stages. References to
+their old minute/hour recurrence describe legacy implementation capability, not
+the current scheduler.
 
 ## Evidence labels
 
-Every conclusion uses one of these labels:
+- **Confirmed:** established by executable implementation or an explicit
+  contract.
+- **Observed:** established by a timestamped run/artifact and not assumed to be
+  permanent.
+- **Inferred:** supported by multiple paths but not an explicit contract.
+- **Historical:** true for a prior deployment and retained for diagnosis only.
+- **Unknown:** not established by repository or current artifacts.
 
-- **Confirmed:** directly established by executable implementation or an explicit contract; tests may provide corroboration.
-- **Inferred:** the strongest explanation supported by multiple code paths, but not explicitly declared as a contract.
-- **Documented only:** prose or startup intent not independently implemented as coordination.
-- **Conflict:** implementation, commands, tests, or documentation disagree.
-- **Unknown:** the repository does not establish the answer.
+## Index
 
-Repository citations use `relative/path:line`. A citation names the line where the relevant definition, condition, or contract begins; adjacent implementation lines complete the cited construct.
-
-## Executive result
-
-**Confirmed:** the system has eight independent production loops:
-
-| # in startup order | Canonical loop | Runtime entry point | Roll-up contribution |
-|---:|---|---|---|
-| 1 | CME/L2 runtime | `datafetching.cme_runtime` | Both |
-| 2 | Loop A | `datafetching.orchestrate` | Both |
-| 3 | Daily ALFRED runtime | `datafetching.fred_alfred_runtime` | Both |
-| 4 | Active Pricing (logical Loop 3) | `ml.option_pricing_runtime` | Both |
-| 5 | Options Capture (logical Loop 4) | `datafetching.options_runtime` | Both |
-| 6 | Directional Loop B | `ml.prediction_runtime` | Both |
-| 7 | Strategy runtime | `ml.strategy_runtime` | Options |
-| 8 | Strategy-profit training | `ml.strategy_profit_training_runtime` | Options |
-
-“Both” means the loop has an evidenced causal path to at least one directional-horizon output and to at least one options-family output (option pricing or options strategy). “Direct” is reserved for the loop that publishes that prediction family’s authoritative artifact; upstream causal inputs are “Indirect.” This prevents temporal proximity alone from counting as contribution. The detailed basis is in [Prediction contribution matrix](PREDICTION_CONTRIBUTION_MATRIX.md).
-
-At a high level, Loop A freezes exact equity-bar readiness and later a complete provider/feature cycle; CME/L2 and Daily ALFRED independently publish cross-asset and vintage-macro evidence. CME can seed a missing exact-spec boundary from verified archive scope and combines fingerprinted archive/runtime rows for context. Loop A deliberately does **not** bridge its differently identified `XNAS.ITCH` archive into current `EQUS.MINI` operation. Daily ALFRED requires its documented one-time causal backfill sequence. Options Capture owns prospective provider-neutral option evidence through one scoped, bounded OPRA `cbbo-1s` live adapter and retains Schwab as labeled per-target fallback/broker evidence. A separate one-time per-parent command, or the `--confirm-download` all-dataset cold-start coordinator, bootstraps included Standard history. Both publish only verified v5 history-cursor handoffs; Options Capture subsequently performs one daily, schema-specific overlap catch-up for valid cursors. Active Pricing and eligible offline Strategy workflows read verified OPRA partitions; recurring live Strategy selection requires prospective receipts and forbids offline replay. `datafetching/options_history.py`, `datafetching/databento_cold_start.py`, `datafetching/databento_archive.py:539`, `datafetching/databento_fetch.py:544`, `datafetching/options_runtime.py`, `ml/strategy_selection/runtime.py:167`
-
-Historical OPRA replay/cache is eligible for receipt-verified offline Pricing
-evaluation and Strategy outcome/model construction. Prospective receipts remain
-the preferred live evidence, and recurring Strategy entry plus live Pricing
-attachment explicitly forbid offline replay. Scenario Coverage is a heuristic
-scenario-grid pass fraction, not a probability; calibrated Strategy fields stay
-null until the fitted causal model and full eligible Pricing coverage exist.
-`ml/option_pricing_opra_replay.py:224`,
-`ml/strategy_selection/runtime.py:167`,
-`ml/strategy_selection/contracts.py:33`
-
-## Deliverables
-
-- [Ducketz Loops System Mind Map](LOOPS_SYSTEM_MIND_MAP.md)
-  - [Editable Mermaid source](assets/loops-system-mind-map.mmd)
-  - [Rendered SVG](assets/loops-system-mind-map.svg)
-- [Loop inventory and classification](LOOP_INVENTORY.md)
+- [Overnight immutable gameplan](NIGHTLY_GAMEPLAN.md)
+- [Retired hourly automation](HOURLY_AUTOMATION.md)
 - [System functionality](SYSTEM_FUNCTIONALITY.md)
+- [Loop inventory](LOOP_INVENTORY.md)
 - [Loop relationships](LOOP_RELATIONSHIPS.md)
 - [Visual loop map](LOOP_MAP.md)
 - [Prediction contribution matrix](PREDICTION_CONTRIBUTION_MATRIX.md)
-- [Monitoring and guarded recovery](MONITORING.md)
-- [Options Strategy paper-tracking automation](OPTIONS_STRATEGY_PAPER_AUTOMATION.md)
+- [Options Strategy ML upgrade](OPTIONS_STRATEGY_ML_UPGRADE.md)
+- [Monitoring and recovery](MONITORING.md)
+- [Datastore authority and hygiene](DATASTORE_HYGIENE.md)
+- [OPRA history maintenance](OPRA_HISTORY_MAINTENANCE_AUTOMATION.md)
+- [Stock trader runtime](STOCK_TRADER_RUNTIME.md)
+- [Stock trader Scheduled contract](STOCK_TRADER_AUTOMATION.md)
 - [Pooled sequence encoder and Loop C](POOLED_SEQUENCE_LOOP_C.md)
-- [Loop C rollout plan](LOOP_C_ROLLOUT_PLAN.md)
-- [Saturday Loop C/operator review](WEEKLY_REVIEW_AUTOMATION.md)
-- [Live stock-trader runtime](STOCK_TRADER_RUNTIME.md)
-- [Live stock-trader Scheduled contract](STOCK_TRADER_AUTOMATION.md)
-- Per-loop reports:
-  - [CME/L2 runtime](loops/cme-l2-runtime.md)
-  - [Loop A](loops/loop-a.md)
-  - [Daily ALFRED runtime](loops/daily-alfred-runtime.md)
-  - [Active Pricing / logical Loop 3](loops/active-pricing-loop-3.md)
-  - [Options Capture / logical Loop 4](loops/options-capture-loop-4.md)
-  - [Directional Loop B](loops/directional-loop-b.md)
-  - [Strategy runtime](loops/strategy-runtime.md)
+- Per-loop implementation reports in [loops](loops/)

@@ -27,6 +27,12 @@ from app.services.schwab_retry import is_retryable_schwab_error
 from ml.stock_trader.state import capture_portfolio_state
 
 
+def test_default_token_cache_uses_project_data() -> None:
+    assert schwab_token_store.DEFAULT_TOKEN_CACHE_PATH == (
+        schwab_token_store.PROJECT_ROOT / "data" / "schwab_tokens.json"
+    )
+
+
 def test_schwab_authorization_url_uses_supported_code_flow_without_made_up_scope() -> None:
     session = object.__new__(SchwabSession)
     session.config = SimpleNamespace(
@@ -827,7 +833,7 @@ assert session.access_token == "shared-access-token"
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows DACL behavior")
-def test_token_cache_and_directory_have_owner_only_windows_dacls(
+def test_token_cache_and_lock_have_owner_only_windows_dacls(
     tmp_path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     powershell = shutil.which("pwsh") or shutil.which("powershell")
@@ -861,31 +867,9 @@ def test_token_cache_and_directory_have_owner_only_windows_dacls(
         return result.stdout.strip()
 
     assert "D:P(A;;FA;;;OW)" in sddl(token_path)
-    assert "D:P(A;OICI;FA;;;OW)" in sddl(token_path.parent)
-
-
-def test_untrusted_legacy_token_cache_is_detected_but_never_imported(
-    tmp_path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    token_path = tmp_path / "secure" / "schwab_tokens.json"
-    legacy_directory = tmp_path / "repository-data"
-    legacy_directory.mkdir()
-    legacy_path = legacy_directory / "schwab_tokens.pre-reauth.json"
-    legacy_bytes = b'{"refresh_token":"untrusted"}\n'
-    legacy_path.write_bytes(legacy_bytes)
-    monkeypatch.setattr(schwab_token_store, "TOKEN_CACHE_PATH", token_path)
-    monkeypatch.setattr(schwab_token_store, "DEFAULT_TOKEN_CACHE_PATH", token_path)
-    monkeypatch.setattr(
-        schwab_token_store,
-        "LEGACY_TOKEN_CACHE_DIRECTORY",
-        legacy_directory,
+    assert "D:P(A;;FA;;;OW)" in sddl(
+        token_path.with_name(f"{token_path.name}.lock")
     )
-
-    with pytest.raises(RuntimeError, match="untrusted repository-local"):
-        schwab_token_store.load_token_payload(strict=True)
-
-    assert not token_path.exists()
-    assert legacy_path.read_bytes() == legacy_bytes
 
 
 def test_connect_timeout_restores_cache_and_allows_later_refresh(

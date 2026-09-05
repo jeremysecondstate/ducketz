@@ -1,0 +1,70 @@
+[
+  {
+    "version": 1,
+    "id": "loops-hourly-operations",
+    "kind": "cron",
+    "name": "Loops Overnight Gameplan",
+    "prompt": "Run the Ducketz overnight immutable-gameplan workflow in C:\\dev\\ducketz as a standalone fresh task. Before any command, read docs\\loops-system-analysis\\NIGHTLY_GAMEPLAN.md completely and treat it as the durable authority; if it is missing, unreadable, or contradictory, fail closed. Run .\\.venv\\Scripts\\python.exe -u -m ml.overnight_runtime --datastore-target pc --once --scheduled exactly once, with no automatic retry. The built-in scheduled guard must require a completed 17:00 PT XNYS action date. On a weekday exchange holiday, accept only the checksum-bound NOOP_NON_SESSION_DATE receipt with zero stages and a preserved prior gameplan pointer; do not retrain on unchanged data. On an eligible session, this one command sequentially owns the post-17:00-PT Loop A close fetch (including production OPRA definition, cbbo-1m, and ohlcv-1h maintenance), Directional Loop B generation, four-horizon Strategy-profit training, Strategy candidate generation, and immutable next-session gameplan publication. Overnight freshness means complete coverage of the most recently finished market session; final closed-market quotes may naturally be hours old. Matured directional forecasts are evaluated automatically; never infer realized option profit or loss without exact-leg execution evidence, and label any future unexecuted study counterfactual. Never start the former recurring stack, run a separate OPRA maintainer, edit code or pointers, delete data or locks, contact a broker mutation endpoint, or place/cancel/replace an order. On an eligible-session success verify the checksum-bound C:\\DATASTORE\\ml\\nightly-gameplan-latest\\run.json generation, exact 144 forecast and 144 option-intent rows, advisory/paper-only authority, and orders_placed=0. On failure preserve the prior pointer and report the first failed stage and its receipt path.",
+    "status": "ACTIVE",
+    "rrule": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=17;BYMINUTE=5",
+    "model": "gpt-5.6-sol",
+    "reasoning_effort": "ultra",
+    "notification_policy": "failed_runs_only",
+    "execution_environment": "local",
+    "target": {
+      "type": "project",
+      "project_id": "c899e194-7020-4972-99bb-bc40bea2ae8c"
+    },
+    "cwds": [
+      "C:\\dev\\ducketz",
+      "C:\\DATASTORE"
+    ],
+    "created_at": 1787119863911,
+    "updated_at": 1788520841875
+  },
+  {
+    "version": 1,
+    "id": "loop-c-weekly-operator-review",
+    "kind": "cron",
+    "name": "Loop C Weekly Operator Review",
+    "prompt": "Run the Loop C weekly operator-review workflow for C:\\dev\\ducketz as a standalone fresh-task Scheduled job. Before any workflow command, read docs\\loops-system-analysis\\WEEKLY_REVIEW_AUTOMATION.md completely and follow it as the durable authority contract; fail closed if that file is missing, unreadable, or contradictory. Capture the UTC run-start timestamp and read the independent checksum-verified weekly scheduler memory exactly once. Then run the exact Options Strategy paper ledger once, the checked-in Loop C weekly review once with GET-only Schwab capture and a pending risk proposal, stock-trader read-only reconciliation once, and the stock-trader weekly audit once, in the order and with the commands specified by the contract. Verify and preserve every immutable report, manifest, receipt and pointer path, then commit exactly one successor weekly scheduler memory before the final response. Never rely on prior chat context, share or advance the hourly guardian handoff, retry an empty/pending result, repair a pointer by hand, or modify code. Keep personal/account Schwab option history, unattributed account-equity movement, Loops exact Options Strategy paper results/counterfactuals, and live-stock execution results explicitly separate. For Loops paper positions, show exact 1d versus dynamic 1w Remaining-Week Aggregate cohorts, mature versus pending outcomes, modeled P/L, and every open position's signed BUY_SHARES/SELL_SHARES and gross assignment/exercise obligation, expiration, and planned target-window exit; paper status never implies a real assignment or broker execution. For live stocks, preserve PRE/REGULAR/POST and target-definition cohorts and separately report receipt-matched local FIFO entry/exit fill P/L under LOCAL_FIFO_STOCK_TRADER_FILLS_NOT_BROKER_TAX_LOTS; do not present it as Schwab tax-lot, fee-inclusive, or official account P/L. Show the memory sequence/receipt, exact model/risk cohort, proposal values, evidence maturity, and one defensible hold/tighten/halt/preregister discussion item. Never approve or apply a proposal, renew approval, change limits or thresholds, unhalt Loop C, train/promote a model, submit/cancel/replace any order, or invoke any broker mutation. End with automatic_change_allowed=false, orders_enabled=false, and orders_placed=0.",
+    "status": "ACTIVE",
+    "rrule": "FREQ=WEEKLY;BYDAY=SA;BYHOUR=9;BYMINUTE=0",
+    "model": "gpt-5.6-sol",
+    "reasoning_effort": "ultra",
+    "execution_environment": "local",
+    "target": {
+      "type": "project",
+      "project_id": "c899e194-7020-4972-99bb-bc40bea2ae8c"
+    },
+    "cwds": [
+      "C:\\dev\\ducketz",
+      "C:\\DATASTORE"
+    ],
+    "created_at": 1788063075820,
+    "updated_at": 1788421500635
+  },
+  {
+    "version": 1,
+    "id": "loops-stock-trader-daily-adaptation",
+    "kind": "cron",
+    "name": "Loops Stock Trader \u2014 Daily Adaptation (Legacy)",
+    "prompt": "This legacy daily-adaptation task is paused. Model fitting, matured directional-forecast evaluation, and next-session planning are owned by the single ml.overnight_runtime workflow under docs\\loops-system-analysis\\NIGHTLY_GAMEPLAN.md. That ownership does not authorize inferred options profit or loss: options outcomes require exact-leg execution evidence or an explicitly labeled counterfactual study. Do not run the legacy adaptation command, restart a recurring process, alter a gameplan, contact a broker mutation endpoint, or place an order unless a later explicit operator decision replaces this contract.",
+    "status": "PAUSED",
+    "rrule": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=17;BYMINUTE=20",
+    "model": "gpt-5.6-sol",
+    "reasoning_effort": "ultra",
+    "notification_policy": "failed_runs_only",
+    "execution_environment": "local",
+    "target": {
+      "type": "project",
+      "project_id": "c899e194-7020-4972-99bb-bc40bea2ae8c"
+    },
+    "cwds": [
+      "C:\\dev\\ducketz",
+      "C:\\DATASTORE"
+    ],
+    "created_at": 1788179026695,
+    "updated_at": 1788520719989
+  }
+]

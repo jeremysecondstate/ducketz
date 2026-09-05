@@ -1,0 +1,70 @@
+[
+  {
+    "version": 1,
+    "id": "loops-hourly-operations",
+    "kind": "cron",
+    "name": "Loops Overnight Gameplan",
+    "prompt": "Run the Ducketz post-close Gameplan workflow in C:\\dev\\ducketz as a standalone Scheduled task. Read docs\\loops-system-analysis\\NIGHTLY_GAMEPLAN.md completely first; it is the operating procedure for active supervision, repair, controlled stop, recovery, resume, and final verification. Inspect the current overnight status and existing Scheduled tasks before starting so there is only one owner. Start .\\.venv\\Scripts\\python.exe -u -m ml.overnight_runtime --datastore-target pc --once --scheduled on an eligible completed session. This command fetches/appends the completed session, builds Directional data/models, evaluates all saved Gameplans from September 4, trains Strategy models, generates candidates, and publishes the next session's Gameplan. Stay with the running process and inspect status, new logs, and health history at least once a minute; do not end after launching it or wait until final completion to read errors. Investigate reported errors immediately. Healthy training may take hours and may continue over a weekend until 04:00 Pacific on the next exchange session. Do not mistake quiet CPU-active training for a stall. Make focused non-trading repairs backed by evidence and relevant tests, record the repair in operator-notes.md, and use the documented controlled stop/recovery and --resume-run procedure when a restart is necessary. Resume only the failed stage and retain the original deadline; do not blindly retry an unchanged failure. Preserve concurrent edits, raw data, immutable published Gameplans, model assessment gates, and all trading controls/code. Never place, cancel, or replace orders, run an old recurring stack, delete lock files, or start a second pipeline. Honor holiday no-op receipts. Verify the final report/receipt/logs, expected next-session date, exactly 144 forecasts and 144 intents, cumulative evaluation coverage, provider coverage, model status, and zero overnight orders. Report exact unresolved failures, missing data, or research-only groups with evidence paths. Before starting, adopting, stopping, repairing, or resuming any work, generate one new UUID for this Scheduled task and acquire the supervision claim with python -m ml.overnight_runtime --datastore-target pc --claim-supervision <your-uuid>, using the repository .venv Python. Proceed only on ACQUIRED. Reuse your UUID to renew at least once a minute while monitoring or repairing; if BUSY, another task owns the run, so make no changes and end this wake. Never reuse another task's UUID. Release your claim with --release-supervision <your-uuid> when finished. The three-minute expiry lets the watch adopt an abandoned task without two operators repairing concurrently.",
+    "status": "ACTIVE",
+    "rrule": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=17;BYMINUTE=5",
+    "model": "gpt-5.6-sol",
+    "reasoning_effort": "ultra",
+    "notification_policy": "failed_runs_only",
+    "execution_environment": "local",
+    "target": {
+      "type": "project",
+      "project_id": "c899e194-7020-4972-99bb-bc40bea2ae8c"
+    },
+    "cwds": [
+      "C:\\dev\\ducketz",
+      "C:\\DATASTORE"
+    ],
+    "created_at": 1787119863911,
+    "updated_at": 1788563044461
+  },
+  {
+    "version": 1,
+    "id": "loop-c-weekly-operator-review",
+    "kind": "cron",
+    "name": "Loops Gameplan Weekly Review",
+    "prompt": "Review saved Ducketz Gameplans in C:\\dev\\ducketz as a standalone Saturday Scheduled task. Read docs\\loops-system-analysis\\WEEKLY_REVIEW_AUTOMATION.md completely, then run .\\.venv\\Scripts\\python.exe -u -m ml.gameplan_evaluation --datastore-target pc once. The starting Gameplan date is September 4, 2026; the first Saturday review covers September 4 only. Review the completed week's Gameplans and preserve every longer forecast until its exact target window matures, including forecasts in older Gameplans after the latest pointer advances. Verify the evaluation pointer, manifest, receipt, and output checksums using read_evaluation_history. Report evaluated, pending-maturity, and mature-but-missing-data counts, probability/direction scores with sample sizes and model-group/promotion-status results when outcomes exist, and report paths. Missing data is not a zero score. Do not import earlier prediction systems, refresh a paper ledger, make a risk proposal, contact a broker, retrain, alter any saved Gameplan, or place/cancel/replace an order. If overnight work is still training or building outcome data, report current coverage and pending forecasts without interrupting healthy training.",
+    "status": "ACTIVE",
+    "rrule": "FREQ=WEEKLY;BYDAY=SA;BYHOUR=9;BYMINUTE=0",
+    "model": "gpt-5.6-sol",
+    "reasoning_effort": "ultra",
+    "execution_environment": "local",
+    "target": {
+      "type": "project",
+      "project_id": "c899e194-7020-4972-99bb-bc40bea2ae8c"
+    },
+    "cwds": [
+      "C:\\dev\\ducketz",
+      "C:\\DATASTORE"
+    ],
+    "created_at": 1788063075820,
+    "updated_at": 1788562496659
+  },
+  {
+    "version": 1,
+    "id": "loops-stock-trader-daily-adaptation",
+    "kind": "cron",
+    "name": "Loops Overnight Health Watch",
+    "prompt": "Inspect Ducketz overnight work in C:\\dev\\ducketz as a standalone Scheduled health watch. Read docs\\loops-system-analysis\\NIGHTLY_GAMEPLAN.md, then run .\\.venv\\Scripts\\python.exe -m ml.overnight_runtime --datastore-target pc --status. Inspect the current stage report, recent stage log and health.jsonl, and existing Scheduled tasks. If a task already actively supervises or repairs this run, do not launch another owner or edit concurrently. A fresh heartbeat alone does not prove training progress: compare CPU/I/O/log progress and inspect reported errors. If the original task ended, adopt supervision, investigate failures as they appear, apply a focused evidence-backed non-trading repair with relevant tests, and use the documented controlled stop/recover/resume procedure. An exited supervisor needs --recover-run before --resume-run; creation-time checks must protect unrelated processes. Keep supervising an adopted or resumed run until completion or a concrete unresolved blocker. Preserve the original next-session 04:00 Pacific deadline and completed stages. Do not stop quiet CPU-active training or blindly retry unchanged failures. Record evidence and repairs in the run's operator-notes.md. For no run or an older completed run, start missing scheduled work only after 17:15 Pacific on an actual exchange-session date and only when no active Scheduled owner exists; use the normal --once --scheduled command. Completed current-session work and holiday no-ops need no restart. On weekends or before the evening close, only supervise/resume an existing attempt whose deadline has not passed; never invent a new fetch or plan. Do not change trading code, controls, limits, model promotion gates, immutable Gameplans, raw data, or locks, and never place/cancel/replace orders or start the former recurring stack. Verify any repaired run's final receipt, new Gameplan, and evaluation coverage; report unresolved failures with evidence. Before starting, adopting, stopping, repairing, or resuming any work, generate one new UUID for this Scheduled task and acquire the supervision claim with python -m ml.overnight_runtime --datastore-target pc --claim-supervision <your-uuid>, using the repository .venv Python. Proceed only on ACQUIRED. Reuse your UUID to renew at least once a minute while monitoring or repairing; if BUSY, another task owns the run, so make no changes and end this wake. Never reuse another task's UUID. Release your claim with --release-supervision <your-uuid> when finished. The three-minute expiry lets the watch adopt an abandoned task without two operators repairing concurrently.",
+    "status": "ACTIVE",
+    "rrule": "FREQ=HOURLY;INTERVAL=1;BYMINUTE=0,10,20,30,40,50;BYSECOND=0",
+    "model": "gpt-5.6-sol",
+    "reasoning_effort": "ultra",
+    "notification_policy": "failed_runs_only",
+    "execution_environment": "local",
+    "target": {
+      "type": "project",
+      "project_id": "c899e194-7020-4972-99bb-bc40bea2ae8c"
+    },
+    "cwds": [
+      "C:\\dev\\ducketz",
+      "C:\\DATASTORE"
+    ],
+    "created_at": 1788179026695,
+    "updated_at": 1788563052420
+  }
+]

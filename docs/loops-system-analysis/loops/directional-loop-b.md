@@ -1,14 +1,18 @@
 # Directional Loop B
 
+> **Current deployment (2026-09-04):** Directional Loop B runs once as stage 2
+> of the sequential overnight owner. The former 30-minute supervisor is stopped;
+> cadence details below are legacy implementation capability.
+
 ## Identity
 
 - Canonical name: Directional Loop B
 - Logical aliases or numbering: Loop B; startup owner 6
 - Runtime entry point: `python -m ml.prediction_runtime`
 - Owning package: `ml`
-- Classification: Independent production loop
-- Scheduling mechanism: recurring supervisor gated by the shared Loop A datastore-cycle lock
-- Cadence and phase: every 30 minutes at UTC phase +6 minutes in the production command; one classified-transient retry; immediate startup recovery at 35 minutes of verified authority age
+- Classification: bounded overnight model/prediction stage
+- Scheduling mechanism: invoked after successful Loop A close fetch
+- Cadence and phase: once per overnight run
 - Lock or single-writer mechanism: `.duckets-ml-prediction-runtime.lock` plus Loop A’s shared datastore-cycle lock during each run
 - Primary code evidence: **Confirmed.** `ml/prediction_runtime.py:26`, `ml/prediction_runtime.py:76`, `ml/prediction_runtime.py:189`, `ml/prediction_runtime.py:192`, `ml/prediction_runtime.py:209`
 
@@ -58,7 +62,7 @@ backfill; the v3 macro profile begins only after ALFRED readiness is verified.
 | Rolling samples | Strategy; Daily ALFRED coverage planner; this loop | `ml/runs/<generation>/samples.parquet` | symbol/horizon/decision and availability clocks; target window/action deadline; grouped features; open/close/raw and cost-adjusted returns; binary target; `COMPLETE`/incomplete label status/reason | Closed-lockbox target values are redacted; schema and manifest bound to the immutable run | **Confirmed.** `ml/parquet_contracts.py:98`, `ml/runtime_pipeline.py:695`, `ml/runtime_pipeline.py:699` |
 | Directional predictions | Strategy and UI/readers; this loop | `ml/runs/<generation>/predictions.parquet` | `raw_probability` and `calibrated_probability` in [0,1], model/version/calibration, `LIVE` or `BACKTEST`, target/action clocks and status | LIVE must publish before action deadline; fresh and carried rows are distinguished; authoritative only via valid run receipt/current pointer | **Confirmed.** `ml/parquet_contracts.py:131`, `ml/runtime_pipeline.py:494`, `ml/runtime_pipeline.py:503`, `ml/runtime_pipeline.py:603`, `ml/runtime_pipeline.py:2450` |
 | Evaluation and monitoring | model-reuse gate/research/UI | `evaluations.parquet`, `monitoring.parquet` | observed binary target/returns, raw/calibrated log loss and Brier score, 0.5 accuracy; status/metric/reference/evidence window | only matured causally visible targets; receipt-bound run; sealed targets absent | **Confirmed.** `ml/parquet_contracts.py:156`, `ml/parquet_contracts.py:187`, `ml/runtime_pipeline.py:717`, `ml/runtime_pipeline.py:729` |
-| Intelligence view | read-only UI/consumers | `intelligence.parquet` and compatibility mirror `ml-intelligence/latest/rolling-predictions.parquet` | probability up/down, actionability/operational/model/live/intelligence status, clocks, model identity; intentional weekly suffix N/A versus genuine stale absence | immutable-run file is authoritative; a suffix N/A requires one coherent per-symbol LIVE prefix and carries no probability; latest mirror is compatibility-only | **Confirmed.** `ml/parquet_contracts.py:224`, `ml/runtime_pipeline.py:3762`, `ml/runtime_pipeline.py:4005` |
+| Intelligence view | read-only compatibility consumers | `intelligence.parquet` and compatibility mirror `ml-intelligence/latest/rolling-predictions.parquet` | probability up/down, actionability/operational/model/live/intelligence status, clocks, model identity; intentional weekly suffix N/A versus genuine stale absence | immutable-run file is authoritative; a suffix N/A requires one coherent per-symbol LIVE prefix and carries no probability; latest mirror is compatibility-only. The Duckets `Rolling Forecasts` tab now defaults to the newer immutable nightly-gameplan pointer and uses this output only when no gameplan pointer exists. | **Confirmed.** `ml/parquet_contracts.py:224`, `ml/runtime_pipeline.py:3762`, `ml/runtime_pipeline.py:4005`, `app/ui/rolling_forecast_data.py` |
 | Manifest, receipt and current pointer | Strategy; UI/readers; Daily ALFRED reader | `ml/runs/<generation>/manifest.json`, publication receipt, `ml/latest/run.json` | source checksum inventory, exact config/features/models/routes/errors, causal cutoff, publication counts, prior authority lineage | files and manifest complete first; receipt verified before atomic pointer; pointer is the sole generation boundary | **Confirmed.** `ml/runtime_pipeline.py:801`, `ml/runtime_pipeline.py:846`, `ml/runtime_pipeline.py:859`, `ml/runtime_pipeline.py:943` |
 | Compatible model generations | later Loop B cycles | model artifact directories/receipts | estimator, calibrator, feature set, target definition, source fingerprint, trained-through/partitions and assessment metrics | reused only after schema/specification/source compatibility checks; otherwise refit chronologically | **Confirmed.** `ml/model_runtime.py:372`, `ml/model_runtime.py:437`, `ml/model_runtime.py:625` |
 

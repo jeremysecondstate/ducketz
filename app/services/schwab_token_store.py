@@ -14,12 +14,10 @@ from filelock import FileLock
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-LEGACY_TOKEN_CACHE_DIRECTORY = PROJECT_ROOT / "data"
-DEFAULT_TOKEN_CACHE_PATH = (
-    Path(os.environ["LOCALAPPDATA"])
-    if os.environ.get("LOCALAPPDATA")
-    else Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local" / "state")
-) / "Ducket" / "schwab_tokens.json"
+# Operator contract: the UI, PyCharm workflows, and production runtimes share
+# this project-local cache. ``data/`` is gitignored; do not relocate or reject
+# this path without an explicit operator request.
+DEFAULT_TOKEN_CACHE_PATH = PROJECT_ROOT / "data" / "schwab_tokens.json"
 TOKEN_CACHE_PATH = DEFAULT_TOKEN_CACHE_PATH
 ACCESS_TOKEN_EXPIRY_SAFETY_SECONDS = 60
 TOKEN_CACHE_LOCK_TIMEOUT_SECONDS = 30.0
@@ -35,7 +33,6 @@ def locked_token_cache() -> Iterator[None]:
     """Serialize a complete token refresh transaction across sessions/processes."""
 
     TOKEN_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _protect_token_path(TOKEN_CACHE_PATH.parent, directory=True)
     cache_path = TOKEN_CACHE_PATH.resolve()
     lock_path = TOKEN_CACHE_PATH.with_name(f"{TOKEN_CACHE_PATH.name}.lock")
     with _TOKEN_CACHE_THREAD_LOCK:
@@ -58,7 +55,6 @@ def locked_token_cache() -> Iterator[None]:
             _TOKEN_CACHE_LOCK_STATE.depth = 1
             _TOKEN_CACHE_LOCK_STATE.cache_path = cache_path
             try:
-                _reject_untrusted_legacy_cache_unlocked()
                 _remove_stale_token_temp_files_unlocked()
                 if TOKEN_CACHE_PATH.exists():
                     _protect_token_path(TOKEN_CACHE_PATH)
@@ -83,27 +79,6 @@ def _interprocess_token_lock(path: Path, *, timeout: float) -> Iterator[None]:
     ):
         _protect_token_path(path)
         yield
-
-
-def _reject_untrusted_legacy_cache_unlocked() -> None:
-    if TOKEN_CACHE_PATH.resolve() != DEFAULT_TOKEN_CACHE_PATH.resolve():
-        return
-    if not LEGACY_TOKEN_CACHE_DIRECTORY.exists():
-        return
-    with os.scandir(LEGACY_TOKEN_CACHE_DIRECTORY) as entries:
-        legacy_cache_exists = any(
-            entry.name.startswith("schwab_tokens")
-            and entry.name.endswith(".json")
-            for entry in entries
-        )
-    if not legacy_cache_exists:
-        return
-    raise RuntimeError(
-        "An untrusted repository-local Schwab token cache was detected. "
-        "Retire it without importing it, then reauthorize Schwab so the "
-        "potentially exposed refresh token is rotated."
-    )
-
 
 def load_token_payload(*, strict: bool = False) -> dict[str, Any] | None:
     with locked_token_cache():

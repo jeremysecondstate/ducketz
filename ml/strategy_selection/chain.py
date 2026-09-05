@@ -113,6 +113,8 @@ def load_option_chain_history(
     *,
     symbol: str,
     available_not_after: object | None = None,
+    available_not_before: object | None = None,
+    latest_snapshot_only: bool = False,
     allow_historical_opra_replay: bool = True,
 ) -> OptionChainHistory:
     root = Path(datastore_root)
@@ -120,12 +122,16 @@ def load_option_chain_history(
     cached = _load_cached_opra_chain_history(
         root,
         symbol=clean_symbol,
+        available_not_before=available_not_before,
         available_not_after=available_not_after,
+        latest_snapshot_only=latest_snapshot_only,
     )
     prospective = _load_committed_chain_history(
         root,
         symbol=clean_symbol,
+        available_not_before=available_not_before,
         available_not_after=available_not_after,
+        latest_snapshot_only=latest_snapshot_only,
     )
     if prospective is not None:
         # Immutable prospective receipts are the operational authority.  They
@@ -256,9 +262,17 @@ def _load_cached_opra_chain_history(
     datastore_root: Path,
     *,
     symbol: str,
+    available_not_before: object | None,
     available_not_after: object | None,
+    latest_snapshot_only: bool,
 ) -> OptionChainHistory | None:
-    cache = load_opra_strategy_cache(datastore_root)
+    cache = load_opra_strategy_cache(
+        datastore_root,
+        symbols=(symbol,),
+        available_not_before=available_not_before,
+        available_not_after=available_not_after,
+        latest_snapshot_only=latest_snapshot_only,
+    )
     if cache is None:
         return None
     contracts = cache.contracts.loc[
@@ -380,7 +394,9 @@ def _load_committed_chain_history(
     datastore_root: Path,
     *,
     symbol: str,
+    available_not_before: object | None,
     available_not_after: object | None,
+    latest_snapshot_only: bool,
 ) -> OptionChainHistory | None:
     """Load provider-neutral prospective receipts with OPRA priority per target."""
 
@@ -392,7 +408,25 @@ def _load_committed_chain_history(
             provider=provider,
             available_not_after=available_not_after,
         )
-        for snapshot in snapshots:
+        eligible = [
+            snapshot
+            for snapshot in snapshots
+            if not (
+                available_not_before is not None
+                and _utc(snapshot.available_at) < _utc(available_not_before)
+            )
+        ]
+        if latest_snapshot_only and eligible:
+            eligible = [
+                max(
+                    eligible,
+                    key=lambda value: (
+                        _utc(value.snapshot_for),
+                        _utc(value.available_at),
+                    ),
+                )
+            ]
+        for snapshot in eligible:
             selected.setdefault(pd.Timestamp(snapshot.snapshot_for), snapshot)
     snapshots = tuple(
         sorted(
@@ -722,6 +756,119 @@ def entry_chain_receipt(
     return _receipt_for_surface(history, surface)
 
 
+def latest_completed_session_chain_receipt(
+    history: OptionChainHistory,
+    *,
+    known_at: object,
+    target_window_start: object,
+    maximum_age: pd.Timedelta,
+    preferred_provider: str = "databento-opra",
+) -> ChainReceipt | None:
+    """Return the newest completed-session chain known before a future target.
+
+    Equity bars can continue after the listed-options session closes.  An
+    overnight planner must not reject the closing OPRA snapshot merely because
+    a later after-hours equity bar exists.  This selector is intentionally
+    separate from :func:`entry_chain_receipt`: it is for frozen next-session
+    planning only, it bounds the real quote age, and it prefers OPRA when two
+    providers describe the same market instant.
+    """
+
+    if maximum_age <= pd.Timedelta(0):
+        raise ValueError("maximum_age must be positive")
+    target_start = _utc(target_window_start)
+    cutoff = min(_utc(known_at), target_start - pd.Timedelta(nanoseconds=1))
+    lower = cutoff - maximum_age
+    eligible = _surface_available_slice(history, lower, cutoff).copy()
+    if eligible.empty:
+        return None
+    snapshots = pd.to_datetime(
+        eligible["snapshot_for"], utc=True, errors="coerce"
+    )
+    eligible = eligible.loc[
+        snapshots.notna() & snapshots.ge(lower) & snapshots.le(cutoff)
+    ].copy()
+    if eligible.empty:
+        return None
+    newest_snapshot = pd.Timestamp(eligible["snapshot_for"].max())
+    eligible = eligible.loc[eligible["snapshot_for"].eq(newest_snapshot)].copy()
+    preferred = str(preferred_provider).strip().lower()
+    providers = eligible.get(
+        "source_provider", pd.Series("", index=eligible.index)
+    ).astype("string").fillna("").str.lower()
+    eligible["__provider_order"] = (~providers.eq(preferred)).astype(int)
+    surface = eligible.sort_values(
+        ["__provider_order", "available_at"],
+        ascending=[True, False],
+        kind="mergesort",
+    ).iloc[0].drop(labels="__provider_order")
+    receipt = _receipt_for_surface(history, surface)
+    contracts = receipt.contracts.copy()
+    if str(surface.get("source_provider") or "").strip().lower() == preferred:
+        alternatives = eligible.loc[
+            ~eligible.index.to_series().eq(surface.name)
+        ].sort_values("available_at", ascending=False, kind="mergesort")
+        for _, alternative_surface in alternatives.iterrows():
+            alternative = _receipt_for_surface(history, alternative_surface)
+            if alternative.contracts.empty:
+                continue
+            enrichment = (
+                alternative.contracts.sort_values("available_at", kind="mergesort")
+                .drop_duplicates("contract_symbol", keep="last")
+                .set_index("contract_symbol")
+            )
+            contract_symbols = contracts["contract_symbol"].astype("string")
+            enriched = False
+            for column in (
+                "underlying_price",
+                "open_interest",
+                "volume",
+                "delta",
+                "gamma",
+                "theta",
+                "vega",
+            ):
+                if column not in contracts or column not in enrichment:
+                    continue
+                replacement = contract_symbols.map(enrichment[column])
+                missing = pd.to_numeric(
+                    contracts[column], errors="coerce"
+                ).isna()
+                available = pd.to_numeric(
+                    replacement, errors="coerce"
+                ).notna()
+                use = missing & available
+                if use.any():
+                    contracts.loc[use, column] = replacement.loc[use]
+                    enriched = True
+            if enriched:
+                alternative_provider = str(
+                    alternative_surface.get("source_provider") or "supplemental"
+                ).strip().lower()
+                contracts["enrichment_source_provider"] = alternative_provider
+                break
+    quote_times = pd.to_datetime(
+        contracts.get("quote_timestamp", contracts["snapshot_for"]),
+        utc=True,
+        errors="coerce",
+    )
+    quote_times = quote_times.fillna(
+        pd.to_datetime(contracts["snapshot_for"], utc=True, errors="coerce")
+    )
+    age = (cutoff - quote_times).dt.total_seconds().clip(lower=0.0)
+    reported = pd.to_numeric(
+        contracts.get(
+            "quote_staleness_seconds",
+            pd.Series(0.0, index=contracts.index),
+        ),
+        errors="coerce",
+    ).fillna(0.0)
+    contracts["quote_staleness_seconds"] = pd.concat(
+        [reported, age], axis=1
+    ).max(axis=1)
+    return ChainReceipt(contracts=contracts, surface=surface)
+
+
 def exit_chain_receipt(
     history: OptionChainHistory,
     *,
@@ -995,5 +1142,6 @@ __all__ = [
     "entry_stock_quote",
     "exit_chain_receipt",
     "exit_stock_quote",
+    "latest_completed_session_chain_receipt",
     "load_option_chain_history",
 ]

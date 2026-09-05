@@ -59,7 +59,7 @@ from options.publication import SUPPORTED_OPTION_PROVIDERS, option_snapshot_poin
 
 
 STRATEGY_RUNTIME_POLICY_VERSION = (
-    "strategy-runtime-daily-weekly-opra-execution-gate-v1"
+    "strategy-runtime-completed-session-opra-planning-v4"
 )
 
 
@@ -151,6 +151,7 @@ def run_strategy_once(
             ),
             history_available_not_after=created,
             pricing_mode=pricing_mode,
+            completed_session_planning=True,
         )
         timing.annotate(
             row_count=len(selection.candidates),
@@ -542,7 +543,9 @@ def _strategy_candidate_contract() -> dict[str, object]:
         "opra_execution_probability_gate": {
             "all_option_quotes_valid": True,
             "maximum_relative_bid_ask_spread": 0.35,
-            "maximum_evidence_lag_seconds": 7200.0,
+                "maximum_evidence_lag_seconds": 64800.0,
+                "evidence_context": "latest_completed_options_session_for_overnight_planning",
+                "live_order_quote_gate_seconds": 900.0,
             "minimum_open_interest_or_volume": {
                 "minimum_open_interest": 1.0,
                 "minimum_total_volume": 10.0,

@@ -426,13 +426,30 @@ def load_opra_strategy_cache(
     datastore_root: Path,
     *,
     expected_cache_key: str | None = None,
+    symbols: Sequence[str] | None = None,
+    available_not_before: object | None = None,
+    available_not_after: object | None = None,
+    latest_snapshot_only: bool = False,
 ) -> OpraStrategyCache | None:
     root = Path(datastore_root).resolve()
     pointer = root / "ml" / "strategy-opra-history-latest" / "run.json"
     if not pointer.is_file():
         return None
+    clean_symbols = tuple(
+        dict.fromkeys(
+            str(value).strip().upper()
+            for value in (symbols or ())
+            if str(value).strip()
+        )
+    )
+    windowed_read = bool(
+        clean_symbols
+        or available_not_before is not None
+        or available_not_after is not None
+        or latest_snapshot_only
+    )
     memory_key = (str(root), pointer.stat().st_mtime_ns)
-    remembered = _MEMORY_CACHES.get(memory_key)
+    remembered = None if windowed_read else _MEMORY_CACHES.get(memory_key)
     if remembered is not None and (
         expected_cache_key is None or remembered.cache_key == expected_cache_key
     ):
@@ -488,16 +505,60 @@ def load_opra_strategy_cache(
                     "checksum_sha256"
                 ):
                     source_files.append(path)
+        parquet_filters: list[tuple[str, str, object]] = []
+        if clean_symbols:
+            parquet_filters.append(("symbol", "in", list(clean_symbols)))
+        if available_not_before is not None:
+            parquet_filters.append(
+                ("available_at", ">=", _utc(available_not_before).to_pydatetime())
+            )
+        if available_not_after is not None:
+            parquet_filters.append(
+                ("available_at", "<=", _utc(available_not_after).to_pydatetime())
+            )
+        read_filters = parquet_filters or None
+        surfaces = pd.read_parquet(
+            run / "surfaces.parquet", filters=read_filters
+        )
+        contract_filters = list(parquet_filters)
+        if latest_snapshot_only and not surfaces.empty:
+            ordered = surfaces.sort_values(
+                ["snapshot_for", "available_at"], kind="stable"
+            )
+            latest = ordered.iloc[-1]
+            latest_snapshot_for = pd.Timestamp(
+                latest["snapshot_for"]
+            ).to_pydatetime()
+            latest_available_at = pd.Timestamp(
+                latest["available_at"]
+            ).to_pydatetime()
+            surfaces = surfaces.loc[
+                pd.to_datetime(
+                    surfaces["snapshot_for"], utc=True, errors="coerce"
+                ).eq(_utc(latest_snapshot_for))
+                & pd.to_datetime(
+                    surfaces["available_at"], utc=True, errors="coerce"
+                ).eq(_utc(latest_available_at))
+            ].copy()
+            contract_filters.extend(
+                (
+                    ("snapshot_for", "==", latest_snapshot_for),
+                    ("available_at", "==", latest_available_at),
+                )
+            )
         loaded = OpraStrategyCache(
             run_directory=run,
             cache_key=str(manifest["cache_key"]),
-            contracts=pd.read_parquet(run / "contracts.parquet"),
-            surfaces=pd.read_parquet(run / "surfaces.parquet"),
+            contracts=pd.read_parquet(
+                run / "contracts.parquet", filters=contract_filters or None
+            ),
+            surfaces=surfaces,
             source_files=tuple(dict.fromkeys(source_files)),
             reused=True,
         )
-        _MEMORY_CACHES.clear()
-        _MEMORY_CACHES[memory_key] = loaded
+        if not windowed_read:
+            _MEMORY_CACHES.clear()
+            _MEMORY_CACHES[memory_key] = loaded
         return loaded
     except (KeyError, OSError, ValueError, json.JSONDecodeError):
         return None

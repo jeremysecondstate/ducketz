@@ -1,0 +1,86 @@
+{
+  "status": "DRAFT_VALIDATED_NOT_APPLIED",
+  "broker_contact": false,
+  "orders_placed": 0,
+  "hours": [
+    {
+      "hour": 4,
+      "signals": 6,
+      "session": "PRE",
+      "time_in_force": "AM"
+    },
+    {
+      "hour": 5,
+      "signals": 5,
+      "session": "PRE",
+      "time_in_force": "AM"
+    },
+    {
+      "hour": 6,
+      "signals": 4,
+      "session": "PRE",
+      "time_in_force": "AM"
+    },
+    {
+      "hour": 7,
+      "signals": 4,
+      "session": "REGULAR",
+      "time_in_force": "DAY"
+    },
+    {
+      "hour": 8,
+      "signals": 5,
+      "session": "REGULAR",
+      "time_in_force": "DAY"
+    },
+    {
+      "hour": 9,
+      "signals": 5,
+      "session": "REGULAR",
+      "time_in_force": "DAY"
+    },
+    {
+      "hour": 10,
+      "signals": 4,
+      "session": "REGULAR",
+      "time_in_force": "DAY"
+    },
+    {
+      "hour": 11,
+      "signals": 6,
+      "session": "REGULAR",
+      "time_in_force": "DAY"
+    },
+    {
+      "hour": 12,
+      "signals": 5,
+      "session": "REGULAR",
+      "time_in_force": "DAY"
+    },
+    {
+      "hour": 13,
+      "signals": 6,
+      "session": "POST",
+      "time_in_force": "PM"
+    },
+    {
+      "hour": 14,
+      "signals": 6,
+      "session": "POST",
+      "time_in_force": "PM"
+    },
+    {
+      "hour": 15,
+      "signals": 6,
+      "session": "POST",
+      "time_in_force": "PM"
+    },
+    {
+      "hour": 16,
+      "signals": 6,
+      "session": "POST",
+      "time_in_force": "PM"
+    }
+  ],
+  "actual_broker_pause_and_non_session_gates_retained": true
+}

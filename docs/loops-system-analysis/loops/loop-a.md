@@ -1,22 +1,26 @@
 # Loop A
 
+> **Current deployment (2026-09-04):** Loop A is a bounded first stage of
+> `ml.overnight_runtime` at 17:05 PT, not a continuously running 15-minute
+> supervisor. Recurrence details below describe retained legacy capability.
+
 ## Identity
 
 - Canonical name: Loop A
 - Logical aliases or numbering: startup owner 2; fetching/orchestration loop
 - Runtime entry point: `python -m datafetching.orchestrate`
 - Owning package: `datafetching`
-- Classification: Independent production loop
-- Scheduling mechanism: execute immediately, then sleep to the next 15-minute UTC boundary and apply a 20-second pre-start pause
-- Cadence and phase: 15 minutes; effective recurring start about boundary +20 seconds
+- Classification: bounded overnight stage; legacy independent loop retained
+- Scheduling mechanism: invoked once by `ml.overnight_runtime`
+- Cadence and phase: weekdays after the 17:00 PT stock close
 - Lock or single-writer mechanism: `.ducketz-orchestration.lock` plus `.ducketz-loop-a-cycle.lock` OS lock shared with Directional Loop B
 - Primary code evidence: **Confirmed.** `datafetching/orchestrate.py:38`, `datafetching/orchestrate.py:169`, `datafetching/orchestrate.py:172`, `datafetching/orchestrate.py:243`, `datafetching/loop_a_cycle.py:199`
 
 ## Purpose
 
-**Confirmed:** Loop A is the equity/provider and calculated-feature owner. It ingests the six-symbol watchlist across Databento, FMP, current FRED, Schwab, and SEC; builds fundamental, technical, and signal products; publishes an early exact-bar readiness barrier for Pricing/Options; and later publishes a complete-cycle boundary for Directional Loop B. `docs/datafetch-ml/current_start_command:50`, `docs/datafetch-ml/current_start_command:55`, `datafetching/orchestrate.py:326`, `datafetching/orchestrate.py:389`
+**Confirmed:** Loop A is the equity/provider and calculated-feature owner. It ingests the six-symbol watchlist across Databento, FMP, current FRED, Schwab, and SEC; runs bounded inline CME/Options work; builds feature products; and publishes a complete-cycle boundary for Directional Loop B. In the same post-close stage it advances the exact OPRA strategy-history dependencies `ohlcv-1h`, `cbbo-1m`, and `definition`. `ml/overnight_runtime.py`, `datafetching/orchestrate.py`
 
-**Confirmed non-ownership:** in production it does not own CME/L2, option-chain capture, ALFRED-vintage history, option-pricing inference, directional fitting/scoring, or Strategy. Inline CME/Options modes are compatibility paths and default to `external`. `datafetching/orchestrate.py:90`, `datafetching/orchestrate.py:96`
+**Confirmed non-ownership:** in production it does not own CME/L2, prospective option-chain capture, ALFRED-vintage history, option-pricing inference, directional fitting/scoring, or Strategy inference/training. Inline CME/Options modes are compatibility paths and default to `external`; the OPRA history subprocess is acquisition only and has no prediction or live-snapshot authority. `datafetching/orchestrate.py`, `datafetching/options_runtime.py`
 
 **Startup/bootstrap boundary:** Loop A's operational equity dataset is
 `EQUS.MINI`, whose Historical endpoint is current during the session and whose
@@ -43,7 +47,8 @@ consolidated EQUS rows. The 2026-08-19 switch is checksum-receipted under
 | Current FRED observations | FRED CSV lane | GDP/CPIAUCSL/UNRATE/FEDFUNDS normalized Parquets | current/revised values, observation and fetch/availability clocks | prospective-rate/monitoring only; not ALFRED historical Loop B evidence | One eligible source for Pricing's required causal live FRED/ALFRED rate; never historical macro authority | **Confirmed.** `datafetching/fred_fetch.py:64`, `ml/option_pricing/causal.py:264`, `docs/datafetch-ml/current_start_command:39` |
 | Equity quotes | Schwab | batched quote endpoint; price-history remains an explicit compatibility/manual mode | bid/ask/mid, quote event/receipt, spread, quote-quality flags | receipt-bound, quote staleness and crossed/locked quality | Best-effort directional enrichment; recurring Loop A persists/reports capture failures without invalidating an otherwise valid Databento-backed generation. The stock trader independently requires current Schwab broker state before submission. | **Confirmed.** `datafetching/schwab_fetch.py:113`, `datafetching/orchestrate.py`, `ml/datasets/families.py:383`, `ml/stock_trader/runtime.py` |
 | Filing document text/events | SEC, with FMP metadata | normalized corporate/SEC paths | accepted/receipt/extraction clocks; dilution/offering/filing impulse and size ratio | `available_at` cannot precede any component clock | Optional by horizon/profile; failures count | **Confirmed.** `datafetching/main.py:21`, `ml/datasets/families.py:1051`, `ml/datasets/families.py:1108` |
-| Prior canonical Parquets | Loop A prior cycles | datastore provider/category/symbol paths | stable natural keys and IDs, current-revised versions, `available_at` | idempotent continuation/upsert; exact temporal keys normalized to UTC | Optional bootstrap state; required for incremental continuity when present | **Confirmed.** `datafetching/parquet_store.py:106`, `datafetching/parquet_store.py:468`, `datafetching/parquet_store.py:1006` |
+| OPRA strategy history | Databento `OPRA.PILLAR` through `datafetching.options_history` | `market-data/databento/opra/OPRA.PILLAR/{ohlcv-1h,cbbo-1m,definition}` plus v5 cursors | exact CBBO entry/exit outcomes, hourly surface context, point-in-time contract identity | once per UTC date after 17:00 PT (00:00 UTC in daylight time); valid cursors only; provider preflight; 20 GB/USD 1/30-day limits | Required production maintenance input before Strategy-profit modeling | **Confirmed.** `datafetching/orchestrate.py`, `datafetching/options_history.py`, `ml/strategy_profit_training_runtime.py` |
+| Prior canonical Parquets | Loop A prior cycles | datastore provider/category/symbol paths | stable natural keys and IDs, current-revised versions, `available_at` | idempotent continuation/upsert; exact temporal keys normalized to UTC; native EQUS 1h/1d wins over a same-timestamp 1m-derived bridge | Optional bootstrap state; required for incremental continuity when present | **Confirmed.** `datafetching/parquet_store.py:106`, `datafetching/parquet_store.py:468`, `datafetching/parquet_store.py:1006`, `datafetching/bar_consolidation.py` |
 
 ## Processing and decisions
 
@@ -52,9 +57,10 @@ consolidated EQUS rows. The 2026-08-19 switch is checksum-receipted under
 3. **Confirmed:** run Databento `EQUS.MINI` first across the watchlist. Each native request begins at an overlap of the latest same-dataset operational timestamp rather than rebuilding history. The different-dataset XNAS cold archive remains provenance-only. Prematurely ended responses are transient-retry eligible; authentication, entitlement, malformed-request, and validation failures are immediate. `datafetching/databento_fetch.py:544`, `app/services/databento_retry.py:14`, `app/services/databento_retry.py:24`
 4. **Confirmed:** the one-minute completion callback attempts all-symbol readiness before unrelated providers and calculated stages. `publish_bar_readiness` resolves the exact completed one-minute bar and close, constructs semantic checksums, writes private manifest/receipt files, renames the immutable directory, verifies it, and updates the pointer. A missing exact row may use provider-aware bounded recovery; contradictory/corrupt readiness does not. Failure leaves Pricing to its own deadline and does not abort the remaining Loop A work. `datafetching/orchestrate.py:300`, `datafetching/orchestrate.py:344`, `datafetching/orchestrate.py:395`, `datafetching/bar_readiness.py:82`
 5. **Confirmed:** fetch the remaining provider lanes in batched watchlist form; shared FRED runs once for the first symbol. Normalize/upsert data and errors. In production quote-only mode, Schwab quote capture is best-effort enrichment: capture errors remain persisted and logged but are excluded from the directional generation's blocking failure count. Explicit inline Schwab options or price-history modes remain blocking. `datafetching/main.py:214`, `datafetching/main.py:217`, `datafetching/parquet_store.py:290`, `datafetching/orchestrate.py`
-6. **Confirmed:** run fundamental calculations when FMP is configured, then technicals, then cross-domain signals for each symbol. A nonzero stage exit increments failure count. `datafetching/orchestrate.py:389`, `datafetching/orchestrate.py:409`, `datafetching/orchestrate.py:429`
+6. **Confirmed:** after derived-bar generation, remove only 1h/1d derived timestamps already supplied by native EQUS and retain any derived-only gaps. Then run fundamental calculations when FMP is configured, technicals, and cross-domain signals for each symbol. A nonzero stage exit increments failure count. `datafetching/databento_fetch.py`, `datafetching/bar_consolidation.py`, `datafetching/orchestrate.py:389`, `datafetching/orchestrate.py:409`, `datafetching/orchestrate.py:429`
 7. **Confirmed:** publish terminal `COMPLETE` only when failure count is zero; otherwise `FAILED`. `.ducketz-loop-a-complete.json` remains the last successful generation. `datafetching/loop_a_cycle.py:118`, `datafetching/loop_a_cycle.py:127`
-8. **Confirmed:** release the shared lock, wait for the next boundary, then pause 20 seconds. `datafetching/orchestrate.py:196`, `datafetching/orchestrate.py:209`
+8. **Confirmed:** after the 17:00 PT close-cycle publication, run at most one daily OPRA history subprocess for `ohlcv-1h`, `cbbo-1m`, and `definition`. It uses valid cursors only, provider byte/cost preflight, and bounded advance, then runs an audit-only catalog refresh. A nonzero history or catalog result fails the bounded overnight stage. `datafetching/orchestrate.py`, `datafetching/options_history.py`, `datafetching/datastore_hygiene.py`
+9. **Confirmed:** wait for the next boundary, then pause 20 seconds. `datafetching/orchestrate.py`
 
 The one-shot provider/fundamental/technical/signal CLIs are owned stages, not independent production loops. `tests/test_loop_a_orchestration.py:19`
 
@@ -69,6 +75,7 @@ The one-shot provider/fundamental/technical/signal CLIs are owned stages, not in
 | Conditional equity archive lineage | Operators and later same-dataset archive materialization | operational `.archive-lineage.json` beside a materialized Loop A target | archive dataset/live dataset, selected source paths and SHA-256 values, target path, row bounds/counts, creation time | source checksums and dataset identity must reverify; current XNAS/EQUS mismatch produces no materialization edge | **Confirmed.** `datafetching/databento_archive.py:213`, `datafetching/databento_fetch.py:544` |
 | Calculated fundamental, technical, signal, energy, quote and SEC feature products | Directional Loop B; stock quote subset also Strategy | symbol/pool calculated feature paths | registered feature values, calculation/schema versions, component `available_at`, quality and lifecycle status | written by owned calculation stages; complete-cycle pointer states whether the whole generation succeeded | **Confirmed.** `datafetching/orchestrate.py:389`, `ml/feature_registry.py:545`, `ml/feature_registry.py:626`, `ml/feature_registry.py:848` |
 | Prospective current FEDFUNDS rate context | Active Pricing rate loader | `pools/macro/features/prospective-release-context/fred/*.parquet` when bridge exists | FEDFUNDS level and local receipt availability; other macro values null | valid only for decisions after its actual receipt; never rewritten as historical | **Confirmed.** `datafetching/fred_vintages.py:456`, `datafetching/fred_vintages.py:541`, `ml/option_pricing/rates.py:369` |
+| Maintained OPRA strategy history | Strategy-profit training; offline Pricing/Strategy evaluation; operator health | canonical OPRA partitions, `state/symbol-history/*.json`, and `health/current.json` | native DBN plus normalized Parquet, manifest, receipt, event bounds, cursor completion, usage counts | each scope publishes only after exact request/receipt/checksum validation; research-only schemas are not made current implicitly | **Confirmed.** `datafetching/databento_opra_history.py`, `ml/strategy_profit_training_runtime.py` |
 
 ## Direct loop relationships
 
@@ -82,6 +89,7 @@ The one-shot provider/fundamental/technical/signal CLIs are owned stages, not in
 - **Options Capture:** exact readiness/decision clocks, last complete regime cutoff, daily bars for realized volatility. `datafetching/options_runtime.py:266`, `datafetching/options_runtime.py:335`, `options/features.py:335`
 - **Directional Loop B:** complete-cycle control barrier and all registered Loop A families. `ml/prediction_runtime.py:209`, `ml/rolling_materialization.py:272`
 - **Strategy:** stock quote-liquidity history used at entry/exit. `ml/strategy_selection/chain.py:151`
+- **Strategy-profit training:** current OPRA hourly/CBBO/definition history used to rebuild receipt-gated `1h`/`4h`/`1d`/`1w` HGB+MLP model authority. `ml/strategy_profit_training_runtime.py`, `ml/strategy_selection/model.py`
 
 ### Timing and control relationships
 
@@ -93,7 +101,7 @@ The one-shot provider/fundamental/technical/signal CLIs are owned stages, not in
 |---|---|---|
 | Directional horizon predictions | Indirect | Loop A complete generation + equity/fundamental/technical/signal data → Loop B feature/sample construction → directional probability. `datafetching/loop_a_cycle.py:127`, `ml/rolling_materialization.py:272`, `ml/runtime_pipeline.py:480` |
 | Option-pricing predictions | Indirect | exact bar readiness/underlying close and causal rate context → Active Pricing Black–Scholes/residual inputs → contract values. `datafetching/bar_readiness.py:120`, `ml/option_pricing_runtime.py:1181` |
-| Options-strategy predictions | Indirect | Loop A → Loop B probabilities/context and stock BBO → Strategy candidate/outcome model and rank. `ml/strategy_runtime.py:125`, `ml/strategy_selection/chain.py:151` |
+| Options-strategy predictions | Indirect | Loop A → Loop B probabilities/context and stock BBO, plus Loop A-maintained OPRA hourly outcomes/CBBO execution calibration/definitions → Strategy-profit HGB+MLP authority → Strategy calibrated candidate scores and ranks. `datafetching/orchestrate.py`, `ml/strategy_profit_training_runtime.py`, `ml/strategy_selection/model.py`, `ml/strategy_runtime.py` |
 
 **Roll-up classification: Both.**
 
@@ -119,6 +127,9 @@ The one-shot provider/fundamental/technical/signal CLIs are owned stages, not in
   cycle is writing or failed. Directional Loop B deliberately requires the
   current cycle to be `COMPLETE` under the shared lock, so a current failed
   cycle aborts that B attempt rather than silently substituting older inputs.
+- OPRA maintenance never bootstraps a missing/invalid cursor and fails closed on
+  provider preflight, capacity, cost, identity, receipt, or checksum errors. The
+  former standalone OPRA schedule is paused so it cannot race Loop A's owner.
 
 
 ## Accuracy and efficiency relevance
@@ -128,16 +139,24 @@ The one-shot provider/fundamental/technical/signal CLIs are owned stages, not in
 - Publishing readiness immediately after the 1-minute Databento lane removes
   slower FMP/FRED/SEC/calculation work from Pricing’s critical path; full-cycle
   completion still protects Loop B’s wider feature read.
-- CME and option-chain work remain external in production, preventing their
-  provider cadence and writer locks from extending Loop A ownership.
+- Current overnight operation explicitly selects bounded inline CME and option
+  work so one owner finishes all acquisition before model stages. The legacy
+  recurring command may still select external owners during explicit recovery.
+- Provider separation prevents a venue-only XNAS archive or secondary Schwab
+  price history from silently replacing broad operational EQUS semantics. The
+  generated datastore catalog records coverage and non-equivalence instead of
+  manufacturing one ambiguous cross-provider bar series.
+- Daily OPRA maintenance closes the operational gap that previously let the
+  Strategy-profit trainer use an older hourly-bar/CBBO boundary. The trainer
+  independently refuses model promotion when those sessions trail the newest
+  complete daily sample.
 
 
 ## Conflicts, gaps, and uncertainty
 
-- `--cme-mode inline` and `--options-mode inline` remain executable
-  compatibility paths, but the supported production command selects
-  `external`. They are not additional owners and must not be used to absorb the
-  CME or Options runtimes.
+- `--cme-mode inline` and `--options-mode inline` are the current overnight
+  close-stage paths. The legacy external modes remain recovery-only and must not
+  run concurrently with the stopped supervisors.
 - The readiness and complete-cycle authorities are intentionally different.
   Readiness does not claim the rest of Loop A succeeded; complete-cycle state
   does not retroactively manufacture a missed readiness receipt.

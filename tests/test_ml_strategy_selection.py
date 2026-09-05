@@ -24,6 +24,7 @@ from ml.strategy_selection.chain import (
     OptionChainHistory,
     entry_chain_receipt,
     exit_chain_receipt,
+    latest_completed_session_chain_receipt,
     load_option_chain_history,
 )
 from ml.strategy_selection.contracts import (
@@ -276,6 +277,54 @@ def test_entry_chain_receipt_uses_the_causal_interval_between_clocks() -> None:
     assert latest.contracts["available_at"].eq(latest.available_at).all()
 
 
+def test_latest_completed_session_chain_prefers_opra_and_records_real_age() -> None:
+    close = pd.Timestamp("2026-09-03T20:00:00Z")
+    known_at = pd.Timestamp("2026-09-04T02:00:00Z")
+    frames = []
+    surfaces = []
+    for provider, available_at in (
+        ("databento-opra", close),
+        ("schwab", close + pd.Timedelta(hours=3)),
+    ):
+        contracts = _contracts_for_receipt(
+            snapshot_for=close,
+            available_at=available_at,
+            underlying=100.0,
+        )
+        contracts["source_provider"] = provider
+        contracts["quote_timestamp"] = close
+        contracts["quote_staleness_seconds"] = 0.0
+        contracts["delta"] = 0.25 if provider == "schwab" else float("nan")
+        surface = _surface_for_receipt(
+            snapshot_for=close,
+            available_at=available_at,
+        )
+        surface["source_provider"] = provider
+        frames.append(contracts)
+        surfaces.append(surface)
+    history = OptionChainHistory(
+        symbol="GOOG",
+        contracts=pd.concat(frames, ignore_index=True),
+        surfaces=pd.concat(surfaces, ignore_index=True),
+        quotes=pd.DataFrame(),
+        source_files=(),
+    )
+
+    selected = latest_completed_session_chain_receipt(
+        history,
+        known_at=known_at,
+        target_window_start=pd.Timestamp("2026-09-04T11:00:00Z"),
+        maximum_age=pd.Timedelta(hours=18),
+    )
+
+    assert selected is not None
+    assert selected.surface["source_provider"] == "databento-opra"
+    assert selected.contracts["source_provider"].eq("databento-opra").all()
+    assert selected.contracts["quote_staleness_seconds"].eq(21_600.0).all()
+    assert selected.contracts["delta"].eq(0.25).all()
+    assert selected.contracts["enrichment_source_provider"].eq("schwab").all()
+
+
 def test_committed_provider_neutral_history_prefers_opra_for_same_target(
     tmp_path: Path,
 ) -> None:
@@ -312,6 +361,44 @@ def test_committed_provider_neutral_history_prefers_opra_for_same_target(
     assert history.contracts["underlying_price"].eq(101.0).all()
     assert any("databento-opra" in path.parts for path in history.source_files)
     assert not any("schwab" in path.parts for path in history.source_files)
+
+
+def test_completed_session_history_loads_only_latest_committed_snapshot(
+    tmp_path: Path,
+) -> None:
+    earlier = pd.Timestamp("2026-09-03T19:00:00Z")
+    latest = pd.Timestamp("2026-09-03T20:00:00Z")
+    for snapshot_for, underlying in ((earlier, 99.0), (latest, 101.0)):
+        contracts = _contracts_for_receipt(
+            snapshot_for=snapshot_for,
+            available_at=snapshot_for,
+            underlying=underlying,
+        )
+        publish_option_snapshot(
+            tmp_path,
+            provider="schwab",
+            dataset="SCHWAB_CHAIN",
+            symbol="GOOG",
+            raw=contracts,
+            contracts=contracts,
+            features=_surface_for_receipt(
+                snapshot_for=snapshot_for,
+                available_at=snapshot_for,
+            ),
+            receipt_published_at=snapshot_for + pd.Timedelta(seconds=1),
+        )
+
+    history = load_option_chain_history(
+        tmp_path,
+        symbol="GOOG",
+        available_not_before=earlier - pd.Timedelta(minutes=1),
+        available_not_after=latest + pd.Timedelta(minutes=1),
+        latest_snapshot_only=True,
+    )
+
+    assert history.surfaces["snapshot_for"].eq(latest).all()
+    assert history.contracts["snapshot_for"].eq(latest).all()
+    assert history.contracts["underlying_price"].eq(101.0).all()
 
 
 def test_live_opra_chain_uses_only_causally_available_stock_bbo_for_underlying(
@@ -1017,6 +1104,37 @@ def test_strategy_partition_natural_key_rejects_exact_duplicate() -> None:
         partition_strategy_outcomes(pd.DataFrame([row, dict(row)]), policy=_POLICY)
 
 
+def test_strategy_partition_natural_key_allows_distinct_target_windows() -> None:
+    rows: list[dict[str, object]] = []
+    base = pd.Timestamp("2026-02-01T15:00:00Z")
+    for index in range(10):
+        start = base + pd.Timedelta(hours=index)
+        rows.append(
+            {
+                "symbol": "GOOG",
+                "horizon": "1h",
+                "candidate_key": "long_call|w1",
+                "strategy_name": "long_call",
+                # One overnight decision is allowed to produce several frozen
+                # intraday routes; the target geometry is part of its identity.
+                "decision_timestamp": base - pd.Timedelta(hours=1),
+                "target_window_start": start,
+                "target_window_end": start + pd.Timedelta(hours=1),
+                "outcome_status": "COMPLETE",
+                "profitable": index % 2,
+                "net_profit": 10.0,
+                "return_on_risk": 0.1,
+            }
+        )
+
+    partitions = partition_strategy_outcomes(pd.DataFrame(rows), policy=_POLICY)
+
+    assert partitions.train_decisions == 4
+    assert partitions.calibration_decisions == 2
+    assert partitions.assessment_decisions == 2
+    assert partitions.purged_rows == 2
+
+
 def test_strategy_model_fits_only_training_and_calibration_partitions(
     tmp_path: Path,
 ) -> None:
@@ -1544,6 +1662,36 @@ def test_live_strategy_cycle_disables_full_historical_opra_replay(
 
     assert observed == [False]
     assert result.candidates.empty
+
+
+def test_completed_session_strategy_requests_bounded_latest_history(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sample = _sample(0)
+    observed: list[dict[str, object]] = []
+
+    def unavailable(*_args: object, **kwargs: object) -> OptionChainHistory:
+        observed.append(dict(kwargs))
+        raise FileNotFoundError("completed-session receipt not available")
+
+    monkeypatch.setattr(strategy_runtime, "load_option_chain_history", unavailable)
+    result = run_strategy_selection(
+        tmp_path,
+        samples=pd.DataFrame([sample]),
+        predictions=pd.DataFrame([_prediction_for_sample(sample)]),
+        forbidden_target_starts={},
+        run_timestamp=sample["decision_timestamp"] + pd.Timedelta(hours=12),
+        input_available_at=sample["decision_timestamp"] + pd.Timedelta(hours=12),
+        policy=_POLICY,
+        completed_session_planning=True,
+    )
+
+    assert result.candidates.empty
+    assert len(observed) == 1
+    assert observed[0]["allow_historical_opra_replay"] is False
+    assert observed[0]["latest_snapshot_only"] is True
+    assert observed[0]["available_not_before"] is not None
 
 
 def _sample(index: int) -> dict[str, object]:

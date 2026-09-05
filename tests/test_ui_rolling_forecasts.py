@@ -19,8 +19,10 @@ from app.ui.rolling_forecast_data import (
     SUPPORTED_HORIZON_ORDER,
     WEEKLY_HORIZON_ORDER,
     _live_performance_by_route,
+    adapt_gameplan_forecasts,
     dashboard_debug_text,
     dashboard_layout,
+    default_rolling_predictions_path,
     format_session_date,
     format_timestamp_local,
     format_timestamp_utc,
@@ -32,12 +34,14 @@ from app.ui.rolling_forecast_data import (
 )
 from app.ui.rolling_forecasts import (
     HOURLY_AUTO_REFRESH_MS,
+    HOURLY_REFRESH_BOUNDARY_GRACE_SECONDS,
     RollingForecastTab,
     evidence_progress_fraction,
     forecast_symbol_header_text,
     forecast_symbol_section_summary,
     live_performance_lift_tone,
     merge_symbol_expansion_state,
+    milliseconds_until_next_hour,
     prediction_pulse_columns,
     prediction_pulse_mark_path,
     prediction_pulse_probabilities,
@@ -72,8 +76,8 @@ def test_supported_horizon_order_labels_and_subtitle_are_exact() -> None:
     assert f"{HORIZON_LABELS['4h']} Forecast" == "4 Hour Forecast"
     assert HORIZON_LABELS["1w"] == "Remaining-Week Aggregate"
     assert FORECAST_SUBTITLE == (
-        "Read-only 1h, 4h, 1d, and dynamic remaining-week probability outlooks. "
-        "Probabilities are not recommendations."
+        "Read-only frozen overnight 1h, 4h, five-session daily, and weekly "
+        "probability outlooks. The display rotates by clock without retraining."
     )
 
 
@@ -1545,7 +1549,8 @@ def test_route_card_has_no_model_status_row_or_unused_separator() -> None:
     assert "ttk.Separator" not in source
     assert "self._build_evidence_block(card, route, live_evidence)" in source
     assert "self._build_live_performance_panel(" in source
-    assert "route.is_actionable or route.is_in_progress" in source
+    assert "route.probability_up is not None" in source
+    assert "route.probability_down is not None" in source
 
 
 def test_live_performance_panel_is_high_contrast_large_and_bold() -> None:
@@ -1576,6 +1581,180 @@ def test_rolling_forecasts_refresh_live_performance_hourly() -> None:
     assert "self.root.after(" in inspect.getsource(
         RollingForecastTab._schedule_hourly_refresh
     )
+    assert "milliseconds_until_next_hour()" in inspect.getsource(
+        RollingForecastTab._schedule_hourly_refresh
+    )
+
+
+def test_hourly_refresh_is_aligned_to_clock_boundary_with_grace() -> None:
+    assert HOURLY_REFRESH_BOUNDARY_GRACE_SECONDS == 5
+    assert milliseconds_until_next_hour(
+        datetime(2026, 9, 4, 4, 59, 58, tzinfo=ZoneInfo("America/Los_Angeles"))
+    ) == 7_000
+    assert milliseconds_until_next_hour(
+        datetime(2026, 9, 4, 5, 0, 5, tzinfo=ZoneInfo("America/Los_Angeles"))
+    ) == HOURLY_AUTO_REFRESH_MS
+
+
+def test_default_dashboard_source_prefers_immutable_gameplan(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    pointer = tmp_path / "ml" / "nightly-gameplan-latest" / "run.json"
+    pointer.parent.mkdir(parents=True)
+    pointer.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(
+        "app.ui.rolling_forecast_data.resolve_datastore_dir",
+        lambda: tmp_path,
+    )
+
+    assert default_rolling_predictions_path() == pointer
+
+
+def test_gameplan_dashboard_rotates_frozen_hourly_and_four_hour_routes() -> None:
+    frame = _nightly_gameplan_rows()
+    gameplan = {
+        "schema_version": "immutable-overnight-gameplan-v2",
+        "limitations": ["Offline assessment is not proof of future profit."],
+    }
+
+    at_0430 = adapt_gameplan_forecasts(
+        frame,
+        source_path=Path("run.json"),
+        action_date="2026-09-04",
+        gameplan=gameplan,
+        loaded_at=datetime(2026, 9, 4, 11, 30, tzinfo=timezone.utc),
+    )
+    at_0530 = adapt_gameplan_forecasts(
+        frame,
+        source_path=Path("run.json"),
+        action_date="2026-09-04",
+        gameplan=gameplan,
+        loaded_at=datetime(2026, 9, 4, 12, 30, tzinfo=timezone.utc),
+    )
+    at_0830 = adapt_gameplan_forecasts(
+        frame,
+        source_path=Path("run.json"),
+        action_date="2026-09-04",
+        gameplan=gameplan,
+        loaded_at=datetime(2026, 9, 4, 15, 30, tzinfo=timezone.utc),
+    )
+
+    first = at_0430.symbols[0]
+    assert first.routes[0].id == "2026-09-04:AAPL:1h@05:00"
+    assert first.routes[1].id == "2026-09-04:AAPL:4h@08:00"
+    assert first.routes[0].probability_up == pytest.approx(0.45)
+    assert first.routes[1].probability_up == pytest.approx(0.58)
+    assert len(first.weekly_outlook.sessions) == 5
+    assert [route.probability_up for route in first.weekly_outlook.sessions] == [
+        pytest.approx(0.51),
+        pytest.approx(0.52),
+        pytest.approx(0.53),
+        pytest.approx(0.54),
+        pytest.approx(0.55),
+    ]
+    assert first.weekly_outlook.aggregate.probability_up == pytest.approx(0.61)
+    assert "Research Forecast" in first.weekly_outlook.aggregate.actionability_label
+    assert at_0430.source_row_count == 24
+    assert at_0430.published_route_count == 24
+    assert at_0430.automated_action_allowed is False
+
+    assert at_0530.symbols[0].routes[0].id == "2026-09-04:AAPL:1h@06:00"
+    assert at_0530.symbols[0].routes[1].id == "2026-09-04:AAPL:4h@08:00"
+    assert at_0830.symbols[0].routes[0].id == "2026-09-04:AAPL:1h@09:00"
+    assert at_0830.symbols[0].routes[1].id == "2026-09-04:AAPL:4h@12:00"
+
+
+def test_gameplan_ui_explains_flat_calibration_without_rewriting_probabilities() -> None:
+    frame = _nightly_gameplan_rows()
+    frame.loc[frame.model_group.eq("4h"), "calibrated_probability"] = 0.5
+    original = frame.copy(deep=True)
+    view = adapt_gameplan_forecasts(frame, source_path=Path("run.json"), action_date="2026-09-04",
+        loaded_at=datetime(2026, 9, 4, 15, 30, tzinfo=timezone.utc))
+    route = view.symbols[0].routes[1]
+    assert route.probability_up == route.probability_down == 0.5
+    assert route.probability_warning and "4H:" in route.probability_warning
+    assert route.actionability_tone == "warning"
+    assert "No model signal" in route.actionability_label
+    assert route.model_evidence_status == "PROMOTED"  # Preserve what this old artifact published.
+    assert any("4H:" in warning for warning in view.warnings)
+    assert view.symbols[0].routes[0].probability_warning is None
+    assert view.symbols[0].routes[2].probability_warning is None
+    pd.testing.assert_frame_equal(frame, original)
+
+
+def test_one_neutral_four_hour_window_is_not_a_flat_calibration_failure() -> None:
+    frame = _nightly_gameplan_rows()
+    frame.loc[frame.route.eq("4h@12:00"), "calibrated_probability"] = 0.5
+    view = adapt_gameplan_forecasts(frame, source_path=Path("run.json"), action_date="2026-09-04",
+        loaded_at=datetime(2026, 9, 4, 15, 30, tzinfo=timezone.utc))
+    assert view.symbols[0].routes[1].probability_up == 0.5
+    assert view.symbols[0].routes[1].probability_warning is None
+
+
+def test_new_gameplan_calibration_diagnostic_is_shown_for_a_constant_model() -> None:
+    frame = _nightly_gameplan_rows()
+    four = frame.model_group.eq("4h")
+    frame.loc[four, "calibration_status"] = "FLAT_CALIBRATION"
+    frame.loc[four, ["raw_probability", "calibrated_probability"]] = 0.45
+    view = adapt_gameplan_forecasts(frame, source_path=Path("run.json"), action_date="2026-09-04",
+        loaded_at=datetime(2026, 9, 4, 15, 30, tzinfo=timezone.utc))
+    assert view.symbols[0].routes[1].probability_up == 0.45
+    assert view.symbols[0].routes[1].probability_warning
+
+
+def test_gameplan_dashboard_overlays_matching_frozen_options_intents() -> None:
+    frame = _nightly_gameplan_rows()
+    intent_rows: list[dict[str, object]] = []
+    for row in frame.to_dict("records"):
+        is_selected_hour = row["route"] == "1h@05:00"
+        intent_rows.append(
+            {
+                "id": f"intent:{row['id']}",
+                "symbol": row["symbol"],
+                "route": row["route"],
+                "plan_status": (
+                    "PAPER_ENTER_ONLY_IF_SAME_LEGS_REVALIDATE"
+                    if is_selected_hour
+                    else "NO_TRADE_NO_FROZEN_CANDIDATE"
+                ),
+                "reason": (
+                    "Same exact option legs require a current executable quote."
+                    if is_selected_hour
+                    else "No exact frozen candidate was available."
+                ),
+                "decision_score": 0.72 if is_selected_hour else None,
+                "strategy_display_name": "Long Call" if is_selected_hour else None,
+                "pricing_source": "opra_cbbo_1m" if is_selected_hour else None,
+                "execution_authority": "ADVISORY_PAPER_ONLY",
+                "broker_orders_enabled": False,
+            }
+        )
+
+    view = adapt_gameplan_forecasts(
+        frame,
+        source_path=Path("run.json"),
+        action_date="2026-09-04",
+        option_intents=pd.DataFrame(intent_rows),
+        loaded_at=datetime(2026, 9, 4, 11, 30, tzinfo=timezone.utc),
+    )
+    hourly, four_hour = view.symbols[0].routes[:2]
+
+    assert hourly.option_plan_label == (
+        "Paper Entry · Same-Leg Revalidation Required"
+    )
+    assert hourly.option_strategy_name == "Long Call"
+    assert hourly.option_profit_probability == pytest.approx(0.72)
+    assert "current executable quote" in (hourly.option_reason or "")
+    assert hourly.option_pricing_source == "opra_cbbo_1m"
+    assert four_hour.option_plan_label == "No Trade"
+    assert four_hour.option_strategy_name is None
+    assert "option_intent_id" in dict(hourly.debug_fields)
+
+    source = inspect.getsource(RollingForecastTab._build_option_gameplan_block)
+    assert 'text="OPTIONS GAMEPLAN"' in source
+    assert "route.option_profit_probability" in source
+    assert "route.option_reason" in source
 
 
 def test_view_and_debug_output_use_the_readable_intelligence_fields(
@@ -1824,6 +2003,94 @@ def _row(
         ),
         "schema_version": "one-id-v2",
     }
+
+
+def _nightly_gameplan_rows() -> pd.DataFrame:
+    zone = ZoneInfo("America/Los_Angeles")
+    action = pd.Timestamp("2026-09-04T00:00:00", tz=zone)
+    frozen = pd.Timestamp("2026-09-04T03:40:00", tz=zone).tz_convert("UTC")
+    decision = pd.Timestamp("2026-09-03T17:05:00", tz=zone).tz_convert("UTC")
+    rows: list[dict[str, object]] = []
+
+    def add(
+        group: str,
+        route: str,
+        start: pd.Timestamp,
+        end: pd.Timestamp,
+        probability: float,
+        *,
+        model_status: str = "PROMOTED",
+    ) -> None:
+        rows.append(
+            {
+                "id": f"2026-09-04:AAPL:{route}",
+                "symbol": "AAPL",
+                "model_group": group,
+                "route": route,
+                "forecast_anchor_local": route.split("@", 1)[1],
+                "decision_timestamp": decision,
+                "information_available_at": decision,
+                "target_window_start": start.tz_convert("UTC"),
+                "target_window_end": end.tz_convert("UTC"),
+                "target_semantics": "test-window",
+                "raw_probability": probability,
+                "calibrated_probability": probability,
+                "model_family": f"test-{group}-hgb-mlp",
+                "model_status": model_status,
+                "frozen_at": frozen,
+                "action_date": "2026-09-04",
+                "target_contract_version": "overnight-path-targets-v1",
+                "execution_authority": "ADVISORY_PAPER_ONLY",
+                "broker_orders_enabled": False,
+                "opra_completed_through": "2026-09-04",
+            }
+        )
+
+    prior_close = action - pd.Timedelta(hours=7)
+    add("1h", "1h@04:00", prior_close, action + pd.Timedelta(hours=4), 0.40)
+    for anchor in range(5, 18):
+        add(
+            "1h",
+            f"1h@{anchor:02d}:00",
+            action + pd.Timedelta(hours=anchor - 1),
+            action + pd.Timedelta(hours=anchor),
+            0.40 + anchor / 100.0,
+        )
+    add("4h", "4h@04:00", prior_close, action + pd.Timedelta(hours=4), 0.54)
+    for anchor in (8, 12, 16):
+        add(
+            "4h",
+            f"4h@{anchor:02d}:00",
+            action + pd.Timedelta(hours=anchor - 4),
+            action + pd.Timedelta(hours=anchor),
+            0.50 + anchor / 100.0,
+        )
+    session_dates = (
+        "2026-09-04",
+        "2026-09-08",
+        "2026-09-09",
+        "2026-09-10",
+        "2026-09-11",
+    )
+    for index, session_date in enumerate(session_dates, 1):
+        session = pd.Timestamp(f"{session_date}T00:00:00", tz=zone)
+        add(
+            "1d",
+            f"1d@D+{index}",
+            session + pd.Timedelta(hours=6, minutes=30),
+            session + pd.Timedelta(hours=13),
+            0.50 + index / 100.0,
+        )
+    final_session = pd.Timestamp("2026-09-11T00:00:00", tz=zone)
+    add(
+        "1w",
+        "1w@D+5",
+        action + pd.Timedelta(hours=6, minutes=30),
+        final_session + pd.Timedelta(hours=13),
+        0.61,
+        model_status="RESEARCH_NOT_PROMOTED",
+    )
+    return pd.DataFrame(rows)
 
 
 def _evaluation_row(

@@ -1,5 +1,10 @@
 # Daily ALFRED runtime
 
+> **Current deployment (2026-09-04):** the independent ALFRED supervisor is
+> stopped. Existing verified vintage artifacts remain available to the nightly
+> model stages, while Loop A obtains bounded current FRED context. Recurrence
+> details below are legacy capability.
+
 ## Identity
 
 - Canonical name: Daily ALFRED runtime
@@ -121,12 +126,13 @@ The importer’s pagination is internal. The one-time `ml.option_pricing_fred --
 
 ## Runtime and monitoring observation
 
-**Confirmed deployment contract:** Daily ALFRED is one of the eight independent
-hidden owners, even though its work is at most once per UTC date. The canonical
+**Historical deployment contract:** Daily ALFRED was one of the eight independent
+hidden owners, even though its work was at most once per UTC date. The retained
 launcher/guardian command is unbuffered, uses an explicit working directory and
 redirected monitor-visible logs, and requires one launcher/worker pair whose
 worker owns `.ducketz-fred-alfred-import.lock`. Existing valid ownership is not
-duplicated. `docs/datafetch-ml/start_all_loops.ps1:18`,
+duplicated. Current normal scheduling does not launch this supervisor.
+`docs/datafetch-ml/start_all_loops.ps1:18`,
 `ml/system_guardian.py:81`
 
 Hourly monitoring verifies process/lock/log state and the current daily

@@ -674,7 +674,12 @@ def _attach_loop_a_features(
             # failing closed in the readers and point-in-time join.
             if source.empty:
                 source = pd.DataFrame(
-                    columns=("symbol", "available_at", *mapping.values())
+                    columns=(
+                        "symbol",
+                        "available_at",
+                        "surface_quality_pass",
+                        *mapping.values(),
+                    )
                 )
         output = _join_symbol_values(
             output,
@@ -683,6 +688,7 @@ def _attach_loop_a_features(
             value_columns=mapping,
             tie_breakers=("snapshot_for",),
             freshness=OPTION_FRESHNESS[feature_horizon],
+            quality_columns=("surface_quality_pass",),
             require_populated_values=not source.empty,
         )
         source_files.extend(paths)

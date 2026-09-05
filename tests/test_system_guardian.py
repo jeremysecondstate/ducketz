@@ -370,11 +370,13 @@ def test_loop_b_canonical_cadence_matches_runtime_monitor_guardian_and_command(
     phase_index = launch.arguments.index("--phase-offset-minutes")
     assert launch.arguments[interval_index + 1] == str(LOOP_B_INTERVAL_MINUTES)
     assert launch.arguments[phase_index + 1] == str(LOOP_B_PHASE_OFFSET_MINUTES)
-    assert f"--interval-minutes {LOOP_B_INTERVAL_MINUTES} `" in start_command
-    assert (
-        f"--phase-offset-minutes {LOOP_B_PHASE_OFFSET_MINUTES} `"
-        in start_command
-    )
+    # The cadence remains the contract of the retained diagnostic guardian,
+    # while normal production now invokes one bounded Loop B stage through the
+    # sequential overnight owner.
+    assert "python -u -m ml.overnight_runtime --datastore-target pc --once" in start_command
+    assert "former eight continuously recurring processes" in start_command
+    assert f"--interval-minutes {LOOP_B_INTERVAL_MINUTES}" not in start_command
+    assert f"--phase-offset-minutes {LOOP_B_PHASE_OFFSET_MINUTES}" not in start_command
 
 
 def test_all_runtime_lock_paths_share_the_maintenance_gate() -> None:

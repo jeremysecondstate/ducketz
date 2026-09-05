@@ -48,41 +48,37 @@ def test_loop_a_history_uses_the_configured_interval_caps() -> None:
     assert specs["1d"].lookback == timedelta(days=2_555)
 
 
-def test_default_watchlist_and_runtime_commands_use_the_same_configured_symbols() -> None:
+def test_default_watchlist_and_overnight_owner_use_the_same_configured_symbols() -> None:
     root = Path(__file__).resolve().parents[1]
     watchlist = orchestrate.read_watchlist(root / "datafetching" / "watchlist.txt")
-    loop_a_command = (root / "docs" / "datafetch-ml" / "current_start_command").read_text(
+    operating_command = (root / "docs" / "datafetch-ml" / "current_start_command").read_text(
+        encoding="utf-8"
+    )
+    overnight_source = (root / "ml" / "overnight_runtime.py").read_text(
         encoding="utf-8"
     )
     loop_b_command = (
         root / "docs" / "datafetch-ml" / "current_prediction_command"
     ).read_text(encoding="utf-8")
 
-    assert watchlist
+    assert watchlist == ("AAPL", "AMZN", "GOOG", "MU", "NVDA", "SNDK")
     assert len(set(watchlist)) == len(watchlist)
-    assert "--watchlist datafetching\\watchlist.txt" in loop_a_command
-    pricing_command = loop_a_command.split("python -m ml.option_pricing_runtime", 1)[1]
-    assert "--watchlist datafetching\\watchlist.txt" in pricing_command
-    assert "--cme-mode external" in loop_a_command
-    assert "--options-mode external" in loop_a_command
-    prediction_command = loop_a_command.split(
-        "python -m ml.prediction_runtime", 1
-    )[1]
-    assert "--watchlist datafetching\\watchlist.txt" in prediction_command
-    assert "--symbols" not in prediction_command
-    assert "python -m ml.strategy_runtime" in loop_a_command
-    assert "--pricing-mode active" in loop_a_command
-    assert "loop-a-all-bsgp-active-v3" in loop_a_command
-    assert "datafetching.fred_alfred_runtime" in loop_a_command
-    assert "ml.option_pricing_fred --datastore-target pc --backfill" in loop_a_command
+    assert "python -u -m ml.overnight_runtime --datastore-target pc --once" in operating_command
+    assert "AAPL AMZN GOOG MU NVDA SNDK" in operating_command
+    assert '"watchlist.txt"' in overnight_source
+    assert '"--cme-mode"' in overnight_source and '"inline"' in overnight_source
+    assert '"--options-mode"' in overnight_source
+    assert '"--opra-history-mode"' in overnight_source
+    assert '"--opra-history-max-catchup-days"' in overnight_source
+    assert '"ml.prediction_runtime"' in overnight_source
+    assert '"ml.strategy_profit_training_runtime"' in overnight_source
+    assert '"ml.strategy_runtime"' in overnight_source
+    assert '"ml.nightly_gameplan"' in overnight_source
+    assert '"loop-a-all-bsgp-active-v3"' in overnight_source
     assert "current_start_command" in loop_b_command
     assert "python -m" not in loop_b_command
-    assert "capture-current-rate" in loop_a_command
-    assert "option_pricing_admin" in loop_a_command
-    assert "--bar-readiness-timeout-seconds 480" in loop_a_command
-    assert "--bar-readiness-recovery-timeout-seconds 420" in loop_a_command
-    assert "--bar-readiness-recovery-poll-seconds 10" in loop_a_command
-    assert "--pricing-barrier-timeout-seconds 45" in loop_a_command
+    assert "--bar-readiness-recovery-timeout-seconds" in overnight_source
+    assert "--bar-readiness-recovery-poll-seconds" in overnight_source
 
 
 def test_databento_minute_fast_lane_persists_all_symbols_before_callback(

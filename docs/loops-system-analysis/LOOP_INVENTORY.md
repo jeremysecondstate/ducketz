@@ -1,86 +1,71 @@
 # Loop inventory
 
-## Discovery result
+## Current scheduled owner
 
-**Confirmed:** the authoritative startup seed declares eight independent owners and gives one command for each. Independent static discovery found the same eight top-level recurring supervisors. `docs/datafetch-ml/current_start_command:3`, `datafetching/cme_runtime.py`, `datafetching/orchestrate.py`, `datafetching/fred_alfred_runtime.py`, `ml/option_pricing_runtime.py`, `datafetching/options_runtime.py`, `ml/prediction_runtime.py`, `ml/strategy_runtime.py`, `ml/strategy_profit_training_runtime.py`
+Normal operation has one sequential overnight workflow, its health watch, the
+hourly stock trader, and a Saturday Gameplan review:
 
-The classifications below distinguish an operating-system process that owns a recurring publication cycle from bounded polling, an owned one-shot child, a one-time command, or a reader.
+| Owner | Entry point | Cadence | Final authority | Order authority |
+|---|---|---|---|---|
+| Loops Overnight Gameplan | `ml.overnight_runtime --scheduled` | Weekdays 17:05 America/Los_Angeles; XNYS-session guard; once | `ml/nightly-gameplan-latest/run.json` | None |
+| Loops Overnight Health Watch | `ml.overnight_runtime --status` and supervised recovery | Every ten minutes, including weekends | One renewable supervision claim; stage logs and receipts | None |
+| Loops Gameplan Weekly Review | `ml.gameplan_evaluation` | Saturday 09:00 PT | Cumulative saved-forecast evaluation history | None |
+| Loops Gameplan Stock Trader — Hourly | `ml.gameplan_stock_trader --execute --target-horizon 1h` | Weekday action hours at `:01`, excluding the 13:00 broker transition | Immutable stock decision/execution receipts | Stocks only |
+| Loops Gameplan Stock Trader — 1 p.m. Transition | same entry point | Weekdays 13:05 PT for the frozen 13:00 generation | Immutable stock decision/execution receipts | Stocks only |
 
-## Independent production loops
+It runs the following bounded stages sequentially under one run receipt:
 
-| Startup owner | Canonical name | Aliases / logical numbering | Entry point | Recurrence | Exclusive ownership | Primary authority | Classification evidence |
-|---:|---|---|---|---|---|---|---|
-| 1 | CME/L2 runtime | CME/L2 owner | `datafetching.cme_runtime` | Per schema: OHLCV 60 s at +1 s, BBO 15 s at +2 s, MBP-10 5 s at +0 s | `.ducketz-cme-writer.lock` | CME event partitions/cursors; strict current L2 pointer; 1 h context | **Confirmed.** Current configured-symbol L2 collection/publication is separated from bounded historical recovery. `datafetching/cme_runtime.py:104`, `datafetching/cme_runtime.py:157`, `datafetching/cme_history.py:288` |
-| 2 | Loop A | Loop A; fetching/orchestration | `datafetching.orchestrate` | 15-minute boundary, then 20-second pre-start pause after the first immediate cycle | `.ducketz-orchestration.lock`; shared datastore-cycle OS lock with Loop B | exact bar-readiness receipt; latest complete-cycle record; normalized/provider/calculated Parquets | **Confirmed.** `datafetching/orchestrate.py:169`, `datafetching/orchestrate.py:174`, `datafetching/orchestrate.py:225`, `datafetching/orchestrate.py:236`, `datafetching/loop_a_cycle.py:15` |
-| 3 | Daily ALFRED runtime | FRED/ALFRED daily owner | `datafetching.fred_alfred_runtime` | At most once per UTC date; next boundary 07:00 UTC in the production command | `.ducketz-fred-alfred-import.lock` with stale-owner recovery | sealed import, macro feature partitions, readiness pointer, daily receipt pointer | **Confirmed.** `datafetching/fred_alfred_runtime.py:111`, `datafetching/fred_alfred_runtime.py:150`, `datafetching/fred_alfred_runtime.py:156`, `datafetching/fred_alfred_runtime.py:286` |
-| 4 | Active Pricing | logical Loop 3; Pricing | `ml.option_pricing_runtime` | 15 minutes at UTC phase +1 | `.ducketz-option-pricing-runtime.lock` | target-outcome pointer and full Pricing-generation pointer | **Confirmed.** `docs/datafetch-ml/current_start_command:90`, `docs/datafetch-ml/current_start_command:105`, `ml/option_pricing_runtime.py:1502`, `ml/option_pricing_runtime.py:1561` |
-| 5 | Options Capture | logical Loop 4; Options | `datafetching.options_runtime` | 15 minutes at UTC phase +6; one owned live OPRA receiver plus pending reconciliation between boundaries | `.ducketz-options-writer.lock` | immutable provider/symbol/target snapshots and per-provider pointers | **Confirmed.** The receiver shares the Options lifecycle, cooperatively yields during dense callback replay, and requires a per-symbol target watermark; it does not supervise a separate cycle. `docs/datafetch-ml/current_start_command:115`, `docs/datafetch-ml/current_start_command:176`, `options/databento_live.py:244`, `options/databento_live.py:280`, `datafetching/options_runtime.py:711` |
-| 6 | Directional Loop B | Loop B; rolling prediction runtime | `ml.prediction_runtime` | 30 minutes at UTC phase +6; one classified-transient retry; immediate startup recovery when verified authority age reaches 35 minutes | `.duckets-ml-prediction-runtime.lock`; shared datastore-cycle OS lock with Loop A | immutable ML run and `ml/latest/run.json` | **Confirmed.** `docs/datafetch-ml/current_start_command`, `ml/prediction_runtime.py`, `ml/runtime_pipeline.py:249` |
-| 7 | Strategy runtime | independent strategy selection | `ml.strategy_runtime` | 15 minutes at UTC phase +10 in the production command | `.ducketz-strategy-runtime.lock` | immutable strategy run and `ml/strategy-latest/run.json` | **Confirmed.** `docs/datafetch-ml/current_start_command:213`, `docs/datafetch-ml/current_start_command:219`, `ml/strategy_runtime.py:331`, `ml/strategy_runtime.py:373`, `ml/strategy_publication.py:37` |
-| 8 | Strategy-profit training | daily/weekly Strategy model owner | `ml.strategy_profit_training_runtime` | Once daily at 22:00 UTC | `.ducketz-strategy-profit-training-runtime.lock` | receipt-gated 1d/1w Strategy profit-model authority and reports | **Confirmed.** `docs/datafetch-ml/current_start_command:249`, `ml/strategy_profit_training_runtime.py:235` |
+| Stage | Module/owner reused | Main result |
+|---:|---|---|
+| 1 | `datafetching.orchestrate` | Latest completed-session provider data, exact readiness, production OPRA cursors |
+| 2 | `ml.prediction_runtime` / Loop B pipeline | Directional samples, features, and compatible prediction authority |
+| 3 | `ml.gameplan_evaluation` | Evaluate all saved Gameplans from September 4 and retain pending forecasts |
+| 4 | `ml.strategy_profit_training_runtime` | Independently assessed `1h`/`4h`/`1d`/`1w` Strategy-profit models; only passing horizons are promoted |
+| 5 | `ml.strategy_runtime` | Exact options-strategy candidates |
+| 6 | `ml.nightly_gameplan` | Immutable 144-forecast/144-intent next-session plan |
 
-## Included candidates that are not independent production loops
+The stages are bounded commands, not simultaneously running supervisors.
+Weekday exchange-holiday wakes produce a checksum-bound no-op receipt without
+running a stage or advancing the gameplan pointer.
 
-| Candidate | Classification | Included/excluded rationale |
+## Daytime component
+
+`ml.gameplan_executor` remains a bounded advisory/paper reader.
+`ml.gameplan_stock_trader` is the scheduled live stock consumer. It never
+backfills, requires the two operator switches plus `--execute`, and uses the
+existing stock risk, quote, broker-session, exact-once, and reconciliation
+contracts. It has no options-order authority.
+
+## Retained legacy supervisors
+
+The repository still contains the former eight recurring owners for diagnosis,
+historical artifact compatibility, and explicit operator-directed recovery:
+
+1. `datafetching.cme_runtime`
+2. `datafetching.orchestrate`
+3. `datafetching.fred_alfred_runtime`
+4. `ml.option_pricing_runtime`
+5. `datafetching.options_runtime`
+6. `ml.prediction_runtime`
+7. `ml.strategy_runtime`
+8. `ml.strategy_profit_training_runtime`
+
+All eight recurring processes are stopped. Their `--forever` entry points and
+`start_all_loops.ps1` are not the normal production start path. Their detailed
+per-loop reports describe implementation capabilities and historical artifacts,
+not current scheduler recurrence.
+
+## Scheduled-task state
+
+| Task | State | Current role |
 |---|---|---|
-| `ml.option_pricing_loop_native_worker` | Worker owned by a production loop | **Confirmed.** It performs one local materialize/train pass under its own collision lock, declares zero external provider requests, and is launched non-blockingly by Active Pricing after fast target publication. It has no recurring supervisor. `ml/option_pricing_loop_native_worker.py:36`, `ml/option_pricing_loop_native_worker.py:129`, `ml/option_pricing_loop_native_worker.py:135`, `ml/option_pricing_runtime.py:440` |
-| `wait_for_bar_readiness` | Internal polling/wait loop | **Confirmed.** Bounded monotonic polling for one exact immutable Loop A receipt; owned by Pricing’s cycle. `datafetching/bar_readiness.py:245`, `datafetching/bar_readiness.py:265`, `ml/option_pricing_runtime.py:1116` |
-| `wait_for_pricing_barrier` | Internal polling/wait loop | **Confirmed.** Bounded Options-side poll for one target authority; timeout returns `MISSING`/`TIMED_OUT`, so it is not an owner. `datafetching/pricing_barrier.py:77`, `datafetching/pricing_barrier.py:98`, `datafetching/pricing_barrier.py:124` |
-| `_run_pricing_until_ready` | Internal retry loop | **Confirmed.** One monotonic Pricing deadline repeatedly invokes the same target attempt and returns a write-free skipped result on expiry. `ml/option_pricing_runtime.py:1663`, `ml/option_pricing_runtime.py:1728` |
-| `_wait_for_options_boundary` | Internal polling/wait loop | **Confirmed.** The Options supervisor uses it to reconcile pending captures while waiting for the next scheduled boundary. `datafetching/options_runtime.py:836`, `datafetching/options_runtime.py:1256`, `datafetching/options_runtime.py:1270` |
-| `datastore_cycle_lock` | Internal lock-poll loop | **Confirmed.** It serializes complete Loop B reads with Loop A mutation and releases on process exit; it is not a scheduler. `datafetching/loop_a_cycle.py:199`, `datafetching/loop_a_cycle.py:222` |
-| ALFRED `_paged_request` loop | Internal provider-pagination/retry loop | **Confirmed.** It belongs to one import operation rather than scheduling imports. `datafetching/fred_vintage_import.py:561` |
-| Target-outcome chain traversals | Internal read/identity loops | **Confirmed.** Loops in the target-outcome module traverse immutable histories or resolve target identities; they do not sleep or own a runtime. `ml/option_pricing/target_outcome.py:361`, `ml/option_pricing/target_outcome.py:400` |
-| `datafetching.main` | One-shot provider command / Loop A-owned stage in production | **Confirmed.** It fetches/upserts provider data once; the production recurring owner calls its fetch functions from Loop A. `datafetching/main.py:29`, `datafetching/orchestrate.py:326` |
-| `fundamentals.main`, `technicals.main`, `signals.main` | One-shot calculated workers owned inline by Loop A | **Confirmed.** Loop A calls each sequentially inside its cycle and counts nonzero exits as cycle failures. `datafetching/orchestrate.py:389`, `datafetching/orchestrate.py:409`, `datafetching/orchestrate.py:429` |
-| `ml.option_pricing_fred --backfill` | One-time bootstrap / maintenance command | **Confirmed.** Startup explicitly requires a one-time complete backfill before the daily owner; the command derives its bounds and publishes separate readiness. `docs/datafetch-ml/current_start_command:21`, `ml/option_pricing_fred.py:46`, `ml/option_pricing_fred.py:161` |
-| `ml.option_pricing_admin readiness` and `diagnose-publications` | Read-only maintenance commands | **Confirmed.** Startup says they are optional and cannot block Black–Scholes fallback; the implementation labels readiness as nonmutating. `docs/datafetch-ml/current_start_command:203`, `ml/option_pricing_admin.py:250` |
-| `ml.option_pricing_admin capture-current-rate` | Optional one-time prospective bridge | **Confirmed.** It materializes a current FEDFUNDS receipt for future decisions; it is not historical Loop B evidence. `docs/datafetch-ml/current_start_command:39`, `ml/option_pricing_admin.py:109` |
-| `datafetching.options_history` | One-time per-parent OPRA Standard bootstrap | Applies the prediction-focused 100-day definition, 20-day `cbbo-1m`, 1-day `cbbo-1s`, and bounded OHLCV windows; research-only `cmbp-1` remains explicitly selectable but default-deferred. It preflights storage, publishes through the canonical immutable DBN/Parquet contract, and writes v5 symbol/schema cursors only after nonempty verified completion. It is not launched by the eight-owner startup script. `datafetching/options_history.py:20`, `datafetching/options_runtime.py:110`, `datafetching/options_runtime.py:1107` |
-| `datafetching.databento_cold_start` | One-shot all-dataset Databento baseline / overlap-maintenance command | **Confirmed.** Dry-run, metadata preflight and `--confirm-download` execution are mutually exclusive modes. It enforces prediction-focused schema windows and default-defers historical `cmbp-1` and `mbp-1` while retaining prediction-consumed `cbbo-1m`, `cbbo-1s`, definitions, and `mbp-10`; record-count and storage-capacity checks remain mandatory. The US-equity cold archive is `XNAS.ITCH`; Loop A's current operational dataset is `EQUS.MINI`, so those different identities remain separate rather than being timestamp-merged. Verified CME archive scope can seed a missing runtime boundary and archive fingerprints feed historical cross-asset context before ongoing rows. The command owns only `.ducketz-databento-cold-start.lock`, uses the canonical OPRA `state/sync.lock` while publishing verified OPRA partitions, and writes readable per-scope history cursors. It does not take production owner locks or publish readiness, snapshots, models, or production pointers. `datafetching/databento_cold_start.py`, `datafetching/databento_archive.py:213`, `datafetching/equity_dataset_migration.py`, `datafetching/databento_archive.py:539`, `tests/test_databento_archive_bridge.py` |
-| `ml.option_pricing_opra` | Administrative OPRA Standard historical synchronizer | Discovers provider/account bounds, preflights storage, and publishes checksum-verified DBN/Parquet partitions for a full-universe or explicit custom scope. It is not the normal six-symbol bootstrap or an independent supervisor. |
-| `options.providers.OptionMarketDataAdapter` and `options.databento_live.DatabentoOpraLiveAdapter` | Protocol and concrete transport owned by Options Capture | **Confirmed.** The concrete implementation owns one bounded/reconnecting `OPRA.PILLAR` definitions + `cbbo-1s` live client for the exact six-symbol scope. Dense callbacks yield cooperatively, and a target read waits for that symbol's stream watermark before it selects the final pretarget BBO or reports bounded unavailability. The Options CLI constructs and closes it with the supervisor; it is not a scheduler or independent owner. `options/providers.py:25`, `options/databento_live.py:34`, `options/databento_live.py:244`, `options/databento_live.py:280`, `datafetching/options_runtime.py:711` |
-| `ml.option_pricing.research_benchmark` | One-shot research-only model benchmark | **Confirmed.** It runs a bounded SPY exact-GP methodology comparison and declares `research_only=true`; it has no supervisor, production-universe authority, or startup command. `ml/option_pricing/research_benchmark.py:27`, `ml/option_pricing/research_benchmark.py:34`, `ml/option_pricing/research_benchmark.py:178` |
-| `ml.option_pricing_lockbox` | One-time sealed evaluator | **Confirmed.** It evaluates one current frozen candidate and expressly does not define a recurring production loop. `ml/option_pricing_lockbox.py:15`, `ml/option_pricing_lockbox.py:34` |
-| Rolling Forecast and Options Strategy UI loaders | UI/read-only consumers | **Confirmed.** They resolve the authoritative Loop B or Strategy pointer and do not publish loop authority; the rolling dashboard remains read-only even if an input flag says otherwise. `app/ui/rolling_forecast_data.py:539`, `app/ui/rolling_forecast_data.py:403`, `app/ui/options_strategy_data.py:628` |
-| Test loops/fake clocks | Test-only loops | **Confirmed.** Polling and supervisor behavior is exercised through injected clocks/sleepers and isolated test functions, not deployed entry points. Examples: `tests/test_market_cycle_coordination.py:99`, `tests/test_pricing_options_sequencing.py:724`, `tests/test_ml_prediction_runtime.py:239` |
-| Loop A `--cme-mode inline` / `--options-mode inline` | Compatibility-only/ambiguous legacy ownership | **Confirmed.** Defaults are `external`; startup explicitly selects `external`; tests require external mode not to enter the slow CME or Options lanes. `datafetching/orchestrate.py:105`, `datafetching/orchestrate.py:111`, `docs/datafetch-ml/current_start_command:60`, `tests/test_independent_loop_isolation.py:17` |
-| Legacy Pricing/Options publication schemas and compatibility mirrors | Compatibility-only data contracts | **Confirmed.** Readers retain exact legacy schemas, while current writers use v3 Pricing and v2 Options; Loop B’s `latest` files are compatibility mirrors rather than authority. `ml/option_pricing/publication.py:27`, `options/publication.py:18`, `ml/runtime_pipeline.py:943` |
+| Loops Overnight Gameplan | Active | Single nightly owner |
+| Standalone OPRA history maintenance | Paused | Folded into overnight stage 1 |
+| Options Strategy paper tracking | Paused | Prevent overlap with nightly plan/evaluation |
+| Stock daily adaptation | Paused | Superseded by nightly model/gameplan build |
+| Former intraday stock tasks | Paused | Superseded; must not run alongside the gameplan owner |
+| Gameplan hourly stock owner | Active | Forward 1h entries; active 4h route is confirmation, not a duplicate order |
+| Gameplan 13:00 transition owner | Active | Executes the 13:00 generation after Schwab PM opens |
+| Saturday Loop C operator review | Active | Independent read-only review |
 
-## Production deployment and monitor ownership
-
-**Confirmed:** all eight independent loops have one closed canonical recovery
-command in `GUARDIAN_LAUNCHES` and one monitored module/argument/lock contract in
-`RUNTIMES`. The idempotent PowerShell launcher imports both lists, audits exact
-Win32 command lines plus the parent/child relationship and worker-owned lock,
-and starts only a completely missing owner. Starts are sequential, unbuffered,
-hidden, use resolved paths and an explicit working directory, and redirect to
-`C:\DATASTORE\logs\ducketz`; Options retains
-`--skip-historical-catchup`. A partial pair, duplicate, live foreign lock, or
-command drift fails closed instead of creating another owner.
-`docs/datafetch-ml/start_all_loops.ps1:18`, `ml/system_monitor.py:80`,
-`ml/system_guardian.py:81`
-
-**Observed 2026-08-19 22:45:36 UTC:** the preserved monitor proof found exactly
-one canonical pair and one matching live worker lock for every inventory row,
-with primary `logs\ducketz` streams and all publication/lineage/UI checks
-healthy. A 22:59:29 UTC read-only follow-up produced the same 19 `PASS`, 1
-benign market-aware `INFO`, 0 `WARN`, 0 `FAIL` result. No process was started or
-restarted during this documentation reconciliation. This is timestamped
-deployment evidence, not a static process inventory.
-
-## Numbering
-
-| Source | What it says | Audit conclusion |
-|---|---|---|
-| Startup command | Eight independent owners, numbered 1–8. Active Pricing is owner 4 but “logical Loop 3”; Options is owner 5 but “logical Loop 4.” `docs/datafetch-ml/current_start_command:3`, `docs/datafetch-ml/current_start_command:75`, `docs/datafetch-ml/current_start_command:99`, `docs/datafetch-ml/current_start_command:249` | **Confirmed deployment intent.** Use startup order for owner numbers and retain logical aliases separately. |
-| Executable supervisors | Eight top-level recurring loops, matching the startup commands. | **Confirmed current implementation.** This is the canonical inventory. |
-| Tests | Isolation tests enforce separate CME/Options ownership and a writer lock; ALFRED tests enforce once-daily idempotence; the monitor/guardian inventory covers Strategy-profit training. `tests/test_independent_loop_isolation.py:17`, `tests/test_independent_loop_isolation.py:65`, `tests/test_fred_alfred_causal_pipeline.py:442`, `tests/test_system_monitor.py` | **Confirmed corroboration.** Tests support eight owners and the worker distinction; they do not support treating inline compatibility lanes or Scheduled one-shot tasks as additional production loops. |
-
-## Completeness check
-
-**Confirmed:** the checked-in monitor and guardian inventories contain only the eight supervisors above; remaining polling loops are bounded/internal or one-shot Scheduled invocations. No APScheduler-owned additional production publisher is part of the application runtime.
-
-The cold-start coordinator, per-symbol OPRA bootstrap, full-universe OPRA synchronizer, ALFRED backfill, current-rate seed, administrative diagnostics, research benchmark, and lockbox evaluator all terminate after one requested operation. The loop-native residual worker is spawned by Pricing and has no recurrence supervisor. UI loaders and compatibility mirrors only read or mirror already-published authority. None therefore satisfies the independent-owner test of a top-level recurring scheduler plus exclusive publication ownership.
-
-**Unknown:** an external operating-system scheduler or untracked deployment wrapper could exist outside the repository. The audit makes no claim about unversioned infrastructure.
+No task may restart the legacy stack or infer options broker authority.

@@ -28,6 +28,7 @@ from ml.strategy_selection.chain import (
     entry_stock_quote,
     exit_chain_receipt,
     exit_stock_quote,
+    latest_completed_session_chain_receipt,
     load_option_chain_history,
 )
 from ml.strategy_selection.contracts import (
@@ -79,13 +80,15 @@ _HISTORICAL_OUTCOME_CACHE: OrderedDict[
 ] = OrderedDict()
 _HISTORICAL_OUTCOME_CACHE_LOCK = RLock()
 
-# Daily/weekly inference is allowed to wait for the sequential option-chain
-# capture to finish.  This is deliberately separate from the 15-minute quote
-# age used by the latency-sensitive strategy lanes: the promoted model predicts
-# the next daily/weekly window, and all six production symbols currently finish
-# inside this two-hour evidence window.
-_DAILY_WEEKLY_EXECUTION_EVIDENCE_MAX_LAG_SECONDS = 2.0 * 60.0 * 60.0
+# Overnight inference may use the final quote published by the most recently
+# completed options session.  This is deliberately separate from the 15-minute
+# live-order gate: a completed-session quote is valid model evidence but is not
+# permission to execute that price in the next session.  The nightly scheduler
+# starts after 17:00 PT, so 18 hours is a bounded ceiling covering the complete
+# prior session without admitting multi-day-stale evidence.
+_OVERNIGHT_PLANNING_EVIDENCE_MAX_LAG_SECONDS = 18.0 * 60.0 * 60.0
 _MODELED_EXECUTION_MINIMUM_VOLUME = 10.0
+_OPRA_EXECUTION_MODEL_SOURCE = "OPRA_CBBO_PRIMARY_OHLCV_FALLBACK_EXECUTION"
 
 
 def run_strategy_selection(
@@ -101,6 +104,7 @@ def run_strategy_selection(
     history_available_not_after: object | None = None,
     pricing_mode: str = "off",
     pricing_catalog: StrategyPricingEvidenceCatalog | None = None,
+    completed_session_planning: bool = False,
 ) -> StrategySelectionRun:
     effective_policy = policy or StrategySelectionPolicy()
     _validate_inputs(samples, predictions)
@@ -116,11 +120,9 @@ def run_strategy_selection(
     symbols = tuple(
         sorted(set(samples["symbol"].astype("string").str.upper()))
     )
-    profit_samples = samples.loc[
-        ~samples["horizon"].astype("string").isin(("1h", "4h"))
-    ].copy()
+    profit_samples = samples.copy()
     replay_bootstrap_error: str | None = None
-    if mode != "off":
+    if mode != "off" and not completed_session_planning:
         try:
             opra_target_clocks = strategy_opra_prediction_clocks(
                 datastore_root,
@@ -141,7 +143,7 @@ def run_strategy_selection(
             load_strategy_pricing_evidence(
                 datastore_root,
                 available_not_after=created,
-                include_offline_replay=True,
+                include_offline_replay=not completed_session_planning,
             )
             if mode != "off"
             else StrategyPricingEvidenceCatalog(pd.DataFrame(), ())
@@ -158,25 +160,34 @@ def run_strategy_selection(
     source_files: list[Path] = []
     source_files.extend(catalog.source_files)
     history_errors: dict[str, str] = {}
-    try:
-        opra_cache = ensure_opra_strategy_cache(
-            datastore_root,
-            samples=profit_samples,
-            symbols=symbols,
-            published_at=created,
-        )
-        if opra_cache is not None:
-            source_files.extend(opra_cache.source_files)
-    except Exception as exc:
-        history_errors["__opra_observed_outcome_cache__"] = (
-            f"{type(exc).__name__}: {exc}"
-        )
+    if not completed_session_planning:
+        try:
+            opra_cache = ensure_opra_strategy_cache(
+                datastore_root,
+                samples=profit_samples,
+                symbols=symbols,
+                published_at=created,
+            )
+            if opra_cache is not None:
+                source_files.extend(opra_cache.source_files)
+        except Exception as exc:
+            history_errors["__opra_observed_outcome_cache__"] = (
+                f"{type(exc).__name__}: {exc}"
+            )
+    operational_not_before = (
+        created
+        - pd.Timedelta(seconds=_OVERNIGHT_PLANNING_EVIDENCE_MAX_LAG_SECONDS)
+        if completed_session_planning
+        else None
+    )
     for symbol in symbols:
         try:
             history = load_option_chain_history(
                 datastore_root,
                 symbol=str(symbol),
+                available_not_before=operational_not_before,
                 available_not_after=history_available_not_after,
+                latest_snapshot_only=completed_session_planning,
                 allow_historical_opra_replay=False,
             )
         except Exception as exc:
@@ -202,23 +213,6 @@ def run_strategy_selection(
         if values:
             lockbox_boundaries[horizon] = min(_utc(value) for value in values)
     for horizon in tuple(dict.fromkeys(samples["horizon"].astype(str))):
-        if horizon in {"1h", "4h"}:
-            model_reports[horizon] = {
-                "status": "MODEL_NOT_FIT",
-                "reason": (
-                    "Strategy profit ML is intentionally disabled for the "
-                    "1h/4h routes; Scenario Coverage remains research-only."
-                ),
-                "calibration_status": "NOT_ATTEMPTED_OUT_OF_SCOPE",
-                "complete_outcome_rows": 0,
-                "pricing_eligible_outcome_rows": 0,
-                "pricing_excluded_outcome_rows": 0,
-                "pricing_exclusion_reason_counts": {},
-                "usable_decision_clusters": 0,
-                "required_decision_clusters": required_decisions,
-                "real_lockbox_used": False,
-            }
-            continue
         promoted = load_promoted_strategy_model(
             datastore_root,
             horizon=horizon,
@@ -369,13 +363,24 @@ def run_strategy_selection(
                 )
             )
             continue
-        entry = entry_chain_receipt(
-            history,
-            minimum_snapshot_for=sample["bar_end_timestamp"],
-            information_available_at=sample["information_available_at"],
-            target_window_start=sample["target_window_start"],
-            known_at=input_cutoff,
-        )
+        entry = None
+        if completed_session_planning:
+            entry = latest_completed_session_chain_receipt(
+                history,
+                known_at=input_cutoff,
+                target_window_start=sample["target_window_start"],
+                maximum_age=pd.Timedelta(
+                    seconds=_OVERNIGHT_PLANNING_EVIDENCE_MAX_LAG_SECONDS
+                ),
+            )
+        if entry is None:
+            entry = entry_chain_receipt(
+                history,
+                minimum_snapshot_for=sample["bar_end_timestamp"],
+                information_available_at=sample["information_available_at"],
+                target_window_start=sample["target_window_start"],
+                known_at=input_cutoff,
+            )
         if entry is None:
             reason = (
                 "No causally eligible point-in-time option-chain receipt was available "
@@ -429,6 +434,22 @@ def run_strategy_selection(
             allow_offline_replay=False,
         )
         candidates = pricing.candidates
+        entry_provider = str(entry.surface.get("source_provider") or "").lower()
+        if (
+            completed_session_planning
+            and entry_provider == "databento-opra"
+            and mode == "active"
+        ):
+            source = candidates["pricing_source"].astype("string").str.upper()
+            execution_only = ~source.isin(("BSGP", "BLACK_SCHOLES"))
+            candidates.loc[execution_only, "pricing_source"] = (
+                _OPRA_EXECUTION_MODEL_SOURCE
+            )
+            candidates.loc[execution_only, "pricing_status"] = "Delayed"
+            candidates.loc[execution_only, "pricing_missing_reason"] = (
+                "Latest completed OPRA session; exact same legs require "
+                "next-session quote revalidation."
+            )
         state = infer_market_state(
             sample,
             surface=entry.surface,
@@ -909,6 +930,7 @@ def _opra_execution_model_eligible(
         frame["minimum_open_interest"], errors="coerce"
     )
     volume = pd.to_numeric(frame["total_volume"], errors="coerce")
+    direct_opra_execution = source.eq(_OPRA_EXECUTION_MODEL_SOURCE)
     return (
         frame["pricing_mode"].astype("string").str.upper().eq("ACTIVE")
         & ~source.isin(("BSGP", "BLACK_SCHOLES"))
@@ -922,11 +944,13 @@ def _opra_execution_model_eligible(
             0.0,
             max(
                 effective_policy.maximum_quote_staleness_seconds,
-                _DAILY_WEEKLY_EXECUTION_EVIDENCE_MAX_LAG_SECONDS,
+                _OVERNIGHT_PLANNING_EVIDENCE_MAX_LAG_SECONDS,
             ),
             inclusive="both",
         )
         & (
+            direct_opra_execution
+            |
             open_interest.ge(effective_policy.minimum_open_interest)
             | volume.ge(_MODELED_EXECUTION_MINIMUM_VOLUME)
         )

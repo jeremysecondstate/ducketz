@@ -177,7 +177,9 @@ def _candidate_contract(manifest: Mapping[str, object]) -> dict[str, object]:
             "opra_execution_probability_gate": {
                 "all_option_quotes_valid": True,
                 "maximum_relative_bid_ask_spread": 0.35,
-                "maximum_evidence_lag_seconds": 7200.0,
+                "maximum_evidence_lag_seconds": 64800.0,
+                "evidence_context": "latest_completed_options_session_for_overnight_planning",
+                "live_order_quote_gate_seconds": 900.0,
                 "minimum_open_interest_or_volume": {
                     "minimum_open_interest": 1.0,
                     "minimum_total_volume": 10.0,

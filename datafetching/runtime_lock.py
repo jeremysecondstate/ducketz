@@ -1,17 +1,55 @@
 from __future__ import annotations
 
+import errno
 import os
 import re
 import secrets
+import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterator
+from typing import Callable, Iterator
 
 from filelock import FileLock
 
 
 _MAINTENANCE_LOCK_NAME = ".ducketz-runtime-lock-maintenance.lock"
+
+
+@contextmanager
+def interprocess_file_lock(
+    path: Path,
+    *,
+    poll_seconds: float = 0.25,
+    reporter: Callable[[str], None] | None = None,
+    waiting_message: str = "Waiting for the other datastore operation to finish.",
+) -> Iterator[None]:
+    """Hold the first byte of a persistent file as an OS-released mutex."""
+
+    if poll_seconds <= 0:
+        raise ValueError("poll_seconds must be positive")
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    handle = target.open("a+b")
+    if target.stat().st_size == 0:
+        handle.write(b"\0")
+        handle.flush()
+    waiting_reported = False
+    acquired = False
+    try:
+        while not _try_os_file_lock(handle):
+            if reporter is not None and not waiting_reported:
+                reporter(waiting_message)
+                waiting_reported = True
+            time.sleep(float(poll_seconds))
+        acquired = True
+        yield
+    finally:
+        try:
+            if acquired:
+                _unlock_os_file(handle)
+        finally:
+            handle.close()
 
 
 @contextmanager
@@ -152,4 +190,45 @@ def _pid_is_running(pid: int) -> bool:
     return True
 
 
-__all__ = ["exclusive_runtime_lock", "runtime_lock_maintenance_gate"]
+def _try_os_file_lock(handle: object) -> bool:
+    handle.seek(0)
+    if os.name == "nt":
+        import msvcrt
+
+        try:
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        except OSError as exc:
+            if exc.errno in {errno.EACCES, errno.EAGAIN} or getattr(
+                exc, "winerror", None
+            ) in {32, 33}:
+                return False
+            raise
+        return True
+
+    import fcntl
+
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        return False
+    return True
+
+
+def _unlock_os_file(handle: object) -> None:
+    handle.seek(0)
+    if os.name == "nt":
+        import msvcrt
+
+        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+        return
+
+    import fcntl
+
+    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+__all__ = [
+    "exclusive_runtime_lock",
+    "interprocess_file_lock",
+    "runtime_lock_maintenance_gate",
+]

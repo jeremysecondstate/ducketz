@@ -13,6 +13,7 @@ from app.services.schwab_retry import is_retryable_schwab_error
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.stock_trader.contracts import (
+    ActivationIntent,
     PortfolioState,
     PredictionSignal,
     STOCK_TRADER_SYMBOLS,
@@ -118,6 +119,18 @@ class _SubmissionSafetyStop(Exception):
         self.reason = reason
 
 
+PredictionLoader = Callable[
+    ...,
+    tuple[dict[str, PredictionSignal], tuple[Path, ...]],
+]
+DirectSignalGate = Callable[
+    ...,
+    tuple[dict[str, PredictionSignal], dict[str, object], str, str | None],
+]
+ActivationReader = Callable[[Path], ActivationIntent]
+PredictionSourceLocator = Callable[[Path], tuple[Path, ...]]
+
+
 def run_stock_trader_once(
     datastore_root: Path,
     *,
@@ -147,6 +160,10 @@ def run_stock_trader_once(
     broker_state_retry_sleep: Callable[[float], None] = time.sleep,
     broker_state_retry_clock: Callable[[], float] = time.monotonic,
     runtime_clock: Callable[[], object] | None = None,
+    prediction_loader: PredictionLoader | None = None,
+    direct_signal_gate: DirectSignalGate | None = None,
+    activation_reader: ActivationReader | None = None,
+    prediction_source_locator: PredictionSourceLocator | None = None,
 ) -> StockTraderRunResult:
     """Run one hourly stock decision cycle.
 
@@ -183,7 +200,17 @@ def run_stock_trader_once(
         raise ValueError("broker_state_execution_lead_seconds cannot be negative")
     if prediction_maximum_target_lead_seconds <= 0.0:
         raise ValueError("prediction maximum target lead must be positive")
-    activation = read_activation_intent(root)
+    if wait_for_prediction and (
+        prediction_loader is not None or direct_signal_gate is not None
+    ):
+        raise ValueError(
+            "Custom prediction sources cannot use the legacy Loop B waiter"
+        )
+    read_activation = activation_reader or read_activation_intent
+    locate_prediction_sources = (
+        prediction_source_locator or _prediction_pointer_sources
+    )
+    activation = read_activation(root)
     prediction_handoff: dict[str, object] = {}
     handoff_status: str | None = None
     target_window_start: str | None = None
@@ -279,7 +306,7 @@ def run_stock_trader_once(
                         target_window_start=target_window_start,
                         error=handoff.last_error,
                     )
-                activation = read_activation_intent(root)
+                activation = read_activation(root)
                 if not activation.active:
                     status = "TRADER_INACTIVE_AFTER_PREDICTION_WAIT"
                     publication = publish_decision_run(
@@ -306,7 +333,8 @@ def run_stock_trader_once(
                         target_window_start=target_window_start,
                     )
             else:
-                signals, prediction_sources = load_current_prediction_signals(
+                load_predictions = prediction_loader or load_current_prediction_signals
+                signals, prediction_sources = load_predictions(
                     root,
                     as_of=timestamp,
                     target_horizon=effective_target_horizon,
@@ -321,7 +349,7 @@ def run_stock_trader_once(
                         prediction_handoff,
                         handoff_status,
                         target_window_start,
-                    ) = _gate_direct_execution_signals(
+                    ) = (direct_signal_gate or _gate_direct_execution_signals)(
                         root,
                         signals,
                         as_of=timestamp,
@@ -373,7 +401,7 @@ def run_stock_trader_once(
                 activation=activation,
                 policy=active_policy,
                 execution_requested=execute,
-                source_files=_prediction_pointer_sources(root),
+                source_files=locate_prediction_sources(root),
                 status="PREDICTION_INPUTS_UNAVAILABLE",
                 prediction_handoff=prediction_handoff,
             )
@@ -488,7 +516,7 @@ def run_stock_trader_once(
                 use_live_clock=use_live_clock,
                 clock=runtime_clock,
             )
-            activation = read_activation_intent(root)
+            activation = read_activation(root)
             if not activation.active:
                 status = "TRADER_INACTIVE_DURING_BROKER_STATE_CAPTURE"
             elif (
@@ -527,7 +555,7 @@ def run_stock_trader_once(
                 error=detail,
                 broker_state_capture=broker_state_capture,
             )
-        activation = read_activation_intent(root)
+        activation = read_activation(root)
         if not activation.active:
             status = "TRADER_INACTIVE_AFTER_BROKER_STATE_CAPTURE"
             publication = publish_decision_run(
@@ -694,6 +722,7 @@ def run_stock_trader_once(
             allow_open_queue=allow_open_queue,
             allow_premarket_queue=allow_premarket_queue,
             execution_lead_seconds=broker_state_execution_lead_seconds,
+            activation_reader=read_activation,
             clock=lambda: _runtime_now(
                 timestamp,
                 use_live_clock=use_live_clock,
@@ -718,6 +747,7 @@ def _submit_selected_orders(
     allow_open_queue: bool,
     allow_premarket_queue: bool,
     execution_lead_seconds: float,
+    activation_reader: ActivationReader,
     clock: Callable[[], object],
 ) -> StockTraderRunResult:
     selected = [
@@ -748,6 +778,7 @@ def _submit_selected_orders(
             allow_open_queue=allow_open_queue,
             allow_premarket_queue=allow_premarket_queue,
             execution_lead_seconds=execution_lead_seconds,
+            activation_reader=activation_reader,
         )
         if safety_stop_reason:
             break
@@ -783,6 +814,7 @@ def _submit_selected_orders(
             allow_open_queue=allow_open_queue,
             allow_premarket_queue=allow_premarket_queue,
             execution_lead_seconds=execution_lead_seconds,
+            activation_reader=activation_reader,
         )
         if safety_stop_reason:
             break
@@ -804,6 +836,7 @@ def _submit_selected_orders(
             allow_open_queue=allow_open_queue,
             allow_premarket_queue=allow_premarket_queue,
             execution_lead_seconds=execution_lead_seconds,
+            activation_reader=activation_reader,
         )
         if safety_stop_reason:
             record_execution_result(
@@ -829,6 +862,7 @@ def _submit_selected_orders(
                 allow_open_queue=allow_open_queue,
                 allow_premarket_queue=allow_premarket_queue,
                 execution_lead_seconds=execution_lead_seconds,
+                activation_reader=activation_reader,
             )
             if reason:
                 raise _SubmissionSafetyStop(reason)
@@ -1149,8 +1183,9 @@ def _submission_safety_reason(
     allow_open_queue: bool,
     allow_premarket_queue: bool,
     execution_lead_seconds: float,
+    activation_reader: ActivationReader = read_activation_intent,
 ) -> str | None:
-    if not read_activation_intent(root).active:
+    if not activation_reader(root).active:
         return "OPERATOR_INTENT_NOT_ACTIVE_AT_SUBMISSION"
     if not _decision_is_actionable(
         decision,

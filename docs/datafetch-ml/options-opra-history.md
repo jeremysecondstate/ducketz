@@ -32,13 +32,52 @@ are included Standard-plan access and are checked against
 part of the prediction-focused default bootstrap because a single day exceeds
 the complete baseline storage target.
 
-The recurring `datafetching.options_runtime` runs catch-up at most once per UTC
-date. It advances only a verified v5 symbol/schema cursor and reports
-`bootstrap required` for a new or invalid cursor; it does not perform a large
-initial fetch. Overlap partitions are checksum-verified and naturally
-deduplicated before publication. Each symbol/schema scope still verifies its
-own receipts and files, while the expensive global health inventory is rebuilt
-once after the complete daily catch-up pass rather than once per scope.
+The legacy `datafetching.options_runtime` command retains
+`--skip-historical-catchup`; prospective capture and potentially large history
+downloads cannot compete inside that owner. The current single overnight
+workflow invokes Loop A after the 17:00 PT close, and Loop A owns the daily
+subprocess for `ohlcv-1h`, `cbbo-1m`, and `definition`. Exact `cbbo-1m` supplies
+historical Strategy entry/exit BBOs, hourly bars supply surface context, and
+definitions supply point-in-time identity. The standalone Scheduled task is
+paused to prevent duplicate ownership. The maintenance lane advances
+only a verified v5 symbol/schema cursor and reports `bootstrap required` for a
+new or invalid cursor; it never turns a missing scope into a large initial fetch. Overlap
+partitions are checksum-verified and naturally deduplicated before publication.
+Each symbol/schema scope verifies its own receipts and files, while the
+expensive global health inventory is rebuilt once after the complete batch
+rather than once per scope. After a successful batch, Loop A invokes the
+audit-only datastore hygiene command so the generated authority catalog reflects
+the new dates; no cleanup flag is included.
+
+The bounded production maintenance command is:
+
+```powershell
+.\.venv\Scripts\python.exe -m datafetching.options_history `
+  --datastore-target pc `
+  --schemas ohlcv-1h cbbo-1m definition `
+  --incremental-only `
+  --max-estimated-download-bytes 20000000000 `
+  --max-estimated-cost-usd 1 `
+  --max-incremental-catchup-days 30
+```
+
+Every requested scope receives a provider byte/cost preflight before any
+download. Selection is oldest-cursor-first within each schema. Scopes that
+would exceed the aggregate run budget are explicitly deferred to a later run,
+not truncated or partially published. See
+`docs/loops-system-analysis/OPRA_HISTORY_MAINTENANCE_AUTOMATION.md`.
+
+At night, “current” means every required cursor covers the most recently
+completed market session. The session's last option quote may naturally be
+hours old after close. This is valid model/planning evidence and is distinct
+from the current-quote requirement of any future live same-leg execution gate.
+
+**Observed 2026-09-04 UTC:** the corrective catch-up preflighted and completed
+all 18 production scopes (three schemas by six symbols), selected an estimated
+11,464,500,352 bytes at USD 0, and reported zero failed, deferred,
+capacity-blocked, or bootstrap-required scopes. Every production cursor is at
+the exclusive `2026-09-04` boundary; `health/current.json` reports September 3
+latest events for `ohlcv-1h`, `cbbo-1m`, and `definition`.
 
 The current `options-opra-symbol-history-v5` cursor records the exact
 `lookback_policy`, `requested_start`, and `completed_through`; a cold-start
@@ -64,9 +103,11 @@ Entitlement/preflight receipts live under `metadata`, symbol cursors under
 Staging files are never consumer authority.
 
 The capacity preflight compares destination free space with twice the provider's
-estimated compressed download size plus a 5 GiB safety reserve. It blocks the
-requested scope when it does not fit; it does not cap the datastore, truncate a
-date range, or delete completed data.
+estimated compressed download size plus a 5 GiB safety reserve. Guarded runs
+also compare the aggregate selected provider estimate with explicit byte and
+USD budgets. A missing cost estimate fails a finite cost gate closed. These
+checks do not cap the datastore, truncate a selected date range, or delete
+completed data.
 
 A provider-native DBN that cleanly decodes to zero data records is retained in
 staging and skipped as `NO_DATA` only after its dataset, schema, exact UTC
@@ -108,12 +149,19 @@ directory is not proof of historical acquisition. Require nonzero normalized
 Parquet rows, verified receipts/checksums, timestamp bounds, health counts, and
 consumer-usage records.
 
+The provider-native DBN, normalized Parquet, manifest, and receipt inside one
+published date/segment are complementary evidence encodings. Do not flatten
+them or all dates into one mega-Parquet. Prospective OPRA/Schwab chain receipts
+under `stocks/<SYMBOL>/options/snapshots/` are a different point-in-time
+evidence family and never merge into historical OPRA. The generated authority
+inventory is `C:\DATASTORE\catalog\market-data\current.json`.
+
 ## All-dataset cold-start alternative
 
 `datafetching.databento_cold_start` can populate the same canonical OPRA
 partitions while also building isolated CME and US-equity historical archives.
 It is a one-time maintenance/bootstrap command, not a recurring owner. After
 each verified OPRA scope it publishes the v5 symbol/schema history cursor so
-Options Capture can take over forward maintenance; it does not take the Options
+Loop A can take over bounded forward maintenance; it does not take the Options
 snapshot-writer lock or publish an option snapshot/pointer. See
 [Databento cold-start bootstrap](databento-cold-start.md).

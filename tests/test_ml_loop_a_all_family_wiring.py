@@ -495,6 +495,74 @@ def test_option_family_before_first_causal_receipt_is_explicitly_missing(
     assert sources == ()
 
 
+def test_option_family_rejects_latest_quality_failed_surface_without_backfill(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    feature = FeatureSpec(
+        name="opt__fixture",
+        source_family="opt",
+        source_column="fixture",
+        applicable_horizons=("1h",),
+    )
+    feature_set = FeatureSet(
+        "option-quality-fixture",
+        (feature,),
+        applicable_horizons=("1h",),
+    )
+    decisions = pd.DataFrame(
+        {
+            "symbol": ["AAPL"],
+            "decision_timestamp": [pd.Timestamp("2026-08-18T20:05:00Z")],
+        }
+    )
+    surfaces = pd.DataFrame(
+        {
+            "symbol": ["AAPL", "AAPL"],
+            "snapshot_for": pd.to_datetime(
+                ["2026-08-18T19:00:00Z", "2026-08-18T20:00:00Z"],
+                utc=True,
+            ),
+            "available_at": pd.to_datetime(
+                ["2026-08-18T19:01:00Z", "2026-08-18T20:01:00Z"],
+                utc=True,
+            ),
+            "surface_quality_pass": [True, False],
+            "fixture": [1.0, 2.0],
+        }
+    )
+    monkeypatch.setattr(
+        rolling_materialization.DEFAULT_FEATURE_REGISTRY,
+        "feature_set",
+        lambda *_args, **_kwargs: feature_set,
+    )
+    monkeypatch.setattr(
+        rolling_materialization,
+        "read_committed_option_surfaces",
+        lambda *_args, **_kwargs: (surfaces, (tmp_path / "receipt.json",)),
+    )
+
+    assembled, sources = rolling_materialization._attach_loop_a_features(
+        tmp_path,
+        decisions,
+        symbols=("AAPL",),
+        horizon="1h",
+        source_timeframe="1h",
+        provider="databento",
+        feature_set_name=feature_set.name,
+        parquet_cache={},
+        derived_cache={},
+        input_available_at="2026-08-18T20:05:00Z",
+    )
+
+    assert pd.isna(assembled.loc[0, "opt__fixture"])
+    assert assembled.loc[0, "opt__join_status"] == "QUALITY_REJECTED"
+    assert assembled.loc[0, "opt__available_at"] == pd.Timestamp(
+        "2026-08-18T20:01:00Z"
+    )
+    assert sources == (tmp_path / "receipt.json",)
+
+
 def test_option_family_does_not_hide_a_committed_reader_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

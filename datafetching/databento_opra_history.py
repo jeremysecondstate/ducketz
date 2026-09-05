@@ -53,6 +53,10 @@ L0_SCHEMAS = (
 )
 L1_SCHEMAS = ("cmbp-1", "tcbbo", "cbbo-1s", "cbbo-1m", "trades")
 STANDARD_SCHEMAS = (*L0_SCHEMAS, *L1_SCHEMAS)
+# Exact historical schemas whose freshness is a production dependency of the
+# options-strategy model. Other Standard schemas remain selectable research
+# history unless a separate production consumer is explicitly added.
+OPRA_STRATEGY_HISTORY_SCHEMAS = ("ohlcv-1h", "cbbo-1m", "definition")
 
 METADATA_TIMEOUT_SECONDS = 30
 TIMESERIES_TIMEOUT_SECONDS = 300
@@ -224,6 +228,7 @@ def storage_preflight(
     requests = _scope_ranges(entitlement, scope)
     metadata = getattr(client, "metadata")
     estimates: dict[str, dict[str, object]] = {}
+    cost_estimates_complete = True
     for schema, start, end in requests:
         kwargs = _metadata_request_kwargs(
             schema=schema,
@@ -245,17 +250,42 @@ def storage_preflight(
                 operation=f"{schema} record count",
             )
         )
+        get_cost = getattr(metadata, "get_cost", None)
+        estimated_cost_usd = (
+            float(
+                _retry(
+                    get_cost,
+                    kwargs=kwargs,
+                    operation=f"{schema} estimated cost",
+                )
+            )
+            if callable(get_cost)
+            else None
+        )
+        if estimated_cost_usd is not None and estimated_cost_usd < 0:
+            raise OpraSyncError(
+                f"Databento returned a negative estimated cost for {schema}"
+            )
+        cost_estimates_complete = (
+            cost_estimates_complete and estimated_cost_usd is not None
+        )
         estimates[schema] = {
             "start": start,
             "end": end,
             "symbols": list(scope.symbols) or ["ALL_SYMBOLS"],
             "estimated_download_size_bytes": estimated_download_size,
             "record_count": records,
+            "estimated_cost_usd": estimated_cost_usd,
         }
     download_size_total = sum(
         int(item["estimated_download_size_bytes"]) for item in estimates.values()
     )
     record_total = sum(int(item["record_count"]) for item in estimates.values())
+    estimated_cost_total = (
+        sum(float(item["estimated_cost_usd"]) for item in estimates.values())
+        if cost_estimates_complete
+        else None
+    )
     required = (
         math.ceil(download_size_total * STORAGE_EXPANSION_FACTOR)
         + STORAGE_RESERVE_BYTES
@@ -273,6 +303,8 @@ def storage_preflight(
         },
         "estimates": estimates,
         "estimated_download_size_bytes": download_size_total,
+        "estimated_cost_usd": estimated_cost_total,
+        "cost_estimates_complete": cost_estimates_complete,
         "record_count": record_total,
         "storage_expansion_factor": STORAGE_EXPANSION_FACTOR,
         "storage_reserve_bytes": STORAGE_RESERVE_BYTES,
@@ -861,26 +893,122 @@ def record_consumer_usage(
     counts = dict(payload.get("schema_read_counts", {}))
     for schema in schemas:
         counts[schema] = int(counts.get(schema, 0)) + 1
-    events = list(payload.get("events", ()))
+    events = [
+        _compact_consumer_usage_event(value)
+        for value in payload.get("events", ())
+        if isinstance(value, Mapping)
+    ]
+    resolved_sources = tuple(
+        sorted({Path(value).resolve().as_posix() for value in source_files})
+    )
+    source_fingerprint = hashlib.sha256(
+        "\n".join(resolved_sources).encode("utf-8")
+    ).hexdigest()
     events.append(
         {
             "consumer": str(consumer),
             "consumed_at": utc_timestamp().isoformat(),
             "schemas": list(schemas),
             "rows": int(rows),
-            "source_files": [Path(value).resolve().as_posix() for value in source_files],
+            "source_file_count": len(resolved_sources),
+            "source_files_sha256": source_fingerprint,
+            "source_file_examples": list(resolved_sources[:8]),
         }
     )
     _write_json_atomic(
         path,
         {
-            "schema_version": "databento-opra-consumer-usage-v1",
+            "schema_version": "databento-opra-consumer-usage-v2",
             "schema_read_counts": counts,
             "events": events[-1_000:],
         },
     )
     if refresh_health:
-        publish_health(datastore_root)
+        refresh_health_consumer_usage(datastore_root)
+    return path
+
+
+def refresh_health_consumer_usage(datastore_root: Path) -> Path:
+    """Refresh usage counters without rehashing the full immutable OPRA archive."""
+
+    root = canonical_root(datastore_root)
+    health_path = root / "health" / "current.json"
+    if not health_path.is_file():
+        return publish_health(datastore_root)
+    try:
+        health = json.loads(health_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return publish_health(datastore_root)
+    if (
+        not isinstance(health, Mapping)
+        or health.get("schema_version") != HEALTH_VERSION
+        or health.get("dataset") != DATASET
+        or health.get("provider") != PROVIDER
+        or not isinstance(health.get("schemas"), Mapping)
+    ):
+        return publish_health(datastore_root)
+    usage_path = root / "state" / "consumer-usage.json"
+    try:
+        usage = json.loads(usage_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        usage = {}
+    counts = usage.get("schema_read_counts", {}) if isinstance(usage, Mapping) else {}
+    schemas = {
+        str(schema): {
+            **dict(item),
+            "consumer_read_count": int(counts.get(schema, 0)),
+        }
+        for schema, item in health["schemas"].items()
+        if isinstance(item, Mapping)
+    }
+    updated = {
+        **dict(health),
+        "schemas": schemas,
+        "consumer_usage_observed_at": utc_timestamp().isoformat(),
+    }
+    _write_json_atomic(health_path, updated)
+    return health_path
+
+
+def _compact_consumer_usage_event(value: Mapping[str, object]) -> dict[str, object]:
+    event = dict(value)
+    raw_sources = event.pop("source_files", ())
+    if isinstance(raw_sources, (list, tuple)):
+        resolved_sources = tuple(sorted({str(item) for item in raw_sources}))
+        event.setdefault("source_file_count", len(resolved_sources))
+        event.setdefault(
+            "source_files_sha256",
+            hashlib.sha256("\n".join(resolved_sources).encode("utf-8")).hexdigest(),
+        )
+        event.setdefault("source_file_examples", list(resolved_sources[:8]))
+    return event
+
+
+def compact_consumer_usage(datastore_root: Path) -> Path:
+    """Migrate the usage ledger to compact v2 lineage without changing counts."""
+
+    path = canonical_root(datastore_root) / "state" / "consumer-usage.json"
+    if not path.is_file():
+        return path
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise OpraSyncError("OPRA consumer-usage state is unreadable") from exc
+    if not isinstance(payload, Mapping):
+        raise OpraSyncError("OPRA consumer-usage state is not an object")
+    events = [
+        _compact_consumer_usage_event(value)
+        for value in payload.get("events", ())
+        if isinstance(value, Mapping)
+    ]
+    _write_json_atomic(
+        path,
+        {
+            "schema_version": "databento-opra-consumer-usage-v2",
+            "schema_read_counts": dict(payload.get("schema_read_counts", {})),
+            "events": events[-1_000:],
+        },
+    )
     return path
 
 
@@ -3061,11 +3189,13 @@ __all__ = [
     "L1_SCHEMAS",
     "OpraCapacityError",
     "OpraSyncError",
+    "OPRA_STRATEGY_HISTORY_SCHEMAS",
     "PROVIDER",
     "STANDARD_SCHEMAS",
     "SyncResult",
     "SyncScope",
     "canonical_root",
+    "compact_consumer_usage",
     "configure_client",
     "discover_standard_entitlement",
     "iter_verified_partitions",
@@ -3074,6 +3204,7 @@ __all__ = [
     "publish_storage_preflight",
     "standard_plan_history_policy",
     "record_consumer_usage",
+    "refresh_health_consumer_usage",
     "storage_preflight",
     "symbol_bucket",
     "synchronize",

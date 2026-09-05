@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
 import time
 from contextlib import contextmanager, nullcontext
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, Iterable, Iterator, Mapping
 
@@ -23,7 +24,9 @@ from datafetching.main import (
     run_symbols_fetch,
 )
 from datafetching.bar_readiness import publish_bar_readiness
+from datafetching.cme_runtime import load_repository_environment
 from datafetching.databento_fetch import recover_historical_minute_target
+from datafetching.databento_opra_history import OPRA_STRATEGY_HISTORY_SCHEMAS
 from datafetching.decision_time import cycle_target_decision
 from datafetching.observability import timed_stage
 from datafetching.parquet_store import DATASTORE_TARGETS, ParquetStore
@@ -41,6 +44,16 @@ DEFAULT_WATCHLIST = Path(__file__).resolve().parent / "watchlist.txt"
 # it can submit an order.  A Schwab capture outage must therefore remain
 # observable without invalidating an otherwise usable directional generation.
 NON_BLOCKING_QUOTE_ONLY_PROVIDERS = frozenset({"schwab"})
+
+# Bound the Loop A-owned update for the shared production strategy-history
+# schema contract declared by the canonical OPRA synchronizer.
+# 17:00 PDT is 00:00 UTC on the following date.  The post-close owner starts
+# just after that boundary so an exclusive OPRA cursor can include the entire
+# most recently completed options session before modeling begins.
+DEFAULT_OPRA_HISTORY_UTC_HOUR = 0
+DEFAULT_OPRA_HISTORY_MAX_DOWNLOAD_BYTES = 20_000_000_000
+DEFAULT_OPRA_HISTORY_MAX_COST_USD = 1.0
+DEFAULT_OPRA_HISTORY_MAX_CATCHUP_DAYS = 30
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -123,6 +136,36 @@ def main(argv: list[str] | None = None) -> int:
         help="External uses datafetching.options_runtime; inline is compatibility mode.",
     )
     parser.add_argument(
+        "--opra-history-mode",
+        choices=("off", "daily"),
+        default="off",
+        help=(
+            "Run the production OPRA strategy-history catch-up once per UTC date "
+            "after its configured hour. The canonical production launcher uses daily."
+        ),
+    )
+    parser.add_argument(
+        "--opra-history-utc-hour",
+        type=int,
+        default=DEFAULT_OPRA_HISTORY_UTC_HOUR,
+        help="UTC hour after which Loop A owns the daily OPRA history catch-up.",
+    )
+    parser.add_argument(
+        "--opra-history-max-estimated-download-bytes",
+        type=int,
+        default=DEFAULT_OPRA_HISTORY_MAX_DOWNLOAD_BYTES,
+    )
+    parser.add_argument(
+        "--opra-history-max-estimated-cost-usd",
+        type=float,
+        default=DEFAULT_OPRA_HISTORY_MAX_COST_USD,
+    )
+    parser.add_argument(
+        "--opra-history-max-catchup-days",
+        type=int,
+        default=DEFAULT_OPRA_HISTORY_MAX_CATCHUP_DAYS,
+    )
+    parser.add_argument(
         "--skip-fundamentals",
         action="store_true",
         help="Fetch data without rebuilding point-in-time fundamental outputs.",
@@ -158,6 +201,14 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--bar-readiness-recovery-timeout-seconds cannot be negative")
     if args.bar_readiness_recovery_poll_seconds <= 0:
         parser.error("--bar-readiness-recovery-poll-seconds must be positive")
+    if not 0 <= args.opra_history_utc_hour <= 23:
+        parser.error("--opra-history-utc-hour must be in [0, 23]")
+    if args.opra_history_max_estimated_download_bytes < 1:
+        parser.error("--opra-history-max-estimated-download-bytes must be positive")
+    if args.opra_history_max_estimated_cost_usd < 0:
+        parser.error("--opra-history-max-estimated-cost-usd cannot be negative")
+    if args.opra_history_max_catchup_days < 1:
+        parser.error("--opra-history-max-catchup-days must be positive")
     symbols = normalize_symbols(args.symbols or read_watchlist(args.watchlist))
     if not symbols:
         parser.error("No symbols were found. Add one to the watchlist or pass --symbols.")
@@ -170,6 +221,11 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Providers: {', '.join(args.providers)}")
     print("Fetch mode: continuation")
     print(f"Interval: {args.interval_minutes} minutes")
+    print(
+        "OPRA Strategy history: "
+        f"{args.opra_history_mode}; schemas={','.join(OPRA_STRATEGY_HISTORY_SCHEMAS)}; "
+        f"utc_hour={args.opra_history_utc_hour}"
+    )
     print("Loop B input: current normalized, fundamental, technical, and signal Parquets")
     print("Stop: Ctrl+C")
     print()
@@ -185,6 +241,9 @@ def main(argv: list[str] | None = None) -> int:
         if "databento" in args.providers and not args.once
         else nullcontext()
     )
+    if args.opra_history_mode == "daily":
+        load_repository_environment()
+    last_opra_history_attempt: date | None = None
     with orchestration_lock(lock_path), readiness_context:
         try:
             while True:
@@ -242,8 +301,37 @@ def main(argv: list[str] | None = None) -> int:
                             f"Loop A datastore cycle {terminal.generation}: "
                             f"{terminal.status}"
                         )
+                history_exit_code = 0
+                maintenance_clock = datetime.now(timezone.utc)
+                if (
+                    args.opra_history_mode == "daily"
+                    and opra_history_maintenance_due(
+                        maintenance_clock,
+                        last_attempt=last_opra_history_attempt,
+                        utc_hour=args.opra_history_utc_hour,
+                    )
+                ):
+                    last_opra_history_attempt = maintenance_clock.date()
+                    history_exit_code = run_opra_history_maintenance_once(
+                        store,
+                        symbols=symbols,
+                        max_estimated_download_bytes=(
+                            args.opra_history_max_estimated_download_bytes
+                        ),
+                        max_estimated_cost_usd=(
+                            args.opra_history_max_estimated_cost_usd
+                        ),
+                        max_incremental_catchup_days=(
+                            args.opra_history_max_catchup_days
+                        ),
+                    )
+                    print(
+                        "Loop A OPRA Strategy history maintenance: "
+                        f"exit_code={history_exit_code}; "
+                        f"attempt_date={last_opra_history_attempt.isoformat()}"
+                    )
                 if args.once:
-                    return 1 if failures else 0
+                    return 1 if failures or history_exit_code else 0
 
                 # Preserve the cadence owned by this cycle.  If a provider-aware
                 # recovery crosses the following boundary, scheduling from the
@@ -265,6 +353,76 @@ def main(argv: list[str] | None = None) -> int:
         except KeyboardInterrupt:
             print("Orchestration stopped.")
             return 0
+
+def opra_history_maintenance_due(
+    now: datetime,
+    *,
+    last_attempt: date | None,
+    utc_hour: int = DEFAULT_OPRA_HISTORY_UTC_HOUR,
+) -> bool:
+    """Return whether this Loop A owner owes today's OPRA maintenance attempt."""
+
+    if not 0 <= utc_hour <= 23:
+        raise ValueError("OPRA history UTC hour must be in [0, 23]")
+    current = now.astimezone(timezone.utc)
+    return current.hour >= utc_hour and last_attempt != current.date()
+
+
+def run_opra_history_maintenance_once(
+    store: ParquetStore,
+    *,
+    symbols: Iterable[str],
+    max_estimated_download_bytes: int = DEFAULT_OPRA_HISTORY_MAX_DOWNLOAD_BYTES,
+    max_estimated_cost_usd: float = DEFAULT_OPRA_HISTORY_MAX_COST_USD,
+    max_incremental_catchup_days: int = DEFAULT_OPRA_HISTORY_MAX_CATCHUP_DAYS,
+) -> int:
+    """Run the guarded production OPRA dependency update in a separate process."""
+
+    clean_symbols = tuple(
+        str(value).strip().upper() for value in symbols if str(value).strip()
+    )
+    command = [
+        sys.executable,
+        "-u",
+        "-m",
+        "datafetching.options_history",
+        "--datastore",
+        str(store.root_dir),
+        "--symbols",
+        *clean_symbols,
+        "--schemas",
+        *OPRA_STRATEGY_HISTORY_SCHEMAS,
+        "--incremental-only",
+        "--max-estimated-download-bytes",
+        str(int(max_estimated_download_bytes)),
+        "--max-estimated-cost-usd",
+        str(float(max_estimated_cost_usd)),
+        "--max-incremental-catchup-days",
+        str(int(max_incremental_catchup_days)),
+    ]
+    completed = subprocess.run(
+        command,
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+    )
+    if completed.returncode:
+        return int(completed.returncode)
+    catalog_command = [
+        sys.executable,
+        "-u",
+        "-m",
+        "datafetching.datastore_hygiene",
+        "--datastore",
+        str(store.root_dir),
+        "--symbols",
+        *clean_symbols,
+    ]
+    catalog = subprocess.run(
+        catalog_command,
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+    )
+    return int(catalog.returncode)
 
 
 def run_cycle(

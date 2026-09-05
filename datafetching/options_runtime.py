@@ -34,6 +34,8 @@ from datafetching.databento_opra_history import (
     canonical_root,
     discover_standard_entitlement,
     publish_health,
+    publish_storage_preflight,
+    storage_preflight,
     synchronize,
 )
 from datafetching.loop_a_cycle import read_latest_complete_loop_a_cycle
@@ -102,6 +104,13 @@ class OptionHistorySyncSummary:
     capacity_blocked_scopes: int = 0
     failed_scopes: int = 0
     bootstrap_required_scopes: int = 0
+    preflighted_scopes: int = 0
+    deferred_scopes: int = 0
+    selected_estimated_download_bytes: int = 0
+    selected_estimated_cost_usd: float | None = None
+    total_estimated_download_bytes: int = 0
+    total_estimated_cost_usd: float | None = None
+    preflight_only: bool = False
 
 
 DISCOVERY_CYCLE_MODE = "DISCOVERY_REFRESH"
@@ -898,6 +907,10 @@ def synchronize_option_history(
     reporter: Callable[[str], None] | None,
     bootstrap_missing: bool = True,
     schemas: Sequence[str] = OPRA_SYMBOL_HISTORY_SCHEMA_ORDER,
+    preflight_only: bool = False,
+    max_estimated_download_bytes: int | None = None,
+    max_estimated_cost_usd: float | None = None,
+    max_incremental_catchup_days: int | None = None,
 ) -> OptionHistorySyncSummary:
     """Bootstrap or incrementally maintain Standard history per parent symbol."""
 
@@ -907,7 +920,17 @@ def synchronize_option_history(
     invalid = sorted(set(clean_schemas).difference(STANDARD_SCHEMAS))
     if invalid:
         raise ValueError("Unsupported OPRA schemas: " + ", ".join(invalid))
+    if max_estimated_download_bytes is not None and max_estimated_download_bytes < 1:
+        raise ValueError("Maximum estimated OPRA download bytes must be positive")
+    if max_estimated_cost_usd is not None and max_estimated_cost_usd < 0:
+        raise ValueError("Maximum estimated OPRA cost cannot be negative")
+    if max_incremental_catchup_days is not None and max_incremental_catchup_days < 1:
+        raise ValueError("Maximum incremental OPRA catch-up days must be positive")
     requested = completed = blocked = failed = needs_bootstrap = 0
+    preflighted = deferred = 0
+    selected_estimated_bytes = total_estimated_bytes = 0
+    selected_estimated_cost: float | None = 0.0
+    total_estimated_cost: float | None = 0.0
     client = db.Historical(api_key)
     try:
         entitlement = discover_standard_entitlement(
@@ -920,10 +943,14 @@ def synchronize_option_history(
             process_name="Options-owned OPRA symbol history synchronizer",
         ):
             clean_symbols = normalize_symbols(symbols)
+            scope_plans: list[dict[str, object]] = []
+            schema_order = {schema: index for index, schema in enumerate(clean_schemas)}
             for schema in clean_schemas:
-                end = str(entitlement["entitlements"][schema]["entitled_end"])
+                entitled_end = str(
+                    entitlement["entitlements"][schema]["entitled_end"]
+                )
                 lookback_label = opra_history_lookback_label(schema)
-                full_start = opra_history_start(schema, end=end)
+                full_start = opra_history_start(schema, end=entitled_end)
                 for symbol in clean_symbols:
                     requested += 1
                     provider_symbol = f"{symbol}.OPT"
@@ -943,7 +970,10 @@ def synchronize_option_history(
                                 )
                             continue
                         start = full_start
+                        end = entitled_end
                         mode = "INITIAL_" + lookback_label.upper().replace(" ", "_")
+                        completed_through = None
+                        cursor_updated_at = None
                     else:
                         completed_end = pd.Timestamp(
                             str(marker["completed_through"])
@@ -953,56 +983,193 @@ def synchronize_option_history(
                             completed_end
                             - pd.Timedelta(days=opra_history_overlap_days(schema)),
                         ).date().isoformat()
+                        end = entitled_end
+                        if max_incremental_catchup_days is not None:
+                            limited_end = completed_end + pd.Timedelta(
+                                days=max_incremental_catchup_days
+                            )
+                            end = min(
+                                pd.Timestamp(entitled_end),
+                                limited_end,
+                            ).date().isoformat()
                         mode = "INCREMENTAL_CATCHUP"
-                    try:
-                        result = synchronize(
-                            client,
-                            datastore_root=store.root_dir,
-                            entitlement=entitlement,
-                            scope=SyncScope(
+                        completed_through = completed_end.isoformat()
+                        cursor_updated_at = str(marker.get("updated_at", "")) or None
+                    scope_plans.append(
+                        {
+                            "symbol": symbol,
+                            "schema": schema,
+                            "start": start,
+                            "end": end,
+                            "mode": mode,
+                            "completed_through": completed_through,
+                            "cursor_updated_at": cursor_updated_at,
+                            "scope": SyncScope(
                                 schemas=(schema,),
                                 start=start,
                                 end=end,
                                 symbols=(provider_symbol,),
                             ),
-                            reporter=reporter,
-                            refresh_health=False,
+                        }
+                    )
+
+            scope_plans.sort(
+                key=lambda plan: (
+                    schema_order[str(plan["schema"])],
+                    str(plan.get("completed_through") or "0000-00-00"),
+                    str(plan.get("cursor_updated_at") or "0000-00-00"),
+                    str(plan["symbol"]),
+                )
+            )
+
+            guarded = (
+                preflight_only
+                or max_estimated_download_bytes is not None
+                or max_estimated_cost_usd is not None
+            )
+            selected_plans: list[dict[str, object]] = []
+            for plan in scope_plans:
+                symbol = str(plan["symbol"])
+                schema = str(plan["schema"])
+                scope = plan["scope"]
+                if guarded:
+                    try:
+                        raw_preflight = storage_preflight(
+                            client,
+                            datastore_root=store.root_dir,
+                            entitlement=entitlement,
+                            scope=scope,
                         )
-                        health_refresh_pending = True
-                    except OpraCapacityError as exc:
-                        blocked += 1
-                        if reporter is not None:
-                            reporter(
-                                "OPRA symbol/schema history capacity blocked: "
-                                f"symbol={symbol}; schema={schema}; mode={mode}; {exc}"
-                            )
-                        continue
-                    if result.errors or result.completed_rows < 1:
+                        published_preflight = publish_storage_preflight(
+                            store.root_dir,
+                            raw_preflight,
+                        )
+                    except Exception as exc:
                         failed += 1
                         if reporter is not None:
                             reporter(
-                                f"OPRA symbol/schema history incomplete: symbol={symbol}; "
-                                f"schema={schema}; mode={mode}; "
-                                f"errors={len(result.errors)}; rows={result.completed_rows}; "
-                                f"health={result.health_path}"
+                                "OPRA symbol/schema history preflight failed: "
+                                f"symbol={symbol}; schema={schema}; "
+                                f"{type(exc).__name__}: {exc}"
                             )
                         continue
-                    completed += 1
-                    _write_opra_symbol_history_cursor(
-                        store.root_dir,
-                        symbol=symbol,
-                        schema=schema,
-                        completed_through=end,
+                    preflighted += 1
+                    plan["preflight"] = published_preflight
+                    estimated_bytes = int(
+                        published_preflight["estimated_download_size_bytes"]
                     )
+                    raw_cost = published_preflight.get("estimated_cost_usd")
+                    estimated_cost = (
+                        float(raw_cost) if raw_cost is not None else None
+                    )
+                    plan["estimated_download_bytes"] = estimated_bytes
+                    plan["estimated_cost_usd"] = estimated_cost
+                    total_estimated_bytes += estimated_bytes
+                    if total_estimated_cost is not None:
+                        total_estimated_cost = (
+                            total_estimated_cost + estimated_cost
+                            if estimated_cost is not None
+                            else None
+                        )
+                    exceeds_bytes = (
+                        max_estimated_download_bytes is not None
+                        and selected_estimated_bytes + estimated_bytes
+                        > max_estimated_download_bytes
+                    )
+                    exceeds_cost = (
+                        max_estimated_cost_usd is not None
+                        and (
+                            estimated_cost is None
+                            or selected_estimated_cost is None
+                            or selected_estimated_cost + estimated_cost
+                            > max_estimated_cost_usd
+                        )
+                    )
+                    if exceeds_bytes or exceeds_cost:
+                        deferred += 1
+                        if reporter is not None:
+                            reporter(
+                                "OPRA symbol/schema history deferred by run budget: "
+                                f"symbol={symbol}; schema={schema}; "
+                                f"estimated_download_bytes={estimated_bytes}; "
+                                f"estimated_cost_usd={estimated_cost if estimated_cost is not None else 'UNKNOWN'}"
+                            )
+                        continue
+                    selected_estimated_bytes += estimated_bytes
+                    if selected_estimated_cost is not None:
+                        selected_estimated_cost = (
+                            selected_estimated_cost + estimated_cost
+                            if estimated_cost is not None
+                            else None
+                        )
+                selected_plans.append(plan)
+
+            if guarded and reporter is not None:
+                reporter(
+                    "OPRA history guarded preflight: "
+                    f"requested_scopes={requested}; preflighted_scopes={preflighted}; "
+                    f"selected_scopes={len(selected_plans)}; deferred_scopes={deferred}; "
+                    f"selected_estimated_download_bytes={selected_estimated_bytes}; "
+                    "selected_estimated_cost_usd="
+                    f"{selected_estimated_cost if selected_estimated_cost is not None else 'UNKNOWN'}; "
+                    f"preflight_only={str(preflight_only).lower()}"
+                )
+
+            if preflight_only:
+                selected_plans = []
+
+            for plan in selected_plans:
+                symbol = str(plan["symbol"])
+                schema = str(plan["schema"])
+                start = str(plan["start"])
+                end = str(plan["end"])
+                mode = str(plan["mode"])
+                scope = plan["scope"]
+                try:
+                    result = synchronize(
+                        client,
+                        datastore_root=store.root_dir,
+                        entitlement=entitlement,
+                        scope=scope,
+                        reporter=reporter,
+                        refresh_health=False,
+                        storage_preflight_receipt=plan.get("preflight"),
+                    )
+                    health_refresh_pending = True
+                except OpraCapacityError as exc:
+                    blocked += 1
                     if reporter is not None:
                         reporter(
-                            f"OPRA symbol/schema history: symbol={symbol}; "
-                            f"schema={schema}; mode={mode}; start={start}; end={end}; "
-                            f"status={result.status}; "
-                            f"completed={result.completed_partitions}; "
-                            f"verified_existing={result.skipped_partitions}; "
-                            f"rows={result.completed_rows}; health={result.health_path}"
+                            "OPRA symbol/schema history capacity blocked: "
+                            f"symbol={symbol}; schema={schema}; mode={mode}; {exc}"
                         )
+                    continue
+                if result.errors or result.completed_rows < 1:
+                    failed += 1
+                    if reporter is not None:
+                        reporter(
+                            f"OPRA symbol/schema history incomplete: symbol={symbol}; "
+                            f"schema={schema}; mode={mode}; "
+                            f"errors={len(result.errors)}; rows={result.completed_rows}; "
+                            f"health={result.health_path}"
+                        )
+                    continue
+                completed += 1
+                _write_opra_symbol_history_cursor(
+                    store.root_dir,
+                    symbol=symbol,
+                    schema=schema,
+                    completed_through=end,
+                )
+                if reporter is not None:
+                    reporter(
+                        f"OPRA symbol/schema history: symbol={symbol}; "
+                        f"schema={schema}; mode={mode}; start={start}; end={end}; "
+                        f"status={result.status}; "
+                        f"completed={result.completed_partitions}; "
+                        f"verified_existing={result.skipped_partitions}; "
+                        f"rows={result.completed_rows}; health={result.health_path}"
+                    )
             if health_refresh_pending:
                 health_path = publish_health(store.root_dir)
                 if reporter is not None:
@@ -1020,6 +1187,13 @@ def synchronize_option_history(
         capacity_blocked_scopes=blocked,
         failed_scopes=failed,
         bootstrap_required_scopes=needs_bootstrap,
+        preflighted_scopes=preflighted,
+        deferred_scopes=deferred,
+        selected_estimated_download_bytes=selected_estimated_bytes,
+        selected_estimated_cost_usd=selected_estimated_cost,
+        total_estimated_download_bytes=total_estimated_bytes,
+        total_estimated_cost_usd=total_estimated_cost,
+        preflight_only=preflight_only,
     )
 
 

@@ -1,5 +1,10 @@
 # Options Strategy paper-trading automation
 
+> **Current deployment (2026-09-04):**
+> `loops-options-strategy-paper-tracking` is paused to avoid overlapping the
+> single overnight gameplan/evaluation owner. This file is a retained legacy
+> contract and does not authorize a scheduled run.
+
 This file is the durable contract for the `loops-options-strategy-paper-tracking`
 standalone task in Codex Scheduled. Each wake starts in a fresh task and must
 read this file completely before running the one bounded tracking command.

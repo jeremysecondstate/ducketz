@@ -661,3 +661,97 @@ def test_next_boundary_preserves_cycle_cadence_after_an_overrun() -> None:
 
     assert next_run == datetime(2026, 7, 29, 10, 15, tzinfo=timezone.utc)
     assert next_run < cycle_completed_at
+
+
+def test_opra_history_maintenance_is_due_once_after_daily_boundary() -> None:
+    before = datetime(2026, 9, 3, 20, 59, tzinfo=timezone.utc)
+    after = datetime(2026, 9, 3, 21, 0, tzinfo=timezone.utc)
+
+    assert not orchestrate.opra_history_maintenance_due(
+        before,
+        last_attempt=None,
+        utc_hour=21,
+    )
+    assert orchestrate.opra_history_maintenance_due(
+        after,
+        last_attempt=None,
+        utc_hour=21,
+    )
+    assert not orchestrate.opra_history_maintenance_due(
+        after,
+        last_attempt=after.date(),
+        utc_hour=21,
+    )
+
+
+def test_loop_a_opra_history_command_owns_strategy_training_schemas(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[list[str], dict[str, object]]] = []
+
+    def run(command: list[str], **kwargs: object) -> SimpleNamespace:
+        calls.append((command, kwargs))
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(orchestrate.subprocess, "run", run)
+    result = orchestrate.run_opra_history_maintenance_once(
+        ParquetStore(tmp_path),
+        symbols=("AAPL", "NVDA"),
+        max_estimated_download_bytes=123,
+        max_estimated_cost_usd=0.5,
+        max_incremental_catchup_days=7,
+    )
+
+    assert len(calls) == 2
+    command, history_kwargs = calls[0]
+    assert result == 0
+    assert isinstance(command, list)
+    assert command[:4] == [
+        sys.executable,
+        "-u",
+        "-m",
+        "datafetching.options_history",
+    ]
+    schema_index = command.index("--schemas")
+    assert command[schema_index + 1 : schema_index + 4] == [
+        "ohlcv-1h",
+        "cbbo-1m",
+        "definition",
+    ]
+    assert "--incremental-only" in command
+    assert command[command.index("--max-incremental-catchup-days") + 1] == "7"
+    assert history_kwargs["check"] is False
+    catalog_command, catalog_kwargs = calls[1]
+    assert catalog_command[:4] == [
+        sys.executable,
+        "-u",
+        "-m",
+        "datafetching.datastore_hygiene",
+    ]
+    assert "--confirm-cleanup" not in catalog_command
+    assert catalog_command[catalog_command.index("--symbols") + 1 :] == [
+        "AAPL",
+        "NVDA",
+    ]
+    assert catalog_kwargs["check"] is False
+
+
+def test_loop_a_does_not_refresh_catalog_after_failed_opra_history(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[list[str]] = []
+
+    def run(command: list[str], **_kwargs: object) -> SimpleNamespace:
+        calls.append(command)
+        return SimpleNamespace(returncode=7)
+
+    monkeypatch.setattr(orchestrate.subprocess, "run", run)
+    result = orchestrate.run_opra_history_maintenance_once(
+        ParquetStore(tmp_path), symbols=("AAPL",)
+    )
+
+    assert result == 7
+    assert len(calls) == 1
+    assert "datafetching.options_history" in calls[0]

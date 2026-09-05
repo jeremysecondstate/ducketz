@@ -37,6 +37,113 @@ class _Metadata:
     def get_record_count(self, **_kwargs: object) -> int:
         return 8
 
+    def get_cost(self, **_kwargs: object) -> float:
+        return 0.25
+
+
+def test_consumer_usage_compacts_source_lineage_instead_of_repeating_paths(
+    tmp_path: Path,
+) -> None:
+    usage_path = opra_history.canonical_root(tmp_path) / "state/consumer-usage.json"
+    usage_path.parent.mkdir(parents=True)
+    old_sources = [str(tmp_path / f"old-{index}.parquet") for index in range(20)]
+    usage_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "databento-opra-consumer-usage-v1",
+                "schema_read_counts": {"cbbo-1m": 1},
+                "events": [{"consumer": "old", "source_files": old_sources}],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    opra_history.record_consumer_usage(
+        tmp_path,
+        consumer="strategy-profit-training-hgb-mlp",
+        schemas=("ohlcv-1h", "cbbo-1m"),
+        rows=123,
+        source_files=tuple(tmp_path / f"new-{index}.parquet" for index in range(20)),
+        refresh_health=False,
+    )
+
+    usage = json.loads(usage_path.read_text(encoding="utf-8"))
+    assert usage["schema_version"] == "databento-opra-consumer-usage-v2"
+    assert usage["schema_read_counts"] == {"cbbo-1m": 2, "ohlcv-1h": 1}
+    assert all("source_files" not in event for event in usage["events"])
+    assert [event["source_file_count"] for event in usage["events"]] == [20, 20]
+    assert all(len(event["source_file_examples"]) == 8 for event in usage["events"])
+
+
+def test_consumer_usage_refresh_does_not_rehash_archive_health(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    health_path = opra_history.canonical_root(tmp_path) / "health/current.json"
+    health_path.parent.mkdir(parents=True)
+    health_path.write_text(
+        json.dumps(
+            {
+                "schema_version": opra_history.HEALTH_VERSION,
+                "provider": opra_history.PROVIDER,
+                "dataset": opra_history.DATASET,
+                "observed_at": "2026-09-04T05:00:00Z",
+                "schemas": {
+                    "ohlcv-1h": {"partition_count": 1, "consumer_read_count": 0},
+                    "cbbo-1m": {"partition_count": 1, "consumer_read_count": 0},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        opra_history,
+        "publish_health",
+        lambda *_args, **_kwargs: pytest.fail("full archive scan was not expected"),
+    )
+
+    opra_history.record_consumer_usage(
+        tmp_path,
+        consumer="strategy-profit-training-hgb-mlp",
+        schemas=("ohlcv-1h", "cbbo-1m"),
+        rows=10,
+        source_files=(),
+        refresh_health=True,
+    )
+
+    health = json.loads(health_path.read_text(encoding="utf-8"))
+    assert health["observed_at"] == "2026-09-04T05:00:00Z"
+    assert health["schemas"]["ohlcv-1h"]["consumer_read_count"] == 1
+    assert health["schemas"]["cbbo-1m"]["consumer_read_count"] == 1
+    assert "consumer_usage_observed_at" in health
+
+
+def test_consumer_usage_compaction_preserves_counts(tmp_path: Path) -> None:
+    usage_path = opra_history.canonical_root(tmp_path) / "state/consumer-usage.json"
+    usage_path.parent.mkdir(parents=True)
+    usage_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "databento-opra-consumer-usage-v1",
+                "schema_read_counts": {"ohlcv-1h": 4},
+                "events": [
+                    {
+                        "consumer": "legacy",
+                        "source_files": [str(tmp_path / "a"), str(tmp_path / "b")],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    opra_history.compact_consumer_usage(tmp_path)
+
+    compacted = json.loads(usage_path.read_text(encoding="utf-8"))
+    assert compacted["schema_read_counts"] == {"ohlcv-1h": 4}
+    assert compacted["events"][0]["source_file_count"] == 2
+    assert "source_files" not in compacted["events"][0]
+
 
 def _entitlement() -> dict[str, object]:
     return {
@@ -399,6 +506,8 @@ def test_storage_preflight_preserves_requested_scope(
         result["estimates"]["ohlcv-1d"]["estimated_download_size_bytes"]
         == 1_024
     )
+    assert result["estimated_cost_usd"] == 0.25
+    assert result["cost_estimates_complete"] is True
     published = opra_history.publish_storage_preflight(tmp_path, result)
     assert published["path"] == (
         tmp_path

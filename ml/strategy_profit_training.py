@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Mapping, Sequence
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -27,13 +28,15 @@ from ml.strategy_selection.market_state import (
 )
 
 
-MODELED_EXECUTION_VERSION = "opra-ohlcv-1h-conservative-execution-v1"
+MODELED_EXECUTION_VERSION = "opra-cbbo-primary-ohlcv-fallback-execution-v1"
 MODELED_EXECUTION_RECEIPT_VERSION = (
-    "opra-ohlcv-1h-conservative-execution-receipt-v1"
+    "opra-cbbo-primary-ohlcv-fallback-execution-receipt-v1"
 )
-MODELED_EXECUTION_SOURCE = "OPRA_OHLCV_MODELED_EXECUTION"
+MODELED_EXECUTION_SOURCE = "OPRA_CBBO_PRIMARY_OHLCV_FALLBACK_EXECUTION"
+HOURLY_FALLBACK_SOURCE = "OPRA_OHLCV_MODELED_EXECUTION"
 MODELED_CHAIN_PROVIDER = "databento-opra-ohlcv-modeled"
-MODELED_HORIZONS = ("1d", "1w")
+EXACT_CBBO_PROVIDER = "databento-opra"
+MODELED_HORIZONS = ("1h", "4h", "1d", "1w")
 _OCC = re.compile(r"^([A-Z.]{1,6})\s*(\d{6})([CP])(\d{8})$")
 _ABSOLUTE_PRICE_CUSHION = 0.01
 _MINIMUM_MODELED_PREMIUM = 0.10
@@ -41,6 +44,7 @@ _MINIMUM_CONTRACT_HOUR_VOLUME = 10.0
 _HAIRCUT_QUANTILE = 0.975
 _MINIMUM_CALIBRATION_MATCHES = 2_000
 _MINIMUM_HOLDOUT_COVERAGE = 0.80
+_OPTIONS_TIMEZONE = ZoneInfo("America/New_York")
 
 
 @dataclass(frozen=True)
@@ -276,7 +280,7 @@ def calibrate_execution_haircuts(
         "assessment_joint_conservative_coverage": holdout_coverage,
         "minimum_required_joint_coverage": _MINIMUM_HOLDOUT_COVERAGE,
         "failures": dict(sorted(failures.items())),
-        "exact_cbbo_used_for_haircut_calibration_only": True,
+        "exact_cbbo_used_for_haircut_calibration": True,
         "holdout_used_for_haircut_fitting": False,
     }
     return ExecutionHaircutModel(
@@ -300,7 +304,9 @@ def build_modeled_strategy_outcomes(
 ) -> ModeledOutcomeResult:
     clean_horizon = str(horizon).strip().lower()
     if clean_horizon not in MODELED_HORIZONS:
-        raise ValueError("Modeled Strategy outcomes are limited to 1d and 1w")
+        raise ValueError(
+            "Modeled Strategy outcomes are limited to 1h, 4h, 1d, and 1w"
+        )
     effective_policy = policy or StrategySelectionPolicy()
     selected = samples.loc[
         samples["horizon"].astype("string").eq(clean_horizon)
@@ -427,12 +433,21 @@ def build_modeled_strategy_outcomes(
         "execution_model_fingerprint_sha256": haircuts.fingerprint,
         "failures": dict(sorted(failures.items())),
         "raw_ohlcv_rows_are_not_labeled_as_bbo": True,
+        "exact_cbbo_used_for_strategy_outcomes": True,
+        "one_hour_requires_exact_cbbo": True,
+        "hourly_fallback_allowed_horizons": ["4h", "1d", "1w"],
         "cluster_symbol_sampling": (
             "one_deterministic_rotating_available_symbol_per_target_start; "
             "prevents correlated symbols from inflating independent cohort count"
         ),
-        "entry_reference": "first_regular_session_hour_close_known_at_hour_end",
-        "exit_reference": "final_regular_session_hour_close_known_at_close",
+        "entry_reference": (
+            "first OPRA cbbo-1m snapshot at/after target start within 5m; "
+            "otherwise labeled conservative hourly fallback for 4h/1d/1w"
+        ),
+        "exit_reference": (
+            "last OPRA cbbo-1m snapshot at/before target end within 5m; "
+            "otherwise labeled conservative hourly fallback for 4h/1d/1w"
+        ),
     }
     return ModeledOutcomeResult(
         frame=complete,
@@ -481,14 +496,49 @@ def _sample_source_partitions_available(
     symbol = str(sample["symbol"]).strip().upper()
     start = _utc(sample["target_window_start"])
     end = _utc(sample["target_window_end"])
-    entry = _opra_partition_path(
+    clean_horizon = str(horizon).strip().lower()
+    if clean_horizon in {"1h", "4h"} and not _within_listed_options_session(
+        start, end
+    ):
+        return False
+    exact_entry = _opra_partition_path(
+        root, "cbbo-1m", symbol, start.date().isoformat()
+    )
+    exact_exit = _opra_partition_path(
+        root, "cbbo-1m", symbol, end.date().isoformat()
+    )
+    minute_stock = (
+        root / "stocks" / symbol / "bars" / "1m" / "databento" / "normalized"
+    )
+    exact = exact_entry.is_file() and exact_exit.is_file() and minute_stock.is_dir()
+    if clean_horizon == "1h":
+        return exact
+    modeled_entry = _opra_partition_path(
         root, "ohlcv-1h", symbol, start.date().isoformat()
     )
-    exit_path = _opra_partition_path(
+    modeled_exit = _opra_partition_path(
         root, "ohlcv-1h", symbol, end.date().isoformat()
     )
-    stock = root / "stocks" / symbol / "bars" / "1h" / "databento" / "normalized"
-    return entry.is_file() and exit_path.is_file() and stock.is_dir()
+    hourly_stock = (
+        root / "stocks" / symbol / "bars" / "1h" / "databento" / "normalized"
+    )
+    modeled = (
+        modeled_entry.is_file() and modeled_exit.is_file() and hourly_stock.is_dir()
+    )
+    return exact or modeled
+
+
+def _within_listed_options_session(
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+) -> bool:
+    local_start = _utc(start).tz_convert(_OPTIONS_TIMEZONE)
+    local_end = _utc(end).tz_convert(_OPTIONS_TIMEZONE)
+    if local_start.date() != local_end.date() or local_end <= local_start:
+        return False
+    start_minutes = local_start.hour * 60 + local_start.minute
+    end_minutes = local_end.hour * 60 + local_end.minute
+    return start_minutes >= 9 * 60 + 30 and end_minutes <= 16 * 60
 
 
 def _modeled_sample_outcomes(
@@ -500,48 +550,101 @@ def _modeled_sample_outcomes(
     policy: StrategySelectionPolicy,
 ) -> pd.DataFrame:
     symbol = str(sample["symbol"]).strip().upper()
+    horizon = str(sample["horizon"]).strip().lower()
     target_start = _utc(sample["target_window_start"])
     target_end = _utc(sample["target_window_end"])
-    entry_hour = target_start.floor("h")
-    exit_hour = (target_end - pd.Timedelta(nanoseconds=1)).floor("h")
-    entry_reference_at = entry_hour + pd.Timedelta(hours=1)
-    exit_reference_at = exit_hour + pd.Timedelta(hours=1)
-    entry_path = _opra_partition_path(
-        root, "ohlcv-1h", symbol, target_start.date().isoformat()
+    exact_entry_path = _opra_partition_path(
+        root, "cbbo-1m", symbol, target_start.date().isoformat()
     )
-    exit_path = _opra_partition_path(
-        root, "ohlcv-1h", symbol, target_end.date().isoformat()
+    exact_exit_path = _opra_partition_path(
+        root, "cbbo-1m", symbol, target_end.date().isoformat()
     )
-    if not entry_path.is_file() or not exit_path.is_file():
-        raise FileNotFoundError("OPRA hourly entry or exit partition unavailable")
-    entry_stock = _stock_quote(
-        root,
-        symbol=symbol,
-        hour=entry_hour,
-        available_at=entry_reference_at,
+    minute_folder = (
+        root / "stocks" / symbol / "bars" / "1m" / "databento" / "normalized"
     )
-    exit_stock = _stock_quote(
-        root,
-        symbol=symbol,
-        hour=exit_hour,
-        available_at=exit_reference_at,
+    exact_available = (
+        exact_entry_path.is_file()
+        and exact_exit_path.is_file()
+        and minute_folder.is_dir()
     )
-    entry_chain = _modeled_chain(
-        _read_option_hour_day(str(entry_path)),
-        symbol=symbol,
-        hour=entry_hour,
-        available_at=entry_reference_at,
-        underlying=float(entry_stock["mid"]),
-        haircuts=haircuts,
-    )
-    exit_chain = _modeled_chain(
-        _read_option_hour_day(str(exit_path)),
-        symbol=symbol,
-        hour=exit_hour,
-        available_at=exit_reference_at,
-        underlying=float(exit_stock["mid"]),
-        haircuts=haircuts,
-    )
+    if exact_available:
+        entry_stock = _stock_minute_quote(
+            root,
+            symbol=symbol,
+            boundary=target_start,
+        )
+        exit_stock = _stock_minute_quote(
+            root,
+            symbol=symbol,
+            boundary=target_end,
+        )
+        entry_chain = _exact_cbbo_chain(
+            exact_entry_path,
+            symbol=symbol,
+            boundary=target_start,
+            boundary_side="ENTRY",
+            underlying=float(entry_stock["mid"]),
+        )
+        exit_chain = _exact_cbbo_chain(
+            exact_exit_path,
+            symbol=symbol,
+            boundary=target_end,
+            boundary_side="EXIT",
+            underlying=float(exit_stock["mid"]),
+        )
+        entry_reference_at = _utc(entry_chain["available_at"].max())
+        exit_reference_at = _utc(exit_chain["available_at"].max())
+        evidence_type = "EXACT_OPRA_CBBO_1M"
+        pricing_source = MODELED_EXECUTION_SOURCE
+        surface_provider = EXACT_CBBO_PROVIDER
+    else:
+        if horizon == "1h":
+            raise FileNotFoundError("One-hour Strategy outcomes require exact CBBO")
+        entry_hour = target_start.floor("h")
+        exit_hour = (target_end - pd.Timedelta(nanoseconds=1)).floor("h")
+        entry_reference_at = entry_hour + pd.Timedelta(hours=1)
+        exit_reference_at = exit_hour + pd.Timedelta(hours=1)
+        entry_path = _opra_partition_path(
+            root, "ohlcv-1h", symbol, target_start.date().isoformat()
+        )
+        exit_path = _opra_partition_path(
+            root, "ohlcv-1h", symbol, target_end.date().isoformat()
+        )
+        if not entry_path.is_file() or not exit_path.is_file():
+            raise FileNotFoundError("OPRA hourly fallback partition unavailable")
+        entry_stock = _stock_quote(
+            root,
+            symbol=symbol,
+            hour=entry_hour,
+            available_at=entry_reference_at,
+        )
+        exit_stock = _stock_quote(
+            root,
+            symbol=symbol,
+            hour=exit_hour,
+            available_at=exit_reference_at,
+        )
+        entry_chain = _modeled_chain(
+            _read_option_hour_day(str(entry_path)),
+            symbol=symbol,
+            hour=entry_hour,
+            available_at=entry_reference_at,
+            underlying=float(entry_stock["mid"]),
+            haircuts=haircuts,
+        )
+        exit_chain = _modeled_chain(
+            _read_option_hour_day(str(exit_path)),
+            symbol=symbol,
+            hour=exit_hour,
+            available_at=exit_reference_at,
+            underlying=float(exit_stock["mid"]),
+            haircuts=haircuts,
+        )
+        evidence_type = "MODELED_OPRA_OHLCV_1H"
+        pricing_source = HOURLY_FALLBACK_SOURCE
+        surface_provider = MODELED_CHAIN_PROVIDER
+    if entry_reference_at >= target_end or exit_reference_at <= entry_reference_at:
+        raise ValueError("Strategy target has no executable modeled interval")
     strategy_sample = dict(sample)
     strategy_sample["target_window_start"] = entry_reference_at + pd.Timedelta(
         nanoseconds=1
@@ -555,7 +658,7 @@ def _modeled_sample_outcomes(
                 entry_chain["call_put"].nunique() == 2
                 and len(entry_chain) >= 20
             ),
-            "source_provider": MODELED_CHAIN_PROVIDER,
+            "source_provider": surface_provider,
         }
     )
     exit_surface = pd.Series(
@@ -567,7 +670,7 @@ def _modeled_sample_outcomes(
                 exit_chain["call_put"].nunique() == 2
                 and len(exit_chain) >= 20
             ),
-            "source_provider": MODELED_CHAIN_PROVIDER,
+            "source_provider": surface_provider,
         }
     )
     candidates, _audit = construct_strategy_candidates(
@@ -580,7 +683,11 @@ def _modeled_sample_outcomes(
     if candidates.empty:
         return pd.DataFrame()
     candidates = _attach_context(candidates, sample)
-    candidates = _attach_modeled_pricing(candidates, policy=policy)
+    candidates = _attach_modeled_pricing(
+        candidates,
+        policy=policy,
+        pricing_source=pricing_source,
+    )
     state = infer_market_state(
         strategy_sample,
         surface=surface,
@@ -604,7 +711,7 @@ def _modeled_sample_outcomes(
             {
                 **candidate,
                 **outcome,
-                "execution_evidence_type": "MODELED_OPRA_OHLCV_1H",
+                "execution_evidence_type": evidence_type,
                 "execution_model_version": MODELED_EXECUTION_VERSION,
                 "execution_model_fingerprint_sha256": haircuts.fingerprint,
                 "entry_reference_at": entry_reference_at,
@@ -697,10 +804,99 @@ def _modeled_chain(
     return frame.reset_index(drop=True)
 
 
+def _exact_cbbo_chain(
+    path: Path,
+    *,
+    symbol: str,
+    boundary: pd.Timestamp,
+    boundary_side: str,
+    underlying: float,
+) -> pd.DataFrame:
+    """Build an executable historical chain from the nearest causal CBBO minute."""
+
+    side = str(boundary_side).strip().upper()
+    if side not in {"ENTRY", "EXIT"}:
+        raise ValueError("CBBO boundary side must be ENTRY or EXIT")
+    point = _utc(boundary)
+    if side == "ENTRY":
+        lower = point
+        upper = point + pd.Timedelta(minutes=5)
+    else:
+        lower = point - pd.Timedelta(minutes=5)
+        upper = point
+    columns = ["symbol", "bid_px_00", "ask_px_00"]
+    try:
+        raw = pd.read_parquet(
+            path,
+            columns=columns,
+            filters=[("ts_recv", ">=", lower), ("ts_recv", "<=", upper)],
+        ).reset_index()
+    except Exception:
+        raw = pd.read_parquet(path).reset_index()
+        timestamps = pd.to_datetime(raw.get("ts_recv"), utc=True, errors="coerce")
+        raw = raw.loc[timestamps.ge(lower) & timestamps.le(upper)]
+    normalized = normalize_cbbo_records(raw)
+    if normalized.empty:
+        raise ValueError(f"No OPRA CBBO snapshot exists near {side.lower()} boundary")
+    ordered = normalized.sort_values("quote_timestamp", kind="stable")
+    selected = (
+        ordered.groupby("contract_symbol", sort=False).head(1)
+        if side == "ENTRY"
+        else ordered.groupby("contract_symbol", sort=False).tail(1)
+    ).copy()
+    parsed = selected["contract_symbol"].astype("string").str.extract(_OCC)
+    parsed.columns = ["occ_root", "expiration", "call_put_code", "strike_code"]
+    standard = parsed["occ_root"].astype("string").str.strip().eq(symbol)
+    selected = selected.loc[standard].copy()
+    parsed = parsed.loc[standard]
+    selected["expiration_date"] = pd.to_datetime(
+        parsed["expiration"], format="%y%m%d", utc=True, errors="coerce"
+    )
+    selected["call_put"] = parsed["call_put_code"].map(
+        {"C": "CALL", "P": "PUT"}
+    )
+    selected["strike"] = pd.to_numeric(
+        parsed["strike_code"], errors="coerce"
+    ) / 1_000.0
+    midpoint = (selected["bid"] + selected["ask"]) / 2.0
+    selected["relative_bid_ask_spread"] = (
+        (selected["ask"] - selected["bid"])
+        / midpoint.where(midpoint.gt(0.0))
+    )
+    selected["symbol"] = symbol
+    selected["underlying_price"] = float(underlying)
+    selected["multiplier"] = 100.0
+    selected["mini"] = False
+    selected["non_standard"] = False
+    selected["quote_valid"] = True
+    selected["open_interest"] = np.nan
+    selected["volume"] = np.nan
+    selected["quote_staleness_seconds"] = (
+        (selected["quote_timestamp"] - point).dt.total_seconds()
+        if side == "ENTRY"
+        else (point - selected["quote_timestamp"]).dt.total_seconds()
+    )
+    selected["available_at"] = selected["quote_timestamp"]
+    selected["source_provider"] = EXACT_CBBO_PROVIDER
+    for greek in ("delta", "gamma", "theta", "vega"):
+        selected[greek] = np.nan
+    valid = (
+        selected["expiration_date"].notna()
+        & selected["call_put"].notna()
+        & pd.to_numeric(selected["strike"], errors="coerce").gt(0.0)
+        & selected["quote_staleness_seconds"].between(0.0, 300.0)
+    )
+    selected = selected.loc[valid].copy()
+    if selected.empty:
+        raise ValueError("No standard OPRA CBBO contracts survived boundary matching")
+    return selected.reset_index(drop=True)
+
+
 def _attach_modeled_pricing(
     candidates: pd.DataFrame,
     *,
     policy: StrategySelectionPolicy,
+    pricing_source: str = MODELED_EXECUTION_SOURCE,
 ) -> pd.DataFrame:
     output = candidates.copy()
     option_legs = pd.to_numeric(output["leg_count"], errors="coerce").clip(
@@ -725,7 +921,7 @@ def _attach_modeled_pricing(
     output["pricing_relative_edge"] = 0.0
     output["pricing_model_age_seconds"] = 0.0
     output["pricing_residual_shrinkage"] = 0.0
-    output["pricing_source"] = MODELED_EXECUTION_SOURCE
+    output["pricing_source"] = str(pricing_source)
     return output
 
 
@@ -821,6 +1017,68 @@ def _read_stock_hours(path: str) -> pd.DataFrame:
         frame["timestamp"], utc=True, errors="coerce"
     )
     return frame.sort_values("timestamp", kind="stable").reset_index(drop=True)
+
+
+@lru_cache(maxsize=12)
+def _read_stock_minutes(path: str) -> pd.DataFrame:
+    frame = pd.read_parquet(
+        Path(path),
+        columns=["timestamp", "close"],
+    )
+    frame["timestamp"] = pd.to_datetime(
+        frame["timestamp"], utc=True, errors="coerce"
+    )
+    frame["close"] = pd.to_numeric(frame["close"], errors="coerce")
+    return (
+        frame.dropna(subset=["timestamp", "close"])
+        .sort_values("timestamp", kind="stable")
+        .reset_index(drop=True)
+    )
+
+
+def _stock_minute_quote(
+    root: Path,
+    *,
+    symbol: str,
+    boundary: pd.Timestamp,
+) -> pd.Series:
+    """Return the last equity minute whose close was knowable by ``boundary``."""
+
+    folder = root / "stocks" / symbol / "bars" / "1m" / "databento" / "normalized"
+    paths = tuple(sorted(folder.glob("*_source_*_ohlcv-1m_1m.parquet")))
+    if not paths:
+        paths = tuple(sorted(folder.glob("*.parquet")))
+    if not paths:
+        raise FileNotFoundError(f"No one-minute stock bars for {symbol}")
+    point = _utc(boundary)
+    # A bar stamped T covers the minute beginning at T and its close becomes
+    # available at T+1m.  Do not use the boundary minute itself.
+    selected = _read_stock_minutes(str(paths[-1]))
+    selected = selected.loc[
+        selected["timestamp"].le(point - pd.Timedelta(minutes=1))
+        & selected["timestamp"].dt.date.eq(point.date())
+    ].tail(1)
+    if selected.empty:
+        raise ValueError(f"No causal minute stock reference for {symbol} {point}")
+    row = selected.iloc[-1]
+    available_at = _utc(row["timestamp"]) + pd.Timedelta(minutes=1)
+    if point - available_at > pd.Timedelta(minutes=10):
+        raise ValueError(f"Minute stock reference is stale for {symbol} {point}")
+    midpoint = float(row["close"])
+    if not math.isfinite(midpoint) or midpoint <= 0.0:
+        raise ValueError("Minute stock reference is invalid")
+    half_spread = max(0.01, midpoint * 0.0001)
+    return pd.Series(
+        {
+            "symbol": symbol,
+            "bid": midpoint - half_spread,
+            "ask": midpoint + half_spread,
+            "mid": midpoint,
+            "available_at": available_at,
+            "quote_quality_pass": True,
+            "source_provider": "databento-equities-ohlcv-1m-causal",
+        }
+    )
 
 
 def _stock_quote(

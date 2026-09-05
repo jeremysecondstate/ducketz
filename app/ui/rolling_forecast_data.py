@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 import math
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone, tzinfo
 from pathlib import Path
 from typing import Final, Mapping
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import pyarrow as pa
@@ -21,6 +23,7 @@ from ml.horizons import (
     WEEKLY_HORIZON_ORDER,
 )
 from ml.live_evidence import minimum_live_decisions
+from ml.nightly_gameplan import read_current_gameplan
 from ml.parquet_contracts import (
     EVALUATION_SCHEMA,
     INTELLIGENCE_SCHEMA,
@@ -45,10 +48,12 @@ HORIZON_LABELS: Final = {
     "1w-d5": "Day 5",
 }
 FORECAST_SUBTITLE: Final = (
-    "Read-only 1h, 4h, 1d, and dynamic remaining-week probability outlooks. "
-    "Probabilities are not recommendations."
+    "Read-only frozen overnight 1h, 4h, five-session daily, and weekly "
+    "probability outlooks. The display rotates by clock without retraining."
 )
 ACTIONABLE_STATUS: Final = "ACTIONABLE"
+GAMEPLAN_TIMEZONE: Final = ZoneInfo("America/Los_Angeles")
+GAMEPLAN_UI_SCHEMA_VERSION: Final = "immutable-gameplan-dashboard-v1"
 _WEEKLY_TARGET_DEFINITION_VERSIONS: Final = {
     horizon: INTERNAL_HORIZON_SPECIFICATIONS[horizon].target_definition_version
     for horizon in WEEKLY_HORIZON_ORDER
@@ -141,6 +146,15 @@ class ForecastRouteView:
     is_missing: bool
     warnings: tuple[str, ...]
     debug_fields: tuple[tuple[str, str], ...]
+    option_intent_id: str | None = None
+    option_plan_status: str | None = None
+    option_plan_label: str | None = None
+    option_plan_tone: str = "neutral"
+    option_strategy_name: str | None = None
+    option_profit_probability: float | None = None
+    option_reason: str | None = None
+    option_pricing_source: str | None = None
+    probability_warning: str | None = None
 
     @property
     def is_actionable(self) -> bool:
@@ -270,8 +284,12 @@ def default_rolling_predictions_path() -> Path:
     configured = os.getenv("DUCKETS_ROLLING_PREDICTIONS_PATH", "").strip()
     if configured:
         return Path(configured).expanduser()
+    root = resolve_datastore_dir()
+    gameplan = root / "ml" / "nightly-gameplan-latest" / "run.json"
+    if gameplan.is_file():
+        return gameplan
     return (
-        resolve_datastore_dir()
+        root
         / "ml-intelligence"
         / "latest"
         / "rolling-predictions.parquet"
@@ -284,6 +302,11 @@ def load_forecast_dashboard(
     loaded_at: datetime | None = None,
 ) -> ForecastDashboardView:
     requested_source = Path(path or default_rolling_predictions_path())
+    if _is_nightly_gameplan_pointer(requested_source):
+        return load_gameplan_dashboard(
+            requested_source,
+            loaded_at=loaded_at,
+        )
     try:
         source = _resolve_authoritative_current_source(requested_source)
     except CurrentPublicationError as exc:
@@ -319,6 +342,586 @@ def load_forecast_dashboard(
         source_path=source,
         loaded_at=loaded_at,
     )
+
+
+def load_gameplan_dashboard(
+    pointer_path: Path,
+    *,
+    loaded_at: datetime | None = None,
+) -> ForecastDashboardView:
+    """Load the immutable nightly gameplan as the forecast-dashboard authority."""
+
+    pointer = Path(pointer_path).resolve()
+    if not _is_nightly_gameplan_pointer(pointer):
+        raise ValueError(f"Not a nightly gameplan pointer: {pointer}")
+    datastore_root = pointer.parents[2]
+    try:
+        publication = read_current_gameplan(datastore_root)
+        forecasts_path = publication.run_directory / "forecasts.parquet"
+        intents_path = publication.run_directory / "option-strategy-intents.parquet"
+        gameplan_path = publication.run_directory / "gameplan.json"
+        frame = pd.read_parquet(forecasts_path)
+        option_intents = pd.read_parquet(intents_path)
+        gameplan = json.loads(gameplan_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ForecastDataError(
+            code="GAMEPLAN_UNREADABLE",
+            title="Nightly Gameplan Could Not Be Read",
+            message=(
+                "The checksum-verified immutable forecast gameplan is missing, "
+                "incomplete, or incompatible."
+            ),
+            path=pointer,
+            technical_detail=f"{type(exc).__name__}: {exc}",
+        ) from exc
+    return adapt_gameplan_forecasts(
+        frame,
+        source_path=pointer,
+        action_date=str(publication.receipt.get("action_date") or ""),
+        gameplan=gameplan,
+        option_intents=option_intents,
+        loaded_at=loaded_at,
+    )
+
+
+def adapt_gameplan_forecasts(
+    frame: pd.DataFrame,
+    *,
+    source_path: Path,
+    action_date: str,
+    gameplan: Mapping[str, object] | None = None,
+    option_intents: pd.DataFrame | None = None,
+    loaded_at: datetime | None = None,
+) -> ForecastDashboardView:
+    """Rotate one immutable 144-row gameplan into the current UI checkpoints."""
+
+    required = {
+        "id",
+        "symbol",
+        "model_group",
+        "route",
+        "decision_timestamp",
+        "information_available_at",
+        "target_window_start",
+        "target_window_end",
+        "calibrated_probability",
+        "model_family",
+        "model_status",
+        "frozen_at",
+        "action_date",
+        "execution_authority",
+        "broker_orders_enabled",
+    }
+    missing = sorted(required.difference(frame.columns))
+    if missing:
+        raise _contract_error(
+            source_path,
+            "Nightly gameplan forecasts are missing required fields: "
+            + ", ".join(missing),
+        )
+    if frame.empty:
+        raise _contract_error(source_path, "Nightly gameplan contains no forecasts.")
+
+    loaded = _utc_datetime(loaded_at or datetime.now(timezone.utc))
+    try:
+        expected_action_date = pd.Timestamp(action_date).date()
+    except (TypeError, ValueError) as exc:
+        raise _contract_error(source_path, "Nightly gameplan action date is invalid.") from exc
+    normalized = frame.copy()
+    normalized["symbol"] = normalized["symbol"].astype("string").str.strip().str.upper()
+    normalized["model_group"] = (
+        normalized["model_group"].astype("string").str.strip().str.lower()
+    )
+    normalized["route"] = normalized["route"].astype("string").str.strip()
+    for column in (
+        "decision_timestamp",
+        "information_available_at",
+        "target_window_start",
+        "target_window_end",
+        "frozen_at",
+    ):
+        normalized[column] = pd.to_datetime(
+            normalized[column], utc=True, errors="coerce"
+        )
+    if normalized[list((
+        "decision_timestamp",
+        "information_available_at",
+        "target_window_start",
+        "target_window_end",
+        "frozen_at",
+    ))].isna().any().any():
+        raise _contract_error(
+            source_path,
+            "Nightly gameplan contains an invalid forecast timestamp.",
+        )
+    if normalized["id"].duplicated().any():
+        raise _contract_error(source_path, "Nightly gameplan forecast ids are not unique.")
+    observed_dates = {
+        pd.Timestamp(value).date()
+        for value in normalized["action_date"].dropna().astype(str)
+    }
+    if observed_dates != {expected_action_date}:
+        raise _contract_error(
+            source_path,
+            "Nightly gameplan rows disagree with the pointer action date.",
+        )
+    if not normalized["execution_authority"].astype("string").eq(
+        "ADVISORY_PAPER_ONLY"
+    ).all() or normalized["broker_orders_enabled"].astype("boolean").fillna(True).any():
+        raise _contract_error(
+            source_path,
+            "Forecast UI accepts only an advisory/paper gameplan with orders disabled.",
+        )
+    probability = pd.to_numeric(
+        normalized["calibrated_probability"], errors="coerce"
+    )
+    if probability.isna().any() or not probability.between(0.0, 1.0).all():
+        raise _contract_error(
+            source_path,
+            "Nightly gameplan contains an invalid calibrated probability.",
+        )
+    normalized["calibrated_probability"] = probability
+    normalized, calibration_warnings = _annotate_gameplan_calibration(normalized)
+    intent_lookup = _gameplan_intent_lookup(
+        option_intents,
+        forecasts=normalized,
+        source_path=source_path,
+    )
+
+    expected_counts = {"1h": 14, "4h": 4, "1d": 5, "1w": 1}
+    symbols: list[SymbolForecastView] = []
+    warnings: list[str] = list(calibration_warnings)
+    for symbol, symbol_rows in normalized.groupby("symbol", sort=True):
+        counts = symbol_rows["model_group"].value_counts().to_dict()
+        if any(int(counts.get(group, 0)) != count for group, count in expected_counts.items()):
+            raise _contract_error(
+                source_path,
+                f"{symbol} does not contain the required 14/4/5/1 forecast grid.",
+            )
+        hourly = _select_gameplan_clock_route(
+            symbol_rows.loc[symbol_rows["model_group"].eq("1h")],
+            as_of=loaded,
+        )
+        four_hour = _select_gameplan_clock_route(
+            symbol_rows.loc[symbol_rows["model_group"].eq("4h")],
+            as_of=loaded,
+        )
+        daily_rows = symbol_rows.loc[
+            symbol_rows["model_group"].eq("1d")
+        ].sort_values("target_window_start", kind="stable")
+        weekly_rows = symbol_rows.loc[symbol_rows["model_group"].eq("1w")]
+        daily = daily_rows.iloc[0]
+        weekly = weekly_rows.iloc[0]
+        standard = (
+            _gameplan_route_view(
+                hourly,
+                horizon="1h",
+                as_of=loaded,
+                intent=intent_lookup.get((str(symbol), str(hourly["route"]))),
+            ),
+            _gameplan_route_view(
+                four_hour,
+                horizon="4h",
+                as_of=loaded,
+                intent=intent_lookup.get((str(symbol), str(four_hour["route"]))),
+            ),
+            _gameplan_route_view(
+                daily,
+                horizon="1d",
+                as_of=loaded,
+                intent=intent_lookup.get((str(symbol), str(daily["route"]))),
+            ),
+        )
+        aggregate = _gameplan_route_view(
+            weekly,
+            horizon="1w",
+            as_of=loaded,
+            frozen_outlook=True,
+            intent=intent_lookup.get((str(symbol), str(weekly["route"]))),
+        )
+        sessions = tuple(
+            _gameplan_route_view(
+                row,
+                horizon=f"1w-d{index}",
+                as_of=loaded,
+                frozen_outlook=True,
+                intent=intent_lookup.get((str(symbol), str(row["route"]))),
+            )
+            for index, (_, row) in enumerate(daily_rows.iterrows(), 1)
+        )
+        issued_at = _timestamp(weekly.get("frozen_at"))
+        if issued_at is None:
+            raise _contract_error(source_path, f"{symbol} has no gameplan freeze time.")
+        outlook = WeeklyOutlookView(
+            aggregate=aggregate,
+            sessions=sessions,
+            issued_at=issued_at,
+        )
+        symbols.append(
+            SymbolForecastView(
+                symbol=str(symbol),
+                routes=(*standard, aggregate),
+                weekly_outlook=outlook,
+            )
+        )
+        if str(weekly.get("model_status") or "").upper() != "PROMOTED":
+            warnings.append(
+                f"{symbol} weekly forecast is visible but remains research-only."
+            )
+
+    local_date = loaded.astimezone(GAMEPLAN_TIMEZONE).date()
+    if local_date < expected_action_date:
+        freshness_label, freshness_tone = "Next-Session Gameplan Loaded", "success"
+        operational_label, operational_tone = "Frozen Before Action Window", "success"
+        operational_status = "IMMUTABLE_GAMEPLAN_FUTURE"
+    elif local_date == expected_action_date:
+        freshness_label, freshness_tone = "Today's Frozen Gameplan", "success"
+        operational_label, operational_tone = "Clock-Rotating Frozen Forecasts", "success"
+        operational_status = "IMMUTABLE_GAMEPLAN_CURRENT"
+    else:
+        freshness_label, freshness_tone = "Gameplan Is Stale", "danger"
+        operational_label, operational_tone = "Prior Action-Date Gameplan", "danger"
+        operational_status = "IMMUTABLE_GAMEPLAN_STALE"
+        warnings.append(
+            "The current pointer is for a prior action date; no newer plan was substituted."
+        )
+
+    frozen_at = max(
+        (_timestamp(value) for value in normalized["frozen_at"]),
+        default=None,
+    )
+    limitations = [
+        "The UI rotates precomputed routes; it does not fetch, train, or replan intraday.",
+        "This gameplan is advisory/paper-only and has no broker order authority.",
+    ]
+    payload = dict(gameplan or {})
+    for item in payload.get("limitations", ()):
+        text = _text(item)
+        if text is not None:
+            limitations.append(text)
+    visible_routes = sum(len(symbol.routes) for symbol in symbols)
+    return ForecastDashboardView(
+        source_path=Path(source_path),
+        loaded_at=loaded,
+        schema_version=str(payload.get("schema_version") or GAMEPLAN_UI_SCHEMA_VERSION),
+        source_row_count=len(normalized),
+        forecast_created_at=frozen_at,
+        last_successful_refresh=frozen_at,
+        freshness_label=freshness_label,
+        freshness_tone=freshness_tone,
+        operational_label=operational_label,
+        operational_tone=operational_tone,
+        operational_statuses=(operational_status,),
+        automated_action_allowed=False,
+        automation_label="Frozen display only; broker orders remain disabled",
+        automation_tone="neutral",
+        actionable_route_count=visible_routes,
+        published_route_count=len(normalized),
+        frozen_weekly_snapshot_count=len(symbols),
+        symbols=tuple(symbols),
+        limitations=tuple(dict.fromkeys(limitations)),
+        warnings=tuple(sorted(set(warnings), key=str.casefold)),
+        empty_message=None,
+    )
+
+
+def _is_nightly_gameplan_pointer(path: Path) -> bool:
+    candidate = Path(path)
+    return (
+        candidate.name == "run.json"
+        and candidate.parent.name == "nightly-gameplan-latest"
+        and candidate.parent.parent.name == "ml"
+    )
+
+
+def _select_gameplan_clock_route(
+    frame: pd.DataFrame,
+    *,
+    as_of: datetime,
+) -> pd.Series:
+    """Choose the current frozen window, then the nearest future/last window."""
+
+    if frame.empty:
+        raise ValueError("Gameplan clock route is empty")
+    instant = pd.Timestamp(_utc_datetime(as_of))
+    starts = pd.to_datetime(frame["target_window_start"], utc=True, errors="coerce")
+    ends = pd.to_datetime(frame["target_window_end"], utc=True, errors="coerce")
+    active = frame.loc[starts.le(instant) & ends.gt(instant)]
+    if not active.empty:
+        return active.sort_values("target_window_start", kind="stable").iloc[-1]
+    future = frame.loc[starts.gt(instant)]
+    if not future.empty:
+        return future.sort_values("target_window_start", kind="stable").iloc[0]
+    return frame.sort_values("target_window_end", kind="stable").iloc[-1]
+
+
+def _gameplan_intent_lookup(
+    option_intents: pd.DataFrame | None,
+    *,
+    forecasts: pd.DataFrame,
+    source_path: Path,
+) -> dict[tuple[str, str], dict[str, object]]:
+    if option_intents is None:
+        return {}
+    required = {
+        "id",
+        "symbol",
+        "route",
+        "plan_status",
+        "reason",
+        "decision_score",
+        "execution_authority",
+        "broker_orders_enabled",
+    }
+    missing = sorted(required.difference(option_intents.columns))
+    if missing:
+        raise _contract_error(
+            source_path,
+            "Nightly option intents are missing required fields: "
+            + ", ".join(missing),
+        )
+    intents = option_intents.copy()
+    intents["symbol"] = intents["symbol"].astype("string").str.strip().str.upper()
+    intents["route"] = intents["route"].astype("string").str.strip()
+    if intents[["symbol", "route"]].duplicated().any():
+        raise _contract_error(source_path, "Nightly option-intent routes are not unique.")
+    if not intents["execution_authority"].astype("string").eq(
+        "ADVISORY_PAPER_ONLY"
+    ).all() or intents["broker_orders_enabled"].astype("boolean").fillna(True).any():
+        raise _contract_error(
+            source_path,
+            "Forecast UI accepts only advisory/paper option intents with orders disabled.",
+        )
+    forecast_keys = set(
+        zip(
+            forecasts["symbol"].astype(str),
+            forecasts["route"].astype(str),
+        )
+    )
+    intent_keys = set(
+        zip(
+            intents["symbol"].astype(str),
+            intents["route"].astype(str),
+        )
+    )
+    if intent_keys != forecast_keys:
+        raise _contract_error(
+            source_path,
+            "Nightly option intents do not match the complete forecast grid.",
+        )
+    return {
+        (str(row["symbol"]), str(row["route"])): row
+        for row in intents.to_dict("records")
+    }
+
+
+def _gameplan_route_view(
+    row: Mapping[str, object] | pd.Series,
+    *,
+    horizon: str,
+    as_of: datetime,
+    frozen_outlook: bool = False,
+    intent: Mapping[str, object] | None = None,
+) -> ForecastRouteView:
+    probability_up = _number(row.get("calibrated_probability"))
+    if probability_up is None or not 0.0 <= probability_up <= 1.0:
+        raise ValueError("Gameplan probability is invalid")
+    start = _timestamp(row.get("target_window_start"))
+    end = _timestamp(row.get("target_window_end"))
+    frozen_at = _timestamp(row.get("frozen_at"))
+    if start is None or end is None or frozen_at is None or start >= end:
+        raise ValueError("Gameplan target window is invalid")
+    route = str(row.get("route") or "").strip()
+    promoted = str(row.get("model_status") or "").strip().upper() == "PROMOTED"
+    if frozen_outlook:
+        status = "FROZEN_WEEKLY_SNAPSHOT"
+        intelligence = (
+            "PENDING_EVIDENCE"
+            if as_of < end
+            else "PENDING_EVALUATION"
+        )
+        label = (
+            "Frozen Overnight Forecast"
+            if promoted
+            else "Research Forecast — Not Promoted"
+        )
+        tone = "success" if promoted else "warning"
+        actionable_until = end
+    elif as_of < start:
+        status = "ACTIONABLE" if promoted else "RESEARCH_FORECAST"
+        intelligence = "PENDING_EVIDENCE"
+        label = (
+            f"Upcoming · {route}"
+            if promoted
+            else f"Research · {route} · Not Promoted"
+        )
+        tone = "success" if promoted else "warning"
+        actionable_until = start
+    elif as_of < end:
+        status = (
+            "TARGET_WINDOW_STARTED"
+            if promoted
+            else "RESEARCH_FORECAST_IN_PROGRESS"
+        )
+        intelligence = "FORECAST_IN_PROGRESS"
+        label = (
+            f"In Progress · {route}"
+            if promoted
+            else f"Research In Progress · {route}"
+        )
+        tone = "warning"
+        actionable_until = start
+    else:
+        status = "TARGET_WINDOW_PASSED"
+        intelligence = "PENDING_EVALUATION"
+        label = f"Completed Window · {route}"
+        tone = "neutral"
+        actionable_until = start
+    probability_warning = _text(row.get("_calibration_warning"))
+    if probability_warning:
+        label = f"No model signal · {route}"
+        tone = "warning"
+    model_status = str(row.get("model_status") or "MODEL_STATUS_UNAVAILABLE")
+    evidence_label = (
+        f"Frozen route {route} · model promoted"
+        if promoted
+        else f"Frozen route {route} · research only; holdout gate not passed"
+    )
+    limitation = (
+        None
+        if promoted
+        else "Research-only forecast; the independent promotion gate did not pass."
+    )
+    if probability_warning:
+        evidence_label += " · no model signal"
+        limitation = probability_warning
+    option_status = _text(intent.get("plan_status")) if intent is not None else None
+    option_label, option_tone = _gameplan_option_status(option_status)
+    option_probability = (
+        _number(intent.get("decision_score")) if intent is not None else None
+    )
+    debug_names = (
+        "id",
+        "symbol",
+        "model_group",
+        "route",
+        "forecast_anchor_local",
+        "action_anchor_local",
+        "model_family",
+        "model_status",
+        "decision_timestamp",
+        "information_available_at",
+        "target_window_start",
+        "target_window_end",
+        "target_semantics",
+        "raw_probability",
+        "calibrated_probability",
+        "calibration_status",
+        "_calibration_warning",
+        "frozen_at",
+        "action_date",
+        "execution_authority",
+        "broker_orders_enabled",
+        "opra_completed_through",
+    )
+    debug_fields = tuple(
+        (name, _debug_value(row.get(name))) for name in debug_names
+    )
+    if intent is not None:
+        debug_fields += (
+            ("option_intent_id", _debug_value(intent.get("id"))),
+            ("option_plan_status", _debug_value(option_status)),
+            ("option_strategy", _debug_value(intent.get("strategy_display_name"))),
+            ("option_profit_probability", _debug_value(option_probability)),
+            ("option_reason", _debug_value(intent.get("reason"))),
+            ("option_pricing_source", _debug_value(intent.get("pricing_source"))),
+        )
+    return ForecastRouteView(
+        id=_text(row.get("id")),
+        symbol=str(row.get("symbol") or "").strip().upper(),
+        horizon=horizon,
+        horizon_label=HORIZON_LABELS[horizon],
+        model_name=_text(row.get("model_family")),
+        decision_timestamp=_timestamp(row.get("decision_timestamp")),
+        forecast_created_at=frozen_at,
+        information_available_at=_timestamp(row.get("information_available_at")),
+        target_window_start=start,
+        target_window_end=end,
+        actionable_until=actionable_until,
+        target_definition_version=_text(row.get("target_contract_version")),
+        probability_up=probability_up,
+        probability_down=1.0 - probability_up,
+        published_actionability_status=status,
+        actionability_status=status,
+        actionability_label=label,
+        actionability_tone=tone,
+        model_evidence_status=model_status,
+        live_evidence_status="FROZEN_OVERNIGHT_GAMEPLAN",
+        live_evidence_label=evidence_label,
+        completed_decision_count=None,
+        minimum_live_decision_count=minimum_live_decisions(horizon),
+        live_performance=None,
+        operational_status="OPERATIONALLY_CURRENT",
+        published_intelligence_status=intelligence,
+        intelligence_status=intelligence,
+        published_automated_action_allowed=False,
+        automated_action_allowed=False,
+        limitation=limitation,
+        is_missing=False,
+        warnings=(probability_warning,) if probability_warning else (),
+        debug_fields=debug_fields,
+        option_intent_id=_text(intent.get("id")) if intent is not None else None,
+        option_plan_status=option_status,
+        option_plan_label=option_label,
+        option_plan_tone=option_tone,
+        option_strategy_name=(
+            _text(intent.get("strategy_display_name"))
+            if intent is not None
+            else None
+        ),
+        option_profit_probability=option_probability,
+        option_reason=_text(intent.get("reason")) if intent is not None else None,
+        option_pricing_source=(
+            _text(intent.get("pricing_source")) if intent is not None else None
+        ),
+        probability_warning=probability_warning,
+    )
+
+
+def _annotate_gameplan_calibration(frame: pd.DataFrame) -> tuple[pd.DataFrame, tuple[str, ...]]:
+    """Diagnose published flat calibration without rewriting saved probabilities."""
+    frame = frame.copy()
+    frame["_calibration_warning"] = None
+    warnings: list[str] = []
+    for group, rows in frame.groupby("model_group", sort=True):
+        calibrated = rows["calibrated_probability"]
+        explicit_flat = "calibration_status" in rows and rows["calibration_status"].eq("FLAT_CALIBRATION").any()
+        raw = pd.to_numeric(rows["raw_probability"], errors="coerce") if "raw_probability" in rows else pd.Series(dtype=float)
+        # Older immutable plans have no diagnostics. Infer only what their
+        # complete saved grid proves: varying raw scores became one probability.
+        inferred_flat = bool(
+            len(rows) > 1 and raw.notna().all() and len(raw)
+            and raw.max() - raw.min() > 1e-12
+            and calibrated.max() - calibrated.min() <= 1e-12
+        )
+        if explicit_flat or inferred_flat:
+            message = (
+                f"{str(group).upper()}: All saved forecasts have the same probability; "
+                "no model signal is available."
+            )
+            frame.loc[rows.index, "_calibration_warning"] = message
+            warnings.append(message)
+    return frame, tuple(warnings)
+
+
+def _gameplan_option_status(status: str | None) -> tuple[str | None, str]:
+    if status is None:
+        return None, "neutral"
+    if status == "PAPER_ENTER_ONLY_IF_SAME_LEGS_REVALIDATE":
+        return "Paper Entry · Same-Leg Revalidation Required", "success"
+    if status.startswith("NO_TRADE_"):
+        return "No Trade", "warning"
+    return _humanize(status), "neutral"
 
 
 def adapt_forecast_frame(
@@ -564,6 +1167,12 @@ def format_session_date(
 def route_publication_summary(view: ForecastDashboardView) -> str:
     """Describe live routes and the frozen outlook without conflating them."""
 
+    if view.schema_version.startswith("immutable-overnight-gameplan"):
+        return (
+            f"{view.actionable_route_count} clock-selected display routes; "
+            f"{view.frozen_weekly_snapshot_count} five-session outlooks; "
+            f"{view.published_route_count} frozen predictions"
+        )
     live = view.actionable_route_count
     frozen = view.frozen_weekly_snapshot_count
     return (

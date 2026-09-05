@@ -1,0 +1,85 @@
+{
+  "observed_at": "2026-09-05T00:05:57.854885+00:00",
+  "run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260904T105944.876700Z",
+  "partitions": {
+    "train_rows": 979,
+    "selection_rows": 220,
+    "calibration_rows": 208,
+    "assessment_rows": 184
+  },
+  "four_hour_rows": 24,
+  "saved_raw_range": [
+    0.3002036599869622,
+    0.6499594747372416
+  ],
+  "saved_calibrated_values": [
+    0.5
+  ],
+  "unconstrained_platt_slope": -0.15875377440420946,
+  "saved_platt_intercept": 0.0,
+  "diagnostics_under_new_guard": {
+    "status": "FLAT_CALIBRATION",
+    "information_available": false,
+    "nondecreasing_constraint_active": true,
+    "calibration_rows": 208,
+    "calibration_positive_rate": 0.5,
+    "raw_probability_range": [
+      0.21264370794381876,
+      0.7143075457037456
+    ],
+    "calibrated_probability_range": [
+      0.5,
+      0.5
+    ],
+    "assessment_probability_range": [
+      0.5,
+      0.5
+    ],
+    "platt_slope": 0.0
+  },
+  "original_promotion_gate": {
+    "checks": {
+      "assessment_has_at_least_10_decision_clusters": true,
+      "brier_not_materially_worse_than_training_base_rate": true,
+      "expected_calibration_error_at_most_0_15": true,
+      "log_loss_not_materially_worse_than_training_base_rate": true
+    },
+    "status": "PROMOTED"
+  },
+  "original_assessment": {
+    "brier_score": 0.25,
+    "direction_accuracy_at_0_5": 0.42391304347826086,
+    "expected_calibration_error_10_bin": 0.07608695652173914,
+    "log_loss": 0.6931471805599453,
+    "mean_probability": 0.5,
+    "positive_rate": 0.42391304347826086,
+    "rows": 184
+  },
+  "original_training_base_rate_assessment": {
+    "brier_score": 0.24530866988158384,
+    "direction_accuracy_at_0_5": 0.5760869565217391,
+    "expected_calibration_error_10_bin": 0.03313449613808617,
+    "log_loss": 0.6837459025489624,
+    "mean_probability": 0.45704753961634703,
+    "positive_rate": 0.42391304347826086,
+    "rows": 184
+  },
+  "ui_warnings": [
+    "4H: All saved forecasts have the same probability; no model signal is available.",
+    "AAPL weekly forecast is visible but remains research-only.",
+    "AMZN weekly forecast is visible but remains research-only.",
+    "GOOG weekly forecast is visible but remains research-only.",
+    "MU weekly forecast is visible but remains research-only.",
+    "NVDA weekly forecast is visible but remains research-only.",
+    "SNDK weekly forecast is visible but remains research-only."
+  ],
+  "saved_files_sha256": {
+    "gameplan.json": "395f2d2887ca32876d7503d03b1bd1d1b41fdbf3c27063044ca7214913c73583",
+    "forecasts.parquet": "90c34dd286ff0e209bd88b701634819c15601d0c30280e2d25c52f3b9504a0ba",
+    "model-reports.json": "4e604319bed25e9967600f8e791b39fe36653dae661e524d4a6d78fec89fd3fe",
+    "models/4h/model.joblib": "9184f6d0d6dfdab4a51451c3c493861a0f5722654fdbf8366a4122b23edfc2cf",
+    "manifest.json": "fcfd468ce4d50880a9506cbe65f39bd3b8fca75e7aaa4902a2cf87f6d8a82096",
+    "receipt.json": "7f2a349277a1af011626f2a44608fada3211cb3c9e355cefefdb7cb96adfcbf5"
+  },
+  "saved_outputs_modified": false
+}

@@ -1,7 +1,11 @@
 # Six-symbol hourly stock trader
 
-Status: deployed and operator-activated on 2026-08-31. The persistent switch
-remains the immediate operator stop/start control.
+Status: the legacy Loop-B schedules remain paused as of 2026-09-04. The active
+daytime stock entry point is `ml.gameplan_stock_trader`, a thin gameplan adapter
+over this proven risk/execution runtime. It consumes frozen forward routes and
+requires both the legacy stock switch and the separate gameplan-stock switch.
+The paper-only `ml.gameplan_executor` remains available for inspection. Neither
+entry point grants options-order authority.
 
 ## Scope
 
@@ -298,11 +302,10 @@ pre-existing/manual inventory rather than inventing realized P/L. This is an
 attribution-integrity check, not a profitability conclusion. Evidence:
 `C:\DATASTORE\ml\stock-trader-weekly-audits\20260903T074629.212357Z\receipt.json`.
 
-## Production deployment
+## Legacy deployment reference
 
-The existing `loops-hourly-operations` monitor/trainer now distinguishes the
-13:00 PT official close from the 17:00 PT actionable stock close. Five stock
-schedules are active:
+The five stock schedules below are all paused. They describe the superseded
+live/shadow deployment and do not authorize a run:
 
 - `Loops Stock Trader — Premarket Opening` wakes at 03:47 PT, waits for the
   04:00 PRE-opening receipt, and may queue only that exact AM target.

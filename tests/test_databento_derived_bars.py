@@ -8,6 +8,7 @@ import pandas as pd
 from app.models.market_data import MarketBar
 from app.services.market_fetch_specs import DatabentoAnalysisSourceSpec
 from datafetching import databento_fetch
+from datafetching.bar_consolidation import consolidate_shadowed_derived_bars
 from datafetching.continuation import normalized_bar_path
 from datafetching.derived_bars import (
     DERIVED_INTRADAY_FREQUENCIES,
@@ -16,6 +17,89 @@ from datafetching.derived_bars import (
 )
 from datafetching.parquet_store import ParquetStore
 from technicals.parquet_io import discover_bar_datasets
+
+
+def test_consolidation_removes_only_native_shadowed_derived_rows(
+    tmp_path: Path,
+) -> None:
+    store = ParquetStore(tmp_path)
+    as_of = pd.Timestamp("2026-09-03T23:30:00Z")
+    store.save_bars(
+        "databento",
+        "NVDA",
+        "1h",
+        [
+            _hour_bar("2026-09-03T20:00:00Z", close=200.0),
+            _hour_bar("2026-09-03T21:00:00Z", close=201.0),
+        ],
+        request_key="source_1825d_1h_ohlcv-1h_1h",
+        as_of=as_of,
+    )
+    store.save_bars(
+        "databento",
+        "NVDA",
+        "1h",
+        [
+            _hour_bar("2026-09-03T21:00:00Z", close=101.0),
+            _hour_bar("2026-09-03T22:00:00Z", close=102.0),
+        ],
+        request_key="derived_1m_1h",
+        as_of=as_of,
+    )
+
+    results = consolidate_shadowed_derived_bars(
+        tmp_path,
+        symbol="NVDA",
+        timeframes=("1h",),
+    )
+
+    assert len(results) == 1
+    assert results[0].shadowed_rows_removed == 1
+    assert results[0].derived_rows_retained == 1
+    retained = pd.read_parquet(results[0].derived_path)
+    assert retained["timestamp"].tolist() == [
+        pd.Timestamp("2026-09-03T22:00:00Z")
+    ]
+    datasets = discover_bar_datasets(
+        tmp_path,
+        symbol="NVDA",
+        providers=("databento",),
+        timeframes=("1h",),
+    )
+    assert datasets[0].frame["close"].tolist() == [200.0, 201.0, 102.0]
+
+
+def test_consolidation_removes_empty_derived_bridge(tmp_path: Path) -> None:
+    store = ParquetStore(tmp_path)
+    as_of = pd.Timestamp("2026-09-03T22:30:00Z")
+    bar = _hour_bar("2026-09-03T21:00:00Z", close=201.0)
+    store.save_bars(
+        "databento",
+        "NVDA",
+        "1h",
+        [bar],
+        request_key="source_1825d_1h_ohlcv-1h_1h",
+        as_of=as_of,
+    )
+    store.save_bars(
+        "databento",
+        "NVDA",
+        "1h",
+        [bar],
+        request_key="derived_1m_1h",
+        as_of=as_of,
+    )
+
+    result = consolidate_shadowed_derived_bars(
+        tmp_path,
+        symbol="NVDA",
+        timeframes=("1h",),
+    )[0]
+
+    assert result.shadowed_rows_removed == 1
+    assert result.derived_rows_retained == 0
+    assert result.bytes_after == 0
+    assert not result.derived_path.exists()
 
 
 def test_hourly_fallback_requires_one_complete_sixty_minute_window() -> None:

@@ -27,6 +27,7 @@ from ml.artifacts import (
     input_inventory,
     utc_timestamp,
 )
+from ml.training_progress import fit_with_progress
 from ml.calibration import fit_probability_calibrator
 from ml.preprocessing import (
     PREPROCESSING_POLICY_VERSION,
@@ -211,6 +212,8 @@ def partition_strategy_outcomes(
             .str.strip()
             .str.lower(),
             "decision_timestamp": eligible["decision_timestamp"],
+            "target_window_start": eligible["target_window_start"],
+            "target_window_end": eligible["target_window_end"],
             "candidate_key": eligible["candidate_key"]
             .astype("string")
             .str.strip(),
@@ -386,9 +389,9 @@ def fit_or_reuse_strategy_model(
     return_residual = observed_return - _prior_return(partitions.train)
     if not np.isfinite(return_residual).all():
         raise ValueError("Strategy expected-return target must be finite")
-    return_estimator.fit(
-        _matrix(partitions.train, numeric, categorical),
-        return_residual,
+    fit_with_progress(
+        return_estimator, _matrix(partitions.train, numeric, categorical),
+        return_residual, label="strategy/expected-return",
         model__sample_weight=weights,
     )
     calibration_raw = _validated_probability_array(
@@ -796,9 +799,9 @@ def _fit_probability_pipeline(
     target = frame["profitable"].astype(int)
     if target.nunique() != 2:
         raise ValueError("Strategy probability fitting requires both outcome classes")
-    estimator.fit(
-        _matrix(frame, numeric, categorical),
-        target,
+    fit_with_progress(
+        estimator, _matrix(frame, numeric, categorical), target,
+        label=f"strategy/{type(estimator.steps[-1][1]).__name__}",
         model__sample_weight=_decision_weights(frame),
     )
 

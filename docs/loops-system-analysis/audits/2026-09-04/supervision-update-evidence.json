@@ -1,0 +1,55 @@
+{
+  "recorded_at": "2026-09-04T23:07:32.497126+00:00",
+  "active_automations": [
+    {
+      "id": "loop-c-weekly-operator-review",
+      "name": "Loops Gameplan Weekly Review",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "loops-gameplan-stock-trader-1-p-m-transition",
+      "name": "Loops Gameplan Stock Trader \u2014 1 p.m. Transition",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "loops-hourly-operations",
+      "name": "Loops Overnight Gameplan",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "loops-stock-trader-daily-adaptation",
+      "name": "Loops Overnight Health Watch",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "loops-stock-trader-live-shadow",
+      "name": "Loops Gameplan Stock Trader \u2014 Hourly",
+      "status": "ACTIVE"
+    }
+  ],
+  "paused_automation_count": 5,
+  "overnight_status": {
+    "status": "NO_RUN",
+    "supervision": {
+      "active": false
+    }
+  },
+  "friday_deadline": "2026-09-08T11:00:00+00:00",
+  "tests": "........................................................................ [ 85%]\n............                                                             [100%]\n84 passed, 1582 warnings in 63.33s (0:01:03)",
+  "source_checksums": {
+    "ml/overnight_runtime.py": "a9a3a00beee117aaeb582185d23921488e9a74b8a2a183216c44330af7ae2229",
+    "ml/gameplan_evaluation.py": "a1d2ddd479d0a92171dcd7aba21a478dcdf38c1e6a52058a47be73486f211872",
+    "ml/training_progress.py": "087d7ea345b490d31ea4ac91d67594dc43dc9e4ad3811862aa3cfea60022823e",
+    "ml/nightly_gameplan.py": "677bb77bf7b7f8cc1215dcfbf2c7cf64c6e4f495769e68a4f364e929b19dd5cf",
+    "ml/strategy_selection/model.py": "651b1c024eed24a153199993d7729322ee8378175a8e6ead740a1bf807194561",
+    "tests/test_overnight_supervision.py": "1b46244a0fc42df9d26ebfeb282ce03f2d4975fb0ffecb6f3025400424dc19fe",
+    "tests/test_gameplan_evaluation.py": "0980e82e87dc297386c6ad34971146881daf2ee465ddcdf74f146da724ad9e64",
+    "tests/test_training_progress.py": "7690c454889ac38d23fdf54930e606cf2d00925f28ef50656b1180d875024262"
+  },
+  "earlier_prediction_runs_archived": 1102,
+  "archived_bytes": 15894105634,
+  "protected_earlier_source_runs": 1046,
+  "trader_correction": "DRAFT_VALIDATED_NOT_APPLIED",
+  "broker_calls_made": false,
+  "orders_placed": 0
+}

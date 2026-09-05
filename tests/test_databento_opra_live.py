@@ -973,6 +973,198 @@ def test_options_history_capacity_block_is_isolated_per_symbol(
         ).is_file()
 
 
+def test_options_history_guarded_preflight_selects_scopes_within_run_budget(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entitlement = {
+        "entitlements": {
+            schema: {"entitled_end": "2026-08-15"}
+            for schema in options_runtime.STANDARD_SCHEMAS
+        }
+    }
+    synchronized: list[str] = []
+    monkeypatch.setattr("databento.Historical", lambda _key: object())
+    monkeypatch.setattr(
+        options_runtime,
+        "discover_standard_entitlement",
+        lambda *_args, **_kwargs: entitlement,
+    )
+
+    def preflight(*_args: object, **kwargs: object) -> dict[str, object]:
+        scope = kwargs["scope"]
+        return {
+            "estimated_download_size_bytes": 10,
+            "estimated_cost_usd": 0.25,
+            "scope": scope,
+        }
+
+    monkeypatch.setattr(options_runtime, "storage_preflight", preflight)
+    monkeypatch.setattr(
+        options_runtime,
+        "publish_storage_preflight",
+        lambda _root, value: value,
+    )
+
+    def synchronize(*_args: object, **kwargs: object) -> object:
+        scope = kwargs["scope"]
+        synchronized.append(scope.symbols[0])
+        assert kwargs["storage_preflight_receipt"][
+            "estimated_download_size_bytes"
+        ] == 10
+        return SimpleNamespace(
+            status="COMPLETE",
+            completed_partitions=1,
+            skipped_partitions=0,
+            completed_rows=10,
+            errors={},
+            health_path=tmp_path / "health.json",
+        )
+
+    monkeypatch.setattr(options_runtime, "synchronize", synchronize)
+    monkeypatch.setattr(
+        options_runtime,
+        "publish_health",
+        lambda _root: tmp_path / "health.json",
+    )
+
+    summary = options_runtime.synchronize_option_history(  # type: ignore[arg-type]
+        SimpleNamespace(root_dir=tmp_path),
+        api_key="unit-test-placeholder",
+        symbols=("AAPL", "GOOG", "NVDA"),
+        schemas=("definition",),
+        reporter=None,
+        max_estimated_download_bytes=15,
+        max_estimated_cost_usd=1.0,
+    )
+
+    assert synchronized == ["AAPL.OPT"]
+    assert summary.requested_scopes == 3
+    assert summary.preflighted_scopes == 3
+    assert summary.completed_scopes == 1
+    assert summary.deferred_scopes == 2
+    assert summary.selected_estimated_download_bytes == 10
+    assert summary.total_estimated_download_bytes == 30
+    assert summary.selected_estimated_cost_usd == 0.25
+    assert summary.total_estimated_cost_usd == 0.75
+
+
+def test_options_history_preflight_only_never_downloads(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entitlement = {
+        "entitlements": {
+            schema: {"entitled_end": "2026-08-15"}
+            for schema in options_runtime.STANDARD_SCHEMAS
+        }
+    }
+    monkeypatch.setattr("databento.Historical", lambda _key: object())
+    monkeypatch.setattr(
+        options_runtime,
+        "discover_standard_entitlement",
+        lambda *_args, **_kwargs: entitlement,
+    )
+    monkeypatch.setattr(
+        options_runtime,
+        "storage_preflight",
+        lambda *_args, **_kwargs: {
+            "estimated_download_size_bytes": 10,
+            "estimated_cost_usd": 0.25,
+        },
+    )
+    monkeypatch.setattr(
+        options_runtime,
+        "publish_storage_preflight",
+        lambda _root, value: value,
+    )
+    monkeypatch.setattr(
+        options_runtime,
+        "synchronize",
+        lambda *_args, **_kwargs: pytest.fail("preflight-only must not download"),
+    )
+
+    summary = options_runtime.synchronize_option_history(  # type: ignore[arg-type]
+        SimpleNamespace(root_dir=tmp_path),
+        api_key="unit-test-placeholder",
+        symbols=("AAPL",),
+        schemas=("definition",),
+        reporter=None,
+        preflight_only=True,
+        max_estimated_download_bytes=100,
+        max_estimated_cost_usd=1.0,
+    )
+
+    assert summary.preflight_only is True
+    assert summary.preflighted_scopes == 1
+    assert summary.completed_scopes == 0
+    assert summary.selected_estimated_download_bytes == 10
+
+
+def test_options_history_caps_incremental_cursor_advance(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entitlement = {
+        "entitlements": {
+            schema: {"entitled_end": "2026-09-03"}
+            for schema in options_runtime.STANDARD_SCHEMAS
+        }
+    }
+    scopes: list[options_runtime.SyncScope] = []
+    options_runtime._write_opra_symbol_history_cursor(
+        tmp_path,
+        symbol="AAPL",
+        schema="definition",
+        completed_through="2026-08-22",
+    )
+    monkeypatch.setattr("databento.Historical", lambda _key: object())
+    monkeypatch.setattr(
+        options_runtime,
+        "discover_standard_entitlement",
+        lambda *_args, **_kwargs: entitlement,
+    )
+
+    def synchronize(*_args: object, **kwargs: object) -> object:
+        scopes.append(kwargs["scope"])
+        return SimpleNamespace(
+            status="COMPLETE",
+            completed_partitions=1,
+            skipped_partitions=0,
+            completed_rows=10,
+            errors={},
+            health_path=tmp_path / "health.json",
+        )
+
+    monkeypatch.setattr(options_runtime, "synchronize", synchronize)
+    monkeypatch.setattr(
+        options_runtime,
+        "publish_health",
+        lambda _root: tmp_path / "health.json",
+    )
+
+    options_runtime.synchronize_option_history(  # type: ignore[arg-type]
+        SimpleNamespace(root_dir=tmp_path),
+        api_key="unit-test-placeholder",
+        symbols=("AAPL",),
+        schemas=("definition",),
+        reporter=None,
+        bootstrap_missing=False,
+        max_incremental_catchup_days=2,
+    )
+
+    assert len(scopes) == 1
+    assert scopes[0].start == "2026-08-19"
+    assert scopes[0].end == "2026-08-24"
+    cursor = options_runtime._read_opra_symbol_history_cursor(
+        tmp_path,
+        symbol="AAPL",
+        schema="definition",
+    )
+    assert cursor is not None
+    assert cursor["completed_through"] == "2026-08-24"
+
+
 def test_options_loop_requires_one_time_bootstrap_for_missing_cursors(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

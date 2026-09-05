@@ -1,330 +1,84 @@
-# Authoritative production startup order
+# Authoritative Loops operating command
 
-This is the single authoritative command list for the eight independent Duckets
-runtime owners. Start each numbered command in its own PowerShell terminal and
-in this order. The runtimes coordinate through verified atomic pointers; do not
-replace these commands with guessed per-minute sleeps.
+Normal production scheduling uses one sequential overnight owner, not the
+former eight continuously recurring processes.
 
-Run this preamble in every terminal:
+The six-symbol production scope is:
+
+`AAPL AMZN GOOG MU NVDA SNDK`
+
+## Nightly owner
+
+Run once after the 17:00 America/Los_Angeles stock close:
 
 ```powershell
 cd C:\dev\ducketz
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\.venv\Scripts\Activate.ps1
+python -u -m ml.overnight_runtime --datastore-target pc --once --scheduled
 ```
 
-The checked-in watchlist is the authoritative six-symbol production scope:
-`AAPL AMZN GOOG MU NVDA SNDK`. CALL and PUT are derived for all six symbols,
-so the option-pricing acceptance scope is exactly 12 routes. `SPY` is a
-separate research-only benchmark and must not be added to this watchlist.
+The checked-in Scheduled task wakes at 17:05 PT on weekdays and runs this exact
+command and actively supervises it until completion. It reads progress/errors
+at least once a minute, makes verified non-trading repairs, and resumes failed
+stages. A health watch checks every ten minutes for abandoned work.
+The `--scheduled` guard requires the local date to be an XNYS
+session whose 17:00 PT action window has finished. A weekday exchange holiday
+writes an audited no-op receipt and preserves the existing gameplan pointer. On
+an eligible session it performs, sequentially:
 
-Before first v3 startup, run the one-time complete ALFRED backfill after an
-authoritative Loop B `samples.parquet` decision grid exists. A brand-new
-datastore therefore needs a completed base/earlier-profile Loop B generation
-before this v3 macro bootstrap can derive its bounds. The command derives its
-observation and real-time bounds from the earliest eligible 1-day
-or weekly decision, all configured lags, and feature freshness. It preserves
-the sealed importer receipt and immediately publishes the separate readiness
-receipt only after causal coverage and integrity pass:
+1. Loop A close fetch and production OPRA history append.
+2. Directional Loop B materialization/training/prediction.
+3. Evaluate all saved Gameplans from September 4, retaining pending forecasts.
+4. `1h`/`4h`/`1d`/`1w` Options Strategy profit-model training.
+5. Options Strategy candidate generation.
+6. Immutable next-session Gameplan generation.
+
+The command fails closed at the first invalid cursor, provider response,
+receipt, model, or publication. It has no broker/order authority.
+
+The complete contract is
+`docs/loops-system-analysis/NIGHTLY_GAMEPLAN.md`.
+
+## Output authority
+
+The final atomic pointer is:
+
+`C:\DATASTORE\ml\nightly-gameplan-latest\run.json`
+
+It selects one checksum-verified generation containing 144 forecasts: 24 per
+symbol (14 hourly, four 4-hour, five daily, one direct weekly) plus 144 frozen
+options-strategy intents.
+
+## Optional paper/advisory read
+
+During 04:00–17:00 PT, the bounded consumer is:
 
 ```powershell
-python -m ml.option_pricing_fred --datastore-target pc --backfill
+python -m ml.gameplan_executor --datastore-target pc --once
 ```
 
-The current/revised FRED files remain a monitoring and prospective-rate lane;
-they are not historical Loop B evidence. For a datastore created before that
-prospective rate bridge, its optional one-time seed remains:
+It can only read the immutable gameplan and write a paper decision receipt.
+It cannot fetch, train, replan, import a broker client, or place an order.
+
+## OPRA maintenance
+
+Loop A's nightly stage owns incremental maintenance of `definition`, `cbbo-1m`,
+and `ohlcv-1h` for all six symbols. Overnight currentness means complete coverage
+of the most recently finished session. A final quote can be hours old after the
+market closes and still be the newest valid planning observation. A future live
+order would require a separate same-leg execution-time quote check.
+
+Manual repair/bootstrap details remain in `options-opra-history.md`. Do not run
+the standalone OPRA Scheduled task alongside the nightly owner.
+
+## Progress and recovery
 
 ```powershell
-python -m ml.option_pricing_admin --datastore-target pc capture-current-rate
+python -m ml.overnight_runtime --datastore-target pc --status
 ```
 
-For a completely empty datastore, also complete the normal historical inputs
-before starting their consumers: run either the six-symbol OPRA bootstrap shown
-under Options Capture or the all-dataset cold start documented in
-`databento-cold-start.md`, then run the ALFRED sequence above once its Loop B
-decision grid exists. Both Databento bootstrap paths use included Standard-plan
-access and fail closed on entitlement, capacity, checksum, receipt, or cursor
-verification. CME and Loop A otherwise self-initialize their own bounded runtime
-history; their live continuation authorities do not depend on cold-start
-archive cursors.
-
-1. Independent CME/L2 owner:
-
-```powershell
-python -m datafetching.cme_runtime `
-  --datastore-target pc `
-  --max-concurrency 1
-```
-
-2. Loop A. Its Databento 1-minute fast lane persists all six symbols and
-publishes the exact readiness receipt before 1-second history, derived bars,
-technicals, FMP, FRED, SEC, or other slower work finishes. If Databento
-Historical has not yet advertised the exact minute, Loop A polls the provider's
-`ohlcv-1m` availability and performs a bounded continuation refetch only after
-that boundary is advertised. It never substitutes an older or future bar:
-
-```powershell
-python -m datafetching.orchestrate `
-  --datastore-target pc `
-  --watchlist datafetching\watchlist.txt `
-  --providers databento fmp fred schwab sec `
-  --cme-mode external `
-  --options-mode external `
-  --interval-minutes 15 `
-  --bar-readiness-recovery-timeout-seconds 420 `
-  --bar-readiness-recovery-poll-seconds 10
-```
-
-3. Independent daily ALFRED owner. It runs the complete four-series update at
-most once per UTC date under the shared ALFRED writer lock, uses bounded
-overlap, and republishes verified readiness. It is not part of Loop A's
-per-symbol or 15-minute cycle:
-
-```powershell
-python -m datafetching.fred_alfred_runtime `
-  --datastore-target pc `
-  --utc-hour 7
-```
-
-4. Active Pricing (logical Loop 3). Each readiness target is handled
-idempotently. The supported residual model is a 128-component Nystroem RBF
-finite-basis approximation with a Bayesian ridge posterior; it is not an exact
-GP. Missing model support uses the causal Black-Scholes mean with a wider
-sidecar interval. OPRA is the canonical surface when verified and causally
-available; Schwab is recorded as explicit fallback. Live rates require causal
-FRED/ALFRED evidence. Pricing waits once for the configured exact Loop A
-readiness deadline, paired with Loop A's provider-aware recovery window. If it
-expires, Pricing
-skips that target, leaves the current Pricing authority unchanged, and advances
-to the next eligible target without creating an empty terminal artifact. The
-separate 1,200-second causal window still rejects stale sources and backdated
-predictions; a slow research tail cannot mark a newer still-recoverable boundary
-as missed:
-
-```powershell
-python -m ml.option_pricing_runtime `
-  --datastore-target pc `
-  --watchlist datafetching\watchlist.txt `
-  --interval-minutes 15 `
-  --phase-offset-minutes 1 `
-  --bar-readiness-mode required `
-  --bar-readiness-timeout-seconds 480
-```
-
-5. Independent Options Capture (logical Loop 4). It shares Loop B's +6 clock
-phase but does not consume Loop B, and waits briefly on the target pointer. Its v2 publication
-identity is `(provider, symbol, target_snapshot_for)`: a committed target is
-reused without another provider call, and divergent duplicate content fails
-closed. Production mode constructs one bounded, reconnecting Databento live
-adapter for `OPRA.PILLAR` definitions and `cbbo-1s`, scoped to the six parent
-symbols. Its per-target reads select from that shared buffer; they do not create
-six new subscriptions. OPRA capture carries independent evidence clocks and
-does not wait for Loop A, while Loop 3 still requires exact Loop A authority to
-price. Schwab remains explicit broker/fallback evidence. A missing
-`DATABENTO_API_KEY` or adapter startup failure stops this owner clearly; it
-cannot silently become Schwab-only. Neither missing Pricing nor delayed Loop A
-readiness prevents OPRA capture or the allowed fallback request for an
-actionable target. Without exact readiness a fallback Schwab response is
-checksum-sealed under the separate
-non-production `options/pending-captures/schwab` authority. The runtime polls
-that authority while waiting for later boundaries, reconciles it through the
-ordinary committed snapshot contract when readiness arrives inside 1,200
-seconds, and never backdates availability. Closed-market discovery does not
-refetch or republish an already committed natural target:
-
-Before starting Options Capture for a new watchlist symbol, run the idempotent
-one-time historical bootstrap. It requests the prediction-focused Standard
-schema set for each parent symbol independently. Initial windows are 10 days for `ohlcv-1s`, 1 day
-for `cbbo-1s`, 20 days for `cbbo-1m`, 100 days for `ohlcv-1m` and
-`definition`, 1,825 days for `ohlcv-1h`, and 2,555 days for `ohlcv-1d`.
-`status`, `statistics`, `trades`, and `tcbbo` use one month. Research-only
-`cmbp-1` is available explicitly but is not part of the default bootstrap. The
-command preflights each scope,
-publishes only checksum-verified partitions, resumes verified work, and exits
-nonzero if any requested symbol/schema is capacity-blocked or fails. This
-normal command stays inside the documented included Standard-plan windows;
-storage capacity is the operative constraint:
-
-```powershell
-python -m datafetching.options_history `
-  --datastore-target pc `
-  --watchlist datafetching\watchlist.txt
-```
-
-The separate all-dataset cold-start coordinator is not a startup owner and
-must never be put inside Loop A's inline compatibility lanes. It applies the
-storage-sizing plan's one-calendar-month non-OHLCV window, uses canonical OPRA
-storage only after receipt verification, and publishes only the narrow v5 OPRA
-symbol/schema history-cursor handoff for Options-owned forward maintenance. It
-uses `XNAS.ITCH` for the eight-year US-equity cold archive and deliberately
-does not inherit Loop A's potentially narrower live `EQUS.MINI` dataset. It
-does not publish readiness, option snapshots, model state, or production
-publication pointers. Safe dry-run, metadata-preflight, and explicitly
-confirmed download commands are in
-`docs/datafetch-ml/databento-cold-start.md`.
-
-Options Capture then owns only forward cursor maintenance. Daily overlaps are
-1 day for `ohlcv-1s`, 2 days for `ohlcv-1m`, 5 days for `ohlcv-1h`, 10 days for
-`ohlcv-1d`, and 3 days for every other schema. It runs catch-up at most once per
-UTC date, skips partitions that still verify, and never creates a missing
-cursor. Current writers use v5; narrowly compatible v4 cursors are accepted
-only when their legacy schema policy matches exactly. A `bootstrap required`
-message means one of the documented one-time bootstrap paths must be run;
-Loop 3 consumes verified files but never initiates acquisition.
-
-```powershell
-python -m datafetching.options_runtime `
-  --datastore-target pc `
-  --watchlist datafetching\watchlist.txt `
-  --provider-mode opra-canonical `
-  --interval-minutes 15 `
-  --phase-offset-minutes 6 `
-  --pricing-barrier-timeout-seconds 45 `
-  --bar-readiness-mode required
-```
-
-6. Directional Loop B. The active v3 feature profile consumes receipt-verified
-append-only v3 compact Pricing history and verified ALFRED-vintage macro
-evidence. Macro
-features are active only for 1-day and weekly contracts, with independent
-component clocks and freshness. Valid missing, stale, or uncovered Pricing
-rows remain audited null `opx__` inputs. Per-family coverage/freshness gates
-must pass before the Pricing family may enter fitting; until then Loop B fits
-the corresponding versioned non-Pricing baseline while retaining the failed
-gate in its manifest. A column's existence is not activation. Corruption,
-unsupported contracts, automation-enabled evidence, or an invalid ALFRED
-readiness receipt aborts the whole Loop B publication:
-
-```powershell
-python -m ml.prediction_runtime `
-  --datastore-target pc `
-  --watchlist datafetching\watchlist.txt `
-  --provider databento `
-  --horizons 1h 4h 1d 1w `
-  --feature-profile loop-a-all-bsgp-active-v3 `
-  --model-family logistic `
-  --calibration platt `
-  --round-trip-cost 0.001 `
-  --interval-minutes 30 `
-  --phase-offset-minutes 6 `
-  --failure-retry-attempts 1 `
-  --failure-retry-delay-seconds 60 `
-  --stale-recovery-minutes 35
-```
-
-The normal Loop B cadence is therefore `:06`/`:36` UTC-clock phase rather than
-every quarter-hour. A recurring failure is retried once only when it is
-classified as transient; deadline, integrity, contract, and explicitly failed
-Loop A states do not retry. On supervisor startup, a receipt-verified
-publication that has been authoritative for 35 minutes triggers one immediate
-recovery cycle. Every failed attempt leaves the prior verified pointer in
-place.
-
-The same command now owns the broadened intraday contract without another
-long-running process. For both `1h` and `4h`, completed US-equity source hours
-may come from 04:00--20:00 Eastern Databento context. Stock targets use the
-broker-actionable PRE 07:00--09:25, REGULAR 09:30--16:00, and POST
-16:05--20:00 Eastern segments. The `1h` route uses segment/full-clock starts;
-the `4h` route uses 07:30/11:30/15:30/19:30 Eastern checkpoints. Options,
-Pricing, Strategy, daily, and weekly session authority remains unchanged. The
-production Loop B owner is launched hidden by `start_all_loops.ps1`; restart
-only that verified owner after an intraday-contract deployment so the loaded
-Python process adopts the new policy.
-
-7. Strategy. Exact contract pricing is attached to historical and live
-candidates before the profitable-outcome classifier is fit or scored. Only a
-fitted, Platt-calibrated model populates calibrated probability. Otherwise the
-separate non-probabilistic Scenario Coverage value remains available for
-research ranking and manual submission stays disabled:
-
-```powershell
-python -m ml.strategy_runtime `
-  --datastore-target pc `
-  --interval-minutes 15 `
-  --phase-offset-minutes 10 `
-  --pricing-mode active
-```
-
-8. Daily/weekly Strategy-profit training. This isolated slow owner uses OPRA
-`ohlcv-1h` only as explicitly modeled execution evidence. It learns conservative
-buy/sell haircuts from overlapping CBBO, checkpoints each decision cohort,
-retains separate chronological training/calibration/assessment partitions, and
-publishes a new model authority only after receipt and quality-gate verification.
-The five weekly day components reuse the compatible one-session `1d` model.
-It never imports or invokes an order path:
-
-```powershell
-python -m ml.strategy_profit_training_runtime `
-  --datastore-target pc `
-  --utc-hour 22
-```
-
-After restarting only Loop A, Active Pricing, and Strategy for a regular-session
-rollout, run the bounded read-only canary in a fourth terminal. Set `$targetUtc`
-to the exact quarter-hour UTC boundary being observed. The canary reads verified
-receipts only, times out without changing authority, and contains no Schwab order
-path:
-
-```powershell
-$targetUtc = '2026-08-19T14:45:00Z'
-python -m ml.strategy_pricing_canary `
-  --datastore-target pc `
-  --target $targetUtc `
-  --watchlist datafetching\watchlist.txt `
-  --timeout-seconds 600 `
-  --poll-seconds 5
-```
-
-For an affected-loop-only restart, first stop the existing Loop A, Active
-Pricing, and Strategy owners with Ctrl+C and verify their three terminals have
-returned to a prompt. Then run commands 2, 4, and 7 above in separate terminals.
-Do not run the eight-owner launcher when unaffected owners are still active.
-
-Optional maintenance commands are not startup dependencies. In particular,
-eligibility/quality reports monitor production and cannot block the valid
-Black-Scholes fallback. To inspect them without changing decision flow:
-
-```powershell
-python -m ml.option_pricing_admin --datastore-target pc readiness
-python -m ml.option_pricing_admin --datastore-target pc diagnose-publications
-```
-
-The following is an administrative full-universe/custom-range synchronizer, not
-the normal six-symbol bootstrap and not a startup dependency. With no scope
-flags it requests the full provider-advertised Standard schema/universe and may
-be too large for the destination volume. The symbol, schema, date-range, and
-partition-limit flags are documented in `options-opra-history.md`; an explicit
-scope is never silently reduced after capacity preflight:
-
-```powershell
-python -m ml.option_pricing_opra --datastore-target pc
-```
-
-The per-symbol bootstrap and administrative OPRA synchronizer both publish
-provider-native DBN, normalized Parquet, immutable manifests/receipts, cursors,
-metadata, and current health below
-`C:\DATASTORE\market-data\databento\opra\OPRA.PILLAR`. Check actual population
-with:
-
-```powershell
-python -m ml.option_pricing_opra --datastore-target pc --health-only
-```
-
-Configured `opra-canonical` mode is not historical-fetch proof. Only nonempty
-verified partitions and their health/consumer records establish stored use.
-
-To open all eight owners in authoritative order from one PowerShell terminal,
-run the checked-in launcher. It opens visible child windows and uses the same
-OPRA-enabled Options command above. It does not run the one-time bootstrap or
-the full-universe administrative synchronizer; Options Capture performs only
-the daily overlap maintenance described above:
-
-```powershell
-& .\docs\datafetch-ml\start_all_loops.ps1
-```
-
-Stop a runtime with Ctrl+C. Never start a second owner for the same lock.
-Provider, migration, recovery, and rollout contracts are documented in
-`options/README.md`, `docs/datafetch-ml/options-opra-history.md`, and the Loop
-3/4 audit pages.
+Use the supervised repair and `--resume-run` procedure in `NIGHTLY_GAMEPLAN.md`.
+The deadline is 04:00 Pacific on the next exchange session, including weekends
+and holidays. Quiet but healthy fits can keep running for hours. The daytime
+stock trader is a separate active consumer of the saved Gameplan.

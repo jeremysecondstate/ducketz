@@ -1,5 +1,10 @@
 # Options Capture / logical Loop 4
 
+> **Current deployment (2026-09-04):** the recurring prospective Options
+> Capture supervisor is stopped. Loop A performs bounded inline option work and
+> production OPRA history maintenance during the overnight close stage. The
+> recurrence details below describe legacy capability.
+
 ## Identity
 
 - Canonical name: Options Capture runtime
@@ -7,7 +12,7 @@
 - Runtime entry point: `python -m datafetching.options_runtime`
 - Owning package: `datafetching` with `options` publication/normalization contracts
 - Classification: Independent production loop
-- Scheduling mechanism: recurring quarter-hour supervisor with one owned live OPRA receiver, one daily completed-cursor history catch-up, bounded internal barrier polling, and pending-capture reconciliation
+- Scheduling mechanism: recurring quarter-hour supervisor with one owned live OPRA receiver, bounded internal barrier polling, and pending-capture reconciliation; production launches disable in-process historical catch-up
 - Cadence and phase: every 15 minutes at UTC phase +6 minutes; 45-second default Pricing-barrier wait
 - Lock or single-writer mechanism: `.ducketz-options-writer.lock`, shared by all committed option-snapshot publications
 - Primary code evidence: **Confirmed.** `options/databento_live.py`, `datafetching/options_runtime.py`, `datafetching/databento_opra_history.py`
@@ -16,9 +21,9 @@
 
 **Confirmed:** Options Capture owns acquisition and immutable publication of provider-neutral option-chain evidence at the calendar target. Default production mode constructs one canonical Databento OPRA L1 adapter before recurrence. Its callback yields cooperatively during dense replay, and a target read requires the symbol's OPRA watermark to reach that target before selecting a pretarget BBO. Only bounded provider unavailability may enter separately labeled Schwab fallback. OPRA capture does not wait for Loop A, although Loop 3 cannot price without exact Loop A authority. If a Schwab fallback occurs while readiness is unavailable, the runtime makes one durably claimed request inside the causal window, seals the response under non-production pending authority, and reconciles it only after exact readiness is provable. `options/databento_live.py:34`, `options/databento_live.py:244`, `options/databento_live.py:280`, `datafetching/options_runtime.py:430`, `datafetching/options_runtime.py:454`, `options/pending_capture.py:264`
 
-**Confirmed OPRA scope:** the concrete live implementation subscribes to definitions and `OPRA.PILLAR` `cbbo-1s` for exactly `AAPL.OPT AMZN.OPT GOOG.OPT MU.OPT NVDA.OPT SNDK.OPT`; `SPY` is rejected. One reconnecting client and bounded buffers are shared across symbols/targets. Historical scope is separate: `datafetching.options_history` bootstraps each new parent symbol across the prediction-focused Standard schema set, with research-only `cmbp-1` available explicitly, while the optional one-shot `datafetching.databento_cold_start` can populate the same canonical OPRA contract alongside CME and US-equity provider archives. OPRA scopes hand verified v5 symbol/schema cursors to this supervisor; the CME and equity archive namespaces have their own verified bridges into their operational stores and do not become option-snapshot authority. `options/databento_live.py`, `datafetching/options_history.py`, `datafetching/databento_cold_start.py`, `datafetching/options_runtime.py:110`, `datafetching/databento_archive.py:213`
+**Confirmed OPRA scope:** the concrete live implementation subscribes to definitions and `OPRA.PILLAR` `cbbo-1s` for exactly `AAPL.OPT AMZN.OPT GOOG.OPT MU.OPT NVDA.OPT SNDK.OPT`; `SPY` is rejected. One reconnecting client and bounded buffers are shared across symbols/targets. Historical scope is separate: `datafetching.options_history` bootstraps each new parent symbol across the prediction-focused Standard schema set, with research-only `cmbp-1` available explicitly, while the optional one-shot `datafetching.databento_cold_start` can populate the same canonical OPRA contract alongside CME and US-equity provider archives. OPRA scopes publish verified v5 symbol/schema cursors for Loop A's bounded daily history subprocess; the live supervisor keeps `--skip-historical-catchup`. CME and equity archive namespaces have their own verified bridges into operational stores and do not become option-snapshot authority. `options/databento_live.py`, `datafetching/orchestrate.py`, `datafetching/options_history.py`, `datafetching/databento_cold_start.py`, `datafetching/options_runtime.py:110`, `datafetching/databento_archive.py:213`
 
-**Confirmed historical policy:** the prediction-focused default uses 10 days of `ohlcv-1s`, 1 day of `cbbo-1s`, 20 days of `cbbo-1m`, 100 days of `ohlcv-1m` and `definition`, 1,825 days of `ohlcv-1h`, 2,555 days of `ohlcv-1d`, and one month for the other default non-interval schemas. Research-only `cmbp-1` is explicitly selectable but default-deferred. Catch-up overlaps are 1/2/5/10 days for the four OHLCV frequencies and three days for every other schema. The recurring runtime never bootstraps a missing cursor; it reports the required one-time command instead. Capacity preflight, checksum/receipt verification, and exact entitlement bounds all fail closed. `datafetching/options_runtime.py`, `docs/datafetch-ml/options-opra-history.md`
+**Confirmed historical policy:** the prediction-focused default bootstrap uses 10 days of `ohlcv-1s`, 1 day of `cbbo-1s`, 20 days of `cbbo-1m`, 100 days of `ohlcv-1m` and `definition`, 1,825 days of `ohlcv-1h`, 2,555 days of `ohlcv-1d`, and one month for the other default non-interval schemas. Research-only `cmbp-1` is explicitly selectable but default-deferred. Production forward maintenance covers exactly the strategy-model dependencies `ohlcv-1h`, `cbbo-1m`, and `definition`; it is provider-preflighted, limited to 20 GB/USD 1 in aggregate, selected oldest-cursor-first, and advanced no more than 30 calendar days per run. It never bootstraps a missing cursor. Capacity, cost, checksum/receipt, and exact entitlement bounds all fail closed. `datafetching/orchestrate.py`, `datafetching/options_runtime.py`, `docs/datafetch-ml/options-opra-history.md`, `docs/loops-system-analysis/OPRA_HISTORY_MAINTENANCE_AUTOMATION.md`
 
 **Confirmed non-ownership:** it does not declare bars ready, value contracts, fit directional or strategy models, or make orders. A Pricing target result is sequencing evidence, not permission to fabricate or alter option data. `datafetching/pricing_barrier.py:38`, `options/publication.py:105`
 
@@ -35,7 +40,7 @@
 
 ## Processing and decisions
 
-After the first prospective target attempt of a UTC date, the supervisor attempts one catch-up for every requested symbol/schema with a valid history cursor. Prospective capture comes first because a `cbbo-1s` overlap may take hours; historical maintenance cannot starve the first immutable receipt. Current writes are v5 and include the exact lookback policy, requested start and completion boundary; a legacy v4 cursor is accepted only when its policy exactly equals the old schema-specific bootstrap policy. Checksum-valid partitions are reused; capacity-blocked or failed scopes are reported without deleting completed work. This maintenance does not make a missing symbol ready and does not turn an empty directory into fetch evidence.
+The production Options supervisor performs no historical catch-up. That isolation prevents a large replay from starving prospective immutable receipts. Loop A's post-session maintainer uses v5 cursors containing the exact lookback policy, requested start, and completion boundary; a legacy v4 cursor is accepted only when its policy exactly equals the old schema-specific bootstrap policy. It reuses checksum-valid partitions and reports budget-deferred, capacity-blocked, or failed scopes without deleting completed work. Maintenance does not make a missing symbol ready and does not turn an empty directory into fetch evidence.
 
 1. **Confirmed:** reconcile prior pending captures, derive the only eligible target, and skip symbols already committed or claimed. Closed-market discovery may refresh the latest eligible target but does not relabel it as a new calendar target. `datafetching/options_runtime.py:107`, `datafetching/options_runtime.py:117`, `datafetching/options_runtime.py:160`
 2. **Confirmed:** poll the target Pricing authority for a bounded interval. The internal `while` in the barrier is a wait loop, not a runtime owner; timeout returns explicit metadata and capture continues. `datafetching/pricing_barrier.py:77`, `datafetching/pricing_barrier.py:98`, `datafetching/pricing_barrier.py:124`
@@ -54,7 +59,7 @@ After the first prospective target attempt of a UTC date, the supervisor attempt
 | Compact option feature row | Directional Loop B and indirectly Strategy | snapshot `option-quality.parquet` | ATM implied move/IV, realized-vol comparison, term/skew/smile, OI/volume ratios, parity, spread/staleness/coverage and quality pass/status | Derived only from causal rows; quality pass requires coverage, freshness, noncrossed/nonlocked positive quotes and no intrinsic violation | **Confirmed.** `options/features.py:186`, `options/features.py:199`, `options/features.py:214`, `options/features.py:285` |
 | Pending capture authority | This loop only until reconciliation | `options/pending-captures/schwab/<target>/<symbol>/` | exact scope and target, request/response clocks, sealed raw payload/checksum, Pricing barrier metadata, `PENDING_READINESS`/reconciled/expired/failed states | Not a production snapshot and cannot authorize actions; immutable response; commit only after exact readiness; terminal expiry prevents late relabeling | **Confirmed.** `options/pending_capture.py:100`, `options/pending_capture.py:179`, `options/pending_capture.py:264` |
 | Cycle/failure result | operator/error authority | console result and datastore failure records | published/failed/skipped; OPRA/Schwab calls/fallbacks; barrier and pending/reconciled/expired counts | Per-symbol failure isolation; successful symbols remain committed | **Confirmed.** `datafetching/options_runtime.py:554`, `datafetching/options_runtime.py:484` |
-| Canonical historical partitions and cursors | Active Pricing; Strategy; operator health | `market-data/databento/opra/OPRA.PILLAR/<schema>/<parent-symbol>/dates/<date>/segments/<segment>/`, `state/symbol-history/`, `health/current.json` | provider DBN, normalized Parquet, distinct manifest/receipt, row/timestamp/null/duplicate/checksum validation; v5 lookback/request/completion/optional bootstrap-manifest cursor | Atomic publication; cursor only after nonempty verified synchronization; a missing/invalid cursor remains bootstrap-required | **Confirmed.** `datafetching/databento_opra_history.py`, `datafetching/options_runtime.py:1018`, `datafetching/options_runtime.py:1107` |
+| Canonical historical partitions and cursors (Loop A maintenance boundary) | Active Pricing; Strategy-profit training; Strategy; operator health | `market-data/databento/opra/OPRA.PILLAR/<schema>/<parent-symbol>/dates/<date>/segments/<segment>/`, `state/symbol-history/`, `health/current.json` | provider DBN, normalized Parquet, distinct manifest/receipt, row/timestamp/null/duplicate/checksum validation; v5 lookback/request/completion/optional bootstrap-manifest cursor | Published by bootstrap or Loop A-owned maintenance, not the production Options owner; cursor only after verified synchronization; a missing/invalid cursor remains bootstrap-required | **Confirmed.** `datafetching/orchestrate.py`, `datafetching/databento_opra_history.py`, `datafetching/options_runtime.py:907`, `ml/strategy_profit_training_runtime.py`, `docs/loops-system-analysis/OPRA_HISTORY_MAINTENANCE_AUTOMATION.md` |
 
 ## Direct loop relationships
 
@@ -100,9 +105,9 @@ After the first prospective target attempt of a UTC date, the supervisor attempt
 - Snapshot failures are isolated per symbol. Verified symbols remain committed,
   and pointer/checksum verification prevents partial staging from becoming
   current.
-- Daily history catch-up isolates capacity/provider errors by symbol/schema and
-  never creates a missing cursor. A `bootstrap required` result delegates to a
-  one-shot bootstrap rather than expanding the recurring owner’s scope.
+- The Loop A-owned post-session history subprocess isolates capacity/provider errors by
+  symbol/schema and never creates a missing cursor. A `bootstrap required`
+  result delegates to a one-shot bootstrap rather than expanding its scope.
 
 
 ## Accuracy and efficiency relevance
@@ -117,7 +122,8 @@ After the first prospective target attempt of a UTC date, the supervisor attempt
   definition activation checks and exact receipt checksums prevent replay,
   duplicate divergence and backdated prospective evidence.
 - Daily schema-specific overlap plus canonical deduplication repairs recent
-  history without repeating the large initial bootstrap.
+  `ohlcv-1h`/`cbbo-1m`/`definition` history without repeating the initial bootstrap or
+  contending with prospective capture.
 - Actual OPRA coverage, fallback share and option-feature/model lift require
   current health, receipt and consumer-usage evidence.
 
@@ -163,10 +169,21 @@ reported `OPRA_TARGET_WATERMARK_UNAVAILABLE`; the fallback did not become
 canonical OPRA or equity OHLCV. `options/publication.py:262`
 
 The 22:59:29 UTC read-only follow-up verified the same six target authorities.
-New hidden launches retain `--skip-historical-catchup`, so liveness recovery
-cannot initiate provider-history maintenance. Existing valid pairs are not
-duplicated solely to correct command drift.
+New hidden Options launches retain `--skip-historical-catchup`; the canonical
+Loop A launch separately receives its daily history arguments. Existing valid
+pairs are not duplicated solely to correct command drift.
 `docs/datafetch-ml/start_all_loops.ps1:18`, `ml/system_guardian.py:81`
+
+**Observed 2026-09-04 UTC:** 1,146 prospective Schwab snapshot receipts existed
+through `2026-09-03T20:00:00Z`; these explain where post-8/18 live-target option
+evidence was being published, but remain explicit fallback rather than
+historical OPRA. The corrective catch-up completed all 18 production-history
+scopes (`ohlcv-1h`, `cbbo-1m`, and `definition` for six symbols) through the
+exclusive 2026-09-04 boundary, with zero failures or deferrals. Health reports
+latest September 3 events for all three schemas. This does not assert freshness
+for research-only schemas or relabel Schwab evidence as OPRA.
+`C:\DATASTORE\market-data\databento\opra\OPRA.PILLAR\health\current.json`,
+`docs/loops-system-analysis/DATASTORE_HYGIENE.md`
 
 
 ## Evidence index

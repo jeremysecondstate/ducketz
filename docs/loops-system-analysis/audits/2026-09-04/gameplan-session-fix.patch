@@ -1,0 +1,21 @@
+--- a/ml/stock_trader/session.py
++++ b/ml/stock_trader/session.py
+@@ -233,7 +233,17 @@
+         start=pd.Timestamp(local_date) - pd.Timedelta(days=7),
+         end=pd.Timestamp(local_date) + pd.Timedelta(days=7),
+     )
+-    return calendar.checkpoint_session_at(timestamp)
++    checkpoint = calendar.checkpoint_session_at(timestamp)
++    # A forecast beginning at the regular close describes the following POST
++    # window. The broker's actual five-minute pause remains enforced by
++    # stock_execution_window; it must not permanently label this forecast CLOSED.
++    if (
++        checkpoint == CHECKPOINT_SESSION_CLOSED
++        and pd.Timestamp(local_date) in calendar.sessions
++        and timestamp == calendar.session_close(pd.Timestamp(local_date))
++    ):
++        return CHECKPOINT_SESSION_POST
++    return checkpoint
+ 
+ 
+ def time_in_force_for_checkpoint(

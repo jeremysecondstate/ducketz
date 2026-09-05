@@ -1,5 +1,9 @@
 # CME/L2 runtime
 
+> **Current deployment (2026-09-04):** the high-frequency CME supervisor is
+> stopped. Bounded CME acquisition is invoked inline by the overnight Loop A
+> close stage; recurrence details below are legacy capability.
+
 ## Identity
 
 - Canonical name: CME/L2 runtime
@@ -126,10 +130,11 @@ No additional owned worker exists. Query splitting is an internal queue, not a p
 
 ## Runtime and datastore observation
 
-**Confirmed deployment contract:** CME is one of the eight independently
-scheduled owners. Hidden launch uses the guardian allowlist, resolved paths,
+**Historical deployment contract:** CME was one of the eight independently
+scheduled owners. The retained hidden launcher uses the guardian allowlist, resolved paths,
 redirected monitor-visible logs, and the worker-owned
-`.ducketz-cme-writer.lock`; no archive command becomes another owner.
+`.ducketz-cme-writer.lock`; no archive command becomes another owner. Current
+normal operation invokes bounded CME work inside the overnight Loop A stage.
 `docs/datafetch-ml/start_all_loops.ps1:18`, `ml/system_guardian.py:81`
 
 **Observed 2026-08-19 22:45:36 UTC:** the hourly monitor found one CME

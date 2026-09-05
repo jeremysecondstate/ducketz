@@ -23,6 +23,7 @@ from datafetching.bar_timing import (
     completed_market_bars,
     finalize_normalized_bar_parquets,
 )
+from datafetching.bar_consolidation import consolidate_shadowed_derived_bars
 from datafetching.continuation import (
     latest_normalized_bar_timestamp,
     normalized_bar_path,
@@ -541,6 +542,38 @@ def _persist_native_results(
         )
         data_files += daily_files
         error_files += daily_errors
+
+        try:
+            consolidations = consolidate_shadowed_derived_bars(
+                store.root_dir,
+                symbol=symbol,
+            )
+            removed_rows = sum(
+                item.shadowed_rows_removed for item in consolidations
+            )
+            if removed_rows:
+                retained_rows = sum(
+                    item.derived_rows_retained for item in consolidations
+                )
+                print(
+                    "[databento/bar-consolidation] "
+                    f"symbol={symbol}; shadowed_derived_rows_removed={removed_rows}; "
+                    f"derived_gap_rows_retained={retained_rows}"
+                )
+        except Exception as exc:
+            if store.save_advisory(
+                source="databento",
+                category="bars",
+                symbol=symbol,
+                request_key="derived_bar_consolidation",
+                advisory_type=type(exc).__name__,
+                advisory_message=str(exc),
+                metadata={
+                    "provider_dataset": provider.dataset,
+                    "fetch_profile": profile,
+                },
+            ) is not None:
+                advisory_files += 1
 
     return FetchResult("databento", data_files, error_files, advisory_files)
 
