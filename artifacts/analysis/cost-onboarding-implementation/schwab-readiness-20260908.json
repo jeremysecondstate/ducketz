@@ -1,0 +1,27 @@
+{
+  "checked_at": "2026-09-08T08:52:11.630915+00:00",
+  "mode": "READ_ONLY_ACCOUNT_ORDERS_QUOTES",
+  "orders_submitted": 0,
+  "status": "CONNECTED",
+  "account_equity_positive": true,
+  "available_cash_positive": true,
+  "quote_symbols": [
+    "AAPL",
+    "AMZN",
+    "COST",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK"
+  ],
+  "working_order_count": 0,
+  "owned_symbol_shares": {
+    "AAPL": 1.0,
+    "AMZN": 1.0,
+    "GOOG": 1.0,
+    "MU": 1.0,
+    "NVDA": 1.0,
+    "SNDK": 1.0
+  },
+  "identity_verified": true
+}

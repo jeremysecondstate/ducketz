@@ -1,4 +1,4 @@
-# Six-symbol hourly stock trader
+# Configured-universe stock trader
 
 Status: the legacy Loop-B schedules remain paused as of 2026-09-04. The active
 daytime stock entry point is `ml.gameplan_stock_trader`, a thin gameplan adapter
@@ -7,10 +7,54 @@ requires both the legacy stock switch and the separate gameplan-stock switch.
 The paper-only `ml.gameplan_executor` remains available for inspection. Neither
 entry point grants options-order authority.
 
+September 8, 2026 selected strategy: COST activation is complete. All seven stocks
+and all 133 execution windows in Gameplan `20260908T093314.374067Z` have promoted
+forecast authority within the 168-row publication. The daily forecast retains
+the verified same-day champion `20260908T085844.073361Z`; the failed challenger
+remains research. The scheduled independent session worker starts at 03:55
+Pacific with explicit `--sizing-policy fixed-horizon-budget-v1`, using conservative
+deterministic 1:2:3:4 budgets within the existing risk limits. The learned sizing
+run `20260908T092028.062383Z` remains research with zero qualified scopes and is
+nonblocking for this selected strategy. All current execution forecasts are
+bearish or neutral: operational readiness currently means zero BUY entries.
+Its exact schedule, ownership rules and forecast qualification requirements are documented
+in [Independent stock horizons](INDEPENDENT_STOCK_HORIZONS.md).
+The remaining sections describe the shared legacy engine and its preserved
+contracts; the independent session worker is the active scheduled entry point.
+
+Independent preparation selects `xnas-itch-archive-v1` explicitly. The native
+`stock_target_history` stage requires a $0 preflight and verifies committed
+history before source-correct evaluation. Gameplan publication writes four
+checksum-bound training cohorts, and the supervised enrichment tail consumes
+that pinned source. EQUS.MINI live features and legacy labels keep their existing
+identity; no price-source mixing or regular-session label substitution occurs.
+The $0 native historical backfill completed 35 chunks and approximately 1.79
+million minute rows. Forecast source, exact target, promotion and entry-window
+checks remain mandatory. Fixed budgets use `min(0.5, max(0, 2*p - 1))` of each
+capped horizon amount, with a minimum bullish forecast probability of 0.55.
+They produce policy audit fields, not fabricated learned probabilities or
+expected returns. The CLI default `qualified-enrichment` keeps its separate
+model gate; deployment selects fixed budgets explicitly. The broker/ledger
+readiness snapshot has zero working orders and zero owned horizon allocations;
+manual one-share holdings in the original six symbols are untouched. Preparation
+and evaluation place zero orders.
+
+Selected scheduled command:
+
+```powershell
+.\.venv\Scripts\python.exe -u -m ml.gameplan_stock_trader --datastore-target pc --target-horizon all --sizing-policy fixed-horizon-budget-v1 --run-session --execute
+```
+
+Both stock controls remain required. Owned exits are checked before new entries;
+entry batches occur at HH:01, except 13:06 after the broker transition. Cash,
+gross/symbol exposure, single-order and six-order batch caps, whole shares,
+spread limits and LIMIT orders remain enforced. Learned enrichment continues as
+research/shadow work rather than being relabeled qualified.
+
 ## Scope
 
 The runtime trades underlying shares only for `AAPL`, `AMZN`, `GOOG`, `MU`,
-`NVDA`, and `SNDK`. Its broker vocabulary is `BUY`, `SELL`, and `NO_TRADE`.
+`NVDA`, `SNDK`, and `COST`. Its broker vocabulary is `BUY`, `SELL`, and `NO_TRADE`.
 It neither constructs nor submits option instruments, and a SELL is capped at
 owned shares not already committed to working sell orders. Short selling is
 not part of this runtime.
@@ -35,12 +79,12 @@ Extended/seamless orders are always limits and fail closed when the relative
 bid/ask spread exceeds `0.5%`.
 
 Databento and broker clocks are separate. Standard-plan `EQUS.MINI` supplies
-live non-empty OHLCV for the six-symbol prediction watchlist; Loop B accepts
+live non-empty OHLCV for the configured prediction watchlist; Loop B accepts
 completed source hours from 01:00--17:00 Pacific (04:00--20:00 Eastern). That
 extra source context prepares the 04:30 PRE prediction but does not authorize a
 Schwab order before 04:00 Pacific.
 
-## Hourly critical path
+## Legacy hourly critical path
 
 1. Read the persistent operator switch.
 2. If inactive, publish an inactive receipt and make no Schwab request.
@@ -51,7 +95,7 @@ Schwab order before 04:00 Pacific.
 5. Re-read the operator switch so a `FALSE` toggle during the wait stops before
    any Schwab request.
 6. Load the current enrichment model, then fetch account/positions, working
-   orders, and all six quotes concurrently. A classified transient failure
+   orders, and all configured stock quotes concurrently. A classified transient failure
    recaptures that complete read-only snapshot after a three-second pause, for
    up to a 120-second retry-start budget when the target leaves enough safe
    time. An already-running Schwab request may finish beyond that budget, but
@@ -72,7 +116,7 @@ Schwab order before 04:00 Pacific.
    boundary publishes `PREDICTION_EXECUTION_DEADLINE_PASSED` with no order.
 8. Run one multi-head enrichment inference per symbol from the same snapshot.
 9. Jointly convert model allocations into feasible whole-share quantities.
-10. Publish the complete immutable six-symbol LIVE lane and six-symbol SHADOW
+10. Publish the complete immutable configured-universe LIVE lane and SHADOW
    challenger from that same snapshot.
 11. If deployment execution is enabled, prepare and freeze a matching Schwab
    token/account context, require its fingerprint to match the captured
@@ -108,7 +152,7 @@ Prediction checkpoint eligibility is checked against the current session, so a
 PREMARKET run cannot implicitly queue a REGULAR/DAY order without the explicit
 opening-queue flag.
 
-## ML enrichment contract
+## Legacy and qualified-enrichment contract
 
 The nearest actionable Loop B 1h or 4h checkpoint is the primary direction
 input, with 1h preferred only on an exact target-time tie; the other 1h/4h and

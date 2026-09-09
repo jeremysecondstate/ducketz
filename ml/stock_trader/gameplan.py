@@ -134,6 +134,8 @@ def load_current_gameplan_prediction_signals(
     timestamp = utc(as_of)
     local = timestamp.tz_convert(GAMEPLAN_TIMEZONE)
     publication = read_current_gameplan(root)
+    if publication.manifest.get("configuration", {}).get("target_contract_version") == "independent-stock-targets-v1":
+        raise ValueError("Independent stock targets require --target-horizon all and the horizon ownership ledger")
     action_date = str(publication.receipt.get("action_date") or "")
     if action_date != local.date().isoformat():
         raise ValueError(

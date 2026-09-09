@@ -1,0 +1,59 @@
+{
+  "evaluated_at": "2026-09-09T05:55:29.796191+00:00",
+  "selection_lock_sha256": "8074170e4f23d67c59f19e275bd8a9bc2940d42e26361d8febc9d0f3a0afe87e",
+  "candidate_sha256": "3893ce9cf0d835dfc33e723afe849560345d219419dfe6c313192bc5de9f672e",
+  "cohort_sha256": "6991e42f48cb95393bf5bf5d045d9f9dc8463f0590553be20da742d2d6f58467",
+  "selected_logistic_c": 0.001,
+  "assessment_used_for_selection": false,
+  "candidate_locked_at": "2026-09-09T05:54:37.824865+00:00",
+  "assessment": {
+    "rows": 976,
+    "positive_rate": 0.45286885245901637,
+    "mean_probability": 0.49501084323077316,
+    "brier_score": 0.25087258379960936,
+    "log_loss": 0.6949023888969003,
+    "expected_calibration_error_10_bin": 0.04534695546813606,
+    "direction_accuracy_at_0_5": 0.4969262295081967
+  },
+  "training_base_rate_assessment": {
+    "rows": 976,
+    "positive_rate": 0.45286885245901637,
+    "mean_probability": 0.4979707792207791,
+    "brier_score": 0.2498128387290934,
+    "log_loss": 0.6927728559855708,
+    "expected_calibration_error_10_bin": 0.04510192676176272,
+    "direction_accuracy_at_0_5": 0.5471311475409836
+  },
+  "calibration_diagnostics": {
+    "status": "DIRECTIONAL_INFORMATION_AVAILABLE",
+    "information_available": true,
+    "nondecreasing_constraint_active": false,
+    "calibration_rows": 898,
+    "calibration_positive_rate": 0.4376391982182628,
+    "raw_probability_range": [
+      0.40503080573803774,
+      0.5745672135927844
+    ],
+    "calibrated_probability_range": [
+      0.40503080573803774,
+      0.5745672135927844
+    ],
+    "assessment_probability_range": [
+      0.34590436464839813,
+      0.5744373410647435
+    ],
+    "platt_slope": null
+  },
+  "assessment_decision_clusters": 51,
+  "promotion_gate": {
+    "status": "RESEARCH_NOT_PROMOTED",
+    "checks": {
+      "calibration_retains_directional_information": true,
+      "assessment_has_at_least_10_decision_clusters": true,
+      "brier_beats_training_base_rate": false,
+      "log_loss_beats_training_base_rate": false,
+      "expected_calibration_error_at_most_0_15": true
+    }
+  },
+  "no_further_candidates_or_parameter_search_on_this_assessment": true
+}

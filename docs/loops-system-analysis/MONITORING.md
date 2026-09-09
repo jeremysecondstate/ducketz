@@ -1,8 +1,17 @@
 # Monitoring and recovery
 
-> Current overnight supervision (September 4, 2026): the 17:05 Scheduled owner
-> reads training progress/errors throughout its run; a ten-minute health watch
-> covers missed starts and abandoned/failed runs. See
+> September 8 daytime repair: the existing operations watch is now named
+> **Loops Operations Watch** and covers both daytime incidents and overnight
+> preparation. See [Independent stock horizons](INDEPENDENT_STOCK_HORIZONS.md#broker-recovery-and-operational-supervision)
+> for bounded broker-read retries, persistent session health, failure reporting,
+> and controlled repair/restart requirements. The older daytime monitoring
+> description below does not limit the user's explicitly authorized repairs.
+
+> Current overnight supervision (September 8, 2026): the 21:05 Pacific daily
+> Scheduled owner runs the full close fetch and downstream workflow, with native
+> weekend/holiday no-ops. It reads training progress/errors throughout its run.
+> `Loops Operations Watch` checks every 30 minutes and covers abandoned/failed
+> runs; it may start a missing fresh run only after 21:15 Pacific. See
 > [NIGHTLY_GAMEPLAN.md](NIGHTLY_GAMEPLAN.md) for status, stop, recovery, repair,
 > and resume. The monitor/guardian implementations described below are diagnostic
 > components; the current Scheduled owner follows that supervision procedure.
@@ -29,12 +38,13 @@ Current monitoring follows one overnight run and one immutable final pointer:
 
 A successful run must prove:
 
-1. each of the five stages completed in order;
+1. each of the six stages completed in order;
 2. every required OPRA `definition`, `cbbo-1m`, and `ohlcv-1h` cursor covers the
-   latest required completed session for all six symbols;
+   latest required completed session for every configured symbol;
 3. Loop B and Strategy inputs are checksum compatible;
 4. four model reports exist for `1h`, `4h`, `1d`, and `1w`;
-5. the gameplan contains exactly 144 forecasts and 144 options intents;
+5. the gameplan contains exactly 24 forecasts and 24 options intents per symbol
+   in its saved manifest (168 of each for seven symbols);
 6. the pointer, manifest, receipt, and file checksums verify;
 7. `execution_authority=ADVISORY_PAPER_ONLY` and `orders_placed=0`.
 
@@ -61,10 +71,12 @@ monitoring.
 
 ## Scheduler state
 
-- `Loops Overnight Gameplan`: active, weekday 17:05 PT.
+- `Loops Overnight Gameplan`: active, daily 21:05 America/Los_Angeles, with native
+  non-session no-ops and provider coverage checks.
 - Standalone OPRA history: paused.
 - Options Strategy paper tracking: paused.
-- Stock daily adaptation: paused.
+- Stock daily adaptation: repurposed as `Loops Operations Watch`, active at :00
+  and :30 each hour; missing fresh overnight starts are eligible after 21:15 PT.
 - Former intraday stock tasks: paused.
 - `Loops Gameplan Stock Trader — Hourly`: active.
 - `Loops Gameplan Stock Trader — 1 p.m. Transition`: active.

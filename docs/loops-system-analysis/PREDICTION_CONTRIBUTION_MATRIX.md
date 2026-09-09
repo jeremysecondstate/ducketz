@@ -6,7 +6,7 @@ predictive lift or profit.
 
 | Overnight stage/input | Directional path | Options Strategy path | Direct output |
 |---|---|---|---|
-| Loop A close fetch | Indirect | Indirect | Completed-session equity/features; 18 production OPRA cursors |
+| Loop A close fetch | Indirect | Indirect | Completed-session equity/features; three production OPRA cursors per symbol |
 | CME/ALFRED/option feature artifacts | Indirect | Indirect through Loop B | Causal cross-asset, macro, `opt__`, and `opx__` context |
 | Directional Loop B | Direct | Indirect | Current samples/features and directional probabilities |
 | OPRA `definition` | None | Indirect | Point-in-time contract identity |
@@ -14,7 +14,7 @@ predictive lift or profit.
 | OPRA `ohlcv-1h` | None | Indirect | Historical option-surface context and execution cross-checks |
 | Strategy-profit training | None | Indirect model authority | Promoted HGB/MLP `1h`, `4h`, `1d`, and `1w` profitable-outcome models |
 | Strategy generation | None | Direct | Exact candidate, legs, score, expected return, and lineage |
-| Nightly gameplan | Direct frozen path | Direct frozen intent | 144 forecasts plus 144 options intents for one action date |
+| Nightly gameplan | Direct frozen path | Direct frozen intent | 24 forecasts plus 24 options intents per symbol for one action date |
 | Daytime gameplan reader | None | None | Advisory/paper decision receipt; no prediction mutation |
 
 ## Directional chain

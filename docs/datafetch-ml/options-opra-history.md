@@ -72,6 +72,60 @@ completed market session. The session's last option quote may naturally be
 hours old after close. This is valid model/planning evidence and is distinct
 from the current-quote requirement of any future live same-leg execution gate.
 
+### Live replay fallback for a delayed Historical archive
+
+Loop A now supplies `--live-replay-fallback --required-session <YYYY-MM-DD>`
+to its existing incremental history owner. Historical access remains preferred.
+When its metadata stops before the required completed session, unchanged older
+overlap downloads are skipped and the same locked owner requests finite Live
+replay for each missing production symbol/schema. No extra recurring process
+is started. A missing bootstrap or earlier unfilled session still blocks replay.
+
+Definitions and hourly bars request the explicit UTC session date through the
+following UTC midnight. Minute CBBO requests one hour before the calendar's
+regular open through that same midnight, covering the entire regular options
+session including closing quotes. The six single-stock roots use the existing
+XNYS option-evidence calendar. This interval is recorded honestly; it does not
+claim quote coverage before the requested start. A provider rejection of that
+explicit start is a blocker. `start=0`, current snapshots, and synthetic past
+definitions are never used. The gateway's actual retained range can differ by
+schema, so a nominal 24-hour replay allowance alone proves nothing.
+
+Every subscription uses one schema and one parent root, no automatic reconnect,
+and no slow-reader skipping. Native DBN retains subscription acknowledgement,
+replay completion, mappings, and all data/control records. Missing completion,
+errors, invalid mappings, callback/disk failure, timeout, and byte-budget
+exhaustion fail closed. Native files are capped by the remaining aggregate run
+byte allowance; Live is the already subscribed service, not a metered Historical
+request. Preflight-only never opens a Live subscription.
+
+Successful replay publishes an immutable `segments/live-session` directory,
+separate from Historical `segments/full-day`, with `provider.dbn`, normalized
+Parquet, manifest, and receipt. The raw stream remains intact; normalization
+filters the exact recorded half-open interval using CBBO `ts_recv` and other
+schemas' `ts_event`. Checksums, native controls, scope, counts, mapping, timestamp,
+and duplicate checks precede cursor advancement. The cursor records its
+receipt-bound `replay_coverage` and means complete **exchange-session** evidence.
+Strategy readers prefer Historical full-day files and otherwise strictly verify
+the session segment covers calendar open through close. A later delayed
+Historical response cannot regress an advanced cursor.
+
+To repair an existing attempt's specific dependency under its supervision claim:
+
+```powershell
+.\.venv\Scripts\python.exe -u -m datafetching.options_history `
+  --datastore-target pc --symbols AAPL AMZN GOOG MU NVDA SNDK `
+  --schemas definition ohlcv-1h cbbo-1m --incremental-only `
+  --live-replay-fallback --required-session 2026-09-04 `
+  --max-estimated-download-bytes 20000000000 --max-estimated-cost-usd 1 `
+  --max-incremental-catchup-days 30
+```
+
+The date above is an explicit repair example, not a new weekend schedule.
+After verifying all required scopes, use the existing exited-supervisor
+`--recover-run` then `--resume-run` procedure, preserving completed stages and
+the original deadline. Failed replay never authorizes training on partial data.
+
 **Observed 2026-09-04 UTC:** the corrective catch-up preflighted and completed
 all 18 production scopes (three schemas by six symbols), selected an estimated
 11,464,500,352 bytes at USD 0, and reported zero failed, deferred,

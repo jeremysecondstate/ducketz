@@ -219,16 +219,28 @@ def prediction_pulse_probabilities(
     )
 
 
-def prediction_pulse_columns(width: int) -> int:
-    """Keep the six-symbol concept intact while stacking it on narrow screens."""
+def prediction_pulse_columns(width: int, symbol_count: int = 6) -> int:
+    """Fit the configured symbols while keeping cards readable on narrow screens."""
 
+    if symbol_count > 6 and width >= 1220:
+        return min(symbol_count, width // 174)
     if width >= 1040:
-        return 6
+        return 4 if symbol_count == 7 else 6
     if width >= 720:
         return 3
     if width >= 520:
         return 2
     return 1
+
+
+def prediction_pulse_entries(
+    view: ForecastDashboardView,
+) -> tuple[tuple[str, tuple[tuple[str, float | None], ...]], ...]:
+    return (
+        *((item.symbol, prediction_pulse_probabilities(item.routes)) for item in view.symbols),
+        *((item.symbol, prediction_pulse_probabilities(item.forecast.routes if item.forecast else ()))
+          for item in view.pending_symbols),
+    )
 
 
 def prediction_pulse_mark_path(
@@ -674,6 +686,9 @@ class RollingForecastTab:
         self._prediction_pulse_symbols: tuple[
             tuple[str, tuple[tuple[str, float | None], ...]], ...
         ] = ()
+        self._prediction_pulse_pending_symbols: set[str] = set()
+        self._prediction_pulse_forecast_only_symbols: set[str] = set()
+        self._prediction_pulse_raw_scores: set[tuple[str, str]] = set()
         self._summary_cards: list[ttk.Frame] = []
         self._summary_labels: list[tuple[ttk.Label, ttk.Label]] = []
         self._symbol_sections: list[_SymbolSectionWidgets] = []
@@ -1225,7 +1240,9 @@ class RollingForecastTab:
             )
         if self.content_frame is None:
             return
-        if not view.symbols:
+        supplemental = {item.symbol: item for item in view.pending_symbols if item.forecast is not None}
+        display_symbols = (*view.symbols, *(item.forecast for item in supplemental.values()))
+        if not display_symbols:
             panel = ttk.Frame(
                 self.content_frame,
                 padding=20,
@@ -1250,9 +1267,9 @@ class RollingForecastTab:
         else:
             self._symbol_expanded = merge_symbol_expansion_state(
                 self._symbol_expanded,
-                (symbol.symbol for symbol in view.symbols),
+                (symbol.symbol for symbol in display_symbols),
             )
-            for symbol_index, symbol in enumerate(view.symbols):
+            for symbol_index, symbol in enumerate(display_symbols):
                 symbol_name = str(symbol.symbol).strip().upper()
                 section = ttk.Frame(
                     self.content_frame,
@@ -1277,6 +1294,10 @@ class RollingForecastTab:
                     ),
                     remaining_week_available=symbol.weekly_outlook is not None,
                 )
+                if symbol_name in supplemental:
+                    collapsed_summary += " · Stock Activation Pending"
+                    ttk.Label(section, text=supplemental[symbol_name].detail,
+                              style="ForecastMuted.TLabel", wraplength=780).pack(anchor=tk.W, padx=12, pady=(0, 4))
                 header = tk.Button(
                     header_row,
                     command=lambda name=symbol_name: self._toggle_symbol(name),
@@ -1330,8 +1351,8 @@ class RollingForecastTab:
                     ).pack(side=tk.LEFT)
                 cards = tuple(
                     self._build_route_card(body, route)
-                    for route in symbol.routes
-                    if route.horizon in STANDARD_HORIZON_ORDER
+                    for route in (*symbol.routes, *symbol.research_context)
+                    if route.horizon in STANDARD_HORIZON_ORDER or route.target_role == "OPENING_GAP_RESEARCH"
                 )
                 weekly_card = self._build_weekly_outlook_card(
                     body,
@@ -1350,20 +1371,43 @@ class RollingForecastTab:
                 if self._symbol_expanded[symbol_name]:
                     body.pack(fill=tk.X)
                 self._update_symbol_header(widgets)
+        for pending in view.pending_symbols:
+            if pending.forecast is not None:
+                continue
+            section = tk.Frame(
+                self.content_frame, background=SURFACE_ALT,
+                highlightbackground=BORDER, highlightthickness=1,
+            )
+            section.pack(fill=tk.X, pady=(0, 10))
+            tk.Label(
+                section, text=f"{pending.symbol} · Onboarding · Forecasts Pending",
+                background=SURFACE_ALT, foreground=WARNING,
+                font=("Segoe UI", 12, "bold"), anchor=tk.W,
+            ).pack(fill=tk.X, padx=12, pady=(9, 3))
+            detail = tk.Label(
+                section, text=pending.detail, background=SURFACE_ALT,
+                foreground=MUTED_TEXT, font=("Segoe UI", 10),
+                anchor=tk.W, justify=tk.LEFT,
+                wraplength=max(200, self._width - 50),
+            )
+            detail.pack(fill=tk.X, padx=12, pady=(0, 10))
+            section.bind("<Configure>", lambda event, label=detail: label.configure(
+                wraplength=max(200, event.width - 26)))
         self._render_prediction_pulse(view)
         self._apply_responsive_layout(force=True)
         self._update_scroll_region()
 
     def _render_prediction_pulse(self, view: ForecastDashboardView) -> None:
-        if self.content_frame is None or not view.symbols:
+        if self.content_frame is None or not (view.symbols or view.pending_symbols):
             return
-        self._prediction_pulse_symbols = tuple(
-            (
-                str(symbol.symbol).strip().upper(),
-                prediction_pulse_probabilities(symbol.routes),
-            )
-            for symbol in view.symbols
-        )
+        self._prediction_pulse_symbols = prediction_pulse_entries(view)
+        self._prediction_pulse_pending_symbols = {item.symbol for item in view.pending_symbols if item.forecast is None}
+        self._prediction_pulse_forecast_only_symbols = {item.symbol for item in view.pending_symbols if item.forecast is not None}
+        displayed = (*view.symbols, *(item.forecast for item in view.pending_symbols if item.forecast is not None))
+        self._prediction_pulse_raw_scores = {
+            (symbol.symbol, route.horizon) for symbol in displayed for route in symbol.routes
+            if route.uses_raw_display_probability and route.horizon in STANDARD_HORIZON_ORDER
+        }
         self._prediction_pulse_frame = ttk.Frame(
             self.content_frame,
             style="ForecastPulse.TFrame",
@@ -1445,6 +1489,11 @@ class RollingForecastTab:
                     foreground=TEXT,
                     font=("Segoe UI", 12, "bold"),
                 ).pack(pady=(0, 7))
+                if symbol in self._prediction_pulse_pending_symbols | self._prediction_pulse_forecast_only_symbols:
+                    tk.Label(
+                        header, text=("Stock activation pending" if symbol in self._prediction_pulse_forecast_only_symbols else "Onboarding"), background=SURFACE,
+                        foreground=WARNING, font=("Segoe UI", 9),
+                    ).pack(pady=(0, 6))
 
             for row, horizon in enumerate(STANDARD_HORIZON_ORDER, start=1):
                 row_heading = tk.Label(
@@ -1478,7 +1527,9 @@ class RollingForecastTab:
                     cell.grid(row=row, column=column, sticky=tk.NSEW)
                     tk.Label(
                         cell,
-                        text=prediction_pulse_probability_text(probability),
+                        text=("—" if symbol in self._prediction_pulse_pending_symbols
+                              else prediction_pulse_probability_text(probability)
+                              + (" *" if (symbol, horizon) in self._prediction_pulse_raw_scores else "")),
                         background=background,
                         foreground=foreground,
                         font=("Segoe UI", 16, "bold"),
@@ -1522,6 +1573,11 @@ class RollingForecastTab:
                 font=("Segoe UI", 10),
             ).pack(side=tk.LEFT)
 
+        if self._prediction_pulse_raw_scores:
+            tk.Label(frame, text="* Raw model score, not a calibrated probability. Open the forecast for details.",
+                     background=BACKGROUND, foreground=WARNING, font=("Segoe UI", 10),
+                     wraplength=max(300, self._width - 60)).pack(pady=(2, 6))
+
     def _render_summary(self, view: ForecastDashboardView) -> None:
         if self.summary_frame is None:
             return
@@ -1534,6 +1590,8 @@ class RollingForecastTab:
             )
         )
         route_detail = route_publication_summary(view)
+        if supplemental_count := sum(item.forecast is not None for item in view.pending_symbols):
+            route_detail += f"; {supplemental_count} additional symbol(s) with forecasts only"
         cards = (
             (
                 "Data Freshness",
@@ -1645,7 +1703,9 @@ class RollingForecastTab:
             card,
             probability_up,
             probability_down,
+            raw_score=route.uses_raw_display_probability,
         )
+        self._build_probability_warning(card, route)
         self._add_divider(card)
         self._build_window_block(
             card,
@@ -1653,6 +1713,9 @@ class RollingForecastTab:
             route.target_window_end,
             title="Forecast Window",
         )
+        if route.window_detail:
+            ttk.Label(card, text=route.window_detail, style="ForecastMuted.TLabel",
+                      wraplength=330, justify=tk.LEFT).pack(anchor=tk.W, pady=(6, 0))
         if route.option_plan_status is not None:
             self._add_divider(card)
             self._build_option_gameplan_block(card, route)
@@ -1723,11 +1786,18 @@ class RollingForecastTab:
             ).pack(anchor=tk.W, pady=(3, 0))
         return block
 
+    def _build_probability_warning(self, parent: ttk.Frame, route: ForecastRouteView) -> None:
+        if route.probability_warning:
+            ttk.Label(parent, text=route.probability_warning, foreground=WARNING,
+                      style="ForecastMuted.TLabel", wraplength=520,
+                      justify=tk.LEFT).pack(anchor=tk.W, pady=(6, 0))
+
     def _build_probability_block(
         self,
         parent: ttk.Frame,
         probability_up: float | None,
         probability_down: float | None,
+        *, raw_score: bool = False,
     ) -> ttk.Frame:
         block = ttk.Frame(parent, style="ForecastProbability.TFrame")
         block.pack(fill=tk.X, pady=(10, 0))
@@ -1735,12 +1805,12 @@ class RollingForecastTab:
         block.grid_columnconfigure(1, weight=1)
         ttk.Label(
             block,
-            text="Probability Up",
+            text="Raw Up Score" if raw_score else "Probability Up",
             style="ForecastProbabilityLabel.TLabel",
         ).grid(row=0, column=0, sticky=tk.W)
         ttk.Label(
             block,
-            text="Probability Down",
+            text="Raw Down Score" if raw_score else "Probability Down",
             style="ForecastProbabilityLabel.TLabel",
         ).grid(row=0, column=1, sticky=tk.E)
         ttk.Label(
@@ -1867,7 +1937,7 @@ class RollingForecastTab:
         header.grid_columnconfigure(0, weight=1)
         ttk.Label(
             header,
-            text="Remaining-Week Outlook",
+            text="Five-Session Stock Forecast" if outlook is not None and outlook.aggregate.execution_eligible is True else "Remaining-Week Outlook",
             style="ForecastWeeklyTitle.TLabel",
         ).grid(row=0, column=0, sticky=tk.W, padx=(0, 12))
 
@@ -1925,14 +1995,19 @@ class RollingForecastTab:
         )
         ttk.Label(
             summary,
-            text="Aggregate (Remaining Week)",
+            text="Direct Five-Session Forecast" if aggregate.execution_eligible is True else "Aggregate (Remaining Week)",
             style="ForecastCardTitle.TLabel",
         ).pack(anchor=tk.W)
         self._build_probability_block(
             summary,
             aggregate.display_probability_up,
             aggregate.display_probability_down,
+            raw_score=aggregate.uses_raw_display_probability,
         )
+        self._build_probability_warning(summary, aggregate)
+        if aggregate.window_detail:
+            ttk.Label(summary, text=aggregate.window_detail, style="ForecastMuted.TLabel",
+                      wraplength=330, justify=tk.LEFT).pack(anchor=tk.W, pady=(6, 0))
         if aggregate.option_plan_status is not None:
             self._add_divider(summary)
             self._build_option_gameplan_block(summary, aggregate)
@@ -2103,7 +2178,9 @@ class RollingForecastTab:
             card,
             route.display_probability_up,
             route.display_probability_down,
+            raw_score=route.uses_raw_display_probability,
         )
+        self._build_probability_warning(card, route)
         self._add_divider(card)
         self._build_window_block(
             card,
@@ -2347,6 +2424,9 @@ class RollingForecastTab:
         self._weekly_details.clear()
         self._prediction_pulse_frame = None
         self._prediction_pulse_symbols = ()
+        self._prediction_pulse_pending_symbols.clear()
+        self._prediction_pulse_forecast_only_symbols.clear()
+        self._prediction_pulse_raw_scores.clear()
         self._layout_columns = None
         self._layout_signature = None
         if self.summary_frame is not None:
@@ -2431,7 +2511,7 @@ class RollingForecastTab:
         columns = dashboard_layout(self._width)
         health_columns = 4 if self._width >= 1080 else (2 if self._width >= 520 else 1)
         weekly_mode = 3 if self._width >= 1220 else (2 if self._width >= 760 else 1)
-        pulse_columns = prediction_pulse_columns(self._width)
+        pulse_columns = prediction_pulse_columns(self._width, len(self._prediction_pulse_symbols))
         signature = (
             columns,
             health_columns,

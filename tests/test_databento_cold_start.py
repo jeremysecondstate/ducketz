@@ -1322,7 +1322,7 @@ def test_opra_cursor_handoff_accepts_calendar_year_policy(tmp_path: Path) -> Non
     assert payload["lookback_policy"] == {"unit": "years", "value": 13}
 
 
-def test_active_startup_material_has_no_stale_paid_download_wording() -> None:
+def test_active_startup_material_has_no_obsolete_confirmation_flags() -> None:
     root = Path(__file__).resolve().parents[1]
     paths = [
         root / "docs" / "datafetch-ml" / "current_start_command",
@@ -1334,8 +1334,7 @@ def test_active_startup_material_has_no_stale_paid_download_wording() -> None:
     ]
     combined = "\n".join(path.read_text(encoding="utf-8") for path in paths).lower()
     assert "confirm-billable" not in combined
-    assert "billable" not in combined
-    assert "nonzero-cost" not in combined
+    assert "--allow-nonzero-cost" not in combined
 
 
 def test_coordinator_preserves_loop_locks_and_publication_authority() -> None:

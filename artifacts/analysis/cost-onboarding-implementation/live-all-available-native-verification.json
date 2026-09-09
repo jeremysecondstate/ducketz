@@ -1,0 +1,22 @@
+{
+  "native_record_types": {
+    "SystemMsg": 1400,
+    "SymbolMappingMsg": 3712
+  },
+  "native_market_quote_records": 0,
+  "callback_market_quote_records": 0,
+  "replay_complete": true,
+  "errors": [],
+  "subscription_acknowledgements": [
+    {
+      "code": 1,
+      "message": "Subscription request 0 for cbbo-1m data succeeded"
+    }
+  ],
+  "completion_messages": [
+    {
+      "code": 3,
+      "message": "Finished cbbo-1m replay"
+    }
+  ]
+}

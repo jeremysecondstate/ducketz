@@ -1,0 +1,456 @@
+{
+  "source_contract": "xnas-itch-archive-v1",
+  "dataset": "XNAS.ITCH",
+  "schema": "ohlcv-1m",
+  "price_basis": "unadjusted_market_scale",
+  "timestamp_semantics": "minute_interval_open",
+  "source_policy": "one_explicit_dataset_no_fill_no_cross_dataset_fallback",
+  "native_archive_partitions_verified": 14,
+  "partitions": [
+    {
+      "symbol": "AAPL",
+      "request_id": "abdec5dc2a24412c04f304a8",
+      "start": "2026-05-07",
+      "end": "2026-08-15",
+      "rows": 58522,
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "published_at": "2026-08-18T07:49:54.455908+00:00"
+    },
+    {
+      "symbol": "AAPL",
+      "request_id": "f51de11ed13a0548c2ba5596",
+      "start": "2026-08-13",
+      "end": "2026-09-05",
+      "rows": 14210,
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-08-13_to_2026-09-05\\manifest.json",
+      "published_at": "2026-09-08T07:36:35.284142+00:00"
+    },
+    {
+      "symbol": "AMZN",
+      "request_id": "f951500f361e6dc6f97923bc",
+      "start": "2026-05-07",
+      "end": "2026-08-15",
+      "rows": 60467,
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "published_at": "2026-08-18T07:50:10.088049+00:00"
+    },
+    {
+      "symbol": "AMZN",
+      "request_id": "8a988c767c0c25d690b905f5",
+      "start": "2026-08-13",
+      "end": "2026-09-05",
+      "rows": 14470,
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-08-13_to_2026-09-05\\manifest.json",
+      "published_at": "2026-09-08T07:36:39.441928+00:00"
+    },
+    {
+      "symbol": "GOOG",
+      "request_id": "c7420481cba4ff3541b318a2",
+      "start": "2026-05-07",
+      "end": "2026-08-15",
+      "rows": 55752,
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "published_at": "2026-08-18T07:50:17.272265+00:00"
+    },
+    {
+      "symbol": "GOOG",
+      "request_id": "7830bf42848291642cf805a1",
+      "start": "2026-08-13",
+      "end": "2026-09-05",
+      "rows": 12454,
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-08-13_to_2026-09-05\\manifest.json",
+      "published_at": "2026-09-08T07:36:46.632337+00:00"
+    },
+    {
+      "symbol": "MU",
+      "request_id": "1366ef23c235a824c203e89c",
+      "start": "2026-05-07",
+      "end": "2026-08-15",
+      "rows": 66194,
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "published_at": "2026-08-18T07:50:22.368574+00:00"
+    },
+    {
+      "symbol": "MU",
+      "request_id": "a2cc25c213de30cd5abfa326",
+      "start": "2026-08-13",
+      "end": "2026-09-05",
+      "rows": 16206,
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-08-13_to_2026-09-05\\manifest.json",
+      "published_at": "2026-09-08T07:36:50.592402+00:00"
+    },
+    {
+      "symbol": "NVDA",
+      "request_id": "89bc83bdfba389816330d553",
+      "start": "2026-05-07",
+      "end": "2026-08-15",
+      "rows": 64541,
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "published_at": "2026-08-18T07:50:27.501411+00:00"
+    },
+    {
+      "symbol": "NVDA",
+      "request_id": "776ba9a28d5dc7b3caff977f",
+      "start": "2026-08-13",
+      "end": "2026-09-05",
+      "rows": 15554,
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-08-13_to_2026-09-05\\manifest.json",
+      "published_at": "2026-09-08T07:36:54.861751+00:00"
+    },
+    {
+      "symbol": "SNDK",
+      "request_id": "1ae8e3fe543bd3da723fc2e4",
+      "start": "2026-05-07",
+      "end": "2026-08-15",
+      "rows": 64946,
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "published_at": "2026-08-18T07:50:33.098362+00:00"
+    },
+    {
+      "symbol": "SNDK",
+      "request_id": "461ba8481f5f0f5dc7ed671e",
+      "start": "2026-08-13",
+      "end": "2026-09-05",
+      "rows": 15925,
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-08-13_to_2026-09-05\\manifest.json",
+      "published_at": "2026-09-08T07:36:58.070757+00:00"
+    },
+    {
+      "symbol": "COST",
+      "request_id": "3fef3163bc89bdb8071291b6",
+      "start": "2026-05-07",
+      "end": "2026-08-15",
+      "rows": 34358,
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "published_at": "2026-09-06T09:24:03.949659+00:00"
+    },
+    {
+      "symbol": "COST",
+      "request_id": "febc4c838da08f63f83a311b",
+      "start": "2026-05-28",
+      "end": "2026-09-05",
+      "rows": 34945,
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-28_to_2026-09-05\\manifest.json",
+      "published_at": "2026-09-08T07:36:43.402467+00:00"
+    }
+  ],
+  "by_symbol": {
+    "AAPL": {
+      "rows": 71066,
+      "first_timestamp": "2026-05-07T08:00:00+00:00",
+      "last_timestamp": "2026-09-04T23:59:00+00:00"
+    },
+    "AMZN": {
+      "rows": 73238,
+      "first_timestamp": "2026-05-07T08:00:00+00:00",
+      "last_timestamp": "2026-09-04T23:59:00+00:00"
+    },
+    "COST": {
+      "rows": 41630,
+      "first_timestamp": "2026-05-07T08:10:00+00:00",
+      "last_timestamp": "2026-09-04T23:59:00+00:00"
+    },
+    "GOOG": {
+      "rows": 66696,
+      "first_timestamp": "2026-05-07T08:00:00+00:00",
+      "last_timestamp": "2026-09-04T23:59:00+00:00"
+    },
+    "MU": {
+      "rows": 80485,
+      "first_timestamp": "2026-05-07T08:00:00+00:00",
+      "last_timestamp": "2026-09-04T23:59:00+00:00"
+    },
+    "NVDA": {
+      "rows": 78358,
+      "first_timestamp": "2026-05-07T08:00:00+00:00",
+      "last_timestamp": "2026-09-04T23:59:00+00:00"
+    },
+    "SNDK": {
+      "rows": 78955,
+      "first_timestamp": "2026-05-07T08:00:00+00:00",
+      "last_timestamp": "2026-09-04T23:59:00+00:00"
+    }
+  },
+  "files": [
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+      "bytes": 1227263,
+      "sha256": "39815ff8c7da8a6fc67a916efd995f8d8f817fc9f0137dcbba54de386781539a"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "bytes": 1681,
+      "sha256": "140410491d84ec5af0980f3059a300fb9891e199497f17ce9326f7b0a93162cb"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+      "bytes": 455,
+      "sha256": "02929908826baffd1654d1747e5cb45c91b216f76b392689a86c9d91db5c77bc"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+      "bytes": 1110489,
+      "sha256": "c40f41e4b1f2eb3acafe4ba16cb4b034db88565d6d4cf487e5f9db4f8b24cf41"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-08-13_to_2026-09-05\\normalized.parquet",
+      "bytes": 314055,
+      "sha256": "950978bb8efca73ee8378643af8adcef87ba18e46c54d984a3adda26ef57d824"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-08-13_to_2026-09-05\\manifest.json",
+      "bytes": 1683,
+      "sha256": "a545a01a2991772cd36669db5a64dad912ab88720f99b47bac73d3e410b8bbb1"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-08-13_to_2026-09-05\\receipt.json",
+      "bytes": 455,
+      "sha256": "509d49ade95e1188b0239a869e501bc795dec5deeec0689739f772d86c159d4d"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-08-13_to_2026-09-05\\provider.dbn.zst",
+      "bytes": 262796,
+      "sha256": "178b25b76e4624cf8b2ccf23eead009848bc89ed6c078faa50772f6dbb11fa92"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+      "bytes": 1242877,
+      "sha256": "09d3f596a72eac780f29d7c5010944f458cc3ae27397352db3d807b1ce477ec7"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "bytes": 1681,
+      "sha256": "47c0432db2813f9ec3b17ed6474e6db288e2663582ccfacccf0aa57981d95d05"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+      "bytes": 455,
+      "sha256": "3f4e08bdc7ecd814b9a0cd516edfd94b896f29d49dcffbb8dc328f1b4d9c48be"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+      "bytes": 1142324,
+      "sha256": "c62ade36ad2f3adc8e3792724c1fd9cae6ccf3f12b82bfa65c54754891157ea9"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-08-13_to_2026-09-05\\normalized.parquet",
+      "bytes": 295757,
+      "sha256": "c615498b15bbfeba43cc279e5955daa50ea7282cf12c481664406bf6f58a1de4"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-08-13_to_2026-09-05\\manifest.json",
+      "bytes": 1683,
+      "sha256": "a1bb615ddc80d1cf27327a6434ca057413c6c669d95ddf101de2079521b54fa3"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-08-13_to_2026-09-05\\receipt.json",
+      "bytes": 455,
+      "sha256": "f49b6c8bb749d4cad591034fa55f0edda49788ce0a908d7b841a63c293a75f03"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-08-13_to_2026-09-05\\provider.dbn.zst",
+      "bytes": 261921,
+      "sha256": "1e6692d9e9b44c75d131dcd540581f8a69a525e9b8d055b9cef6f6fcd7d173d8"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+      "bytes": 1173690,
+      "sha256": "eee46576fd2d539e277bed9bc364404178e56dc48f35b1ce011fbe1ce98b1ed4"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "bytes": 1681,
+      "sha256": "ad802ed4dee82cd27b54a3f8ece42c9f87ca2f457f21a8a2bdc96905ae752be0"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+      "bytes": 455,
+      "sha256": "a4208b9596c43221306151c2cf164a34254d3220e788115b8ac5dee414618586"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+      "bytes": 1106823,
+      "sha256": "6d769d068fa7ee0220d8e8d3824d6199ee4ceabdc910bfed04644f6f247cc7b4"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-08-13_to_2026-09-05\\normalized.parquet",
+      "bytes": 256214,
+      "sha256": "50cc8d0d76258ba7b3a1dc5eca462d5abd225e55f9a4638b99298722f98319d5"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-08-13_to_2026-09-05\\manifest.json",
+      "bytes": 1683,
+      "sha256": "a6e0c981e7bcf2f0596593e6e28c115fa981e7d07c771b325d1d2f949ba176d7"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-08-13_to_2026-09-05\\receipt.json",
+      "bytes": 455,
+      "sha256": "59f37b1cb92deaaa80f78194adb3c0bf57d4292c2e5e341bb9313069a98c95f4"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-08-13_to_2026-09-05\\provider.dbn.zst",
+      "bytes": 225687,
+      "sha256": "214b93d1c48331175a9ac05d5742db2866409db9a0a53c99a40e1827599ccc78"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+      "bytes": 1843950,
+      "sha256": "a63f47d03cd866abd96faeec81da7d5eef44d99d778284315d7640119127f5d1"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "bytes": 1677,
+      "sha256": "db08b10161ff56a9d04a8dfc8c3b755a089d4b426cfcd703f366cbeb612277fd"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+      "bytes": 455,
+      "sha256": "7a9b0aae23453eb83a656a709945708c9a662e99a2e037ac26fbec3162786e73"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+      "bytes": 1824566,
+      "sha256": "0c63cc4e892301cf253e81a7863c3be376a8d2b52fda4cd4b0db547774845f57"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-08-13_to_2026-09-05\\normalized.parquet",
+      "bytes": 424343,
+      "sha256": "29d431a3b982837318e1867af05b59e4491177e82bdecad01c1fc3cf3e0a4787"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-08-13_to_2026-09-05\\manifest.json",
+      "bytes": 1679,
+      "sha256": "2b83c60d0b5a4b37146d91527be4fab28442daaa6981b347818db9db054a7e9c"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-08-13_to_2026-09-05\\receipt.json",
+      "bytes": 455,
+      "sha256": "8e4a3232b0ea7d3d9596ea359abbe7033389d49bd6d135e934eb7b65ebcbec38"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-08-13_to_2026-09-05\\provider.dbn.zst",
+      "bytes": 406148,
+      "sha256": "aff7cdedfaa0e483ae434bb481ad4fb9d844e3641820de496459dbfc95d35333"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+      "bytes": 1348194,
+      "sha256": "66706cbeae576788aa20da97e237dba7abb089b3644e31d44e5445fd62a406b2"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "bytes": 1681,
+      "sha256": "e212283a297fd8e944766d4924bc91a69a283874a2e0f31436058411e114554a"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+      "bytes": 455,
+      "sha256": "d89f97be962fd117efb7724c9251cbae3ef6893ca58f0c679a006badd4dd2dd1"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+      "bytes": 1247156,
+      "sha256": "4e57ba77f9188f8e3472a722440f41b3c79ca64e6e0622319075a9800de8e960"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-08-13_to_2026-09-05\\normalized.parquet",
+      "bytes": 352202,
+      "sha256": "d70dc0dc31416262aca869fa1ec889a121329adf10068468c2ede7e1c6935e03"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-08-13_to_2026-09-05\\manifest.json",
+      "bytes": 1683,
+      "sha256": "274608ee810c90c816c1316d6aca11ec860ef67d67d0245c79e270c11cce4d0f"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-08-13_to_2026-09-05\\receipt.json",
+      "bytes": 455,
+      "sha256": "83a182a1203c6dec2685f85c7896f11d4399ea37876040bb27037490d5c3d45c"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-08-13_to_2026-09-05\\provider.dbn.zst",
+      "bytes": 293445,
+      "sha256": "0692697a390e5f7807241d3b22dd92652f83f9bb222c4b887e206449794f1702"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+      "bytes": 1887712,
+      "sha256": "f58926b163d51cb6ffa0182fa0d2941375d88fdc7fc62cf41f03c0538ae754de"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "bytes": 1681,
+      "sha256": "21597c6422d3233f28f6bd5b2a1a298ed52b2ebc1a555ec9f61b04023598ed5f"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+      "bytes": 455,
+      "sha256": "3b1d36fc2fbe1d1a76563f3cd4223c2575c50e5fe0c7e9047a28841cb4ae65ef"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+      "bytes": 1791170,
+      "sha256": "09c49d2ec1d0665ed84a568c261443e1f7302ba23c38c0006de6612506c6d706"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-08-13_to_2026-09-05\\normalized.parquet",
+      "bytes": 468180,
+      "sha256": "4449690fceb9944294600a976447794a582fe11136a1192cb0fc64a0e0b9ee61"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-08-13_to_2026-09-05\\manifest.json",
+      "bytes": 1683,
+      "sha256": "318facfa88e15493801f637a5061b557409cc5c9518a807f3928396902b93f75"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-08-13_to_2026-09-05\\receipt.json",
+      "bytes": 455,
+      "sha256": "9063e6729bc7a571bdc088db7f4374fe6f5f01583162af153c45df977362194c"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-08-13_to_2026-09-05\\provider.dbn.zst",
+      "bytes": 428079,
+      "sha256": "c282ebd8c37f87bd75089f52659f13abdecf066a942d41548815d0562f2f1f18"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+      "bytes": 818396,
+      "sha256": "a11fccd29f220c4eeac747f5919434aa501d451e3355aa0943b472c994eb5956"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+      "bytes": 1679,
+      "sha256": "550cd09eb48c5826be4f6362a1195a20661aeb632e4b9aea0f0568e53d11fa08"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+      "bytes": 455,
+      "sha256": "d08ea6d82e0fee5e3d5709f0d9093da145512fb30b6fa6c016e98d2f43b27174"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+      "bytes": 763289,
+      "sha256": "c8c86c1fad8135d44e4f960e58e2ed44af2827b157b86bc2c3a7cf2935309912"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-28_to_2026-09-05\\normalized.parquet",
+      "bytes": 763610,
+      "sha256": "a018908921311348d7b3f3523687bd6b81f0074732beddd47ca9221a1c0bbbe0"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-28_to_2026-09-05\\manifest.json",
+      "bytes": 1679,
+      "sha256": "cd20734c7450f623c660ca1399bdfdd0511f3219167260a7fbf9dfb5b512ec82"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-28_to_2026-09-05\\receipt.json",
+      "bytes": 455,
+      "sha256": "0c346188fbf50bfda77a04dde2adfff92703aeb35483b22246883755a932e1ff"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-28_to_2026-09-05\\provider.dbn.zst",
+      "bytes": 765064,
+      "sha256": "47bb0e824ad0f3d54d91e07b71f91f8dedafbc78c7f4cb3a545740697a12befc"
+    }
+  ]
+}

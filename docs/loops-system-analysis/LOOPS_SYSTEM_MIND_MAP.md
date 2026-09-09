@@ -3,7 +3,7 @@
 ```mermaid
 mindmap
   root((Ducketz))
-    Overnight 17:05 PT
+    Overnight 21:05 PT daily
       Loop A close fetch
         EQUS equity continuation
         OPRA definition
@@ -23,8 +23,8 @@ mindmap
         exact contracts and legs
         completed-session planning quotes
       Immutable gameplan
-        144 forecasts
-        144 options intents
+        24 forecasts per symbol
+        24 options intents per symbol
         receipts and checksums
     Daytime 04:00–17:00 PT
       frozen plan reader

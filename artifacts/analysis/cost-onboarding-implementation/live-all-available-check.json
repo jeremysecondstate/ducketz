@@ -1,0 +1,5619 @@
+{
+  "checked_at": "2026-09-06T10:05:35.518552+00:00",
+  "schema": "cbbo-1m",
+  "symbols": [
+    "COST.OPT"
+  ],
+  "start": 0,
+  "data_records": 0,
+  "first_ts_recv": null,
+  "last_ts_recv": null,
+  "control_messages": [
+    {
+      "code": 1,
+      "message": "Subscription request 0 for cbbo-1m data succeeded"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 4,
+      "message": "End of interval for cbbo-1m"
+    },
+    {
+      "code": 3,
+      "message": "Finished cbbo-1m replay"
+    }
+  ],
+  "errors": [],
+  "replay_complete": true,
+  "canonical_publication_attempted": false,
+  "finished_at": "2026-09-06T10:05:36.258660+00:00",
+  "raw_bytes": 1101440,
+  "evidence_directory": "C:\\dev\\ducketz\\artifacts\\analysis\\cost-onboarding-implementation\\live-all-available-review-20260906T100535Z"
+}

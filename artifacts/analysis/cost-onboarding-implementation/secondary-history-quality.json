@@ -1,0 +1,119 @@
+{
+  "plan_id": "987dfa290e0f74a6cbb2962165af8d0cc3f1134edd0a4eef2a9434f7ee2ca221",
+  "screened_at": "2026-09-06T08:35:07.256797+00:00",
+  "status": "COMPLETE",
+  "excluded_series": [
+    {
+      "source_path": "C:\\DATASTORE\\stocks\\COST\\bars\\1d\\schwab\\normalized\\COST_year_20_daily_1.parquet",
+      "quarantine_path": "C:\\DATASTORE\\quarantine\\symbol-onboarding\\COST\\987dfa290e0f74a6cbb2962165af8d0cc3f1134edd0a4eef2a9434f7ee2ca221\\1d\\schwab\\normalized\\COST_year_20_daily_1.parquet",
+      "checksum_sha256": "091bf142cf8826ad6ba4046e5de1fa2f3fc046292397419cd5d190f2de21cb37",
+      "rows": 5032,
+      "invalid_price_rows": 4,
+      "reason": "NONPOSITIVE_OR_NONFINITE_SECONDARY_EQUITY_PRICES",
+      "samples": [
+        {
+          "id": "2008-09-19T05:00:00Z",
+          "timestamp": "2008-09-19T05:00:00.000Z",
+          "open": 32.0,
+          "high": 32.0,
+          "low": -8.3,
+          "close": 27.09,
+          "volume": 10335762.0
+        },
+        {
+          "id": "2009-03-06T06:00:00Z",
+          "timestamp": "2009-03-06T06:00:00.000Z",
+          "open": 0.58,
+          "high": 0.74,
+          "low": -0.8299,
+          "close": -0.02,
+          "volume": 7087163.0
+        },
+        {
+          "id": "2009-03-09T05:00:00Z",
+          "timestamp": "2009-03-09T05:00:00.000Z",
+          "open": -0.56,
+          "high": 0.47,
+          "low": -0.8199,
+          "close": -0.56,
+          "volume": 6474405.0
+        },
+        {
+          "id": "2009-03-10T05:00:00Z",
+          "timestamp": "2009-03-10T05:00:00.000Z",
+          "open": 0.03,
+          "high": 1.19,
+          "low": -0.35,
+          "close": 1.14,
+          "volume": 8580989.0
+        }
+      ]
+    },
+    {
+      "source_path": "C:\\DATASTORE\\stocks\\COST\\bars\\1mo\\schwab\\normalized\\COST_year_20_monthly_1.parquet",
+      "quarantine_path": "C:\\DATASTORE\\quarantine\\symbol-onboarding\\COST\\987dfa290e0f74a6cbb2962165af8d0cc3f1134edd0a4eef2a9434f7ee2ca221\\1mo\\schwab\\normalized\\COST_year_20_monthly_1.parquet",
+      "checksum_sha256": "841e8cdc2935a351bd99cc6a15ac60dfb59099106b175e01a5bec3de6cc72fb7",
+      "rows": 239,
+      "invalid_price_rows": 2,
+      "reason": "NONPOSITIVE_OR_NONFINITE_SECONDARY_EQUITY_PRICES",
+      "samples": [
+        {
+          "id": "2008-09-01T05:00:00Z",
+          "timestamp": "2008-09-01T05:00:00.000Z",
+          "open": 29.15,
+          "high": 32.0,
+          "low": -8.3,
+          "close": 25.93,
+          "volume": 143818853.0
+        },
+        {
+          "id": "2009-03-01T06:00:00Z",
+          "timestamp": "2009-03-01T06:00:00.000Z",
+          "open": 2.71,
+          "high": 14.460736,
+          "low": -0.8299,
+          "close": 7.32,
+          "volume": 151373797.0
+        }
+      ]
+    },
+    {
+      "source_path": "C:\\DATASTORE\\stocks\\COST\\bars\\1w\\schwab\\normalized\\COST_year_20_weekly_1.parquet",
+      "quarantine_path": "C:\\DATASTORE\\quarantine\\symbol-onboarding\\COST\\987dfa290e0f74a6cbb2962165af8d0cc3f1134edd0a4eef2a9434f7ee2ca221\\1w\\schwab\\normalized\\COST_year_20_weekly_1.parquet",
+      "checksum_sha256": "b6a088fff68ae45bca13e32ccd8f7c12b3fdc2b32d3a5c4240339b9df6db5a42",
+      "rows": 1042,
+      "invalid_price_rows": 3,
+      "reason": "NONPOSITIVE_OR_NONFINITE_SECONDARY_EQUITY_PRICES",
+      "samples": [
+        {
+          "id": "2008-09-15T05:00:00Z",
+          "timestamp": "2008-09-15T05:00:00.000Z",
+          "open": 29.66,
+          "high": 32.0,
+          "low": -8.3,
+          "close": 27.09,
+          "volume": 50714500.0
+        },
+        {
+          "id": "2009-03-02T06:00:00Z",
+          "timestamp": "2009-03-02T06:00:00.000Z",
+          "open": 2.71,
+          "high": 3.86,
+          "low": -0.8299,
+          "close": -0.02,
+          "volume": 46269972.0
+        },
+        {
+          "id": "2009-03-09T05:00:00Z",
+          "timestamp": "2009-03-09T05:00:00.000Z",
+          "open": -0.56,
+          "high": 3.4,
+          "low": -0.8199,
+          "close": 3.2,
+          "volume": 33826826.0
+        }
+      ]
+    }
+  ],
+  "raw_provider_deliveries_preserved": true
+}

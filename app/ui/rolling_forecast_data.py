@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone, tzinfo
 from pathlib import Path
 from typing import Final, Mapping
@@ -13,6 +14,7 @@ import pandas as pd
 import pyarrow as pa
 
 from datafetching.parquet_store import resolve_datastore_dir
+from datafetching.symbol_universe import normalize_symbol
 from ml.current_publication import (
     CurrentPublicationError,
     resolve_current_output,
@@ -23,6 +25,7 @@ from ml.horizons import (
     WEEKLY_HORIZON_ORDER,
 )
 from ml.live_evidence import minimum_live_decisions
+from ml.independent_stock_targets import STOCK_TARGET_CONTRACT_VERSION, stock_target_windows
 from ml.nightly_gameplan import read_current_gameplan
 from ml.parquet_contracts import (
     EVALUATION_SCHEMA,
@@ -156,6 +159,9 @@ class ForecastRouteView:
     option_pricing_source: str | None = None
     probability_warning: str | None = None
     raw_probability_up: float | None = None
+    target_role: str | None = None
+    execution_eligible: bool | None = None
+    window_detail: str | None = None
 
     @property
     def uses_raw_display_probability(self) -> bool:
@@ -213,12 +219,20 @@ class SymbolForecastView:
     symbol: str
     routes: tuple[ForecastRouteView, ...]
     weekly_outlook: WeeklyOutlookView | None
+    research_context: tuple[ForecastRouteView, ...] = ()
 
     @property
     def all_routes(self) -> tuple[ForecastRouteView, ...]:
         if self.weekly_outlook is None:
-            return self.routes
-        return (*self.routes, *self.weekly_outlook.sessions)
+            return (*self.routes, *self.research_context)
+        return (*self.routes, *self.weekly_outlook.sessions, *self.research_context)
+
+
+@dataclass(frozen=True)
+class OnboardingSymbolView:
+    symbol: str
+    detail: str
+    forecast: SymbolForecastView | None = None
 
 
 @dataclass(frozen=True)
@@ -244,6 +258,7 @@ class ForecastDashboardView:
     limitations: tuple[str, ...]
     warnings: tuple[str, ...]
     empty_message: str | None
+    pending_symbols: tuple[OnboardingSymbolView, ...] = ()
 
 
 class ForecastDataError(RuntimeError):
@@ -397,7 +412,7 @@ def load_gameplan_dashboard(
             path=pointer,
             technical_detail=f"{type(exc).__name__}: {exc}",
         ) from exc
-    return adapt_gameplan_forecasts(
+    view = adapt_gameplan_forecasts(
         frame,
         source_path=pointer,
         action_date=str(publication.receipt.get("action_date") or ""),
@@ -405,6 +420,86 @@ def load_gameplan_dashboard(
         option_intents=option_intents,
         loaded_at=loaded_at,
     )
+    return _with_pending_onboarding(view, datastore_root)
+
+
+def _with_pending_onboarding(
+    view: ForecastDashboardView, datastore_root: Path,
+) -> ForecastDashboardView:
+    """Show registered candidates without treating them as published forecasts."""
+
+    root = Path(datastore_root).resolve()
+    published = {item.symbol for item in view.symbols}
+    pending: list[OnboardingSymbolView] = []
+    warnings = list(view.warnings)
+    for registry_path in sorted((root / "state/symbol-onboarding").glob("*.json")):
+        try:
+            registry = json.loads(registry_path.read_text(encoding="utf-8"))
+            if not isinstance(registry, dict):
+                raise ValueError("Invalid onboarding registration")
+            symbol = normalize_symbol(registry["symbol"])
+            if symbol in published:
+                continue
+            if registry.get("schema_version") != "symbol-onboarding-v1" or registry_path.stem != symbol:
+                raise ValueError("Invalid onboarding registration")
+            plan_path = Path(registry["plan_path"]).resolve()
+            plan = json.loads(plan_path.read_text(encoding="utf-8"))
+            if not isinstance(plan, dict):
+                raise ValueError("Invalid onboarding plan")
+            payload = {key: value for key, value in plan.items() if key != "plan_id"}
+            checksum = hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+            if (
+                plan.get("schema_version") != registry["schema_version"]
+                or checksum != plan.get("plan_id")
+                or checksum != registry.get("plan_id")
+                or plan.get("symbol") != symbol
+                or symbol not in plan.get("candidate_symbols", ())
+                or Path(plan["datastore_root"]).resolve() != root
+            ):
+                raise ValueError("Onboarding plan does not match its registration")
+            progress_path = Path(registry["progress_path"]).resolve()
+            activation_path = Path(registry["activation_path"]).resolve()
+            if progress_path != plan_path.parent / "progress.json" or activation_path != plan_path.parent / "activation.json":
+                raise ValueError("Onboarding receipt paths do not match the plan")
+            if activation_path.is_file():
+                activation = json.loads(activation_path.read_text(encoding="utf-8"))
+                if not isinstance(activation, dict):
+                    raise ValueError("Invalid onboarding activation receipt")
+                if activation.get("plan_id") == checksum and activation.get("status") == "ACTIVE":
+                    continue
+            progress = json.loads(progress_path.read_text(encoding="utf-8")) if progress_path.is_file() else {}
+            if not isinstance(progress, dict):
+                raise ValueError("Invalid onboarding progress")
+            if progress and progress.get("plan_id") != checksum:
+                raise ValueError("Onboarding progress does not match the plan")
+            detail = (
+                "History imported. Forecasts will appear when the first Gameplan is complete."
+                if progress.get("status") == "HISTORY_FETCHED" else
+                "Data preparation is in progress. Forecasts will appear when the first Gameplan is complete."
+            )
+            forecast = None
+            try:
+                from ml.directional_forecasts import read_current_directional_forecast
+                publication = read_current_directional_forecast(root, symbol)
+                if publication is not None:
+                    if publication.receipt["onboarding_plan_id"] != checksum:
+                        raise ValueError("Directional forecast belongs to another onboarding plan")
+                    preview = adapt_gameplan_forecasts(
+                        pd.read_parquet(publication.run_directory / "forecasts.parquet"),
+                        source_path=publication.run_directory / "forecasts.parquet",
+                        action_date=publication.receipt["action_date"],
+                        gameplan=publication.manifest["configuration"], loaded_at=view.loaded_at,
+                        forecast_only=True,
+                    )
+                    forecast = preview.symbols[0]
+                    detail = "Stock forecasts are available. Stock trading activation is pending."
+                    warnings.extend(preview.warnings)
+            except (OSError, ValueError, KeyError, TypeError, RuntimeError) as exc:
+                warnings.append(f"Directional forecast unavailable for {symbol}: {exc}")
+            pending.append(OnboardingSymbolView(symbol=symbol, detail=detail, forecast=forecast))
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            warnings.append(f"Onboarding status unavailable for {registry_path.stem}: {exc}")
+    return replace(view, pending_symbols=tuple(pending), warnings=tuple(warnings))
 
 
 def adapt_gameplan_forecasts(
@@ -415,8 +510,9 @@ def adapt_gameplan_forecasts(
     gameplan: Mapping[str, object] | None = None,
     option_intents: pd.DataFrame | None = None,
     loaded_at: datetime | None = None,
+    forecast_only: bool = False,
 ) -> ForecastDashboardView:
-    """Rotate one immutable 144-row gameplan into the current UI checkpoints."""
+    """Rotate an immutable gameplan into the configured symbols' UI checkpoints."""
 
     required = {
         "id",
@@ -489,7 +585,7 @@ def adapt_gameplan_forecasts(
             "Nightly gameplan rows disagree with the pointer action date.",
         )
     if not normalized["execution_authority"].astype("string").eq(
-        "ADVISORY_PAPER_ONLY"
+        "READ_ONLY_FORECAST" if forecast_only else "ADVISORY_PAPER_ONLY"
     ).all() or normalized["broker_orders_enabled"].astype("boolean").fillna(True).any():
         raise _contract_error(
             source_path,
@@ -504,6 +600,12 @@ def adapt_gameplan_forecasts(
             "Nightly gameplan contains an invalid calibrated probability.",
         )
     normalized["calibrated_probability"] = probability
+    independent = (
+        "target_contract_version" in normalized
+        and normalized["target_contract_version"].eq(STOCK_TARGET_CONTRACT_VERSION).any()
+    )
+    if independent:
+        _validate_independent_ui_targets(normalized, action_date=expected_action_date, source_path=source_path)
     normalized, calibration_warnings = _annotate_gameplan_calibration(normalized)
     intent_lookup = _gameplan_intent_lookup(
         option_intents,
@@ -559,7 +661,7 @@ def adapt_gameplan_forecasts(
             weekly,
             horizon="1w",
             as_of=loaded,
-            frozen_outlook=True,
+            frozen_outlook=not independent,
             intent=intent_lookup.get((str(symbol), str(weekly["route"]))),
         )
         sessions = tuple(
@@ -575,16 +677,33 @@ def adapt_gameplan_forecasts(
         issued_at = _timestamp(weekly.get("frozen_at"))
         if issued_at is None:
             raise _contract_error(source_path, f"{symbol} has no gameplan freeze time.")
+        if forecast_only:
+            standard = tuple(_as_directional_route(route, source_path) for route in standard)
+            aggregate = _as_directional_route(aggregate, source_path)
+            sessions = tuple(_as_directional_route(route, source_path) for route in sessions)
         outlook = WeeklyOutlookView(
             aggregate=aggregate,
             sessions=sessions,
             issued_at=issued_at,
         )
+        research_context = ()
+        if independent:
+            research_context = tuple(
+                replace(
+                    _gameplan_route_view(
+                        row, horizon="1h", as_of=loaded,
+                        intent=intent_lookup.get((str(symbol), str(row["route"]))),
+                    ),
+                    horizon="1h-gap", horizon_label="Opening Gap Context",
+                )
+                for _, row in symbol_rows.loc[symbol_rows["target_role"].eq("OPENING_GAP_RESEARCH")].iterrows()
+            )
         symbols.append(
             SymbolForecastView(
                 symbol=str(symbol),
                 routes=(*standard, aggregate),
                 weekly_outlook=outlook,
+                research_context=research_context,
             )
         )
         if str(weekly.get("model_status") or "").upper() != "PROMOTED":
@@ -648,6 +767,20 @@ def adapt_gameplan_forecasts(
     )
 
 
+def _as_directional_route(route: ForecastRouteView, source_path: Path) -> ForecastRouteView:
+    status = "FORECAST_ONLY" if route.actionability_status == ACTIONABLE_STATUS else route.actionability_status
+    return replace(
+        route, actionability_status=status, published_actionability_status=status,
+        actionability_label=f"Forecast only · {route.actionability_label}",
+        live_evidence_status="FROZEN_DIRECTIONAL_FORECAST",
+        option_plan_status="OPTIONS_RESEARCH_NOT_PREPARED", option_plan_label="Options Research Not Prepared",
+        option_plan_tone="warning", option_reason="Options research has not been prepared for this stock forecast.",
+        limitation=" ".join(filter(None, (route.limitation, "Options-derived features are excluded."))),
+        debug_fields=(*route.debug_fields, ("forecast_scope", "NON_OPTIONS / READ_ONLY_FORECAST"),
+                      ("directional_forecast_source", str(source_path))),
+    )
+
+
 def _is_nightly_gameplan_pointer(path: Path) -> bool:
     candidate = Path(path)
     return (
@@ -664,6 +797,10 @@ def _select_gameplan_clock_route(
 ) -> pd.Series:
     """Choose the current frozen window, then the nearest future/last window."""
 
+    if "target_contract_version" in frame and frame["target_contract_version"].eq(STOCK_TARGET_CONTRACT_VERSION).all():
+        # The prior-close opening gap is retained as a separate research card;
+        # it must never replace the upcoming 04:00 forward hourly prediction.
+        frame = frame.loc[frame["target_role"].eq("EXECUTION")]
     if frame.empty:
         raise ValueError("Gameplan clock route is empty")
     instant = pd.Timestamp(_utc_datetime(as_of))
@@ -676,6 +813,28 @@ def _select_gameplan_clock_route(
     if not future.empty:
         return future.sort_values("target_window_start", kind="stable").iloc[0]
     return frame.sort_values("target_window_end", kind="stable").iloc[-1]
+
+
+def _validate_independent_ui_targets(frame: pd.DataFrame, *, action_date, source_path: Path) -> None:
+    required = {"target_role", "execution_eligible", "action_anchor_local"}
+    if not required.issubset(frame) or not frame["target_contract_version"].eq(STOCK_TARGET_CONTRACT_VERSION).all():
+        raise _contract_error(source_path, "Independent stock forecasts have missing or mixed target contracts.")
+    expected = {row["route"]: row for row in stock_target_windows(action_date)}
+    if frame.duplicated(["symbol", "route"]).any():
+        raise _contract_error(source_path, "Independent stock forecast routes are duplicated.")
+    for _, rows in frame.groupby("symbol"):
+        if set(rows["route"]) != set(expected):
+            raise _contract_error(source_path, "Independent stock forecast route grid is incomplete.")
+    for row in frame.to_dict("records"):
+        target = expected[row["route"]]
+        if any(row[column] != target[column] for column in (
+            "model_group", "target_role", "execution_eligible", "target_window_start", "target_window_end"
+        )):
+            raise _contract_error(source_path, "Independent stock forecast windows differ from their target contract.")
+        action = _text(row["action_anchor_local"])
+        expected_action = target["target_window_start"].tz_convert(GAMEPLAN_TIMEZONE).strftime("%H:%M") if target["execution_eligible"] else None
+        if action != expected_action:
+            raise _contract_error(source_path, "Independent stock forecast action anchor differs from its window.")
 
 
 def _gameplan_intent_lookup(
@@ -756,6 +915,8 @@ def _gameplan_route_view(
         raise ValueError("Gameplan target window is invalid")
     route = str(row.get("route") or "").strip()
     promoted = str(row.get("model_status") or "").strip().upper() == "PROMOTED"
+    independent = str(row.get("target_contract_version") or "") == STOCK_TARGET_CONTRACT_VERSION
+    target_role = _text(row.get("target_role")) if independent else None
     if frozen_outlook:
         status = "FROZEN_WEEKLY_SNAPSHOT"
         intelligence = (
@@ -800,6 +961,16 @@ def _gameplan_route_view(
         label = f"Completed Window · {route}"
         tone = "neutral"
         actionable_until = start
+    if target_role == "OPENING_GAP_RESEARCH":
+        status = "OPENING_GAP_RESEARCH"
+        label = "Opening Gap · Research Context · No Entry"
+        tone = "warning"
+        actionable_until = None
+    elif target_role == "OUTLOOK":
+        status = "FROZEN_DAILY_OUTLOOK"
+        label = f"{'Daily' if promoted else 'Research'} Outlook · {route} · No Entry"
+        tone = "neutral" if promoted else "warning"
+        actionable_until = None
     probability_warning = _text(row.get("_calibration_warning"))
     model_status = str(row.get("model_status") or "MODEL_STATUS_UNAVAILABLE")
     evidence_label = (
@@ -812,6 +983,21 @@ def _gameplan_route_view(
         if promoted
         else "Research-only forecast; the independent promotion gate did not pass."
     )
+    window_detail = None
+    if independent:
+        if target_role == "OPENING_GAP_RESEARCH":
+            window_detail = "Prior session 17:00 close to the 04:00 opening price. Context only; no stock entry."
+        elif target_role == "OUTLOOK":
+            window_detail = "Future 04:00–17:00 stock-session outlook; no entry is scheduled from this row."
+        elif str(row.get("model_group")) == "4h" and start.astimezone(GAMEPLAN_TIMEZONE).date() != end.astimezone(GAMEPLAN_TIMEZONE).date():
+            window_detail = "Four stock action hours: 16:00–17:00, then the next session 04:00–07:00. Includes overnight exposure."
+        elif str(row.get("model_group")) == "1w":
+            window_detail = "First session 04:00 through fifth session 17:00, including overnight exposure."
+        elif str(row.get("model_group")) == "1d":
+            window_detail = "One stock action session, 04:00–17:00."
+        else:
+            window_detail = "Route time is the entry boundary; the displayed window ends at the forecast expiry."
+        limitation = " ".join(filter(None, (limitation, window_detail)))
     option_status = _text(intent.get("plan_status")) if intent is not None else None
     option_label, option_tone = _gameplan_option_status(option_status)
     option_probability = (
@@ -831,6 +1017,10 @@ def _gameplan_route_view(
         "target_window_start",
         "target_window_end",
         "target_semantics",
+        "target_role",
+        "execution_eligible",
+        "trading_segments_json",
+        "target_contract_version",
         "raw_probability",
         "calibrated_probability",
         "calibration_status",
@@ -857,7 +1047,7 @@ def _gameplan_route_view(
         id=_text(row.get("id")),
         symbol=str(row.get("symbol") or "").strip().upper(),
         horizon=horizon,
-        horizon_label=HORIZON_LABELS[horizon],
+        horizon_label="1 Week" if independent and horizon == "1w" else HORIZON_LABELS[horizon],
         model_name=_text(row.get("model_family")),
         decision_timestamp=_timestamp(row.get("decision_timestamp")),
         forecast_created_at=frozen_at,
@@ -903,6 +1093,9 @@ def _gameplan_route_view(
         ),
         probability_warning=probability_warning,
         raw_probability_up=_number(row.get("raw_probability")),
+        target_role=target_role,
+        execution_eligible=(target_role == "EXECUTION") if independent else None,
+        window_detail=window_detail,
     )
 
 

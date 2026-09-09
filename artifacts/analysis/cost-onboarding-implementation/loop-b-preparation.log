@@ -1,0 +1,96 @@
+DUCKETS LOOP B
+==============
+DATASTORE: C:\DATASTORE
+Symbols: AAPL, AMZN, GOOG, MU, NVDA, SNDK, COST
+Provider: databento
+Horizons: 1h, 4h, 1d, 1w, 1w-d1, 1w-d2, 1w-d3, 1w-d4, 1w-d5
+Feature profile: loop-a-all-bsgp-active-v3
+Model: logistic; calibration: platt
+Option Pricing features: independent ml.option_pricing_runtime; coverage-gated
+Options strategy analytics: independent ml.strategy_runtime process
+Interval: 30 minutes
+Loop A dependency: latest complete datastore inputs
+Stop: Ctrl+C
+
+LOOP B CYCLE 2026-09-06T08:40:41.266342+00:00
+------------------------------------------------
+Loop A datastore cycle: 20260906T083525.560558Z-pid61456
+[2026-09-06T08:40:41.266378Z] START loop-b.directional-publication src=databento symbol_count=7
+[2026-09-06T08:40:41.266522Z] START loop-b.materialize-samples src=databento symbol_count=7
+[rolling 1h] AAPL: READY; samples=21255
+[rolling 1h] AMZN: READY; samples=21061
+[rolling 1h] GOOG: READY; samples=20151
+[rolling 1h] MU: READY; samples=20483
+[rolling 1h] NVDA: READY; samples=22437
+[rolling 1h] SNDK: READY; samples=7973
+[rolling 1h] COST: READY; samples=17338
+[rolling 4h] AAPL: READY; samples=9978
+[rolling 4h] AMZN: READY; samples=9848
+[rolling 4h] GOOG: READY; samples=9205
+[rolling 4h] MU: READY; samples=9505
+[rolling 4h] NVDA: READY; samples=10785
+[rolling 4h] SNDK: READY; samples=3657
+[rolling 4h] COST: READY; samples=7850
+[rolling 1d] AAPL: READY; samples=815
+[rolling 1d] AMZN: READY; samples=815
+[rolling 1d] GOOG: READY; samples=815
+[rolling 1d] MU: READY; samples=815
+[rolling 1d] NVDA: READY; samples=815
+[rolling 1d] SNDK: READY; samples=337
+[rolling 1d] COST: READY; samples=815
+[rolling 1w] AAPL: READY; samples=815
+[rolling 1w] AMZN: READY; samples=815
+[rolling 1w] GOOG: READY; samples=815
+[rolling 1w] MU: READY; samples=815
+[rolling 1w] NVDA: READY; samples=815
+[rolling 1w] SNDK: READY; samples=337
+[rolling 1w] COST: READY; samples=815
+[rolling 1w-d1] AAPL: READY; samples=815
+[rolling 1w-d1] AMZN: READY; samples=815
+[rolling 1w-d1] GOOG: READY; samples=815
+[rolling 1w-d1] MU: READY; samples=815
+[rolling 1w-d1] NVDA: READY; samples=815
+[rolling 1w-d1] SNDK: READY; samples=337
+[rolling 1w-d1] COST: READY; samples=815
+[rolling 1w-d2] AAPL: READY; samples=815
+[rolling 1w-d2] AMZN: READY; samples=815
+[rolling 1w-d2] GOOG: READY; samples=815
+[rolling 1w-d2] MU: READY; samples=815
+[rolling 1w-d2] NVDA: READY; samples=815
+[rolling 1w-d2] SNDK: READY; samples=337
+[rolling 1w-d2] COST: READY; samples=815
+[rolling 1w-d3] AAPL: READY; samples=815
+[rolling 1w-d3] AMZN: READY; samples=815
+[rolling 1w-d3] GOOG: READY; samples=815
+[rolling 1w-d3] MU: READY; samples=815
+[rolling 1w-d3] NVDA: READY; samples=815
+[rolling 1w-d3] SNDK: READY; samples=337
+[rolling 1w-d3] COST: READY; samples=815
+[rolling 1w-d4] AAPL: READY; samples=815
+[rolling 1w-d4] AMZN: READY; samples=815
+[rolling 1w-d4] GOOG: READY; samples=815
+[rolling 1w-d4] MU: READY; samples=815
+[rolling 1w-d4] NVDA: READY; samples=815
+[rolling 1w-d4] SNDK: READY; samples=337
+[rolling 1w-d4] COST: READY; samples=815
+[rolling 1w-d5] AAPL: READY; samples=815
+[rolling 1w-d5] AMZN: READY; samples=815
+[rolling 1w-d5] GOOG: READY; samples=815
+[rolling 1w-d5] MU: READY; samples=815
+[rolling 1w-d5] NVDA: READY; samples=815
+[rolling 1w-d5] SNDK: READY; samples=337
+[rolling 1w-d5] COST: READY; samples=815
+[2026-09-06T08:55:19.359160Z] END   loop-b.materialize-samples src=databento elapsed=878092.7ms rows=228115 op=compared status=ok symbol_count=7
+[Loop B/1h] Option Pricing family quarantined; fitting loop-a-all-v1-1h until the coverage/freshness gate passes (AAPL|1h, AMZN|1h, COST|1h, GOOG|1h, MU|1h, NVDA|1h, SNDK|1h)
+[Loop B/4h] Option Pricing family quarantined; fitting loop-a-all-v1-4h until the coverage/freshness gate passes (AAPL|4h, AMZN|4h, COST|4h, GOOG|4h, MU|4h, NVDA|4h, SNDK|4h)
+[Loop B/1d] Option Pricing family quarantined; fitting loop-a-all-v3-1d until the coverage/freshness gate passes (AAPL|1d, AMZN|1d, COST|1d, GOOG|1d, MU|1d, NVDA|1d, SNDK|1d)
+[Loop B/1w] Option Pricing family quarantined; fitting loop-a-all-v3-1w until the coverage/freshness gate passes (AAPL|1w, AMZN|1w, COST|1w, GOOG|1w, MU|1w, NVDA|1w, SNDK|1w)
+[Loop B/1w-d1] Option Pricing family quarantined; fitting loop-a-all-v3-1w until the coverage/freshness gate passes (AAPL|1w-d1, AMZN|1w-d1, COST|1w-d1, GOOG|1w-d1, MU|1w-d1, NVDA|1w-d1, SNDK|1w-d1)
+[Loop B/1w-d2] Option Pricing family quarantined; fitting loop-a-all-v3-1w until the coverage/freshness gate passes (AAPL|1w-d2, AMZN|1w-d2, COST|1w-d2, GOOG|1w-d2, MU|1w-d2, NVDA|1w-d2, SNDK|1w-d2)
+[Loop B/1w-d3] Option Pricing family quarantined; fitting loop-a-all-v3-1w until the coverage/freshness gate passes (AAPL|1w-d3, AMZN|1w-d3, COST|1w-d3, GOOG|1w-d3, MU|1w-d3, NVDA|1w-d3, SNDK|1w-d3)
+[Loop B/1w-d4] Option Pricing family quarantined; fitting loop-a-all-v3-1w until the coverage/freshness gate passes (AAPL|1w-d4, AMZN|1w-d4, COST|1w-d4, GOOG|1w-d4, MU|1w-d4, NVDA|1w-d4, SNDK|1w-d4)
+[Loop B/1w-d5] Option Pricing family quarantined; fitting loop-a-all-v3-1w until the coverage/freshness gate passes (AAPL|1w-d5, AMZN|1w-d5, COST|1w-d5, GOOG|1w-d5, MU|1w-d5, NVDA|1w-d5, SNDK|1w-d5)
+[2026-09-06T09:00:49.619837Z] END   loop-b.directional-publication src=databento elapsed=1208353.5ms rows=4521 op=wrote status=ok run_directory=C:\DATASTORE\ml\runs\20260906T084041.266342Z sample_rows=219267 symbol_count=7
+COMPLETED: samples=219267; backtest_prediction_rows=4465; fresh_live_rows=26; carried_active_live_rows=0; retained_frozen_weekly_live_rows=30; actionable_ordinary_routes=21; in_progress_ordinary_routes=0; evaluations=20704; models_trained=9; models_reused=0; directional publication complete
+Run: C:\DATASTORE\ml\runs\20260906T084041.266342Z
+Current: C:\DATASTORE\ml\runs\20260906T084041.266342Z\intelligence.parquet

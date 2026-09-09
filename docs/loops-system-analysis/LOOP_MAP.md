@@ -7,7 +7,7 @@ flowchart LR
     B --> E["Evaluate all saved Gameplans<br/>keep forecasts pending until mature"]
     E --> T["Train Strategy models"]
     T --> S["Generate Strategy candidates"]
-    S --> G["Train and save next-session Gameplan<br/>144 forecasts + 144 intents"]
+    S --> G["Train and save next-session Gameplan<br/>24 forecasts + 24 intents per symbol"]
     G --> P["Saved Gameplans<br/>September 4 onward"]
     P --> E
     G --> U["Duckets forecast display"]

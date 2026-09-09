@@ -1,0 +1,20 @@
+{
+  "observed_at": "2026-09-09T04:33:40.843890+00:00",
+  "status": "FINAL_REVIEW_VERIFIED",
+  "document": "C:\\dev\\ducketz\\artifacts\\gameplans\\2026-09-09\\Gameplan-2026-09-09.md",
+  "document_sha256": "960c56939a5b4b183199e34729577583a934f002053b693624bce699fd9d15b0",
+  "existing_local_evidence_links": 15,
+  "probability_rows": 168,
+  "probability_columns": 2,
+  "exact_route_windows": 24,
+  "action_date": "2026-09-09",
+  "publication_receipt_sha256": "eb2490d3ea8ffe2ce778c6daecf55db301b01f08f8b94ca09e904b1fd9402656",
+  "research_limits_disclosed": true,
+  "production_code_changed_by_review": false,
+  "followup_id": "september-9-gameplan-review",
+  "followup_pause_pending": false,
+  "followup_status": "PAUSED",
+  "followup_pause_verified_at": "2026-09-09T04:36:10.750276+00:00",
+  "daily_workflow_status": "ACTIVE",
+  "all_168_probability_rows_independently_rechecked": true
+}

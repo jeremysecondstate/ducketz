@@ -1,0 +1,101 @@
+{
+  "checked_at": "2026-09-06T09:39:44.503197+00:00",
+  "plan_id": "987dfa290e0f74a6cbb2962165af8d0cc3f1134edd0a4eef2a9434f7ee2ca221",
+  "state": "AWAITING_PROVIDER_REQUIRED_SESSION",
+  "approved_archive_requests_completed": 25,
+  "production_symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK"
+  ],
+  "candidate_symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST"
+  ],
+  "production_gameplan": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260905T103409.421848Z",
+  "production_stock_model_features": 26,
+  "preserved_production_pointers": [
+    "C:\\DATASTORE\\ml\\nightly-gameplan-latest\\run.json",
+    "C:\\DATASTORE\\ml\\stock-trader-model-latest\\run.json"
+  ],
+  "registered_continuation": {
+    "schema_version": "symbol-onboarding-v1",
+    "plan_id": "987dfa290e0f74a6cbb2962165af8d0cc3f1134edd0a4eef2a9434f7ee2ca221",
+    "symbol": "COST",
+    "plan_path": "C:\\dev\\ducketz\\artifacts\\analysis\\cost-onboarding-implementation\\plan.json",
+    "progress_path": "C:\\dev\\ducketz\\artifacts\\analysis\\cost-onboarding-implementation\\progress.json",
+    "activation_path": "C:\\dev\\ducketz\\artifacts\\analysis\\cost-onboarding-implementation\\activation.json",
+    "registered_at": "2026-09-06T08:37:51.374470+00:00"
+  },
+  "automations": [
+    {
+      "id": "loop-c-weekly-operator-review",
+      "name": "Loops Gameplan Weekly Review",
+      "status": "ACTIVE",
+      "settings_preserved": true
+    },
+    {
+      "id": "loops-gameplan-stock-trader-1-p-m-transition",
+      "name": "Loops Gameplan Stock Trader \u2014 1 p.m. Transition",
+      "status": "ACTIVE",
+      "settings_preserved": true
+    },
+    {
+      "id": "loops-hourly-operations",
+      "name": "Loops Overnight Gameplan",
+      "status": "ACTIVE",
+      "settings_preserved": true
+    },
+    {
+      "id": "loops-opra-history-maintenance",
+      "name": "Loops OPRA History Maintenance (Legacy)",
+      "status": "PAUSED",
+      "settings_preserved": true
+    },
+    {
+      "id": "loops-options-strategy-paper-tracking",
+      "name": "Loops Options Strategy Paper Tracking",
+      "status": "PAUSED",
+      "settings_preserved": true
+    },
+    {
+      "id": "loops-stock-trader-daily-adaptation",
+      "name": "Loops Overnight Health Watch",
+      "status": "ACTIVE",
+      "settings_preserved": true
+    },
+    {
+      "id": "loops-stock-trader-four-hour-checkpoints",
+      "name": "Loops Stock Trader \u2014 Four-Hour Checkpoints (Legacy)",
+      "status": "PAUSED",
+      "settings_preserved": true
+    },
+    {
+      "id": "loops-stock-trader-live-shadow",
+      "name": "Loops Gameplan Stock Trader \u2014 Hourly",
+      "status": "ACTIVE",
+      "settings_preserved": true
+    },
+    {
+      "id": "loops-stock-trader-opening-live-shadow",
+      "name": "Loops Stock Trader \u2014 Opening Live + Shadow (Legacy)",
+      "status": "PAUSED",
+      "settings_preserved": true
+    },
+    {
+      "id": "loops-stock-trader-premarket-opening",
+      "name": "Loops Stock Trader \u2014 Premarket Opening (Legacy)",
+      "status": "PAUSED",
+      "settings_preserved": true
+    }
+  ],
+  "activation_complete": false
+}

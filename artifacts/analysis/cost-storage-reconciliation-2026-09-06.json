@@ -1,0 +1,412 @@
+{
+  "schema_version": "cost-storage-reconciliation-v1",
+  "measured_at_local": "2026-09-06 00:26:56",
+  "read_only_review": true,
+  "inventory": {
+    "measured_at": "2026-09-06 00:26:56",
+    "seconds": 10.3,
+    "file_count": 154291,
+    "total_bytes": 191711088282,
+    "categories_bytes": {
+      "_root": 51092,
+      "accounts": 237863,
+      "catalog": 350691,
+      "controls": 133459,
+      "logs": 124900653,
+      "loop-a": 6102061,
+      "archive_cme": 10222695555,
+      "archive_opra": 74582425209,
+      "archive_us-equities": 4128675095,
+      "ml": 31493959990,
+      "ml-intelligence": 17821,
+      "options": 1084467688,
+      "pool_cme": 49470366556,
+      "pool_macro": 719796,
+      "pool_macro-vintages": 273398,
+      "quarantine": 1888385616,
+      "retired-predictions": 15894105634,
+      "runtime-logs": 1635143,
+      "state": 603129,
+      "stocks": 2810981833
+    },
+    "per_symbol_bytes": {
+      "AAPL": {
+        "archive_opra": 6895115450,
+        "archive_us-equities": 613812523,
+        "stocks": 460158345
+      },
+      "AMZN": {
+        "archive_opra": 5968291402,
+        "archive_us-equities": 490298782,
+        "stocks": 390754084
+      },
+      "GOOG": {
+        "archive_opra": 4207584974,
+        "archive_us-equities": 385399059,
+        "stocks": 358314146
+      },
+      "MU": {
+        "archive_opra": 29140868953,
+        "archive_us-equities": 827623744,
+        "stocks": 600874965
+      },
+      "NVDA": {
+        "archive_opra": 10423194171,
+        "archive_us-equities": 1201386905,
+        "stocks": 519044795
+      },
+      "SNDK": {
+        "archive_opra": 16868509461,
+        "archive_us-equities": 610154082,
+        "stocks": 481835498
+      },
+      "COST": {}
+    },
+    "opra_schema_bytes": {
+      "AAPL": {
+        "cbbo-1m": 1498119799,
+        "cbbo-1s": 3183808320,
+        "definition": 30271189,
+        "ohlcv-1d": 537326635,
+        "ohlcv-1h": 724449263,
+        "ohlcv-1m": 163519502,
+        "ohlcv-1s": 38015797,
+        "statistics": 87282508,
+        "status": 6669598,
+        "tcbbo": 319602757,
+        "trades": 306050082
+      },
+      "AMZN": {
+        "cbbo-1m": 1132836259,
+        "cbbo-1s": 2625420699,
+        "definition": 22962660,
+        "ohlcv-1d": 735964117,
+        "ohlcv-1h": 816090767,
+        "ohlcv-1m": 132808977,
+        "ohlcv-1s": 28995742,
+        "statistics": 64202452,
+        "status": 5332418,
+        "tcbbo": 211533395,
+        "trades": 192143916
+      },
+      "GOOG": {
+        "cbbo-1m": 1037870626,
+        "cbbo-1s": 2161310837,
+        "definition": 23246103,
+        "ohlcv-1d": 334575785,
+        "ohlcv-1h": 381906529,
+        "ohlcv-1m": 53682657,
+        "ohlcv-1s": 10985693,
+        "statistics": 63665513,
+        "status": 4859516,
+        "tcbbo": 72252332,
+        "trades": 63229383
+      },
+      "MU": {
+        "cbbo-1m": 5734576808,
+        "cbbo-1s": 20932579996,
+        "definition": 85133917,
+        "ohlcv-1d": 354000050,
+        "ohlcv-1h": 502185434,
+        "ohlcv-1m": 321009453,
+        "ohlcv-1s": 71922295,
+        "statistics": 303685608,
+        "status": 29127537,
+        "tcbbo": 412897531,
+        "trades": 393750324
+      },
+      "NVDA": {
+        "cbbo-1m": 1799912310,
+        "cbbo-1s": 4712089111,
+        "definition": 33553736,
+        "ohlcv-1d": 787921572,
+        "ohlcv-1h": 1403269017,
+        "ohlcv-1m": 326477813,
+        "ohlcv-1s": 81968200,
+        "statistics": 98538234,
+        "status": 8939541,
+        "tcbbo": 583454440,
+        "trades": 587070197
+      },
+      "SNDK": {
+        "cbbo-1m": 5326737425,
+        "cbbo-1s": 10456864111,
+        "definition": 89882470,
+        "ohlcv-1d": 90686866,
+        "ohlcv-1h": 153457550,
+        "ohlcv-1m": 120628837,
+        "ohlcv-1s": 33257435,
+        "statistics": 292643179,
+        "status": 24020982,
+        "tcbbo": 147926918,
+        "trades": 132403688
+      }
+    },
+    "stock_detail_bytes": {
+      "AAPL": {
+        "bars": 12472562,
+        "corporate": 1886255,
+        "errors": 64509,
+        "fundamentals": 114118,
+        "options": 293185171,
+        "quotes": 168491,
+        "signals": 1010345,
+        "technicals": 151256894
+      },
+      "AMZN": {
+        "bars": 11407593,
+        "corporate": 3575920,
+        "errors": 76985,
+        "fundamentals": 113886,
+        "options": 237803076,
+        "quotes": 168256,
+        "signals": 1013202,
+        "technicals": 136595166
+      },
+      "GOOG": {
+        "bars": 9533473,
+        "corporate": 3592773,
+        "errors": 64528,
+        "fundamentals": 113864,
+        "options": 230236061,
+        "quotes": 168473,
+        "signals": 1011965,
+        "technicals": 113593009
+      },
+      "MU": {
+        "bars": 13887353,
+        "corporate": 2214119,
+        "errors": 52211,
+        "fundamentals": 113932,
+        "options": 428551417,
+        "quotes": 170954,
+        "signals": 1011488,
+        "technicals": 154873491
+      },
+      "NVDA": {
+        "bars": 16065327,
+        "corporate": 2391316,
+        "errors": 52184,
+        "fundamentals": 114488,
+        "options": 305590187,
+        "quotes": 170315,
+        "signals": 1017073,
+        "technicals": 193643905
+      },
+      "SNDK": {
+        "bars": 12165500,
+        "corporate": 2588977,
+        "errors": 52184,
+        "fundamentals": 99355,
+        "options": 343119062,
+        "quotes": 170720,
+        "signals": 152144,
+        "technicals": 123487556
+      }
+    },
+    "errors": []
+  },
+  "comparison_requests": [
+    {
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1s",
+      "symbols": [
+        "COST.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2026-08-14",
+      "end": "2026-08-19",
+      "records": 32338103
+    },
+    {
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1m",
+      "symbols": [
+        "COST.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2026-07-27",
+      "end": "2026-09-04",
+      "records": 34994127
+    },
+    {
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1s",
+      "symbols": [
+        "AAPL.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2026-08-14",
+      "end": "2026-08-19",
+      "records": 93147641
+    },
+    {
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1m",
+      "symbols": [
+        "AAPL.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2026-07-27",
+      "end": "2026-09-04",
+      "records": 36936108
+    },
+    {
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1s",
+      "symbols": [
+        "AMZN.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2026-08-14",
+      "end": "2026-08-19",
+      "records": 79643669
+    },
+    {
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1m",
+      "symbols": [
+        "AMZN.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2026-07-27",
+      "end": "2026-09-04",
+      "records": 28212712
+    },
+    {
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1s",
+      "symbols": [
+        "GOOG.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2026-08-14",
+      "end": "2026-08-19",
+      "records": 66482938
+    },
+    {
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1m",
+      "symbols": [
+        "GOOG.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2026-07-27",
+      "end": "2026-09-04",
+      "records": 28214122
+    },
+    {
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1s",
+      "symbols": [
+        "MU.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2026-08-14",
+      "end": "2026-08-19",
+      "records": 498205492
+    },
+    {
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1m",
+      "symbols": [
+        "MU.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2026-07-27",
+      "end": "2026-09-04",
+      "records": 127396321
+    },
+    {
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1s",
+      "symbols": [
+        "NVDA.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2026-08-14",
+      "end": "2026-08-19",
+      "records": 136630392
+    },
+    {
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1m",
+      "symbols": [
+        "NVDA.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2026-07-27",
+      "end": "2026-09-04",
+      "records": 41158468
+    },
+    {
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1s",
+      "symbols": [
+        "SNDK.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2026-08-14",
+      "end": "2026-08-19",
+      "records": 384211846
+    },
+    {
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1m",
+      "symbols": [
+        "SNDK.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2026-07-27",
+      "end": "2026-09-04",
+      "records": 129288584
+    }
+  ],
+  "per_symbol_GiB": {
+    "AAPL": {
+      "OPRA": 6.421576673164964,
+      "equity_archive": 0.5716574592515826,
+      "stocks": 0.4285558545961976,
+      "total": 7.421789987012744
+    },
+    "AMZN": {
+      "OPRA": 5.558404514566064,
+      "equity_archive": 0.45662632398307323,
+      "stocks": 0.36391809955239296,
+      "total": 6.37894893810153
+    },
+    "GOOG": {
+      "OPRA": 3.9186188708990812,
+      "equity_archive": 0.3589308438822627,
+      "stocks": 0.33370605297386646,
+      "total": 4.61125576775521
+    },
+    "MU": {
+      "OPRA": 27.139549099840224,
+      "equity_archive": 0.7707846760749817,
+      "stocks": 0.5596084194257855,
+      "total": 28.46994219534099
+    },
+    "NVDA": {
+      "OPRA": 9.707356031052768,
+      "equity_archive": 1.1188787454739213,
+      "stocks": 0.48339813482016325,
+      "total": 11.309632911346853
+    },
+    "SNDK": {
+      "OPRA": 15.710023661144078,
+      "equity_archive": 0.5682502705603838,
+      "stocks": 0.44874427653849125,
+      "total": 16.727018208242953
+    }
+  },
+  "conclusions": [
+    "Measured DATASTORE remains 178.54486432112753 GiB.",
+    "55.59349629189819 GiB is shared CME archive plus runtime data, not a per-equity copy.",
+    "The existing six symbols average 12.48643133463338 GiB in their OPRA, equity archive and stocks paths, with large variation.",
+    "The COST record-count checks reproduced the earlier estimate inputs: 32338103 second-CBBO records and 34994127 minute-CBBO records for the stated windows.",
+    "Approximately 3.15 GiB remains a metadata-based estimate for the selected COST Databento histories, including raw native files, Parquet, manifests and receipts. It is not a measured download, an all-in integration total, or a guaranteed bound.",
+    "All-in integration must separately report generated features, model artifacts, outcome caches, logs, temporary staging and future daily growth.",
+    "Current per-symbol sizes are retained filesystem occupancy; they do not prove identical completeness or partition topology across peers."
+  ]
+}

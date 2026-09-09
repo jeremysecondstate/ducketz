@@ -1,0 +1,74 @@
+{
+  "plan_id": "987dfa290e0f74a6cbb2962165af8d0cc3f1134edd0a4eef2a9434f7ee2ca221",
+  "before": {
+    "observed_at": "2026-09-06T08:12:20.313404+00:00",
+    "datastore_bytes": 191711088282,
+    "symbol_path_bytes": 0,
+    "files": 154291,
+    "free_bytes": 1424622886912
+  },
+  "completed_requests": [
+    "f087dc5a187c0a692cdc8c0c",
+    "cfeae3dc42bf1de6bfe3d860",
+    "20b1510c74d9df94dec15c7a",
+    "2570802b8c58d654faca19c0",
+    "0aa07836b14f19134d60b9ac",
+    "18c40d144b955c45bcf37a23",
+    "07cdfbf53dff35ced7a9ab28",
+    "fb3340dbd65d6a8ea1f287aa",
+    "2a6ab67083e520ed598d4ab9",
+    "64bc90e2230b56830f6e9bd5",
+    "a11f36df175a40fba50b785a",
+    "bfa0084d85a27c5a4ca74e82",
+    "3fef3163bc89bdb8071291b6",
+    "de4bab88acf6920372989c48",
+    "bd11607f2187fb2743ef5056",
+    "aec291fb1a23c3bbfe4e4ecb",
+    "15552c0c28983bea4dfdb41f",
+    "7f818a8967d37b8db546b67f",
+    "f566c0f07c4d6ba6b6ed8eec",
+    "49c721aa8136caf60bdecc87",
+    "9a8f75b7cbad6d0d1766d33e",
+    "de3244c4222b90de1ee17506",
+    "6530f768356337cf71fc354f",
+    "28b656bb03764cd9f563d3f9",
+    "57dcd2dbc071c2390e1ab424"
+  ],
+  "providers": {
+    "databento": {
+      "provider": "databento",
+      "data_files": 13,
+      "error_files": 0,
+      "advisory_files": 0
+    },
+    "fmp": {
+      "provider": "fmp",
+      "data_files": 34,
+      "error_files": 0,
+      "advisory_files": 0
+    },
+    "schwab": {
+      "provider": "schwab",
+      "data_files": 23,
+      "error_files": 0,
+      "advisory_files": 0
+    },
+    "sec": {
+      "provider": "sec",
+      "data_files": 4,
+      "error_files": 0,
+      "advisory_files": 0
+    }
+  },
+  "status": "HISTORY_FETCHED",
+  "updated_at": "2026-09-06T09:25:06.880957+00:00",
+  "after": {
+    "observed_at": "2026-09-06T09:25:19.900631+00:00",
+    "datastore_bytes": 194578111692,
+    "symbol_path_bytes": 2821978025,
+    "files": 167797,
+    "free_bytes": 1420026875904
+  },
+  "datastore_growth_bytes": 2867023410,
+  "symbol_path_growth_bytes": 2821978025
+}

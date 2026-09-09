@@ -7,8 +7,10 @@ failed stage when a restart is needed. Long, healthy training is expected.
 
 ## Operating day
 
-- The six-symbol universe is `AAPL AMZN GOOG MU NVDA SNDK`.
-- The stock action window is 04:00 through 17:00 America/Los_Angeles. All six
+- The production universe is configured in `datafetching/watchlist.txt`; use
+  [SYMBOL_ONBOARDING.md](SYMBOL_ONBOARDING.md) for additions. Validate each saved
+  run against its own symbol manifest, including older six-symbol publications.
+- The stock action window is 04:00 through 17:00 America/Los_Angeles. All configured
   symbols support the required extended-hours stock sessions.
 - Heavy provider work, feature materialization, model fitting, assessment, and
   next-session planning run after the 17:00 stock close and before 04:00.
@@ -28,42 +30,233 @@ Single-owner command:
 
 ```powershell
 cd C:\dev\ducketz
-.\.venv\Scripts\python.exe -u -m ml.overnight_runtime --datastore-target pc --once --scheduled
+.\.venv\Scripts\python.exe -u -m ml.overnight_runtime --datastore-target pc --once --scheduled --stock-only --independent-stock-horizons --stock-price-source xnas-itch-archive-v1
 ```
 
 The command has no order authority. The fetch stage may read Schwab market data.
 No overnight stage can place, cancel, or replace an order.
-The scheduled mode checks the XNYS calendar after the system's 17:00 PT action
-close. A weekday holiday writes a checksum-bound `NOOP_NON_SESSION_DATE`
+The Scheduled task wakes daily at 21:05 America/Los_Angeles. The native scheduled
+mode checks the XNYS calendar after the system's 17:00 PT action close; this is a
+session eligibility guard, not the daily start time. A weekend or holiday writes
+a checksum-bound `NOOP_NON_SESSION_DATE`
 receipt beneath `ml/overnight-runs`, runs no stage, and preserves the prior
 gameplan pointer. A premature wake on an actual session fails closed.
 
 ## Sequential stages
 
-The single overnight owner runs exactly these stages in order and stops on the
-first failure:
+The base stock-and-options command supports these stages in order. The active
+stock-only XNAS schedule inserts stock history before evaluation, omits the two
+options Strategy stages, and includes independent enrichment and account-aware
+trade planning after publication.
+Each selected stage stops on failure:
 
 1. `loop_a_close_fetch` — one Loop A close-cycle fetch, including the bounded
    production OPRA history owner.
 2. `loop_b_directional_generation` — one complete Directional Loop B generation.
-3. `gameplan_evaluation` — evaluate all saved Gameplans using the refreshed outcomes.
-4. `strategy_profit_training` — train and assess the Options Strategy
+3. `stock_target_history` — for explicit `xnas-itch-archive-v1`, refresh the
+   completed-session XNAS.ITCH minute archive. Native preflight must quote $0
+   before acquisition; committed raw and normalized evidence is verified.
+   Historical is the default. If its advertised range excludes a required
+   recent session, the stage automatically attempts bounded XNAS.ITCH Live
+   replay for that session's exact 04:00–17:00 Pacific window. This is permanent
+   behavior in the native stage, including scheduled runs and failed-stage
+   resumes; no one-off script or additional launch flag is needed.
+4. `gameplan_evaluation` — evaluate all saved Gameplans using the refreshed
+   outcomes from each publication's original price-source contract.
+5. `strategy_profit_training` — train and assess the Options Strategy
    profitability models for `1h`, `4h`, `1d`, and `1w`.
-5. `strategy_generation` — generate the exact options-strategy candidates from
+6. `strategy_generation` — generate the exact options-strategy candidates from
    the new Loop B and Strategy-model authorities.
-6. `gameplan_publication` — train the overnight path models and atomically freeze
-   the next action date's stock forecasts and options intents.
+7. `gameplan_publication` — train the overnight path models and atomically freeze
+   the next action date's stock forecasts, source-bound training cohorts and
+   options intents.
+8. `stock_enrichment_training` — for independent stock horizons, fit separate
+   sizing models from the four immutable Gameplan cohort outputs. Verify the
+   pinned source on resume, and preserve the original publication deadline.
+   These models remain research/shadow when unqualified; the explicitly selected
+   fixed-budget stock strategy does not depend on learned sizing promotion.
+9. `gameplan_trade_planning` — for independent stock horizons, publish the
+   reviewable Trade Quantity and Trade Price fields from the same pinned
+   Gameplan, a timestamped read-only account/holdings/working-order/quote
+   snapshot, and the existing fixed-budget rules. This required tail stage
+   writes a separate immutable trade-plan artifact; it does not submit orders,
+   change live controls, reconcile or reserve horizon allocations, or modify
+   the published forecasts or model statuses.
 
 Stages do not overlap and do not rely on intraday checksum timing between
 independent recurring processes. The overnight run writes a stage report and
 receipt beneath `C:\DATASTORE\ml\overnight-runs`.
 
+New full independent-stock runs complete only after trade planning. An explicit
+`--stop-after` boundary and a resumed attempt's recorded `stage_order` endpoint
+remain authoritative: an older attempt ending at publication or enrichment
+does not silently gain another stage. Both post-publication stages reuse the
+checksum-bound `enrichment_gameplan` source recorded in the overnight report.
+A failed trade-planning stage resumes only trade planning with that original
+source and the original next-session 04:00 Pacific deadline; it cannot choose a
+new current Gameplan or rerun successful training.
+
+### Account-aware trade-plan review
+
+The native tail invokes `ml.gameplan_trade_planning` with `--gameplan-run` set to
+the verified pinned publication and `--deadline` set to the overnight deadline.
+Its separate outputs live beneath
+`C:\DATASTORE\ml\gameplan-trade-plan-runs\<generation>`:
+
+- `trade-plan.parquet` — one row for every frozen forecast, including explicit
+  zero quantities and reasons for non-entry/research/below-threshold rows;
+- `report.json` — snapshot provenance, cash and holdings context, policy,
+  aggregate allocation checks, and exact unavailable-input or quality reasons;
+- `Gameplan.md` — the human-readable review with Trade Quantity and Trade Price;
+- `receipt.json` — checksum-bound completion evidence, with zero orders.
+
+The separate `ml/gameplan-trade-plan-latest/run.json` pointer selects the review.
+Planning preserves the seven-symbol 168-row forecast identity and the frozen
+Pacific entry/expiry windows. Quantities and prices describe a plan using its
+recorded account and quote snapshot, not guaranteed next-session fills. A row
+without an eligible long entry has quantity zero and no order limit; reference
+quotes must be distinguished from trade prices. Future execution still needs
+its existing current-quote, cash, exposure, ownership, session, activation and
+quality checks. The review stage cannot activate trading or turn research
+sizing models into qualified models.
+
+### Permanent stock history delivery fallback
+
+The Live fallback changes delivery, not the price dataset: EQUS.MINI is never
+substituted for XNAS.ITCH targets. It requires an already verified Historical
+baseline, catches up older available sessions with Historical first, and checks
+every missing XNYS session. A missing older session outside replay retention
+still blocks. Weekends and holidays create no invented sessions. Authentication,
+checksum, source-identity and model failures do not trigger this fallback.
+Coverage is checked against the Pacific action close, including winter closes
+after UTC midnight; a UTC date cursor alone does not prove session completion.
+
+Each replay requires native subscription acceptance, exact requested start,
+symbol mappings and a replay-completed control. It is bounded to 24 hours of
+lookback, five minutes and 64 MiB per symbol/session. A rejected entitlement,
+shortened retained interval, timeout, disconnect, empty or malformed replay
+fails the stage. The existing endpoint-observation and model-quality gates still
+apply; a complete replay does not guarantee bars or a qualified target at every
+minute.
+
+Replay's unmodified DBN and its delivery, normalized, manifest and receipt files
+live separately beneath `market-data/databento/stock-session-replay/XNAS.ITCH`.
+Readers re-derive normalized rows from verified native bytes and admit only the
+declared action window. Historical cursors are not advanced by replay, and old
+publications retain their own file checksums and source contract. Identical
+same-source overlaps deduplicate; conflicting observations stop consumption.
+Verified replay partitions are reused after a restart without a new subscription.
+
+Historical requests retain their exact account-specific $0 preflights. Replay
+also records the exact session's Historical quote but does not misrepresent it
+as a Live quote. Live acquisition uses this deployment's existing Standard flat
+subscription authority and requires native acceptance for XNAS itself. Generic
+unit tariffs are informational and do not establish effective cost or access.
+The fallback never buys or activates a plan/license, switches datasets on an
+access rejection, or starts the retired recurring stack. A live-access failure
+remains a specific blocker; Historical is tried first on the next native resume.
+Provider failures retain safe categories for access denial, replay retention,
+timeouts and connection failures without exposing credentials or provider URLs.
+
+### Explicit stock-only preparation
+
+For the September 8, 2026 action session, the user explicitly requested stock
+training and predictions for all seven symbols and all four horizons; options
+remain research/paper and need not be prepared for that session. Use
+`--stock-only` on `ml.overnight_runtime` for this scope. It omits
+`strategy_profit_training` and `strategy_generation`, records the omitted stages,
+and forwards `--stock-only` to `ml.nightly_gameplan` for publication. A new run
+still performs the normal fetch, Directional generation, and cumulative
+evaluation stages. This is an explicit preparation scope, not a remedy for
+failed options calibration or a claim that options training succeeded.
+
+The publisher trains the normal `1h`, `4h`, `1d`, and `1w` stock model groups
+using all normally admitted features and unchanged calibration, assessment,
+promotion, and deadline checks. Completed-session OPRA freshness still applies
+because stock features can use options history; options profitability training
+and candidate generation are not dependencies of stock-only publication.
+
+With `--independent-stock-horizons --stock-price-source xnas-itch-archive-v1`,
+target labels use the verified XNAS archive exclusively and retain the native
+five-minute observation boundary rule. Identical archive overlaps are deduplicated;
+conflicting prices fail closed. EQUS.MINI feature/continuation data is not silently
+substituted for XNAS target outcomes. Forecasts, reports, and the four
+`training-cohort-{horizon}.parquet` outputs carry the source identity. Historical
+Gameplans retain their own source and evaluation contract.
+
+The frozen grid remains 24 forecasts per symbol (168 for seven). The matching
+168 options rows are explicit `NO_TRADE_STOCK_ONLY` placeholders with no option
+legs, candidates, profit probabilities, or Strategy source authority. The plan,
+manifest configuration, and receipt identify `preparation_scope: STOCK_ONLY`.
+These placeholders preserve the immutable table contract without preparing
+options decisions. Verify their counts and empty option execution fields along
+with the usual stock-model reports, receipt, provider coverage, and zero orders.
+
+For an existing failed attempt, follow the same supervision and native recovery
+procedure below, then add `--stock-only` to `--resume-run`. Resume retains its
+verified completed stages and original deadline. When the failed stage is an
+omitted options stage, it proceeds to stock Gameplan publication; it does not
+rerun successful upstream stages. Candidate onboarding also requires the same
+candidate watchlist and subsequent enrichment, validation, and activation steps
+in [SYMBOL_ONBOARDING.md](SYMBOL_ONBOARDING.md#stock-only-candidate-continuation).
+
+Stock-only publication and universe activation establish operational readiness;
+they do not guarantee a trade. Model promotion, edge, and trading risk checks
+still decide whether each stock signal can be used. Research-only models keep
+their research label. The deployed independent stock design uses separate
+holdings, exact entry/expiry windows and explicit `fixed-horizon-budget-v1`
+sizing. The scheduled worker starts at 03:55 Pacific; learned sizing remains a
+separate research/shadow lane. See
+[Independent stock horizons](INDEPENDENT_STOCK_HORIZONS.md). The default
+stock-only scope retains the original five daily forecast slices.
+
+Independent directional qualification also requires fitted history for the exact
+symbol and route; another entry clock or later daily outlook cannot supply that
+claim. The optional `qualified-enrichment` strategy additionally requires its
+own held-out horizon quality and observed symbol/route/duration/source support.
+Its unqualified models cannot enter through that strategy. The selected fixed
+strategy instead uses the qualified stock probability directly for the explicit
+capital rule `min(0.5, max(0, 2*p - 1))`, within the existing 1:2:3:4 horizon,
+symbol, single-order and shared account limits. It requires at least 0.55 for a
+long entry and creates no synthetic learned-return or profitability output.
+
+September 8, 2026 selected deployment: current XNAS Gameplan
+`20260908T093314.374067Z` has 168 forecasts, with all seven stocks and all 133
+execution windows genuinely promoted. The daily model retains the verified
+same-day champion from `20260908T085844.073361Z`; the failed challenger remains
+research. The native $0 backfill completed 35 chunks and approximately 1.79
+million minute rows. Source identities and promotion gates remain enforced.
+
+Enrichment `20260908T092028.062383Z` remains research with zero qualified scopes;
+it is nonblocking for the explicitly selected fixed-budget strategy. All 133
+current execution forecasts are bearish or neutral, so there are zero bullish
+entry opportunities. A ready worker should submit no BUY until its verified
+forecast supplies a qualifying signal. Broker/ledger verification found zero
+working orders and zero owned horizon allocations; manually held one-share
+positions in the original six symbols remain untouched. The existing overnight
+and health-watch schedules continue, and the stock worker starts at 03:55 PT.
+
 ## Active overnight supervision
 
-`Loops Overnight Gameplan` starts at 17:05 Pacific on exchange-session weekdays.
+`Loops Overnight Gameplan` wakes daily at **21:05 Pacific** (America/Los_Angeles,
+including daylight-saving changes). It starts the entire Loop A close fetch and
+the downstream stock-only workflow on an eligible completed exchange session.
+Weekends and exchange holidays use the native no-op behavior. Before starting a
+fresh pipeline, inspect existing work for that source session: leave completed
+work alone, supervise a healthy owner, or resume an unfinished attempt only when
+new availability or a verified repair resolves its failure. Resume preserves
+completed stages, the exact configuration, and the original deadline.
+
+The timing follows [Databento's XNAS.ITCH release table](https://databento.com/datasets/XNAS.ITCH):
+Historical without a live license is normally released at the next Eastern
+midnight, **21:00 Pacific**. The five-minute margin is not an availability
+guarantee. Verify the account's actual required provider/schema coverage and
+exact zero-dollar acquisition preflights. Do not retry the confirmed XNAS Live
+license denial or substitute another price source when Historical is late.
+
 It must remain active until the workflow completes or reaches an unresolved
 failure. Starting a command and ending the Scheduled task is not completion.
-`Loops Overnight Health Watch` checks every ten minutes, including weekends,
+`Loops Operations Watch` checks at :00 and :30 each hour, including weekends,
 for a missed start, abandoned run, or failure that needs attention. Healthy work
 continues across midnight, weekends, and exchange holidays.
 
@@ -137,6 +330,9 @@ The Scheduled operator must:
    checks process creation times, refuses a living owner or reused PID, stops
    only its remaining children, and writes a terminal receipt. Never delete
    locks or stop unrelated Python/UI/trader processes.
+   If the exited owner already wrote a valid `FAILED` or `CANCELLED` receipt,
+   recovery verifies that receipt and the process identities, then leaves the
+   existing evidence unchanged before resume.
 5. After the repair passes its tests, resume the failed stage:
 
    ```powershell
@@ -149,18 +345,32 @@ The Scheduled operator must:
    unsuccessful recovery attempts for one cause, report the unresolved blocker;
    continue investigating if a distinct, testable fix is available.
 6. Verify the final receipt, current Gameplan checksums/next-session date,
-   144 forecasts, 144 intents, evaluation coverage, model assessments, zero
+   24 forecasts and 24 intents per configured symbol (168 each for seven),
+   evaluation coverage, model assessments, zero
    overnight orders, and completed-session provider coverage. Report missing
-   data and research-only model groups honestly.
+   data and research-only model groups honestly. For new full independent runs,
+   also verify completed `stock_enrichment_training` and
+   `gameplan_trade_planning` stages, the separate trade-plan receipt and output
+   checksums, its exact pinned Gameplan, 24 trade-plan rows per configured symbol,
+   timestamped cash/holdings/quote evidence, and zero submitted orders. Preserve
+   documented older or explicitly narrower stage boundaries.
 
 The health watch checks current progress and the supervision claim first.
 An active claim prevents a second operator from starting or repairing that run.
 After the claim expires, the watch may acquire its own claim, adopt the existing
 run, and use the same repair procedure. The process lock also prevents simultaneous
-pipelines. Missing work may start only after an exchange session's 17:00 close;
-after midnight use the existing attempt's resume path. Completed runs and holiday
+pipelines. The watch may start missing fresh work only after **21:15 Pacific** on
+an eligible exchange date (normally its 21:30 wake), leaving the 21:05 daily owner
+time to start. Before then, only continue authorized unfinished work with a valid
+deadline. After midnight use the existing attempt's resume path. Completed runs and holiday
 no-ops do not trigger retraining. No active run means no new weekend fetch or
 training job should be invented.
+
+An explicitly started symbol bootstrap is tracked separately under
+`state/symbol-onboarding`. The Health Watch checks that registry as well as the
+overnight status; continuation of a registered attempt follows
+[SYMBOL_ONBOARDING.md](SYMBOL_ONBOARDING.md#health-watch-continuation), including
+the same supervision claim, candidate universe, and provider freshness gates.
 
 Completion, stage failure, launch failure, controlled stop, and deadline expiry
 write final receipts tied to the stage report and logs. A hard process exit is
@@ -195,7 +405,7 @@ retirement is reversible.
 
 ## OPRA production-history contract
 
-Loop A owns one incremental update for every combination of the six symbols and
+Loop A owns one incremental update for every configured symbol and
 these three production schemas:
 
 | Schema | Overnight use |
@@ -206,9 +416,21 @@ these three production schemas:
 
 The cursor's `completed_through` date is exclusive. For example,
 `completed_through=2026-09-04` proves the September 3 session was fetched. The
-overnight plan refuses publication unless all 18 symbol/schema cursors cover the
+overnight plan refuses publication unless all `3 × symbol_count` cursors cover the
 most recently completed session required by the action date. Other retained
 OPRA schemas are research history and have no production freshness promise.
+
+If Historical OPRA publication is delayed, the same Loop A history owner can
+use finite, verified Live replay for the missing completed exchange session.
+It requests explicit retained bounds, saves the native stream including
+acknowledgement/completion/mapping records, and publishes a separate immutable
+`live-session` segment. Definitions and hourly bars retain the complete UTC-day
+request; minute CBBO covers one hour before regular open through the next UTC
+midnight. The segment records its exact scope, and Strategy readers verify it
+covers the entire regular session. No partial replay, `start=0` snapshot, error,
+or missing completion can advance a cursor. Replay cursors carry checksum-bound
+source coverage and cannot be regressed by delayed Historical metadata. See
+[the Live replay fallback contract](../datafetch-ml/options-opra-history.md).
 
 For candidate construction, “current overnight quote” means the newest
 completed options-session snapshot known before the next action window. The
@@ -231,8 +453,10 @@ modeled evidence remain separate features/counts.
 
 ## Frozen forecast grid
 
-Each completed overnight publication contains exactly 24 forecasts per symbol,
-144 total:
+Each completed overnight publication contains exactly 24 forecasts per symbol:
+`24 × symbol_count` total, or 168 for a seven-symbol publication. The same count
+applies to options intents. Older six-symbol publications retain their original
+144 rows in each table.
 
 | Model group | Routes per symbol | Anchors |
 |---|---:|---|
@@ -350,16 +574,20 @@ The deployed stock-only consumer is:
 
 ```powershell
 .\.venv\Scripts\python.exe -u -m ml.gameplan_stock_trader `
-  --datastore-target pc --execute --target-horizon 1h
+  --datastore-target pc --execute --target-horizon all --sizing-policy fixed-horizon-budget-v1 --run-session
 ```
 
 It requires two independent persistent controls (`CONFIRM_ACTIVE_TRADING` and
 `CONFIRM_GAMEPLAN_STOCK_TRADING`) in addition to `--execute`, and then reuses
 the established Schwab session, quote, cash, exposure, spread, sizing,
 exact-once, deadline, and reconciliation controls. It never backfills missed
-hours. At a 1h/4h overlap, the forward 4h route is confirmation: an opposite
-actionable direction vetoes a new entry and agreement still yields at most one
-shared-risk order per symbol. Options remain non-executable.
+hours. Each horizon owns its shares and receives a portion of one shared
+account budget. All due horizons enter one combined risk-limited batch; an
+hourly signal cannot sell a weekly allocation. Live entries require the bounded
+session manager so timed exits remain supervised. The old shared-position
+adapter rejects independent target publications. Options remain non-executable.
+The CLI default remains `qualified-enrichment`; this deployment explicitly
+selects deterministic fixed budgets. Learned research status is preserved.
 
 ## Duckets forecast UI
 
@@ -367,13 +595,18 @@ The Duckets `Rolling Forecasts` tab now defaults to the checksum-verified
 `ml/nightly-gameplan-latest/run.json` pointer whenever it exists. It does not
 wait for, or activate, the paused daytime executor.
 
+September 8 native adapter verification reports seven published symbols, no
+pending symbols, 168 forecast rows and seven weekly snapshots. COST's obsolete
+supplemental research/activation badge is cleared; actual model status remains
+bound to the current publication.
+
 - On initial load, the UI selects the frozen `1h` row whose target window is in
   progress, then the nearest future row or final completed row at the edges of
   the action day.
 - The same rule selects the current `4h` window. Consequently the displayed
-  route advances at 04:00, 08:00, and 12:00 for forward four-hour windows; the
-  16:00 endpoint remains visibly completed because no artificial 16:00–20:00
-  route exists beyond the 17:00 action close.
+  independent route advances at 04:00, 08:00, 12:00 and 16:00. The 16:00 target
+  ends at 07:00 on the next exchange session. Older target versions retain
+  their original three forward windows and opening-gap context.
 - The pulse grid shows one percentage per cell. When a group's calibration is
   flat, the UI displays its valid saved raw scores, with colors based on those
   scores. Other groups retain their published probabilities. Expanded cards
@@ -402,19 +635,24 @@ authority.
 ## Scheduler ownership
 
 - `loops-hourly-operations` is repurposed as `Loops Overnight Gameplan` and runs
-  the single owner at 17:05 PT on weekdays.
+  the single owner at 21:05 PT daily, with native weekend/holiday no-ops.
 - The former standalone OPRA maintainer stays paused because OPRA maintenance is
   stage 1 of the overnight owner.
 - The separate Strategy paper-ledger stays paused. The stock daily-adaptation
-  schedule now runs the ten-minute overnight health watch. The cumulative
+  schedule now runs `Loops Operations Watch` every 30 minutes for daytime and
+  overnight supervision. Its missed overnight start threshold is 21:15 PT. The cumulative
   Gameplan evaluator owns matured directional evaluation; option-intent P/L is
   not claimed without exact-leg execution or separately labeled counterfactual
   evidence.
-- All former Loop-B intraday stock tasks stay paused. The gameplan hourly stock
-  owner is active at minute 1 for 04:00–12:00 and 14:00–16:00 PT; a separate
-  13:05 wake owns the frozen 13:00 generation after Schwab's closed session
-  transition. The initial live boundary on September 4 is 10:00 PT. Missed
-  earlier boundaries are not replayed.
+- All former Loop-B intraday stock tasks stay paused. The former hourly
+  Gameplan task now starts one native independent-horizon session worker at
+  03:55 PT on weekdays with explicit fixed-budget sizing. The separate 13:05
+  task is paused; the worker owns that transition and the prescribed close
+  exits. Owned exits precede entry batches at HH:01, except 13:06. It checks
+  native forecast promotion and all source, control, ownership and risk gates.
+  September 8 currently has zero bullish entry signals despite complete stock
+  forecast readiness; it must not force orders or treat research sizing as
+  promoted.
 - The Saturday read-only operator review remains independent.
 
 ## Failure behavior

@@ -72,7 +72,7 @@ provider/session data
 - **Type:** D + M + C.
 - **Exchange:** current causal source rows, historical one-minute equity labels,
   four path-model groups, and exact Strategy candidates.
-- **Output:** 144 directional forecasts and 144 options intents for one action
+- **Output:** 24 directional forecasts and 24 options intents per symbol for one action
   date, plus model reports and prior-plan directional evaluations.
 - **Boundary:** publication occurs atomically before 04:00 PT. The plan cannot be
   republished once that action window begins.

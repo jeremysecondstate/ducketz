@@ -1,0 +1,259 @@
+{
+  "captured_at": "2026-09-06T08:44:29.405598+00:00",
+  "pointers": [
+    {
+      "path": "C:\\DATASTORE\\ml\\fred-alfred-runtime-latest\\run.json",
+      "checksum_sha256": "8c0339198947be236b497ad8d15ec26b93442ec608b6a028802bd882b780dd28",
+      "content": {
+        "receipt_checksum_sha256": "c69fe70250aac1b173fe768fd965409337e72b0cbf9e325277f4ea0285f40ea7",
+        "receipt_path": "ml/fred-alfred-runtime/20260903T070000.000690Z/receipt.json",
+        "run_date_utc": "2026-09-03",
+        "schema_version": "fred-alfred-daily-pointer-v1"
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\gameplan-evaluation-latest\\run.json",
+      "checksum_sha256": "3ab6fe6b8c79bf4826b5d598ffafffdf7f376c4d5ea69912dafc23061efa3583",
+      "content": {
+        "current": {
+          "receipt_checksum_sha256": "593fe30beb8a857c39f0b6dd8cead0a593e87b8b03b67b03768cdf9ee3487fa0",
+          "run_path": "ml/gameplan-evaluation-runs/20260905T160243.067142Z"
+        },
+        "schema_version": "saved-gameplan-evaluations-v1"
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\latest\\run.json",
+      "checksum_sha256": "9ae9999c106cbe593904cf7e4792d44fcc53938af5069074b586448f1f6b67aa",
+      "content": {
+        "current": {
+          "manifest_checksum_sha256": "3de0855544563a6caaea8729afb2ed6443498129c4664c7bb744d77503efb516",
+          "promoted_at": "2026-09-05T01:17:22.335296+00:00",
+          "receipt_checksum_sha256": "c9c77cd27d04b0e46eebcb7242fba0e7d41c14111d6470b133b595e14c2bd431",
+          "run_path": "ml/runs/20260905T010026.355465Z",
+          "run_timestamp": "2026-09-05T01:00:26.355465+00:00"
+        },
+        "path": "ml/runs/20260905T010026.355465Z",
+        "run_timestamp": "2026-09-05T01:00:26.355465+00:00",
+        "schema_version": "current-output-pointer-v1"
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\loop-c-paper-ledger-latest\\run.json",
+      "checksum_sha256": "1939b167bd3ddb2a38f6b9256ee2c7e6940d702ecc53bc5b0ab7db8c75fb562a",
+      "content": {
+        "current": {
+          "receipt_sha256": "70aa8ef7c94c6458c50e81ef8aab4515806034d73cb6a6650bfb735b201a10f6",
+          "run_path": "ml/loop-c-paper-ledger-runs/20260904T071814.093828Z",
+          "status": "NO_PAPER_TRADES_YET",
+          "tracked_at": "2026-09-04T07:18:14.093828+00:00"
+        },
+        "schema_version": "loop-c-options-strategy-paper-ledger-pointer-v1"
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\macro-readiness-latest\\run.json",
+      "checksum_sha256": "d1217d5bdad98413a925015987983a3bc91da66c945c119cd1b77a480d58d564",
+      "content": {
+        "current": {
+          "receipt_checksum_sha256": "8fb6342b1f1017b612a863b7a8e90da82af06e076229317e35da19a9abbaaa39",
+          "run_path": "ml/macro-readiness/fred-alfred/20260903T070000.000690Z",
+          "verified_at": "2026-09-03T07:00:00.000690+00:00"
+        },
+        "schema_version": "fred-alfred-readiness-pointer-v1"
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-latest\\run.json",
+      "checksum_sha256": "af1a292f6fa59330509eb00c7723d457534d8fe0ee40ece92ef5d227d62d83b3",
+      "content": {
+        "current": {
+          "action_date": "2026-09-08",
+          "manifest_checksum_sha256": "bc2d75d13668d6bb2f9960cec0a804b676946ab1b9ae63152ff7236acb1e70a3",
+          "published_at": "2026-09-05T10:35:01.616936+00:00",
+          "receipt_checksum_sha256": "d2fa0e2c69969c0f2e3dc8522ce8dcbb8857ee27db2c0a2a87e055bf31697dd8",
+          "run_path": "ml/nightly-gameplan-runs/20260905T103409.421848Z"
+        },
+        "schema_version": "immutable-overnight-gameplan-pointer-v1"
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\option-pricing-latest\\run.json",
+      "checksum_sha256": "ed4fbffebe9b21362556de9c3f12edd80e2dcbc4e2492d555f8d496e85f92677",
+      "content": {
+        "current": {
+          "manifest_checksum_sha256": "83b531569f30b7277087604060c397d330884df9c899777e140eab4f678f0477",
+          "published_at": "2026-08-20T20:15:01.002032+00:00",
+          "receipt_checksum_sha256": "7e95e62a6057bf868b0935788c000214dbfc9b04bab703c615017669003fbb9c",
+          "run_path": "ml/option-pricing-runs/20260820T200404.173684Z",
+          "run_timestamp": "2026-08-20T20:04:04.173684+00:00"
+        },
+        "schema_version": "option-pricing-pointer-v3"
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\option-pricing-loop-native-eligibility-latest\\run.json",
+      "checksum_sha256": "0e58588eb40531f75a23b37b06c52f859b269a596694d112c633e66640aa04d5",
+      "content": {
+        "current": {
+          "published_at": "2026-08-20T20:15:16.431170+00:00",
+          "receipt_checksum_sha256": "a1d2080e8b52955a0fe12b636428edaab20982b019cf3d0fa50ab1e6ab95de24",
+          "report_hash_sha256": "cdd34815e1a7282fc128b7ae8f59e0c01b66da28e8c3bdb2e5b0fcbd7bbcabd6",
+          "run_path": "ml/option-pricing-loop-native-eligibility-reports/20260820T201516.431170Z"
+        },
+        "schema_version": "option-pricing-loop-native-eligibility-report-pointer-v1"
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\option-pricing-loop-native-eligibility-policy-latest\\run.json",
+      "checksum_sha256": "3ef330256e44bb31680c8ecf934bac249d696542637594eae65665a8a5812731",
+      "content": {
+        "current": {
+          "policy_hash_sha256": "beae7e57c16b2b787293e5b81ff3926ad0e2abffe62cbf5a4cf5126bc030f38f",
+          "published_at": "2026-09-03T20:09:41.218339+00:00",
+          "receipt_checksum_sha256": "3e136f80654b6a705d0a57437dbab25d8b925d36a07564a83ad3828ceaf871d7",
+          "run_path": "ml/option-pricing-loop-native-eligibility-policies/20260903T200941.218339Z"
+        },
+        "schema_version": "option-pricing-loop-native-eligibility-policy-pointer-v1"
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\option-pricing-loop-native-materialization-latest\\run.json",
+      "checksum_sha256": "36b5f5f0409f0621be27e917b38b352d5f108c77e0be66f61ac1e590ec32deaf",
+      "content": {
+        "current": {
+          "manifest_checksum_sha256": "7ba7c3874db34644a13538d16cef1fb0b30206f64fe8a91a34d4c50a60a42078",
+          "published_at": "2026-08-20T15:16:08.032582+00:00",
+          "receipt_checksum_sha256": "9785f8fd6ef8417f4db6117c7ec408bb2ddbea17b9c18cd1b4ec8296df6c88bb",
+          "run_path": "ml/option-pricing-loop-native-materializations/20260820T151608.032582Z",
+          "trainer_cutoff": "2026-08-20T15:12:43.223417+00:00"
+        },
+        "schema_version": "loop-native-provider-materialization-pointer-v3"
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\option-pricing-opra-replay-latest\\run.json",
+      "checksum_sha256": "0e0ac7b4bc679b2016b96d335d726342e0d90960f3dbf15bc96f7b8f61b04774",
+      "content": {
+        "current": {
+          "published_at": "2026-09-04T06:41:13.943562+00:00",
+          "receipt_checksum_sha256": "00c37b244a842181b1f5f8fda8fcc8fe6521da9946dff9cc258f3d6cfe2c5180",
+          "run_path": "ml/option-pricing-opra-replay-runs/20260904T064113.943562Z"
+        },
+        "schema_version": "option-pricing-opra-causal-replay-pointer-v1"
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\option-pricing-target-latest\\run.json",
+      "checksum_sha256": "f27290d3a607cfd9d5c5e3a6e7ca38c0f14ef65380d9984fee11d0578f620ff0",
+      "content": {
+        "current": {
+          "created_at": "2026-09-03T20:02:44.580836+00:00",
+          "manifest_checksum_sha256": "8394026b9127b34ab5c38375c6abbb27a60e721d5832c81d5972e0b5dfce2201",
+          "published_at": "2026-09-03T20:09:40.623962+00:00",
+          "receipt_checksum_sha256": "6b4b3f3bdf3fc52f3cc1627da773f17c4b2e22f7c5a8b045c2a934aff51b1bf8",
+          "run_path": "ml/option-pricing-target-outcomes/1788465600000000000-1788465764580836000",
+          "target_snapshot_for": "2026-09-03T20:00:00+00:00",
+          "terminal_status": "PREDICTIONS_PUBLISHED"
+        },
+        "schema_version": "option-pricing-target-outcome-pointer-v1"
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\overnight-latest\\run.json",
+      "checksum_sha256": "a8abdc70e85740ddedd70da5087f2578898c3a008a5fdc906ecf285f6ca9f80c",
+      "content": {
+        "run_path": "ml/overnight-runs/20260905T092026.080216Z"
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\stock-trader-decision-latest\\run.json",
+      "checksum_sha256": "245d177faab8aa8e651c54b2aec9ca66a99f84c00cea8fca0e0ab4b2ad7358b6",
+      "content": {
+        "decided_at": "2026-09-04T23:03:22.169655+00:00",
+        "manifest_sha256": "6e7566312cbad5aab1674e83babe857af0c6c79aa0d3f544ad331b7f630c839a",
+        "receipt_sha256": "71d1817ad4e375f12d510a2854a2f6e0fbf231ccae52a6921c8f974ab8f115f3",
+        "run_path": "ml/stock-trader-decision-runs/20260904T230322.169655Z",
+        "schema_version": "stock-trader-decision-pointer-v1"
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\stock-trader-model-latest\\run.json",
+      "checksum_sha256": "4d8772c30f6c256ce5baa45e127175980d250efd2c251a7376343efacd2ab45d",
+      "content": {
+        "manifest_sha256": "d52e841d02c4951c023a6c58c2d2dee315180e8671e5a891e8f4bdcca0c6fc2a",
+        "model_fingerprint": "16b782f08181bbbbaea1e966f7b086b168f1c9436e67e4e97d16b949d37a4775",
+        "model_sha256": "9dd9079f8e7bcf05604e37d499a409da1b747576ddb83661038df351fbc9258d",
+        "receipt_sha256": "0b7c557090aaa27f3d12414c35254675a3c4b41629bc7891aafe37b5b9870a73",
+        "run_path": "ml/stock-trader-model-runs/20260904T002243.781956Z",
+        "schema_version": "stock-trader-enrichment-model-pointer-v1",
+        "trained_at": "2026-09-04T00:22:43.781956+00:00"
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\stock-trader-weekly-audit-latest\\run.json",
+      "checksum_sha256": "1bc8e8da8c1b6e45e0eee056263c3f814d58d6a70ee8dfa502cd6d9978f8514b",
+      "content": {
+        "evaluated_at": "2026-09-04T00:22:43.781956+00:00",
+        "manifest_sha256": "c158a38ec8b0fa8143e08aa0b997b8eff44c1fab1eb9cc8e72c850a1eeb385ae",
+        "receipt_sha256": "b1d3bc4f58346153776d6f2ec31abbca2da41eb0485476d3cebf0fc71a010618",
+        "run_path": "ml/stock-trader-weekly-audits/20260904T002243.781956Z",
+        "schema_version": "stock-trader-weekly-audit-pointer-v2"
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\strategy-latest\\run.json",
+      "checksum_sha256": "b226985a6f400e9f762685e2939ca64409554fb64401883c3e36794d605211d8",
+      "content": {
+        "current": {
+          "manifest_checksum_sha256": "4ea1ac2ad7df9bd79a35782a24ed292892cab8f9ffc9cff690d793d505d802bc",
+          "published_at": "2026-09-05T10:34:07.889500+00:00",
+          "receipt_checksum_sha256": "46b5e2f68db6ad8817e1a230c934a170c0ecdbffecf479a3385ec851718100d8",
+          "run_path": "ml/strategy-runs/20260905T102555.043722Z",
+          "run_timestamp": "2026-09-05T10:25:55.043722+00:00"
+        },
+        "schema_version": "strategy-pointer-v4"
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\strategy-opra-history-latest\\run.json",
+      "checksum_sha256": "ea6198be3a4ed4edda28773bd5a6f557259f42880cf4b36b3c9463550317a94a",
+      "content": {
+        "current": {
+          "published_at": "2026-09-04T06:41:13.943562+00:00",
+          "receipt_checksum_sha256": "01c9ae8697df6e63e0d62ee0f53c7b9c827e75ddebc936eb2a2853fbc4ba6dd6",
+          "run_path": "ml/strategy-opra-history-runs/8d74a966794e1f05490633b8"
+        },
+        "schema_version": "strategy-opra-observed-chain-cache-pointer-v2"
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\strategy-profit-training-latest\\run.json",
+      "checksum_sha256": "f971fded39461a7699563b63efefc61639afcc03807ea59c4483debda71d01fb",
+      "content": {
+        "current": {
+          "published_at": "2026-09-05T09:20:27.615337+00:00",
+          "receipt_checksum_sha256": "c325884414e02cf99af36c503bfcaf00f327527e247c76085a888dc80d080d8b",
+          "run_path": "ml/strategy-profit-training-runs/20260905T092027.615337Z"
+        },
+        "schema_version": "multi-horizon-strategy-profit-slow-model-pointer-v2"
+      }
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\strategy-value-challenger-latest\\run.json",
+      "checksum_sha256": "332aad4b824551f64ab6d6c1433ea7c245da599d2125d11016bb6498d705c683",
+      "content": {
+        "current": {
+          "created_at": "2026-08-25T09:44:07.724271+00:00",
+          "receipt_checksum_sha256": "dec1aa29ef22cb3b2d85416d613018ef68139bf5a507ec7b1e6d319eabad93ef",
+          "run_path": "ml/strategy-value-challenger-runs/20260825T094407.724271Z",
+          "source_fingerprint_sha256": "f16dbee48f10a97048394403b740a38ebafb5e4a7dbe167bfd78e4c80bb8cfc5"
+        },
+        "orders_enabled": false,
+        "production_authority": false,
+        "schema_version": "strategy-value-shadow-observability-pointer-v1",
+        "scope": "SHADOW_OBSERVABILITY_ONLY"
+      }
+    }
+  ]
+}

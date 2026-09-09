@@ -1045,6 +1045,7 @@ def _capture_portfolio_state_with_retry(
     maximum_attempts: int,
     sleep: Callable[[float], None],
     monotonic: Callable[[], float],
+    capture_snapshot: Callable[[object], PortfolioState] | None = None,
 ) -> tuple[PortfolioState, object, dict[str, object]]:
     """Retry only a complete read-only Schwab state snapshot.
 
@@ -1066,10 +1067,14 @@ def _capture_portfolio_state_with_retry(
         attempt_elapsed = max(0.0, float(monotonic()) - started)
         attempt_timestamp = base_timestamp + timedelta(seconds=attempt_elapsed)
         try:
-            portfolio = capture_portfolio_state(
-                broker,
-                observed_at=attempt_timestamp,
-                parallel=parallel,
+            portfolio = (
+                capture_snapshot(attempt_timestamp)
+                if capture_snapshot is not None
+                else capture_portfolio_state(
+                    broker,
+                    observed_at=attempt_timestamp,
+                    parallel=parallel,
+                )
             )
         except Exception as exc:
             elapsed = max(0.0, float(monotonic()) - started)
@@ -1271,7 +1276,7 @@ def _prediction_pointer_sources(root: Path) -> tuple[Path, ...]:
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run the six-symbol hourly ML-enriched stock trader."
+        description="Run the configured universe's hourly ML-enriched stock trader."
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--root-dir", type=Path)

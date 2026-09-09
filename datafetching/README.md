@@ -141,7 +141,7 @@ External CME and Options ownership is the default, so ordinary Loop A commands
 do not fetch either dataset.
 
 For an empty datastore, Databento historical setup is deliberately separate
-from recurring ownership. The normal six-symbol OPRA bootstrap is:
+from recurring ownership. The normal configured-watchlist OPRA bootstrap is:
 
 ```powershell
 python -m datafetching.options_history --datastore-target pc --watchlist datafetching\watchlist.txt

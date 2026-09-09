@@ -1,0 +1,3 @@
+SUBMITTED_BATCH ohlcv-1m/COST.OPT job=OPRA-20260906-DVGJJSMD3Q days=74 range=2026-05-07..2026-08-19
+SUBMITTED_BATCH ohlcv-1d/COST.OPT job=OPRA-20260906-KFKXXCVT9N days=1792 range=2019-08-19..2026-08-19
+{"plan_id": "987dfa290e0f74a6cbb2962165af8d0cc3f1134edd0a4eef2a9434f7ee2ca221", "prepared_at": "2026-09-06T08:28:13.366305+00:00", "jobs": [{"schema": "definition", "job_id": "OPRA-20260906-R5DD4CFMDS", "status": "REUSED"}, {"schema": "ohlcv-1h", "job_id": "OPRA-20260906-UVXYE88R3Y", "status": "REUSED"}, {"schema": "ohlcv-1m", "job_id": "OPRA-20260906-DVGJJSMD3Q", "status": "QUEUED"}, {"schema": "ohlcv-1d", "job_id": "OPRA-20260906-KFKXXCVT9N", "status": "QUEUED"}]}

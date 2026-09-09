@@ -1,0 +1,37 @@
+{
+  "checked_at": "2026-09-06T12:43:54.414275+00:00",
+  "published_symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK"
+  ],
+  "pending_symbols": [
+    {
+      "symbol": "COST",
+      "detail": "History imported. Forecasts will appear when the first Gameplan is complete."
+    }
+  ],
+  "pulse_symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST"
+  ],
+  "published_forecast_rows": 144,
+  "frozen_weekly_snapshots": 6,
+  "cost_probability_values": {
+    "1h": null,
+    "4h": null,
+    "1d": null
+  },
+  "cost_logo_present": false,
+  "cost_logo_runtime_filename": "cost.png",
+  "tests": "133 forecast/onboarding tests passed",
+  "orders_submitted": 0
+}

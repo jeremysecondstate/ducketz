@@ -1,0 +1,406 @@
+{
+  "status": "BLOCKED_ONE_CLASS_CALIBRATION",
+  "observed_at": "2026-09-06T21:45:44.635802+00:00",
+  "overnight_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260906T211429.688183Z",
+  "training_run": "C:\\DATASTORE\\ml\\strategy-profit-training-runs\\20260906T211431.421604Z",
+  "runtime_error": "ValueError: Strategy calibration unavailable: calibration partition requires both observed outcome classes",
+  "native_partition_function": "ml.strategy_selection.model.partition_strategy_outcomes",
+  "policy": {
+    "minimum_train_decisions": 30,
+    "calibration_decisions": 15,
+    "assessment_decisions": 15
+  },
+  "all_outcomes": {
+    "rows": 5760,
+    "decision_clusters": 63,
+    "class_counts": {
+      "0": 5384,
+      "1": 376
+    },
+    "symbol_rows": {
+      "MU": 1818,
+      "GOOG": 1038,
+      "AAPL": 911,
+      "NVDA": 778,
+      "SNDK": 546,
+      "AMZN": 393,
+      "COST": 276
+    },
+    "target_start_min": "2026-05-11T16:00:00.000000001+00:00",
+    "target_start_max": "2026-09-03T15:35:00.000000001+00:00",
+    "target_end_max": "2026-09-03T18:30:00+00:00",
+    "execution_evidence": {
+      "MODELED_OPRA_OHLCV_1H": 4315,
+      "EXACT_OPRA_CBBO_1M": 1445
+    },
+    "net_profit_quantiles": {
+      "0.0": -45927.478796667405,
+      "0.1": -7791.626943891292,
+      "0.5": -882.600000000002,
+      "0.9": -49.2,
+      "1.0": 3769.116900000011
+    },
+    "return_on_risk_quantiles": {
+      "0.0": -5.344606965251236,
+      "0.1": -1.7282367534766048,
+      "0.5": -0.4531124353124686,
+      "0.9": -0.002484043152052448,
+      "1.0": 1.9136372142665872
+    }
+  },
+  "partitions": {
+    "train": {
+      "rows": 2889,
+      "decision_clusters": 33,
+      "class_counts": {
+        "0": 2855,
+        "1": 34
+      },
+      "symbol_rows": {
+        "MU": 955,
+        "NVDA": 544,
+        "AAPL": 454,
+        "GOOG": 340,
+        "AMZN": 222,
+        "COST": 194,
+        "SNDK": 180
+      },
+      "target_start_min": "2026-05-11T16:00:00.000000001+00:00",
+      "target_start_max": "2026-06-26T16:00:00.000000001+00:00",
+      "target_end_max": "2026-06-26T18:30:00+00:00",
+      "execution_evidence": {
+        "MODELED_OPRA_OHLCV_1H": 2889
+      },
+      "net_profit_quantiles": {
+        "0.0": -45927.478796667405,
+        "0.1": -10680.828994238727,
+        "0.5": -1211.1398190228874,
+        "0.9": -290.56773253247246,
+        "1.0": 2576.1334242577354
+      },
+      "return_on_risk_quantiles": {
+        "0.0": -5.344606965251236,
+        "0.1": -1.8231513223618983,
+        "0.5": -0.832883457283256,
+        "0.9": -0.009714418444548031,
+        "1.0": 1.9136372142665872
+      }
+    },
+    "calibration": {
+      "rows": 1168,
+      "decision_clusters": 15,
+      "class_counts": {
+        "0": 1168
+      },
+      "symbol_rows": {
+        "MU": 354,
+        "AAPL": 308,
+        "GOOG": 224,
+        "NVDA": 88,
+        "AMZN": 77,
+        "SNDK": 62,
+        "COST": 55
+      },
+      "target_start_min": "2026-06-29T16:00:00.000000001+00:00",
+      "target_start_max": "2026-07-20T16:00:00.000000001+00:00",
+      "target_end_max": "2026-07-20T18:30:00+00:00",
+      "execution_evidence": {
+        "MODELED_OPRA_OHLCV_1H": 1168
+      },
+      "net_profit_quantiles": {
+        "0.0": -21300.263007061953,
+        "0.1": -6250.428842940911,
+        "0.5": -1160.6954957452822,
+        "0.9": -342.65281319799436,
+        "1.0": -1.9709561554831452
+      },
+      "return_on_risk_quantiles": {
+        "0.0": -2.815717067744814,
+        "0.1": -1.7267270211133317,
+        "0.5": -0.823588158310417,
+        "0.9": -0.01202299440488158,
+        "1.0": -1.1569530564742264e-05
+      }
+    },
+    "assessment": {
+      "rows": 1703,
+      "decision_clusters": 15,
+      "class_counts": {
+        "0": 1361,
+        "1": 342
+      },
+      "symbol_rows": {
+        "MU": 509,
+        "GOOG": 474,
+        "SNDK": 304,
+        "AAPL": 149,
+        "NVDA": 146,
+        "AMZN": 94,
+        "COST": 27
+      },
+      "target_start_min": "2026-07-21T16:00:00.000000001+00:00",
+      "target_start_max": "2026-09-03T15:35:00.000000001+00:00",
+      "target_end_max": "2026-09-03T18:30:00+00:00",
+      "execution_evidence": {
+        "EXACT_OPRA_CBBO_1M": 1445,
+        "MODELED_OPRA_OHLCV_1H": 258
+      },
+      "net_profit_quantiles": {
+        "0.0": -15942.771525999386,
+        "0.1": -2851.2515581158923,
+        "0.5": -128.20000000000002,
+        "0.9": 138.29834000000085,
+        "1.0": 3769.116900000011
+      },
+      "return_on_risk_quantiles": {
+        "0.0": -2.6198347107435915,
+        "0.1": -1.3816992314722505,
+        "0.5": -0.07280397802757936,
+        "0.9": 0.011460097955874896,
+        "1.0": 1.5379892555640826
+      }
+    }
+  },
+  "purged_rows": 0,
+  "calibration_clusters": [
+    {
+      "target_window_start": "2026-06-29T16:00:00.000000001+00:00",
+      "symbol": "COST",
+      "rows": 29,
+      "profitable_rows": 0,
+      "maximum_net_profit": -562.6103834774696
+    },
+    {
+      "target_window_start": "2026-06-30T16:00:00.000000001+00:00",
+      "symbol": "GOOG",
+      "rows": 65,
+      "profitable_rows": 0,
+      "maximum_net_profit": -277.31705768741665
+    },
+    {
+      "target_window_start": "2026-07-01T16:00:00.000000001+00:00",
+      "symbol": "AAPL",
+      "rows": 79,
+      "profitable_rows": 0,
+      "maximum_net_profit": -82.80187431091511
+    },
+    {
+      "target_window_start": "2026-07-02T16:00:00.000000001+00:00",
+      "symbol": "SNDK",
+      "rows": 44,
+      "profitable_rows": 0,
+      "maximum_net_profit": -1276.7054544346468
+    },
+    {
+      "target_window_start": "2026-07-06T16:00:00.000000001+00:00",
+      "symbol": "AAPL",
+      "rows": 85,
+      "profitable_rows": 0,
+      "maximum_net_profit": -84.31594827586208
+    },
+    {
+      "target_window_start": "2026-07-07T16:00:00.000000001+00:00",
+      "symbol": "MU",
+      "rows": 76,
+      "profitable_rows": 0,
+      "maximum_net_profit": -1358.7742465497838
+    },
+    {
+      "target_window_start": "2026-07-08T16:00:00.000000001+00:00",
+      "symbol": "SNDK",
+      "rows": 18,
+      "profitable_rows": 0,
+      "maximum_net_profit": -1.9709561554831452
+    },
+    {
+      "target_window_start": "2026-07-09T16:00:00.000000001+00:00",
+      "symbol": "AAPL",
+      "rows": 144,
+      "profitable_rows": 0,
+      "maximum_net_profit": -77.04006331340135
+    },
+    {
+      "target_window_start": "2026-07-10T16:00:00.000000001+00:00",
+      "symbol": "AMZN",
+      "rows": 77,
+      "profitable_rows": 0,
+      "maximum_net_profit": -59.54109263657957
+    },
+    {
+      "target_window_start": "2026-07-13T16:00:00.000000001+00:00",
+      "symbol": "GOOG",
+      "rows": 99,
+      "profitable_rows": 0,
+      "maximum_net_profit": -275.2820147481837
+    },
+    {
+      "target_window_start": "2026-07-14T16:00:00.000000001+00:00",
+      "symbol": "MU",
+      "rows": 139,
+      "profitable_rows": 0,
+      "maximum_net_profit": -865.1948812080433
+    },
+    {
+      "target_window_start": "2026-07-15T16:00:00.000000001+00:00",
+      "symbol": "COST",
+      "rows": 26,
+      "profitable_rows": 0,
+      "maximum_net_profit": -417.2964500564592
+    },
+    {
+      "target_window_start": "2026-07-16T16:00:00.000000001+00:00",
+      "symbol": "MU",
+      "rows": 139,
+      "profitable_rows": 0,
+      "maximum_net_profit": -870.200716800115
+    },
+    {
+      "target_window_start": "2026-07-17T16:00:00.000000001+00:00",
+      "symbol": "NVDA",
+      "rows": 88,
+      "profitable_rows": 0,
+      "maximum_net_profit": -51.5035116477004
+    },
+    {
+      "target_window_start": "2026-07-20T16:00:00.000000001+00:00",
+      "symbol": "GOOG",
+      "rows": 60,
+      "profitable_rows": 0,
+      "maximum_net_profit": -468.32673307757136
+    }
+  ],
+  "label_validation": {
+    "profitable_equals_net_profit_positive_mismatches": 0,
+    "nonfinite_profit_return_capital_values": 0,
+    "maximum_net_profit_equation_error": 1.1823431123048067e-11,
+    "maximum_return_on_risk_equation_error": 0.0,
+    "equations": [
+      "net_profit = entry_cash_flow + exit_cash_flow (exit flow already includes fees)",
+      "return_on_risk = net_profit / capital_required",
+      "profitable = int(net_profit > 0)"
+    ]
+  },
+  "checkpoint_verification": {
+    "native_function": "ml.strategy_profit_training._read_checkpoint",
+    "verified_receipts": 63,
+    "rows": 5760,
+    "matching_execution_model_fingerprint": "3d7825fda0ef25dab7f0c871e0bb4347383174c10bec8bc2a5b5788550ef83fd",
+    "aggregate_id_label_return_fields_match_saved_output": true
+  },
+  "source_selection": {
+    "raw_complete_4h_rows": 6365,
+    "raw_target_clusters": 263,
+    "selected_available_clusters": 65,
+    "selection_function": "ml.strategy_profit_training._balanced_cluster_samples",
+    "successful_checkpoint_clusters": 63,
+    "selected_without_successful_checkpoint": [
+      {
+        "symbol": "COST",
+        "decision_timestamp": "2026-07-22 15:05:00+00:00",
+        "target_window_start": "2026-07-22 15:30:00+00:00",
+        "target_window_end": "2026-07-22 18:30:00+00:00"
+      },
+      {
+        "symbol": "COST",
+        "decision_timestamp": "2026-07-28 12:05:00+00:00",
+        "target_window_start": "2026-07-28 15:30:00+00:00",
+        "target_window_end": "2026-07-28 18:30:00+00:00"
+      }
+    ],
+    "missing_individual_reasons": "Not persisted: runtime failed during fitting before producing the 4h report; no rematerialization was performed."
+  },
+  "execution_haircuts": {
+    "bucket_haircuts": {
+      "0_25_to_1": 1.0,
+      "1_to_5": 0.6866210328609584,
+      "ge_5": 0.28418976444347727,
+      "lt_0_25": 1.0
+    },
+    "global_haircut": 0.8571428571428571,
+    "heldout_joint_conservative_coverage": 0.9717174677608441,
+    "required_joint_coverage": 0.8,
+    "history_freshness": {
+      "latest_common_ohlcv_1h_cbbo_1m_session": "2026-09-04",
+      "required_complete_1d_session": "2026-09-04",
+      "required_cursor_completed_through": "2026-09-05",
+      "status": "CURRENT_FOR_LATEST_COMPLETE_1D_SAMPLE",
+      "verified_strategy_history_cursors": {
+        "AAPL/cbbo-1m": "2026-09-05",
+        "AAPL/definition": "2026-09-05",
+        "AAPL/ohlcv-1h": "2026-09-05",
+        "AMZN/cbbo-1m": "2026-09-05",
+        "AMZN/definition": "2026-09-05",
+        "AMZN/ohlcv-1h": "2026-09-05",
+        "COST/cbbo-1m": "2026-09-05",
+        "COST/definition": "2026-09-05",
+        "COST/ohlcv-1h": "2026-09-05",
+        "GOOG/cbbo-1m": "2026-09-05",
+        "GOOG/definition": "2026-09-05",
+        "GOOG/ohlcv-1h": "2026-09-05",
+        "MU/cbbo-1m": "2026-09-05",
+        "MU/definition": "2026-09-05",
+        "MU/ohlcv-1h": "2026-09-05",
+        "NVDA/cbbo-1m": "2026-09-05",
+        "NVDA/definition": "2026-09-05",
+        "NVDA/ohlcv-1h": "2026-09-05",
+        "SNDK/cbbo-1m": "2026-09-05",
+        "SNDK/definition": "2026-09-05",
+        "SNDK/ohlcv-1h": "2026-09-05"
+      }
+    }
+  },
+  "score_availability": {
+    "raw_profit_probability": {
+      "non_null_rows": 0,
+      "total_rows": 5760
+    },
+    "calibrated_profit_probability": {
+      "non_null_rows": 0,
+      "total_rows": 5760
+    },
+    "decision_score": {
+      "non_null_rows": 0,
+      "total_rows": 5760
+    }
+  },
+  "artifact_state": {
+    "4h_model_report_present": false,
+    "training_manifest_present": false,
+    "training_receipt_present": false,
+    "4h_fitted_artifact_present": false
+  },
+  "file_evidence": [
+    {
+      "path": "C:\\DATASTORE\\ml\\strategy-profit-training-runs\\20260906T211431.421604Z\\4h-modeled-outcomes.parquet",
+      "bytes": 1741512,
+      "checksum_sha256": "fda2fead2326c7716a7d4790ce64b32431c9cab8a7daf4aad2f07484568b8737"
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\strategy-profit-training-runs\\20260906T211431.421604Z\\execution-haircut-report.json",
+      "bytes": 2422,
+      "checksum_sha256": "f74cbdd74a6156d9d3b7b480bba0d29fe7e3cf5557bb0851628b60a7db97d82a"
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\runs\\20260906T084041.266342Z\\samples.parquet",
+      "bytes": 29713951,
+      "checksum_sha256": "1aabb78e518bb2ba07f72e334f6a388d5c496c6eadf40317c16443e5ab6d0728"
+    },
+    {
+      "path": "C:\\dev\\ducketz\\ml\\strategy_selection\\model.py",
+      "bytes": 54210,
+      "checksum_sha256": "651b1c024eed24a153199993d7729322ee8378175a8e6ead740a1bf807194561"
+    },
+    {
+      "path": "C:\\dev\\ducketz\\ml\\strategy_selection\\candidates.py",
+      "bytes": 29638,
+      "checksum_sha256": "87f8273183b7574e0e53832a5f8504d8badbd51ed523c8cbf0055dd0ba61179f"
+    },
+    {
+      "path": "C:\\dev\\ducketz\\ml\\strategy_profit_training.py",
+      "bytes": 52429,
+      "checksum_sha256": "3bfa8cbcfcde21e4a32a0a727d6d6d3a4ba848fd35e39fcec551a09fccc05552"
+    }
+  ],
+  "finding": "Native chronological calibration selects 15 complete decision clusters dated June 29 through July 20. Every one of their 1168 stored hourly-fallback outcomes has strictly negative net profit and class 0. No rows were purged; no label/arithmetic mismatch or native partition inconsistency was found.",
+  "limits": "This audit verifies retained outcomes and checkpoint bindings, not a new source-data reconstruction. No 4h assessment scores or completed training publication exist. Existing freshness/calibration/promotion gates were not altered, and no training or provider retry was made."
+}

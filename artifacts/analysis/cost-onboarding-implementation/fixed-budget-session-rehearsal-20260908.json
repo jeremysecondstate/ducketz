@@ -1,0 +1,1189 @@
+{
+  "batches": [
+    {
+      "decision_evidence_sha256": "45c1fe28fa34e8b271249c32dc4faaa31dc0e819edfa85daecd0644b9f93c108",
+      "decision_reason_counts": {
+        "NO_BULLISH_ENTRY_SIGNAL": 14
+      },
+      "native_directional_signal_count": 14,
+      "selected_orders": 0,
+      "simulated_at_pacific": "2026-09-08T04:01:00-07:00",
+      "simulated_at_utc": "2026-09-08T11:01:00+00:00",
+      "status": "NO_ORDERS_SUBMITTED",
+      "submitted_orders": 0
+    },
+    {
+      "decision_evidence_sha256": "2095158cff33dc1212128f07c3c9d95fc7207392db8835d0592b2ae17451c907",
+      "decision_reason_counts": {
+        "NO_BULLISH_ENTRY_SIGNAL": 7
+      },
+      "native_directional_signal_count": 7,
+      "selected_orders": 0,
+      "simulated_at_pacific": "2026-09-08T05:01:00-07:00",
+      "simulated_at_utc": "2026-09-08T12:01:00+00:00",
+      "status": "NO_ORDERS_SUBMITTED",
+      "submitted_orders": 0
+    },
+    {
+      "decision_evidence_sha256": "cd7a28bd5d587ba4d94cc583869f998824ef3dc5e784c926a611532ba5fa456b",
+      "decision_reason_counts": {
+        "NO_BULLISH_ENTRY_SIGNAL": 5
+      },
+      "native_directional_signal_count": 5,
+      "selected_orders": 0,
+      "simulated_at_pacific": "2026-09-08T06:01:00-07:00",
+      "simulated_at_utc": "2026-09-08T13:01:00+00:00",
+      "status": "NO_ORDERS_SUBMITTED",
+      "submitted_orders": 0
+    },
+    {
+      "decision_evidence_sha256": "bed9b99c07acbd302c60ee309b07fa3b1266dc2c3609c0866963c74f5210d720",
+      "decision_reason_counts": {
+        "NO_BULLISH_ENTRY_SIGNAL": 3
+      },
+      "native_directional_signal_count": 3,
+      "selected_orders": 0,
+      "simulated_at_pacific": "2026-09-08T07:01:00-07:00",
+      "simulated_at_utc": "2026-09-08T14:01:00+00:00",
+      "status": "NO_ORDERS_SUBMITTED",
+      "submitted_orders": 0
+    },
+    {
+      "decision_evidence_sha256": "30a935cb19f4422c85e554f57c28fafddbdc166cfcd2398d442cf0f89bd65e70",
+      "decision_reason_counts": {
+        "NO_BULLISH_ENTRY_SIGNAL": 5
+      },
+      "native_directional_signal_count": 5,
+      "selected_orders": 0,
+      "simulated_at_pacific": "2026-09-08T08:01:00-07:00",
+      "simulated_at_utc": "2026-09-08T15:01:00+00:00",
+      "status": "NO_ORDERS_SUBMITTED",
+      "submitted_orders": 0
+    },
+    {
+      "decision_evidence_sha256": "b12971a48b1eee709a724a2363b65017ef5c64c3b8e8ef90edbeb2068ae17606",
+      "decision_reason_counts": {
+        "NO_BULLISH_ENTRY_SIGNAL": 6
+      },
+      "native_directional_signal_count": 6,
+      "selected_orders": 0,
+      "simulated_at_pacific": "2026-09-08T09:01:00-07:00",
+      "simulated_at_utc": "2026-09-08T16:01:00+00:00",
+      "status": "NO_ORDERS_SUBMITTED",
+      "submitted_orders": 0
+    },
+    {
+      "decision_evidence_sha256": "217e0b1610e3c9024f853cd7d2aed4e34a89d9535324776eb64d5a18bf564ee1",
+      "decision_reason_counts": {
+        "NO_BULLISH_ENTRY_SIGNAL": 6
+      },
+      "native_directional_signal_count": 6,
+      "selected_orders": 0,
+      "simulated_at_pacific": "2026-09-08T10:01:00-07:00",
+      "simulated_at_utc": "2026-09-08T17:01:00+00:00",
+      "status": "NO_ORDERS_SUBMITTED",
+      "submitted_orders": 0
+    },
+    {
+      "decision_evidence_sha256": "9ddf353067efff01740801746cb96a242a3a51d196d0105d491ff5cc7acafbae",
+      "decision_reason_counts": {
+        "NO_BULLISH_ENTRY_SIGNAL": 6
+      },
+      "native_directional_signal_count": 6,
+      "selected_orders": 0,
+      "simulated_at_pacific": "2026-09-08T11:01:00-07:00",
+      "simulated_at_utc": "2026-09-08T18:01:00+00:00",
+      "status": "NO_ORDERS_SUBMITTED",
+      "submitted_orders": 0
+    },
+    {
+      "decision_evidence_sha256": "a72b989953a29587cc32c6a9400e1f4dff63110032436ebb69bd83f56da53d03",
+      "decision_reason_counts": {
+        "NO_BULLISH_ENTRY_SIGNAL": 6
+      },
+      "native_directional_signal_count": 6,
+      "selected_orders": 0,
+      "simulated_at_pacific": "2026-09-08T12:01:00-07:00",
+      "simulated_at_utc": "2026-09-08T19:01:00+00:00",
+      "status": "NO_ORDERS_SUBMITTED",
+      "submitted_orders": 0
+    },
+    {
+      "decision_evidence_sha256": "da17bc6add5f81e6a024d61aaf2025568d0706dac899752533dbb342199194db",
+      "decision_reason_counts": {
+        "NO_BULLISH_ENTRY_SIGNAL": 7
+      },
+      "native_directional_signal_count": 7,
+      "selected_orders": 0,
+      "simulated_at_pacific": "2026-09-08T13:06:00-07:00",
+      "simulated_at_utc": "2026-09-08T20:06:00+00:00",
+      "status": "NO_ORDERS_SUBMITTED",
+      "submitted_orders": 0
+    },
+    {
+      "decision_evidence_sha256": "06f3d686d0a56e1e201762fa408492e707f2a0b942d04c88f846ae2bd8dedeb3",
+      "decision_reason_counts": {
+        "NO_BULLISH_ENTRY_SIGNAL": 7
+      },
+      "native_directional_signal_count": 7,
+      "selected_orders": 0,
+      "simulated_at_pacific": "2026-09-08T14:01:00-07:00",
+      "simulated_at_utc": "2026-09-08T21:01:00+00:00",
+      "status": "NO_ORDERS_SUBMITTED",
+      "submitted_orders": 0
+    },
+    {
+      "decision_evidence_sha256": "42427486897efec788fd11a3817f63fc4907a70024e040890f82cef0a05965ac",
+      "decision_reason_counts": {
+        "NO_BULLISH_ENTRY_SIGNAL": 7
+      },
+      "native_directional_signal_count": 7,
+      "selected_orders": 0,
+      "simulated_at_pacific": "2026-09-08T15:01:00-07:00",
+      "simulated_at_utc": "2026-09-08T22:01:00+00:00",
+      "status": "NO_ORDERS_SUBMITTED",
+      "submitted_orders": 0
+    },
+    {
+      "decision_evidence_sha256": "ca71a82c145588335abb786888800c546d7da626a397bf10874a9621fdf8f8c1",
+      "decision_reason_counts": {
+        "NO_BULLISH_ENTRY_SIGNAL": 7
+      },
+      "native_directional_signal_count": 7,
+      "selected_orders": 0,
+      "simulated_at_pacific": "2026-09-08T16:01:00-07:00",
+      "simulated_at_utc": "2026-09-08T23:01:00+00:00",
+      "status": "NO_ORDERS_SUBMITTED",
+      "submitted_orders": 0
+    }
+  ],
+  "broker_calls": {
+    "simulated_portfolio_capture": 13,
+    "stable_account_fingerprint": 26,
+    "verify_read_snapshot": 13
+  },
+  "code_sha256": {
+    "ml/stock_trader/fixed_horizon_budget.py": "7f6dbe2f23488e2564fe53272d891b44a965e3682bd87dbf3b5e9d07e1d83f16",
+    "ml/stock_trader/fixed_horizon_engine.py": "dfbf5b8ef6aed29556c313cb5736880d18c3741c50b84b12fd3b3ef050eaeb0c",
+    "ml/stock_trader/independent_runtime.py": "d26d288c5c2540e5832560a9d0ba15dbff37a2dfe784fbf684a79b9d877bc5d1",
+    "ml/stock_trader/independent_session.py": "104a563e0bc055f5640fb10b60123a2f2935097371f69d173b38e3af22ffe634",
+    "ml/stock_trader/independent_signals.py": "ecc73ef9190b36713530db66facc6f8356339c9b4bc0050eefa7eca03f1a2b1d"
+  },
+  "decisions": [
+    {
+      "forecast_probability": 0.44994367242742983,
+      "horizon": "1w",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:NVDA:1w@D+5",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T11:01:00+00:00",
+      "symbol": "NVDA",
+      "target_window_end": "2026-09-15T00:00:00+00:00",
+      "target_window_start": "2026-09-08T11:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.44655182461553455,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:SNDK:1h@04:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T11:01:00+00:00",
+      "symbol": "SNDK",
+      "target_window_end": "2026-09-08T12:00:00+00:00",
+      "target_window_start": "2026-09-08T11:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.43705893708041915,
+      "horizon": "1w",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:SNDK:1w@D+5",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T11:01:00+00:00",
+      "symbol": "SNDK",
+      "target_window_end": "2026-09-15T00:00:00+00:00",
+      "target_window_start": "2026-09-08T11:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.4300875969675662,
+      "horizon": "1w",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AMZN:1w@D+5",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T11:01:00+00:00",
+      "symbol": "AMZN",
+      "target_window_end": "2026-09-15T00:00:00+00:00",
+      "target_window_start": "2026-09-08T11:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.4252536916908787,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:NVDA:1h@04:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T11:01:00+00:00",
+      "symbol": "NVDA",
+      "target_window_end": "2026-09-08T12:00:00+00:00",
+      "target_window_start": "2026-09-08T11:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.4236791858171185,
+      "horizon": "1w",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:MU:1w@D+5",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T11:01:00+00:00",
+      "symbol": "MU",
+      "target_window_end": "2026-09-15T00:00:00+00:00",
+      "target_window_start": "2026-09-08T11:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.41425945660694286,
+      "horizon": "1w",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:GOOG:1w@D+5",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T11:01:00+00:00",
+      "symbol": "GOOG",
+      "target_window_end": "2026-09-15T00:00:00+00:00",
+      "target_window_start": "2026-09-08T11:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.4133077384902122,
+      "horizon": "1w",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AAPL:1w@D+5",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T11:01:00+00:00",
+      "symbol": "AAPL",
+      "target_window_end": "2026-09-15T00:00:00+00:00",
+      "target_window_start": "2026-09-08T11:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.41300894323084,
+      "horizon": "1w",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:COST:1w@D+5",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T11:01:00+00:00",
+      "symbol": "COST",
+      "target_window_end": "2026-09-15T00:00:00+00:00",
+      "target_window_start": "2026-09-08T11:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.4112082473482611,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:MU:1h@04:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T11:01:00+00:00",
+      "symbol": "MU",
+      "target_window_end": "2026-09-08T12:00:00+00:00",
+      "target_window_start": "2026-09-08T11:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.4040409353976395,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:COST:1h@04:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T11:01:00+00:00",
+      "symbol": "COST",
+      "target_window_end": "2026-09-08T12:00:00+00:00",
+      "target_window_start": "2026-09-08T11:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.342621246077519,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AAPL:1h@04:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T11:01:00+00:00",
+      "symbol": "AAPL",
+      "target_window_end": "2026-09-08T12:00:00+00:00",
+      "target_window_start": "2026-09-08T11:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.3202144166877359,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AMZN:1h@04:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T11:01:00+00:00",
+      "symbol": "AMZN",
+      "target_window_end": "2026-09-08T12:00:00+00:00",
+      "target_window_start": "2026-09-08T11:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.29591895995575157,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:GOOG:1h@04:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T11:01:00+00:00",
+      "symbol": "GOOG",
+      "target_window_end": "2026-09-08T12:00:00+00:00",
+      "target_window_start": "2026-09-08T11:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.44268536548856235,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:SNDK:1h@05:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T12:01:00+00:00",
+      "symbol": "SNDK",
+      "target_window_end": "2026-09-08T13:00:00+00:00",
+      "target_window_start": "2026-09-08T12:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.41178456756013837,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:NVDA:1h@05:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T12:01:00+00:00",
+      "symbol": "NVDA",
+      "target_window_end": "2026-09-08T13:00:00+00:00",
+      "target_window_start": "2026-09-08T12:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.3983002454936807,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:MU:1h@05:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T12:01:00+00:00",
+      "symbol": "MU",
+      "target_window_end": "2026-09-08T13:00:00+00:00",
+      "target_window_start": "2026-09-08T12:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.39771218417477183,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:COST:1h@05:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T12:01:00+00:00",
+      "symbol": "COST",
+      "target_window_end": "2026-09-08T13:00:00+00:00",
+      "target_window_start": "2026-09-08T12:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.37060822266199606,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AAPL:1h@05:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T12:01:00+00:00",
+      "symbol": "AAPL",
+      "target_window_end": "2026-09-08T13:00:00+00:00",
+      "target_window_start": "2026-09-08T12:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.3251701597192655,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AMZN:1h@05:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T12:01:00+00:00",
+      "symbol": "AMZN",
+      "target_window_end": "2026-09-08T13:00:00+00:00",
+      "target_window_start": "2026-09-08T12:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.3081701287136115,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:GOOG:1h@05:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T12:01:00+00:00",
+      "symbol": "GOOG",
+      "target_window_end": "2026-09-08T13:00:00+00:00",
+      "target_window_start": "2026-09-08T12:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.44266653886530677,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:COST:1h@06:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T13:01:00+00:00",
+      "symbol": "COST",
+      "target_window_end": "2026-09-08T14:00:00+00:00",
+      "target_window_start": "2026-09-08T13:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.44194532428319877,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:MU:1h@06:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T13:01:00+00:00",
+      "symbol": "MU",
+      "target_window_end": "2026-09-08T14:00:00+00:00",
+      "target_window_start": "2026-09-08T13:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.41125928446070925,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AAPL:1h@06:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T13:01:00+00:00",
+      "symbol": "AAPL",
+      "target_window_end": "2026-09-08T14:00:00+00:00",
+      "target_window_start": "2026-09-08T13:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.3809248550306976,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AMZN:1h@06:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T13:01:00+00:00",
+      "symbol": "AMZN",
+      "target_window_end": "2026-09-08T14:00:00+00:00",
+      "target_window_start": "2026-09-08T13:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.37537420569560964,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:GOOG:1h@06:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T13:01:00+00:00",
+      "symbol": "GOOG",
+      "target_window_end": "2026-09-08T14:00:00+00:00",
+      "target_window_start": "2026-09-08T13:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.4300251172087994,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AAPL:1h@07:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T14:01:00+00:00",
+      "symbol": "AAPL",
+      "target_window_end": "2026-09-08T15:00:00+00:00",
+      "target_window_start": "2026-09-08T14:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.4001935348924294,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AMZN:1h@07:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T14:01:00+00:00",
+      "symbol": "AMZN",
+      "target_window_end": "2026-09-08T15:00:00+00:00",
+      "target_window_start": "2026-09-08T14:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.3874603365918779,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:GOOG:1h@07:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T14:01:00+00:00",
+      "symbol": "GOOG",
+      "target_window_end": "2026-09-08T15:00:00+00:00",
+      "target_window_start": "2026-09-08T14:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.43101909292838114,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:MU:1h@08:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T15:01:00+00:00",
+      "symbol": "MU",
+      "target_window_end": "2026-09-08T16:00:00+00:00",
+      "target_window_start": "2026-09-08T15:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.4241528575817039,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:COST:1h@08:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T15:01:00+00:00",
+      "symbol": "COST",
+      "target_window_end": "2026-09-08T16:00:00+00:00",
+      "target_window_start": "2026-09-08T15:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.40806462441846514,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AAPL:1h@08:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T15:01:00+00:00",
+      "symbol": "AAPL",
+      "target_window_end": "2026-09-08T16:00:00+00:00",
+      "target_window_start": "2026-09-08T15:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.3810831850137507,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:GOOG:1h@08:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T15:01:00+00:00",
+      "symbol": "GOOG",
+      "target_window_end": "2026-09-08T16:00:00+00:00",
+      "target_window_start": "2026-09-08T15:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.3804745024075301,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AMZN:1h@08:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T15:01:00+00:00",
+      "symbol": "AMZN",
+      "target_window_end": "2026-09-08T16:00:00+00:00",
+      "target_window_start": "2026-09-08T15:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.4320065582074336,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:COST:1h@09:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T16:01:00+00:00",
+      "symbol": "COST",
+      "target_window_end": "2026-09-08T17:00:00+00:00",
+      "target_window_start": "2026-09-08T16:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.4318275349933207,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:NVDA:1h@09:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T16:01:00+00:00",
+      "symbol": "NVDA",
+      "target_window_end": "2026-09-08T17:00:00+00:00",
+      "target_window_start": "2026-09-08T16:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.4287467716787201,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:MU:1h@09:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T16:01:00+00:00",
+      "symbol": "MU",
+      "target_window_end": "2026-09-08T17:00:00+00:00",
+      "target_window_start": "2026-09-08T16:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.39422402992085226,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AAPL:1h@09:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T16:01:00+00:00",
+      "symbol": "AAPL",
+      "target_window_end": "2026-09-08T17:00:00+00:00",
+      "target_window_start": "2026-09-08T16:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.37057832019658843,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:GOOG:1h@09:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T16:01:00+00:00",
+      "symbol": "GOOG",
+      "target_window_end": "2026-09-08T17:00:00+00:00",
+      "target_window_start": "2026-09-08T16:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.36205841480803214,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AMZN:1h@09:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T16:01:00+00:00",
+      "symbol": "AMZN",
+      "target_window_end": "2026-09-08T17:00:00+00:00",
+      "target_window_start": "2026-09-08T16:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.4324911203017122,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:MU:1h@10:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T17:01:00+00:00",
+      "symbol": "MU",
+      "target_window_end": "2026-09-08T18:00:00+00:00",
+      "target_window_start": "2026-09-08T17:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.42161481964092784,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:COST:1h@10:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T17:01:00+00:00",
+      "symbol": "COST",
+      "target_window_end": "2026-09-08T18:00:00+00:00",
+      "target_window_start": "2026-09-08T17:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.4052182108885094,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:NVDA:1h@10:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T17:01:00+00:00",
+      "symbol": "NVDA",
+      "target_window_end": "2026-09-08T18:00:00+00:00",
+      "target_window_start": "2026-09-08T17:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.3825459609142876,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AAPL:1h@10:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T17:01:00+00:00",
+      "symbol": "AAPL",
+      "target_window_end": "2026-09-08T18:00:00+00:00",
+      "target_window_start": "2026-09-08T17:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.3558355338240665,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:GOOG:1h@10:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T17:01:00+00:00",
+      "symbol": "GOOG",
+      "target_window_end": "2026-09-08T18:00:00+00:00",
+      "target_window_start": "2026-09-08T17:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.335493170901341,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AMZN:1h@10:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T17:01:00+00:00",
+      "symbol": "AMZN",
+      "target_window_end": "2026-09-08T18:00:00+00:00",
+      "target_window_start": "2026-09-08T17:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.4338909543759342,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:MU:1h@11:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T18:01:00+00:00",
+      "symbol": "MU",
+      "target_window_end": "2026-09-08T19:00:00+00:00",
+      "target_window_start": "2026-09-08T18:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.41724698356699347,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:COST:1h@11:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T18:01:00+00:00",
+      "symbol": "COST",
+      "target_window_end": "2026-09-08T19:00:00+00:00",
+      "target_window_start": "2026-09-08T18:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.3936163452481887,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AAPL:1h@11:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T18:01:00+00:00",
+      "symbol": "AAPL",
+      "target_window_end": "2026-09-08T19:00:00+00:00",
+      "target_window_start": "2026-09-08T18:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.38360035397991105,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:NVDA:1h@11:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T18:01:00+00:00",
+      "symbol": "NVDA",
+      "target_window_end": "2026-09-08T19:00:00+00:00",
+      "target_window_start": "2026-09-08T18:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.3287721635040159,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AMZN:1h@11:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T18:01:00+00:00",
+      "symbol": "AMZN",
+      "target_window_end": "2026-09-08T19:00:00+00:00",
+      "target_window_start": "2026-09-08T18:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.3159540400338883,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:GOOG:1h@11:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T18:01:00+00:00",
+      "symbol": "GOOG",
+      "target_window_end": "2026-09-08T19:00:00+00:00",
+      "target_window_start": "2026-09-08T18:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.42693484044193,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:NVDA:1h@12:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T19:01:00+00:00",
+      "symbol": "NVDA",
+      "target_window_end": "2026-09-08T20:00:00+00:00",
+      "target_window_start": "2026-09-08T19:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.4213474064519737,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:COST:1h@12:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T19:01:00+00:00",
+      "symbol": "COST",
+      "target_window_end": "2026-09-08T20:00:00+00:00",
+      "target_window_start": "2026-09-08T19:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.42092726668176217,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:MU:1h@12:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T19:01:00+00:00",
+      "symbol": "MU",
+      "target_window_end": "2026-09-08T20:00:00+00:00",
+      "target_window_start": "2026-09-08T19:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.4080568802731132,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AAPL:1h@12:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T19:01:00+00:00",
+      "symbol": "AAPL",
+      "target_window_end": "2026-09-08T20:00:00+00:00",
+      "target_window_start": "2026-09-08T19:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.36215651717758945,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:GOOG:1h@12:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T19:01:00+00:00",
+      "symbol": "GOOG",
+      "target_window_end": "2026-09-08T20:00:00+00:00",
+      "target_window_start": "2026-09-08T19:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.36147888206963547,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AMZN:1h@12:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T19:01:00+00:00",
+      "symbol": "AMZN",
+      "target_window_end": "2026-09-08T20:00:00+00:00",
+      "target_window_start": "2026-09-08T19:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.44191581210047637,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:SNDK:1h@13:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T20:06:00+00:00",
+      "symbol": "SNDK",
+      "target_window_end": "2026-09-08T21:00:00+00:00",
+      "target_window_start": "2026-09-08T20:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.38340337275622816,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:MU:1h@13:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T20:06:00+00:00",
+      "symbol": "MU",
+      "target_window_end": "2026-09-08T21:00:00+00:00",
+      "target_window_start": "2026-09-08T20:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.37371373346899134,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:COST:1h@13:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T20:06:00+00:00",
+      "symbol": "COST",
+      "target_window_end": "2026-09-08T21:00:00+00:00",
+      "target_window_start": "2026-09-08T20:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.3322971755673551,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AAPL:1h@13:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T20:06:00+00:00",
+      "symbol": "AAPL",
+      "target_window_end": "2026-09-08T21:00:00+00:00",
+      "target_window_start": "2026-09-08T20:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.30438396767680104,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:NVDA:1h@13:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T20:06:00+00:00",
+      "symbol": "NVDA",
+      "target_window_end": "2026-09-08T21:00:00+00:00",
+      "target_window_start": "2026-09-08T20:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.26078264677261714,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AMZN:1h@13:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T20:06:00+00:00",
+      "symbol": "AMZN",
+      "target_window_end": "2026-09-08T21:00:00+00:00",
+      "target_window_start": "2026-09-08T20:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.2584255397795263,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:GOOG:1h@13:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T20:06:00+00:00",
+      "symbol": "GOOG",
+      "target_window_end": "2026-09-08T21:00:00+00:00",
+      "target_window_start": "2026-09-08T20:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.39881455502510127,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:SNDK:1h@14:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T21:01:00+00:00",
+      "symbol": "SNDK",
+      "target_window_end": "2026-09-08T22:00:00+00:00",
+      "target_window_start": "2026-09-08T21:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.3544475158157573,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:MU:1h@14:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T21:01:00+00:00",
+      "symbol": "MU",
+      "target_window_end": "2026-09-08T22:00:00+00:00",
+      "target_window_start": "2026-09-08T21:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.3147011571484567,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:COST:1h@14:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T21:01:00+00:00",
+      "symbol": "COST",
+      "target_window_end": "2026-09-08T22:00:00+00:00",
+      "target_window_start": "2026-09-08T21:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.28031521477575166,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AAPL:1h@14:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T21:01:00+00:00",
+      "symbol": "AAPL",
+      "target_window_end": "2026-09-08T22:00:00+00:00",
+      "target_window_start": "2026-09-08T21:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.23818345413304937,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:NVDA:1h@14:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T21:01:00+00:00",
+      "symbol": "NVDA",
+      "target_window_end": "2026-09-08T22:00:00+00:00",
+      "target_window_start": "2026-09-08T21:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.21596022955362462,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AMZN:1h@14:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T21:01:00+00:00",
+      "symbol": "AMZN",
+      "target_window_end": "2026-09-08T22:00:00+00:00",
+      "target_window_start": "2026-09-08T21:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.20130183285711714,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:GOOG:1h@14:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T21:01:00+00:00",
+      "symbol": "GOOG",
+      "target_window_end": "2026-09-08T22:00:00+00:00",
+      "target_window_start": "2026-09-08T21:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.41669135708699306,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:SNDK:1h@15:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T22:01:00+00:00",
+      "symbol": "SNDK",
+      "target_window_end": "2026-09-08T23:00:00+00:00",
+      "target_window_start": "2026-09-08T22:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.3623436718780284,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:MU:1h@15:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T22:01:00+00:00",
+      "symbol": "MU",
+      "target_window_end": "2026-09-08T23:00:00+00:00",
+      "target_window_start": "2026-09-08T22:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.3299212730399372,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:COST:1h@15:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T22:01:00+00:00",
+      "symbol": "COST",
+      "target_window_end": "2026-09-08T23:00:00+00:00",
+      "target_window_start": "2026-09-08T22:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.3071719967325285,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AAPL:1h@15:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T22:01:00+00:00",
+      "symbol": "AAPL",
+      "target_window_end": "2026-09-08T23:00:00+00:00",
+      "target_window_start": "2026-09-08T22:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.26352972241760236,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:NVDA:1h@15:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T22:01:00+00:00",
+      "symbol": "NVDA",
+      "target_window_end": "2026-09-08T23:00:00+00:00",
+      "target_window_start": "2026-09-08T22:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.23715374772396486,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:GOOG:1h@15:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T22:01:00+00:00",
+      "symbol": "GOOG",
+      "target_window_end": "2026-09-08T23:00:00+00:00",
+      "target_window_start": "2026-09-08T22:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.2341442328680462,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AMZN:1h@15:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T22:01:00+00:00",
+      "symbol": "AMZN",
+      "target_window_end": "2026-09-08T23:00:00+00:00",
+      "target_window_start": "2026-09-08T22:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.41108960344523765,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:SNDK:1h@16:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T23:01:00+00:00",
+      "symbol": "SNDK",
+      "target_window_end": "2026-09-09T00:00:00+00:00",
+      "target_window_start": "2026-09-08T23:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.35776769208569437,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:MU:1h@16:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T23:01:00+00:00",
+      "symbol": "MU",
+      "target_window_end": "2026-09-09T00:00:00+00:00",
+      "target_window_start": "2026-09-08T23:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.33223525808421844,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:COST:1h@16:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T23:01:00+00:00",
+      "symbol": "COST",
+      "target_window_end": "2026-09-09T00:00:00+00:00",
+      "target_window_start": "2026-09-08T23:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.30176358582426666,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AAPL:1h@16:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T23:01:00+00:00",
+      "symbol": "AAPL",
+      "target_window_end": "2026-09-09T00:00:00+00:00",
+      "target_window_start": "2026-09-08T23:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.2731007033491902,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:NVDA:1h@16:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T23:01:00+00:00",
+      "symbol": "NVDA",
+      "target_window_end": "2026-09-09T00:00:00+00:00",
+      "target_window_start": "2026-09-08T23:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.23768805763466475,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:AMZN:1h@16:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T23:01:00+00:00",
+      "symbol": "AMZN",
+      "target_window_end": "2026-09-09T00:00:00+00:00",
+      "target_window_start": "2026-09-08T23:00:00+00:00"
+    },
+    {
+      "forecast_probability": 0.22877423375106676,
+      "horizon": "1h",
+      "policy_fingerprint": "b46d62add88e800aecff61641f6a15258c5b8bb489151553af4227800d0c186b",
+      "prediction_id": "2026-09-08:GOOG:1h@16:00",
+      "reason": "NO_BULLISH_ENTRY_SIGNAL",
+      "simulated_at_utc": "2026-09-08T23:01:00+00:00",
+      "symbol": "GOOG",
+      "target_window_end": "2026-09-09T00:00:00+00:00",
+      "target_window_start": "2026-09-08T23:00:00+00:00"
+    }
+  ],
+  "forbidden_operations": {},
+  "isolated_entry_slots": [
+    "20260908T110000Z.json",
+    "20260908T120000Z.json",
+    "20260908T130000Z.json",
+    "20260908T140000Z.json",
+    "20260908T150000Z.json",
+    "20260908T160000Z.json",
+    "20260908T170000Z.json",
+    "20260908T180000Z.json",
+    "20260908T190000Z.json",
+    "20260908T200000Z.json",
+    "20260908T210000Z.json",
+    "20260908T220000Z.json",
+    "20260908T230000Z.json"
+  ],
+  "isolated_final_ledger_snapshot": {
+    "allocations": [],
+    "persistent_blocks": [],
+    "reservations": []
+  },
+  "learner_loads": 0,
+  "limitations": "Simulated quotes and account evidence; this is not a broker connectivity, fill, profitability, or live activation test.",
+  "manual_shares_adopted": 0,
+  "native_entry_attempts": 13,
+  "native_publication_modified": false,
+  "native_session_result": {
+    "calls": 13,
+    "orders_submitted": 0,
+    "status": "SESSION_FINISHED",
+    "unclosed_allocations": false
+  },
+  "pointer_origin": "byte-identical current native pointer",
+  "preflight": {
+    "all_execution_windows_qualified": true,
+    "bullish_entry_windows": [],
+    "execution_window_count": 133,
+    "reason": "QUALIFIED_STOCK_FORECASTS_NO_BULLISH_ENTRY_SIGNAL",
+    "status": "READY"
+  },
+  "production_entry_slots_created": 0,
+  "production_protected_files_unchanged": true,
+  "real_orders": 0,
+  "rehearsal_script_sha256": "e43ae3c8a46b25cf966f6d65ceee9972ea992060721722b99bafa902154543c2",
+  "schema_version": "fixed-budget-native-session-rehearsal-v1",
+  "selected_orders": 0,
+  "simulated_account": {
+    "account_equity": 100000.0,
+    "all_evidence_observed_at_simulated_runtime_clock": true,
+    "available_cash": 96000.0,
+    "gross_exposure": 4000.0,
+    "manual_shares_not_owned_by_horizons": {
+      "AAPL": 23.0,
+      "COST": 17.0
+    },
+    "quote_bid_and_ask": 100.0
+  },
+  "simulated_execution_branch": true,
+  "simulation_only": true,
+  "sizing_policy": "fixed-horizon-budget-v1",
+  "source_copy_all_files_byte_identical": true,
+  "source_copy_bytes": 5749988,
+  "source_copy_file_count": 19,
+  "source_forecasts_sha256": "30e476e0a3812e252bf9aa588000c4bf541aa953133e9e0ee2bfb10ed24dfce5",
+  "source_manifest_sha256": "e75fbc59eae5bed6914bb39c2360f7a4311a39103b13cd45c2929025ef42676a",
+  "source_model_reports_sha256": "0f98d1978d3b25621632bc72a240927781f0468a38f342aa78328f732ba90e64",
+  "source_receipt_sha256": "fb78d37da95bf93d10a3c5c1e60eaaade4de662e5c78501a2d77f44ee7375a42",
+  "source_run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T093314.374067Z",
+  "status": "PASS"
+}

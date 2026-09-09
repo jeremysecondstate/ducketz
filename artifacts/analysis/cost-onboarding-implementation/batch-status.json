@@ -1,0 +1,49 @@
+{
+  "observed_at": "2026-09-06T08:47:42.390354+00:00",
+  "jobs": [
+    {
+      "id": "OPRA-20260906-R5DD4CFMDS",
+      "record_count": 282076,
+      "actual_size": 101547360,
+      "state": "done",
+      "ts_received": "2026-09-06T08:13:51.303611000Z",
+      "ts_queued": "2026-09-06T08:15:09.581022000Z",
+      "ts_process_start": "2026-09-06T08:17:59.811022000Z",
+      "ts_process_done": "2026-09-06T08:19:40.110613000Z",
+      "progress": 100
+    },
+    {
+      "id": "OPRA-20260906-UVXYE88R3Y",
+      "record_count": null,
+      "actual_size": null,
+      "state": "processing",
+      "ts_received": "2026-09-06T08:20:26.753980000Z",
+      "ts_queued": "2026-09-06T08:20:47.617240000Z",
+      "ts_process_start": "2026-09-06T08:21:43.106890000Z",
+      "ts_process_done": null,
+      "progress": 86
+    },
+    {
+      "id": "OPRA-20260906-DVGJJSMD3Q",
+      "record_count": 1016035,
+      "actual_size": 56897960,
+      "state": "done",
+      "ts_received": "2026-09-06T08:27:57.614533000Z",
+      "ts_queued": "2026-09-06T08:28:04.374248000Z",
+      "ts_process_start": "2026-09-06T08:28:31.397763000Z",
+      "ts_process_done": "2026-09-06T08:31:24.632249000Z",
+      "progress": 100
+    },
+    {
+      "id": "OPRA-20260906-KFKXXCVT9N",
+      "record_count": null,
+      "actual_size": null,
+      "state": "processing",
+      "ts_received": "2026-09-06T08:28:06.542301000Z",
+      "ts_queued": "2026-09-06T08:28:24.287035000Z",
+      "ts_process_start": "2026-09-06T08:28:52.449731000Z",
+      "ts_process_done": null,
+      "progress": 43
+    }
+  ]
+}

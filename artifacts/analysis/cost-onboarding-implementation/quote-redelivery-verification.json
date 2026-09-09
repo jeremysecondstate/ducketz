@@ -1,0 +1,22 @@
+{
+  "observed_at": "2026-09-06T09:36:51.472497+00:00",
+  "request": {
+    "dataset": "OPRA.PILLAR",
+    "schema": "cbbo-1m",
+    "symbols": [
+      "COST.OPT"
+    ],
+    "stype_in": "parent",
+    "start": "2026-09-03",
+    "end": "2026-09-04"
+  },
+  "quote_usd": 0.0,
+  "native_record_types": {
+    "CBBOMsg": 1265962
+  },
+  "record_count": 1265962,
+  "size_bytes": 26709070,
+  "checksum_sha256": "5c6cc40fdf5ffae8de19c9573af9d3c919b2b6a2462105caa147bc7d2831c13a",
+  "matches_original_checksum": false,
+  "matches_original_count": true
+}

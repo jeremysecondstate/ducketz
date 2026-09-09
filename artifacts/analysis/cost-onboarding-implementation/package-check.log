@@ -1,0 +1,9 @@
+Processing .\.
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: ducketz
+  Building wheel for ducketz (pyproject.toml): started
+  Building wheel for ducketz (pyproject.toml): finished with status 'done'
+  Created wheel for ducketz: filename=ducketz-0.1.0-py3-none-any.whl size=3332740 sha256=2dd68a24ea2b55f8119a7c6392b709985730759038e543895db2102bf4d09e26
+  Stored in directory: C:\Users\7980X\AppData\Local\Temp\pip-ephem-wheel-cache-auuzu71d\wheels\b5\79\fe\39a2a64f3f990b08ae9fe422331b9c31fcc9bf51cc60f24311
+Successfully built ducketz

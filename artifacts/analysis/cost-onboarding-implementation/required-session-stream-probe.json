@@ -1,0 +1,3 @@
+{
+  "error": "422 data_start_after_available_end\n`start` in query ('2026-09-04 00:00:00+00:00') was after the available end of dataset OPRA.PILLAR ('2026-09-04 00:00:00+00:00'). Try requesting with an earlier `start`.\ndocumentation: https://databento.com/docs/api-reference-historical/basics/datasets"
+}

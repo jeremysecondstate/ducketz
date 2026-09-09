@@ -148,6 +148,11 @@ def test_prediction_pulse_stacks_at_narrow_widths(
     assert prediction_pulse_columns(width) == columns
 
 
+@pytest.mark.parametrize("width,columns", [(1900, 7), (1220, 7), (1180, 4), (720, 3), (520, 2), (519, 1)])
+def test_prediction_pulse_fits_seven_symbols(width: int, columns: int) -> None:
+    assert prediction_pulse_columns(width, 7) == columns
+
+
 def test_prediction_pulse_uses_standard_routes_in_horizon_order(
     tmp_path: Path,
 ) -> None:

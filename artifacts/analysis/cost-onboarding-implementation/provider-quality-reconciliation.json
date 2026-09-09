@@ -1,0 +1,44 @@
+{
+  "observed_at": "2026-09-06T09:38:36.959813+00:00",
+  "excluded_date_counts": [
+    {
+      "schema": "ohlcv-1h",
+      "date": "2024-06-03",
+      "provider_records": 7668
+    },
+    {
+      "schema": "ohlcv-1h",
+      "date": "2025-10-22",
+      "provider_records": 5966
+    },
+    {
+      "schema": "ohlcv-1d",
+      "date": "2021-06-18",
+      "provider_records": 1683
+    },
+    {
+      "schema": "ohlcv-1d",
+      "date": "2024-06-03",
+      "provider_records": 4102
+    },
+    {
+      "schema": "ohlcv-1d",
+      "date": "2025-10-22",
+      "provider_records": 3795
+    }
+  ],
+  "reconciliation": [
+    {
+      "schema": "ohlcv-1h",
+      "ignored_provider_records": 13634,
+      "broad_count_difference": 17170,
+      "matches": false
+    },
+    {
+      "schema": "ohlcv-1d",
+      "ignored_provider_records": 9580,
+      "broad_count_difference": 9580,
+      "matches": true
+    }
+  ]
+}

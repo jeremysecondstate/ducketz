@@ -25,6 +25,7 @@ ducketz-option-pricing = "ml.option_pricing_runtime:main"
 ducketz-opra-sync = "ml.option_pricing_opra:main"
 ducketz-options-history = "datafetching.options_history:main"
 ducketz-databento-cold-start = "datafetching.databento_cold_start:main"
+ducketz-symbol-onboarding = "datafetching.symbol_onboarding:main"
 ducketz-equity-dataset-migration = "datafetching.equity_dataset_migration:main"
 ducketz-datastore-hygiene = "datafetching.datastore_hygiene:main"
 ducketz-opra-pricing-replay = "ml.option_pricing_opra_replay:main"
@@ -86,6 +87,7 @@ include = [
 ]
 
 [tool.setuptools.package-data]
+"datafetching" = ["watchlist.txt"]
 "app.ui" = [
     "assets/hyperliquid/*.png",
     "assets/hyperliquid/*.md",

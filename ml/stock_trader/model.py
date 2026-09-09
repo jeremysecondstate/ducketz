@@ -19,10 +19,19 @@ from ml.stock_trader.contracts import (
     finite,
     utc,
 )
+from ml.stock_trader.market_features import INDEPENDENT_MARKET_FEATURE_NAMES, frozen_market_feature_values
 
 
 ENRICHMENT_MODEL_SCHEMA_VERSION = "stock-trader-enrichment-model-v1"
 ENRICHMENT_MODEL_POINTER_VERSION = "stock-trader-enrichment-model-pointer-v1"
+INDEPENDENT_ENRICHMENT_SCHEMA_VERSION = "stock-trader-independent-enrichment-model-v1"
+INDEPENDENT_ENRICHMENT_FEATURE_NAMES: tuple[str, ...] = (
+    "assumed_round_trip_cost", "log_target_duration_minutes",
+    "target_clock_sin", "target_clock_cos", "target_weekday_sin", "target_weekday_cos",
+    *(f"symbol_{symbol}" for symbol in STOCK_TRADER_SYMBOLS),
+)
+INDEPENDENT_MARKET_ENRICHMENT_FEATURE_NAMES = (*INDEPENDENT_ENRICHMENT_FEATURE_NAMES, *INDEPENDENT_MARKET_FEATURE_NAMES)
+INDEPENDENT_ENRICHMENT_FEATURE_CONTRACT_VERSION = "independent-stock-enrichment-market-features-v1"
 ENRICHMENT_FEATURE_NAMES: tuple[str, ...] = (
     "calibrated_probability",
     "signed_signal",
@@ -44,12 +53,7 @@ ENRICHMENT_FEATURE_NAMES: tuple[str, ...] = (
     "prediction_age_minutes",
     "time_of_day_sin",
     "time_of_day_cos",
-    "symbol_AAPL",
-    "symbol_AMZN",
-    "symbol_GOOG",
-    "symbol_MU",
-    "symbol_NVDA",
-    "symbol_SNDK",
+    *(f"symbol_{symbol}" for symbol in STOCK_TRADER_SYMBOLS),
 )
 _HEAD_LINKS: Mapping[str, str] = {
     "trade_probability": "sigmoid",
@@ -93,6 +97,8 @@ class LinearEnrichmentModel:
     feature_means: tuple[float, ...]
     feature_scales: tuple[float, ...]
     heads: Mapping[str, LinearHead]
+    supported_horizons: tuple[str, ...] = ("1h",)
+    qualified_target_contracts: tuple[str, ...] = ()
 
     def predict(self, feature_values: Mapping[str, float]) -> EnrichmentOutput:
         missing = [name for name in self.feature_names if name not in feature_values]
@@ -187,10 +193,20 @@ def build_feature_values(
             for symbol in STOCK_TRADER_SYMBOLS
         }
     )
+    from ml.independent_stock_targets import STOCK_TARGET_CONTRACT_VERSION
+    if signal.target_definition_version == STOCK_TARGET_CONTRACT_VERSION:
+        values.update(independent_target_feature_values(
+            symbol=signal.symbol, horizon=signal.primary_horizon,
+            start=signal.target_window_start, end=signal.target_window_end,
+            cost=signal.assumed_round_trip_cost,
+        ))
+        market_values = getattr(signal, "enrichment_feature_values", {})
+        if market_values:
+            values.update(frozen_market_feature_values(market_values))
     return values
 
 
-def load_current_enrichment_model(datastore_root: Path) -> LinearEnrichmentModel:
+def load_current_enrichment_model(datastore_root: Path) -> EnrichmentModel:
     root = Path(datastore_root).resolve()
     pointer_path = root / "ml" / "stock-trader-model-latest" / "run.json"
     pointer = _read_object(pointer_path, "stock trader model pointer")
@@ -213,6 +229,9 @@ def load_current_enrichment_model(datastore_root: Path) -> LinearEnrichmentModel
     if pointer.get("model_sha256") != file_checksum(model_path):
         raise ValueError("Stock trader model pointer model checksum does not match")
     payload = _read_object(model_path, "stock trader enrichment model")
+    if payload.get("schema_version") == INDEPENDENT_ENRICHMENT_SCHEMA_VERSION:
+        from ml.stock_trader.independent_training import verify_independent_model_sources
+        verify_independent_model_sources(root, payload, manifest)
     model = model_from_payload(payload)
     if pointer.get("model_fingerprint") != model.model_fingerprint:
         raise ValueError("Stock trader model pointer fingerprint does not match")
@@ -229,9 +248,18 @@ def load_current_enrichment_model(datastore_root: Path) -> LinearEnrichmentModel
     return model
 
 
-def model_from_payload(payload: Mapping[str, object]) -> LinearEnrichmentModel:
+def model_from_payload(payload: Mapping[str, object]) -> EnrichmentModel:
+    if payload.get("schema_version") == INDEPENDENT_ENRICHMENT_SCHEMA_VERSION:
+        from ml.stock_trader.independent_training import independent_model_from_payload
+        return independent_model_from_payload(payload)
     if payload.get("schema_version") != ENRICHMENT_MODEL_SCHEMA_VERSION:
         raise ValueError("Unsupported stock trader enrichment model schema")
+    training = payload.get("training")
+    if isinstance(training, Mapping):
+        if tuple(training.get("supported_horizons", ("1h",))) != ("1h",):
+            raise ValueError("Hourly enrichment v1 cannot claim unsupported horizon qualification")
+        if training.get("qualified_target_contracts"):
+            raise ValueError("Hourly enrichment v1 cannot claim independent target-contract qualification")
     feature_names = tuple(str(value) for value in _sequence(payload.get("feature_names")))
     if feature_names != ENRICHMENT_FEATURE_NAMES:
         raise ValueError("Stock trader enrichment model feature contract differs")
@@ -277,6 +305,177 @@ def model_from_payload(payload: Mapping[str, object]) -> LinearEnrichmentModel:
         feature_scales=scales,
         heads=heads,
     )
+
+
+def enrichment_signal_readiness(
+    model: EnrichmentModel,
+    signal: PredictionSignal,
+) -> dict[str, object]:
+    """Report whether fitted enrichment evidence covers this exact signal scope.
+
+The existing v1 trainer uses prospective hourly outcomes and constant 60-minute
+holding targets. It supplies no duration-qualified independent-target evidence,
+including for the independent hourly route. A new direction model alone cannot
+extend that enrichment authority to another target contract or horizon.
+"""
+
+    from ml.independent_stock_targets import STOCK_TARGET_CONTRACT_VERSION
+
+    if isinstance(model, IndependentEnrichmentModel):
+        return model.signal_readiness(signal)
+
+    horizon = str(signal.primary_horizon)
+    target_contract = str(signal.target_definition_version)
+    duration = (utc(signal.target_window_end) - utc(signal.target_window_start)).total_seconds() / 60.0
+    if target_contract == STOCK_TARGET_CONTRACT_VERSION:
+        reason = "ENRICHMENT_INDEPENDENT_TARGET_CONTRACT_NOT_QUALIFIED"
+    elif horizon not in model.supported_horizons:
+        reason = "ENRICHMENT_HORIZON_NOT_QUALIFIED"
+    elif duration != 60.0:
+        reason = "ENRICHMENT_TARGET_DURATION_NOT_QUALIFIED"
+    else:
+        reason = "ENRICHMENT_HOURLY_SCOPE_SUPPORTED"
+    return {
+        "status": "READY" if reason == "ENRICHMENT_HOURLY_SCOPE_SUPPORTED" else "NOT_READY",
+        "reason": reason,
+        "model_fingerprint": model.model_fingerprint,
+        "requested_horizon": horizon,
+        "requested_target_contract": target_contract,
+        "requested_duration_minutes": duration,
+        "supported_horizons": list(model.supported_horizons),
+        "qualified_target_contracts": list(model.qualified_target_contracts),
+        "holding_target_minutes": 60.0,
+        "qualification_basis": "Existing v1 enrichment fits hourly outcomes with constant 60-minute holding targets and has no independent-target qualification.",
+    }
+
+
+def require_enrichment_signal_support(model: EnrichmentModel, signal: PredictionSignal) -> None:
+    """Refuse applying hourly fitted sizing evidence to unqualified targets."""
+
+    readiness = enrichment_signal_readiness(model, signal)
+    if readiness["status"] != "READY":
+        raise ValueError(
+            f"{readiness['reason']}: {signal.symbol}/{signal.primary_horizon} "
+            f"requires {signal.target_definition_version or 'unspecified target contract'} "
+            f"and {readiness['requested_duration_minutes']:g} minutes; current enrichment "
+            f"does not supply qualified fitted evidence for that exact scope ({readiness['qualification_basis']})"
+        )
+
+
+def independent_target_feature_values(*, symbol: str, horizon: str, start: object,
+                                      end: object, cost: float) -> dict[str, float]:
+    """Features available before entry; no invented historical quote/portfolio inputs."""
+    from ml.independent_stock_targets import GROUPS, STOCK_TIMEZONE
+    left, right = utc(start), utc(end)
+    minutes = (right - left).total_seconds() / 60.0
+    if horizon not in GROUPS or minutes <= 0 or symbol not in STOCK_TRADER_SYMBOLS:
+        raise ValueError("Invalid independent enrichment target features")
+    local = left.tz_convert(STOCK_TIMEZONE)
+    angle = 2 * math.pi * (local.hour * 60 + local.minute) / 1440
+    weekday = 2 * math.pi * local.weekday() / 7
+    return {
+        "assumed_round_trip_cost": max(0.0, float(cost)),
+        "log_target_duration_minutes": math.log(minutes),
+        "target_clock_sin": math.sin(angle), "target_clock_cos": math.cos(angle),
+        "target_weekday_sin": math.sin(weekday), "target_weekday_cos": math.cos(weekday),
+        **{f"symbol_{item}": float(item == symbol) for item in STOCK_TRADER_SYMBOLS},
+        **{f"independent_horizon_{item}": float(item == horizon) for item in GROUPS},
+        "target_duration_minutes": minutes, "target_anchor_hour": float(local.hour),
+    }
+
+
+def independent_scope_key(symbol: str, horizon: str, start: object, end: object) -> str:
+    from ml.independent_stock_targets import STOCK_TIMEZONE
+    left, right = utc(start), utc(end)
+    local = left.tz_convert(STOCK_TIMEZONE)
+    route = f"{horizon}@{local.hour:02d}:00" if horizon in {"1h", "4h"} else f"{horizon}@D+{1 if horizon == '1d' else 5}"
+    duration = (right - left).total_seconds() / 60
+    return f"{symbol}|{route}|{duration:g}m"
+
+
+@dataclass(frozen=True)
+class IndependentEnrichmentModel:
+    """Distinct horizon fits whose execution support is derived from held-out evidence."""
+
+    model_name: str
+    model_version: str
+    model_fingerprint: str
+    horizon_models: Mapping[str, LinearEnrichmentModel]
+    calibration: Mapping[str, tuple[float, float]]
+    scope_readiness: Mapping[str, Mapping[str, object]]
+
+    @property
+    def supported_horizons(self) -> tuple[str, ...]:
+        from ml.independent_stock_targets import GROUPS
+        return tuple(group for group in GROUPS if any(
+            value.get("status") == "READY" and key.split("|", 2)[1].startswith(group + "@")
+            for key, value in self.scope_readiness.items()))
+
+    @property
+    def qualified_target_contracts(self) -> tuple[str, ...]:
+        from ml.independent_stock_targets import STOCK_TARGET_CONTRACT_VERSION
+        return (STOCK_TARGET_CONTRACT_VERSION,) if self.supported_horizons else ()
+
+    def signal_readiness(self, signal: PredictionSignal) -> dict[str, object]:
+        from ml.independent_stock_targets import STOCK_TARGET_CONTRACT_VERSION, STOCK_TIMEZONE, stock_target_windows
+        duration = (utc(signal.target_window_end) - utc(signal.target_window_start)).total_seconds() / 60
+        reason = "ENRICHMENT_EXACT_SCOPE_NOT_QUALIFIED"
+        scope = independent_scope_key(signal.symbol, signal.primary_horizon, signal.target_window_start, signal.target_window_end)
+        support = self.scope_readiness.get(scope, {})
+        fitted = self.horizon_models.get(signal.primary_horizon)
+        requires_market = fitted is not None and any(name in fitted.feature_names for name in INDEPENDENT_MARKET_FEATURE_NAMES)
+        market_ready = True
+        if requires_market:
+            try:
+                frozen_market_feature_values(getattr(signal, "enrichment_feature_values", {}))
+            except (ValueError, TypeError, AttributeError):
+                market_ready = False
+        valid_window = False
+        try:
+            valid_window = any(
+                spec["execution_eligible"] and spec["model_group"] == signal.primary_horizon
+                and utc(spec["target_window_start"]) == utc(signal.target_window_start)
+                and utc(spec["target_window_end"]) == utc(signal.target_window_end)
+                for spec in stock_target_windows(utc(signal.target_window_start).tz_convert(STOCK_TIMEZONE).date()))
+        except (ValueError, TypeError):
+            pass
+        if signal.target_definition_version != STOCK_TARGET_CONTRACT_VERSION:
+            reason = "ENRICHMENT_TARGET_CONTRACT_MISMATCH"
+        elif not valid_window:
+            reason = "ENRICHMENT_EXACT_TARGET_WINDOW_INVALID"
+        elif support and getattr(signal, "target_price_source_contract", "") != support.get("target_price_source_contract"):
+            reason = "ENRICHMENT_TARGET_PRICE_SOURCE_MISMATCH"
+        elif not market_ready:
+            reason = "ENRICHMENT_MARKET_FEATURES_MISSING_OR_NONFINITE"
+        elif support.get("status") == "READY":
+            reason = "ENRICHMENT_INDEPENDENT_EXACT_SCOPE_SUPPORTED"
+        return {
+            "status": "READY" if reason == "ENRICHMENT_INDEPENDENT_EXACT_SCOPE_SUPPORTED" else "NOT_READY",
+            "reason": reason, "scope": scope, "evidence": dict(support),
+            "model_fingerprint": self.model_fingerprint, "requested_horizon": signal.primary_horizon,
+            "requested_target_contract": signal.target_definition_version,
+            "requested_duration_minutes": duration, "supported_horizons": list(self.supported_horizons),
+            "requested_target_price_source": getattr(signal, "target_price_source_contract", ""),
+            "required_market_feature_names": list(INDEPENDENT_MARKET_FEATURE_NAMES) if requires_market else [],
+            "qualified_target_contracts": list(self.qualified_target_contracts),
+            "qualification_basis": "Separate exact-target long-stock fits and untouched chronological assessment, by symbol/route/elapsed duration.",
+        }
+
+    def predict(self, feature_values: Mapping[str, float]) -> EnrichmentOutput:
+        from dataclasses import replace
+        from ml.independent_stock_targets import GROUPS
+        groups = [name for name in GROUPS if feature_values.get(f"independent_horizon_{name}") == 1.0]
+        if len(groups) != 1 or groups[0] not in self.horizon_models:
+            raise ValueError("Independent enrichment requires a fitted horizon and exact target features")
+        group = groups[0]
+        result = self.horizon_models[group].predict(feature_values)
+        probability = min(1 - 1e-12, max(1e-12, result.trade_probability))
+        slope, intercept = self.calibration[group]
+        calibrated = _apply_link(slope * math.log(probability / (1 - probability)) + intercept, "sigmoid")
+        # Expiry is a contractual quantity, never an estimated 60-minute proxy.
+        return replace(result, model_name=self.model_name, model_version=self.model_version,
+                       model_fingerprint=self.model_fingerprint, trade_probability=calibrated,
+                       expected_holding_minutes=float(feature_values["target_duration_minutes"]))
 
 
 def _apply_link(value: float, link: str) -> float:
@@ -333,6 +532,8 @@ __all__ = [
     "EnrichmentModel",
     "LinearEnrichmentModel",
     "build_feature_values",
+    "enrichment_signal_readiness",
     "load_current_enrichment_model",
     "model_from_payload",
+    "require_enrichment_signal_support",
 ]

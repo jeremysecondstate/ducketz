@@ -443,3 +443,61 @@ def test_flat_assessment_does_not_claim_the_calibrator_itself_is_constant() -> N
     )
     assert report["information_available"] is False
     assert report["status"] == "FLAT_ASSESSMENT"
+
+
+@pytest.mark.parametrize("independent", [False, True])
+def test_pooled_promotion_cannot_promote_a_symbol_without_fitted_targets(tmp_path, monkeypatch, independent) -> None:
+    from sklearn.compose import ColumnTransformer
+    from sklearn.pipeline import Pipeline
+    from sklearn.tree import DecisionTreeClassifier
+    from ml.calibration import IdentityCalibrator
+
+    monkeypatch.setattr("ml.nightly_gameplan._estimator", lambda *args: Pipeline([
+        ("features", ColumnTransformer([("x", "passthrough", ["mr__x"])])),
+        ("classifier", DecisionTreeClassifier(max_depth=1, random_state=0)),
+    ]))
+    monkeypatch.setattr("ml.nightly_gameplan.fit_probability_calibrator", lambda *args, **kwargs: IdentityCalibrator())
+    starts = pd.date_range("2026-01-01", periods=120, freq="D", tz="UTC")
+    samples = pd.DataFrame({
+        "symbol": "AAPL", "model_group": "1d", "route": "1d@D+1",
+        "forecast_anchor_local": "D+1", "decision_timestamp": starts,
+        "information_available_at": starts, "target_window_start": starts,
+        "target_window_end": starts + pd.Timedelta(hours=13),
+        "target_semantics": "extended-session", "target": np.arange(120) % 2, "trading_hours": 13.0,
+        "mr__x": (np.arange(120) % 2).astype(float),
+    })
+    current = pd.concat([samples.tail(2), samples.tail(2).assign(symbol="COST"),
+                         samples.tail(2).assign(route="1d@D+2")], ignore_index=True)
+    if independent:
+        current["target_contract_version"] = "independent-stock-targets-v1"
+    result = _fit_group_model(samples, current=current, feature_columns=("mr__x",),
+        group="1d", model_directory=tmp_path / "models/1d", trained_at=starts[-1])
+    report = result["report"]
+    assert report["promotion_gate"]["status"] == "PROMOTED"
+    rows = result["forecasts"]
+    if independent:
+        assert report["target_calendar_feature_contract"] == "independent-stock-known-calendar-inputs-v1"
+        assert "target__weekday_sin" in report["features"]["admitted"]
+    else:
+        assert report["target_calendar_feature_contract"] is None
+        assert report["target_calendar_feature_names"] == []
+        assert not any(name.startswith("target__") for name in rows.columns)
+    supported = rows.symbol.eq("AAPL") & rows.route.eq("1d@D+1")
+    assert rows.loc[supported, "model_status"].eq("PROMOTED").all()
+    unseen_route = rows.symbol.eq("AAPL") & rows.route.eq("1d@D+2")
+    expected = "RESEARCH_NO_TARGET_HISTORY" if independent else "PROMOTED"
+    assert rows.loc[unseen_route, "model_status"].eq(expected).all()
+    if independent:
+        assert rows.loc[unseen_route, "symbol_fitted_target_rows"].gt(0).all()
+        assert rows.loc[unseen_route, "symbol_route_fitted_target_rows"].eq(0).all()
+        assert rows.loc[supported, "symbol_route_fitted_target_rows"].gt(0).all()
+    assert rows.loc[rows.symbol.eq("COST"), "model_status"].eq("RESEARCH_NO_TARGET_HISTORY").all()
+    assert rows.loc[rows.symbol.eq("COST"), "symbol_fitted_target_rows"].eq(0).all()
+    assert report["target_support_by_symbol"]["COST"]["admitted_rows"] == 0
+    assert report["target_support_by_symbol"]["COST"]["assessment_rows"] == 0
+    assert report["assessment_by_symbol"]["COST"] is None
+    aapl = report["target_support_by_symbol"]["AAPL"]
+    assert aapl["admitted_rows"] == 120
+    assert aapl["admitted_rows_by_route"] == {"1d@D+1": 120}
+    assert aapl["fitted_rows"] > 0
+    assert aapl["assessment_rows"] == report["assessment_by_symbol"]["AAPL"]["rows"]

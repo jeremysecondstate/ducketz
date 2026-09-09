@@ -1,0 +1,189 @@
+{
+  "schema_version": "stock-automation-verification-v1",
+  "verified_at_utc": "2026-09-08T07:15:07.224104+00:00",
+  "status": "VERIFIED",
+  "scope": "Read-only comparison of the four specified automation TOMLs against the before snapshot; no automation configs modified.",
+  "before_snapshot_path": "C:\\dev\\ducketz\\artifacts\\analysis\\cost-onboarding-implementation\\stock-automations-before.json",
+  "before_snapshot_sha256": "a79d1351cdfccfe0129f21efff4fe28811cdbec2947744b916f2073defb8ee45",
+  "schedule_timezone_context": "America/Los_Angeles; no explicit timezone field changed in these TOMLs.",
+  "intended_commands": {
+    "session_worker": ".\\.venv\\Scripts\\python.exe -u -m ml.gameplan_stock_trader --datastore-target pc --execute --target-horizon all --run-session",
+    "overnight": ".\\.venv\\Scripts\\python.exe -u -m ml.overnight_runtime --datastore-target pc --once --scheduled --stock-only --independent-stock-horizons",
+    "health_watch_missing_run_flags": "--once --scheduled --stock-only --independent-stock-horizons"
+  },
+  "checks": {
+    "one_active_stock_session_owner_among_changed_tasks": true,
+    "worker_active_weekdays_0359": true,
+    "worker_exact_native_session_command": true,
+    "worker_has_no_legacy_hourly_command": true,
+    "worker_documents_unqualified_immediate_noop": true,
+    "worker_documents_existing_combined_order_cap": true,
+    "worker_requires_persistent_controls_and_enrichment": true,
+    "transition_paused_with_previous_prompt_and_schedule_preserved": true,
+    "overnight_active_previous_1705_schedule_preserved": true,
+    "overnight_exact_stock_only_independent_command": true,
+    "overnight_preserves_supervision_and_no_order_rules": true,
+    "watch_active_previous_ten_minute_schedule_preserved": true,
+    "watch_missing_run_command_has_both_new_flags": true,
+    "watch_preserves_verified_resume_scope": true,
+    "watch_cannot_start_daytime_owner": true,
+    "all_model_reasoning_notifications_execution_workspaces_and_project_fields_preserved": true
+  },
+  "automations": {
+    "loops-stock-trader-live-shadow": {
+      "source_path": "C:\\Users\\7980X\\.codex\\automations\\loops-stock-trader-live-shadow\\automation.toml",
+      "source_sha256": "95b7d79dbe0f05d8640d9768817f9adf5321c23ff6ad185d72586743becd6206",
+      "name": "Loops Gameplan Stock Trader — Independent Horizons",
+      "status": "ACTIVE",
+      "rrule": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=3;BYMINUTE=59",
+      "model": "gpt-6-astra",
+      "reasoning_effort": "max",
+      "notification_policy": "failed_runs_only",
+      "execution_environment": "local",
+      "target": {
+        "type": "project",
+        "project_id": "c899e194-7020-4972-99bb-bc40bea2ae8c"
+      },
+      "cwds": [
+        "C:\\dev\\ducketz",
+        "C:\\DATASTORE"
+      ],
+      "changed_fields": [
+        "name",
+        "prompt",
+        "rrule",
+        "updated_at"
+      ],
+      "unexpected_changed_fields": [],
+      "preserved_fields": {
+        "version": true,
+        "id": true,
+        "kind": true,
+        "model": true,
+        "reasoning_effort": true,
+        "notification_policy": true,
+        "execution_environment": true,
+        "target": true,
+        "cwds": true,
+        "created_at": true
+      },
+      "prompt_sha256": "8a5d8c4390f99e357ed78d7033593e3e287b1813ebb9831dc6657c5453bc9a82",
+      "updated_at_utc": "2026-09-08T07:06:56.958000+00:00"
+    },
+    "loops-gameplan-stock-trader-1-p-m-transition": {
+      "source_path": "C:\\Users\\7980X\\.codex\\automations\\loops-gameplan-stock-trader-1-p-m-transition\\automation.toml",
+      "source_sha256": "71e1f59bb2dc70868b6d9f46defe3b3aa2018fac8a275f66dd0444a263f6c88e",
+      "name": "Loops Gameplan Stock Trader — 1 p.m. Transition",
+      "status": "PAUSED",
+      "rrule": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=13;BYMINUTE=5",
+      "model": "gpt-6-astra",
+      "reasoning_effort": "max",
+      "notification_policy": "failed_runs_only",
+      "execution_environment": "local",
+      "target": {
+        "type": "project",
+        "project_id": "c899e194-7020-4972-99bb-bc40bea2ae8c"
+      },
+      "cwds": [
+        "C:\\dev\\ducketz",
+        "C:\\DATASTORE"
+      ],
+      "changed_fields": [
+        "status",
+        "updated_at"
+      ],
+      "unexpected_changed_fields": [],
+      "preserved_fields": {
+        "version": true,
+        "id": true,
+        "kind": true,
+        "model": true,
+        "reasoning_effort": true,
+        "notification_policy": true,
+        "execution_environment": true,
+        "target": true,
+        "cwds": true,
+        "created_at": true
+      },
+      "prompt_sha256": "d5f04f678601131d73dc8950d38325eb341f9530ee0c9562a6fb27864d45f785",
+      "updated_at_utc": "2026-09-08T07:06:57.047000+00:00"
+    },
+    "loops-hourly-operations": {
+      "source_path": "C:\\Users\\7980X\\.codex\\automations\\loops-hourly-operations\\automation.toml",
+      "source_sha256": "4382bbef181a5f08ccb05ba44547c475a855912cefcbd3f079d8eaa10fd64231",
+      "name": "Loops Overnight Gameplan",
+      "status": "ACTIVE",
+      "rrule": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=17;BYMINUTE=5",
+      "model": "gpt-6-astra",
+      "reasoning_effort": "ultra",
+      "notification_policy": "failed_runs_only",
+      "execution_environment": "local",
+      "target": {
+        "type": "project",
+        "project_id": "c899e194-7020-4972-99bb-bc40bea2ae8c"
+      },
+      "cwds": [
+        "C:\\dev\\ducketz",
+        "C:\\DATASTORE"
+      ],
+      "changed_fields": [
+        "prompt",
+        "updated_at"
+      ],
+      "unexpected_changed_fields": [],
+      "preserved_fields": {
+        "version": true,
+        "id": true,
+        "kind": true,
+        "model": true,
+        "reasoning_effort": true,
+        "notification_policy": true,
+        "execution_environment": true,
+        "target": true,
+        "cwds": true,
+        "created_at": true
+      },
+      "prompt_sha256": "d00daf3c8b89cba6e2c342fcd50270217262e841e4770ee71fd2153e02329a98",
+      "updated_at_utc": "2026-09-08T07:07:48.525000+00:00"
+    },
+    "loops-stock-trader-daily-adaptation": {
+      "source_path": "C:\\Users\\7980X\\.codex\\automations\\loops-stock-trader-daily-adaptation\\automation.toml",
+      "source_sha256": "e33091c54ba4ca57d005e435c4038e86cb053960f45b7322b7ac1014e417fc9c",
+      "name": "Loops Overnight Health Watch",
+      "status": "ACTIVE",
+      "rrule": "FREQ=HOURLY;INTERVAL=1;BYMINUTE=0,10,20,30,40,50;BYSECOND=0",
+      "model": "gpt-6-astra",
+      "reasoning_effort": "ultra",
+      "notification_policy": "failed_runs_only",
+      "execution_environment": "local",
+      "target": {
+        "type": "project",
+        "project_id": "c899e194-7020-4972-99bb-bc40bea2ae8c"
+      },
+      "cwds": [
+        "C:\\dev\\ducketz",
+        "C:\\DATASTORE"
+      ],
+      "changed_fields": [
+        "prompt",
+        "updated_at"
+      ],
+      "unexpected_changed_fields": [],
+      "preserved_fields": {
+        "version": true,
+        "id": true,
+        "kind": true,
+        "model": true,
+        "reasoning_effort": true,
+        "notification_policy": true,
+        "execution_environment": true,
+        "target": true,
+        "cwds": true,
+        "created_at": true
+      },
+      "prompt_sha256": "fbd711c96ff38aaebb3b93c243aa0b90ee1e3b5a07408d99f43e52b31c56db97",
+      "updated_at_utc": "2026-09-08T07:07:48.617000+00:00"
+    }
+  },
+  "discrepancies": []
+}

@@ -18,6 +18,7 @@ from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import brier_score_loss, log_loss
 from sklearn.neural_network import MLPClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
@@ -34,6 +35,26 @@ from ml.artifacts import (
 from ml.training_progress import fit_with_progress
 from ml.calibration import IdentityCalibrator, fit_probability_calibrator
 from ml.current_publication import read_current_publication
+from ml.gameplan_estimators import ProbabilityBlend as _ProbabilityBlend
+from ml.gameplan_development_selection import (
+    DAILY_LOGISTIC_REGULARIZATION_POLICY,
+    DEVELOPMENT_SELECTION_POLICY,
+    logistic_regularization_candidates,
+    select_development_calibrator,
+)
+from ml.independent_stock_targets import (
+    STOCK_TARGET_CONTRACT_VERSION,
+    STOCK_CALENDAR_FEATURE_CONTRACT, STOCK_CALENDAR_FEATURE_NAMES, with_stock_calendar_features,
+    build_stock_current_groups,
+    build_stock_training_groups,
+)
+from ml.stock_target_prices import (
+    CANONICAL_STOCK_PRICE_SOURCE, STOCK_PRICE_SOURCES,
+    load_stock_target_prices, stock_price_dataset,
+)
+from ml.stock_trader.market_features import (
+    INDEPENDENT_MARKET_FEATURE_CONTRACT, frozen_market_feature_values,
+)
 from ml.strategy_publication import read_current_strategy_publication
 from ml.strategy_selection.contracts import (
     BLACK_SCHOLES_CALIBRATED_MODEL_SCORE_BASIS,
@@ -104,31 +125,14 @@ class GameplanPublication:
     pointer: Mapping[str, object]
 
 
-class _ProbabilityBlend:
-    """Joblib-safe convex blend selected only on a chronological cohort."""
-
-    def __init__(
-        self,
-        tree: object,
-        neural: object,
-        *,
-        neural_weight: float,
-    ) -> None:
-        self.tree = tree
-        self.neural = neural
-        self.neural_weight = float(neural_weight)
-
-    def predict_proba(self, frame: pd.DataFrame) -> np.ndarray:
-        tree = np.asarray(self.tree.predict_proba(frame), dtype=float)
-        neural = np.asarray(self.neural.predict_proba(frame), dtype=float)
-        return (1.0 - self.neural_weight) * tree + self.neural_weight * neural
-
-
 def run_nightly_gameplan_once(
     datastore_root: Path,
     *,
     run_timestamp: object | None = None,
     reporter: Callable[[str], None] | None = print,
+    stock_only: bool = False,
+    independent_stock_horizons: bool = False,
+    stock_price_source: str = CANONICAL_STOCK_PRICE_SOURCE,
 ) -> NightlyGameplanResult:
     """Train, freeze, and atomically publish one next-session gameplan.
 
@@ -137,20 +141,40 @@ def run_nightly_gameplan_once(
     order.  The run directory is immutable after its receipt is published.
     """
 
+    if independent_stock_horizons and not stock_only:
+        raise ValueError("Independent stock horizons require explicit stock-only preparation")
+    price_dataset = stock_price_dataset(stock_price_source)
+    if stock_price_source != CANONICAL_STOCK_PRICE_SOURCE and not independent_stock_horizons:
+        raise ValueError("An alternate stock price source requires explicit independent stock horizons")
+    target_contract = STOCK_TARGET_CONTRACT_VERSION if independent_stock_horizons else TARGET_CONTRACT_VERSION
     root = Path(datastore_root).resolve()
     created = utc_timestamp(run_timestamp)
     loop_b = read_current_publication(root)
-    strategy = read_current_strategy_publication(root)
+    strategy = None if stock_only else read_current_strategy_publication(root)
     samples_path = loop_b.run_directory / "samples.parquet"
     predictions_path = loop_b.run_directory / "predictions.parquet"
-    candidates_path = strategy.run_directory / "strategy-candidates.parquet"
-    if not all(path.is_file() for path in (samples_path, predictions_path, candidates_path)):
+    strategy_inputs = (
+        () if strategy is None else (
+            strategy.run_directory / "strategy-candidates.parquet",
+            strategy.run_directory / "manifest.json",
+            strategy.run_directory / "publication.json",
+        )
+    )
+    source_strategy = (
+        None if strategy is None else strategy.run_directory.relative_to(root).as_posix()
+    )
+    if not all(path.is_file() for path in (samples_path, predictions_path, *strategy_inputs)):
         raise RuntimeError("Nightly gameplan inputs are incomplete")
 
     samples = pd.read_parquet(samples_path)
-    candidates = pd.read_parquet(candidates_path)
+    candidates = (
+        pd.DataFrame(columns=["symbol", "horizon"])
+        if stock_only else pd.read_parquet(strategy_inputs[0])
+    )
     symbols = _configured_symbols(loop_b.manifest, samples)
     feature_columns = _feature_columns(loop_b.manifest, samples)
+    if independent_stock_horizons:
+        feature_columns = tuple(dict.fromkeys((*feature_columns, *STOCK_CALENDAR_FEATURE_NAMES)))
     sources = _overnight_sources(samples, symbols=symbols, available_at=created)
     current_sources, action_date = _current_overnight_sources(
         sources,
@@ -173,28 +197,66 @@ def run_nightly_gameplan_once(
             current_sources["bar_end_timestamp"], utc=True, errors="coerce"
         ).max().date(),
     )
-    minute_bars, minute_bar_files = _load_equity_minute_bars(root, symbols=symbols)
-    groups = _build_training_groups(
-        samples,
-        sources=sources,
-        feature_columns=feature_columns,
-        minute_bars=minute_bars,
-    )
+    if stock_price_source == CANONICAL_STOCK_PRICE_SOURCE:
+        minute_bars, minute_bar_files = _load_equity_minute_bars(root, symbols=symbols)
+        price_source_report = {"source_contract": stock_price_source, "dataset": price_dataset,
+                               "schema": "ohlcv-1m", "source_policy": "existing_canonical_equity_minutes"}
+    else:
+        minute_bars, minute_bar_files, price_source_report = load_stock_target_prices(
+            root, symbols=symbols, source_contract=stock_price_source,
+        )
+    if independent_stock_horizons:
+        groups = build_stock_training_groups(
+            sources, feature_columns=feature_columns, minute_bars=minute_bars, available_at=created,
+            price_source_contract=stock_price_source,
+        )
+        for group, frame in groups.items():
+            if frame.empty or frame["target"].nunique() != 2:
+                raise RuntimeError(
+                    f"Independent stock {group} training labels unavailable: "
+                    f"rows={len(frame)}; exact_boundary_quality={frame.attrs.get('target_boundary_quality')}"
+                )
+    else:
+        groups = _build_training_groups(
+            samples, sources=sources, feature_columns=feature_columns, minute_bars=minute_bars,
+        )
     # Save evaluation independently before fitting, even if this new plan fails.
-    from ml.gameplan_evaluation import evaluate_saved_gameplans
+    from ml.gameplan_evaluation import evaluate_saved_gameplans, saved_independent_price_sources
 
+    evaluation_groups = dict(groups)
+    evaluation_price_files = list(minute_bar_files)
+    if independent_stock_horizons and any((root / "ml/nightly-gameplan-runs").glob("*/receipt.json")):
+        legacy_bars = minute_bars
+        if stock_price_source != CANONICAL_STOCK_PRICE_SOURCE:
+            legacy_bars, legacy_files = _load_equity_minute_bars(root, symbols=symbols)
+            evaluation_price_files.extend(legacy_files)
+        legacy_hourly, legacy_four = _intraday_outcomes(sources=sources, feature_columns=(), minute_bars=legacy_bars)
+        legacy_daily, legacy_weekly = _daily_weekly_outcomes(samples, feature_columns=())
+        evaluation_groups.update({"legacy/1h": legacy_hourly, "legacy/4h": legacy_four,
+                                  "legacy/1d": legacy_daily, "legacy/1w": legacy_weekly})
+        for historical_source in saved_independent_price_sources(root) - {stock_price_source}:
+            if historical_source == CANONICAL_STOCK_PRICE_SOURCE:
+                historical_bars = legacy_bars
+            else:
+                historical_bars, historical_files, _ = load_stock_target_prices(
+                    root, symbols=symbols, source_contract=historical_source,
+                )
+                evaluation_price_files.extend(historical_files)
+            historical = build_stock_training_groups(sources, feature_columns=(),
+                minute_bars=historical_bars, available_at=created, price_source_contract=historical_source)
+            evaluation_groups.update({f"{historical_source}/{group}": frame for group, frame in historical.items()})
     evaluation = evaluate_saved_gameplans(
-        root, observed_groups=groups, evaluated_at=created,
-        input_files=(samples_path, *minute_bar_files),
+        root, observed_groups=evaluation_groups, evaluated_at=created,
+        input_files=(samples_path, *dict.fromkeys(evaluation_price_files)),
     )
     prior_evaluations = evaluation.evaluations
-    current = _build_current_groups(
-        samples,
-        current_sources=current_sources,
-        action_date=action_date,
-        as_of=created,
-        symbols=symbols,
-        feature_columns=feature_columns,
+    current = (
+        build_stock_current_groups(current_sources, feature_columns=feature_columns,
+                                   price_source_contract=stock_price_source)
+        if independent_stock_horizons else _build_current_groups(
+            samples, current_sources=current_sources, action_date=action_date,
+            as_of=created, symbols=symbols, feature_columns=feature_columns,
+        )
     )
     run = create_timestamp_directory(
         root / "ml" / "nightly-gameplan-runs",
@@ -209,7 +271,13 @@ def run_nightly_gameplan_once(
     forecast_frames: list[pd.DataFrame] = []
     model_reports: dict[str, object] = {}
     model_output_names: list[str] = []
+    training_cohort_names: list[str] = []
+    champion_input_files: list[Path] = []
     for group in MODEL_GROUPS:
+        if independent_stock_horizons:
+            cohort_name = f"training-cohort-{group}.parquet"
+            groups[group].to_parquet(run / cohort_name, index=False)
+            training_cohort_names.append(cohort_name)
         trained = _fit_group_model(
             groups[group],
             current=current[group],
@@ -218,6 +286,15 @@ def run_nightly_gameplan_once(
             model_directory=run / "models" / group,
             trained_at=created,
         )
+        if independent_stock_horizons and trained["report"]["promotion_gate"]["status"] != "PROMOTED":
+            from ml.gameplan_champions import latest_promoted_champion, retain_champion
+            champion = latest_promoted_champion(root, group=group, action_date=action_date,
+                symbols=symbols, price_source=stock_price_source, before=created)
+            if champion is not None:
+                trained, retained_outputs = retain_champion(trained, champion=champion,
+                    current=current[group], run=run, group=group, frozen_at=created)
+                model_output_names.extend(retained_outputs)
+                champion_input_files.extend(champion["files"])
         forecast_frames.append(trained["forecasts"])
         model_reports[group] = trained["report"]
         model_output_names.append(
@@ -241,12 +318,14 @@ def run_nightly_gameplan_once(
         action_start=action_start,
         action_end=action_end,
         opra_freshness=opra_freshness,
+        target_contract_version=target_contract,
     )
     option_intents = _option_intents(
         forecasts,
         candidates=candidates,
-        strategy_run=strategy.run_directory,
+        strategy_run=None if strategy is None else strategy.run_directory,
         action_date=action_date,
+        stock_only=stock_only,
     )
 
     forecasts_name = "forecasts.parquet"
@@ -269,8 +348,12 @@ def run_nightly_gameplan_once(
     }
     plan_payload = {
         "schema_version": GAMEPLAN_VERSION,
+        "preparation_scope": "STOCK_ONLY" if stock_only else "STOCK_AND_OPTIONS_RESEARCH",
         "forecast_contract_version": FORECAST_CONTRACT_VERSION,
-        "target_contract_version": TARGET_CONTRACT_VERSION,
+        "target_contract_version": target_contract,
+        **({"target_price_source_contract": stock_price_source, "target_price_dataset": price_dataset,
+            "stock_price_source": price_source_report,
+            "target_calendar_feature_contract": STOCK_CALENDAR_FEATURE_CONTRACT} if independent_stock_horizons else {}),
         "action_date": action_date.isoformat(),
         "timezone": str(SCHEDULE_TIMEZONE),
         "action_window": {
@@ -285,15 +368,17 @@ def run_nightly_gameplan_once(
         "orders_placed": 0,
         "symbols": list(symbols),
         "forecast_grid": {
-            "1h": [f"{hour:02d}:00" for hour in HOURLY_ANCHORS],
+            "1h": [f"{hour:02d}:00" for hour in (range(4, 17) if independent_stock_horizons else HOURLY_ANCHORS)],
             "4h": [f"{hour:02d}:00" for hour in FOUR_HOUR_ANCHORS],
             "1d": [f"D+{offset}" for offset in range(1, 6)],
             "1w": ["D+1 through D+5 direct weekly target"],
             "per_symbol": EXPECTED_FORECASTS_PER_SYMBOL,
             "total": len(forecasts),
+            **({"hourly_research_route": "1h@gap", "independent_stock_horizons": True} if independent_stock_horizons else {}),
         },
         "model_status_counts": model_status_counts,
         "option_strategy_plan": {
+            "preparation_status": "NOT_PREPARED_STOCK_ONLY" if stock_only else "PREPARED",
             "rows": len(option_intents),
             "status_counts": option_status_counts,
             "exact_candidate_is_frozen_when_available": True,
@@ -317,7 +402,7 @@ def run_nightly_gameplan_once(
         },
         "source_authorities": {
             "loop_b_run": loop_b.run_directory.relative_to(root).as_posix(),
-            "strategy_run": strategy.run_directory.relative_to(root).as_posix(),
+            "strategy_run": source_strategy,
         },
         "limitations": [
             "Offline assessment is not proof of future profit.",
@@ -338,6 +423,7 @@ def run_nightly_gameplan_once(
         reports_name,
         gameplan_name,
         *model_output_names,
+        *training_cohort_names,
     )
     write_manifest(
         run,
@@ -347,11 +433,10 @@ def run_nightly_gameplan_once(
             predictions_path,
             loop_b.run_directory / "manifest.json",
             loop_b.run_directory / "publication.json",
-            candidates_path,
-            strategy.run_directory / "manifest.json",
-            strategy.run_directory / "publication.json",
+            *strategy_inputs,
             *cursor_files,
             *minute_bar_files,
+            *champion_input_files,
             evaluation.run_directory / "receipt.json",
             evaluation.run_directory / "evaluations.parquet",
         ),
@@ -361,8 +446,12 @@ def run_nightly_gameplan_once(
         target_column="target_cost_adjusted_positive",
         configuration={
             "schema_version": GAMEPLAN_VERSION,
+            "preparation_scope": "STOCK_ONLY" if stock_only else "STOCK_AND_OPTIONS_RESEARCH",
             "forecast_contract_version": FORECAST_CONTRACT_VERSION,
-            "target_contract_version": TARGET_CONTRACT_VERSION,
+            "target_contract_version": target_contract,
+            **({"target_price_source_contract": stock_price_source, "target_price_dataset": price_dataset,
+                "stock_price_source": price_source_report,
+                "target_calendar_feature_contract": STOCK_CALENDAR_FEATURE_CONTRACT} if independent_stock_horizons else {}),
             "action_date": action_date.isoformat(),
             "timezone": str(SCHEDULE_TIMEZONE),
             "execution_authority": EXECUTION_AUTHORITY,
@@ -371,7 +460,7 @@ def run_nightly_gameplan_once(
             "symbols": list(symbols),
             "opra_history": opra_freshness,
             "source_loop_b_run": loop_b.run_directory.relative_to(root).as_posix(),
-            "source_strategy_run": strategy.run_directory.relative_to(root).as_posix(),
+            "source_strategy_run": source_strategy,
             "publication_contract": {
                 "pointer": "ml/nightly-gameplan-latest/run.json",
                 "receipt": "receipt.json",
@@ -394,7 +483,7 @@ def run_nightly_gameplan_once(
         action_date=action_date,
         published_at=published_at,
         source_loop_b=loop_b.run_directory.relative_to(root).as_posix(),
-        source_strategy=strategy.run_directory.relative_to(root).as_posix(),
+        source_strategy=source_strategy,
     )
     if reporter is not None:
         reporter(
@@ -424,10 +513,15 @@ def _configured_symbols(
     symbols = tuple(
         dict.fromkeys(str(value).strip().upper() for value in values if str(value).strip())
     )
-    if len(symbols) != 6:
+    if not symbols or len(symbols) != len(values):
         raise RuntimeError(
-            "Nightly gameplan requires the exact configured six-symbol universe; "
+            "Nightly gameplan requires a nonempty, unique configured universe; "
             f"observed={symbols}"
+        )
+    observed = set(samples["symbol"].dropna().astype(str).str.upper())
+    if observed != set(symbols):
+        raise RuntimeError(
+            f"Gameplan samples and configured universe disagree: {symbols}; observed={sorted(observed)}"
         )
     return symbols
 
@@ -1048,6 +1142,14 @@ def _fit_group_model(
     model_directory: Path,
     trained_at: pd.Timestamp,
 ) -> dict[str, object]:
+    independent_selection = (
+        "target_contract_version" in current
+        and bool(current.target_contract_version.eq(STOCK_TARGET_CONTRACT_VERSION).all())
+    )
+    if independent_selection:
+        samples = with_stock_calendar_features(samples)
+        current = with_stock_calendar_features(current)
+        feature_columns = tuple(dict.fromkeys((*feature_columns, *STOCK_CALENDAR_FEATURE_NAMES)))
     target_quality = samples.attrs.get("target_boundary_quality")
     if target_quality and target_quality.get("excluded_rows", 0):
         print(json.dumps({
@@ -1076,7 +1178,7 @@ def _fit_group_model(
     fit_with_progress(neural, train_matrix, target_train, label=f"gameplan/{group}/neural-selection")
     tree_selection = tree.predict_proba(selection_matrix)[:, 1]
     neural_selection = neural.predict_proba(selection_matrix)[:, 1]
-    candidates: list[tuple[str, float, np.ndarray]] = [
+    candidates: list[tuple[str, float | None, np.ndarray]] = [
         ("hist-gradient", 0.0, tree_selection),
         ("mlp", 1.0, neural_selection),
     ]
@@ -1088,6 +1190,17 @@ def _fit_group_model(
                 (1.0 - weight) * tree_selection + weight * neural_selection,
             )
         )
+    logistic_candidates = {}
+    if independent_selection:
+        for regularization_c in logistic_regularization_candidates(group):
+            logistic = _estimator("logistic", admitted, categorical)
+            if regularization_c != 1.0:
+                logistic.set_params(classifier__C=regularization_c)
+            name = f"regularized-logistic-c{regularization_c:g}"
+            fit_with_progress(logistic, train_matrix, target_train,
+                              label=f"gameplan/{group}/logistic-c{regularization_c:g}-selection")
+            candidates.append((name, None, logistic.predict_proba(selection_matrix)[:, 1]))
+            logistic_candidates[name] = regularization_c
     selection_metrics = {
         name: _proper_scores(target_selection, probability)
         for name, _weight, probability in candidates
@@ -1108,8 +1221,16 @@ def _fit_group_model(
     final_neural = _estimator("neural", admitted, categorical)
     fit_with_progress(final_tree, fit_matrix, fit_target, label=f"gameplan/{group}/tree-final")
     fit_with_progress(final_neural, fit_matrix, fit_target, label=f"gameplan/{group}/neural-final")
-    if selected_weight <= 0.0:
-        estimator: object = final_tree
+    if independent_selection:
+        final_logistic = _estimator("logistic", admitted, categorical)
+        selected_logistic_c = logistic_candidates.get(selected_name)
+        if selected_logistic_c is not None and selected_logistic_c != 1.0:
+            final_logistic.set_params(classifier__C=selected_logistic_c)
+        fit_with_progress(final_logistic, fit_matrix, fit_target, label=f"gameplan/{group}/logistic-final")
+    if selected_name in logistic_candidates:
+        estimator: object = final_logistic
+    elif selected_weight <= 0.0:
+        estimator = final_tree
     elif selected_weight >= 1.0:
         estimator = final_neural
     else:
@@ -1124,7 +1245,12 @@ def _fit_group_model(
     )
     calibration_target = partitions["calibration"]["target"].astype(int).to_numpy()
     calibration_raw = estimator.predict_proba(calibration_matrix)[:, 1]
-    if np.unique(calibration_target).size == 2:
+    calibration_selection = None
+    if independent_selection:
+        calibrator, calibration_selection = select_development_calibrator(
+            partitions["calibration"], calibration_raw,
+        )
+    elif np.unique(calibration_target).size == 2:
         calibrator = fit_probability_calibrator(
             "platt",
             calibration_raw,
@@ -1193,6 +1319,10 @@ def _fit_group_model(
             frame["target"].astype(int).to_numpy(),
             frame["probability"].to_numpy(),
         )
+    support_by_symbol, assessment_by_symbol = _symbol_target_support(
+        samples, fitted=fit_frame, assessment=assessment_frame,
+        symbols=current["symbol"].astype("string").unique(),
+    )
 
     model_directory.mkdir(parents=True, exist_ok=False)
     model_path = model_directory / "model.joblib"
@@ -1206,6 +1336,11 @@ def _fit_group_model(
             "feature_columns": admitted,
             "categorical_columns": categorical,
             "selected_family": selected_name,
+            "selected_logistic_regularization_c": logistic_candidates.get(selected_name),
+            "logistic_regularization_policy": DAILY_LOGISTIC_REGULARIZATION_POLICY if independent_selection and group == "1d" else None,
+            "development_selection_policy": DEVELOPMENT_SELECTION_POLICY if independent_selection else None,
+            "target_calendar_feature_contract": STOCK_CALENDAR_FEATURE_CONTRACT if independent_selection else None,
+            "calibration_selection": calibration_selection,
             "trained_at": trained_at.isoformat(),
         },
         temporary,
@@ -1225,7 +1360,18 @@ def _fit_group_model(
         "target_window_start",
         "target_window_end",
         "target_semantics",
+        *(column for column in ("target_role", "execution_eligible", "target_contract_version", "trading_hours", "trading_segments_json", "target_price_source_contract", "target_price_dataset") if column in current),
     ]].copy()
+    if independent_selection:
+        # Freeze the same causal inputs used by the current feature row. An
+        # incomplete map remains explicitly unsupported by market-aware sizing.
+        forecasts["enrichment_feature_values_json"] = [
+            json.dumps(frozen_market_feature_values(row, required=False), sort_keys=True, allow_nan=False)
+            for row in current.to_dict("records")
+        ]
+        forecasts["enrichment_feature_contract"] = INDEPENDENT_MARKET_FEATURE_CONTRACT
+        forecasts["target_calendar_feature_contract"] = STOCK_CALENDAR_FEATURE_CONTRACT
+        forecasts[list(STOCK_CALENDAR_FEATURE_NAMES)] = current[list(STOCK_CALENDAR_FEATURE_NAMES)]
     forecasts["raw_probability"] = current_raw
     forecasts["calibrated_probability"] = current_probability
     forecasts["model_family"] = selected_name
@@ -1233,6 +1379,24 @@ def _fit_group_model(
     forecasts["calibration_method"] = getattr(calibrator, "method", "none")
     forecasts["calibration_status"] = calibration_diagnostics["status"]
     forecasts["model_status"] = gate["status"]
+    for column, key in (("symbol_target_history_rows", "admitted_rows"),
+                        ("symbol_fitted_target_rows", "fitted_rows"),
+                        ("symbol_assessment_rows", "assessment_rows")):
+        forecasts[column] = forecasts["symbol"].map(
+            {symbol: counts[key] for symbol, counts in support_by_symbol.items()}
+        ).fillna(0).astype(int)
+    forecasts.loc[forecasts.symbol_fitted_target_rows.eq(0), "model_status"] = "RESEARCH_NO_TARGET_HISTORY"
+    if "target_contract_version" in forecasts:
+        independent = forecasts.target_contract_version.eq(STOCK_TARGET_CONTRACT_VERSION)
+        for column, key in (("symbol_route_target_history_rows", "admitted_rows_by_route"),
+                            ("symbol_route_fitted_target_rows", "fitted_rows_by_route"),
+                            ("symbol_route_assessment_rows", "assessment_rows_by_route")):
+            forecasts[column] = [
+                int(support_by_symbol.get(str(symbol), {}).get(key, {}).get(str(route), 0))
+                for symbol, route in zip(forecasts.symbol, forecasts.route)
+            ]
+        unsupported_route = independent & forecasts.symbol_route_fitted_target_rows.eq(0)
+        forecasts.loc[unsupported_route, "model_status"] = "RESEARCH_NO_TARGET_HISTORY"
     forecasts["model_artifact"] = (Path("models") / group / "model.joblib").as_posix()
     forecasts["option_feature_count"] = sum(
         column.startswith(("opt__", "opx__")) for column in admitted
@@ -1240,9 +1404,21 @@ def _fit_group_model(
     report = {
         "schema_version": GAMEPLAN_VERSION,
         "group": group,
+        "target_contract_version": str(current["target_contract_version"].iloc[0]) if "target_contract_version" in current else TARGET_CONTRACT_VERSION,
+        **({"target_price_source_contract": str(current["target_price_source_contract"].iloc[0]),
+            "target_price_dataset": str(current["target_price_dataset"].iloc[0])}
+           if "target_price_source_contract" in current else {}),
         "selected_family": selected_name,
         "selected_neural_weight": selected_weight,
         "both_hist_gradient_and_mlp_trained": True,
+        "regularized_logistic_trained": independent_selection,
+        "logistic_regularization_candidates": list(logistic_regularization_candidates(group)) if independent_selection else [],
+        "selected_logistic_regularization_c": logistic_candidates.get(selected_name),
+        "logistic_regularization_policy": DAILY_LOGISTIC_REGULARIZATION_POLICY if independent_selection and group == "1d" else None,
+        "development_selection_policy": DEVELOPMENT_SELECTION_POLICY if independent_selection else None,
+        "target_calendar_feature_contract": STOCK_CALENDAR_FEATURE_CONTRACT if independent_selection else None,
+        "target_calendar_feature_names": list(STOCK_CALENDAR_FEATURE_NAMES) if independent_selection else [],
+        "calibration_selection": calibration_selection,
         "selection_metrics": selection_metrics,
         "calibration_method": getattr(calibrator, "method", "none"),
         "calibration_diagnostics": calibration_diagnostics,
@@ -1257,6 +1433,8 @@ def _fit_group_model(
         "assessment": assessment,
         "training_base_rate_assessment": baseline,
         "assessment_by_route": route_metrics,
+        "assessment_by_symbol": assessment_by_symbol,
+        "target_support_by_symbol": support_by_symbol,
         "promotion_gate": gate,
         "features": {
             "admitted_count": len(admitted),
@@ -1282,6 +1460,29 @@ def _fit_group_model(
         },
     }
     return {"forecasts": forecasts, "report": report}
+
+
+def _symbol_target_support(
+    samples: pd.DataFrame, *, fitted: pd.DataFrame, assessment: pd.DataFrame,
+    symbols: Sequence[str],
+) -> tuple[dict[str, object], dict[str, object]]:
+    support, metrics = {}, {}
+    for symbol in sorted(set(map(str, symbols)) | set(samples["symbol"].astype(str))):
+        counts = {}
+        for name, source in (("admitted", samples), ("fitted", fitted), ("assessment", assessment)):
+            frame = source.loc[source["symbol"].astype(str).eq(symbol)]
+            counts[f"{name}_rows"] = len(frame)
+            counts[f"{name}_decision_clusters"] = int(frame["decision_timestamp"].nunique())
+            counts[f"{name}_rows_by_route"] = {
+                str(route): int(count) for route, count in frame.groupby("route").size().items()
+            }
+        held_out = assessment.loc[assessment["symbol"].astype(str).eq(symbol)]
+        metrics[symbol] = (
+            _proper_scores(held_out["target"].astype(int).to_numpy(), held_out["probability"].to_numpy())
+            if not held_out.empty else None
+        )
+        support[symbol] = counts
+    return support, metrics
 
 
 def _calibration_signal_diagnostics(
@@ -1390,7 +1591,7 @@ def _estimator(
             ),
         )
     ]
-    if family == "neural":
+    if family in {"neural", "logistic"}:
         numeric_steps.append(("scale", StandardScaler()))
     transformer = ColumnTransformer(
         (
@@ -1426,6 +1627,8 @@ def _estimator(
             n_iter_no_change=12,
             random_state=20260904,
         )
+    elif family == "logistic":
+        classifier = LogisticRegression(C=1.0, solver="lbfgs", max_iter=1000, random_state=20260904)
     else:
         raise ValueError(f"Unknown model family: {family}")
     return Pipeline((('preprocess', transformer), ('classifier', classifier)))
@@ -1476,7 +1679,8 @@ def _finalize_forecasts(
     frozen_at: pd.Timestamp,
     action_start: pd.Timestamp,
     action_end: pd.Timestamp,
-    opra_freshness: Mapping[str, object],
+    opra_freshness: Mapping[str, object] | None,
+    target_contract_version: str = TARGET_CONTRACT_VERSION,
 ) -> pd.DataFrame:
     expected = len(symbols) * EXPECTED_FORECASTS_PER_SYMBOL
     if len(forecasts) != expected:
@@ -1499,23 +1703,37 @@ def _finalize_forecasts(
         ],
     )
     output["action_date"] = action_date.isoformat()
-    output["action_anchor_local"] = [
-        _action_anchor_for_route(str(group), str(route))
-        for group, route in zip(output["model_group"], output["route"])
-    ]
+    if target_contract_version == STOCK_TARGET_CONTRACT_VERSION:
+        output["action_anchor_local"] = [
+            pd.Timestamp(row["target_window_start"]).tz_convert(SCHEDULE_TIMEZONE).strftime("%H:%M")
+            if row.get("target_role") == "EXECUTION" and row.get("execution_eligible") is True else None
+            for row in output.to_dict("records")
+        ]
+    else:
+        output["action_anchor_local"] = [
+            _action_anchor_for_route(str(group), str(route))
+            for group, route in zip(output["model_group"], output["route"])
+        ]
+    from ml.stock_direction_policy import BULLISH_PROBABILITY, BEARISH_PROBABILITY, STOCK_DIRECTION_POLICY_VERSION
     output["direction"] = np.select(
-        [probability.ge(0.55), probability.le(0.45)],
+        [probability.ge(BULLISH_PROBABILITY), probability.le(BEARISH_PROBABILITY)],
         ["BULLISH", "BEARISH"],
         default="NO_EDGE",
     )
+    output.loc[output["model_status"].eq("RESEARCH_NO_TARGET_HISTORY"), "direction"] = "NO_EDGE"
+    output["direction_policy_version"] = STOCK_DIRECTION_POLICY_VERSION
+    output["direction_up_threshold"] = BULLISH_PROBABILITY
+    output["direction_down_threshold"] = BEARISH_PROBABILITY
     output["frozen_at"] = frozen_at
     output["action_window_start"] = action_start
     output["action_window_end"] = action_end
     output["forecast_contract_version"] = FORECAST_CONTRACT_VERSION
-    output["target_contract_version"] = TARGET_CONTRACT_VERSION
+    output["target_contract_version"] = target_contract_version
     output["execution_authority"] = EXECUTION_AUTHORITY
     output["broker_orders_enabled"] = False
-    output["opra_completed_through"] = str(opra_freshness["completed_through"])
+    output["opra_completed_through"] = (
+        str(opra_freshness["completed_through"]) if opra_freshness is not None else None
+    )
     order = {group: index for index, group in enumerate(MODEL_GROUPS)}
     output["__group_order"] = output["model_group"].map(order)
     output["__anchor_order"] = output["route"].map(_route_order)
@@ -1528,8 +1746,9 @@ def _option_intents(
     forecasts: pd.DataFrame,
     *,
     candidates: pd.DataFrame,
-    strategy_run: Path,
+    strategy_run: Path | None,
     action_date: date,
+    stock_only: bool = False,
 ) -> pd.DataFrame:
     candidates = candidates.copy()
     candidates["candidate_rank"] = pd.to_numeric(
@@ -1541,7 +1760,7 @@ def _option_intents(
         group = str(forecast["model_group"])
         route = str(forecast["route"])
         strategy_horizon = _strategy_horizon_for_route(group, route)
-        candidate = _select_option_candidate_for_route(
+        candidate = None if stock_only else _select_option_candidate_for_route(
             candidates,
             symbol=str(forecast["symbol"]),
             horizon=strategy_horizon,
@@ -1598,7 +1817,10 @@ def _option_intents(
             candidate,
             direction=str(forecast["direction"]),
         )
-        if candidate is None:
+        if stock_only:
+            status = "NO_TRADE_STOCK_ONLY"
+            reason = "Stock preparation only. Options research was not prepared for this Gameplan."
+        elif candidate is None:
             status = "NO_TRADE_NO_FROZEN_CANDIDATE"
             reason = "No exact candidate was constructed for this frozen route."
         elif not fitted:
@@ -1681,7 +1903,7 @@ def _option_intents(
                 "maximum_quote_staleness_seconds": None if candidate is None else candidate.get("maximum_quote_staleness_seconds"),
                 "target_window_start": forecast["target_window_start"],
                 "target_window_end": forecast["target_window_end"],
-                "strategy_source_run": strategy_run.name,
+                "strategy_source_run": None if stock_only or strategy_run is None else strategy_run.name,
                 "execution_authority": EXECUTION_AUTHORITY,
                 "broker_orders_enabled": False,
                 "same_legs_revalidation_only": True,
@@ -1884,6 +2106,11 @@ def _verify_opra_history(
                 raise RuntimeError(
                     f"OPRA production cursor is unreadable: {symbol}/{schema}"
                 ) from exc
+            if "replay_coverage" in payload:
+                from datafetching.opra_replay_fallback import verify_replay_cursor_coverage
+                verify_replay_cursor_coverage(
+                    root, symbol=symbol, schema=schema, cursor=payload,
+                )
             if through < required_completed_through:
                 raise RuntimeError(
                     "OPRA history is stale for the next gameplan: "
@@ -1913,7 +2140,7 @@ def _publish_gameplan(
     action_date: date,
     published_at: pd.Timestamp,
     source_loop_b: str,
-    source_strategy: str,
+    source_strategy: str | None,
 ) -> None:
     runs_root = (root / "ml" / "nightly-gameplan-runs").resolve()
     if run.resolve().parent != runs_root:
@@ -1928,6 +2155,7 @@ def _publish_gameplan(
         "manifest_checksum_sha256": file_checksum(run / "manifest.json"),
         "source_loop_b_run": source_loop_b,
         "source_strategy_run": source_strategy,
+        "preparation_scope": manifest.get("configuration", {}).get("preparation_scope", "STOCK_AND_OPTIONS_RESEARCH"),
         "execution_authority": EXECUTION_AUTHORITY,
         "broker_orders_enabled": False,
         "orders_placed": 0,
@@ -2043,6 +2271,8 @@ def _route_order(route: object) -> int:
     if "@" not in value:
         return 0
     suffix = value.split("@", 1)[1]
+    if suffix == "gap":
+        return 99
     if suffix.startswith("D+"):
         return int(suffix.removeprefix("D+"))
     return int(suffix.split(":", 1)[0])
@@ -2088,6 +2318,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         default="pc",
     )
     parser.add_argument("--once", action="store_true", help="Compatibility flag")
+    parser.add_argument(
+        "--stock-only", action="store_true",
+        help="Prepare stock forecasts with explicit no-trade options intents, without Strategy models or candidates",
+    )
+    parser.add_argument("--independent-stock-horizons", action="store_true",
+                        help="Use observed extended-session independent-stock-targets-v1 labels and entry/exit windows")
+    parser.add_argument("--stock-price-source", choices=tuple(STOCK_PRICE_SOURCES),
+                        default=CANONICAL_STOCK_PRICE_SOURCE,
+                        help="Explicit single-dataset price source for independent target labels and evaluation")
     args = parser.parse_args(argv)
     root = resolve_datastore_dir(
         root_dir=args.datastore,
@@ -2096,7 +2335,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     lock = root / ".ducketz-nightly-gameplan.lock"
     with exclusive_runtime_lock(lock, process_name="Duckets nightly gameplan"):
         try:
-            run_nightly_gameplan_once(root)
+            run_nightly_gameplan_once(root, stock_only=args.stock_only,
+                                      independent_stock_horizons=args.independent_stock_horizons,
+                                      stock_price_source=args.stock_price_source)
         except Exception as exc:
             print(f"Nightly gameplan failed: {type(exc).__name__}: {exc}")
             return 1

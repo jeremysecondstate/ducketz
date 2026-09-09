@@ -1,0 +1,55 @@
+........................................................................ [ 78%]
+...................F                                                     [100%]
+================================== FAILURES ===================================
+_________ test_batch_preparation_reuses_jobs_without_publishing_data __________
+
+tmp_path = WindowsPath('C:/Users/7980X/AppData/Local/Temp/pytest-of-7980X/pytest-2585/test_batch_preparation_reuses_0')
+
+    def test_batch_preparation_reuses_jobs_without_publishing_data(tmp_path: Path) -> None:
+        requests = [_request(tmp_path, "COST", "OPRA.PILLAR", schema, "2026-05-01", "2026-07-01")
+                    for schema in ("definition", "cbbo-1s")]
+        estimates = [{"record_count": 10, "estimated_download_size_bytes": 100, "cost_usd": 0.0} for _ in requests]
+        payload = {"schema_version": "symbol-onboarding-v1", "datastore_root": str(tmp_path),
+                   "symbol": "COST", "requests": requests, "estimates": estimates,
+                   "budget": {"max_billable_bytes": 1000, "max_cost_usd": 0.0}}
+        path = tmp_path / "plan.json"
+        path.write_text(json.dumps({**payload, "plan_id": _checksum(payload)}))
+        submitted = []
+    
+        def submit(**kwargs):
+            submitted.append(kwargs)
+            return {"id": "OPRA-20260501-AAAAAAAAAA"}
+    
+        client = SimpleNamespace(batch=SimpleNamespace(submit_job=submit), metadata=SimpleNamespace(
+            get_dataset_condition=lambda **_: [{"date": day.date().isoformat(), "condition": "available"}
+                                               for day in pd.bdate_range("2026-05-01", "2026-06-30")]))
+>       first = queue_history(path, client)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_symbol_onboarding.py:128: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+datafetching\symbol_onboarding.py:201: in queue_history
+    _, state = _load_or_submit_batch_job(client, datastore_root=root, schema=schema,
+datafetching\databento_opra_history.py:1368: in _load_or_submit_batch_job
+    return _load_or_submit_batch_job_unlocked(client, datastore_root=datastore_root,
+datafetching\databento_opra_history.py:1410: in _load_or_submit_batch_job_unlocked
+    batch = _opra_batch_api(client)
+            ^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+client = namespace(batch=namespace(submit_job=<function test_batch_preparation_reuses_jobs_without_publishing_data.<locals>.sub...ndition=<function test_batch_preparation_reuses_jobs_without_publishing_data.<locals>.<lambda> at 0x000001D095043060>))
+
+    def _opra_batch_api(client: object) -> object:
+        batch = getattr(client, "batch", None)
+        required = ("submit_job", "get_job_details", "list_files", "download")
+        if batch is None or not all(callable(getattr(batch, name, None)) for name in required):
+>           raise OpraSyncError(
+                "Installed Databento client does not provide the required OPRA batch API"
+            )
+E           datafetching.databento_opra_history.OpraSyncError: Installed Databento client does not provide the required OPRA batch API
+
+datafetching\databento_opra_history.py:1247: OpraSyncError
+=========================== short test summary info ===========================
+FAILED tests/test_symbol_onboarding.py::test_batch_preparation_reuses_jobs_without_publishing_data
+1 failed, 91 passed in 12.63s
+C:\Users\7980X\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py:764: ResourceWarning: unclosed event loop <ProactorEventLoop running=False closed=False debug=False>

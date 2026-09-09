@@ -1,0 +1,58 @@
+{
+  "checked_at": "2026-09-06T15:31:18.527184+00:00",
+  "forecast_run": "C:\\DATASTORE\\ml\\directional-forecast-runs\\20260906T152335.670956Z",
+  "action_date": "2026-09-08",
+  "forecast_rows": 24,
+  "eligible_non_options_features": 111,
+  "excluded_options_features": 43,
+  "model_status_by_group": {
+    "1d": "RESEARCH_NOT_PROMOTED",
+    "1h": "RESEARCH_NOT_PROMOTED",
+    "1w": "RESEARCH_NOT_PROMOTED",
+    "4h": "RESEARCH_NOT_PROMOTED"
+  },
+  "display_routes": {
+    "1h": {
+      "calibrated_probability": 0.4655786967296413,
+      "display_value": 0.4655786967296413,
+      "uses_uncalibrated_raw_score": false,
+      "options_status": "PENDING_OPRA_HISTORY"
+    },
+    "4h": {
+      "calibrated_probability": 0.5177304964539007,
+      "display_value": 0.5120567064877204,
+      "uses_uncalibrated_raw_score": true,
+      "options_status": "PENDING_OPRA_HISTORY"
+    },
+    "1d": {
+      "calibrated_probability": 0.503238779881284,
+      "display_value": 0.503238779881284,
+      "uses_uncalibrated_raw_score": false,
+      "options_status": "PENDING_OPRA_HISTORY"
+    },
+    "1w": {
+      "calibrated_probability": 0.6927994517593543,
+      "display_value": 0.6927994517593543,
+      "uses_uncalibrated_raw_score": false,
+      "options_status": "PENDING_OPRA_HISTORY"
+    }
+  },
+  "evaluation_run": "C:\\DATASTORE\\ml\\directional-forecast-evaluation-runs\\20260906T152402.401702Z",
+  "pending_maturity": 24,
+  "current_gameplan_run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260905T103409.421848Z",
+  "published_gameplan_rows": 144,
+  "production_symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK"
+  ],
+  "stock_model_pointer_checksum_sha256": "4d8772c30f6c256ce5baa45e127175980d250efd2c251a7376343efacd2ab45d",
+  "directional_artifact_bytes": 1343158,
+  "tests_passed": 177,
+  "orders_submitted": 0,
+  "ui_verified_at": "2026-09-06T15:33:14.860054+00:00",
+  "ui_verification": "Actual maximized Ducketz app: COST research cards, pending OPRA blocks, seven Prediction Pulse columns, supplied logo, and 4h raw-score asterisk/footnote verified. App left open with rows collapsed."
+}

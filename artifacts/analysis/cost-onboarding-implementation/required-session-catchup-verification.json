@@ -1,0 +1,47 @@
+{
+  "checked_at": "2026-09-06T21:00:13.900020+00:00",
+  "plan_id": "987dfa290e0f74a6cbb2962165af8d0cc3f1134edd0a4eef2a9434f7ee2ca221",
+  "opra_history": {
+    "status": "CURRENT_THROUGH_PRIOR_ACTION_DAY",
+    "completed_through": "2026-09-05",
+    "required_completed_through": "2026-09-05",
+    "coverage_semantics": "exclusive cursor; includes every session before this date",
+    "verified_cursor_count": 21,
+    "verified_cursors": [
+      "AAPL/ohlcv-1h",
+      "AAPL/cbbo-1m",
+      "AAPL/definition",
+      "AMZN/ohlcv-1h",
+      "AMZN/cbbo-1m",
+      "AMZN/definition",
+      "GOOG/ohlcv-1h",
+      "GOOG/cbbo-1m",
+      "GOOG/definition",
+      "MU/ohlcv-1h",
+      "MU/cbbo-1m",
+      "MU/definition",
+      "NVDA/ohlcv-1h",
+      "NVDA/cbbo-1m",
+      "NVDA/definition",
+      "SNDK/ohlcv-1h",
+      "SNDK/cbbo-1m",
+      "SNDK/definition",
+      "COST/ohlcv-1h",
+      "COST/cbbo-1m",
+      "COST/definition"
+    ],
+    "production_schemas": [
+      "ohlcv-1h",
+      "cbbo-1m",
+      "definition"
+    ]
+  },
+  "previous_preparation_verified": true,
+  "verified_new_partition_rows": {
+    "definition": 3712,
+    "ohlcv-1h": 8554,
+    "cbbo-1m": 1329394
+  },
+  "authority": "READINESS_EVIDENCE_ONLY",
+  "orders_submitted": 0
+}

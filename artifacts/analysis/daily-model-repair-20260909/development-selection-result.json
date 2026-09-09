@@ -1,0 +1,116 @@
+{
+  "registered_at": "2026-09-09T05:54:37.596998+00:00",
+  "source_run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260909T040455.436642Z",
+  "cohort_sha256": "6991e42f48cb95393bf5bf5d045d9f9dc8463f0590553be20da742d2d6f58467",
+  "purpose": "Reduce unsupported model complexity observed on original development selection",
+  "candidate_logistic_c": [
+    0.001,
+    0.01,
+    0.1,
+    1.0
+  ],
+  "selection": "Minimum original selection log loss; lower C wins exact ties",
+  "reference": "Original best candidate selection score from verified source report",
+  "calibration": "Unchanged purged chronological identity-versus-constrained-Platt development selection",
+  "assessment_scored": false,
+  "assessment_used_for_selection": false,
+  "training_features": "Exactly original admitted train-only numeric columns and symbol/route categories",
+  "no_additional_grid_or_assessment_search": true,
+  "selected_logistic_c": 0.001,
+  "candidate_selection_metrics": {
+    "0.001": {
+      "rows": 718,
+      "positive_rate": 0.5250696378830083,
+      "mean_probability": 0.49187658535505274,
+      "brier_score": 0.25121746835579234,
+      "log_loss": 0.695594771834682,
+      "expected_calibration_error_10_bin": 0.03319305252795558,
+      "direction_accuracy_at_0_5": 0.5
+    },
+    "0.01": {
+      "rows": 718,
+      "positive_rate": 0.5250696378830083,
+      "mean_probability": 0.48953122927380743,
+      "brier_score": 0.25336239312014125,
+      "log_loss": 0.699976123626945,
+      "expected_calibration_error_10_bin": 0.05489138112883465,
+      "direction_accuracy_at_0_5": 0.48885793871866295
+    },
+    "0.1": {
+      "rows": 718,
+      "positive_rate": 0.5250696378830083,
+      "mean_probability": 0.49849488159322547,
+      "brier_score": 0.25574151027857595,
+      "log_loss": 0.7049117001694075,
+      "expected_calibration_error_10_bin": 0.05818177605460473,
+      "direction_accuracy_at_0_5": 0.5
+    },
+    "1.0": {
+      "rows": 718,
+      "positive_rate": 0.5250696378830083,
+      "mean_probability": 0.5058616742368021,
+      "brier_score": 0.2584654588539717,
+      "log_loss": 0.7107251164912508,
+      "expected_calibration_error_10_bin": 0.07114827830200787,
+      "direction_accuracy_at_0_5": 0.4972144846796657
+    }
+  },
+  "original_selected_family": "hist-gradient-mlp-0.25",
+  "original_selected_selection_scores": {
+    "brier_score": 0.25784949287055525,
+    "direction_accuracy_at_0_5": 0.5069637883008357,
+    "expected_calibration_error_10_bin": 0.07003050433848146,
+    "log_loss": 0.7097839054672009,
+    "mean_probability": 0.4941631365677745,
+    "positive_rate": 0.5250696378830083,
+    "rows": 718
+  },
+  "calibration_selection": {
+    "policy": "independent-stock-development-selection-v1",
+    "selection_basis": "minimum_later_calibration_development_log_loss_identity_wins_ties",
+    "assessment_used_for_selection": false,
+    "split": "first_half_vs_second_half_decision_clusters",
+    "fit_rows": 404,
+    "validation_rows": 436,
+    "purged_rows": 58,
+    "fit_decision_clusters": 25,
+    "validation_decision_clusters": 26,
+    "fit_last_target_end": "2026-06-18T00:00:00+00:00",
+    "validation_first_decision": "2026-06-18T00:05:00+00:00",
+    "fit_class_counts": {
+      "0": 245,
+      "1": 159
+    },
+    "candidate_metrics": {
+      "identity": {
+        "log_loss": 0.6959403198361186,
+        "brier_score": 0.25138827969556493,
+        "rows": 436
+      },
+      "platt": {
+        "log_loss": 0.7034423823396375,
+        "brier_score": 0.2549814665588641,
+        "rows": 436
+      }
+    },
+    "selected_family": "identity",
+    "full_calibration_refit_rows": 0,
+    "selection_status": "SELECTED_ON_PURGED_DEVELOPMENT"
+  },
+  "selected_calibration_raw_scores": {
+    "rows": 898,
+    "positive_rate": 0.4376391982182628,
+    "mean_probability": 0.4966038881856645,
+    "brier_score": 0.2534299439002675,
+    "log_loss": 0.7000447266157956,
+    "expected_calibration_error_10_bin": 0.05896468996740161,
+    "direction_accuracy_at_0_5": 0.4766146993318486
+  },
+  "locked_at": "2026-09-09T05:54:37.824865+00:00",
+  "partition_rows_used": {
+    "train": 4210,
+    "selection": 718,
+    "calibration": 898
+  },
+  "fitted_positive_rate": 0.4979707792207792
+}

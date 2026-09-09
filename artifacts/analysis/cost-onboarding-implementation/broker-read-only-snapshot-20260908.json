@@ -1,0 +1,111 @@
+{
+  "observed_at": "2026-09-08T08:55:49.323620+00:00",
+  "account_equity": 129120.2,
+  "available_cash": 121572.35,
+  "gross_exposure": 17038.72,
+  "daily_pnl": -91.52,
+  "held_shares": {
+    "AAPL": 1.0,
+    "AMZN": 1.0,
+    "GOOG": 1.0,
+    "MU": 1.0,
+    "NVDA": 1.0,
+    "SNDK": 1.0,
+    "COST": 0.0
+  },
+  "symbol_exposure": {
+    "AAPL": 318.59,
+    "AMZN": 256.7,
+    "GOOG": 592.47,
+    "MU": 1024.5,
+    "NVDA": 230.36,
+    "SNDK": 1741.0,
+    "COST": 0.0
+  },
+  "pending_buy_shares": {
+    "AAPL": 0.0,
+    "AMZN": 0.0,
+    "GOOG": 0.0,
+    "MU": 0.0,
+    "NVDA": 0.0,
+    "SNDK": 0.0,
+    "COST": 0.0
+  },
+  "pending_sell_shares": {
+    "AAPL": 0.0,
+    "AMZN": 0.0,
+    "GOOG": 0.0,
+    "MU": 0.0,
+    "NVDA": 0.0,
+    "SNDK": 0.0,
+    "COST": 0.0
+  },
+  "working_order_count": 0,
+  "quotes": {
+    "AAPL": {
+      "symbol": "AAPL",
+      "bid": 318.38,
+      "ask": 318.59,
+      "last": 318.393,
+      "mark": 318.59,
+      "volume": 126595.0,
+      "observed_at": "2026-09-08T08:55:49.323620+00:00"
+    },
+    "AMZN": {
+      "symbol": "AMZN",
+      "bid": 256.31,
+      "ask": 256.7,
+      "last": 256.65,
+      "mark": 256.7,
+      "volume": 151877.0,
+      "observed_at": "2026-09-08T08:55:49.323620+00:00"
+    },
+    "GOOG": {
+      "symbol": "GOOG",
+      "bid": 333.3,
+      "ask": 333.47,
+      "last": 333.33,
+      "mark": 333.47,
+      "volume": 105625.0,
+      "observed_at": "2026-09-08T08:55:49.323620+00:00"
+    },
+    "MU": {
+      "symbol": "MU",
+      "bid": 1024.5,
+      "ask": 1025.05,
+      "last": 1025.0,
+      "mark": 1024.5,
+      "volume": 524163.0,
+      "observed_at": "2026-09-08T08:55:49.323620+00:00"
+    },
+    "NVDA": {
+      "symbol": "NVDA",
+      "bid": 230.36,
+      "ask": 230.55,
+      "last": 230.45,
+      "mark": 230.36,
+      "volume": 757870.0,
+      "observed_at": "2026-09-08T08:55:49.323620+00:00"
+    },
+    "SNDK": {
+      "symbol": "SNDK",
+      "bid": 1741.0,
+      "ask": 1744.4,
+      "last": 1742.58,
+      "mark": 1741.0,
+      "volume": 326661.0,
+      "observed_at": "2026-09-08T08:55:49.323620+00:00"
+    },
+    "COST": {
+      "symbol": "COST",
+      "bid": 912.48,
+      "ask": 912.79,
+      "last": 912.48,
+      "mark": 912.79,
+      "volume": 6285.0,
+      "observed_at": "2026-09-08T08:55:49.323620+00:00"
+    }
+  },
+  "source_fingerprint": "b82d81e2e6d5aa0bf3be5b966cb1ee0f8005650ada362b47c0330616c103360a",
+  "broker_identity_fingerprint": "79b116758c679e1a7e6ae9ca780d5d11a39a28f703babbaf4b091ef9de79516b"
+}

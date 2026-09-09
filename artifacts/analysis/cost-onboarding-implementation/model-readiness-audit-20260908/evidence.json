@@ -1,0 +1,6631 @@
+{
+  "audited_at": "2026-09-08T07:37:01.129926+00:00",
+  "immutable_run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T065643.819336Z",
+  "run_manifest_sha256": "7058ed230fe6968450d7528f1301bddfa843c6d7745fd5c988a96d8b16752f90",
+  "operations": {
+    "fits": 0,
+    "provider_calls": 0,
+    "broker_calls": 0,
+    "model_changes": 0
+  },
+  "source_inputs_verified": [
+    {
+      "path": "C:\\DATASTORE\\ml\\runs\\20260906T084041.266342Z\\samples.parquet",
+      "sha256": "1aabb78e518bb2ba07f72e334f6a388d5c496c6eadf40317c16443e5ab6d0728"
+    },
+    {
+      "path": "C:\\DATASTORE\\stocks\\AAPL\\bars\\1m\\databento\\normalized\\AAPL_source_100d_1m_ohlcv-1m_1m.parquet",
+      "sha256": "2607ba62d069254647fdf68b185648561ed7a7d5af1efa1efd0c3b4f50bb2ee4"
+    },
+    {
+      "path": "C:\\DATASTORE\\stocks\\AMZN\\bars\\1m\\databento\\normalized\\AMZN_source_100d_1m_ohlcv-1m_1m.parquet",
+      "sha256": "03a87b5911d8adc88473d9dc2f6e09fb31d8bdcf2102e5542bd77297ac8e91f6"
+    },
+    {
+      "path": "C:\\DATASTORE\\stocks\\GOOG\\bars\\1m\\databento\\normalized\\GOOG_source_100d_1m_ohlcv-1m_1m.parquet",
+      "sha256": "1e7b1625b0f237dc4fca382ce7601c7ee0b98b93e80e44b341097a6183509376"
+    },
+    {
+      "path": "C:\\DATASTORE\\stocks\\MU\\bars\\1m\\databento\\normalized\\MU_source_100d_1m_ohlcv-1m_1m.parquet",
+      "sha256": "59ad15f5c8e7bb62f9d5854f5c6f6d3cf665604fa192433c4e01c04c0f60fe18"
+    },
+    {
+      "path": "C:\\DATASTORE\\stocks\\NVDA\\bars\\1m\\databento\\normalized\\NVDA_source_100d_1m_ohlcv-1m_1m.parquet",
+      "sha256": "b736aa346d396ef9fc5d428b305824ea81d978ef4b08323020a643e2a92e4787"
+    },
+    {
+      "path": "C:\\DATASTORE\\stocks\\SNDK\\bars\\1m\\databento\\normalized\\SNDK_source_100d_1m_ohlcv-1m_1m.parquet",
+      "sha256": "ea3f40be8f72f99d3421d74bd6d6b47d7b7bc6aea0561dfaf614b148a7cbf6c8"
+    },
+    {
+      "path": "C:\\DATASTORE\\stocks\\COST\\bars\\1m\\databento\\normalized\\COST_source_100d_1m_ohlcv-1m_1m.parquet",
+      "sha256": "1bbafc9ff0b7606d76b02955218e68dbd5e5723c84390d0f25f12d309f2df522"
+    }
+  ],
+  "audit_source_sha256": {
+    "ml/nightly_gameplan.py": "094ba7e258c192bde03ee66b3327c8798f33f930e65bc0e605d1b91b9db29a81",
+    "ml/independent_stock_targets.py": "ac2ac4cb3c619e65e841d02444376b6d30265aab2326e9e0a950dd64302ee890",
+    "ml/calibration.py": "a525fd7a9e9697b9d70945474a8387b137bbfca9b5d7d9650058d717cbbb32fa"
+  },
+  "source_rows": 3897,
+  "manifest_feature_count": 154,
+  "groups": {
+    "1h": {
+      "reconstruction_matches_saved_row_counts_and_scores": true,
+      "target_boundary_quality": {
+        "policy": "clock-window-boundaries-within-five-minutes-v1",
+        "enforced": true,
+        "maximum_boundary_gap_seconds": 300.0,
+        "candidate_rows": 54460,
+        "aligned_rows": 4354,
+        "excluded_rows": 50106,
+        "excluded_rows_by_route": {
+          "1h@04:00": 3723,
+          "1h@05:00": 3612,
+          "1h@06:00": 3525,
+          "1h@07:00": 3401,
+          "1h@08:00": 3401,
+          "1h@09:00": 3401,
+          "1h@10:00": 3401,
+          "1h@11:00": 3401,
+          "1h@12:00": 3401,
+          "1h@13:00": 3646,
+          "1h@14:00": 3817,
+          "1h@15:00": 3817,
+          "1h@16:00": 3807,
+          "1h@gap": 3753
+        },
+        "admitted_rows_by_symbol": {
+          "AAPL": 528,
+          "AMZN": 457,
+          "COST": 474,
+          "GOOG": 406,
+          "MU": 910,
+          "NVDA": 830,
+          "SNDK": 749
+        },
+        "admitted_rows_by_route": {
+          "1h@04:00": 167,
+          "1h@05:00": 278,
+          "1h@06:00": 365,
+          "1h@07:00": 489,
+          "1h@08:00": 489,
+          "1h@09:00": 489,
+          "1h@10:00": 489,
+          "1h@11:00": 489,
+          "1h@12:00": 489,
+          "1h@13:00": 244,
+          "1h@14:00": 73,
+          "1h@15:00": 73,
+          "1h@16:00": 83,
+          "1h@gap": 137
+        },
+        "conflicting_minute_rows_excluded": 0,
+        "target_contract_version": "independent-stock-targets-v1",
+        "target_price_source_contract": "canonical-equity-minute-v1",
+        "target_price_dataset": "EQUS.MINI"
+      },
+      "selected_family": "hist-gradient-mlp-0.75",
+      "partitions": {
+        "train": {
+          "rows": 2641,
+          "decision_clusters": 75,
+          "positive_rate": 0.42105263157894735,
+          "earliest_decision": "2026-05-08T23:05:00+00:00",
+          "latest_decision": "2026-07-17T00:05:00+00:00",
+          "earliest_target_start": "2026-05-11T11:00:00+00:00",
+          "latest_target_end": "2026-07-17T23:00:00+00:00",
+          "unique_symbol_target_windows": 2641,
+          "by_symbol": {
+            "AAPL": {
+              "rows": 321,
+              "positive_rate": 0.42990654205607476
+            },
+            "AMZN": {
+              "rows": 266,
+              "positive_rate": 0.33458646616541354
+            },
+            "COST": {
+              "rows": 285,
+              "positive_rate": 0.3929824561403509
+            },
+            "GOOG": {
+              "rows": 238,
+              "positive_rate": 0.40756302521008403
+            },
+            "MU": {
+              "rows": 566,
+              "positive_rate": 0.46466431095406363
+            },
+            "NVDA": {
+              "rows": 524,
+              "positive_rate": 0.40076335877862596
+            },
+            "SNDK": {
+              "rows": 441,
+              "positive_rate": 0.4603174603174603
+            }
+          },
+          "by_route": {
+            "1h@04:00": {
+              "rows": 103,
+              "positive_rate": 0.44660194174757284
+            },
+            "1h@05:00": {
+              "rows": 173,
+              "positive_rate": 0.3699421965317919
+            },
+            "1h@06:00": {
+              "rows": 229,
+              "positive_rate": 0.44541484716157204
+            },
+            "1h@07:00": {
+              "rows": 292,
+              "positive_rate": 0.4931506849315068
+            },
+            "1h@08:00": {
+              "rows": 292,
+              "positive_rate": 0.4280821917808219
+            },
+            "1h@09:00": {
+              "rows": 292,
+              "positive_rate": 0.4075342465753425
+            },
+            "1h@10:00": {
+              "rows": 292,
+              "positive_rate": 0.4417808219178082
+            },
+            "1h@11:00": {
+              "rows": 292,
+              "positive_rate": 0.3527397260273973
+            },
+            "1h@12:00": {
+              "rows": 292,
+              "positive_rate": 0.4657534246575342
+            },
+            "1h@13:00": {
+              "rows": 152,
+              "positive_rate": 0.29605263157894735
+            },
+            "1h@14:00": {
+              "rows": 44,
+              "positive_rate": 0.3409090909090909
+            },
+            "1h@15:00": {
+              "rows": 47,
+              "positive_rate": 0.3404255319148936
+            },
+            "1h@16:00": {
+              "rows": 53,
+              "positive_rate": 0.41509433962264153
+            },
+            "1h@gap": {
+              "rows": 88,
+              "positive_rate": 0.5227272727272727
+            }
+          }
+        },
+        "selection": {
+          "rows": 601,
+          "decision_clusters": 15,
+          "positive_rate": 0.43926788685524126,
+          "earliest_decision": "2026-07-17T23:05:00+00:00",
+          "latest_decision": "2026-07-31T00:05:00+00:00",
+          "earliest_target_start": "2026-07-18T00:00:00+00:00",
+          "latest_target_end": "2026-07-31T21:00:00+00:00",
+          "unique_symbol_target_windows": 601,
+          "by_symbol": {
+            "AAPL": {
+              "rows": 61,
+              "positive_rate": 0.3114754098360656
+            },
+            "AMZN": {
+              "rows": 72,
+              "positive_rate": 0.4166666666666667
+            },
+            "COST": {
+              "rows": 62,
+              "positive_rate": 0.3870967741935484
+            },
+            "GOOG": {
+              "rows": 83,
+              "positive_rate": 0.43373493975903615
+            },
+            "MU": {
+              "rows": 119,
+              "positive_rate": 0.46218487394957986
+            },
+            "NVDA": {
+              "rows": 101,
+              "positive_rate": 0.45544554455445546
+            },
+            "SNDK": {
+              "rows": 103,
+              "positive_rate": 0.5242718446601942
+            }
+          },
+          "by_route": {
+            "1h@04:00": {
+              "rows": 25,
+              "positive_rate": 0.6
+            },
+            "1h@05:00": {
+              "rows": 39,
+              "positive_rate": 0.2564102564102564
+            },
+            "1h@06:00": {
+              "rows": 51,
+              "positive_rate": 0.39215686274509803
+            },
+            "1h@07:00": {
+              "rows": 66,
+              "positive_rate": 0.48484848484848486
+            },
+            "1h@08:00": {
+              "rows": 66,
+              "positive_rate": 0.4696969696969697
+            },
+            "1h@09:00": {
+              "rows": 66,
+              "positive_rate": 0.42424242424242425
+            },
+            "1h@10:00": {
+              "rows": 66,
+              "positive_rate": 0.3939393939393939
+            },
+            "1h@11:00": {
+              "rows": 66,
+              "positive_rate": 0.45454545454545453
+            },
+            "1h@12:00": {
+              "rows": 66,
+              "positive_rate": 0.3333333333333333
+            },
+            "1h@13:00": {
+              "rows": 39,
+              "positive_rate": 0.5128205128205128
+            },
+            "1h@14:00": {
+              "rows": 16,
+              "positive_rate": 0.4375
+            },
+            "1h@15:00": {
+              "rows": 9,
+              "positive_rate": 0.5555555555555556
+            },
+            "1h@16:00": {
+              "rows": 11,
+              "positive_rate": 0.9090909090909091
+            },
+            "1h@gap": {
+              "rows": 15,
+              "positive_rate": 0.5333333333333333
+            }
+          }
+        },
+        "calibration": {
+          "rows": 532,
+          "decision_clusters": 14,
+          "positive_rate": 0.4473684210526316,
+          "earliest_decision": "2026-07-31T23:05:00+00:00",
+          "latest_decision": "2026-08-14T00:05:00+00:00",
+          "earliest_target_start": "2026-08-01T00:00:00+00:00",
+          "latest_target_end": "2026-08-14T23:00:00+00:00",
+          "unique_symbol_target_windows": 532,
+          "by_symbol": {
+            "AAPL": {
+              "rows": 77,
+              "positive_rate": 0.4025974025974026
+            },
+            "AMZN": {
+              "rows": 54,
+              "positive_rate": 0.3333333333333333
+            },
+            "COST": {
+              "rows": 60,
+              "positive_rate": 0.4666666666666667
+            },
+            "GOOG": {
+              "rows": 38,
+              "positive_rate": 0.3684210526315789
+            },
+            "MU": {
+              "rows": 114,
+              "positive_rate": 0.5175438596491229
+            },
+            "NVDA": {
+              "rows": 91,
+              "positive_rate": 0.4175824175824176
+            },
+            "SNDK": {
+              "rows": 98,
+              "positive_rate": 0.5102040816326531
+            }
+          },
+          "by_route": {
+            "1h@04:00": {
+              "rows": 19,
+              "positive_rate": 0.47368421052631576
+            },
+            "1h@05:00": {
+              "rows": 32,
+              "positive_rate": 0.5
+            },
+            "1h@06:00": {
+              "rows": 43,
+              "positive_rate": 0.5581395348837209
+            },
+            "1h@07:00": {
+              "rows": 62,
+              "positive_rate": 0.41935483870967744
+            },
+            "1h@08:00": {
+              "rows": 62,
+              "positive_rate": 0.3870967741935484
+            },
+            "1h@09:00": {
+              "rows": 62,
+              "positive_rate": 0.5
+            },
+            "1h@10:00": {
+              "rows": 62,
+              "positive_rate": 0.3870967741935484
+            },
+            "1h@11:00": {
+              "rows": 62,
+              "positive_rate": 0.3064516129032258
+            },
+            "1h@12:00": {
+              "rows": 62,
+              "positive_rate": 0.5
+            },
+            "1h@13:00": {
+              "rows": 31,
+              "positive_rate": 0.3870967741935484
+            },
+            "1h@14:00": {
+              "rows": 4,
+              "positive_rate": 0.5
+            },
+            "1h@15:00": {
+              "rows": 8,
+              "positive_rate": 0.75
+            },
+            "1h@16:00": {
+              "rows": 6,
+              "positive_rate": 0.6666666666666666
+            },
+            "1h@gap": {
+              "rows": 17,
+              "positive_rate": 0.5882352941176471
+            }
+          }
+        },
+        "assessment": {
+          "rows": 570,
+          "decision_clusters": 15,
+          "positive_rate": 0.4,
+          "earliest_decision": "2026-08-15T00:05:00+00:00",
+          "latest_decision": "2026-09-04T00:05:00+00:00",
+          "earliest_target_start": "2026-08-15T00:00:00+00:00",
+          "latest_target_end": "2026-09-05T00:00:00+00:00",
+          "unique_symbol_target_windows": 570,
+          "by_symbol": {
+            "AAPL": {
+              "rows": 69,
+              "positive_rate": 0.36231884057971014
+            },
+            "AMZN": {
+              "rows": 58,
+              "positive_rate": 0.29310344827586204
+            },
+            "COST": {
+              "rows": 67,
+              "positive_rate": 0.34328358208955223
+            },
+            "GOOG": {
+              "rows": 47,
+              "positive_rate": 0.3404255319148936
+            },
+            "MU": {
+              "rows": 109,
+              "positive_rate": 0.47706422018348627
+            },
+            "NVDA": {
+              "rows": 114,
+              "positive_rate": 0.38596491228070173
+            },
+            "SNDK": {
+              "rows": 106,
+              "positive_rate": 0.4811320754716981
+            }
+          },
+          "by_route": {
+            "1h@04:00": {
+              "rows": 20,
+              "positive_rate": 0.45
+            },
+            "1h@05:00": {
+              "rows": 34,
+              "positive_rate": 0.35294117647058826
+            },
+            "1h@06:00": {
+              "rows": 41,
+              "positive_rate": 0.4146341463414634
+            },
+            "1h@07:00": {
+              "rows": 68,
+              "positive_rate": 0.45588235294117646
+            },
+            "1h@08:00": {
+              "rows": 68,
+              "positive_rate": 0.45588235294117646
+            },
+            "1h@09:00": {
+              "rows": 68,
+              "positive_rate": 0.39705882352941174
+            },
+            "1h@10:00": {
+              "rows": 68,
+              "positive_rate": 0.19117647058823528
+            },
+            "1h@11:00": {
+              "rows": 68,
+              "positive_rate": 0.3235294117647059
+            },
+            "1h@12:00": {
+              "rows": 68,
+              "positive_rate": 0.47058823529411764
+            },
+            "1h@13:00": {
+              "rows": 22,
+              "positive_rate": 0.36363636363636365
+            },
+            "1h@14:00": {
+              "rows": 9,
+              "positive_rate": 0.7777777777777778
+            },
+            "1h@15:00": {
+              "rows": 9,
+              "positive_rate": 0.3333333333333333
+            },
+            "1h@16:00": {
+              "rows": 10,
+              "positive_rate": 0.3
+            },
+            "1h@gap": {
+              "rows": 17,
+              "positive_rate": 0.7647058823529411
+            }
+          }
+        }
+      },
+      "partition_boundary_audit": [
+        {
+          "left": "train",
+          "right": "selection",
+          "right_first_decision": "2026-07-17T23:05:00+00:00",
+          "right_first_target_start": "2026-07-18T00:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        },
+        {
+          "left": "selection",
+          "right": "calibration",
+          "right_first_decision": "2026-07-31T23:05:00+00:00",
+          "right_first_target_start": "2026-08-01T00:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        },
+        {
+          "left": "calibration",
+          "right": "assessment",
+          "right_first_decision": "2026-08-15T00:05:00+00:00",
+          "right_first_target_start": "2026-08-15T00:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        }
+      ],
+      "target_support_by_symbol": {
+        "AAPL": {
+          "admitted_decision_clusters": 66,
+          "admitted_rows": 528,
+          "admitted_rows_by_route": {
+            "1h@04:00": 6,
+            "1h@05:00": 37,
+            "1h@06:00": 53,
+            "1h@07:00": 66,
+            "1h@08:00": 66,
+            "1h@09:00": 66,
+            "1h@10:00": 66,
+            "1h@11:00": 66,
+            "1h@12:00": 66,
+            "1h@13:00": 22,
+            "1h@14:00": 2,
+            "1h@15:00": 4,
+            "1h@16:00": 2,
+            "1h@gap": 6
+          },
+          "assessment_decision_clusters": 9,
+          "assessment_rows": 69,
+          "assessment_rows_by_route": {
+            "1h@04:00": 1,
+            "1h@05:00": 5,
+            "1h@06:00": 5,
+            "1h@07:00": 9,
+            "1h@08:00": 9,
+            "1h@09:00": 9,
+            "1h@10:00": 9,
+            "1h@11:00": 9,
+            "1h@12:00": 9,
+            "1h@13:00": 1,
+            "1h@16:00": 1,
+            "1h@gap": 2
+          },
+          "fitted_decision_clusters": 47,
+          "fitted_rows": 382,
+          "fitted_rows_by_route": {
+            "1h@04:00": 3,
+            "1h@05:00": 28,
+            "1h@06:00": 42,
+            "1h@07:00": 47,
+            "1h@08:00": 47,
+            "1h@09:00": 47,
+            "1h@10:00": 47,
+            "1h@11:00": 47,
+            "1h@12:00": 47,
+            "1h@13:00": 16,
+            "1h@14:00": 2,
+            "1h@15:00": 4,
+            "1h@16:00": 1,
+            "1h@gap": 4
+          }
+        },
+        "AMZN": {
+          "admitted_decision_clusters": 59,
+          "admitted_rows": 457,
+          "admitted_rows_by_route": {
+            "1h@04:00": 7,
+            "1h@05:00": 23,
+            "1h@06:00": 42,
+            "1h@07:00": 59,
+            "1h@08:00": 59,
+            "1h@09:00": 59,
+            "1h@10:00": 59,
+            "1h@11:00": 59,
+            "1h@12:00": 59,
+            "1h@13:00": 20,
+            "1h@14:00": 3,
+            "1h@15:00": 1,
+            "1h@16:00": 2,
+            "1h@gap": 5
+          },
+          "assessment_decision_clusters": 8,
+          "assessment_rows": 58,
+          "assessment_rows_by_route": {
+            "1h@05:00": 3,
+            "1h@06:00": 5,
+            "1h@07:00": 8,
+            "1h@08:00": 8,
+            "1h@09:00": 8,
+            "1h@10:00": 8,
+            "1h@11:00": 8,
+            "1h@12:00": 8,
+            "1h@13:00": 2
+          },
+          "fitted_decision_clusters": 43,
+          "fitted_rows": 338,
+          "fitted_rows_by_route": {
+            "1h@04:00": 5,
+            "1h@05:00": 19,
+            "1h@06:00": 31,
+            "1h@07:00": 43,
+            "1h@08:00": 43,
+            "1h@09:00": 43,
+            "1h@10:00": 43,
+            "1h@11:00": 43,
+            "1h@12:00": 43,
+            "1h@13:00": 15,
+            "1h@14:00": 3,
+            "1h@15:00": 1,
+            "1h@16:00": 2,
+            "1h@gap": 4
+          }
+        },
+        "COST": {
+          "admitted_decision_clusters": 77,
+          "admitted_rows": 474,
+          "admitted_rows_by_route": {
+            "1h@06:00": 10,
+            "1h@07:00": 77,
+            "1h@08:00": 77,
+            "1h@09:00": 77,
+            "1h@10:00": 77,
+            "1h@11:00": 77,
+            "1h@12:00": 77,
+            "1h@13:00": 2
+          },
+          "assessment_decision_clusters": 11,
+          "assessment_rows": 67,
+          "assessment_rows_by_route": {
+            "1h@06:00": 1,
+            "1h@07:00": 11,
+            "1h@08:00": 11,
+            "1h@09:00": 11,
+            "1h@10:00": 11,
+            "1h@11:00": 11,
+            "1h@12:00": 11
+          },
+          "fitted_decision_clusters": 56,
+          "fitted_rows": 347,
+          "fitted_rows_by_route": {
+            "1h@06:00": 9,
+            "1h@07:00": 56,
+            "1h@08:00": 56,
+            "1h@09:00": 56,
+            "1h@10:00": 56,
+            "1h@11:00": 56,
+            "1h@12:00": 56,
+            "1h@13:00": 2
+          }
+        },
+        "GOOG": {
+          "admitted_decision_clusters": 53,
+          "admitted_rows": 406,
+          "admitted_rows_by_route": {
+            "1h@04:00": 4,
+            "1h@05:00": 25,
+            "1h@06:00": 39,
+            "1h@07:00": 53,
+            "1h@08:00": 53,
+            "1h@09:00": 53,
+            "1h@10:00": 53,
+            "1h@11:00": 53,
+            "1h@12:00": 53,
+            "1h@13:00": 13,
+            "1h@14:00": 2,
+            "1h@15:00": 2,
+            "1h@16:00": 1,
+            "1h@gap": 2
+          },
+          "assessment_decision_clusters": 7,
+          "assessment_rows": 47,
+          "assessment_rows_by_route": {
+            "1h@05:00": 1,
+            "1h@06:00": 3,
+            "1h@07:00": 7,
+            "1h@08:00": 7,
+            "1h@09:00": 7,
+            "1h@10:00": 7,
+            "1h@11:00": 7,
+            "1h@12:00": 7,
+            "1h@13:00": 1
+          },
+          "fitted_decision_clusters": 41,
+          "fitted_rows": 321,
+          "fitted_rows_by_route": {
+            "1h@04:00": 4,
+            "1h@05:00": 21,
+            "1h@06:00": 34,
+            "1h@07:00": 41,
+            "1h@08:00": 41,
+            "1h@09:00": 41,
+            "1h@10:00": 41,
+            "1h@11:00": 41,
+            "1h@12:00": 41,
+            "1h@13:00": 10,
+            "1h@14:00": 2,
+            "1h@15:00": 2,
+            "1h@16:00": 1,
+            "1h@gap": 1
+          }
+        },
+        "MU": {
+          "admitted_decision_clusters": 78,
+          "admitted_rows": 910,
+          "admitted_rows_by_route": {
+            "1h@04:00": 61,
+            "1h@05:00": 76,
+            "1h@06:00": 77,
+            "1h@07:00": 78,
+            "1h@08:00": 78,
+            "1h@09:00": 78,
+            "1h@10:00": 78,
+            "1h@11:00": 78,
+            "1h@12:00": 78,
+            "1h@13:00": 72,
+            "1h@14:00": 30,
+            "1h@15:00": 34,
+            "1h@16:00": 38,
+            "1h@gap": 54
+          },
+          "assessment_decision_clusters": 11,
+          "assessment_rows": 109,
+          "assessment_rows_by_route": {
+            "1h@04:00": 5,
+            "1h@05:00": 11,
+            "1h@06:00": 10,
+            "1h@07:00": 11,
+            "1h@08:00": 11,
+            "1h@09:00": 11,
+            "1h@10:00": 11,
+            "1h@11:00": 11,
+            "1h@12:00": 11,
+            "1h@13:00": 6,
+            "1h@14:00": 2,
+            "1h@15:00": 4,
+            "1h@16:00": 2,
+            "1h@gap": 3
+          },
+          "fitted_decision_clusters": 57,
+          "fitted_rows": 685,
+          "fitted_rows_by_route": {
+            "1h@04:00": 48,
+            "1h@05:00": 56,
+            "1h@06:00": 57,
+            "1h@07:00": 57,
+            "1h@08:00": 57,
+            "1h@09:00": 57,
+            "1h@10:00": 57,
+            "1h@11:00": 57,
+            "1h@12:00": 57,
+            "1h@13:00": 57,
+            "1h@14:00": 26,
+            "1h@15:00": 26,
+            "1h@16:00": 30,
+            "1h@gap": 43
+          }
+        },
+        "NVDA": {
+          "admitted_decision_clusters": 78,
+          "admitted_rows": 830,
+          "admitted_rows_by_route": {
+            "1h@04:00": 51,
+            "1h@05:00": 61,
+            "1h@06:00": 73,
+            "1h@07:00": 78,
+            "1h@08:00": 78,
+            "1h@09:00": 78,
+            "1h@10:00": 78,
+            "1h@11:00": 78,
+            "1h@12:00": 78,
+            "1h@13:00": 57,
+            "1h@14:00": 27,
+            "1h@15:00": 28,
+            "1h@16:00": 26,
+            "1h@gap": 39
+          },
+          "assessment_decision_clusters": 11,
+          "assessment_rows": 114,
+          "assessment_rows_by_route": {
+            "1h@04:00": 7,
+            "1h@05:00": 7,
+            "1h@06:00": 8,
+            "1h@07:00": 11,
+            "1h@08:00": 11,
+            "1h@09:00": 11,
+            "1h@10:00": 11,
+            "1h@11:00": 11,
+            "1h@12:00": 11,
+            "1h@13:00": 6,
+            "1h@14:00": 5,
+            "1h@15:00": 4,
+            "1h@16:00": 5,
+            "1h@gap": 6
+          },
+          "fitted_decision_clusters": 57,
+          "fitted_rows": 625,
+          "fitted_rows_by_route": {
+            "1h@04:00": 41,
+            "1h@05:00": 48,
+            "1h@06:00": 55,
+            "1h@07:00": 57,
+            "1h@08:00": 57,
+            "1h@09:00": 57,
+            "1h@10:00": 57,
+            "1h@11:00": 57,
+            "1h@12:00": 57,
+            "1h@13:00": 45,
+            "1h@14:00": 21,
+            "1h@15:00": 22,
+            "1h@16:00": 21,
+            "1h@gap": 30
+          }
+        },
+        "SNDK": {
+          "admitted_decision_clusters": 78,
+          "admitted_rows": 749,
+          "admitted_rows_by_route": {
+            "1h@04:00": 38,
+            "1h@05:00": 56,
+            "1h@06:00": 71,
+            "1h@07:00": 78,
+            "1h@08:00": 78,
+            "1h@09:00": 78,
+            "1h@10:00": 78,
+            "1h@11:00": 78,
+            "1h@12:00": 78,
+            "1h@13:00": 58,
+            "1h@14:00": 9,
+            "1h@15:00": 4,
+            "1h@16:00": 14,
+            "1h@gap": 31
+          },
+          "assessment_decision_clusters": 11,
+          "assessment_rows": 106,
+          "assessment_rows_by_route": {
+            "1h@04:00": 7,
+            "1h@05:00": 7,
+            "1h@06:00": 9,
+            "1h@07:00": 11,
+            "1h@08:00": 11,
+            "1h@09:00": 11,
+            "1h@10:00": 11,
+            "1h@11:00": 11,
+            "1h@12:00": 11,
+            "1h@13:00": 6,
+            "1h@14:00": 2,
+            "1h@15:00": 1,
+            "1h@16:00": 2,
+            "1h@gap": 6
+          },
+          "fitted_decision_clusters": 57,
+          "fitted_rows": 544,
+          "fitted_rows_by_route": {
+            "1h@04:00": 27,
+            "1h@05:00": 40,
+            "1h@06:00": 52,
+            "1h@07:00": 57,
+            "1h@08:00": 57,
+            "1h@09:00": 57,
+            "1h@10:00": 57,
+            "1h@11:00": 57,
+            "1h@12:00": 57,
+            "1h@13:00": 46,
+            "1h@14:00": 6,
+            "1h@15:00": 1,
+            "1h@16:00": 9,
+            "1h@gap": 21
+          }
+        }
+      },
+      "feature_support": [
+        {
+          "feature": "mr__trend_atr",
+          "nonnull_rows": 2641,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "mr__momentum_risk_adjusted",
+          "nonnull_rows": 2641,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "mr__range_position",
+          "nonnull_rows": 2641,
+          "distinct_values": 283,
+          "admitted": true
+        },
+        {
+          "feature": "mr__volume_score",
+          "nonnull_rows": 2641,
+          "distinct_values": 85,
+          "admitted": true
+        },
+        {
+          "feature": "mr__volatility_ratio",
+          "nonnull_rows": 2641,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "bp__compression_score",
+          "nonnull_rows": 2641,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "bp__range_contraction_score",
+          "nonnull_rows": 2641,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "bp__direction_score",
+          "nonnull_rows": 2641,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "bp__upside_pressure_score",
+          "nonnull_rows": 2641,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "bp__downside_pressure_score",
+          "nonnull_rows": 2641,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "bp__breakout_magnitude_atr",
+          "nonnull_rows": 2641,
+          "distinct_values": 20,
+          "admitted": true
+        },
+        {
+          "feature": "bp__volume_participation_score",
+          "nonnull_rows": 2641,
+          "distinct_values": 192,
+          "admitted": true
+        },
+        {
+          "feature": "mr__technical_score",
+          "nonnull_rows": 2641,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "mr__regime_strength",
+          "nonnull_rows": 2641,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "bp__breakout_readiness_score",
+          "nonnull_rows": 2641,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "bp__breakout_strength_score",
+          "nonnull_rows": 2641,
+          "distinct_values": 20,
+          "admitted": true
+        },
+        {
+          "feature": "bp__setup_quality",
+          "nonnull_rows": 2641,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "mr__confidence_score",
+          "nonnull_rows": 2641,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "bp__confidence_score",
+          "nonnull_rows": 2641,
+          "distinct_values": 2,
+          "admitted": true
+        },
+        {
+          "feature": "mr__atr_percent",
+          "nonnull_rows": 2641,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "mr__technical_score_change_5",
+          "nonnull_rows": 2641,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "bp__bars_since_state_change",
+          "nonnull_rows": 2641,
+          "distinct_values": 23,
+          "admitted": true
+        },
+        {
+          "feature": "mr__trend_score",
+          "nonnull_rows": 2641,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "mr__momentum_score",
+          "nonnull_rows": 2641,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "mr__range_score",
+          "nonnull_rows": 2641,
+          "distinct_values": 283,
+          "admitted": true
+        },
+        {
+          "feature": "bp__boundary_proximity_score",
+          "nonnull_rows": 2641,
+          "distinct_values": 270,
+          "admitted": true
+        },
+        {
+          "feature": "bar__intrabar_range_atr",
+          "nonnull_rows": 2641,
+          "distinct_values": 178,
+          "admitted": true
+        },
+        {
+          "feature": "bar__close_location",
+          "nonnull_rows": 1822,
+          "distinct_values": 73,
+          "admitted": true
+        },
+        {
+          "feature": "life__technical_consensus_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "life__technical_consensus_change_5d",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "life__long_term_technical_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "life__technical_term_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "life__timing_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "quote__relative_bid_ask_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__iv_minus_realized",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__put25d_minus_call25d_iv",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__log_call_put_volume_ratio",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__relative_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__realized_volatility_20d",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__realized_expected_absolute_move_atm_horizon",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_implied_volatility",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_straddle_implied_move",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_straddle_move_excess",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_relative_bid_ask_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__put_25d_implied_volatility",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__call_25d_implied_volatility",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__smile_curvature",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__volume_to_open_interest",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__put_call_parity_residual",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_put_call_parity_residual",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__quote_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__quote_time_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__iv_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__greeks_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__open_interest_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__intrinsic_value_violation_rate",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__contract_count",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__expiration_count",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_days_to_expiration",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__quote_staleness_seconds",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "energy__wti_or_proxy_return",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__nq_return_1h",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__es_return_1h",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__small_cap_breadth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__tech_breadth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__gold_return",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__crude_return",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__relative_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__book_imbalance",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__causal_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__median_normalized_residual",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__median_predictive_standard_deviation",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__median_model_edge_in_half_spreads",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__positive_edge_fraction",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__negative_edge_fraction",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__raw_arbitrage_violation_rate",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__constrained_arbitrage_violation_rate",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__interval_80_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__interval_95_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__median_relative_bid_ask_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "bp__readiness_change_5",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "bar__overnight_gap_atr",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "weekly__technical_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "weekly__technical_score_change_5",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "weekly__breakout_readiness_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__fundamental_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__fundamental_confidence",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__earnings_momentum_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__cash_conversion_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__accrual_quality_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__balance_sheet_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__tax_quality_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__investment_dilution_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__component_agreement",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__component_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__metric_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__revenue_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__operating_income_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__net_income_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__cfo_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__receivables_growth_minus_revenue_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__inventory_growth_minus_cost_of_revenue_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__cfo_growth_minus_net_income_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__debt_growth_minus_cfo_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__operating_margin",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__free_cash_flow_margin",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__cfo_to_net_income",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__cash_to_debt",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__current_ratio",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__effective_tax_rate",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__revenue_growth_yoy",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__operating_margin",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__operating_margin_change_yoy",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__free_cash_flow_margin",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__cfo_to_net_income",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__cash_to_debt",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__current_ratio",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__diluted_share_growth_yoy",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__stock_comp_to_revenue",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__net_issuance_to_market_cap",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__buyback_yield",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__roic",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__fcf_yield",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__technical_consensus_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__technical_timeframe_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__technical_consensus_confidence",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__short_term_technical_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__long_term_technical_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__technical_term_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__technical_consensus_change_5d",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__timing_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__fundamental_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__fundamental_confidence",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__fundamental_change_1q",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__fundamental_acceleration",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__lifecycle_confidence",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__fundamental_technical_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__agreement_strength",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__divergence_strength",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__setup_quality",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__front_minus_back_iv",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_move_richness",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__log_call_put_oi_ratio",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__open_interest_concentration",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__front_atm_implied_volatility",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__back_atm_implied_volatility",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "macro__fed_funds_level",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "macro__cpi_yoy",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "macro__unemployment_change",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "macro__gdp_yoy",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "sec__dilution_event",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "sec__offering_size_to_market_cap",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "sec__filing_event_impulse",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "mr__bars_since_regime_change",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        }
+      ],
+      "admitted_feature_count": 28,
+      "all_null_training_features": [
+        "life__technical_consensus_score",
+        "life__technical_consensus_change_5d",
+        "life__long_term_technical_score",
+        "life__technical_term_spread",
+        "life__timing_score",
+        "quote__relative_bid_ask_spread",
+        "opt__iv_minus_realized",
+        "opt__put25d_minus_call25d_iv",
+        "opt__log_call_put_volume_ratio",
+        "opt__relative_spread",
+        "opt__realized_volatility_20d",
+        "opt__realized_expected_absolute_move_atm_horizon",
+        "opt__atm_implied_volatility",
+        "opt__atm_straddle_implied_move",
+        "opt__atm_straddle_move_excess",
+        "opt__atm_relative_bid_ask_spread",
+        "opt__put_25d_implied_volatility",
+        "opt__call_25d_implied_volatility",
+        "opt__smile_curvature",
+        "opt__volume_to_open_interest",
+        "opt__put_call_parity_residual",
+        "opt__atm_put_call_parity_residual",
+        "opt__quote_coverage",
+        "opt__quote_time_coverage",
+        "opt__iv_coverage",
+        "opt__greeks_coverage",
+        "opt__open_interest_coverage",
+        "opt__intrinsic_value_violation_rate",
+        "opt__contract_count",
+        "opt__expiration_count",
+        "opt__atm_days_to_expiration",
+        "opt__quote_staleness_seconds",
+        "energy__wti_or_proxy_return",
+        "cme__nq_return_1h",
+        "cme__es_return_1h",
+        "cme__small_cap_breadth",
+        "cme__tech_breadth",
+        "cme__gold_return",
+        "cme__crude_return",
+        "cme__relative_spread",
+        "cme__book_imbalance",
+        "opx__causal_coverage",
+        "opx__median_normalized_residual",
+        "opx__median_predictive_standard_deviation",
+        "opx__median_model_edge_in_half_spreads",
+        "opx__positive_edge_fraction",
+        "opx__negative_edge_fraction",
+        "opx__raw_arbitrage_violation_rate",
+        "opx__constrained_arbitrage_violation_rate",
+        "opx__interval_80_coverage",
+        "opx__interval_95_coverage",
+        "opx__median_relative_bid_ask_spread",
+        "bp__readiness_change_5",
+        "bar__overnight_gap_atr",
+        "weekly__technical_score",
+        "weekly__technical_score_change_5",
+        "weekly__breakout_readiness_score",
+        "fdir__fundamental_score",
+        "fdir__fundamental_confidence",
+        "fdir__earnings_momentum_score",
+        "fdir__cash_conversion_score",
+        "fdir__accrual_quality_score",
+        "fdir__balance_sheet_score",
+        "fdir__tax_quality_score",
+        "fdir__investment_dilution_score",
+        "fdir__component_agreement",
+        "fdir__component_coverage",
+        "fdir__metric_coverage",
+        "fdir__revenue_growth",
+        "fdir__operating_income_growth",
+        "fdir__net_income_growth",
+        "fdir__cfo_growth",
+        "fdir__receivables_growth_minus_revenue_growth",
+        "fdir__inventory_growth_minus_cost_of_revenue_growth",
+        "fdir__cfo_growth_minus_net_income_growth",
+        "fdir__debt_growth_minus_cfo_growth",
+        "fdir__operating_margin",
+        "fdir__free_cash_flow_margin",
+        "fdir__cfo_to_net_income",
+        "fdir__cash_to_debt",
+        "fdir__current_ratio",
+        "fdir__effective_tax_rate",
+        "fund__revenue_growth_yoy",
+        "fund__operating_margin",
+        "fund__operating_margin_change_yoy",
+        "fund__free_cash_flow_margin",
+        "fund__cfo_to_net_income",
+        "fund__cash_to_debt",
+        "fund__current_ratio",
+        "fund__diluted_share_growth_yoy",
+        "fund__stock_comp_to_revenue",
+        "fund__net_issuance_to_market_cap",
+        "fund__buyback_yield",
+        "fund__roic",
+        "fund__fcf_yield",
+        "ftlife__technical_consensus_score",
+        "ftlife__technical_timeframe_coverage",
+        "ftlife__technical_consensus_confidence",
+        "ftlife__short_term_technical_score",
+        "ftlife__long_term_technical_score",
+        "ftlife__technical_term_spread",
+        "ftlife__technical_consensus_change_5d",
+        "ftlife__timing_score",
+        "ftlife__fundamental_score",
+        "ftlife__fundamental_confidence",
+        "ftlife__fundamental_change_1q",
+        "ftlife__fundamental_acceleration",
+        "ftlife__lifecycle_confidence",
+        "ftlife__fundamental_technical_spread",
+        "ftlife__agreement_strength",
+        "ftlife__divergence_strength",
+        "ftlife__setup_quality",
+        "opt__front_minus_back_iv",
+        "opt__atm_move_richness",
+        "opt__log_call_put_oi_ratio",
+        "opt__open_interest_concentration",
+        "opt__front_atm_implied_volatility",
+        "opt__back_atm_implied_volatility",
+        "macro__fed_funds_level",
+        "macro__cpi_yoy",
+        "macro__unemployment_change",
+        "macro__gdp_yoy",
+        "sec__dilution_event",
+        "sec__offering_size_to_market_cap",
+        "sec__filing_event_impulse",
+        "mr__bars_since_regime_change"
+      ],
+      "nonvarying_training_features": [],
+      "expected_routes_without_fitted_symbol_history": {
+        "AAPL": [],
+        "AMZN": [],
+        "GOOG": [],
+        "MU": [],
+        "NVDA": [],
+        "SNDK": [],
+        "COST": [
+          "1h@04:00",
+          "1h@05:00",
+          "1h@14:00",
+          "1h@15:00",
+          "1h@16:00",
+          "1h@gap"
+        ]
+      },
+      "assessment": {
+        "rows": 570,
+        "positive_rate": 0.4,
+        "mean_probability": 0.44718788395421094,
+        "brier_score": 0.24200792177649472,
+        "log_loss": 0.6771101078649552,
+        "expected_calibration_error_10_bin": 0.04718788395421092,
+        "direction_accuracy_at_0_5": 0.6
+      },
+      "assessment_raw_scores": {
+        "rows": 570,
+        "positive_rate": 0.4,
+        "mean_probability": 0.4191117517107213,
+        "brier_score": 0.23781036756574242,
+        "log_loss": 0.6682242993940452,
+        "expected_calibration_error_10_bin": 0.019111751710721273,
+        "direction_accuracy_at_0_5": 0.6017543859649123
+      },
+      "training_base_rate_assessment": {
+        "brier_score": 0.2405967938542594,
+        "direction_accuracy_at_0_5": 0.6,
+        "expected_calibration_error_10_bin": 0.024429364589759306,
+        "log_loss": 0.6742398660539325,
+        "mean_probability": 0.42442936458975933,
+        "positive_rate": 0.4,
+        "rows": 570
+      },
+      "calibration_diagnostics": {
+        "assessment_probability_range": [
+          0.44192020125677023,
+          0.4524105783302027
+        ],
+        "calibrated_probability_range": [
+          0.44192020125677023,
+          0.4535269860266627
+        ],
+        "calibration_positive_rate": 0.4473684210526316,
+        "calibration_rows": 532,
+        "information_available": true,
+        "nondecreasing_constraint_active": false,
+        "platt_slope": 0.029537526388145052,
+        "raw_probability_range": [
+          0.2582510128915631,
+          0.6304551879811955
+        ],
+        "status": "DIRECTIONAL_INFORMATION_AVAILABLE"
+      },
+      "promotion_gate": {
+        "checks": {
+          "assessment_has_at_least_10_decision_clusters": true,
+          "brier_beats_training_base_rate": false,
+          "calibration_retains_directional_information": true,
+          "expected_calibration_error_at_most_0_15": true,
+          "log_loss_beats_training_base_rate": false
+        },
+        "status": "RESEARCH_NOT_PROMOTED"
+      }
+    },
+    "4h": {
+      "reconstruction_matches_saved_row_counts_and_scores": true,
+      "target_boundary_quality": {
+        "policy": "clock-window-boundaries-within-five-minutes-v1",
+        "enforced": true,
+        "maximum_boundary_gap_seconds": 300.0,
+        "candidate_rows": 15553,
+        "aligned_rows": 1015,
+        "excluded_rows": 14538,
+        "excluded_rows_by_route": {
+          "4h@04:00": 3621,
+          "4h@08:00": 3401,
+          "4h@12:00": 3762,
+          "4h@16:00": 3754
+        },
+        "admitted_rows_by_symbol": {
+          "AAPL": 104,
+          "AMZN": 91,
+          "COST": 77,
+          "GOOG": 78,
+          "MU": 252,
+          "NVDA": 225,
+          "SNDK": 188
+        },
+        "admitted_rows_by_route": {
+          "4h@04:00": 269,
+          "4h@08:00": 489,
+          "4h@12:00": 128,
+          "4h@16:00": 129
+        },
+        "conflicting_minute_rows_excluded": 0,
+        "target_contract_version": "independent-stock-targets-v1",
+        "target_price_source_contract": "canonical-equity-minute-v1",
+        "target_price_dataset": "EQUS.MINI"
+      },
+      "selected_family": "mlp",
+      "partitions": {
+        "train": {
+          "rows": 607,
+          "decision_clusters": 75,
+          "positive_rate": 0.44481054365733114,
+          "earliest_decision": "2026-05-08T23:05:00+00:00",
+          "latest_decision": "2026-07-17T00:05:00+00:00",
+          "earliest_target_start": "2026-05-11T11:00:00+00:00",
+          "latest_target_end": "2026-07-17T23:00:00+00:00",
+          "unique_symbol_target_windows": 607,
+          "by_symbol": {
+            "AAPL": {
+              "rows": 57,
+              "positive_rate": 0.42105263157894735
+            },
+            "AMZN": {
+              "rows": 53,
+              "positive_rate": 0.37735849056603776
+            },
+            "COST": {
+              "rows": 46,
+              "positive_rate": 0.41304347826086957
+            },
+            "GOOG": {
+              "rows": 45,
+              "positive_rate": 0.4888888888888889
+            },
+            "MU": {
+              "rows": 157,
+              "positive_rate": 0.4713375796178344
+            },
+            "NVDA": {
+              "rows": 142,
+              "positive_rate": 0.4647887323943662
+            },
+            "SNDK": {
+              "rows": 107,
+              "positive_rate": 0.4205607476635514
+            }
+          },
+          "by_route": {
+            "4h@04:00": {
+              "rows": 158,
+              "positive_rate": 0.45569620253164556
+            },
+            "4h@08:00": {
+              "rows": 292,
+              "positive_rate": 0.4554794520547945
+            },
+            "4h@12:00": {
+              "rows": 79,
+              "positive_rate": 0.34177215189873417
+            },
+            "4h@16:00": {
+              "rows": 78,
+              "positive_rate": 0.48717948717948717
+            }
+          }
+        },
+        "selection": {
+          "rows": 136,
+          "decision_clusters": 15,
+          "positive_rate": 0.47058823529411764,
+          "earliest_decision": "2026-07-17T23:05:00+00:00",
+          "latest_decision": "2026-07-31T00:05:00+00:00",
+          "earliest_target_start": "2026-07-20T11:00:00+00:00",
+          "latest_target_end": "2026-07-31T23:00:00+00:00",
+          "unique_symbol_target_windows": 136,
+          "by_symbol": {
+            "AAPL": {
+              "rows": 10,
+              "positive_rate": 0.4
+            },
+            "AMZN": {
+              "rows": 13,
+              "positive_rate": 0.5384615384615384
+            },
+            "COST": {
+              "rows": 10,
+              "positive_rate": 0.3
+            },
+            "GOOG": {
+              "rows": 17,
+              "positive_rate": 0.47058823529411764
+            },
+            "MU": {
+              "rows": 33,
+              "positive_rate": 0.48484848484848486
+            },
+            "NVDA": {
+              "rows": 28,
+              "positive_rate": 0.5357142857142857
+            },
+            "SNDK": {
+              "rows": 25,
+              "positive_rate": 0.44
+            }
+          },
+          "by_route": {
+            "4h@04:00": {
+              "rows": 32,
+              "positive_rate": 0.4375
+            },
+            "4h@08:00": {
+              "rows": 66,
+              "positive_rate": 0.5606060606060606
+            },
+            "4h@12:00": {
+              "rows": 20,
+              "positive_rate": 0.3
+            },
+            "4h@16:00": {
+              "rows": 18,
+              "positive_rate": 0.3888888888888889
+            }
+          }
+        },
+        "calibration": {
+          "rows": 137,
+          "decision_clusters": 14,
+          "positive_rate": 0.5255474452554745,
+          "earliest_decision": "2026-07-31T23:05:00+00:00",
+          "latest_decision": "2026-08-14T00:05:00+00:00",
+          "earliest_target_start": "2026-08-03T11:00:00+00:00",
+          "latest_target_end": "2026-08-14T23:00:00+00:00",
+          "unique_symbol_target_windows": 137,
+          "by_symbol": {
+            "AAPL": {
+              "rows": 22,
+              "positive_rate": 0.3181818181818182
+            },
+            "AMZN": {
+              "rows": 14,
+              "positive_rate": 0.14285714285714285
+            },
+            "COST": {
+              "rows": 10,
+              "positive_rate": 0.6
+            },
+            "GOOG": {
+              "rows": 7,
+              "positive_rate": 0.5714285714285714
+            },
+            "MU": {
+              "rows": 31,
+              "positive_rate": 0.5483870967741935
+            },
+            "NVDA": {
+              "rows": 25,
+              "positive_rate": 0.52
+            },
+            "SNDK": {
+              "rows": 28,
+              "positive_rate": 0.8214285714285714
+            }
+          },
+          "by_route": {
+            "4h@04:00": {
+              "rows": 46,
+              "positive_rate": 0.5434782608695652
+            },
+            "4h@08:00": {
+              "rows": 62,
+              "positive_rate": 0.4838709677419355
+            },
+            "4h@12:00": {
+              "rows": 16,
+              "positive_rate": 0.5
+            },
+            "4h@16:00": {
+              "rows": 13,
+              "positive_rate": 0.6923076923076923
+            }
+          }
+        },
+        "assessment": {
+          "rows": 129,
+          "decision_clusters": 15,
+          "positive_rate": 0.3643410852713178,
+          "earliest_decision": "2026-08-15T00:05:00+00:00",
+          "latest_decision": "2026-09-04T00:05:00+00:00",
+          "earliest_target_start": "2026-08-17T11:00:00+00:00",
+          "latest_target_end": "2026-09-04T19:00:00+00:00",
+          "unique_symbol_target_windows": 129,
+          "by_symbol": {
+            "AAPL": {
+              "rows": 14,
+              "positive_rate": 0.5
+            },
+            "AMZN": {
+              "rows": 10,
+              "positive_rate": 0.4
+            },
+            "COST": {
+              "rows": 11,
+              "positive_rate": 0.18181818181818182
+            },
+            "GOOG": {
+              "rows": 8,
+              "positive_rate": 0.25
+            },
+            "MU": {
+              "rows": 29,
+              "positive_rate": 0.4482758620689655
+            },
+            "NVDA": {
+              "rows": 30,
+              "positive_rate": 0.26666666666666666
+            },
+            "SNDK": {
+              "rows": 27,
+              "positive_rate": 0.4074074074074074
+            }
+          },
+          "by_route": {
+            "4h@04:00": {
+              "rows": 33,
+              "positive_rate": 0.36363636363636365
+            },
+            "4h@08:00": {
+              "rows": 68,
+              "positive_rate": 0.3235294117647059
+            },
+            "4h@12:00": {
+              "rows": 13,
+              "positive_rate": 0.6153846153846154
+            },
+            "4h@16:00": {
+              "rows": 15,
+              "positive_rate": 0.3333333333333333
+            }
+          }
+        }
+      },
+      "partition_boundary_audit": [
+        {
+          "left": "train",
+          "right": "selection",
+          "right_first_decision": "2026-07-17T23:05:00+00:00",
+          "right_first_target_start": "2026-07-20T11:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        },
+        {
+          "left": "selection",
+          "right": "calibration",
+          "right_first_decision": "2026-07-31T23:05:00+00:00",
+          "right_first_target_start": "2026-08-03T11:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        },
+        {
+          "left": "calibration",
+          "right": "assessment",
+          "right_first_decision": "2026-08-15T00:05:00+00:00",
+          "right_first_target_start": "2026-08-17T11:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        }
+      ],
+      "target_support_by_symbol": {
+        "AAPL": {
+          "admitted_decision_clusters": 66,
+          "admitted_rows": 104,
+          "admitted_rows_by_route": {
+            "4h@04:00": 25,
+            "4h@08:00": 66,
+            "4h@12:00": 7,
+            "4h@16:00": 6
+          },
+          "assessment_decision_clusters": 9,
+          "assessment_rows": 14,
+          "assessment_rows_by_route": {
+            "4h@04:00": 3,
+            "4h@08:00": 9,
+            "4h@16:00": 2
+          },
+          "fitted_decision_clusters": 47,
+          "fitted_rows": 67,
+          "fitted_rows_by_route": {
+            "4h@04:00": 12,
+            "4h@08:00": 47,
+            "4h@12:00": 6,
+            "4h@16:00": 2
+          }
+        },
+        "AMZN": {
+          "admitted_decision_clusters": 59,
+          "admitted_rows": 91,
+          "admitted_rows_by_route": {
+            "4h@04:00": 18,
+            "4h@08:00": 59,
+            "4h@12:00": 8,
+            "4h@16:00": 6
+          },
+          "assessment_decision_clusters": 8,
+          "assessment_rows": 10,
+          "assessment_rows_by_route": {
+            "4h@04:00": 1,
+            "4h@08:00": 8,
+            "4h@12:00": 1
+          },
+          "fitted_decision_clusters": 43,
+          "fitted_rows": 66,
+          "fitted_rows_by_route": {
+            "4h@04:00": 12,
+            "4h@08:00": 43,
+            "4h@12:00": 5,
+            "4h@16:00": 6
+          }
+        },
+        "COST": {
+          "admitted_decision_clusters": 77,
+          "admitted_rows": 77,
+          "admitted_rows_by_route": {
+            "4h@08:00": 77
+          },
+          "assessment_decision_clusters": 11,
+          "assessment_rows": 11,
+          "assessment_rows_by_route": {
+            "4h@08:00": 11
+          },
+          "fitted_decision_clusters": 56,
+          "fitted_rows": 56,
+          "fitted_rows_by_route": {
+            "4h@08:00": 56
+          }
+        },
+        "GOOG": {
+          "admitted_decision_clusters": 53,
+          "admitted_rows": 78,
+          "admitted_rows_by_route": {
+            "4h@04:00": 14,
+            "4h@08:00": 53,
+            "4h@12:00": 6,
+            "4h@16:00": 5
+          },
+          "assessment_decision_clusters": 7,
+          "assessment_rows": 8,
+          "assessment_rows_by_route": {
+            "4h@04:00": 1,
+            "4h@08:00": 7
+          },
+          "fitted_decision_clusters": 41,
+          "fitted_rows": 62,
+          "fitted_rows_by_route": {
+            "4h@04:00": 11,
+            "4h@08:00": 41,
+            "4h@12:00": 6,
+            "4h@16:00": 4
+          }
+        },
+        "MU": {
+          "admitted_decision_clusters": 78,
+          "admitted_rows": 252,
+          "admitted_rows_by_route": {
+            "4h@04:00": 76,
+            "4h@08:00": 78,
+            "4h@12:00": 49,
+            "4h@16:00": 49
+          },
+          "assessment_decision_clusters": 11,
+          "assessment_rows": 29,
+          "assessment_rows_by_route": {
+            "4h@04:00": 10,
+            "4h@08:00": 11,
+            "4h@12:00": 5,
+            "4h@16:00": 3
+          },
+          "fitted_decision_clusters": 57,
+          "fitted_rows": 190,
+          "fitted_rows_by_route": {
+            "4h@04:00": 56,
+            "4h@08:00": 57,
+            "4h@12:00": 38,
+            "4h@16:00": 39
+          }
+        },
+        "NVDA": {
+          "admitted_decision_clusters": 78,
+          "admitted_rows": 225,
+          "admitted_rows_by_route": {
+            "4h@04:00": 71,
+            "4h@08:00": 78,
+            "4h@12:00": 37,
+            "4h@16:00": 39
+          },
+          "assessment_decision_clusters": 11,
+          "assessment_rows": 30,
+          "assessment_rows_by_route": {
+            "4h@04:00": 9,
+            "4h@08:00": 11,
+            "4h@12:00": 5,
+            "4h@16:00": 5
+          },
+          "fitted_decision_clusters": 57,
+          "fitted_rows": 170,
+          "fitted_rows_by_route": {
+            "4h@04:00": 53,
+            "4h@08:00": 57,
+            "4h@12:00": 29,
+            "4h@16:00": 31
+          }
+        },
+        "SNDK": {
+          "admitted_decision_clusters": 78,
+          "admitted_rows": 188,
+          "admitted_rows_by_route": {
+            "4h@04:00": 65,
+            "4h@08:00": 78,
+            "4h@12:00": 21,
+            "4h@16:00": 24
+          },
+          "assessment_decision_clusters": 11,
+          "assessment_rows": 27,
+          "assessment_rows_by_route": {
+            "4h@04:00": 9,
+            "4h@08:00": 11,
+            "4h@12:00": 2,
+            "4h@16:00": 5
+          },
+          "fitted_decision_clusters": 57,
+          "fitted_rows": 132,
+          "fitted_rows_by_route": {
+            "4h@04:00": 46,
+            "4h@08:00": 57,
+            "4h@12:00": 15,
+            "4h@16:00": 14
+          }
+        }
+      },
+      "feature_support": [
+        {
+          "feature": "mr__trend_atr",
+          "nonnull_rows": 607,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "mr__momentum_risk_adjusted",
+          "nonnull_rows": 607,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "mr__range_position",
+          "nonnull_rows": 607,
+          "distinct_values": 283,
+          "admitted": true
+        },
+        {
+          "feature": "mr__volume_score",
+          "nonnull_rows": 607,
+          "distinct_values": 85,
+          "admitted": true
+        },
+        {
+          "feature": "mr__volatility_ratio",
+          "nonnull_rows": 607,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "bp__compression_score",
+          "nonnull_rows": 607,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "bp__range_contraction_score",
+          "nonnull_rows": 607,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "bp__direction_score",
+          "nonnull_rows": 607,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "bp__upside_pressure_score",
+          "nonnull_rows": 607,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "bp__downside_pressure_score",
+          "nonnull_rows": 607,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "bp__breakout_magnitude_atr",
+          "nonnull_rows": 607,
+          "distinct_values": 20,
+          "admitted": true
+        },
+        {
+          "feature": "bp__volume_participation_score",
+          "nonnull_rows": 607,
+          "distinct_values": 192,
+          "admitted": true
+        },
+        {
+          "feature": "mr__technical_score",
+          "nonnull_rows": 607,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "mr__regime_strength",
+          "nonnull_rows": 607,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "bp__breakout_readiness_score",
+          "nonnull_rows": 607,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "bp__breakout_strength_score",
+          "nonnull_rows": 607,
+          "distinct_values": 20,
+          "admitted": true
+        },
+        {
+          "feature": "bp__setup_quality",
+          "nonnull_rows": 607,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "mr__confidence_score",
+          "nonnull_rows": 607,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "bp__confidence_score",
+          "nonnull_rows": 607,
+          "distinct_values": 2,
+          "admitted": true
+        },
+        {
+          "feature": "mr__atr_percent",
+          "nonnull_rows": 607,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "mr__technical_score_change_5",
+          "nonnull_rows": 607,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "bp__bars_since_state_change",
+          "nonnull_rows": 607,
+          "distinct_values": 23,
+          "admitted": true
+        },
+        {
+          "feature": "mr__trend_score",
+          "nonnull_rows": 607,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "mr__momentum_score",
+          "nonnull_rows": 607,
+          "distinct_values": 292,
+          "admitted": true
+        },
+        {
+          "feature": "mr__range_score",
+          "nonnull_rows": 607,
+          "distinct_values": 283,
+          "admitted": true
+        },
+        {
+          "feature": "bp__boundary_proximity_score",
+          "nonnull_rows": 607,
+          "distinct_values": 270,
+          "admitted": true
+        },
+        {
+          "feature": "bar__intrabar_range_atr",
+          "nonnull_rows": 607,
+          "distinct_values": 178,
+          "admitted": true
+        },
+        {
+          "feature": "bar__close_location",
+          "nonnull_rows": 456,
+          "distinct_values": 73,
+          "admitted": true
+        },
+        {
+          "feature": "life__technical_consensus_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "life__technical_consensus_change_5d",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "life__long_term_technical_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "life__technical_term_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "life__timing_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "quote__relative_bid_ask_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__iv_minus_realized",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__put25d_minus_call25d_iv",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__log_call_put_volume_ratio",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__relative_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__realized_volatility_20d",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__realized_expected_absolute_move_atm_horizon",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_implied_volatility",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_straddle_implied_move",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_straddle_move_excess",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_relative_bid_ask_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__put_25d_implied_volatility",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__call_25d_implied_volatility",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__smile_curvature",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__volume_to_open_interest",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__put_call_parity_residual",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_put_call_parity_residual",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__quote_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__quote_time_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__iv_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__greeks_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__open_interest_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__intrinsic_value_violation_rate",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__contract_count",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__expiration_count",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_days_to_expiration",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__quote_staleness_seconds",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "energy__wti_or_proxy_return",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__nq_return_1h",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__es_return_1h",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__small_cap_breadth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__tech_breadth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__gold_return",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__crude_return",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__relative_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__book_imbalance",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__causal_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__median_normalized_residual",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__median_predictive_standard_deviation",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__median_model_edge_in_half_spreads",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__positive_edge_fraction",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__negative_edge_fraction",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__raw_arbitrage_violation_rate",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__constrained_arbitrage_violation_rate",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__interval_80_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__interval_95_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__median_relative_bid_ask_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "bp__readiness_change_5",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "bar__overnight_gap_atr",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "weekly__technical_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "weekly__technical_score_change_5",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "weekly__breakout_readiness_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__fundamental_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__fundamental_confidence",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__earnings_momentum_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__cash_conversion_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__accrual_quality_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__balance_sheet_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__tax_quality_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__investment_dilution_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__component_agreement",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__component_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__metric_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__revenue_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__operating_income_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__net_income_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__cfo_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__receivables_growth_minus_revenue_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__inventory_growth_minus_cost_of_revenue_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__cfo_growth_minus_net_income_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__debt_growth_minus_cfo_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__operating_margin",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__free_cash_flow_margin",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__cfo_to_net_income",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__cash_to_debt",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__current_ratio",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__effective_tax_rate",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__revenue_growth_yoy",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__operating_margin",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__operating_margin_change_yoy",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__free_cash_flow_margin",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__cfo_to_net_income",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__cash_to_debt",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__current_ratio",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__diluted_share_growth_yoy",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__stock_comp_to_revenue",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__net_issuance_to_market_cap",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__buyback_yield",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__roic",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__fcf_yield",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__technical_consensus_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__technical_timeframe_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__technical_consensus_confidence",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__short_term_technical_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__long_term_technical_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__technical_term_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__technical_consensus_change_5d",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__timing_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__fundamental_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__fundamental_confidence",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__fundamental_change_1q",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__fundamental_acceleration",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__lifecycle_confidence",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__fundamental_technical_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__agreement_strength",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__divergence_strength",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__setup_quality",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__front_minus_back_iv",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_move_richness",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__log_call_put_oi_ratio",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__open_interest_concentration",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__front_atm_implied_volatility",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__back_atm_implied_volatility",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "macro__fed_funds_level",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "macro__cpi_yoy",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "macro__unemployment_change",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "macro__gdp_yoy",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "sec__dilution_event",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "sec__offering_size_to_market_cap",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "sec__filing_event_impulse",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "mr__bars_since_regime_change",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        }
+      ],
+      "admitted_feature_count": 28,
+      "all_null_training_features": [
+        "life__technical_consensus_score",
+        "life__technical_consensus_change_5d",
+        "life__long_term_technical_score",
+        "life__technical_term_spread",
+        "life__timing_score",
+        "quote__relative_bid_ask_spread",
+        "opt__iv_minus_realized",
+        "opt__put25d_minus_call25d_iv",
+        "opt__log_call_put_volume_ratio",
+        "opt__relative_spread",
+        "opt__realized_volatility_20d",
+        "opt__realized_expected_absolute_move_atm_horizon",
+        "opt__atm_implied_volatility",
+        "opt__atm_straddle_implied_move",
+        "opt__atm_straddle_move_excess",
+        "opt__atm_relative_bid_ask_spread",
+        "opt__put_25d_implied_volatility",
+        "opt__call_25d_implied_volatility",
+        "opt__smile_curvature",
+        "opt__volume_to_open_interest",
+        "opt__put_call_parity_residual",
+        "opt__atm_put_call_parity_residual",
+        "opt__quote_coverage",
+        "opt__quote_time_coverage",
+        "opt__iv_coverage",
+        "opt__greeks_coverage",
+        "opt__open_interest_coverage",
+        "opt__intrinsic_value_violation_rate",
+        "opt__contract_count",
+        "opt__expiration_count",
+        "opt__atm_days_to_expiration",
+        "opt__quote_staleness_seconds",
+        "energy__wti_or_proxy_return",
+        "cme__nq_return_1h",
+        "cme__es_return_1h",
+        "cme__small_cap_breadth",
+        "cme__tech_breadth",
+        "cme__gold_return",
+        "cme__crude_return",
+        "cme__relative_spread",
+        "cme__book_imbalance",
+        "opx__causal_coverage",
+        "opx__median_normalized_residual",
+        "opx__median_predictive_standard_deviation",
+        "opx__median_model_edge_in_half_spreads",
+        "opx__positive_edge_fraction",
+        "opx__negative_edge_fraction",
+        "opx__raw_arbitrage_violation_rate",
+        "opx__constrained_arbitrage_violation_rate",
+        "opx__interval_80_coverage",
+        "opx__interval_95_coverage",
+        "opx__median_relative_bid_ask_spread",
+        "bp__readiness_change_5",
+        "bar__overnight_gap_atr",
+        "weekly__technical_score",
+        "weekly__technical_score_change_5",
+        "weekly__breakout_readiness_score",
+        "fdir__fundamental_score",
+        "fdir__fundamental_confidence",
+        "fdir__earnings_momentum_score",
+        "fdir__cash_conversion_score",
+        "fdir__accrual_quality_score",
+        "fdir__balance_sheet_score",
+        "fdir__tax_quality_score",
+        "fdir__investment_dilution_score",
+        "fdir__component_agreement",
+        "fdir__component_coverage",
+        "fdir__metric_coverage",
+        "fdir__revenue_growth",
+        "fdir__operating_income_growth",
+        "fdir__net_income_growth",
+        "fdir__cfo_growth",
+        "fdir__receivables_growth_minus_revenue_growth",
+        "fdir__inventory_growth_minus_cost_of_revenue_growth",
+        "fdir__cfo_growth_minus_net_income_growth",
+        "fdir__debt_growth_minus_cfo_growth",
+        "fdir__operating_margin",
+        "fdir__free_cash_flow_margin",
+        "fdir__cfo_to_net_income",
+        "fdir__cash_to_debt",
+        "fdir__current_ratio",
+        "fdir__effective_tax_rate",
+        "fund__revenue_growth_yoy",
+        "fund__operating_margin",
+        "fund__operating_margin_change_yoy",
+        "fund__free_cash_flow_margin",
+        "fund__cfo_to_net_income",
+        "fund__cash_to_debt",
+        "fund__current_ratio",
+        "fund__diluted_share_growth_yoy",
+        "fund__stock_comp_to_revenue",
+        "fund__net_issuance_to_market_cap",
+        "fund__buyback_yield",
+        "fund__roic",
+        "fund__fcf_yield",
+        "ftlife__technical_consensus_score",
+        "ftlife__technical_timeframe_coverage",
+        "ftlife__technical_consensus_confidence",
+        "ftlife__short_term_technical_score",
+        "ftlife__long_term_technical_score",
+        "ftlife__technical_term_spread",
+        "ftlife__technical_consensus_change_5d",
+        "ftlife__timing_score",
+        "ftlife__fundamental_score",
+        "ftlife__fundamental_confidence",
+        "ftlife__fundamental_change_1q",
+        "ftlife__fundamental_acceleration",
+        "ftlife__lifecycle_confidence",
+        "ftlife__fundamental_technical_spread",
+        "ftlife__agreement_strength",
+        "ftlife__divergence_strength",
+        "ftlife__setup_quality",
+        "opt__front_minus_back_iv",
+        "opt__atm_move_richness",
+        "opt__log_call_put_oi_ratio",
+        "opt__open_interest_concentration",
+        "opt__front_atm_implied_volatility",
+        "opt__back_atm_implied_volatility",
+        "macro__fed_funds_level",
+        "macro__cpi_yoy",
+        "macro__unemployment_change",
+        "macro__gdp_yoy",
+        "sec__dilution_event",
+        "sec__offering_size_to_market_cap",
+        "sec__filing_event_impulse",
+        "mr__bars_since_regime_change"
+      ],
+      "nonvarying_training_features": [],
+      "expected_routes_without_fitted_symbol_history": {
+        "AAPL": [],
+        "AMZN": [],
+        "GOOG": [],
+        "MU": [],
+        "NVDA": [],
+        "SNDK": [],
+        "COST": [
+          "4h@04:00",
+          "4h@12:00",
+          "4h@16:00"
+        ]
+      },
+      "assessment": {
+        "rows": 129,
+        "positive_rate": 0.3643410852713178,
+        "mean_probability": 0.5255474452554746,
+        "brier_score": 0.2575841493539777,
+        "log_loss": 0.7083292690436532,
+        "expected_calibration_error_10_bin": 0.16120635998415678,
+        "direction_accuracy_at_0_5": 0.3643410852713178
+      },
+      "assessment_raw_scores": {
+        "rows": 129,
+        "positive_rate": 0.3643410852713178,
+        "mean_probability": 0.43015954738594264,
+        "brier_score": 0.23395020069487074,
+        "log_loss": 0.6589357532846324,
+        "expected_calibration_error_10_bin": 0.10782462388388485,
+        "direction_accuracy_at_0_5": 0.6046511627906976
+      },
+      "training_base_rate_assessment": {
+        "brier_score": 0.23885362889298625,
+        "direction_accuracy_at_0_5": 0.6356589147286822,
+        "expected_calibration_error_10_bin": 0.08518785147161612,
+        "log_loss": 0.6707869790943898,
+        "mean_probability": 0.4495289367429339,
+        "positive_rate": 0.3643410852713178,
+        "rows": 129
+      },
+      "calibration_diagnostics": {
+        "assessment_probability_range": [
+          0.5255474452554745,
+          0.5255474452554745
+        ],
+        "calibrated_probability_range": [
+          0.5255474452554745,
+          0.5255474452554745
+        ],
+        "calibration_positive_rate": 0.5255474452554745,
+        "calibration_rows": 137,
+        "information_available": false,
+        "nondecreasing_constraint_active": true,
+        "platt_slope": 0.0,
+        "raw_probability_range": [
+          0.16999332862401556,
+          0.6240757646430957
+        ],
+        "status": "FLAT_CALIBRATION"
+      },
+      "promotion_gate": {
+        "checks": {
+          "assessment_has_at_least_10_decision_clusters": true,
+          "brier_beats_training_base_rate": false,
+          "calibration_retains_directional_information": false,
+          "expected_calibration_error_at_most_0_15": false,
+          "log_loss_beats_training_base_rate": false
+        },
+        "status": "RESEARCH_NOT_PROMOTED"
+      }
+    },
+    "1d": {
+      "reconstruction_matches_saved_row_counts_and_scores": true,
+      "target_boundary_quality": {
+        "policy": "clock-window-boundaries-within-five-minutes-v1",
+        "enforced": true,
+        "maximum_boundary_gap_seconds": 300.0,
+        "candidate_rows": 19422,
+        "aligned_rows": 662,
+        "excluded_rows": 18760,
+        "excluded_rows_by_route": {
+          "1d@D+1": 3757,
+          "1d@D+2": 3751,
+          "1d@D+3": 3753,
+          "1d@D+4": 3750,
+          "1d@D+5": 3749
+        },
+        "admitted_rows_by_symbol": {
+          "AAPL": 8,
+          "AMZN": 25,
+          "MU": 270,
+          "NVDA": 207,
+          "SNDK": 152
+        },
+        "admitted_rows_by_route": {
+          "1d@D+1": 133,
+          "1d@D+2": 132,
+          "1d@D+3": 130,
+          "1d@D+4": 133,
+          "1d@D+5": 134
+        },
+        "conflicting_minute_rows_excluded": 0,
+        "target_contract_version": "independent-stock-targets-v1",
+        "target_price_source_contract": "canonical-equity-minute-v1",
+        "target_price_dataset": "EQUS.MINI"
+      },
+      "selected_family": "hist-gradient-mlp-0.50",
+      "partitions": {
+        "train": {
+          "rows": 438,
+          "decision_clusters": 61,
+          "positive_rate": 0.3926940639269406,
+          "earliest_decision": "2026-05-05T00:05:00+00:00",
+          "latest_decision": "2026-07-18T00:05:00+00:00",
+          "earliest_target_start": "2026-05-11T11:00:00+00:00",
+          "latest_target_end": "2026-07-21T00:00:00+00:00",
+          "unique_symbol_target_windows": 89,
+          "by_symbol": {
+            "AAPL": {
+              "rows": 2,
+              "positive_rate": 1.0
+            },
+            "AMZN": {
+              "rows": 16,
+              "positive_rate": 0.0
+            },
+            "MU": {
+              "rows": 185,
+              "positive_rate": 0.4594594594594595
+            },
+            "NVDA": {
+              "rows": 155,
+              "positive_rate": 0.3548387096774194
+            },
+            "SNDK": {
+              "rows": 80,
+              "positive_rate": 0.375
+            }
+          },
+          "by_route": {
+            "1d@D+1": {
+              "rows": 88,
+              "positive_rate": 0.38636363636363635
+            },
+            "1d@D+2": {
+              "rows": 89,
+              "positive_rate": 0.39325842696629215
+            },
+            "1d@D+3": {
+              "rows": 87,
+              "positive_rate": 0.40229885057471265
+            },
+            "1d@D+4": {
+              "rows": 87,
+              "positive_rate": 0.39080459770114945
+            },
+            "1d@D+5": {
+              "rows": 87,
+              "positive_rate": 0.39080459770114945
+            }
+          }
+        },
+        "selection": {
+          "rows": 63,
+          "decision_clusters": 10,
+          "positive_rate": 0.3968253968253968,
+          "earliest_decision": "2026-07-21T00:05:00+00:00",
+          "latest_decision": "2026-07-31T00:05:00+00:00",
+          "earliest_target_start": "2026-07-21T11:00:00+00:00",
+          "latest_target_end": "2026-08-01T00:00:00+00:00",
+          "unique_symbol_target_windows": 16,
+          "by_symbol": {
+            "AMZN": {
+              "rows": 6,
+              "positive_rate": 0.8333333333333334
+            },
+            "MU": {
+              "rows": 25,
+              "positive_rate": 0.12
+            },
+            "NVDA": {
+              "rows": 10,
+              "positive_rate": 1.0
+            },
+            "SNDK": {
+              "rows": 22,
+              "positive_rate": 0.3181818181818182
+            }
+          },
+          "by_route": {
+            "1d@D+1": {
+              "rows": 16,
+              "positive_rate": 0.4375
+            },
+            "1d@D+2": {
+              "rows": 14,
+              "positive_rate": 0.42857142857142855
+            },
+            "1d@D+3": {
+              "rows": 12,
+              "positive_rate": 0.3333333333333333
+            },
+            "1d@D+4": {
+              "rows": 11,
+              "positive_rate": 0.36363636363636365
+            },
+            "1d@D+5": {
+              "rows": 10,
+              "positive_rate": 0.4
+            }
+          }
+        },
+        "calibration": {
+          "rows": 52,
+          "decision_clusters": 11,
+          "positive_rate": 0.6153846153846154,
+          "earliest_decision": "2026-08-01T00:05:00+00:00",
+          "latest_decision": "2026-08-14T00:05:00+00:00",
+          "earliest_target_start": "2026-08-03T11:00:00+00:00",
+          "latest_target_end": "2026-08-15T00:00:00+00:00",
+          "unique_symbol_target_windows": 13,
+          "by_symbol": {
+            "MU": {
+              "rows": 26,
+              "positive_rate": 0.5
+            },
+            "NVDA": {
+              "rows": 9,
+              "positive_rate": 0.4444444444444444
+            },
+            "SNDK": {
+              "rows": 17,
+              "positive_rate": 0.8823529411764706
+            }
+          },
+          "by_route": {
+            "1d@D+1": {
+              "rows": 13,
+              "positive_rate": 0.6153846153846154
+            },
+            "1d@D+2": {
+              "rows": 12,
+              "positive_rate": 0.5833333333333334
+            },
+            "1d@D+3": {
+              "rows": 10,
+              "positive_rate": 0.6
+            },
+            "1d@D+4": {
+              "rows": 9,
+              "positive_rate": 0.6666666666666666
+            },
+            "1d@D+5": {
+              "rows": 8,
+              "positive_rate": 0.625
+            }
+          }
+        },
+        "assessment": {
+          "rows": 64,
+          "decision_clusters": 11,
+          "positive_rate": 0.296875,
+          "earliest_decision": "2026-08-15T00:05:00+00:00",
+          "latest_decision": "2026-09-04T00:05:00+00:00",
+          "earliest_target_start": "2026-08-17T11:00:00+00:00",
+          "latest_target_end": "2026-09-05T00:00:00+00:00",
+          "unique_symbol_target_windows": 18,
+          "by_symbol": {
+            "AAPL": {
+              "rows": 6,
+              "positive_rate": 0.0
+            },
+            "MU": {
+              "rows": 12,
+              "positive_rate": 0.4166666666666667
+            },
+            "NVDA": {
+              "rows": 29,
+              "positive_rate": 0.3793103448275862
+            },
+            "SNDK": {
+              "rows": 17,
+              "positive_rate": 0.17647058823529413
+            }
+          },
+          "by_route": {
+            "1d@D+1": {
+              "rows": 15,
+              "positive_rate": 0.26666666666666666
+            },
+            "1d@D+2": {
+              "rows": 13,
+              "positive_rate": 0.23076923076923078
+            },
+            "1d@D+3": {
+              "rows": 10,
+              "positive_rate": 0.3
+            },
+            "1d@D+4": {
+              "rows": 13,
+              "positive_rate": 0.3076923076923077
+            },
+            "1d@D+5": {
+              "rows": 13,
+              "positive_rate": 0.38461538461538464
+            }
+          }
+        }
+      },
+      "partition_boundary_audit": [
+        {
+          "left": "train",
+          "right": "selection",
+          "right_first_decision": "2026-07-21T00:05:00+00:00",
+          "right_first_target_start": "2026-07-21T11:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        },
+        {
+          "left": "selection",
+          "right": "calibration",
+          "right_first_decision": "2026-08-01T00:05:00+00:00",
+          "right_first_target_start": "2026-08-03T11:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        },
+        {
+          "left": "calibration",
+          "right": "assessment",
+          "right_first_decision": "2026-08-15T00:05:00+00:00",
+          "right_first_target_start": "2026-08-17T11:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        }
+      ],
+      "target_support_by_symbol": {
+        "AAPL": {
+          "admitted_decision_clusters": 8,
+          "admitted_rows": 8,
+          "admitted_rows_by_route": {
+            "1d@D+1": 1,
+            "1d@D+2": 2,
+            "1d@D+3": 1,
+            "1d@D+4": 2,
+            "1d@D+5": 2
+          },
+          "assessment_decision_clusters": 6,
+          "assessment_rows": 6,
+          "assessment_rows_by_route": {
+            "1d@D+1": 1,
+            "1d@D+2": 1,
+            "1d@D+4": 2,
+            "1d@D+5": 2
+          },
+          "fitted_decision_clusters": 2,
+          "fitted_rows": 2,
+          "fitted_rows_by_route": {
+            "1d@D+2": 1,
+            "1d@D+3": 1
+          }
+        },
+        "AMZN": {
+          "admitted_decision_clusters": 20,
+          "admitted_rows": 25,
+          "admitted_rows_by_route": {
+            "1d@D+1": 6,
+            "1d@D+2": 5,
+            "1d@D+3": 4,
+            "1d@D+4": 5,
+            "1d@D+5": 5
+          },
+          "assessment_decision_clusters": 0,
+          "assessment_rows": 0,
+          "assessment_rows_by_route": {},
+          "fitted_decision_clusters": 19,
+          "fitted_rows": 22,
+          "fitted_rows_by_route": {
+            "1d@D+1": 6,
+            "1d@D+2": 5,
+            "1d@D+3": 3,
+            "1d@D+4": 4,
+            "1d@D+5": 4
+          }
+        },
+        "COST": {
+          "admitted_decision_clusters": 0,
+          "admitted_rows": 0,
+          "admitted_rows_by_route": {},
+          "assessment_decision_clusters": 0,
+          "assessment_rows": 0,
+          "assessment_rows_by_route": {},
+          "fitted_decision_clusters": 0,
+          "fitted_rows": 0,
+          "fitted_rows_by_route": {}
+        },
+        "GOOG": {
+          "admitted_decision_clusters": 0,
+          "admitted_rows": 0,
+          "admitted_rows_by_route": {},
+          "assessment_decision_clusters": 0,
+          "assessment_rows": 0,
+          "assessment_rows_by_route": {},
+          "fitted_decision_clusters": 0,
+          "fitted_rows": 0,
+          "fitted_rows_by_route": {}
+        },
+        "MU": {
+          "admitted_decision_clusters": 78,
+          "admitted_rows": 270,
+          "admitted_rows_by_route": {
+            "1d@D+1": 54,
+            "1d@D+2": 54,
+            "1d@D+3": 54,
+            "1d@D+4": 54,
+            "1d@D+5": 54
+          },
+          "assessment_decision_clusters": 8,
+          "assessment_rows": 12,
+          "assessment_rows_by_route": {
+            "1d@D+1": 3,
+            "1d@D+2": 3,
+            "1d@D+3": 2,
+            "1d@D+4": 2,
+            "1d@D+5": 2
+          },
+          "fitted_decision_clusters": 59,
+          "fitted_rows": 210,
+          "fitted_rows_by_route": {
+            "1d@D+1": 44,
+            "1d@D+2": 43,
+            "1d@D+3": 42,
+            "1d@D+4": 41,
+            "1d@D+5": 40
+          }
+        },
+        "NVDA": {
+          "admitted_decision_clusters": 79,
+          "admitted_rows": 207,
+          "admitted_rows_by_route": {
+            "1d@D+1": 42,
+            "1d@D+2": 41,
+            "1d@D+3": 41,
+            "1d@D+4": 41,
+            "1d@D+5": 42
+          },
+          "assessment_decision_clusters": 11,
+          "assessment_rows": 29,
+          "assessment_rows_by_route": {
+            "1d@D+1": 7,
+            "1d@D+2": 6,
+            "1d@D+3": 5,
+            "1d@D+4": 5,
+            "1d@D+5": 6
+          },
+          "fitted_decision_clusters": 58,
+          "fitted_rows": 165,
+          "fitted_rows_by_route": {
+            "1d@D+1": 33,
+            "1d@D+2": 33,
+            "1d@D+3": 33,
+            "1d@D+4": 33,
+            "1d@D+5": 33
+          }
+        },
+        "SNDK": {
+          "admitted_decision_clusters": 68,
+          "admitted_rows": 152,
+          "admitted_rows_by_route": {
+            "1d@D+1": 30,
+            "1d@D+2": 30,
+            "1d@D+3": 30,
+            "1d@D+4": 31,
+            "1d@D+5": 31
+          },
+          "assessment_decision_clusters": 8,
+          "assessment_rows": 17,
+          "assessment_rows_by_route": {
+            "1d@D+1": 4,
+            "1d@D+2": 3,
+            "1d@D+3": 3,
+            "1d@D+4": 4,
+            "1d@D+5": 3
+          },
+          "fitted_decision_clusters": 48,
+          "fitted_rows": 102,
+          "fitted_rows_by_route": {
+            "1d@D+1": 21,
+            "1d@D+2": 21,
+            "1d@D+3": 20,
+            "1d@D+4": 20,
+            "1d@D+5": 20
+          }
+        }
+      },
+      "feature_support": [
+        {
+          "feature": "mr__trend_atr",
+          "nonnull_rows": 438,
+          "distinct_values": 156,
+          "admitted": true
+        },
+        {
+          "feature": "mr__momentum_risk_adjusted",
+          "nonnull_rows": 438,
+          "distinct_values": 156,
+          "admitted": true
+        },
+        {
+          "feature": "mr__range_position",
+          "nonnull_rows": 438,
+          "distinct_values": 152,
+          "admitted": true
+        },
+        {
+          "feature": "mr__volume_score",
+          "nonnull_rows": 438,
+          "distinct_values": 80,
+          "admitted": true
+        },
+        {
+          "feature": "mr__volatility_ratio",
+          "nonnull_rows": 438,
+          "distinct_values": 156,
+          "admitted": true
+        },
+        {
+          "feature": "bp__compression_score",
+          "nonnull_rows": 438,
+          "distinct_values": 156,
+          "admitted": true
+        },
+        {
+          "feature": "bp__range_contraction_score",
+          "nonnull_rows": 438,
+          "distinct_values": 156,
+          "admitted": true
+        },
+        {
+          "feature": "bp__direction_score",
+          "nonnull_rows": 438,
+          "distinct_values": 156,
+          "admitted": true
+        },
+        {
+          "feature": "bp__upside_pressure_score",
+          "nonnull_rows": 438,
+          "distinct_values": 156,
+          "admitted": true
+        },
+        {
+          "feature": "bp__downside_pressure_score",
+          "nonnull_rows": 438,
+          "distinct_values": 156,
+          "admitted": true
+        },
+        {
+          "feature": "bp__breakout_magnitude_atr",
+          "nonnull_rows": 438,
+          "distinct_values": 14,
+          "admitted": true
+        },
+        {
+          "feature": "bp__volume_participation_score",
+          "nonnull_rows": 438,
+          "distinct_values": 130,
+          "admitted": true
+        },
+        {
+          "feature": "mr__technical_score",
+          "nonnull_rows": 438,
+          "distinct_values": 156,
+          "admitted": true
+        },
+        {
+          "feature": "mr__regime_strength",
+          "nonnull_rows": 438,
+          "distinct_values": 156,
+          "admitted": true
+        },
+        {
+          "feature": "bp__breakout_readiness_score",
+          "nonnull_rows": 438,
+          "distinct_values": 156,
+          "admitted": true
+        },
+        {
+          "feature": "bp__breakout_strength_score",
+          "nonnull_rows": 438,
+          "distinct_values": 14,
+          "admitted": true
+        },
+        {
+          "feature": "bp__setup_quality",
+          "nonnull_rows": 438,
+          "distinct_values": 156,
+          "admitted": true
+        },
+        {
+          "feature": "mr__confidence_score",
+          "nonnull_rows": 438,
+          "distinct_values": 156,
+          "admitted": true
+        },
+        {
+          "feature": "bp__confidence_score",
+          "nonnull_rows": 438,
+          "distinct_values": 1,
+          "admitted": false
+        },
+        {
+          "feature": "mr__atr_percent",
+          "nonnull_rows": 438,
+          "distinct_values": 156,
+          "admitted": true
+        },
+        {
+          "feature": "mr__technical_score_change_5",
+          "nonnull_rows": 438,
+          "distinct_values": 156,
+          "admitted": true
+        },
+        {
+          "feature": "bp__bars_since_state_change",
+          "nonnull_rows": 438,
+          "distinct_values": 20,
+          "admitted": true
+        },
+        {
+          "feature": "mr__trend_score",
+          "nonnull_rows": 438,
+          "distinct_values": 156,
+          "admitted": true
+        },
+        {
+          "feature": "mr__momentum_score",
+          "nonnull_rows": 438,
+          "distinct_values": 156,
+          "admitted": true
+        },
+        {
+          "feature": "mr__range_score",
+          "nonnull_rows": 438,
+          "distinct_values": 152,
+          "admitted": true
+        },
+        {
+          "feature": "bp__boundary_proximity_score",
+          "nonnull_rows": 438,
+          "distinct_values": 142,
+          "admitted": true
+        },
+        {
+          "feature": "bar__intrabar_range_atr",
+          "nonnull_rows": 438,
+          "distinct_values": 135,
+          "admitted": true
+        },
+        {
+          "feature": "bar__close_location",
+          "nonnull_rows": 402,
+          "distinct_values": 73,
+          "admitted": true
+        },
+        {
+          "feature": "life__technical_consensus_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "life__technical_consensus_change_5d",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "life__long_term_technical_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "life__technical_term_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "life__timing_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "quote__relative_bid_ask_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__iv_minus_realized",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__put25d_minus_call25d_iv",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__log_call_put_volume_ratio",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__relative_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__realized_volatility_20d",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__realized_expected_absolute_move_atm_horizon",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_implied_volatility",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_straddle_implied_move",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_straddle_move_excess",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_relative_bid_ask_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__put_25d_implied_volatility",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__call_25d_implied_volatility",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__smile_curvature",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__volume_to_open_interest",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__put_call_parity_residual",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_put_call_parity_residual",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__quote_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__quote_time_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__iv_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__greeks_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__open_interest_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__intrinsic_value_violation_rate",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__contract_count",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__expiration_count",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_days_to_expiration",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__quote_staleness_seconds",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "energy__wti_or_proxy_return",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__nq_return_1h",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__es_return_1h",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__small_cap_breadth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__tech_breadth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__gold_return",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__crude_return",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__relative_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__book_imbalance",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__causal_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__median_normalized_residual",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__median_predictive_standard_deviation",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__median_model_edge_in_half_spreads",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__positive_edge_fraction",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__negative_edge_fraction",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__raw_arbitrage_violation_rate",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__constrained_arbitrage_violation_rate",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__interval_80_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__interval_95_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__median_relative_bid_ask_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "bp__readiness_change_5",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "bar__overnight_gap_atr",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "weekly__technical_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "weekly__technical_score_change_5",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "weekly__breakout_readiness_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__fundamental_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__fundamental_confidence",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__earnings_momentum_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__cash_conversion_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__accrual_quality_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__balance_sheet_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__tax_quality_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__investment_dilution_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__component_agreement",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__component_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__metric_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__revenue_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__operating_income_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__net_income_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__cfo_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__receivables_growth_minus_revenue_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__inventory_growth_minus_cost_of_revenue_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__cfo_growth_minus_net_income_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__debt_growth_minus_cfo_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__operating_margin",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__free_cash_flow_margin",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__cfo_to_net_income",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__cash_to_debt",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__current_ratio",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__effective_tax_rate",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__revenue_growth_yoy",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__operating_margin",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__operating_margin_change_yoy",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__free_cash_flow_margin",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__cfo_to_net_income",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__cash_to_debt",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__current_ratio",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__diluted_share_growth_yoy",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__stock_comp_to_revenue",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__net_issuance_to_market_cap",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__buyback_yield",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__roic",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__fcf_yield",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__technical_consensus_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__technical_timeframe_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__technical_consensus_confidence",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__short_term_technical_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__long_term_technical_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__technical_term_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__technical_consensus_change_5d",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__timing_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__fundamental_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__fundamental_confidence",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__fundamental_change_1q",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__fundamental_acceleration",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__lifecycle_confidence",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__fundamental_technical_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__agreement_strength",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__divergence_strength",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__setup_quality",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__front_minus_back_iv",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_move_richness",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__log_call_put_oi_ratio",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__open_interest_concentration",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__front_atm_implied_volatility",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__back_atm_implied_volatility",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "macro__fed_funds_level",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "macro__cpi_yoy",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "macro__unemployment_change",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "macro__gdp_yoy",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "sec__dilution_event",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "sec__offering_size_to_market_cap",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "sec__filing_event_impulse",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "mr__bars_since_regime_change",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        }
+      ],
+      "admitted_feature_count": 27,
+      "all_null_training_features": [
+        "life__technical_consensus_score",
+        "life__technical_consensus_change_5d",
+        "life__long_term_technical_score",
+        "life__technical_term_spread",
+        "life__timing_score",
+        "quote__relative_bid_ask_spread",
+        "opt__iv_minus_realized",
+        "opt__put25d_minus_call25d_iv",
+        "opt__log_call_put_volume_ratio",
+        "opt__relative_spread",
+        "opt__realized_volatility_20d",
+        "opt__realized_expected_absolute_move_atm_horizon",
+        "opt__atm_implied_volatility",
+        "opt__atm_straddle_implied_move",
+        "opt__atm_straddle_move_excess",
+        "opt__atm_relative_bid_ask_spread",
+        "opt__put_25d_implied_volatility",
+        "opt__call_25d_implied_volatility",
+        "opt__smile_curvature",
+        "opt__volume_to_open_interest",
+        "opt__put_call_parity_residual",
+        "opt__atm_put_call_parity_residual",
+        "opt__quote_coverage",
+        "opt__quote_time_coverage",
+        "opt__iv_coverage",
+        "opt__greeks_coverage",
+        "opt__open_interest_coverage",
+        "opt__intrinsic_value_violation_rate",
+        "opt__contract_count",
+        "opt__expiration_count",
+        "opt__atm_days_to_expiration",
+        "opt__quote_staleness_seconds",
+        "energy__wti_or_proxy_return",
+        "cme__nq_return_1h",
+        "cme__es_return_1h",
+        "cme__small_cap_breadth",
+        "cme__tech_breadth",
+        "cme__gold_return",
+        "cme__crude_return",
+        "cme__relative_spread",
+        "cme__book_imbalance",
+        "opx__causal_coverage",
+        "opx__median_normalized_residual",
+        "opx__median_predictive_standard_deviation",
+        "opx__median_model_edge_in_half_spreads",
+        "opx__positive_edge_fraction",
+        "opx__negative_edge_fraction",
+        "opx__raw_arbitrage_violation_rate",
+        "opx__constrained_arbitrage_violation_rate",
+        "opx__interval_80_coverage",
+        "opx__interval_95_coverage",
+        "opx__median_relative_bid_ask_spread",
+        "bp__readiness_change_5",
+        "bar__overnight_gap_atr",
+        "weekly__technical_score",
+        "weekly__technical_score_change_5",
+        "weekly__breakout_readiness_score",
+        "fdir__fundamental_score",
+        "fdir__fundamental_confidence",
+        "fdir__earnings_momentum_score",
+        "fdir__cash_conversion_score",
+        "fdir__accrual_quality_score",
+        "fdir__balance_sheet_score",
+        "fdir__tax_quality_score",
+        "fdir__investment_dilution_score",
+        "fdir__component_agreement",
+        "fdir__component_coverage",
+        "fdir__metric_coverage",
+        "fdir__revenue_growth",
+        "fdir__operating_income_growth",
+        "fdir__net_income_growth",
+        "fdir__cfo_growth",
+        "fdir__receivables_growth_minus_revenue_growth",
+        "fdir__inventory_growth_minus_cost_of_revenue_growth",
+        "fdir__cfo_growth_minus_net_income_growth",
+        "fdir__debt_growth_minus_cfo_growth",
+        "fdir__operating_margin",
+        "fdir__free_cash_flow_margin",
+        "fdir__cfo_to_net_income",
+        "fdir__cash_to_debt",
+        "fdir__current_ratio",
+        "fdir__effective_tax_rate",
+        "fund__revenue_growth_yoy",
+        "fund__operating_margin",
+        "fund__operating_margin_change_yoy",
+        "fund__free_cash_flow_margin",
+        "fund__cfo_to_net_income",
+        "fund__cash_to_debt",
+        "fund__current_ratio",
+        "fund__diluted_share_growth_yoy",
+        "fund__stock_comp_to_revenue",
+        "fund__net_issuance_to_market_cap",
+        "fund__buyback_yield",
+        "fund__roic",
+        "fund__fcf_yield",
+        "ftlife__technical_consensus_score",
+        "ftlife__technical_timeframe_coverage",
+        "ftlife__technical_consensus_confidence",
+        "ftlife__short_term_technical_score",
+        "ftlife__long_term_technical_score",
+        "ftlife__technical_term_spread",
+        "ftlife__technical_consensus_change_5d",
+        "ftlife__timing_score",
+        "ftlife__fundamental_score",
+        "ftlife__fundamental_confidence",
+        "ftlife__fundamental_change_1q",
+        "ftlife__fundamental_acceleration",
+        "ftlife__lifecycle_confidence",
+        "ftlife__fundamental_technical_spread",
+        "ftlife__agreement_strength",
+        "ftlife__divergence_strength",
+        "ftlife__setup_quality",
+        "opt__front_minus_back_iv",
+        "opt__atm_move_richness",
+        "opt__log_call_put_oi_ratio",
+        "opt__open_interest_concentration",
+        "opt__front_atm_implied_volatility",
+        "opt__back_atm_implied_volatility",
+        "macro__fed_funds_level",
+        "macro__cpi_yoy",
+        "macro__unemployment_change",
+        "macro__gdp_yoy",
+        "sec__dilution_event",
+        "sec__offering_size_to_market_cap",
+        "sec__filing_event_impulse",
+        "mr__bars_since_regime_change"
+      ],
+      "nonvarying_training_features": [
+        "bp__confidence_score"
+      ],
+      "expected_routes_without_fitted_symbol_history": {
+        "AAPL": [
+          "1d@D+1",
+          "1d@D+4",
+          "1d@D+5"
+        ],
+        "AMZN": [],
+        "GOOG": [
+          "1d@D+1",
+          "1d@D+2",
+          "1d@D+3",
+          "1d@D+4",
+          "1d@D+5"
+        ],
+        "MU": [],
+        "NVDA": [],
+        "SNDK": [],
+        "COST": [
+          "1d@D+1",
+          "1d@D+2",
+          "1d@D+3",
+          "1d@D+4",
+          "1d@D+5"
+        ]
+      },
+      "assessment": {
+        "rows": 64,
+        "positive_rate": 0.296875,
+        "mean_probability": 0.6114062411412108,
+        "brier_score": 0.3061633727434856,
+        "log_loss": 0.8077065680801382,
+        "expected_calibration_error_10_bin": 0.31453124114121067,
+        "direction_accuracy_at_0_5": 0.296875
+      },
+      "assessment_raw_scores": {
+        "rows": 64,
+        "positive_rate": 0.296875,
+        "mean_probability": 0.38363213865908724,
+        "brier_score": 0.21579987013443175,
+        "log_loss": 0.6202114488794769,
+        "expected_calibration_error_10_bin": 0.10512152273835437,
+        "direction_accuracy_at_0_5": 0.609375
+      },
+      "training_base_rate_assessment": {
+        "brier_score": 0.21802135499460162,
+        "direction_accuracy_at_0_5": 0.703125,
+        "expected_calibration_error_10_bin": 0.09633857285429143,
+        "log_loss": 0.6283698915645247,
+        "mean_probability": 0.3932135728542914,
+        "positive_rate": 0.296875,
+        "rows": 64
+      },
+      "calibration_diagnostics": {
+        "assessment_probability_range": [
+          0.5838622186239059,
+          0.6415603299359922
+        ],
+        "calibrated_probability_range": [
+          0.5838622186239059,
+          0.6415603299359922
+        ],
+        "calibration_positive_rate": 0.6153846153846154,
+        "calibration_rows": 52,
+        "information_available": true,
+        "nondecreasing_constraint_active": false,
+        "platt_slope": 0.16618935994994694,
+        "raw_probability_range": [
+          0.2308078980706748,
+          0.5649820023918823
+        ],
+        "status": "DIRECTIONAL_INFORMATION_AVAILABLE"
+      },
+      "promotion_gate": {
+        "checks": {
+          "assessment_has_at_least_10_decision_clusters": true,
+          "brier_beats_training_base_rate": false,
+          "calibration_retains_directional_information": true,
+          "expected_calibration_error_at_most_0_15": false,
+          "log_loss_beats_training_base_rate": false
+        },
+        "status": "RESEARCH_NOT_PROMOTED"
+      }
+    },
+    "1w": {
+      "reconstruction_matches_saved_row_counts_and_scores": true,
+      "target_boundary_quality": {
+        "policy": "clock-window-boundaries-within-five-minutes-v1",
+        "enforced": true,
+        "maximum_boundary_gap_seconds": 300.0,
+        "candidate_rows": 3883,
+        "aligned_rows": 125,
+        "excluded_rows": 3758,
+        "excluded_rows_by_route": {
+          "1w@D+5": 3758
+        },
+        "admitted_rows_by_symbol": {
+          "AAPL": 4,
+          "AMZN": 3,
+          "MU": 55,
+          "NVDA": 37,
+          "SNDK": 26
+        },
+        "admitted_rows_by_route": {
+          "1w@D+5": 125
+        },
+        "conflicting_minute_rows_excluded": 0,
+        "target_contract_version": "independent-stock-targets-v1",
+        "target_price_source_contract": "canonical-equity-minute-v1",
+        "target_price_dataset": "EQUS.MINI"
+      },
+      "selected_family": "hist-gradient-mlp-0.50",
+      "partitions": {
+        "train": {
+          "rows": 68,
+          "decision_clusters": 40,
+          "positive_rate": 0.45588235294117646,
+          "earliest_decision": "2026-05-09T00:05:00+00:00",
+          "latest_decision": "2026-07-08T00:05:00+00:00",
+          "earliest_target_start": "2026-05-11T11:00:00+00:00",
+          "latest_target_end": "2026-07-15T00:00:00+00:00",
+          "unique_symbol_target_windows": 68,
+          "by_symbol": {
+            "AMZN": {
+              "rows": 1,
+              "positive_rate": 0.0
+            },
+            "MU": {
+              "rows": 32,
+              "positive_rate": 0.5
+            },
+            "NVDA": {
+              "rows": 26,
+              "positive_rate": 0.34615384615384615
+            },
+            "SNDK": {
+              "rows": 9,
+              "positive_rate": 0.6666666666666666
+            }
+          },
+          "by_route": {
+            "1w@D+5": {
+              "rows": 68,
+              "positive_rate": 0.45588235294117646
+            }
+          }
+        },
+        "selection": {
+          "rows": 9,
+          "decision_clusters": 6,
+          "positive_rate": 0.5555555555555556,
+          "earliest_decision": "2026-07-15T00:05:00+00:00",
+          "latest_decision": "2026-07-22T00:05:00+00:00",
+          "earliest_target_start": "2026-07-15T11:00:00+00:00",
+          "latest_target_end": "2026-07-29T00:00:00+00:00",
+          "unique_symbol_target_windows": 9,
+          "by_symbol": {
+            "MU": {
+              "rows": 5,
+              "positive_rate": 0.8
+            },
+            "NVDA": {
+              "rows": 1,
+              "positive_rate": 0.0
+            },
+            "SNDK": {
+              "rows": 3,
+              "positive_rate": 0.3333333333333333
+            }
+          },
+          "by_route": {
+            "1w@D+5": {
+              "rows": 9,
+              "positive_rate": 0.5555555555555556
+            }
+          }
+        },
+        "calibration": {
+          "rows": 10,
+          "decision_clusters": 6,
+          "positive_rate": 0.8,
+          "earliest_decision": "2026-07-29T00:05:00+00:00",
+          "latest_decision": "2026-08-07T00:05:00+00:00",
+          "earliest_target_start": "2026-07-29T11:00:00+00:00",
+          "latest_target_end": "2026-08-14T00:00:00+00:00",
+          "unique_symbol_target_windows": 10,
+          "by_symbol": {
+            "MU": {
+              "rows": 6,
+              "positive_rate": 0.6666666666666666
+            },
+            "NVDA": {
+              "rows": 1,
+              "positive_rate": 1.0
+            },
+            "SNDK": {
+              "rows": 3,
+              "positive_rate": 1.0
+            }
+          },
+          "by_route": {
+            "1w@D+5": {
+              "rows": 10,
+              "positive_rate": 0.8
+            }
+          }
+        },
+        "assessment": {
+          "rows": 20,
+          "decision_clusters": 10,
+          "positive_rate": 0.5,
+          "earliest_decision": "2026-08-14T00:05:00+00:00",
+          "latest_decision": "2026-08-28T00:05:00+00:00",
+          "earliest_target_start": "2026-08-14T11:00:00+00:00",
+          "latest_target_end": "2026-09-04T00:00:00+00:00",
+          "unique_symbol_target_windows": 20,
+          "by_symbol": {
+            "AAPL": {
+              "rows": 3,
+              "positive_rate": 1.0
+            },
+            "AMZN": {
+              "rows": 1,
+              "positive_rate": 1.0
+            },
+            "MU": {
+              "rows": 5,
+              "positive_rate": 0.4
+            },
+            "NVDA": {
+              "rows": 7,
+              "positive_rate": 0.5714285714285714
+            },
+            "SNDK": {
+              "rows": 4,
+              "positive_rate": 0.0
+            }
+          },
+          "by_route": {
+            "1w@D+5": {
+              "rows": 20,
+              "positive_rate": 0.5
+            }
+          }
+        }
+      },
+      "partition_boundary_audit": [
+        {
+          "left": "train",
+          "right": "selection",
+          "right_first_decision": "2026-07-15T00:05:00+00:00",
+          "right_first_target_start": "2026-07-15T11:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        },
+        {
+          "left": "selection",
+          "right": "calibration",
+          "right_first_decision": "2026-07-29T00:05:00+00:00",
+          "right_first_target_start": "2026-07-29T11:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        },
+        {
+          "left": "calibration",
+          "right": "assessment",
+          "right_first_decision": "2026-08-14T00:05:00+00:00",
+          "right_first_target_start": "2026-08-14T11:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        }
+      ],
+      "target_support_by_symbol": {
+        "AAPL": {
+          "admitted_decision_clusters": 4,
+          "admitted_rows": 4,
+          "admitted_rows_by_route": {
+            "1w@D+5": 4
+          },
+          "assessment_decision_clusters": 3,
+          "assessment_rows": 3,
+          "assessment_rows_by_route": {
+            "1w@D+5": 3
+          },
+          "fitted_decision_clusters": 0,
+          "fitted_rows": 0,
+          "fitted_rows_by_route": {}
+        },
+        "AMZN": {
+          "admitted_decision_clusters": 3,
+          "admitted_rows": 3,
+          "admitted_rows_by_route": {
+            "1w@D+5": 3
+          },
+          "assessment_decision_clusters": 1,
+          "assessment_rows": 1,
+          "assessment_rows_by_route": {
+            "1w@D+5": 1
+          },
+          "fitted_decision_clusters": 1,
+          "fitted_rows": 1,
+          "fitted_rows_by_route": {
+            "1w@D+5": 1
+          }
+        },
+        "COST": {
+          "admitted_decision_clusters": 0,
+          "admitted_rows": 0,
+          "admitted_rows_by_route": {},
+          "assessment_decision_clusters": 0,
+          "assessment_rows": 0,
+          "assessment_rows_by_route": {},
+          "fitted_decision_clusters": 0,
+          "fitted_rows": 0,
+          "fitted_rows_by_route": {}
+        },
+        "GOOG": {
+          "admitted_decision_clusters": 0,
+          "admitted_rows": 0,
+          "admitted_rows_by_route": {},
+          "assessment_decision_clusters": 0,
+          "assessment_rows": 0,
+          "assessment_rows_by_route": {},
+          "fitted_decision_clusters": 0,
+          "fitted_rows": 0,
+          "fitted_rows_by_route": {}
+        },
+        "MU": {
+          "admitted_decision_clusters": 55,
+          "admitted_rows": 55,
+          "admitted_rows_by_route": {
+            "1w@D+5": 55
+          },
+          "assessment_decision_clusters": 5,
+          "assessment_rows": 5,
+          "assessment_rows_by_route": {
+            "1w@D+5": 5
+          },
+          "fitted_decision_clusters": 37,
+          "fitted_rows": 37,
+          "fitted_rows_by_route": {
+            "1w@D+5": 37
+          }
+        },
+        "NVDA": {
+          "admitted_decision_clusters": 37,
+          "admitted_rows": 37,
+          "admitted_rows_by_route": {
+            "1w@D+5": 37
+          },
+          "assessment_decision_clusters": 7,
+          "assessment_rows": 7,
+          "assessment_rows_by_route": {
+            "1w@D+5": 7
+          },
+          "fitted_decision_clusters": 27,
+          "fitted_rows": 27,
+          "fitted_rows_by_route": {
+            "1w@D+5": 27
+          }
+        },
+        "SNDK": {
+          "admitted_decision_clusters": 26,
+          "admitted_rows": 26,
+          "admitted_rows_by_route": {
+            "1w@D+5": 26
+          },
+          "assessment_decision_clusters": 4,
+          "assessment_rows": 4,
+          "assessment_rows_by_route": {
+            "1w@D+5": 4
+          },
+          "fitted_decision_clusters": 12,
+          "fitted_rows": 12,
+          "fitted_rows_by_route": {
+            "1w@D+5": 12
+          }
+        }
+      },
+      "feature_support": [
+        {
+          "feature": "mr__trend_atr",
+          "nonnull_rows": 68,
+          "distinct_values": 68,
+          "admitted": true
+        },
+        {
+          "feature": "mr__momentum_risk_adjusted",
+          "nonnull_rows": 68,
+          "distinct_values": 68,
+          "admitted": true
+        },
+        {
+          "feature": "mr__range_position",
+          "nonnull_rows": 68,
+          "distinct_values": 68,
+          "admitted": true
+        },
+        {
+          "feature": "mr__volume_score",
+          "nonnull_rows": 68,
+          "distinct_values": 43,
+          "admitted": true
+        },
+        {
+          "feature": "mr__volatility_ratio",
+          "nonnull_rows": 68,
+          "distinct_values": 68,
+          "admitted": true
+        },
+        {
+          "feature": "bp__compression_score",
+          "nonnull_rows": 68,
+          "distinct_values": 68,
+          "admitted": true
+        },
+        {
+          "feature": "bp__range_contraction_score",
+          "nonnull_rows": 68,
+          "distinct_values": 68,
+          "admitted": true
+        },
+        {
+          "feature": "bp__direction_score",
+          "nonnull_rows": 68,
+          "distinct_values": 68,
+          "admitted": true
+        },
+        {
+          "feature": "bp__upside_pressure_score",
+          "nonnull_rows": 68,
+          "distinct_values": 68,
+          "admitted": true
+        },
+        {
+          "feature": "bp__downside_pressure_score",
+          "nonnull_rows": 68,
+          "distinct_values": 68,
+          "admitted": true
+        },
+        {
+          "feature": "bp__breakout_magnitude_atr",
+          "nonnull_rows": 68,
+          "distinct_values": 8,
+          "admitted": true
+        },
+        {
+          "feature": "bp__volume_participation_score",
+          "nonnull_rows": 68,
+          "distinct_values": 61,
+          "admitted": true
+        },
+        {
+          "feature": "mr__technical_score",
+          "nonnull_rows": 68,
+          "distinct_values": 68,
+          "admitted": true
+        },
+        {
+          "feature": "mr__regime_strength",
+          "nonnull_rows": 68,
+          "distinct_values": 68,
+          "admitted": true
+        },
+        {
+          "feature": "bp__breakout_readiness_score",
+          "nonnull_rows": 68,
+          "distinct_values": 68,
+          "admitted": true
+        },
+        {
+          "feature": "bp__breakout_strength_score",
+          "nonnull_rows": 68,
+          "distinct_values": 8,
+          "admitted": true
+        },
+        {
+          "feature": "bp__setup_quality",
+          "nonnull_rows": 68,
+          "distinct_values": 68,
+          "admitted": true
+        },
+        {
+          "feature": "mr__confidence_score",
+          "nonnull_rows": 68,
+          "distinct_values": 68,
+          "admitted": true
+        },
+        {
+          "feature": "bp__confidence_score",
+          "nonnull_rows": 68,
+          "distinct_values": 1,
+          "admitted": false
+        },
+        {
+          "feature": "mr__atr_percent",
+          "nonnull_rows": 68,
+          "distinct_values": 68,
+          "admitted": true
+        },
+        {
+          "feature": "mr__technical_score_change_5",
+          "nonnull_rows": 68,
+          "distinct_values": 68,
+          "admitted": true
+        },
+        {
+          "feature": "bp__bars_since_state_change",
+          "nonnull_rows": 68,
+          "distinct_values": 17,
+          "admitted": true
+        },
+        {
+          "feature": "mr__trend_score",
+          "nonnull_rows": 68,
+          "distinct_values": 68,
+          "admitted": true
+        },
+        {
+          "feature": "mr__momentum_score",
+          "nonnull_rows": 68,
+          "distinct_values": 68,
+          "admitted": true
+        },
+        {
+          "feature": "mr__range_score",
+          "nonnull_rows": 68,
+          "distinct_values": 68,
+          "admitted": true
+        },
+        {
+          "feature": "bp__boundary_proximity_score",
+          "nonnull_rows": 68,
+          "distinct_values": 62,
+          "admitted": true
+        },
+        {
+          "feature": "bar__intrabar_range_atr",
+          "nonnull_rows": 68,
+          "distinct_values": 66,
+          "admitted": true
+        },
+        {
+          "feature": "bar__close_location",
+          "nonnull_rows": 65,
+          "distinct_values": 43,
+          "admitted": true
+        },
+        {
+          "feature": "life__technical_consensus_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "life__technical_consensus_change_5d",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "life__long_term_technical_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "life__technical_term_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "life__timing_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "quote__relative_bid_ask_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__iv_minus_realized",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__put25d_minus_call25d_iv",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__log_call_put_volume_ratio",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__relative_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__realized_volatility_20d",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__realized_expected_absolute_move_atm_horizon",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_implied_volatility",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_straddle_implied_move",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_straddle_move_excess",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_relative_bid_ask_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__put_25d_implied_volatility",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__call_25d_implied_volatility",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__smile_curvature",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__volume_to_open_interest",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__put_call_parity_residual",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_put_call_parity_residual",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__quote_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__quote_time_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__iv_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__greeks_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__open_interest_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__intrinsic_value_violation_rate",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__contract_count",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__expiration_count",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_days_to_expiration",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__quote_staleness_seconds",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "energy__wti_or_proxy_return",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__nq_return_1h",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__es_return_1h",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__small_cap_breadth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__tech_breadth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__gold_return",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__crude_return",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__relative_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "cme__book_imbalance",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__causal_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__median_normalized_residual",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__median_predictive_standard_deviation",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__median_model_edge_in_half_spreads",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__positive_edge_fraction",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__negative_edge_fraction",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__raw_arbitrage_violation_rate",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__constrained_arbitrage_violation_rate",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__interval_80_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__interval_95_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opx__median_relative_bid_ask_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "bp__readiness_change_5",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "bar__overnight_gap_atr",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "weekly__technical_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "weekly__technical_score_change_5",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "weekly__breakout_readiness_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__fundamental_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__fundamental_confidence",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__earnings_momentum_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__cash_conversion_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__accrual_quality_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__balance_sheet_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__tax_quality_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__investment_dilution_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__component_agreement",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__component_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__metric_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__revenue_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__operating_income_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__net_income_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__cfo_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__receivables_growth_minus_revenue_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__inventory_growth_minus_cost_of_revenue_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__cfo_growth_minus_net_income_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__debt_growth_minus_cfo_growth",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__operating_margin",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__free_cash_flow_margin",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__cfo_to_net_income",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__cash_to_debt",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__current_ratio",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fdir__effective_tax_rate",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__revenue_growth_yoy",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__operating_margin",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__operating_margin_change_yoy",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__free_cash_flow_margin",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__cfo_to_net_income",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__cash_to_debt",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__current_ratio",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__diluted_share_growth_yoy",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__stock_comp_to_revenue",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__net_issuance_to_market_cap",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__buyback_yield",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__roic",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "fund__fcf_yield",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__technical_consensus_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__technical_timeframe_coverage",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__technical_consensus_confidence",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__short_term_technical_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__long_term_technical_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__technical_term_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__technical_consensus_change_5d",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__timing_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__fundamental_score",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__fundamental_confidence",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__fundamental_change_1q",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__fundamental_acceleration",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__lifecycle_confidence",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__fundamental_technical_spread",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__agreement_strength",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__divergence_strength",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "ftlife__setup_quality",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__front_minus_back_iv",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__atm_move_richness",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__log_call_put_oi_ratio",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__open_interest_concentration",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__front_atm_implied_volatility",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "opt__back_atm_implied_volatility",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "macro__fed_funds_level",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "macro__cpi_yoy",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "macro__unemployment_change",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "macro__gdp_yoy",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "sec__dilution_event",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "sec__offering_size_to_market_cap",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "sec__filing_event_impulse",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        },
+        {
+          "feature": "mr__bars_since_regime_change",
+          "nonnull_rows": 0,
+          "distinct_values": 0,
+          "admitted": false
+        }
+      ],
+      "admitted_feature_count": 27,
+      "all_null_training_features": [
+        "life__technical_consensus_score",
+        "life__technical_consensus_change_5d",
+        "life__long_term_technical_score",
+        "life__technical_term_spread",
+        "life__timing_score",
+        "quote__relative_bid_ask_spread",
+        "opt__iv_minus_realized",
+        "opt__put25d_minus_call25d_iv",
+        "opt__log_call_put_volume_ratio",
+        "opt__relative_spread",
+        "opt__realized_volatility_20d",
+        "opt__realized_expected_absolute_move_atm_horizon",
+        "opt__atm_implied_volatility",
+        "opt__atm_straddle_implied_move",
+        "opt__atm_straddle_move_excess",
+        "opt__atm_relative_bid_ask_spread",
+        "opt__put_25d_implied_volatility",
+        "opt__call_25d_implied_volatility",
+        "opt__smile_curvature",
+        "opt__volume_to_open_interest",
+        "opt__put_call_parity_residual",
+        "opt__atm_put_call_parity_residual",
+        "opt__quote_coverage",
+        "opt__quote_time_coverage",
+        "opt__iv_coverage",
+        "opt__greeks_coverage",
+        "opt__open_interest_coverage",
+        "opt__intrinsic_value_violation_rate",
+        "opt__contract_count",
+        "opt__expiration_count",
+        "opt__atm_days_to_expiration",
+        "opt__quote_staleness_seconds",
+        "energy__wti_or_proxy_return",
+        "cme__nq_return_1h",
+        "cme__es_return_1h",
+        "cme__small_cap_breadth",
+        "cme__tech_breadth",
+        "cme__gold_return",
+        "cme__crude_return",
+        "cme__relative_spread",
+        "cme__book_imbalance",
+        "opx__causal_coverage",
+        "opx__median_normalized_residual",
+        "opx__median_predictive_standard_deviation",
+        "opx__median_model_edge_in_half_spreads",
+        "opx__positive_edge_fraction",
+        "opx__negative_edge_fraction",
+        "opx__raw_arbitrage_violation_rate",
+        "opx__constrained_arbitrage_violation_rate",
+        "opx__interval_80_coverage",
+        "opx__interval_95_coverage",
+        "opx__median_relative_bid_ask_spread",
+        "bp__readiness_change_5",
+        "bar__overnight_gap_atr",
+        "weekly__technical_score",
+        "weekly__technical_score_change_5",
+        "weekly__breakout_readiness_score",
+        "fdir__fundamental_score",
+        "fdir__fundamental_confidence",
+        "fdir__earnings_momentum_score",
+        "fdir__cash_conversion_score",
+        "fdir__accrual_quality_score",
+        "fdir__balance_sheet_score",
+        "fdir__tax_quality_score",
+        "fdir__investment_dilution_score",
+        "fdir__component_agreement",
+        "fdir__component_coverage",
+        "fdir__metric_coverage",
+        "fdir__revenue_growth",
+        "fdir__operating_income_growth",
+        "fdir__net_income_growth",
+        "fdir__cfo_growth",
+        "fdir__receivables_growth_minus_revenue_growth",
+        "fdir__inventory_growth_minus_cost_of_revenue_growth",
+        "fdir__cfo_growth_minus_net_income_growth",
+        "fdir__debt_growth_minus_cfo_growth",
+        "fdir__operating_margin",
+        "fdir__free_cash_flow_margin",
+        "fdir__cfo_to_net_income",
+        "fdir__cash_to_debt",
+        "fdir__current_ratio",
+        "fdir__effective_tax_rate",
+        "fund__revenue_growth_yoy",
+        "fund__operating_margin",
+        "fund__operating_margin_change_yoy",
+        "fund__free_cash_flow_margin",
+        "fund__cfo_to_net_income",
+        "fund__cash_to_debt",
+        "fund__current_ratio",
+        "fund__diluted_share_growth_yoy",
+        "fund__stock_comp_to_revenue",
+        "fund__net_issuance_to_market_cap",
+        "fund__buyback_yield",
+        "fund__roic",
+        "fund__fcf_yield",
+        "ftlife__technical_consensus_score",
+        "ftlife__technical_timeframe_coverage",
+        "ftlife__technical_consensus_confidence",
+        "ftlife__short_term_technical_score",
+        "ftlife__long_term_technical_score",
+        "ftlife__technical_term_spread",
+        "ftlife__technical_consensus_change_5d",
+        "ftlife__timing_score",
+        "ftlife__fundamental_score",
+        "ftlife__fundamental_confidence",
+        "ftlife__fundamental_change_1q",
+        "ftlife__fundamental_acceleration",
+        "ftlife__lifecycle_confidence",
+        "ftlife__fundamental_technical_spread",
+        "ftlife__agreement_strength",
+        "ftlife__divergence_strength",
+        "ftlife__setup_quality",
+        "opt__front_minus_back_iv",
+        "opt__atm_move_richness",
+        "opt__log_call_put_oi_ratio",
+        "opt__open_interest_concentration",
+        "opt__front_atm_implied_volatility",
+        "opt__back_atm_implied_volatility",
+        "macro__fed_funds_level",
+        "macro__cpi_yoy",
+        "macro__unemployment_change",
+        "macro__gdp_yoy",
+        "sec__dilution_event",
+        "sec__offering_size_to_market_cap",
+        "sec__filing_event_impulse",
+        "mr__bars_since_regime_change"
+      ],
+      "nonvarying_training_features": [
+        "bp__confidence_score"
+      ],
+      "expected_routes_without_fitted_symbol_history": {
+        "AAPL": [
+          "1w@D+5"
+        ],
+        "AMZN": [],
+        "GOOG": [
+          "1w@D+5"
+        ],
+        "MU": [],
+        "NVDA": [],
+        "SNDK": [],
+        "COST": [
+          "1w@D+5"
+        ]
+      },
+      "assessment": {
+        "rows": 20,
+        "positive_rate": 0.5,
+        "mean_probability": 0.7960209409659877,
+        "brier_score": 0.33739470704318897,
+        "log_loss": 0.9082415471067493,
+        "expected_calibration_error_10_bin": 0.29602094096598774,
+        "direction_accuracy_at_0_5": 0.5
+      },
+      "assessment_raw_scores": {
+        "rows": 20,
+        "positive_rate": 0.5,
+        "mean_probability": 0.4074233197526168,
+        "brier_score": 0.2509480819026388,
+        "log_loss": 0.6931413245508032,
+        "expected_calibration_error_10_bin": 0.2660220183830781,
+        "direction_accuracy_at_0_5": 0.4
+      },
+      "training_base_rate_assessment": {
+        "brier_score": 0.25105414066453025,
+        "direction_accuracy_at_0_5": 0.5,
+        "expected_calibration_error_10_bin": 0.03246753246753242,
+        "log_loss": 0.6952599192734749,
+        "mean_probability": 0.4675324675324676,
+        "positive_rate": 0.5,
+        "rows": 20
+      },
+      "calibration_diagnostics": {
+        "assessment_probability_range": [
+          0.793534877158568,
+          0.802279223563294
+        ],
+        "calibrated_probability_range": [
+          0.793534877158568,
+          0.8086141007955018
+        ],
+        "calibration_positive_rate": 0.8,
+        "calibration_rows": 10,
+        "information_available": true,
+        "nondecreasing_constraint_active": false,
+        "platt_slope": 0.05282232000949244,
+        "raw_probability_range": [
+          0.3472098514372248,
+          0.7614771139646361
+        ],
+        "status": "DIRECTIONAL_INFORMATION_AVAILABLE"
+      },
+      "promotion_gate": {
+        "checks": {
+          "assessment_has_at_least_10_decision_clusters": true,
+          "brier_beats_training_base_rate": false,
+          "calibration_retains_directional_information": true,
+          "expected_calibration_error_at_most_0_15": false,
+          "log_loss_beats_training_base_rate": false
+        },
+        "status": "RESEARCH_NOT_PROMOTED"
+      }
+    }
+  }
+}

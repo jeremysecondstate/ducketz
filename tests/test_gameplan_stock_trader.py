@@ -8,6 +8,7 @@ import pytest
 
 from ml.nightly_gameplan import GameplanPublication
 from ml.stock_trader.control import write_activation_intent
+from ml.stock_trader.contracts import STOCK_TRADER_SYMBOLS
 from ml.stock_trader.gameplan import (
     GAMEPLAN_STOCK_ENTRY_GRACE_SECONDS,
     gate_gameplan_execution_signals,
@@ -58,7 +59,7 @@ def test_gameplan_loader_selects_forward_hour_and_promoted_context(
         target_horizon="1h",
     )
 
-    assert sorted(signals) == ["AAPL", "AMZN", "GOOG", "MU", "NVDA"]
+    assert sorted(signals) == sorted(set(STOCK_TRADER_SYMBOLS) - {"SNDK"})
     assert len(sources) == 6
     aapl = signals["AAPL"]
     assert aapl.prediction_id == "2026-09-04:AAPL:1h@10:00"
@@ -307,7 +308,7 @@ def _gameplan_forecasts() -> pd.DataFrame:
             }
         )
 
-    for symbol in ("AAPL", "AMZN", "GOOG", "MU", "NVDA", "SNDK"):
+    for symbol in STOCK_TRADER_SYMBOLS:
         prior_close = action - pd.Timedelta(hours=7)
         add(symbol, "1h", "1h@04:00", prior_close, action + pd.Timedelta(hours=4), 0.4)
         for endpoint in range(5, 18):

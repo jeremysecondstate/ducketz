@@ -1,0 +1,20 @@
+{
+  "simulated_clock": "2026-09-08T10:59:00Z",
+  "execute": false,
+  "broker_runner_forbidden": true,
+  "sleep_forbidden": true,
+  "result": {
+    "status": "NOOP_ENRICHMENT_NOT_QUALIFIED",
+    "calls": 0,
+    "orders_submitted": 0,
+    "enrichment_readiness": {
+      "status": "NOT_READY",
+      "reason": "ENRICHMENT_INDEPENDENT_TARGET_CONTRACT_NOT_QUALIFIED",
+      "model_fingerprint": "05b1f6305876fc50be27388fcbb3b65c9f0720bcecd9c0ae8993f2a9a83127d1",
+      "supported_horizons": [
+        "1h"
+      ],
+      "qualified_target_contracts": []
+    }
+  }
+}

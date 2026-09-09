@@ -1,0 +1,21 @@
+{
+  "verified_at_utc": "2026-09-09T05:08:03Z",
+  "checks": [
+    {
+      "id": "loops-hourly-operations",
+      "promptVerified": true,
+      "otherChanges": [],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "loops-stock-trader-daily-adaptation",
+      "promptVerified": true,
+      "otherChanges": [],
+      "status": "ACTIVE"
+    }
+  ],
+  "native_nightly_stage": "gameplan_trade_planning",
+  "native_stage_position": "After stock_enrichment_training on new full independent-stock runs",
+  "schedule_changes": false,
+  "new_automations_created": 0
+}

@@ -7,8 +7,8 @@ hourly stock trader, and a Saturday Gameplan review:
 
 | Owner | Entry point | Cadence | Final authority | Order authority |
 |---|---|---|---|---|
-| Loops Overnight Gameplan | `ml.overnight_runtime --scheduled` | Weekdays 17:05 America/Los_Angeles; XNYS-session guard; once | `ml/nightly-gameplan-latest/run.json` | None |
-| Loops Overnight Health Watch | `ml.overnight_runtime --status` and supervised recovery | Every ten minutes, including weekends | One renewable supervision claim; stage logs and receipts | None |
+| Loops Overnight Gameplan | `ml.overnight_runtime --scheduled` | Daily 21:05 America/Los_Angeles; native XNYS weekend/holiday no-op; once | `ml/nightly-gameplan-latest/run.json` | None |
+| Loops Operations Watch (overnight) | `ml.overnight_runtime --status` and supervised recovery | Every 30 minutes, including weekends; missing fresh runs eligible after 21:15 PT | One renewable supervision claim; stage logs and receipts | None |
 | Loops Gameplan Weekly Review | `ml.gameplan_evaluation` | Saturday 09:00 PT | Cumulative saved-forecast evaluation history | None |
 | Loops Gameplan Stock Trader — Hourly | `ml.gameplan_stock_trader --execute --target-horizon 1h` | Weekday action hours at `:01`, excluding the 13:00 broker transition | Immutable stock decision/execution receipts | Stocks only |
 | Loops Gameplan Stock Trader — 1 p.m. Transition | same entry point | Weekdays 13:05 PT for the frozen 13:00 generation | Immutable stock decision/execution receipts | Stocks only |
@@ -22,7 +22,7 @@ It runs the following bounded stages sequentially under one run receipt:
 | 3 | `ml.gameplan_evaluation` | Evaluate all saved Gameplans from September 4 and retain pending forecasts |
 | 4 | `ml.strategy_profit_training_runtime` | Independently assessed `1h`/`4h`/`1d`/`1w` Strategy-profit models; only passing horizons are promoted |
 | 5 | `ml.strategy_runtime` | Exact options-strategy candidates |
-| 6 | `ml.nightly_gameplan` | Immutable 144-forecast/144-intent next-session plan |
+| 6 | `ml.nightly_gameplan` | Immutable next-session plan: 24 forecasts and 24 intents per configured symbol |
 
 The stages are bounded commands, not simultaneously running supervisors.
 Weekday exchange-holiday wakes produce a checksum-bound no-op receipt without

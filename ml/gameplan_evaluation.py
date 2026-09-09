@@ -95,12 +95,21 @@ def evaluate_forecasts(
     now = utc_timestamp(evaluated_at)
     previous = pd.DataFrame() if previous is None else previous
     prior = {str(row["id"]): row for row in previous.to_dict("records")}
+    from ml.independent_stock_targets import STOCK_TARGET_CONTRACT_VERSION
+
+    def target_family(row):
+        # Legacy v1/v2 keep their historical endpoint-based matching. Independent
+        # stock labels may never supply outcomes for those earlier contracts.
+        if str(row.get("target_contract_version")) == STOCK_TARGET_CONTRACT_VERSION:
+            from ml.stock_target_prices import independent_price_identity
+            return (STOCK_TARGET_CONTRACT_VERSION, *independent_price_identity(row))
+        return "legacy"
     observed_frames = [frame for frame in observed_groups.values() if not frame.empty]
     lookup: dict[tuple, Mapping[str, object]] = {}
     for frame in observed_frames:
         for row in frame.to_dict("records"):
             start, end = utc_timestamp(row["target_window_start"]), utc_timestamp(row["target_window_end"])
-            key = (str(row["symbol"]).upper(), str(row["route"]), start, end)
+            key = (target_family(row), str(row["symbol"]).upper(), str(row["route"]), start, end)
             target, change = row.get("target"), row.get("observed_return")
             if pd.notna(target) and target in (0, 1) and pd.notna(change) and np.isfinite(float(change)):
                 lookup[key] = row
@@ -117,7 +126,7 @@ def evaluate_forecasts(
                 raise RuntimeError("An evaluated immutable forecast changed")
             rows.append(old)
             continue
-        outcome = lookup.get((str(forecast["symbol"]).upper(), str(forecast["route"]), start, end))
+        outcome = lookup.get((target_family(forecast), str(forecast["symbol"]).upper(), str(forecast["route"]), start, end))
         matured = end <= now
         scored = matured and outcome is not None
         target = int(outcome["target"]) if scored else None
@@ -161,6 +170,9 @@ def evaluate_saved_gameplans(
 ) -> GameplanEvaluationResult:
     root = Path(root).resolve()
     now = utc_timestamp(evaluated_at)
+    from ml.directional_forecast_evaluation import evaluate_saved_directional_forecasts
+    evaluate_saved_directional_forecasts(root, observed_groups=observed_groups,
+                                        evaluated_at=now, input_files=input_files)
     with exclusive_runtime_lock(root / ".ducketz-gameplan-evaluation.lock", process_name="Gameplan evaluation"):
         forecasts, source_files = _saved_forecasts(root)
         prior = read_evaluation_history(root)
@@ -212,6 +224,20 @@ def evaluate_saved_gameplans(
         return read_evaluation_history(root)
 
 
+def saved_independent_price_sources(root: Path) -> set[str]:
+    """Discover source identities from verified immutable independent plans."""
+    from ml.independent_stock_targets import STOCK_TARGET_CONTRACT_VERSION
+    from ml.nightly_gameplan import read_gameplan_run
+    from ml.stock_target_prices import independent_price_identity
+    sources = set()
+    for receipt in (Path(root) / "ml/nightly-gameplan-runs").glob("*/receipt.json"):
+        publication = read_gameplan_run(root, receipt.parent)
+        config = publication.manifest.get("configuration", {})
+        if config.get("target_contract_version") == STOCK_TARGET_CONTRACT_VERSION:
+            sources.add(independent_price_identity(config)[0])
+    return sources
+
+
 def run_gameplan_evaluation_once(root: Path, *, evaluated_at: object | None = None) -> GameplanEvaluationResult:
     from ml.current_publication import read_current_publication
     from ml.nightly_gameplan import _daily_weekly_outcomes, _intraday_outcomes, _load_equity_minute_bars, _overnight_sources
@@ -227,8 +253,20 @@ def run_gameplan_evaluation_once(root: Path, *, evaluated_at: object | None = No
     bars = bars.loc[pd.to_datetime(bars["timestamp"], utc=True).lt(now)]
     hourly, four = _intraday_outcomes(sources=sources, feature_columns=(), minute_bars=bars)
     daily, weekly = _daily_weekly_outcomes(samples, feature_columns=())
-    return evaluate_saved_gameplans(root, observed_groups={"1h": hourly, "4h": four, "1d": daily, "1w": weekly},
-                                   evaluated_at=now, input_files=(samples_path, *bar_files))
+    from ml.independent_stock_targets import build_stock_training_groups
+    from ml.stock_target_prices import CANONICAL_STOCK_PRICE_SOURCE, load_stock_target_prices
+    groups = {"1h": hourly, "4h": four, "1d": daily, "1w": weekly}
+    price_files = list(bar_files)
+    for contract in sorted(saved_independent_price_sources(root)):
+        source_bars = bars
+        if contract != CANONICAL_STOCK_PRICE_SOURCE:
+            source_bars, source_files, _ = load_stock_target_prices(root, symbols=symbols, source_contract=contract)
+            price_files.extend(source_files)
+        independent = build_stock_training_groups(sources, feature_columns=(), minute_bars=source_bars,
+                                                   available_at=now, price_source_contract=contract)
+        groups.update({f"{contract}/{name}": frame for name, frame in independent.items()})
+    return evaluate_saved_gameplans(root, observed_groups=groups,
+                                   evaluated_at=now, input_files=(samples_path, *dict.fromkeys(price_files)))
 
 
 def _write_json(path: Path, payload: Mapping[str, object]) -> None:

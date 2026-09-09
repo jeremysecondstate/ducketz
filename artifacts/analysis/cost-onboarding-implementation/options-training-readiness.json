@@ -1,0 +1,13 @@
+{
+  "phase": "OPTIONS_TRAINING_PREFLIGHT",
+  "status": "BLOCKED_REQUIRED_OPRA_SESSION",
+  "source_run": "C:\\DATASTORE\\ml\\runs\\20260906T084041.266342Z",
+  "required_complete_1d_session": "2026-09-04",
+  "latest_common_hourly_quote_session": "2026-09-03",
+  "cost_cursor_exclusive_ends": {
+    "definition": "2026-09-04",
+    "ohlcv-1h": "2026-09-04",
+    "cbbo-1m": "2026-09-04"
+  },
+  "production_gameplan_preserved": true
+}

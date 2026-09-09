@@ -1,0 +1,24 @@
+{
+  "registered_at": "2026-09-08T07:38:35.974089+00:00",
+  "experiment": "independent-stock-xnas-coverage-v1",
+  "user_scope": "Finish creation and training for all seven independent stock horizons; options remain separate research.",
+  "reason": "Canonical EQUS minute data lacked required extended-session endpoints. A single verified XNAS dataset provides actual observations for COST daily/weekly and all entry clocks. Selection is based on measured price coverage, not held-out performance.",
+  "source_inventory_path": "C:\\dev\\ducketz\\artifacts\\analysis\\cost-onboarding-implementation\\xnas-refreshed-price-source-20260908.json",
+  "source_inventory_sha256": "7b526be6bc820dd4c4521d1763d79a45baaba67e0bca0906c03115e79c8141bf",
+  "history_run": "C:/DATASTORE/ml/stock-target-history-runs/20260908T073612.583929Z",
+  "download_preflight_cost_usd": 0,
+  "target_contract": "independent-stock-targets-v1",
+  "source_contract": "xnas-itch-archive-v1",
+  "windows_changed": false,
+  "observation_tolerance_seconds": 300,
+  "forecast_models": "Existing HGB/MLP candidates, existing chronological model/blend selection and Platt calibration; no tuning from prior or new assessment.",
+  "required_guards": [
+    "Same source for all seven stock target histories and prospective evaluation",
+    "No missing endpoint substitution or cross-dataset price blending",
+    "Per-symbol and exact-route fitted history required",
+    "Existing chronological maturity and untouched-assessment promotion gates retained",
+    "Fresh stable module-qualified blended estimator artifacts",
+    "Separate source-bound independent sizing models trained on execution rows, with honest out-of-sample qualification"
+  ],
+  "publication_intent": "New immutable source-explicit forecasts and genuine sizing training artifacts; no real trades in this work. Existing controls and qualification determine any future order eligibility."
+}

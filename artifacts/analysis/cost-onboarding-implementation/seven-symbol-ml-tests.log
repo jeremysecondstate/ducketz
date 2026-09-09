@@ -1,0 +1,131 @@
+.................................................................FF..... [ 94%]
+....                                                                     [100%]
+================================== FAILURES ===================================
+___ test_empty_runtime_is_route_isolated_and_writes_only_pricing_authority ____
+
+tmp_path = WindowsPath('C:/Users/7980X/AppData/Local/Temp/pytest-of-7980X/pytest-2583/test_empty_runtime_is_route_is0')
+
+    def test_empty_runtime_is_route_isolated_and_writes_only_pricing_authority(
+        tmp_path: Path,
+    ) -> None:
+        result = run_option_pricing_once(
+            tmp_path,
+            symbols=("NVDA", "GOOG", "AAPL"),
+            run_timestamp="2026-07-06T14:01:00Z",
+            runtime_clock=lambda: "2026-07-06T14:01:01Z",
+        )
+        assert result.run_directory.is_dir()
+        assert set(result.route_errors) == {"NVDA/live", "GOOG/live", "AAPL/live"}
+        assert read_current_option_pricing_publication(tmp_path).run_directory == result.run_directory
+        assert pricing_pointer_path(tmp_path).is_file()
+        assert not (tmp_path / "ml" / "latest" / "run.json").exists()
+        assert not (tmp_path / "ml" / "strategy-latest" / "run.json").exists()
+        report = json.loads(
+            (result.run_directory / "option-pricing-model-reports.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        assert report["gate"]["gate_status"] == "NOT_PRODUCTION_ELIGIBLE"
+        assert report["automated_action_allowed"] is False
+        assert report["cycle"]["status"] == "TARGET_INPUT_UNAVAILABLE"
+        assert report["black_scholes_baseline"] == {
+            "new_predictions_created": 0,
+            "requires_fitted_residual_model": False,
+            "status": "READY_WHEN_CAUSAL_INPUTS_AVAILABLE",
+        }
+>       assert report["runtime_scope"] == {
+            "black_scholes_baseline_symbols": ["NVDA", "GOOG", "AAPL"],
+            "finite_basis_eligibility_symbols": [
+                "AAPL",
+                "AMZN",
+                "GOOG",
+                "MU",
+                "NVDA",
+                "SNDK",
+            ],
+            "live_symbol_count": 3,
+            "live_symbols": ["NVDA", "GOOG", "AAPL"],
+            "source": "configured-watchlist-or-explicit-symbols",
+        }
+E       AssertionError: assert {'black_schol... 'AAPL'], ...} == {'black_schol... 'AAPL'], ...}
+E         
+E         Omitting 4 identical items, use -vv to show
+E         Differing items:
+E         {'finite_basis_eligibility_symbols': ['AAPL', 'AMZN', 'GOOG', 'MU', 'NVDA', 'SNDK', ...]} != {'finite_basis_eligibility_symbols': ['AAPL', 'AMZN', 'GOOG', 'MU', 'NVDA', 'SNDK']}
+E         Use -v to get more diff
+
+tests\test_option_pricing_publication.py:374: AssertionError
+______ test_pricing_cli_scope_defaults_to_watchlist_and_symbols_override ______
+
+tmp_path = WindowsPath('C:/Users/7980X/AppData/Local/Temp/pytest-of-7980X/pytest-2583/test_pricing_cli_scope_default0')
+
+    def test_pricing_cli_scope_defaults_to_watchlist_and_symbols_override(
+        tmp_path: Path,
+    ) -> None:
+        watchlist = tmp_path / "watchlist.txt"
+        watchlist.write_text(
+            "# active Pricing universe\nNVDA\nGOOG\nMU\nAAPL\nSNDK\nAMZN\n",
+            encoding="utf-8",
+        )
+    
+>       assert resolve_pricing_symbols(symbols=None, watchlist=watchlist) == (
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            "AAPL",
+            "AMZN",
+            "GOOG",
+            "MU",
+            "NVDA",
+            "SNDK",
+        )
+
+tests\test_option_pricing_publication.py:410: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+ml\option_pricing_runtime.py:2112: in resolve_pricing_symbols
+    return canonical_production_option_symbols(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+symbols = ('NVDA', 'GOOG', 'MU', 'AAPL', 'SNDK', 'AMZN')
+label = 'Active Pricing production watchlist'
+
+    def canonical_production_option_symbols(
+        symbols: Sequence[str],
+        *,
+        label: str = "option universe",
+    ) -> tuple[str, ...]:
+        """Validate an exact production scope and return canonical symbol order."""
+    
+        observed = tuple(
+            dict.fromkeys(
+                str(value).strip().upper()
+                for value in symbols
+                if str(value).strip()
+            )
+        )
+        expected = PRODUCTION_OPTION_SYMBOLS
+        if len(observed) != len(expected) or set(observed) != set(expected):
+            missing = sorted(set(expected).difference(observed))
+            extra = sorted(set(observed).difference(expected))
+            detail = []
+            if missing:
+                detail.append("missing=" + ",".join(missing))
+            if extra:
+                detail.append("extra=" + ",".join(extra))
+>           raise MLContractError(
+                f"{label} must contain exactly {', '.join(expected)}"
+                + (f" ({'; '.join(detail)})" if detail else "")
+            )
+E           ml.contracts.MLContractError: Active Pricing production watchlist must contain exactly AAPL, AMZN, GOOG, MU, NVDA, SNDK, COST (missing=COST)
+
+ml\universe.py:104: MLContractError
+============================== warnings summary ===============================
+tests/test_ml_runtime_pipeline.py: 196 warnings
+tests/test_option_pricing_core.py: 18 warnings
+  C:\dev\ducketz\.venv\Lib\site-packages\joblib\numpy_pickle.py:207: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    array.shape = self.shape
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_option_pricing_publication.py::test_empty_runtime_is_route_isolated_and_writes_only_pricing_authority
+FAILED tests/test_option_pricing_publication.py::test_pricing_cli_scope_defaults_to_watchlist_and_symbols_override
+2 failed, 74 passed, 214 warnings in 36.86s

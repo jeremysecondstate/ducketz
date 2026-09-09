@@ -6,14 +6,18 @@ is not proof that a provider is connected or an artifact is current.
 
 ## Current operating model
 
-As of 2026-09-04, normal operation is one sequential overnight workflow plus a
-lightweight daytime consumer:
+Normal operation is one sequential overnight workflow plus a daytime consumer.
+The daily overnight schedule was updated on 2026-09-08:
 
-- 17:05 PT: fetch and append the latest completed session, including production
-  OPRA history; build Loop B; train four Options Strategy profit horizons;
-  generate candidates; publish the immutable next-session Gameplan. The Scheduled
+- 21:05 America/Los_Angeles daily: fetch and append the latest completed session,
+  including production OPRA history; build Loop B; maintain XNAS stock target
+  history; evaluate saved Gameplans; train four independent stock target groups;
+  publish the immutable next-session Gameplan; train independent enrichment.
+  The native calendar skips fresh weekend/holiday work. XNAS Historical normally
+  releases at 21:00 Pacific; actual provider coverage is still checked. The Scheduled
   operator watches progress/errors, repairs verified failures, and resumes the
-  failed stage. A ten-minute health watch covers abandoned work.
+  failed stage. `Loops Operations Watch` checks every 30 minutes, covers abandoned
+  work, and may start a missing fresh run only after 21:15 PT.
 - 04:00–17:00 PT: the Duckets `Rolling Forecasts` tab reads the frozen plan and
   rotates its displayed 1-hour and 4-hour routes on wall-clock boundaries. No
   provider fetch, training, or replanning occurs in the UI consumer; D+1 through
@@ -50,13 +54,22 @@ the old stack or enabling options orders.
 
 ## Current data authority
 
-- The production universe is `AAPL AMZN GOOG MU NVDA SNDK`.
+- The production universe is configured in `datafetching/watchlist.txt` and
+  shared by Loop A, ML, option routes, and the stock trader. Additions follow
+  [Symbol onboarding](SYMBOL_ONBOARDING.md), including history parity, candidate
+  training, publication checks, and activation receipts.
+- An onboarding candidate may publish read-only stock-direction forecasts while
+  OPRA is delayed, using non-options features and the normal horizon quality
+  gates. The UI labels these research forecasts separately; their immutable
+  history is evaluated separately by the existing evaluation step. This does
+  not publish an options Gameplan or activate the candidate. See
+  [Forecasts while options history is delayed](SYMBOL_ONBOARDING.md#forecasts-while-options-history-is-delayed).
 - Canonical operational equity bars remain Databento `EQUS.MINI` under
   `C:\DATASTORE\stocks`. Schwab history and the differently identified
   `XNAS.ITCH` archive remain separate evidence families; an audit found no exact
   OHLC/OHLCV equality supporting a blind cross-provider merge.
 - Loop A owns production OPRA `definition`, `cbbo-1m`, and `ohlcv-1h` maintenance
-  for all six parents. Other OPRA schemas are retained research history without
+  for every configured parent. Other OPRA schemas are retained research history without
   a freshness promise.
 - Overnight currentness means complete data from the most recently finished
   session. Final closed-market quotes may be hours old and still be the newest
@@ -83,8 +96,9 @@ The overnight pipeline produces or refreshes four related authorities:
    each with histogram-gradient and MLP challenger selection.
 3. Exact Strategy candidates using completed-session option evidence for
    planning.
-4. One 144-row immutable gameplan: 24 forecasts and 24 options intents per
-   symbol.
+4. One immutable gameplan: 24 forecasts and 24 options intents per symbol,
+   or 168 of each for seven symbols. Saved historical plans retain their own
+   original universe and row counts.
 
 The first observed generation for action date 2026-09-04 is
 `ml/nightly-gameplan-runs/20260904T105944.876700Z`. It contains all 288 rows and

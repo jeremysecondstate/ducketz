@@ -383,6 +383,7 @@ def test_ml_sizing_produces_buy_sell_and_auditable_order_style() -> None:
         portfolio,
         ConstantModel(allocation_fraction=0.50, urgency=0.10),
         _activation(True),
+        policy=StockTraderPolicy(maximum_orders_per_wake=len(STOCK_TRADER_SYMBOLS)),
         decided_at=NOW,
     )
     by_symbol = {decision.symbol: decision for decision in decisions}
@@ -501,6 +502,7 @@ def test_sell_never_exceeds_owned_uncommitted_shares() -> None:
         portfolio,
         ConstantModel(allocation_fraction=1.0),
         _activation(True),
+        policy=StockTraderPolicy(maximum_orders_per_wake=len(STOCK_TRADER_SYMBOLS)),
         decided_at=NOW,
     )
     aapl = decisions[0]
@@ -656,13 +658,13 @@ def test_runtime_requires_execute_and_true_toggle_for_submission(
     assert live.status == "ORDERS_SUBMITTED"
     assert live.submitted_orders == live.selected_orders
     payload, _receipt = read_decision_run(tmp_path, live.run_directory)
-    assert payload["live_decision_count"] == 6
-    assert payload["shadow_decision_count"] == 6
+    assert payload["live_decision_count"] == len(STOCK_TRADER_SYMBOLS)
+    assert payload["shadow_decision_count"] == len(STOCK_TRADER_SYMBOLS)
     assert {row["decision_lane"] for row in payload["decisions"]} == {
         "LIVE",
         "SHADOW",
     }
-    assert len({row["decision_id"] for row in payload["decisions"]}) == 12
+    assert len({row["decision_id"] for row in payload["decisions"]}) == 2 * len(STOCK_TRADER_SYMBOLS)
     assert all(
         payload["orderLegCollection"][0]["instruction"] in {"BUY", "SELL"}
         for payload in schwab.submitted
@@ -1963,7 +1965,7 @@ def test_decision_publication_is_checksum_verified(tmp_path: Path) -> None:
         execution_requested=False,
     )
     payload, receipt = read_decision_run(tmp_path, publication.run_directory)
-    assert len(payload["decisions"]) == 6
+    assert len(payload["decisions"]) == len(STOCK_TRADER_SYMBOLS)
     assert receipt["decision_ids"] == [decision.decision_id for decision in decisions]
 
     publication.decisions_path.write_text("{}\n", encoding="utf-8")
@@ -2119,7 +2121,7 @@ def test_durable_prediction_reservation_survives_lost_execution_artifacts(
 def test_live_fill_lifecycle_pairs_stock_trader_round_trips_fifo(
     tmp_path: Path,
 ) -> None:
-    policy = StockTraderPolicy()
+    policy = StockTraderPolicy(maximum_orders_per_wake=len(STOCK_TRADER_SYMBOLS))
     buy = build_trade_decisions(
         _signals(),
         _portfolio(),
@@ -2367,10 +2369,10 @@ def test_weekly_audit_publishes_row_by_row_decision_reality_pairs(
     markdown = result.markdown_path.read_text(encoding="utf-8")
 
     assert result.status == "WEEKLY_AUDIT_COMPLETE"
-    assert result.pair_count == 6
-    assert result.mature_pair_count == 6
-    assert len(report["decision_outcome_pairs"]) == 6
-    assert report["summary"]["fallback_decision_count"] == 6
+    assert result.pair_count == len(STOCK_TRADER_SYMBOLS)
+    assert result.mature_pair_count == len(STOCK_TRADER_SYMBOLS)
+    assert len(report["decision_outcome_pairs"]) == len(STOCK_TRADER_SYMBOLS)
+    assert report["summary"]["fallback_decision_count"] == len(STOCK_TRADER_SYMBOLS)
     assert report["summary"]["prediction_handoff_runs"]["fallback_run_count"] == 1
     assert (
         report["decision_outcome_pairs"][0]["prediction_handoff"]["status"]
@@ -2395,6 +2397,7 @@ def test_multihead_training_uses_mature_decision_outcome_pairs() -> None:
         pairs.append(
             {
                 "decision_id": f"decision-{index}",
+                "symbol": "AAPL" if index % 2 else "AMZN",
                 "model": {"feature_values": features},
                 "market_reality": {
                     "status": "EVALUATED",
@@ -2413,6 +2416,11 @@ def test_multihead_training_uses_mature_decision_outcome_pairs() -> None:
     result = model.predict(pairs[-1]["model"]["feature_values"])
 
     assert report["row_count"] == 48
+    assert report["symbol_row_counts"]["AAPL"] == 24
+    assert report["symbol_row_counts"]["AMZN"] == 24
+    assert report["rows_without_configured_symbol"] == 0
+    assert set(report["symbols_without_mature_outcomes"]) == set(STOCK_TRADER_SYMBOLS) - {"AAPL", "AMZN"}
+    assert payload["training"]["symbol_row_counts"] == report["symbol_row_counts"]
     assert 0.0 <= result.trade_probability <= 1.0
     assert 0.0 <= result.allocation_fraction <= 1.0
     assert 0.0 <= result.execution_urgency <= 1.0

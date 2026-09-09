@@ -1,0 +1,30 @@
+{
+  "started_at": "2026-09-08T21:35:31.638169+00:00",
+  "mode": "READ_ONLY_BROKER_DIAGNOSTIC",
+  "retry_budget_seconds": 120,
+  "status": "BROKER_READS_HEALTHY",
+  "broker_state_capture": {
+    "schema_version": "stock-trader-broker-state-capture-v1",
+    "status": "CURRENT",
+    "attempts": 1,
+    "transient_failures": 0,
+    "retry_delay_seconds": 3.0,
+    "retry_wait_seconds": 0.0,
+    "maximum_retry_seconds": 120.0,
+    "elapsed_seconds": 5.601208799984306,
+    "last_error_type": null,
+    "last_error_operation": null
+  },
+  "quote_count": 7,
+  "account_snapshot_valid": true,
+  "identity_verified": true,
+  "finished_at": "2026-09-08T21:35:37.495548+00:00",
+  "elapsed_seconds": 5.86,
+  "request_counts": {
+    "get_requests": 6,
+    "oauth_refresh_requests": 0,
+    "blocked_writes": 0
+  },
+  "trading_worker_started": false,
+  "orders_submitted": 0
+}

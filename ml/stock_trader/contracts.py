@@ -122,6 +122,8 @@ class PredictionSignal:
     source_fingerprint: str
     checkpoint_session: str = "REGULAR"
     target_definition_version: str = ""
+    target_price_source_contract: str = ""
+    enrichment_feature_values: Mapping[str, float] = field(default_factory=dict)
 
     @property
     def suggested_action(self) -> str:
@@ -147,7 +149,7 @@ class EnrichmentOutput:
 @dataclass(frozen=True)
 class StockTraderPolicy:
     policy_version: str = "stock-trader-bootstrap-policy-v1"
-    minimum_trade_probability: float = 0.55
+    minimum_trade_probability: float = 0.54
     minimum_expected_net_return: float = 0.0
     maximum_symbol_equity_fraction: float = 0.15
     maximum_gross_equity_fraction: float = 1.30

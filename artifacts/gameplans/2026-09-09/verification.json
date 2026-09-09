@@ -1,0 +1,122 @@
+{
+  "observed_at": "2026-09-09T03:34:10.731701+00:00",
+  "loop_b_run": "C:\\DATASTORE\\ml\\runs\\20260909T011818.468414Z",
+  "loop_b_manifest_sha256": "a8c4efab31ac0fb779c6e8a547ede085a311fc01cb2e1c89356279acae524574",
+  "loop_b_receipt_and_outputs": "VERIFIED",
+  "current_gameplan_run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T093314.374067Z",
+  "current_gameplan_action_date": "2026-09-08",
+  "gameplan_receipt_and_outputs": "VERIFIED",
+  "opra_cursors": {
+    "status": "CURRENT_THROUGH_PRIOR_ACTION_DAY",
+    "completed_through": "2026-09-09",
+    "required_completed_through": "2026-09-09",
+    "coverage_semantics": "exclusive cursor; includes every session before this date",
+    "verified_cursor_count": 21,
+    "verified_cursors": [
+      "AAPL/ohlcv-1h",
+      "AAPL/cbbo-1m",
+      "AAPL/definition",
+      "AMZN/ohlcv-1h",
+      "AMZN/cbbo-1m",
+      "AMZN/definition",
+      "GOOG/ohlcv-1h",
+      "GOOG/cbbo-1m",
+      "GOOG/definition",
+      "MU/ohlcv-1h",
+      "MU/cbbo-1m",
+      "MU/definition",
+      "NVDA/ohlcv-1h",
+      "NVDA/cbbo-1m",
+      "NVDA/definition",
+      "SNDK/ohlcv-1h",
+      "SNDK/cbbo-1m",
+      "SNDK/definition",
+      "COST/ohlcv-1h",
+      "COST/cbbo-1m",
+      "COST/definition"
+    ],
+    "production_schemas": [
+      "ohlcv-1h",
+      "cbbo-1m",
+      "definition"
+    ]
+  },
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST"
+  ],
+  "sample_rows": 219625,
+  "sample_latest_source_end_by_symbol": {
+    "AAPL": "2026-09-09 00:00:00+00:00",
+    "AMZN": "2026-09-09 00:00:00+00:00",
+    "COST": "2026-09-09 00:00:00+00:00",
+    "GOOG": "2026-09-09 00:00:00+00:00",
+    "MU": "2026-09-09 00:00:00+00:00",
+    "NVDA": "2026-09-09 00:00:00+00:00",
+    "SNDK": "2026-09-09 00:00:00+00:00"
+  },
+  "sept8_source_sample_count_by_symbol": {
+    "AAPL": 21,
+    "AMZN": 21,
+    "COST": 21,
+    "GOOG": 21,
+    "MU": 21,
+    "NVDA": 21,
+    "SNDK": 21
+  },
+  "prediction_rows_by_mode": {
+    "BACKTEST": 4446,
+    "LIVE": 49
+  },
+  "live_prediction_rows_by_horizon": {
+    "1d": 7,
+    "1h": 7,
+    "1w": 7,
+    "1w-d1": 7,
+    "1w-d2": 7,
+    "1w-d3": 7,
+    "4h": 7
+  },
+  "live_prediction_rows_by_symbol": {
+    "AAPL": 7,
+    "AMZN": 7,
+    "COST": 7,
+    "GOOG": 7,
+    "MU": 7,
+    "NVDA": 7,
+    "SNDK": 7
+  },
+  "model_evidence_status_counts": {
+    "OFFLINE_EVALUATED_CANDIDATE": 63
+  },
+  "live_evidence_status_counts": {
+    "INSUFFICIENT_LIVE_EVIDENCE": 58,
+    "NO_COMPLETED_DECISIONS": 5
+  },
+  "automated_action_allowed_count": 0,
+  "models": {
+    "1d": "logistic-1d",
+    "1h": "logistic-1h",
+    "1w": "logistic-1w",
+    "1w-d1": "logistic-1w-d1",
+    "1w-d2": "logistic-1w-d2",
+    "1w-d3": "logistic-1w-d3",
+    "1w-d4": "logistic-1w-d4",
+    "1w-d5": "logistic-1w-d5",
+    "4h": "logistic-4h"
+  },
+  "target_history_cursors": {
+    "AAPL": "2026-09-05",
+    "AMZN": "2026-09-05",
+    "GOOG": "2026-09-05",
+    "MU": "2026-09-05",
+    "NVDA": "2026-09-05",
+    "SNDK": "2026-09-05",
+    "COST": "2026-09-05"
+  }
+}

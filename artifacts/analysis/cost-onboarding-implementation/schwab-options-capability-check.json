@@ -1,0 +1,36 @@
+{
+  "checked_at": "2026-09-06T15:25:06.703401+00:00",
+  "symbol": "COST",
+  "source": "Schwab Market Data API",
+  "orders_submitted": 0,
+  "chain_snapshot": {
+    "status": "SUCCESS",
+    "contract_count": 16,
+    "has_bid_ask": true,
+    "has_greeks": true,
+    "quote_time_min_utc": "2026-09-04T19:59:59.937000+00:00",
+    "quote_time_max_utc": "2026-09-04T20:00:00.435000+00:00"
+  },
+  "option_candle_probe": {
+    "symbol": "COST  260911C00915000",
+    "requested_session": "2026-09-04",
+    "frequency": "1 minute",
+    "returned_candles": 42,
+    "empty": false,
+    "response_symbol": "COST  260911C00915000",
+    "candle_fields": [
+      "close",
+      "datetime",
+      "high",
+      "low",
+      "open",
+      "volume"
+    ],
+    "first_candle_utc": "2026-09-04T14:11:00+00:00",
+    "last_candle_utc": "2026-09-04T19:59:00+00:00",
+    "all_requested_session": true,
+    "positive_ohlc": true,
+    "historical_bid_ask_present": false,
+    "raw_evidence": "artifacts\\analysis\\cost-onboarding-implementation\\schwab-option-candles-probe.json"
+  }
+}

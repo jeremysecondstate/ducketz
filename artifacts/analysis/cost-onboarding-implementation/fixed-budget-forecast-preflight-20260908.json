@@ -1,0 +1,678 @@
+{
+  "status": "READY",
+  "reason": "QUALIFIED_STOCK_FORECASTS_NO_BULLISH_ENTRY_SIGNAL",
+  "all_execution_windows_qualified": true,
+  "qualified_forecast_windows": [
+    "AAPL/1h@04:00",
+    "AAPL/1h@05:00",
+    "AAPL/1h@06:00",
+    "AAPL/1h@07:00",
+    "AAPL/1h@08:00",
+    "AAPL/1h@09:00",
+    "AAPL/1h@10:00",
+    "AAPL/1h@11:00",
+    "AAPL/1h@12:00",
+    "AAPL/1h@13:00",
+    "AAPL/1h@14:00",
+    "AAPL/1h@15:00",
+    "AAPL/1h@16:00",
+    "AAPL/4h@04:00",
+    "AAPL/4h@08:00",
+    "AAPL/4h@12:00",
+    "AAPL/4h@16:00",
+    "AAPL/1d@D+1",
+    "AAPL/1w@D+5",
+    "AMZN/1h@04:00",
+    "AMZN/1h@05:00",
+    "AMZN/1h@06:00",
+    "AMZN/1h@07:00",
+    "AMZN/1h@08:00",
+    "AMZN/1h@09:00",
+    "AMZN/1h@10:00",
+    "AMZN/1h@11:00",
+    "AMZN/1h@12:00",
+    "AMZN/1h@13:00",
+    "AMZN/1h@14:00",
+    "AMZN/1h@15:00",
+    "AMZN/1h@16:00",
+    "AMZN/4h@04:00",
+    "AMZN/4h@08:00",
+    "AMZN/4h@12:00",
+    "AMZN/4h@16:00",
+    "AMZN/1d@D+1",
+    "AMZN/1w@D+5",
+    "COST/1h@04:00",
+    "COST/1h@05:00",
+    "COST/1h@06:00",
+    "COST/1h@07:00",
+    "COST/1h@08:00",
+    "COST/1h@09:00",
+    "COST/1h@10:00",
+    "COST/1h@11:00",
+    "COST/1h@12:00",
+    "COST/1h@13:00",
+    "COST/1h@14:00",
+    "COST/1h@15:00",
+    "COST/1h@16:00",
+    "COST/4h@04:00",
+    "COST/4h@08:00",
+    "COST/4h@12:00",
+    "COST/4h@16:00",
+    "COST/1d@D+1",
+    "COST/1w@D+5",
+    "GOOG/1h@04:00",
+    "GOOG/1h@05:00",
+    "GOOG/1h@06:00",
+    "GOOG/1h@07:00",
+    "GOOG/1h@08:00",
+    "GOOG/1h@09:00",
+    "GOOG/1h@10:00",
+    "GOOG/1h@11:00",
+    "GOOG/1h@12:00",
+    "GOOG/1h@13:00",
+    "GOOG/1h@14:00",
+    "GOOG/1h@15:00",
+    "GOOG/1h@16:00",
+    "GOOG/4h@04:00",
+    "GOOG/4h@08:00",
+    "GOOG/4h@12:00",
+    "GOOG/4h@16:00",
+    "GOOG/1d@D+1",
+    "GOOG/1w@D+5",
+    "MU/1h@04:00",
+    "MU/1h@05:00",
+    "MU/1h@06:00",
+    "MU/1h@07:00",
+    "MU/1h@08:00",
+    "MU/1h@09:00",
+    "MU/1h@10:00",
+    "MU/1h@11:00",
+    "MU/1h@12:00",
+    "MU/1h@13:00",
+    "MU/1h@14:00",
+    "MU/1h@15:00",
+    "MU/1h@16:00",
+    "MU/4h@04:00",
+    "MU/4h@08:00",
+    "MU/4h@12:00",
+    "MU/4h@16:00",
+    "MU/1d@D+1",
+    "MU/1w@D+5",
+    "NVDA/1h@04:00",
+    "NVDA/1h@05:00",
+    "NVDA/1h@06:00",
+    "NVDA/1h@07:00",
+    "NVDA/1h@08:00",
+    "NVDA/1h@09:00",
+    "NVDA/1h@10:00",
+    "NVDA/1h@11:00",
+    "NVDA/1h@12:00",
+    "NVDA/1h@13:00",
+    "NVDA/1h@14:00",
+    "NVDA/1h@15:00",
+    "NVDA/1h@16:00",
+    "NVDA/4h@04:00",
+    "NVDA/4h@08:00",
+    "NVDA/4h@12:00",
+    "NVDA/4h@16:00",
+    "NVDA/1d@D+1",
+    "NVDA/1w@D+5",
+    "SNDK/1h@04:00",
+    "SNDK/1h@05:00",
+    "SNDK/1h@06:00",
+    "SNDK/1h@07:00",
+    "SNDK/1h@08:00",
+    "SNDK/1h@09:00",
+    "SNDK/1h@10:00",
+    "SNDK/1h@11:00",
+    "SNDK/1h@12:00",
+    "SNDK/1h@13:00",
+    "SNDK/1h@14:00",
+    "SNDK/1h@15:00",
+    "SNDK/1h@16:00",
+    "SNDK/4h@04:00",
+    "SNDK/4h@08:00",
+    "SNDK/4h@12:00",
+    "SNDK/4h@16:00",
+    "SNDK/1d@D+1",
+    "SNDK/1w@D+5"
+  ],
+  "bullish_entry_windows": [],
+  "execution_window_count": 133,
+  "checks": {
+    "AAPL/1h@04:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AAPL/1h@05:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AAPL/1h@06:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AAPL/1h@07:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AAPL/1h@08:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AAPL/1h@09:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AAPL/1h@10:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AAPL/1h@11:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AAPL/1h@12:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AAPL/1h@13:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AAPL/1h@14:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AAPL/1h@15:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AAPL/1h@16:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AAPL/4h@04:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AAPL/4h@08:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AAPL/4h@12:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AAPL/4h@16:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AAPL/1d@D+1": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AAPL/1w@D+5": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AMZN/1h@04:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AMZN/1h@05:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AMZN/1h@06:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AMZN/1h@07:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AMZN/1h@08:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AMZN/1h@09:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AMZN/1h@10:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AMZN/1h@11:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AMZN/1h@12:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AMZN/1h@13:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AMZN/1h@14:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AMZN/1h@15:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AMZN/1h@16:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AMZN/4h@04:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AMZN/4h@08:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AMZN/4h@12:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AMZN/4h@16:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AMZN/1d@D+1": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "AMZN/1w@D+5": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "COST/1h@04:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "COST/1h@05:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "COST/1h@06:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "COST/1h@07:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "COST/1h@08:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "COST/1h@09:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "COST/1h@10:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "COST/1h@11:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "COST/1h@12:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "COST/1h@13:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "COST/1h@14:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "COST/1h@15:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "COST/1h@16:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "COST/4h@04:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "COST/4h@08:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "COST/4h@12:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "COST/4h@16:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "COST/1d@D+1": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "COST/1w@D+5": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "GOOG/1h@04:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "GOOG/1h@05:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "GOOG/1h@06:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "GOOG/1h@07:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "GOOG/1h@08:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "GOOG/1h@09:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "GOOG/1h@10:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "GOOG/1h@11:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "GOOG/1h@12:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "GOOG/1h@13:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "GOOG/1h@14:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "GOOG/1h@15:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "GOOG/1h@16:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "GOOG/4h@04:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "GOOG/4h@08:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "GOOG/4h@12:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "GOOG/4h@16:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "GOOG/1d@D+1": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "GOOG/1w@D+5": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "MU/1h@04:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "MU/1h@05:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "MU/1h@06:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "MU/1h@07:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "MU/1h@08:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "MU/1h@09:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "MU/1h@10:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "MU/1h@11:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "MU/1h@12:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "MU/1h@13:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "MU/1h@14:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "MU/1h@15:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "MU/1h@16:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "MU/4h@04:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "MU/4h@08:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "MU/4h@12:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "MU/4h@16:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "MU/1d@D+1": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "MU/1w@D+5": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "NVDA/1h@04:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "NVDA/1h@05:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "NVDA/1h@06:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "NVDA/1h@07:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "NVDA/1h@08:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "NVDA/1h@09:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "NVDA/1h@10:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "NVDA/1h@11:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "NVDA/1h@12:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "NVDA/1h@13:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "NVDA/1h@14:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "NVDA/1h@15:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "NVDA/1h@16:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "NVDA/4h@04:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "NVDA/4h@08:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "NVDA/4h@12:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "NVDA/4h@16:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "NVDA/1d@D+1": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "NVDA/1w@D+5": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "SNDK/1h@04:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "SNDK/1h@05:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "SNDK/1h@06:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "SNDK/1h@07:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "SNDK/1h@08:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "SNDK/1h@09:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "SNDK/1h@10:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "SNDK/1h@11:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "SNDK/1h@12:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "SNDK/1h@13:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "SNDK/1h@14:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "SNDK/1h@15:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "SNDK/1h@16:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "SNDK/4h@04:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "SNDK/4h@08:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "SNDK/4h@12:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "SNDK/4h@16:00": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "SNDK/1d@D+1": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    },
+    "SNDK/1w@D+5": {
+      "status": "READY",
+      "reason": "QUALIFIED_STOCK_FORECAST"
+    }
+  },
+  "sizing_policy": "fixed-horizon-budget-v1",
+  "run_path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T093314.374067Z"
+}

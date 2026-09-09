@@ -1,0 +1,32 @@
+{
+  "run": "C:\\DATASTORE\\ml\\runs\\20260906T084041.266342Z",
+  "configuration_symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST"
+  ],
+  "cost_predictions": 655,
+  "cost_by_mode_horizon": {
+    "('BACKTEST', '1d')": 63,
+    "('BACKTEST', '1h')": 86,
+    "('BACKTEST', '1w')": 63,
+    "('BACKTEST', '1w-d1')": 63,
+    "('BACKTEST', '1w-d2')": 63,
+    "('BACKTEST', '1w-d3')": 63,
+    "('BACKTEST', '1w-d4')": 63,
+    "('BACKTEST', '1w-d5')": 63,
+    "('BACKTEST', '4h')": 120,
+    "('LIVE', '1d')": 1,
+    "('LIVE', '1h')": 1,
+    "('LIVE', '1w')": 1,
+    "('LIVE', '1w-d1')": 1,
+    "('LIVE', '1w-d2')": 1,
+    "('LIVE', '1w-d3')": 1,
+    "('LIVE', '1w-d4')": 1,
+    "('LIVE', '4h')": 1
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "checked_at": "2026-09-08T08:57:47.156425+00:00",
+  "mode": "READ_ONLY_BROKER_AND_NATIVE_LEDGER_RECONCILIATION",
+  "orders_submitted": 0,
+  "status": "READY",
+  "reasons": [],
+  "account_identity_verified": true,
+  "quote_symbols": [
+    "AAPL",
+    "AMZN",
+    "COST",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK"
+  ],
+  "working_order_count": 0,
+  "tracked_allocations": 0,
+  "order_evidence_count": 0
+}

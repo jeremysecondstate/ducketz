@@ -13,6 +13,7 @@ from ml.stock_trader.gameplan import (
     read_gameplan_stock_activation_intent,
 )
 from ml.stock_trader.runtime import StockTraderRunResult, run_stock_trader_once
+from ml.stock_trader.sizing_policy import LEARNED_SIZING_POLICY, SIZING_POLICIES, validate_sizing_policy
 
 
 def run_gameplan_stock_trader_once(
@@ -24,8 +25,20 @@ def run_gameplan_stock_trader_once(
     shadow_observe: bool = True,
     target_horizon: str = "1h",
     runtime_clock=None,
+    sizing_policy: str = LEARNED_SIZING_POLICY,
 ) -> StockTraderRunResult:
     """Run the proven stock execution engine from the immutable gameplan."""
+
+    sizing_policy = validate_sizing_policy(sizing_policy)
+    if target_horizon != "all" and sizing_policy != LEARNED_SIZING_POLICY:
+        raise ValueError("Fixed horizon sizing requires --target-horizon all")
+    if target_horizon == "all":
+        from ml.stock_trader.independent_runtime import run_independent_stock_trader_once
+        return run_independent_stock_trader_once(
+            datastore_root, decided_at=decided_at, execute=execute, session=session,
+            runtime_clock=runtime_clock,
+            **({"sizing_policy": sizing_policy} if sizing_policy != LEARNED_SIZING_POLICY else {}),
+        )
 
     return run_stock_trader_once(
         datastore_root,
@@ -45,7 +58,7 @@ def run_gameplan_stock_trader_once(
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Run one live-or-dry-run six-symbol stock decision from the "
+            "Run one live-or-dry-run stock decision for the configured universe from the "
             "immutable nightly gameplan."
         )
     )
@@ -66,10 +79,14 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--decided-at")
     parser.add_argument(
         "--target-horizon",
-        choices=("1h", "4h"),
+        choices=("1h", "4h", "all"),
         default="1h",
-        help="Execute only the due route for this exact forecast horizon.",
+        help="Select one legacy horizon, or all due independent horizons with separate share ownership.",
     )
+    parser.add_argument("--run-session", action="store_true",
+                        help="With --target-horizon all, manage this exchange day's independent entries and owned-share exits until 17:00 Pacific.")
+    parser.add_argument("--sizing-policy", choices=SIZING_POLICIES, default=LEARNED_SIZING_POLICY,
+                        help="Explicitly select qualified learned sizing or conservative fixed horizon budgets.")
     parser.add_argument(
         "--no-shadow-observe",
         action="store_true",
@@ -85,12 +102,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             root_dir=args.root_dir,
             target=args.datastore_target,
         )
+        if args.run_session:
+            if args.target_horizon != "all" or args.decided_at is not None:
+                raise ValueError("--run-session requires --target-horizon all and the current wall clock")
+            from ml.stock_trader.independent_session import run_independent_stock_session
+            sizing_options = {"sizing_policy": args.sizing_policy} if args.sizing_policy != LEARNED_SIZING_POLICY else {}
+            result = run_independent_stock_session(root, execute=bool(args.execute), **sizing_options)
+            print(json.dumps(result, sort_keys=True))
+            return 1 if result["status"] in {
+                "SESSION_FINISHED_WITH_ERRORS", "NOOP_STOCK_FORECASTS_NOT_QUALIFIED",
+                "NOOP_ENRICHMENT_NOT_QUALIFIED",
+            } else 0
         result = run_gameplan_stock_trader_once(
             root,
             decided_at=args.decided_at,
             execute=bool(args.execute),
             shadow_observe=not args.no_shadow_observe,
             target_horizon=args.target_horizon,
+            **({"sizing_policy": args.sizing_policy} if args.sizing_policy != LEARNED_SIZING_POLICY else {}),
         )
     except Exception as exc:
         print(
@@ -113,6 +142,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             "BROKER_STATE_UNAVAILABLE",
             "SUBMISSION_STOPPED_AFTER_ERROR",
             "SUBMISSION_STOPPED_SAFETY_CHECK",
+            "INDEPENDENT_TARGET_PLAN_UNAVAILABLE",
+            "HORIZON_BROKER_RECONCILIATION_UNAVAILABLE",
         }
         else 0
     )

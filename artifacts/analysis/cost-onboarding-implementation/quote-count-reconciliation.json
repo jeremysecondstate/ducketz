@@ -1,0 +1,249 @@
+{
+  "observed_at": "2026-09-06T09:32:52.946196+00:00",
+  "rows": [
+    {
+      "day": "2026-07-27",
+      "condition": "available",
+      "provider_records": 1187111,
+      "normalized_records": 1187111
+    },
+    {
+      "day": "2026-07-28",
+      "condition": "available",
+      "provider_records": 1183516,
+      "normalized_records": 1183516
+    },
+    {
+      "day": "2026-07-29",
+      "condition": "available",
+      "provider_records": 1257899,
+      "normalized_records": 1257899
+    },
+    {
+      "day": "2026-07-30",
+      "condition": "available",
+      "provider_records": 1212453,
+      "normalized_records": 1212453
+    },
+    {
+      "day": "2026-07-31",
+      "condition": "available",
+      "provider_records": 1263550,
+      "normalized_records": 1263550
+    },
+    {
+      "day": "2026-08-01",
+      "condition": null,
+      "provider_records": 0,
+      "normalized_records": 0
+    },
+    {
+      "day": "2026-08-02",
+      "condition": null,
+      "provider_records": 0,
+      "normalized_records": 0
+    },
+    {
+      "day": "2026-08-03",
+      "condition": "available",
+      "provider_records": 1187378,
+      "normalized_records": 1187378
+    },
+    {
+      "day": "2026-08-04",
+      "condition": "available",
+      "provider_records": 1180169,
+      "normalized_records": 1180169
+    },
+    {
+      "day": "2026-08-05",
+      "condition": "available",
+      "provider_records": 1130492,
+      "normalized_records": 1130492
+    },
+    {
+      "day": "2026-08-06",
+      "condition": "available",
+      "provider_records": 1183915,
+      "normalized_records": 1183915
+    },
+    {
+      "day": "2026-08-07",
+      "condition": "available",
+      "provider_records": 1174870,
+      "normalized_records": 1174870
+    },
+    {
+      "day": "2026-08-08",
+      "condition": null,
+      "provider_records": 0,
+      "normalized_records": 0
+    },
+    {
+      "day": "2026-08-09",
+      "condition": null,
+      "provider_records": 0,
+      "normalized_records": 0
+    },
+    {
+      "day": "2026-08-10",
+      "condition": "available",
+      "provider_records": 1176752,
+      "normalized_records": 1176752
+    },
+    {
+      "day": "2026-08-11",
+      "condition": "available",
+      "provider_records": 1184249,
+      "normalized_records": 1184249
+    },
+    {
+      "day": "2026-08-12",
+      "condition": "available",
+      "provider_records": 1192899,
+      "normalized_records": 1192899
+    },
+    {
+      "day": "2026-08-13",
+      "condition": "available",
+      "provider_records": 1211923,
+      "normalized_records": 1211923
+    },
+    {
+      "day": "2026-08-14",
+      "condition": "available",
+      "provider_records": 1208400,
+      "normalized_records": 1208400
+    },
+    {
+      "day": "2026-08-15",
+      "condition": null,
+      "provider_records": 0,
+      "normalized_records": 0
+    },
+    {
+      "day": "2026-08-16",
+      "condition": null,
+      "provider_records": 0,
+      "normalized_records": 0
+    },
+    {
+      "day": "2026-08-17",
+      "condition": "available",
+      "provider_records": 1187498,
+      "normalized_records": 1187498
+    },
+    {
+      "day": "2026-08-18",
+      "condition": "available",
+      "provider_records": 1187235,
+      "normalized_records": 1187235
+    },
+    {
+      "day": "2026-08-19",
+      "condition": "available",
+      "provider_records": 1205783,
+      "normalized_records": 1205783
+    },
+    {
+      "day": "2026-08-20",
+      "condition": "available",
+      "provider_records": 1271357,
+      "normalized_records": 1271357
+    },
+    {
+      "day": "2026-08-21",
+      "condition": "available",
+      "provider_records": 1242263,
+      "normalized_records": 1242263
+    },
+    {
+      "day": "2026-08-22",
+      "condition": null,
+      "provider_records": 0,
+      "normalized_records": 0
+    },
+    {
+      "day": "2026-08-23",
+      "condition": null,
+      "provider_records": 0,
+      "normalized_records": 0
+    },
+    {
+      "day": "2026-08-24",
+      "condition": "available",
+      "provider_records": 1232859,
+      "normalized_records": 1232859
+    },
+    {
+      "day": "2026-08-25",
+      "condition": "available",
+      "provider_records": 1130798,
+      "normalized_records": 1130798
+    },
+    {
+      "day": "2026-08-26",
+      "condition": "available",
+      "provider_records": 1141158,
+      "normalized_records": 1141158
+    },
+    {
+      "day": "2026-08-27",
+      "condition": "available",
+      "provider_records": 1205271,
+      "normalized_records": 1205271
+    },
+    {
+      "day": "2026-08-28",
+      "condition": "available",
+      "provider_records": 1285614,
+      "normalized_records": 1285614
+    },
+    {
+      "day": "2026-08-29",
+      "condition": null,
+      "provider_records": 0,
+      "normalized_records": 0
+    },
+    {
+      "day": "2026-08-30",
+      "condition": null,
+      "provider_records": 0,
+      "normalized_records": 0
+    },
+    {
+      "day": "2026-08-31",
+      "condition": "available",
+      "provider_records": 1218631,
+      "normalized_records": 1218631
+    },
+    {
+      "day": "2026-09-01",
+      "condition": "available",
+      "provider_records": 1222309,
+      "normalized_records": 1222309
+    },
+    {
+      "day": "2026-09-02",
+      "condition": "available",
+      "provider_records": 1258277,
+      "normalized_records": 1258277
+    },
+    {
+      "day": "2026-09-03",
+      "condition": "available",
+      "provider_records": 1269498,
+      "normalized_records": 1265962
+    }
+  ],
+  "provider_daily_sum": 34994127,
+  "normalized_sum": 34990591,
+  "differences": [
+    {
+      "day": "2026-09-03",
+      "condition": "available",
+      "provider_records": 1269498,
+      "normalized_records": 1265962
+    }
+  ]
+}

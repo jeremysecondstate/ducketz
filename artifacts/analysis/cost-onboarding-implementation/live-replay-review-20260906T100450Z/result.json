@@ -1,0 +1,14 @@
+{
+  "checked_at": "2026-09-06T10:04:50.107863+00:00",
+  "schema": "cbbo-1m",
+  "symbol": "COST.OPT",
+  "start": "2026-09-04T12:30:00+00:00",
+  "end": "2026-09-05T00:00:00+00:00",
+  "historical_exclusive_end": "2026-09-04T00:00:00.000000000Z",
+  "canonical_publication_attempted": false,
+  "production_unchanged": true,
+  "status": "LIVE_CAPTURE_UNAVAILABLE",
+  "exception_type": "ReplayCaptureError",
+  "error": "Live replay failed: BentoError: Invalid start time. Must be 2026-09-06T00:00:00Z or later, or 0",
+  "finished_at": "2026-09-06T10:04:52.081378+00:00"
+}

@@ -1,0 +1,28 @@
+{
+  "plan_id": "987dfa290e0f74a6cbb2962165af8d0cc3f1134edd0a4eef2a9434f7ee2ca221",
+  "validated_at": "2026-09-08T06:29:20.086518+00:00",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST"
+  ],
+  "gameplan_run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T062020.263843Z",
+  "action_date": "2026-09-08",
+  "forecasts": 168,
+  "option_intents": 168,
+  "stock_model_fingerprint": "05b1f6305876fc50be27388fcbb3b65c9f0720bcecd9c0ae8993f2a9a83127d1",
+  "orders_submitted": 0,
+  "status": "ACTIVE",
+  "activated_at": "2026-09-08T06:29:20.089298+00:00",
+  "after": {
+    "observed_at": "2026-09-08T06:29:34.221325+00:00",
+    "datastore_bytes": 194675426818,
+    "symbol_path_bytes": 2865817879,
+    "files": 168787,
+    "free_bytes": 1433375854592
+  }
+}

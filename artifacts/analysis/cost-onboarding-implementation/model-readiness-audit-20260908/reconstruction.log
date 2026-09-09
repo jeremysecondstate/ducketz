@@ -1,0 +1,153 @@
+{
+  "output": "C:\\dev\\ducketz\\artifacts\\analysis\\cost-onboarding-implementation\\model-readiness-audit-20260908\\evidence.json",
+  "groups": {
+    "1h": {
+      "matches_saved": true,
+      "all_null_features": 126,
+      "nonvarying_features": 0,
+      "boundary_audit": [
+        {
+          "left": "train",
+          "right": "selection",
+          "right_first_decision": "2026-07-17T23:05:00+00:00",
+          "right_first_target_start": "2026-07-18T00:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        },
+        {
+          "left": "selection",
+          "right": "calibration",
+          "right_first_decision": "2026-07-31T23:05:00+00:00",
+          "right_first_target_start": "2026-08-01T00:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        },
+        {
+          "left": "calibration",
+          "right": "assessment",
+          "right_first_decision": "2026-08-15T00:05:00+00:00",
+          "right_first_target_start": "2026-08-15T00:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        }
+      ]
+    },
+    "4h": {
+      "matches_saved": true,
+      "all_null_features": 126,
+      "nonvarying_features": 0,
+      "boundary_audit": [
+        {
+          "left": "train",
+          "right": "selection",
+          "right_first_decision": "2026-07-17T23:05:00+00:00",
+          "right_first_target_start": "2026-07-20T11:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        },
+        {
+          "left": "selection",
+          "right": "calibration",
+          "right_first_decision": "2026-07-31T23:05:00+00:00",
+          "right_first_target_start": "2026-08-03T11:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        },
+        {
+          "left": "calibration",
+          "right": "assessment",
+          "right_first_decision": "2026-08-15T00:05:00+00:00",
+          "right_first_target_start": "2026-08-17T11:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        }
+      ]
+    },
+    "1d": {
+      "matches_saved": true,
+      "all_null_features": 126,
+      "nonvarying_features": 1,
+      "boundary_audit": [
+        {
+          "left": "train",
+          "right": "selection",
+          "right_first_decision": "2026-07-21T00:05:00+00:00",
+          "right_first_target_start": "2026-07-21T11:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        },
+        {
+          "left": "selection",
+          "right": "calibration",
+          "right_first_decision": "2026-08-01T00:05:00+00:00",
+          "right_first_target_start": "2026-08-03T11:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        },
+        {
+          "left": "calibration",
+          "right": "assessment",
+          "right_first_decision": "2026-08-15T00:05:00+00:00",
+          "right_first_target_start": "2026-08-17T11:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        }
+      ]
+    },
+    "1w": {
+      "matches_saved": true,
+      "all_null_features": 126,
+      "nonvarying_features": 1,
+      "boundary_audit": [
+        {
+          "left": "train",
+          "right": "selection",
+          "right_first_decision": "2026-07-15T00:05:00+00:00",
+          "right_first_target_start": "2026-07-15T11:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        },
+        {
+          "left": "selection",
+          "right": "calibration",
+          "right_first_decision": "2026-07-29T00:05:00+00:00",
+          "right_first_target_start": "2026-07-29T11:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        },
+        {
+          "left": "calibration",
+          "right": "assessment",
+          "right_first_decision": "2026-08-14T00:05:00+00:00",
+          "right_first_target_start": "2026-08-14T11:00:00+00:00",
+          "left_labels_not_strictly_before_next_first_decision": 0,
+          "left_labels_after_next_first_decision": 0,
+          "left_labels_not_before_next_first_target": 0,
+          "examples": []
+        }
+      ]
+    }
+  }
+}

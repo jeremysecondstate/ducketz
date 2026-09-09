@@ -1,8 +1,9 @@
 # Loop A
 
-> **Current deployment (2026-09-04):** Loop A is a bounded first stage of
-> `ml.overnight_runtime` at 17:05 PT, not a continuously running 15-minute
-> supervisor. Recurrence details below describe retained legacy capability.
+> **Current deployment (2026-09-08):** Loop A is a bounded first stage of
+> `ml.overnight_runtime`, scheduled daily at 21:05 America/Los_Angeles, with
+> native weekend/holiday no-ops and required provider coverage checks.
+> Recurrence details below describe retained legacy capability.
 
 ## Identity
 
@@ -12,13 +13,13 @@
 - Owning package: `datafetching`
 - Classification: bounded overnight stage; legacy independent loop retained
 - Scheduling mechanism: invoked once by `ml.overnight_runtime`
-- Cadence and phase: weekdays after the 17:00 PT stock close
+- Cadence and phase: daily 21:05 America/Los_Angeles; fresh work only for a completed exchange session
 - Lock or single-writer mechanism: `.ducketz-orchestration.lock` plus `.ducketz-loop-a-cycle.lock` OS lock shared with Directional Loop B
 - Primary code evidence: **Confirmed.** `datafetching/orchestrate.py:38`, `datafetching/orchestrate.py:169`, `datafetching/orchestrate.py:172`, `datafetching/orchestrate.py:243`, `datafetching/loop_a_cycle.py:199`
 
 ## Purpose
 
-**Confirmed:** Loop A is the equity/provider and calculated-feature owner. It ingests the six-symbol watchlist across Databento, FMP, current FRED, Schwab, and SEC; runs bounded inline CME/Options work; builds feature products; and publishes a complete-cycle boundary for Directional Loop B. In the same post-close stage it advances the exact OPRA strategy-history dependencies `ohlcv-1h`, `cbbo-1m`, and `definition`. `ml/overnight_runtime.py`, `datafetching/orchestrate.py`
+**Confirmed:** Loop A is the equity/provider and calculated-feature owner. It ingests the configured watchlist across Databento, FMP, current FRED, Schwab, and SEC; runs bounded inline CME/Options work; builds feature products; and publishes a complete-cycle boundary for Directional Loop B. In the same post-close stage it advances the exact OPRA strategy-history dependencies `ohlcv-1h`, `cbbo-1m`, and `definition`. `ml/overnight_runtime.py`, `datafetching/orchestrate.py`
 
 **Confirmed non-ownership:** in production it does not own CME/L2, prospective option-chain capture, ALFRED-vintage history, option-pricing inference, directional fitting/scoring, or Strategy inference/training. Inline CME/Options modes are compatibility paths and default to `external`; the OPRA history subprocess is acquisition only and has no prediction or live-snapshot authority. `datafetching/orchestrate.py`, `datafetching/options_runtime.py`
 

@@ -19,6 +19,7 @@ import pandas as pd
 
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from datafetching.runtime_lock import exclusive_runtime_lock
+from datafetching.symbol_universe import WATCHLIST_ENV
 from ml.artifacts import create_timestamp_directory, file_checksum, utc_timestamp
 
 
@@ -34,6 +35,12 @@ STAGE_ORDER = (
     "strategy_generation",
     "gameplan_publication",
 )
+INDEPENDENT_ENRICHMENT_STAGE = "stock_enrichment_training"
+INDEPENDENT_TRADE_PLANNING_STAGE = "gameplan_trade_planning"
+INDEPENDENT_HISTORY_STAGE = "stock_target_history"
+INDEPENDENT_TAIL_STAGES = (INDEPENDENT_ENRICHMENT_STAGE, INDEPENDENT_TRADE_PLANNING_STAGE)
+ALL_STAGE_ORDER = (*STAGE_ORDER[:2], INDEPENDENT_HISTORY_STAGE, *STAGE_ORDER[2:], *INDEPENDENT_TAIL_STAGES)
+STOCK_PRICE_SOURCES = ("canonical-equity-minute-v1", "xnas-itch-archive-v1")
 
 
 @dataclass(frozen=True)
@@ -145,34 +152,97 @@ def record_scheduled_noop(
     return run
 
 
+def _production_watchlist(repository_root: Path) -> Path:
+    return Path(os.environ.get(WATCHLIST_ENV) or repository_root / "datafetching" / "watchlist.txt").resolve()
+
+
+def _pin_stock_gameplan(root: Path, *, stock_price_source: str, deadline_at: pd.Timestamp,
+                        pinned: Mapping[str, object] | None = None) -> dict[str, str]:
+    """Keep enrichment and trade planning on one immutable publication across resume."""
+    from ml.nightly_gameplan import read_current_gameplan, read_gameplan_run
+
+    root = Path(root).resolve()
+    if pinned is None:
+        publication = read_current_gameplan(root)
+    else:
+        path = (root / str(pinned.get("run_path", ""))).resolve()
+        if not path.is_relative_to(root / "ml/nightly-gameplan-runs"):
+            raise ValueError("Pinned stock training publication escapes its run directory")
+        publication = read_gameplan_run(root, path)
+        if file_checksum(path / "receipt.json") != pinned.get("receipt_sha256"):
+            raise ValueError("Pinned stock training publication receipt changed")
+    config = publication.manifest.get("configuration", {})
+    action_date = deadline_at.tz_convert(SCHEDULE_TIMEZONE).date().isoformat()
+    if (config.get("target_contract_version") != "independent-stock-targets-v1"
+            or config.get("target_price_source_contract", STOCK_PRICE_SOURCES[0]) != stock_price_source
+            or config.get("action_date") != action_date
+            or publication.receipt.get("action_date") != action_date):
+        raise ValueError("Stock training publication differs from its source or original action deadline")
+    return {"run_path": publication.run_directory.relative_to(root).as_posix(),
+            "receipt_sha256": file_checksum(publication.run_directory / "receipt.json"),
+            "action_date": action_date}
+
+
 def run_overnight_pipeline(
     datastore_root: Path,
     *,
     datastore_argument: tuple[str, str],
     repository_root: Path,
     start_at: str = STAGE_ORDER[0],
-    stop_after: str = STAGE_ORDER[-1],
+    stop_after: str | None = None,
     reporter=print,
     resume_run: Path | None = None,
     deadline: object | None = None,
     poll_seconds: float = 30.0,
+    stock_only: bool = False,
+    independent_stock_horizons: bool = False,
+    stock_price_source: str | None = None,
 ) -> Path:
     """Run the one-owner post-close chain and fail before downstream stages."""
 
-    if start_at not in STAGE_ORDER or stop_after not in STAGE_ORDER:
-        raise ValueError("Unknown overnight stage boundary")
-    start_index = STAGE_ORDER.index(start_at)
-    stop_index = STAGE_ORDER.index(stop_after)
-    if start_index > stop_index:
-        raise ValueError("start_at must not come after stop_after")
     root = Path(datastore_root).resolve()
     repository = Path(repository_root).resolve()
     created = utc_timestamp()
     resume = _resume_configuration(root, resume_run) if resume_run else None
     if resume:
         start_at, stop_after = resume["failed_stage"], resume["stage_order"][-1]
-        start_index, stop_index = STAGE_ORDER.index(start_at), STAGE_ORDER.index(stop_after)
+        stock_only = stock_only or resume.get("stock_only") is True
+        independent_stock_horizons = independent_stock_horizons or resume.get("independent_stock_horizons") is True
+        previous_source = resume.get("stock_price_source", STOCK_PRICE_SOURCES[0])
+        if stock_price_source is not None and stock_price_source != previous_source:
+            raise ValueError("Resume must preserve its verified stock price source; use a separate experiment run")
+        stock_price_source = previous_source
+    stock_price_source = stock_price_source or STOCK_PRICE_SOURCES[0]
+    if stock_price_source not in STOCK_PRICE_SOURCES:
+        raise ValueError("Unknown stock price source contract")
+    if independent_stock_horizons and not stock_only:
+        raise ValueError("Independent stock horizons require explicit stock-only preparation")
+    if stock_price_source != STOCK_PRICE_SOURCES[0] and not independent_stock_horizons:
+        raise ValueError("Alternate stock price sources require independent stock horizons")
+    if stop_after is None:
+        stop_after = INDEPENDENT_TRADE_PLANNING_STAGE if independent_stock_horizons else STAGE_ORDER[-1]
+    if start_at not in ALL_STAGE_ORDER or stop_after not in ALL_STAGE_ORDER:
+        raise ValueError("Unknown overnight stage boundary")
+    start_index, stop_index = ALL_STAGE_ORDER.index(start_at), ALL_STAGE_ORDER.index(stop_after)
+    if start_index > stop_index:
+        raise ValueError("start_at must not come after stop_after")
+    if stop_after in INDEPENDENT_TAIL_STAGES and not independent_stock_horizons:
+        raise ValueError("Independent enrichment and trade planning require independent stock horizons")
     deadline_at = utc_timestamp(resume["deadline_at"] if resume else deadline) if (resume or deadline is not None) else next_action_deadline(created)
+    selected = ALL_STAGE_ORDER[start_index : stop_index + 1]
+    if stock_price_source != "xnas-itch-archive-v1":
+        selected = tuple(stage for stage in selected if stage != INDEPENDENT_HISTORY_STAGE)
+    omitted_option_stages: list[str] = []
+    if stock_only:
+        option_stages = ("strategy_profit_training", "strategy_generation")
+        previous_omissions = resume.get("omitted_option_stages", []) if resume else []
+        omitted_option_stages = [
+            stage for stage in option_stages
+            if stage in selected or stage in previous_omissions
+        ]
+        selected = tuple(stage for stage in selected if stage not in option_stages)
+    if not selected:
+        raise ValueError("No overnight stages remain within the requested stock-only boundaries")
     run = create_timestamp_directory(
         root / "ml" / "overnight-runs",
         timestamp=created,
@@ -186,7 +256,7 @@ def run_overnight_pipeline(
             "datafetching.orchestrate",
             *datastore_argument,
             "--watchlist",
-            str(repository / "datafetching" / "watchlist.txt"),
+            str(_production_watchlist(repository)),
             "--providers",
             "databento",
             "fmp",
@@ -220,7 +290,7 @@ def run_overnight_pipeline(
             "ml.prediction_runtime",
             *datastore_argument,
             "--watchlist",
-            str(repository / "datafetching" / "watchlist.txt"),
+            str(_production_watchlist(repository)),
             "--provider",
             "databento",
             "--horizons",
@@ -267,9 +337,20 @@ def run_overnight_pipeline(
             "ml.nightly_gameplan",
             *datastore_argument,
             "--once",
+            *(("--stock-only",) if stock_only else ()),
+            *(("--independent-stock-horizons",) if independent_stock_horizons else ()),
+            *(("--stock-price-source", stock_price_source) if independent_stock_horizons else ()),
+        ),
+        INDEPENDENT_ENRICHMENT_STAGE: (
+            python, "-u", "-m", "ml.stock_trader.independent_training", *datastore_argument,
+        ),
+        INDEPENDENT_TRADE_PLANNING_STAGE: (
+            python, "-u", "-m", "ml.gameplan_trade_planning", *datastore_argument,
+        ),
+        INDEPENDENT_HISTORY_STAGE: (
+            python, "-u", "-m", "ml.stock_target_history", *datastore_argument, "--execute",
         ),
     }
-    selected = STAGE_ORDER[start_index : stop_index + 1]
     report: dict[str, object] = {
         "schema_version": OVERNIGHT_RUNTIME_VERSION,
         "run_timestamp": created.isoformat(), "owner_pid": os.getpid(),
@@ -281,6 +362,17 @@ def run_overnight_pipeline(
         "broker_orders_enabled": False, "orders_placed": 0,
         "status": "RUNNING", "stages": [], "current_stage": None,
     }
+    if stock_only:
+        report.update(
+            stock_only=True,
+            preparation_scope="STOCK_ONLY",
+            omitted_option_stages=omitted_option_stages,
+        )
+    if independent_stock_horizons:
+        report.update(independent_stock_horizons=True, target_contract_version="independent-stock-targets-v1",
+                      stock_price_source=stock_price_source)
+        if resume and resume.get("enrichment_gameplan"):
+            report["enrichment_gameplan"] = resume["enrichment_gameplan"]
     report_path = run / "stage-report.json"
     _write_json_atomic(report_path, report)
     _write_json_atomic(root / "ml/overnight-latest/run.json", {"run_path": run.relative_to(root).as_posix()})
@@ -317,6 +409,17 @@ def run_overnight_pipeline(
                     reporter("OVERNIGHT HEALTH " + json.dumps(dict(payload), default=str))
 
             try:
+                if stage in INDEPENDENT_TAIL_STAGES:
+                    if resume and start_at in INDEPENDENT_TAIL_STAGES and not report.get("enrichment_gameplan"):
+                        raise ValueError("Failed independent tail stage has no pinned Gameplan; resume cannot select another publication")
+                    report["enrichment_gameplan"] = _pin_stock_gameplan(
+                        root, stock_price_source=stock_price_source, deadline_at=deadline_at,
+                        pinned=report.get("enrichment_gameplan"),
+                    )
+                    command = (*command, "--gameplan-run", str(root / report["enrichment_gameplan"]["run_path"]))
+                    if stage == INDEPENDENT_TRADE_PLANNING_STAGE:
+                        command = (*command, "--deadline", deadline_at.isoformat())
+                    _write_json_atomic(report_path, report)
                 exit_code = _run_stage(command, repository=repository, log_path=log_path,
                     deadline=deadline_at, stop_request=run / "stop-request.json",
                     progress=progress, poll_seconds=poll_seconds)
@@ -467,17 +570,32 @@ def _process_created_at(pid: int) -> float | None:
 
 
 def recover_interrupted_run(root: Path, run: Path, reason: str) -> Path:
-    """Receipt an interrupted owner; never stop a healthy owner or reused PID."""
+    """Verify terminal recovery or receipt an interrupted, exited owner."""
     import psutil
     run = _validated_run(root, run)
     report_path = run / "stage-report.json"
     report = json.loads(report_path.read_text(encoding="utf-8"))
-    if not reason.strip() or report.get("status") != "RUNNING" or (run / "receipt.json").exists():
+    terminal = report.get("status") in {"FAILED", "CANCELLED"}
+    if not reason.strip():
+        raise RuntimeError("Recovery needs an interrupted running attempt and a reason")
+    if terminal:
+        # The controlled recover/resume procedure also applies when an exited
+        # owner already wrote its failure receipt. Reuse that immutable evidence
+        # only after exactly the same verification required by resume.
+        report = _resume_configuration(root, run)
+    elif report.get("status") != "RUNNING" or (run / "receipt.json").exists():
         raise RuntimeError("Recovery needs an interrupted running attempt and a reason")
     owner_created = _process_created_at(int(report["owner_pid"]))
     if owner_created is not None and owner_created == report.get("owner_created_at"):
         raise RuntimeError("Overnight owner is still alive; request a controlled stage stop instead")
     child_pid = report.get("child_pid")
+    if terminal:
+        child_created = _process_created_at(int(child_pid)) if child_pid else None
+        if child_created is not None:
+            if child_created != report.get("child_created_at"):
+                raise RuntimeError("Child PID was reused; refusing to stop an unrelated process")
+            raise RuntimeError("Overnight child is still alive; terminal recovery cannot continue")
+        return run
     if child_pid and _process_created_at(int(child_pid)) is not None:
         child = psutil.Process(int(child_pid))
         if child.create_time() != report.get("child_created_at"):
@@ -498,7 +616,7 @@ def recover_interrupted_run(root: Path, run: Path, reason: str) -> Path:
     completed = {row["stage"] for row in report["stages"] if row["status"] == "COMPLETE"}
     unfinished = [stage for stage in report["stage_order"] if stage not in completed]
     failed_stage = unfinished[0] if unfinished else None
-    if failed_stage is not None and failed_stage not in STAGE_ORDER:
+    if failed_stage is not None and failed_stage not in ALL_STAGE_ORDER:
         raise RuntimeError("Interrupted stage cannot be identified")
     status = "CANCELLED" if unfinished else "COMPLETE"
     report.update(status=status, failed_stage=failed_stage, completed_at=now,
@@ -558,7 +676,7 @@ def _resume_configuration(root: Path, run: Path) -> dict[str, object]:
             raise RuntimeError("Failed attempt's log evidence changed")
     completed = list(report.get("completed_stages_from_previous_attempt", []))
     completed.extend(row["stage"] for row in report["stages"] if row["status"] == "COMPLETE")
-    if report.get("failed_stage") not in STAGE_ORDER:
+    if report.get("failed_stage") not in ALL_STAGE_ORDER:
         raise RuntimeError("Failed overnight stage is missing")
     return {**report, "completed_stages": completed}
 
@@ -643,9 +761,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         choices=tuple(DATASTORE_TARGETS),
         default="pc",
     )
-    parser.add_argument("--start-at", choices=STAGE_ORDER, default=STAGE_ORDER[0])
-    parser.add_argument("--stop-after", choices=STAGE_ORDER, default=STAGE_ORDER[-1])
+    parser.add_argument("--start-at", choices=ALL_STAGE_ORDER, default=STAGE_ORDER[0])
+    parser.add_argument("--stop-after", choices=ALL_STAGE_ORDER, default=None)
     parser.add_argument("--resume-run", type=Path, help="Resume the failed stage after a verified repair")
+    parser.add_argument(
+        "--stock-only", action="store_true",
+        help="Prepare stock forecasts without optional Strategy training or generation",
+    )
+    parser.add_argument("--independent-stock-horizons", action="store_true",
+                        help="Publish versioned independent stock entry/exit targets with --stock-only")
+    parser.add_argument("--stock-price-source", choices=STOCK_PRICE_SOURCES, default=None,
+                        help="Explicit historical equity source for independent stock targets; preserved on resume")
     parser.add_argument("--status", action="store_true", help="Read the latest overnight progress without starting work")
     parser.add_argument("--request-stop-run", type=Path, help="Ask the owner to stop its current stage")
     parser.add_argument("--recover-run", type=Path, help="Recover an attempt whose supervisor process exited")
@@ -710,6 +836,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 start_at=args.start_at,
                 stop_after=args.stop_after,
                 resume_run=args.resume_run,
+                stock_only=args.stock_only,
+                independent_stock_horizons=args.independent_stock_horizons,
+                stock_price_source=args.stock_price_source,
             )
         except Exception as exc:
             print(f"Overnight runtime failed: {type(exc).__name__}: {exc}")

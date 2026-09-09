@@ -1,0 +1,38 @@
+{
+  "verified_at": "2026-09-09T04:26:03.799596+00:00",
+  "publication_run": "C:/DATASTORE/ml/nightly-gameplan-runs/20260909T040455.436642Z",
+  "publication_receipt_sha256": "eb2490d3ea8ffe2ce778c6daecf55db301b01f08f8b94ca09e904b1fd9402656",
+  "pointer_receipt_outputs_verified": true,
+  "forecast_rows": 168,
+  "intent_rows": 168,
+  "forecast_rows_by_symbol": {
+    "AAPL": 24,
+    "AMZN": 24,
+    "COST": 24,
+    "GOOG": 24,
+    "MU": 24,
+    "NVDA": 24,
+    "SNDK": 24
+  },
+  "intent_rows_by_symbol": {
+    "AAPL": 24,
+    "AMZN": 24,
+    "COST": 24,
+    "GOOG": 24,
+    "MU": 24,
+    "NVDA": 24,
+    "SNDK": 24
+  },
+  "matching_forecast_option_ids": true,
+  "nonempty_option_legs": 0,
+  "execution_windows": 133,
+  "promoted_execution_windows": 126,
+  "promoted_entries_at_least_55_percent": 0,
+  "all_entry_routes_have_fitted_history": true,
+  "overnight_receipt_logs_verified": true,
+  "enrichment_source_files_verified": true,
+  "overnight_orders": 0,
+  "document_forecast_rows": 168,
+  "document_path": "C:/dev/ducketz/artifacts/gameplans/2026-09-09/Gameplan-2026-09-09-published-review.md",
+  "document_sha256": "b2eb7d8fd0e1542865ae24b4af67025d704444058e33525ed1fae7cceddfed66"
+}

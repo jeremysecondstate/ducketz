@@ -1,0 +1,139 @@
+{
+  "checked_at_utc": "2026-09-09 03:52:12 UTC",
+  "status": "VERIFIED",
+  "user_request": "Schedule the complete daily Loop A fetch and existing downstream workflow for 21:05 Pacific, following the expected XNAS Historical release.",
+  "timezone": "America/Los_Angeles",
+  "automations": [
+    {
+      "id": "loops-hourly-operations",
+      "name": "Loops Overnight Gameplan",
+      "schedule": "Daily at 21:05 America/Los_Angeles",
+      "checks": {
+        "active": true,
+        "prompt_saved": true,
+        "schedule_saved": true,
+        "model_preserved": true,
+        "reasoning_preserved": true,
+        "notification_preserved": true,
+        "project_preserved": true,
+        "workspaces_preserved": true,
+        "environment_preserved": true
+      },
+      "updated_at": 1788925882337
+    },
+    {
+      "id": "loops-stock-trader-daily-adaptation",
+      "name": "Loops Operations Watch",
+      "schedule": "Every hour at :00 and :30; missing fresh overnight work eligible after 21:15 Pacific",
+      "checks": {
+        "active": true,
+        "prompt_saved": true,
+        "schedule_saved": true,
+        "model_preserved": true,
+        "reasoning_preserved": true,
+        "notification_preserved": true,
+        "project_preserved": true,
+        "workspaces_preserved": true,
+        "environment_preserved": true,
+        "daytime_instructions_preserved": true
+      },
+      "updated_at": 1788925787308
+    }
+  ],
+  "review_followup": {
+    "id": "september-9-gameplan-review",
+    "name": "September 9 Gameplan review",
+    "status": "ACTIVE",
+    "interval_minutes": 30,
+    "target_thread_verified": true,
+    "coordination_with_daily_owner_verified": true
+  },
+  "calendar_checks": {
+    "tonight": {
+      "next_local": "2026-09-08T21:05:00-07:00",
+      "next_utc": "2026-09-09T04:05:00+00:00"
+    },
+    "standard_time": {
+      "next_local": "2027-01-12T21:05:00-08:00",
+      "next_utc": "2027-01-13T05:05:00+00:00"
+    },
+    "session_rules": [
+      {
+        "observed_at": "2026-09-09T04:05:00+00:00",
+        "observed_at_local": "2026-09-08T21:05:00-07:00",
+        "local_date": "2026-09-08",
+        "calendar": "XNYS",
+        "is_exchange_session": true,
+        "next_exchange_session": "2026-09-08",
+        "eligible": true,
+        "status": "ELIGIBLE_COMPLETED_ACTION_SESSION",
+        "reason": "The scheduled wake follows a completed XNYS action date."
+      },
+      {
+        "observed_at": "2026-09-13T04:05:00+00:00",
+        "observed_at_local": "2026-09-12T21:05:00-07:00",
+        "local_date": "2026-09-12",
+        "calendar": "XNYS",
+        "is_exchange_session": false,
+        "next_exchange_session": "2026-09-14",
+        "eligible": false,
+        "status": "NOOP_NON_SESSION_DATE",
+        "reason": "The scheduled local date is not an XNYS session."
+      },
+      {
+        "observed_at": "2026-09-08T04:05:00+00:00",
+        "observed_at_local": "2026-09-07T21:05:00-07:00",
+        "local_date": "2026-09-07",
+        "calendar": "XNYS",
+        "is_exchange_session": false,
+        "next_exchange_session": "2026-09-08",
+        "eligible": false,
+        "status": "NOOP_NON_SESSION_DATE",
+        "reason": "The scheduled local date is not an XNYS session."
+      }
+    ]
+  },
+  "provider_ranges": {
+    "checked_at": "2026-09-09T03:50:07.071151+00:00",
+    "datasets": {
+      "XNAS.ITCH": {
+        "ohlcv-1m": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-08T04:00:00.000000000Z"
+        }
+      },
+      "OPRA.PILLAR": {
+        "definition": {
+          "start": "2013-04-01T00:00:00.000000000Z",
+          "end": "2026-09-09T00:00:00.000000000Z"
+        },
+        "cbbo-1m": {
+          "start": "2013-04-01T00:00:00.000000000Z",
+          "end": "2026-09-09T00:00:00.000000000Z"
+        },
+        "ohlcv-1h": {
+          "start": "2013-04-01T00:00:00.000000000Z",
+          "end": "2026-09-09T00:00:00.000000000Z"
+        }
+      },
+      "GLBX.MDP3": {
+        "ohlcv-1m": {
+          "start": "2010-06-06T00:00:00.000000000Z",
+          "end": "2026-09-09T03:30:00.000000000Z"
+        }
+      },
+      "EQUS.MINI": {
+        "ohlcv-1m": {
+          "start": "2023-03-28T00:00:00.000000000Z",
+          "end": "2026-09-09T00:00:00.000000000Z"
+        }
+      }
+    }
+  },
+  "release_source": "https://databento.com/datasets/XNAS.ITCH",
+  "limitations": [
+    "The expected 21:00 Pacific Historical release is not proof of account/schema coverage; native acquisition and publication gates remain required.",
+    "The local machine and Codex app must remain running.",
+    "Tonight's final September 9 publication is still pending; completed Loop A and Loop B must be preserved when resuming."
+  ]
+}

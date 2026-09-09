@@ -1,0 +1,358 @@
+{
+  "verified_at": "2026-09-08T07:53:54.967407+00:00",
+  "authority": "READ_ONLY_OPERATIONAL_VERIFICATION",
+  "result": "ALL_MODELS_FITTED_ZERO_QUALIFIED_SIZING_SCOPES_NOT_LIVE_READY",
+  "orders_placed": 0,
+  "broker_calls": 0,
+  "overnight_runs": [
+    {
+      "run": "C:\\DATASTORE\\ml\\overnight-runs\\20260908T073926.076440Z",
+      "completed_at": "2026-09-08T07:40:13.337001+00:00",
+      "deadline_at": "2026-09-08T11:00:00+00:00",
+      "stages": [
+        {
+          "stage": "gameplan_publication",
+          "status": "COMPLETE",
+          "exit_code": 0
+        }
+      ],
+      "receipt": {
+        "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260908T073926.076440Z\\receipt.json",
+        "bytes": 603,
+        "sha256": "1dd008bbe9d8a75d8f42adc0ee515f6b87f027112a62dfa33a4d858766ba193d"
+      },
+      "report": {
+        "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260908T073926.076440Z\\stage-report.json",
+        "bytes": 10904,
+        "sha256": "d9f7edd8bbff76adadbea6735e06ee5471d28e28a0e30c5f7afc95118388abc8"
+      },
+      "all_log_sizes_and_hashes_verified": true
+    },
+    {
+      "run": "C:\\DATASTORE\\ml\\overnight-runs\\20260908T074537.043198Z",
+      "completed_at": "2026-09-08T07:45:43.984198+00:00",
+      "deadline_at": "2026-09-08T11:00:00+00:00",
+      "stages": [
+        {
+          "stage": "stock_enrichment_training",
+          "status": "COMPLETE",
+          "exit_code": 0
+        }
+      ],
+      "receipt": {
+        "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260908T074537.043198Z\\receipt.json",
+        "bytes": 605,
+        "sha256": "fbb76b6aab56bddce280122c63580ab1071925cceb20b4fe9778af72cdd0a350"
+      },
+      "report": {
+        "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260908T074537.043198Z\\stage-report.json",
+        "bytes": 2391,
+        "sha256": "76c0e7bc5d4b009212499a0bc44ef8c321b357d386eb49104201f206afe723c7"
+      },
+      "all_log_sizes_and_hashes_verified": true
+    }
+  ],
+  "gameplan": {
+    "run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T073927.460474Z",
+    "source_contract": "xnas-itch-archive-v1",
+    "forecasts": 168,
+    "stock_only_placeholders": 168,
+    "symbols": [
+      "AAPL",
+      "AMZN",
+      "COST",
+      "GOOG",
+      "MU",
+      "NVDA",
+      "SNDK"
+    ],
+    "entry_routes_per_symbol": 19,
+    "actual_fitted_symbol_entry_routes": 133,
+    "missing_fitted_entry_routes": [],
+    "status_counts": {
+      "PROMOTED": 98,
+      "RESEARCH_NOT_PROMOTED": 70
+    },
+    "native_receipt_manifest_outputs_verified": true,
+    "receipt": {
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T073927.460474Z\\receipt.json",
+      "bytes": 614,
+      "sha256": "c604345d7e8d08e55868aa062a128ee8c669f4c457ad70b9a21ebbe3caa849c6"
+    },
+    "manifest": {
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T073927.460474Z\\manifest.json",
+      "bytes": 60418,
+      "sha256": "d992f48f4591011e6af95b2fdf2e177d8c6009c6f6fb510b2ef3176f91c52aa7"
+    },
+    "model_reports": {
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T073927.460474Z\\model-reports.json",
+      "bytes": 72783,
+      "sha256": "79562f67156fea0658119f06885bf2c43852e0667131167bbe1c19f47731cae9"
+    },
+    "directional_models": {
+      "1d": {
+        "promotion_status": "RESEARCH_NOT_PROMOTED",
+        "failed_checks": [
+          "brier_beats_training_base_rate",
+          "log_loss_beats_training_base_rate"
+        ],
+        "assessment_rows": 287,
+        "selected_family": "hist-gradient-mlp-0.75",
+        "both_hgb_and_mlp_fitted": true
+      },
+      "1h": {
+        "promotion_status": "PROMOTED",
+        "failed_checks": [],
+        "assessment_rows": 896,
+        "selected_family": "hist-gradient-mlp-0.75",
+        "both_hgb_and_mlp_fitted": true
+      },
+      "1w": {
+        "promotion_status": "RESEARCH_NOT_PROMOTED",
+        "failed_checks": [
+          "brier_beats_training_base_rate",
+          "calibration_retains_directional_information",
+          "log_loss_beats_training_base_rate"
+        ],
+        "assessment_rows": 57,
+        "selected_family": "hist-gradient",
+        "both_hgb_and_mlp_fitted": true
+      },
+      "4h": {
+        "promotion_status": "RESEARCH_NOT_PROMOTED",
+        "failed_checks": [
+          "brier_beats_training_base_rate",
+          "calibration_retains_directional_information",
+          "log_loss_beats_training_base_rate"
+        ],
+        "assessment_rows": 249,
+        "selected_family": "mlp",
+        "both_hgb_and_mlp_fitted": true
+      }
+    },
+    "cohorts": {
+      "1h": {
+        "rows": 6695,
+        "cost_rows": 800,
+        "artifact": {
+          "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T073927.460474Z\\training-cohort-1h.parquet",
+          "bytes": 494429,
+          "sha256": "62505df43ed0d3fb15766efabba7faca300de0c73acc8aef6fe4ac652309c250"
+        }
+      },
+      "4h": {
+        "rows": 1905,
+        "cost_rows": 224,
+        "artifact": {
+          "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T073927.460474Z\\training-cohort-4h.parquet",
+          "bytes": 324656,
+          "sha256": "c565197950e7940d29d089684aaa110f6d1f570e08c756b1f32b08f2f45552af"
+        }
+      },
+      "1d": {
+        "rows": 2310,
+        "cost_rows": 177,
+        "artifact": {
+          "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T073927.460474Z\\training-cohort-1d.parquet",
+          "bytes": 312098,
+          "sha256": "e08351b758340387dfce27ce76be06cb8afabf9fc75b40aac8f2807555474c0e"
+        }
+      },
+      "1w": {
+        "rows": 450,
+        "cost_rows": 35,
+        "artifact": {
+          "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T073927.460474Z\\training-cohort-1w.parquet",
+          "bytes": 235086,
+          "sha256": "870dc3e568d21fa66b3b747a2da314d262ab1f28aa601b5610a84bd73e561ba1"
+        }
+      }
+    }
+  },
+  "independent_enrichment": {
+    "run": "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260908T074538.008438Z",
+    "native_pointer_receipt_manifest_source_fingerprint_and_heldout_evidence_verified": true,
+    "source_gameplan_run": "ml/nightly-gameplan-runs/20260908T073927.460474Z",
+    "source_fingerprint": "7768394d3c39ca34a4064b1ae69dae44bfcca29483d81d7ceffc0381eeaa9c8e",
+    "fitted_horizons": [
+      "1d",
+      "1h",
+      "1w",
+      "4h"
+    ],
+    "qualified_scope_count": 0,
+    "qualified_horizons": [],
+    "models": {
+      "1d": {
+        "status": "FITTED",
+        "admitted_execution_rows": 458,
+        "excluded_context_rows": 1852,
+        "fitted_scope_count": 7,
+        "qualified_scope_count": 0,
+        "scope_reason_counts": {
+          "INSUFFICIENT_EXACT_SCOPE_EVIDENCE": 4,
+          "HELD_OUT_QUALITY_NOT_PROMOTED": 3
+        },
+        "heldout_horizon_quality_passes": false,
+        "heldout_scores": {
+          "adverse_mse": 0.00034839537401163204,
+          "base_adverse_mse": 0.00025867198786734124,
+          "base_brier": 0.2421712728457596,
+          "base_log_loss": 0.6774347742308343,
+          "base_return_mse": 0.0006916760449557696,
+          "brier": 0.25191491608674027,
+          "ece": 0.10620810055584717,
+          "log_loss": 0.6969774778608093,
+          "probability_range": [
+            0.5094339070074602,
+            0.5094339070074602
+          ],
+          "return_mse": 0.0006888886115274791
+        }
+      },
+      "1h": {
+        "status": "FITTED",
+        "admitted_execution_rows": 6240,
+        "excluded_context_rows": 455,
+        "fitted_scope_count": 91,
+        "qualified_scope_count": 0,
+        "scope_reason_counts": {
+          "INSUFFICIENT_EXACT_SCOPE_EVIDENCE": 46,
+          "HELD_OUT_QUALITY_NOT_PROMOTED": 45
+        },
+        "heldout_horizon_quality_passes": false,
+        "heldout_scores": {
+          "adverse_mse": 3.403610068232454e-05,
+          "base_adverse_mse": 3.0102297187495005e-05,
+          "base_brier": 0.22491417017653415,
+          "base_log_loss": 0.6423393510583482,
+          "base_return_mse": 6.563251505789465e-05,
+          "brier": 0.220715914204674,
+          "ece": 0.06674038135626273,
+          "log_loss": 0.6318483229161014,
+          "probability_range": [
+            0.17431666066958085,
+            0.614966782919025
+          ],
+          "return_mse": 6.56415185447299e-05
+        }
+      },
+      "1w": {
+        "status": "FITTED",
+        "admitted_execution_rows": 450,
+        "excluded_context_rows": 0,
+        "fitted_scope_count": 21,
+        "qualified_scope_count": 0,
+        "scope_reason_counts": {
+          "INSUFFICIENT_EXACT_SCOPE_EVIDENCE": 21
+        },
+        "heldout_horizon_quality_passes": false,
+        "heldout_scores": {
+          "adverse_mse": 0.001014715980290667,
+          "base_adverse_mse": 0.0010383818243969683,
+          "base_brier": 0.24833495776478234,
+          "base_log_loss": 0.689814459515386,
+          "base_return_mse": 0.001381008336635857,
+          "brier": 0.22647960887412846,
+          "ece": 0.07842030076807684,
+          "log_loss": 0.6450443298763961,
+          "probability_range": [
+            0.2756134068038268,
+            0.7379970278261622
+          ],
+          "return_mse": 0.001452727064140041
+        }
+      },
+      "4h": {
+        "status": "FITTED",
+        "admitted_execution_rows": 1905,
+        "excluded_context_rows": 0,
+        "fitted_scope_count": 42,
+        "qualified_scope_count": 0,
+        "scope_reason_counts": {
+          "INSUFFICIENT_EXACT_SCOPE_EVIDENCE": 31,
+          "HELD_OUT_QUALITY_NOT_PROMOTED": 11
+        },
+        "heldout_horizon_quality_passes": false,
+        "heldout_scores": {
+          "adverse_mse": 0.00021929048418458218,
+          "base_adverse_mse": 0.00018242285898624122,
+          "base_brier": 0.24227398795757704,
+          "base_log_loss": 0.6776519399100323,
+          "base_return_mse": 0.0003164383310516447,
+          "brier": 0.2510603247203292,
+          "ece": 0.10701335831448652,
+          "log_loss": 0.6952970278591973,
+          "probability_range": [
+            0.42818224968143503,
+            0.6188436824430701
+          ],
+          "return_mse": 0.0003262097286635762
+        }
+      }
+    },
+    "receipt": {
+      "path": "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260908T074538.008438Z\\receipt.json",
+      "bytes": 716,
+      "sha256": "597e242b09b9d622637b47bc5ae82fbfda459c2e3fc2ef10c47849d447186889"
+    },
+    "manifest": {
+      "path": "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260908T074538.008438Z\\manifest.json",
+      "bytes": 2913,
+      "sha256": "9996f6311a0a4b4f760589cd1ace456a125d33979cf46d2b54e8d9e8b9e8b5fc"
+    },
+    "training_report": {
+      "path": "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260908T074538.008438Z\\training-report.json",
+      "bytes": 242684,
+      "sha256": "c66527bca1cffd4336d0642bdecd6e0f1606d2ea946d52efeb093d6d95ef437b"
+    }
+  },
+  "native_ui_parity": {
+    "reader": "load_gameplan_dashboard plus native adapter at04:01 through16:01 Pacific",
+    "source_rows": 168,
+    "unique_rows_verified_across_clock_sweep": 168,
+    "matching_ids_probabilities_statuses_windows_and_execution_roles": true,
+    "automated_action_allowed": false,
+    "pending_onboarding_symbols": [],
+    "gui_process_or_screenshot_checked": false
+  },
+  "native_0401_readiness": {
+    "directional_signals": 6,
+    "qualified_sizing_signals": 0,
+    "reason_counts": {
+      "ENRICHMENT_EXACT_SCOPE_NOT_QUALIFIED": 6
+    }
+  },
+  "history": {
+    "receipt": {
+      "path": "C:\\DATASTORE\\ml\\stock-target-history-runs\\20260908T073612.583929Z\\receipt.json",
+      "bytes": 552,
+      "sha256": "78307a2f24a227e44c8e2a20af50285cd6cec4e01720cc2ff941ff2c3202019b"
+    },
+    "estimated_cost_usd": 0,
+    "completed_through_exclusive": "2026-09-05",
+    "latest_completed_exchange_session": "2026-09-04",
+    "cost_manifest_preflight_hashes_verified": true
+  },
+  "evaluation": {
+    "run": "C:\\DATASTORE\\ml\\gameplan-evaluation-runs\\20260908T074936.180591Z",
+    "native_reader_verified": true,
+    "rows": 792,
+    "status_counts": {
+      "PENDING_MATURITY": 678,
+      "EVALUATED": 106,
+      "MATURE_AWAITING_DATA": 8
+    },
+    "older_missing_action_date": "2026-09-04",
+    "receipt": {
+      "path": "C:\\DATASTORE\\ml\\gameplan-evaluation-runs\\20260908T074936.180591Z\\receipt.json",
+      "bytes": 341,
+      "sha256": "2cabe3837e7bd9f595edd126a9243ee926d0c31778a7e9d75603e39838c989e1"
+    }
+  },
+  "limitations": [
+    "Construction and historical target coverage are complete; held-out quality and exact-scope evidence still fail.",
+    "Hourly directional promotion does not override unqualified sizing.",
+    "Partial qualification can permit qualifying scopes independently; zero qualified scopes currently permits no new entries."
+  ]
+}

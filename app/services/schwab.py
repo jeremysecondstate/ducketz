@@ -468,6 +468,20 @@ class SchwabSession:
                     setattr(exc, "stock_trader_operation", "account_identity")
                 raise
 
+    def stable_account_fingerprint(self) -> str:
+        """One-way inventory identity, stable across OAuth token generations.
+
+        The ordinary snapshot fingerprint intentionally includes the credential
+        generation. Durable stock ownership must instead remain bound to the
+        same account when those credentials refresh.
+        """
+        with self._session_lock("_access_token_lock"):
+            self.ensure_access_token()
+            account_hash = self._get_account_hash_for_current_token()
+            return hashlib.sha256(
+                f"ducketz-stock-inventory-v1\0{account_hash}".encode("utf-8")
+            ).hexdigest()
+
     def verify_read_snapshot(self, expected_identity_fingerprint: str) -> None:
         """Reject a snapshot assembled across an account/OAuth generation change."""
 
@@ -620,6 +634,24 @@ class SchwabSession:
             return response.json()
         except ValueError:
             return response.text
+
+    def cancel_prepared_order(
+        self, order_id: str, context: SchwabOrderSubmissionContext,
+        *, before_delete: Callable[[], None] | None = None,
+    ) -> None:
+        """Cancel against a frozen account context after the caller's last gate."""
+        if not isinstance(context, SchwabOrderSubmissionContext):
+            raise TypeError("A Schwab order-submission context is required.")
+        cleaned = str(order_id).strip()
+        if not cleaned.isdigit():
+            raise ValueError("A numeric tracked stock order ID is required")
+        if before_delete is not None:
+            before_delete()
+        response = requests.delete(
+            f"{TRADER_BASE_URL}/accounts/{context.account_hash}/orders/{cleaned}",
+            headers={"Authorization": f"Bearer {context.access_token}"}, timeout=10,
+        )
+        response.raise_for_status()
 
     def prepare_order_submission(self) -> SchwabOrderSubmissionContext:
         with self._session_lock("_access_token_lock"):

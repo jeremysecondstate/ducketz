@@ -8,13 +8,13 @@ longer run continuously or coordinate a live day through independent timer
 phases.
 
 ```text
-17:05 PT
+21:05 PT daily (native weekend/holiday no-op)
   Loop A close fetch + OPRA append
     -> Loop B features/directional authority
-      -> cumulative saved-Gameplan evaluation
-      -> four-horizon Options Strategy profit training
-        -> Strategy candidates
-          -> immutable next-session gameplan
+      -> XNAS stock target history
+        -> cumulative saved-Gameplan evaluation
+          -> four stock target groups + immutable next-session gameplan
+            -> independent stock enrichment training
 
 04:00–17:00 PT
   verified gameplan -> clock-rotating Duckets forecast display
@@ -26,7 +26,7 @@ next 17:00 PT
 ```
 
 The Scheduled owner reads progress/errors at least once a minute, repairs
-verified failures, and resumes failed stages. A ten-minute health watch adopts
+verified failures, and resumes failed stages. A 30-minute Operations Watch adopts
 abandoned work using a renewable supervision claim. Healthy training can run
 until 04:00 Pacific on the next exchange session. Saturday reviews saved
 Gameplans from September 4 and retains longer forecasts until they mature.
@@ -36,8 +36,8 @@ The exact command, schedule, artifacts, and failure rules are defined in
 
 ## Ingestion and canonical storage
 
-Loop A's overnight close cycle is the provider/data owner. It updates the six
-symbols `AAPL AMZN GOOG MU NVDA SNDK` and retains the existing source boundaries:
+Loop A's overnight close cycle is the provider/data owner. It updates the shared
+`datafetching/watchlist.txt` universe and retains the existing source boundaries:
 
 - Databento `EQUS.MINI` is canonical operational equity OHLCV under `stocks`.
 - Schwab equity history remains a secondary provider record.
@@ -85,7 +85,7 @@ The gameplan freezes 24 rows per symbol:
 - five `1d` forecasts for D+1 through D+5;
 - one direct `1w` forecast spanning five eligible sessions.
 
-This is 144 rows across six symbols. Historical intraday labels use exact
+This is 24 rows per configured symbol (168 for seven). Historical intraday labels use exact
 one-minute stock bars. Daily labels use the explicit daily components. The
 weekly label is trained directly rather than fabricated as the mean of the five
 daily probabilities.
@@ -177,7 +177,13 @@ construct or submit an option order.
 
 ## Scheduling and failure behavior
 
-- `Loops Overnight Gameplan` runs at 17:05 PT on weekdays.
+- `Loops Overnight Gameplan` wakes at 21:05 America/Los_Angeles daily. The native
+  XNYS calendar skips fresh weekend/holiday work. The full close fetch begins
+  after XNAS.ITCH's normal 21:00 Pacific Historical release; actual required
+  coverage is still verified before dependent work proceeds.
+- `Loops Operations Watch` runs at :00 and :30, and may start missing fresh
+  overnight work only after 21:15 PT. Existing unfinished work uses the verified
+  resume path and keeps completed stages and its original deadline.
 - The old hourly monitor/adaptive trainer is retired.
 - The standalone OPRA maintainer and overlapping paper/adaptation schedules are
   paused.

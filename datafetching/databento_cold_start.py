@@ -966,6 +966,7 @@ def execute_manifest(
     manifest: Mapping[str, object],
     preflight: Mapping[str, object],
     reporter: Callable[[str], None] | None = print,
+    progress_path: Path | None = None,
 ) -> dict[str, int]:
     """Fetch only a preflighted manifest and retain durable progress receipts."""
 
@@ -982,7 +983,9 @@ def execute_manifest(
     requests = manifest.get("requests")
     if not isinstance(requests, list):
         raise ColdStartError("Cold-start manifest has no request list")
-    progress_path = _progress_path(datastore_root, manifest)
+    progress_path = Path(progress_path).resolve() if progress_path is not None else _progress_path(datastore_root, manifest)
+    if not progress_path.resolve().is_relative_to(Path(datastore_root).resolve()):
+        raise ColdStartError("Cold-start progress path must stay within its datastore")
     progress = _read_progress(progress_path, manifest_id=str(manifest["manifest_id"]))
     counts = {"verified": 0, "downloaded": 0, "no_data": 0, "failed": 0}
     opra_health_pending = False
@@ -2204,6 +2207,32 @@ def _write_request_cursor(
         schema=str(request["schema"]),
         symbol=symbol,
     )
+    preserve_native_stock_cursor = request.get("dataset") == "XNAS.ITCH" and request.get("schema") == "ohlcv-1m"
+    previous = (_read_request_cursor(datastore_root, market=market,
+        dataset=str(request["dataset"]), schema=str(request["schema"]), symbol=symbol)
+        if preserve_native_stock_cursor else None)
+    if previous is not None and _as_date(previous["completed_through"]) > _as_date(request["end"]):
+        # Historical native backfills must not move the recurring owner backward.
+        # Preserve only a cursor tied to complete, independently verified evidence.
+        directory, _ = _generic_entry_paths(datastore_root, previous)
+        manifest = _read_json_object(directory / "manifest.json", label="later cursor partition")
+        prior_request = manifest.get("request")
+        if (not isinstance(prior_request, Mapping)
+                or prior_request.get("storage_contract") != "isolated-cold-start"
+                or previous.get("status") not in {"PUBLISHED", "VERIFIED_EXISTING"}
+                or previous.get("completed_through") != previous.get("end")
+                or any(previous.get(key) != prior_request.get(key)
+                       for key in ("request_id", "dataset", "schema", "symbol_scope", "start", "end", "fetch_mode"))):
+            raise ColdStartError("Later history cursor has no verified native request identity")
+        _validate_execution_request_identity(datastore_root, prior_request)
+        if Path(str(prior_request["storage_path"])).resolve() != directory:
+            raise ColdStartError("Later history cursor points to another native partition")
+        for name in ("raw", "normalized"):
+            info = manifest.get(name, {})
+            if not isinstance(info, Mapping) or not (directory / str(info.get("path", ""))).resolve().is_relative_to(directory):
+                raise ColdStartError("Later history cursor payload escapes its native partition")
+        _verify_generic_partition(directory, prior_request)
+        return path
     payload = {
         "schema_version": "databento-cold-start-request-cursor-v1",
         "manifest_id": manifest_id,

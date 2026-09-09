@@ -720,6 +720,8 @@ def test_loop_a_opra_history_command_owns_strategy_training_schemas(
         "definition",
     ]
     assert "--incremental-only" in command
+    assert "--live-replay-fallback" in command
+    assert "--required-session" in command
     assert command[command.index("--max-incremental-catchup-days") + 1] == "7"
     assert history_kwargs["check"] is False
     catalog_command, catalog_kwargs = calls[1]

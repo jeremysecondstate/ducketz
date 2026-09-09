@@ -1,0 +1,52 @@
+{
+  "registered_at": "2026-09-08T08:58:41.677822+00:00",
+  "purpose": "Correct estimator objective/feature/calibration and pooled scope architecture defects before 04:00 PDT stock open",
+  "forecast_policy": "independent-stock-development-selection-v1",
+  "frozen_forecast_files_sha256": {
+    "ml/nightly_gameplan.py": "ee872eb6935c110fe3221f95b8918dfa27d5dd1e7427b53753a7ce47afdba486",
+    "ml/gameplan_development_selection.py": "d54d9d634478d611d77e05d108ab58a46b26595411fa47c02395101f7b88201f",
+    "ml/stock_trader/market_features.py": "304a907f4d3fe0f25a691eef639a21b3829426397422bab7ae55f8999321c20f"
+  },
+  "assessment_used_for_candidate_selection": false,
+  "forecast_promotion_thresholds_changed": false,
+  "enrichment_plan": {
+    "features": "fixed eight causal market inputs plus existing thirteen calendar/symbol features",
+    "probability_objective": "binomial likelihood",
+    "downside_objective": "arithmetic squared error under nonnegative link",
+    "penalties": [
+      1,
+      5,
+      20
+    ],
+    "selection": "head-specific matching objective on chronological selection cohort",
+    "calibration": "one purged first-half/second-half calibration-development comparison, identity fallback",
+    "qualification": "existing pooled-horizon quality checks, represented exact target and >=20 symbol/route fitted clusters"
+  },
+  "prices": "xnas-itch-archive-v1",
+  "deadline_utc": "2026-09-08T11:00:00Z",
+  "orders_authorized_by_this_fit": false,
+  "history_completion_revision": {
+    "registered_at": "2026-09-08T09:12:03.432108+00:00",
+    "reason": "13560 of13648 excluded four-hour targets precede stored XNAS minute history; operational100day bootstrap is shorter than available causal feature history.",
+    "requested_start": "2025-03-04",
+    "requested_through_exclusive": "2026-05-28",
+    "start_basis": "Common available causal feature era for all seven including SNDK",
+    "native_chunk_policy": "Five unchanged100day historical baselines; firstchunk mayincludeJanuary13 onwards",
+    "maximum_cost_usd": 0,
+    "dataset": "XNAS.ITCH",
+    "schema": "ohlcv-1m",
+    "calendar_feature_contract": "independent-stock-known-calendar-inputs-v1",
+    "calendar_feature_reason": "Represent known15/63/87hour exposures for identical16:00 four-hour route",
+    "estimator_candidate_search_unchanged": true,
+    "horizon_quality_thresholds_unchanged": true,
+    "frozen_model_source_sha256": {
+      "ml/independent_stock_targets.py": "e042a6b3acd8bb168585dc0d3eee7a63126cd0530a853808c2bcae74dd09d482",
+      "ml/nightly_gameplan.py": "bce275f66148fe4b2662477a8e15565d4e082c273ca7206dee0f4a625d678978",
+      "ml/gameplan_development_selection.py": "d54d9d634478d611d77e05d108ab58a46b26595411fa47c02395101f7b88201f",
+      "ml/stock_trader/market_features.py": "304a907f4d3fe0f25a691eef639a21b3829426397422bab7ae55f8999321c20f",
+      "ml/stock_trader/model.py": "5ade1897afa087b4d78bb91e5e690f931f8699fb3a7da4d47521ea367d34eb21",
+      "ml/stock_trader/independent_training.py": "155a8021eefe1b8e7f8621a5541aec9f0f078419cd02a1949c6cdc2d6b009fa9",
+      "ml/stock_trader/scope_qualification.py": "fa2949e7978672e4e4693f855589dd3d33b1f7e7d44e5241171d1a2786ea4323"
+    }
+  }
+}

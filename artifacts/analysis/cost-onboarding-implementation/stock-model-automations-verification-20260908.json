@@ -1,0 +1,32 @@
+{
+  "loops-hourly-operations": {
+    "changed_fields": [
+      "prompt",
+      "updated_at"
+    ],
+    "status": "ACTIVE",
+    "same_schedule": true,
+    "preserved_model": true,
+    "preserved_workspaces": true
+  },
+  "loops-stock-trader-daily-adaptation": {
+    "changed_fields": [
+      "prompt",
+      "updated_at"
+    ],
+    "status": "ACTIVE",
+    "same_schedule": true,
+    "preserved_model": true,
+    "preserved_workspaces": true
+  },
+  "loops-stock-trader-live-shadow": {
+    "changed_fields": [
+      "prompt",
+      "updated_at"
+    ],
+    "status": "ACTIVE",
+    "same_schedule": true,
+    "preserved_model": true,
+    "preserved_workspaces": true
+  }
+}

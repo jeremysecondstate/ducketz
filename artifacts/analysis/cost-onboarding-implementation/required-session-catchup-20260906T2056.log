@@ -1,0 +1,28 @@
+DUCKETS OPTIONS HISTORY MAINTENANCE
+===================================
+DATASTORE: C:\DATASTORE
+Parent symbols: COST
+Schemas: definition, ohlcv-1h, cbbo-1m
+Mode: download and verify; incremental cursors only
+Run budget: bytes<=20000000000; estimated_cost_usd<=1.00
+Maximum incremental cursor advance: 1 days
+Lookbacks: definition=100 days; ohlcv-1h=1825 days; cbbo-1m=20 days
+OPRA history guarded preflight: requested_scopes=3; preflighted_scopes=3; selected_scopes=3; deferred_scopes=0; selected_estimated_download_bytes=413204096; selected_estimated_cost_usd=0.0; preflight_only=false
+VERIFIED_EXISTING definition/2026-09-01
+VERIFIED_EXISTING definition/2026-09-02
+VERIFIED_EXISTING definition/2026-09-03
+PUBLISHED definition/2026-09-04 rows=3712 bytes=197952
+OPRA symbol/schema history: symbol=COST; schema=definition; mode=INCREMENTAL_CATCHUP; start=2026-09-01; end=2026-09-05; status=COMPLETE; completed=1; verified_existing=3; rows=14188; health=C:\DATASTORE\market-data\databento\opra\OPRA.PILLAR\health\current.json
+VERIFIED_EXISTING ohlcv-1h/2026-08-31
+VERIFIED_EXISTING ohlcv-1h/2026-09-01
+VERIFIED_EXISTING ohlcv-1h/2026-09-02
+VERIFIED_EXISTING ohlcv-1h/2026-09-03
+PUBLISHED ohlcv-1h/2026-09-04 rows=8554 bytes=158803
+OPRA symbol/schema history: symbol=COST; schema=ohlcv-1h; mode=INCREMENTAL_CATCHUP; start=2026-08-30; end=2026-09-05; status=COMPLETE; completed=1; verified_existing=4; rows=35926; health=C:\DATASTORE\market-data\databento\opra\OPRA.PILLAR\health\current.json
+VERIFIED_EXISTING cbbo-1m/2026-09-01
+VERIFIED_EXISTING cbbo-1m/2026-09-02
+VERIFIED_EXISTING cbbo-1m/2026-09-03
+PUBLISHED cbbo-1m/2026-09-04 rows=1329394 bytes=15347214
+OPRA symbol/schema history: symbol=COST; schema=cbbo-1m; mode=INCREMENTAL_CATCHUP; start=2026-09-01; end=2026-09-05; status=COMPLETE; completed=1; verified_existing=3; rows=5075942; health=C:\DATASTORE\market-data\databento\opra\OPRA.PILLAR\health\current.json
+REFRESHED_OPRA_HEALTH C:\DATASTORE\market-data\databento\opra\OPRA.PILLAR\health\current.json
+Options history maintenance finished: requested_scopes=3; completed_scopes=3; capacity_blocked_scopes=0; failed_scopes=0; bootstrap_required_scopes=0; preflighted_scopes=3; deferred_scopes=0; live_replay_completed_scopes=0; live_replay_bytes=0; selected_estimated_download_bytes=413204096; selected_estimated_cost_usd=0.0

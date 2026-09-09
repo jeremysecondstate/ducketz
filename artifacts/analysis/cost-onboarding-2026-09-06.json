@@ -1,0 +1,1285 @@
+{
+  "schema_version": "cost-onboarding-planning-preflight-v1",
+  "observed_date": "2026-09-06",
+  "purpose": "Review proposal only; provider metadata reads and local inventories. No COST market-data download, production configuration change, training, or scheduler mutation.",
+  "units": {
+    "GiB_bytes": 1073741824,
+    "storage_basis": "Logical file lengths; not allocated NTFS clusters or provider billing bytes."
+  },
+  "datastore_inventory": {
+    "root": "C:\\DATASTORE",
+    "measured_at": "2026-09-06T00:02:08-07:00",
+    "files": 154291,
+    "bytes": 191711088282,
+    "GiB": 178.54486432112753,
+    "disk_free_bytes": 1425309958144,
+    "disk_free_GiB": 1327.42333984375,
+    "enumeration_errors": 0
+  },
+  "method": "Provider get_record_count for COST / COST.OPT multiplied by schema-specific stored bytes per normalized row from the six existing symbols. Stored bytes include native DBN, normalized Parquet, manifests and receipts. Weighted estimate and per-symbol min/max are comparative estimates, not confidence intervals or guarantees. Publication manifests were read for sizing, not revalidated cryptographically in this review.",
+  "provider_size_warning": "get_billable_size returns uncompressed binary billing bytes, despite existing local code naming its field estimated_download_size_bytes. These are not final stored GiB.",
+  "provider_size_reference": "https://databento.com/docs/api-reference-historical",
+  "current_bootstrap": {
+    "estimates": [
+      {
+        "dataset": "OPRA.PILLAR",
+        "schema": "definition",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2026-05-27",
+        "end": "2026-09-04",
+        "billable_uncompressed_bytes": 86282640,
+        "records": 239674,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1d",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2019-09-06",
+        "end": "2026-09-04",
+        "billable_uncompressed_bytes": 296550912,
+        "records": 5295552,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1h",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2021-09-05",
+        "end": "2026-09-04",
+        "billable_uncompressed_bytes": 436576896,
+        "records": 7796016,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2026-05-27",
+        "end": "2026-09-04",
+        "billable_uncompressed_bytes": 53964792,
+        "records": 963657,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1s",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2026-08-25",
+        "end": "2026-09-04",
+        "billable_uncompressed_bytes": 6596632,
+        "records": 117797,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "OPRA.PILLAR",
+        "schema": "status",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2026-08-04",
+        "end": "2026-09-04",
+        "billable_uncompressed_bytes": 19575400,
+        "records": 489385,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "OPRA.PILLAR",
+        "schema": "statistics",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2026-08-04",
+        "end": "2026-09-04",
+        "billable_uncompressed_bytes": 390698240,
+        "records": 6104660,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "OPRA.PILLAR",
+        "schema": "trades",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2026-08-04",
+        "end": "2026-09-04",
+        "billable_uncompressed_bytes": 21402384,
+        "records": 445883,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "OPRA.PILLAR",
+        "schema": "tcbbo",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2026-08-04",
+        "end": "2026-09-04",
+        "billable_uncompressed_bytes": 35670640,
+        "records": 445883,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "OPRA.PILLAR",
+        "schema": "cbbo-1m",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2026-08-15",
+        "end": "2026-09-04",
+        "billable_uncompressed_bytes": 1364684080,
+        "records": 17058551,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "OPRA.PILLAR",
+        "schema": "cbbo-1s",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2026-09-03",
+        "end": "2026-09-04",
+        "billable_uncompressed_bytes": 1109125760,
+        "records": 13864072,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1s",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-08-26",
+        "end": "2026-09-05",
+        "billable_uncompressed_bytes": 1432872,
+        "records": 25587,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-05-28",
+        "end": "2026-09-05",
+        "billable_uncompressed_bytes": 1956920,
+        "records": 34945,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1h",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2021-09-06",
+        "end": "2026-09-05",
+        "billable_uncompressed_bytes": 1051288,
+        "records": 18773,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1d",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2019-09-07",
+        "end": "2026-09-05",
+        "billable_uncompressed_bytes": 98448,
+        "records": 1758,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "XNAS.ITCH",
+        "schema": "definition",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-05-28",
+        "end": "2026-09-05",
+        "billable_uncompressed_bytes": 25200,
+        "records": 70,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "XNAS.ITCH",
+        "schema": "statistics",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-08-05",
+        "end": "2026-09-05",
+        "billable_uncompressed_bytes": 2944,
+        "records": 46,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "XNAS.ITCH",
+        "schema": "status",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-08-05",
+        "end": "2026-09-05",
+        "billable_uncompressed_bytes": 3680,
+        "records": 92,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "XNAS.ITCH",
+        "schema": "tbbo",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-08-05",
+        "end": "2026-09-05",
+        "billable_uncompressed_bytes": 26796800,
+        "records": 334960,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "XNAS.ITCH",
+        "schema": "bbo-1s",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-09-02",
+        "end": "2026-09-05",
+        "billable_uncompressed_bytes": 2885360,
+        "records": 36067,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "XNAS.ITCH",
+        "schema": "bbo-1m",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-05-28",
+        "end": "2026-09-05",
+        "billable_uncompressed_bytes": 3498080,
+        "records": 43726,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "XNAS.ITCH",
+        "schema": "trades",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-08-05",
+        "end": "2026-09-05",
+        "billable_uncompressed_bytes": 16078080,
+        "records": 334960,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "XNAS.ITCH",
+        "schema": "mbp-10",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-09-04",
+        "end": "2026-09-05",
+        "billable_uncompressed_bytes": 50729904,
+        "records": 137853,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "XNAS.ITCH",
+        "schema": "mbo",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-09-04",
+        "end": "2026-09-05",
+        "billable_uncompressed_bytes": 25097464,
+        "records": 448169,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "XNAS.ITCH",
+        "schema": "imbalance",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-08-05",
+        "end": "2026-09-05",
+        "billable_uncompressed_bytes": 1362256,
+        "records": 12163,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "EQUS.MINI",
+        "schema": "ohlcv-1s",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-08-26T00:00:00+00:00",
+        "end": "2026-09-05T00:00:00+00:00",
+        "billable_uncompressed_bytes": 702856,
+        "records": 12551,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "EQUS.MINI",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-05-28T00:00:00+00:00",
+        "end": "2026-09-05T00:00:00+00:00",
+        "billable_uncompressed_bytes": 1470504,
+        "records": 26259,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "EQUS.MINI",
+        "schema": "ohlcv-1h",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2023-03-28T00:00:00+00:00",
+        "end": "2026-09-05T00:00:00+00:00",
+        "billable_uncompressed_bytes": 454888,
+        "records": 8123,
+        "estimated_cost_usd": 0
+      },
+      {
+        "dataset": "EQUS.MINI",
+        "schema": "ohlcv-1d",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2023-03-28T00:00:00+00:00",
+        "end": "2026-09-05T00:00:00+00:00",
+        "billable_uncompressed_bytes": 48384,
+        "records": 864,
+        "estimated_cost_usd": 0
+      }
+    ],
+    "estimated_storage_groups": {
+      "production_opra": {
+        "estimatedGiB": 0.8733713730605319,
+        "minGiB": 0.7764000195215455,
+        "maxGiB": 0.9885635019063017,
+        "billableGiB": 1.7579119801521301
+      },
+      "research_opra": {
+        "estimatedGiB": 0.8408994861188344,
+        "minGiB": 0.7284256218402647,
+        "maxGiB": 0.9214815021266229,
+        "billableGiB": 1.8007911369204521
+      },
+      "equity_archive": {
+        "estimatedGiB": 0.06329796269061043,
+        "minGiB": 0.05813526120753959,
+        "maxGiB": 0.07036401556422933,
+        "billableGiB": 0.12202122807502747
+      }
+    }
+  },
+  "peer_history_parity": {
+    "definition": "Production OPRA starts match oldest retained peer dates and ends at currently available Historical boundary. Research schemas match retained peer start/end windows. XNAS.ITCH matches existing AAPL archive request windows, which represent the established archive baseline. Exact equality of all historical retained partitions across the six is not assumed.",
+    "estimates": [
+      {
+        "scope": "continuous_from_oldest_peer_start",
+        "dataset": "OPRA.PILLAR",
+        "schema": "definition",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2026-05-07",
+        "end": "2026-09-04",
+        "observed_peers": {
+          "AAPL": {
+            "earliest": "2026-05-07",
+            "latest": "2026-09-04",
+            "calendar_partitions": 84
+          },
+          "AMZN": {
+            "earliest": "2026-05-07",
+            "latest": "2026-09-04",
+            "calendar_partitions": 84
+          },
+          "GOOG": {
+            "earliest": "2026-05-07",
+            "latest": "2026-09-04",
+            "calendar_partitions": 84
+          },
+          "MU": {
+            "earliest": "2026-05-07",
+            "latest": "2026-09-04",
+            "calendar_partitions": 84
+          },
+          "NVDA": {
+            "earliest": "2026-05-07",
+            "latest": "2026-09-04",
+            "calendar_partitions": 84
+          },
+          "SNDK": {
+            "earliest": "2026-05-07",
+            "latest": "2026-09-04",
+            "calendar_partitions": 84
+          }
+        },
+        "billable_uncompressed_bytes": 101547360,
+        "records": 282076,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "continuous_from_oldest_peer_start",
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1h",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2021-08-16",
+        "end": "2026-09-04",
+        "observed_peers": {
+          "AAPL": {
+            "earliest": "2021-08-16",
+            "latest": "2026-09-04",
+            "calendar_partitions": 1268
+          },
+          "AMZN": {
+            "earliest": "2021-08-16",
+            "latest": "2026-09-04",
+            "calendar_partitions": 1268
+          },
+          "GOOG": {
+            "earliest": "2021-08-16",
+            "latest": "2026-09-04",
+            "calendar_partitions": 1268
+          },
+          "MU": {
+            "earliest": "2021-08-16",
+            "latest": "2026-09-04",
+            "calendar_partitions": 1268
+          },
+          "NVDA": {
+            "earliest": "2021-08-16",
+            "latest": "2026-09-04",
+            "calendar_partitions": 1268
+          },
+          "SNDK": {
+            "earliest": "2025-03-03",
+            "latest": "2026-09-04",
+            "calendar_partitions": 380
+          }
+        },
+        "billable_uncompressed_bytes": 439927096,
+        "records": 7855841,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "continuous_from_oldest_peer_start",
+        "dataset": "OPRA.PILLAR",
+        "schema": "cbbo-1m",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2026-07-27",
+        "end": "2026-09-04",
+        "observed_peers": {
+          "AAPL": {
+            "earliest": "2026-07-27",
+            "latest": "2026-09-04",
+            "calendar_partitions": 30
+          },
+          "AMZN": {
+            "earliest": "2026-07-27",
+            "latest": "2026-09-04",
+            "calendar_partitions": 30
+          },
+          "GOOG": {
+            "earliest": "2026-07-27",
+            "latest": "2026-09-04",
+            "calendar_partitions": 30
+          },
+          "MU": {
+            "earliest": "2026-07-27",
+            "latest": "2026-09-04",
+            "calendar_partitions": 30
+          },
+          "NVDA": {
+            "earliest": "2026-07-27",
+            "latest": "2026-09-04",
+            "calendar_partitions": 30
+          },
+          "SNDK": {
+            "earliest": "2026-07-27",
+            "latest": "2026-09-04",
+            "calendar_partitions": 30
+          }
+        },
+        "billable_uncompressed_bytes": 2799530160,
+        "records": 34994127,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1d",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2019-08-19",
+        "end": "2026-08-19",
+        "billable_uncompressed_bytes": 294652792,
+        "records": 5261657,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2026-05-07",
+        "end": "2026-08-19",
+        "billable_uncompressed_bytes": 56897960,
+        "records": 1016035,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1s",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2026-08-05",
+        "end": "2026-08-19",
+        "billable_uncompressed_bytes": 10982104,
+        "records": 196109,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "OPRA.PILLAR",
+        "schema": "status",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2026-07-15",
+        "end": "2026-08-19",
+        "billable_uncompressed_bytes": 20748400,
+        "records": 518710,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "OPRA.PILLAR",
+        "schema": "statistics",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2026-07-15",
+        "end": "2026-08-19",
+        "billable_uncompressed_bytes": 422374016,
+        "records": 6599594,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "OPRA.PILLAR",
+        "schema": "trades",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2026-07-15",
+        "end": "2026-08-19",
+        "billable_uncompressed_bytes": 26223504,
+        "records": 546323,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "OPRA.PILLAR",
+        "schema": "tcbbo",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2026-07-15",
+        "end": "2026-08-19",
+        "billable_uncompressed_bytes": 43705840,
+        "records": 546323,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "OPRA.PILLAR",
+        "schema": "cbbo-1s",
+        "symbols": [
+          "COST.OPT"
+        ],
+        "stype_in": "parent",
+        "start": "2026-08-14",
+        "end": "2026-08-19",
+        "billable_uncompressed_bytes": 2587048240,
+        "records": 32338103,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "XNAS.ITCH",
+        "schema": "bbo-1m",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-05-07",
+        "end": "2026-08-15",
+        "billable_uncompressed_bytes": 3401040,
+        "records": 42513,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "XNAS.ITCH",
+        "schema": "bbo-1s",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-08-12",
+        "end": "2026-08-15",
+        "billable_uncompressed_bytes": 2214800,
+        "records": 27685,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "XNAS.ITCH",
+        "schema": "definition",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-05-07",
+        "end": "2026-08-15",
+        "billable_uncompressed_bytes": 24840,
+        "records": 69,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "XNAS.ITCH",
+        "schema": "imbalance",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-07-15",
+        "end": "2026-08-15",
+        "billable_uncompressed_bytes": 1362144,
+        "records": 12162,
+        "estimated_cost_usd": 0.012353420258
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "XNAS.ITCH",
+        "schema": "mbo",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-08-14",
+        "end": "2026-08-15",
+        "billable_uncompressed_bytes": 15862000,
+        "records": 283250,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "XNAS.ITCH",
+        "schema": "mbp-10",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-08-14",
+        "end": "2026-08-15",
+        "billable_uncompressed_bytes": 35318432,
+        "records": 95974,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1d",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2019-08-17",
+        "end": "2026-08-15",
+        "billable_uncompressed_bytes": 98392,
+        "records": 1757,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1h",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2021-08-16",
+        "end": "2026-08-15",
+        "billable_uncompressed_bytes": 1049608,
+        "records": 18743,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-05-07",
+        "end": "2026-08-15",
+        "billable_uncompressed_bytes": 1924048,
+        "records": 34358,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1s",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-08-05",
+        "end": "2026-08-15",
+        "billable_uncompressed_bytes": 1332688,
+        "records": 23798,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "XNAS.ITCH",
+        "schema": "statistics",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-07-15",
+        "end": "2026-08-15",
+        "billable_uncompressed_bytes": 2944,
+        "records": 46,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "XNAS.ITCH",
+        "schema": "status",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-07-15",
+        "end": "2026-08-15",
+        "billable_uncompressed_bytes": 3680,
+        "records": 92,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "XNAS.ITCH",
+        "schema": "tbbo",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-07-15",
+        "end": "2026-08-15",
+        "billable_uncompressed_bytes": 30615840,
+        "records": 382698,
+        "estimated_cost_usd": 0
+      },
+      {
+        "scope": "peer_retained_research_window",
+        "dataset": "XNAS.ITCH",
+        "schema": "trades",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-07-15",
+        "end": "2026-08-15",
+        "billable_uncompressed_bytes": 18369504,
+        "records": 382698,
+        "estimated_cost_usd": 0
+      }
+    ],
+    "estimated_storage_groups": {
+      "production_opra": {
+        "estimatedGiB": 1.562338925464265,
+        "minGiB": 1.3763419654649682,
+        "maxGiB": 1.7238046090512535,
+        "billableGiB": 3.111553020775318,
+        "estimatedCostUSD": 0
+      },
+      "research_opra": {
+        "estimatedGiB": 1.5338459992133082,
+        "minGiB": 1.30409410736952,
+        "maxGiB": 1.663590951795876,
+        "billableGiB": 3.2248281463980675,
+        "estimatedCostUSD": 0
+      },
+      "equity_archive": {
+        "estimatedGiB": 0.0570289686090313,
+        "minGiB": 0.05243812781060114,
+        "maxGiB": 0.0635543648966588,
+        "billableGiB": 0.10391693562269211,
+        "estimatedCostUSD": 0.012353420258
+      }
+    },
+    "stored_databento_history_GiB": 3.1532138932866047,
+    "practical_fetch_planning_range_GiB": [
+      2.8,
+      3.8
+    ],
+    "exclusions": [
+      "Future provider sessions, including September 4 OPRA which is not yet available through Historical metadata.",
+      "Stock operational bars, fundamentals, filings and first option snapshot are a small additional unmeasured allowance.",
+      "Technical feature tables, model artifacts, outcome caches, evaluation generations and immutable Gameplans.",
+      "Reconstruction of past prospective Schwab snapshots, which is not possible from a current snapshot fetch."
+    ]
+  },
+  "calibration": {
+    "OPRA.PILLAR": {
+      "manifests": 17727,
+      "ratios": {
+        "cbbo-1m": {
+          "total_rows": 403917109,
+          "total_bytes": 16530053227,
+          "weighted_bytes_per_row": 40.9244,
+          "per_symbol_bytes_per_row": {
+            "AAPL.OPT": 39.2669,
+            "AMZN.OPT": 38.9079,
+            "GOOG.OPT": 35.6097,
+            "MU.OPT": 43.6393,
+            "NVDA.OPT": 42.3525,
+            "SNDK.OPT": 39.8719
+          },
+          "partitions": 180
+        },
+        "cbbo-1s": {
+          "total_rows": 1122227758,
+          "total_bytes": 44072073074,
+          "weighted_bytes_per_row": 39.272,
+          "per_symbol_bytes_per_row": {
+            "AAPL.OPT": 34.1802,
+            "AMZN.OPT": 32.9646,
+            "GOOG.OPT": 32.5093,
+            "MU.OPT": 42.016,
+            "NVDA.OPT": 40.0128,
+            "SNDK.OPT": 39.1667
+          },
+          "partitions": 90
+        },
+        "definition": {
+          "total_rows": 2941004,
+          "total_bytes": 285050075,
+          "weighted_bytes_per_row": 96.9227,
+          "per_symbol_bytes_per_row": {
+            "AAPL.OPT": 101.5185,
+            "AMZN.OPT": 106.7544,
+            "GOOG.OPT": 105.5835,
+            "MU.OPT": 92.8546,
+            "NVDA.OPT": 100.0654,
+            "SNDK.OPT": 94.0799
+          },
+          "partitions": 504
+        },
+        "ohlcv-1d": {
+          "total_rows": 73722983,
+          "total_bytes": 2840474614,
+          "weighted_bytes_per_row": 38.529,
+          "per_symbol_bytes_per_row": {
+            "AAPL.OPT": 36.6828,
+            "AMZN.OPT": 41.8297,
+            "GOOG.OPT": 43.5084,
+            "MU.OPT": 38.7534,
+            "NVDA.OPT": 34.7983,
+            "SNDK.OPT": 45.0345
+          },
+          "partitions": 9147
+        },
+        "ohlcv-1h": {
+          "total_rows": 143409239,
+          "total_bytes": 3981357405,
+          "weighted_bytes_per_row": 27.7622,
+          "per_symbol_bytes_per_row": {
+            "AAPL.OPT": 26.1606,
+            "AMZN.OPT": 27.9041,
+            "GOOG.OPT": 29.2856,
+            "MU.OPT": 29.2028,
+            "NVDA.OPT": 26.9194,
+            "SNDK.OPT": 37.3848
+          },
+          "partitions": 6720
+        },
+        "ohlcv-1m": {
+          "total_rows": 45699895,
+          "total_bytes": 1118127239,
+          "weighted_bytes_per_row": 24.4667,
+          "per_symbol_bytes_per_row": {
+            "AAPL.OPT": 22.4657,
+            "AMZN.OPT": 22.7876,
+            "GOOG.OPT": 24.329,
+            "MU.OPT": 26.9458,
+            "NVDA.OPT": 22.5509,
+            "SNDK.OPT": 30.1866
+          },
+          "partitions": 426
+        },
+        "ohlcv-1s": {
+          "total_rows": 10701625,
+          "total_bytes": 265145162,
+          "weighted_bytes_per_row": 24.7762,
+          "per_symbol_bytes_per_row": {
+            "AAPL.OPT": 22.5627,
+            "AMZN.OPT": 24.9416,
+            "GOOG.OPT": 28.7604,
+            "MU.OPT": 26.5313,
+            "NVDA.OPT": 22.1431,
+            "SNDK.OPT": 31.3865
+          },
+          "partitions": 60
+        },
+        "statistics": {
+          "total_rows": 72597974,
+          "total_bytes": 910017494,
+          "weighted_bytes_per_row": 12.535,
+          "per_symbol_bytes_per_row": {
+            "AAPL.OPT": 12.3276,
+            "AMZN.OPT": 12.424,
+            "GOOG.OPT": 12.3959,
+            "MU.OPT": 12.6713,
+            "NVDA.OPT": 12.6173,
+            "SNDK.OPT": 12.4859
+          },
+          "partitions": 150
+        },
+        "status": {
+          "total_rows": 5496470,
+          "total_bytes": 78949592,
+          "weighted_bytes_per_row": 14.3637,
+          "per_symbol_bytes_per_row": {
+            "AAPL.OPT": 12.6959,
+            "AMZN.OPT": 14.2575,
+            "GOOG.OPT": 12.6379,
+            "MU.OPT": 15.9064,
+            "NVDA.OPT": 15.7831,
+            "SNDK.OPT": 13.2345
+          },
+          "partitions": 150
+        },
+        "tcbbo": {
+          "total_rows": 34399728,
+          "total_bytes": 1747667373,
+          "weighted_bytes_per_row": 50.8047,
+          "per_symbol_bytes_per_row": {
+            "AAPL.OPT": 49.3363,
+            "AMZN.OPT": 53.06,
+            "GOOG.OPT": 56.9531,
+            "MU.OPT": 54.3144,
+            "NVDA.OPT": 46.3432,
+            "SNDK.OPT": 59.7801
+          },
+          "partitions": 150
+        },
+        "trades": {
+          "total_rows": 34399728,
+          "total_bytes": 1674647590,
+          "weighted_bytes_per_row": 48.682,
+          "per_symbol_bytes_per_row": {
+            "AAPL.OPT": 47.2442,
+            "AMZN.OPT": 48.1964,
+            "GOOG.OPT": 49.8408,
+            "MU.OPT": 51.7957,
+            "NVDA.OPT": 46.6304,
+            "SNDK.OPT": 53.5069
+          },
+          "partitions": 150
+        }
+      }
+    },
+    "XNAS.ITCH": {
+      "manifests": 84,
+      "ratios": {
+        "bbo-1m": {
+          "total_rows": 391698,
+          "total_bytes": 30531423,
+          "weighted_bytes_per_row": 77.9463,
+          "per_symbol_bytes_per_row": {
+            "AAPL": 72.6342,
+            "AMZN": 73.1383,
+            "GOOG": 72.0034,
+            "MU": 87.2499,
+            "NVDA": 75.8848,
+            "SNDK": 86.3553
+          },
+          "partitions": 6
+        },
+        "bbo-1s": {
+          "total_rows": 525290,
+          "total_bytes": 31372651,
+          "weighted_bytes_per_row": 59.7244,
+          "per_symbol_bytes_per_row": {
+            "AAPL": 57.8232,
+            "AMZN": 57.0657,
+            "GOOG": 54.3528,
+            "MU": 62.2684,
+            "NVDA": 60.5122,
+            "SNDK": 63.5264
+          },
+          "partitions": 6
+        },
+        "definition": {
+          "total_rows": 414,
+          "total_bytes": 264711,
+          "weighted_bytes_per_row": 639.3986,
+          "per_symbol_bytes_per_row": {
+            "AAPL": 635.8261,
+            "AMZN": 637.8116,
+            "GOOG": 640.5942,
+            "MU": 640.4783,
+            "NVDA": 640.8261,
+            "SNDK": 640.8551
+          },
+          "partitions": 6
+        },
+        "imbalance": {
+          "total_rows": 72967,
+          "total_bytes": 4027304,
+          "weighted_bytes_per_row": 55.1935,
+          "per_symbol_bytes_per_row": {
+            "AAPL": 54.1767,
+            "AMZN": 52.8266,
+            "GOOG": 53.1513,
+            "MU": 58.2212,
+            "NVDA": 55.01,
+            "SNDK": 57.7756
+          },
+          "partitions": 6
+        },
+        "mbo": {
+          "total_rows": 22134224,
+          "total_bytes": 942691377,
+          "weighted_bytes_per_row": 42.5898,
+          "per_symbol_bytes_per_row": {
+            "AAPL": 40.2961,
+            "AMZN": 39.2596,
+            "GOOG": 44.1837,
+            "MU": 41.7249,
+            "NVDA": 44.1054,
+            "SNDK": 45.3315
+          },
+          "partitions": 6
+        },
+        "mbp-10": {
+          "total_rows": 8923541,
+          "total_bytes": 659713171,
+          "weighted_bytes_per_row": 73.9295,
+          "per_symbol_bytes_per_row": {
+            "AAPL": 71.0508,
+            "AMZN": 72.1273,
+            "GOOG": 77.9732,
+            "MU": 82.2869,
+            "NVDA": 66.5382,
+            "SNDK": 86.7116
+          },
+          "partitions": 6
+        },
+        "ohlcv-1d": {
+          "total_rows": 9156,
+          "total_bytes": 788416,
+          "weighted_bytes_per_row": 86.1092,
+          "per_symbol_bytes_per_row": {
+            "AAPL": 79.8867,
+            "AMZN": 84.5043,
+            "GOOG": 88.6346,
+            "MU": 84.457,
+            "NVDA": 89.7706,
+            "SNDK": 101.7035
+          },
+          "partitions": 6
+        },
+        "ohlcv-1h": {
+          "total_rows": 103172,
+          "total_bytes": 6709646,
+          "weighted_bytes_per_row": 65.0336,
+          "per_symbol_bytes_per_row": {
+            "AAPL": 62.0094,
+            "AMZN": 65.217,
+            "GOOG": 65.5938,
+            "MU": 61.7371,
+            "NVDA": 68.7559,
+            "SNDK": 72.0482
+          },
+          "partitions": 6
+        },
+        "ohlcv-1m": {
+          "total_rows": 370422,
+          "total_bytes": 16959026,
+          "weighted_bytes_per_row": 45.783,
+          "per_symbol_bytes_per_row": {
+            "AAPL": 39.983,
+            "AMZN": 39.4817,
+            "GOOG": 40.9429,
+            "MU": 55.4529,
+            "NVDA": 40.2455,
+            "SNDK": 56.6781
+          },
+          "partitions": 6
+        },
+        "ohlcv-1s": {
+          "total_rows": 899577,
+          "total_bytes": 29436009,
+          "weighted_bytes_per_row": 32.7221,
+          "per_symbol_bytes_per_row": {
+            "AAPL": 28.9023,
+            "AMZN": 29.5464,
+            "GOOG": 30.8674,
+            "MU": 35.4461,
+            "NVDA": 29.3628,
+            "SNDK": 39.8229
+          },
+          "partitions": 6
+        },
+        "statistics": {
+          "total_rows": 276,
+          "total_bytes": 89123,
+          "weighted_bytes_per_row": 322.9094,
+          "per_symbol_bytes_per_row": {
+            "AAPL": 322.3696,
+            "AMZN": 322.6304,
+            "GOOG": 322.8043,
+            "MU": 322.8913,
+            "NVDA": 323.6304,
+            "SNDK": 323.1304
+          },
+          "partitions": 6
+        },
+        "status": {
+          "total_rows": 562,
+          "total_bytes": 76519,
+          "weighted_bytes_per_row": 136.1548,
+          "per_symbol_bytes_per_row": {
+            "AAPL": 135.4946,
+            "AMZN": 137.0978,
+            "GOOG": 137.8152,
+            "MU": 135.4105,
+            "NVDA": 138.087,
+            "SNDK": 133.2449
+          },
+          "partitions": 6
+        },
+        "tbbo": {
+          "total_rows": 28206994,
+          "total_bytes": 1355418742,
+          "weighted_bytes_per_row": 48.0526,
+          "per_symbol_bytes_per_row": {
+            "AAPL": 47.5747,
+            "AMZN": 48.0148,
+            "GOOG": 49.671,
+            "MU": 49.0226,
+            "NVDA": 45.0345,
+            "SNDK": 52.9729
+          },
+          "partitions": 6
+        },
+        "trades": {
+          "total_rows": 28206994,
+          "total_bytes": 1050596977,
+          "weighted_bytes_per_row": 37.246,
+          "per_symbol_bytes_per_row": {
+            "AAPL": 37.0381,
+            "AMZN": 37.1708,
+            "GOOG": 38.9625,
+            "MU": 38.5452,
+            "NVDA": 33.8206,
+            "SNDK": 42.1589
+          },
+          "partitions": 6
+        }
+      }
+    }
+  },
+  "current_readiness_issue": {
+    "historical_opra_exclusive_end": "2026-09-04",
+    "latest_completed_equity_session": "2026-09-04",
+    "existing_peer_evidence": "AAPL cbbo-1m v5 cursor completed_through=2026-09-05 with VERIFIED_EXCHANGE_SESSION replay coverage for 2026-09-04.",
+    "required_action": "Keep COST pending until the latest completed option session can be verified through Historical catch-up or an actually available exact-session replay."
+  },
+  "proposed_counts": {
+    "symbols": 7,
+    "forecasts_per_symbol": 24,
+    "option_intents_per_symbol": 24,
+    "forecast_rows": 168,
+    "option_intent_rows": 168,
+    "combined_rows": 336
+  },
+  "planning_only": true
+}

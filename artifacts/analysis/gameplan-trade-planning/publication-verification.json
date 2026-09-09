@@ -1,0 +1,72 @@
+{
+  "verified_at": "2026-09-09T05:10:09.494130+00:00",
+  "status": "PASS",
+  "run_directory": "C:/DATASTORE/ml/gameplan-trade-plan-runs/20260909T050450.873174Z",
+  "source_gameplan_directory": "C:/DATASTORE/ml/nightly-gameplan-runs/20260909T040455.436642Z",
+  "native_verify_manifest": {
+    "sidecar": true,
+    "source_gameplan": true
+  },
+  "pointer_receipt_match": true,
+  "receipt_manifest_match": true,
+  "source_receipt_sha256": "eb2490d3ea8ffe2ce778c6daecf55db301b01f08f8b94ca09e904b1fd9402656",
+  "source_rows": 168,
+  "source_column_count_including_id": 52,
+  "all_source_columns_unchanged": true,
+  "rows_by_symbol": {
+    "AAPL": 24,
+    "AMZN": 24,
+    "COST": 24,
+    "GOOG": 24,
+    "MU": 24,
+    "NVDA": 24,
+    "SNDK": 24
+  },
+  "all_rendered_probabilities_windows_gates_quantities_ranges_match": true,
+  "rendered_row_count": 168,
+  "trade_quantity_sum": 0,
+  "planned_notional": 0.0,
+  "orders_placed": 0,
+  "price_band_status_counts": {
+    "AVAILABLE": 131,
+    "NOT_ENTRY": 35,
+    "UNAVAILABLE_MINIMUM_SAMPLES": 2
+  },
+  "missing_price_bands": [
+    {
+      "id": "2026-09-09:COST:1h@16:00",
+      "symbol": "COST",
+      "route": "1h@16:00",
+      "price_band_status": "UNAVAILABLE_MINIMUM_SAMPLES",
+      "price_band_sample_count": 27
+    },
+    {
+      "id": "2026-09-09:COST:4h@16:00",
+      "symbol": "COST",
+      "route": "4h@16:00",
+      "price_band_status": "UNAVAILABLE_MINIMUM_SAMPLES",
+      "price_band_sample_count": 27
+    }
+  ],
+  "snapshot_at": "2026-09-09T05:04:55.859641+00:00",
+  "available_cash": 112081.48,
+  "account_equity": 129665.06,
+  "gross_exposure": 17583.579999999998,
+  "held_shares": {
+    "AAPL": 1.0,
+    "AMZN": 1.0,
+    "COST": 0.0,
+    "GOOG": 1.0,
+    "MU": 1.0,
+    "NVDA": 1.0,
+    "SNDK": 1.0
+  },
+  "account_snapshot_matches_report_trade_rows_and_document": true,
+  "ownership_status": "OBSERVED_CONSISTENT",
+  "current_broker_reconciliation_performed": false,
+  "quote_times_remain_actual_broker_timestamps": true,
+  "review_copy": "C:/dev/ducketz/artifacts/gameplans/2026-09-09/Gameplan-2026-09-09-trade-review.md",
+  "native_review_sha256": "d184a585c1c04384eacbaf4b0263a798b1a1cefc6ff46fd6f3e4710dfac0c84d",
+  "review_copy_sha256": "d184a585c1c04384eacbaf4b0263a798b1a1cefc6ff46fd6f3e4710dfac0c84d",
+  "verification_scope": "Read-only native/source checks plus exact independent parsing of all168 rendered rows, model metrics and account table. No broker calls, source changes, reconciliation, trading-control changes or pipeline launches; only this new review copy and verification artifact were written."
+}

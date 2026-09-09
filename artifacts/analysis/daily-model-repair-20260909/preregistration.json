@@ -1,0 +1,19 @@
+{
+  "registered_at": "2026-09-09T05:54:37.596998+00:00",
+  "source_run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260909T040455.436642Z",
+  "cohort_sha256": "6991e42f48cb95393bf5bf5d045d9f9dc8463f0590553be20da742d2d6f58467",
+  "purpose": "Reduce unsupported model complexity observed on original development selection",
+  "candidate_logistic_c": [
+    0.001,
+    0.01,
+    0.1,
+    1.0
+  ],
+  "selection": "Minimum original selection log loss; lower C wins exact ties",
+  "reference": "Original best candidate selection score from verified source report",
+  "calibration": "Unchanged purged chronological identity-versus-constrained-Platt development selection",
+  "assessment_scored": false,
+  "assessment_used_for_selection": false,
+  "training_features": "Exactly original admitted train-only numeric columns and symbol/route categories",
+  "no_additional_grid_or_assessment_search": true
+}

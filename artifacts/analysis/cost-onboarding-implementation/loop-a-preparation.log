@@ -1,0 +1,754 @@
+DUCKETS ORCHESTRATION
+=====================
+Watchlist: AAPL, AMZN, GOOG, MU, NVDA, SNDK, COST
+DATASTORE: C:\DATASTORE
+Providers: databento, fmp, fred, schwab, sec
+Fetch mode: continuation
+Interval: 15 minutes
+OPRA Strategy history: off; schemas=ohlcv-1h,cbbo-1m,definition; utc_hour=0
+Loop B input: current normalized, fundamental, technical, and signal Parquets
+Stop: Ctrl+C
+
+CYCLE 2026-09-06T08:18:53.232654+00:00
+------------------------------------------------
+Loop A target decision: cycle_mode=MONITOR_ONLY; target_state=MARKET_CLOSED_IDLE; target=NONE; reason=The regular XNYS option-market evidence window is closed; extended-hours bars are monitor-only and cannot create a target.; next_eligible_cycle=2026-09-08T13:45:00+00:00
+[AAPL] fetch mode: continuation
+[AMZN] fetch mode: continuation
+[GOOG] fetch mode: continuation
+[MU] fetch mode: continuation
+[NVDA] fetch mode: continuation
+[SNDK] fetch mode: continuation
+[COST] fetch mode: continuation
+[databento] fetching 7 symbols with provider batching where supported...
+[2026-09-06T08:18:53.405363Z] START loop-a.databento-watchlist src=databento cme_mode=inline symbol_count=7
+[databento/archive-bridge] cold archive retained as provenance; operational_dataset=EQUS.MINI; archive_dataset=XNAS.ITCH
+[2026-09-06T08:18:53.408740Z] START provider.request name="equities dataset-range metadata" src=databento/dataset-range try=1
+[2026-09-06T08:18:53.927912Z] END   provider.request name="equities dataset-range metadata" src=databento/dataset-range try=1 elapsed=519.2ms rows=3 op=fetched status=ok
+[AAPL/databento/source_100d_1m_ohlcv-1m_1m] latest stored 2026-09-04T23:17:00+00:00; requesting missing tail from 2026-09-04T22:17:00+00:00
+[AMZN/databento/source_100d_1m_ohlcv-1m_1m] latest stored 2026-09-04T22:24:00+00:00; requesting missing tail from 2026-09-04T21:24:00+00:00
+[GOOG/databento/source_100d_1m_ohlcv-1m_1m] latest stored 2026-09-04T23:50:00+00:00; requesting missing tail from 2026-09-04T22:50:00+00:00
+[MU/databento/source_100d_1m_ohlcv-1m_1m] latest stored 2026-09-04T23:52:00+00:00; requesting missing tail from 2026-09-04T22:52:00+00:00
+[NVDA/databento/source_100d_1m_ohlcv-1m_1m] latest stored 2026-09-04T23:59:00+00:00; requesting missing tail from 2026-09-04T22:59:00+00:00
+[SNDK/databento/source_100d_1m_ohlcv-1m_1m] latest stored 2026-09-04T23:52:00+00:00; requesting missing tail from 2026-09-04T22:52:00+00:00
+[COST/databento/source_100d_1m_ohlcv-1m_1m] latest stored 2026-09-04T19:59:00+00:00; requesting missing tail from 2026-09-04T18:59:00+00:00
+[2026-09-06T08:18:54.026016Z] START provider.request name="1 symbols ohlcv-1m/1m" src=databento/ohlcv-1m req=2026-09-04T22:17:00Z..2026-09-05T00:00:00Z try=1
+[2026-09-06T08:18:58.611841Z] END   provider.request name="1 symbols ohlcv-1m/1m" src=databento/ohlcv-1m req=2026-09-04T22:17:00Z..2026-09-05T00:00:00Z try=1 elapsed=4585.8ms rows=2 op=fetched status=ok
+[2026-09-06T08:18:58.611931Z] START provider.request name="1 symbols ohlcv-1m/1m" src=databento/ohlcv-1m req=2026-09-04T21:24:00Z..2026-09-05T00:00:00Z try=1
+[2026-09-06T08:19:03.188945Z] END   provider.request name="1 symbols ohlcv-1m/1m" src=databento/ohlcv-1m req=2026-09-04T21:24:00Z..2026-09-05T00:00:00Z try=1 elapsed=4577.0ms rows=3 op=fetched status=ok
+[2026-09-06T08:19:03.189036Z] START provider.request name="1 symbols ohlcv-1m/1m" src=databento/ohlcv-1m req=2026-09-04T22:50:00Z..2026-09-05T00:00:00Z try=1
+[2026-09-06T08:19:06.756819Z] END   provider.request name="1 symbols ohlcv-1m/1m" src=databento/ohlcv-1m req=2026-09-04T22:50:00Z..2026-09-05T00:00:00Z try=1 elapsed=3567.8ms rows=3 op=fetched status=ok
+[2026-09-06T08:19:06.756904Z] START provider.request name="2 symbols ohlcv-1m/1m" src=databento/ohlcv-1m req=2026-09-04T22:52:00Z..2026-09-05T00:00:00Z try=1
+[2026-09-06T08:19:10.155921Z] END   provider.request name="2 symbols ohlcv-1m/1m" src=databento/ohlcv-1m req=2026-09-04T22:52:00Z..2026-09-05T00:00:00Z try=1 elapsed=3399.0ms rows=8 op=fetched status=ok
+[2026-09-06T08:19:10.156007Z] START provider.request name="1 symbols ohlcv-1m/1m" src=databento/ohlcv-1m req=2026-09-04T22:59:00Z..2026-09-05T00:00:00Z try=1
+[2026-09-06T08:19:12.404744Z] END   provider.request name="1 symbols ohlcv-1m/1m" src=databento/ohlcv-1m req=2026-09-04T22:59:00Z..2026-09-05T00:00:00Z try=1 elapsed=2248.7ms rows=4 op=fetched status=ok
+[2026-09-06T08:19:12.404824Z] START provider.request name="1 symbols ohlcv-1m/1m" src=databento/ohlcv-1m req=2026-09-04T18:59:00Z..2026-09-05T00:00:00Z try=1
+[2026-09-06T08:19:19.315660Z] END   provider.request name="1 symbols ohlcv-1m/1m" src=databento/ohlcv-1m req=2026-09-04T18:59:00Z..2026-09-05T00:00:00Z try=1 elapsed=6910.8ms rows=61 op=fetched status=ok
+Loop A bar readiness idle: cycle_mode=MONITOR_ONLY; target_state=MARKET_CLOSED_IDLE; target=NONE; reason=The regular XNYS option-market evidence window is closed; extended-hours bars are monitor-only and cannot create a target.; next_eligible_cycle=2026-09-08T13:45:00+00:00
+[AAPL/databento/source_10d_1s_ohlcv-1s_1s] latest stored 2026-09-04T23:17:58+00:00; requesting missing tail from 2026-09-04T23:12:58+00:00
+[AMZN/databento/source_10d_1s_ohlcv-1s_1s] latest stored 2026-09-04T22:24:42+00:00; requesting missing tail from 2026-09-04T22:19:42+00:00
+[GOOG/databento/source_10d_1s_ohlcv-1s_1s] latest stored 2026-09-04T23:50:38+00:00; requesting missing tail from 2026-09-04T23:45:38+00:00
+[MU/databento/source_10d_1s_ohlcv-1s_1s] latest stored 2026-09-04T23:52:33+00:00; requesting missing tail from 2026-09-04T23:47:33+00:00
+[NVDA/databento/source_10d_1s_ohlcv-1s_1s] latest stored 2026-09-04T23:59:39+00:00; requesting missing tail from 2026-09-04T23:54:39+00:00
+[SNDK/databento/source_10d_1s_ohlcv-1s_1s] latest stored 2026-09-04T23:52:42+00:00; requesting missing tail from 2026-09-04T23:47:42+00:00
+[COST/databento/source_10d_1s_ohlcv-1s_1s] latest stored 2026-09-04T19:59:56+00:00; requesting missing tail from 2026-09-04T19:54:56+00:00
+[2026-09-06T08:19:44.299899Z] START provider.request name="1 symbols ohlcv-1s/1s" src=databento/ohlcv-1s req=2026-09-04T23:12:58Z..2026-09-05T00:00:00Z try=1
+[2026-09-06T08:19:48.316697Z] END   provider.request name="1 symbols ohlcv-1s/1s" src=databento/ohlcv-1s req=2026-09-04T23:12:58Z..2026-09-05T00:00:00Z try=1 elapsed=4016.8ms rows=1 op=fetched status=ok
+[2026-09-06T08:19:48.316782Z] START provider.request name="1 symbols ohlcv-1s/1s" src=databento/ohlcv-1s req=2026-09-04T22:19:42Z..2026-09-05T00:00:00Z try=1
+[2026-09-06T08:19:52.758803Z] END   provider.request name="1 symbols ohlcv-1s/1s" src=databento/ohlcv-1s req=2026-09-04T22:19:42Z..2026-09-05T00:00:00Z try=1 elapsed=4442.0ms rows=1 op=fetched status=ok
+[2026-09-06T08:19:52.758908Z] START provider.request name="1 symbols ohlcv-1s/1s" src=databento/ohlcv-1s req=2026-09-04T23:45:38Z..2026-09-05T00:00:00Z try=1
+[2026-09-06T08:19:58.044842Z] END   provider.request name="1 symbols ohlcv-1s/1s" src=databento/ohlcv-1s req=2026-09-04T23:45:38Z..2026-09-05T00:00:00Z try=1 elapsed=5285.9ms rows=3 op=fetched status=ok
+[2026-09-06T08:19:58.044927Z] START provider.request name="1 symbols ohlcv-1s/1s" src=databento/ohlcv-1s req=2026-09-04T23:47:33Z..2026-09-05T00:00:00Z try=1
+[2026-09-06T08:20:02.835630Z] END   provider.request name="1 symbols ohlcv-1s/1s" src=databento/ohlcv-1s req=2026-09-04T23:47:33Z..2026-09-05T00:00:00Z try=1 elapsed=4790.7ms rows=2 op=fetched status=ok
+[2026-09-06T08:20:02.835715Z] START provider.request name="1 symbols ohlcv-1s/1s" src=databento/ohlcv-1s req=2026-09-04T23:54:39Z..2026-09-05T00:00:00Z try=1
+[2026-09-06T08:20:07.647586Z] END   provider.request name="1 symbols ohlcv-1s/1s" src=databento/ohlcv-1s req=2026-09-04T23:54:39Z..2026-09-05T00:00:00Z try=1 elapsed=4811.9ms rows=2 op=fetched status=ok
+[2026-09-06T08:20:07.647666Z] START provider.request name="1 symbols ohlcv-1s/1s" src=databento/ohlcv-1s req=2026-09-04T23:47:42Z..2026-09-05T00:00:00Z try=1
+[2026-09-06T08:20:12.249463Z] END   provider.request name="1 symbols ohlcv-1s/1s" src=databento/ohlcv-1s req=2026-09-04T23:47:42Z..2026-09-05T00:00:00Z try=1 elapsed=4601.8ms rows=2 op=fetched status=ok
+[2026-09-06T08:20:12.249546Z] START provider.request name="1 symbols ohlcv-1s/1s" src=databento/ohlcv-1s req=2026-09-04T19:54:56Z..2026-09-05T00:00:00Z try=1
+[2026-09-06T08:20:18.132750Z] END   provider.request name="1 symbols ohlcv-1s/1s" src=databento/ohlcv-1s req=2026-09-04T19:54:56Z..2026-09-05T00:00:00Z try=1 elapsed=5883.2ms rows=123 op=fetched status=ok
+[AAPL/databento/source_1825d_1h_ohlcv-1h_1h] latest stored 2026-09-04T23:00:00+00:00; requesting missing tail from 2026-09-04T17:00:00+00:00
+[AMZN/databento/source_1825d_1h_ohlcv-1h_1h] latest stored 2026-09-04T22:00:00+00:00; requesting missing tail from 2026-09-04T16:00:00+00:00
+[GOOG/databento/source_1825d_1h_ohlcv-1h_1h] latest stored 2026-09-04T23:00:00+00:00; requesting missing tail from 2026-09-04T17:00:00+00:00
+[MU/databento/source_1825d_1h_ohlcv-1h_1h] latest stored 2026-09-04T23:00:00+00:00; requesting missing tail from 2026-09-04T17:00:00+00:00
+[NVDA/databento/source_1825d_1h_ohlcv-1h_1h] latest stored 2026-09-04T23:00:00+00:00; requesting missing tail from 2026-09-04T17:00:00+00:00
+[SNDK/databento/source_1825d_1h_ohlcv-1h_1h] latest stored 2026-09-04T23:00:00+00:00; requesting missing tail from 2026-09-04T17:00:00+00:00
+[COST/databento/source_1825d_1h_ohlcv-1h_1h] latest stored 2026-09-04T19:00:00+00:00; requesting missing tail from 2026-09-04T13:00:00+00:00
+[2026-09-06T08:20:18.202414Z] START provider.request name="5 symbols ohlcv-1h/1h" src=databento/ohlcv-1h req=2026-09-04T17:00:00Z..2026-09-05T00:00:00Z try=1
+[2026-09-06T08:20:23.830644Z] END   provider.request name="5 symbols ohlcv-1h/1h" src=databento/ohlcv-1h req=2026-09-04T17:00:00Z..2026-09-05T00:00:00Z try=1 elapsed=5628.2ms rows=30 op=fetched status=ok
+[2026-09-06T08:20:23.830732Z] START provider.request name="1 symbols ohlcv-1h/1h" src=databento/ohlcv-1h req=2026-09-04T16:00:00Z..2026-09-05T00:00:00Z try=1
+[2026-09-06T08:20:28.975750Z] END   provider.request name="1 symbols ohlcv-1h/1h" src=databento/ohlcv-1h req=2026-09-04T16:00:00Z..2026-09-05T00:00:00Z try=1 elapsed=5145.0ms rows=7 op=fetched status=ok
+[2026-09-06T08:20:28.975838Z] START provider.request name="1 symbols ohlcv-1h/1h" src=databento/ohlcv-1h req=2026-09-04T13:00:00Z..2026-09-05T00:00:00Z try=1
+[2026-09-06T08:20:33.884798Z] END   provider.request name="1 symbols ohlcv-1h/1h" src=databento/ohlcv-1h req=2026-09-04T13:00:00Z..2026-09-05T00:00:00Z try=1 elapsed=4909.0ms rows=7 op=fetched status=ok
+[AAPL/databento/source_2555d_1d_ohlcv-1d_1d] latest stored 2026-09-04T00:00:00+00:00; requesting missing tail from 2026-08-28T00:00:00+00:00
+[AMZN/databento/source_2555d_1d_ohlcv-1d_1d] latest stored 2026-09-04T00:00:00+00:00; requesting missing tail from 2026-08-28T00:00:00+00:00
+[GOOG/databento/source_2555d_1d_ohlcv-1d_1d] latest stored 2026-09-04T00:00:00+00:00; requesting missing tail from 2026-08-28T00:00:00+00:00
+[MU/databento/source_2555d_1d_ohlcv-1d_1d] latest stored 2026-09-04T00:00:00+00:00; requesting missing tail from 2026-08-28T00:00:00+00:00
+[NVDA/databento/source_2555d_1d_ohlcv-1d_1d] latest stored 2026-09-04T00:00:00+00:00; requesting missing tail from 2026-08-28T00:00:00+00:00
+[SNDK/databento/source_2555d_1d_ohlcv-1d_1d] latest stored 2026-09-04T00:00:00+00:00; requesting missing tail from 2026-08-28T00:00:00+00:00
+[COST/databento/source_2555d_1d_ohlcv-1d_1d] latest stored 2026-09-04T00:00:00+00:00; requesting missing tail from 2026-08-28T00:00:00+00:00
+[2026-09-06T08:20:33.932698Z] START provider.request name="7 symbols ohlcv-1d/1d" src=databento/ohlcv-1d req=2026-08-28T00:00:00Z..2026-09-05T00:00:00Z try=1
+[2026-09-06T08:20:38.245960Z] END   provider.request name="7 symbols ohlcv-1d/1d" src=databento/ohlcv-1d req=2026-08-28T00:00:00Z..2026-09-05T00:00:00Z try=1 elapsed=4313.3ms rows=42 op=fetched status=ok
+[databento/bar-consolidation] symbol=AAPL; shadowed_derived_rows_removed=1; derived_gap_rows_retained=2
+[databento/bar-consolidation] symbol=AMZN; shadowed_derived_rows_removed=1; derived_gap_rows_retained=6
+[databento/bar-consolidation] symbol=GOOG; shadowed_derived_rows_removed=1; derived_gap_rows_retained=5
+[databento/bar-consolidation] symbol=MU; shadowed_derived_rows_removed=1; derived_gap_rows_retained=0
+[databento/bar-consolidation] symbol=NVDA; shadowed_derived_rows_removed=1; derived_gap_rows_retained=1
+[databento/bar-consolidation] symbol=SNDK; shadowed_derived_rows_removed=1; derived_gap_rows_retained=1
+[databento/bar-consolidation] symbol=COST; shadowed_derived_rows_removed=1; derived_gap_rows_retained=649
+[2026-09-06T08:22:28.137528Z] START provider.request name="CME cme_context_ohlcv-1m" sym=CME_CONTEXT src=databento/ohlcv-1m req=2026-09-03T08:10:00Z..2026-09-06T08:10:00Z try=1
+[2026-09-06T08:22:44.014776Z] END   provider.request name="CME cme_context_ohlcv-1m" sym=CME_CONTEXT src=databento/ohlcv-1m req=2026-09-03T08:10:00Z..2026-09-06T08:10:00Z try=1 elapsed=15877.3ms rows=250 op=fetched status=ok
+[2026-09-06T08:22:45.937798Z] START provider.request name="CME cme_contracts_ohlcv-1m" sym=CME_CONTRACTS src=databento/ohlcv-1m req=2026-09-03T08:10:00Z..2026-09-06T08:10:00Z try=1
+[2026-09-06T08:22:59.307335Z] END   provider.request name="CME cme_contracts_ohlcv-1m" sym=CME_CONTRACTS src=databento/ohlcv-1m req=2026-09-03T08:10:00Z..2026-09-06T08:10:00Z try=1 elapsed=13369.5ms rows=200 op=fetched status=ok
+[2026-09-06T08:23:01.225930Z] START provider.request name="CME cme_context_bbo-1m" sym=CME_CONTEXT src=databento/bbo-1m req=2026-09-06T07:10:00Z..2026-09-06T08:10:00Z try=1
+[2026-09-06T08:23:35.546699Z] END   provider.request name="CME cme_context_bbo-1m" sym=CME_CONTEXT src=databento/bbo-1m req=2026-09-06T07:10:00Z..2026-09-06T08:10:00Z try=1 elapsed=34320.8ms rows=1 op=fetched status=ok
+[2026-09-06T08:23:35.572451Z] START provider.request name="CME cme_contracts_bbo-1m" sym=CME_CONTRACTS src=databento/bbo-1m req=2026-09-06T07:10:00Z..2026-09-06T08:10:00Z try=1
+[2026-09-06T08:24:01.840563Z] END   provider.request name="CME cme_contracts_bbo-1m" sym=CME_CONTRACTS src=databento/bbo-1m req=2026-09-06T07:10:00Z..2026-09-06T08:10:00Z try=1 elapsed=26268.1ms rows=1 op=fetched status=ok
+[2026-09-06T08:24:01.856879Z] START provider.request name="CME cme_context_mbp-10" sym=CME_CONTEXT src=databento/mbp-10 req=2026-09-05T23:57:32.409625Z..2026-09-06T00:22:32.409625Z try=1
+[2026-09-06T08:24:42.261082Z] END   provider.request name="CME cme_context_mbp-10" sym=CME_CONTEXT src=databento/mbp-10 req=2026-09-05T23:57:32.409625Z..2026-09-06T00:22:32.409625Z try=1 elapsed=40404.2ms rows=1 op=fetched status=ok
+[2026-09-06T08:24:42.286110Z] START provider.request name="CME cme_contracts_mbp-10" sym=CME_CONTRACTS src=databento/mbp-10 req=2026-09-05T23:57:32.409625Z..2026-09-06T00:22:32.409625Z try=1
+[2026-09-06T08:25:18.731526Z] END   provider.request name="CME cme_contracts_mbp-10" sym=CME_CONTRACTS src=databento/mbp-10 req=2026-09-05T23:57:32.409625Z..2026-09-06T00:22:32.409625Z try=1 elapsed=36445.4ms rows=1 op=fetched status=ok
+[CME/cross-asset-context] advisory recorded: C:\DATASTORE\pools\cme\CME_CONTEXT\cross-asset-context\databento\diagnostics\CME_CONTEXT_cross-asset-context.parquet
+[2026-09-06T08:26:59.603726Z] END   loop-a.databento-watchlist src=databento elapsed=486198.4ms rows=7 op=wrote status=ok cme_mode=inline symbol_count=7
+[fmp] fetching 7 symbols with provider batching where supported...
+[AAPL/fred] fetching shared macro series...
+[schwab] fetching 7 symbols with provider batching where supported...
+[schwab] non-blocking local advisories:
+[schwab]   1 x OptionSnapshotPublicationError: Divergent duplicate option evidence is forbidden for schwab/AAPL/2026-09-04T22:45:00+00:00 (raw.parquet)
+[schwab] non-blocking local advisories:
+[schwab]   1 x OptionSnapshotPublicationError: Divergent duplicate option evidence is forbidden for schwab/AMZN/2026-09-04T20:00:00+00:00 (raw.parquet)
+[schwab] non-blocking local advisories:
+[schwab]   1 x OptionSnapshotPublicationError: Divergent duplicate option evidence is forbidden for schwab/GOOG/2026-09-04T20:00:00+00:00 (raw.parquet)
+[schwab] non-blocking local advisories:
+[schwab]   1 x OptionSnapshotPublicationError: Divergent duplicate option evidence is forbidden for schwab/MU/2026-09-04T20:45:00+00:00 (raw.parquet)
+[schwab] non-blocking local advisories:
+[schwab]   1 x OptionSnapshotPublicationError: Divergent duplicate option evidence is forbidden for schwab/NVDA/2026-09-05T00:00:00+00:00 (raw.parquet)
+[schwab] non-blocking local advisories:
+[schwab]   1 x OptionSnapshotPublicationError: Divergent duplicate option evidence is forbidden for schwab/SNDK/2026-09-04T20:15:00+00:00 (raw.parquet)
+[schwab] non-blocking local advisories:
+[schwab]   1 x OptionSnapshotPublicationError: Divergent duplicate option evidence is forbidden for schwab/COST/2026-09-04T20:00:00+00:00 (raw.parquet)
+[sec] fetching 7 symbols with provider batching where supported...
+[AAPL] changed parquet files: 40; blocking provider failures: 0; optional capture failures: 0; local advisories: 3 (databento=1, fmp=1, schwab=1)
+[2026-09-06T08:29:09.395246Z] START loop-a.fundamentals sym=AAPL src=fmp
+DUCKETS FUNDAMENTALS
+====================
+Symbol: AAPL
+Input datastore: C:\DATASTORE
+
+[quarterly] 44 rows -> C:\DATASTORE\stocks\AAPL\fundamentals\fundamental-direction\fmp\quarterly.parquet
+[quarterly/point-in-time] 48 rows -> C:\DATASTORE\stocks\AAPL\fundamentals\point-in-time\fmp\quarterly.parquet
+[annual] 19 rows -> C:\DATASTORE\stocks\AAPL\fundamentals\fundamental-direction\fmp\annual.parquet
+[annual/point-in-time] 20 rows -> C:\DATASTORE\stocks\AAPL\fundamentals\point-in-time\fmp\annual.parquet
+
+Fundamental outputs: 4; failures: 0
+[2026-09-06T08:29:10.018820Z] END   loop-a.fundamentals sym=AAPL src=fmp elapsed=623.6ms rows=? op=wrote status=ok
+[2026-09-06T08:29:10.018875Z] START loop-a.technicals sym=AAPL src=calculated
+DUCKETS TECHNICALS
+==================
+Symbol: AAPL
+Input datastore: C:\DATASTORE
+Output root: C:\DATASTORE\stocks\AAPL\technicals
+Providers: databento, schwab
+Calculations: market-regime, breakout-pressure, bar-shape, weekly-context
+
+[databento/10m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/10m/market-regime] 3159 rows -> C:\DATASTORE\stocks\AAPL\technicals\market-regime\databento\10m.parquet
+[databento/10m/breakout-pressure] 3159 rows -> C:\DATASTORE\stocks\AAPL\technicals\breakout-pressure\databento\10m.parquet
+[databento/15m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/15m/market-regime] 2088 rows -> C:\DATASTORE\stocks\AAPL\technicals\market-regime\databento\15m.parquet
+[databento/15m/breakout-pressure] 2088 rows -> C:\DATASTORE\stocks\AAPL\technicals\breakout-pressure\databento\15m.parquet
+[databento/1d] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1d/market-regime] 815 rows -> C:\DATASTORE\stocks\AAPL\technicals\market-regime\databento\1d.parquet
+[databento/1d/breakout-pressure] 815 rows -> C:\DATASTORE\stocks\AAPL\technicals\breakout-pressure\databento\1d.parquet
+[databento/1d/bar-shape] 864 rows -> C:\DATASTORE\stocks\AAPL\technicals\bar-shape\databento\1d.parquet
+[databento/1d/weekly-context] 130 rows -> C:\DATASTORE\stocks\AAPL\technicals\weekly-context\databento\1w.parquet
+[databento/1h] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1h/market-regime] 10863 rows -> C:\DATASTORE\stocks\AAPL\technicals\market-regime\databento\1h.parquet
+[databento/1h/breakout-pressure] 10863 rows -> C:\DATASTORE\stocks\AAPL\technicals\breakout-pressure\databento\1h.parquet
+[databento/1h/bar-shape] 10912 rows -> C:\DATASTORE\stocks\AAPL\technicals\bar-shape\databento\1h.parquet
+[databento/1m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1m/market-regime] 36045 rows -> C:\DATASTORE\stocks\AAPL\technicals\market-regime\databento\1m.parquet
+[databento/1m/breakout-pressure] 36045 rows -> C:\DATASTORE\stocks\AAPL\technicals\breakout-pressure\databento\1m.parquet
+[databento/1s] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1s/market-regime] 183488 rows -> C:\DATASTORE\stocks\AAPL\technicals\market-regime\databento\1s.parquet
+[databento/1s/breakout-pressure] 183488 rows -> C:\DATASTORE\stocks\AAPL\technicals\breakout-pressure\databento\1s.parquet
+[databento/30m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/30m/market-regime] 1018 rows -> C:\DATASTORE\stocks\AAPL\technicals\market-regime\databento\30m.parquet
+[databento/30m/breakout-pressure] 1018 rows -> C:\DATASTORE\stocks\AAPL\technicals\breakout-pressure\databento\30m.parquet
+[databento/5m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/5m/market-regime] 6408 rows -> C:\DATASTORE\stocks\AAPL\technicals\market-regime\databento\5m.parquet
+[databento/5m/breakout-pressure] 6408 rows -> C:\DATASTORE\stocks\AAPL\technicals\breakout-pressure\databento\5m.parquet
+[schwab/10m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/10m/market-regime] 1446 rows -> C:\DATASTORE\stocks\AAPL\technicals\market-regime\schwab\10m.parquet
+[schwab/10m/breakout-pressure] 1446 rows -> C:\DATASTORE\stocks\AAPL\technicals\breakout-pressure\schwab\10m.parquet
+[schwab/15m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/15m/market-regime] 947 rows -> C:\DATASTORE\stocks\AAPL\technicals\market-regime\schwab\15m.parquet
+[schwab/15m/breakout-pressure] 947 rows -> C:\DATASTORE\stocks\AAPL\technicals\breakout-pressure\schwab\15m.parquet
+[schwab/1d] price adjustment: SPLITS_ALREADY_REFLECTED; split events: 2
+[schwab/1d/market-regime] 4983 rows -> C:\DATASTORE\stocks\AAPL\technicals\market-regime\schwab\1d.parquet
+[schwab/1d/breakout-pressure] 4983 rows -> C:\DATASTORE\stocks\AAPL\technicals\breakout-pressure\schwab\1d.parquet
+[schwab/1m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/1m/market-regime] 13535 rows -> C:\DATASTORE\stocks\AAPL\technicals\market-regime\schwab\1m.parquet
+[schwab/1m/breakout-pressure] 13535 rows -> C:\DATASTORE\stocks\AAPL\technicals\breakout-pressure\schwab\1m.parquet
+[schwab/1mo] price adjustment: SPLITS_ALREADY_REFLECTED; split events: 2
+[schwab/1mo/market-regime] 190 rows -> C:\DATASTORE\stocks\AAPL\technicals\market-regime\schwab\1mo.parquet
+[schwab/1mo/breakout-pressure] 190 rows -> C:\DATASTORE\stocks\AAPL\technicals\breakout-pressure\schwab\1mo.parquet
+[schwab/1w] price adjustment: SPLITS_ALREADY_REFLECTED; split events: 2
+[schwab/1w/market-regime] 993 rows -> C:\DATASTORE\stocks\AAPL\technicals\market-regime\schwab\1w.parquet
+[schwab/1w/breakout-pressure] 993 rows -> C:\DATASTORE\stocks\AAPL\technicals\breakout-pressure\schwab\1w.parquet
+[schwab/30m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/30m/market-regime] 449 rows -> C:\DATASTORE\stocks\AAPL\technicals\market-regime\schwab\30m.parquet
+[schwab/30m/breakout-pressure] 449 rows -> C:\DATASTORE\stocks\AAPL\technicals\breakout-pressure\schwab\30m.parquet
+[schwab/5m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/5m/market-regime] 2938 rows -> C:\DATASTORE\stocks\AAPL\technicals\market-regime\schwab\5m.parquet
+[schwab/5m/breakout-pressure] 2938 rows -> C:\DATASTORE\stocks\AAPL\technicals\breakout-pressure\schwab\5m.parquet
+
+TECHNICALS SUMMARY
+==================
+Output parquet files: 35
+Not-ready calculations skipped: 0
+Failed calculations: 0
+[2026-09-06T08:29:35.690851Z] END   loop-a.technicals sym=AAPL src=calculated elapsed=25672.0ms rows=? op=wrote status=ok
+[2026-09-06T08:29:35.690916Z] START loop-a.signals sym=AAPL src=calculated
+DUCKETS SIGNALS
+===============
+Symbol: AAPL
+Input datastore: C:\DATASTORE
+Technical series: 8
+Quarterly fundamental rows: 44
+
+Rows: 6018
+Latest phase: TRANSITION_MIXED
+Latest setup quality: 48.00
+Output: C:\DATASTORE\stocks\AAPL\signals\fundamental-technical-lifecycle\consensus\daily.parquet
+Technical lifecycle rows: 1
+Technical lifecycle output: C:\DATASTORE\stocks\AAPL\signals\technical-lifecycle\consensus\daily.parquet
+[2026-09-06T08:29:36.043500Z] END   loop-a.signals sym=AAPL src=calculated elapsed=352.6ms rows=? op=wrote status=ok
+[AMZN] changed parquet files: 19; blocking provider failures: 0; optional capture failures: 0; local advisories: 1 (schwab=1)
+[2026-09-06T08:29:36.043568Z] START loop-a.fundamentals sym=AMZN src=fmp
+DUCKETS FUNDAMENTALS
+====================
+Symbol: AMZN
+Input datastore: C:\DATASTORE
+
+[quarterly] 44 rows -> C:\DATASTORE\stocks\AMZN\fundamentals\fundamental-direction\fmp\quarterly.parquet
+[quarterly/point-in-time] 48 rows -> C:\DATASTORE\stocks\AMZN\fundamentals\point-in-time\fmp\quarterly.parquet
+[annual] 19 rows -> C:\DATASTORE\stocks\AMZN\fundamentals\fundamental-direction\fmp\annual.parquet
+[annual/point-in-time] 20 rows -> C:\DATASTORE\stocks\AMZN\fundamentals\point-in-time\fmp\annual.parquet
+
+Fundamental outputs: 4; failures: 0
+[2026-09-06T08:29:36.624733Z] END   loop-a.fundamentals sym=AMZN src=fmp elapsed=581.2ms rows=? op=wrote status=ok
+[2026-09-06T08:29:36.624786Z] START loop-a.technicals sym=AMZN src=calculated
+DUCKETS TECHNICALS
+==================
+Symbol: AMZN
+Input datastore: C:\DATASTORE
+Output root: C:\DATASTORE\stocks\AMZN\technicals
+Providers: databento, schwab
+Calculations: market-regime, breakout-pressure, bar-shape, weekly-context
+
+[databento/10m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/10m/market-regime] 3154 rows -> C:\DATASTORE\stocks\AMZN\technicals\market-regime\databento\10m.parquet
+[databento/10m/breakout-pressure] 3154 rows -> C:\DATASTORE\stocks\AMZN\technicals\breakout-pressure\databento\10m.parquet
+[databento/15m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/15m/market-regime] 2085 rows -> C:\DATASTORE\stocks\AMZN\technicals\market-regime\databento\15m.parquet
+[databento/15m/breakout-pressure] 2085 rows -> C:\DATASTORE\stocks\AMZN\technicals\breakout-pressure\databento\15m.parquet
+[databento/1d] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1d/market-regime] 815 rows -> C:\DATASTORE\stocks\AMZN\technicals\market-regime\databento\1d.parquet
+[databento/1d/breakout-pressure] 815 rows -> C:\DATASTORE\stocks\AMZN\technicals\breakout-pressure\databento\1d.parquet
+[databento/1d/bar-shape] 864 rows -> C:\DATASTORE\stocks\AMZN\technicals\bar-shape\databento\1d.parquet
+[databento/1d/weekly-context] 130 rows -> C:\DATASTORE\stocks\AMZN\technicals\weekly-context\databento\1w.parquet
+[databento/1h] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1h/market-regime] 10738 rows -> C:\DATASTORE\stocks\AMZN\technicals\market-regime\databento\1h.parquet
+[databento/1h/breakout-pressure] 10738 rows -> C:\DATASTORE\stocks\AMZN\technicals\breakout-pressure\databento\1h.parquet
+[databento/1h/bar-shape] 10787 rows -> C:\DATASTORE\stocks\AMZN\technicals\bar-shape\databento\1h.parquet
+[databento/1m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1m/market-regime] 35283 rows -> C:\DATASTORE\stocks\AMZN\technicals\market-regime\databento\1m.parquet
+[databento/1m/breakout-pressure] 35283 rows -> C:\DATASTORE\stocks\AMZN\technicals\breakout-pressure\databento\1m.parquet
+[databento/1s] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1s/market-regime] 153831 rows -> C:\DATASTORE\stocks\AMZN\technicals\market-regime\databento\1s.parquet
+[databento/1s/breakout-pressure] 153831 rows -> C:\DATASTORE\stocks\AMZN\technicals\breakout-pressure\databento\1s.parquet
+[databento/30m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/30m/market-regime] 1017 rows -> C:\DATASTORE\stocks\AMZN\technicals\market-regime\databento\30m.parquet
+[databento/30m/breakout-pressure] 1017 rows -> C:\DATASTORE\stocks\AMZN\technicals\breakout-pressure\databento\30m.parquet
+[databento/5m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/5m/market-regime] 6379 rows -> C:\DATASTORE\stocks\AMZN\technicals\market-regime\databento\5m.parquet
+[databento/5m/breakout-pressure] 6379 rows -> C:\DATASTORE\stocks\AMZN\technicals\breakout-pressure\databento\5m.parquet
+[schwab/10m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/10m/market-regime] 1445 rows -> C:\DATASTORE\stocks\AMZN\technicals\market-regime\schwab\10m.parquet
+[schwab/10m/breakout-pressure] 1445 rows -> C:\DATASTORE\stocks\AMZN\technicals\breakout-pressure\schwab\10m.parquet
+[schwab/15m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/15m/market-regime] 947 rows -> C:\DATASTORE\stocks\AMZN\technicals\market-regime\schwab\15m.parquet
+[schwab/15m/breakout-pressure] 947 rows -> C:\DATASTORE\stocks\AMZN\technicals\breakout-pressure\schwab\15m.parquet
+[schwab/1d] price adjustment: SPLITS_ALREADY_REFLECTED; split events: 1
+[schwab/1d/market-regime] 4983 rows -> C:\DATASTORE\stocks\AMZN\technicals\market-regime\schwab\1d.parquet
+[schwab/1d/breakout-pressure] 4983 rows -> C:\DATASTORE\stocks\AMZN\technicals\breakout-pressure\schwab\1d.parquet
+[schwab/1m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/1m/market-regime] 12123 rows -> C:\DATASTORE\stocks\AMZN\technicals\market-regime\schwab\1m.parquet
+[schwab/1m/breakout-pressure] 12123 rows -> C:\DATASTORE\stocks\AMZN\technicals\breakout-pressure\schwab\1m.parquet
+[schwab/1mo] price adjustment: SPLITS_ALREADY_REFLECTED; split events: 1
+[schwab/1mo/market-regime] 190 rows -> C:\DATASTORE\stocks\AMZN\technicals\market-regime\schwab\1mo.parquet
+[schwab/1mo/breakout-pressure] 190 rows -> C:\DATASTORE\stocks\AMZN\technicals\breakout-pressure\schwab\1mo.parquet
+[schwab/1w] price adjustment: SPLITS_ALREADY_REFLECTED; split events: 1
+[schwab/1w/market-regime] 993 rows -> C:\DATASTORE\stocks\AMZN\technicals\market-regime\schwab\1w.parquet
+[schwab/1w/breakout-pressure] 993 rows -> C:\DATASTORE\stocks\AMZN\technicals\breakout-pressure\schwab\1w.parquet
+[schwab/30m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/30m/market-regime] 449 rows -> C:\DATASTORE\stocks\AMZN\technicals\market-regime\schwab\30m.parquet
+[schwab/30m/breakout-pressure] 449 rows -> C:\DATASTORE\stocks\AMZN\technicals\breakout-pressure\schwab\30m.parquet
+[schwab/5m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/5m/market-regime] 2904 rows -> C:\DATASTORE\stocks\AMZN\technicals\market-regime\schwab\5m.parquet
+[schwab/5m/breakout-pressure] 2904 rows -> C:\DATASTORE\stocks\AMZN\technicals\breakout-pressure\schwab\5m.parquet
+
+TECHNICALS SUMMARY
+==================
+Output parquet files: 35
+Not-ready calculations skipped: 0
+Failed calculations: 0
+[2026-09-06T08:30:00.442567Z] END   loop-a.technicals sym=AMZN src=calculated elapsed=23817.8ms rows=? op=wrote status=ok
+[2026-09-06T08:30:00.442629Z] START loop-a.signals sym=AMZN src=calculated
+DUCKETS SIGNALS
+===============
+Symbol: AMZN
+Input datastore: C:\DATASTORE
+Technical series: 8
+Quarterly fundamental rows: 44
+
+Rows: 6018
+Latest phase: TRANSITION_MIXED
+Latest setup quality: 47.65
+Output: C:\DATASTORE\stocks\AMZN\signals\fundamental-technical-lifecycle\consensus\daily.parquet
+Technical lifecycle rows: 1
+Technical lifecycle output: C:\DATASTORE\stocks\AMZN\signals\technical-lifecycle\consensus\daily.parquet
+[2026-09-06T08:30:00.801361Z] END   loop-a.signals sym=AMZN src=calculated elapsed=358.7ms rows=? op=wrote status=ok
+[GOOG] changed parquet files: 20; blocking provider failures: 0; optional capture failures: 0; local advisories: 1 (schwab=1)
+[2026-09-06T08:30:00.801430Z] START loop-a.fundamentals sym=GOOG src=fmp
+DUCKETS FUNDAMENTALS
+====================
+Symbol: GOOG
+Input datastore: C:\DATASTORE
+
+[quarterly] 44 rows -> C:\DATASTORE\stocks\GOOG\fundamentals\fundamental-direction\fmp\quarterly.parquet
+[quarterly/point-in-time] 48 rows -> C:\DATASTORE\stocks\GOOG\fundamentals\point-in-time\fmp\quarterly.parquet
+[annual] 19 rows -> C:\DATASTORE\stocks\GOOG\fundamentals\fundamental-direction\fmp\annual.parquet
+[annual/point-in-time] 20 rows -> C:\DATASTORE\stocks\GOOG\fundamentals\point-in-time\fmp\annual.parquet
+
+Fundamental outputs: 4; failures: 0
+[2026-09-06T08:30:01.389334Z] END   loop-a.fundamentals sym=GOOG src=fmp elapsed=587.9ms rows=? op=wrote status=ok
+[2026-09-06T08:30:01.389392Z] START loop-a.technicals sym=GOOG src=calculated
+DUCKETS TECHNICALS
+==================
+Symbol: GOOG
+Input datastore: C:\DATASTORE
+Output root: C:\DATASTORE\stocks\GOOG\technicals
+Providers: databento, schwab
+Calculations: market-regime, breakout-pressure, bar-shape, weekly-context
+
+[databento/10m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/10m/market-regime] 3150 rows -> C:\DATASTORE\stocks\GOOG\technicals\market-regime\databento\10m.parquet
+[databento/10m/breakout-pressure] 3150 rows -> C:\DATASTORE\stocks\GOOG\technicals\breakout-pressure\databento\10m.parquet
+[databento/15m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/15m/market-regime] 2081 rows -> C:\DATASTORE\stocks\GOOG\technicals\market-regime\databento\15m.parquet
+[databento/15m/breakout-pressure] 2081 rows -> C:\DATASTORE\stocks\GOOG\technicals\breakout-pressure\databento\15m.parquet
+[databento/1d] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1d/market-regime] 815 rows -> C:\DATASTORE\stocks\GOOG\technicals\market-regime\databento\1d.parquet
+[databento/1d/breakout-pressure] 815 rows -> C:\DATASTORE\stocks\GOOG\technicals\breakout-pressure\databento\1d.parquet
+[databento/1d/bar-shape] 864 rows -> C:\DATASTORE\stocks\GOOG\technicals\bar-shape\databento\1d.parquet
+[databento/1d/weekly-context] 130 rows -> C:\DATASTORE\stocks\GOOG\technicals\weekly-context\databento\1w.parquet
+[databento/1h] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1h/market-regime] 10092 rows -> C:\DATASTORE\stocks\GOOG\technicals\market-regime\databento\1h.parquet
+[databento/1h/breakout-pressure] 10092 rows -> C:\DATASTORE\stocks\GOOG\technicals\breakout-pressure\databento\1h.parquet
+[databento/1h/bar-shape] 10141 rows -> C:\DATASTORE\stocks\GOOG\technicals\bar-shape\databento\1h.parquet
+[databento/1m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1m/market-regime] 34958 rows -> C:\DATASTORE\stocks\GOOG\technicals\market-regime\databento\1m.parquet
+[databento/1m/breakout-pressure] 34958 rows -> C:\DATASTORE\stocks\GOOG\technicals\breakout-pressure\databento\1m.parquet
+[databento/1s] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1s/market-regime] 106979 rows -> C:\DATASTORE\stocks\GOOG\technicals\market-regime\databento\1s.parquet
+[databento/1s/breakout-pressure] 106979 rows -> C:\DATASTORE\stocks\GOOG\technicals\breakout-pressure\databento\1s.parquet
+[databento/30m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/30m/market-regime] 1014 rows -> C:\DATASTORE\stocks\GOOG\technicals\market-regime\databento\30m.parquet
+[databento/30m/breakout-pressure] 1014 rows -> C:\DATASTORE\stocks\GOOG\technicals\breakout-pressure\databento\30m.parquet
+[databento/5m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/5m/market-regime] 6371 rows -> C:\DATASTORE\stocks\GOOG\technicals\market-regime\databento\5m.parquet
+[databento/5m/breakout-pressure] 6371 rows -> C:\DATASTORE\stocks\GOOG\technicals\breakout-pressure\databento\5m.parquet
+[schwab/10m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/10m/market-regime] 1446 rows -> C:\DATASTORE\stocks\GOOG\technicals\market-regime\schwab\10m.parquet
+[schwab/10m/breakout-pressure] 1446 rows -> C:\DATASTORE\stocks\GOOG\technicals\breakout-pressure\schwab\10m.parquet
+[schwab/15m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/15m/market-regime] 947 rows -> C:\DATASTORE\stocks\GOOG\technicals\market-regime\schwab\15m.parquet
+[schwab/15m/breakout-pressure] 947 rows -> C:\DATASTORE\stocks\GOOG\technicals\breakout-pressure\schwab\15m.parquet
+[schwab/1d] price adjustment: SPLITS_ALREADY_REFLECTED; split events: 2
+[schwab/1d/market-regime] 4983 rows -> C:\DATASTORE\stocks\GOOG\technicals\market-regime\schwab\1d.parquet
+[schwab/1d/breakout-pressure] 4983 rows -> C:\DATASTORE\stocks\GOOG\technicals\breakout-pressure\schwab\1d.parquet
+[schwab/1m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/1m/market-regime] 12672 rows -> C:\DATASTORE\stocks\GOOG\technicals\market-regime\schwab\1m.parquet
+[schwab/1m/breakout-pressure] 12672 rows -> C:\DATASTORE\stocks\GOOG\technicals\breakout-pressure\schwab\1m.parquet
+[schwab/1mo] price adjustment: SPLITS_ALREADY_REFLECTED; split events: 2
+[schwab/1mo/market-regime] 190 rows -> C:\DATASTORE\stocks\GOOG\technicals\market-regime\schwab\1mo.parquet
+[schwab/1mo/breakout-pressure] 190 rows -> C:\DATASTORE\stocks\GOOG\technicals\breakout-pressure\schwab\1mo.parquet
+[schwab/1w] price adjustment: SPLITS_ALREADY_REFLECTED; split events: 2
+[schwab/1w/market-regime] 993 rows -> C:\DATASTORE\stocks\GOOG\technicals\market-regime\schwab\1w.parquet
+[schwab/1w/breakout-pressure] 993 rows -> C:\DATASTORE\stocks\GOOG\technicals\breakout-pressure\schwab\1w.parquet
+[schwab/30m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/30m/market-regime] 449 rows -> C:\DATASTORE\stocks\GOOG\technicals\market-regime\schwab\30m.parquet
+[schwab/30m/breakout-pressure] 449 rows -> C:\DATASTORE\stocks\GOOG\technicals\breakout-pressure\schwab\30m.parquet
+[schwab/5m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/5m/market-regime] 2926 rows -> C:\DATASTORE\stocks\GOOG\technicals\market-regime\schwab\5m.parquet
+[schwab/5m/breakout-pressure] 2926 rows -> C:\DATASTORE\stocks\GOOG\technicals\breakout-pressure\schwab\5m.parquet
+
+TECHNICALS SUMMARY
+==================
+Output parquet files: 35
+Not-ready calculations skipped: 0
+Failed calculations: 0
+[2026-09-06T08:30:23.027753Z] END   loop-a.technicals sym=GOOG src=calculated elapsed=21638.4ms rows=? op=wrote status=ok
+[2026-09-06T08:30:23.027821Z] START loop-a.signals sym=GOOG src=calculated
+DUCKETS SIGNALS
+===============
+Symbol: GOOG
+Input datastore: C:\DATASTORE
+Technical series: 8
+Quarterly fundamental rows: 44
+
+Rows: 6018
+Latest phase: EARLY_ACCUMULATION
+Latest setup quality: 38.09
+Output: C:\DATASTORE\stocks\GOOG\signals\fundamental-technical-lifecycle\consensus\daily.parquet
+Technical lifecycle rows: 1
+Technical lifecycle output: C:\DATASTORE\stocks\GOOG\signals\technical-lifecycle\consensus\daily.parquet
+[2026-09-06T08:30:23.379572Z] END   loop-a.signals sym=GOOG src=calculated elapsed=351.8ms rows=? op=wrote status=ok
+[MU] changed parquet files: 19; blocking provider failures: 0; optional capture failures: 0; local advisories: 1 (schwab=1)
+[2026-09-06T08:30:23.379642Z] START loop-a.fundamentals sym=MU src=fmp
+DUCKETS FUNDAMENTALS
+====================
+Symbol: MU
+Input datastore: C:\DATASTORE
+
+[quarterly] 44 rows -> C:\DATASTORE\stocks\MU\fundamentals\fundamental-direction\fmp\quarterly.parquet
+[quarterly/point-in-time] 48 rows -> C:\DATASTORE\stocks\MU\fundamentals\point-in-time\fmp\quarterly.parquet
+[annual] 19 rows -> C:\DATASTORE\stocks\MU\fundamentals\fundamental-direction\fmp\annual.parquet
+[annual/point-in-time] 20 rows -> C:\DATASTORE\stocks\MU\fundamentals\point-in-time\fmp\annual.parquet
+
+Fundamental outputs: 4; failures: 0
+[2026-09-06T08:30:23.964441Z] END   loop-a.fundamentals sym=MU src=fmp elapsed=584.8ms rows=? op=wrote status=ok
+[2026-09-06T08:30:23.964516Z] START loop-a.technicals sym=MU src=calculated
+DUCKETS TECHNICALS
+==================
+Symbol: MU
+Input datastore: C:\DATASTORE
+Output root: C:\DATASTORE\stocks\MU\technicals
+Providers: databento, schwab
+Calculations: market-regime, breakout-pressure, bar-shape, weekly-context
+
+[databento/10m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/10m/market-regime] 3286 rows -> C:\DATASTORE\stocks\MU\technicals\market-regime\databento\10m.parquet
+[databento/10m/breakout-pressure] 3286 rows -> C:\DATASTORE\stocks\MU\technicals\breakout-pressure\databento\10m.parquet
+[databento/15m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/15m/market-regime] 2138 rows -> C:\DATASTORE\stocks\MU\technicals\market-regime\databento\15m.parquet
+[databento/15m/breakout-pressure] 2138 rows -> C:\DATASTORE\stocks\MU\technicals\breakout-pressure\databento\15m.parquet
+[databento/1d] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1d/market-regime] 815 rows -> C:\DATASTORE\stocks\MU\technicals\market-regime\databento\1d.parquet
+[databento/1d/breakout-pressure] 815 rows -> C:\DATASTORE\stocks\MU\technicals\breakout-pressure\databento\1d.parquet
+[databento/1d/bar-shape] 864 rows -> C:\DATASTORE\stocks\MU\technicals\bar-shape\databento\1d.parquet
+[databento/1d/weekly-context] 130 rows -> C:\DATASTORE\stocks\MU\technicals\weekly-context\databento\1w.parquet
+[databento/1h] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1h/market-regime] 10393 rows -> C:\DATASTORE\stocks\MU\technicals\market-regime\databento\1h.parquet
+[databento/1h/breakout-pressure] 10393 rows -> C:\DATASTORE\stocks\MU\technicals\breakout-pressure\databento\1h.parquet
+[databento/1h/bar-shape] 10442 rows -> C:\DATASTORE\stocks\MU\technicals\bar-shape\databento\1h.parquet
+[databento/1m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1m/market-regime] 48663 rows -> C:\DATASTORE\stocks\MU\technicals\market-regime\databento\1m.parquet
+[databento/1m/breakout-pressure] 48663 rows -> C:\DATASTORE\stocks\MU\technicals\breakout-pressure\databento\1m.parquet
+[databento/1s] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1s/market-regime] 155866 rows -> C:\DATASTORE\stocks\MU\technicals\market-regime\databento\1s.parquet
+[databento/1s/breakout-pressure] 155866 rows -> C:\DATASTORE\stocks\MU\technicals\breakout-pressure\databento\1s.parquet
+[databento/30m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/30m/market-regime] 1025 rows -> C:\DATASTORE\stocks\MU\technicals\market-regime\databento\30m.parquet
+[databento/30m/breakout-pressure] 1025 rows -> C:\DATASTORE\stocks\MU\technicals\breakout-pressure\databento\30m.parquet
+[databento/5m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/5m/market-regime] 6976 rows -> C:\DATASTORE\stocks\MU\technicals\market-regime\databento\5m.parquet
+[databento/5m/breakout-pressure] 6976 rows -> C:\DATASTORE\stocks\MU\technicals\breakout-pressure\databento\5m.parquet
+[schwab/10m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/10m/market-regime] 1446 rows -> C:\DATASTORE\stocks\MU\technicals\market-regime\schwab\10m.parquet
+[schwab/10m/breakout-pressure] 1446 rows -> C:\DATASTORE\stocks\MU\technicals\breakout-pressure\schwab\10m.parquet
+[schwab/15m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/15m/market-regime] 947 rows -> C:\DATASTORE\stocks\MU\technicals\market-regime\schwab\15m.parquet
+[schwab/15m/breakout-pressure] 947 rows -> C:\DATASTORE\stocks\MU\technicals\breakout-pressure\schwab\15m.parquet
+[schwab/1d] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/1d/market-regime] 4983 rows -> C:\DATASTORE\stocks\MU\technicals\market-regime\schwab\1d.parquet
+[schwab/1d/breakout-pressure] 4983 rows -> C:\DATASTORE\stocks\MU\technicals\breakout-pressure\schwab\1d.parquet
+[schwab/1m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/1m/market-regime] 14813 rows -> C:\DATASTORE\stocks\MU\technicals\market-regime\schwab\1m.parquet
+[schwab/1m/breakout-pressure] 14813 rows -> C:\DATASTORE\stocks\MU\technicals\breakout-pressure\schwab\1m.parquet
+[schwab/1mo] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/1mo/market-regime] 190 rows -> C:\DATASTORE\stocks\MU\technicals\market-regime\schwab\1mo.parquet
+[schwab/1mo/breakout-pressure] 190 rows -> C:\DATASTORE\stocks\MU\technicals\breakout-pressure\schwab\1mo.parquet
+[schwab/1w] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/1w/market-regime] 993 rows -> C:\DATASTORE\stocks\MU\technicals\market-regime\schwab\1w.parquet
+[schwab/1w/breakout-pressure] 993 rows -> C:\DATASTORE\stocks\MU\technicals\breakout-pressure\schwab\1w.parquet
+[schwab/30m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/30m/market-regime] 449 rows -> C:\DATASTORE\stocks\MU\technicals\market-regime\schwab\30m.parquet
+[schwab/30m/breakout-pressure] 449 rows -> C:\DATASTORE\stocks\MU\technicals\breakout-pressure\schwab\30m.parquet
+[schwab/5m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/5m/market-regime] 2941 rows -> C:\DATASTORE\stocks\MU\technicals\market-regime\schwab\5m.parquet
+[schwab/5m/breakout-pressure] 2941 rows -> C:\DATASTORE\stocks\MU\technicals\breakout-pressure\schwab\5m.parquet
+
+TECHNICALS SUMMARY
+==================
+Output parquet files: 35
+Not-ready calculations skipped: 0
+Failed calculations: 0
+[2026-09-06T08:30:49.924640Z] END   loop-a.technicals sym=MU src=calculated elapsed=25960.1ms rows=? op=wrote status=ok
+[2026-09-06T08:30:49.924727Z] START loop-a.signals sym=MU src=calculated
+DUCKETS SIGNALS
+===============
+Symbol: MU
+Input datastore: C:\DATASTORE
+Technical series: 8
+Quarterly fundamental rows: 44
+
+Rows: 6018
+Latest phase: CONFIRMED_EXPANSION
+Latest setup quality: 74.89
+Output: C:\DATASTORE\stocks\MU\signals\fundamental-technical-lifecycle\consensus\daily.parquet
+Technical lifecycle rows: 1
+Technical lifecycle output: C:\DATASTORE\stocks\MU\signals\technical-lifecycle\consensus\daily.parquet
+[2026-09-06T08:30:50.281264Z] END   loop-a.signals sym=MU src=calculated elapsed=356.5ms rows=? op=wrote status=ok
+[NVDA] changed parquet files: 20; blocking provider failures: 0; optional capture failures: 0; local advisories: 1 (schwab=1)
+[2026-09-06T08:30:50.281336Z] START loop-a.fundamentals sym=NVDA src=fmp
+DUCKETS FUNDAMENTALS
+====================
+Symbol: NVDA
+Input datastore: C:\DATASTORE
+
+[quarterly] 45 rows -> C:\DATASTORE\stocks\NVDA\fundamentals\fundamental-direction\fmp\quarterly.parquet
+[quarterly/point-in-time] 49 rows -> C:\DATASTORE\stocks\NVDA\fundamentals\point-in-time\fmp\quarterly.parquet
+[annual] 19 rows -> C:\DATASTORE\stocks\NVDA\fundamentals\fundamental-direction\fmp\annual.parquet
+[annual/point-in-time] 20 rows -> C:\DATASTORE\stocks\NVDA\fundamentals\point-in-time\fmp\annual.parquet
+
+Fundamental outputs: 4; failures: 0
+[2026-09-06T08:30:50.867252Z] END   loop-a.fundamentals sym=NVDA src=fmp elapsed=585.9ms rows=? op=wrote status=ok
+[2026-09-06T08:30:50.867304Z] START loop-a.technicals sym=NVDA src=calculated
+DUCKETS TECHNICALS
+==================
+Symbol: NVDA
+Input datastore: C:\DATASTORE
+Output root: C:\DATASTORE\stocks\NVDA\technicals
+Providers: databento, schwab
+Calculations: market-regime, breakout-pressure, bar-shape, weekly-context
+
+[databento/10m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/10m/market-regime] 3195 rows -> C:\DATASTORE\stocks\NVDA\technicals\market-regime\databento\10m.parquet
+[databento/10m/breakout-pressure] 3195 rows -> C:\DATASTORE\stocks\NVDA\technicals\breakout-pressure\databento\10m.parquet
+[databento/15m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/15m/market-regime] 2102 rows -> C:\DATASTORE\stocks\NVDA\technicals\market-regime\databento\15m.parquet
+[databento/15m/breakout-pressure] 2102 rows -> C:\DATASTORE\stocks\NVDA\technicals\breakout-pressure\databento\15m.parquet
+[databento/1d] price adjustment: SPLIT_ADJUSTED; split events: 1
+[databento/1d/market-regime] 815 rows -> C:\DATASTORE\stocks\NVDA\technicals\market-regime\databento\1d.parquet
+[databento/1d/breakout-pressure] 815 rows -> C:\DATASTORE\stocks\NVDA\technicals\breakout-pressure\databento\1d.parquet
+[databento/1d/bar-shape] 864 rows -> C:\DATASTORE\stocks\NVDA\technicals\bar-shape\databento\1d.parquet
+[databento/1d/weekly-context] 130 rows -> C:\DATASTORE\stocks\NVDA\technicals\weekly-context\databento\1w.parquet
+[databento/1h] price adjustment: SPLIT_ADJUSTED; split events: 1
+[databento/1h/market-regime] 11678 rows -> C:\DATASTORE\stocks\NVDA\technicals\market-regime\databento\1h.parquet
+[databento/1h/breakout-pressure] 11678 rows -> C:\DATASTORE\stocks\NVDA\technicals\breakout-pressure\databento\1h.parquet
+[databento/1h/bar-shape] 11727 rows -> C:\DATASTORE\stocks\NVDA\technicals\bar-shape\databento\1h.parquet
+[databento/1m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1m/market-regime] 43689 rows -> C:\DATASTORE\stocks\NVDA\technicals\market-regime\databento\1m.parquet
+[databento/1m/breakout-pressure] 43689 rows -> C:\DATASTORE\stocks\NVDA\technicals\breakout-pressure\databento\1m.parquet
+[databento/1s] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1s/market-regime] 266635 rows -> C:\DATASTORE\stocks\NVDA\technicals\market-regime\databento\1s.parquet
+[databento/1s/breakout-pressure] 266635 rows -> C:\DATASTORE\stocks\NVDA\technicals\breakout-pressure\databento\1s.parquet
+[databento/30m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/30m/market-regime] 1022 rows -> C:\DATASTORE\stocks\NVDA\technicals\market-regime\databento\30m.parquet
+[databento/30m/breakout-pressure] 1022 rows -> C:\DATASTORE\stocks\NVDA\technicals\breakout-pressure\databento\30m.parquet
+[databento/5m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/5m/market-regime] 6556 rows -> C:\DATASTORE\stocks\NVDA\technicals\market-regime\databento\5m.parquet
+[databento/5m/breakout-pressure] 6556 rows -> C:\DATASTORE\stocks\NVDA\technicals\breakout-pressure\databento\5m.parquet
+[schwab/10m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/10m/market-regime] 1446 rows -> C:\DATASTORE\stocks\NVDA\technicals\market-regime\schwab\10m.parquet
+[schwab/10m/breakout-pressure] 1446 rows -> C:\DATASTORE\stocks\NVDA\technicals\breakout-pressure\schwab\10m.parquet
+[schwab/15m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/15m/market-regime] 947 rows -> C:\DATASTORE\stocks\NVDA\technicals\market-regime\schwab\15m.parquet
+[schwab/15m/breakout-pressure] 947 rows -> C:\DATASTORE\stocks\NVDA\technicals\breakout-pressure\schwab\15m.parquet
+[schwab/1d] price adjustment: SPLITS_ALREADY_REFLECTED; split events: 3
+[schwab/1d/market-regime] 4983 rows -> C:\DATASTORE\stocks\NVDA\technicals\market-regime\schwab\1d.parquet
+[schwab/1d/breakout-pressure] 4983 rows -> C:\DATASTORE\stocks\NVDA\technicals\breakout-pressure\schwab\1d.parquet
+[schwab/1m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/1m/market-regime] 14591 rows -> C:\DATASTORE\stocks\NVDA\technicals\market-regime\schwab\1m.parquet
+[schwab/1m/breakout-pressure] 14591 rows -> C:\DATASTORE\stocks\NVDA\technicals\breakout-pressure\schwab\1m.parquet
+[schwab/1mo] price adjustment: SPLITS_ALREADY_REFLECTED; split events: 3
+[schwab/1mo/market-regime] 190 rows -> C:\DATASTORE\stocks\NVDA\technicals\market-regime\schwab\1mo.parquet
+[schwab/1mo/breakout-pressure] 190 rows -> C:\DATASTORE\stocks\NVDA\technicals\breakout-pressure\schwab\1mo.parquet
+[schwab/1w] price adjustment: SPLITS_ALREADY_REFLECTED; split events: 3
+[schwab/1w/market-regime] 993 rows -> C:\DATASTORE\stocks\NVDA\technicals\market-regime\schwab\1w.parquet
+[schwab/1w/breakout-pressure] 993 rows -> C:\DATASTORE\stocks\NVDA\technicals\breakout-pressure\schwab\1w.parquet
+[schwab/30m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/30m/market-regime] 449 rows -> C:\DATASTORE\stocks\NVDA\technicals\market-regime\schwab\30m.parquet
+[schwab/30m/breakout-pressure] 449 rows -> C:\DATASTORE\stocks\NVDA\technicals\breakout-pressure\schwab\30m.parquet
+[schwab/5m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/5m/market-regime] 2941 rows -> C:\DATASTORE\stocks\NVDA\technicals\market-regime\schwab\5m.parquet
+[schwab/5m/breakout-pressure] 2941 rows -> C:\DATASTORE\stocks\NVDA\technicals\breakout-pressure\schwab\5m.parquet
+
+TECHNICALS SUMMARY
+==================
+Output parquet files: 35
+Not-ready calculations skipped: 0
+Failed calculations: 0
+[2026-09-06T08:31:22.555145Z] END   loop-a.technicals sym=NVDA src=calculated elapsed=31687.9ms rows=? op=wrote status=ok
+[2026-09-06T08:31:22.555222Z] START loop-a.signals sym=NVDA src=calculated
+DUCKETS SIGNALS
+===============
+Symbol: NVDA
+Input datastore: C:\DATASTORE
+Technical series: 8
+Quarterly fundamental rows: 45
+
+Rows: 6018
+Latest phase: CONFIRMED_EXPANSION
+Latest setup quality: 67.55
+Output: C:\DATASTORE\stocks\NVDA\signals\fundamental-technical-lifecycle\consensus\daily.parquet
+Technical lifecycle rows: 1
+Technical lifecycle output: C:\DATASTORE\stocks\NVDA\signals\technical-lifecycle\consensus\daily.parquet
+[2026-09-06T08:31:22.923902Z] END   loop-a.signals sym=NVDA src=calculated elapsed=368.7ms rows=? op=wrote status=ok
+[SNDK] changed parquet files: 19; blocking provider failures: 0; optional capture failures: 0; local advisories: 1 (schwab=1)
+[2026-09-06T08:31:22.923969Z] START loop-a.fundamentals sym=SNDK src=fmp
+DUCKETS FUNDAMENTALS
+====================
+Symbol: SNDK
+Input datastore: C:\DATASTORE
+
+[quarterly] 8 rows -> C:\DATASTORE\stocks\SNDK\fundamentals\fundamental-direction\fmp\quarterly.parquet
+[quarterly/point-in-time] 14 rows -> C:\DATASTORE\stocks\SNDK\fundamentals\point-in-time\fmp\quarterly.parquet
+[annual] 5 rows -> C:\DATASTORE\stocks\SNDK\fundamentals\fundamental-direction\fmp\annual.parquet
+[annual/point-in-time] 6 rows -> C:\DATASTORE\stocks\SNDK\fundamentals\point-in-time\fmp\annual.parquet
+
+Fundamental outputs: 4; failures: 0
+[2026-09-06T08:31:23.273004Z] END   loop-a.fundamentals sym=SNDK src=fmp elapsed=349.0ms rows=? op=wrote status=ok
+[2026-09-06T08:31:23.273055Z] START loop-a.technicals sym=SNDK src=calculated
+DUCKETS TECHNICALS
+==================
+Symbol: SNDK
+Input datastore: C:\DATASTORE
+Output root: C:\DATASTORE\stocks\SNDK\technicals
+Providers: databento, schwab
+Calculations: market-regime, breakout-pressure, bar-shape, weekly-context
+
+[databento/10m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/10m/market-regime] 3155 rows -> C:\DATASTORE\stocks\SNDK\technicals\market-regime\databento\10m.parquet
+[databento/10m/breakout-pressure] 3155 rows -> C:\DATASTORE\stocks\SNDK\technicals\breakout-pressure\databento\10m.parquet
+[databento/15m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/15m/market-regime] 2078 rows -> C:\DATASTORE\stocks\SNDK\technicals\market-regime\databento\15m.parquet
+[databento/15m/breakout-pressure] 2078 rows -> C:\DATASTORE\stocks\SNDK\technicals\breakout-pressure\databento\15m.parquet
+[databento/1d] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1d/market-regime] 337 rows -> C:\DATASTORE\stocks\SNDK\technicals\market-regime\databento\1d.parquet
+[databento/1d/breakout-pressure] 337 rows -> C:\DATASTORE\stocks\SNDK\technicals\breakout-pressure\databento\1d.parquet
+[databento/1d/bar-shape] 386 rows -> C:\DATASTORE\stocks\SNDK\technicals\bar-shape\databento\1d.parquet
+[databento/1d/weekly-context] 31 rows -> C:\DATASTORE\stocks\SNDK\technicals\weekly-context\databento\1w.parquet
+[databento/1h] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1h/market-regime] 4040 rows -> C:\DATASTORE\stocks\SNDK\technicals\market-regime\databento\1h.parquet
+[databento/1h/breakout-pressure] 4040 rows -> C:\DATASTORE\stocks\SNDK\technicals\breakout-pressure\databento\1h.parquet
+[databento/1h/bar-shape] 4089 rows -> C:\DATASTORE\stocks\SNDK\technicals\bar-shape\databento\1h.parquet
+[databento/1m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1m/market-regime] 40883 rows -> C:\DATASTORE\stocks\SNDK\technicals\market-regime\databento\1m.parquet
+[databento/1m/breakout-pressure] 40883 rows -> C:\DATASTORE\stocks\SNDK\technicals\breakout-pressure\databento\1m.parquet
+[databento/1s] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/1s/market-regime] 118320 rows -> C:\DATASTORE\stocks\SNDK\technicals\market-regime\databento\1s.parquet
+[databento/1s/breakout-pressure] 118320 rows -> C:\DATASTORE\stocks\SNDK\technicals\breakout-pressure\databento\1s.parquet
+[databento/30m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/30m/market-regime] 1009 rows -> C:\DATASTORE\stocks\SNDK\technicals\market-regime\databento\30m.parquet
+[databento/30m/breakout-pressure] 1009 rows -> C:\DATASTORE\stocks\SNDK\technicals\breakout-pressure\databento\30m.parquet
+[databento/5m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[databento/5m/market-regime] 6470 rows -> C:\DATASTORE\stocks\SNDK\technicals\market-regime\databento\5m.parquet
+[databento/5m/breakout-pressure] 6470 rows -> C:\DATASTORE\stocks\SNDK\technicals\breakout-pressure\databento\5m.parquet
+[schwab/10m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/10m/market-regime] 1446 rows -> C:\DATASTORE\stocks\SNDK\technicals\market-regime\schwab\10m.parquet
+[schwab/10m/breakout-pressure] 1446 rows -> C:\DATASTORE\stocks\SNDK\technicals\breakout-pressure\schwab\10m.parquet
+[schwab/15m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/15m/market-regime] 947 rows -> C:\DATASTORE\stocks\SNDK\technicals\market-regime\schwab\15m.parquet
+[schwab/15m/breakout-pressure] 947 rows -> C:\DATASTORE\stocks\SNDK\technicals\breakout-pressure\schwab\15m.parquet
+[schwab/1d] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/1d/market-regime] 331 rows -> C:\DATASTORE\stocks\SNDK\technicals\market-regime\schwab\1d.parquet
+[schwab/1d/breakout-pressure] 331 rows -> C:\DATASTORE\stocks\SNDK\technicals\breakout-pressure\schwab\1d.parquet
+[schwab/1m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/1m/market-regime] 14460 rows -> C:\DATASTORE\stocks\SNDK\technicals\market-regime\schwab\1m.parquet
+[schwab/1m/breakout-pressure] 14460 rows -> C:\DATASTORE\stocks\SNDK\technicals\breakout-pressure\schwab\1m.parquet
+[schwab/1mo] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/1mo/market-regime] 4 rows -> C:\DATASTORE\stocks\SNDK\technicals\market-regime\schwab\1mo.parquet
+[schwab/1mo/breakout-pressure] 4 rows -> C:\DATASTORE\stocks\SNDK\technicals\breakout-pressure\schwab\1mo.parquet
+[schwab/1w] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/1w/market-regime] 30 rows -> C:\DATASTORE\stocks\SNDK\technicals\market-regime\schwab\1w.parquet
+[schwab/1w/breakout-pressure] 30 rows -> C:\DATASTORE\stocks\SNDK\technicals\breakout-pressure\schwab\1w.parquet
+[schwab/30m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/30m/market-regime] 449 rows -> C:\DATASTORE\stocks\SNDK\technicals\market-regime\schwab\30m.parquet
+[schwab/30m/breakout-pressure] 449 rows -> C:\DATASTORE\stocks\SNDK\technicals\breakout-pressure\schwab\30m.parquet
+[schwab/5m] price adjustment: NO_SPLIT_EVENTS_IN_RANGE; split events: 0
+[schwab/5m/market-regime] 2939 rows -> C:\DATASTORE\stocks\SNDK\technicals\market-regime\schwab\5m.parquet
+[schwab/5m/breakout-pressure] 2939 rows -> C:\DATASTORE\stocks\SNDK\technicals\breakout-pressure\schwab\5m.parquet
+
+TECHNICALS SUMMARY
+==================
+Output parquet files: 35
+Not-ready calculations skipped: 0
+Failed calculations: 0
+[2026-09-06T08:31:45.731510Z] END   loop-a.technicals sym=SNDK src=calculated elapsed=22458.5ms rows=? op=wrote status=ok
+[2026-09-06T08:31:45.731573Z] START loop-a.signals sym=SNDK src=calculated
+DUCKETS SIGNALS
+===============
+Symbol: SNDK
+Input datastore: C:\DATASTORE
+Technical series: 8
+Quarterly fundamental rows: 8
+
+Rows: 458
+Latest phase: CONFIRMED_EXPANSION
+Latest setup quality: 73.26
+Output: C:\DATASTORE\stocks\SNDK\signals\fundamental-technical-lifecycle\consensus\daily.parquet
+Technical lifecycle rows: 1
+Technical lifecycle output: C:\DATASTORE\stocks\SNDK\signals\technical-lifecycle\consensus\daily.parquet
+[2026-09-06T08:31:45.946450Z] END   loop-a.signals sym=SNDK src=calculated elapsed=214.9ms rows=? op=wrote status=ok
+[COST] changed parquet files: 15; blocking provider failures: 0; optional capture failures: 0; local advisories: 1 (schwab=1)
+[2026-09-06T08:31:45.946543Z] START loop-a.fundamentals sym=COST src=fmp
+DUCKETS FUNDAMENTALS
+====================
+Symbol: COST
+Input datastore: C:\DATASTORE
+
+[quarterly] 44 rows -> C:\DATASTORE\stocks\COST\fundamentals\fundamental-direction\fmp\quarterly.parquet
+[quarterly/point-in-time] 48 rows -> C:\DATASTORE\stocks\COST\fundamentals\point-in-time\fmp\quarterly.parquet
+[annual] 19 rows -> C:\DATASTORE\stocks\COST\fundamentals\fundamental-direction\fmp\annual.parquet
+[annual/point-in-time] 20 rows -> C:\DATASTORE\stocks\COST\fundamentals\point-in-time\fmp\annual.parquet
+
+Fundamental outputs: 4; failures: 0
+[2026-09-06T08:31:46.505455Z] END   loop-a.fundamentals sym=COST src=fmp elapsed=558.9ms rows=? op=wrote status=ok
+[2026-09-06T08:31:46.505512Z] START loop-a.technicals sym=COST src=calculated
+[2026-09-06T08:31:47.455462Z] END   loop-a.technicals sym=COST src=calculated elapsed=950.0ms rows=? op=failed status=error error=ValueError
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\dev\ducketz\datafetching\orchestrate.py", line 830, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "C:\dev\ducketz\datafetching\orchestrate.py", line 264, in main
+    failures = run_cycle(
+        symbols,
+    ...<20 lines>...
+        publish_bar_readiness_from_cycle=args.once,
+    )
+  File "C:\dev\ducketz\datafetching\orchestrate.py", line 734, in run_cycle
+    technical_exit = run_technicals(technical_args)
+  File "C:\dev\ducketz\technicals\main.py", line 93, in main
+    datasets = discover_bar_datasets(
+        datastore_root,
+    ...<2 lines>...
+        timeframes=set(args.timeframes or []),
+    )
+  File "C:\dev\ducketz\technicals\parquet_io.py", line 199, in discover_bar_datasets
+    adjustment = apply_split_adjustments(
+        normalized,
+    ...<2 lines>...
+        timeframe=timeframe,
+    )
+  File "C:\dev\ducketz\technicals\split_adjustments.py", line 179, in apply_split_adjustments
+    _raise_for_unexplained_discontinuity(adjusted, provider=provider, timeframe=timeframe)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\ducketz\technicals\split_adjustments.py", line 257, in _raise_for_unexplained_discontinuity
+    raise ValueError(
+    ...<2 lines>...
+    )
+ValueError: Unexplained 0.0357143x price discontinuity in schwab/1d at 2009-03-09. Fetch FMP stock_splits data before running technicals.

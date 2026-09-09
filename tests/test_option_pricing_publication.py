@@ -8,6 +8,7 @@ import pyarrow as pa
 import pytest
 
 from ml.artifacts import file_checksum, write_manifest
+from ml.universe import PRODUCTION_OPTION_SYMBOLS
 from ml.option_pricing.publication import (
     OPTION_PRICING_PUBLICATION_VERSION,
     OPTION_PRICING_RECOVERY_AUTHORIZATION_VERSION,
@@ -373,14 +374,7 @@ def test_empty_runtime_is_route_isolated_and_writes_only_pricing_authority(
     }
     assert report["runtime_scope"] == {
         "black_scholes_baseline_symbols": ["NVDA", "GOOG", "AAPL"],
-        "finite_basis_eligibility_symbols": [
-            "AAPL",
-            "AMZN",
-            "GOOG",
-            "MU",
-            "NVDA",
-            "SNDK",
-        ],
+        "finite_basis_eligibility_symbols": list(PRODUCTION_OPTION_SYMBOLS),
         "live_symbol_count": 3,
         "live_symbols": ["NVDA", "GOOG", "AAPL"],
         "source": "configured-watchlist-or-explicit-symbols",
@@ -403,22 +397,15 @@ def test_pricing_cli_scope_defaults_to_watchlist_and_symbols_override(
 ) -> None:
     watchlist = tmp_path / "watchlist.txt"
     watchlist.write_text(
-        "# active Pricing universe\nNVDA\nGOOG\nMU\nAAPL\nSNDK\nAMZN\n",
+        "# active Pricing universe\n" + "\n".join(reversed(PRODUCTION_OPTION_SYMBOLS)) + "\n",
         encoding="utf-8",
     )
 
-    assert resolve_pricing_symbols(symbols=None, watchlist=watchlist) == (
-        "AAPL",
-        "AMZN",
-        "GOOG",
-        "MU",
-        "NVDA",
-        "SNDK",
-    )
+    assert resolve_pricing_symbols(symbols=None, watchlist=watchlist) == PRODUCTION_OPTION_SYMBOLS
     assert resolve_pricing_symbols(
-        symbols=("MU", "NVDA", "GOOG", "SNDK", "AAPL", "AMZN"),
+        symbols=tuple(reversed(PRODUCTION_OPTION_SYMBOLS)),
         watchlist=tmp_path / "not-read.txt",
-    ) == ("AAPL", "AMZN", "GOOG", "MU", "NVDA", "SNDK")
+    ) == PRODUCTION_OPTION_SYMBOLS
     with pytest.raises(ValueError, match="must contain exactly"):
         resolve_pricing_symbols(
             symbols=("NVDA", "GOOG", "AAPL"),

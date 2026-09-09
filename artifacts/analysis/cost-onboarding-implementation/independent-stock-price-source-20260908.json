@@ -1,0 +1,651 @@
+{
+  "observed_at": "2026-09-08T07:34:29.710938+00:00",
+  "authority": "LOCAL_LABEL_COVERAGE_AUDIT_NO_FITTING_OR_ACQUISITION",
+  "source_contract": {
+    "source_contract": "xnas-itch-archive-v1",
+    "dataset": "XNAS.ITCH",
+    "schema": "ohlcv-1m",
+    "price_basis": "unadjusted_market_scale",
+    "timestamp_semantics": "minute_interval_open",
+    "source_policy": "one_explicit_dataset_no_fill_no_cross_dataset_fallback",
+    "native_archive_partitions_verified": 7,
+    "partitions": [
+      {
+        "symbol": "AAPL",
+        "request_id": "abdec5dc2a24412c04f304a8",
+        "start": "2026-05-07",
+        "end": "2026-08-15",
+        "rows": 58522,
+        "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "published_at": "2026-08-18T07:49:54.455908+00:00"
+      },
+      {
+        "symbol": "AMZN",
+        "request_id": "f951500f361e6dc6f97923bc",
+        "start": "2026-05-07",
+        "end": "2026-08-15",
+        "rows": 60467,
+        "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "published_at": "2026-08-18T07:50:10.088049+00:00"
+      },
+      {
+        "symbol": "GOOG",
+        "request_id": "c7420481cba4ff3541b318a2",
+        "start": "2026-05-07",
+        "end": "2026-08-15",
+        "rows": 55752,
+        "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "published_at": "2026-08-18T07:50:17.272265+00:00"
+      },
+      {
+        "symbol": "MU",
+        "request_id": "1366ef23c235a824c203e89c",
+        "start": "2026-05-07",
+        "end": "2026-08-15",
+        "rows": 66194,
+        "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "published_at": "2026-08-18T07:50:22.368574+00:00"
+      },
+      {
+        "symbol": "NVDA",
+        "request_id": "89bc83bdfba389816330d553",
+        "start": "2026-05-07",
+        "end": "2026-08-15",
+        "rows": 64541,
+        "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "published_at": "2026-08-18T07:50:27.501411+00:00"
+      },
+      {
+        "symbol": "SNDK",
+        "request_id": "1ae8e3fe543bd3da723fc2e4",
+        "start": "2026-05-07",
+        "end": "2026-08-15",
+        "rows": 64946,
+        "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "published_at": "2026-08-18T07:50:33.098362+00:00"
+      },
+      {
+        "symbol": "COST",
+        "request_id": "3fef3163bc89bdb8071291b6",
+        "start": "2026-05-07",
+        "end": "2026-08-15",
+        "rows": 34358,
+        "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "published_at": "2026-09-06T09:24:03.949659+00:00"
+      }
+    ],
+    "by_symbol": {
+      "AAPL": {
+        "rows": 58522,
+        "first_timestamp": "2026-05-07T08:00:00+00:00",
+        "last_timestamp": "2026-08-14T23:59:00+00:00"
+      },
+      "AMZN": {
+        "rows": 60467,
+        "first_timestamp": "2026-05-07T08:00:00+00:00",
+        "last_timestamp": "2026-08-14T23:59:00+00:00"
+      },
+      "COST": {
+        "rows": 34358,
+        "first_timestamp": "2026-05-07T08:10:00+00:00",
+        "last_timestamp": "2026-08-14T23:51:00+00:00"
+      },
+      "GOOG": {
+        "rows": 55752,
+        "first_timestamp": "2026-05-07T08:00:00+00:00",
+        "last_timestamp": "2026-08-14T23:58:00+00:00"
+      },
+      "MU": {
+        "rows": 66194,
+        "first_timestamp": "2026-05-07T08:00:00+00:00",
+        "last_timestamp": "2026-08-14T23:59:00+00:00"
+      },
+      "NVDA": {
+        "rows": 64541,
+        "first_timestamp": "2026-05-07T08:00:00+00:00",
+        "last_timestamp": "2026-08-14T23:59:00+00:00"
+      },
+      "SNDK": {
+        "rows": 64946,
+        "first_timestamp": "2026-05-07T08:00:00+00:00",
+        "last_timestamp": "2026-08-14T23:59:00+00:00"
+      }
+    },
+    "files": [
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+        "bytes": 1227263,
+        "sha256": "39815ff8c7da8a6fc67a916efd995f8d8f817fc9f0137dcbba54de386781539a"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "bytes": 1681,
+        "sha256": "140410491d84ec5af0980f3059a300fb9891e199497f17ce9326f7b0a93162cb"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+        "bytes": 455,
+        "sha256": "02929908826baffd1654d1747e5cb45c91b216f76b392689a86c9d91db5c77bc"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+        "bytes": 1110489,
+        "sha256": "c40f41e4b1f2eb3acafe4ba16cb4b034db88565d6d4cf487e5f9db4f8b24cf41"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+        "bytes": 1242877,
+        "sha256": "09d3f596a72eac780f29d7c5010944f458cc3ae27397352db3d807b1ce477ec7"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "bytes": 1681,
+        "sha256": "47c0432db2813f9ec3b17ed6474e6db288e2663582ccfacccf0aa57981d95d05"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+        "bytes": 455,
+        "sha256": "3f4e08bdc7ecd814b9a0cd516edfd94b896f29d49dcffbb8dc328f1b4d9c48be"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+        "bytes": 1142324,
+        "sha256": "c62ade36ad2f3adc8e3792724c1fd9cae6ccf3f12b82bfa65c54754891157ea9"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+        "bytes": 1173690,
+        "sha256": "eee46576fd2d539e277bed9bc364404178e56dc48f35b1ce011fbe1ce98b1ed4"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "bytes": 1681,
+        "sha256": "ad802ed4dee82cd27b54a3f8ece42c9f87ca2f457f21a8a2bdc96905ae752be0"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+        "bytes": 455,
+        "sha256": "a4208b9596c43221306151c2cf164a34254d3220e788115b8ac5dee414618586"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+        "bytes": 1106823,
+        "sha256": "6d769d068fa7ee0220d8e8d3824d6199ee4ceabdc910bfed04644f6f247cc7b4"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+        "bytes": 1843950,
+        "sha256": "a63f47d03cd866abd96faeec81da7d5eef44d99d778284315d7640119127f5d1"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "bytes": 1677,
+        "sha256": "db08b10161ff56a9d04a8dfc8c3b755a089d4b426cfcd703f366cbeb612277fd"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+        "bytes": 455,
+        "sha256": "7a9b0aae23453eb83a656a709945708c9a662e99a2e037ac26fbec3162786e73"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+        "bytes": 1824566,
+        "sha256": "0c63cc4e892301cf253e81a7863c3be376a8d2b52fda4cd4b0db547774845f57"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+        "bytes": 1348194,
+        "sha256": "66706cbeae576788aa20da97e237dba7abb089b3644e31d44e5445fd62a406b2"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "bytes": 1681,
+        "sha256": "e212283a297fd8e944766d4924bc91a69a283874a2e0f31436058411e114554a"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+        "bytes": 455,
+        "sha256": "d89f97be962fd117efb7724c9251cbae3ef6893ca58f0c679a006badd4dd2dd1"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+        "bytes": 1247156,
+        "sha256": "4e57ba77f9188f8e3472a722440f41b3c79ca64e6e0622319075a9800de8e960"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+        "bytes": 1887712,
+        "sha256": "f58926b163d51cb6ffa0182fa0d2941375d88fdc7fc62cf41f03c0538ae754de"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "bytes": 1681,
+        "sha256": "21597c6422d3233f28f6bd5b2a1a298ed52b2ebc1a555ec9f61b04023598ed5f"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+        "bytes": 455,
+        "sha256": "3b1d36fc2fbe1d1a76563f3cd4223c2575c50e5fe0c7e9047a28841cb4ae65ef"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+        "bytes": 1791170,
+        "sha256": "09c49d2ec1d0665ed84a568c261443e1f7302ba23c38c0006de6612506c6d706"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+        "bytes": 818396,
+        "sha256": "a11fccd29f220c4eeac747f5919434aa501d451e3355aa0943b472c994eb5956"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+        "bytes": 1679,
+        "sha256": "550cd09eb48c5826be4f6362a1195a20661aeb632e4b9aea0f0568e53d11fa08"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+        "bytes": 455,
+        "sha256": "d08ea6d82e0fee5e3d5709f0d9093da145512fb30b6fa6c016e98d2f43b27174"
+      },
+      {
+        "path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+        "bytes": 763289,
+        "sha256": "c8c86c1fad8135d44e4f960e58e2ed44af2827b157b86bc2c3a7cf2935309912"
+      }
+    ]
+  },
+  "causal_feature_source": {
+    "path": "C:\\DATASTORE\\ml\\runs\\20260906T084041.266342Z\\samples.parquet",
+    "sha256": "1aabb78e518bb2ba07f72e334f6a388d5c496c6eadf40317c16443e5ab6d0728"
+  },
+  "target_contract": "independent-stock-targets-v1",
+  "boundary_policy": "clock-window-boundaries-within-five-minutes-v1",
+  "training_support": {
+    "1h": {
+      "rows": 5785,
+      "decision_clusters": 108,
+      "admitted_by_symbol": {
+        "AAPL": 824,
+        "AMZN": 727,
+        "COST": 694,
+        "GOOG": 645,
+        "MU": 965,
+        "NVDA": 965,
+        "SNDK": 965
+      },
+      "cost_routes": {
+        "1h@04:00": 41,
+        "1h@05:00": 39,
+        "1h@06:00": 57,
+        "1h@07:00": 66,
+        "1h@08:00": 66,
+        "1h@09:00": 66,
+        "1h@10:00": 66,
+        "1h@11:00": 66,
+        "1h@12:00": 66,
+        "1h@13:00": 48,
+        "1h@14:00": 30,
+        "1h@15:00": 30,
+        "1h@16:00": 19,
+        "1h@gap": 34
+      },
+      "partitions": {
+        "train": {
+          "rows": 3473,
+          "decision_clusters": 69,
+          "by_symbol": {
+            "AAPL": 515,
+            "AMZN": 447,
+            "COST": 411,
+            "GOOG": 384,
+            "MU": 572,
+            "NVDA": 572,
+            "SNDK": 572
+          },
+          "class_counts": {
+            "0": 2102,
+            "1": 1371
+          }
+        },
+        "selection": {
+          "rows": 689,
+          "decision_clusters": 12,
+          "by_symbol": {
+            "AAPL": 83,
+            "AMZN": 69,
+            "COST": 97,
+            "GOOG": 65,
+            "MU": 125,
+            "NVDA": 125,
+            "SNDK": 125
+          },
+          "class_counts": {
+            "0": 420,
+            "1": 269
+          }
+        },
+        "calibration": {
+          "rows": 764,
+          "decision_clusters": 12,
+          "by_symbol": {
+            "AAPL": 69,
+            "AMZN": 111,
+            "COST": 84,
+            "GOOG": 125,
+            "MU": 125,
+            "NVDA": 125,
+            "SNDK": 125
+          },
+          "class_counts": {
+            "0": 457,
+            "1": 307
+          }
+        },
+        "assessment": {
+          "rows": 814,
+          "decision_clusters": 13,
+          "by_symbol": {
+            "AAPL": 140,
+            "AMZN": 98,
+            "COST": 101,
+            "GOOG": 69,
+            "MU": 140,
+            "NVDA": 140,
+            "SNDK": 126
+          },
+          "class_counts": {
+            "0": 484,
+            "1": 330
+          }
+        }
+      }
+    },
+    "4h": {
+      "rows": 1647,
+      "decision_clusters": 108,
+      "admitted_by_symbol": {
+        "AAPL": 235,
+        "AMZN": 207,
+        "COST": 194,
+        "GOOG": 186,
+        "MU": 275,
+        "NVDA": 275,
+        "SNDK": 275
+      },
+      "cost_routes": {
+        "4h@04:00": 59,
+        "4h@08:00": 66,
+        "4h@12:00": 39,
+        "4h@16:00": 30
+      },
+      "partitions": {
+        "train": {
+          "rows": 991,
+          "decision_clusters": 69,
+          "by_symbol": {
+            "AAPL": 147,
+            "AMZN": 128,
+            "COST": 117,
+            "GOOG": 110,
+            "MU": 163,
+            "NVDA": 163,
+            "SNDK": 163
+          },
+          "class_counts": {
+            "0": 541,
+            "1": 450
+          }
+        },
+        "selection": {
+          "rows": 189,
+          "decision_clusters": 12,
+          "by_symbol": {
+            "AAPL": 23,
+            "AMZN": 19,
+            "COST": 23,
+            "GOOG": 19,
+            "MU": 35,
+            "NVDA": 35,
+            "SNDK": 35
+          },
+          "class_counts": {
+            "0": 103,
+            "1": 86
+          }
+        },
+        "calibration": {
+          "rows": 215,
+          "decision_clusters": 12,
+          "by_symbol": {
+            "AAPL": 19,
+            "AMZN": 31,
+            "COST": 25,
+            "GOOG": 35,
+            "MU": 35,
+            "NVDA": 35,
+            "SNDK": 35
+          },
+          "class_counts": {
+            "0": 124,
+            "1": 91
+          }
+        },
+        "assessment": {
+          "rows": 227,
+          "decision_clusters": 13,
+          "by_symbol": {
+            "AAPL": 39,
+            "AMZN": 27,
+            "COST": 28,
+            "GOOG": 20,
+            "MU": 39,
+            "NVDA": 39,
+            "SNDK": 35
+          },
+          "class_counts": {
+            "0": 115,
+            "1": 112
+          }
+        }
+      }
+    },
+    "1d": {
+      "rows": 1967,
+      "decision_clusters": 114,
+      "admitted_by_symbol": {
+        "AAPL": 295,
+        "AMZN": 259,
+        "COST": 148,
+        "GOOG": 232,
+        "MU": 345,
+        "NVDA": 345,
+        "SNDK": 343
+      },
+      "cost_routes": {
+        "1d@D+1": 31,
+        "1d@D+2": 30,
+        "1d@D+3": 29,
+        "1d@D+4": 29,
+        "1d@D+5": 29
+      },
+      "partitions": {
+        "train": {
+          "rows": 1115,
+          "decision_clusters": 71,
+          "by_symbol": {
+            "AAPL": 170,
+            "AMZN": 156,
+            "COST": 93,
+            "GOOG": 128,
+            "MU": 190,
+            "NVDA": 190,
+            "SNDK": 188
+          },
+          "class_counts": {
+            "0": 624,
+            "1": 491
+          }
+        },
+        "selection": {
+          "rows": 228,
+          "decision_clusters": 13,
+          "by_symbol": {
+            "AAPL": 32,
+            "AMZN": 17,
+            "COST": 32,
+            "GOOG": 12,
+            "MU": 45,
+            "NVDA": 45,
+            "SNDK": 45
+          },
+          "class_counts": {
+            "0": 115,
+            "1": 113
+          }
+        },
+        "calibration": {
+          "rows": 230,
+          "decision_clusters": 14,
+          "by_symbol": {
+            "AAPL": 21,
+            "AMZN": 35,
+            "COST": 14,
+            "GOOG": 40,
+            "MU": 40,
+            "NVDA": 40,
+            "SNDK": 40
+          },
+          "class_counts": {
+            "0": 140,
+            "1": 90
+          }
+        },
+        "assessment": {
+          "rows": 211,
+          "decision_clusters": 14,
+          "by_symbol": {
+            "AAPL": 40,
+            "AMZN": 26,
+            "COST": 2,
+            "GOOG": 23,
+            "MU": 40,
+            "NVDA": 40,
+            "SNDK": 40
+          },
+          "class_counts": {
+            "0": 107,
+            "1": 104
+          }
+        }
+      }
+    },
+    "1w": {
+      "rows": 371,
+      "decision_clusters": 103,
+      "admitted_by_symbol": {
+        "AAPL": 55,
+        "AMZN": 49,
+        "COST": 28,
+        "GOOG": 44,
+        "MU": 65,
+        "NVDA": 65,
+        "SNDK": 65
+      },
+      "cost_routes": {
+        "1w@D+5": 28
+      },
+      "partitions": {
+        "train": {
+          "rows": 206,
+          "decision_clusters": 60,
+          "by_symbol": {
+            "AAPL": 31,
+            "AMZN": 29,
+            "COST": 18,
+            "GOOG": 23,
+            "MU": 35,
+            "NVDA": 35,
+            "SNDK": 35
+          },
+          "class_counts": {
+            "0": 109,
+            "1": 97
+          }
+        },
+        "selection": {
+          "rows": 27,
+          "decision_clusters": 7,
+          "by_symbol": {
+            "AAPL": 4,
+            "AMZN": 1,
+            "COST": 3,
+            "GOOG": 1,
+            "MU": 6,
+            "NVDA": 6,
+            "SNDK": 6
+          },
+          "class_counts": {
+            "0": 13,
+            "1": 14
+          }
+        },
+        "calibration": {
+          "rows": 22,
+          "decision_clusters": 6,
+          "by_symbol": {
+            "AAPL": 3,
+            "AMZN": 3,
+            "GOOG": 4,
+            "MU": 4,
+            "NVDA": 4,
+            "SNDK": 4
+          },
+          "class_counts": {
+            "0": 15,
+            "1": 7
+          }
+        },
+        "assessment": {
+          "rows": 44,
+          "decision_clusters": 12,
+          "by_symbol": {
+            "AAPL": 8,
+            "AMZN": 6,
+            "COST": 1,
+            "GOOG": 5,
+            "MU": 8,
+            "NVDA": 8,
+            "SNDK": 8
+          },
+          "class_counts": {
+            "0": 20,
+            "1": 24
+          }
+        }
+      }
+    }
+  },
+  "root_cause": "The existing canonical loader read only EQUS.MINI continuation prices, while verified single-dataset XNAS.ITCH archive prices were separately retained and richer in extended sessions. Source switching must be explicit because these are different venue coverage datasets.",
+  "implementation": "Explicit xnas-itch-archive-v1 selects only XNAS minute partitions, verifies native receipts plus normalized/raw payloads, deduplicates identical overlaps, rejects differing prices, binds source identity into immutable cohorts/forecasts/evaluations; default canonical source unchanged.",
+  "acquisition_cost": {
+    "this_audit_dollars": 0,
+    "provider_calls": 0,
+    "existing_archive_read_cost": 0,
+    "new_requests_not_quoted_by_this_agent": true,
+    "saved_standard_plan_policy": "US_EQUITIES L0 OHLCV 8years; bounded bootstrap100days. Current account-specific quote must be obtained by native metadata.get_cost and required0 before acquisition."
+  },
+  "official_sources": [
+    {
+      "url": "https://databento.com/docs/venues-and-datasets/equs-mini",
+      "supports": "EQUS.MINI derived multi-venue top-of-book dataset, OHLCV aggregated acrosscomponentvenues."
+    },
+    {
+      "url": "https://databento.com/docs/examples/equities/equities-introduction",
+      "supports": "XNAS.ITCH identifies NasdaqTotalViewITCH; differsfromEQUS.MINI."
+    },
+    {
+      "url": "https://databento.com/docs/api-reference-historical",
+      "supports": "metadata.get_cost incorporatesflat-rateplandiscounts; quote beforeacquisition."
+    }
+  ]
+}

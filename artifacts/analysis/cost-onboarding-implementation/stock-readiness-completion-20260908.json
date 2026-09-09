@@ -1,0 +1,44 @@
+{
+  "completed_at": "2026-09-08T09:51:37.689803+00:00",
+  "status": "READY",
+  "stock_symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST"
+  ],
+  "stock_forecast_horizons_qualified": [
+    "1h",
+    "4h",
+    "1d",
+    "1w"
+  ],
+  "qualified_execution_windows": 133,
+  "sizing_policy": "fixed-horizon-budget-v1",
+  "learned_sizing": "RESEARCH; not used by selected strategy",
+  "startup_local": "2026-09-08 03:55 America/Los_Angeles",
+  "entry_batches": "HH:01 for04 through16, except13:06",
+  "current_bullish_entry_windows": 0,
+  "tests": {
+    "passed": 137,
+    "warnings": 20,
+    "warning_type": "joblib/NumPy deprecation",
+    "seconds": 12.77
+  },
+  "native_session_rehearsal": "PASS;13batches;0orders;0learnerloads;production unchanged",
+  "real_broker_checks": "PASS; native ledger reconciled; both controls active;7quote inputs;stable account",
+  "no_real_orders_or_cancellations_performed": true,
+  "supervision": {
+    "status": "RELEASED",
+    "owner_token": "bed5a41b-0eab-478d-a1b1-b92f4489e766",
+    "updated_at": "2026-09-08T09:50:43.749003+00:00",
+    "expires_at": "2026-09-08T09:50:43.749003+00:00"
+  },
+  "evidence": [
+    "stock-execution-ready-20260908.json",
+    "fixed-budget-session-rehearsal-20260908-final.json"
+  ]
+}

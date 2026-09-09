@@ -1,0 +1,19 @@
+from __future__ import annotations
+
+BACKGROUND = "#08111f"
+SURFACE = "#101b2d"
+SURFACE_ALT = "#17253a"
+TEXT = "#e8eef7"
+MUTED_TEXT = "#91a0b5"
+ACCENT = "#1687e8"
+BORDER = "#2a3b52"
+TABLE_FIELD = "#0c1728"
+HEADER_HOVER = "#203a5a"
+HEADER_HOVER_TEXT = TEXT
+SUCCESS = "#18d36b"
+DANGER = "#ff4d52"
+WARNING = "#f59e0b"
+FIELD_BACKGROUND = "#0b1728"
+FIELD_TEXT = TEXT
+BODY_FONT = ("Segoe UI", 10)
+MUTED_LABEL_FONT = ("Segoe UI", 9)

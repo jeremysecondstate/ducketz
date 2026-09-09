@@ -1,0 +1,230 @@
+{
+  "observed_at": "2026-09-08T07:38:26.448945+00:00",
+  "authority": "READ_ONLY_LABEL_RECONSTRUCTION_NO_FIT",
+  "source_contract": "xnas-itch-archive-v1",
+  "dataset": "XNAS.ITCH",
+  "verified_partitions": 14,
+  "source_row_inventory": {
+    "AAPL": {
+      "rows": 71066,
+      "first_timestamp": "2026-05-07T08:00:00+00:00",
+      "last_timestamp": "2026-09-04T23:59:00+00:00"
+    },
+    "AMZN": {
+      "rows": 73238,
+      "first_timestamp": "2026-05-07T08:00:00+00:00",
+      "last_timestamp": "2026-09-04T23:59:00+00:00"
+    },
+    "COST": {
+      "rows": 41630,
+      "first_timestamp": "2026-05-07T08:10:00+00:00",
+      "last_timestamp": "2026-09-04T23:59:00+00:00"
+    },
+    "GOOG": {
+      "rows": 66696,
+      "first_timestamp": "2026-05-07T08:00:00+00:00",
+      "last_timestamp": "2026-09-04T23:59:00+00:00"
+    },
+    "MU": {
+      "rows": 80485,
+      "first_timestamp": "2026-05-07T08:00:00+00:00",
+      "last_timestamp": "2026-09-04T23:59:00+00:00"
+    },
+    "NVDA": {
+      "rows": 78358,
+      "first_timestamp": "2026-05-07T08:00:00+00:00",
+      "last_timestamp": "2026-09-04T23:59:00+00:00"
+    },
+    "SNDK": {
+      "rows": 78955,
+      "first_timestamp": "2026-05-07T08:00:00+00:00",
+      "last_timestamp": "2026-09-04T23:59:00+00:00"
+    }
+  },
+  "groups": {
+    "1h": {
+      "rows": 6695,
+      "decision_clusters": 124,
+      "admitted_by_symbol": {
+        "AAPL": 950,
+        "AMZN": 853,
+        "COST": 800,
+        "GOOG": 736,
+        "MU": 1119,
+        "NVDA": 1118,
+        "SNDK": 1119
+      },
+      "cost_fitted_by_route": {
+        "1h@04:00": 35,
+        "1h@05:00": 34,
+        "1h@06:00": 48,
+        "1h@07:00": 56,
+        "1h@08:00": 56,
+        "1h@09:00": 56,
+        "1h@10:00": 56,
+        "1h@11:00": 56,
+        "1h@12:00": 56,
+        "1h@13:00": 41,
+        "1h@14:00": 24,
+        "1h@15:00": 26,
+        "1h@16:00": 17,
+        "1h@gap": 32
+      },
+      "partition_rows": {
+        "train": 4077,
+        "selection": 868,
+        "calibration": 823,
+        "assessment": 896
+      },
+      "partition_class_counts": {
+        "train": {
+          "0": 2470,
+          "1": 1607
+        },
+        "selection": {
+          "0": 521,
+          "1": 347
+        },
+        "calibration": {
+          "0": 484,
+          "1": 339
+        },
+        "assessment": {
+          "0": 589,
+          "1": 307
+        }
+      }
+    },
+    "4h": {
+      "rows": 1905,
+      "decision_clusters": 124,
+      "admitted_by_symbol": {
+        "AAPL": 271,
+        "AMZN": 243,
+        "COST": 224,
+        "GOOG": 210,
+        "MU": 319,
+        "NVDA": 319,
+        "SNDK": 319
+      },
+      "cost_fitted_by_route": {
+        "4h@04:00": 51,
+        "4h@08:00": 56,
+        "4h@12:00": 32,
+        "4h@16:00": 27
+      },
+      "partition_rows": {
+        "train": 1159,
+        "selection": 245,
+        "calibration": 231,
+        "assessment": 249
+      },
+      "partition_class_counts": {
+        "train": {
+          "0": 630,
+          "1": 529
+        },
+        "selection": {
+          "0": 142,
+          "1": 103
+        },
+        "calibration": {
+          "0": 115,
+          "1": 116
+        },
+        "assessment": {
+          "0": 150,
+          "1": 99
+        }
+      }
+    },
+    "1d": {
+      "rows": 2310,
+      "decision_clusters": 130,
+      "admitted_by_symbol": {
+        "AAPL": 346,
+        "AMZN": 309,
+        "COST": 177,
+        "GOOG": 262,
+        "MU": 406,
+        "NVDA": 406,
+        "SNDK": 404
+      },
+      "cost_fitted_by_route": {
+        "1d@D+1": 30,
+        "1d@D+2": 29,
+        "1d@D+3": 27,
+        "1d@D+4": 27,
+        "1d@D+5": 27
+      },
+      "partition_rows": {
+        "train": 1330,
+        "selection": 285,
+        "calibration": 242,
+        "assessment": 287
+      },
+      "partition_class_counts": {
+        "train": {
+          "0": 727,
+          "1": 603
+        },
+        "selection": {
+          "0": 182,
+          "1": 103
+        },
+        "calibration": {
+          "0": 121,
+          "1": 121
+        },
+        "assessment": {
+          "0": 153,
+          "1": 134
+        }
+      }
+    },
+    "1w": {
+      "rows": 450,
+      "decision_clusters": 123,
+      "admitted_by_symbol": {
+        "AAPL": 67,
+        "AMZN": 60,
+        "COST": 35,
+        "GOOG": 51,
+        "MU": 79,
+        "NVDA": 79,
+        "SNDK": 79
+      },
+      "cost_fitted_by_route": {
+        "1w@D+5": 25
+      },
+      "partition_rows": {
+        "train": 253,
+        "selection": 35,
+        "calibration": 38,
+        "assessment": 57
+      },
+      "partition_class_counts": {
+        "train": {
+          "0": 129,
+          "1": 124
+        },
+        "selection": {
+          "0": 23,
+          "1": 12
+        },
+        "calibration": {
+          "0": 19,
+          "1": 19
+        },
+        "assessment": {
+          "0": 31,
+          "1": 26
+        }
+      }
+    }
+  },
+  "execution_symbol_routes_without_fitted_targets": [],
+  "execution_symbol_routes_requested": 133,
+  "all_133_have_fitted_targets": true,
+  "new_acquisition_receipt": "C:\\DATASTORE\\ml\\stock-target-history-runs\\20260908T073612.583929Z\\receipt.json"
+}

@@ -1,0 +1,74 @@
+{
+  "verified_at": "2026-09-08T07:51:33.531710+00:00",
+  "stock_source_pin": {
+    "run_path": "ml/nightly-gameplan-runs/20260908T073927.460474Z",
+    "receipt_sha256": "c604345d7e8d08e55868aa062a128ee8c669f4c457ad70b9a21ebbe3caa849c6",
+    "action_date": "2026-09-08"
+  },
+  "sizing_model_run": "ml/stock-trader-model-runs/20260908T074538.008438Z",
+  "sizing_model_type": "IndependentEnrichmentModel",
+  "sizing_model_fingerprint": "f6a63a9d6e67e8cb7671a1a00ce354a6e12509fdb34c753da8ebe3b2cc953cdd",
+  "sizing_models": {
+    "1d": {
+      "status": "FITTED",
+      "admitted_execution_rows": 458,
+      "fitted_scopes": 7,
+      "qualified_scopes": 0,
+      "symbols_without_targets": [],
+      "reasons": {
+        "INSUFFICIENT_EXACT_SCOPE_EVIDENCE": 4,
+        "HELD_OUT_QUALITY_NOT_PROMOTED": 3
+      }
+    },
+    "1h": {
+      "status": "FITTED",
+      "admitted_execution_rows": 6240,
+      "fitted_scopes": 91,
+      "qualified_scopes": 0,
+      "symbols_without_targets": [],
+      "reasons": {
+        "INSUFFICIENT_EXACT_SCOPE_EVIDENCE": 46,
+        "HELD_OUT_QUALITY_NOT_PROMOTED": 45
+      }
+    },
+    "1w": {
+      "status": "FITTED",
+      "admitted_execution_rows": 450,
+      "fitted_scopes": 21,
+      "qualified_scopes": 0,
+      "symbols_without_targets": [],
+      "reasons": {
+        "INSUFFICIENT_EXACT_SCOPE_EVIDENCE": 21
+      }
+    },
+    "4h": {
+      "status": "FITTED",
+      "admitted_execution_rows": 1905,
+      "fitted_scopes": 42,
+      "qualified_scopes": 0,
+      "symbols_without_targets": [],
+      "reasons": {
+        "INSUFFICIENT_EXACT_SCOPE_EVIDENCE": 31,
+        "HELD_OUT_QUALITY_NOT_PROMOTED": 11
+      }
+    }
+  },
+  "simulation_clock": "2026-09-08T10:59Z",
+  "execute": false,
+  "broker_runner_forbidden": true,
+  "sleep_forbidden": true,
+  "session_preflight": {
+    "status": "NOOP_ENRICHMENT_NOT_QUALIFIED",
+    "calls": 0,
+    "orders_submitted": 0,
+    "enrichment_readiness": {
+      "status": "NOT_READY",
+      "reason": "ENRICHMENT_INDEPENDENT_TARGET_CONTRACT_NOT_QUALIFIED",
+      "model_fingerprint": "f6a63a9d6e67e8cb7671a1a00ce354a6e12509fdb34c753da8ebe3b2cc953cdd",
+      "supported_horizons": [],
+      "qualified_target_contracts": []
+    }
+  },
+  "promoted_directional_signals_at_0401": 6,
+  "orders_placed": 0
+}

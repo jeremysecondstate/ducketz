@@ -1,0 +1,35 @@
+{
+  "status": "MODEL_STAGED",
+  "run_directory": "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260906T090205.483129Z",
+  "production_pointer_preserved": true,
+  "training_report": {
+    "effective_training_rows": 188,
+    "excluded_row_count": 98,
+    "live_adaptation_weight": 2,
+    "loop_b_bootstrap_rows": 6,
+    "loop_b_bootstrap_sessions": 1,
+    "loop_b_bootstrap_target_windows": 1,
+    "magnitude_scale": 0.017697530864197675,
+    "mean_direction_aligned_net_return": -0.004209307073066344,
+    "median_direction_aligned_net_return": -0.0020537519957425357,
+    "model_fingerprint": "5b9dea003abddc8f129848a64fda599b2bcecc6997da1f45ba44a40f5ab242c1",
+    "positive_outcome_rate": 0.2777777777777778,
+    "row_count": 90,
+    "rows_without_configured_symbol": 0,
+    "status": "MODEL_FIT",
+    "symbol_row_counts": {
+      "AAPL": 11,
+      "AMZN": 11,
+      "COST": 0,
+      "GOOG": 15,
+      "MU": 19,
+      "NVDA": 19,
+      "SNDK": 15
+    },
+    "symbols_without_mature_outcomes": [
+      "COST"
+    ],
+    "trained_at": "2026-09-06T09:02:05.483129+00:00",
+    "unique_live_adaptation_rows": 91
+  }
+}

@@ -11,6 +11,7 @@ fallback, with the ticker also shown as text.
 | --- | --- | --- |
 | AAPL | `aapl.png` | `docs/logos-icons/appl-logo.png` |
 | AMZN | `amzn.png` | `docs/logos-icons/amzn-logo.png` |
+| COST | `cost.png` | `docs/logos-icons/costco-logo.png` |
 | EWY | `ewy.png` | `docs/logos-icons/ewy-logo.png` |
 | GOOG, GOOGL | `goog.png` | `docs/logos-icons/goog-logo.png` |
 | MRNA | `mrna.png` | `docs/logos-icons/mrna-logo.png` |
@@ -23,8 +24,8 @@ fallback, with the ticker also shown as text.
 | VXUS | `vxus.png` | `docs/logos-icons/vxus-logo.png` |
 | ZETA | `zeta.png` | `docs/logos-icons/zeta-logo.png` |
 
-These 512x512 transparent PNGs were supplied by the project owner on
-2026-08-30 and 2026-08-31 for local display in this project. This provenance
+These 512x512 PNGs were supplied by the project owner on
+2026-08-30, 2026-08-31, and 2026-09-06 for local display in this project. This provenance
 record does not grant or independently verify trademark or redistribution
 rights; confirm those rights before redistributing the image files.
 

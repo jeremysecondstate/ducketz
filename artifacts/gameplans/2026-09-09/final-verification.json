@@ -1,0 +1,375 @@
+{
+  "verified_at": "2026-09-09T04:33:40.843890+00:00",
+  "status": "COMPLETE_WITH_RESEARCH_LIMITATIONS",
+  "action_date": "2026-09-09",
+  "publication_run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260909T040455.436642Z",
+  "pointer_manifest_receipt_outputs": "VERIFIED",
+  "receipt_sha256": "eb2490d3ea8ffe2ce778c6daecf55db301b01f08f8b94ca09e904b1fd9402656",
+  "overnight_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260909T040352.061858Z",
+  "completed_at": "2026-09-09T04:05:58.384029+00:00",
+  "original_deadline": "2026-09-09T11:00:00+00:00",
+  "resume_chain": [
+    {
+      "run": "C:\\DATASTORE\\ml\\overnight-runs\\20260909T040352.061858Z",
+      "status": "COMPLETE",
+      "report_and_logs_verified": true,
+      "stages": [
+        {
+          "command": [
+            "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+            "-u",
+            "-m",
+            "ml.stock_target_history",
+            "--datastore-target",
+            "pc",
+            "--execute"
+          ],
+          "elapsed_seconds": 42.737054900004296,
+          "error": null,
+          "exit_code": 0,
+          "finished_at": "2026-09-09T04:04:34.817610+00:00",
+          "log_path": "stock_target_history.log",
+          "stage": "stock_target_history",
+          "started_at": "2026-09-09T04:03:52.080564+00:00",
+          "status": "COMPLETE"
+        },
+        {
+          "command": [
+            "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+            "-u",
+            "-m",
+            "ml.gameplan_evaluation",
+            "--datastore-target",
+            "pc"
+          ],
+          "elapsed_seconds": 19.298035699990578,
+          "error": null,
+          "exit_code": 0,
+          "finished_at": "2026-09-09T04:04:54.115896+00:00",
+          "log_path": "gameplan_evaluation.log",
+          "stage": "gameplan_evaluation",
+          "started_at": "2026-09-09T04:04:34.817861+00:00",
+          "status": "COMPLETE"
+        },
+        {
+          "command": [
+            "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+            "-u",
+            "-m",
+            "ml.nightly_gameplan",
+            "--datastore-target",
+            "pc",
+            "--once",
+            "--stock-only",
+            "--independent-stock-horizons",
+            "--stock-price-source",
+            "xnas-itch-archive-v1"
+          ],
+          "elapsed_seconds": 44.8825424000097,
+          "error": null,
+          "exit_code": 0,
+          "finished_at": "2026-09-09T04:05:38.998762+00:00",
+          "log_path": "gameplan_publication.log",
+          "stage": "gameplan_publication",
+          "started_at": "2026-09-09T04:04:54.116230+00:00",
+          "status": "COMPLETE"
+        },
+        {
+          "command": [
+            "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+            "-u",
+            "-m",
+            "ml.stock_trader.independent_training",
+            "--datastore-target",
+            "pc",
+            "--gameplan-run",
+            "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260909T040455.436642Z"
+          ],
+          "elapsed_seconds": 19.384838600002695,
+          "error": null,
+          "exit_code": 0,
+          "finished_at": "2026-09-09T04:05:58.383807+00:00",
+          "log_path": "stock_enrichment_training.log",
+          "stage": "stock_enrichment_training",
+          "started_at": "2026-09-09T04:05:38.998978+00:00",
+          "status": "COMPLETE"
+        }
+      ]
+    },
+    {
+      "run": "C:\\DATASTORE\\ml\\overnight-runs\\20260909T021752.918148Z",
+      "status": "FAILED",
+      "report_and_logs_verified": true,
+      "stages": [
+        {
+          "command": [
+            "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+            "-u",
+            "-m",
+            "ml.stock_target_history",
+            "--datastore-target",
+            "pc",
+            "--execute"
+          ],
+          "elapsed_seconds": 13.426431199972285,
+          "error": "RuntimeError: stock_target_history exited with code 1; inspect C:\\DATASTORE\\ml\\overnight-runs\\20260909T021752.918148Z\\stock_target_history.log",
+          "exit_code": 1,
+          "finished_at": "2026-09-09T02:18:06.355758+00:00",
+          "log_path": "stock_target_history.log",
+          "stage": "stock_target_history",
+          "started_at": "2026-09-09T02:17:52.929332+00:00",
+          "status": "FAILED"
+        }
+      ]
+    },
+    {
+      "run": "C:\\DATASTORE\\ml\\overnight-runs\\20260909T000738.310315Z",
+      "status": "FAILED",
+      "report_and_logs_verified": true,
+      "stages": [
+        {
+          "command": [
+            "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+            "-u",
+            "-m",
+            "datafetching.orchestrate",
+            "--datastore-target",
+            "pc",
+            "--watchlist",
+            "C:\\dev\\ducketz\\datafetching\\watchlist.txt",
+            "--providers",
+            "databento",
+            "fmp",
+            "fred",
+            "schwab",
+            "sec",
+            "--cme-mode",
+            "inline",
+            "--options-mode",
+            "inline",
+            "--opra-history-mode",
+            "daily",
+            "--opra-history-utc-hour",
+            "0",
+            "--opra-history-max-estimated-download-bytes",
+            "20000000000",
+            "--opra-history-max-estimated-cost-usd",
+            "1",
+            "--opra-history-max-catchup-days",
+            "30",
+            "--bar-readiness-recovery-timeout-seconds",
+            "420",
+            "--bar-readiness-recovery-poll-seconds",
+            "10",
+            "--once"
+          ],
+          "elapsed_seconds": 4238.593783999997,
+          "error": null,
+          "exit_code": 0,
+          "finished_at": "2026-09-09T01:18:16.997871+00:00",
+          "log_path": "loop_a_close_fetch.log",
+          "stage": "loop_a_close_fetch",
+          "started_at": "2026-09-09T00:07:38.404093+00:00",
+          "status": "COMPLETE"
+        },
+        {
+          "command": [
+            "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+            "-u",
+            "-m",
+            "ml.prediction_runtime",
+            "--datastore-target",
+            "pc",
+            "--watchlist",
+            "C:\\dev\\ducketz\\datafetching\\watchlist.txt",
+            "--provider",
+            "databento",
+            "--horizons",
+            "1h",
+            "4h",
+            "1d",
+            "1w",
+            "--feature-profile",
+            "loop-a-all-bsgp-active-v3",
+            "--model-family",
+            "logistic",
+            "--calibration",
+            "platt",
+            "--round-trip-cost",
+            "0.001",
+            "--require-all-routes",
+            "--once"
+          ],
+          "elapsed_seconds": 1206.9271325000154,
+          "error": null,
+          "exit_code": 0,
+          "finished_at": "2026-09-09T01:38:23.925075+00:00",
+          "log_path": "loop_b_directional_generation.log",
+          "stage": "loop_b_directional_generation",
+          "started_at": "2026-09-09T01:18:16.997952+00:00",
+          "status": "COMPLETE"
+        },
+        {
+          "command": [
+            "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+            "-u",
+            "-m",
+            "ml.stock_target_history",
+            "--datastore-target",
+            "pc",
+            "--execute"
+          ],
+          "elapsed_seconds": 6.702073599997675,
+          "error": "RuntimeError: stock_target_history exited with code 1; inspect C:\\DATASTORE\\ml\\overnight-runs\\20260909T000738.310315Z\\stock_target_history.log",
+          "exit_code": 1,
+          "finished_at": "2026-09-09T01:38:30.627191+00:00",
+          "log_path": "stock_target_history.log",
+          "stage": "stock_target_history",
+          "started_at": "2026-09-09T01:38:23.925133+00:00",
+          "status": "FAILED"
+        }
+      ]
+    }
+  ],
+  "loop_b_source": "C:\\DATASTORE\\ml\\runs\\20260909T011818.468414Z",
+  "loop_b_manifest_and_outputs": "VERIFIED",
+  "xnas_history_receipt": "C:\\DATASTORE\\ml\\stock-target-history-runs\\20260909T040353.083862Z\\receipt.json",
+  "xnas_source_files_verified": 224,
+  "xnas_downloads": [
+    {
+      "symbol": "AAPL",
+      "rows_in_overlap_download": 2571,
+      "september_8_rows": 889,
+      "last_bar": "2026-09-08T23:59:00+00:00",
+      "delivery": "Historical.timeseries.get_range",
+      "partition": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-03_to_2026-09-09"
+    },
+    {
+      "symbol": "AMZN",
+      "rows_in_overlap_download": 2500,
+      "september_8_rows": 848,
+      "last_bar": "2026-09-08T23:59:00+00:00",
+      "delivery": "Historical.timeseries.get_range",
+      "partition": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-03_to_2026-09-09"
+    },
+    {
+      "symbol": "COST",
+      "rows_in_overlap_download": 1573,
+      "september_8_rows": 562,
+      "last_bar": "2026-09-08T23:58:00+00:00",
+      "delivery": "Historical.timeseries.get_range",
+      "partition": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-03_to_2026-09-09"
+    },
+    {
+      "symbol": "GOOG",
+      "rows_in_overlap_download": 2212,
+      "september_8_rows": 774,
+      "last_bar": "2026-09-08T23:58:00+00:00",
+      "delivery": "Historical.timeseries.get_range",
+      "partition": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-03_to_2026-09-09"
+    },
+    {
+      "symbol": "MU",
+      "rows_in_overlap_download": 2856,
+      "september_8_rows": 957,
+      "last_bar": "2026-09-08T23:59:00+00:00",
+      "delivery": "Historical.timeseries.get_range",
+      "partition": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-03_to_2026-09-09"
+    },
+    {
+      "symbol": "NVDA",
+      "rows_in_overlap_download": 2767,
+      "september_8_rows": 922,
+      "last_bar": "2026-09-08T23:59:00+00:00",
+      "delivery": "Historical.timeseries.get_range",
+      "partition": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-03_to_2026-09-09"
+    },
+    {
+      "symbol": "SNDK",
+      "rows_in_overlap_download": 2780,
+      "september_8_rows": 952,
+      "last_bar": "2026-09-08T23:59:00+00:00",
+      "delivery": "Historical.timeseries.get_range",
+      "partition": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-03_to_2026-09-09"
+    }
+  ],
+  "opra": {
+    "status": "CURRENT_THROUGH_PRIOR_ACTION_DAY",
+    "completed_through": "2026-09-09",
+    "required_completed_through": "2026-09-09",
+    "coverage_semantics": "exclusive cursor; includes every session before this date",
+    "verified_cursor_count": 21,
+    "verified_cursors": [
+      "AAPL/ohlcv-1h",
+      "AAPL/cbbo-1m",
+      "AAPL/definition",
+      "AMZN/ohlcv-1h",
+      "AMZN/cbbo-1m",
+      "AMZN/definition",
+      "GOOG/ohlcv-1h",
+      "GOOG/cbbo-1m",
+      "GOOG/definition",
+      "MU/ohlcv-1h",
+      "MU/cbbo-1m",
+      "MU/definition",
+      "NVDA/ohlcv-1h",
+      "NVDA/cbbo-1m",
+      "NVDA/definition",
+      "SNDK/ohlcv-1h",
+      "SNDK/cbbo-1m",
+      "SNDK/definition",
+      "COST/ohlcv-1h",
+      "COST/cbbo-1m",
+      "COST/definition"
+    ],
+    "production_schemas": [
+      "ohlcv-1h",
+      "cbbo-1m",
+      "definition"
+    ]
+  },
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST"
+  ],
+  "forecasts": 168,
+  "stock_only_placeholders": 168,
+  "entry_windows": 133,
+  "non_entry_outlooks": 35,
+  "promoted_entry_forecasts": 126,
+  "promoted_bullish_entry_forecasts": 0,
+  "directional_status": {
+    "1h": "PROMOTED",
+    "4h": "PROMOTED",
+    "1d": "RESEARCH_NOT_PROMOTED",
+    "1w": "PROMOTED"
+  },
+  "cohort_rows": {
+    "1h": 25834,
+    "4h": 7133,
+    "1d": 6961,
+    "1w": 1397
+  },
+  "enrichment_run": "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260909T040540.539128Z",
+  "enrichment_source_cohorts": "NATIVELY_VERIFIED",
+  "enrichment_fitted_horizons": 4,
+  "enrichment_fitted_scopes": 178,
+  "enrichment_qualified_scopes": 0,
+  "evaluation_run": "C:\\DATASTORE\\ml\\gameplan-evaluation-runs\\20260909T040518.402730Z",
+  "evaluation": {
+    "direction_accuracy": 0.6403402187120292,
+    "evaluated": 823,
+    "forecasts": 1296,
+    "mature_awaiting_data": 174,
+    "mean_brier_score": 0.2270106672816162,
+    "pending_maturity": 299
+  },
+  "orders_placed": 0,
+  "broker_orders_enabled": false,
+  "production_code_or_immutable_artifacts_changed_by_review": false
+}

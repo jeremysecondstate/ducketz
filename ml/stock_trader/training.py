@@ -13,7 +13,7 @@ from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.artifacts import create_timestamp_directory, file_checksum, utc_timestamp, verify_manifest, write_manifest
 from ml.current_publication import read_current_publication
-from ml.stock_trader.contracts import canonical_sha256, finite
+from ml.stock_trader.contracts import STOCK_TRADER_SYMBOLS, canonical_sha256, finite
 from ml.stock_trader.model import (
     ENRICHMENT_FEATURE_NAMES,
     ENRICHMENT_MODEL_POINTER_VERSION,
@@ -46,6 +46,13 @@ def fit_enrichment_model_payload(
     if ridge_penalty < 0.0:
         raise ValueError("ridge_penalty cannot be negative")
     timestamp = utc_timestamp(trained_at)
+    symbol_row_counts = {symbol: sum(row["symbol"] == symbol for row in usable)
+                         for symbol in STOCK_TRADER_SYMBOLS}
+    training_coverage = {
+        "symbol_row_counts": symbol_row_counts,
+        "rows_without_configured_symbol": sum(row["symbol"] not in STOCK_TRADER_SYMBOLS for row in usable),
+        "symbols_without_mature_outcomes": [symbol for symbol, count in symbol_row_counts.items() if count == 0],
+    }
     x = np.asarray([row["features"] for row in usable], dtype=float)
     means = x.mean(axis=0)
     scales = x.std(axis=0)
@@ -101,6 +108,11 @@ def fit_enrichment_model_payload(
         "feature_scales": scales.tolist(),
         "heads": heads,
         "training": {
+            **training_coverage,
+            "supported_horizons": ["1h"],
+            "qualified_target_contracts": [],
+            "holding_target_minutes": 60.0,
+            "independent_horizon_status": "NOT_QUALIFIED_REQUIRES_EXACT_TARGET_OUTCOMES",
             "row_count": len(usable),
             "minimum_rows": minimum_rows,
             "ridge_penalty": ridge_penalty,
@@ -112,6 +124,11 @@ def fit_enrichment_model_payload(
     payload["model_fingerprint"] = canonical_sha256(payload)
     model_from_payload(payload)
     report = {
+        **training_coverage,
+        "supported_horizons": ["1h"],
+        "qualified_target_contracts": [],
+        "holding_target_minutes": 60.0,
+        "independent_horizon_status": "NOT_QUALIFIED_REQUIRES_EXACT_TARGET_OUTCOMES",
         "status": "MODEL_FIT",
         "trained_at": timestamp.isoformat(),
         "row_count": len(usable),
@@ -133,6 +150,7 @@ def train_and_publish_enrichment_model(
     ridge_penalty: float = 5.0,
     include_loop_b_bootstrap: bool = True,
     live_adaptation_weight: int = 2,
+    publish_current: bool = True,
 ) -> Path:
     root = Path(datastore_root).resolve()
     if live_adaptation_weight < 1:
@@ -228,7 +246,7 @@ def train_and_publish_enrichment_model(
             "loop_b_bootstrap_sessions": len(bootstrap_sessions),
             "unique_live_adaptation_rows": len(audit_pairs),
             "live_adaptation_weight": live_adaptation_weight,
-            "automatic_activation_allowed": True,
+            "automatic_activation_allowed": publish_current,
         },
         datastore_root=root,
     )
@@ -243,6 +261,8 @@ def train_and_publish_enrichment_model(
         "training_report_sha256": file_checksum(report_path),
     }
     _write_json_atomic(receipt_path, receipt)
+    if not publish_current:
+        return run
     pointer_path = root / "ml" / "stock-trader-model-latest" / "run.json"
     _write_json_atomic(
         pointer_path,
@@ -298,7 +318,7 @@ def load_verified_loop_b_bootstrap_pairs(
     data = frame.copy()
     data["symbol"] = data["symbol"].astype("string").str.upper()
     data = data.loc[
-        data["symbol"].isin(("AAPL", "AMZN", "GOOG", "MU", "NVDA", "SNDK"))
+        data["symbol"].isin(STOCK_TRADER_SYMBOLS)
         & data["horizon"].astype("string").eq("1h")
         & data["prediction_mode"].astype("string").str.upper().eq("LIVE")
         & data["evaluation_status"].astype("string").str.upper().eq("EVALUATED")
@@ -395,7 +415,7 @@ def _bootstrap_feature_values(row: Mapping[str, object]) -> dict[str, float]:
     values.update(
         {
             f"symbol_{candidate}": 1.0 if symbol == candidate else 0.0
-            for candidate in ("AAPL", "AMZN", "GOOG", "MU", "NVDA", "SNDK")
+            for candidate in STOCK_TRADER_SYMBOLS
         }
     )
     if set(values) != set(ENRICHMENT_FEATURE_NAMES):
@@ -449,6 +469,21 @@ def load_verified_audit_pairs(
 
 
 def _training_row(pair: Mapping[str, object]) -> dict[str, object] | None:
+    # The v1 fitter has a fixed hourly holding target. Preserve legacy hourly
+    # audits, but never blend explicitly different horizons or independent
+    # targets into that cohort and label them as duration-qualified evidence.
+    horizon = pair.get("prediction_horizon", pair.get("primary_horizon", pair.get("horizon")))
+    if horizon is not None and str(horizon) != "1h":
+        return None
+    if str(pair.get("target_definition_version") or "").startswith("independent-stock-targets-"):
+        return None
+    start, end = pair.get("target_window_start"), pair.get("target_window_end")
+    if start is not None or end is not None:
+        try:
+            if start is None or end is None or utc_timestamp(end) - utc_timestamp(start) != pd.Timedelta(hours=1):
+                return None
+        except (TypeError, ValueError):
+            return None
     reality = pair.get("market_reality")
     model = pair.get("model")
     if not isinstance(reality, Mapping) or reality.get("status") != "EVALUATED":
@@ -456,9 +491,16 @@ def _training_row(pair: Mapping[str, object]) -> dict[str, object] | None:
     if not isinstance(model, Mapping) or not isinstance(model.get("feature_values"), Mapping):
         return None
     feature_values = model["feature_values"]
+    symbol_features = {f"symbol_{symbol}": symbol for symbol in STOCK_TRADER_SYMBOLS}
+    pair_symbol = str(pair.get("symbol") or "").upper()
     features: list[float] = []
     for name in ENRICHMENT_FEATURE_NAMES:
-        value = finite(feature_values.get(name))
+        # Older immutable audits predate later symbols. Their new indicator is
+        # known from the recorded symbol; other missing features remain invalid.
+        raw = feature_values.get(name)
+        if raw is None and name in symbol_features and pair_symbol in STOCK_TRADER_SYMBOLS:
+            raw = float(pair_symbol == symbol_features[name])
+        value = finite(raw)
         if value is None:
             return None
         features.append(value)
@@ -466,7 +508,7 @@ def _training_row(pair: Mapping[str, object]) -> dict[str, object] | None:
     aligned_raw = finite(reality.get("direction_aligned_raw_return"))
     if aligned_net is None or aligned_raw is None:
         return None
-    return {"features": features, "aligned_net": aligned_net, "aligned_raw": aligned_raw}
+    return {"symbol": pair_symbol, "features": features, "aligned_net": aligned_net, "aligned_raw": aligned_raw}
 
 
 def _ridge(
@@ -537,6 +579,8 @@ def _parser() -> argparse.ArgumentParser:
         help="Train only from stock-trader audit pairs.",
     )
     parser.add_argument("--trained-at")
+    parser.add_argument("--stage-only", action="store_true",
+                        help="Write a verified model generation while preserving the current model pointer.")
     return parser
 
 
@@ -557,11 +601,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 ridge_penalty=args.ridge_penalty,
                 include_loop_b_bootstrap=not args.no_loop_b_bootstrap,
                 live_adaptation_weight=args.live_adaptation_weight,
+                publish_current=not args.stage_only,
             )
     except Exception as exc:
         print(json.dumps({"status": "FAILED", "error": f"{type(exc).__name__}: {exc}"}))
         return 1
-    print(json.dumps({"status": "MODEL_PUBLISHED", "run_directory": str(run)}))
+    print(json.dumps({"status": "MODEL_STAGED" if args.stage_only else "MODEL_PUBLISHED", "run_directory": str(run)}))
     return 0
 
 

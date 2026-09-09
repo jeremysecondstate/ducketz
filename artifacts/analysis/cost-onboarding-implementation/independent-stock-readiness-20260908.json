@@ -1,0 +1,1547 @@
+{
+  "verified_at": "2026-09-08T07:05:43.879096+00:00",
+  "authority": "READ_ONLY_READINESS_AUDIT",
+  "result": "PUBLICATION_COMPLETE_RESEARCH_ONLY_NO_TRADE_SIGNALS",
+  "orders_placed": 0,
+  "broker_orders_enabled": false,
+  "overnight": {
+    "run": "C:\\DATASTORE\\ml\\overnight-runs\\20260908T065642.529623Z",
+    "native_status": "COMPLETE",
+    "completed_at": "2026-09-08T06:57:27.050222+00:00",
+    "deadline_at": "2026-09-08T11:00:00+00:00",
+    "original_failed_run_native_resume_evidence_verified": "C:\\DATASTORE\\ml\\overnight-runs\\20260908T063853.259633Z",
+    "deadline_preserved": true,
+    "scope": "STOCK_ONLY",
+    "stage_order": [
+      "gameplan_publication"
+    ],
+    "completed_stages": [
+      [
+        "gameplan_publication",
+        0
+      ]
+    ],
+    "option_stages_selected": false,
+    "receipt": {
+      "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260908T065642.529623Z\\receipt.json",
+      "bytes": 603,
+      "sha256": "dce55eb1697ea885d9c1e8797f24ccdbd39abb47d7ae34358185d5ad65925095"
+    },
+    "report": {
+      "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260908T065642.529623Z\\stage-report.json",
+      "bytes": 10173,
+      "sha256": "4c29abf7f770c5b3ad14e8d6fc604ce50fbfffc0dff2e02b4511908b018ceb70"
+    },
+    "logs": [
+      {
+        "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260908T065642.529623Z\\gameplan_publication.log",
+        "bytes": 35158,
+        "sha256": "8ab991e9315188608aad4fd53d2c16fddf0b38d7405419acbbaafa3fa59c0797"
+      }
+    ]
+  },
+  "gameplan": {
+    "run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T065643.819336Z",
+    "native_current_and_saved_readers_verified": true,
+    "native_manifest_all_outputs_verified": true,
+    "published_at": "2026-09-08T06:57:26.764531+00:00",
+    "action_date": "2026-09-08",
+    "forecast_rows": 168,
+    "stock_only_placeholder_rows": 168,
+    "rows_per_symbol": {
+      "AAPL": 24,
+      "AMZN": 24,
+      "COST": 24,
+      "GOOG": 24,
+      "MU": 24,
+      "NVDA": 24,
+      "SNDK": 24
+    },
+    "entry_window_rows_per_symbol": {
+      "AAPL": 19,
+      "AMZN": 19,
+      "COST": 19,
+      "GOOG": 19,
+      "MU": 19,
+      "NVDA": 19,
+      "SNDK": 19
+    },
+    "entry_windows_are_opportunities_not_trade_authority": true,
+    "target_contract_version": "independent-stock-targets-v1",
+    "model_status_counts": {
+      "RESEARCH_NOT_PROMOTED": 155,
+      "RESEARCH_NO_TARGET_HISTORY": 13
+    },
+    "promoted_rows": 0,
+    "native_0400_signal_reader_count": 0,
+    "receipt": {
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T065643.819336Z\\receipt.json",
+      "bytes": 614,
+      "sha256": "807e6f8f8ffeefc917f746c798c69d6431ae6bd6cdff6d72ad475ba663410fb1"
+    },
+    "manifest": {
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T065643.819336Z\\manifest.json",
+      "bytes": 19173,
+      "sha256": "7058ed230fe6968450d7528f1301bddfa843c6d7745fd5c988a96d8b16752f90"
+    },
+    "forecasts": {
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T065643.819336Z\\forecasts.parquet",
+      "bytes": 30763,
+      "sha256": "f7583b626898970bd11574a11f93aef99d798b73c50959ce151c138686e172fe"
+    },
+    "intents": {
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T065643.819336Z\\option-strategy-intents.parquet",
+      "bytes": 21991,
+      "sha256": "cf2228b1c422e79346f33388e5018bf2bc412f94b0c1cd6af8dc3bbb88de7b59"
+    },
+    "model_reports": {
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T065643.819336Z\\model-reports.json",
+      "bytes": 67554,
+      "sha256": "eda78e2b66208e02be2c792acd750f9f8a27d83fb65dc751eda366613f364bb5"
+    }
+  },
+  "models": {
+    "1d": {
+      "selected_family": "hist-gradient-mlp-0.50",
+      "both_hist_gradient_and_mlp_trained": true,
+      "fit_complete_events": [
+        "gameplan/1d/tree-selection",
+        "gameplan/1d/neural-selection",
+        "gameplan/1d/tree-final",
+        "gameplan/1d/neural-final"
+      ],
+      "promotion_status": "RESEARCH_NOT_PROMOTED",
+      "failed_promotion_checks": [
+        "brier_beats_training_base_rate",
+        "expected_calibration_error_at_most_0_15",
+        "log_loss_beats_training_base_rate"
+      ],
+      "calibration_status": "DIRECTIONAL_INFORMATION_AVAILABLE",
+      "target_rows": 662,
+      "target_boundary_policy": "clock-window-boundaries-within-five-minutes-v1",
+      "maximum_boundary_gap_seconds": 300.0,
+      "partitions": {
+        "assessment_rows": 64,
+        "calibration_rows": 52,
+        "selection_rows": 63,
+        "train_rows": 438
+      },
+      "partition_decision_clusters": {
+        "assessment": 11,
+        "calibration": 11,
+        "selection": 10,
+        "train": 61
+      },
+      "target_support_by_symbol": {
+        "AAPL": {
+          "admitted_decision_clusters": 8,
+          "admitted_rows": 8,
+          "admitted_rows_by_route": {
+            "1d@D+1": 1,
+            "1d@D+2": 2,
+            "1d@D+3": 1,
+            "1d@D+4": 2,
+            "1d@D+5": 2
+          },
+          "assessment_decision_clusters": 6,
+          "assessment_rows": 6,
+          "assessment_rows_by_route": {
+            "1d@D+1": 1,
+            "1d@D+2": 1,
+            "1d@D+4": 2,
+            "1d@D+5": 2
+          },
+          "fitted_decision_clusters": 2,
+          "fitted_rows": 2,
+          "fitted_rows_by_route": {
+            "1d@D+2": 1,
+            "1d@D+3": 1
+          }
+        },
+        "AMZN": {
+          "admitted_decision_clusters": 20,
+          "admitted_rows": 25,
+          "admitted_rows_by_route": {
+            "1d@D+1": 6,
+            "1d@D+2": 5,
+            "1d@D+3": 4,
+            "1d@D+4": 5,
+            "1d@D+5": 5
+          },
+          "assessment_decision_clusters": 0,
+          "assessment_rows": 0,
+          "assessment_rows_by_route": {},
+          "fitted_decision_clusters": 19,
+          "fitted_rows": 22,
+          "fitted_rows_by_route": {
+            "1d@D+1": 6,
+            "1d@D+2": 5,
+            "1d@D+3": 3,
+            "1d@D+4": 4,
+            "1d@D+5": 4
+          }
+        },
+        "COST": {
+          "admitted_decision_clusters": 0,
+          "admitted_rows": 0,
+          "admitted_rows_by_route": {},
+          "assessment_decision_clusters": 0,
+          "assessment_rows": 0,
+          "assessment_rows_by_route": {},
+          "fitted_decision_clusters": 0,
+          "fitted_rows": 0,
+          "fitted_rows_by_route": {}
+        },
+        "GOOG": {
+          "admitted_decision_clusters": 0,
+          "admitted_rows": 0,
+          "admitted_rows_by_route": {},
+          "assessment_decision_clusters": 0,
+          "assessment_rows": 0,
+          "assessment_rows_by_route": {},
+          "fitted_decision_clusters": 0,
+          "fitted_rows": 0,
+          "fitted_rows_by_route": {}
+        },
+        "MU": {
+          "admitted_decision_clusters": 78,
+          "admitted_rows": 270,
+          "admitted_rows_by_route": {
+            "1d@D+1": 54,
+            "1d@D+2": 54,
+            "1d@D+3": 54,
+            "1d@D+4": 54,
+            "1d@D+5": 54
+          },
+          "assessment_decision_clusters": 8,
+          "assessment_rows": 12,
+          "assessment_rows_by_route": {
+            "1d@D+1": 3,
+            "1d@D+2": 3,
+            "1d@D+3": 2,
+            "1d@D+4": 2,
+            "1d@D+5": 2
+          },
+          "fitted_decision_clusters": 59,
+          "fitted_rows": 210,
+          "fitted_rows_by_route": {
+            "1d@D+1": 44,
+            "1d@D+2": 43,
+            "1d@D+3": 42,
+            "1d@D+4": 41,
+            "1d@D+5": 40
+          }
+        },
+        "NVDA": {
+          "admitted_decision_clusters": 79,
+          "admitted_rows": 207,
+          "admitted_rows_by_route": {
+            "1d@D+1": 42,
+            "1d@D+2": 41,
+            "1d@D+3": 41,
+            "1d@D+4": 41,
+            "1d@D+5": 42
+          },
+          "assessment_decision_clusters": 11,
+          "assessment_rows": 29,
+          "assessment_rows_by_route": {
+            "1d@D+1": 7,
+            "1d@D+2": 6,
+            "1d@D+3": 5,
+            "1d@D+4": 5,
+            "1d@D+5": 6
+          },
+          "fitted_decision_clusters": 58,
+          "fitted_rows": 165,
+          "fitted_rows_by_route": {
+            "1d@D+1": 33,
+            "1d@D+2": 33,
+            "1d@D+3": 33,
+            "1d@D+4": 33,
+            "1d@D+5": 33
+          }
+        },
+        "SNDK": {
+          "admitted_decision_clusters": 68,
+          "admitted_rows": 152,
+          "admitted_rows_by_route": {
+            "1d@D+1": 30,
+            "1d@D+2": 30,
+            "1d@D+3": 30,
+            "1d@D+4": 31,
+            "1d@D+5": 31
+          },
+          "assessment_decision_clusters": 8,
+          "assessment_rows": 17,
+          "assessment_rows_by_route": {
+            "1d@D+1": 4,
+            "1d@D+2": 3,
+            "1d@D+3": 3,
+            "1d@D+4": 4,
+            "1d@D+5": 3
+          },
+          "fitted_decision_clusters": 48,
+          "fitted_rows": 102,
+          "fitted_rows_by_route": {
+            "1d@D+1": 21,
+            "1d@D+2": 21,
+            "1d@D+3": 20,
+            "1d@D+4": 20,
+            "1d@D+5": 20
+          }
+        }
+      },
+      "assessment": {
+        "brier_score": 0.3061633727434856,
+        "direction_accuracy_at_0_5": 0.296875,
+        "expected_calibration_error_10_bin": 0.31453124114121067,
+        "log_loss": 0.8077065680801382,
+        "mean_probability": 0.6114062411412108,
+        "positive_rate": 0.296875,
+        "rows": 64
+      },
+      "training_baseline": {
+        "brier_score": 0.21802135499460162,
+        "direction_accuracy_at_0_5": 0.703125,
+        "expected_calibration_error_10_bin": 0.09633857285429143,
+        "log_loss": 0.6283698915645247,
+        "mean_probability": 0.3932135728542914,
+        "positive_rate": 0.296875,
+        "rows": 64
+      },
+      "artifact": {
+        "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T065643.819336Z\\models\\1d\\model.joblib",
+        "bytes": 350671,
+        "sha256": "d8a27c831cc6a4a371dcfbdda0e77d163dc1bc3767bf07825aca425c0018f066"
+      }
+    },
+    "1h": {
+      "selected_family": "hist-gradient-mlp-0.75",
+      "both_hist_gradient_and_mlp_trained": true,
+      "fit_complete_events": [
+        "gameplan/1h/tree-selection",
+        "gameplan/1h/neural-selection",
+        "gameplan/1h/tree-final",
+        "gameplan/1h/neural-final"
+      ],
+      "promotion_status": "RESEARCH_NOT_PROMOTED",
+      "failed_promotion_checks": [
+        "brier_beats_training_base_rate",
+        "log_loss_beats_training_base_rate"
+      ],
+      "calibration_status": "DIRECTIONAL_INFORMATION_AVAILABLE",
+      "target_rows": 4354,
+      "target_boundary_policy": "clock-window-boundaries-within-five-minutes-v1",
+      "maximum_boundary_gap_seconds": 300.0,
+      "partitions": {
+        "assessment_rows": 570,
+        "calibration_rows": 532,
+        "selection_rows": 601,
+        "train_rows": 2641
+      },
+      "partition_decision_clusters": {
+        "assessment": 15,
+        "calibration": 14,
+        "selection": 15,
+        "train": 75
+      },
+      "target_support_by_symbol": {
+        "AAPL": {
+          "admitted_decision_clusters": 66,
+          "admitted_rows": 528,
+          "admitted_rows_by_route": {
+            "1h@04:00": 6,
+            "1h@05:00": 37,
+            "1h@06:00": 53,
+            "1h@07:00": 66,
+            "1h@08:00": 66,
+            "1h@09:00": 66,
+            "1h@10:00": 66,
+            "1h@11:00": 66,
+            "1h@12:00": 66,
+            "1h@13:00": 22,
+            "1h@14:00": 2,
+            "1h@15:00": 4,
+            "1h@16:00": 2,
+            "1h@gap": 6
+          },
+          "assessment_decision_clusters": 9,
+          "assessment_rows": 69,
+          "assessment_rows_by_route": {
+            "1h@04:00": 1,
+            "1h@05:00": 5,
+            "1h@06:00": 5,
+            "1h@07:00": 9,
+            "1h@08:00": 9,
+            "1h@09:00": 9,
+            "1h@10:00": 9,
+            "1h@11:00": 9,
+            "1h@12:00": 9,
+            "1h@13:00": 1,
+            "1h@16:00": 1,
+            "1h@gap": 2
+          },
+          "fitted_decision_clusters": 47,
+          "fitted_rows": 382,
+          "fitted_rows_by_route": {
+            "1h@04:00": 3,
+            "1h@05:00": 28,
+            "1h@06:00": 42,
+            "1h@07:00": 47,
+            "1h@08:00": 47,
+            "1h@09:00": 47,
+            "1h@10:00": 47,
+            "1h@11:00": 47,
+            "1h@12:00": 47,
+            "1h@13:00": 16,
+            "1h@14:00": 2,
+            "1h@15:00": 4,
+            "1h@16:00": 1,
+            "1h@gap": 4
+          }
+        },
+        "AMZN": {
+          "admitted_decision_clusters": 59,
+          "admitted_rows": 457,
+          "admitted_rows_by_route": {
+            "1h@04:00": 7,
+            "1h@05:00": 23,
+            "1h@06:00": 42,
+            "1h@07:00": 59,
+            "1h@08:00": 59,
+            "1h@09:00": 59,
+            "1h@10:00": 59,
+            "1h@11:00": 59,
+            "1h@12:00": 59,
+            "1h@13:00": 20,
+            "1h@14:00": 3,
+            "1h@15:00": 1,
+            "1h@16:00": 2,
+            "1h@gap": 5
+          },
+          "assessment_decision_clusters": 8,
+          "assessment_rows": 58,
+          "assessment_rows_by_route": {
+            "1h@05:00": 3,
+            "1h@06:00": 5,
+            "1h@07:00": 8,
+            "1h@08:00": 8,
+            "1h@09:00": 8,
+            "1h@10:00": 8,
+            "1h@11:00": 8,
+            "1h@12:00": 8,
+            "1h@13:00": 2
+          },
+          "fitted_decision_clusters": 43,
+          "fitted_rows": 338,
+          "fitted_rows_by_route": {
+            "1h@04:00": 5,
+            "1h@05:00": 19,
+            "1h@06:00": 31,
+            "1h@07:00": 43,
+            "1h@08:00": 43,
+            "1h@09:00": 43,
+            "1h@10:00": 43,
+            "1h@11:00": 43,
+            "1h@12:00": 43,
+            "1h@13:00": 15,
+            "1h@14:00": 3,
+            "1h@15:00": 1,
+            "1h@16:00": 2,
+            "1h@gap": 4
+          }
+        },
+        "COST": {
+          "admitted_decision_clusters": 77,
+          "admitted_rows": 474,
+          "admitted_rows_by_route": {
+            "1h@06:00": 10,
+            "1h@07:00": 77,
+            "1h@08:00": 77,
+            "1h@09:00": 77,
+            "1h@10:00": 77,
+            "1h@11:00": 77,
+            "1h@12:00": 77,
+            "1h@13:00": 2
+          },
+          "assessment_decision_clusters": 11,
+          "assessment_rows": 67,
+          "assessment_rows_by_route": {
+            "1h@06:00": 1,
+            "1h@07:00": 11,
+            "1h@08:00": 11,
+            "1h@09:00": 11,
+            "1h@10:00": 11,
+            "1h@11:00": 11,
+            "1h@12:00": 11
+          },
+          "fitted_decision_clusters": 56,
+          "fitted_rows": 347,
+          "fitted_rows_by_route": {
+            "1h@06:00": 9,
+            "1h@07:00": 56,
+            "1h@08:00": 56,
+            "1h@09:00": 56,
+            "1h@10:00": 56,
+            "1h@11:00": 56,
+            "1h@12:00": 56,
+            "1h@13:00": 2
+          }
+        },
+        "GOOG": {
+          "admitted_decision_clusters": 53,
+          "admitted_rows": 406,
+          "admitted_rows_by_route": {
+            "1h@04:00": 4,
+            "1h@05:00": 25,
+            "1h@06:00": 39,
+            "1h@07:00": 53,
+            "1h@08:00": 53,
+            "1h@09:00": 53,
+            "1h@10:00": 53,
+            "1h@11:00": 53,
+            "1h@12:00": 53,
+            "1h@13:00": 13,
+            "1h@14:00": 2,
+            "1h@15:00": 2,
+            "1h@16:00": 1,
+            "1h@gap": 2
+          },
+          "assessment_decision_clusters": 7,
+          "assessment_rows": 47,
+          "assessment_rows_by_route": {
+            "1h@05:00": 1,
+            "1h@06:00": 3,
+            "1h@07:00": 7,
+            "1h@08:00": 7,
+            "1h@09:00": 7,
+            "1h@10:00": 7,
+            "1h@11:00": 7,
+            "1h@12:00": 7,
+            "1h@13:00": 1
+          },
+          "fitted_decision_clusters": 41,
+          "fitted_rows": 321,
+          "fitted_rows_by_route": {
+            "1h@04:00": 4,
+            "1h@05:00": 21,
+            "1h@06:00": 34,
+            "1h@07:00": 41,
+            "1h@08:00": 41,
+            "1h@09:00": 41,
+            "1h@10:00": 41,
+            "1h@11:00": 41,
+            "1h@12:00": 41,
+            "1h@13:00": 10,
+            "1h@14:00": 2,
+            "1h@15:00": 2,
+            "1h@16:00": 1,
+            "1h@gap": 1
+          }
+        },
+        "MU": {
+          "admitted_decision_clusters": 78,
+          "admitted_rows": 910,
+          "admitted_rows_by_route": {
+            "1h@04:00": 61,
+            "1h@05:00": 76,
+            "1h@06:00": 77,
+            "1h@07:00": 78,
+            "1h@08:00": 78,
+            "1h@09:00": 78,
+            "1h@10:00": 78,
+            "1h@11:00": 78,
+            "1h@12:00": 78,
+            "1h@13:00": 72,
+            "1h@14:00": 30,
+            "1h@15:00": 34,
+            "1h@16:00": 38,
+            "1h@gap": 54
+          },
+          "assessment_decision_clusters": 11,
+          "assessment_rows": 109,
+          "assessment_rows_by_route": {
+            "1h@04:00": 5,
+            "1h@05:00": 11,
+            "1h@06:00": 10,
+            "1h@07:00": 11,
+            "1h@08:00": 11,
+            "1h@09:00": 11,
+            "1h@10:00": 11,
+            "1h@11:00": 11,
+            "1h@12:00": 11,
+            "1h@13:00": 6,
+            "1h@14:00": 2,
+            "1h@15:00": 4,
+            "1h@16:00": 2,
+            "1h@gap": 3
+          },
+          "fitted_decision_clusters": 57,
+          "fitted_rows": 685,
+          "fitted_rows_by_route": {
+            "1h@04:00": 48,
+            "1h@05:00": 56,
+            "1h@06:00": 57,
+            "1h@07:00": 57,
+            "1h@08:00": 57,
+            "1h@09:00": 57,
+            "1h@10:00": 57,
+            "1h@11:00": 57,
+            "1h@12:00": 57,
+            "1h@13:00": 57,
+            "1h@14:00": 26,
+            "1h@15:00": 26,
+            "1h@16:00": 30,
+            "1h@gap": 43
+          }
+        },
+        "NVDA": {
+          "admitted_decision_clusters": 78,
+          "admitted_rows": 830,
+          "admitted_rows_by_route": {
+            "1h@04:00": 51,
+            "1h@05:00": 61,
+            "1h@06:00": 73,
+            "1h@07:00": 78,
+            "1h@08:00": 78,
+            "1h@09:00": 78,
+            "1h@10:00": 78,
+            "1h@11:00": 78,
+            "1h@12:00": 78,
+            "1h@13:00": 57,
+            "1h@14:00": 27,
+            "1h@15:00": 28,
+            "1h@16:00": 26,
+            "1h@gap": 39
+          },
+          "assessment_decision_clusters": 11,
+          "assessment_rows": 114,
+          "assessment_rows_by_route": {
+            "1h@04:00": 7,
+            "1h@05:00": 7,
+            "1h@06:00": 8,
+            "1h@07:00": 11,
+            "1h@08:00": 11,
+            "1h@09:00": 11,
+            "1h@10:00": 11,
+            "1h@11:00": 11,
+            "1h@12:00": 11,
+            "1h@13:00": 6,
+            "1h@14:00": 5,
+            "1h@15:00": 4,
+            "1h@16:00": 5,
+            "1h@gap": 6
+          },
+          "fitted_decision_clusters": 57,
+          "fitted_rows": 625,
+          "fitted_rows_by_route": {
+            "1h@04:00": 41,
+            "1h@05:00": 48,
+            "1h@06:00": 55,
+            "1h@07:00": 57,
+            "1h@08:00": 57,
+            "1h@09:00": 57,
+            "1h@10:00": 57,
+            "1h@11:00": 57,
+            "1h@12:00": 57,
+            "1h@13:00": 45,
+            "1h@14:00": 21,
+            "1h@15:00": 22,
+            "1h@16:00": 21,
+            "1h@gap": 30
+          }
+        },
+        "SNDK": {
+          "admitted_decision_clusters": 78,
+          "admitted_rows": 749,
+          "admitted_rows_by_route": {
+            "1h@04:00": 38,
+            "1h@05:00": 56,
+            "1h@06:00": 71,
+            "1h@07:00": 78,
+            "1h@08:00": 78,
+            "1h@09:00": 78,
+            "1h@10:00": 78,
+            "1h@11:00": 78,
+            "1h@12:00": 78,
+            "1h@13:00": 58,
+            "1h@14:00": 9,
+            "1h@15:00": 4,
+            "1h@16:00": 14,
+            "1h@gap": 31
+          },
+          "assessment_decision_clusters": 11,
+          "assessment_rows": 106,
+          "assessment_rows_by_route": {
+            "1h@04:00": 7,
+            "1h@05:00": 7,
+            "1h@06:00": 9,
+            "1h@07:00": 11,
+            "1h@08:00": 11,
+            "1h@09:00": 11,
+            "1h@10:00": 11,
+            "1h@11:00": 11,
+            "1h@12:00": 11,
+            "1h@13:00": 6,
+            "1h@14:00": 2,
+            "1h@15:00": 1,
+            "1h@16:00": 2,
+            "1h@gap": 6
+          },
+          "fitted_decision_clusters": 57,
+          "fitted_rows": 544,
+          "fitted_rows_by_route": {
+            "1h@04:00": 27,
+            "1h@05:00": 40,
+            "1h@06:00": 52,
+            "1h@07:00": 57,
+            "1h@08:00": 57,
+            "1h@09:00": 57,
+            "1h@10:00": 57,
+            "1h@11:00": 57,
+            "1h@12:00": 57,
+            "1h@13:00": 46,
+            "1h@14:00": 6,
+            "1h@15:00": 1,
+            "1h@16:00": 9,
+            "1h@gap": 21
+          }
+        }
+      },
+      "assessment": {
+        "brier_score": 0.24200792177649472,
+        "direction_accuracy_at_0_5": 0.6,
+        "expected_calibration_error_10_bin": 0.04718788395421092,
+        "log_loss": 0.6771101078649552,
+        "mean_probability": 0.44718788395421094,
+        "positive_rate": 0.4,
+        "rows": 570
+      },
+      "training_baseline": {
+        "brier_score": 0.2405967938542594,
+        "direction_accuracy_at_0_5": 0.6,
+        "expected_calibration_error_10_bin": 0.024429364589759306,
+        "log_loss": 0.6742398660539325,
+        "mean_probability": 0.42442936458975933,
+        "positive_rate": 0.4,
+        "rows": 570
+      },
+      "artifact": {
+        "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T065643.819336Z\\models\\1h\\model.joblib",
+        "bytes": 377249,
+        "sha256": "a4fbc744c2719de4f293f30f20bd394898cb3f177ee2b481db87f43d2c678e4c"
+      }
+    },
+    "1w": {
+      "selected_family": "hist-gradient-mlp-0.50",
+      "both_hist_gradient_and_mlp_trained": true,
+      "fit_complete_events": [
+        "gameplan/1w/tree-selection",
+        "gameplan/1w/neural-selection",
+        "gameplan/1w/tree-final",
+        "gameplan/1w/neural-final"
+      ],
+      "promotion_status": "RESEARCH_NOT_PROMOTED",
+      "failed_promotion_checks": [
+        "brier_beats_training_base_rate",
+        "expected_calibration_error_at_most_0_15",
+        "log_loss_beats_training_base_rate"
+      ],
+      "calibration_status": "DIRECTIONAL_INFORMATION_AVAILABLE",
+      "target_rows": 125,
+      "target_boundary_policy": "clock-window-boundaries-within-five-minutes-v1",
+      "maximum_boundary_gap_seconds": 300.0,
+      "partitions": {
+        "assessment_rows": 20,
+        "calibration_rows": 10,
+        "selection_rows": 9,
+        "train_rows": 68
+      },
+      "partition_decision_clusters": {
+        "assessment": 10,
+        "calibration": 6,
+        "selection": 6,
+        "train": 40
+      },
+      "target_support_by_symbol": {
+        "AAPL": {
+          "admitted_decision_clusters": 4,
+          "admitted_rows": 4,
+          "admitted_rows_by_route": {
+            "1w@D+5": 4
+          },
+          "assessment_decision_clusters": 3,
+          "assessment_rows": 3,
+          "assessment_rows_by_route": {
+            "1w@D+5": 3
+          },
+          "fitted_decision_clusters": 0,
+          "fitted_rows": 0,
+          "fitted_rows_by_route": {}
+        },
+        "AMZN": {
+          "admitted_decision_clusters": 3,
+          "admitted_rows": 3,
+          "admitted_rows_by_route": {
+            "1w@D+5": 3
+          },
+          "assessment_decision_clusters": 1,
+          "assessment_rows": 1,
+          "assessment_rows_by_route": {
+            "1w@D+5": 1
+          },
+          "fitted_decision_clusters": 1,
+          "fitted_rows": 1,
+          "fitted_rows_by_route": {
+            "1w@D+5": 1
+          }
+        },
+        "COST": {
+          "admitted_decision_clusters": 0,
+          "admitted_rows": 0,
+          "admitted_rows_by_route": {},
+          "assessment_decision_clusters": 0,
+          "assessment_rows": 0,
+          "assessment_rows_by_route": {},
+          "fitted_decision_clusters": 0,
+          "fitted_rows": 0,
+          "fitted_rows_by_route": {}
+        },
+        "GOOG": {
+          "admitted_decision_clusters": 0,
+          "admitted_rows": 0,
+          "admitted_rows_by_route": {},
+          "assessment_decision_clusters": 0,
+          "assessment_rows": 0,
+          "assessment_rows_by_route": {},
+          "fitted_decision_clusters": 0,
+          "fitted_rows": 0,
+          "fitted_rows_by_route": {}
+        },
+        "MU": {
+          "admitted_decision_clusters": 55,
+          "admitted_rows": 55,
+          "admitted_rows_by_route": {
+            "1w@D+5": 55
+          },
+          "assessment_decision_clusters": 5,
+          "assessment_rows": 5,
+          "assessment_rows_by_route": {
+            "1w@D+5": 5
+          },
+          "fitted_decision_clusters": 37,
+          "fitted_rows": 37,
+          "fitted_rows_by_route": {
+            "1w@D+5": 37
+          }
+        },
+        "NVDA": {
+          "admitted_decision_clusters": 37,
+          "admitted_rows": 37,
+          "admitted_rows_by_route": {
+            "1w@D+5": 37
+          },
+          "assessment_decision_clusters": 7,
+          "assessment_rows": 7,
+          "assessment_rows_by_route": {
+            "1w@D+5": 7
+          },
+          "fitted_decision_clusters": 27,
+          "fitted_rows": 27,
+          "fitted_rows_by_route": {
+            "1w@D+5": 27
+          }
+        },
+        "SNDK": {
+          "admitted_decision_clusters": 26,
+          "admitted_rows": 26,
+          "admitted_rows_by_route": {
+            "1w@D+5": 26
+          },
+          "assessment_decision_clusters": 4,
+          "assessment_rows": 4,
+          "assessment_rows_by_route": {
+            "1w@D+5": 4
+          },
+          "fitted_decision_clusters": 12,
+          "fitted_rows": 12,
+          "fitted_rows_by_route": {
+            "1w@D+5": 12
+          }
+        }
+      },
+      "assessment": {
+        "brier_score": 0.33739470704318897,
+        "direction_accuracy_at_0_5": 0.5,
+        "expected_calibration_error_10_bin": 0.29602094096598774,
+        "log_loss": 0.9082415471067493,
+        "mean_probability": 0.7960209409659877,
+        "positive_rate": 0.5,
+        "rows": 20
+      },
+      "training_baseline": {
+        "brier_score": 0.25105414066453025,
+        "direction_accuracy_at_0_5": 0.5,
+        "expected_calibration_error_10_bin": 0.03246753246753242,
+        "log_loss": 0.6952599192734749,
+        "mean_probability": 0.4675324675324676,
+        "positive_rate": 0.5,
+        "rows": 20
+      },
+      "artifact": {
+        "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T065643.819336Z\\models\\1w\\model.joblib",
+        "bytes": 163695,
+        "sha256": "7b2126375863d7798c90076c3222b7b8e1bf25a452fe6b6a02b6c810e297a155"
+      }
+    },
+    "4h": {
+      "selected_family": "mlp",
+      "both_hist_gradient_and_mlp_trained": true,
+      "fit_complete_events": [
+        "gameplan/4h/tree-selection",
+        "gameplan/4h/neural-selection",
+        "gameplan/4h/tree-final",
+        "gameplan/4h/neural-final"
+      ],
+      "promotion_status": "RESEARCH_NOT_PROMOTED",
+      "failed_promotion_checks": [
+        "brier_beats_training_base_rate",
+        "calibration_retains_directional_information",
+        "expected_calibration_error_at_most_0_15",
+        "log_loss_beats_training_base_rate"
+      ],
+      "calibration_status": "FLAT_CALIBRATION",
+      "target_rows": 1015,
+      "target_boundary_policy": "clock-window-boundaries-within-five-minutes-v1",
+      "maximum_boundary_gap_seconds": 300.0,
+      "partitions": {
+        "assessment_rows": 129,
+        "calibration_rows": 137,
+        "selection_rows": 136,
+        "train_rows": 607
+      },
+      "partition_decision_clusters": {
+        "assessment": 15,
+        "calibration": 14,
+        "selection": 15,
+        "train": 75
+      },
+      "target_support_by_symbol": {
+        "AAPL": {
+          "admitted_decision_clusters": 66,
+          "admitted_rows": 104,
+          "admitted_rows_by_route": {
+            "4h@04:00": 25,
+            "4h@08:00": 66,
+            "4h@12:00": 7,
+            "4h@16:00": 6
+          },
+          "assessment_decision_clusters": 9,
+          "assessment_rows": 14,
+          "assessment_rows_by_route": {
+            "4h@04:00": 3,
+            "4h@08:00": 9,
+            "4h@16:00": 2
+          },
+          "fitted_decision_clusters": 47,
+          "fitted_rows": 67,
+          "fitted_rows_by_route": {
+            "4h@04:00": 12,
+            "4h@08:00": 47,
+            "4h@12:00": 6,
+            "4h@16:00": 2
+          }
+        },
+        "AMZN": {
+          "admitted_decision_clusters": 59,
+          "admitted_rows": 91,
+          "admitted_rows_by_route": {
+            "4h@04:00": 18,
+            "4h@08:00": 59,
+            "4h@12:00": 8,
+            "4h@16:00": 6
+          },
+          "assessment_decision_clusters": 8,
+          "assessment_rows": 10,
+          "assessment_rows_by_route": {
+            "4h@04:00": 1,
+            "4h@08:00": 8,
+            "4h@12:00": 1
+          },
+          "fitted_decision_clusters": 43,
+          "fitted_rows": 66,
+          "fitted_rows_by_route": {
+            "4h@04:00": 12,
+            "4h@08:00": 43,
+            "4h@12:00": 5,
+            "4h@16:00": 6
+          }
+        },
+        "COST": {
+          "admitted_decision_clusters": 77,
+          "admitted_rows": 77,
+          "admitted_rows_by_route": {
+            "4h@08:00": 77
+          },
+          "assessment_decision_clusters": 11,
+          "assessment_rows": 11,
+          "assessment_rows_by_route": {
+            "4h@08:00": 11
+          },
+          "fitted_decision_clusters": 56,
+          "fitted_rows": 56,
+          "fitted_rows_by_route": {
+            "4h@08:00": 56
+          }
+        },
+        "GOOG": {
+          "admitted_decision_clusters": 53,
+          "admitted_rows": 78,
+          "admitted_rows_by_route": {
+            "4h@04:00": 14,
+            "4h@08:00": 53,
+            "4h@12:00": 6,
+            "4h@16:00": 5
+          },
+          "assessment_decision_clusters": 7,
+          "assessment_rows": 8,
+          "assessment_rows_by_route": {
+            "4h@04:00": 1,
+            "4h@08:00": 7
+          },
+          "fitted_decision_clusters": 41,
+          "fitted_rows": 62,
+          "fitted_rows_by_route": {
+            "4h@04:00": 11,
+            "4h@08:00": 41,
+            "4h@12:00": 6,
+            "4h@16:00": 4
+          }
+        },
+        "MU": {
+          "admitted_decision_clusters": 78,
+          "admitted_rows": 252,
+          "admitted_rows_by_route": {
+            "4h@04:00": 76,
+            "4h@08:00": 78,
+            "4h@12:00": 49,
+            "4h@16:00": 49
+          },
+          "assessment_decision_clusters": 11,
+          "assessment_rows": 29,
+          "assessment_rows_by_route": {
+            "4h@04:00": 10,
+            "4h@08:00": 11,
+            "4h@12:00": 5,
+            "4h@16:00": 3
+          },
+          "fitted_decision_clusters": 57,
+          "fitted_rows": 190,
+          "fitted_rows_by_route": {
+            "4h@04:00": 56,
+            "4h@08:00": 57,
+            "4h@12:00": 38,
+            "4h@16:00": 39
+          }
+        },
+        "NVDA": {
+          "admitted_decision_clusters": 78,
+          "admitted_rows": 225,
+          "admitted_rows_by_route": {
+            "4h@04:00": 71,
+            "4h@08:00": 78,
+            "4h@12:00": 37,
+            "4h@16:00": 39
+          },
+          "assessment_decision_clusters": 11,
+          "assessment_rows": 30,
+          "assessment_rows_by_route": {
+            "4h@04:00": 9,
+            "4h@08:00": 11,
+            "4h@12:00": 5,
+            "4h@16:00": 5
+          },
+          "fitted_decision_clusters": 57,
+          "fitted_rows": 170,
+          "fitted_rows_by_route": {
+            "4h@04:00": 53,
+            "4h@08:00": 57,
+            "4h@12:00": 29,
+            "4h@16:00": 31
+          }
+        },
+        "SNDK": {
+          "admitted_decision_clusters": 78,
+          "admitted_rows": 188,
+          "admitted_rows_by_route": {
+            "4h@04:00": 65,
+            "4h@08:00": 78,
+            "4h@12:00": 21,
+            "4h@16:00": 24
+          },
+          "assessment_decision_clusters": 11,
+          "assessment_rows": 27,
+          "assessment_rows_by_route": {
+            "4h@04:00": 9,
+            "4h@08:00": 11,
+            "4h@12:00": 2,
+            "4h@16:00": 5
+          },
+          "fitted_decision_clusters": 57,
+          "fitted_rows": 132,
+          "fitted_rows_by_route": {
+            "4h@04:00": 46,
+            "4h@08:00": 57,
+            "4h@12:00": 15,
+            "4h@16:00": 14
+          }
+        }
+      },
+      "assessment": {
+        "brier_score": 0.2575841493539777,
+        "direction_accuracy_at_0_5": 0.3643410852713178,
+        "expected_calibration_error_10_bin": 0.16120635998415678,
+        "log_loss": 0.7083292690436532,
+        "mean_probability": 0.5255474452554746,
+        "positive_rate": 0.3643410852713178,
+        "rows": 129
+      },
+      "training_baseline": {
+        "brier_score": 0.23885362889298625,
+        "direction_accuracy_at_0_5": 0.6356589147286822,
+        "expected_calibration_error_10_bin": 0.08518785147161612,
+        "log_loss": 0.6707869790943898,
+        "mean_probability": 0.4495289367429339,
+        "positive_rate": 0.3643410852713178,
+        "rows": 129
+      },
+      "artifact": {
+        "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260908T065643.819336Z\\models\\4h\\model.joblib",
+        "bytes": 91742,
+        "sha256": "f7dda4c870a75f208919165d2fd0f3bedf534e791592308a42853b04a884aaa1"
+      }
+    }
+  },
+  "cost": {
+    "forecast_rows": 24,
+    "entry_window_rows": 19,
+    "first_0400_and_daily_weekly_rows": [
+      {
+        "route": "1h@04:00",
+        "target_window_start": "2026-09-08 11:00:00+00:00",
+        "target_window_end": "2026-09-08 12:00:00+00:00",
+        "model_status": "RESEARCH_NOT_PROMOTED",
+        "direction": "NO_EDGE",
+        "symbol_target_history_rows": 474,
+        "symbol_fitted_target_rows": 347,
+        "symbol_assessment_rows": 67
+      },
+      {
+        "route": "4h@04:00",
+        "target_window_start": "2026-09-08 11:00:00+00:00",
+        "target_window_end": "2026-09-08 15:00:00+00:00",
+        "model_status": "RESEARCH_NOT_PROMOTED",
+        "direction": "NO_EDGE",
+        "symbol_target_history_rows": 77,
+        "symbol_fitted_target_rows": 56,
+        "symbol_assessment_rows": 11
+      },
+      {
+        "route": "1d@D+1",
+        "target_window_start": "2026-09-08 11:00:00+00:00",
+        "target_window_end": "2026-09-09 00:00:00+00:00",
+        "model_status": "RESEARCH_NO_TARGET_HISTORY",
+        "direction": "NO_EDGE",
+        "symbol_target_history_rows": 0,
+        "symbol_fitted_target_rows": 0,
+        "symbol_assessment_rows": 0
+      },
+      {
+        "route": "1w@D+5",
+        "target_window_start": "2026-09-08 11:00:00+00:00",
+        "target_window_end": "2026-09-15 00:00:00+00:00",
+        "model_status": "RESEARCH_NO_TARGET_HISTORY",
+        "direction": "NO_EDGE",
+        "symbol_target_history_rows": 0,
+        "symbol_fitted_target_rows": 0,
+        "symbol_assessment_rows": 0
+      }
+    ],
+    "route_history": {
+      "1d": {
+        "admitted_decision_clusters": 0,
+        "admitted_rows": 0,
+        "admitted_rows_by_route": {},
+        "assessment_decision_clusters": 0,
+        "assessment_rows": 0,
+        "assessment_rows_by_route": {},
+        "fitted_decision_clusters": 0,
+        "fitted_rows": 0,
+        "fitted_rows_by_route": {}
+      },
+      "1h": {
+        "admitted_decision_clusters": 77,
+        "admitted_rows": 474,
+        "admitted_rows_by_route": {
+          "1h@06:00": 10,
+          "1h@07:00": 77,
+          "1h@08:00": 77,
+          "1h@09:00": 77,
+          "1h@10:00": 77,
+          "1h@11:00": 77,
+          "1h@12:00": 77,
+          "1h@13:00": 2
+        },
+        "assessment_decision_clusters": 11,
+        "assessment_rows": 67,
+        "assessment_rows_by_route": {
+          "1h@06:00": 1,
+          "1h@07:00": 11,
+          "1h@08:00": 11,
+          "1h@09:00": 11,
+          "1h@10:00": 11,
+          "1h@11:00": 11,
+          "1h@12:00": 11
+        },
+        "fitted_decision_clusters": 56,
+        "fitted_rows": 347,
+        "fitted_rows_by_route": {
+          "1h@06:00": 9,
+          "1h@07:00": 56,
+          "1h@08:00": 56,
+          "1h@09:00": 56,
+          "1h@10:00": 56,
+          "1h@11:00": 56,
+          "1h@12:00": 56,
+          "1h@13:00": 2
+        }
+      },
+      "1w": {
+        "admitted_decision_clusters": 0,
+        "admitted_rows": 0,
+        "admitted_rows_by_route": {},
+        "assessment_decision_clusters": 0,
+        "assessment_rows": 0,
+        "assessment_rows_by_route": {},
+        "fitted_decision_clusters": 0,
+        "fitted_rows": 0,
+        "fitted_rows_by_route": {}
+      },
+      "4h": {
+        "admitted_decision_clusters": 77,
+        "admitted_rows": 77,
+        "admitted_rows_by_route": {
+          "4h@08:00": 77
+        },
+        "assessment_decision_clusters": 11,
+        "assessment_rows": 11,
+        "assessment_rows_by_route": {
+          "4h@08:00": 11
+        },
+        "fitted_decision_clusters": 56,
+        "fitted_rows": 56,
+        "fitted_rows_by_route": {
+          "4h@08:00": 56
+        }
+      }
+    },
+    "source_coverage_audit": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\cost-onboarding-implementation\\independent-target-coverage.json",
+      "bytes": 81748,
+      "sha256": "630e9e347120ccb229b151c1ac1a2c4c95f843baed3564b4a9564024c462f85a"
+    },
+    "limitations": "Current EQUS.MINI historical minute data has no qualifying COST04:00 entry endpoints within the native300-second observation rule. Group1h/4h has other COST route support; COSTdaily/weekly have none and explicitly remainRESEARCH_NO_TARGET_HISTORY/NO_EDGE."
+  },
+  "evaluation": {
+    "run": "C:\\DATASTORE\\ml\\gameplan-evaluation-runs\\20260908T070217.634603Z",
+    "native_history_reader_verified": true,
+    "rows": 624,
+    "status_counts": {
+      "PENDING_MATURITY": 510,
+      "EVALUATED": 106,
+      "MATURE_AWAITING_DATA": 8
+    },
+    "summary": {
+      "direction_accuracy": 0.5754716981132075,
+      "evaluated": 106,
+      "forecasts": 624,
+      "mature_awaiting_data": 8,
+      "mean_brier_score": 0.24032340870595792,
+      "pending_maturity": 510
+    },
+    "missing_older_forecasts": [
+      {
+        "symbol": "AAPL",
+        "route": "1h@15:00",
+        "action_date": "2026-09-04",
+        "source_gameplan_run": "ml/nightly-gameplan-runs/20260904T105944.876700Z",
+        "source_forecast_id": "2026-09-04:AAPL:1h@15:00"
+      },
+      {
+        "symbol": "AMZN",
+        "route": "1h@05:00",
+        "action_date": "2026-09-04",
+        "source_gameplan_run": "ml/nightly-gameplan-runs/20260904T105944.876700Z",
+        "source_forecast_id": "2026-09-04:AMZN:1h@05:00"
+      },
+      {
+        "symbol": "AMZN",
+        "route": "1h@17:00",
+        "action_date": "2026-09-04",
+        "source_gameplan_run": "ml/nightly-gameplan-runs/20260904T105944.876700Z",
+        "source_forecast_id": "2026-09-04:AMZN:1h@17:00"
+      },
+      {
+        "symbol": "GOOG",
+        "route": "1h@05:00",
+        "action_date": "2026-09-04",
+        "source_gameplan_run": "ml/nightly-gameplan-runs/20260904T105944.876700Z",
+        "source_forecast_id": "2026-09-04:GOOG:1h@05:00"
+      },
+      {
+        "symbol": "GOOG",
+        "route": "1h@14:00",
+        "action_date": "2026-09-04",
+        "source_gameplan_run": "ml/nightly-gameplan-runs/20260904T105944.876700Z",
+        "source_forecast_id": "2026-09-04:GOOG:1h@14:00"
+      },
+      {
+        "symbol": "GOOG",
+        "route": "1h@15:00",
+        "action_date": "2026-09-04",
+        "source_gameplan_run": "ml/nightly-gameplan-runs/20260904T105944.876700Z",
+        "source_forecast_id": "2026-09-04:GOOG:1h@15:00"
+      },
+      {
+        "symbol": "NVDA",
+        "route": "1h@16:00",
+        "action_date": "2026-09-04",
+        "source_gameplan_run": "ml/nightly-gameplan-runs/20260904T105944.876700Z",
+        "source_forecast_id": "2026-09-04:NVDA:1h@16:00"
+      },
+      {
+        "symbol": "SNDK",
+        "route": "1h@16:00",
+        "action_date": "2026-09-04",
+        "source_gameplan_run": "ml/nightly-gameplan-runs/20260904T105944.876700Z",
+        "source_forecast_id": "2026-09-04:SNDK:1h@16:00"
+      }
+    ],
+    "receipt": {
+      "path": "C:\\DATASTORE\\ml\\gameplan-evaluation-runs\\20260908T070217.634603Z\\receipt.json",
+      "bytes": 341,
+      "sha256": "b5100252a2848c6ae5131a287191e9ea6212bf445703ed2cabbbaf89e51d8669"
+    },
+    "manifest": {
+      "path": "C:\\DATASTORE\\ml\\gameplan-evaluation-runs\\20260908T070217.634603Z\\manifest.json",
+      "bytes": 7181,
+      "sha256": "dd16ea53ccf4de9658588e16df03dfb39287d9f22c4a8590a19f448553a3ee60"
+    },
+    "evaluations": {
+      "path": "C:\\DATASTORE\\ml\\gameplan-evaluation-runs\\20260908T070217.634603Z\\evaluations.parquet",
+      "bytes": 26462,
+      "sha256": "d458513c23882283fe7e8f12980e3230f1505dbb1c2a9ce8fa1c357086f5a626"
+    }
+  },
+  "opra": {
+    "saved_native_publication_cursor_verification": {
+      "completed_through": "2026-09-05",
+      "coverage_semantics": "exclusive cursor; includes every session before this date",
+      "production_schemas": [
+        "ohlcv-1h",
+        "cbbo-1m",
+        "definition"
+      ],
+      "required_completed_through": "2026-09-05",
+      "status": "CURRENT_THROUGH_PRIOR_ACTION_DAY",
+      "verified_cursor_count": 21,
+      "verified_cursors": [
+        "AAPL/ohlcv-1h",
+        "AAPL/cbbo-1m",
+        "AAPL/definition",
+        "AMZN/ohlcv-1h",
+        "AMZN/cbbo-1m",
+        "AMZN/definition",
+        "GOOG/ohlcv-1h",
+        "GOOG/cbbo-1m",
+        "GOOG/definition",
+        "MU/ohlcv-1h",
+        "MU/cbbo-1m",
+        "MU/definition",
+        "NVDA/ohlcv-1h",
+        "NVDA/cbbo-1m",
+        "NVDA/definition",
+        "SNDK/ohlcv-1h",
+        "SNDK/cbbo-1m",
+        "SNDK/definition",
+        "COST/ohlcv-1h",
+        "COST/cbbo-1m",
+        "COST/definition"
+      ]
+    },
+    "latest_eligible_completed_exchange_session": "2026-09-04",
+    "exclusive_cursor_completed_through": "2026-09-05",
+    "current_cursors_match_published_input_hashes": true,
+    "current_cursor_count": 21,
+    "cursors": [
+      {
+        "symbol": "AAPL",
+        "schema": "definition",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-05T08:48:58.947073+00:00",
+        "sha256": "b1ef6f9c28058ad0b5d08568421437de4bc1a461b240366307bd4daf12afb347"
+      },
+      {
+        "symbol": "AAPL",
+        "schema": "ohlcv-1h",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-05T08:49:02.837994+00:00",
+        "sha256": "d676576c0e38e223cb4f35cd5f5e191c84962da29f60002f2ff56d7d16ceaaa1"
+      },
+      {
+        "symbol": "AAPL",
+        "schema": "cbbo-1m",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-05T08:49:11.829643+00:00",
+        "sha256": "eb155546e9a0abdf9ca1193100084cbf3c14e86bcddfc81de864376597672726"
+      },
+      {
+        "symbol": "AMZN",
+        "schema": "definition",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-05T09:07:29.971802+00:00",
+        "sha256": "73d85e60f264ed5121e5a2ec1e129ed742bcf2ec2832a052e43bc2434a8d78c8"
+      },
+      {
+        "symbol": "AMZN",
+        "schema": "ohlcv-1h",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-05T09:08:19.575338+00:00",
+        "sha256": "bf2eba6a3f78aa74760f1ddbd4fb517f61db865ba323386b120918bebb54a4af"
+      },
+      {
+        "symbol": "AMZN",
+        "schema": "cbbo-1m",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-05T09:08:43.573225+00:00",
+        "sha256": "cf2dec1726b55e1996eb4aff73b45fee520aacd3d479ca6fdff791f032a869af"
+      },
+      {
+        "symbol": "GOOG",
+        "schema": "definition",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-05T09:07:33.029297+00:00",
+        "sha256": "b635fa87ee2ed010b99a02362598301a3ae5f0958466d20a4f83bce96750352b"
+      },
+      {
+        "symbol": "GOOG",
+        "schema": "ohlcv-1h",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-05T09:08:22.041401+00:00",
+        "sha256": "2c61a82295bee13737b19b0b28a900b9b52ad518ac8f5627c7a4ac158ae3fbc0"
+      },
+      {
+        "symbol": "GOOG",
+        "schema": "cbbo-1m",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-05T09:08:51.440989+00:00",
+        "sha256": "9b69dbeeabc981b98b496ba37a119a7a5046688949fe955316b22843c91c255c"
+      },
+      {
+        "symbol": "MU",
+        "schema": "definition",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-05T09:07:52.604259+00:00",
+        "sha256": "3ff4025fd5b68c9e27c977a28ec0dddf7d00f212b82be5858b1adedf9938c2f2"
+      },
+      {
+        "symbol": "MU",
+        "schema": "ohlcv-1h",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-05T09:08:27.615034+00:00",
+        "sha256": "4519df806173ab4862819e6b747624aad62b40590bb246aea639ee0880dcc61c"
+      },
+      {
+        "symbol": "MU",
+        "schema": "cbbo-1m",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-05T09:09:25.064067+00:00",
+        "sha256": "119f106a649af2e7c0e0de6750eed533394aca607aa0c5c3cc28b0f1cc39d322"
+      },
+      {
+        "symbol": "NVDA",
+        "schema": "definition",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-05T09:07:56.737209+00:00",
+        "sha256": "daed5866a7b5d6f5d60e38e3b8f4667d0cc6884c0c85b0ed02a1ca20cedde515"
+      },
+      {
+        "symbol": "NVDA",
+        "schema": "ohlcv-1h",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-05T09:08:30.422367+00:00",
+        "sha256": "0ed7729c9db7d875d86a0f282c14eabfdf453dd983495e732785b5f6886afbd8"
+      },
+      {
+        "symbol": "NVDA",
+        "schema": "cbbo-1m",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-05T09:09:36.323143+00:00",
+        "sha256": "8a9a024ed571442b15d2d152b29be7788390ba2be2d7be59a667fd48d2645e36"
+      },
+      {
+        "symbol": "SNDK",
+        "schema": "definition",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-05T09:08:17.057315+00:00",
+        "sha256": "7366c945281a04f822e1c7cac65472c19d74e901ccfdeaec909b0f2eb354f79f"
+      },
+      {
+        "symbol": "SNDK",
+        "schema": "ohlcv-1h",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-05T09:08:35.621481+00:00",
+        "sha256": "afea53dc794849b9baadf0c9fff0733fd0edc362d62711ae19934fa7d2923383"
+      },
+      {
+        "symbol": "SNDK",
+        "schema": "cbbo-1m",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-05T09:10:13.117233+00:00",
+        "sha256": "3d64c817a69831dacfc3f548a9fdfd12872465efa77c68b346e92d5061e37399"
+      },
+      {
+        "symbol": "COST",
+        "schema": "definition",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-06T20:56:40.404718+00:00",
+        "sha256": "1cacb338a9c4c74eee862fc265f20bf3f3ae22bead5be1d53296a4dcb4da72c5"
+      },
+      {
+        "symbol": "COST",
+        "schema": "ohlcv-1h",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-06T20:56:52.200079+00:00",
+        "sha256": "49ded5eb47c8b9546e7e1120a8f656a2031bc84451490395167c942d95e0d247"
+      },
+      {
+        "symbol": "COST",
+        "schema": "cbbo-1m",
+        "completed_through": "2026-09-05",
+        "updated_at": "2026-09-06T20:57:09.044132+00:00",
+        "sha256": "a95f6b3e219eb2889f13f3e8661e96128e52468d2150081a30208089c3d92038"
+      }
+    ],
+    "prior_native_partition_verification": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\cost-onboarding-implementation\\required-session-catchup-verification.json",
+      "bytes": 1286,
+      "sha256": "301a63d0998201939b1a4d6766320130feaaa1e23832cd3ff96ed5da5726f3ad"
+    },
+    "september4_cost_rows": {
+      "definition": 3712,
+      "ohlcv-1h": 8554,
+      "cbbo-1m": 1329394
+    },
+    "large_raw_archives_rehashed_this_audit": false
+  }
+}

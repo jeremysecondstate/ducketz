@@ -1,0 +1,86 @@
+{
+  "series": [
+    {
+      "path": "C:\\DATASTORE\\stocks\\COST\\bars\\10m\\schwab\\normalized\\COST_day_10_minute_10.parquet",
+      "rows": 884,
+      "nonpositive_rows": 0,
+      "minimum_price": 914.54
+    },
+    {
+      "path": "C:\\DATASTORE\\stocks\\COST\\bars\\15m\\schwab\\normalized\\COST_day_10_minute_15.parquet",
+      "rows": 653,
+      "nonpositive_rows": 0,
+      "minimum_price": 914.54
+    },
+    {
+      "path": "C:\\DATASTORE\\stocks\\COST\\bars\\1d\\schwab\\normalized\\COST_year_20_daily_1.parquet",
+      "rows": 5032,
+      "nonpositive_rows": 4,
+      "minimum_price": -8.3
+    },
+    {
+      "path": "C:\\DATASTORE\\stocks\\COST\\bars\\1m\\schwab\\normalized\\COST_day_10_minute_1.parquet",
+      "rows": 4953,
+      "nonpositive_rows": 0,
+      "minimum_price": 914.54
+    },
+    {
+      "path": "C:\\DATASTORE\\stocks\\COST\\bars\\1mo\\schwab\\normalized\\COST_year_20_monthly_1.parquet",
+      "rows": 239,
+      "nonpositive_rows": 2,
+      "minimum_price": -8.3
+    },
+    {
+      "path": "C:\\DATASTORE\\stocks\\COST\\bars\\1w\\schwab\\normalized\\COST_year_20_weekly_1.parquet",
+      "rows": 1042,
+      "nonpositive_rows": 3,
+      "minimum_price": -8.3
+    },
+    {
+      "path": "C:\\DATASTORE\\stocks\\COST\\bars\\30m\\schwab\\normalized\\COST_day_10_minute_30.parquet",
+      "rows": 375,
+      "nonpositive_rows": 0,
+      "minimum_price": 914.54
+    },
+    {
+      "path": "C:\\DATASTORE\\stocks\\COST\\bars\\5m\\schwab\\normalized\\COST_day_10_minute_5.parquet",
+      "rows": 1464,
+      "nonpositive_rows": 0,
+      "minimum_price": 914.54
+    }
+  ],
+  "raw_nonpositive_candles": [
+    {
+      "close": 27.09,
+      "datetime": 1221800400000,
+      "high": 32.0,
+      "low": -8.3,
+      "open": 32.0,
+      "volume": 10335762
+    },
+    {
+      "close": -0.02000000000000313,
+      "datetime": 1236319200000,
+      "high": 0.740000000000002,
+      "low": -0.829900000000002,
+      "open": 0.579999999999998,
+      "volume": 7087163
+    },
+    {
+      "close": -0.560000000000002,
+      "datetime": 1236574800000,
+      "high": 0.469999999999999,
+      "low": -0.819899999999997,
+      "open": -0.560000000000002,
+      "volume": 6474405
+    },
+    {
+      "close": 1.140000000000001,
+      "datetime": 1236661200000,
+      "high": 1.189999999999998,
+      "low": -0.350000000000001,
+      "open": 0.0300000000000011,
+      "volume": 8580989
+    }
+  ]
+}
