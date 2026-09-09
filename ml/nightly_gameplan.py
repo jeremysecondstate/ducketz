@@ -36,6 +36,9 @@ from ml.training_progress import fit_with_progress
 from ml.calibration import IdentityCalibrator, fit_probability_calibrator
 from ml.current_publication import read_current_publication
 from ml.gameplan_estimators import ProbabilityBlend as _ProbabilityBlend
+from ml.gameplan_promotion import (
+    DIRECTIONAL_PROMOTION_POLICY, STRICT_PROMOTION_POLICY, build_promotion_gate,
+)
 from ml.gameplan_development_selection import (
     DAILY_LOGISTIC_REGULARIZATION_POLICY,
     DEVELOPMENT_SELECTION_POLICY,
@@ -1284,25 +1287,10 @@ def _fit_group_model(
         assessment_target,
         np.full(len(assessment_target), base_rate, dtype=float),
     )
-    gate_checks = {
-        "calibration_retains_directional_information": calibration_diagnostics["information_available"],
-        "assessment_has_at_least_10_decision_clusters": (
-            partitions["assessment"]["decision_timestamp"].nunique() >= 10
-        ),
-        "brier_beats_training_base_rate": (
-            assessment["brier_score"] < baseline["brier_score"]
-        ),
-        "log_loss_beats_training_base_rate": (
-            assessment["log_loss"] < baseline["log_loss"]
-        ),
-        "expected_calibration_error_at_most_0_15": (
-            assessment["expected_calibration_error_10_bin"] <= 0.15
-        ),
-    }
-    gate = {
-        "status": "PROMOTED" if all(gate_checks.values()) else "RESEARCH_NOT_PROMOTED",
-        "checks": gate_checks,
-    }
+    gate = build_promotion_gate(assessment, baseline, calibration_diagnostics,
+        int(partitions["assessment"]["decision_timestamp"].nunique()),
+        policy_version=DIRECTIONAL_PROMOTION_POLICY if independent_selection else STRICT_PROMOTION_POLICY)
+    gate_checks = gate["checks"]
     if not all(gate_checks.values()):
         print(json.dumps({
             "training_event": "FIT_WARNING", "fit": f"gameplan/{group}/assessment",
@@ -1337,6 +1325,7 @@ def _fit_group_model(
             "categorical_columns": categorical,
             "selected_family": selected_name,
             "selected_logistic_regularization_c": logistic_candidates.get(selected_name),
+            "directional_promotion_policy": gate["policy_version"],
             "logistic_regularization_policy": DAILY_LOGISTIC_REGULARIZATION_POLICY if independent_selection and group == "1d" else None,
             "development_selection_policy": DEVELOPMENT_SELECTION_POLICY if independent_selection else None,
             "target_calendar_feature_contract": STOCK_CALENDAR_FEATURE_CONTRACT if independent_selection else None,

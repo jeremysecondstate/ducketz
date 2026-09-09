@@ -35,10 +35,47 @@ from ml.stock_trader.runtime import (
 )
 from ml.stock_trader.session import stock_execution_window
 from ml.stock_trader.state import capture_portfolio_state
-from ml.stock_trader.sizing_policy import LEARNED_SIZING_POLICY, FIXED_SIZING_POLICY, validate_sizing_policy
+from ml.stock_trader.sizing_policy import LEARNED_SIZING_POLICY, FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY, validate_sizing_policy
+from ml.stock_direction_policy import stock_direction
 
 LEDGER_RELATIVE_PATH = Path("state/independent-stock-trader/holdings.sqlite3")
 CLOSE_EXIT_LEAD_SECONDS = 60
+MAXIMUM_QUOTE_CLOCK_WAIT_SECONDS = 5.
+
+
+def _wait_for_current_quote_timestamps(portfolio, *, clock, sleep, deadline):
+    """Let a recently delivered quote reach local time without relabeling it.
+
+    A slow host clock can otherwise reject each newly captured BBO forever.
+    Waiting is bounded and does not make a future, old, or malformed quote
+    valid: the existing decision and submission gates still check its actual
+    timestamp. Neither the portfolio timestamp nor any deadline is advanced.
+    """
+    now = utc(clock())
+    future = []
+    for quote in portfolio.quotes.values():
+        if not quote.observed_at:
+            continue
+        try:
+            observed = utc(quote.observed_at)
+            if observed > now:
+                future.append(observed)
+        except (ValueError, TypeError):
+            continue
+    result = {"status": "NOT_NEEDED", "requested_wait_seconds": 0.,
+              "maximum_wait_seconds": MAXIMUM_QUOTE_CLOCK_WAIT_SECONDS}
+    if not future:
+        return result
+    latest = max(future)
+    wait = (latest - now).total_seconds() + .001
+    budget = min(MAXIMUM_QUOTE_CLOCK_WAIT_SECONDS, max(0.,
+        (utc(deadline) - now).total_seconds() - DEFAULT_BROKER_STATE_EXECUTION_LEAD_SECONDS))
+    result.update(latest_quote_at=latest.isoformat(), ahead_seconds=(latest - now).total_seconds())
+    if wait > budget:
+        return {**result, "status": "OUTSIDE_WAIT_BUDGET"}
+    sleep(wait)
+    return {**result, "status": "CURRENT_AFTER_WAIT" if utc(clock()) >= latest else "STILL_FUTURE",
+            "requested_wait_seconds": wait}
 
 
 def _has_inventory(path: Path) -> bool:
@@ -102,6 +139,12 @@ def run_independent_stock_trader_once(
     clock = runtime_clock or (lambda: utc() if decided_at is None else utc(decided_at))
     timestamp = utc(clock())
     active_policy = policy or StockTraderPolicy()
+    if policy is None and sizing_policy == GAMEPLAN_SIZING_POLICY:
+        # One exit and one directional decision per configured symbol/horizon
+        # fits in this opt-in batch. The legacy six-order strategy is unchanged.
+        from ml.stock_trader.contracts import STOCK_TRADER_SYMBOLS
+        active_policy = replace(active_policy, policy_version=GAMEPLAN_SIZING_POLICY,
+                                maximum_orders_per_wake=len(STOCK_TRADER_SYMBOLS) * 4 * 2)
     active_policy.validate()
     activation = read_gameplan_stock_activation_intent(root)
     sources = ()
@@ -133,7 +176,7 @@ def run_independent_stock_trader_once(
         signals = {}
         try:
             if entry_allowed:
-                signal_options = {"require_promoted_model_reports": True} if sizing_policy == FIXED_SIZING_POLICY else {}
+                signal_options = {"require_promoted_model_reports": True} if sizing_policy in {FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY} else {}
                 signals, sources = load_current_independent_gameplan_signals(root, as_of=timestamp, **signal_options)
         except (OSError, ValueError, RuntimeError) as exc:
             metadata["entry_input_error"] = f"{type(exc).__name__}: {exc}"
@@ -146,7 +189,7 @@ def run_independent_stock_trader_once(
             f"{symbol}/{horizon}": enrichment_signal_readiness(model, signal)
             for (symbol, horizon), signal in signals.items() if model is not None
         }
-        qualified = (dict(signals) if sizing_policy == FIXED_SIZING_POLICY else
+        qualified = (dict(signals) if sizing_policy in {FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY} else
                      {key: signal for key, signal in signals.items()
                       if unsupported.get(f"{key[0]}/{key[1]}", {}).get("status") == "READY"})
         metadata["directional_signals"] = len(signals)
@@ -159,7 +202,7 @@ def run_independent_stock_trader_once(
                               error="Live independent stock entries require the bounded session worker; one-shot calls can manage existing owned exits.")
             if metadata.get("entry_input_error"):
                 return finish("INDEPENDENT_TARGET_PLAN_UNAVAILABLE", error=metadata["entry_input_error"])
-            return finish("NO_DIRECTIONAL_STOCK_ENTRY_SIGNAL" if sizing_policy == FIXED_SIZING_POLICY
+            return finish("NO_DIRECTIONAL_STOCK_ENTRY_SIGNAL" if sizing_policy in {FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY}
                           else "NO_QUALIFIED_INDEPENDENT_STOCK_ENTRIES")
         if execute and qualified and not _claim_entry_slot(root, timestamp):
             qualified = {}
@@ -194,7 +237,14 @@ def run_independent_stock_trader_once(
             # portfolio. No reconciliation or broker write belongs in this loop.
             current_evidence = capture_order_evidence(broker, ledger, account_fingerprint=stable_identity,
                 as_of=utc(clock()), observation_clock=clock)
-            current_portfolio = capture_portfolio_state(broker, observed_at=utc(clock()), parallel=True)
+            current_portfolio = capture_portfolio_state(broker, observed_at=utc(clock()), parallel=True,
+                **({"literal_cash_only": True, "use_actual_quote_timestamps": True}
+                   if sizing_policy == GAMEPLAN_SIZING_POLICY else {}))
+            if sizing_policy == GAMEPLAN_SIZING_POLICY:
+                metadata["quote_timestamp_wait"] = _wait_for_current_quote_timestamps(
+                    current_portfolio, clock=clock, sleep=broker_state_retry_sleep, deadline=read_deadline)
+                if not read_gameplan_stock_activation_intent(root).active:
+                    raise ValueError("TRADER_INACTIVE_DURING_BROKER_CAPTURE")
             if stable_identity != broker.stable_account_fingerprint():
                 raise ValueError("STOCK_ACCOUNT_CHANGED_DURING_CAPTURE")
             broker.verify_read_snapshot(current_portfolio.broker_identity_fingerprint)
@@ -247,12 +297,27 @@ def run_independent_stock_trader_once(
             ledger_ready=reconciliation.ready, decided_at=timestamp, policy=active_policy,
             time_in_force=window.time_in_force, exit_decisions=exits,
         )
-        if sizing_policy == FIXED_SIZING_POLICY:
+        if sizing_policy == GAMEPLAN_SIZING_POLICY:
+            from ml.stock_trader.gameplan_direction_engine import build_gameplan_direction_trade_decisions
+            capacities = _direction_sell_capacities(qualified, state, portfolio, exits)
+            metadata["planning_ranges_have_execution_authority"] = False
+            metadata["direction_sell_capacities"] = {f"{s}/{h}": q for (s, h), q in capacities.items()}
+            metadata["pricing_basis"] = "current_quote_ask_for_buy_bid_for_sell"
+            decisions = build_gameplan_direction_trade_decisions(
+                qualified, portfolio, activation, verified_promoted_signals=frozenset(qualified),
+                bearish_sell_capacities=capacities, maximum_quote_age_seconds=ledger.maximum_evidence_age_seconds,
+                **decision_options)
+        elif sizing_policy == FIXED_SIZING_POLICY:
             from ml.stock_trader.fixed_horizon_engine import build_fixed_horizon_trade_decisions
             decisions = build_fixed_horizon_trade_decisions(
                 qualified, portfolio, activation, verified_promoted_signals=frozenset(qualified), **decision_options)
         else:
             decisions = build_independent_trade_decisions(qualified, portfolio, model, activation, **decision_options)
+        blocked_exit_quotes = [d.symbol for d in decisions
+            if d.prediction.get("position_purpose") == "EXIT" and (d.hypothetical_quantity or 0) > 0
+            and d.quantity == 0 and d.decision_reason_code in {"USABLE_QUOTE_UNAVAILABLE", "CURRENT_QUOTE_TOO_OLD"}]
+        if blocked_exit_quotes:
+            metadata["blocked_owned_exit_quotes"] = sorted(set(blocked_exit_quotes))
         publication = publish_decision_run(
             root, decisions, decided_at=timestamp, activation=activation, policy=active_policy,
             execution_requested=execute, source_files=sources, prediction_handoff=metadata,
@@ -260,7 +325,37 @@ def run_independent_stock_trader_once(
         )
         if not execute:
             return finish("DRY_RUN_INDEPENDENT_STOCK_DECISIONS", decisions=decisions, publication=publication)
-        return _submit_batch(root, broker, ledger, decisions, publication, window, snapshot_id, stable_identity, clock, finish)
+        result = _submit_batch(root, broker, ledger, decisions, publication, window, snapshot_id, stable_identity, clock, finish)
+        if blocked_exit_quotes and not result.error:
+            return replace(result, status="HORIZON_EXIT_QUOTE_UNAVAILABLE",
+                           error="Due owned exit requires a current quote: " + ", ".join(sorted(set(blocked_exit_quotes))))
+        return result
+
+
+def _direction_sell_capacities(signals, state, portfolio, exits):
+    """Partition current eligible shares once; never use projected inventory."""
+    from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS
+    allocations = {(a.symbol, a.horizon): a for a in state.allocations if a.status == "ACTIVE"}
+    due_ids = {d.prediction.get("allocation_id") for d in exits}
+    free = {}
+    for symbol, held in portfolio.held_shares.items():
+        owned = sum(a.filled_shares for a in state.allocations if a.symbol == symbol)
+        reserved = sum(a.reserved_sell_shares for a in state.allocations if a.symbol == symbol)
+        external_pending = max(0, portfolio.pending_sell_shares.get(symbol, 0) - reserved)
+        free[symbol] = max(0, int(held - owned - external_pending))
+    capacities = {}
+    for key in sorted(signals, key=lambda item: (FIXED_HORIZON_WEIGHTS[item[1]], item[0])):
+        if stock_direction(signals[key].calibrated_probability) != "BEARISH":
+            continue
+        symbol, _ = key
+        allocation = allocations.get(key)
+        if allocation and (allocation.reserved_buy_shares or allocation.allocation_id in due_ids):
+            capacities[key] = 0
+            continue
+        own = max(0, allocation.filled_shares - allocation.reserved_sell_shares) if allocation else 0
+        capacities[key] = int(own + free.get(symbol, 0))
+        free[symbol] = 0
+    return capacities
 
 
 def _exit_decisions(ledger, portfolio, activation, policy, timestamp, snapshot_id, time_in_force):
@@ -376,6 +471,13 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
                 age = (utc(clock()) - utc(decision.portfolio["observed_at"])).total_seconds()
                 if not 0 <= age <= ledger.maximum_evidence_age_seconds:
                     raise _SubmissionStopped("BROKER_PORTFOLIO_TOO_OLD_FOR_SUBMISSION")
+                if decision.prediction.get("sizing_policy") == GAMEPLAN_SIZING_POLICY:
+                    quote_at = decision.quote.get("observed_at")
+                    if not quote_at:
+                        raise _SubmissionStopped("CURRENT_QUOTE_TIME_UNAVAILABLE")
+                    quote_age = (utc(clock()) - utc(quote_at)).total_seconds()
+                    if not 0 <= quote_age <= ledger.maximum_evidence_age_seconds:
+                        raise _SubmissionStopped("CURRENT_QUOTE_TOO_OLD_FOR_SUBMISSION")
                 reason = _submission_safety_reason(
                     root, decision, as_of=utc(clock()), planned_window=window,
                     allow_open_queue=False, allow_premarket_queue=False, execution_lead_seconds=5,
@@ -393,7 +495,15 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
                 quantity=decision.quantity, limit_price=decision.limit_price, snapshot_id=snapshot_id,
                 idempotency_key=decision.decision_id, batch_id=batch_id, as_of=utc(clock()).isoformat(),
             )
-            if decision.prediction.get("position_purpose") == "EXIT":
+            if decision.prediction.get("position_purpose") == "DIRECTION_EXIT":
+                reservation = ledger.reserve_direction_exit(
+                    symbol=decision.symbol, horizon=decision.prediction["primary_horizon"],
+                    forecast_id=decision.prediction["prediction_id"],
+                    target_start=decision.prediction["target_window_start"],
+                    target_end=decision.prediction["target_window_end"],
+                    pending_sell_shares=decision.portfolio.get("pending_sell_shares", 0), **common,
+                )
+            elif decision.prediction.get("position_purpose") == "EXIT":
                 reservation = ledger.reserve_exit(
                     allocation_id=decision.prediction["allocation_id"], exit_lead_seconds=CLOSE_EXIT_LEAD_SECONDS, **common,
                 )

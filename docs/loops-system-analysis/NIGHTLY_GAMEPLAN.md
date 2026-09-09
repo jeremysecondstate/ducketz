@@ -76,9 +76,9 @@ Each selected stage stops on failure:
    These models remain research/shadow when unqualified; the explicitly selected
    fixed-budget stock strategy does not depend on learned sizing promotion.
 9. `gameplan_trade_planning` — for independent stock horizons, publish the
-   reviewable Trade Quantity and Trade Price fields from the same pinned
+   reviewable capacity, direction-based quantities and planning prices from the same pinned
    Gameplan, a timestamped read-only account/holdings/working-order/quote
-   snapshot, and the existing fixed-budget rules. This required tail stage
+   snapshot, and a pure chronological cash/stock projection. This required tail stage
    writes a separate immutable trade-plan artifact; it does not submit orders,
    change live controls, reconcile or reserve horizon allocations, or modify
    the published forecasts or model statuses.
@@ -103,19 +103,91 @@ the verified pinned publication and `--deadline` set to the overnight deadline.
 Its separate outputs live beneath
 `C:\DATASTORE\ml\gameplan-trade-plan-runs\<generation>`:
 
-- `trade-plan.parquet` — one row for every frozen forecast, including explicit
-  zero quantities and reasons for non-entry/research/below-threshold rows;
+- `trade-plan.parquet` — one row for every frozen forecast, with independent
+  capacity, signed direction quantity, post-hour cash/shares and the separate
+  preserved scheduled-entry preview;
 - `report.json` — snapshot provenance, cash and holdings context, policy,
   aggregate allocation checks, and exact unavailable-input or quality reasons;
-- `Gameplan.md` — the human-readable review with Trade Quantity and Trade Price;
+- `planning-price-path.json` — working prices for all 04:00–17:00 clocks, with
+  historical sample evidence and wider stress ranges;
+- `direction-ledger.json` — chronological transactions, hourly balances,
+  ending holdings and explicit conditional-fill assumptions;
+- `Gameplan.md` — the human-readable review with both quantity columns,
+  planning prices, hourly cash/holdings and the end-of-day forecast;
 - `receipt.json` — checksum-bound completion evidence, with zero orders.
 
 The separate `ml/gameplan-trade-plan-latest/run.json` pointer selects the review.
 Planning preserves the seven-symbol 168-row forecast identity and the frozen
-Pacific entry/expiry windows. Quantities and prices describe a plan using its
-recorded account and quote snapshot, not guaranteed next-session fills. A row
-without an eligible long entry has quantity zero and no order limit; reference
-quotes must be distinguished from trade prices. Future execution still needs
+Pacific entry/expiry windows. **Projected Trade Quantity** remains the standalone
+whole-share capacity for one opportunity under the full configured horizon
+budget, current cash/exposure limits and upper working price. It is not summed
+as simultaneous orders. The adjacent **Direction Based Trade Qty** is the
+chronological plan: promoted Bullish P(up) >= 54% buys with available cash,
+Bearish P(up) <= 46% sells eligible held shares, and Neutral is zero. The main
+table displays BUY/SELL quantities, Plan action, Cash available after (range)
+and Shares remaining. Non-entry gap/outlook rows show a dash.
+
+The stage reads fresh literal cash, all seven stock balances including COST,
+working-order reservations, options/other exposure and current horizon
+allocations. It never assumes a cached share count or silently adopts manual
+holdings into the live ownership ledger. The pure scenario may sell unallocated
+held stock, but cannot sell another horizon's protected shares or pending sells.
+At each clock it processes bearish sales, remaining due horizon exits, then
+bullish buys through one shared cash balance. Sales take shorter horizons first;
+buys take highest probability first, then shorter horizon and symbol. Purchases
+use full horizon budgets, conservative remaining cash/exposure and the initial
+5% cash buffer. A neutral row adds no transaction; a prior lot may separately
+expire at that hour. Every forecast row shows balances after the entire hour's
+batch, matching the main 04:00–17:00 portfolio table. Event details show each
+transaction's before/after balances once. Overnight and weekly lots whose expiry
+is later remain held in the 17:00 end-of-day projection.
+
+The working range is the observed prior-close-to-clock median price plus/minus
+20 basis points, rounded outward to cents. It is a conditional fill assumption,
+not a confidence interval, guaranteed fill or execution limit. At least two
+same-source historical pairs remain required; wider historical 5th–95th
+percentile ranges stay in the evidence for stress analysis. Cash low/base/high
+uses upper/base/lower purchase costs and lower/base/upper sale proceeds, before
+fees and taxes. Assumed earlier sales may finance later projected buys; missing
+fills or changed broker cash require recalculation. The no-fill baseline keeps
+starting cash and shares unchanged. The base case is not an expected return.
+
+The scheduled-default long-only policy retains its confidence-weighted entry
+preview in expandable details and in the data. The opt-in manual policy
+`gameplan-direction-current-market-v1` consumes the same frozen directions and
+recomputes each order from actual broker cash, holdings, pending orders and
+current quotes. It may sell eligible unallocated manual shares through explicit
+sell reservations; it never counts reservations as fills or spends unconfirmed
+sale proceeds. **Planning price and cash ranges are estimates only: neither
+range can reject an order for being above or below it.** BUY limits use the
+current ask and SELL limits the current bid, with permitted tick rounding.
+The hypothetical ledger is not copied into actual broker balances. Model approval remains a separate
+requirement. This section describes the implemented publication contract;
+completion of any generation still requires its own verified native receipt.
+
+The user can manually launch [`Start-Gameplan-Trader.cmd`](../../Start-Gameplan-Trader.cmd)
+once to enable both stock controls and start this policy. Before its supported
+04:00 Pacific opening, `--wait-for-open` keeps the worker asleep with its process
+lock and a local heartbeat every 30 seconds or sooner. There are no broker
+calls, model checks, inventory operations or entry-slot claims before wake.
+It reads the current publication after waking, with the first entry batch at
+04:01 and no second click or prompt. Previous-evening/weekend/holiday starts
+select the next supported exchange session, respecting DST and the current
+half-day exclusions. A control switched off stops the wait. The unchanged
+03:55 Scheduled launcher adopts a verified waiting Gameplan worker; its own
+default fixed policy and schedule stay unchanged. See
+[manual start details](INDEPENDENT_STOCK_HORIZONS.md#one-action-manual-start-and-automatic-wake).
+
+Daily display labels count the completed source session as Day 1 and show actual
+calendar dates: a September 8 source produces `Daily · Day 2 · Sep 09` through
+`Daily · Day 6 · Sep 15`. The count follows exchange sessions, including holiday
+and weekend skips. Weekly labels show Days 2–6 plus their start and expiry dates.
+Existing route IDs retain their source meaning: D+1 is the next exchange session
+after the completed source session. The main review shows prices without repeated reference qualifiers or
+historical-sample/status columns; detailed source files remain available from
+the footer. Current cash, shares, investment values and price times stay visible.
+
+Quantities and prices use the recorded account and quote snapshot. Future execution still needs
 its existing current-quote, cash, exposure, ownership, session, activation and
 quality checks. The review stage cannot activate trading or turn research
 sizing models into qualified models.
@@ -217,7 +289,7 @@ own held-out horizon quality and observed symbol/route/duration/source support.
 Its unqualified models cannot enter through that strategy. The selected fixed
 strategy instead uses the qualified stock probability directly for the explicit
 capital rule `min(0.5, max(0, 2*p - 1))`, within the existing 1:2:3:4 horizon,
-symbol, single-order and shared account limits. It requires at least 0.55 for a
+symbol, single-order and shared account limits. It requires at least 0.54 for a
 long entry and creates no synthetic learned-return or profitability output.
 
 September 8, 2026 selected deployment: current XNAS Gameplan
@@ -256,7 +328,7 @@ license denial or substitute another price source when Historical is late.
 
 It must remain active until the workflow completes or reaches an unresolved
 failure. Starting a command and ending the Scheduled task is not completion.
-`Loops Operations Watch` checks at :00 and :30 each hour, including weekends,
+`Loops Operations Watch` checks at :00 each hour, including weekends,
 for a missed start, abandoned run, or failure that needs attention. Healthy work
 continues across midnight, weekends, and exchange holidays.
 
@@ -360,7 +432,7 @@ An active claim prevents a second operator from starting or repairing that run.
 After the claim expires, the watch may acquire its own claim, adopt the existing
 run, and use the same repair procedure. The process lock also prevents simultaneous
 pipelines. The watch may start missing fresh work only after **21:15 Pacific** on
-an eligible exchange date (normally its 21:30 wake), leaving the 21:05 daily owner
+an eligible exchange date, at its next scheduled wake, leaving the 21:05 daily owner
 time to start. Before then, only continue authorized unfinished work with a valid
 deadline. After midnight use the existing attempt's resume path. Completed runs and holiday
 no-ops do not trigger retraining. No active run means no new weekend fetch or
@@ -496,11 +568,23 @@ checkpoint is 12:00 PT (entry 08:00). Other stock forecasts remain in the
 immutable grid but their option intent is explicitly `NO_TRADE`.
 
 For each model group, the overnight builder trains both a histogram-gradient
-model and an MLP neural-network challenger, compares the two plus fixed blends
+model and an MLP neural-network challenger, compares these, regularized logistic
+candidates and fixed blends
 on a later chronological selection partition, calibrates on a separate
 partition, and reports final performance on an untouched assessment partition.
 Assessment failure leaves that group's output explicitly research-only; it is
 never relabeled as promoted.
+For new independent-stock publications, the user-approved v2 operating policy
+allows Brier score up to training-baseline + 0.005 and log loss up to baseline
++ 0.01, while retaining probability variation, calibration and assessment sample
+checks. Approval under these tolerances does not assert measured baseline
+outperformance. The daily logistic grid uses C = 0.001, 0.01, 0.1 and 1, selected
+strictly on development data before final assessment. Numerical results, the
+policy version and tolerances are recorded and verified consistently by the
+publisher, reader and champion selection. Older strict-policy publications
+remain unchanged. Investigate and correct actual training/data defects when a
+candidate fails, then rerun the affected stage; do not repeatedly select
+candidates using final assessment outcomes.
 Promotion also requires varying calibrated probabilities on both the calibration
 and assessment partitions, with both target classes available. A constant
 base-rate fallback cannot pass as a promoted directional model. The report saves
@@ -639,7 +723,7 @@ authority.
 - The former standalone OPRA maintainer stays paused because OPRA maintenance is
   stage 1 of the overnight owner.
 - The separate Strategy paper-ledger stays paused. The stock daily-adaptation
-  schedule now runs `Loops Operations Watch` every 30 minutes for daytime and
+  schedule now runs `Loops Operations Watch` hourly at :00 for daytime and
   overnight supervision. Its missed overnight start threshold is 21:15 PT. The cumulative
   Gameplan evaluator owns matured directional evaluation; option-intent P/L is
   not claimed without exact-leg execution or separately labeled counterfactual

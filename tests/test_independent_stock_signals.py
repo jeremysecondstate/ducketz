@@ -180,6 +180,25 @@ def test_fixed_qualification_excludes_research_horizon(published):
     assert verified_promoted_model_groups(read_current_gameplan(published)) == frozenset({"1h", "1d", "1w"})
 
 
+def test_reader_accepts_numerically_verified_v2_tolerance_without_rewriting_legacy(published):
+    from ml.gameplan_promotion import build_promotion_gate
+    from ml.stock_trader.independent_signals import verified_promoted_model_groups
+    from ml.nightly_gameplan import read_current_gameplan
+    reports = _promoted_reports()
+    daily = reports["1d"]
+    daily["assessment"].update(brier_score=.253, log_loss=.695)
+    daily["calibration_diagnostics"].update(calibrated_probability_range=[.4, .6],
+        assessment_probability_range=[.4, .6], calibration_positive_rate=.5, nondecreasing_constraint_active=False)
+    daily["promotion_gate"] = build_promotion_gate(daily["assessment"], daily["training_base_rate_assessment"],
+        daily["calibration_diagnostics"], 10)
+    _publish(published, _frame(), reports=reports)
+    assert verified_promoted_model_groups(read_current_gameplan(published)) == frozenset({"1h", "4h", "1d", "1w"})
+    daily["promotion_gate"]["baseline_tolerances"]["brier_score"] = .05
+    _publish(published, _frame(), reports=reports)
+    with pytest.raises(ValueError, match="tolerances"):
+        verified_promoted_model_groups(read_current_gameplan(published))
+
+
 @pytest.fixture
 def published(tmp_path, monkeypatch):
     monkeypatch.setattr(signals_module, "STOCK_TRADER_SYMBOLS", SYMBOLS)

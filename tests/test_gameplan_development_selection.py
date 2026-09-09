@@ -93,8 +93,8 @@ def test_estimator_and_calibration_choices_do_not_depend_on_final_assessment(tmp
     assert "target__weekday_sin" in first["features"]["admitted"]
     assert first["promotion_gate"]["status"] == "PROMOTED"
     assert changed["promotion_gate"]["status"] == "RESEARCH_NOT_PROMOTED"
-    assert changed["promotion_gate"]["checks"]["brier_beats_training_base_rate"] is False
-    assert changed["promotion_gate"]["checks"]["log_loss_beats_training_base_rate"] is False
+    assert changed["promotion_gate"]["checks"]["brier_within_baseline_tolerance"] is False
+    assert changed["promotion_gate"]["checks"]["log_loss_within_baseline_tolerance"] is False
     for result in results:
         forecasts = result["forecasts"]
         assert forecasts.enrichment_feature_contract.eq(INDEPENDENT_MARKET_FEATURE_CONTRACT).all()
@@ -110,3 +110,36 @@ def test_invalid_development_probabilities_fail_instead_of_falling_back(bad):
     raw[0] = bad
     with pytest.raises(ValueError, match="probabilities are invalid"):
         select_development_calibrator(rows, raw)
+
+
+def test_daily_regularization_grid_is_selected_without_assessment_labels(tmp_path, monkeypatch):
+    from sklearn.dummy import DummyClassifier
+    from ml.gameplan_development_selection import DAILY_LOGISTIC_REGULARIZATION_POLICY
+    original = _estimator
+    def estimator(family, numeric, categorical):
+        return original(family, numeric, categorical) if family == "logistic" else DummyClassifier(strategy="prior")
+    monkeypatch.setattr("ml.nightly_gameplan._estimator", estimator)
+    samples = development_rows(120)
+    samples = samples.assign(symbol="AAPL", model_group="1d", route="1d@D+1", forecast_anchor_local="D+1",
+        information_available_at=samples.decision_timestamp, target_semantics="independent_test",
+        target_contract_version="independent-stock-targets-v1", trading_hours=13., mr__x=samples.target.astype(float))
+    samples["target_window_end"] = samples.target_window_start + pd.Timedelta(hours=13)
+    current = samples.tail(2).copy()
+    for index, name in enumerate(INDEPENDENT_MARKET_FEATURE_NAMES):
+        current[name] = [index + .25, index + .5]
+    reports = []
+    for flip_assessment in (False, True):
+        altered = samples.copy()
+        if flip_assessment:
+            altered.loc[altered.index[-15:], "target"] = 1 - altered.loc[altered.index[-15:], "target"]
+        value = _fit_group_model(altered, current=current, feature_columns=("mr__x",), group="1d",
+            model_directory=tmp_path / str(flip_assessment) / "models/1d", trained_at=pd.Timestamp("2026-06-01T00:00Z"))
+        reports.append(value["report"])
+    first, second = reports
+    assert first["logistic_regularization_policy"] == DAILY_LOGISTIC_REGULARIZATION_POLICY
+    assert first["logistic_regularization_candidates"] == [.001, .01, .1, 1.]
+    assert first["selection_metrics"] == second["selection_metrics"]
+    assert first["selected_logistic_regularization_c"] == second["selected_logistic_regularization_c"]
+    assert first["calibration_selection"] == second["calibration_selection"]
+    assert first["promotion_gate"]["status"] == "PROMOTED"
+    assert second["promotion_gate"]["status"] == "RESEARCH_NOT_PROMOTED"

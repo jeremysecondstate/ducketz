@@ -108,6 +108,8 @@ def test_single_read_sanitized_cash_only_and_no_state_created(tmp_path):
     assert result["broker_available_cash"] == 7800
     assert result["reserved_cash"] == 200
     assert result["held_shares"] == {"AAPL": 2}
+    assert result["stock_market_value_by_symbol"] == {"AAPL": 200}
+    assert result["other_symbol_exposure"] == {"AAPL": 0}
     assert result["pending_buy_shares"] == {"AAPL": 2}
     assert result["working_order_count"] == 1
     assert all(session.calls.count(name) == 1 for name in ("account", "orders", "quotes", "prepare", "verify"))
@@ -185,11 +187,29 @@ def test_ledger_read_is_query_only_and_identifier_free(tmp_path):
     assert owner["status"] == "OBSERVED_CONSISTENT"
     assert owner["safe_for_planning"] is True
     assert owner["active_allocations"][0]["owned_shares"] == 1
+    assert owner["active_allocations"][0]["target_start"] == "2026-09-08T11:00:00+00:00"
+    assert owner["active_allocations"][0]["target_end"] == "2026-09-10T00:00:00+00:00"
     assert owner["current_broker_reconciliation_performed"] is False
     assert hashlib.sha256(path.read_bytes()).hexdigest() == before
     assert list(path.parent.iterdir()) == [path]
     assert IDENTITY not in json.dumps(result)
     assert "private-allocation" not in json.dumps(result)
+
+
+@pytest.mark.parametrize("field,value", [("end", None), ("end", "not-a-time"), ("end", "NaT"),
+                                        ("end", "2026-09-10T00:00:00"), ("start", None),
+                                        ("end", "2026-09-08T11:00:00Z"),
+                                        ("end", "2026-09-08T10:00:00Z")])
+def test_invalid_allocation_expiry_cannot_become_current_time_or_spendable_cash(tmp_path, field, value):
+    path = ledger(tmp_path)
+    # Column names come only from the fixed parameter cases above.
+    with sqlite3.connect(path) as db:
+        db.execute(f"UPDATE allocations SET {field}=?", (value,))
+    before = hashlib.sha256(path.read_bytes()).hexdigest()
+    owner = capture(tmp_path)["ownership"]
+    assert owner["safe_for_planning"] is False
+    assert owner["reason_codes"] == ["OWNERSHIP_ALLOCATION_TIME_INVALID"]
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == before
 
 
 @pytest.mark.parametrize("options,reason", [
@@ -250,6 +270,37 @@ def test_direct_option_dollar_exposure_does_not_require_unit_price_or_multiplier
     assert result["available_cash"] == 1500
 
 
+def test_stock_and_option_exposure_are_separate_for_the_same_underlying(tmp_path):
+    session = ReadSession()
+    positions = session.account["securitiesAccount"]["positions"]
+    positions[0].update(instrument={"symbol": "GOOG", "assetType": "EQUITY"},
+        longQuantity=1, marketValue=336.45, marketPrice=336.45)
+    positions.append({"instrument": {"symbol": "GOOG  260918C00340000", "assetType": "OPTION"},
+                      "longQuantity": 1, "shortQuantity": 0, "marketValue": 219})
+    session.get_equity_quotes = lambda _symbols: {"GOOG": {"bidPrice": 335, "askPrice": 336,
+        "lastPrice": 335.5, "tradeTime": 1788927500000, "quoteTime": 1788927600000}}
+    result = capture_trade_planning_snapshot(tmp_path, symbols=["GOOG"], session=session, observed_at=STAMP)
+    assert result["status"] == "OBSERVED"
+    assert result["held_shares"] == {"GOOG": 1}
+    assert result["stock_market_value_by_symbol"] == {"GOOG": 336.45}
+    assert result["other_symbol_exposure"] == {"GOOG": 219}
+    assert result["symbol_exposure"] == {"GOOG": 555.45}
+    assert result["gross_exposure"] == 555.45
+
+
+def test_short_option_exposure_uses_native_absolute_gross_attribution(tmp_path):
+    session = ReadSession()
+    session.account["securitiesAccount"]["positions"].append({
+        "instrument": {"symbol": "AAPL  260918C00100000", "assetType": "OPTION"},
+        "longQuantity": 0, "shortQuantity": 1, "marketValue": -125})
+    result = capture(tmp_path, session)
+    assert result["status"] == "OBSERVED"
+    assert result["stock_market_value_by_symbol"] == {"AAPL": 200}
+    assert result["other_symbol_exposure"] == {"AAPL": 125}
+    assert result["symbol_exposure"] == {"AAPL": 325}
+    assert result["gross_exposure"] == 325
+
+
 def test_full_reported_fourteen_position_shape_includes_etfs_and_option(tmp_path):
     session = ReadSession()
     economics = [("AMZN", "EQUITY", 1, 257.94), ("VXUS", "COLLECTIVE_INVESTMENT", 30, 2657.4),
@@ -270,6 +321,8 @@ def test_full_reported_fourteen_position_shape_includes_etfs_and_option(tmp_path
     assert result["gross_exposure"] == pytest.approx(sum(row[3] for row in economics) + 219)
     assert result["held_shares"] == {"AAPL": 1}
     assert result["symbol_exposure"] == {"AAPL": 317.61}
+    assert result["stock_market_value_by_symbol"] == {"AAPL": 317.61}
+    assert result["other_symbol_exposure"] == {"AAPL": 0}
     assert result["available_cash"] == 1500
 
 
@@ -388,6 +441,8 @@ def test_retry_budget_exhaustion_returns_sanitized_failure(tmp_path, monkeypatch
     result = capture(tmp_path, session)
     assert result["status"] == "UNAVAILABLE"
     assert result["available_cash"] is None
+    assert result["stock_market_value_by_symbol"] == {}
+    assert result["other_symbol_exposure"] == {}
     assert result["broker_state_capture"]["elapsed_seconds"] == 121
     assert result["broker_state_capture"]["maximum_retry_seconds"] == 120
     assert session.calls.count("orders") == 1

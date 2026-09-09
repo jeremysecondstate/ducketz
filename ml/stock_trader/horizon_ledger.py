@@ -1,9 +1,10 @@
 """Durable inventory for independent stock horizons; this module never trades.
 
 The caller retains broker/session/quote checks and the existing combined order,
-cash and exposure limits.  A reservation is not a fill.  Only explicit, complete
-per-order fill evidence can create inventory.  Existing/manual shares are never
-assigned to a horizon.  All account identities are one-way fingerprints.
+cash and exposure limits. A reservation is not a fill. Per-order fill evidence
+creates purchased inventory. The opt-in Gameplan direction policy may explicitly
+attribute observed existing stock to a sale; unsold terminal quantities return
+to the unallocated pool. All account identities are one-way fingerprints.
 """
 from __future__ import annotations
 
@@ -268,13 +269,70 @@ class HorizonLedger:
             row["forecast"], row["side"], row["quantity"], row["price"], row["filled"],
             row["status"], row["broker_order"], row["idempotency_key"], row["batch"], row["last_evidence_at"], row["requested_at"])
 
+    @staticmethod
+    def _assigned_shares(db, allocation_id):
+        # This optional additive table appears only when the explicitly selected
+        # Gameplan policy records existing stock for a directional sale. It is
+        # observed opening inventory, never a fabricated BUY or broker fill.
+        if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='inventory_assignments'").fetchone():
+            return 0
+        assigned = db.execute("SELECT COALESCE(SUM(quantity),0) FROM inventory_assignments WHERE allocation=?", (allocation_id,)).fetchone()[0]
+        if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='inventory_assignment_releases'").fetchone():
+            assigned -= db.execute("""SELECT COALESCE(SUM(r.quantity),0) FROM inventory_assignment_releases r
+                JOIN inventory_assignments i ON i.id=r.assignment WHERE i.allocation=?""", (allocation_id,)).fetchone()[0]
+        return assigned
+
+    @classmethod
+    def _release_unfilled_assignment(cls, db, reservation_id, observed):
+        """Return definitively unsold opening inventory to the unallocated pool.
+
+        A direction sale consumes its prior owned shares first, then the newly
+        assigned shares. No release is a broker fill, and uncertain acceptance
+        keeps all inventory reserved until actual order evidence resolves it.
+        """
+        if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='inventory_assignments'").fetchone():
+            return
+        order = cls._reservation(db, reservation_id)
+        if order.side != "SELL" or order.status not in _TERMINAL:
+            return
+        assignment_id = _identity(["gameplan-observed-opening-stock", order.idempotency_key])
+        assignment = db.execute("SELECT * FROM inventory_assignments WHERE id=?", (assignment_id,)).fetchone()
+        if assignment is None:
+            return
+        prior_owned_quantity = order.quantity - assignment["quantity"]
+        assigned_filled = max(0, order.filled_quantity - prior_owned_quantity)
+        released = assignment["quantity"] - assigned_filled
+        if released <= 0:
+            return
+        baseline = db.execute("SELECT id FROM snapshots WHERE ready=1 ORDER BY observed_at DESC,rowid DESC LIMIT 1").fetchone()
+        if baseline is None:
+            raise LedgerError("ASSIGNED_INVENTORY_RELEASE_REQUIRES_RECONCILED_BASELINE")
+        db.execute("""CREATE TABLE IF NOT EXISTS inventory_assignment_releases (
+            id TEXT PRIMARY KEY, assignment TEXT NOT NULL REFERENCES inventory_assignments(id),
+            reservation TEXT NOT NULL REFERENCES reservations(id),
+            snapshot_id TEXT NOT NULL REFERENCES snapshots(id), quantity INTEGER NOT NULL,
+            observed_at TEXT NOT NULL)""")
+        release_id = _identity(["gameplan-unsold-opening-stock-release", reservation_id])
+        previous = db.execute("SELECT quantity FROM inventory_assignment_releases WHERE id=?", (release_id,)).fetchone()
+        if previous is not None:
+            if previous["quantity"] != released:
+                raise LedgerError("TERMINAL_ASSIGNED_INVENTORY_RELEASE_CHANGED")
+            return
+        db.execute("INSERT INTO inventory_assignment_releases VALUES (?,?,?,?,?,?)",
+                   (release_id, assignment_id, reservation_id, baseline["id"], released, observed))
+        cls._save_evidence(db, release_id, "gameplan-unsold-opening-stock-release", {
+            "assignment_id": assignment_id, "reservation_id": reservation_id,
+            "snapshot_id": baseline["id"], "quantity": released, "observed_at": observed,
+            "prior_owned_shares_consumed_first": True, "assigned_shares_filled": assigned_filled,
+            "reason": "Definitively unsold opening inventory returns to the unallocated pool"})
+
     @classmethod
     def _snapshot(cls, db) -> LedgerSnapshot:
         reservations = tuple(cls._reservation(db, row[0]) for row in db.execute("SELECT id FROM reservations ORDER BY id"))
         allocations = []
         for row in db.execute("SELECT * FROM allocations ORDER BY symbol,horizon,start,id"):
             orders = tuple(r for r in reservations if r.allocation_id == row["id"])
-            held = sum(r.filled_quantity * (1 if r.side == "BUY" else -1) for r in orders)
+            held = cls._assigned_shares(db, row["id"]) + sum(r.filled_quantity * (1 if r.side == "BUY" else -1) for r in orders)
             allocations.append(AllocationState(row["id"], row["account"], row["symbol"], row["horizon"],
                 row["forecast"], row["start"], row["end"], row["status"], held,
                 sum(r.reserved_quantity for r in orders if r.side == "BUY"),
@@ -326,11 +384,11 @@ class HorizonLedger:
             db.execute("INSERT INTO cancellations VALUES (?,?)", (reservation_id, now))
             return True
 
-    @staticmethod
-    def _close_empty_allocations(db) -> None:
+    @classmethod
+    def _close_empty_allocations(cls, db) -> None:
         for row in db.execute("SELECT id FROM allocations WHERE status='ACTIVE'").fetchall():
             orders = db.execute("SELECT side,filled,status FROM reservations WHERE allocation=?", (row[0],)).fetchall()
-            owned = sum(r["filled"] * (1 if r["side"] == "BUY" else -1) for r in orders)
+            owned = cls._assigned_shares(db, row[0]) + sum(r["filled"] * (1 if r["side"] == "BUY" else -1) for r in orders)
             if owned < 0:
                 raise LedgerError("HORIZON_INVENTORY_WOULD_BECOME_NEGATIVE")
             if orders and owned == 0 and all(r["status"] in _TERMINAL for r in orders):
@@ -363,6 +421,7 @@ class HorizonLedger:
                 raise LedgerError("UNKNOWN_SUBMISSION_REQUIRES_BROKER_RECONCILIATION")
             db.execute("UPDATE reservations SET status=?,broker_order=?,last_evidence_at=? WHERE id=?",
                        (status, broker_order_id, observed, reservation_id))
+            self._release_unfilled_assignment(db, reservation_id, observed)
             self._close_empty_allocations(db)
             return self._reservation(db, reservation_id)
 
@@ -416,6 +475,7 @@ class HorizonLedger:
             db.execute("INSERT OR IGNORE INTO fills VALUES (?,?,?,?,?)", fill)
         db.execute("UPDATE reservations SET status=?,broker_order=?,filled=?,last_evidence_at=? WHERE id=?",
                    (status, broker_id, filled, observed, order.reservation_id))
+        self._release_unfilled_assignment(db, order.reservation_id, observed)
 
     def reconcile(self, portfolio: PortfolioEvidence, *, order_evidence: Sequence[OrderEvidence] = ()) -> ReconciliationResult:
         """Apply cumulative fill evidence and reconcile a subsequent fresh portfolio.
@@ -454,13 +514,23 @@ class HorizonLedger:
             for reservation in state.reservations:
                 quantities = pending_buys if reservation.side == "BUY" else pending_sells
                 quantities[reservation.symbol] = quantities.get(reservation.symbol, 0) + reservation.reserved_quantity
-            previous = db.execute("SELECT * FROM snapshots WHERE ready=1 ORDER BY observed_at DESC LIMIT 1").fetchone()
+            previous = db.execute("SELECT rowid AS sequence,* FROM snapshots WHERE ready=1 ORDER BY observed_at DESC LIMIT 1").fetchone()
             unresolved_symbols = set()
             if previous is not None:
                 before, previous_owned = json.loads(previous["payload"])["held_shares"], json.loads(previous["owned"])
                 for symbol in set(before) & set(held):
                     actual_change = _number(held[symbol]) - _number(before[symbol])
-                    tracked_change = owned.get(symbol, 0) - previous_owned.get(symbol, 0)
+                    assigned = 0
+                    if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='inventory_assignments'").fetchone():
+                        assigned = db.execute("""SELECT COALESCE(SUM(i.quantity),0) FROM inventory_assignments i
+                            JOIN allocations a ON a.id=i.allocation JOIN snapshots s ON s.id=i.snapshot_id
+                            WHERE a.symbol=? AND s.rowid>=?""", (symbol, previous["sequence"])).fetchone()[0]
+                    if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='inventory_assignment_releases'").fetchone():
+                        assigned -= db.execute("""SELECT COALESCE(SUM(r.quantity),0) FROM inventory_assignment_releases r
+                            JOIN inventory_assignments i ON i.id=r.assignment
+                            JOIN allocations a ON a.id=i.allocation JOIN snapshots s ON s.id=r.snapshot_id
+                            WHERE a.symbol=? AND s.rowid>=?""", (symbol, previous["sequence"])).fetchone()[0]
+                    tracked_change = owned.get(symbol, 0) - previous_owned.get(symbol, 0) - assigned
                     residual = actual_change - tracked_change
                     # Order history and account positions are separate broker
                     # reads. A fill between them, or a delayed account update,
@@ -616,4 +686,63 @@ class HorizonLedger:
                 raise LedgerError("ENTRY_ORDER_STILL_WORKING_OR_UNKNOWN")
             if quantity > allocation.filled_shares - allocation.reserved_sell_shares:
                 raise LedgerError("EXIT_EXCEEDS_OWN_UNRESERVED_HORIZON_SHARES")
+            return self._insert_reservation(db, allocation_id, "SELL", quantity, price, key, batch, request)
+
+    def reserve_direction_exit(self, *, symbol: str, horizon: str, forecast_id: str,
+                               target_start: str, target_end: str, quantity: int, limit_price,
+                               snapshot_id: str, idempotency_key: str, batch_id: str, as_of: str,
+                               pending_sell_shares=0) -> ReservationState:
+        """Reserve a user-selected Gameplan sale of currently available stock.
+
+        Existing shares are explicitly attributed to this sale with their
+        observed snapshot. Other horizon inventory and external working sells
+        remain protected. Only later broker fill evidence reduces holdings.
+        """
+        symbol, horizon, forecast_id = _name(symbol).upper(), _name(horizon), _name(forecast_id)
+        if not re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,14}", symbol) or horizon not in HORIZON_WEIGHTS:
+            raise LedgerError("Unsupported symbol or horizon")
+        start, end, now = _utc(target_start), _utc(target_end), _utc(as_of)
+        if not start <= now < end:
+            raise LedgerError("DIRECTION_SALE_OUTSIDE_TARGET_WINDOW")
+        quantity, price = _quantity(quantity, positive=True), str(_number(limit_price, positive=True))
+        pending = _number(pending_sell_shares)
+        key, batch = _name(idempotency_key), _name(batch_id)
+        request = {"kind": "direction-exit", "symbol": symbol, "horizon": horizon, "forecast": forecast_id,
+                   "start": start, "end": end, "quantity": quantity, "price": price,
+                   "snapshot": snapshot_id, "batch": batch, "pending_sell_shares": str(pending)}
+        with self._transaction() as db:
+            existing = self._idempotent(db, key, request)
+            if existing is not None:
+                return existing
+            portfolio = self._require_snapshot(db, snapshot_id, now, batch_id=batch)
+            state = self._snapshot(db)
+            owned = sum(a.filled_shares for a in state.allocations if a.symbol == symbol)
+            owned_reserved = sum(a.reserved_sell_shares for a in state.allocations if a.symbol == symbol)
+            free = _number(portfolio["held_shares"].get(symbol, 0)) - owned - max(Decimal(0), pending - owned_reserved)
+            allocation = next((a for a in state.allocations if a.symbol == symbol and a.horizon == horizon and a.status == "ACTIVE"), None)
+            if allocation and allocation.reserved_buy_shares:
+                raise LedgerError("DIRECTION_SALE_HAS_PENDING_HORIZON_BUY")
+            available = allocation.filled_shares - allocation.reserved_sell_shares if allocation else 0
+            assigned = max(0, quantity - available)
+            if assigned > max(Decimal(0), free):
+                raise LedgerError("DIRECTION_SALE_EXCEEDS_AVAILABLE_HELD_STOCK")
+            if allocation:
+                allocation_id = allocation.allocation_id
+            else:
+                allocation_id = _identity([self.account_fingerprint, symbol, horizon, forecast_id])
+                if db.execute("SELECT 1 FROM allocations WHERE id=?", (allocation_id,)).fetchone():
+                    raise LedgerError("DIRECTION_FORECAST_ALREADY_USED")
+                db.execute("INSERT INTO allocations VALUES (?,?,?,?,?,?,?,'ACTIVE')",
+                           (allocation_id, self.account_fingerprint, symbol, horizon, forecast_id, start, end))
+            if assigned:
+                db.execute("""CREATE TABLE IF NOT EXISTS inventory_assignments (
+                    id TEXT PRIMARY KEY, allocation TEXT NOT NULL REFERENCES allocations(id),
+                    snapshot_id TEXT NOT NULL REFERENCES snapshots(id), quantity INTEGER NOT NULL,
+                    observed_at TEXT NOT NULL)""")
+                assignment_id = _identity(["gameplan-observed-opening-stock", key])
+                db.execute("INSERT INTO inventory_assignments VALUES (?,?,?,?,?)",
+                           (assignment_id, allocation_id, snapshot_id, assigned, now))
+                self._save_evidence(db, assignment_id, "gameplan-existing-stock-assignment",
+                    {"allocation_id": allocation_id, "snapshot_id": snapshot_id, "quantity": assigned,
+                     "observed_at": now, "reason": "User-selected Gameplan directional sale of existing stock"})
             return self._insert_reservation(db, allocation_id, "SELL", quantity, price, key, batch, request)

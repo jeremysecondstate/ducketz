@@ -284,3 +284,132 @@ def test_qualified_hourly_entries_are_not_blocked_by_research_weekly_models(tmp_
     assert result["qualified_entry_windows"]
     assert all("/1h@" in key for key in result["qualified_entry_windows"])
     assert set(observed_sources) == {"canonical-equity-minute-v1"}
+
+
+@pytest.mark.parametrize(("started", "expected_open"), [
+    ("2026-09-09T04:00:00Z", "2026-09-09T11:00:00Z"),  # Previous evening.
+    ("2026-09-09T10:00:00Z", "2026-09-09T11:00:00Z"),
+    ("2026-09-09T14:00:00Z", "2026-09-09T11:00:00Z"),  # Already open.
+    ("2026-09-05T01:00:00Z", "2026-09-08T11:00:00Z"),  # Weekend and Labor Day.
+    ("2026-11-27T11:00:00Z", "2026-11-30T12:00:00Z"),  # Unsupported half day.
+    ("2026-03-07T01:00:00Z", "2026-03-09T11:00:00Z"),  # Spring DST.
+    ("2026-10-31T01:00:00Z", "2026-11-02T12:00:00Z"),  # Autumn DST.
+])
+def test_manual_wait_selects_exchange_date_and_preserves_local_open(started, expected_open):
+    opening, closing = worker._next_supported_session_bounds(started)
+    assert opening == pd.Timestamp(expected_open)
+    assert opening.hour == 4 and closing.hour == 17
+    assert opening.date() == closing.date()
+
+
+def test_manual_wait_reads_latest_gameplan_at_open_and_keeps_original_execute_setting(tmp_path, monkeypatch):
+    clock = Clock("2026-09-09T10:59:00Z")
+    opening = pd.Timestamp("2026-09-09T11:00:00Z")
+    closing = pd.Timestamp("2026-09-10T00:00:00Z")
+    status_path = tmp_path / "state/independent-stock-trader/session-status.json"
+    lock_path = tmp_path / "locks/independent-stock-session.lock"
+    publication = {"version": "old"}
+    preflights, runs, statuses = [], [], []
+    monkeypatch.setattr(worker, "read_gameplan_stock_activation_intent", lambda root: SimpleNamespace(active=True))
+
+    def has_inventory(path):
+        assert clock() >= opening  # Even local allocation management is deferred.
+        return False
+
+    def preflight(root, *, action_date):
+        assert clock() == opening
+        assert action_date.isoformat() == "2026-09-09"
+        preflights.append(publication["version"])
+        return {"status": "READY"}
+
+    def sleep(seconds):
+        assert 0 < seconds <= 30
+        status = json.loads(status_path.read_text())
+        statuses.append(status)
+        if clock() < opening:
+            assert lock_path.exists()
+            assert status["status"] == "SLEEPING_UNTIL_OPEN"
+            assert status["action_date"] == "2026-09-09"
+            assert pd.Timestamp(status["wakes_at"]) == opening
+            assert pd.Timestamp(status["heartbeat_at"]) == clock()
+            assert status["calls"] == status["orders_submitted"] == 0
+            with pytest.raises(RuntimeError, match="Another independent-stock-session owns"):
+                with worker.exclusive_runtime_lock(lock_path, process_name="independent-stock-session"):
+                    pytest.fail("A second worker acquired the sleeping worker's lock")
+            publication["version"] = "new-nightly-publication"
+        clock.sleep(seconds)
+
+    def runner(root, **kwargs):
+        assert clock() == pd.Timestamp("2026-09-09T11:01:00Z")
+        assert kwargs["execute"] is True
+        assert kwargs["entries"] is True and kwargs["session_managed"] is True
+        assert kwargs["sizing_policy"] == worker.GAMEPLAN_SIZING_POLICY
+        runs.append(clock())
+        clock.now = closing
+        return SimpleNamespace(submitted_orders=0, to_dict=lambda: {"status": "SYNTHETIC_NO_ORDERS"})
+
+    monkeypatch.setattr(worker, "_has_inventory", has_inventory)
+    monkeypatch.setattr(worker, "_independent_forecast_preflight", preflight)
+    monkeypatch.setattr(worker, "_independent_enrichment_preflight", lambda *a, **k: pytest.fail("Wrong preflight"))
+    result = worker.run_independent_stock_session(tmp_path, execute=True, wait_for_open=True,
+        sizing_policy=worker.GAMEPLAN_SIZING_POLICY, clock=clock, sleep=sleep, runner=runner, reporter=lambda message: None)
+    assert result["status"] == "SESSION_FINISHED"
+    assert preflights == ["new-nightly-publication"]
+    assert len(runs) == 1
+    assert not lock_path.exists()
+    assert not (tmp_path / worker.LEDGER_RELATIVE_PATH).exists()
+    assert sum(status["status"] == "SLEEPING_UNTIL_OPEN" for status in statuses) == 2
+
+
+@pytest.mark.parametrize("stop_mode", ["controls", "interrupt"])
+def test_manual_wait_can_stop_without_broker_or_model_or_ledger_access(tmp_path, monkeypatch, stop_mode):
+    clock = Clock("2026-09-09T04:00:00Z")
+    active = {"value": True}
+    monkeypatch.setattr(worker, "read_gameplan_stock_activation_intent", lambda root: SimpleNamespace(active=active["value"]))
+    forbidden = lambda *a, **k: pytest.fail("No broker, inventory, or publication access while sleeping")
+    monkeypatch.setattr(worker, "_has_inventory", forbidden)
+    monkeypatch.setattr(worker, "_independent_forecast_preflight", forbidden)
+    monkeypatch.setattr(worker, "_independent_enrichment_preflight", forbidden)
+    def sleep(seconds):
+        clock.sleep(seconds)
+        if stop_mode == "interrupt":
+            raise KeyboardInterrupt
+        active["value"] = False
+    result = worker.run_independent_stock_session(tmp_path, execute=True, wait_for_open=True,
+        clock=clock, sleep=sleep, runner=forbidden, reporter=lambda message: None)
+    assert result["status"] == ("SESSION_STOPPED_TRADER_INACTIVE" if stop_mode == "controls" else "SESSION_STOPPED_INTERRUPTED")
+    assert result["calls"] == result["orders_submitted"] == 0
+    assert clock.sleeps == [30]
+    assert not (tmp_path / "locks/independent-stock-session.lock").exists()
+    assert not (tmp_path / worker.LEDGER_RELATIVE_PATH).exists()
+
+
+def test_manual_wait_missing_gameplan_does_not_fail_until_wake(tmp_path, monkeypatch):
+    clock = Clock("2026-09-09T10:59:30Z")
+    monkeypatch.setattr(worker, "read_gameplan_stock_activation_intent", lambda root: SimpleNamespace(active=True))
+    monkeypatch.setattr(worker, "_has_inventory", lambda path: False)
+    checked = []
+    def missing(root, **kwargs):
+        checked.append(clock())
+        return {"status": "NOT_READY", "reason": "STOCK_FORECAST_PREFLIGHT_UNAVAILABLE"}
+    monkeypatch.setattr(worker, "_independent_forecast_preflight", missing)
+    result = worker.run_independent_stock_session(tmp_path, wait_for_open=True,
+        sizing_policy=worker.FIXED_SIZING_POLICY, clock=clock, sleep=clock.sleep,
+        runner=lambda *a, **k: pytest.fail("No broker call without a current publication"), reporter=lambda message: None)
+    assert checked == [pd.Timestamp("2026-09-09T11:00:00Z")]
+    assert clock.sleeps == [30]
+    assert result["status"] == "NOOP_STOCK_FORECASTS_NOT_QUALIFIED"
+
+
+def test_manual_wait_cli_is_explicit_and_requires_session_mode(tmp_path, monkeypatch):
+    from ml import gameplan_stock_trader as cli
+    monkeypatch.setattr(cli, "resolve_datastore_dir", lambda **kwargs: tmp_path)
+    observed = []
+    def run(root, **kwargs):
+        observed.append(kwargs)
+        return {"status": "SESSION_FINISHED"}
+    monkeypatch.setattr(worker, "run_independent_stock_session", run)
+    assert cli.main(["--datastore-target", "pc", "--target-horizon", "all", "--run-session", "--wait-for-open", "--execute"]) == 0
+    assert observed == [{"execute": True, "wait_for_open": True}]
+    assert cli.main(["--datastore-target", "pc", "--wait-for-open"]) == 1
+    assert len(observed) == 1

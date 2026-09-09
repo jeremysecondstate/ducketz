@@ -1,0 +1,86 @@
+{
+  "status": "PASS",
+  "verified_at": "2026-09-09T06:09:20.912003+00:00",
+  "run_directory": "C:/DATASTORE/ml/gameplan-trade-plan-runs/20260909T060510.532049Z",
+  "source_gameplan_directory": "C:/DATASTORE/ml/nightly-gameplan-runs/20260909T060404.450224Z",
+  "native_verify_manifest": {
+    "sidecar": true,
+    "source_gameplan": true
+  },
+  "pointer_receipt_and_manifest_checks": true,
+  "source_receipt_sha256": "bb4f21dc093d1195964e323d0321aa3a10c87e3d1e00cf63bc688df32c3e134b",
+  "all_source_columns_unchanged": true,
+  "source_columns": 55,
+  "rendered_rows_verified": 168,
+  "rows_by_symbol": {
+    "AAPL": 24,
+    "AMZN": 24,
+    "COST": 24,
+    "GOOG": 24,
+    "MU": 24,
+    "NVDA": 24,
+    "SNDK": 24
+  },
+  "direction_thresholds": [
+    0.54,
+    0.46
+  ],
+  "all133entry_models_approved": true,
+  "directional_promotion_policy": "independent-stock-directional-promotion-v2",
+  "baseline_tolerances": {
+    "brier_score": 0.005,
+    "log_loss": 0.01
+  },
+  "all_projected_capacities_independently_recomputed": true,
+  "positive_projected_rows": 129,
+  "zero_capacity_opportunities": [
+    {
+      "id": "2026-09-09:SNDK:1h@13:00",
+      "route": "1h@13:00",
+      "trade_price_high": 1967.05,
+      "projected_trade_budget": 1945.0026,
+      "projected_quantity_reason": "INSUFFICIENT_WHOLE_SHARE_CAPACITY"
+    },
+    {
+      "id": "2026-09-09:SNDK:1h@14:00",
+      "route": "1h@14:00",
+      "trade_price_high": 1991.17,
+      "projected_trade_budget": 1945.0026,
+      "projected_quantity_reason": "INSUFFICIENT_WHOLE_SHARE_CAPACITY"
+    },
+    {
+      "id": "2026-09-09:SNDK:1h@15:00",
+      "route": "1h@15:00",
+      "trade_price_high": 1997.29,
+      "projected_trade_budget": 1945.0026,
+      "projected_quantity_reason": "INSUFFICIENT_WHOLE_SHARE_CAPACITY"
+    },
+    {
+      "id": "2026-09-09:SNDK:1h@16:00",
+      "route": "1h@16:00",
+      "trade_price_high": 2009.34,
+      "projected_trade_budget": 1945.0026,
+      "projected_quantity_reason": "INSUFFICIENT_WHOLE_SHARE_CAPACITY"
+    }
+  ],
+  "context_projection_rows": 35,
+  "sndk04_projected_shares": 1,
+  "cost16_ranges_available": true,
+  "all133entry_price_ranges_available": true,
+  "minimum_price_samples": 2,
+  "scheduled_entries": 0,
+  "planned_notional": 0,
+  "orders_placed": 0,
+  "new_day_labels_and_clean_main_view": true,
+  "account_snapshot_matches_document": true,
+  "account_equity": 129666.84,
+  "available_cash": 112081.48,
+  "gross_exposure": 17585.36,
+  "snapshot_at": "2026-09-09T06:05:16.312190+00:00",
+  "previous_review_path": "C:/dev/ducketz/artifacts/gameplans/2026-09-09/Gameplan-2026-09-09-trade-review-previous.md",
+  "previous_review_sha256": "d184a585c1c04384eacbaf4b0263a798b1a1cefc6ff46fd6f3e4710dfac0c84d",
+  "review_copy": "C:/dev/ducketz/artifacts/gameplans/2026-09-09/Gameplan-2026-09-09-trade-review.md",
+  "review_copy_sha256": "b06f20de89bbbd07faf5a25a2c5e4af21798e617423418ccedc1900a7b3bd910",
+  "native_review_sha256": "b06f20de89bbbd07faf5a25a2c5e4af21798e617423418ccedc1900a7b3bd910",
+  "verification_scope": "Only derived review copy and this verification file changed; prior review preserved; no native publication, broker, ledger, order or pipeline mutations."
+}

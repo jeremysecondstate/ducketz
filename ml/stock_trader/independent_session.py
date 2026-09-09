@@ -22,7 +22,7 @@ from ml.stock_trader.independent_signals import _validated_independent_forecasts
 from ml.stock_trader.model import enrichment_signal_readiness, load_current_enrichment_model
 from ml.stock_trader.session import stock_execution_window
 from ml.stock_trader.market_features import read_frozen_market_feature_values
-from ml.stock_trader.sizing_policy import LEARNED_SIZING_POLICY, FIXED_SIZING_POLICY, validate_sizing_policy
+from ml.stock_trader.sizing_policy import LEARNED_SIZING_POLICY, FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY, validate_sizing_policy
 from ml.stock_trader.publication import _write_json_atomic
 
 
@@ -130,12 +130,35 @@ an unqualified horizon cannot block another horizon with qualified evidence.
                 "error": f"{type(exc).__name__}: {exc}"}
 
 
+def _next_supported_session_bounds(as_of: object) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """Find the next supported full session using local wall-clock dates.
+
+    Half days remain unsupported by the existing extended-session contract.
+    Construct each day's local clock independently so DST cannot shift 04:00.
+    """
+    timestamp = utc(as_of)
+    first_date = timestamp.tz_convert("America/Los_Angeles").date()
+    for offset in range(32):
+        candidate_date = (pd.Timestamp(first_date) + pd.Timedelta(days=offset)).date()
+        opening = pd.Timestamp(f"{candidate_date.isoformat()} 04:00", tz="America/Los_Angeles")
+        closing = pd.Timestamp(f"{candidate_date.isoformat()} 17:00", tz="America/Los_Angeles")
+        if timestamp < closing and stock_execution_window(opening).executable:
+            return opening, closing
+    raise ValueError("No supported stock session was found in the next 32 calendar days")
+
+
 def run_independent_stock_session(
     root: Path, *, execute: bool = False, clock=utc, sleep=time.sleep,
     runner=run_independent_stock_trader_once, reporter=print,
     sizing_policy: str = LEARNED_SIZING_POLICY,
+    wait_for_open: bool = False,
 ) -> dict:
-    """Serve this exchange date only; never wait overnight or replay entries.
+    """Serve one exchange date, optionally waiting for its opening first.
+
+    Manual callers may opt into ``wait_for_open`` before the next supported
+    session. While waiting, the process holds its session lock and reads only
+    local activation controls; publication checks and trading start at 04:00
+    Pacific. The default retains the bounded same-day scheduled behavior.
 
     Entries start at HH:01, with 13:06 after the broker's POST transition.
     Boundary exits receive checks before those entries. Closing exits start at
@@ -146,14 +169,18 @@ def run_independent_stock_session(
     sizing_policy = validate_sizing_policy(sizing_policy)
     started = utc(clock())
     day = started.tz_convert("America/Los_Angeles").normalize()
-    opening = day + pd.Timedelta(hours=4)
-    closing = day + pd.Timedelta(hours=17)
-    if not stock_execution_window(opening).executable:
-        return {"status": "NOOP_UNSUPPORTED_OR_CLOSED_SESSION", "orders_submitted": 0}
-    if started >= closing:
-        return {"status": "NOOP_SESSION_FINISHED", "orders_submitted": 0}
-    if started < opening - pd.Timedelta(minutes=5):
-        raise ValueError("Start the bounded worker at or after 03:55 Pacific on its action date")
+    if wait_for_open:
+        opening, closing = _next_supported_session_bounds(started)
+        day = opening.normalize()
+    else:
+        opening = day + pd.Timedelta(hours=4)
+        closing = day + pd.Timedelta(hours=17)
+        if not stock_execution_window(opening).executable:
+            return {"status": "NOOP_UNSUPPORTED_OR_CLOSED_SESSION", "orders_submitted": 0}
+        if started >= closing:
+            return {"status": "NOOP_SESSION_FINISHED", "orders_submitted": 0}
+        if started < opening - pd.Timedelta(minutes=5):
+            raise ValueError("Start the bounded worker at or after 03:55 Pacific on its action date")
     attempted = set()
     calls = submitted = 0
     failed_cycles = consecutive_failures = 0
@@ -164,6 +191,8 @@ def run_independent_stock_session(
         payload = {"schema_version": "independent-stock-session-status-v1", "status": status,
             "pid": os.getpid(), "started_at": started.isoformat(), "heartbeat_at": utc(clock()).isoformat(),
             "closes_at": closing.isoformat(), "execute": execute, "sizing_policy": sizing_policy,
+            "action_date": day.date().isoformat(), "wakes_at": opening.isoformat(),
+            "wait_for_open": wait_for_open,
             "calls": calls, "orders_submitted": submitted, "failed_cycles": failed_cycles,
             "consecutive_failures": consecutive_failures, "last_cycle": last_cycle}
         _write_json_atomic(status_path, payload)
@@ -172,12 +201,36 @@ def run_independent_stock_session(
         if not read_gameplan_stock_activation_intent(root).active:
             publish_status("STOPPED_TRADER_INACTIVE")
             return {"status": "SESSION_STOPPED_TRADER_INACTIVE", "calls": 0, "orders_submitted": 0}
+        if wait_for_open and utc(clock()) < opening:
+            reporter(json.dumps({"status": "SLEEPING_UNTIL_OPEN", "pid": os.getpid(),
+                "status_path": str(status_path), "action_date": day.date().isoformat(),
+                "wakes_at": opening.isoformat(), "sizing_policy": sizing_policy}, sort_keys=True))
+            try:
+                while (now := utc(clock())) < opening:
+                    if not read_gameplan_stock_activation_intent(root).active:
+                        publish_status("STOPPED_TRADER_INACTIVE")
+                        return {"status": "SESSION_STOPPED_TRADER_INACTIVE", "calls": 0, "orders_submitted": 0}
+                    publish_status("SLEEPING_UNTIL_OPEN")
+                    sleep(min(30., max(0., (opening - now).total_seconds())))
+            except KeyboardInterrupt:
+                publish_status("STOPPED_INTERRUPTED")
+                return {"status": "SESSION_STOPPED_INTERRUPTED", "calls": 0, "orders_submitted": 0}
+            # The publication can change while the nightly workflow finishes.
+            # Read it only after waking, without claiming a missed entry slot.
+            if not read_gameplan_stock_activation_intent(root).active:
+                publish_status("STOPPED_TRADER_INACTIVE")
+                return {"status": "SESSION_STOPPED_TRADER_INACTIVE", "calls": 0, "orders_submitted": 0}
+            if utc(clock()) >= closing:
+                publish_status("FINISHED")
+                return {"status": "SESSION_FINISHED", "calls": 0, "orders_submitted": 0,
+                        "reason": "SESSION_ELAPSED_WHILE_SLEEPING"}
         if not _has_inventory(root / LEDGER_RELATIVE_PATH):
-            preflight = _independent_forecast_preflight if sizing_policy == FIXED_SIZING_POLICY else _independent_enrichment_preflight
+            forecast_sizing = sizing_policy in {FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY}
+            preflight = _independent_forecast_preflight if forecast_sizing else _independent_enrichment_preflight
             readiness = preflight(root, action_date=day.date())
             if readiness["status"] != "READY":
                 publish_status("BLOCKED_PREFLIGHT")
-                return {"status": "NOOP_STOCK_FORECASTS_NOT_QUALIFIED" if sizing_policy == FIXED_SIZING_POLICY else "NOOP_ENRICHMENT_NOT_QUALIFIED", "calls": 0,
+                return {"status": "NOOP_STOCK_FORECASTS_NOT_QUALIFIED" if forecast_sizing else "NOOP_ENRICHMENT_NOT_QUALIFIED", "calls": 0,
                         "orders_submitted": 0, "enrichment_readiness": readiness}
         publish_status("RUNNING")
         reporter(json.dumps({"status": "SESSION_STARTED", "pid": os.getpid(),

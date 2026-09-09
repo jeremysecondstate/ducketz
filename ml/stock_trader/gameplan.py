@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 from ml.artifacts import file_checksum
+from ml.stock_direction_policy import BULLISH_PROBABILITY, BEARISH_PROBABILITY
 from ml.nightly_gameplan import (
     ASSUMED_ROUND_TRIP_COST,
     EXECUTION_AUTHORITY,
@@ -184,9 +185,9 @@ def load_current_gameplan_prediction_signals(
         if not promoted or direction not in {"BULLISH", "BEARISH"}:
             continue
         direction_probability_mismatch = (
-            direction == "BULLISH" and probability < 0.55
+            direction == "BULLISH" and probability < BULLISH_PROBABILITY
         ) or (
-            direction == "BEARISH" and probability > 0.45
+            direction == "BEARISH" and probability > BEARISH_PROBABILITY
         )
         if direction_probability_mismatch:
             raise ValueError(f"{symbol} gameplan direction and probability disagree")
@@ -439,10 +440,10 @@ def _probabilities_conflict(
 ) -> bool:
     if confirming_probability is None:
         return False
-    primary_bullish = primary_probability >= 0.55
-    primary_bearish = primary_probability <= 0.45
-    confirming_bullish = confirming_probability >= 0.55
-    confirming_bearish = confirming_probability <= 0.45
+    primary_bullish = primary_probability >= BULLISH_PROBABILITY
+    primary_bearish = primary_probability <= BEARISH_PROBABILITY
+    confirming_bullish = confirming_probability >= BULLISH_PROBABILITY
+    confirming_bearish = confirming_probability <= BEARISH_PROBABILITY
     return (primary_bullish and confirming_bearish) or (
         primary_bearish and confirming_bullish
     )

@@ -1,7 +1,8 @@
 """Explicit execution policy selection; research sizing is never relabelled."""
 LEARNED_SIZING_POLICY = "qualified-enrichment"
 FIXED_SIZING_POLICY = "fixed-horizon-budget-v1"
-SIZING_POLICIES = (LEARNED_SIZING_POLICY, FIXED_SIZING_POLICY)
+GAMEPLAN_SIZING_POLICY = "gameplan-direction-current-market-v1"
+SIZING_POLICIES = (LEARNED_SIZING_POLICY, FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY)
 
 
 def validate_sizing_policy(value: str) -> str:

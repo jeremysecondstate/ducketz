@@ -196,7 +196,7 @@ def test_entry_authority_and_bounded_window_cannot_be_bypassed(kwargs, reason):
 
 
 def test_qualified_probability_must_cross_existing_floor():
-    signals, state = inputs(probability=.549999)
+    signals, state = inputs(probability=.539999)
     assert not orders(build(signals, state, policy=StockTraderPolicy(minimum_trade_probability=.1)))
 
 

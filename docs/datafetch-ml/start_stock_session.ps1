@@ -1,4 +1,9 @@
-param()
+param(
+    [switch]$WaitForOpen,
+    [ValidateSet('fixed-horizon-budget-v1', 'gameplan-direction-current-market-v1')]
+    [string]$SizingPolicy = 'fixed-horizon-budget-v1',
+    [switch]$ActivateForManualStart
+)
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -17,11 +22,18 @@ function Get-ValidatedStockSessionOwner {
     $executable = '(?i:' + [regex]::Escape($PythonPath) + ')'
     $executablePattern = '"' + $executable + '"'
     if ($PythonPath -notmatch '\s') { $executablePattern = '(?:' + $executablePattern + '|' + $executable + ')' }
-    $commandPattern = '\A' + $executablePattern + '[ \t]+-u[ \t]+-m[ \t]+ml\.gameplan_stock_trader[ \t]+--datastore-target[ \t]+pc[ \t]+--execute[ \t]+--target-horizon[ \t]+all[ \t]+--sizing-policy[ \t]+fixed-horizon-budget-v1[ \t]+--run-session[ \t]*\z'
+    $commandPattern = '\A' + $executablePattern + '[ \t]+-u[ \t]+-m[ \t]+ml\.gameplan_stock_trader[ \t]+--datastore-target[ \t]+pc[ \t]+--execute[ \t]+--target-horizon[ \t]+all[ \t]+--sizing-policy[ \t]+(?<policy>fixed-horizon-budget-v1|gameplan-direction-current-market-v1)[ \t]+--run-session(?<wait>[ \t]+--wait-for-open)?[ \t]*\z'
     if ($Owners.Count -ne 2 -or @($Owners | Where-Object {
         $_.Name -ine 'python.exe' -or -not [regex]::IsMatch([string]$_.CommandLine, $commandPattern)
     }).Count -ne 0) {
         throw 'Existing stock session commands do not match the deployed bounded worker.'
+    }
+    $commandIdentities = @($Owners | ForEach-Object {
+        $matchedCommand = [regex]::Match([string]$_.CommandLine, $commandPattern)
+        $matchedCommand.Groups['policy'].Value + '/' + $matchedCommand.Groups['wait'].Success
+    } | Select-Object -Unique)
+    if ($commandIdentities.Count -ne 1) {
+        throw 'Existing stock session launcher and child commands disagree on their policy or wait mode.'
     }
     $ownerIds = @($Owners | ForEach-Object { [int]$_.ProcessId })
     $workers = @($Owners | Where-Object { [int]$_.ParentProcessId -in $ownerIds })
@@ -69,7 +81,36 @@ function Get-ValidatedStockSessionOwner {
         launcher_created_at = $launcherCreatedAt.ToUniversalTime().ToString('o')
         worker_created_at = $workerCreatedAt.ToUniversalTime().ToString('o')
         lock_started_at = $lockStartedAt.ToUniversalTime().ToString('o')
+        sizing_policy = [regex]::Match([string]$worker.CommandLine, $commandPattern).Groups['policy'].Value
+        wait_for_open = [regex]::Match([string]$worker.CommandLine, $commandPattern).Groups['wait'].Success
     }
+}
+
+function Get-StockSessionArguments {
+    param([string]$Policy, [bool]$Wait)
+    @('-u', '-m', 'ml.gameplan_stock_trader', '--datastore-target', 'pc', '--execute', '--target-horizon', 'all', '--sizing-policy', $Policy, '--run-session')
+    if ($Wait) { '--wait-for-open' }
+}
+
+function Enable-ManualGameplanTrading {
+    param([string]$PythonPath, [string]$DatastoreRoot)
+    # This is called only by the user's explicit manual-start option. There is
+    # no activation prompt or second interaction when the worker wakes.
+    @'
+import sys
+from pathlib import Path
+from ml.stock_trader.control import write_activation_intent
+from ml.stock_trader.gameplan import write_gameplan_stock_activation_intent
+root = Path(sys.argv[1]).resolve()
+write_activation_intent(root, active=True)
+write_gameplan_stock_activation_intent(root, active=True)
+print("Gameplan trader enabled by manual start. It will wait for its session if needed.")
+'@ | & $PythonPath - $DatastoreRoot
+    if ($LASTEXITCODE -ne 0) { throw 'Could not enable the manual Gameplan trader.' }
+}
+
+if ($ActivateForManualStart -and (-not $WaitForOpen -or $SizingPolicy -cne 'gameplan-direction-current-market-v1')) {
+    throw 'Manual activation requires the Gameplan policy and -WaitForOpen.'
 }
 
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
@@ -102,6 +143,9 @@ if ($owners.Count -gt 0) {
     }
     $identity = Get-ValidatedStockSessionOwner -Owners $owners -PythonPath $pythonPath -BasePythonPath $basePythonPath `
         -LockText (Get-Content -LiteralPath $sessionLock -Raw)
+    if ($ActivateForManualStart -and $identity.sizing_policy -cne $SizingPolicy) {
+        throw 'A stock worker is already running another strategy. Stop it before manually starting the Gameplan trader.'
+    }
     $workerPid = $identity.worker_pid
     $workerProcess = Get-Process -Id $workerPid
     $launcherProcess = Get-Process -Id $identity.launcher_pid
@@ -112,12 +156,13 @@ if ($owners.Count -gt 0) {
             throw 'Existing stock session process identity changed during adoption.'
         }
     }
+    if ($ActivateForManualStart) { Enable-ManualGameplanTrading -PythonPath $pythonPath -DatastoreRoot $datastoreRoot }
     [pscustomobject]@{ status='SUPERVISING_EXISTING_WORKER'; worker_pid=$workerPid; launcher_pid=$identity.launcher_pid; worker_created_at=$identity.worker_created_at; launcher_created_at=$identity.launcher_created_at; lock_started_at=$identity.lock_started_at; observed_at=[DateTime]::UtcNow.ToString('o') } |
         ConvertTo-Json | Set-Content -LiteralPath (Join-Path $logDirectory 'launcher.json') -Encoding utf8
     $workerProcess | Wait-Process
     if (Test-Path -LiteralPath $sessionStatus) {
         $terminal = Get-Content -LiteralPath $sessionStatus -Raw | ConvertFrom-Json
-        if ($terminal.pid -eq $workerPid -and $terminal.status -in @('FINISHED', 'STOPPED_TRADER_INACTIVE')) { exit 0 }
+        if ($terminal.pid -eq $workerPid -and $terminal.status -in @('FINISHED', 'STOPPED_TRADER_INACTIVE', 'STOPPED_INTERRUPTED')) { exit 0 }
     }
     # A disappeared owner without a verified normal termination is a failed
     # OS task, allowing its configured bounded restart policy to take effect.
@@ -126,7 +171,8 @@ if ($owners.Count -gt 0) {
 
 $stdout = Join-Path $logDirectory 'stock-session.stdout.log'
 $stderr = Join-Path $logDirectory 'stock-session.stderr.log'
-$arguments = @('-u', '-m', 'ml.gameplan_stock_trader', '--datastore-target', 'pc', '--execute', '--target-horizon', 'all', '--sizing-policy', 'fixed-horizon-budget-v1', '--run-session')
+$arguments = @(Get-StockSessionArguments -Policy $SizingPolicy -Wait $WaitForOpen.IsPresent)
+if ($ActivateForManualStart) { Enable-ManualGameplanTrading -PythonPath $pythonPath -DatastoreRoot $datastoreRoot }
 $process = Start-Process -FilePath $pythonPath -ArgumentList $arguments -WorkingDirectory $repoRoot `
     -RedirectStandardOutput $stdout -RedirectStandardError $stderr -WindowStyle Hidden -PassThru
 [pscustomobject]@{ status='STARTED'; launcher_pid=$process.Id; started_at=[DateTime]::UtcNow.ToString('o'); stdout=$stdout; stderr=$stderr } |

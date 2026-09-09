@@ -18,9 +18,10 @@ import pandas as pd
 from ml.artifacts import create_timestamp_directory, file_checksum, verify_manifest, write_manifest, utc_timestamp
 from ml.stock_trader.contracts import PredictionSignal, StockTraderPolicy, finite, utc
 from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS, fixed_budget_forecast_readiness
+from ml.stock_direction_policy import BULLISH_PROBABILITY, BEARISH_PROBABILITY, STOCK_DIRECTION_POLICY_VERSION, stock_direction
 
 
-VERSION = "cash-aware-gameplan-trade-planning-v1"
+VERSION = "cash-aware-gameplan-trade-planning-v3"
 AUTHORITY = "REVIEW_ONLY_REVALIDATE_AT_ENTRY"
 
 
@@ -90,6 +91,11 @@ same current cash being promised to several horizons or symbols.
         evidence_ready = False
         equity = available = Decimal(0)
         remaining = {}
+    # Each projection is the account's affordable horizon allocation for one
+    # opportunity. It is not conditional on the entry signal being bullish and
+    # is not summed as a batch of simultaneous orders. Scheduled entries below
+    # retain a separate shared reservation ledger and confidence-weighted size.
+    projection_available, projection_remaining = available, remaining.copy()
     ordered = data.sort_values(["target_window_start", "calibrated_probability", "symbol", "model_group"],
                                ascending=[True, False, True, True], kind="stable")
     planned_horizons = set()
@@ -108,8 +114,28 @@ same current cash being promised to several horizons or symbols.
                   "current_symbol_investment": snapshot.get("symbol_exposure", {}).get(symbol),
                   "cash_available_at_planning": snapshot.get("available_cash"),
                   "broker_price_reference": quote.get("price_reference"),
-                  "broker_price_reference_time": quote.get("price_reference_time")}
+                  "broker_price_reference_time": quote.get("price_reference_time"),
+                  "planning_direction": stock_direction(row["calibrated_probability"]),
+                  "projected_trade_quantity": None, "projected_trade_budget": None,
+                  "projected_trade_notional": None, "projected_quantity_reason": "NON_ENTRY_CONTEXT"}
         if row["execution_eligible"]:
+            result["projected_quantity_reason"] = "ACCOUNT_EVIDENCE_UNAVAILABLE"
+            if evidence_ready:
+                result["projected_quantity_reason"] = "PRICE_RANGE_UNAVAILABLE"
+                if band.get("price_band_status") == "AVAILABLE":
+                    high = _money(band["trade_price_high"]).quantize(
+                        Decimal(1).scaleb(-policy.price_decimals), rounding=ROUND_CEILING)
+                    if high > 0:
+                        ceiling = equity * min(
+                            _money(policy.maximum_symbol_equity_fraction) * FIXED_HORIZON_WEIGHTS[horizon] / 10,
+                            _money(policy.maximum_single_order_equity_fraction))
+                        budget = max(Decimal(0), min(ceiling, projection_available, projection_remaining[symbol]))
+                        projected = int(budget / high)
+                        if projected * high < _money(policy.minimum_order_notional):
+                            projected = 0
+                        result.update(projected_trade_quantity=projected, projected_trade_budget=float(budget),
+                                      projected_trade_notional=float(projected * high),
+                                      projected_quantity_reason="AFFORDABLE_HORIZON_ALLOCATION" if projected else "INSUFFICIENT_WHOLE_SHARE_CAPACITY")
             ready = fixed_budget_forecast_readiness(_signal(row), forecast_promoted=row["model_status"] == "PROMOTED", policy=policy)
             code = str(ready["reason"])
             if ready.get("entry_signal"):
@@ -122,8 +148,6 @@ same current cash being promised to several horizons or symbols.
                     code = "HORIZON_ALLOCATION_ALREADY_ACTIVE"
                 elif (symbol, horizon) in planned_horizons:
                     code = "REQUIRES_PRIOR_EXIT_CONFIRMATION"
-                elif band.get("price_band_status") != "AVAILABLE":
-                    code = "ENTRY_PRICE_RANGE_UNAVAILABLE"
                 elif not all(finite(quote.get(k)) is not None for k in ("bid", "ask", "price_reference")) or not 0 < quote["bid"] <= quote["ask"]:
                     code = "QUOTE_REFERENCE_UNAVAILABLE"
                 elif (quote["ask"] - quote["bid"]) / ((quote["ask"] + quote["bid"]) / 2) > policy.maximum_extended_relative_spread:
@@ -135,14 +159,12 @@ same current cash being promised to several horizons or symbols.
                     code = "QUOTE_REFERENCE_STALE_OR_FUTURE"
                 if code == "PROVISIONAL_BUY":
                     tick = Decimal(1).scaleb(-policy.price_decimals)
-                    high = _money(band["trade_price_high"]).quantize(tick, rounding=ROUND_CEILING)
                     ask = _money(quote["ask"]).quantize(tick, rounding=ROUND_CEILING)
-                    # If overnight activity already moved beyond the historical
-                    # band, do not silently expand an assumed acceptable price.
-                    if (high <= 0 or ask > high
-                            or not _money(band["trade_price_low"]) <= _money(quote["price_reference"]) <= high):
-                        code = "REFERENCE_OUTSIDE_HISTORICAL_RANGE"
-                    elif (ask / _money(quote["ask"]) - 1) * 10000 > Decimal(str(policy.maximum_limit_offset_bps)):
+                    # Estimated planning ranges describe a scenario, never an
+                    # acceptable execution-price boundary. This preview sizes
+                    # and reserves against its observed ask; live execution
+                    # obtains a new quote and actual available cash each time.
+                    if (ask / _money(quote["ask"]) - 1) * 10000 > Decimal(str(policy.maximum_limit_offset_bps)):
                         code = "LIMIT_REFERENCE_ROUNDING_EXCEEDS_CAP"
                     else:
                         ceiling = equity * min(_money(policy.maximum_symbol_equity_fraction) * FIXED_HORIZON_WEIGHTS[horizon] / 10,
@@ -150,14 +172,14 @@ same current cash being promised to several horizons or symbols.
                         confidence = min(Decimal("0.5"), max(Decimal(0), 2 * Decimal(str(row["calibrated_probability"])) - 1))
                         budget = ceiling * confidence
                         result["trade_budget_before_cash_caps"] = float(budget)
-                        quantity = int(max(Decimal(0), min(budget, available, remaining[symbol])) / high)
+                        quantity = int(max(Decimal(0), min(budget, available, remaining[symbol])) / ask)
                         batch = utc(row["target_window_start"]).isoformat()
                         if batch_counts.get(batch, 0) >= min(6, policy.maximum_orders_per_wake):
                             code = "COMBINED_BATCH_ORDER_CAP"
-                        elif quantity < 1 or quantity * high < _money(policy.minimum_order_notional):
+                        elif quantity < 1 or quantity * ask < _money(policy.minimum_order_notional):
                             code = "INSUFFICIENT_WHOLE_SHARE_BUDGET"
                         else:
-                            notional = quantity * high
+                            notional = quantity * ask
                             result.update(trade_quantity=quantity, trade_action="PROVISIONAL_BUY", trade_notional_reserved=float(notional),
                                           trade_limit_price_reference=float(ask))
                             available -= notional
@@ -165,6 +187,7 @@ same current cash being promised to several horizons or symbols.
                             planned_horizons.add((symbol, horizon))
                             batch_counts[batch] = batch_counts.get(batch, 0) + 1
             result["trade_planning_reason"] = code
+        result["scheduled_trade_quantity"] = result["trade_quantity"]
         results[str(row["id"])] = result
     return pd.DataFrame([results[str(identifier)] for identifier in data.id])
 
@@ -176,13 +199,73 @@ def _write_json(path: Path, value: Mapping) -> None:
     temporary.replace(path)
 
 
+def _plan_working_price_rows(forecasts: pd.DataFrame, snapshot: Mapping,
+                             historical_bands: Mapping, price_path: Mapping,
+                             *, policy: StockTraderPolicy) -> pd.DataFrame:
+    """Keep the scheduled preview and recompute capacity at conditional prices.
+
+    The scheduled preview uses its observed quote, independent of either
+    historical or working ranges. The separate per-opportunity capacity and
+    displayed working prices use the empirical-median path; neither
+    calculation grants execution authority.
+    """
+    scheduled = plan_trade_rows(forecasts, snapshot, historical_bands, policy=policy)
+    forecast_rows = {str(row["id"]): row for row in forecasts.to_dict("records")}
+    working_rows = []
+    for original in historical_bands["rows"]:
+        row = dict(original)
+        forecast = forecast_rows[str(row.get("forecast_id", row.get("id")))]
+        row.update(historical_price_low=original.get("trade_price_low"),
+                   historical_price_high=original.get("trade_price_high"),
+                   historical_price_band_status=original.get("price_band_status"),
+                   historical_price_band_reason=original.get("price_band_reason"),
+                   price_band_reason=original.get("price_band_reason"),
+                   trade_price_low=None, trade_price_mid=None, trade_price_high=None,
+                   planning_price_point_key=None, planning_price_method=None)
+        if forecast["execution_eligible"]:
+            start = utc(forecast["target_window_start"])
+            local = start.tz_convert("America/Los_Angeles")
+            key = f"{forecast['symbol']}|{local.date().isoformat()}|{local:%H:%M}"
+            point = price_path["points"].get(key)
+            row["planning_price_point_key"] = key
+            row["price_band_status"] = "UNAVAILABLE_PLANNING_PRICE_POINT"
+            row["price_band_reason"] = "No exact conditional working price for the target entry"
+            if point is not None:
+                if (point.get("symbol") != forecast["symbol"]
+                        or utc(point["timestamp"]) != start
+                        or point.get("action_date") != local.date().isoformat()
+                        or point.get("clock_local") != local.strftime("%H:%M")):
+                    raise ValueError("Planning price point differs from the frozen target entry")
+                row.update(price_band_status=point["status"], price_band_reason=point["reason"],
+                           planning_price_method=point["method"])
+                if point["status"] == "AVAILABLE":
+                    low, mid, high = (_money(point[field]) for field in
+                                      ("planned_price_low", "planned_price_mid", "planned_price_high"))
+                    if not 0 < low <= mid <= high:
+                        raise ValueError("Conditional working prices are invalid")
+                    row.update(trade_price_low=float(low), trade_price_mid=float(mid), trade_price_high=float(high))
+        working_rows.append(row)
+    working_bands = {**historical_bands, "rows": working_rows}
+    working = plan_trade_rows(forecasts, snapshot, working_bands, policy=policy)
+    scheduled["scheduled_trade_price_low"] = scheduled["trade_price_low"]
+    scheduled["scheduled_trade_price_high"] = scheduled["trade_price_high"]
+    fields = ["trade_price_low", "trade_price_mid", "trade_price_high", "price_band_status", "price_band_reason",
+              "historical_price_low", "historical_price_high", "historical_price_band_status", "historical_price_band_reason",
+              "planning_price_point_key", "planning_price_method", "projected_trade_quantity", "projected_trade_budget",
+              "projected_trade_notional", "projected_quantity_reason"]
+    for field in fields:
+        scheduled[field] = working[field]
+    return scheduled
+
+
 def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: object | None = None,
                        snapshot_loader=None, price_loader=None, clock=utc_timestamp) -> Path:
     """Publish a separate immutable account/price review for one verified Gameplan."""
     from ml.nightly_gameplan import read_gameplan_run
     from ml.stock_trader.independent_signals import _validated_independent_forecasts, verified_promoted_model_groups
     from ml.stock_target_prices import load_stock_target_prices
-    from ml.gameplan_price_bands import build_entry_price_bands
+    from ml.gameplan_price_bands import build_entry_price_bands, build_planning_price_path
+    from ml.gameplan_cash_ledger import project_direction_trades
     from ml.gameplan_trade_snapshot import capture_trade_planning_snapshot
     from ml.gameplan_trade_review import render_trade_review
 
@@ -232,28 +315,40 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
         prices, price_files, price_report = (price_loader or load_stock_target_prices)(
             root, symbols=symbols, source_contract=config["target_price_source_contract"])
         phase = "PRICE_BANDS_AND_BUDGETS"
-        bands = build_entry_price_bands(prices, forecasts, observed_at=clock())
+        band_asof = utc(clock())
+        bands = build_entry_price_bands(prices, forecasts, observed_at=band_asof)
+        price_path = build_planning_price_path(prices, forecasts, observed_at=band_asof, entry_bands=bands)
         policy = StockTraderPolicy()
-        rows = plan_trade_rows(forecasts, snapshot, bands, policy=policy)
+        rows = _plan_working_price_rows(forecasts, snapshot, bands, price_path, policy=policy)
+        phase = "DIRECTION_BASED_CASH_AND_SHARE_PROJECTION"
+        rows, direction_projection = project_direction_trades(rows, snapshot, price_path, policy=policy)
         rows.to_parquet(run / "trade-plan.parquet", index=False)
         _write_json(run / "price-bands.json", bands)
+        _write_json(run / "planning-price-path.json", price_path)
+        _write_json(run / "direction-ledger.json", direction_projection)
         model_reports = json.loads((source / "model-reports.json").read_text(encoding="utf-8"))
         report.update(status="COMPLETE", completed_at=utc(clock()).isoformat(), forecast_rows=len(rows),
                       rows_by_symbol=rows.groupby("symbol").size().to_dict(), option_intent_rows=len(intents),
                       provisional_buy_rows=int(rows.trade_quantity.gt(0).sum()),
                       planned_notional=float(rows.trade_notional_reserved.sum()),
                       quantity_sum=int(rows.trade_quantity.sum()),
+                      projected_quantity_rows=int(rows.projected_trade_quantity.gt(0).sum()),
+                      projected_quantity_semantics="Per-opportunity affordable horizon allocation; alternatives are not added as simultaneous orders",
+                      direction_policy_version=STOCK_DIRECTION_POLICY_VERSION,
+                      direction_up_threshold=BULLISH_PROBABILITY, direction_down_threshold=BEARISH_PROBABILITY,
                       price_band_status_counts=rows.price_band_status.value_counts().to_dict(),
                       trade_reason_counts=rows.trade_planning_reason.value_counts().to_dict(),
                       snapshot=snapshot, sizing_policy=asdict(policy),
+                      direction_based_projection=direction_projection,
                       opra_history=config.get("opra_history", {}),
                       price_band_policy={k: v for k, v in bands.items() if k not in {"rows", "statistics"}},
+                      planning_price_path={k: v for k, v in price_path.items() if k != "points"},
                       target_price_source_contract=config["target_price_source_contract"],
                       source_price_inventory=price_report,
-                      limitations=["Provisional review quantities; existing live worker revalidates all controls and capital.",
-                                   "Historical central 90% price bands are not calibrated future intervals or executable limit orders.",
-                                   "Current cash is reserved once; expected sells, margin credit and unconfirmed exits are not spendable.",
-                                   "Later entries in a previously planned horizon require prior exit confirmation."])
+                      limitations=["Review projections only; the existing live worker revalidates all controls and capital.",
+                                   "Price and cash ranges are estimates only. Live orders use the current tradable quote, actual available cash and holdings even when those values are outside the estimates.",
+                                   "The direction-based cash/share projection depends on its recorded sale and expiry fills; projected proceeds are not actual spendable broker cash.",
+                                   "The separate scheduled-entry preview uses current cash only and requires prior exit confirmation for later entries in a planned horizon."])
         # Optional research assessments add context, never alter the pinned
         # forecast or supply authority for a proposed quantity.
         for pointer, folder, report_name, field in (
@@ -280,7 +375,8 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
             raise ValueError("TRADE_PLANNING_DEADLINE_PASSED")
         if file_checksum(source / "receipt.json") != source_receipt_hash:
             raise ValueError("PINNED_GAMEPLAN_RECEIPT_CHANGED")
-        outputs = ["trade-plan.parquet", "account-snapshot.json", "price-bands.json", "report.json", "Gameplan.md"]
+        outputs = ["trade-plan.parquet", "account-snapshot.json", "price-bands.json", "planning-price-path.json",
+                   "direction-ledger.json", "report.json", "Gameplan.md"]
         write_manifest(run, run_timestamp=observed,
                        input_files=[source / "receipt.json", source / "manifest.json", source / "forecasts.parquet", *price_files],
                        output_files=outputs, configuration={"schema_version": VERSION, "action_date": action_date,

@@ -12,15 +12,11 @@ import pandas as pd
 
 from ml.artifacts import file_checksum
 from ml.independent_stock_targets import STOCK_TARGET_CONTRACT_VERSION
+from ml.gameplan_promotion import validate_promoted_report
 from ml.stock_target_prices import stock_price_dataset
 
 
 CHAMPION_RETENTION_POLICY = "latest-compatible-promoted-same-action-date-v1"
-_GATES = {
-    "calibration_retains_directional_information", "assessment_has_at_least_10_decision_clusters",
-    "brier_beats_training_base_rate", "log_loss_beats_training_base_rate",
-    "expected_calibration_error_at_most_0_15",
-}
 
 
 def latest_promoted_champion(root: Path, *, group: str, action_date, symbols,
@@ -56,20 +52,15 @@ def latest_promoted_champion(root: Path, *, group: str, action_date, symbols,
         gate = report.get("promotion_gate", {})
         if gate.get("status") != "PROMOTED":
             continue
-        checks = gate.get("checks", {})
-        if (set(checks) != _GATES or any(value is not True for value in checks.values())
-                or report.get("schema_version") != GAMEPLAN_VERSION or report.get("group") != group
+        if (report.get("schema_version") != GAMEPLAN_VERSION or report.get("group") != group
                 or report.get("target_contract_version") != STOCK_TARGET_CONTRACT_VERSION
                 or report.get("target_price_source_contract") != price_source
                 or report.get("target_price_dataset") != stock_price_dataset(price_source)):
             raise RuntimeError("Champion promotion or model contract is invalid")
-        assessment, baseline = report["assessment"], report["training_base_rate_assessment"]
-        if not (report["calibration_diagnostics"]["information_available"] is True
-                and report["partition_decision_clusters"]["assessment"] >= 10
-                and assessment["brier_score"] < baseline["brier_score"]
-                and assessment["log_loss"] < baseline["log_loss"]
-                and assessment["expected_calibration_error_10_bin"] <= .15):
-            raise RuntimeError("Champion assessment does not satisfy its promotion gates")
+        try:
+            validate_promoted_report(report)
+        except ValueError as exc:
+            raise RuntimeError("Champion assessment does not satisfy its versioned promotion gates") from exc
         model_name = str(report["model_file"]["path"])
         cohort_name = report.get("deployment", {}).get("retained_cohort_output", f"training-cohort-{group}.parquet")
         for name in (model_name, cohort_name):

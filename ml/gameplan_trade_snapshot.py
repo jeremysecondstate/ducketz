@@ -159,6 +159,20 @@ def _whole(value):
     return int(number)
 
 
+def _allocation_timestamp(value):
+    # Ledger expiry is a recorded instant, never a date, naive local clock or
+    # missing value that utc(None) could replace with the current time.
+    if not isinstance(value, str):
+        return None
+    try:
+        stamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if stamp.tzinfo is None or stamp.utcoffset() is None:
+            return None
+        return utc(stamp).isoformat()
+    except (ValueError, TypeError, OverflowError):
+        return None
+
+
 def _ownership(root, symbols, identity, held, observed):
     path = Path(root).resolve() / _LEDGER_PATH
     if not path.is_file():
@@ -190,8 +204,15 @@ def _ownership(root, symbols, identity, held, observed):
             ).fetchall()
             blocks = connection.execute("SELECT symbol FROM blocks").fetchall()
             latest = connection.execute(
-                "SELECT observed_at,ready,payload,owned FROM snapshots ORDER BY observed_at DESC LIMIT 1"
+                "SELECT rowid AS sequence,observed_at,ready,payload,owned FROM snapshots ORDER BY observed_at DESC LIMIT 1"
             ).fetchone()
+            assignments, releases = [], []
+            if connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='inventory_assignments'").fetchone():
+                assignments = connection.execute("""SELECT i.*,s.rowid AS snapshot_sequence
+                    FROM inventory_assignments i JOIN snapshots s ON s.id=i.snapshot_id""").fetchall()
+                if connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='inventory_assignment_releases'").fetchone():
+                    releases = connection.execute("""SELECT r.*,s.rowid AS snapshot_sequence
+                        FROM inventory_assignment_releases r JOIN snapshots s ON s.id=r.snapshot_id""").fetchall()
         finally:
             connection.close()
         reasons, active, by_id = set(), [], {}
@@ -200,10 +221,36 @@ def _ownership(root, symbols, identity, held, observed):
                     or item["horizon"] not in _HORIZONS
                     or item["status"] not in {"ACTIVE", "CLOSED"}):
                 raise ValueError("INVALID_LEDGER_ALLOCATION")
+            start, end = _allocation_timestamp(item["start"]), _allocation_timestamp(item["end"])
+            if start is None or end is None or utc(end) <= utc(start):
+                return _ownership_unavailable("OWNERSHIP_ALLOCATION_TIME_INVALID")
             by_id[item["id"]] = {"symbol": item["symbol"], "horizon": item["horizon"],
                 "owned_shares": 0, "reserved_buy_shares": 0, "reserved_sell_shares": 0,
-                "target_start": _timestamp(item["start"]), "target_end": _timestamp(item["end"]),
+                "target_start": start, "target_end": end,
                 "status": item["status"]}
+        assignment_map = {item["id"]: item for item in assignments}
+        net_transfers = {symbol: 0 for symbol in symbols}
+        released_by_id = {}
+        for item in assignments:
+            allocation = by_id.get(item["allocation"])
+            if allocation is None:
+                raise ValueError("INVALID_EXISTING_STOCK_ASSIGNMENT")
+            quantity = _whole(item["quantity"])
+            allocation["owned_shares"] += quantity
+            if latest and item["snapshot_sequence"] >= latest["sequence"]:
+                net_transfers[allocation["symbol"]] += quantity
+        for item in releases:
+            assignment = assignment_map.get(item["assignment"])
+            if assignment is None:
+                raise ValueError("INVALID_EXISTING_STOCK_RELEASE")
+            quantity = _whole(item["quantity"])
+            released_by_id[item["assignment"]] = released_by_id.get(item["assignment"], 0) + quantity
+            if released_by_id[item["assignment"]] > _whole(assignment["quantity"]):
+                raise ValueError("EXISTING_STOCK_RELEASE_EXCEEDS_ASSIGNMENT")
+            allocation = by_id[assignment["allocation"]]
+            allocation["owned_shares"] -= quantity
+            if latest and item["snapshot_sequence"] >= latest["sequence"]:
+                net_transfers[allocation["symbol"]] -= quantity
         for item in reservations:
             allocation = by_id.get(item["allocation"])
             if allocation is None or item["side"] not in {"BUY", "SELL"} or item["status"] not in _STATUSES:
@@ -256,7 +303,7 @@ def _ownership(root, symbols, identity, held, observed):
                 if before is None or before_owned is None or before < 0 or before_owned < 0:
                     raise ValueError("INVALID_SAVED_OWNERSHIP_QUANTITY")
                 actual_change = float(held[symbol]) - before
-                tracked_change = owned[symbol] - before_owned
+                tracked_change = owned[symbol] - before_owned - net_transfers[symbol]
                 if actual_change - tracked_change < -1e-8:
                     reasons.add("UNEXPLAINED_SHARE_REDUCTION_SINCE_SAVED_RECONCILIATION")
         return {"status": "OBSERVED_CONSISTENT" if not reasons else "REVIEW_REQUIRED",
@@ -289,7 +336,8 @@ def capture_trade_planning_snapshot(
         "available_cash": None, "broker_available_cash": None, "gross_exposure": None,
         "balances": {key: None for key in _BALANCES}, "cash_status": "UNAVAILABLE",
         "cash_reason_codes": [], "reserved_cash": None, "held_shares": {},
-        "symbol_exposure": {}, "pending_buy_shares": {}, "pending_sell_shares": {},
+        "symbol_exposure": {}, "stock_market_value_by_symbol": {}, "other_symbol_exposure": {},
+        "pending_buy_shares": {}, "pending_sell_shares": {},
         "working_order_count": None, "quotes": {},
         "ownership": _ownership_unavailable("BROKER_SNAPSHOT_UNAVAILABLE"),
         "orders_placed": 0, "orders_enabled": False,
@@ -383,6 +431,27 @@ def capture_trade_planning_snapshot(
         for key in ("held_shares", "symbol_exposure", "pending_buy_shares", "pending_sell_shares"):
             source = getattr(portfolio, key)
             result[key] = {symbol: source[symbol] for symbol in requested}
+        component = "POSITION_EXPOSURE_ATTRIBUTION"
+        stock_values = {symbol: Decimal(0) for symbol in requested}
+        other_values = {symbol: Decimal(0) for symbol in requested}
+        for position in normalized["positions"]["items"]:
+            # Match native PortfolioState: gross exposure is absolute reported
+            # position value, attributed to the exact underlying. This is a
+            # valuation decomposition, never a claim of available sell shares.
+            symbol = str(position["symbol"]).upper()
+            underlying = str(position.get("underlying_symbol") or symbol).upper()
+            value = abs(Decimal(str(position["market_value"])))
+            if position["asset_type"] in {"EQUITY", "STOCK"} and symbol in stock_values:
+                stock_values[symbol] += value
+            elif underlying in other_values:
+                other_values[underlying] += value
+        for symbol in requested:
+            total = stock_values[symbol] + other_values[symbol]
+            if abs(total - Decimal(str(result["symbol_exposure"][symbol]))) > Decimal("0.000001"):
+                raise ValueError("POSITION_EXPOSURE_ATTRIBUTION_INCONSISTENT")
+        result["stock_market_value_by_symbol"] = {symbol: float(value) for symbol, value in stock_values.items()}
+        result["other_symbol_exposure"] = {symbol: float(value) for symbol, value in other_values.items()}
+        result["position_exposure_basis"] = "ABSOLUTE_REPORTED_POSITION_MARKET_VALUE_MATCHING_NATIVE_GROSS_EXPOSURE"
         result["ownership"] = _ownership(datastore_root, requested, stable_identity, result["held_shares"], timestamp)
     except Exception as exc:
         # Broker exceptions may contain account URLs or order identifiers.

@@ -1,0 +1,59 @@
+{
+  "status": "VERIFIED",
+  "source_gameplan_run": "C:/DATASTORE/ml/nightly-gameplan-runs/20260909T060404.450224Z",
+  "source_receipt_sha256": "bb4f21dc093d1195964e323d0321aa3a10c87e3d1e00cf63bc688df32c3e134b",
+  "trade_plan_run": "C:/DATASTORE/ml/gameplan-trade-plan-runs/20260909T071232.777557Z",
+  "native_overnight_run": "C:/DATASTORE/ml/overnight-runs/20260909T071230.488635Z",
+  "source_forecasts_preserved": true,
+  "source_option_intents": 168,
+  "forecast_rows": 168,
+  "entry_rows": 133,
+  "positive_capacity_rows": 133,
+  "direction_action_counts": {
+    "HOLD": 125,
+    "SELL": 7,
+    "BUY": 1
+  },
+  "price_path_points": 98,
+  "working_half_width_bps": 20.0,
+  "minimum_observed_pairs": 27,
+  "cash_and_inventory_reconciled": true,
+  "summary": {
+    "buy_events": 1,
+    "cash_buffer": 5558.5555,
+    "cash_change_high": 4825.58,
+    "cash_change_low": 4792.26,
+    "direction_buy_rows": 1,
+    "direction_sell_rows": 7,
+    "ending_cash_base": 115980.02,
+    "ending_cash_high": 115996.69,
+    "ending_cash_low": 115963.37,
+    "sell_events": 8,
+    "starting_cash": 111171.11,
+    "trade_events": 9
+  },
+  "starting_positions": {
+    "AAPL": 1.0,
+    "AMZN": 1.0,
+    "COST": 1.0,
+    "GOOG": 1.0,
+    "MU": 1.0,
+    "NVDA": 1.0,
+    "SNDK": 1.0
+  },
+  "ending_positions": {
+    "AAPL": 0.0,
+    "AMZN": 0.0,
+    "COST": 0.0,
+    "GOOG": 0.0,
+    "MU": 0.0,
+    "NVDA": 0.0,
+    "SNDK": 0.0
+  },
+  "broker_snapshot_at": "2026-09-09T07:12:40.541230+00:00",
+  "orders_placed": 0,
+  "review_path": "C:/dev/ducketz/artifacts/gameplans/2026-09-09/Gameplan-2026-09-09-trade-review.md",
+  "review_sha256": "2a781fbd8b3c0e060b5382ce2c5b1c2983ed51432b37043312f2c5a9e36d60b2",
+  "native_review_sha256": "dd847d35a7be25e9fbdd29b03926c5d4aef7d1c8e8e4e632e6898a57f51a05c6",
+  "derived_review_note": "Rendered from immutable v3 rows/report with current renderer; native outputs preserved."
+}

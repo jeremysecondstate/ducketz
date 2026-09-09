@@ -1,0 +1,47 @@
+{
+  "status": "VERIFIED",
+  "automations": [
+    {
+      "id": "loops-hourly-operations",
+      "name": "Loops Overnight Gameplan",
+      "rrule": "FREQ=DAILY;BYHOUR=21;BYMINUTE=5",
+      "model": "gpt-6-astra",
+      "reasoning_effort": "ultra",
+      "status": "ACTIVE",
+      "notification_policy": "failed_runs_only",
+      "changed_fields": [
+        "prompt",
+        "updated_at"
+      ],
+      "prompt_verified": true
+    },
+    {
+      "id": "loops-stock-trader-daily-adaptation",
+      "name": "Loops Operations Watch",
+      "rrule": "FREQ=HOURLY;INTERVAL=1;BYMINUTE=0;BYSECOND=0",
+      "model": "gpt-6-astra",
+      "reasoning_effort": "ultra",
+      "status": "ACTIVE",
+      "notification_policy": null,
+      "changed_fields": [
+        "prompt",
+        "updated_at"
+      ],
+      "prompt_verified": true
+    },
+    {
+      "id": "loops-stock-trader-live-shadow",
+      "name": "Loops Stock Trader — Daytime Supervision",
+      "rrule": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=3;BYMINUTE=55",
+      "model": "gpt-6-astra",
+      "reasoning_effort": "max",
+      "status": "ACTIVE",
+      "notification_policy": null,
+      "changed_fields": [
+        "prompt",
+        "updated_at"
+      ],
+      "prompt_verified": true
+    }
+  ]
+}

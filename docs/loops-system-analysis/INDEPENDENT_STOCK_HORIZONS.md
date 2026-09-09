@@ -16,10 +16,10 @@ BUY; scheduled exits can only reduce shares owned by their horizon. The runtime
 does not open shorts. A horizon with a working
 entry, unclosed position, or uncertain order cannot open another allocation.
 
-The selected `fixed-horizon-budget-v1` strategy divides the existing per-symbol
+The scheduled-default `fixed-horizon-budget-v1` strategy divides the existing per-symbol
 allocation ceiling with 1:2:3:4 weights, applies the existing single-order cap,
 then uses `min(0.5, max(0, 2*p - 1))` of that horizon budget. Here `p` is the
-qualified stock forecast's probability; a long entry requires at least 0.55.
+qualified stock forecast's probability; a long entry requires at least 0.54.
 This is an explicit conservative capital rule, with separate policy audit
 fields and no invented learned return or profitability estimates. Whole shares, available cash,
 gross/symbol exposure, the existing single-order ceiling and six-order batch
@@ -27,6 +27,31 @@ ceiling still apply, so final filled sizes are not guaranteed to have those
 exact ratios. Exits precede entries in one combined batch. Unfilled exits do
 not create spendable cash. Shares already owned manually are not assigned to
 any horizon.
+
+The manual Gameplan start selects `gameplan-direction-current-market-v1` instead.
+It uses the same promoted 54%/46% forecast directions, buys from the full horizon
+capacity permitted by actual cash/exposure, sells eligible current shares on
+bearish forecasts, and holds on neutral forecasts. Eligible unallocated manual
+shares can be assigned explicitly when a directional sell is reserved; shares
+reserved for pending sells or protected by other horizons are excluded. A
+reservation is not a fill. The live ledger changes filled inventory only from
+broker evidence, and an unfilled sale cannot finance another order.
+
+The user-selected stock direction bands are bullish at P(up) >= 0.54,
+bearish at P(up) <= 0.46, and neutral in between. This classification is
+independent of model approval. New forecasts record these thresholds; older
+published forecasts retain their original labels and measured probabilities.
+
+New independent directional models use `independent-stock-directional-promotion-v2`.
+The daily candidate set includes regularized logistic models with C values
+0.001, 0.01, 0.1 and 1, selected on development data before assessment. The user
+authorized replacing strict baseline wins with operating tolerances: Brier score
+may be at most baseline + 0.005 and log loss at most baseline + 0.01. Actual
+scores and baseline differences remain recorded; approval under this rule does
+not assert outperformance. Probability variation, calibration and assessment
+sample requirements remain. Earlier publications retain their recorded strict
+policy. Publication, the stock reader and champion retention use the same
+versioned numerical assessment implementation.
 
 ## Versioned forecasts and model evidence
 
@@ -81,7 +106,7 @@ execution outcomes, causal inputs and chronological development/assessment;
 research models retain their status. The optional `qualified-enrichment`
 strategy still requires its own qualified sizing evidence. Selecting fixed
 budgets does not relabel an enrichment model or manufacture an `EnrichmentOutput`.
-Both strategies preserve the exact target expiry and exclude opening-gap and
+All strategies preserve the exact target expiry and exclude opening-gap and
 later daily-outlook rows from entry authority.
 
 ## Ownership and execution
@@ -95,32 +120,60 @@ Schwab quote references through read-only methods. It writes a separate immutabl
 `ml/gameplan-trade-plan-runs/<generation>/Gameplan.md` and `trade-plan.parquet`,
 bound to the exact source Gameplan receipt, plus the
 `ml/gameplan-trade-plan-latest/run.json` pointer. The review contains every frozen
-forecast with Trade Quantity, Trade Price (planning range), current investment,
-cash evidence and explicit no-entry reasons. Failed account/ownership evidence
+forecast with adjacent capacity/direction quantities, working prices, current
+investment, post-hour cash/shares and Plan action. Failed account/ownership evidence
 stops that stage and preserves the prior trade-plan pointer.
 
-The quantity proposal reuses the selected fixed-confidence budget and all its
-capital ceilings, additionally bounds planning by literal cash rather than
-margin capacity, and reserves shared cash at the upper range price. It never
-funds entries from expected exits or assigns manual shares to a horizon.
-Later entries after a proposed horizon allocation require confirmation of its
-exit; overnight proposals are not promises of future fills or spendable cash.
+Projected Trade Quantity is the whole-share capacity for each opportunity:
+account equity times min(0.15 * horizon weight / 10, 0.05), limited by current
+cash and remaining account/symbol exposure, divided by the upper planning price.
+These per-opportunity alternatives are not added as simultaneous orders and can
+be positive beside Sell or Hold. Non-entry outlooks show a dash. The adjacent
+Direction Based Trade Qty applies promoted >=54% bullish buys, <=46% bearish
+sales of eligible held stock, and Neutral zero through one shared cash balance.
+Fresh account evidence includes all seven stock balances, cash and pending-order
+reservations, active horizon allocations and options/other exposure. Each clock
+processes bearish sales, due exits and bullish buys, with later horizon shares
+and pending sales protected. Conditional prior proceeds may fund later buys;
+no actual fill is claimed. Row balances are after the entire hourly batch and
+match the 04:00–17:00 portfolio rollforward. Later-expiring overnight/weekly
+holdings remain in the end-of-day forecast, whose cash is before fees/taxes.
 
-Price bands use the last 120 exchange-session transitions with at least 30
-valid observations per stock/entry clock. They are the historical 5th–95th
-percentiles of prior-session 17:00 close to entry-price ratios, anchored to the
+The scheduled-default long-only strategy retains its expandable
+confidence-weighted entry preview. The manual Gameplan strategy follows the
+same frozen directions while recalculating orders from fresh account and quote
+evidence. It does not replay the hypothetical direction ledger or spend its
+unconfirmed sale proceeds. `direction-ledger.json` saves every ordered
+event, hourly/EOD totals and no-fill baseline; `planning-price-path.json` saves
+the conditional working prices and supporting historical evidence.
+
+Price bands use the available observations from the last 120 exchange-session
+transitions. Two observed pairs suffice to calculate the median and historical 5th–95th
+percentiles of prior-session 17:00 close to clock-price ratios, anchored to the
 exact last completed session close in the Gameplan's verified price dataset.
 The native five-minute endpoint tolerance and source identity remain enforced.
 Broker prices retain their actual market timestamp and appear separately;
 the band is not shifted by a later quote that already includes overnight moves.
-Missing samples remain unavailable. Bands are descriptive historical ranges,
-not qualified price forecasts, stop prices or executable limit orders.
+Missing samples remain unavailable. Main working prices use the observed median
+plus/minus 20bps, rounded outward to cents. This is an explicit conditional-fill
+assumption, not a confidence interval, stop or execution limit. Wider historical
+ranges stay in the evidence for stress analysis. A price outside the working
+range never blocks an order: planning prices and cash ranges are estimates only.
+Actual orders use current ask prices for BUY limits and current bid prices for
+SELL limits, with permitted tick rounding and actual cash/share availability.
+New fills and changing prices update actual balances independently of the
+overnight cash range; the range is not an execution threshold.
 
-This planning stage cannot submit or cancel orders and does not change the live
-worker. At execution the existing worker recalculates quantity and its rounded
-ask LIMIT with fresh cash, position, quote, ownership, control and risk checks.
-Research directional models and sub-threshold signals retain zero proposed
-quantity even when a historical range is available. Existing immutable Gameplans
+This planning stage cannot submit or cancel orders or activate the live worker.
+At execution the selected worker policy recalculates quantity and its current
+quote LIMIT with fresh cash, position, quote, ownership, control and risk checks.
+Research directional models and sub-threshold signals can have standalone
+capacity while producing no direction trade. The main document shows directions,
+capacity and direction quantities, working prices, remaining cash/shares and
+Plan action. The native scheduled-entry preview and chronological transaction
+details are expandable; sample counts and file-integrity details remain in
+supporting evidence. See [the complete review contract](NIGHTLY_GAMEPLAN.md#account-aware-trade-plan-review).
+Day 1 means the completed source session; the next session is Day 2. Existing immutable Gameplans
 and previously recorded narrower resume boundaries remain unchanged.
 
 `horizon_ledger.py` records reservations and complete cumulative fills by stable
@@ -190,7 +243,18 @@ unresolved failure. Recovery requires a successful worker capture marked
 `CURRENT` or `CURRENT_AFTER_RETRY`, with no subsequent cycle failure or stopped
 submission.
 
-`Loops Operations Watch` is the existing ten-minute schedule, renamed from
+The manual Gameplan policy can wait up to five seconds after a coherent broker
+capture for a recently delivered BBO timestamp to reach the local clock. This
+handles small host-clock lag without relabeling quotes or moving the portfolio
+timestamp, entry deadline, or closing deadline. The existing execution lead,
+60-second evidence limit, activation and identity checks still apply. Larger
+clock discrepancies and waits that cannot fit the deadline remain blocked.
+An unresolved quote block on an owned, due exit reports
+`HORIZON_EXIT_QUOTE_UNAVAILABLE` and degrades session health; an ordinary entry
+quote skip remains a valid no-trade decision. Windows time synchronization
+should still be maintained through its normal administrator-controlled service.
+
+`Loops Operations Watch` is the existing hourly :00 schedule, renamed from
 `Loops Overnight Health Watch`. It now covers daytime failure diagnosis and
 tested repairs as well as the documented overnight workflow. It verifies
 process/lock identities, heartbeat, actual cycle results and broker evidence;
@@ -214,9 +278,9 @@ launcher/child relationship, and their creation times against the native lock.
 Conflicting command arguments or a lock from an older process instance are
 rejected before waiting on the existing worker.
 
-Deployment also requires both existing stock controls. Start no
-earlier than 03:55 on its exchange date. It terminates at 17:00 and does not
-wait overnight. Existing legacy schedules must not run independent targets
+The scheduled-default start still requires both existing stock controls and
+begins no earlier than 03:55 on its exchange date. It terminates at 17:00 and
+does not wait overnight. Existing legacy schedules must not run independent targets
 through the shared-position executor; that adapter explicitly rejects them.
 
 The existing stock automation starts this worker at 03:55 Pacific on
@@ -229,6 +293,39 @@ Live entries require the session manager; a one-shot call can still manage
 owned-position exits. The deployment explicitly selects fixed budgets; the CLI
 default remains `qualified-enrichment` and retains that strategy's qualification
 gate.
+
+### One-action manual start and automatic wake
+
+The user can launch [`Start-Gameplan-Trader.cmd`](../../Start-Gameplan-Trader.cmd)
+once. That manual action enables both stock controls and starts the Gameplan
+policy with `--execute --run-session --wait-for-open`; there is no second click,
+confirmation, or prompt at 04:00. Creating or testing this launcher does not
+activate it. The selected policy is explicit; the existing Scheduled task and
+CLI defaults are unchanged.
+
+Before 04:00 Pacific the worker reports `SLEEPING_UNTIL_OPEN`, retains one
+process lock, and updates `session-status.json` every 30 seconds or sooner with
+`action_date`, `wakes_at`, PID, and heartbeat. It reads local activation controls
+only: no broker requests, entry-slot claims, inventory management, or model
+preflight run while sleeping. Turning either stock control off ends the wait.
+The computer must be running for the process to make progress; this is worker
+standby, not a request to suspend Windows.
+
+At 04:00 the worker reads the current Gameplan and begins normal session
+management; the first entry batch is 04:01, with the established 13:06 transition
+entry. Existing owned positions retain exit management if entry qualification
+is unavailable. Starting during an open session starts immediately without
+replaying missed slots. A previous-evening, weekend, or holiday start selects
+the next supported exchange session; the existing contract skips half days.
+Local wall-clock construction keeps the opening at 04:00 across DST changes.
+
+At 03:55 the unchanged Scheduled launcher can adopt this verified manual worker
+instead of launching another. Adoption requires an exact recognized policy and
+optional wait command, matching launcher/child policy and wait mode, executable
+identities, process relationship, creation times, and current lock ownership.
+A manual Gameplan start encountering an existing different strategy reports
+the mismatch before enabling controls. After its selected session ends at
+17:00, this one-session manual worker exits; it does not create another schedule.
 
 September 8, 2026 selected deployment: COST activation is complete. Current XNAS
 Gameplan `20260908T093314.374067Z` contains 168 forecasts and 168 stock-only

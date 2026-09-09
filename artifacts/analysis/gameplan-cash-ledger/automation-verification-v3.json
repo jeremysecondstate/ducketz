@@ -1,0 +1,44 @@
+{
+  "status": "VERIFIED",
+  "schedules": [
+    {
+      "id": "loops-hourly-operations",
+      "name": "Loops Overnight Gameplan",
+      "status": "ACTIVE",
+      "rrule": "FREQ=DAILY;BYHOUR=21;BYMINUTE=5",
+      "reasoning": "ultra",
+      "notification_policy": "failed_runs_only",
+      "changed_fields": [
+        "prompt",
+        "updated_at"
+      ],
+      "prompt_readback_matches": true
+    },
+    {
+      "id": "loops-stock-trader-daily-adaptation",
+      "name": "Loops Operations Watch",
+      "status": "ACTIVE",
+      "rrule": "FREQ=HOURLY;INTERVAL=1;BYMINUTE=0;BYSECOND=0",
+      "reasoning": "ultra",
+      "notification_policy": null,
+      "changed_fields": [
+        "prompt",
+        "updated_at"
+      ],
+      "prompt_readback_matches": true
+    },
+    {
+      "id": "loops-stock-trader-live-shadow",
+      "name": "Loops Stock Trader — Daytime Supervision",
+      "status": "ACTIVE",
+      "rrule": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=3;BYMINUTE=55",
+      "reasoning": "max",
+      "notification_policy": null,
+      "changed_fields": [
+        "prompt",
+        "updated_at"
+      ],
+      "prompt_readback_matches": true
+    }
+  ]
+}

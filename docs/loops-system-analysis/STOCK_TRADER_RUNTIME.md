@@ -15,8 +15,8 @@ remains research. The scheduled independent session worker starts at 03:55
 Pacific with explicit `--sizing-policy fixed-horizon-budget-v1`, using conservative
 deterministic 1:2:3:4 budgets within the existing risk limits. The learned sizing
 run `20260908T092028.062383Z` remains research with zero qualified scopes and is
-nonblocking for this selected strategy. All current execution forecasts are
-bearish or neutral: operational readiness currently means zero BUY entries.
+nonblocking for that selected strategy. In that September 8 publication, execution
+forecasts were bearish or neutral and produced zero qualifying BUY entries.
 Its exact schedule, ownership rules and forecast qualification requirements are documented
 in [Independent stock horizons](INDEPENDENT_STOCK_HORIZONS.md).
 The remaining sections describe the shared legacy engine and its preserved
@@ -26,18 +26,74 @@ Independent preparation selects `xnas-itch-archive-v1` explicitly. The native
 `stock_target_history` stage requires a $0 preflight and verifies committed
 history before source-correct evaluation. Gameplan publication writes four
 checksum-bound training cohorts, and the supervised enrichment tail consumes
-that pinned source. EQUS.MINI live features and legacy labels keep their existing
+that pinned source. The required `gameplan_trade_planning` stage follows
+enrichment and writes a separate immutable account-aware review under the same
+original 04:00 Pacific deadline. EQUS.MINI live features and legacy labels keep their existing
 identity; no price-source mixing or regular-session label substitution occurs.
 The $0 native historical backfill completed 35 chunks and approximately 1.79
 million minute rows. Forecast source, exact target, promotion and entry-window
 checks remain mandatory. Fixed budgets use `min(0.5, max(0, 2*p - 1))` of each
-capped horizon amount, with a minimum bullish forecast probability of 0.55.
+capped horizon amount, with a minimum bullish forecast probability of 0.54.
 They produce policy audit fields, not fabricated learned probabilities or
 expected returns. The CLI default `qualified-enrichment` keeps its separate
-model gate; deployment selects fixed budgets explicitly. The broker/ledger
-readiness snapshot has zero working orders and zero owned horizon allocations;
-manual one-share holdings in the original six symbols are untouched. Preparation
+model gate; deployment selects fixed budgets explicitly. The September 8 broker/ledger
+readiness snapshot recorded zero working orders and zero owned horizon allocations;
+manual one-share holdings in the original six symbols were untouched. Preparation
 and evaluation place zero orders.
+
+The current review puts **Direction Based Trade Qty** beside the standalone
+**Projected Trade Quantity** capacity estimate. The direction plan uses fresh
+cash and all seven current stock balances, approved Bullish >=54% / Bearish <=46%
+probabilities and Neutral zero. At each hour one shared cash ledger processes
+eligible bearish sales, due horizon exits, then bullish purchases. Rows show
+post-hour cash and shares; the hourly/EOD tables preserve later horizon holdings.
+The conditional scenario may sell unallocated held shares, while protecting
+pending sells and other horizons. It neither shorts nor changes actual ownership.
+
+The scheduled-default long-only policy keeps its confidence-weighted entry
+preview in expandable details. The manual `gameplan-direction-current-market-v1`
+policy uses the same promoted directions: bullish buys with actual cash,
+bearish sells eligible current shares, and neutral holds. Explicit sell
+reservations may assign unallocated manual shares, excluding pending sells and
+other horizons; only observed broker fills change filled ownership. It never
+spends hypothetical or unconfirmed sale proceeds. Capacity estimates remain independent opportunities rather than
+simultaneous orders. Working prices use the historical median +/-20bps, not a
+confidence interval; projected cash is before fees/taxes and depends on assumed
+fills. See [the full projection contract](NIGHTLY_GAMEPLAN.md#account-aware-trade-plan-review).
+
+**Planning price and cash ranges are estimates only and never execution gates.**
+The manual policy reprices BUY limits from the current ask and SELL limits from
+the current bid, rounding to the permitted tick. It recalculates whole-share
+quantity from actual cash, holdings and outstanding orders. A market price or
+cash balance outside the overnight range does not itself prevent an order.
+
+For one-action manual use, launch
+[`Start-Gameplan-Trader.cmd`](../../Start-Gameplan-Trader.cmd). This enables both
+stock controls and starts the explicit Gameplan policy. Before the next
+supported 04:00 Pacific session the worker stays `SLEEPING_UNTIL_OPEN`, with a
+30-second local heartbeat and no broker, model, inventory or entry-slot activity.
+It automatically reads the current Gameplan and wakes at 04:00; the first entry
+batch is 04:01. There is no wake-time prompt or second manual activation.
+Turning either control off stops the wait. Starting during an open session
+starts immediately; weekends, holidays, unsupported half days and DST follow
+the existing calendar. The process requires a running computer and ends at
+17:00 after its selected session. The 03:55 Scheduled launcher recognizes and
+adopts an already-running manual worker; its own fixed-policy default is unchanged.
+
+Day 1 is the completed source session and the upcoming session is Day 2; daily
+and weekly labels include actual dates while source IDs and windows remain
+unchanged. Price bands use the available same-source history when at least two
+observations exist. The main review retains cash, shares, investment and price
+times, while sample-status and source details remain in supporting artifacts.
+
+The daily development pool includes regularized logistic candidates selected
+before assessment. New directional qualification policy v2 permits Brier score
+up to 0.005 and log loss up to 0.01 above their training/selection baselines,
+while retaining calibration, information, sample and exact-history requirements.
+Published scores, measured baseline comparisons and the adopted policy stay
+visible in model evidence. Qualification within an error allowance does not
+establish measured baseline outperformance; older immutable runs keep their own
+strict policy. Learned sizing assessment remains separate.
 
 Selected scheduled command:
 

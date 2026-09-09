@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
+from decimal import Decimal, ROUND_FLOOR
 from typing import Any, Callable, Mapping, Protocol, TypeVar
 
 from app.services.schwab_policy_inputs import normalize_schwab_policy_inputs
@@ -35,6 +37,8 @@ def capture_portfolio_state(
     *,
     observed_at: object,
     parallel: bool = True,
+    literal_cash_only: bool = False,
+    use_actual_quote_timestamps: bool = False,
 ) -> PortfolioState:
     """Capture one coherent pre-decision input set without serial symbol reads."""
 
@@ -117,23 +121,10 @@ def capture_portfolio_state(
     equity = finite(account.get("liquidation_value"))
     if equity is None or equity <= 0.0:
         raise ValueError("Schwab liquidation value is unavailable or nonpositive")
-    preferred_cash_candidates = [
-        value
-        for key in (
-            "cash_available_for_trading",
-            "available_funds_non_marginable_trade",
-            "buying_power_non_marginable_trade",
-        )
-        if (value := finite(account.get(key))) is not None
-    ]
-    cash_candidates = preferred_cash_candidates or [
-        value
-        for key in ("settled_cash", "cash_balance")
-        if (value := finite(account.get(key))) is not None
-    ]
-    if not cash_candidates:
-        raise ValueError("Schwab did not provide any usable stock buying-power balance")
-    available_cash = max(0.0, min(cash_candidates) - max(0.0, reserved_cash))
+    available_cash = _available_stock_cash(
+        account, working, account_payload,
+        reserved_cash=reserved_cash, literal_cash_only=literal_cash_only,
+    )
     held_shares = {symbol: 0.0 for symbol in STOCK_TRADER_SYMBOLS}
     symbol_exposure = {symbol: 0.0 for symbol in STOCK_TRADER_SYMBOLS}
     gross_exposure = 0.0
@@ -168,6 +159,9 @@ def capture_portfolio_state(
         ask = _first_number(raw_quote, "askPrice", "ask")
         if bid is None or ask is None or bid <= 0.0 or ask <= 0.0 or ask < bid:
             continue
+        quote_at = _actual_quote_timestamp(raw_quote) if use_actual_quote_timestamps else timestamp.isoformat()
+        if quote_at is None:
+            continue
         quotes[symbol] = QuoteState(
             symbol=symbol,
             bid=bid,
@@ -175,7 +169,7 @@ def capture_portfolio_state(
             last=_first_number(raw_quote, "lastPrice", "last"),
             mark=_first_number(raw_quote, "mark", "markPrice"),
             volume=_first_number(raw_quote, "totalVolume", "volume"),
-            observed_at=timestamp.isoformat(),
+            observed_at=quote_at,
         )
     working_items = working.get("items")
     working_count = len(working_items) if isinstance(working_items, list) else 0
@@ -203,6 +197,12 @@ def capture_portfolio_state(
             for symbol, quote in quotes.items()
         },
     }
+    if literal_cash_only:
+        fingerprint_payload["cash_policy"] = "LITERAL_CASH_LESS_PENDING_RESERVES"
+    if use_actual_quote_timestamps:
+        fingerprint_payload["quote_time_policy"] = "BROKER_BBO_TIMESTAMP"
+        for symbol, quote in quotes.items():
+            fingerprint_payload["quotes"][symbol]["observed_at"] = quote.observed_at
     return PortfolioState(
         observed_at=timestamp.isoformat(),
         account_equity=equity,
@@ -218,6 +218,67 @@ def capture_portfolio_state(
         source_fingerprint=canonical_sha256(fingerprint_payload),
         broker_identity_fingerprint=broker_identity_fingerprint,
     )
+
+
+def _available_stock_cash(
+    account: Mapping[str, object], working: Mapping[str, object], raw_account_payload: object,
+    *, reserved_cash: float, literal_cash_only: bool,
+) -> float:
+    """Use literal cash for Gameplan orders without changing legacy capacity."""
+    preferred_cash_candidates = [
+        value
+        for key in (
+            "cash_available_for_trading",
+            "available_funds_non_marginable_trade",
+            "buying_power_non_marginable_trade",
+        )
+        if (value := finite(account.get(key))) is not None
+    ]
+    cash_candidates = preferred_cash_candidates or [
+        value
+        for key in ("settled_cash", "cash_balance")
+        if (value := finite(account.get(key))) is not None
+    ]
+    if not cash_candidates:
+        raise ValueError("Schwab did not provide any usable stock buying-power balance")
+    if not literal_cash_only:
+        return max(0.0, min(cash_candidates) - max(0.0, reserved_cash))
+    fields = {"cash_balance": "cashBalance", "settled_cash": "settledCash",
+              "cash_available_for_trading": "cashAvailableForTrading"}
+    raw_account = _mapping(raw_account_payload, "raw account")
+    raw_account = _mapping(raw_account.get("securitiesAccount", raw_account), "raw securitiesAccount")
+    raw_balances = _mapping(raw_account.get("currentBalances"), "currentBalances")
+    literal = {key: finite(account.get(key)) for key in fields}
+    if any(raw_key in raw_balances and (literal[key] is None or isinstance(raw_balances[raw_key], bool))
+           for key, raw_key in fields.items()):
+        raise ValueError("Schwab reported an invalid literal cash balance")
+    if all(literal[key] is None for key in ("cash_balance", "settled_cash")):
+        raise ValueError("Schwab literal cash balance is unavailable")
+    pending = finite(working.get("reserved_cash"))
+    if working.get("status") != "CURRENT" or pending is None or pending < 0:
+        raise ValueError("Schwab account-wide pending cash reservations are unavailable")
+    # Each candidate is an unadjusted balance. Subtract pending reservations
+    # exactly once after taking their minimum, never again from the result.
+    candidates = [*cash_candidates, *(value for value in literal.values() if value is not None)]
+    cash = max(Decimal(0), min(Decimal(str(value)) for value in candidates) - Decimal(str(pending)))
+    return float(cash.quantize(Decimal("0.01"), rounding=ROUND_FLOOR))
+
+
+def _actual_quote_timestamp(row: Mapping[str, object]) -> str | None:
+    """Read the broker's BBO timestamp, never capture time or last-trade time."""
+    for field in ("quoteTime", "quoteTimeInLong"):
+        value = row.get(field)
+        if value is None:
+            continue
+        if isinstance(value, bool):
+            return None
+        try:
+            if isinstance(value, (int, float)) or (isinstance(value, str) and value.strip().isdigit()):
+                return datetime.fromtimestamp(float(value) / 1000, timezone.utc).isoformat()
+            return utc(value).isoformat()
+        except (ValueError, TypeError, OverflowError, OSError):
+            return None
+    return None
 
 
 def _read_schwab_component(

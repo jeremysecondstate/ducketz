@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ml.gameplan_price_bands import build_entry_price_bands
+from ml.gameplan_price_bands import build_entry_price_bands, build_planning_price_path
 from ml.independent_stock_targets import stock_target_windows
 from ml.stock_target_prices import XNAS_STOCK_PRICE_SOURCE
 
@@ -247,3 +247,86 @@ def test_zero_or_one_pair_remains_unavailable_with_a_specific_reason(pairs):
     assert row["price_band_status"] == "UNAVAILABLE_MINIMUM_SAMPLES"
     assert row["trade_price_low"] is row["trade_price_high"] is None
     assert ("No observed" if pairs == 0 else "Only one observed") in row["price_band_reason"]
+
+
+def test_conditional_working_path_uses_median_and_keeps_historical_stress_range():
+    forecasts = pd.DataFrame([_forecast()])
+    entry_bands = _build(forecasts=forecasts)
+    report = build_planning_price_path(_history(), forecasts, observed_at="2026-09-09T04:00Z", entry_bands=entry_bands)
+    assert len(report["points"]) == 14
+    assert {point["clock_local"] for point in report["points"].values()} == {f"{hour:02d}:00" for hour in range(4, 18)}
+    point = report["points"]["COST|2026-09-09|04:00"]
+    assert point["status"] == "AVAILABLE"
+    assert point["planned_price_low"] == 209.58
+    assert point["planned_price_mid"] == 210
+    assert point["planned_price_high"] == 210.42
+    assert point["ratio_median"] == pytest.approx(1.05)
+    assert point["historical_price_low"] == entry_bands["rows"][0]["trade_price_low"]
+    assert point["historical_price_high"] == entry_bands["rows"][0]["trade_price_high"]
+    assert point["planned_price_low"] > point["historical_price_low"]
+    assert point["planned_price_high"] < point["historical_price_high"]
+    assert "not a future confidence interval" in report["working_range_semantics"]
+    json.dumps(report, allow_nan=False)
+
+
+def test_final_clock_uses_minute_completed_close_and_ignores_after_close_prices():
+    prices = _history()
+    extras = [_bar(f"2026-09-{day} 17:00", 9000) for day in ("02", "03", "04", "08")]
+    poisoned = _prices(prices.to_dict("records") + extras)
+    report = build_planning_price_path(poisoned, pd.DataFrame([_forecast()]), observed_at="2026-09-09T04:00Z")
+    point = report["points"]["COST|2026-09-09|17:00"]
+    assert point["endpoint_kind"] == "observed_close"
+    assert point["timestamp"] == "2026-09-10T00:00:00+00:00"
+    assert point["sample_count"] == 3
+    assert [sample["endpoint_price"] for sample in point["samples"]] == [100, 100, 200]
+    assert point["planned_price_mid"] == 200
+    assert point["samples"][-1]["endpoint_observed_at"] == "2026-09-09T00:00:00+00:00"
+    assert point["samples"][-1]["prior_session"] == "2026-09-04"
+
+
+@pytest.mark.parametrize("pairs", [0, 1])
+def test_working_path_does_not_invent_missing_or_single_observation_prices(pairs):
+    bars = [_bar("2026-09-08 16:59", 100)]
+    if pairs:
+        bars.extend([_bar("2026-09-04 16:59", 100), _bar("2026-09-08 04:00", 101)])
+    report = build_planning_price_path(_prices(bars), pd.DataFrame([_forecast()]), observed_at="2026-09-09T04:00Z")
+    for clock in ("04:00", "17:00"):
+        point = report["points"][f"COST|2026-09-09|{clock}"]
+        assert point["sample_count"] == pairs
+        assert point["status"] == "UNAVAILABLE_MINIMUM_SAMPLES"
+        assert point["planned_price_low"] is point["planned_price_mid"] is point["planned_price_high"] is None
+
+
+def test_working_path_reuses_complete_entry_statistics_without_rebuilding_them(monkeypatch):
+    from ml import gameplan_price_bands
+    forecasts = pd.DataFrame([_forecast(route=row["route"]) for row in stock_target_windows(date(2026, 9, 9))])
+    bands = _build(forecasts=forecasts)
+    def unexpected(*args, **kwargs):
+        raise AssertionError("Complete in-memory entry statistics should be reused")
+    monkeypatch.setattr(gameplan_price_bands, "build_entry_price_bands", unexpected)
+    report = build_planning_price_path(_history(), forecasts, observed_at=bands["observed_at"], entry_bands=bands)
+    assert len(report["points"]) == 14
+    assert report["points"]["COST|2026-09-09|04:00"]["samples"] == bands["statistics"]["COST|2026-09-09|04:00"]["samples"]
+
+
+def test_working_path_cannot_reuse_different_source_or_asof_statistics():
+    bands = _build()
+    with pytest.raises(ValueError, match="source and observation time"):
+        build_planning_price_path(_history(), pd.DataFrame([_forecast()]), observed_at="2026-09-09T05:00Z", entry_bands=bands)
+    bands["price_dataset"] = "EQUS.MINI"
+    with pytest.raises(ValueError, match="source and observation time"):
+        build_planning_price_path(_history(), pd.DataFrame([_forecast()]), observed_at=bands["observed_at"], entry_bands=bands)
+
+
+@pytest.mark.parametrize("width", [0, -1, 10000, float("nan"), float("inf"), True])
+def test_working_path_rejects_invalid_price_allowance(width):
+    with pytest.raises(ValueError, match="half-width"):
+        build_planning_price_path(_history(), pd.DataFrame([_forecast()]), observed_at="2026-09-09T04:00Z", working_half_width_bps=width)
+
+
+def test_working_path_never_consumes_forecast_action_day_outcomes():
+    forecasts = pd.DataFrame([_forecast()])
+    baseline = build_planning_price_path(_history(), forecasts, observed_at="2026-09-09T04:00Z")
+    prices = _prices(_history().to_dict("records") + [_bar("2026-09-09 04:00", 99999), _bar("2026-09-09 16:59", 0.01)])
+    changed = build_planning_price_path(prices, forecasts, observed_at="2026-09-11T04:00Z")
+    assert changed["points"] == baseline["points"]

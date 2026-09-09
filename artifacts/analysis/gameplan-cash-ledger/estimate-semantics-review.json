@@ -1,0 +1,23 @@
+{
+  "status": "VERIFIED",
+  "change": "Estimate-only execution semantics; all existing numerical tables preserved",
+  "review_path": "C:/dev/ducketz/artifacts/gameplans/2026-09-09/Gameplan-2026-09-09-trade-review.md",
+  "review_sha256": "7b52a6d809cf96e7850d56d341bd102d7a54cd5beee7d6a3afbca3627329ce36",
+  "previous_review_sha256": "2a781fbd8b3c0e060b5382ce2c5b1c2983ed51432b37043312f2c5a9e36d60b2",
+  "previous_review_path": "C:/dev/ducketz/artifacts/gameplans/2026-09-09/Gameplan-2026-09-09-trade-review-before-estimate-clarification.md",
+  "native_sources_preserved": {
+    "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260909T071232.777557Z\\receipt.json": "c90e1577c4272216029d50cb172ad06d36eafb907c3c19177c8f87e6ba73cd0c",
+    "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260909T071232.777557Z\\report.json": "3f09dcaf9c69f8d52830ab7104ce97e4ed52b681fcc6a5e12b0fb2785cb4b82e",
+    "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260909T071232.777557Z\\trade-plan.parquet": "49553bff0ebd01e554fd647c982c26968be53b622066c7ccc171def27e58e580",
+    "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260909T071232.777557Z\\Gameplan.md": "dd847d35a7be25e9fbdd29b03926c5d4aef7d1c8e8e4e632e6898a57f51a05c6",
+    "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260909T060404.450224Z\\receipt.json": "bb4f21dc093d1195964e323d0321aa3a10c87e3d1e00cf63bc688df32c3e134b",
+    "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260909T060404.450224Z\\forecasts.parquet": "ab7cb0b9649ff08597c6da02f07ba7390dcd14f8e0fbdcbb561c24340856c906",
+    "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260909T060404.450224Z\\model-reports.json": "f87b4c1932fdc5139c8325447e7eafee2a521c51ca4cece92dc284cf812412fe"
+  },
+  "metadata_overrides": {
+    "direction_based_projection.assumptions": "The cash projection uses estimated prices and assumed earlier sale proceeds for its planned trades and horizon exits. Price and cash ranges never gate execution: live orders use the current tradable quote and actual available cash and holdings, including outside those estimates. Live purchases may use actual completed sale proceeds only when available at the broker.",
+    "planning_price_path.market_gap_policy": "Price and cash estimates never gate execution. Use the current tradable quote and actual available cash and holdings, including when they fall outside the estimates."
+  },
+  "orders_placed": 0,
+  "broker_snapshot_refreshed": false
+}

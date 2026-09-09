@@ -85,6 +85,8 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--run-session", action="store_true",
                         help="With --target-horizon all, manage this exchange day's independent entries and owned-share exits until 17:00 Pacific.")
+    parser.add_argument("--wait-for-open", action="store_true",
+                        help="With --run-session --target-horizon all, wait without broker activity until 04:00 Pacific on the next supported session; an open session starts immediately.")
     parser.add_argument("--sizing-policy", choices=SIZING_POLICIES, default=LEARNED_SIZING_POLICY,
                         help="Explicitly select qualified learned sizing or conservative fixed horizon budgets.")
     parser.add_argument(
@@ -102,12 +104,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             root_dir=args.root_dir,
             target=args.datastore_target,
         )
+        if args.wait_for_open and not args.run_session:
+            raise ValueError("--wait-for-open requires --run-session --target-horizon all")
         if args.run_session:
             if args.target_horizon != "all" or args.decided_at is not None:
                 raise ValueError("--run-session requires --target-horizon all and the current wall clock")
             from ml.stock_trader.independent_session import run_independent_stock_session
             sizing_options = {"sizing_policy": args.sizing_policy} if args.sizing_policy != LEARNED_SIZING_POLICY else {}
-            result = run_independent_stock_session(root, execute=bool(args.execute), **sizing_options)
+            wait_options = {"wait_for_open": True} if args.wait_for_open else {}
+            result = run_independent_stock_session(root, execute=bool(args.execute), **sizing_options, **wait_options)
             print(json.dumps(result, sort_keys=True))
             return 1 if result["status"] in {
                 "SESSION_FINISHED_WITH_ERRORS", "NOOP_STOCK_FORECASTS_NOT_QUALIFIED",

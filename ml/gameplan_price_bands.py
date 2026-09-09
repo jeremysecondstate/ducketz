@@ -8,6 +8,7 @@ no acquisition, model-training, broker, or publication side effects.
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_UP
 from typing import Any
 
 import exchange_calendars as xcals
@@ -19,6 +20,7 @@ from ml.stock_target_prices import independent_price_identity, stock_price_datas
 
 
 PRICE_BAND_CONTRACT = "historical-entry-price-band-v1"
+PLANNING_PRICE_PATH_CONTRACT = "conditional-hourly-planning-price-path-v1"
 _MINUTE = pd.Timedelta(minutes=1)
 
 
@@ -200,3 +202,140 @@ def build_entry_price_bands(
                    price_band_history_last_session=stats["history_last_session"])
         report["rows"].append(row)
     return report
+
+
+def build_planning_price_path(
+    prices: pd.DataFrame, forecasts: pd.DataFrame, *, observed_at: Any,
+    working_half_width_bps: float = 20, entry_bands: dict | None = None,
+) -> dict:
+    """Describe conditional working prices for every 04:00-17:00 action clock.
+
+    The center is the actual prior-session close times the observed historical
+    median close-to-clock ratio. A configured +/- basis-point allowance around
+    that center is a *planning assumption for conditional fills*, not a learned
+    future confidence interval. Historical 5th/95th percentile stress prices
+    remain separate. Prices outside the working range remain eligible for
+    execution; live order prices and sizes use the current tradable quote and
+    actual available cash and holdings, independent of these estimates.
+
+    ``entry_bands`` may be the report just calculated from these same in-memory
+    source prices and observation time. Its per-clock samples are reused. Any
+    missing 04:00-16:00 clocks and the 17:00 closing-price clock use the supplied
+    frame; this function never reloads or fetches a price dataset. A close is
+    observed at minute completion, including the final 17:00 clock.
+    """
+    if isinstance(working_half_width_bps, bool):
+        raise ValueError("Working price half-width must be finite and between 0 and 10000 basis points")
+    try:
+        width = float(working_half_width_bps)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Working price half-width must be finite and between 0 and 10000 basis points") from exc
+    if not np.isfinite(width) or not 0 < width < 10000:
+        raise ValueError("Working price half-width must be finite and between 0 and 10000 basis points")
+    now = _aware_timestamp(observed_at, "observed_at")
+    source_contract, dataset = _source_identity(prices, forecasts)
+    existing = (build_entry_price_bands(prices, forecasts, observed_at=now)
+                if entry_bands is None else entry_bands)
+    if (existing.get("contract_version") != PRICE_BAND_CONTRACT
+            or existing.get("price_source_contract") != source_contract
+            or existing.get("price_dataset") != dataset
+            or _aware_timestamp(existing.get("observed_at"), "entry_bands.observed_at") != now):
+        raise ValueError("Reused entry bands must match the exact source and observation time")
+    lookback = int(existing["lookback_sessions"])
+    minimum = int(existing["minimum_samples"])
+    statistics = dict(existing["statistics"])
+    scopes = sorted({(str(row["symbol"]).upper(), pd.Timestamp(row["action_date"]).date())
+                     for row in forecasts.to_dict("records")})
+    # These auxiliary clocks request descriptive price evidence only. They do
+    # not create a native forecast, model qualification, or order authority.
+    missing_clocks = [{"symbol": symbol, "action_date": day.isoformat(), "route": f"price-clock@{hour:02d}:00",
+                       "target_role": "EXECUTION", "target_window_start": _clock(day, hour),
+                       "target_price_source_contract": source_contract, "target_price_dataset": dataset}
+                      for symbol, day in scopes for hour in range(4, 17)
+                      if f"{symbol}|{day.isoformat()}|{hour:02d}:00" not in statistics]
+    if missing_clocks:
+        extra = build_entry_price_bands(prices, pd.DataFrame(missing_clocks), observed_at=now,
+                                        lookback_sessions=lookback, minimum_samples=minimum)
+        statistics.update(extra["statistics"])
+    result = {
+        "contract_version": PLANNING_PRICE_PATH_CONTRACT, "observed_at": now.isoformat(),
+        "price_source_contract": source_contract, "price_dataset": dataset,
+        "working_half_width_bps": width,
+        "method": "Observed prior-close-to-clock median, with an explicit conditional fill allowance",
+        "working_range_semantics": "Estimated planning prices only; not a future confidence interval, guaranteed execution, or order-limit authority",
+        "historical_range_semantics": "Historical central 90% stress range retained separately from working fill assumptions",
+        "market_gap_policy": "Price and cash estimates never gate execution. Use the current tradable quote and actual available cash and holdings, including when they fall outside the estimates.",
+        "lookback_sessions": lookback, "minimum_samples": minimum, "points": {},
+    }
+    if not scopes:
+        return result
+    days = [day for _, day in scopes]
+    calendar = xcals.get_calendar("XNYS", start=pd.Timestamp(min(days)) - pd.Timedelta(days=max(370, lookback * 3)),
+                                  end=pd.Timestamp(max(days)) + pd.Timedelta(days=10))
+    sessions = pd.DatetimeIndex(calendar.sessions)
+    bars = prices.loc[:, ["symbol", "timestamp", "open", "close"]].copy()
+    bars["symbol"] = bars.symbol.astype(str).str.upper()
+    bars["timestamp"] = pd.to_datetime(bars.timestamp, utc=True, errors="coerce")
+    bars = bars.loc[bars.timestamp.notna() & bars.timestamp.add(_MINUTE).le(now)]
+    bars = bars.drop_duplicates(["symbol", "timestamp", "open", "close"])
+    if bars.duplicated(["symbol", "timestamp"]).any():
+        raise ValueError("Planning price observations contain conflicting minutes")
+    for field in ("open", "close"):
+        bars[field] = pd.to_numeric(bars[field], errors="coerce")
+    by_symbol = {symbol: frame.sort_values("timestamp", kind="stable")
+                 for symbol, frame in bars.groupby("symbol", sort=False)}
+    empty = bars.iloc[:0]
+    for symbol, day in scopes:
+        symbol_bars = by_symbol.get(symbol, empty)
+        prior_day = pd.Timestamp(calendar.previous_session(pd.Timestamp(day))).date()
+        reference = _observation(symbol_bars, _clock(prior_day, 17), close=True)
+        close_samples = []
+        for session in sessions[sessions < pd.Timestamp(day)][-lookback:]:
+            sample_day = pd.Timestamp(session).date()
+            previous = pd.Timestamp(calendar.previous_session(session)).date()
+            prior_close = _observation(symbol_bars, _clock(previous, 17), close=True)
+            finish = _observation(symbol_bars, _clock(sample_day, 17), close=True)
+            if prior_close is not None and finish is not None:
+                close_samples.append({"session": sample_day.isoformat(), "prior_session": previous.isoformat(),
+                                      "ratio": finish[0] / prior_close[0], "prior_close": prior_close[0],
+                                      "prior_close_observed_at": prior_close[1], "endpoint_price": finish[0],
+                                      "endpoint_observed_at": finish[1], "endpoint_kind": "observed_close"})
+        for hour in range(4, 18):
+            clock = f"{hour:02d}:00"
+            key = f"{symbol}|{day.isoformat()}|{clock}"
+            stats = statistics.get(key) if hour < 17 else None
+            samples = stats["samples"] if stats is not None else close_samples
+            ratios = np.asarray([sample["ratio"] for sample in samples], dtype=float)
+            if not np.isfinite(ratios).all() or (ratios <= 0).any():
+                raise ValueError("Planning path requires finite, positive observed price ratios")
+            status = ("UNAVAILABLE_REFERENCE_PRICE" if reference is None else
+                      "UNAVAILABLE_MINIMUM_SAMPLES" if len(ratios) < minimum else "AVAILABLE")
+            low = mid = high = historical_low = historical_high = median = None
+            if status == "AVAILABLE":
+                q05, median, q95 = map(float, np.quantile(ratios, [0.05, 0.5, 0.95]))
+                center = Decimal(str(reference[0])) * Decimal(str(median))
+                half_width = Decimal(str(width)) / Decimal(10000)
+                cent = Decimal("0.01")
+                low = float((center * (1 - half_width)).quantize(cent, rounding=ROUND_FLOOR))
+                mid = float(center.quantize(cent, rounding=ROUND_HALF_UP))
+                high = float((center * (1 + half_width)).quantize(cent, rounding=ROUND_CEILING))
+                historical_low = float(np.floor(reference[0] * q05 * 100) / 100)
+                historical_high = float(np.ceil(reference[0] * q95 * 100) / 100)
+            reason = ("Conditional planned fill assumption around observed median" if status == "AVAILABLE" else
+                      "Missing exact prior-session close" if reference is None else
+                      "No observed historical session pairs" if not len(ratios) else
+                      "Only one observed historical pair" if len(ratios) == 1 else
+                      f"Fewer than {minimum} observed historical pairs")
+            result["points"][key] = {
+                "symbol": symbol, "action_date": day.isoformat(), "clock_local": clock,
+                "timestamp": _clock(day, hour).isoformat(), "status": status, "reason": reason,
+                "planned_price_low": low, "planned_price_mid": mid, "planned_price_high": high,
+                "historical_price_low": historical_low, "historical_price_high": historical_high,
+                "reference_price": reference[0] if reference else None,
+                "reference_observed_at": reference[1] if reference else None,
+                "reference_session": prior_day.isoformat(), "ratio_median": median,
+                "sample_count": len(ratios), "endpoint_kind": "observed_close" if hour == 17 else "observed_open",
+                "method": "Observed prior-close-to-clock median with conditional +/- basis-point fill allowance",
+                "samples": samples,
+            }
+    return result

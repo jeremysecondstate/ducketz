@@ -1,0 +1,39 @@
+{
+  "verified_at": "2026-09-09T06:11:17Z",
+  "checks": [
+    {
+      "id": "loops-hourly-operations",
+      "prompt_matches": true,
+      "other_changes": [],
+      "status": "ACTIVE",
+      "rrule": "FREQ=DAILY;BYHOUR=21;BYMINUTE=5"
+    },
+    {
+      "id": "loops-stock-trader-daily-adaptation",
+      "prompt_matches": true,
+      "other_changes": [],
+      "status": "ACTIVE",
+      "rrule": "FREQ=HOURLY;INTERVAL=1;BYMINUTE=0;BYSECOND=0"
+    },
+    {
+      "id": "loops-stock-trader-live-shadow",
+      "prompt_matches": true,
+      "other_changes": [],
+      "status": "ACTIVE",
+      "rrule": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=3;BYMINUTE=55"
+    }
+  ],
+  "nightly_schedule": "21:05 America/Los_Angeles",
+  "windows_stock_session": {
+    "state": "Ready",
+    "next_run": "2026-09-09T03:55:00-07:00",
+    "last_task_result": 0,
+    "launcher": "docs/datafetch-ml/start_stock_session.ps1",
+    "changed": false
+  },
+  "native_verified_run": "C:/DATASTORE/ml/overnight-runs/20260909T060402.968339Z",
+  "native_status": "COMPLETE",
+  "tests_passed": 346,
+  "schedules_changed": false,
+  "new_schedulers": 0
+}

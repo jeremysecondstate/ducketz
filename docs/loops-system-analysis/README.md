@@ -12,11 +12,13 @@ The daily overnight schedule was updated on 2026-09-08:
 - 21:05 America/Los_Angeles daily: fetch and append the latest completed session,
   including production OPRA history; build Loop B; maintain XNAS stock target
   history; evaluate saved Gameplans; train four independent stock target groups;
-  publish the immutable next-session Gameplan; train independent enrichment.
+  publish the immutable next-session Gameplan; train independent enrichment;
+  publish the required account-aware trade-plan review from that same pinned
+  Gameplan. Full runs require the final `gameplan_trade_planning` stage.
   The native calendar skips fresh weekend/holiday work. XNAS Historical normally
   releases at 21:00 Pacific; actual provider coverage is still checked. The Scheduled
   operator watches progress/errors, repairs verified failures, and resumes the
-  failed stage. `Loops Operations Watch` checks every 30 minutes, covers abandoned
+  failed stage. `Loops Operations Watch` checks hourly at :00, covers abandoned
   work, and may start a missing fresh run only after 21:15 PT.
 - 04:00–17:00 PT: the Duckets `Rolling Forecasts` tab reads the frozen plan and
   rotates its displayed 1-hour and 4-hour routes on wall-clock boundaries. No
@@ -25,11 +27,17 @@ The daily overnight schedule was updated on 2026-09-08:
   same cards expose each route's frozen options intent, including its Strategy,
   modeled profit probability, pricing source, and explicit no-trade/revalidation
   reason.
-- The active stock-only gameplan trader consumes each forward hourly boundary
-  once. It began at 10:00 PT on September 4; missed earlier routes were not
-  replayed. A simultaneously active 4-hour route confirms the hourly entry,
-  with an opposite direction vetoing a new order instead of creating two
-  competing orders.
+- The current independent stock session worker starts at 03:55 Pacific on
+  weekdays and consumes each forward boundary once, with separate horizon
+  ownership and the selected fixed-budget policy. Scheduled long entries use
+  the confidence-weighted shared cash budget and all existing live checks.
+  Historical note: the September 4 consumer began at 10:00 PT without replaying
+  missed routes and used the four-hour route as confirmation for hourly entries.
+- Manual start is one launch of [`Start-Gameplan-Trader.cmd`](../../Start-Gameplan-Trader.cmd).
+  It enables the Gameplan policy, sleeps with a local heartbeat until the next
+  supported 04:00 Pacific opening, then wakes without another click. Before wake
+  it makes no broker/model/entry-slot calls. The 03:55 Scheduled launcher adopts
+  that worker when present; its own fixed-policy default stays unchanged.
 - Every Gameplan from September 4 stays in durable evaluation history, including
   longer forecasts from older plans. Saturday reviews this history.
 - After the next 17:00 close: evaluate all matured directional forecasts against
@@ -48,9 +56,34 @@ The former eight recurring supervisors remain implemented for diagnosis and
 explicit recovery, but they are stopped and are not the production scheduling
 model. The former hourly guardian/adaptive trainer, standalone OPRA history,
 Options Strategy paper tracker and prior intraday stock tasks are paused.
-The former stock daily-adaptation schedule now hosts the overnight health watch. The two new immutable-gameplan stock schedules
-are the only daytime broker-mutation owners. No document authorizes restarting
+The former stock daily-adaptation schedule now hosts the overnight health watch.
+The 03:55 independent stock session worker owns daytime stock execution; the
+separate 13:00 transition task remains paused. No document authorizes restarting
 the old stack or enabling options orders.
+
+The separate `ml/gameplan-trade-plan-latest/run.json` publication retains all 168
+forecasts. Projected Trade Quantity is standalone horizon capacity; the adjacent
+Direction Based Trade Qty follows one shared cash/stock ledger: approved 54%/46%
+directions buy/sell eligible holdings, and Neutral is zero. Fresh cash and all
+seven stock balances feed ordered bearish sales, due exits and bullish buys.
+Main rows show post-hour cash/shares, with hourly and end-of-day portfolio tables.
+Prices use a median-centered +/-20bps working range, a conditional fill
+assumption rather than a confidence interval; wider history stays in evidence.
+Planning price and cash ranges are estimates only and never execution gates.
+The manual Gameplan policy follows the same directions using current ask/bid
+prices, actual cash and eligible held shares, with only broker-confirmed fills
+updating live balances. The scheduled fixed-policy preview remains expandable.
+Day 1 is the completed source session;
+the upcoming session is Day 2, with actual dates. See the
+[cash/stock projection contract](NIGHTLY_GAMEPLAN.md#account-aware-trade-plan-review)
+for protected holdings, no-fill behavior, costs and verification boundaries.
+
+Daily model development includes regularized logistic challengers selected on
+chronological development partitions. New directional assessment policy v2
+allows Brier score up to 0.005 and log loss up to 0.01 above their baselines while
+retaining the other quality checks. Actual scores and the policy are saved;
+qualification within these allowances does not claim baseline outperformance.
+Earlier immutable publications retain their original policies and scores.
 
 ## Current data authority
 
@@ -89,7 +122,8 @@ The current OPRA cursor/coverage observations and data cleanup boundaries are in
 
 ## Prediction authorities
 
-The overnight pipeline produces or refreshes four related authorities:
+The pipeline supports the following related authorities; the active stock-only
+scope omits optional Strategy training/generation:
 
 1. Directional Loop B data/features and compatible predictions.
 2. Options Strategy profitable-outcome models for `1h`, `4h`, `1d`, and `1w`,
@@ -99,6 +133,9 @@ The overnight pipeline produces or refreshes four related authorities:
 4. One immutable gameplan: 24 forecasts and 24 options intents per symbol,
    or 168 of each for seven symbols. Saved historical plans retain their own
    original universe and row counts.
+5. Separate learned sizing assessments from the pinned training cohorts.
+6. A separate immutable account-aware trade plan and readable Gameplan review;
+   projected capacities do not confer live order authority.
 
 The first observed generation for action date 2026-09-04 is
 `ml/nightly-gameplan-runs/20260904T105944.876700Z`. It contains all 288 rows and

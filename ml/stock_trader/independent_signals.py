@@ -169,9 +169,7 @@ def verified_promoted_model_groups(publication) -> frozenset[str]:
     reports = json.loads((publication.run_directory / "model-reports.json").read_text(encoding="utf-8"))
     if not isinstance(reports, dict) or not set(INDEPENDENT_STOCK_HORIZONS).issubset(reports):
         raise ValueError("Stock execution requires all four forecast model reports")
-    required = {"assessment_has_at_least_10_decision_clusters", "brier_beats_training_base_rate",
-                "calibration_retains_directional_information", "expected_calibration_error_at_most_0_15",
-                "log_loss_beats_training_base_rate"}
+    from ml.gameplan_promotion import validate_promoted_report
     promoted = set()
     for horizon in INDEPENDENT_STOCK_HORIZONS:
         report = reports[horizon]
@@ -182,23 +180,13 @@ def verified_promoted_model_groups(publication) -> frozenset[str]:
             raise ValueError("Stock forecast promotion gate is invalid")
         if gate.get("status") != "PROMOTED":
             continue
-        checks = gate.get("checks", {})
-        if not isinstance(checks, Mapping) or set(checks) != required or any(checks[key] is not True for key in required):
-            raise ValueError("A promoted forecast model does not pass its recorded assessment gates")
+        validate_promoted_report(report)
         if (report.get("schema_version") != GAMEPLAN_VERSION or report.get("group") != horizon
                 or report.get("target_contract_version") != STOCK_TARGET_CONTRACT_VERSION
                 or report.get("target_price_source_contract") != source
                 or report.get("target_price_dataset") != stock_price_dataset(source)):
             raise ValueError("Promoted model report differs from its horizon/schema/target/source contract")
         try:
-            assessment, baseline = report["assessment"], report["training_base_rate_assessment"]
-            metrics = [finite(assessment[name]) for name in ("brier_score", "log_loss", "expected_calibration_error_10_bin")]
-            prior = [finite(baseline[name]) for name in ("brier_score", "log_loss")]
-            if (any(value is None or value < 0 for value in (*metrics, *prior))
-                    or report["calibration_diagnostics"]["information_available"] is not True
-                    or report["partition_decision_clusters"]["assessment"] < 10
-                    or metrics[0] >= prior[0] or metrics[1] >= prior[1] or metrics[2] > .15):
-                raise ValueError("Promoted model metrics do not satisfy the recorded assessment gates")
             model_file = report["model_file"]
             model_name = str(model_file["path"])
             cohort_name = report.get("deployment", {}).get("retained_cohort_output", f"training-cohort-{horizon}.parquet")
