@@ -268,6 +268,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     from ml.gameplan_cash_ledger import project_direction_trades
     from ml.gameplan_trade_snapshot import capture_trade_planning_snapshot
     from ml.gameplan_trade_review import render_trade_review
+    from ml.gameplan_actuals_review import previous_action_date
 
     root = Path(datastore_root).resolve()
     publication = read_gameplan_run(root, Path(gameplan_run))
@@ -301,6 +302,10 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
               "source_gameplan_run": source.relative_to(root).as_posix(), "source_receipt_sha256": source_receipt_hash,
               "deadline_at": deadline_at.isoformat(), "execution_authority": AUTHORITY,
               "orders_placed": 0, "broker_orders_enabled": False, "status": "RUNNING"}
+    prior_action_date = previous_action_date(action_date)
+    report["previous_session_results_date"] = prior_action_date
+    report["previous_session_results_path"] = (root / "ml/gameplan-actuals-review-by-date" /
+                                                prior_action_date / "Gameplan-results.md").as_posix()
     _write_json(run / "report.json", report)
     phase = "ACCOUNT_SNAPSHOT"
     try:

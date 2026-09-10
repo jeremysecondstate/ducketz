@@ -37,8 +37,9 @@ STAGE_ORDER = (
 )
 INDEPENDENT_ENRICHMENT_STAGE = "stock_enrichment_training"
 INDEPENDENT_TRADE_PLANNING_STAGE = "gameplan_trade_planning"
+INDEPENDENT_ACTUALS_REVIEW_STAGE = "gameplan_actuals_review"
 INDEPENDENT_HISTORY_STAGE = "stock_target_history"
-INDEPENDENT_TAIL_STAGES = (INDEPENDENT_ENRICHMENT_STAGE, INDEPENDENT_TRADE_PLANNING_STAGE)
+INDEPENDENT_TAIL_STAGES = (INDEPENDENT_ENRICHMENT_STAGE, INDEPENDENT_TRADE_PLANNING_STAGE, INDEPENDENT_ACTUALS_REVIEW_STAGE)
 ALL_STAGE_ORDER = (*STAGE_ORDER[:2], INDEPENDENT_HISTORY_STAGE, *STAGE_ORDER[2:], *INDEPENDENT_TAIL_STAGES)
 STOCK_PRICE_SOURCES = ("canonical-equity-minute-v1", "xnas-itch-archive-v1")
 
@@ -158,7 +159,7 @@ def _production_watchlist(repository_root: Path) -> Path:
 
 def _pin_stock_gameplan(root: Path, *, stock_price_source: str, deadline_at: pd.Timestamp,
                         pinned: Mapping[str, object] | None = None) -> dict[str, str]:
-    """Keep enrichment and trade planning on one immutable publication across resume."""
+    """Keep post-publication stages on one immutable successor across resume."""
     from ml.nightly_gameplan import read_current_gameplan, read_gameplan_run
 
     root = Path(root).resolve()
@@ -220,14 +221,14 @@ def run_overnight_pipeline(
     if stock_price_source != STOCK_PRICE_SOURCES[0] and not independent_stock_horizons:
         raise ValueError("Alternate stock price sources require independent stock horizons")
     if stop_after is None:
-        stop_after = INDEPENDENT_TRADE_PLANNING_STAGE if independent_stock_horizons else STAGE_ORDER[-1]
+        stop_after = INDEPENDENT_ACTUALS_REVIEW_STAGE if independent_stock_horizons else STAGE_ORDER[-1]
     if start_at not in ALL_STAGE_ORDER or stop_after not in ALL_STAGE_ORDER:
         raise ValueError("Unknown overnight stage boundary")
     start_index, stop_index = ALL_STAGE_ORDER.index(start_at), ALL_STAGE_ORDER.index(stop_after)
     if start_index > stop_index:
         raise ValueError("start_at must not come after stop_after")
     if stop_after in INDEPENDENT_TAIL_STAGES and not independent_stock_horizons:
-        raise ValueError("Independent enrichment and trade planning require independent stock horizons")
+        raise ValueError("Independent post-publication stages require independent stock horizons")
     deadline_at = utc_timestamp(resume["deadline_at"] if resume else deadline) if (resume or deadline is not None) else next_action_deadline(created)
     selected = ALL_STAGE_ORDER[start_index : stop_index + 1]
     if stock_price_source != "xnas-itch-archive-v1":
@@ -347,6 +348,9 @@ def run_overnight_pipeline(
         INDEPENDENT_TRADE_PLANNING_STAGE: (
             python, "-u", "-m", "ml.gameplan_trade_planning", *datastore_argument,
         ),
+        INDEPENDENT_ACTUALS_REVIEW_STAGE: (
+            python, "-u", "-m", "ml.gameplan_actuals_review", *datastore_argument,
+        ),
         INDEPENDENT_HISTORY_STAGE: (
             python, "-u", "-m", "ml.stock_target_history", *datastore_argument, "--execute",
         ),
@@ -417,7 +421,7 @@ def run_overnight_pipeline(
                         pinned=report.get("enrichment_gameplan"),
                     )
                     command = (*command, "--gameplan-run", str(root / report["enrichment_gameplan"]["run_path"]))
-                    if stage == INDEPENDENT_TRADE_PLANNING_STAGE:
+                    if stage in (INDEPENDENT_TRADE_PLANNING_STAGE, INDEPENDENT_ACTUALS_REVIEW_STAGE):
                         command = (*command, "--deadline", deadline_at.isoformat())
                     _write_json_atomic(report_path, report)
                 exit_code = _run_stage(command, repository=repository, log_path=log_path,

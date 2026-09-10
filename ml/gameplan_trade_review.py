@@ -362,6 +362,9 @@ def render_trade_review(trade_rows: pd.DataFrame, report: Mapping, model_reports
         ]
     else:
         lines[8:8] = ["Only scheduled entries commit shared cash; projected quantities are separate capacity estimates.", ""]
+    if report.get("previous_session_results_path"):
+        lines[6:6] = [f"[Previous session's Gameplan vs actuals · {_text(report['previous_session_results_date'])}]"
+                      f"({report['previous_session_results_path']}) — published after this plan is prepared.", ""]
     balances = _mapping(snapshot.get("balances"))
     lines += _table(["Account measure", "Recorded value"], [
         ("Account value", _money(snapshot.get("account_equity"))),

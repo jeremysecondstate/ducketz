@@ -1,0 +1,32 @@
+{
+  "status": "VERIFIED",
+  "tests": {
+    "command": ".venv/Scripts/python.exe -m pytest tests/test_gameplan_actuals_review.py tests/test_overnight_supervision.py tests/test_gameplan_evaluation.py tests/test_gameplan_trade_planning.py tests/test_gameplan_trade_review.py tests/test_gameplan_price_bands.py -q --disable-warnings --maxfail=3",
+    "passed": 155
+  },
+  "automations": [
+    {
+      "id": "loops-hourly-operations",
+      "promptSaved": true,
+      "preserved": true,
+      "changedFields": [
+        "prompt",
+        "updated_at"
+      ]
+    },
+    {
+      "id": "loops-stock-trader-daily-adaptation",
+      "promptSaved": true,
+      "preserved": true,
+      "changedFields": [
+        "prompt",
+        "updated_at"
+      ]
+    }
+  ],
+  "new_final_stage": "gameplan_actuals_review",
+  "first_planned_review_date": "2026-09-09",
+  "runs_after": "Successor Gameplan, enrichment and trade planning",
+  "source_verification": "verification.json",
+  "live_data_status": "Today’s final actuals await the scheduled 21:05 Pacific completed-session fetch."
+}

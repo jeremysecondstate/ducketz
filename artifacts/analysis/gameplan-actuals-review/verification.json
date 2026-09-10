@@ -1,0 +1,20 @@
+{
+  "checked_at": "2026-09-09T23:41:58.619008+00:00",
+  "status": "VERIFIED",
+  "historical_action_date": "2026-09-08",
+  "historical_forecast_rows": 168,
+  "real_outcomes_matched_to_existing_evaluator": 122,
+  "returns_and_brier_scores_agree": true,
+  "today_preview": {
+    "total": 168,
+    "evaluated": 0,
+    "pending_maturity": 56,
+    "mature_awaiting_data": 112
+  },
+  "hourly_price_rows": 98,
+  "saved_forecasts_and_price_estimates_unchanged": true,
+  "price_source": "XNAS.ITCH",
+  "provider_fetches": 0,
+  "broker_calls": 0,
+  "preview_path": "C:\\dev\\ducketz\\artifacts\\analysis\\gameplan-actuals-review\\Gameplan-results-preview.md"
+}

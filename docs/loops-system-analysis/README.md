@@ -14,7 +14,10 @@ The daily overnight schedule was updated on 2026-09-08:
   history; evaluate saved Gameplans; train four independent stock target groups;
   publish the immutable next-session Gameplan; train independent enrichment;
   publish the required account-aware trade-plan review from that same pinned
-  Gameplan. Full runs require the final `gameplan_trade_planning` stage.
+  Gameplan; then compare the completed session's saved Gameplan and planning
+  prices with actual stock prices. Full runs require `gameplan_trade_planning`
+  followed by the final `gameplan_actuals_review` stage, with a results link in
+  the next-session Gameplan.
   The native calendar skips fresh weekend/holiday work. XNAS Historical normally
   releases at 21:00 Pacific; actual provider coverage is still checked. The Scheduled
   operator watches progress/errors, repairs verified failures, and resumes the
@@ -40,8 +43,9 @@ The daily overnight schedule was updated on 2026-09-08:
   that worker when present; its own fixed-policy default stays unchanged.
 - Every Gameplan from September 4 stays in durable evaluation history, including
   longer forecasts from older plans. Saturday reviews this history.
-- After the next 17:00 close: evaluate all matured directional forecasts against
-  the completed day, then build the successor plan. Options intents retain their
+- In the 21:05 overnight run after the next 17:00 close: evaluate all matured
+  directional forecasts against the completed day, then build the successor
+  plan and publish the prior session's saved-price-versus-actuals review. Options intents retain their
   lifecycle status; realized option P/L requires exact-leg execution receipts,
   and any future non-executed outcome study must be labeled counterfactual.
 

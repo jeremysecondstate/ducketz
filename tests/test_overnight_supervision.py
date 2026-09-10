@@ -421,7 +421,7 @@ def test_independent_pipeline_trains_sizing_then_plans_trades_from_same_publicat
     directory = run(tmp_path, start_at="gameplan_publication", stock_only=True,
                     independent_stock_horizons=True, stock_price_source="xnas-itch-archive-v1")
     report = json.loads((directory / "stage-report.json").read_text())
-    assert report["stage_order"] == ["gameplan_publication", "stock_enrichment_training", "gameplan_trade_planning"]
+    assert report["stage_order"] == ["gameplan_publication", "stock_enrichment_training", "gameplan_trade_planning", "gameplan_actuals_review"]
     assert report["stock_price_source"] == "xnas-itch-archive-v1"
     assert calls[0][3] == "ml.nightly_gameplan"
     assert calls[0][-2:] == ("--stock-price-source", "xnas-itch-archive-v1")
@@ -430,6 +430,8 @@ def test_independent_pipeline_trains_sizing_then_plans_trades_from_same_publicat
     pinned_path = str(tmp_path / report["enrichment_gameplan"]["run_path"])
     assert calls[1][-2:] == ("--gameplan-run", pinned_path)
     assert calls[2][-4:] == ("--gameplan-run", pinned_path, "--deadline", report["deadline_at"])
+    assert calls[3][3] == "ml.gameplan_actuals_review"
+    assert calls[3][-4:] == ("--gameplan-run", pinned_path, "--deadline", report["deadline_at"])
     assert all("--execute" not in command for command in calls)
     assert report["status"] == "COMPLETE"
     assert report["orders_placed"] == 0
@@ -462,13 +464,13 @@ def test_independent_sizing_failure_resumes_without_republishing_forecasts(tmp_p
     monkeypatch.setattr("ml.overnight_runtime._run_stage", succeed)
     resumed = run(tmp_path, resume_run=failed)
     report = json.loads((resumed / "stage-report.json").read_text())
-    assert report["stage_order"] == ["stock_enrichment_training", "gameplan_trade_planning"]
+    assert report["stage_order"] == ["stock_enrichment_training", "gameplan_trade_planning", "gameplan_actuals_review"]
     assert report["completed_stages_from_previous_attempt"] == ["gameplan_publication"]
     assert report["stock_price_source"] == "xnas-itch-archive-v1"
     assert report["enrichment_gameplan"] == json.loads((failed / "stage-report.json").read_text())["enrichment_gameplan"]
     assert calls[0][-2:] == ("--gameplan-run", str(tmp_path / "ml/nightly-gameplan-runs/synthetic-pinned-run"))
     assert report["deadline_at"] == json.loads((failed / "stage-report.json").read_text())["deadline_at"]
-    assert [command[3] for command in calls] == ["ml.stock_trader.independent_training", "ml.gameplan_trade_planning"]
+    assert [command[3] for command in calls] == ["ml.stock_trader.independent_training", "ml.gameplan_trade_planning", "ml.gameplan_actuals_review"]
     assert _evidence_snapshot(failed) == preserved
 
 
@@ -504,10 +506,10 @@ def test_trade_planning_failure_resumes_only_planning_with_original_pin_and_dead
     monkeypatch.setattr("ml.overnight_runtime._run_stage", complete_planning)
     resumed = run(tmp_path, resume_run=failed, deadline=utc_timestamp() + pd.Timedelta(days=1))
     report = json.loads((resumed / "stage-report.json").read_text())
-    assert report["stage_order"] == ["gameplan_trade_planning"]
+    assert report["stage_order"] == ["gameplan_trade_planning", "gameplan_actuals_review"]
     assert report["completed_stages_from_previous_attempt"] == ["gameplan_publication", "stock_enrichment_training"]
     assert report["enrichment_gameplan"] == original["enrichment_gameplan"]
-    assert len(calls) == 1 and calls[0][3] == "ml.gameplan_trade_planning"
+    assert len(calls) == 2 and calls[0][3] == "ml.gameplan_trade_planning" and calls[1][3] == "ml.gameplan_actuals_review"
     assert calls[0][-4:] == ("--gameplan-run", str(tmp_path / original["enrichment_gameplan"]["run_path"]),
                             "--deadline", original["deadline_at"])
     assert _evidence_snapshot(failed) == preserved
@@ -533,7 +535,46 @@ def test_older_explicit_enrichment_boundary_stays_narrow_on_resume(tmp_path, mon
     assert len(calls) == 1 and calls[0][3] == "ml.stock_trader.independent_training"
 
 
-@pytest.mark.parametrize("stage", ["stock_enrichment_training", "gameplan_trade_planning"])
+def test_actuals_failure_resumes_only_review_after_completed_successor(tmp_path, monkeypatch):
+    monkeypatch.setattr("ml.overnight_runtime._pin_stock_gameplan", _synthetic_gameplan_pin)
+
+    def fail_review(command, **kwargs):
+        kwargs["log_path"].write_text("synthetic actuals review failure")
+        return 7 if command[3] == "ml.gameplan_actuals_review" else 0
+
+    monkeypatch.setattr("ml.overnight_runtime._run_stage", fail_review)
+    with pytest.raises(RuntimeError, match="gameplan_actuals_review exited"):
+        run(tmp_path, start_at="gameplan_publication", stock_only=True, independent_stock_horizons=True)
+    failed = Path(overnight_status(tmp_path)["run_path"])
+    original = json.loads((failed / "stage-report.json").read_text())
+    preserved = _evidence_snapshot(failed)
+    calls = []
+    monkeypatch.setattr("ml.overnight_runtime._run_stage", lambda command, **kwargs: calls.append(command) or 0)
+    resumed = run(tmp_path, resume_run=failed)
+    report = json.loads((resumed / "stage-report.json").read_text())
+    assert report["stage_order"] == ["gameplan_actuals_review"]
+    assert report["completed_stages_from_previous_attempt"] == ["gameplan_publication", "stock_enrichment_training", "gameplan_trade_planning"]
+    assert report["enrichment_gameplan"] == original["enrichment_gameplan"]
+    assert report["deadline_at"] == original["deadline_at"]
+    assert len(calls) == 1 and calls[0][3] == "ml.gameplan_actuals_review"
+    assert _evidence_snapshot(failed) == preserved
+
+
+def test_explicit_trade_plan_boundary_does_not_gain_actuals_review_on_resume(tmp_path, monkeypatch):
+    monkeypatch.setattr("ml.overnight_runtime._pin_stock_gameplan", _synthetic_gameplan_pin)
+    monkeypatch.setattr("ml.overnight_runtime._run_stage", lambda command, **kwargs: 7)
+    with pytest.raises(RuntimeError, match="exited with code 7"):
+        run(tmp_path, start_at="gameplan_trade_planning", stop_after="gameplan_trade_planning", stock_only=True,
+            independent_stock_horizons=True)
+    failed = Path(overnight_status(tmp_path)["run_path"])
+    calls = []
+    monkeypatch.setattr("ml.overnight_runtime._run_stage", lambda command, **kwargs: calls.append(command) or 0)
+    resumed = run(tmp_path, resume_run=failed)
+    assert json.loads((resumed / "stage-report.json").read_text())["stage_order"] == ["gameplan_trade_planning"]
+    assert len(calls) == 1 and calls[0][3] == "ml.gameplan_trade_planning"
+
+
+@pytest.mark.parametrize("stage", ["stock_enrichment_training", "gameplan_trade_planning", "gameplan_actuals_review"])
 def test_independent_tail_resume_without_saved_pin_cannot_select_current_gameplan(tmp_path, monkeypatch, stage):
     def fail_pin(*args, **kwargs):
         raise ValueError("synthetic unavailable Gameplan pin")
@@ -567,7 +608,7 @@ def test_xnas_full_pipeline_refreshes_targets_before_evaluation(tmp_path, monkey
                     stock_price_source="xnas-itch-archive-v1")
     assert calls == ["datafetching.orchestrate", "ml.prediction_runtime", "ml.stock_target_history",
                      "ml.gameplan_evaluation", "ml.nightly_gameplan", "ml.stock_trader.independent_training",
-                     "ml.gameplan_trade_planning"]
+                     "ml.gameplan_trade_planning", "ml.gameplan_actuals_review"]
     report = json.loads((directory / "stage-report.json").read_text())
     assert report["stage_order"][2] == "stock_target_history"
 

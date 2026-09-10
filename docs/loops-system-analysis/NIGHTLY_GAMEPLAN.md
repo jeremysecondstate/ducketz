@@ -47,7 +47,7 @@ gameplan pointer. A premature wake on an actual session fails closed.
 The base stock-and-options command supports these stages in order. The active
 stock-only XNAS schedule inserts stock history before evaluation, omits the two
 options Strategy stages, and includes independent enrichment and account-aware
-trade planning after publication.
+trade planning after publication, followed by the completed session's actuals review.
 Each selected stage stops on failure:
 
 1. `loop_a_close_fetch` — one Loop A close-cycle fetch, including the bounded
@@ -82,19 +82,59 @@ Each selected stage stops on failure:
    writes a separate immutable trade-plan artifact; it does not submit orders,
    change live controls, reconcile or reserve horizon allocations, or modify
    the published forecasts or model statuses.
+10. `gameplan_actuals_review` — after the successor Gameplan and trade plan are
+    complete, compare the prior exchange session's saved Gameplan with the
+    refreshed stock prices. Publish a separate results review and a dated link
+    from the successor's Gameplan. This stage performs no fetch or training.
 
 Stages do not overlap and do not rely on intraday checksum timing between
 independent recurring processes. The overnight run writes a stage report and
 receipt beneath `C:\DATASTORE\ml\overnight-runs`.
 
-New full independent-stock runs complete only after trade planning. An explicit
+New full independent-stock runs complete only after the actuals review. An explicit
 `--stop-after` boundary and a resumed attempt's recorded `stage_order` endpoint
-remain authoritative: an older attempt ending at publication or enrichment
-does not silently gain another stage. Both post-publication stages reuse the
+remain authoritative: an older attempt ending at publication, enrichment or
+trade planning does not silently gain another stage. All post-publication stages reuse the
 checksum-bound `enrichment_gameplan` source recorded in the overnight report.
-A failed trade-planning stage resumes only trade planning with that original
-source and the original next-session 04:00 Pacific deadline; it cannot choose a
-new current Gameplan or rerun successful training.
+A failed stage resumes from that stage through its recorded endpoint with the
+original source and next-session 04:00 Pacific deadline; it cannot choose a new
+current Gameplan or rerun successful training. A failed actuals review resumes
+only the review, retaining the completed successor Gameplan and trade plan.
+
+### Completed-session Gameplan results
+
+The final `ml.gameplan_actuals_review` stage receives the pinned successor via
+`--gameplan-run` and retains `--deadline`. It verifies the successor's completed
+trade-plan receipt before reviewing the previous exchange session, including
+weekends and holidays. The comparison selects the last verified original
+Gameplan and matching trade plan saved before that session's 04:00 opening;
+the latest Gameplan pointer may already point to tomorrow and is not the source
+of yesterday's estimates. Other saved forecast versions remain in the existing
+cumulative evaluation history.
+
+The separate `ml/gameplan-actuals-review-runs/<generation>/Gameplan-results.md`
+contains per-stock hourly tables (04:00 through 17:00) with the **saved price
+range, saved midpoint, actual price, observation time, dollar/percentage error,
+and whether the actual price was inside the range**. It also retains every
+frozen forecast with actual start/end prices, price move, and direction result.
+The range is the original planning estimate, never a retrospectively refitted
+prediction. Legacy plans without saved estimates explicitly say so.
+
+Prices come from each original Gameplan's verified stock dataset. The existing
+five-minute observation tolerance and minute-completion rules apply, with
+actual observation times retained. No missing price is filled or borrowed from
+another provider. Outcomes stop at the completed session's 17:00 boundary.
+Future windows remain pending; mature windows without endpoints await data.
+Raw-price direction accuracy excludes neutral, pending and missing outcomes;
+the model's cost-adjusted target and Brier score remain separate fields. Market
+prices are not broker fills and this review does not claim realized trading P/L.
+
+Outputs include `forecast-results.parquet`, `price-results.parquet`, `report.json`,
+a verified manifest and receipt, and `Gameplan-results.md`. The latest pointer
+is `ml/gameplan-actuals-review-latest/run.json`. The dated reader at
+`ml/gameplan-actuals-review-by-date/<action-date>/Gameplan-results.md` is linked
+from the successor's Gameplan and is replaced atomically after verification.
+The original Gameplans, estimates, quantities and trading controls are retained.
 
 ### Account-aware trade-plan review
 
@@ -421,10 +461,12 @@ The Scheduled operator must:
    evaluation coverage, model assessments, zero
    overnight orders, and completed-session provider coverage. Report missing
    data and research-only model groups honestly. For new full independent runs,
-   also verify completed `stock_enrichment_training` and
-   `gameplan_trade_planning` stages, the separate trade-plan receipt and output
+   also verify completed `stock_enrichment_training`,
+   `gameplan_trade_planning` and `gameplan_actuals_review` stages, the separate trade-plan receipt and output
    checksums, its exact pinned Gameplan, 24 trade-plan rows per configured symbol,
-   timestamped cash/holdings/quote evidence, and zero submitted orders. Preserve
+   timestamped cash/holdings/quote evidence, and zero submitted orders. Verify
+   the actuals receipt, previous-session date, original saved price source,
+   forecast/price comparison counts and explicit pending/missing-data statuses. Preserve
    documented older or explicitly narrower stage boundaries.
 
 The health watch checks current progress and the supervision claim first.
