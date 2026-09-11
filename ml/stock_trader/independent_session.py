@@ -246,7 +246,10 @@ def run_independent_stock_session(
             slot = local.floor("h").isoformat()
             due_entry = (4 <= local.hour < 17 and local.minute == entry_minute and slot not in attempted)
             has_inventory = _has_inventory(root / LEDGER_RELATIVE_PATH)
-            if due_entry or has_inventory:
+            # Inventory polls wait through the broker's closed transitions.
+            # No capture here can resolve an earlier failure; health stays
+            # degraded until a later executable cycle verifies broker state.
+            if due_entry or (has_inventory and stock_execution_window(now).executable):
                 if due_entry:
                     attempted.add(slot)
                 sizing_options = {"sizing_policy": sizing_policy} if sizing_policy != LEARNED_SIZING_POLICY else {}

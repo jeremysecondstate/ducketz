@@ -94,6 +94,59 @@ def test_worker_does_not_backfill_missed_entry_boundary(tmp_path, monkeypatch):
     assert calls == []
 
 
+@pytest.mark.parametrize(("started", "reopens"), [
+    ("2026-09-08T10:55:00Z", "2026-09-08T11:00:00Z"),
+    ("2026-09-08T13:25:00Z", "2026-09-08T13:30:00Z"),
+    ("2026-09-08T20:00:00Z", "2026-09-08T20:05:00Z"),
+])
+def test_owned_inventory_waits_for_executable_broker_session(tmp_path, monkeypatch, started, reopens):
+    result, calls, _ = _run(tmp_path, monkeypatch, started=started, inventory=True)
+    assert calls[0] == (pd.Timestamp(reopens), False)
+    assert all(worker.stock_execution_window(timestamp).executable for timestamp, _ in calls)
+    assert result["failed_cycles"] == 0
+    assert result["status"] == "SESSION_FINISHED"
+
+
+@pytest.mark.parametrize(("started", "reopens"), [
+    ("2026-09-08T13:24:59Z", "2026-09-08T13:30:00Z"),
+    ("2026-09-08T19:59:59Z", "2026-09-08T20:05:00Z"),
+])
+def test_closed_transition_preserves_failure_until_actual_capture(tmp_path, monkeypatch, started, reopens):
+    clock = Clock(started)
+    resumed = pd.Timestamp(reopens)
+    attempts = []
+    observed = []
+    status_path = tmp_path / "state/independent-stock-trader/session-status.json"
+    monkeypatch.setattr(worker, "_has_inventory", lambda path: True)
+    monkeypatch.setattr(worker, "read_gameplan_stock_activation_intent",
+                        lambda root: SimpleNamespace(active=clock() <= resumed))
+
+    def runner(root, **kwargs):
+        assert worker.stock_execution_window(clock()).executable
+        attempts.append(clock())
+        failed = len(attempts) == 1
+        payload = {
+            "status": "HORIZON_BROKER_RECONCILIATION_UNAVAILABLE" if failed else "NO_ORDERS_SUBMITTED",
+            "error": "ReadTimeout" if failed else None,
+            "broker_state_capture": {"status": "UNAVAILABLE" if failed else "CURRENT"},
+        }
+        return SimpleNamespace(submitted_orders=0, to_dict=lambda: payload)
+
+    def sleep(seconds):
+        observed.append((clock(), json.loads(status_path.read_text())))
+        next_tick = clock() + pd.Timedelta(seconds=seconds)
+        clock.now = min(next_tick, resumed) if clock() < resumed else next_tick
+
+    worker.run_independent_stock_session(tmp_path, clock=clock, sleep=sleep, runner=runner,
+                                        reporter=lambda message: None)
+    assert attempts == [pd.Timestamp(started), resumed]
+    assert all(status["status"] == "DEGRADED" and status["failed_cycles"] == 1
+               and status["consecutive_failures"] == 1 for timestamp, status in observed if timestamp < resumed)
+    assert observed[-1][1]["status"] == "RUNNING"
+    assert observed[-1][1]["failed_cycles"] == 1
+    assert observed[-1][1]["consecutive_failures"] == 0
+
+
 @pytest.mark.parametrize("recover", [False, True])
 def test_worker_persists_degraded_health_until_a_successful_cycle(tmp_path, monkeypatch, recover):
     clock = Clock("2026-09-08T22:01:00Z")

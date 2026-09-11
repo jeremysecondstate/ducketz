@@ -194,6 +194,12 @@ Extra wakes reconcile or close existing positions and cannot create extra
 entry batches. Expired, tracked BUY orders receive at most one cancellation
 request; shares stay reserved until the broker confirms their disposition.
 
+Routine inventory polls wait while the existing broker execution window is
+closed, including the 06:25–06:30 and 13:00–13:05 transitions. They continue
+updating the session heartbeat without making broker calls or counting an
+expected closed interval as a failed cycle. A prior unresolved failure remains
+degraded until a later executable worker cycle captures current broker state.
+
 An exit at the 17:00 close must be submitted before the market closes. The
 worker starts those exits at 16:59 and checks the remaining allocations every
 five seconds. Limit orders do not guarantee fills. Any residual remains owned
