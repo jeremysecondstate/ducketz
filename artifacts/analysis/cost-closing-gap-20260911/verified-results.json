@@ -1,0 +1,91 @@
+{
+  "verified_at": "2026-09-11T05:46:30.536963+00:00",
+  "symbol": "COST",
+  "session": "2026-09-10",
+  "schema": "ohlcv-1m",
+  "start": "2026-09-10T23:30:00+00:00",
+  "end": "2026-09-11T00:00:00+00:00",
+  "errors": [],
+  "xnas_historical": {
+    "status": "COMPLETE",
+    "dataset": "XNAS.ITCH",
+    "rows": 3,
+    "bar_starts": [
+      "2026-09-10T23:42:00+00:00",
+      "2026-09-10T23:44:00+00:00",
+      "2026-09-10T23:46:00+00:00"
+    ],
+    "raw_sha256": "c799438e25816ff6bdc7db226afe6bad7d8e87477d088a98ff3c0361d487497a",
+    "last_bar_completion": "2026-09-10T23:47:00+00:00",
+    "closing_gap_minutes": 13
+  },
+  "xnas_live": {
+    "status": "FAILED",
+    "error": "Live replay failed: BentoError [LIVE_ACCESS_DENIED]"
+  },
+  "xnas_both_apis_confirmed": false,
+  "equs_mini_historical": {
+    "status": "COMPLETE",
+    "dataset": "EQUS.MINI",
+    "rows": 0,
+    "bar_starts": [],
+    "raw_sha256": "95bdc2e2e8c98fd61525507d4d938d419bba49d83bf98b76e97e0383a07cdd43"
+  },
+  "equs_mini_live": {
+    "status": "COMPLETE_EMPTY",
+    "dataset": "EQUS.MINI",
+    "rows": 0,
+    "raw_records": 377,
+    "interval_markers": 374,
+    "subscription_acknowledged": true,
+    "replay_completed": true,
+    "raw_sha256": "d0e8fa54ab4e0e375dba00c82c010740f8bdbcc9c960a4059dd0028e7c8031d8"
+  },
+  "equs_mini_both_apis_same_empty_window": true,
+  "equs_mini_does_not_confirm_xnas_live_coverage": true,
+  "diagnostic_note": "The initial EQUS diagnostic reused an XNAS-specific validator, which rejects empty deliveries and EQUS symbol mappings with omitted stype fields. This offline audit independently verifies the saved EQUS native metadata, exact COST mapping, subscription acknowledgement, every minute interval marker and replay completion; no additional request was made.",
+  "schwab": {
+    "status": "COMPLETE",
+    "rows": [
+      {
+        "timestamp": "2026-09-10T23:37:00+00:00",
+        "raw_row_index": 476,
+        "open": 902.0675,
+        "high": 902.0675,
+        "low": 902.0675,
+        "close": 902.0675,
+        "volume": 100.0
+      },
+      {
+        "timestamp": "2026-09-10T23:43:00+00:00",
+        "raw_row_index": 477,
+        "open": 902.0,
+        "high": 902.0,
+        "low": 902.0,
+        "close": 902.0,
+        "volume": 50.0
+      },
+      {
+        "timestamp": "2026-09-10T23:50:00+00:00",
+        "raw_row_index": 478,
+        "open": 902.4,
+        "high": 902.4,
+        "low": 902.4,
+        "close": 902.4,
+        "volume": 40.0
+      }
+    ],
+    "last_bar_completion": "2026-09-10T23:51:00+00:00",
+    "closing_gap_minutes": 9.0,
+    "qualifies_for_five_minute_boundary": false,
+    "raw_sha256": "7af70a3ac22736dc2507acfe228f77a06dd149379b3ae18c84b2e6c5a23601e2"
+  },
+  "decision": {
+    "fallback_enabled": false,
+    "production_code_changed": false,
+    "production_data_published": false,
+    "pipeline_resumed": false,
+    "orders_placed": 0,
+    "reason": "XNAS Live cannot confirm the primary gap, and Schwab supplies no candle within five minutes of the boundary."
+  }
+}

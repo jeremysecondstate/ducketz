@@ -1,0 +1,86 @@
+{
+  "generic_unit_prices_informational_only": [
+    {
+      "mode": "historical",
+      "unit_prices": {
+        "bbo-1m": 4.0,
+        "bbo-1s": 4.0,
+        "definition": 16.0,
+        "imbalance": 16.0,
+        "mbo": 1.2,
+        "mbp-1": 1.2,
+        "mbp-10": 0.4,
+        "ohlcv-1d": 30.0,
+        "ohlcv-1h": 30.0,
+        "ohlcv-1m": 12.0,
+        "ohlcv-1s": 12.0,
+        "statistics": 16.0,
+        "status": 16.0,
+        "tbbo": 6.0,
+        "trades": 6.0
+      }
+    },
+    {
+      "mode": "historical-streaming",
+      "unit_prices": {
+        "bbo-1m": 4.0,
+        "bbo-1s": 4.0,
+        "definition": 16.0,
+        "imbalance": 16.0,
+        "mbo": 1.2,
+        "mbp-1": 1.2,
+        "mbp-10": 0.4,
+        "ohlcv-1d": 30.0,
+        "ohlcv-1h": 30.0,
+        "ohlcv-1m": 12.0,
+        "ohlcv-1s": 12.0,
+        "statistics": 16.0,
+        "status": 16.0,
+        "tbbo": 6.0,
+        "trades": 6.0
+      }
+    },
+    {
+      "mode": "live",
+      "unit_prices": {
+        "bbo-1m": 4.8,
+        "bbo-1s": 4.8,
+        "definition": 19.2,
+        "imbalance": 19.2,
+        "mbo": 1.44,
+        "mbp-1": 1.44,
+        "mbp-10": 0.48,
+        "ohlcv-1d": 36.0,
+        "ohlcv-1h": 36.0,
+        "ohlcv-1m": 14.4,
+        "ohlcv-1s": 14.4,
+        "statistics": 19.2,
+        "status": 19.2,
+        "tbbo": 7.2,
+        "trades": 7.2
+      }
+    }
+  ],
+  "historical_quote_is_not_live_entitlement": true,
+  "live_cost_basis": {
+    "account_scope": "DEPLOYED_STANDARD_SUBSCRIPTION_NOT_GENERIC_METERED_ACCOUNTS",
+    "basis": "EXISTING_FLAT_SUBSCRIPTION",
+    "exact_live_interval_quote": false,
+    "incremental_acquisition_cost_usd": 0.0,
+    "plan_authority": "docs/databento-plan/databento_standard_plan_data_access.md",
+    "policy_source": "https://databento.com/pricing",
+    "requires_native_access_acceptance": true
+  },
+  "live_entitlement_check": "NATIVE_SUBSCRIPTION_ACK_REQUIRED_NO_LICENSE_PURCHASE",
+  "request": {
+    "dataset": "XNAS.ITCH",
+    "end": "2026-09-11T00:00:00+00:00",
+    "schema": "ohlcv-1m",
+    "start": "2026-09-10T23:30:00+00:00",
+    "stype_in": "raw_symbol",
+    "symbols": [
+      "COST"
+    ]
+  },
+  "requested_at": "2026-09-11T05:38:28.875784+00:00"
+}

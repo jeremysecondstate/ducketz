@@ -1,0 +1,19 @@
+{
+  "request": {
+    "dataset": "XNAS.ITCH",
+    "schema": "ohlcv-1m",
+    "symbols": [
+      "COST"
+    ],
+    "stype_in": "raw_symbol",
+    "start": "2026-09-10T23:30:00+00:00",
+    "end": "2026-09-11T00:00:00+00:00"
+  },
+  "estimated_cost_usd": 0.0,
+  "estimated_bytes": 168,
+  "record_count": 3,
+  "available_bytes": 1405337362432,
+  "max_bytes": 67108864,
+  "capacity_pass": true,
+  "timestamp": "2026-09-11T05:38:24.912800+00:00"
+}

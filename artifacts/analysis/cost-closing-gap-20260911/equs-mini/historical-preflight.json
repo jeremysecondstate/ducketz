@@ -1,0 +1,19 @@
+{
+  "request": {
+    "dataset": "EQUS.MINI",
+    "schema": "ohlcv-1m",
+    "symbols": [
+      "COST"
+    ],
+    "stype_in": "raw_symbol",
+    "start": "2026-09-10T23:30:00+00:00",
+    "end": "2026-09-11T00:00:00+00:00"
+  },
+  "estimated_cost_usd": 0.0,
+  "estimated_bytes": 0,
+  "record_count": 0,
+  "available_bytes": 1405308399616,
+  "max_bytes": 67108864,
+  "capacity_pass": true,
+  "timestamp": "2026-09-11T05:44:01.721051+00:00"
+}

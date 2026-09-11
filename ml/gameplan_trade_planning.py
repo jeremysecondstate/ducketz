@@ -21,7 +21,7 @@ from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS, fixed_bu
 from ml.stock_direction_policy import BULLISH_PROBABILITY, BEARISH_PROBABILITY, STOCK_DIRECTION_POLICY_VERSION, stock_direction
 
 
-VERSION = "cash-aware-gameplan-trade-planning-v3"
+VERSION = "cash-aware-gameplan-trade-planning-v4"
 AUTHORITY = "REVIEW_ONLY_REVALIDATE_AT_ENTRY"
 
 
@@ -105,6 +105,9 @@ same current cash being promised to several horizons or symbols.
         symbol, horizon = str(row["symbol"]), str(row["model_group"])
         band = band_rows[str(row["id"])]
         quote = snapshot.get("quotes", {}).get(symbol, {})
+        quote_freshness_anchor = (band.get("price_reference_effective_at")
+                                  if band.get("price_reference_is_synthetic")
+                                  else band.get("price_reference_observed_at"))
         result = {**row, **{key: value for key, value in band.items() if key not in row},
                   "trade_quantity": 0, "trade_action": "NO_TRADE", "trade_planning_authority": AUTHORITY,
                   "trade_planning_reason": "NON_ENTRY_CONTEXT", "trade_notional_reserved": 0.,
@@ -152,9 +155,9 @@ same current cash being promised to several horizons or symbols.
                     code = "QUOTE_REFERENCE_UNAVAILABLE"
                 elif (quote["ask"] - quote["bid"]) / ((quote["ask"] + quote["bid"]) / 2) > policy.maximum_extended_relative_spread:
                     code = "QUOTE_REFERENCE_SPREAD_TOO_WIDE"
-                elif not quote.get("price_reference_time") or not band.get("price_reference_observed_at"):
+                elif not quote.get("price_reference_time") or not quote_freshness_anchor:
                     code = "QUOTE_REFERENCE_TIME_UNAVAILABLE"
-                elif not (utc(band["price_reference_observed_at"]) - pd.Timedelta(minutes=5)
+                elif not (utc(quote_freshness_anchor) - pd.Timedelta(minutes=5)
                           <= utc(quote["price_reference_time"]) <= utc(snapshot["observed_at"])):
                     code = "QUOTE_REFERENCE_STALE_OR_FUTURE"
                 if code == "PROVISIONAL_BUY":
@@ -321,8 +324,17 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
             root, symbols=symbols, source_contract=config["target_price_source_contract"])
         phase = "PRICE_BANDS_AND_BUDGETS"
         band_asof = utc(clock())
-        bands = build_entry_price_bands(prices, forecasts, observed_at=band_asof)
-        price_path = build_planning_price_path(prices, forecasts, observed_at=band_asof, entry_bands=bands)
+        bands = build_entry_price_bands(prices, forecasts, observed_at=band_asof,
+                                        allow_reference_forward_fill=True)
+        price_path = build_planning_price_path(prices, forecasts, observed_at=band_asof, entry_bands=bands,
+                                                allow_reference_forward_fill=True)
+        completion = bands["reference_completion"]
+        _write_json(run / "planning-reference-completion.json", completion)
+        synthetic = pd.DataFrame(completion["synthetic_bars"])
+        if synthetic.empty:
+            synthetic = pd.DataFrame(columns=["symbol", "timestamp", "open", "high", "low", "close",
+                                              "volume", "is_synthetic", "reason", "original_observed_at"])
+        synthetic.to_parquet(run / "synthetic-reference-bars.parquet", index=False)
         policy = StockTraderPolicy()
         rows = _plan_working_price_rows(forecasts, snapshot, bands, price_path, policy=policy)
         phase = "DIRECTION_BASED_CASH_AND_SHARE_PROJECTION"
@@ -346,12 +358,14 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
                       snapshot=snapshot, sizing_policy=asdict(policy),
                       direction_based_projection=direction_projection,
                       opra_history=config.get("opra_history", {}),
-                      price_band_policy={k: v for k, v in bands.items() if k not in {"rows", "statistics"}},
-                      planning_price_path={k: v for k, v in price_path.items() if k != "points"},
+                      price_band_policy={k: v for k, v in bands.items() if k not in {"rows", "statistics", "reference_completion"}},
+                      planning_price_path={k: v for k, v in price_path.items() if k not in {"points", "reference_completion"}},
+                      reference_completion={k: v for k, v in completion.items() if k != "synthetic_bars"},
                       target_price_source_contract=config["target_price_source_contract"],
                       source_price_inventory=price_report,
                       limitations=["Review projections only; the existing live worker revalidates all controls and capital.",
                                    "Price and cash ranges are estimates only. Live orders use the current tradable quote, actual available cash and holdings even when those values are outside the estimates.",
+                                   "A bounded synthetic reference may carry the last actual close through at most 15 trailing minutes in a verified source window. Zero volume is an assumed no-trade interval, not a newly observed exchange candle.",
                                    "The direction-based cash/share projection depends on its recorded sale and expiry fills; projected proceeds are not actual spendable broker cash.",
                                    "The separate scheduled-entry preview uses current cash only and requires prior exit confirmation for later entries in a planned horizon."])
         # Optional research assessments add context, never alter the pinned
@@ -381,11 +395,14 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
         if file_checksum(source / "receipt.json") != source_receipt_hash:
             raise ValueError("PINNED_GAMEPLAN_RECEIPT_CHANGED")
         outputs = ["trade-plan.parquet", "account-snapshot.json", "price-bands.json", "planning-price-path.json",
+                   "planning-reference-completion.json", "synthetic-reference-bars.parquet",
                    "direction-ledger.json", "report.json", "Gameplan.md"]
         write_manifest(run, run_timestamp=observed,
                        input_files=[source / "receipt.json", source / "manifest.json", source / "forecasts.parquet", *price_files],
                        output_files=outputs, configuration={"schema_version": VERSION, "action_date": action_date,
                        "source_gameplan_run": report["source_gameplan_run"], "source_receipt_sha256": source_receipt_hash,
+                       "reference_completion_contract": completion["contract_version"],
+                       "allow_reference_forward_fill": True,
                        "execution_authority": AUTHORITY, "broker_orders_enabled": False, "orders_placed": 0}, datastore_root=root)
         verify_manifest(run)
         if utc(clock()) >= deadline_at:

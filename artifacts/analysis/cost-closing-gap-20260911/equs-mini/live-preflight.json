@@ -1,0 +1,17 @@
+{
+  "request": {
+    "dataset": "EQUS.MINI",
+    "schema": "ohlcv-1m",
+    "symbols": [
+      "COST"
+    ],
+    "stype_in": "raw_symbol",
+    "start": "2026-09-10T23:30:00+00:00",
+    "end": "2026-09-11T00:00:00+00:00"
+  },
+  "historical_quote_is_not_live_entitlement": true,
+  "requested_at": "2026-09-11T05:44:04.900850+00:00",
+  "entitlement_evidence": "docs/databento-plan/DB-US-EQUITIES/STANDARD=PLAN-3.png",
+  "plan": "Standard Databento US Equities Mini",
+  "no_subscription_change": true
+}

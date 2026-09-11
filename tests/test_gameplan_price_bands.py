@@ -215,6 +215,60 @@ def test_naive_planning_time_is_rejected():
         _build(observed_at="2026-09-09T04:00")
 
 
+def _short_closing_gap(minutes=13):
+    prices = _history()
+    prices = _prices(prices.to_dict("records") + [
+        _bar(f"2026-09-{day} {hour:02d}:00", 100)
+        for day in ("03", "04", "08") for hour in range(5, 17)])
+    last_start = pd.Timestamp("2026-09-08T23:59Z")
+    prices.loc[prices.timestamp.eq(last_start), "timestamp"] -= pd.Timedelta(minutes=minutes)
+    prices.attrs["stock_price_source"].update(schema="ohlcv-1m", native_archive_partitions_verified=1, partitions=[{
+        "symbol": "COST", "start": "2026-09-08T00:00:00+00:00", "end": "2026-09-09T00:00:00+00:00",
+        "published_at": "2026-09-09T01:00:00+00:00", "manifest_path": "verified-test-manifest.json"}])
+    return prices
+
+
+def test_bounded_reference_completion_unblocks_all_clocks_without_filling_observed_samples():
+    from ml.gameplan_price_bands import _observation
+    prices, forecasts = _short_closing_gap(), pd.DataFrame([_forecast()])
+    original = prices.copy(deep=True)
+    strict = _build(prices, forecasts, minimum_samples=2)
+    bands = _build(prices, forecasts, minimum_samples=2, allow_reference_forward_fill=True)
+    path = build_planning_price_path(prices, forecasts, observed_at=bands["observed_at"],
+                                     entry_bands=bands, allow_reference_forward_fill=True)
+    assert strict["rows"][0]["price_band_status"] == "UNAVAILABLE_REFERENCE_PRICE"
+    assert bands["rows"][0]["price_band_status"] == "AVAILABLE"
+    assert bands["rows"][0]["price_reference_is_synthetic"] is True
+    assert bands["rows"][0]["price_reference_observed_at"] == "2026-09-08T23:47:00+00:00"
+    assert bands["rows"][0]["price_reference_effective_at"] == "2026-09-09T00:00:00+00:00"
+    assert next(iter(bands["statistics"].values()))["samples"] == next(iter(strict["statistics"].values()))["samples"]
+    assert bands["reference_completion"] == path["reference_completion"]
+    assert len(path["points"]) == 14
+    assert all(point["status"] == "AVAILABLE" and point["reference_price"] == 200
+               and point["reference_fill_count"] == 13 and point["reference_is_synthetic"]
+               for point in path["points"].values())
+    assert len(bands["reference_completion"]["synthetic_bars"]) == 13
+    assert _observation(prices.sort_values("timestamp"), pd.Timestamp("2026-09-09T00:00Z"), close=True) is None
+    pd.testing.assert_frame_equal(prices, original)
+    json.dumps(path, allow_nan=False)
+
+
+@pytest.mark.parametrize("gap,status", [(15, "AVAILABLE"), (16, "UNAVAILABLE_REFERENCE_PRICE")])
+def test_explicit_reference_completion_is_bounded_at_fifteen_minutes(gap, status):
+    assert _build(_short_closing_gap(gap), allow_reference_forward_fill=True)["rows"][0]["price_band_status"] == status
+
+
+def test_reused_bands_cannot_change_completion_policy_or_inject_a_synthetic_reference():
+    prices, forecasts = _short_closing_gap(), pd.DataFrame([_forecast()])
+    bands = _build(prices, forecasts, allow_reference_forward_fill=True)
+    with pytest.raises(ValueError, match="exact source"):
+        build_planning_price_path(prices, forecasts, observed_at=bands["observed_at"], entry_bands=bands)
+    bands["reference_completion"]["references"]["COST|2026-09-09"]["price"] = 99999
+    with pytest.raises(ValueError, match="exact source"):
+        build_planning_price_path(prices, forecasts, observed_at=bands["observed_at"], entry_bands=bands,
+                                  allow_reference_forward_fill=True)
+
+
 def test_native_forecast_ids_are_preserved_in_order():
     forecasts = pd.DataFrame([_forecast(), _forecast(route="4h@04:00")]).rename(columns={"forecast_id": "id"})
     rows = _build(forecasts=forecasts)["rows"]

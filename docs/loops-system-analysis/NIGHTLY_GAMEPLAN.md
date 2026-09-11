@@ -150,6 +150,9 @@ Its separate outputs live beneath
   aggregate allocation checks, and exact unavailable-input or quality reasons;
 - `planning-price-path.json` — working prices for all 04:00–17:00 clocks, with
   historical sample evidence and wider stress ranges;
+- `planning-reference-completion.json` and `synthetic-reference-bars.parquet` —
+  manifest-bound evidence for the bounded planning-only prior-close completion
+  policy, including the actual observation time and any synthetic minute rows;
 - `direction-ledger.json` — chronological transactions, hourly balances,
   ending holdings and explicit conditional-fill assumptions;
 - `Gameplan.md` — the human-readable review with both quantity columns,
@@ -191,6 +194,33 @@ uses upper/base/lower purchase costs and lower/base/upper sale proceeds, before
 fees and taxes. Assumed earlier sales may finance later projected buys; missing
 fills or changed broker cash require recalculation. The no-fill baseline keeps
 starting cash and shares unchanged. The base case is not an expected return.
+
+The user-approved planning-only completion policy permits a short trailing
+gap in the exact prior exchange session's 17:00 Pacific reference. The complete,
+verified source partition must cover through that boundary. If the last actual
+minute close was observed more than five but no more than fifteen minutes before
+17:00, the planner may carry that same session's close forward through the missing
+minutes. The limit is measured from the actual bar's completion time, not its
+start. No dual Historical/Live agreement is required. Incomplete acquisition,
+invalid observations, a different session, or a gap beyond fifteen minutes cannot
+use this exception.
+
+Each derived minute has OHLC equal to the last actual close, volume zero and
+`is_synthetic=true`. These are explicit no-trade planning assumptions, not proof
+that no trade occurred or new provider observations. The evidence retains the
+original source identity, actual close observation time, gap length and separate
+17:00 completion boundary; filling never makes the actual observation newer.
+Entry bands and every working-price clock use the same completed reference.
+Synthetic rows remain separate from the observed archive and are not used for
+historical sample pairs, model fitting, evaluation or actuals review. Their
+five-minute boundary gates remain unchanged, as do live quotes and order checks.
+
+New trade plans use `cash-aware-gameplan-trade-planning-v4`. When this policy is
+enabled, planning derivations use `historical-entry-price-band-v2` and
+`conditional-hourly-planning-price-path-v2`, with the completion artifacts bound
+by the trade-plan manifest. The native price-source and forecast contracts are
+unchanged. Legacy v1 planning derivations retain their original strict reference
+behavior, and previously published artifacts remain immutable.
 
 The scheduled-default long-only policy retains its confidence-weighted entry
 preview in expandable details and in the data. The opt-in manual policy

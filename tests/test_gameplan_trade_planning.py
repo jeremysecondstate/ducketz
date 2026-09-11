@@ -116,6 +116,22 @@ def test_zero_price_uncertainty_matches_existing_fixed_budget_arithmetic():
     assert proposed.iloc[0].trade_quantity == actual.quantity == 6
 
 
+@pytest.mark.parametrize("quote_at,expected", [
+    ("2026-09-08T23:50:00Z", "QUOTE_REFERENCE_STALE_OR_FUTURE"),
+    ("2026-09-08T23:56:00Z", "PROVISIONAL_BUY"),
+])
+def test_synthetic_reference_does_not_relax_independent_quote_freshness(quote_at, expected):
+    row, state = forecast(), snapshot()
+    reference = bands([row])
+    reference["rows"][0].update(price_reference_observed_at="2026-09-08T23:47:00Z",
+                                price_reference_effective_at="2026-09-09T00:00:00Z",
+                                price_reference_is_synthetic=True)
+    state["quotes"]["AAPL"]["price_reference_time"] = quote_at
+    result = plan_trade_rows(pd.DataFrame([row]), state, reference).iloc[0]
+    assert result.trade_planning_reason == expected
+    assert result.price_reference_observed_at == "2026-09-08T23:47:00Z"
+
+
 @pytest.mark.parametrize("probability,promoted", [(.3, True), (.5287, True), (.7, False)])
 def test_projected_capacity_is_available_even_without_a_scheduled_entry(probability, promoted):
     row = forecast(probability=probability, promoted=promoted)
@@ -280,10 +296,14 @@ def publication_case(tmp_path, monkeypatch):
     monkeypatch.setattr(independent_signals, "verified_promoted_model_groups", lambda p: frozenset({"1h", "4h", "1d", "1w"}))
     calls = []
     def entry_bands(*a, **kw):
+        assert kw["allow_reference_forward_fill"] is True
         result = bands(rows)
+        result["reference_completion"] = {"contract_version": "bounded-planning-reference-completion-v1",
+                                          "references": {}, "synthetic_bars": []}
         calls.append(("bands", kw["observed_at"], result))
         return result
     def price_path(*a, **kw):
+        assert kw["allow_reference_forward_fill"] is True
         assert kw["entry_bands"] is calls[-1][2]
         calls.append(("path", kw["observed_at"], kw["entry_bands"]))
         return planning_path(rows)
@@ -304,7 +324,7 @@ def test_publication_binds_source_and_outputs_without_changing_gameplan(publicat
     verify_manifest(run)
     receipt = json.loads((run / "receipt.json").read_text())
     assert receipt["orders_placed"] == 0 and receipt["execution_authority"] == AUTHORITY
-    assert receipt["schema_version"] == VERSION == "cash-aware-gameplan-trade-planning-v3"
+    assert receipt["schema_version"] == VERSION == "cash-aware-gameplan-trade-planning-v4"
     assert receipt["source_receipt_sha256"] == before["receipt.json"]
     pointer = json.loads((c.root / "ml/gameplan-trade-plan-latest/run.json").read_text())
     assert pointer["current"]["receipt_sha256"] == file_checksum(run / "receipt.json")
@@ -321,7 +341,7 @@ def test_publication_binds_source_and_outputs_without_changing_gameplan(publicat
     assert rows.scheduled_trade_price_high.eq(11).all()
     assert rows.loc[rows.execution_eligible, "trade_price_high"].eq(10.02).all()
     # Both new evidence artifacts are verified outputs, not unbound side files.
-    for name in ("planning-price-path.json", "direction-ledger.json"):
+    for name in ("planning-price-path.json", "direction-ledger.json", "planning-reference-completion.json", "synthetic-reference-bars.parquet"):
         path = run / name
         original = path.read_bytes()
         path.write_text("tampered")

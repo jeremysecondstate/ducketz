@@ -149,9 +149,10 @@ the conditional working prices and supporting historical evidence.
 
 Price bands use the available observations from the last 120 exchange-session
 transitions. Two observed pairs suffice to calculate the median and historical 5th–95th
-percentiles of prior-session 17:00 close to clock-price ratios, anchored to the
-exact last completed session close in the Gameplan's verified price dataset.
-The native five-minute endpoint tolerance and source identity remain enforced.
+percentiles of prior-session 17:00 close to clock-price ratios. Historical sample
+pairs retain the native five-minute endpoint tolerance and verified source
+identity. The planning reference is the exact last completed session's close,
+subject only to the bounded planning-only completion policy below.
 Broker prices retain their actual market timestamp and appear separately;
 the band is not shifted by a later quote that already includes overnight moves.
 Missing samples remain unavailable. Main working prices use the observed median
@@ -163,6 +164,31 @@ Actual orders use current ask prices for BUY limits and current bid prices for
 SELL limits, with permitted tick rounding and actual cash/share availability.
 New fills and changing prices update actual balances independently of the
 overnight cash range; the range is not an execution threshold.
+
+The user-approved planning-only policy may complete a trailing gap at the
+exact prior exchange session's 17:00 Pacific reference. A complete verified
+source partition must cover through that boundary. The last actual minute close
+must come from the same session, with observation age greater than five and no
+more than fifteen minutes at 17:00, measured from minute completion. Historical
+and Live APIs need not both return the same result. An incomplete source
+partition, invalid observation or longer gap remains unavailable.
+
+The missing minutes use the last actual close for all four OHLC fields, zero
+volume and `is_synthetic=true`. These rows express a no-trade planning assumption;
+they do not prove the absence of trades or represent new provider observations.
+The original actual observation time and source identity remain recorded beside
+the synthetic completion boundary and gap length. `planning-reference-completion.json`
+and `synthetic-reference-bars.parquet` preserve that evidence under the trade-plan
+manifest. Entry bands and all 04:00–17:00 working prices share this reference.
+Observed archives, historical sample pairs, training, evaluation and actuals
+receive no synthetic rows; their five-minute gates remain enforced. Live quote
+validation and order behavior are unchanged.
+
+New trade plans use `cash-aware-gameplan-trade-planning-v4`; enabling completion
+selects `historical-entry-price-band-v2` and
+`conditional-hourly-planning-price-path-v2`. The native price-source and forecast
+contracts retain their identities. Legacy v1 planning derivations keep their
+strict observed-reference behavior and saved publications remain immutable.
 
 This planning stage cannot submit or cancel orders or activate the live worker.
 At execution the selected worker policy recalculates quantity and its current

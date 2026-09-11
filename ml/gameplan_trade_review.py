@@ -494,6 +494,16 @@ def render_trade_review(trade_rows: pd.DataFrame, report: Mapping, model_reports
                   "tradable quote, actual available cash and shares held. The wider historical range is retained for stress analysis.", ""]
     else:
         lines += ["Planning prices use the middle 90% of observed historical moves from the prior session's close to the entry time.", ""]
+    completion = _mapping(report.get("reference_completion"))
+    filled_references = [item for item in _mapping(completion.get("references")).values()
+                         if item.get("status") == "AVAILABLE_SYNTHETIC"]
+    if filled_references:
+        lines += ["The following planning references carry forward the last observed close across a short gap. "
+                  "These are synthetic zero-volume intervals under an assumed no-trade policy; the actual observation time is retained.", ""]
+        lines += _table(["Stock", "Last observed close", "Observed at", "Carried through", "Synthetic minutes"],
+                        [(item["symbol"], _money(item["price"]), _pacific(item["observed_at"]),
+                          _pacific(item["effective_at"]), str(item["fill_count"])) for item in filled_references])
+        lines += [""]
     lines += ["At order time, buys use the current ask and sells use the current bid to set their live limit prices; "
               "quantities are recalculated from actual available cash and holdings. Estimated prices and balances do not veto an order.", "",
               *projection_details, *scheduled_details, *model_details]

@@ -21,6 +21,8 @@ from ml.stock_target_prices import independent_price_identity, stock_price_datas
 
 PRICE_BAND_CONTRACT = "historical-entry-price-band-v1"
 PLANNING_PRICE_PATH_CONTRACT = "conditional-hourly-planning-price-path-v1"
+COMPLETED_PRICE_BAND_CONTRACT = "historical-entry-price-band-v2"
+COMPLETED_PLANNING_PRICE_PATH_CONTRACT = "conditional-hourly-planning-price-path-v2"
 _MINUTE = pd.Timedelta(minutes=1)
 
 
@@ -65,9 +67,43 @@ def _source_identity(prices: pd.DataFrame, forecasts: pd.DataFrame) -> tuple[str
     return str(contract), str(dataset)
 
 
+def _reference_completion(prices, forecasts, now, enabled):
+    if not isinstance(enabled, bool):
+        raise ValueError("Reference forward-fill policy must be boolean")
+    if not enabled:
+        return None
+    from ml.gameplan_price_completion import complete_planning_reference_gaps
+    return complete_planning_reference_gaps(prices, forecasts, observed_at=now)
+
+
+def _planning_reference(bars, boundary, symbol, day, completion):
+    """Apply a separately recorded assumption only to the current anchor."""
+    observed = _observation(bars, boundary, close=True)
+    if observed is not None or completion is None:
+        return observed
+    candidate = completion["references"][f"{symbol}|{day.isoformat()}"]
+    if candidate["status"] == "AVAILABLE_SYNTHETIC":
+        # Keep the actual observation time; effective_at is a distinct field.
+        return candidate["price"], candidate["observed_at"]
+    return None
+
+
+def _reference_details(completion, symbol, day):
+    if completion is None:
+        return {}
+    reference = completion["references"][f"{symbol}|{day.isoformat()}"]
+    return {"reference_is_synthetic": reference.get("is_synthetic", False),
+            "reference_effective_at": reference.get("effective_at"),
+            "reference_fill_count": reference["fill_count"],
+            "reference_gap_minutes": reference.get("gap_minutes"),
+            "reference_completion_status": reference["status"],
+            "reference_completion_reason": reference["reason"]}
+
+
 def build_entry_price_bands(
     prices: pd.DataFrame, forecasts: pd.DataFrame, *, observed_at: Any,
     lookback_sessions: int = 120, minimum_samples: int = 2,
+    allow_reference_forward_fill: bool = False,
 ) -> dict:
     """Return JSON-safe rows in forecast order and per-symbol/clock evidence.
 
@@ -79,8 +115,10 @@ def build_entry_price_bands(
     action date. Weekend/holiday transitions are included, never synthesized.
 
     The range is anchored to the forecast action date's exact preceding
-    session close; a missing close cannot be replaced with an older close or
-    a broker quote. The 5th/95th empirical percentiles are pooled across session
+    session close. The explicit v2 planning policy may carry the last actual
+    close through a verified trailing gap of at most 15 minutes, recorded as
+    synthetic zero-volume bars. It never fills historical samples or uses a
+    broker quote. The 5th/95th empirical percentiles are pooled across session
     gap lengths and rounded outward to cents. Daily/weekly entries share the
     same 04:00 evidence, while explicit context rows receive no entry range.
     This descriptive calculation uses the observed sample whenever at least two
@@ -93,8 +131,10 @@ def build_entry_price_bands(
         raise ValueError("Price-band sample settings require 2 <= minimum_samples <= lookback_sessions")
     now = _aware_timestamp(observed_at, "observed_at")
     contract, dataset = _source_identity(prices, forecasts)
+    completion = _reference_completion(prices, forecasts, now, allow_reference_forward_fill)
     report = {
-        "contract_version": PRICE_BAND_CONTRACT, "observed_at": now.isoformat(),
+        "contract_version": COMPLETED_PRICE_BAND_CONTRACT if allow_reference_forward_fill else PRICE_BAND_CONTRACT,
+        "observed_at": now.isoformat(),
         "price_source_contract": contract, "price_dataset": dataset,
         "price_basis": "unadjusted_market_scale", "lookback_sessions": lookback_sessions,
         "minimum_samples": minimum_samples, "lower_quantile": 0.05, "upper_quantile": 0.95,
@@ -104,6 +144,10 @@ def build_entry_price_bands(
         "boundary_tolerance_seconds": STOCK_TARGET_BOUNDARY_TOLERANCE.total_seconds(),
         "rows": [], "statistics": {},
     }
+    if completion is not None:
+        report["reference_completion"] = completion
+        report["reference_policy"] = ("Exact prior XNYS session 17:00 Pacific; observed close within five minutes, "
+            "or explicitly synthetic carry-forward across a verified trailing gap of at most 15 minutes; no cross-source substitution")
     if forecasts.empty:
         return report
     required = {"symbol", "action_date", "route", "target_role", "target_window_start"}
@@ -151,7 +195,7 @@ def build_entry_price_bands(
             prior_session = pd.Timestamp(calendar.previous_session(pd.Timestamp(day))).date()
             candidates = sessions[sessions < pd.Timestamp(day)][-lookback_sessions:]
             symbol_bars = by_symbol.get(symbol, empty_bars)
-            reference = _observation(symbol_bars, _clock(prior_session, 17), close=True)
+            reference = _planning_reference(symbol_bars, _clock(prior_session, 17), symbol, day, completion)
             samples, missing_close, missing_entry = [], 0, 0
             for session in candidates:
                 sample_day = pd.Timestamp(session).date()
@@ -192,6 +236,9 @@ def build_entry_price_bands(
                      "trade_price_low": float(np.floor(reference[0] * low_ratio * 100) / 100) if status == "AVAILABLE" else None,
                      "trade_price_high": float(np.ceil(reference[0] * high_ratio * 100) / 100) if status == "AVAILABLE" else None,
                      "samples": samples}
+            stats.update(_reference_details(completion, symbol, day))
+            if status == "AVAILABLE" and stats.get("reference_is_synthetic"):
+                stats["reason"] += "; anchor uses a bounded synthetic zero-volume carry-forward"
             report["statistics"][key] = stats
         row.update(price_band_status=stats["status"], price_band_reason=stats["reason"],
                    trade_price_low=stats["trade_price_low"], trade_price_high=stats["trade_price_high"],
@@ -200,6 +247,8 @@ def build_entry_price_bands(
                    price_band_sample_count=stats["sample_count"], price_band_candidate_sessions=stats["candidate_sessions"],
                    price_band_coverage=stats["coverage"], price_band_history_first_session=stats["history_first_session"],
                    price_band_history_last_session=stats["history_last_session"])
+        if completion is not None:
+            row.update({f"price_{key}": value for key, value in _reference_details(completion, symbol, day).items()})
         report["rows"].append(row)
     return report
 
@@ -207,6 +256,7 @@ def build_entry_price_bands(
 def build_planning_price_path(
     prices: pd.DataFrame, forecasts: pd.DataFrame, *, observed_at: Any,
     working_half_width_bps: float = 20, entry_bands: dict | None = None,
+    allow_reference_forward_fill: bool = False,
 ) -> dict:
     """Describe conditional working prices for every 04:00-17:00 action clock.
 
@@ -234,11 +284,15 @@ def build_planning_price_path(
         raise ValueError("Working price half-width must be finite and between 0 and 10000 basis points")
     now = _aware_timestamp(observed_at, "observed_at")
     source_contract, dataset = _source_identity(prices, forecasts)
-    existing = (build_entry_price_bands(prices, forecasts, observed_at=now)
+    completion = _reference_completion(prices, forecasts, now, allow_reference_forward_fill)
+    existing = (build_entry_price_bands(prices, forecasts, observed_at=now,
+                                      allow_reference_forward_fill=allow_reference_forward_fill)
                 if entry_bands is None else entry_bands)
-    if (existing.get("contract_version") != PRICE_BAND_CONTRACT
+    expected_contract = COMPLETED_PRICE_BAND_CONTRACT if allow_reference_forward_fill else PRICE_BAND_CONTRACT
+    if (existing.get("contract_version") != expected_contract
             or existing.get("price_source_contract") != source_contract
             or existing.get("price_dataset") != dataset
+            or existing.get("reference_completion") != completion
             or _aware_timestamp(existing.get("observed_at"), "entry_bands.observed_at") != now):
         raise ValueError("Reused entry bands must match the exact source and observation time")
     lookback = int(existing["lookback_sessions"])
@@ -255,10 +309,12 @@ def build_planning_price_path(
                       if f"{symbol}|{day.isoformat()}|{hour:02d}:00" not in statistics]
     if missing_clocks:
         extra = build_entry_price_bands(prices, pd.DataFrame(missing_clocks), observed_at=now,
-                                        lookback_sessions=lookback, minimum_samples=minimum)
+                                        lookback_sessions=lookback, minimum_samples=minimum,
+                                        allow_reference_forward_fill=allow_reference_forward_fill)
         statistics.update(extra["statistics"])
     result = {
-        "contract_version": PLANNING_PRICE_PATH_CONTRACT, "observed_at": now.isoformat(),
+        "contract_version": COMPLETED_PLANNING_PRICE_PATH_CONTRACT if allow_reference_forward_fill else PLANNING_PRICE_PATH_CONTRACT,
+        "observed_at": now.isoformat(),
         "price_source_contract": source_contract, "price_dataset": dataset,
         "working_half_width_bps": width,
         "method": "Observed prior-close-to-clock median, with an explicit conditional fill allowance",
@@ -267,6 +323,8 @@ def build_planning_price_path(
         "market_gap_policy": "Price and cash estimates never gate execution. Use the current tradable quote and actual available cash and holdings, including when they fall outside the estimates.",
         "lookback_sessions": lookback, "minimum_samples": minimum, "points": {},
     }
+    if completion is not None:
+        result["reference_completion"] = completion
     if not scopes:
         return result
     days = [day for _, day in scopes]
@@ -288,7 +346,7 @@ def build_planning_price_path(
     for symbol, day in scopes:
         symbol_bars = by_symbol.get(symbol, empty)
         prior_day = pd.Timestamp(calendar.previous_session(pd.Timestamp(day))).date()
-        reference = _observation(symbol_bars, _clock(prior_day, 17), close=True)
+        reference = _planning_reference(symbol_bars, _clock(prior_day, 17), symbol, day, completion)
         close_samples = []
         for session in sessions[sessions < pd.Timestamp(day)][-lookback:]:
             sample_day = pd.Timestamp(session).date()
@@ -337,5 +395,8 @@ def build_planning_price_path(
                 "sample_count": len(ratios), "endpoint_kind": "observed_close" if hour == 17 else "observed_open",
                 "method": "Observed prior-close-to-clock median with conditional +/- basis-point fill allowance",
                 "samples": samples,
+                **_reference_details(completion, symbol, day),
             }
+            if status == "AVAILABLE" and result["points"][key].get("reference_is_synthetic"):
+                result["points"][key]["reason"] += "; anchor uses a bounded synthetic zero-volume carry-forward"
     return result

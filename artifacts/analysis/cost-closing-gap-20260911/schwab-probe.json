@@ -1,0 +1,46 @@
+{
+  "provider": "SCHWAB_PRICE_HISTORY",
+  "symbol": "COST",
+  "frequency_minutes": 1,
+  "extended_hours": true,
+  "request_start": "2026-09-10T23:30:00+00:00",
+  "request_end": "2026-09-11T00:00:00+00:00",
+  "requested_at": "2026-09-11T05:39:26.920462+00:00",
+  "orders_placed": 0,
+  "status": "FETCHED",
+  "response_symbol": "COST",
+  "empty": false,
+  "returned_rows": 479,
+  "scoped_rows": 3,
+  "raw_sha256": "7af70a3ac22736dc2507acfe228f77a06dd149379b3ae18c84b2e6c5a23601e2",
+  "scoped_candles": [
+    {
+      "open": 902.0675,
+      "high": 902.0675,
+      "low": 902.0675,
+      "close": 902.0675,
+      "volume": 100,
+      "datetime": 1789083420000,
+      "timestamp": "2026-09-10 23:37:00+00:00"
+    },
+    {
+      "open": 902.0,
+      "high": 902.0,
+      "low": 902.0,
+      "close": 902.0,
+      "volume": 50,
+      "datetime": 1789083780000,
+      "timestamp": "2026-09-10 23:43:00+00:00"
+    },
+    {
+      "open": 902.4,
+      "high": 902.4,
+      "low": 902.4,
+      "close": 902.4,
+      "volume": 40,
+      "datetime": 1789084200000,
+      "timestamp": "2026-09-10 23:50:00+00:00"
+    }
+  ],
+  "finished_at": "2026-09-11T05:39:27.413428+00:00"
+}
