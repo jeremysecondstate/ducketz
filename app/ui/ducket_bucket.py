@@ -13,6 +13,8 @@ from app.models.portfolio import PortfolioSnapshot
 from app.services.aggregate import DucketBucketSnapshot
 from app.ui.options_strategies import OptionsStrategiesTab
 from app.ui.rolling_forecasts import RollingForecastTab
+from app.ui.gameplan_stats import GameplanStatsTab
+from app.ui.gameplan import GameplanTab
 from app.ui.schwab_duckets import SchwabDucketsTab
 from app.ui.theme import (
     ACCENT,
@@ -511,11 +513,15 @@ class DucketBucketApp:
         strategies_frame = ttk.Frame(notebook)
         schwab_frame = ttk.Frame(notebook)
         hyperliquid_frame = ttk.Frame(notebook)
+        stats_frame = ttk.Frame(notebook)
+        gameplan_frame = ttk.Frame(notebook)
 
         notebook.add(forecasts_frame, text="Rolling Forecasts")
         notebook.add(strategies_frame, text="Options Strategies")
         notebook.add(schwab_frame, text="Schwab Duckets")
         notebook.add(hyperliquid_frame, text="Hyperliquid Duckets")
+        notebook.add(stats_frame, text="Gameplan Stats")
+        notebook.add(gameplan_frame, text="Gameplan")
 
         RollingForecastTab(
             root=self.root,
@@ -536,6 +542,9 @@ class DucketBucketApp:
             root=self.root,
             parent=hyperliquid_frame,
         )
+
+        GameplanStatsTab(root=self.root, parent=stats_frame)
+        GameplanTab(root=self.root, parent=gameplan_frame)
 
 
 class DucketsTab:

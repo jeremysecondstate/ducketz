@@ -1,0 +1,816 @@
+{
+  "session": "2026-09-10",
+  "source": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260911T061544.303359Z",
+  "source_sha256": "4949a4ff0e9794aece217f6e7ad60516bcd9c0dfd53eb860f16514189c8626b5",
+  "formula": "Brier = mean((saved calibrated_probability - model_observed_target)^2); stored target = actual_return > 0.001. Direction uses the saved bullish/bearish label against the sign of actual_return.",
+  "population": "All 168 promoted saved forecasts, including opening-gap research. Direction:87 evaluated nonneutral calls. Brier:121 evaluated forecasts including34 neutral. Pending and missing outcomes excluded.",
+  "overall": {
+    "saved": 168,
+    "evaluated": 121,
+    "neutral_evaluated": 34,
+    "direction_correct": 47,
+    "direction_scored": 87,
+    "direction_accuracy_pct": 54.02298850574713,
+    "bullish_correct": 1,
+    "bullish_scored": 4,
+    "bullish_accuracy_pct": 25.0,
+    "bearish_correct": 46,
+    "bearish_scored": 83,
+    "bearish_accuracy_pct": 55.42168674698795,
+    "probability_error_brier": 0.2222972295951656,
+    "status_counts": {
+      "EVALUATED": 121,
+      "PENDING_MATURITY": 42,
+      "MATURE_AWAITING_DATA": 5
+    }
+  },
+  "companies": {
+    "AAPL": {
+      "saved": 24,
+      "evaluated": 18,
+      "neutral_evaluated": 3,
+      "direction_correct": 6,
+      "direction_scored": 15,
+      "direction_accuracy_pct": 40.0,
+      "bullish_correct": 0,
+      "bullish_scored": 0,
+      "bullish_accuracy_pct": null,
+      "bearish_correct": 6,
+      "bearish_scored": 15,
+      "bearish_accuracy_pct": 40.0,
+      "probability_error_brier": 0.24648715967794413,
+      "status_counts": {
+        "EVALUATED": 18,
+        "PENDING_MATURITY": 6
+      }
+    },
+    "AMZN": {
+      "saved": 24,
+      "evaluated": 18,
+      "neutral_evaluated": 2,
+      "direction_correct": 9,
+      "direction_scored": 16,
+      "direction_accuracy_pct": 56.25,
+      "bullish_correct": 0,
+      "bullish_scored": 0,
+      "bullish_accuracy_pct": null,
+      "bearish_correct": 9,
+      "bearish_scored": 16,
+      "bearish_accuracy_pct": 56.25,
+      "probability_error_brier": 0.18257105701959583,
+      "status_counts": {
+        "EVALUATED": 18,
+        "PENDING_MATURITY": 6
+      }
+    },
+    "COST": {
+      "saved": 24,
+      "evaluated": 13,
+      "neutral_evaluated": 0,
+      "direction_correct": 6,
+      "direction_scored": 13,
+      "direction_accuracy_pct": 46.15384615384615,
+      "bullish_correct": 0,
+      "bullish_scored": 0,
+      "bullish_accuracy_pct": null,
+      "bearish_correct": 6,
+      "bearish_scored": 13,
+      "bearish_accuracy_pct": 46.15384615384615,
+      "probability_error_brier": 0.2621668204508963,
+      "status_counts": {
+        "EVALUATED": 13,
+        "PENDING_MATURITY": 6,
+        "MATURE_AWAITING_DATA": 5
+      }
+    },
+    "GOOG": {
+      "saved": 24,
+      "evaluated": 18,
+      "neutral_evaluated": 3,
+      "direction_correct": 9,
+      "direction_scored": 15,
+      "direction_accuracy_pct": 60.0,
+      "bullish_correct": 0,
+      "bullish_scored": 0,
+      "bullish_accuracy_pct": null,
+      "bearish_correct": 9,
+      "bearish_scored": 15,
+      "bearish_accuracy_pct": 60.0,
+      "probability_error_brier": 0.19260058308768788,
+      "status_counts": {
+        "EVALUATED": 18,
+        "PENDING_MATURITY": 6
+      }
+    },
+    "MU": {
+      "saved": 24,
+      "evaluated": 18,
+      "neutral_evaluated": 10,
+      "direction_correct": 5,
+      "direction_scored": 8,
+      "direction_accuracy_pct": 62.5,
+      "bullish_correct": 0,
+      "bullish_scored": 1,
+      "bullish_accuracy_pct": 0.0,
+      "bearish_correct": 5,
+      "bearish_scored": 7,
+      "bearish_accuracy_pct": 71.42857142857143,
+      "probability_error_brier": 0.2285271185760585,
+      "status_counts": {
+        "EVALUATED": 18,
+        "PENDING_MATURITY": 6
+      }
+    },
+    "NVDA": {
+      "saved": 24,
+      "evaluated": 18,
+      "neutral_evaluated": 4,
+      "direction_correct": 10,
+      "direction_scored": 14,
+      "direction_accuracy_pct": 71.42857142857143,
+      "bullish_correct": 1,
+      "bullish_scored": 1,
+      "bullish_accuracy_pct": 100.0,
+      "bearish_correct": 9,
+      "bearish_scored": 13,
+      "bearish_accuracy_pct": 69.23076923076923,
+      "probability_error_brier": 0.20641691895837627,
+      "status_counts": {
+        "EVALUATED": 18,
+        "PENDING_MATURITY": 6
+      }
+    },
+    "SNDK": {
+      "saved": 24,
+      "evaluated": 18,
+      "neutral_evaluated": 12,
+      "direction_correct": 2,
+      "direction_scored": 6,
+      "direction_accuracy_pct": 33.33333333333333,
+      "bullish_correct": 0,
+      "bullish_scored": 2,
+      "bullish_accuracy_pct": 0.0,
+      "bearish_correct": 2,
+      "bearish_scored": 4,
+      "bearish_accuracy_pct": 50.0,
+      "probability_error_brier": 0.24838583574441453,
+      "status_counts": {
+        "EVALUATED": 18,
+        "PENDING_MATURITY": 6
+      }
+    }
+  },
+  "one_hour_map": {
+    "AAPL": [
+      {
+        "window": "04-05",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.4001947208897038,
+        "actual_return": -0.004451131590495816
+      },
+      {
+        "window": "05-06",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.3917335771377935,
+        "actual_return": -0.0032736315275898598
+      },
+      {
+        "window": "06-07",
+        "state": "neutral",
+        "direction": "NO_EDGE",
+        "saved_probability": 0.4674457412762411,
+        "actual_return": 0.0070424759197853515
+      },
+      {
+        "window": "07-08",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.4572573735890183,
+        "actual_return": 0.013062158941228086
+      },
+      {
+        "window": "08-09",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.45489982300020526,
+        "actual_return": -0.010741703813769266
+      },
+      {
+        "window": "09-10",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.41876797907218877,
+        "actual_return": 0.011860057579171412
+      },
+      {
+        "window": "10-11",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.43192864302327616,
+        "actual_return": 0.005149219112416725
+      },
+      {
+        "window": "11-12",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.42251237181777723,
+        "actual_return": 0.001046057287019675
+      },
+      {
+        "window": "12-13",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.43810940831667033,
+        "actual_return": 0.003734095519085434
+      },
+      {
+        "window": "13-14",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.36049897793710806,
+        "actual_return": -0.002265491060494784
+      },
+      {
+        "window": "14-15",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.3224880871174185,
+        "actual_return": 0.000951153657339221
+      },
+      {
+        "window": "15-16",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.3349742046026325,
+        "actual_return": -0.0006437176225363439
+      },
+      {
+        "window": "16-17",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.337229477328304,
+        "actual_return": -0.0007361285771246839
+      }
+    ],
+    "AMZN": [
+      {
+        "window": "04-05",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.388235917545499,
+        "actual_return": -0.0013847675568743334
+      },
+      {
+        "window": "05-06",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.35934573855201946,
+        "actual_return": -0.007923302432453871
+      },
+      {
+        "window": "06-07",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.38025423170516426,
+        "actual_return": 0.0033940265133365344
+      },
+      {
+        "window": "07-08",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.39807608440999137,
+        "actual_return": 0.005888906573292996
+      },
+      {
+        "window": "08-09",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.37477323894491327,
+        "actual_return": -0.001621899600458887
+      },
+      {
+        "window": "09-10",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.3476115062706364,
+        "actual_return": 0.0019018186140498106
+      },
+      {
+        "window": "10-11",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.3219799533114599,
+        "actual_return": -0.002808211050903786
+      },
+      {
+        "window": "11-12",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.33902769426481255,
+        "actual_return": -0.0011106263139105677
+      },
+      {
+        "window": "12-13",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.35627377208160893,
+        "actual_return": 0.0002779873714309211
+      },
+      {
+        "window": "13-14",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.28527246524467537,
+        "actual_return": -0.00019849934495208554
+      },
+      {
+        "window": "14-15",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.28881936854558554,
+        "actual_return": 0.000397061743101057
+      },
+      {
+        "window": "15-16",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.2833673567599204,
+        "actual_return": -0.0005555555555555314
+      },
+      {
+        "window": "16-17",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.310863956142608,
+        "actual_return": -0.0022631620741683234
+      }
+    ],
+    "COST": [
+      {
+        "window": "04-05",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.315202374200922,
+        "actual_return": 0.0010183975735571504
+      },
+      {
+        "window": "05-06",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.27056809182319974,
+        "actual_return": 0.004213436549626692
+      },
+      {
+        "window": "06-07",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.3070880650161857,
+        "actual_return": -3.300911051462574e-05
+      },
+      {
+        "window": "07-08",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.372536268717511,
+        "actual_return": -0.00753990093560819
+      },
+      {
+        "window": "08-09",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.2777666840258744,
+        "actual_return": 0.001464031410128408
+      },
+      {
+        "window": "09-10",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.3053653282150477,
+        "actual_return": 0.0010190066900004346
+      },
+      {
+        "window": "10-11",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.27806627495952474,
+        "actual_return": -0.00389514103287647
+      },
+      {
+        "window": "11-12",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.2668471884001067,
+        "actual_return": 0.0009888119812904161
+      },
+      {
+        "window": "12-13",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.26078076607165496,
+        "actual_return": 0.001753996447602102
+      },
+      {
+        "window": "13-14",
+        "state": "awaiting_data",
+        "direction": "BEARISH",
+        "saved_probability": 0.2206346090109067,
+        "actual_return": null
+      },
+      {
+        "window": "14-15",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.18489426817480062,
+        "actual_return": -0.0003103111978013384
+      },
+      {
+        "window": "15-16",
+        "state": "awaiting_data",
+        "direction": "BEARISH",
+        "saved_probability": 0.20102596228137057,
+        "actual_return": null
+      },
+      {
+        "window": "16-17",
+        "state": "awaiting_data",
+        "direction": "BEARISH",
+        "saved_probability": 0.2059704096389956,
+        "actual_return": null
+      }
+    ],
+    "GOOG": [
+      {
+        "window": "04-05",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.3091142994867605,
+        "actual_return": -0.0011847261459946301
+      },
+      {
+        "window": "05-06",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.2919304658317976,
+        "actual_return": -0.008362729594939777
+      },
+      {
+        "window": "06-07",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.31711050030554555,
+        "actual_return": -0.0003678837487354203
+      },
+      {
+        "window": "07-08",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.3300529701148515,
+        "actual_return": 0.008065258057591729
+      },
+      {
+        "window": "08-09",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.31526221787425046,
+        "actual_return": -0.0035290538484940015
+      },
+      {
+        "window": "09-10",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.2795067880760402,
+        "actual_return": 0.006228627259404096
+      },
+      {
+        "window": "10-11",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.2812224319751598,
+        "actual_return": 0.00012137763617037223
+      },
+      {
+        "window": "11-12",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.2603712679896923,
+        "actual_return": 0.000788906757289709
+      },
+      {
+        "window": "12-13",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.2921665451713267,
+        "actual_return": 0.0019404523679582564
+      },
+      {
+        "window": "13-14",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.22546155200921608,
+        "actual_return": -0.0019365770999759668
+      },
+      {
+        "window": "14-15",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.2011779786137667,
+        "actual_return": -0.0013639256812050249
+      },
+      {
+        "window": "15-16",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.2230745309604355,
+        "actual_return": -3.0348092622367595e-05
+      },
+      {
+        "window": "16-17",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.24024366213210208,
+        "actual_return": -0.001729946280615513
+      }
+    ],
+    "MU": [
+      {
+        "window": "04-05",
+        "state": "neutral",
+        "direction": "NO_EDGE",
+        "saved_probability": 0.46996479703215766,
+        "actual_return": -0.005767296961571078
+      },
+      {
+        "window": "05-06",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.43965647121272056,
+        "actual_return": -0.010913957176843736
+      },
+      {
+        "window": "06-07",
+        "state": "neutral",
+        "direction": "NO_EDGE",
+        "saved_probability": 0.47327295588642493,
+        "actual_return": -0.013026052104208374
+      },
+      {
+        "window": "07-08",
+        "state": "neutral",
+        "direction": "NO_EDGE",
+        "saved_probability": 0.500907071036959,
+        "actual_return": 0.00042639593908622153
+      },
+      {
+        "window": "08-09",
+        "state": "neutral",
+        "direction": "NO_EDGE",
+        "saved_probability": 0.4646163593382109,
+        "actual_return": -0.002080014610834402
+      },
+      {
+        "window": "09-10",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.4556097060391174,
+        "actual_return": -0.0033044910575388275
+      },
+      {
+        "window": "10-11",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.421779074733261,
+        "actual_return": 0.0006427128603783139
+      },
+      {
+        "window": "11-12",
+        "state": "neutral",
+        "direction": "NO_EDGE",
+        "saved_probability": 0.4626505308631618,
+        "actual_return": 0.0023145551873566816
+      },
+      {
+        "window": "12-13",
+        "state": "neutral",
+        "direction": "NO_EDGE",
+        "saved_probability": 0.46143735025411414,
+        "actual_return": -0.002106355699371232
+      },
+      {
+        "window": "13-14",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.4309606639053911,
+        "actual_return": -0.00011254233126323232
+      },
+      {
+        "window": "14-15",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.41784676463147497,
+        "actual_return": 0.0007261941290783724
+      },
+      {
+        "window": "15-16",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.4127720773251986,
+        "actual_return": -0.003157927009984851
+      },
+      {
+        "window": "16-17",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.45597215746810693,
+        "actual_return": -0.004182556279985317
+      }
+    ],
+    "NVDA": [
+      {
+        "window": "04-05",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.3974307443978907,
+        "actual_return": -0.0041681606310506325
+      },
+      {
+        "window": "05-06",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.39247088956405995,
+        "actual_return": -0.008865088650886532
+      },
+      {
+        "window": "06-07",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.4274038782708933,
+        "actual_return": -0.01311966587978941
+      },
+      {
+        "window": "07-08",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.4224065398662304,
+        "actual_return": 0.0034730208381250627
+      },
+      {
+        "window": "08-09",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.390471328016728,
+        "actual_return": 0.002956748951385535
+      },
+      {
+        "window": "09-10",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.3681942889764882,
+        "actual_return": -0.00018281535649000702
+      },
+      {
+        "window": "10-11",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.3543422658848516,
+        "actual_return": -0.0017599195465349826
+      },
+      {
+        "window": "11-12",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.31200498650194564,
+        "actual_return": -0.0005953198699454321
+      },
+      {
+        "window": "12-13",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.34683950254465756,
+        "actual_return": 0.0007789946386840274
+      },
+      {
+        "window": "13-14",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.2688093892813893,
+        "actual_return": -9.157509157509125e-05
+      },
+      {
+        "window": "14-15",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.2624865727538219,
+        "actual_return": 0.0013274741371418486
+      },
+      {
+        "window": "15-16",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.27944796870669086,
+        "actual_return": -0.0016915832304666978
+      },
+      {
+        "window": "16-17",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.2736886427848755,
+        "actual_return": -0.0026103681993040473
+      }
+    ],
+    "SNDK": [
+      {
+        "window": "04-05",
+        "state": "neutral",
+        "direction": "NO_EDGE",
+        "saved_probability": 0.5344494519543972,
+        "actual_return": -0.006167365596626784
+      },
+      {
+        "window": "05-06",
+        "state": "neutral",
+        "direction": "NO_EDGE",
+        "saved_probability": 0.49933734589329776,
+        "actual_return": -0.011898734177215209
+      },
+      {
+        "window": "06-07",
+        "state": "incorrect",
+        "direction": "BULLISH",
+        "saved_probability": 0.5433877541222968,
+        "actual_return": -0.016203097445567805
+      },
+      {
+        "window": "07-08",
+        "state": "neutral",
+        "direction": "NO_EDGE",
+        "saved_probability": 0.5299286381085362,
+        "actual_return": 0.0012305507898007217
+      },
+      {
+        "window": "08-09",
+        "state": "neutral",
+        "direction": "NO_EDGE",
+        "saved_probability": 0.5099819439779961,
+        "actual_return": 0.0033257720753290254
+      },
+      {
+        "window": "09-10",
+        "state": "neutral",
+        "direction": "NO_EDGE",
+        "saved_probability": 0.482549340777496,
+        "actual_return": -0.0031855009656600597
+      },
+      {
+        "window": "10-11",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.4353025445757294,
+        "actual_return": 0.009863250085690112
+      },
+      {
+        "window": "11-12",
+        "state": "neutral",
+        "direction": "NO_EDGE",
+        "saved_probability": 0.4768537852165009,
+        "actual_return": 0.0009363186292297154
+      },
+      {
+        "window": "12-13",
+        "state": "neutral",
+        "direction": "NO_EDGE",
+        "saved_probability": 0.4747519166853413,
+        "actual_return": -0.009526315789473716
+      },
+      {
+        "window": "13-14",
+        "state": "neutral",
+        "direction": "NO_EDGE",
+        "saved_probability": 0.476189982199969,
+        "actual_return": -0.003040410898249468
+      },
+      {
+        "window": "14-15",
+        "state": "incorrect",
+        "direction": "BEARISH",
+        "saved_probability": 0.4103031477242281,
+        "actual_return": 0.000171689065182834
+      },
+      {
+        "window": "15-16",
+        "state": "correct",
+        "direction": "BEARISH",
+        "saved_probability": 0.4434986153691272,
+        "actual_return": -0.0038944128787878896
+      },
+      {
+        "window": "16-17",
+        "state": "neutral",
+        "direction": "NO_EDGE",
+        "saved_probability": 0.47257707258085174,
+        "actual_return": -0.004567349096330164
+      }
+    ]
+  }
+}

@@ -5,7 +5,7 @@ from collections.abc import Callable
 import app.ui.ducket_bucket as ducket_bucket_ui
 
 
-def test_desktop_app_mounts_only_the_four_active_workspaces(monkeypatch) -> None:
+def test_desktop_app_mounts_the_six_active_workspaces(monkeypatch) -> None:
     mounted_tabs: list[str] = []
     mounted_views: list[str] = []
 
@@ -51,6 +51,8 @@ def test_desktop_app_mounts_only_the_four_active_workspaces(monkeypatch) -> None
         "HyperliquidDucketsTab",
         view_factory("Hyperliquid Duckets"),
     )
+    monkeypatch.setattr(ducket_bucket_ui, "GameplanStatsTab", view_factory("Gameplan Stats"))
+    monkeypatch.setattr(ducket_bucket_ui, "GameplanTab", view_factory("Gameplan"))
 
     app = ducket_bucket_ui.DucketBucketApp.__new__(
         ducket_bucket_ui.DucketBucketApp
@@ -63,6 +65,8 @@ def test_desktop_app_mounts_only_the_four_active_workspaces(monkeypatch) -> None
         "Options Strategies",
         "Schwab Duckets",
         "Hyperliquid Duckets",
+        "Gameplan Stats",
+        "Gameplan",
     ]
     assert mounted_tabs == expected
     assert mounted_views == expected

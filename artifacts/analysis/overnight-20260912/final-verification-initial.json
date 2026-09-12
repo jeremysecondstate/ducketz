@@ -1,0 +1,1871 @@
+{
+  "checks": {
+    "actuals_review": {
+      "error": "KeyError: 'trade_plan'",
+      "status": "FAILED"
+    },
+    "cumulative_evaluation": {
+      "by_action_date": {
+        "2026-09-04": {
+          "direction_accuracy": 0.5754716981132075,
+          "evaluated": 106,
+          "forecasts": 144,
+          "mature_awaiting_data": 38,
+          "mean_brier_score": 0.24032340870595792,
+          "pending_maturity": 0
+        },
+        "2026-09-08": {
+          "direction_accuracy": 0.6389850057670127,
+          "evaluated": 867,
+          "forecasts": 1152,
+          "mature_awaiting_data": 189,
+          "mean_brier_score": 0.22882718765929574,
+          "pending_maturity": 96
+        },
+        "2026-09-09": {
+          "direction_accuracy": 0.6584507042253521,
+          "evaluated": 284,
+          "forecasts": 336,
+          "mature_awaiting_data": 10,
+          "mean_brier_score": 0.22994068588215416,
+          "pending_maturity": 42
+        },
+        "2026-09-10": {
+          "direction_accuracy": 0.6222222222222222,
+          "evaluated": 135,
+          "forecasts": 168,
+          "mature_awaiting_data": 5,
+          "mean_brier_score": 0.2240204578158584,
+          "pending_maturity": 28
+        },
+        "2026-09-11": {
+          "direction_accuracy": 0.680672268907563,
+          "evaluated": 119,
+          "forecasts": 168,
+          "mature_awaiting_data": 7,
+          "mean_brier_score": 0.2153323655584286,
+          "pending_maturity": 42
+        }
+      },
+      "coverage_counts": {
+        "direction_accuracy": 0.6399735274652548,
+        "evaluated": 1511,
+        "forecasts": 1968,
+        "mature_awaiting_data": 249,
+        "mean_brier_score": 0.22835070888191036,
+        "pending_maturity": 208
+      },
+      "observed_at": "2026-09-12 05:12:10.050260+00:00",
+      "publications": [
+        {
+          "action_date": "2026-09-04",
+          "rows": 144,
+          "run": "ml/nightly-gameplan-runs/20260904T105944.876700Z",
+          "symbols": 6
+        },
+        {
+          "action_date": "2026-09-08",
+          "rows": 144,
+          "run": "ml/nightly-gameplan-runs/20260905T103409.421848Z",
+          "symbols": 6
+        },
+        {
+          "action_date": "2026-09-08",
+          "rows": 168,
+          "run": "ml/nightly-gameplan-runs/20260908T062020.263843Z",
+          "symbols": 7
+        },
+        {
+          "action_date": "2026-09-08",
+          "rows": 168,
+          "run": "ml/nightly-gameplan-runs/20260908T065643.819336Z",
+          "symbols": 7
+        },
+        {
+          "action_date": "2026-09-08",
+          "rows": 168,
+          "run": "ml/nightly-gameplan-runs/20260908T073927.460474Z",
+          "symbols": 7
+        },
+        {
+          "action_date": "2026-09-08",
+          "rows": 168,
+          "run": "ml/nightly-gameplan-runs/20260908T085844.073361Z",
+          "symbols": 7
+        },
+        {
+          "action_date": "2026-09-08",
+          "rows": 168,
+          "run": "ml/nightly-gameplan-runs/20260908T091920.477919Z",
+          "symbols": 7
+        },
+        {
+          "action_date": "2026-09-08",
+          "rows": 168,
+          "run": "ml/nightly-gameplan-runs/20260908T093314.374067Z",
+          "symbols": 7
+        },
+        {
+          "action_date": "2026-09-09",
+          "rows": 168,
+          "run": "ml/nightly-gameplan-runs/20260909T040455.436642Z",
+          "symbols": 7
+        },
+        {
+          "action_date": "2026-09-09",
+          "rows": 168,
+          "run": "ml/nightly-gameplan-runs/20260909T060404.450224Z",
+          "symbols": 7
+        },
+        {
+          "action_date": "2026-09-10",
+          "rows": 168,
+          "run": "ml/nightly-gameplan-runs/20260910T051155.074940Z",
+          "symbols": 7
+        },
+        {
+          "action_date": "2026-09-11",
+          "rows": 168,
+          "run": "ml/nightly-gameplan-runs/20260911T051120.445494Z",
+          "symbols": 7
+        }
+      ],
+      "run": "C:\\DATASTORE\\ml\\gameplan-evaluation-runs\\20260912T051235.036158Z",
+      "status": "VERIFIED"
+    },
+    "enrichment": {
+      "horizons": {
+        "1d": {
+          "admitted_rows": 1428,
+          "diagnostic_scope_count": 7,
+          "fitted_scope_count": 7,
+          "qualified_scope_count": 0,
+          "reason": null,
+          "status": "FITTED",
+          "symbols_without_targets": []
+        },
+        "1h": {
+          "admitted_rows": 24853,
+          "diagnostic_scope_count": 91,
+          "fitted_scope_count": 91,
+          "qualified_scope_count": 0,
+          "reason": null,
+          "status": "FITTED",
+          "symbols_without_targets": []
+        },
+        "1w": {
+          "admitted_rows": 1416,
+          "diagnostic_scope_count": 28,
+          "fitted_scope_count": 28,
+          "qualified_scope_count": 0,
+          "reason": null,
+          "status": "FITTED",
+          "symbols_without_targets": []
+        },
+        "4h": {
+          "admitted_rows": 7261,
+          "diagnostic_scope_count": 52,
+          "fitted_scope_count": 52,
+          "qualified_scope_count": 0,
+          "reason": null,
+          "status": "FITTED",
+          "symbols_without_targets": []
+        }
+      },
+      "run": "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260912T051308.132302Z",
+      "source_gameplan_run": "ml/nightly-gameplan-runs/20260912T051210.050260Z",
+      "status": "VERIFIED"
+    },
+    "fetch_scope_log": {
+      "log": "C:\\DATASTORE\\ml\\overnight-runs\\20260912T040657.173506Z\\loop_a_close_fetch.log",
+      "native_scope_summaries": [
+        "Loop A target decision: cycle_mode=MONITOR_ONLY; target_state=MARKET_CLOSED_IDLE; target=NONE; reason=The regular XNYS option-market evidence window is closed; extended-hours bars are monitor-only and cannot create a target.; next_eligible_cycle=2026-09-14T13:45:00+00:00",
+        "Loop A bar readiness idle: cycle_mode=MONITOR_ONLY; target_state=MARKET_CLOSED_IDLE; target=NONE; reason=The regular XNYS option-market evidence window is closed; extended-hours bars are monitor-only and cannot create a target.; next_eligible_cycle=2026-09-14T13:45:00+00:00",
+        "Failed calculations: 0",
+        "Failed calculations: 0",
+        "Failed calculations: 0",
+        "Failed calculations: 0",
+        "Failed calculations: 0",
+        "Failed calculations: 0",
+        "Failed calculations: 0",
+        "Loop A datastore cycle 20260912T040658.065355Z-pid68344: COMPLETE",
+        "NO_DATA ohlcv-1h/2026-09-07 provider returned no resolvable parent-symbol data",
+        "NO_DATA ohlcv-1h/2026-09-07 provider returned no resolvable parent-symbol data",
+        "NO_DATA ohlcv-1h/2026-09-07 provider returned no resolvable parent-symbol data",
+        "NO_DATA ohlcv-1h/2026-09-07 provider returned no resolvable parent-symbol data",
+        "NO_DATA ohlcv-1h/2026-09-07 provider returned no resolvable parent-symbol data",
+        "NO_DATA ohlcv-1h/2026-09-07 provider returned no resolvable parent-symbol data",
+        "NO_DATA ohlcv-1h/2026-09-07 provider returned no resolvable parent-symbol data",
+        "Options history maintenance finished: requested_scopes=21; completed_scopes=21; capacity_blocked_scopes=0; failed_scopes=0; bootstrap_required_scopes=0; preflighted_scopes=21; deferred_scopes=0; live_replay_completed_scopes=0; live_replay_bytes=0; selected_estimated_download_bytes=4523515088; selected_estimated_cost_usd=0.0",
+        "Loop A OPRA Strategy history maintenance: exit_code=0; attempt_date=2026-09-12"
+      ],
+      "opra_summary": {
+        "bootstrap_required_scopes": "0",
+        "capacity_blocked_scopes": "0",
+        "completed_scopes": "21",
+        "deferred_scopes": "0",
+        "failed_scopes": "0",
+        "live_replay_bytes": "0",
+        "live_replay_completed_scopes": "0",
+        "preflighted_scopes": "21",
+        "requested_scopes": "21",
+        "selected_estimated_cost_usd": "0.0",
+        "selected_estimated_download_bytes": "4523515088"
+      },
+      "providers_in_request_log": [
+        "calculated",
+        "databento",
+        "fmp"
+      ],
+      "remaining_manual_review": "Assess FMP/FRED/Schwab/SEC and nonproduction Databento scope warnings from the preserved native summaries; these providers do not share the OPRA cursor contract.",
+      "status": "VERIFIED"
+    },
+    "gameplan": {
+      "action_date": "2026-09-14",
+      "execution_rows": 133,
+      "forecast_rows": 168,
+      "intent_rows": 168,
+      "model_assessments": {
+        "1d": {
+          "assessment": {
+            "brier_score": 0.2509545014412754,
+            "direction_accuracy_at_0_5": 0.4885114885114885,
+            "expected_calibration_error_10_bin": 0.034431771382564674,
+            "log_loss": 0.6950670834728131,
+            "mean_probability": 0.4969692339200271,
+            "positive_rate": 0.46253746253746253,
+            "rows": 1001
+          },
+          "calibration_diagnostics": {
+            "assessment_probability_range": [
+              0.37055161456446917,
+              0.5589232774545256
+            ],
+            "calibrated_probability_range": [
+              0.41963592502744135,
+              0.5619109508494834
+            ],
+            "calibration_positive_rate": 0.4252232142857143,
+            "calibration_rows": 896,
+            "information_available": true,
+            "nondecreasing_constraint_active": false,
+            "platt_slope": null,
+            "raw_probability_range": [
+              0.41963592502744135,
+              0.5619109508494834
+            ],
+            "status": "DIRECTIONAL_INFORMATION_AVAILABLE"
+          },
+          "calibration_method": "none",
+          "logistic_regularization_candidates": [
+            0.001,
+            0.01,
+            0.1,
+            1.0
+          ],
+          "partitions": {
+            "assessment_rows": 1001,
+            "calibration_rows": 896,
+            "selection_rows": 750,
+            "train_rows": 4263
+          },
+          "promotion_gate": {
+            "assessment_beats_baseline": {
+              "brier_score": false,
+              "log_loss": false
+            },
+            "assessment_minus_baseline": {
+              "brier_score": 0.00106435925816847,
+              "log_loss": 0.0021396191957098
+            },
+            "baseline_tolerances": {
+              "brier_score": 0.005,
+              "log_loss": 0.01
+            },
+            "checks": {
+              "assessment_has_at_least_10_decision_clusters": true,
+              "brier_within_baseline_tolerance": true,
+              "calibration_retains_directional_information": true,
+              "expected_calibration_error_at_most_0_15": true,
+              "log_loss_within_baseline_tolerance": true
+            },
+            "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+            "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes.",
+            "policy_version": "independent-stock-directional-promotion-v2",
+            "status": "PROMOTED"
+          },
+          "selected_family": "regularized-logistic-c0.001",
+          "selected_logistic_regularization_c": 0.001,
+          "target_boundary_quality": {
+            "admitted_rows_by_route": {
+              "1d@D+1": 1428,
+              "1d@D+2": 1419,
+              "1d@D+3": 1415,
+              "1d@D+4": 1421,
+              "1d@D+5": 1417
+            },
+            "admitted_rows_by_symbol": {
+              "AAPL": 1204,
+              "AMZN": 1191,
+              "COST": 460,
+              "GOOG": 1020,
+              "MU": 1182,
+              "NVDA": 1451,
+              "SNDK": 592
+            },
+            "aligned_rows": 7100,
+            "candidate_rows": 19615,
+            "conflicting_minute_rows_excluded": 0,
+            "enforced": true,
+            "excluded_rows": 12515,
+            "excluded_rows_by_route": {
+              "1d@D+1": 2509,
+              "1d@D+2": 2511,
+              "1d@D+3": 2508,
+              "1d@D+4": 2495,
+              "1d@D+5": 2492
+            },
+            "maximum_boundary_gap_seconds": 300.0,
+            "policy": "clock-window-boundaries-within-five-minutes-v1",
+            "target_contract_version": "independent-stock-targets-v1",
+            "target_price_dataset": "XNAS.ITCH",
+            "target_price_source_contract": "xnas-itch-archive-v1"
+          },
+          "target_support_by_symbol": {
+            "AAPL": {
+              "admitted_decision_clusters": 248,
+              "admitted_rows": 1204,
+              "admitted_rows_by_route": {
+                "1d@D+1": 241,
+                "1d@D+2": 240,
+                "1d@D+3": 241,
+                "1d@D+4": 241,
+                "1d@D+5": 241
+              },
+              "assessment_decision_clusters": 30,
+              "assessment_rows": 140,
+              "assessment_rows_by_route": {
+                "1d@D+1": 30,
+                "1d@D+2": 29,
+                "1d@D+3": 28,
+                "1d@D+4": 27,
+                "1d@D+5": 26
+              },
+              "fitted_decision_clusters": 188,
+              "fitted_rows": 894,
+              "fitted_rows_by_route": {
+                "1d@D+1": 181,
+                "1d@D+2": 179,
+                "1d@D+3": 179,
+                "1d@D+4": 178,
+                "1d@D+5": 177
+              }
+            },
+            "AMZN": {
+              "admitted_decision_clusters": 246,
+              "admitted_rows": 1191,
+              "admitted_rows_by_route": {
+                "1d@D+1": 239,
+                "1d@D+2": 237,
+                "1d@D+3": 238,
+                "1d@D+4": 239,
+                "1d@D+5": 238
+              },
+              "assessment_decision_clusters": 30,
+              "assessment_rows": 140,
+              "assessment_rows_by_route": {
+                "1d@D+1": 30,
+                "1d@D+2": 29,
+                "1d@D+3": 28,
+                "1d@D+4": 27,
+                "1d@D+5": 26
+              },
+              "fitted_decision_clusters": 192,
+              "fitted_rows": 913,
+              "fitted_rows_by_route": {
+                "1d@D+1": 185,
+                "1d@D+2": 182,
+                "1d@D+3": 182,
+                "1d@D+4": 182,
+                "1d@D+5": 182
+              }
+            },
+            "COST": {
+              "admitted_decision_clusters": 180,
+              "admitted_rows": 460,
+              "admitted_rows_by_route": {
+                "1d@D+1": 92,
+                "1d@D+2": 91,
+                "1d@D+3": 91,
+                "1d@D+4": 93,
+                "1d@D+5": 93
+              },
+              "assessment_decision_clusters": 32,
+              "assessment_rows": 69,
+              "assessment_rows_by_route": {
+                "1d@D+1": 14,
+                "1d@D+2": 14,
+                "1d@D+3": 14,
+                "1d@D+4": 13,
+                "1d@D+5": 14
+              },
+              "fitted_decision_clusters": 115,
+              "fitted_rows": 289,
+              "fitted_rows_by_route": {
+                "1d@D+1": 58,
+                "1d@D+2": 57,
+                "1d@D+3": 57,
+                "1d@D+4": 59,
+                "1d@D+5": 58
+              }
+            },
+            "GOOG": {
+              "admitted_decision_clusters": 218,
+              "admitted_rows": 1020,
+              "admitted_rows_by_route": {
+                "1d@D+1": 207,
+                "1d@D+2": 205,
+                "1d@D+3": 202,
+                "1d@D+4": 202,
+                "1d@D+5": 204
+              },
+              "assessment_decision_clusters": 28,
+              "assessment_rows": 127,
+              "assessment_rows_by_route": {
+                "1d@D+1": 27,
+                "1d@D+2": 27,
+                "1d@D+3": 25,
+                "1d@D+4": 24,
+                "1d@D+5": 24
+              },
+              "fitted_decision_clusters": 167,
+              "fitted_rows": 772,
+              "fitted_rows_by_route": {
+                "1d@D+1": 158,
+                "1d@D+2": 156,
+                "1d@D+3": 153,
+                "1d@D+4": 152,
+                "1d@D+5": 153
+              }
+            },
+            "MU": {
+              "admitted_decision_clusters": 258,
+              "admitted_rows": 1182,
+              "admitted_rows_by_route": {
+                "1d@D+1": 238,
+                "1d@D+2": 237,
+                "1d@D+3": 236,
+                "1d@D+4": 237,
+                "1d@D+5": 234
+              },
+              "assessment_decision_clusters": 37,
+              "assessment_rows": 175,
+              "assessment_rows_by_route": {
+                "1d@D+1": 37,
+                "1d@D+2": 36,
+                "1d@D+3": 35,
+                "1d@D+4": 34,
+                "1d@D+5": 33
+              },
+              "fitted_decision_clusters": 188,
+              "fitted_rows": 822,
+              "fitted_rows_by_route": {
+                "1d@D+1": 168,
+                "1d@D+2": 166,
+                "1d@D+3": 164,
+                "1d@D+4": 164,
+                "1d@D+5": 160
+              }
+            },
+            "NVDA": {
+              "admitted_decision_clusters": 299,
+              "admitted_rows": 1451,
+              "admitted_rows_by_route": {
+                "1d@D+1": 291,
+                "1d@D+2": 290,
+                "1d@D+3": 290,
+                "1d@D+4": 290,
+                "1d@D+5": 290
+              },
+              "assessment_decision_clusters": 37,
+              "assessment_rows": 175,
+              "assessment_rows_by_route": {
+                "1d@D+1": 37,
+                "1d@D+2": 36,
+                "1d@D+3": 35,
+                "1d@D+4": 34,
+                "1d@D+5": 33
+              },
+              "fitted_decision_clusters": 229,
+              "fitted_rows": 1091,
+              "fitted_rows_by_route": {
+                "1d@D+1": 221,
+                "1d@D+2": 219,
+                "1d@D+3": 218,
+                "1d@D+4": 217,
+                "1d@D+5": 216
+              }
+            },
+            "SNDK": {
+              "admitted_decision_clusters": 123,
+              "admitted_rows": 592,
+              "admitted_rows_by_route": {
+                "1d@D+1": 120,
+                "1d@D+2": 119,
+                "1d@D+3": 117,
+                "1d@D+4": 119,
+                "1d@D+5": 117
+              },
+              "assessment_decision_clusters": 37,
+              "assessment_rows": 175,
+              "assessment_rows_by_route": {
+                "1d@D+1": 37,
+                "1d@D+2": 36,
+                "1d@D+3": 35,
+                "1d@D+4": 34,
+                "1d@D+5": 33
+              },
+              "fitted_decision_clusters": 53,
+              "fitted_rows": 232,
+              "fitted_rows_by_route": {
+                "1d@D+1": 50,
+                "1d@D+2": 48,
+                "1d@D+3": 45,
+                "1d@D+4": 46,
+                "1d@D+5": 43
+              }
+            }
+          },
+          "training_base_rate_assessment": {
+            "brier_score": 0.24989014218310693,
+            "direction_accuracy_at_0_5": 0.5374625374625375,
+            "expected_calibration_error_10_bin": 0.0359664273488331,
+            "log_loss": 0.6929274642771033,
+            "mean_probability": 0.4985038898862956,
+            "positive_rate": 0.46253746253746253,
+            "rows": 1001
+          }
+        },
+        "1h": {
+          "assessment": {
+            "brier_score": 0.22810688085498548,
+            "direction_accuracy_at_0_5": 0.6348178137651822,
+            "expected_calibration_error_10_bin": 0.04921697395656324,
+            "log_loss": 0.6479077131129792,
+            "mean_probability": 0.41682830998895193,
+            "positive_rate": 0.36761133603238866,
+            "rows": 3705
+          },
+          "calibration_diagnostics": {
+            "assessment_probability_range": [
+              0.16493834538138719,
+              0.7175601770155002
+            ],
+            "calibrated_probability_range": [
+              0.19500142459851916,
+              0.712462387714947
+            ],
+            "calibration_positive_rate": 0.39710319855159926,
+            "calibration_rows": 3314,
+            "information_available": true,
+            "nondecreasing_constraint_active": false,
+            "platt_slope": null,
+            "raw_probability_range": [
+              0.19500142459851916,
+              0.712462387714947
+            ],
+            "status": "DIRECTIONAL_INFORMATION_AVAILABLE"
+          },
+          "calibration_method": "none",
+          "logistic_regularization_candidates": [
+            1.0
+          ],
+          "partitions": {
+            "assessment_rows": 3705,
+            "calibration_rows": 3314,
+            "selection_rows": 2626,
+            "train_rows": 16614
+          },
+          "promotion_gate": {
+            "assessment_beats_baseline": {
+              "brier_score": true,
+              "log_loss": true
+            },
+            "assessment_minus_baseline": {
+              "brier_score": -0.00441283144697869,
+              "log_loss": -0.0098638746362615
+            },
+            "baseline_tolerances": {
+              "brier_score": 0.005,
+              "log_loss": 0.01
+            },
+            "checks": {
+              "assessment_has_at_least_10_decision_clusters": true,
+              "brier_within_baseline_tolerance": true,
+              "calibration_retains_directional_information": true,
+              "expected_calibration_error_at_most_0_15": true,
+              "log_loss_within_baseline_tolerance": true
+            },
+            "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+            "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes.",
+            "policy_version": "independent-stock-directional-promotion-v2",
+            "status": "PROMOTED"
+          },
+          "selected_family": "hist-gradient-mlp-0.75",
+          "selected_logistic_regularization_c": null,
+          "target_boundary_quality": {
+            "admitted_rows_by_route": {
+              "1h@04:00": 1926,
+              "1h@05:00": 1930,
+              "1h@06:00": 1984,
+              "1h@07:00": 2026,
+              "1h@08:00": 2026,
+              "1h@09:00": 2026,
+              "1h@10:00": 2026,
+              "1h@11:00": 2026,
+              "1h@12:00": 2026,
+              "1h@13:00": 1919,
+              "1h@14:00": 1801,
+              "1h@15:00": 1785,
+              "1h@16:00": 1352,
+              "1h@gap": 1420
+            },
+            "admitted_rows_by_symbol": {
+              "AAPL": 4393,
+              "AMZN": 4368,
+              "COST": 2196,
+              "GOOG": 3550,
+              "MU": 4293,
+              "NVDA": 5523,
+              "SNDK": 1950
+            },
+            "aligned_rows": 26273,
+            "candidate_rows": 55118,
+            "conflicting_minute_rows_excluded": 0,
+            "enforced": true,
+            "excluded_rows": 28845,
+            "excluded_rows_by_route": {
+              "1h@04:00": 2011,
+              "1h@05:00": 2007,
+              "1h@06:00": 1953,
+              "1h@07:00": 1911,
+              "1h@08:00": 1911,
+              "1h@09:00": 1911,
+              "1h@10:00": 1911,
+              "1h@11:00": 1911,
+              "1h@12:00": 1911,
+              "1h@13:00": 2018,
+              "1h@14:00": 2136,
+              "1h@15:00": 2152,
+              "1h@16:00": 2585,
+              "1h@gap": 2517
+            },
+            "maximum_boundary_gap_seconds": 300.0,
+            "policy": "clock-window-boundaries-within-five-minutes-v1",
+            "target_contract_version": "independent-stock-targets-v1",
+            "target_price_dataset": "XNAS.ITCH",
+            "target_price_source_contract": "xnas-itch-archive-v1"
+          },
+          "target_support_by_symbol": {
+            "AAPL": {
+              "admitted_decision_clusters": 328,
+              "admitted_rows": 4393,
+              "admitted_rows_by_route": {
+                "1h@04:00": 328,
+                "1h@05:00": 328,
+                "1h@06:00": 328,
+                "1h@07:00": 328,
+                "1h@08:00": 328,
+                "1h@09:00": 328,
+                "1h@10:00": 328,
+                "1h@11:00": 328,
+                "1h@12:00": 328,
+                "1h@13:00": 327,
+                "1h@14:00": 319,
+                "1h@15:00": 319,
+                "1h@16:00": 236,
+                "1h@gap": 240
+              },
+              "assessment_decision_clusters": 36,
+              "assessment_rows": 504,
+              "assessment_rows_by_route": {
+                "1h@04:00": 36,
+                "1h@05:00": 36,
+                "1h@06:00": 36,
+                "1h@07:00": 36,
+                "1h@08:00": 36,
+                "1h@09:00": 36,
+                "1h@10:00": 36,
+                "1h@11:00": 36,
+                "1h@12:00": 36,
+                "1h@13:00": 36,
+                "1h@14:00": 36,
+                "1h@15:00": 36,
+                "1h@16:00": 36,
+                "1h@gap": 36
+              },
+              "fitted_decision_clusters": 257,
+              "fitted_rows": 3399,
+              "fitted_rows_by_route": {
+                "1h@04:00": 257,
+                "1h@05:00": 257,
+                "1h@06:00": 257,
+                "1h@07:00": 257,
+                "1h@08:00": 257,
+                "1h@09:00": 257,
+                "1h@10:00": 257,
+                "1h@11:00": 257,
+                "1h@12:00": 257,
+                "1h@13:00": 256,
+                "1h@14:00": 249,
+                "1h@15:00": 248,
+                "1h@16:00": 164,
+                "1h@gap": 169
+              }
+            },
+            "AMZN": {
+              "admitted_decision_clusters": 326,
+              "admitted_rows": 4368,
+              "admitted_rows_by_route": {
+                "1h@04:00": 326,
+                "1h@05:00": 326,
+                "1h@06:00": 326,
+                "1h@07:00": 326,
+                "1h@08:00": 326,
+                "1h@09:00": 326,
+                "1h@10:00": 326,
+                "1h@11:00": 326,
+                "1h@12:00": 326,
+                "1h@13:00": 326,
+                "1h@14:00": 323,
+                "1h@15:00": 317,
+                "1h@16:00": 231,
+                "1h@gap": 237
+              },
+              "assessment_decision_clusters": 34,
+              "assessment_rows": 476,
+              "assessment_rows_by_route": {
+                "1h@04:00": 34,
+                "1h@05:00": 34,
+                "1h@06:00": 34,
+                "1h@07:00": 34,
+                "1h@08:00": 34,
+                "1h@09:00": 34,
+                "1h@10:00": 34,
+                "1h@11:00": 34,
+                "1h@12:00": 34,
+                "1h@13:00": 34,
+                "1h@14:00": 34,
+                "1h@15:00": 34,
+                "1h@16:00": 34,
+                "1h@gap": 34
+              },
+              "fitted_decision_clusters": 263,
+              "fitted_rows": 3484,
+              "fitted_rows_by_route": {
+                "1h@04:00": 263,
+                "1h@05:00": 263,
+                "1h@06:00": 263,
+                "1h@07:00": 263,
+                "1h@08:00": 263,
+                "1h@09:00": 263,
+                "1h@10:00": 263,
+                "1h@11:00": 263,
+                "1h@12:00": 263,
+                "1h@13:00": 263,
+                "1h@14:00": 260,
+                "1h@15:00": 254,
+                "1h@16:00": 166,
+                "1h@gap": 174
+              }
+            },
+            "COST": {
+              "admitted_decision_clusters": 214,
+              "admitted_rows": 2196,
+              "admitted_rows_by_route": {
+                "1h@04:00": 131,
+                "1h@05:00": 131,
+                "1h@06:00": 182,
+                "1h@07:00": 214,
+                "1h@08:00": 214,
+                "1h@09:00": 214,
+                "1h@10:00": 214,
+                "1h@11:00": 214,
+                "1h@12:00": 214,
+                "1h@13:00": 138,
+                "1h@14:00": 91,
+                "1h@15:00": 87,
+                "1h@16:00": 56,
+                "1h@gap": 96
+              },
+              "assessment_decision_clusters": 44,
+              "assessment_rows": 428,
+              "assessment_rows_by_route": {
+                "1h@04:00": 22,
+                "1h@05:00": 20,
+                "1h@06:00": 36,
+                "1h@07:00": 44,
+                "1h@08:00": 44,
+                "1h@09:00": 44,
+                "1h@10:00": 44,
+                "1h@11:00": 44,
+                "1h@12:00": 44,
+                "1h@13:00": 27,
+                "1h@14:00": 18,
+                "1h@15:00": 12,
+                "1h@16:00": 10,
+                "1h@gap": 19
+              },
+              "fitted_decision_clusters": 131,
+              "fitted_rows": 1340,
+              "fitted_rows_by_route": {
+                "1h@04:00": 81,
+                "1h@05:00": 85,
+                "1h@06:00": 111,
+                "1h@07:00": 131,
+                "1h@08:00": 131,
+                "1h@09:00": 131,
+                "1h@10:00": 131,
+                "1h@11:00": 131,
+                "1h@12:00": 131,
+                "1h@13:00": 82,
+                "1h@14:00": 55,
+                "1h@15:00": 55,
+                "1h@16:00": 32,
+                "1h@gap": 53
+              }
+            },
+            "GOOG": {
+              "admitted_decision_clusters": 268,
+              "admitted_rows": 3550,
+              "admitted_rows_by_route": {
+                "1h@04:00": 267,
+                "1h@05:00": 268,
+                "1h@06:00": 268,
+                "1h@07:00": 268,
+                "1h@08:00": 268,
+                "1h@09:00": 268,
+                "1h@10:00": 268,
+                "1h@11:00": 268,
+                "1h@12:00": 268,
+                "1h@13:00": 265,
+                "1h@14:00": 239,
+                "1h@15:00": 234,
+                "1h@16:00": 197,
+                "1h@gap": 204
+              },
+              "assessment_decision_clusters": 33,
+              "assessment_rows": 450,
+              "assessment_rows_by_route": {
+                "1h@04:00": 33,
+                "1h@05:00": 33,
+                "1h@06:00": 33,
+                "1h@07:00": 33,
+                "1h@08:00": 33,
+                "1h@09:00": 33,
+                "1h@10:00": 33,
+                "1h@11:00": 33,
+                "1h@12:00": 33,
+                "1h@13:00": 31,
+                "1h@14:00": 27,
+                "1h@15:00": 30,
+                "1h@16:00": 32,
+                "1h@gap": 33
+              },
+              "fitted_decision_clusters": 209,
+              "fitted_rows": 2742,
+              "fitted_rows_by_route": {
+                "1h@04:00": 208,
+                "1h@05:00": 209,
+                "1h@06:00": 209,
+                "1h@07:00": 209,
+                "1h@08:00": 209,
+                "1h@09:00": 209,
+                "1h@10:00": 209,
+                "1h@11:00": 209,
+                "1h@12:00": 209,
+                "1h@13:00": 208,
+                "1h@14:00": 187,
+                "1h@15:00": 181,
+                "1h@16:00": 139,
+                "1h@gap": 147
+              }
+            },
+            "MU": {
+              "admitted_decision_clusters": 330,
+              "admitted_rows": 4293,
+              "admitted_rows_by_route": {
+                "1h@04:00": 324,
+                "1h@05:00": 327,
+                "1h@06:00": 330,
+                "1h@07:00": 330,
+                "1h@08:00": 330,
+                "1h@09:00": 330,
+                "1h@10:00": 330,
+                "1h@11:00": 330,
+                "1h@12:00": 330,
+                "1h@13:00": 314,
+                "1h@14:00": 281,
+                "1h@15:00": 281,
+                "1h@16:00": 221,
+                "1h@gap": 235
+              },
+              "assessment_decision_clusters": 44,
+              "assessment_rows": 616,
+              "assessment_rows_by_route": {
+                "1h@04:00": 44,
+                "1h@05:00": 44,
+                "1h@06:00": 44,
+                "1h@07:00": 44,
+                "1h@08:00": 44,
+                "1h@09:00": 44,
+                "1h@10:00": 44,
+                "1h@11:00": 44,
+                "1h@12:00": 44,
+                "1h@13:00": 44,
+                "1h@14:00": 44,
+                "1h@15:00": 44,
+                "1h@16:00": 44,
+                "1h@gap": 44
+              },
+              "fitted_decision_clusters": 247,
+              "fitted_rows": 3129,
+              "fitted_rows_by_route": {
+                "1h@04:00": 241,
+                "1h@05:00": 244,
+                "1h@06:00": 247,
+                "1h@07:00": 247,
+                "1h@08:00": 247,
+                "1h@09:00": 247,
+                "1h@10:00": 247,
+                "1h@11:00": 247,
+                "1h@12:00": 247,
+                "1h@13:00": 231,
+                "1h@14:00": 198,
+                "1h@15:00": 198,
+                "1h@16:00": 136,
+                "1h@gap": 152
+              }
+            },
+            "NVDA": {
+              "admitted_decision_clusters": 412,
+              "admitted_rows": 5523,
+              "admitted_rows_by_route": {
+                "1h@04:00": 412,
+                "1h@05:00": 412,
+                "1h@06:00": 412,
+                "1h@07:00": 412,
+                "1h@08:00": 412,
+                "1h@09:00": 412,
+                "1h@10:00": 412,
+                "1h@11:00": 412,
+                "1h@12:00": 412,
+                "1h@13:00": 412,
+                "1h@14:00": 411,
+                "1h@15:00": 412,
+                "1h@16:00": 291,
+                "1h@gap": 289
+              },
+              "assessment_decision_clusters": 44,
+              "assessment_rows": 615,
+              "assessment_rows_by_route": {
+                "1h@04:00": 44,
+                "1h@05:00": 44,
+                "1h@06:00": 44,
+                "1h@07:00": 44,
+                "1h@08:00": 44,
+                "1h@09:00": 44,
+                "1h@10:00": 44,
+                "1h@11:00": 44,
+                "1h@12:00": 44,
+                "1h@13:00": 44,
+                "1h@14:00": 43,
+                "1h@15:00": 44,
+                "1h@16:00": 44,
+                "1h@gap": 44
+              },
+              "fitted_decision_clusters": 329,
+              "fitted_rows": 4360,
+              "fitted_rows_by_route": {
+                "1h@04:00": 329,
+                "1h@05:00": 329,
+                "1h@06:00": 329,
+                "1h@07:00": 329,
+                "1h@08:00": 329,
+                "1h@09:00": 329,
+                "1h@10:00": 329,
+                "1h@11:00": 329,
+                "1h@12:00": 329,
+                "1h@13:00": 329,
+                "1h@14:00": 329,
+                "1h@15:00": 329,
+                "1h@16:00": 206,
+                "1h@gap": 206
+              }
+            },
+            "SNDK": {
+              "admitted_decision_clusters": 148,
+              "admitted_rows": 1950,
+              "admitted_rows_by_route": {
+                "1h@04:00": 138,
+                "1h@05:00": 138,
+                "1h@06:00": 138,
+                "1h@07:00": 148,
+                "1h@08:00": 148,
+                "1h@09:00": 148,
+                "1h@10:00": 148,
+                "1h@11:00": 148,
+                "1h@12:00": 148,
+                "1h@13:00": 137,
+                "1h@14:00": 137,
+                "1h@15:00": 135,
+                "1h@16:00": 120,
+                "1h@gap": 119
+              },
+              "assessment_decision_clusters": 44,
+              "assessment_rows": 616,
+              "assessment_rows_by_route": {
+                "1h@04:00": 44,
+                "1h@05:00": 44,
+                "1h@06:00": 44,
+                "1h@07:00": 44,
+                "1h@08:00": 44,
+                "1h@09:00": 44,
+                "1h@10:00": 44,
+                "1h@11:00": 44,
+                "1h@12:00": 44,
+                "1h@13:00": 44,
+                "1h@14:00": 44,
+                "1h@15:00": 44,
+                "1h@16:00": 44,
+                "1h@gap": 44
+              },
+              "fitted_decision_clusters": 65,
+              "fitted_rows": 786,
+              "fitted_rows_by_route": {
+                "1h@04:00": 55,
+                "1h@05:00": 55,
+                "1h@06:00": 55,
+                "1h@07:00": 65,
+                "1h@08:00": 65,
+                "1h@09:00": 65,
+                "1h@10:00": 65,
+                "1h@11:00": 65,
+                "1h@12:00": 65,
+                "1h@13:00": 54,
+                "1h@14:00": 54,
+                "1h@15:00": 52,
+                "1h@16:00": 35,
+                "1h@gap": 36
+              }
+            }
+          },
+          "training_base_rate_assessment": {
+            "brier_score": 0.23251971230196417,
+            "direction_accuracy_at_0_5": 0.6323886639676113,
+            "expected_calibration_error_10_bin": 0.006816938395885763,
+            "log_loss": 0.6577715877492407,
+            "mean_probability": 0.3744282744282744,
+            "positive_rate": 0.36761133603238866,
+            "rows": 3705
+          }
+        },
+        "1w": {
+          "assessment": {
+            "brier_score": 0.25028274838137843,
+            "direction_accuracy_at_0_5": 0.5051546391752577,
+            "expected_calibration_error_10_bin": 0.03931868907602931,
+            "log_loss": 0.6937166285338542,
+            "mean_probability": 0.455526671748713,
+            "positive_rate": 0.4948453608247423,
+            "rows": 194
+          },
+          "calibration_diagnostics": {
+            "assessment_probability_range": [
+              0.4234664758902824,
+              0.4841104097469059
+            ],
+            "calibrated_probability_range": [
+              0.4234664758902824,
+              0.5087846865444513
+            ],
+            "calibration_positive_rate": 0.4567901234567901,
+            "calibration_rows": 162,
+            "information_available": true,
+            "nondecreasing_constraint_active": false,
+            "platt_slope": 0.11126211028808572,
+            "raw_probability_range": [
+              0.3522265204268681,
+              0.9227170194966068
+            ],
+            "status": "DIRECTIONAL_INFORMATION_AVAILABLE"
+          },
+          "calibration_method": "platt",
+          "logistic_regularization_candidates": [
+            1.0
+          ],
+          "partitions": {
+            "assessment_rows": 194,
+            "calibration_rows": 162,
+            "selection_rows": 133,
+            "train_rows": 855
+          },
+          "promotion_gate": {
+            "assessment_beats_baseline": {
+              "brier_score": true,
+              "log_loss": true
+            },
+            "assessment_minus_baseline": {
+              "brier_score": -0.00995409051327173,
+              "log_loss": -0.020279819287421
+            },
+            "baseline_tolerances": {
+              "brier_score": 0.005,
+              "log_loss": 0.01
+            },
+            "checks": {
+              "assessment_has_at_least_10_decision_clusters": true,
+              "brier_within_baseline_tolerance": true,
+              "calibration_retains_directional_information": true,
+              "expected_calibration_error_at_most_0_15": true,
+              "log_loss_within_baseline_tolerance": true
+            },
+            "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+            "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes.",
+            "policy_version": "independent-stock-directional-promotion-v2",
+            "status": "PROMOTED"
+          },
+          "selected_family": "regularized-logistic-c1",
+          "selected_logistic_regularization_c": 1.0,
+          "target_boundary_quality": {
+            "admitted_rows_by_route": {
+              "1w@D+5": 1416
+            },
+            "admitted_rows_by_symbol": {
+              "AAPL": 241,
+              "AMZN": 238,
+              "COST": 92,
+              "GOOG": 204,
+              "MU": 234,
+              "NVDA": 290,
+              "SNDK": 117
+            },
+            "aligned_rows": 1416,
+            "candidate_rows": 3909,
+            "conflicting_minute_rows_excluded": 0,
+            "enforced": true,
+            "excluded_rows": 2493,
+            "excluded_rows_by_route": {
+              "1w@D+5": 2493
+            },
+            "maximum_boundary_gap_seconds": 300.0,
+            "policy": "clock-window-boundaries-within-five-minutes-v1",
+            "target_contract_version": "independent-stock-targets-v1",
+            "target_price_dataset": "XNAS.ITCH",
+            "target_price_source_contract": "xnas-itch-archive-v1"
+          },
+          "target_support_by_symbol": {
+            "AAPL": {
+              "admitted_decision_clusters": 241,
+              "admitted_rows": 241,
+              "admitted_rows_by_route": {
+                "1w@D+5": 241
+              },
+              "assessment_decision_clusters": 27,
+              "assessment_rows": 27,
+              "assessment_rows_by_route": {
+                "1w@D+5": 27
+              },
+              "fitted_decision_clusters": 177,
+              "fitted_rows": 177,
+              "fitted_rows_by_route": {
+                "1w@D+5": 177
+              }
+            },
+            "AMZN": {
+              "admitted_decision_clusters": 238,
+              "admitted_rows": 238,
+              "admitted_rows_by_route": {
+                "1w@D+5": 238
+              },
+              "assessment_decision_clusters": 27,
+              "assessment_rows": 27,
+              "assessment_rows_by_route": {
+                "1w@D+5": 27
+              },
+              "fitted_decision_clusters": 182,
+              "fitted_rows": 182,
+              "fitted_rows_by_route": {
+                "1w@D+5": 182
+              }
+            },
+            "COST": {
+              "admitted_decision_clusters": 92,
+              "admitted_rows": 92,
+              "admitted_rows_by_route": {
+                "1w@D+5": 92
+              },
+              "assessment_decision_clusters": 13,
+              "assessment_rows": 13,
+              "assessment_rows_by_route": {
+                "1w@D+5": 13
+              },
+              "fitted_decision_clusters": 57,
+              "fitted_rows": 57,
+              "fitted_rows_by_route": {
+                "1w@D+5": 57
+              }
+            },
+            "GOOG": {
+              "admitted_decision_clusters": 204,
+              "admitted_rows": 204,
+              "admitted_rows_by_route": {
+                "1w@D+5": 204
+              },
+              "assessment_decision_clusters": 25,
+              "assessment_rows": 25,
+              "assessment_rows_by_route": {
+                "1w@D+5": 25
+              },
+              "fitted_decision_clusters": 153,
+              "fitted_rows": 153,
+              "fitted_rows_by_route": {
+                "1w@D+5": 153
+              }
+            },
+            "MU": {
+              "admitted_decision_clusters": 234,
+              "admitted_rows": 234,
+              "admitted_rows_by_route": {
+                "1w@D+5": 234
+              },
+              "assessment_decision_clusters": 34,
+              "assessment_rows": 34,
+              "assessment_rows_by_route": {
+                "1w@D+5": 34
+              },
+              "fitted_decision_clusters": 160,
+              "fitted_rows": 160,
+              "fitted_rows_by_route": {
+                "1w@D+5": 160
+              }
+            },
+            "NVDA": {
+              "admitted_decision_clusters": 290,
+              "admitted_rows": 290,
+              "admitted_rows_by_route": {
+                "1w@D+5": 290
+              },
+              "assessment_decision_clusters": 34,
+              "assessment_rows": 34,
+              "assessment_rows_by_route": {
+                "1w@D+5": 34
+              },
+              "fitted_decision_clusters": 216,
+              "fitted_rows": 216,
+              "fitted_rows_by_route": {
+                "1w@D+5": 216
+              }
+            },
+            "SNDK": {
+              "admitted_decision_clusters": 117,
+              "admitted_rows": 117,
+              "admitted_rows_by_route": {
+                "1w@D+5": 117
+              },
+              "assessment_decision_clusters": 34,
+              "assessment_rows": 34,
+              "assessment_rows_by_route": {
+                "1w@D+5": 34
+              },
+              "fitted_decision_clusters": 43,
+              "fitted_rows": 43,
+              "fitted_rows_by_route": {
+                "1w@D+5": 43
+              }
+            }
+          },
+          "training_base_rate_assessment": {
+            "brier_score": 0.26023683889465016,
+            "direction_accuracy_at_0_5": 0.4948453608247423,
+            "expected_calibration_error_10_bin": 0.10130848532910375,
+            "log_loss": 0.7139964478212752,
+            "mean_probability": 0.596153846153846,
+            "positive_rate": 0.4948453608247423,
+            "rows": 194
+          }
+        },
+        "4h": {
+          "assessment": {
+            "brier_score": 0.24535525871597133,
+            "direction_accuracy_at_0_5": 0.5631528964862298,
+            "expected_calibration_error_10_bin": 0.012702437216214446,
+            "log_loss": 0.6838178606029275,
+            "mean_probability": 0.44954954072998465,
+            "positive_rate": 0.4368471035137702,
+            "rows": 1053
+          },
+          "calibration_diagnostics": {
+            "assessment_probability_range": [
+              0.40818680938177854,
+              0.4981231776769707
+            ],
+            "calibrated_probability_range": [
+              0.40818680938177854,
+              0.4981231776769707
+            ],
+            "calibration_positive_rate": 0.4517497348886532,
+            "calibration_rows": 943,
+            "information_available": true,
+            "nondecreasing_constraint_active": false,
+            "platt_slope": 0.1508687662645643,
+            "raw_probability_range": [
+              0.2444893853435806,
+              0.7831634638694895
+            ],
+            "status": "DIRECTIONAL_INFORMATION_AVAILABLE"
+          },
+          "calibration_method": "platt",
+          "logistic_regularization_candidates": [
+            1.0
+          ],
+          "partitions": {
+            "assessment_rows": 1053,
+            "calibration_rows": 943,
+            "selection_rows": 746,
+            "train_rows": 4505
+          },
+          "promotion_gate": {
+            "assessment_beats_baseline": {
+              "brier_score": true,
+              "log_loss": true
+            },
+            "assessment_minus_baseline": {
+              "brier_score": -0.00163327862475993,
+              "log_loss": -0.0032995883023196
+            },
+            "baseline_tolerances": {
+              "brier_score": 0.005,
+              "log_loss": 0.01
+            },
+            "checks": {
+              "assessment_has_at_least_10_decision_clusters": true,
+              "brier_within_baseline_tolerance": true,
+              "calibration_retains_directional_information": true,
+              "expected_calibration_error_at_most_0_15": true,
+              "log_loss_within_baseline_tolerance": true
+            },
+            "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+            "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes.",
+            "policy_version": "independent-stock-directional-promotion-v2",
+            "status": "PROMOTED"
+          },
+          "selected_family": "hist-gradient-mlp-0.25",
+          "selected_logistic_regularization_c": null,
+          "target_boundary_quality": {
+            "admitted_rows_by_route": {
+              "4h@04:00": 1995,
+              "4h@08:00": 2026,
+              "4h@12:00": 1846,
+              "4h@16:00": 1394
+            },
+            "admitted_rows_by_symbol": {
+              "AAPL": 1212,
+              "AMZN": 1201,
+              "COST": 614,
+              "GOOG": 981,
+              "MU": 1184,
+              "NVDA": 1526,
+              "SNDK": 543
+            },
+            "aligned_rows": 7261,
+            "candidate_rows": 15741,
+            "conflicting_minute_rows_excluded": 0,
+            "enforced": true,
+            "excluded_rows": 8480,
+            "excluded_rows_by_route": {
+              "4h@04:00": 1942,
+              "4h@08:00": 1911,
+              "4h@12:00": 2091,
+              "4h@16:00": 2536
+            },
+            "maximum_boundary_gap_seconds": 300.0,
+            "policy": "clock-window-boundaries-within-five-minutes-v1",
+            "target_contract_version": "independent-stock-targets-v1",
+            "target_price_dataset": "XNAS.ITCH",
+            "target_price_source_contract": "xnas-itch-archive-v1"
+          },
+          "target_support_by_symbol": {
+            "AAPL": {
+              "admitted_decision_clusters": 328,
+              "admitted_rows": 1212,
+              "admitted_rows_by_route": {
+                "4h@04:00": 328,
+                "4h@08:00": 328,
+                "4h@12:00": 321,
+                "4h@16:00": 235
+              },
+              "assessment_decision_clusters": 36,
+              "assessment_rows": 143,
+              "assessment_rows_by_route": {
+                "4h@04:00": 36,
+                "4h@08:00": 36,
+                "4h@12:00": 36,
+                "4h@16:00": 35
+              },
+              "fitted_decision_clusters": 257,
+              "fitted_rows": 928,
+              "fitted_rows_by_route": {
+                "4h@04:00": 257,
+                "4h@08:00": 257,
+                "4h@12:00": 250,
+                "4h@16:00": 164
+              }
+            },
+            "AMZN": {
+              "admitted_decision_clusters": 326,
+              "admitted_rows": 1201,
+              "admitted_rows_by_route": {
+                "4h@04:00": 326,
+                "4h@08:00": 326,
+                "4h@12:00": 319,
+                "4h@16:00": 230
+              },
+              "assessment_decision_clusters": 34,
+              "assessment_rows": 135,
+              "assessment_rows_by_route": {
+                "4h@04:00": 34,
+                "4h@08:00": 34,
+                "4h@12:00": 34,
+                "4h@16:00": 33
+              },
+              "fitted_decision_clusters": 263,
+              "fitted_rows": 948,
+              "fitted_rows_by_route": {
+                "4h@04:00": 263,
+                "4h@08:00": 263,
+                "4h@12:00": 256,
+                "4h@16:00": 166
+              }
+            },
+            "COST": {
+              "admitted_decision_clusters": 214,
+              "admitted_rows": 614,
+              "admitted_rows_by_route": {
+                "4h@04:00": 191,
+                "4h@08:00": 214,
+                "4h@12:00": 119,
+                "4h@16:00": 90
+              },
+              "assessment_decision_clusters": 44,
+              "assessment_rows": 122,
+              "assessment_rows_by_route": {
+                "4h@04:00": 40,
+                "4h@08:00": 44,
+                "4h@12:00": 21,
+                "4h@16:00": 17
+              },
+              "fitted_decision_clusters": 131,
+              "fitted_rows": 371,
+              "fitted_rows_by_route": {
+                "4h@04:00": 115,
+                "4h@08:00": 131,
+                "4h@12:00": 74,
+                "4h@16:00": 51
+              }
+            },
+            "GOOG": {
+              "admitted_decision_clusters": 268,
+              "admitted_rows": 981,
+              "admitted_rows_by_route": {
+                "4h@04:00": 268,
+                "4h@08:00": 268,
+                "4h@12:00": 244,
+                "4h@16:00": 201
+              },
+              "assessment_decision_clusters": 33,
+              "assessment_rows": 128,
+              "assessment_rows_by_route": {
+                "4h@04:00": 33,
+                "4h@08:00": 33,
+                "4h@12:00": 30,
+                "4h@16:00": 32
+              },
+              "fitted_decision_clusters": 209,
+              "fitted_rows": 750,
+              "fitted_rows_by_route": {
+                "4h@04:00": 209,
+                "4h@08:00": 209,
+                "4h@12:00": 190,
+                "4h@16:00": 142
+              }
+            },
+            "MU": {
+              "admitted_decision_clusters": 330,
+              "admitted_rows": 1184,
+              "admitted_rows_by_route": {
+                "4h@04:00": 330,
+                "4h@08:00": 330,
+                "4h@12:00": 295,
+                "4h@16:00": 229
+              },
+              "assessment_decision_clusters": 44,
+              "assessment_rows": 175,
+              "assessment_rows_by_route": {
+                "4h@04:00": 44,
+                "4h@08:00": 44,
+                "4h@12:00": 44,
+                "4h@16:00": 43
+              },
+              "fitted_decision_clusters": 247,
+              "fitted_rows": 851,
+              "fitted_rows_by_route": {
+                "4h@04:00": 247,
+                "4h@08:00": 247,
+                "4h@12:00": 212,
+                "4h@16:00": 145
+              }
+            },
+            "NVDA": {
+              "admitted_decision_clusters": 412,
+              "admitted_rows": 1526,
+              "admitted_rows_by_route": {
+                "4h@04:00": 412,
+                "4h@08:00": 412,
+                "4h@12:00": 412,
+                "4h@16:00": 290
+              },
+              "assessment_decision_clusters": 44,
+              "assessment_rows": 175,
+              "assessment_rows_by_route": {
+                "4h@04:00": 44,
+                "4h@08:00": 44,
+                "4h@12:00": 44,
+                "4h@16:00": 43
+              },
+              "fitted_decision_clusters": 329,
+              "fitted_rows": 1193,
+              "fitted_rows_by_route": {
+                "4h@04:00": 329,
+                "4h@08:00": 329,
+                "4h@12:00": 329,
+                "4h@16:00": 206
+              }
+            },
+            "SNDK": {
+              "admitted_decision_clusters": 148,
+              "admitted_rows": 543,
+              "admitted_rows_by_route": {
+                "4h@04:00": 140,
+                "4h@08:00": 148,
+                "4h@12:00": 136,
+                "4h@16:00": 119
+              },
+              "assessment_decision_clusters": 44,
+              "assessment_rows": 175,
+              "assessment_rows_by_route": {
+                "4h@04:00": 44,
+                "4h@08:00": 44,
+                "4h@12:00": 44,
+                "4h@16:00": 43
+              },
+              "fitted_decision_clusters": 65,
+              "fitted_rows": 210,
+              "fitted_rows_by_route": {
+                "4h@04:00": 57,
+                "4h@08:00": 65,
+                "4h@12:00": 53,
+                "4h@16:00": 35
+              }
+            }
+          },
+          "training_base_rate_assessment": {
+            "brier_score": 0.24698853734073126,
+            "direction_accuracy_at_0_5": 0.5631528964862298,
+            "expected_calibration_error_10_bin": 0.031254210521651615,
+            "log_loss": 0.6871174489052471,
+            "mean_probability": 0.4681013140354218,
+            "positive_rate": 0.4368471035137702,
+            "rows": 1053
+          }
+        }
+      },
+      "model_status_counts": {
+        "1d/PROMOTED": 35,
+        "1h/PROMOTED": 98,
+        "1w/PROMOTED": 7,
+        "4h/PROMOTED": 28
+      },
+      "rows_per_symbol": {
+        "AAPL": 24,
+        "AMZN": 24,
+        "COST": 24,
+        "GOOG": 24,
+        "MU": 24,
+        "NVDA": 24,
+        "SNDK": 24
+      },
+      "run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260912T051210.050260Z",
+      "status": "VERIFIED",
+      "stock_price_source": {
+        "dataset": "XNAS.ITCH",
+        "rows": null,
+        "schema": "ohlcv-1m",
+        "source_contract": "xnas-itch-archive-v1",
+        "source_policy": "one_explicit_dataset_no_fill_no_cross_dataset_fallback",
+        "status": null,
+        "symbols": null
+      },
+      "symbols": [
+        "AAPL",
+        "AMZN",
+        "GOOG",
+        "MU",
+        "NVDA",
+        "SNDK",
+        "COST"
+      ],
+      "verified_promoted_groups": [
+        "1d",
+        "1h",
+        "1w",
+        "4h"
+      ]
+    },
+    "opra_coverage": {
+      "current_verified": {
+        "completed_through": "2026-09-12",
+        "coverage_semantics": "exclusive cursor; includes every session before this date",
+        "production_schemas": [
+          "ohlcv-1h",
+          "cbbo-1m",
+          "definition"
+        ],
+        "required_completed_through": "2026-09-12",
+        "status": "CURRENT_THROUGH_PRIOR_ACTION_DAY",
+        "verified_cursor_count": 21,
+        "verified_cursors": [
+          "AAPL/ohlcv-1h",
+          "AAPL/cbbo-1m",
+          "AAPL/definition",
+          "AMZN/ohlcv-1h",
+          "AMZN/cbbo-1m",
+          "AMZN/definition",
+          "GOOG/ohlcv-1h",
+          "GOOG/cbbo-1m",
+          "GOOG/definition",
+          "MU/ohlcv-1h",
+          "MU/cbbo-1m",
+          "MU/definition",
+          "NVDA/ohlcv-1h",
+          "NVDA/cbbo-1m",
+          "NVDA/definition",
+          "SNDK/ohlcv-1h",
+          "SNDK/cbbo-1m",
+          "SNDK/definition",
+          "COST/ohlcv-1h",
+          "COST/cbbo-1m",
+          "COST/definition"
+        ]
+      },
+      "provider_coverage_boundary": "Native OPRA and XNAS receipts; inspect Loop A log for FMP/FRED/Schwab/SEC scope outcomes",
+      "recorded": {
+        "completed_through": "2026-09-12",
+        "coverage_semantics": "exclusive cursor; includes every session before this date",
+        "production_schemas": [
+          "ohlcv-1h",
+          "cbbo-1m",
+          "definition"
+        ],
+        "required_completed_through": "2026-09-12",
+        "status": "CURRENT_THROUGH_PRIOR_ACTION_DAY",
+        "verified_cursor_count": 21,
+        "verified_cursors": [
+          "AAPL/ohlcv-1h",
+          "AAPL/cbbo-1m",
+          "AAPL/definition",
+          "AMZN/ohlcv-1h",
+          "AMZN/cbbo-1m",
+          "AMZN/definition",
+          "GOOG/ohlcv-1h",
+          "GOOG/cbbo-1m",
+          "GOOG/definition",
+          "MU/ohlcv-1h",
+          "MU/cbbo-1m",
+          "MU/definition",
+          "NVDA/ohlcv-1h",
+          "NVDA/cbbo-1m",
+          "NVDA/definition",
+          "SNDK/ohlcv-1h",
+          "SNDK/cbbo-1m",
+          "SNDK/definition",
+          "COST/ohlcv-1h",
+          "COST/cbbo-1m",
+          "COST/definition"
+        ]
+      },
+      "status": "VERIFIED"
+    },
+    "overnight": {
+      "attempt_chain": [
+        {
+          "run": "C:\\DATASTORE\\ml\\overnight-runs\\20260912T040657.173506Z",
+          "stage_order": [
+            "loop_a_close_fetch",
+            "loop_b_directional_generation",
+            "stock_target_history",
+            "gameplan_evaluation",
+            "gameplan_publication",
+            "stock_enrichment_training",
+            "gameplan_trade_planning",
+            "gameplan_actuals_review"
+          ],
+          "status": "COMPLETE"
+        }
+      ],
+      "completed_stages": [
+        "loop_a_close_fetch",
+        "loop_b_directional_generation",
+        "stock_target_history",
+        "gameplan_evaluation",
+        "gameplan_publication",
+        "stock_enrichment_training",
+        "gameplan_trade_planning",
+        "gameplan_actuals_review"
+      ],
+      "deadline_at": "2026-09-14T11:00:00+00:00",
+      "expected_action_date": "2026-09-14",
+      "log_checksums_verified": true,
+      "orders_placed": 0,
+      "status": "VERIFIED"
+    },
+    "planning_prices": {
+      "error": "KeyError: 'trade_plan'",
+      "status": "FAILED"
+    },
+    "reference_completion": {
+      "error": "KeyError: 'trade_plan'",
+      "status": "FAILED"
+    },
+    "stock_history": {
+      "acquisition": {
+        "capacity_pass": true,
+        "cost_usd": 0.0,
+        "counts": {
+          "downloaded": 7,
+          "failed": 0,
+          "no_data": 0,
+          "verified": 0
+        },
+        "requests": 7,
+        "status": "COMPLETE"
+      },
+      "by_symbol": {
+        "AAPL": {
+          "close_gap_minutes": 0.0,
+          "first_bar_start": "2026-09-11T11:00:00+00:00",
+          "last_actual_close_observed_at": "2026-09-12T00:00:00+00:00",
+          "last_bar_start": "2026-09-11T23:59:00+00:00",
+          "requested_interval_coverage": "VERIFIED",
+          "rows": 701
+        },
+        "AMZN": {
+          "close_gap_minutes": 0.0,
+          "first_bar_start": "2026-09-11T11:00:00+00:00",
+          "last_actual_close_observed_at": "2026-09-12T00:00:00+00:00",
+          "last_bar_start": "2026-09-11T23:59:00+00:00",
+          "requested_interval_coverage": "VERIFIED",
+          "rows": 669
+        },
+        "COST": {
+          "close_gap_minutes": 0.0,
+          "first_bar_start": "2026-09-11T11:00:00+00:00",
+          "last_actual_close_observed_at": "2026-09-12T00:00:00+00:00",
+          "last_bar_start": "2026-09-11T23:59:00+00:00",
+          "requested_interval_coverage": "VERIFIED",
+          "rows": 437
+        },
+        "GOOG": {
+          "close_gap_minutes": 0.0,
+          "first_bar_start": "2026-09-11T11:00:00+00:00",
+          "last_actual_close_observed_at": "2026-09-12T00:00:00+00:00",
+          "last_bar_start": "2026-09-11T23:59:00+00:00",
+          "requested_interval_coverage": "VERIFIED",
+          "rows": 631
+        },
+        "MU": {
+          "close_gap_minutes": 0.0,
+          "first_bar_start": "2026-09-11T11:00:00+00:00",
+          "last_actual_close_observed_at": "2026-09-12T00:00:00+00:00",
+          "last_bar_start": "2026-09-11T23:59:00+00:00",
+          "requested_interval_coverage": "VERIFIED",
+          "rows": 758
+        },
+        "NVDA": {
+          "close_gap_minutes": 5.0,
+          "first_bar_start": "2026-09-11T11:00:00+00:00",
+          "last_actual_close_observed_at": "2026-09-11T23:55:00+00:00",
+          "last_bar_start": "2026-09-11T23:54:00+00:00",
+          "requested_interval_coverage": "VERIFIED",
+          "rows": 694
+        },
+        "SNDK": {
+          "close_gap_minutes": 0.0,
+          "first_bar_start": "2026-09-11T11:00:00+00:00",
+          "last_actual_close_observed_at": "2026-09-12T00:00:00+00:00",
+          "last_bar_start": "2026-09-11T23:59:00+00:00",
+          "requested_interval_coverage": "VERIFIED",
+          "rows": 740
+        }
+      },
+      "completed_through": "2026-09-12",
+      "native_archive_partitions_verified": 77,
+      "native_source_files_verified": 308,
+      "receipt": "C:\\DATASTORE\\ml\\stock-target-history-runs\\20260912T051058.819360Z\\receipt.json",
+      "run": "C:\\DATASTORE\\ml\\stock-target-history-runs\\20260912T051058.819360Z",
+      "source_session": "2026-09-11",
+      "status": "VERIFIED"
+    },
+    "trade_plan": {
+      "error": "AssertionError: DataFrame.iloc[:, 0] (column name=\"projected_trade_quantity\") are different\n\nDataFrame.iloc[:, 0] (column name=\"projected_trade_quantity\") values are different (4.16667 %)\n[index]: [2026-09-14:AAPL:1d@D+1, 2026-09-14:AAPL:1d@D+2, 2026-09-14:AAPL:1d@D+3, 2026-09-14:AAPL:1d@D+4, 2026-09-14:AAPL:1d@D+5, 2026-09-14:AAPL:1h@04:00, 2026-09-14:AAPL:1h@05:00, 2026-09-14:AAPL:1h@06:00, 2026-09-14:AAPL:1h@07:00, 2026-09-14:AAPL:1h@08:00, 2026-09-14:AAPL:1h@09:00, 2026-09-14:AAPL:1h@10:00, 2026-09-14:AAPL:1h@11:00, 2026-09-14:AAPL:1h@12:00, 2026-09-14:AAPL:1h@13:00, 2026-09-14:AAPL:1h@14:00, 2026-09-14:AAPL:1h@15:00, 2026-09-14:AAPL:1h@16:00, 2026-09-14:AAPL:1h@gap, 2026-09-14:AAPL:1w@D+5, 2026-09-14:AAPL:4h@04:00, 2026-09-14:AAPL:4h@08:00, 2026-09-14:AAPL:4h@12:00, 2026-09-14:AAPL:4h@16:00, 2026-09-14:AMZN:1d@D+1, 2026-09-14:AMZN:1d@D+2, 2026-09-14:AMZN:1d@D+3, 2026-09-14:AMZN:1d@D+4, 2026-09-14:AMZN:1d@D+5, 2026-09-14:AMZN:1h@04:00, 2026-09-14:AMZN:1h@05:00, 2026-09-14:AMZN:1h@06:00, 2026-09-14:AMZN:1h@07:00, 2026-09-14:AMZN:1h@08:00, 2026-09-14:AMZN:1h@09:00, 2026-09-14:AMZN:1h@10:00, 2026-09-14:AMZN:1h@11:00, 2026-09-14:AMZN:1h@12:00, 2026-09-14:AMZN:1h@13:00, 2026-09-14:AMZN:1h@14:00, 2026-09-14:AMZN:1h@15:00, 2026-09-14:AMZN:1h@16:00, 2026-09-14:AMZN:1h@gap, 2026-09-14:AMZN:1w@D+5, 2026-09-14:AMZN:4h@04:00, 2026-09-14:AMZN:4h@08:00, 2026-09-14:AMZN:4h@12:00, 2026-09-14:AMZN:4h@16:00, 2026-09-14:COST:1d@D+1, 2026-09-14:COST:1d@D+2, 2026-09-14:COST:1d@D+3, 2026-09-14:COST:1d@D+4, 2026-09-14:COST:1d@D+5, 2026-09-14:COST:1h@04:00, 2026-09-14:COST:1h@05:00, 2026-09-14:COST:1h@06:00, 2026-09-14:COST:1h@07:00, 2026-09-14:COST:1h@08:00, 2026-09-14:COST:1h@09:00, 2026-09-14:COST:1h@10:00, 2026-09-14:COST:1h@11:00, 2026-09-14:COST:1h@12:00, 2026-09-14:COST:1h@13:00, 2026-09-14:COST:1h@14:00, 2026-09-14:COST:1h@15:00, 2026-09-14:COST:1h@16:00, 2026-09-14:COST:1h@gap, 2026-09-14:COST:1w@D+5, 2026-09-14:COST:4h@04:00, 2026-09-14:COST:4h@08:00, 2026-09-14:COST:4h@12:00, 2026-09-14:COST:4h@16:00, 2026-09-14:GOOG:1d@D+1, 2026-09-14:GOOG:1d@D+2, 2026-09-14:GOOG:1d@D+3, 2026-09-14:GOOG:1d@D+4, 2026-09-14:GOOG:1d@D+5, 2026-09-14:GOOG:1h@04:00, 2026-09-14:GOOG:1h@05:00, 2026-09-14:GOOG:1h@06:00, 2026-09-14:GOOG:1h@07:00, 2026-09-14:GOOG:1h@08:00, 2026-09-14:GOOG:1h@09:00, 2026-09-14:GOOG:1h@10:00, 2026-09-14:GOOG:1h@11:00, 2026-09-14:GOOG:1h@12:00, 2026-09-14:GOOG:1h@13:00, 2026-09-14:GOOG:1h@14:00, 2026-09-14:GOOG:1h@15:00, 2026-09-14:GOOG:1h@16:00, 2026-09-14:GOOG:1h@gap, 2026-09-14:GOOG:1w@D+5, 2026-09-14:GOOG:4h@04:00, 2026-09-14:GOOG:4h@08:00, 2026-09-14:GOOG:4h@12:00, 2026-09-14:GOOG:4h@16:00, 2026-09-14:MU:1d@D+1, 2026-09-14:MU:1d@D+2, 2026-09-14:MU:1d@D+3, 2026-09-14:MU:1d@D+4, ...]\n[left]:  [17.0, nan, nan, nan, nan, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, nan, 19.0, 11.0, 11.0, 11.0, 11.0, 22.0, nan, nan, nan, nan, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, nan, 24.0, 14.0, 14.0, 14.0, 14.0, 6.0, nan, nan, nan, nan, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, nan, 7.0, 4.0, 4.0, 4.0, 4.0, 17.0, nan, nan, nan, nan, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, nan, 18.0, 11.0, 11.0, 11.0, 11.0, 5.0, nan, nan, nan, ...]\n[right]: [17.0, nan, nan, nan, nan, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, nan, 19.0, 11.0, 11.0, 11.0, 11.0, 22.0, nan, nan, nan, nan, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, nan, 24.0, 14.0, 15.0, 15.0, 15.0, 6.0, nan, nan, nan, nan, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, nan, 7.0, 4.0, 4.0, 4.0, 4.0, 17.0, nan, nan, nan, nan, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, nan, 19.0, 11.0, 11.0, 11.0, 11.0, 5.0, nan, nan, nan, ...]",
+      "status": "FAILED"
+    }
+  },
+  "coverage_notes": [
+    {
+      "enrichment_research_only_groups": [
+        "1d",
+        "1h",
+        "1w",
+        "4h"
+      ],
+      "evidence": "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260912T051308.132302Z\\training-report.json"
+    },
+    {
+      "cumulative_mature_awaiting_data": 249,
+      "evidence": "C:\\DATASTORE\\ml\\gameplan-evaluation-runs\\20260912T051235.036158Z\\summary.json"
+    }
+  ],
+  "errors": [
+    {
+      "check": "trade_plan",
+      "error": "AssertionError: DataFrame.iloc[:, 0] (column name=\"projected_trade_quantity\") are different\n\nDataFrame.iloc[:, 0] (column name=\"projected_trade_quantity\") values are different (4.16667 %)\n[index]: [2026-09-14:AAPL:1d@D+1, 2026-09-14:AAPL:1d@D+2, 2026-09-14:AAPL:1d@D+3, 2026-09-14:AAPL:1d@D+4, 2026-09-14:AAPL:1d@D+5, 2026-09-14:AAPL:1h@04:00, 2026-09-14:AAPL:1h@05:00, 2026-09-14:AAPL:1h@06:00, 2026-09-14:AAPL:1h@07:00, 2026-09-14:AAPL:1h@08:00, 2026-09-14:AAPL:1h@09:00, 2026-09-14:AAPL:1h@10:00, 2026-09-14:AAPL:1h@11:00, 2026-09-14:AAPL:1h@12:00, 2026-09-14:AAPL:1h@13:00, 2026-09-14:AAPL:1h@14:00, 2026-09-14:AAPL:1h@15:00, 2026-09-14:AAPL:1h@16:00, 2026-09-14:AAPL:1h@gap, 2026-09-14:AAPL:1w@D+5, 2026-09-14:AAPL:4h@04:00, 2026-09-14:AAPL:4h@08:00, 2026-09-14:AAPL:4h@12:00, 2026-09-14:AAPL:4h@16:00, 2026-09-14:AMZN:1d@D+1, 2026-09-14:AMZN:1d@D+2, 2026-09-14:AMZN:1d@D+3, 2026-09-14:AMZN:1d@D+4, 2026-09-14:AMZN:1d@D+5, 2026-09-14:AMZN:1h@04:00, 2026-09-14:AMZN:1h@05:00, 2026-09-14:AMZN:1h@06:00, 2026-09-14:AMZN:1h@07:00, 2026-09-14:AMZN:1h@08:00, 2026-09-14:AMZN:1h@09:00, 2026-09-14:AMZN:1h@10:00, 2026-09-14:AMZN:1h@11:00, 2026-09-14:AMZN:1h@12:00, 2026-09-14:AMZN:1h@13:00, 2026-09-14:AMZN:1h@14:00, 2026-09-14:AMZN:1h@15:00, 2026-09-14:AMZN:1h@16:00, 2026-09-14:AMZN:1h@gap, 2026-09-14:AMZN:1w@D+5, 2026-09-14:AMZN:4h@04:00, 2026-09-14:AMZN:4h@08:00, 2026-09-14:AMZN:4h@12:00, 2026-09-14:AMZN:4h@16:00, 2026-09-14:COST:1d@D+1, 2026-09-14:COST:1d@D+2, 2026-09-14:COST:1d@D+3, 2026-09-14:COST:1d@D+4, 2026-09-14:COST:1d@D+5, 2026-09-14:COST:1h@04:00, 2026-09-14:COST:1h@05:00, 2026-09-14:COST:1h@06:00, 2026-09-14:COST:1h@07:00, 2026-09-14:COST:1h@08:00, 2026-09-14:COST:1h@09:00, 2026-09-14:COST:1h@10:00, 2026-09-14:COST:1h@11:00, 2026-09-14:COST:1h@12:00, 2026-09-14:COST:1h@13:00, 2026-09-14:COST:1h@14:00, 2026-09-14:COST:1h@15:00, 2026-09-14:COST:1h@16:00, 2026-09-14:COST:1h@gap, 2026-09-14:COST:1w@D+5, 2026-09-14:COST:4h@04:00, 2026-09-14:COST:4h@08:00, 2026-09-14:COST:4h@12:00, 2026-09-14:COST:4h@16:00, 2026-09-14:GOOG:1d@D+1, 2026-09-14:GOOG:1d@D+2, 2026-09-14:GOOG:1d@D+3, 2026-09-14:GOOG:1d@D+4, 2026-09-14:GOOG:1d@D+5, 2026-09-14:GOOG:1h@04:00, 2026-09-14:GOOG:1h@05:00, 2026-09-14:GOOG:1h@06:00, 2026-09-14:GOOG:1h@07:00, 2026-09-14:GOOG:1h@08:00, 2026-09-14:GOOG:1h@09:00, 2026-09-14:GOOG:1h@10:00, 2026-09-14:GOOG:1h@11:00, 2026-09-14:GOOG:1h@12:00, 2026-09-14:GOOG:1h@13:00, 2026-09-14:GOOG:1h@14:00, 2026-09-14:GOOG:1h@15:00, 2026-09-14:GOOG:1h@16:00, 2026-09-14:GOOG:1h@gap, 2026-09-14:GOOG:1w@D+5, 2026-09-14:GOOG:4h@04:00, 2026-09-14:GOOG:4h@08:00, 2026-09-14:GOOG:4h@12:00, 2026-09-14:GOOG:4h@16:00, 2026-09-14:MU:1d@D+1, 2026-09-14:MU:1d@D+2, 2026-09-14:MU:1d@D+3, 2026-09-14:MU:1d@D+4, ...]\n[left]:  [17.0, nan, nan, nan, nan, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, nan, 19.0, 11.0, 11.0, 11.0, 11.0, 22.0, nan, nan, nan, nan, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, nan, 24.0, 14.0, 14.0, 14.0, 14.0, 6.0, nan, nan, nan, nan, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, nan, 7.0, 4.0, 4.0, 4.0, 4.0, 17.0, nan, nan, nan, nan, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, nan, 18.0, 11.0, 11.0, 11.0, 11.0, 5.0, nan, nan, nan, ...]\n[right]: [17.0, nan, nan, nan, nan, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, nan, 19.0, 11.0, 11.0, 11.0, 11.0, 22.0, nan, nan, nan, nan, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, nan, 24.0, 14.0, 15.0, 15.0, 15.0, 6.0, nan, nan, nan, nan, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, nan, 7.0, 4.0, 4.0, 4.0, 4.0, 17.0, nan, nan, nan, nan, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, nan, 19.0, 11.0, 11.0, 11.0, 11.0, 5.0, nan, nan, nan, ...]"
+    },
+    {
+      "check": "planning_prices",
+      "error": "KeyError: 'trade_plan'"
+    },
+    {
+      "check": "reference_completion",
+      "error": "KeyError: 'trade_plan'"
+    },
+    {
+      "check": "actuals_review",
+      "error": "KeyError: 'trade_plan'"
+    }
+  ],
+  "overnight_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260912T040657.173506Z",
+  "status": "FAILED",
+  "verification_is_read_only": true,
+  "verified_at": "2026-09-12T05:14:57.467736+00:00"
+}

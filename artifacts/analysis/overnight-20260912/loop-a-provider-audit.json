@@ -1,0 +1,2474 @@
+{
+  "audit_is_read_only": true,
+  "audited_at": "2026-09-12T04:34:51.247551+00:00",
+  "cme_derived_context_diagnosis": {
+    "classification": "LOCAL_SOURCE_SELECTION_MISMATCH_PLUS_CALCULATION_TIME_FRESHNESS_GATE",
+    "exact_nq_partition_path": "C:\\DATASTORE\\pools\\cme\\events\\databento\\context\\bbo-1m\\normalized\\date=2026-09-03\\hour=20\\events.parquet",
+    "exact_nq_row_in_advisory_window": [
+      {
+        "ask_px_00": 29508.5,
+        "bid_px_00": 29505.0,
+        "fetched_at": "2026-09-03 22:12:07.094558+00:00",
+        "provider_symbol": "NQ.v.0",
+        "timestamp": "2026-09-03 20:59:58.285261587+00:00",
+        "ts_event": "2026-09-03 20:59:58.285261587+00:00",
+        "ts_recv": "2026-09-03 22:00:00+00:00"
+      }
+    ],
+    "explanation": "The native derived-context reader prefers existing partitioned event history, ending Sep3/Sep4, over the freshly updated flat normalized outputs. The eight-day NQ age describes its selected Sep3 common-hour candidate, not current provider-download availability. Even Sep11 latest market observations are more than seven hours old at overnight calculation and do not satisfy the unchanged 15-minute calculation-time gate. Both current MBP requests are explicitly limit-saturated at 5000 rows and cannot prove complete book coverage. No repair or qualification is asserted.",
+    "latest_complete_common_ohlcv_window_end": "2026-09-03 21:00:00+00:00",
+    "latest_complete_common_ohlcv_window_start": "2026-09-03 20:00:00+00:00",
+    "selected_bbo_latest_market_by_root": {
+      "CL": "2026-09-04 05:08:48.371215377+00:00",
+      "ES": "2026-09-04 05:08:55.297293185+00:00",
+      "GC": "2026-09-04 05:08:54.834399435+00:00",
+      "NQ": "2026-09-04 05:08:57.977083319+00:00",
+      "RTY": "2026-09-04 05:08:55.304801403+00:00"
+    },
+    "selected_partitioned_sources": {
+      "bbo-1m": {
+        "bytes": 13391076,
+        "files": 290,
+        "last_path": "C:\\DATASTORE\\pools\\cme\\events\\databento\\context\\bbo-1m\\normalized\\date=2026-09-04\\hour=05\\events.parquet"
+      },
+      "mbp-10": {
+        "bytes": 13919144207,
+        "files": 295,
+        "last_path": "C:\\DATASTORE\\pools\\cme\\events\\databento\\context\\mbp-10\\normalized\\date=2026-09-03\\hour=20\\events.parquet"
+      },
+      "ohlcv-1m": {
+        "bytes": 2684494,
+        "files": 18,
+        "last_path": "C:\\DATASTORE\\pools\\cme\\events\\databento\\context\\ohlcv-1m\\normalized\\date=2026-09-04\\events.parquet"
+      }
+    },
+    "source_code": {
+      "path": "C:/dev/ducketz/datafetching/cme_cross_asset_context.py",
+      "source_selection_line": 447,
+      "staleness_gate_line": 877
+    }
+  },
+  "current_cycle_error_rows": [],
+  "cycle": {
+    "failure_count": 0,
+    "finished_at": "2026-09-12T04:24:41.475106Z",
+    "generation": "20260912T040658.065355Z-pid68344",
+    "providers": [
+      "databento",
+      "fmp",
+      "fred",
+      "schwab",
+      "sec"
+    ],
+    "schema_version": "loop-a-cycle-v1",
+    "started_at": "2026-09-12T04:06:58.065355Z",
+    "status": "COMPLETE",
+    "symbols": [
+      "AAPL",
+      "AMZN",
+      "GOOG",
+      "MU",
+      "NVDA",
+      "SNDK",
+      "COST"
+    ]
+  },
+  "cycle_log_prefix": {
+    "bytes_through_cycle_completion": 66731,
+    "completion_line": 783,
+    "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260912T040657.173506Z\\loop_a_close_fetch.log",
+    "sha256": "d05b5d648dd9364ff1ec924956d75c52ddaa4c313096904d2779a01927fe0fd9"
+  },
+  "diagnostics": [
+    {
+      "bytes": 7974,
+      "cycle_rows": [],
+      "has_current_cycle_timestamp": false,
+      "latest_saved_row": [
+        {
+          "advisory_message": "FMP provider quote timestamp exceeds local receipt by 9.471s (maximum allowed clock skew is 5.000s)",
+          "advisory_type": "FmpEnergyContextQualityError",
+          "calculation": "energy-context",
+          "category": "macro",
+          "fetched_at": "2026-09-02 13:33:58.706546+00:00",
+          "id": "2026-09-02T13:33:58.706546Z",
+          "input_policy": "persisted_rows_only",
+          "provider_rows_preserved": true,
+          "request_key": "energy-context",
+          "severity": "advisory",
+          "source": "fmp",
+          "symbol": "ENERGY_CONTEXT"
+        }
+      ],
+      "path": "C:\\DATASTORE\\pools\\macro\\ENERGY_CONTEXT\\energy-context\\fmp\\diagnostics\\ENERGY_CONTEXT_energy-context.parquet",
+      "sha256": "4d709269b4a540747e0a0b90dd4049d4bb0df1547603dadaab17fa073bee2c3f"
+    },
+    {
+      "bytes": 8666,
+      "cycle_rows": [
+        {
+          "advisory_message": "CME cross-asset context rejected every candidate window: 2026-09-03T21:00:00+00:00: CME BBO NQ is stale by 8 days 07:18:35.286610413; maximum is 0 days 00:15:00",
+          "advisory_type": "CmeCrossAssetQualityError",
+          "calculation": "cross-asset-context",
+          "category": "macro",
+          "fetched_at": "2026-09-12 04:18:34.364096+00:00",
+          "id": "2026-09-12T04:18:34.364096Z",
+          "input_policy": "persisted_rows_only",
+          "provider_rows_preserved": true,
+          "request_key": "cross-asset-context",
+          "severity": "advisory",
+          "source": "databento",
+          "symbol": "CME_CONTEXT"
+        }
+      ],
+      "has_current_cycle_timestamp": true,
+      "latest_saved_row": [
+        {
+          "advisory_message": "CME cross-asset context rejected every candidate window: 2026-09-03T21:00:00+00:00: CME BBO NQ is stale by 8 days 07:18:35.286610413; maximum is 0 days 00:15:00",
+          "advisory_type": "CmeCrossAssetQualityError",
+          "calculation": "cross-asset-context",
+          "category": "macro",
+          "fetched_at": "2026-09-12 04:18:34.364096+00:00",
+          "id": "2026-09-12T04:18:34.364096Z",
+          "input_policy": "persisted_rows_only",
+          "provider_rows_preserved": true,
+          "request_key": "cross-asset-context",
+          "severity": "advisory",
+          "source": "databento",
+          "symbol": "CME_CONTEXT"
+        }
+      ],
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cross-asset-context\\databento\\diagnostics\\CME_CONTEXT_cross-asset-context.parquet",
+      "sha256": "b8a9a4ee78af4fd084f0edd37430c2f090669cca31fafdca3b644b1eae4c1e58"
+    }
+  ],
+  "error_metadata_files_scanned": 43,
+  "expected_skips_and_boundaries": {
+    "fmp_sec_discovery": "FMP corporate fetch intentionally skips sec_filings_search_symbol because the separate SEC lane owns filing discovery.",
+    "old_cme_status_rows": "Retained NO CURRENT ROWS diagnostics dated Sep6 are historical and do not describe tonight's successful six CME requests.",
+    "opra_and_xnas": "NOT_ASSESSED_PENDING_NATIVE_STAGES",
+    "option_market_cycle": "Loop A target decision: cycle_mode=MONITOR_ONLY; target_state=MARKET_CLOSED_IDLE; target=NONE; reason=The regular XNYS option-market evidence window is closed; extended-hours bars are monitor-only and cannot create a target.; next_eligible_cycle=2026-09-14T13:45:00+00:00",
+    "schwab_price_history": "The scheduled orchestrator's run_cycle default include_schwab_price_history=False intentionally skips new Schwab bar requests; existing bar files are retained inputs, not refreshed completed-session coverage. Fresh Schwab quote/options capture remains enabled.",
+    "sec_existing_acceptances": "SEC fetch skips filings already processed by the current frozen extractor; unchanged texts/events are expected idempotent reuse, not a failed request.",
+    "technical_failures": [
+      "Failed calculations: 0",
+      "Failed calculations: 0",
+      "Failed calculations: 0",
+      "Failed calculations: 0",
+      "Failed calculations: 0",
+      "Failed calculations: 0",
+      "Failed calculations: 0"
+    ],
+    "technical_not_ready": [
+      "Not-ready calculations skipped: 0",
+      "Not-ready calculations skipped: 0",
+      "Not-ready calculations skipped: 0",
+      "Not-ready calculations skipped: 0",
+      "Not-ready calculations skipped: 0",
+      "Not-ready calculations skipped: 0",
+      "Not-ready calculations skipped: 0"
+    ]
+  },
+  "native_receipts": [
+    {
+      "bytes": 422,
+      "path": "C:\\DATASTORE\\.ducketz-loop-a-cycle.json",
+      "sha256": "f2cda9bb3676671ba5f2a3bf9b9db82c2cab6effb219c5d4b0fa1ad1f8f20d77"
+    },
+    {
+      "bytes": 422,
+      "path": "C:\\DATASTORE\\.ducketz-loop-a-complete.json",
+      "sha256": "f2cda9bb3676671ba5f2a3bf9b9db82c2cab6effb219c5d4b0fa1ad1f8f20d77"
+    }
+  ],
+  "providers": {
+    "databento": {
+      "cme_current_flat": {
+        "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_bbo-1m\\databento\\normalized\\CME_CONTEXT_cme_context_bbo-1m.parquet": {
+          "by_instrument_latest_rows": [
+            {
+              "ask_px_00": 2905.1,
+              "bid_px_00": 2904.9,
+              "databento_symbol": "RTY.v.0",
+              "fetched_at": "2026-09-12 04:14:01.607684+00:00",
+              "provider_symbol": "CME_CONTEXT",
+              "request_limit_saturated": false,
+              "symbol": "RTY.v.0",
+              "timestamp": "2026-09-11 20:59:57.040040245+00:00"
+            },
+            {
+              "ask_px_00": 29403.75,
+              "bid_px_00": 29374.5,
+              "databento_symbol": "NQ.v.0",
+              "fetched_at": "2026-09-12 04:14:01.607684+00:00",
+              "provider_symbol": "CME_CONTEXT",
+              "request_limit_saturated": false,
+              "symbol": "NQ.v.0",
+              "timestamp": "2026-09-11 20:59:59.036441699+00:00"
+            },
+            {
+              "ask_px_00": 4390.6,
+              "bid_px_00": 4390.0,
+              "databento_symbol": "GC.v.0",
+              "fetched_at": "2026-09-12 04:14:01.607684+00:00",
+              "provider_symbol": "CME_CONTEXT",
+              "request_limit_saturated": false,
+              "symbol": "GC.v.0",
+              "timestamp": "2026-09-11 20:59:59.840872365+00:00"
+            },
+            {
+              "ask_px_00": 7661.0,
+              "bid_px_00": 7660.75,
+              "databento_symbol": "ES.v.0",
+              "fetched_at": "2026-09-12 04:14:01.607684+00:00",
+              "provider_symbol": "CME_CONTEXT",
+              "request_limit_saturated": false,
+              "symbol": "ES.v.0",
+              "timestamp": "2026-09-11 20:59:59.841966635+00:00"
+            },
+            {
+              "ask_px_00": 100.69,
+              "bid_px_00": 99.99,
+              "databento_symbol": "CL.v.0",
+              "fetched_at": "2026-09-12 04:14:01.607684+00:00",
+              "provider_symbol": "CME_CONTEXT",
+              "request_limit_saturated": false,
+              "symbol": "CL.v.0",
+              "timestamp": "2026-09-11 20:59:59.883734029+00:00"
+            }
+          ],
+          "bytes": 137093,
+          "cycle_limit_saturated_rows": 0,
+          "cycle_rows": 310,
+          "latest_market_at": "2026-09-11 20:59:59.883734029+00:00",
+          "latest_receipt_at": "2026-09-12 04:14:01.607684+00:00",
+          "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_bbo-1m\\databento\\normalized\\CME_CONTEXT_cme_context_bbo-1m.parquet",
+          "rows": 1520,
+          "sha256": "cb8f0a284115edc523a537dbabbe49967c25f3f09996ce2eebf15759fdd4008a"
+        },
+        "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_mbp-10\\databento\\normalized\\CME_CONTEXT_cme_context_mbp-10.parquet": {
+          "by_instrument_latest_rows": [
+            {
+              "ask_px_00": 4391.3,
+              "bid_px_00": 4391.0,
+              "databento_symbol": "GC.v.0",
+              "fetched_at": "2026-09-12 04:15:04.235925+00:00",
+              "provider_symbol": "CME_CONTEXT",
+              "request_limit_saturated": true,
+              "symbol": "GC.v.0",
+              "timestamp": "2026-09-11 20:11:50.827560515+00:00"
+            },
+            {
+              "ask_px_00": 100.3,
+              "bid_px_00": 100.29,
+              "databento_symbol": "CL.v.0",
+              "fetched_at": "2026-09-12 04:15:04.235925+00:00",
+              "provider_symbol": "CME_CONTEXT",
+              "request_limit_saturated": true,
+              "symbol": "CL.v.0",
+              "timestamp": "2026-09-11 20:11:51.372933011+00:00"
+            },
+            {
+              "ask_px_00": 2907.0,
+              "bid_px_00": 2906.8,
+              "databento_symbol": "RTY.v.0",
+              "fetched_at": "2026-09-12 04:15:04.235925+00:00",
+              "provider_symbol": "CME_CONTEXT",
+              "request_limit_saturated": true,
+              "symbol": "RTY.v.0",
+              "timestamp": "2026-09-11 20:11:51.615107049+00:00"
+            },
+            {
+              "ask_px_00": 7660.5,
+              "bid_px_00": 7660.25,
+              "databento_symbol": "ES.v.0",
+              "fetched_at": "2026-09-12 04:15:04.235925+00:00",
+              "provider_symbol": "CME_CONTEXT",
+              "request_limit_saturated": true,
+              "symbol": "ES.v.0",
+              "timestamp": "2026-09-11 20:11:51.652115463+00:00"
+            },
+            {
+              "ask_px_00": 29382.75,
+              "bid_px_00": 29382.25,
+              "databento_symbol": "NQ.v.0",
+              "fetched_at": "2026-09-12 04:15:04.235925+00:00",
+              "provider_symbol": "CME_CONTEXT",
+              "request_limit_saturated": true,
+              "symbol": "NQ.v.0",
+              "timestamp": "2026-09-11 20:11:51.652127777+00:00"
+            }
+          ],
+          "bytes": 2106233,
+          "cycle_limit_saturated_rows": 5000,
+          "cycle_rows": 5000,
+          "latest_market_at": "2026-09-11 20:11:51.652127777+00:00",
+          "latest_receipt_at": "2026-09-12 04:15:04.235925+00:00",
+          "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_mbp-10\\databento\\normalized\\CME_CONTEXT_cme_context_mbp-10.parquet",
+          "rows": 29992,
+          "sha256": "ab1a9e399ace75f9be498458d9574c16238f70ac5b55222821cfcf72072f17b1"
+        },
+        "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_ohlcv-1m\\databento\\normalized\\CME_CONTEXT_cme_context_ohlcv-1m.parquet": {
+          "by_instrument_latest_rows": [
+            {
+              "fetched_at": "2026-09-12 04:12:31.669862+00:00",
+              "provider_symbol": "CME_CONTEXT",
+              "request_limit_saturated": false,
+              "symbol": "ES.v.0",
+              "timestamp": "2026-09-11 20:59:00+00:00"
+            },
+            {
+              "fetched_at": "2026-09-12 04:12:31.669862+00:00",
+              "provider_symbol": "CME_CONTEXT",
+              "request_limit_saturated": false,
+              "symbol": "CL.v.0",
+              "timestamp": "2026-09-11 20:59:00+00:00"
+            },
+            {
+              "fetched_at": "2026-09-12 04:12:31.669862+00:00",
+              "provider_symbol": "CME_CONTEXT",
+              "request_limit_saturated": false,
+              "symbol": "GC.v.0",
+              "timestamp": "2026-09-11 20:59:00+00:00"
+            },
+            {
+              "fetched_at": "2026-09-12 04:12:31.669862+00:00",
+              "provider_symbol": "CME_CONTEXT",
+              "request_limit_saturated": false,
+              "symbol": "NQ.v.0",
+              "timestamp": "2026-09-11 20:59:00+00:00"
+            },
+            {
+              "fetched_at": "2026-09-12 04:12:31.669862+00:00",
+              "provider_symbol": "CME_CONTEXT",
+              "request_limit_saturated": false,
+              "symbol": "RTY.v.0",
+              "timestamp": "2026-09-11 20:59:00+00:00"
+            }
+          ],
+          "bytes": 429840,
+          "cycle_limit_saturated_rows": 0,
+          "cycle_rows": 4497,
+          "latest_market_at": "2026-09-11 20:59:00+00:00",
+          "latest_receipt_at": "2026-09-12 04:12:31.669862+00:00",
+          "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_ohlcv-1m\\databento\\normalized\\CME_CONTEXT_cme_context_ohlcv-1m.parquet",
+          "rows": 16152,
+          "sha256": "1e2a67d23480039a7310838470c996bd01f56b0debce9c67d0f54106358a794f"
+        },
+        "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_bbo-1m\\databento\\normalized\\CME_CONTRACTS_cme_contracts_bbo-1m.parquet": {
+          "by_instrument_latest_rows": [
+            {
+              "ask_px_00": 29393.0,
+              "bid_px_00": 29391.5,
+              "databento_symbol": "NQU6",
+              "fetched_at": "2026-09-12 04:14:19.422039+00:00",
+              "provider_symbol": "CME_CONTRACTS",
+              "request_limit_saturated": false,
+              "symbol": "NQU6",
+              "timestamp": "2026-09-11 20:59:59.036441699+00:00"
+            },
+            {
+              "ask_px_00": 4404.3,
+              "bid_px_00": 4383.3,
+              "databento_symbol": "GCZ6",
+              "fetched_at": "2026-09-12 04:14:19.422039+00:00",
+              "provider_symbol": "CME_CONTRACTS",
+              "request_limit_saturated": false,
+              "symbol": "GCZ6",
+              "timestamp": "2026-09-11 20:59:59.840872365+00:00"
+            },
+            {
+              "ask_px_00": 7661.0,
+              "bid_px_00": 7660.5,
+              "databento_symbol": "ESU6",
+              "fetched_at": "2026-09-12 04:14:19.422039+00:00",
+              "provider_symbol": "CME_CONTRACTS",
+              "request_limit_saturated": false,
+              "symbol": "ESU6",
+              "timestamp": "2026-09-11 20:59:59.841966635+00:00"
+            },
+            {
+              "ask_px_00": 100.0,
+              "bid_px_00": 99.99,
+              "databento_symbol": "CLV6",
+              "fetched_at": "2026-09-12 04:14:19.422039+00:00",
+              "provider_symbol": "CME_CONTRACTS",
+              "request_limit_saturated": false,
+              "symbol": "CLV6",
+              "timestamp": "2026-09-11 20:59:59.883734029+00:00"
+            }
+          ],
+          "bytes": 115871,
+          "cycle_limit_saturated_rows": 0,
+          "cycle_rows": 248,
+          "latest_market_at": "2026-09-11 20:59:59.883734029+00:00",
+          "latest_receipt_at": "2026-09-12 04:14:19.422039+00:00",
+          "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_bbo-1m\\databento\\normalized\\CME_CONTRACTS_cme_contracts_bbo-1m.parquet",
+          "rows": 1216,
+          "sha256": "439fa9d2ab4f5adbdaf77a73f6f6c479965e2fc4ccc2d6e8dd45518785255c5a"
+        },
+        "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_mbp-10\\databento\\normalized\\CME_CONTRACTS_cme_contracts_mbp-10.parquet": {
+          "by_instrument_latest_rows": [
+            {
+              "ask_px_00": 4391.3,
+              "bid_px_00": 4391.0,
+              "databento_symbol": "GCZ6",
+              "fetched_at": "2026-09-12 04:16:16.683480+00:00",
+              "provider_symbol": "CME_CONTRACTS",
+              "request_limit_saturated": true,
+              "symbol": "GCZ6",
+              "timestamp": "2026-09-11 20:12:00.553886881+00:00"
+            },
+            {
+              "ask_px_00": 100.28,
+              "bid_px_00": 100.27,
+              "databento_symbol": "CLV6",
+              "fetched_at": "2026-09-12 04:16:16.683480+00:00",
+              "provider_symbol": "CME_CONTRACTS",
+              "request_limit_saturated": true,
+              "symbol": "CLV6",
+              "timestamp": "2026-09-11 20:12:00.783031649+00:00"
+            },
+            {
+              "ask_px_00": 29383.25,
+              "bid_px_00": 29382.5,
+              "databento_symbol": "NQU6",
+              "fetched_at": "2026-09-12 04:16:16.683480+00:00",
+              "provider_symbol": "CME_CONTRACTS",
+              "request_limit_saturated": true,
+              "symbol": "NQU6",
+              "timestamp": "2026-09-11 20:12:00.987384923+00:00"
+            },
+            {
+              "ask_px_00": 7660.25,
+              "bid_px_00": 7660.0,
+              "databento_symbol": "ESU6",
+              "fetched_at": "2026-09-12 04:16:16.683480+00:00",
+              "provider_symbol": "CME_CONTRACTS",
+              "request_limit_saturated": true,
+              "symbol": "ESU6",
+              "timestamp": "2026-09-11 20:12:00.987624961+00:00"
+            }
+          ],
+          "bytes": 2112868,
+          "cycle_limit_saturated_rows": 5000,
+          "cycle_rows": 5000,
+          "latest_market_at": "2026-09-11 20:12:00.987624961+00:00",
+          "latest_receipt_at": "2026-09-12 04:16:16.683480+00:00",
+          "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_mbp-10\\databento\\normalized\\CME_CONTRACTS_cme_contracts_mbp-10.parquet",
+          "rows": 29992,
+          "sha256": "ca8565f99333b4e85f9e2d6228b6d5499685591202a81031afc97f99972e6c27"
+        },
+        "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_ohlcv-1m\\databento\\normalized\\CME_CONTRACTS_cme_contracts_ohlcv-1m.parquet": {
+          "by_instrument_latest_rows": [
+            {
+              "fetched_at": "2026-09-12 04:13:21.898667+00:00",
+              "provider_symbol": "CME_CONTRACTS",
+              "request_limit_saturated": false,
+              "symbol": "ESU6",
+              "timestamp": "2026-09-11 20:59:00+00:00"
+            },
+            {
+              "fetched_at": "2026-09-12 04:13:21.898667+00:00",
+              "provider_symbol": "CME_CONTRACTS",
+              "request_limit_saturated": false,
+              "symbol": "GCZ6",
+              "timestamp": "2026-09-11 20:59:00+00:00"
+            },
+            {
+              "fetched_at": "2026-09-12 04:13:21.898667+00:00",
+              "provider_symbol": "CME_CONTRACTS",
+              "request_limit_saturated": false,
+              "symbol": "CLV6",
+              "timestamp": "2026-09-11 20:59:00+00:00"
+            },
+            {
+              "fetched_at": "2026-09-12 04:13:21.898667+00:00",
+              "provider_symbol": "CME_CONTRACTS",
+              "request_limit_saturated": false,
+              "symbol": "NQU6",
+              "timestamp": "2026-09-11 20:59:00+00:00"
+            }
+          ],
+          "bytes": 506078,
+          "cycle_limit_saturated_rows": 0,
+          "cycle_rows": 3600,
+          "latest_market_at": "2026-09-11 20:59:00+00:00",
+          "latest_receipt_at": "2026-09-12 04:13:21.898667+00:00",
+          "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_ohlcv-1m\\databento\\normalized\\CME_CONTRACTS_cme_contracts_ohlcv-1m.parquet",
+          "rows": 19434,
+          "sha256": "8d61d88f3391392c339cf00d3cf9868a51ecd1c1d92089516d8c8c909abb9b90"
+        }
+      },
+      "equity_1m": {
+        "AAPL": [
+          {
+            "bytes": 1100733,
+            "latest_timestamp": "2026-09-11 22:08:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\bars\\1m\\databento\\normalized\\AAPL_source_100d_1m_ohlcv-1m_1m.parquet",
+            "rows": 37899,
+            "sha256": "37c43661accb199bc8749d738525e95a631500052c0a56ab8d3766c197eca6a8"
+          }
+        ],
+        "AMZN": [
+          {
+            "bytes": 1076297,
+            "latest_timestamp": "2026-09-11 19:59:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\bars\\1m\\databento\\normalized\\AMZN_source_100d_1m_ohlcv-1m_1m.parquet",
+            "rows": 37037,
+            "sha256": "30320c15b28c381258b810821e05c188d9315fe48b05c9f09686fee8d2811cf5"
+          }
+        ],
+        "COST": [
+          {
+            "bytes": 990620,
+            "latest_timestamp": "2026-09-11 19:59:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\bars\\1m\\databento\\normalized\\COST_source_100d_1m_ohlcv-1m_1m.parquet",
+            "rows": 32320,
+            "sha256": "371b6a27601641301cf17d67daf5645a063937d886b331466b717dbc99c0eec9"
+          }
+        ],
+        "GOOG": [
+          {
+            "bytes": 1070778,
+            "latest_timestamp": "2026-09-11 23:36:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\bars\\1m\\databento\\normalized\\GOOG_source_100d_1m_ohlcv-1m_1m.parquet",
+            "rows": 36696,
+            "sha256": "08de176867c022c1af13bf61ae3c9a667d71ff7ab3753e1a0acd7313f9cc354a"
+          }
+        ],
+        "MU": [
+          {
+            "bytes": 1705206,
+            "latest_timestamp": "2026-09-11 23:53:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\bars\\1m\\databento\\normalized\\MU_source_100d_1m_ohlcv-1m_1m.parquet",
+            "rows": 50654,
+            "sha256": "48c99514f9cc5d4759a1d4ba68fadf79bc6ca28e6f672115f93181e48f3ba4b4"
+          }
+        ],
+        "NVDA": [
+          {
+            "bytes": 1287533,
+            "latest_timestamp": "2026-09-11 23:52:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\bars\\1m\\databento\\normalized\\NVDA_source_100d_1m_ohlcv-1m_1m.parquet",
+            "rows": 45645,
+            "sha256": "4c8caa05c6c96034101de46394327fe13db23b53f698fd991caf3b41f3d42e1d"
+          }
+        ],
+        "SNDK": [
+          {
+            "bytes": 1579750,
+            "latest_timestamp": "2026-09-11 21:42:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\bars\\1m\\databento\\normalized\\SNDK_source_100d_1m_ohlcv-1m_1m.parquet",
+            "rows": 42817,
+            "sha256": "3c417d384ea1bfa282eda969f3f80b1d47accbf13e7cce0e92e39c8a79af2df4"
+          }
+        ]
+      },
+      "provider_request_completions": [
+        "[2026-09-12T04:06:58.796027Z] END   provider.request name=\"equities dataset-range metadata\" src=databento/dataset-range try=1 elapsed=552.9ms rows=3 op=fetched status=ok",
+        "[2026-09-12T04:07:03.032808Z] END   provider.request name=\"1 symbols ohlcv-1m/1m\" src=databento/ohlcv-1m req=2026-09-10T22:33:00Z..2026-09-12T00:00:00Z try=1 elapsed=4135.8ms rows=452 op=fetched status=ok",
+        "[2026-09-12T04:07:06.030677Z] END   provider.request name=\"1 symbols ohlcv-1m/1m\" src=databento/ohlcv-1m req=2026-09-10T22:51:00Z..2026-09-12T00:00:00Z try=1 elapsed=2997.6ms rows=414 op=fetched status=ok",
+        "[2026-09-12T04:07:11.151843Z] END   provider.request name=\"1 symbols ohlcv-1m/1m\" src=databento/ohlcv-1m req=2026-09-10T22:13:00Z..2026-09-12T00:00:00Z try=1 elapsed=5120.7ms rows=416 op=fetched status=ok",
+        "[2026-09-12T04:07:14.273408Z] END   provider.request name=\"2 symbols ohlcv-1m/1m\" src=databento/ohlcv-1m req=2026-09-10T22:55:00Z..2026-09-12T00:00:00Z try=1 elapsed=3121.3ms rows=978 op=fetched status=ok",
+        "[2026-09-12T04:07:17.567157Z] END   provider.request name=\"1 symbols ohlcv-1m/1m\" src=databento/ohlcv-1m req=2026-09-10T22:48:00Z..2026-09-12T00:00:00Z try=1 elapsed=3293.4ms rows=466 op=fetched status=ok",
+        "[2026-09-12T04:07:20.422599Z] END   provider.request name=\"1 symbols ohlcv-1m/1m\" src=databento/ohlcv-1m req=2026-09-10T19:51:00Z..2026-09-12T00:00:00Z try=1 elapsed=2855.2ms rows=384 op=fetched status=ok",
+        "[2026-09-12T04:08:01.201440Z] END   provider.request name=\"1 symbols ohlcv-1s/1s\" src=databento/ohlcv-1s req=2026-09-10T23:28:15Z..2026-09-12T00:00:00Z try=1 elapsed=9735.2ms rows=11126 op=fetched status=ok",
+        "[2026-09-12T04:08:10.948378Z] END   provider.request name=\"1 symbols ohlcv-1s/1s\" src=databento/ohlcv-1s req=2026-09-10T23:46:25Z..2026-09-12T00:00:00Z try=1 elapsed=9746.2ms rows=6222 op=fetched status=ok",
+        "[2026-09-12T04:08:19.639797Z] END   provider.request name=\"1 symbols ohlcv-1s/1s\" src=databento/ohlcv-1s req=2026-09-10T23:08:37Z..2026-09-12T00:00:00Z try=1 elapsed=8690.7ms rows=4754 op=fetched status=ok",
+        "[2026-09-12T04:08:27.851549Z] END   provider.request name=\"1 symbols ohlcv-1s/1s\" src=databento/ohlcv-1s req=2026-09-10T23:50:48Z..2026-09-12T00:00:00Z try=1 elapsed=8211.1ms rows=7233 op=fetched status=ok",
+        "[2026-09-12T04:08:37.806041Z] END   provider.request name=\"1 symbols ohlcv-1s/1s\" src=databento/ohlcv-1s req=2026-09-10T23:50:57Z..2026-09-12T00:00:00Z try=1 elapsed=9953.7ms rows=9285 op=fetched status=ok",
+        "[2026-09-12T04:08:46.118782Z] END   provider.request name=\"1 symbols ohlcv-1s/1s\" src=databento/ohlcv-1s req=2026-09-10T23:43:39Z..2026-09-12T00:00:00Z try=1 elapsed=8312.1ms rows=4479 op=fetched status=ok",
+        "[2026-09-12T04:08:51.722038Z] END   provider.request name=\"1 symbols ohlcv-1s/1s\" src=databento/ohlcv-1s req=2026-09-10T20:46:47Z..2026-09-12T00:00:00Z try=1 elapsed=5602.7ms rows=1506 op=fetched status=ok",
+        "[2026-09-12T04:08:58.951931Z] END   provider.request name=\"6 symbols ohlcv-1h/1h\" src=databento/ohlcv-1h req=2026-09-10T17:00:00Z..2026-09-12T00:00:00Z try=1 elapsed=7149.5ms rows=120 op=fetched status=ok",
+        "[2026-09-12T04:09:06.250215Z] END   provider.request name=\"1 symbols ohlcv-1h/1h\" src=databento/ohlcv-1h req=2026-09-10T14:00:00Z..2026-09-12T00:00:00Z try=1 elapsed=7297.7ms rows=14 op=fetched status=ok",
+        "[2026-09-12T04:09:13.996256Z] END   provider.request name=\"7 symbols ohlcv-1d/1d\" src=databento/ohlcv-1d req=2026-09-03T00:00:00Z..2026-09-12T00:00:00Z try=1 elapsed=7698.6ms rows=42 op=fetched status=ok",
+        "[2026-09-12T04:12:31.731775Z] END   provider.request name=\"CME cme_context_ohlcv-1m\" sym=CME_CONTEXT src=databento/ohlcv-1m req=2026-09-09T00:00:00Z..2026-09-12T00:00:00Z try=1 elapsed=26895.5ms rows=4497 op=fetched status=ok",
+        "[2026-09-12T04:13:21.953834Z] END   provider.request name=\"CME cme_contracts_ohlcv-1m\" sym=CME_CONTRACTS src=databento/ohlcv-1m req=2026-09-09T00:00:00Z..2026-09-12T00:00:00Z try=1 elapsed=26851.6ms rows=3600 op=fetched status=ok",
+        "[2026-09-12T04:14:01.619920Z] END   provider.request name=\"CME cme_context_bbo-1m\" sym=CME_CONTEXT src=databento/bbo-1m req=2026-09-11T23:00:00Z..2026-09-12T00:00:00Z try=1 elapsed=19107.7ms rows=310 op=fetched status=ok",
+        "[2026-09-12T04:14:19.432089Z] END   provider.request name=\"CME cme_contracts_bbo-1m\" sym=CME_CONTRACTS src=databento/bbo-1m req=2026-09-11T23:00:00Z..2026-09-12T00:00:00Z try=1 elapsed=15959.3ms rows=248 op=fetched status=ok",
+        "[2026-09-12T04:15:04.792208Z] END   provider.request name=\"CME cme_context_mbp-10\" sym=CME_CONTEXT src=databento/mbp-10 req=2026-09-11T19:47:04.629118Z..2026-09-11T20:12:04.629118Z try=1 elapsed=43906.9ms rows=5000 op=fetched status=ok",
+        "[2026-09-12T04:16:17.248595Z] END   provider.request name=\"CME cme_contracts_mbp-10\" sym=CME_CONTRACTS src=databento/mbp-10 req=2026-09-11T19:47:04.629118Z..2026-09-11T20:12:04.629118Z try=1 elapsed=39083.5ms rows=5000 op=fetched status=ok"
+      ]
+    },
+    "fmp": {
+      "by_symbol": {
+        "AAPL": [
+          {
+            "bytes": 53742,
+            "latest_available_at": "2026-08-18 16:37:14.031413+00:00",
+            "latest_date": "2025-09-27 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:14.031413+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\corporate\\balance_sheet_statement_annual\\fmp\\normalized\\AAPL_balance_sheet_statement_annual.parquet",
+            "rows": 20,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "34d903cf31cf1c8ad0228fd08f8bff0e8f1f276a5f53f993cdce114793f41b49"
+          },
+          {
+            "bytes": 62262,
+            "latest_available_at": "2026-08-18 16:37:14.592651+00:00",
+            "latest_date": "2026-06-27 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:14.592651+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\corporate\\balance_sheet_statement_quarterly\\fmp\\normalized\\AAPL_balance_sheet_statement_quarterly.parquet",
+            "rows": 48,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "14ff0fc428b3d6da78fcf84a57427e2e49af6669a23979b202fadb7c31b09640"
+          },
+          {
+            "bytes": 44419,
+            "latest_available_at": "2026-08-18 16:37:15.465079+00:00",
+            "latest_date": "2025-09-27 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:15.465079+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\corporate\\cash_flow_statement_annual\\fmp\\normalized\\AAPL_cash_flow_statement_annual.parquet",
+            "rows": 20,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "d9dfcb702359d7ed4a03bc0d78fc0f4d648f4ff919605c04aa67605b9a2a77bd"
+          },
+          {
+            "bytes": 38141,
+            "latest_available_at": "2026-08-18 16:37:16.599326+00:00",
+            "latest_date": "2025-09-27 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:16.599326+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\corporate\\cash_flow_statement_growth\\fmp\\normalized\\AAPL_cash_flow_statement_growth.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "396c0bac8b76bfad1379c8fc2d29cbd9a4f94019eef475ffffc3831ef2a51ede"
+          },
+          {
+            "bytes": 53025,
+            "latest_available_at": "2026-08-18 16:37:16.045429+00:00",
+            "latest_date": "2026-06-27 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:16.045429+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\corporate\\cash_flow_statement_quarterly\\fmp\\normalized\\AAPL_cash_flow_statement_quarterly.parquet",
+            "rows": 48,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "099bd96525220e61f1eecf890edb3f3b399bd94f21070eac34f74c1054afa000"
+          },
+          {
+            "bytes": 37076,
+            "latest_date": "2025-09-27 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:17.719600+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\corporate\\financial_growth\\fmp\\normalized\\AAPL_financial_growth.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "0a21376dd2f27a206c28fd439af28911dabd3767ce7fa7748044f7cdcc16ffde"
+          },
+          {
+            "bytes": 37548,
+            "latest_available_at": "2026-08-27 15:32:59.318572+00:00",
+            "latest_date": "2025-09-27 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-27 15:32:59.318572+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\corporate\\income_statement_annual\\fmp\\normalized\\AAPL_income_statement_annual.parquet",
+            "rows": 21,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "d110dd109fef33f945c3aabb45d88629307f729cbb4c81ebffe439bc68dc19d2"
+          },
+          {
+            "bytes": 31771,
+            "latest_available_at": "2026-08-28 04:36:06.448115+00:00",
+            "latest_date": "2025-09-27 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-28 04:36:06.448115+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\corporate\\income_statement_growth\\fmp\\normalized\\AAPL_income_statement_growth.parquet",
+            "rows": 10,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "51cdca1c4c3e1ff5fdff3c41bc5eff0a7aceab3532cbaa7ba5de9658f4db85df"
+          },
+          {
+            "bytes": 43555,
+            "latest_available_at": "2026-08-18 16:37:13.478770+00:00",
+            "latest_date": "2026-06-27 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:13.478770+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\corporate\\income_statement_quarterly\\fmp\\normalized\\AAPL_income_statement_quarterly.parquet",
+            "rows": 48,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "9a1c73abf7de997acc60033ecf857820c85b3b10ec17975ca844c832a488c404"
+          },
+          {
+            "bytes": 36974,
+            "latest_date": "2025-09-27 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:11.230347+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\corporate\\key_metrics\\fmp\\normalized\\AAPL_key_metrics.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "34f9623803dab50e9b0ea1d7593f5b037c7bb6d67e80a82dea41d7776d314c2a"
+          },
+          {
+            "bytes": 94277,
+            "latest_fetched_at": "2026-09-12 04:18:37.633717+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\corporate\\key_metrics_ttm\\fmp\\normalized\\AAPL_key_metrics_ttm.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "e78fc85912840c5b39270fad786e81ffb1df3fc2f329a2274300a3c4b8884209"
+          },
+          {
+            "bytes": 47539,
+            "latest_date": "2026-09-11 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-12 04:18:35.350398+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\corporate\\market_capitalization\\fmp\\normalized\\AAPL_market_capitalization.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "abdc7a3cc0ee553d36cc03b9e5b455cdc2e39d35f6faf94fc1d9ba75092e6f7a"
+          },
+          {
+            "bytes": 85486,
+            "latest_fetched_at": "2026-09-12 04:18:35.804155+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\corporate\\profile\\fmp\\normalized\\AAPL_profile.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "ab61479a6b95122abe673c0a635954936c5177e0bd70acacc61cb9bb99d0c293"
+          },
+          {
+            "bytes": 37465,
+            "latest_fetched_at": "2026-09-12 04:18:34.888029+00:00",
+            "latest_timestamp": "2026-09-11 20:00:01+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\corporate\\quote\\fmp\\normalized\\AAPL_quote.parquet",
+            "rows": 304,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "1ee67c2459171f530aac11e3232a1f075a828907ccf4bac0dd06367b5e172239"
+          },
+          {
+            "bytes": 125537,
+            "latest_fetched_at": "2026-09-12 04:18:38.218012+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\corporate\\ratios_ttm\\fmp\\normalized\\AAPL_ratios_ttm.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "ccb08b936b6ece4e1bac9a0be30b3aab13bddf56ff22b6e8cda675c873bed126"
+          },
+          {
+            "bytes": 47193,
+            "latest_date": "2026-09-11 10:13:05+00:00",
+            "latest_fetched_at": "2026-09-12 04:18:36.594791+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\corporate\\shares_float\\fmp\\normalized\\AAPL_shares_float.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "73c425f7b908c772e9858d4d833b6951d7e6a7b000505cbb4652ea8b3e9c3569"
+          },
+          {
+            "bytes": 10032,
+            "latest_date": "2020-08-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:18.298826+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\corporate\\stock_splits\\fmp\\normalized\\AAPL_stock_splits.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "39cff268f6172e3dfd2b4fae86711b4afa94b80f37ff070390ce384209ff3a14"
+          }
+        ],
+        "AMZN": [
+          {
+            "bytes": 53195,
+            "latest_available_at": "2026-08-18 16:37:25.226855+00:00",
+            "latest_date": "2025-12-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:25.226855+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\corporate\\balance_sheet_statement_annual\\fmp\\normalized\\AMZN_balance_sheet_statement_annual.parquet",
+            "rows": 20,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "204d3ac4db34acd46960798ca6cf68f900f6832f3687565c8419594f1619656f"
+          },
+          {
+            "bytes": 61600,
+            "latest_available_at": "2026-08-18 16:37:25.761002+00:00",
+            "latest_date": "2026-06-30 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:25.761002+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\corporate\\balance_sheet_statement_quarterly\\fmp\\normalized\\AMZN_balance_sheet_statement_quarterly.parquet",
+            "rows": 48,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "55195818f9db3519280a4093d6086983497d3a43703eaaf608cecab2e2521078"
+          },
+          {
+            "bytes": 43870,
+            "latest_available_at": "2026-08-18 16:37:26.795658+00:00",
+            "latest_date": "2025-12-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:26.795658+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\corporate\\cash_flow_statement_annual\\fmp\\normalized\\AMZN_cash_flow_statement_annual.parquet",
+            "rows": 20,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "cfc83b6e039daf45f4360053ff87f23a0579aa4747c7e8c7910d3b76f96dca5f"
+          },
+          {
+            "bytes": 37971,
+            "latest_available_at": "2026-08-18 16:37:27.914287+00:00",
+            "latest_date": "2025-12-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:27.914287+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\corporate\\cash_flow_statement_growth\\fmp\\normalized\\AMZN_cash_flow_statement_growth.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "4d240df49c4e4706cb5c16cea6d059e0f5ffe4cd18bd7376c5b95978d8f59438"
+          },
+          {
+            "bytes": 51316,
+            "latest_available_at": "2026-08-18 16:37:27.353282+00:00",
+            "latest_date": "2026-06-30 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:27.353282+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\corporate\\cash_flow_statement_quarterly\\fmp\\normalized\\AMZN_cash_flow_statement_quarterly.parquet",
+            "rows": 48,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "6e81fd039120f31c42411fde2b5d2919ce6ee2a69f6cc25b5de1ebe570ae111a"
+          },
+          {
+            "bytes": 36892,
+            "latest_date": "2025-12-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:28.939460+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\corporate\\financial_growth\\fmp\\normalized\\AMZN_financial_growth.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "d0922ab9a8dfd872ce5407f2cb622e448923a657d93f12fafa1ca6b06452deff"
+          },
+          {
+            "bytes": 37705,
+            "latest_available_at": "2026-08-18 16:37:24.157841+00:00",
+            "latest_date": "2025-12-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:24.157841+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\corporate\\income_statement_annual\\fmp\\normalized\\AMZN_income_statement_annual.parquet",
+            "rows": 20,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "b56bdae6059af9faac057cf2825f7cce0d36558d71e7b85e5f06ee4f62453a66"
+          },
+          {
+            "bytes": 31506,
+            "latest_available_at": "2026-08-18 16:37:28.449948+00:00",
+            "latest_date": "2025-12-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:28.449948+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\corporate\\income_statement_growth\\fmp\\normalized\\AMZN_income_statement_growth.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "228c529cf4b1afaf117dc8295c3765e79f4b9fea4b66cae2c5675ebba39329fa"
+          },
+          {
+            "bytes": 44742,
+            "latest_available_at": "2026-08-18 16:37:24.677084+00:00",
+            "latest_date": "2026-06-30 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:24.677084+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\corporate\\income_statement_quarterly\\fmp\\normalized\\AMZN_income_statement_quarterly.parquet",
+            "rows": 48,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "52667da955b752cbe55424e3489beb1580decc9c2757fc7d1ce20e80b16c8c43"
+          },
+          {
+            "bytes": 36983,
+            "latest_date": "2025-12-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:22.674140+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\corporate\\key_metrics\\fmp\\normalized\\AMZN_key_metrics.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "b34cd63a98614f61791fa015e74fc64c50c196bca3d9cd569b3a0a806618e902"
+          },
+          {
+            "bytes": 93602,
+            "latest_fetched_at": "2026-09-12 04:18:49.988064+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\corporate\\key_metrics_ttm\\fmp\\normalized\\AMZN_key_metrics_ttm.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "00380988287420f91fd413631c5b4a1587bec738ef3affcfb02e1ea72dbd21d4"
+          },
+          {
+            "bytes": 47485,
+            "latest_date": "2026-09-11 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-12 04:18:35.350418+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\corporate\\market_capitalization\\fmp\\normalized\\AMZN_market_capitalization.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "4dd7122881b4aabb8653113218db4806e328ba20a296dbe42b5f6c1d6e1f6f8e"
+          },
+          {
+            "bytes": 82474,
+            "latest_fetched_at": "2026-09-12 04:18:48.183588+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\corporate\\profile\\fmp\\normalized\\AMZN_profile.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "56fc629fb1af51a35a34a5af3de4366ef1da0e5b5c6fe231ac9eba97910e63ba"
+          },
+          {
+            "bytes": 37119,
+            "latest_fetched_at": "2026-09-12 04:18:34.888073+00:00",
+            "latest_timestamp": "2026-09-11 20:00:01+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\corporate\\quote\\fmp\\normalized\\AMZN_quote.parquet",
+            "rows": 304,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "d926cc3d1af80e9d19c8b5b02a3719767e7340cb16a19bcc59348d93ddd5d9cc"
+          },
+          {
+            "bytes": 121365,
+            "latest_fetched_at": "2026-09-12 04:18:50.579244+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\corporate\\ratios_ttm\\fmp\\normalized\\AMZN_ratios_ttm.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "14d0efb3dd9a5daa73fed45d6aeb61f629b09a9324772d8617560704cd557feb"
+          },
+          {
+            "bytes": 47177,
+            "latest_date": "2026-09-11 19:18:30+00:00",
+            "latest_fetched_at": "2026-09-12 04:18:48.950941+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\corporate\\shares_float\\fmp\\normalized\\AMZN_shares_float.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "b4c07c913c3835ab9e6fe125ae3ddc7dab6730fb1537f14b853409e8ff624dd5"
+          },
+          {
+            "bytes": 9984,
+            "latest_date": "2022-06-06 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:29.429922+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\corporate\\stock_splits\\fmp\\normalized\\AMZN_stock_splits.parquet",
+            "rows": 4,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "4c51721aef86d6210b4623e341fe7a264cfdbec2add436c2e6f0c30a846737cf"
+          }
+        ],
+        "COST": [
+          {
+            "bytes": 53004,
+            "latest_available_at": "2026-09-06 08:13:26.472007+00:00",
+            "latest_date": "2025-08-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-06 08:13:26.472007+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\corporate\\balance_sheet_statement_annual\\fmp\\normalized\\COST_balance_sheet_statement_annual.parquet",
+            "rows": 20,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "e954787e12f8b1b84ced300273adf5feb251ef3daabcaf8ea0033f76dfbf957a"
+          },
+          {
+            "bytes": 60909,
+            "latest_available_at": "2026-09-06 08:13:26.984249+00:00",
+            "latest_date": "2026-05-10 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-06 08:13:26.984249+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\corporate\\balance_sheet_statement_quarterly\\fmp\\normalized\\COST_balance_sheet_statement_quarterly.parquet",
+            "rows": 48,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "5a5984969bd230f1bf17b75a0cb05298c5d06c2ade2627243b4fd54261f47ba6"
+          },
+          {
+            "bytes": 44393,
+            "latest_available_at": "2026-09-06 08:13:27.539530+00:00",
+            "latest_date": "2025-08-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-06 08:13:27.539530+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\corporate\\cash_flow_statement_annual\\fmp\\normalized\\COST_cash_flow_statement_annual.parquet",
+            "rows": 20,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "f6cfa1668664607ae755cc78d0671da505afbe1b5dcbfad089a092979eab7d7a"
+          },
+          {
+            "bytes": 38077,
+            "latest_available_at": "2026-09-06 08:13:28.621427+00:00",
+            "latest_date": "2025-08-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-06 08:13:28.621427+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\corporate\\cash_flow_statement_growth\\fmp\\normalized\\COST_cash_flow_statement_growth.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "400d412bdb16fc9334cabebe78c204ee13cbc5d248e2ffe58fde507334ed041b"
+          },
+          {
+            "bytes": 51414,
+            "latest_available_at": "2026-09-06 08:13:28.076185+00:00",
+            "latest_date": "2026-05-10 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-06 08:13:28.076185+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\corporate\\cash_flow_statement_quarterly\\fmp\\normalized\\COST_cash_flow_statement_quarterly.parquet",
+            "rows": 48,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "17fbbf7b674a41592f50f28da5942c2fe940e686cd5d1933032e8de3e7b9d850"
+          },
+          {
+            "bytes": 37042,
+            "latest_date": "2025-08-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-06 08:13:29.670982+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\corporate\\financial_growth\\fmp\\normalized\\COST_financial_growth.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "71f4025de08d4779a56cc04d40ed08ca3fd2ec6796bb435fb2aa27de5236e632"
+          },
+          {
+            "bytes": 37068,
+            "latest_available_at": "2026-09-06 08:13:25.408200+00:00",
+            "latest_date": "2025-08-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-06 08:13:25.408200+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\corporate\\income_statement_annual\\fmp\\normalized\\COST_income_statement_annual.parquet",
+            "rows": 20,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "e20af95be3dce2a8e00397a658a69ea9ea89470ad8d61dd34492cc069f314257"
+          },
+          {
+            "bytes": 31404,
+            "latest_available_at": "2026-09-06 08:13:29.170674+00:00",
+            "latest_date": "2025-08-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-06 08:13:29.170674+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\corporate\\income_statement_growth\\fmp\\normalized\\COST_income_statement_growth.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "4c33f645d7d3366eabf0b5d2c07b57118571b30a7dbed17454b3851585c7c5b1"
+          },
+          {
+            "bytes": 42707,
+            "latest_available_at": "2026-09-06 08:13:25.912513+00:00",
+            "latest_date": "2026-05-10 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-06 08:13:25.912513+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\corporate\\income_statement_quarterly\\fmp\\normalized\\COST_income_statement_quarterly.parquet",
+            "rows": 48,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "6dfe5c9440e43b2407d72592471c46c7aed18ea4bdd7afb9c26af33229b0b8ae"
+          },
+          {
+            "bytes": 36984,
+            "latest_date": "2025-08-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-06 08:13:23.955780+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\corporate\\key_metrics\\fmp\\normalized\\COST_key_metrics.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "183b1cba202f3f355dbf67f296b92f1b209cbadf47fc4b8d8c29514e5f7ae4ca"
+          },
+          {
+            "bytes": 34958,
+            "latest_fetched_at": "2026-09-12 04:19:31.510110+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\corporate\\key_metrics_ttm\\fmp\\normalized\\COST_key_metrics_ttm.parquet",
+            "rows": 6,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "6a38c282bf45479f1c55ddf9242b3102408ec92610c4351b1d954a1d9ac2f7be"
+          },
+          {
+            "bytes": 7911,
+            "latest_date": "2026-09-11 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-12 04:18:35.350449+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\corporate\\market_capitalization\\fmp\\normalized\\COST_market_capitalization.parquet",
+            "rows": 6,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "6bed3efc051ce56dded864a9cc0e1e9f1376a2ba2efeee60e9c13a013eac9ad6"
+          },
+          {
+            "bytes": 35469,
+            "latest_fetched_at": "2026-09-12 04:19:29.925330+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\corporate\\profile\\fmp\\normalized\\COST_profile.parquet",
+            "rows": 6,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "e9378838c7cb517ab51962c2a59281f53e7518a838d5eab890ab945b5ccbace3"
+          },
+          {
+            "bytes": 15901,
+            "latest_fetched_at": "2026-09-12 04:18:34.888182+00:00",
+            "latest_timestamp": "2026-09-11 20:00:01+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\corporate\\quote\\fmp\\normalized\\COST_quote.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "7197627c0d87b54035378b942e6377033217be190e844e7e441d1b83a9531ca0"
+          },
+          {
+            "bytes": 48975,
+            "latest_fetched_at": "2026-09-12 04:19:32.024208+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\corporate\\ratios_ttm\\fmp\\normalized\\COST_ratios_ttm.parquet",
+            "rows": 6,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "dd24ca49bb489d45f9558978380e7aa9d731567c8ca09a40b83b53ef762485f1"
+          },
+          {
+            "bytes": 9922,
+            "latest_date": "2026-09-11 21:24:15+00:00",
+            "latest_fetched_at": "2026-09-12 04:19:30.522652+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\corporate\\shares_float\\fmp\\normalized\\COST_shares_float.parquet",
+            "rows": 6,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "21dd1ee0d67ffe4fc15152c491d89dbc34743d9dd9f75f7d11b91272b86a82c0"
+          },
+          {
+            "bytes": 10061,
+            "latest_date": "2000-01-14 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-06 08:13:30.171188+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\corporate\\stock_splits\\fmp\\normalized\\COST_stock_splits.parquet",
+            "rows": 6,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "b8c8c784097921c01f88607bdb17e598d7c3e18f6d33f2fe74fc2d8b6295c927"
+          }
+        ],
+        "GOOG": [
+          {
+            "bytes": 54759,
+            "latest_available_at": "2026-09-09 00:20:17.509271+00:00",
+            "latest_date": "2025-12-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-09 00:20:17.509271+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\corporate\\balance_sheet_statement_annual\\fmp\\normalized\\GOOG_balance_sheet_statement_annual.parquet",
+            "rows": 29,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "a3bc98b010a966704923d87ae80c9a49eb100a8cc7307d8693d8cfde289a164f"
+          },
+          {
+            "bytes": 65865,
+            "latest_available_at": "2026-09-09 00:20:18.078493+00:00",
+            "latest_date": "2026-06-30 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-09 00:20:18.078493+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\corporate\\balance_sheet_statement_quarterly\\fmp\\normalized\\GOOG_balance_sheet_statement_quarterly.parquet",
+            "rows": 57,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "c86b786dbd88d32b65cd6970968fd107aa7e49d9ab0ff5f57b41449fea808ad2"
+          },
+          {
+            "bytes": 44602,
+            "latest_available_at": "2026-09-09 00:20:18.679991+00:00",
+            "latest_date": "2025-12-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-09 00:20:18.679991+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\corporate\\cash_flow_statement_annual\\fmp\\normalized\\GOOG_cash_flow_statement_annual.parquet",
+            "rows": 29,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "b843a414225d9df73b18f1e8f979f6b919d7aeb5220ba4e812b10b2e75c1f1cf"
+          },
+          {
+            "bytes": 37984,
+            "latest_available_at": "2026-08-18 16:37:35.749921+00:00",
+            "latest_date": "2025-12-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:35.749921+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\corporate\\cash_flow_statement_growth\\fmp\\normalized\\GOOG_cash_flow_statement_growth.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "08b68ba063f01425bd8b3bb13e89825ee6419628d277833d5cdaf3167eea3502"
+          },
+          {
+            "bytes": 52167,
+            "latest_available_at": "2026-09-09 00:20:19.236120+00:00",
+            "latest_date": "2026-06-30 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-09 00:20:19.236120+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\corporate\\cash_flow_statement_quarterly\\fmp\\normalized\\GOOG_cash_flow_statement_quarterly.parquet",
+            "rows": 53,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "2279f0d4647d1ae4b0e74c0a0e3b243751f0bdefae062bc6e100a09865a43500"
+          },
+          {
+            "bytes": 36908,
+            "latest_date": "2025-12-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-09 00:20:20.911488+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\corporate\\financial_growth\\fmp\\normalized\\GOOG_financial_growth.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "2c1b91699bca75663836b89ac8f9d4c2b24d64f4a79da93208735d381e5e15d8"
+          },
+          {
+            "bytes": 37752,
+            "latest_available_at": "2026-09-09 00:20:16.364048+00:00",
+            "latest_date": "2025-12-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-09 00:20:16.364048+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\corporate\\income_statement_annual\\fmp\\normalized\\GOOG_income_statement_annual.parquet",
+            "rows": 21,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "1a754aee14b98c682bcee9331b09dbe051c09072df8547daaae03fd6b688fa3c"
+          },
+          {
+            "bytes": 31689,
+            "latest_available_at": "2026-09-09 00:20:20.375388+00:00",
+            "latest_date": "2025-12-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-09 00:20:20.375388+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\corporate\\income_statement_growth\\fmp\\normalized\\GOOG_income_statement_growth.parquet",
+            "rows": 6,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "980a34ce51481ef3c81d1c3675fd3e127e37b30df633abf38453d47e0b0e7a6b"
+          },
+          {
+            "bytes": 44812,
+            "latest_available_at": "2026-09-09 00:20:16.913771+00:00",
+            "latest_date": "2026-06-30 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-09 00:20:16.913771+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\corporate\\income_statement_quarterly\\fmp\\normalized\\GOOG_income_statement_quarterly.parquet",
+            "rows": 50,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "e017dfd304c9c64d09387741bb0fbf638df9bdf8479b06f1fd51793553638a62"
+          },
+          {
+            "bytes": 36961,
+            "latest_date": "2025-12-31 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-09 00:20:14.621764+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\corporate\\key_metrics\\fmp\\normalized\\GOOG_key_metrics.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "07cc3caab482a8e89fc5d6689ce56d673cb794395c1449ec55ab0ea5b2fe554a"
+          },
+          {
+            "bytes": 94320,
+            "latest_fetched_at": "2026-09-12 04:18:58.394568+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\corporate\\key_metrics_ttm\\fmp\\normalized\\GOOG_key_metrics_ttm.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "9fd21497e10cedba61c019398b6be5f66811cb5b84ad5c769ed86fd9de61d257"
+          },
+          {
+            "bytes": 47646,
+            "latest_date": "2026-09-11 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-12 04:18:35.350426+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\corporate\\market_capitalization\\fmp\\normalized\\GOOG_market_capitalization.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "a2eaf1ba056241976c5204d4ffc87d94601e76e547a74e9f466b1a179c5ae3bf"
+          },
+          {
+            "bytes": 82768,
+            "latest_fetched_at": "2026-09-12 04:18:56.559448+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\corporate\\profile\\fmp\\normalized\\GOOG_profile.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "23ebf60129883ae9991bdd4cdeb065ad9e935a66961388053f478ad6e665c075"
+          },
+          {
+            "bytes": 37583,
+            "latest_fetched_at": "2026-09-12 04:18:34.888097+00:00",
+            "latest_timestamp": "2026-09-11 20:00:01+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\corporate\\quote\\fmp\\normalized\\GOOG_quote.parquet",
+            "rows": 305,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "4171278cf26b17d682d04d180474cf6d124cd504be6718b04704a628b7e41bb9"
+          },
+          {
+            "bytes": 125074,
+            "latest_fetched_at": "2026-09-12 04:18:58.999401+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\corporate\\ratios_ttm\\fmp\\normalized\\GOOG_ratios_ttm.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "bc03944dc281d3680abca34298f3e808d88171ffc46fa7a2285d6e68e425f83d"
+          },
+          {
+            "bytes": 47095,
+            "latest_date": "2026-09-11 23:34:45+00:00",
+            "latest_fetched_at": "2026-09-12 04:18:57.338872+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\corporate\\shares_float\\fmp\\normalized\\GOOG_shares_float.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "d1f66233648a659ee49a604821e481ca647f4eb4629a5eecb348e72d2969561a"
+          },
+          {
+            "bytes": 9947,
+            "latest_date": "2022-07-18 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:37.263942+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\corporate\\stock_splits\\fmp\\normalized\\GOOG_stock_splits.parquet",
+            "rows": 2,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "d45ffd734c78c39c79b879d5f22c64b47c53e5d83f89d16d3af4964766078282"
+          }
+        ],
+        "MU": [
+          {
+            "bytes": 54041,
+            "latest_available_at": "2026-08-18 16:37:41.352959+00:00",
+            "latest_date": "2025-08-28 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:41.352959+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\corporate\\balance_sheet_statement_annual\\fmp\\normalized\\MU_balance_sheet_statement_annual.parquet",
+            "rows": 20,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "b477c212f45f040daefca4b9cbd25fd1819957ab6fd81c3e9d4da07b2cb68536"
+          },
+          {
+            "bytes": 63965,
+            "latest_available_at": "2026-08-18 16:37:41.897107+00:00",
+            "latest_date": "2026-05-28 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:41.897107+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\corporate\\balance_sheet_statement_quarterly\\fmp\\normalized\\MU_balance_sheet_statement_quarterly.parquet",
+            "rows": 48,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "4d95190d63f34cf1afa9805aa6982fd60c7b38b4d31b85072f27095a7f5aaa9b"
+          },
+          {
+            "bytes": 44016,
+            "latest_available_at": "2026-08-18 16:37:42.465351+00:00",
+            "latest_date": "2025-08-28 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:42.465351+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\corporate\\cash_flow_statement_annual\\fmp\\normalized\\MU_cash_flow_statement_annual.parquet",
+            "rows": 20,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "38a5e55944e1ddb073257c4ba6292148d6be507e3ddcaf40bcfc7d9ce1eda8bc"
+          },
+          {
+            "bytes": 38061,
+            "latest_available_at": "2026-08-18 16:37:43.542140+00:00",
+            "latest_date": "2025-08-28 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:43.542140+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\corporate\\cash_flow_statement_growth\\fmp\\normalized\\MU_cash_flow_statement_growth.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "90127b79f169eccd62718e259c590caf774a69b19259b59b0f75a2f4027ee5a4"
+          },
+          {
+            "bytes": 51578,
+            "latest_available_at": "2026-08-21 14:11:29.591551+00:00",
+            "latest_date": "2026-05-28 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-21 14:11:29.591551+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\corporate\\cash_flow_statement_quarterly\\fmp\\normalized\\MU_cash_flow_statement_quarterly.parquet",
+            "rows": 52,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "091115be68eb992827b6b4a389acda140ea8f7e18f823b770b3e744561c57c5a"
+          },
+          {
+            "bytes": 36943,
+            "latest_date": "2025-08-28 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:45.070593+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\corporate\\financial_growth\\fmp\\normalized\\MU_financial_growth.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "082dffcfd504972b9747061aa48371a8f25608e76583cbd241c04c312dbc12d0"
+          },
+          {
+            "bytes": 37341,
+            "latest_available_at": "2026-08-18 16:37:40.295108+00:00",
+            "latest_date": "2025-08-28 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:40.295108+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\corporate\\income_statement_annual\\fmp\\normalized\\MU_income_statement_annual.parquet",
+            "rows": 20,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "94d8f79a2d4ffa535638544a4f1bb05d0cd0e609d36eab1ade2e900351acf19d"
+          },
+          {
+            "bytes": 31444,
+            "latest_available_at": "2026-08-18 16:37:44.027698+00:00",
+            "latest_date": "2025-08-28 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:44.027698+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\corporate\\income_statement_growth\\fmp\\normalized\\MU_income_statement_growth.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "eab2a2fbc9d9f9c462f164c92e689643643d49f23303340d37873849bbcb45ac"
+          },
+          {
+            "bytes": 44101,
+            "latest_available_at": "2026-08-21 13:51:54.982084+00:00",
+            "latest_date": "2026-05-28 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-21 13:51:54.982084+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\corporate\\income_statement_quarterly\\fmp\\normalized\\MU_income_statement_quarterly.parquet",
+            "rows": 51,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "7b4063f606e1baa1dcf79f23170f27d50232811dd640941b47bbd966edd3df27"
+          },
+          {
+            "bytes": 36983,
+            "latest_date": "2025-08-28 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:38.793572+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\corporate\\key_metrics\\fmp\\normalized\\MU_key_metrics.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "41ad18055923f1e46174da17f21175a58ddeba50f7cdf8627ee68c1ba0a7e7a8"
+          },
+          {
+            "bytes": 94387,
+            "latest_fetched_at": "2026-09-12 04:19:07.013148+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\corporate\\key_metrics_ttm\\fmp\\normalized\\MU_key_metrics_ttm.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "7e071af267a5452b3f53145b1f3451802a411b6ce3e94ef2d9b0de20e9c0156f"
+          },
+          {
+            "bytes": 47462,
+            "latest_date": "2026-09-11 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-12 04:18:35.350433+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\corporate\\market_capitalization\\fmp\\normalized\\MU_market_capitalization.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "78289fb3b87cab81c1e00e7694482581694021dcf3d712a933868a223c5664bf"
+          },
+          {
+            "bytes": 82311,
+            "latest_fetched_at": "2026-09-12 04:19:05.155675+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\corporate\\profile\\fmp\\normalized\\MU_profile.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "7cdd572ec6773f7ccc59710018d1094bbe1fcf3ff3f9affe3d12f7c70db2917f"
+          },
+          {
+            "bytes": 37360,
+            "latest_fetched_at": "2026-09-12 04:18:34.888119+00:00",
+            "latest_timestamp": "2026-09-11 20:00:01+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\corporate\\quote\\fmp\\normalized\\MU_quote.parquet",
+            "rows": 304,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "e2c49e7d560ee3d999bc0e09370d99902dc06831fb8a400c72636bd8549ab74b"
+          },
+          {
+            "bytes": 125963,
+            "latest_fetched_at": "2026-09-12 04:19:07.602468+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\corporate\\ratios_ttm\\fmp\\normalized\\MU_ratios_ttm.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "680eba58e43df6217f23d81f925a28e186ae19c4cc2a2c66af99ee1749cdbcb4"
+          },
+          {
+            "bytes": 47122,
+            "latest_date": "2026-09-12 02:22:20+00:00",
+            "latest_fetched_at": "2026-09-12 04:19:05.958750+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\corporate\\shares_float\\fmp\\normalized\\MU_shares_float.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "a74009caae2b94c1f04345768c05af1eaa994e3e8766a33d2716966b25cffa7a"
+          },
+          {
+            "bytes": 9953,
+            "latest_date": "2000-05-02 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:45.738117+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\corporate\\stock_splits\\fmp\\normalized\\MU_stock_splits.parquet",
+            "rows": 3,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "cfd01a054e7b0b16806b465c850f6c52dd9b7938ca1f192a88d592642740f842"
+          }
+        ],
+        "NVDA": [
+          {
+            "bytes": 54022,
+            "latest_available_at": "2026-08-18 16:37:53.159455+00:00",
+            "latest_date": "2026-01-25 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:53.159455+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\corporate\\balance_sheet_statement_annual\\fmp\\normalized\\NVDA_balance_sheet_statement_annual.parquet",
+            "rows": 20,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "351aab586a257c1abc863c4b585f378c7aa68decfc34cf397598fdd2ec9b10e0"
+          },
+          {
+            "bytes": 64865,
+            "latest_available_at": "2026-08-26 21:21:27.077953+00:00",
+            "latest_date": "2026-07-26 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-26 21:21:27.077953+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\corporate\\balance_sheet_statement_quarterly\\fmp\\normalized\\NVDA_balance_sheet_statement_quarterly.parquet",
+            "rows": 52,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "c808c8ec1b346247ea3c5cee045f4ccc0e431fe15071df5c55043f5178d855bf"
+          },
+          {
+            "bytes": 43962,
+            "latest_available_at": "2026-08-18 16:37:54.269690+00:00",
+            "latest_date": "2026-01-25 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:54.269690+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\corporate\\cash_flow_statement_annual\\fmp\\normalized\\NVDA_cash_flow_statement_annual.parquet",
+            "rows": 20,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "35ea028cdd899f0e49242a6e24ed97d81a708137fdfc6d6fced7ce927c0a203c"
+          },
+          {
+            "bytes": 38053,
+            "latest_available_at": "2026-08-18 16:37:55.333616+00:00",
+            "latest_date": "2026-01-25 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:55.333616+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\corporate\\cash_flow_statement_growth\\fmp\\normalized\\NVDA_cash_flow_statement_growth.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "676995d642a8b21ec78ab0e701d14c64facc7d34e2460d8939170af5cbde90e5"
+          },
+          {
+            "bytes": 51439,
+            "latest_available_at": "2026-08-26 21:21:28.192794+00:00",
+            "latest_date": "2026-07-26 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-26 21:21:28.192794+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\corporate\\cash_flow_statement_quarterly\\fmp\\normalized\\NVDA_cash_flow_statement_quarterly.parquet",
+            "rows": 51,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "dfbce2833c02ca4455abdbcada0b6e389c64fa87f0e33ccb337c6dde7c4aa8a8"
+          },
+          {
+            "bytes": 37069,
+            "latest_date": "2026-01-25 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:56.400475+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\corporate\\financial_growth\\fmp\\normalized\\NVDA_financial_growth.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "44895026d63fa4ac792298870099c436fa16d078fdb0ef49dae179793e62fba9"
+          },
+          {
+            "bytes": 37297,
+            "latest_available_at": "2026-08-18 16:37:49.671317+00:00",
+            "latest_date": "2026-01-25 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:49.671317+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\corporate\\income_statement_annual\\fmp\\normalized\\NVDA_income_statement_annual.parquet",
+            "rows": 20,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "a60ff8b66b041c9aac2226eac3044811485b773e92898cf02702eea36b989104"
+          },
+          {
+            "bytes": 31425,
+            "latest_available_at": "2026-08-18 16:37:55.893183+00:00",
+            "latest_date": "2026-01-25 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:55.893183+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\corporate\\income_statement_growth\\fmp\\normalized\\NVDA_income_statement_growth.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "597ab94dc5871ab51869f53ea39a63cb798bccc32a6408ade4d4bb183b7af612"
+          },
+          {
+            "bytes": 43822,
+            "latest_available_at": "2026-08-26 21:21:26.002197+00:00",
+            "latest_date": "2026-07-26 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-26 21:21:26.002197+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\corporate\\income_statement_quarterly\\fmp\\normalized\\NVDA_income_statement_quarterly.parquet",
+            "rows": 50,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "73983dc4e6b122d08e83eaa017aff1262b8c3780404a02ec30659b223f1a3d30"
+          },
+          {
+            "bytes": 37018,
+            "latest_date": "2026-01-25 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:47.251311+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\corporate\\key_metrics\\fmp\\normalized\\NVDA_key_metrics.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "e2cf3da8ca38134dcddec83660cbd3c3f9de9efac0be8fc6f9ce2851fd453793"
+          },
+          {
+            "bytes": 95722,
+            "latest_fetched_at": "2026-09-12 04:19:15.429043+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\corporate\\key_metrics_ttm\\fmp\\normalized\\NVDA_key_metrics_ttm.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "0610e9c1c500c347b429594c8cf6ea32b82cf53e5702c87083577be6ee4635c1"
+          },
+          {
+            "bytes": 47685,
+            "latest_date": "2026-09-11 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-12 04:18:35.350439+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\corporate\\market_capitalization\\fmp\\normalized\\NVDA_market_capitalization.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "46ad00c0838d279810e85b66ebf3cc57c1a9a55288e6d4eba250c859c0e498e7"
+          },
+          {
+            "bytes": 85061,
+            "latest_fetched_at": "2026-09-12 04:19:13.570655+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\corporate\\profile\\fmp\\normalized\\NVDA_profile.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "606e5156b5e877dbfc7c60187c92511e2747cd7eece3eeda2a62b06dd219de1c"
+          },
+          {
+            "bytes": 37666,
+            "latest_fetched_at": "2026-09-12 04:18:34.888140+00:00",
+            "latest_timestamp": "2026-09-11 20:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\corporate\\quote\\fmp\\normalized\\NVDA_quote.parquet",
+            "rows": 304,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "008a285930ad1534e6a38a3b1d74873fd3a236f8f6dabf0f7ff4b089198b1b5b"
+          },
+          {
+            "bytes": 127539,
+            "latest_fetched_at": "2026-09-12 04:19:16.006543+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\corporate\\ratios_ttm\\fmp\\normalized\\NVDA_ratios_ttm.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "033d16d908b9ce134365e1259fe90add76eb30e8c1970a407fe830ea0b132fe1"
+          },
+          {
+            "bytes": 47428,
+            "latest_date": "2026-09-11 12:43:25+00:00",
+            "latest_fetched_at": "2026-09-12 04:19:14.359151+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\corporate\\shares_float\\fmp\\normalized\\NVDA_shares_float.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "1f6800153c0b2433c7c4780174609a030e38623b222ff2194976efdaa45afc23"
+          },
+          {
+            "bytes": 10066,
+            "latest_date": "2024-06-10 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:56.907900+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\corporate\\stock_splits\\fmp\\normalized\\NVDA_stock_splits.parquet",
+            "rows": 6,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "6110890498b828ef515def7a2d781f53cc0a5c5f08d5586812ac89c72ed1ba33"
+          }
+        ],
+        "SNDK": [
+          {
+            "bytes": 47793,
+            "latest_available_at": "2026-08-18 16:38:01.423558+00:00",
+            "latest_date": "2026-07-03 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:38:01.423558+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\corporate\\balance_sheet_statement_annual\\fmp\\normalized\\SNDK_balance_sheet_statement_annual.parquet",
+            "rows": 6,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "193812f8fc11581b29cc4e4680a60e76aaea955641c5800ca7686d8741c4b6fe"
+          },
+          {
+            "bytes": 49621,
+            "latest_available_at": "2026-08-18 16:38:01.950182+00:00",
+            "latest_date": "2026-07-03 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:38:01.950182+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\corporate\\balance_sheet_statement_quarterly\\fmp\\normalized\\SNDK_balance_sheet_statement_quarterly.parquet",
+            "rows": 10,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "546ab5335de13238604824134ced8d441afcdbf690c994e85686d6bc809f9e49"
+          },
+          {
+            "bytes": 39183,
+            "latest_available_at": "2026-08-18 16:38:02.510608+00:00",
+            "latest_date": "2026-07-03 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:38:02.510608+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\corporate\\cash_flow_statement_annual\\fmp\\normalized\\SNDK_cash_flow_statement_annual.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "16908f1c870aaa03b22a538a8cf9b1b76c9ac154148c715fcee598c34426324c"
+          },
+          {
+            "bytes": 37668,
+            "latest_available_at": "2026-08-18 16:38:03.495822+00:00",
+            "latest_date": "2026-07-03 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:38:03.495822+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\corporate\\cash_flow_statement_growth\\fmp\\normalized\\SNDK_cash_flow_statement_growth.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "b3a4f9a184940b16c737f106ba6f4a1c87e0151a22e178825ef115e4fb9a24a1"
+          },
+          {
+            "bytes": 40853,
+            "latest_available_at": "2026-08-18 16:38:03.004565+00:00",
+            "latest_date": "2026-07-03 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:38:03.004565+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\corporate\\cash_flow_statement_quarterly\\fmp\\normalized\\SNDK_cash_flow_statement_quarterly.parquet",
+            "rows": 12,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "546d65fd3a3a4f64b2d20b33e10130f95f63835cc128f96322339dbf76a31191"
+          },
+          {
+            "bytes": 36313,
+            "latest_date": "2026-07-03 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:38:04.586195+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\corporate\\financial_growth\\fmp\\normalized\\SNDK_financial_growth.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "c0875c521b6c3ad754ea0df008383e6018c80479cd20c691f10b2f1952bdcf91"
+          },
+          {
+            "bytes": 33387,
+            "latest_available_at": "2026-08-18 16:38:00.404399+00:00",
+            "latest_date": "2026-07-03 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:38:00.404399+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\corporate\\income_statement_annual\\fmp\\normalized\\SNDK_income_statement_annual.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "de8927166e468e86aebf24d4303e0cc75b3962a50397e42588d20a1076ac319f"
+          },
+          {
+            "bytes": 31354,
+            "latest_available_at": "2026-08-18 16:38:04.079612+00:00",
+            "latest_date": "2026-07-03 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:38:04.079612+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\corporate\\income_statement_growth\\fmp\\normalized\\SNDK_income_statement_growth.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "c13aca6dc9092c4c1538bc3698bdb1c08eae88fea19c44cccba713b9d103140d"
+          },
+          {
+            "bytes": 35002,
+            "latest_available_at": "2026-08-18 16:38:00.896556+00:00",
+            "latest_date": "2026-07-03 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:38:00.896556+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\corporate\\income_statement_quarterly\\fmp\\normalized\\SNDK_income_statement_quarterly.parquet",
+            "rows": 12,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "f176951208c0f64b35061ea33f490adf6e5f21ce3ad3e3c28df68770acc3c5e3"
+          },
+          {
+            "bytes": 36959,
+            "latest_date": "2026-07-03 00:00:00+00:00",
+            "latest_fetched_at": "2026-08-18 16:37:58.833622+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\corporate\\key_metrics\\fmp\\normalized\\SNDK_key_metrics.parquet",
+            "rows": 5,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "eea9ee55793c542c218dbaa9274c10982f1e25c4046abd6c15851798bf6abb54"
+          },
+          {
+            "bytes": 94466,
+            "latest_fetched_at": "2026-09-12 04:19:23.684803+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\corporate\\key_metrics_ttm\\fmp\\normalized\\SNDK_key_metrics_ttm.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "7abc65209efdcf4018a34a1c1391de24d21bdf5974c75440f1a9bf58ee4c7813"
+          },
+          {
+            "bytes": 47506,
+            "latest_date": "2026-09-11 00:00:00+00:00",
+            "latest_fetched_at": "2026-09-12 04:18:35.350444+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\corporate\\market_capitalization\\fmp\\normalized\\SNDK_market_capitalization.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "657185eeb5c57d704affc647f25088008b9ae5edba19fa54f264ec4805e4eec9"
+          },
+          {
+            "bytes": 77682,
+            "latest_fetched_at": "2026-09-12 04:19:21.781355+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\corporate\\profile\\fmp\\normalized\\SNDK_profile.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "666218d53fc6fe1f9cd879bfc2ba3bb6c15b52fa7b9732ca5e961446b5504e09"
+          },
+          {
+            "bytes": 37509,
+            "latest_fetched_at": "2026-09-12 04:18:34.888161+00:00",
+            "latest_timestamp": "2026-09-11 20:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\corporate\\quote\\fmp\\normalized\\SNDK_quote.parquet",
+            "rows": 304,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "359cc7de6a46c6650f05dda3781f0bf6c790abc04bd9ffbf3561b627ee706dab"
+          },
+          {
+            "bytes": 123442,
+            "latest_fetched_at": "2026-09-12 04:19:24.354845+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\corporate\\ratios_ttm\\fmp\\normalized\\SNDK_ratios_ttm.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "293260caf0b3d6c14bc1f68d497727b1cf5edbb9f7e5bdf52dcaf575d3bccd21"
+          },
+          {
+            "bytes": 47116,
+            "latest_date": "2026-09-11 06:17:25+00:00",
+            "latest_fetched_at": "2026-09-12 04:19:22.572676+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\corporate\\shares_float\\fmp\\normalized\\SNDK_shares_float.parquet",
+            "rows": 1484,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "884a82caa5b9ab1475b066514c8635266ea15425b7128e90d3faf118e787008c"
+          }
+        ]
+      },
+      "derived_energy_context": {
+        "bytes": 65577,
+        "latest_available_at": "2026-09-02 13:26:39.794019+00:00",
+        "latest_fetched_at": "2026-09-02 13:26:39.794019+00:00",
+        "latest_observed_at": "2026-09-01 20:00:00+00:00",
+        "path": "C:\\DATASTORE\\pools\\macro\\features\\energy-context\\fmp\\quote.parquet",
+        "rows": 1349,
+        "rows_with_receipt_in_cycle": 0,
+        "sha256": "0917a1e71431013b2427980e05d0fb3210f5dcf126ce0f280abef4d7def3daae"
+      },
+      "macro_quotes": [
+        {
+          "bytes": 108576,
+          "cadence": [
+            "market quote"
+          ],
+          "latest_available_at": "2026-09-12 04:18:46.237038+00:00",
+          "latest_fetched_at": "2026-09-12 04:18:46.237038+00:00",
+          "latest_timestamp": "2026-09-11 21:00:01+00:00",
+          "path": "C:\\DATASTORE\\pools\\macro\\BZUSD\\quote\\fmp\\normalized\\BZUSD_quote.parquet",
+          "rows": 1484,
+          "rows_with_receipt_in_cycle": 1,
+          "sha256": "57477f3562c6390edd1a791674e51ded19f0c34e05faea42e6cb835cb4d911f6"
+        },
+        {
+          "bytes": 91646,
+          "cadence": [
+            "market quote"
+          ],
+          "latest_available_at": "2026-09-12 04:18:45.800237+00:00",
+          "latest_fetched_at": "2026-09-12 04:18:45.800237+00:00",
+          "latest_timestamp": "2026-09-11 20:00:00+00:00",
+          "path": "C:\\DATASTORE\\pools\\macro\\CLUSD\\quote\\fmp\\normalized\\CLUSD_quote.parquet",
+          "rows": 1484,
+          "rows_with_receipt_in_cycle": 1,
+          "sha256": "b58bcc2e00512f176e4149f3f07b94645d096a7bbdc36a7e31a493a3053ca526"
+        },
+        {
+          "bytes": 89546,
+          "cadence": [
+            "market quote"
+          ],
+          "latest_available_at": "2026-09-12 04:18:47.131253+00:00",
+          "latest_fetched_at": "2026-09-12 04:18:47.131253+00:00",
+          "latest_timestamp": "2026-09-11 20:00:00+00:00",
+          "path": "C:\\DATASTORE\\pools\\macro\\NGUSD\\quote\\fmp\\normalized\\NGUSD_quote.parquet",
+          "rows": 1483,
+          "rows_with_receipt_in_cycle": 1,
+          "sha256": "ec8b51fb9fca25d61f860f5f132346e3751404372dbcc850a850d1381005fe6f"
+        }
+      ]
+    },
+    "fred": {
+      "interpretation": "Current-revised macro rows were freshly fetched. Series dates follow monthly/quarterly cadence; current receipts do not themselves prove historical vintage availability.",
+      "shared_series": [
+        {
+          "bytes": 35656,
+          "cadence": [
+            "monthly"
+          ],
+          "fetch_liveness_age_days": "42",
+          "fetch_liveness_limit_days": "90",
+          "fetch_liveness_status": [
+            "CURRENT"
+          ],
+          "freshness_status": [
+            "CURRENT"
+          ],
+          "latest_date": "2026-08-01 00:00:00+00:00",
+          "latest_fetched_at": "2026-09-12 04:19:38.087703+00:00",
+          "latest_latest_observation_date": "2026-08-01 00:00:00+00:00",
+          "path": "C:\\DATASTORE\\pools\\macro\\CPI\\CPIAUCSL\\fred\\normalized\\CPI_CPIAUCSL.parquet",
+          "rows": 955,
+          "rows_with_receipt_in_cycle": 955,
+          "sha256": "7d47ca9d1aace83670267fbf19c8cd789d579d408ef7f4d21bcb06d6fd998cd3"
+        },
+        {
+          "bytes": 31941,
+          "cadence": [
+            "monthly"
+          ],
+          "fetch_liveness_age_days": "42",
+          "fetch_liveness_limit_days": "90",
+          "fetch_liveness_status": [
+            "CURRENT"
+          ],
+          "freshness_status": [
+            "CURRENT"
+          ],
+          "latest_date": "2026-08-01 00:00:00+00:00",
+          "latest_fetched_at": "2026-09-12 04:19:40.203012+00:00",
+          "latest_latest_observation_date": "2026-08-01 00:00:00+00:00",
+          "path": "C:\\DATASTORE\\pools\\macro\\FEDERALFUNDS\\FEDFUNDS\\fred\\normalized\\FEDERALFUNDS_FEDFUNDS.parquet",
+          "rows": 866,
+          "rows_with_receipt_in_cycle": 866,
+          "sha256": "45007d8f6ca0264809da4e444852458f995c2d193c4e34db43e259f06f4a80d1"
+        },
+        {
+          "bytes": 22738,
+          "cadence": [
+            "quarterly"
+          ],
+          "fetch_liveness_age_days": "164",
+          "fetch_liveness_limit_days": "240",
+          "fetch_liveness_status": [
+            "CURRENT"
+          ],
+          "freshness_status": [
+            "CURRENT"
+          ],
+          "latest_date": "2026-04-01 00:00:00+00:00",
+          "latest_fetched_at": "2026-09-12 04:19:37.564614+00:00",
+          "latest_latest_observation_date": "2026-04-01 00:00:00+00:00",
+          "path": "C:\\DATASTORE\\pools\\macro\\GDP\\GDP\\fred\\normalized\\GDP_GDP.parquet",
+          "rows": 318,
+          "rows_with_receipt_in_cycle": 318,
+          "sha256": "4e64271d6cda7dc7c74256a0cf491fdf50f1ed14bf61a9947cdc4af624fa85a3"
+        },
+        {
+          "bytes": 30901,
+          "cadence": [
+            "monthly"
+          ],
+          "fetch_liveness_age_days": "42",
+          "fetch_liveness_limit_days": "90",
+          "fetch_liveness_status": [
+            "CURRENT"
+          ],
+          "freshness_status": [
+            "CURRENT"
+          ],
+          "latest_date": "2026-08-01 00:00:00+00:00",
+          "latest_fetched_at": "2026-09-12 04:19:39.148169+00:00",
+          "latest_latest_observation_date": "2026-08-01 00:00:00+00:00",
+          "path": "C:\\DATASTORE\\pools\\macro\\UNEMPLOYMENTRATE\\UNRATE\\fred\\normalized\\UNEMPLOYMENTRATE_UNRATE.parquet",
+          "rows": 943,
+          "rows_with_receipt_in_cycle": 943,
+          "sha256": "85be67df046ec638be1b37ebe7531e7a2ed3ccf9cd39eb95f85864bfa8f56697"
+        }
+      ]
+    },
+    "schwab": {
+      "AAPL": {
+        "bar_scopes": [
+          {
+            "bytes": 60615,
+            "latest_timestamp": "2026-08-19 18:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\bars\\10m\\schwab\\normalized\\AAPL_day_10_minute_10.parquet",
+            "rows": 1495,
+            "sha256": "eef5ac7545b8c2e7f02fbc3fcea8fa4d54a0c998f9d1881b5023bd95b36a257e"
+          },
+          {
+            "bytes": 43965,
+            "latest_timestamp": "2026-08-19 17:45:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\bars\\15m\\schwab\\normalized\\AAPL_day_10_minute_15.parquet",
+            "rows": 996,
+            "sha256": "725b9f63d14c6a7678dd7a54b49623a95e4cd5b2735b0ddd75c3d89de335f09c"
+          },
+          {
+            "bytes": 249554,
+            "latest_timestamp": "2026-08-18 05:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\bars\\1d\\schwab\\normalized\\AAPL_year_20_daily_1.parquet",
+            "rows": 5032,
+            "sha256": "7b64c565d920e9516d145b3d35cc1ccd8c93dc4f9cf4066bc9081afb0cfcb3d0"
+          },
+          {
+            "bytes": 412787,
+            "latest_timestamp": "2026-08-19 18:11:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\bars\\1m\\schwab\\normalized\\AAPL_day_10_minute_1.parquet",
+            "rows": 13584,
+            "sha256": "18df8b70a82252c55d96d1f089c9cb3ff2763d75b1ad113d27920b0bf45e0e7f"
+          },
+          {
+            "bytes": 17566,
+            "latest_timestamp": "2026-07-01 05:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\bars\\1mo\\schwab\\normalized\\AAPL_year_20_monthly_1.parquet",
+            "rows": 239,
+            "sha256": "48aa04406784f59a6a0ed149d1d4b65f853e35ecd406d4ec68005f09bcc2508b"
+          },
+          {
+            "bytes": 59030,
+            "latest_timestamp": "2026-08-10 05:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\bars\\1w\\schwab\\normalized\\AAPL_year_20_weekly_1.parquet",
+            "rows": 1042,
+            "sha256": "79b126ca0f50f35a1c929f41ab8c9e9fb7532f59d901a77cb4e901703b753bf4"
+          },
+          {
+            "bytes": 25224,
+            "latest_timestamp": "2026-08-19 17:30:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\bars\\30m\\schwab\\normalized\\AAPL_day_10_minute_30.parquet",
+            "rows": 498,
+            "sha256": "c44c5643c265c7935a959de56c8268d58a14b0352c3b2a752b29a6c1a47656de"
+          },
+          {
+            "bytes": 108994,
+            "latest_timestamp": "2026-08-19 18:05:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\bars\\5m\\schwab\\normalized\\AAPL_day_10_minute_5.parquet",
+            "rows": 2987,
+            "sha256": "b2f8f5085ac33f4fbf95041d2207c882a00563d8e730fafa22c26ecae920d84b"
+          }
+        ],
+        "options_publication_log": [
+          "[AAPL/schwab/options] 2132 contracts at decision time 2026-09-11T20:45:00+00:00 -> C:\\DATASTORE\\stocks\\AAPL\\options\\features\\option-quality\\schwab\\2026-09.parquet"
+        ],
+        "quote": {
+          "bytes": 50410,
+          "latest_fetched_at": "2026-09-12 04:19:41.940212+00:00",
+          "path": "C:\\DATASTORE\\stocks\\AAPL\\quotes\\schwab\\normalized\\AAPL.parquet",
+          "rows": 736,
+          "rows_with_receipt_in_cycle": 1,
+          "sha256": "d3c572cbe5733ccfbff07e523c933ede4e839ea70259c20b63d81675a1de3d60"
+        }
+      },
+      "AMZN": {
+        "bar_scopes": [
+          {
+            "bytes": 61424,
+            "latest_timestamp": "2026-08-19 18:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\bars\\10m\\schwab\\normalized\\AMZN_day_10_minute_10.parquet",
+            "rows": 1494,
+            "sha256": "5253b1ea8274cd7cf18df609c994f66449e7415e1f0a2693f591f6214e02eac3"
+          },
+          {
+            "bytes": 44219,
+            "latest_timestamp": "2026-08-19 17:45:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\bars\\15m\\schwab\\normalized\\AMZN_day_10_minute_15.parquet",
+            "rows": 996,
+            "sha256": "fed89df6b13300d7c6c29d58849b31e4eaea80173983c2068b9a21bcd6a3c0f0"
+          },
+          {
+            "bytes": 248648,
+            "latest_timestamp": "2026-08-18 05:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\bars\\1d\\schwab\\normalized\\AMZN_year_20_daily_1.parquet",
+            "rows": 5032,
+            "sha256": "39e3eb661fc25a6bf5d3812636a82243e1eb6f2a0c278ae4b9cd756c63482745"
+          },
+          {
+            "bytes": 382989,
+            "latest_timestamp": "2026-08-19 18:11:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\bars\\1m\\schwab\\normalized\\AMZN_day_10_minute_1.parquet",
+            "rows": 12172,
+            "sha256": "3442802c0523eac58f0f6f5fb808a565acc0cab7237656731cc8f9c277678c98"
+          },
+          {
+            "bytes": 16965,
+            "latest_timestamp": "2026-07-01 05:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\bars\\1mo\\schwab\\normalized\\AMZN_year_20_monthly_1.parquet",
+            "rows": 239,
+            "sha256": "01ccfff15b50857346c52f9690f9278a697c44769933339855e17bb67397715c"
+          },
+          {
+            "bytes": 57400,
+            "latest_timestamp": "2026-08-10 05:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\bars\\1w\\schwab\\normalized\\AMZN_year_20_weekly_1.parquet",
+            "rows": 1042,
+            "sha256": "2fdadaf3dbc72b5ae65f40dba9e56525e4b7b26d7c6a1862a8b5a1edb5d96e3d"
+          },
+          {
+            "bytes": 25332,
+            "latest_timestamp": "2026-08-19 17:30:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\bars\\30m\\schwab\\normalized\\AMZN_day_10_minute_30.parquet",
+            "rows": 498,
+            "sha256": "8690556340ab66a1e73ed691ad51e63f6b6e200dc15178ba3f9b3c7114952393"
+          },
+          {
+            "bytes": 109155,
+            "latest_timestamp": "2026-08-19 18:05:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\bars\\5m\\schwab\\normalized\\AMZN_day_10_minute_5.parquet",
+            "rows": 2953,
+            "sha256": "0a3c5a6509bdb28e9fa4cf6d2932ba9a082c70f46e87b39e8739befda605e084"
+          }
+        ],
+        "options_publication_log": [
+          "[AMZN/schwab/options] 1616 contracts at decision time 2026-09-11T20:00:00+00:00 -> C:\\DATASTORE\\stocks\\AMZN\\options\\features\\option-quality\\schwab\\2026-09.parquet"
+        ],
+        "quote": {
+          "bytes": 50253,
+          "latest_fetched_at": "2026-09-12 04:19:41.940212+00:00",
+          "path": "C:\\DATASTORE\\stocks\\AMZN\\quotes\\schwab\\normalized\\AMZN.parquet",
+          "rows": 736,
+          "rows_with_receipt_in_cycle": 1,
+          "sha256": "62512be98e4e64f978eddaa7019f3319f47693f1d41fa2cd43adc39066c0d0b2"
+        }
+      },
+      "COST": {
+        "bar_scopes": [
+          {
+            "bytes": 39799,
+            "latest_timestamp": "2026-09-04 23:50:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\bars\\10m\\schwab\\normalized\\COST_day_10_minute_10.parquet",
+            "rows": 884,
+            "sha256": "c1a7b7c215df1b3acbfd589275630a3d28c69cbe29d5be45a8d7245d8649af06"
+          },
+          {
+            "bytes": 31267,
+            "latest_timestamp": "2026-09-04 23:45:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\bars\\15m\\schwab\\normalized\\COST_day_10_minute_15.parquet",
+            "rows": 653,
+            "sha256": "dff352c9abb6f86b30f01fb6094e5f5717272c79608550485e9441a6ab184d78"
+          },
+          {
+            "bytes": 183747,
+            "latest_timestamp": "2026-09-04 23:59:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\bars\\1m\\schwab\\normalized\\COST_day_10_minute_1.parquet",
+            "rows": 4953,
+            "sha256": "d63ea9bb373e7c8e72ab7bb2eae741e9c81f43d4b6f61ec1c4a6a0f2c1d2fb4d"
+          },
+          {
+            "bytes": 20382,
+            "latest_timestamp": "2026-09-04 23:30:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\bars\\30m\\schwab\\normalized\\COST_day_10_minute_30.parquet",
+            "rows": 375,
+            "sha256": "7ed7e6caedc30909a30bd558492989d753b1347b2776189ee9f6c80f820a9154"
+          },
+          {
+            "bytes": 61167,
+            "latest_timestamp": "2026-09-04 23:55:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\bars\\5m\\schwab\\normalized\\COST_day_10_minute_5.parquet",
+            "rows": 1464,
+            "sha256": "ce2fa9f663d0e8fe30f98d685b0f3ca825f0eb11227ad5088eca49d3f502edea"
+          }
+        ],
+        "options_publication_log": [
+          "[COST/schwab/options] 2212 contracts at decision time 2026-09-11T20:00:00+00:00 -> C:\\DATASTORE\\stocks\\COST\\options\\features\\option-quality\\schwab\\2026-09.parquet"
+        ],
+        "quote": {
+          "bytes": 7014,
+          "latest_fetched_at": "2026-09-12 04:19:41.940212+00:00",
+          "path": "C:\\DATASTORE\\stocks\\COST\\quotes\\schwab\\normalized\\COST.parquet",
+          "rows": 5,
+          "rows_with_receipt_in_cycle": 1,
+          "sha256": "ccfe0dc5ae6880bcac134ba756f951c2f890c1d070ae728be895a2a0f90823a0"
+        }
+      },
+      "GOOG": {
+        "bar_scopes": [
+          {
+            "bytes": 62668,
+            "latest_timestamp": "2026-08-19 18:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\bars\\10m\\schwab\\normalized\\GOOG_day_10_minute_10.parquet",
+            "rows": 1495,
+            "sha256": "1789b9b72033aeb5e6943ec4393bfb5455d746d30e22c6e211f47f6759d40921"
+          },
+          {
+            "bytes": 44733,
+            "latest_timestamp": "2026-08-19 17:45:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\bars\\15m\\schwab\\normalized\\GOOG_day_10_minute_15.parquet",
+            "rows": 996,
+            "sha256": "5b34bf9476e487a5076182f89ac57fe1825604dbd55c81b1db994405bd9ca949"
+          },
+          {
+            "bytes": 302960,
+            "latest_timestamp": "2026-08-18 05:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\bars\\1d\\schwab\\normalized\\GOOG_year_20_daily_1.parquet",
+            "rows": 5032,
+            "sha256": "650656ca43ef4a80312c5b1242ea0844fc4e07d8bd4f88656f9fff3a9de9716e"
+          },
+          {
+            "bytes": 406124,
+            "latest_timestamp": "2026-08-19 18:11:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\bars\\1m\\schwab\\normalized\\GOOG_day_10_minute_1.parquet",
+            "rows": 12721,
+            "sha256": "f1ca5d86fb463b6685983dd681a93953173bea1558825383823b9fa1deadd4b7"
+          },
+          {
+            "bytes": 18595,
+            "latest_timestamp": "2026-07-01 05:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\bars\\1mo\\schwab\\normalized\\GOOG_year_20_monthly_1.parquet",
+            "rows": 239,
+            "sha256": "2400cc494d8f441721a6160d30136e787b8f6d7a068362d559f8e12bcbe90368"
+          },
+          {
+            "bytes": 67921,
+            "latest_timestamp": "2026-08-10 05:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\bars\\1w\\schwab\\normalized\\GOOG_year_20_weekly_1.parquet",
+            "rows": 1042,
+            "sha256": "e26c3781745278efd469149b13fdc2a2d9f984cc6ea265cf25d12edaabfdda49"
+          },
+          {
+            "bytes": 25441,
+            "latest_timestamp": "2026-08-19 17:30:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\bars\\30m\\schwab\\normalized\\GOOG_day_10_minute_30.parquet",
+            "rows": 498,
+            "sha256": "f351ff86567308cfcf01eb21b72774d25bd78e016a2fa145439644a61b245a79"
+          },
+          {
+            "bytes": 111433,
+            "latest_timestamp": "2026-08-19 18:05:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\bars\\5m\\schwab\\normalized\\GOOG_day_10_minute_5.parquet",
+            "rows": 2975,
+            "sha256": "3cace8ce8160da10cfd0f3fec0930da379f1751c8e677b56ccc7465ced7ca81f"
+          }
+        ],
+        "options_publication_log": [
+          "[GOOG/schwab/options] 1588 contracts at decision time 2026-09-11T20:00:00+00:00 -> C:\\DATASTORE\\stocks\\GOOG\\options\\features\\option-quality\\schwab\\2026-09.parquet"
+        ],
+        "quote": {
+          "bytes": 50431,
+          "latest_fetched_at": "2026-09-12 04:19:41.940212+00:00",
+          "path": "C:\\DATASTORE\\stocks\\GOOG\\quotes\\schwab\\normalized\\GOOG.parquet",
+          "rows": 734,
+          "rows_with_receipt_in_cycle": 1,
+          "sha256": "33a014fbe6fce00a4f6dd1876c9013ff1c38eefdaaa274a449d2e44cd62c88df"
+        }
+      },
+      "MU": {
+        "bar_scopes": [
+          {
+            "bytes": 68690,
+            "latest_timestamp": "2026-08-19 18:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\bars\\10m\\schwab\\normalized\\MU_day_10_minute_10.parquet",
+            "rows": 1495,
+            "sha256": "63323d7ba377144b7bac10235d0dcd57e6468bca37add760206ee69c55992540"
+          },
+          {
+            "bytes": 48062,
+            "latest_timestamp": "2026-08-19 17:45:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\bars\\15m\\schwab\\normalized\\MU_day_10_minute_15.parquet",
+            "rows": 996,
+            "sha256": "905261db633499f507efdb334cf5541bdc0a717bf483c4661cefbf1a6926589e"
+          },
+          {
+            "bytes": 216674,
+            "latest_timestamp": "2026-08-18 05:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\bars\\1d\\schwab\\normalized\\MU_year_20_daily_1.parquet",
+            "rows": 5032,
+            "sha256": "a8632d10a46d016a90376c912cf008996c51085fe87a62ced3a9f181ed898218"
+          },
+          {
+            "bytes": 560718,
+            "latest_timestamp": "2026-08-19 18:11:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\bars\\1m\\schwab\\normalized\\MU_day_10_minute_1.parquet",
+            "rows": 14862,
+            "sha256": "70ac8694c3f42795adf9513226e661540826af32d8ca9da30f8ad8085ae7fc6c"
+          },
+          {
+            "bytes": 15716,
+            "latest_timestamp": "2026-07-01 05:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\bars\\1mo\\schwab\\normalized\\MU_year_20_monthly_1.parquet",
+            "rows": 239,
+            "sha256": "976c72d535044f675a0bdb497cf289d27b057460c8bdfdbdab9a089cf926d790"
+          },
+          {
+            "bytes": 52968,
+            "latest_timestamp": "2026-08-10 05:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\bars\\1w\\schwab\\normalized\\MU_year_20_weekly_1.parquet",
+            "rows": 1042,
+            "sha256": "97c23e85825445ebecac2d1b3a00a07480164d3200394de237210dafe3b45976"
+          },
+          {
+            "bytes": 26613,
+            "latest_timestamp": "2026-08-19 17:30:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\bars\\30m\\schwab\\normalized\\MU_day_10_minute_30.parquet",
+            "rows": 498,
+            "sha256": "459ddba6bcab0c6a19f3be13ca61f327cd07b0b9a3d1f84a6041079a4b29a467"
+          },
+          {
+            "bytes": 129507,
+            "latest_timestamp": "2026-08-19 18:05:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\bars\\5m\\schwab\\normalized\\MU_day_10_minute_5.parquet",
+            "rows": 2990,
+            "sha256": "0c43ff3dc97928b728182a12baa35988aa40b4ebbe88821d40d0a5e2e1af95f3"
+          }
+        ],
+        "options_publication_log": [
+          "[MU/schwab/options] 2972 contracts at decision time 2026-09-11T20:00:00+00:00 -> C:\\DATASTORE\\stocks\\MU\\options\\features\\option-quality\\schwab\\2026-09.parquet"
+        ],
+        "quote": {
+          "bytes": 52665,
+          "latest_fetched_at": "2026-09-12 04:19:41.940212+00:00",
+          "path": "C:\\DATASTORE\\stocks\\MU\\quotes\\schwab\\normalized\\MU.parquet",
+          "rows": 737,
+          "rows_with_receipt_in_cycle": 1,
+          "sha256": "a05400703d409c3231eb8506a47d3ecaa90b5a8109182a2660319aa30775973b"
+        }
+      },
+      "NVDA": {
+        "bar_scopes": [
+          {
+            "bytes": 60868,
+            "latest_timestamp": "2026-08-19 18:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\bars\\10m\\schwab\\normalized\\NVDA_day_10_minute_10.parquet",
+            "rows": 1495,
+            "sha256": "bc7562f2c74db615944e525208db6289dce5972185bc2d6ce40a8aab647ac33e"
+          },
+          {
+            "bytes": 44143,
+            "latest_timestamp": "2026-08-19 17:45:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\bars\\15m\\schwab\\normalized\\NVDA_day_10_minute_15.parquet",
+            "rows": 996,
+            "sha256": "136ec28c994795e181bee2e49ef855d3625f35f222f609f64e2d0fd06c7a5f4d"
+          },
+          {
+            "bytes": 235042,
+            "latest_timestamp": "2026-08-18 05:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\bars\\1d\\schwab\\normalized\\NVDA_year_20_daily_1.parquet",
+            "rows": 5032,
+            "sha256": "ba6bb32ce3c6fdb0408c69a9030bde17a4de742f1a6fa48d41325ef56f47d4f8"
+          },
+          {
+            "bytes": 457836,
+            "latest_timestamp": "2026-08-19 18:11:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\bars\\1m\\schwab\\normalized\\NVDA_day_10_minute_1.parquet",
+            "rows": 14640,
+            "sha256": "d20005505d2b3212a66f669418e6f6c0014f2fb85338b1818e7688b5e2905d40"
+          },
+          {
+            "bytes": 17226,
+            "latest_timestamp": "2026-07-01 05:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\bars\\1mo\\schwab\\normalized\\NVDA_year_20_monthly_1.parquet",
+            "rows": 239,
+            "sha256": "c7b22de8523a1797a7104619f333883fca4889350d3ec0ac1c0754b01ddac710"
+          },
+          {
+            "bytes": 56939,
+            "latest_timestamp": "2026-08-10 05:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\bars\\1w\\schwab\\normalized\\NVDA_year_20_weekly_1.parquet",
+            "rows": 1042,
+            "sha256": "b612a74613a14d090c18940e3ad8523fff15105a8a99686a4137c133b5367727"
+          },
+          {
+            "bytes": 25409,
+            "latest_timestamp": "2026-08-19 17:30:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\bars\\30m\\schwab\\normalized\\NVDA_day_10_minute_30.parquet",
+            "rows": 498,
+            "sha256": "5d526429e9b7e682b384fd1077de6f5f9ae9311110ee1ac1a6318cd7145ca826"
+          },
+          {
+            "bytes": 110792,
+            "latest_timestamp": "2026-08-19 18:05:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\bars\\5m\\schwab\\normalized\\NVDA_day_10_minute_5.parquet",
+            "rows": 2990,
+            "sha256": "358f8c5491574ab4bcb34d9ebccd7b14d98a0547798ab463ea362fd646c8c8e9"
+          }
+        ],
+        "options_publication_log": [
+          "[NVDA/schwab/options] 2468 contracts at decision time 2026-09-11T20:30:00+00:00 -> C:\\DATASTORE\\stocks\\NVDA\\options\\features\\option-quality\\schwab\\2026-09.parquet"
+        ],
+        "quote": {
+          "bytes": 52021,
+          "latest_fetched_at": "2026-09-12 04:19:41.940212+00:00",
+          "path": "C:\\DATASTORE\\stocks\\NVDA\\quotes\\schwab\\normalized\\NVDA.parquet",
+          "rows": 736,
+          "rows_with_receipt_in_cycle": 1,
+          "sha256": "fc209fc2ede3683ef650ad86affafefa0ef4018cd4ba500795f057779526025f"
+        }
+      },
+      "SNDK": {
+        "bar_scopes": [
+          {
+            "bytes": 69302,
+            "latest_timestamp": "2026-08-19 18:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\bars\\10m\\schwab\\normalized\\SNDK_day_10_minute_10.parquet",
+            "rows": 1495,
+            "sha256": "0cf3cca4881264faa77116b7ed966f74d443089abd1fb576792664b7f51091eb"
+          },
+          {
+            "bytes": 48423,
+            "latest_timestamp": "2026-08-19 17:45:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\bars\\15m\\schwab\\normalized\\SNDK_day_10_minute_15.parquet",
+            "rows": 996,
+            "sha256": "9bf3543feeea948131b32f10841a96f1f279eab81630e71b38482a18ec0aff7c"
+          },
+          {
+            "bytes": 22387,
+            "latest_timestamp": "2026-08-18 05:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\bars\\1d\\schwab\\normalized\\SNDK_year_20_daily_1.parquet",
+            "rows": 380,
+            "sha256": "125487db9ac3d0777e6920f1362ccacffd926eebe3dbeeb071f6d9006de229f1"
+          },
+          {
+            "bytes": 568779,
+            "latest_timestamp": "2026-08-19 18:11:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\bars\\1m\\schwab\\normalized\\SNDK_day_10_minute_1.parquet",
+            "rows": 14509,
+            "sha256": "c87a8d63e4a4d85e0df313a6fed3c560af123aeb41aa9d63640ad39f19812ed6"
+          },
+          {
+            "bytes": 5548,
+            "latest_timestamp": "2026-07-01 05:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\bars\\1mo\\schwab\\normalized\\SNDK_year_20_monthly_1.parquet",
+            "rows": 18,
+            "sha256": "b6ff71445aa287f9cb93a6bf8cbcd9f2415faac32a378fea23d7ba9c3d5e1359"
+          },
+          {
+            "bytes": 8637,
+            "latest_timestamp": "2026-08-10 05:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\bars\\1w\\schwab\\normalized\\SNDK_year_20_weekly_1.parquet",
+            "rows": 79,
+            "sha256": "9aad6a794a81ec57ac1c38f299c29446b628e882aa72128c92e98bc20a83f9af"
+          },
+          {
+            "bytes": 26950,
+            "latest_timestamp": "2026-08-19 17:30:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\bars\\30m\\schwab\\normalized\\SNDK_day_10_minute_30.parquet",
+            "rows": 498,
+            "sha256": "0a543ea8e5fbd174ecc40b0b4393fb7aafa78506ca2102ca400871e3ec59b6fe"
+          },
+          {
+            "bytes": 130881,
+            "latest_timestamp": "2026-08-19 18:05:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\bars\\5m\\schwab\\normalized\\SNDK_day_10_minute_5.parquet",
+            "rows": 2988,
+            "sha256": "e03d78cd775e77c9ea166429ca02d14c758580d71408f83a5a2981333826fa40"
+          }
+        ],
+        "options_publication_log": [
+          "[SNDK/schwab/options] 2400 contracts at decision time 2026-09-11T21:00:00+00:00 -> C:\\DATASTORE\\stocks\\SNDK\\options\\features\\option-quality\\schwab\\2026-09.parquet"
+        ],
+        "quote": {
+          "bytes": 52264,
+          "latest_fetched_at": "2026-09-12 04:19:41.940212+00:00",
+          "path": "C:\\DATASTORE\\stocks\\SNDK\\quotes\\schwab\\normalized\\SNDK.parquet",
+          "rows": 737,
+          "rows_with_receipt_in_cycle": 1,
+          "sha256": "d28b7f2aed0e14bad83f95854710aa67230c1ef13c81539017dd4a0ae6d72e9c"
+        }
+      }
+    },
+    "sec": {
+      "by_symbol": {
+        "AAPL": [
+          {
+            "bytes": 357147,
+            "latest_acceptedDate": "2026-09-01 16:30:35+00:00",
+            "latest_fetched_at": "2026-09-12 04:21:16.994453+00:00",
+            "latest_filingDate": "2026-09-01 00:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\corporate\\filing_index\\sec\\normalized\\AAPL_filing_index.parquet",
+            "rows": 22433,
+            "rows_with_receipt_in_cycle": 16,
+            "sha256": "c1a5b2390bf922aaf19d16e2be23e9b38a5d8730f53023450a98755bfe95c4f3"
+          },
+          {
+            "bytes": 372944,
+            "latest_fetched_at": "2026-09-01 20:43:32.450396+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AAPL\\corporate\\filing_text\\sec\\normalized\\AAPL_filing_text.parquet",
+            "rows": 16,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "c927da2ad782385ea31e348a40a71ba30ee5bb2a678421b234b7300e18e8b5f7"
+          }
+        ],
+        "AMZN": [
+          {
+            "bytes": 656442,
+            "latest_acceptedDate": "2026-09-11 17:14:29+00:00",
+            "latest_fetched_at": "2026-09-12 04:21:18.553133+00:00",
+            "latest_filingDate": "2026-09-11 00:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\corporate\\filing_index\\sec\\normalized\\AMZN_filing_index.parquet",
+            "rows": 44315,
+            "rows_with_receipt_in_cycle": 29,
+            "sha256": "f6f559099a3d8573e555011c619152a767ebac9d7989e7d98b3ec301eed38a62"
+          },
+          {
+            "bytes": 1980005,
+            "latest_fetched_at": "2026-09-12 04:21:20.994807+00:00",
+            "path": "C:\\DATASTORE\\stocks\\AMZN\\corporate\\filing_text\\sec\\normalized\\AMZN_filing_text.parquet",
+            "rows": 34,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "e81c2afc6e920ef0197dab4688b014d97a0a74092a08ebf76deac7531031d248"
+          }
+        ],
+        "COST": [
+          {
+            "bytes": 11781,
+            "latest_acceptedDate": "2026-07-08 16:18:27+00:00",
+            "latest_fetched_at": "2026-09-12 04:21:30.402205+00:00",
+            "latest_filingDate": "2026-07-08 00:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\corporate\\filing_index\\sec\\normalized\\COST_filing_index.parquet",
+            "rows": 90,
+            "rows_with_receipt_in_cycle": 15,
+            "sha256": "46b44a24f96b0817199d63439f948e1c49f39c2ae2863e3cccfcd44be2239513"
+          },
+          {
+            "bytes": 277455,
+            "latest_fetched_at": "2026-09-06 08:13:44.624866+00:00",
+            "path": "C:\\DATASTORE\\stocks\\COST\\corporate\\filing_text\\sec\\normalized\\COST_filing_text.parquet",
+            "rows": 15,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "e953facc0fa618076358ee9498b2b6454c01d2aee1ab5616819a5ce20b4cafa1"
+          }
+        ],
+        "GOOG": [
+          {
+            "bytes": 538817,
+            "latest_acceptedDate": "2026-08-10 16:10:48+00:00",
+            "latest_fetched_at": "2026-09-12 04:21:21.633819+00:00",
+            "latest_filingDate": "2026-08-10 00:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\corporate\\filing_index\\sec\\normalized\\GOOG_filing_index.parquet",
+            "rows": 35034,
+            "rows_with_receipt_in_cycle": 20,
+            "sha256": "5819eca2fcac19373983bd305ab08aecd461bba7b6ca4227f0e0c51863265210"
+          },
+          {
+            "bytes": 1920399,
+            "latest_fetched_at": "2026-08-18 16:39:10.156983+00:00",
+            "path": "C:\\DATASTORE\\stocks\\GOOG\\corporate\\filing_text\\sec\\normalized\\GOOG_filing_text.parquet",
+            "rows": 25,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "9ed0f0cc80126bad62135455982d1a35faba7d85dd02bdc5c22f7b660165fb0b"
+          }
+        ],
+        "MU": [
+          {
+            "bytes": 429716,
+            "latest_acceptedDate": "2026-08-26 08:06:55+00:00",
+            "latest_fetched_at": "2026-09-12 04:21:23.859759+00:00",
+            "latest_filingDate": "2026-08-26 00:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\corporate\\filing_index\\sec\\normalized\\MU_filing_index.parquet",
+            "rows": 27454,
+            "rows_with_receipt_in_cycle": 19,
+            "sha256": "f32a3ce9004e1826c5155f43228c66f2a913e401f8997426d1039683a69de377"
+          },
+          {
+            "bytes": 640065,
+            "latest_fetched_at": "2026-08-26 12:08:23.544998+00:00",
+            "path": "C:\\DATASTORE\\stocks\\MU\\corporate\\filing_text\\sec\\normalized\\MU_filing_text.parquet",
+            "rows": 19,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "a7edc3c685723b6daca66bb2c2c21b97d46c759c40330a479517e91e5b99fbb1"
+          }
+        ],
+        "NVDA": [
+          {
+            "bytes": 521739,
+            "latest_acceptedDate": "2026-09-03 08:03:56+00:00",
+            "latest_fetched_at": "2026-09-12 04:21:25.836906+00:00",
+            "latest_filingDate": "2026-09-03 00:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\corporate\\filing_index\\sec\\normalized\\NVDA_filing_index.parquet",
+            "rows": 33778,
+            "rows_with_receipt_in_cycle": 23,
+            "sha256": "4722c03b523b6ba9755ea25c71fcb0dba5feb2fd4779ea44cc5d9d93ec704037"
+          },
+          {
+            "bytes": 713221,
+            "latest_fetched_at": "2026-09-03 12:26:56.518569+00:00",
+            "path": "C:\\DATASTORE\\stocks\\NVDA\\corporate\\filing_text\\sec\\normalized\\NVDA_filing_text.parquet",
+            "rows": 25,
+            "rows_with_receipt_in_cycle": 0,
+            "sha256": "c179b9234857d28e7149391969be80e86cf26c53a7f44a9718412491de2669e5"
+          }
+        ],
+        "SNDK": [
+          {
+            "bytes": 537755,
+            "latest_acceptedDate": "2026-09-11 16:15:07+00:00",
+            "latest_fetched_at": "2026-09-12 04:21:27.930841+00:00",
+            "latest_filingDate": "2026-09-11 00:00:00+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\corporate\\filing_index\\sec\\normalized\\SNDK_filing_index.parquet",
+            "rows": 34888,
+            "rows_with_receipt_in_cycle": 24,
+            "sha256": "f40e832eabe70678f607f932cb0eb641be37819b4d84f026ae26115392541373"
+          },
+          {
+            "bytes": 1039726,
+            "latest_fetched_at": "2026-09-12 04:21:29.882184+00:00",
+            "path": "C:\\DATASTORE\\stocks\\SNDK\\corporate\\filing_text\\sec\\normalized\\SNDK_filing_text.parquet",
+            "rows": 26,
+            "rows_with_receipt_in_cycle": 1,
+            "sha256": "ede397a59a8026449e85abfc20101333f4ebf87910c2003beb494b3babf53221"
+          }
+        ]
+      }
+    }
+  },
+  "scope": "Completed base Loop A datastore cycle only; later OPRA maintenance and XNAS stage not assessed",
+  "status": "BASE_CYCLE_COMPLETE_WITH_LOCAL_ADVISORIES"
+}

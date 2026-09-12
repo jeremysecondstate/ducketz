@@ -1,0 +1,104 @@
+from __future__ import annotations
+
+import json
+
+import pytest
+
+from app.ui.gameplan_data import GameplanError, load_gameplan, plan_sessions
+from gameplan_fixture import plan_payload, write_plan
+
+
+def test_quantities_come_from_ledger_and_holds_and_context_remain_forecasts(tmp_path):
+    write_plan(tmp_path)
+    plan = load_gameplan(tmp_path)
+    assert len(plan.forecasts) == 7
+    assert [(e.action, e.quantity) for e in plan.actions if e.source == "ledger"] == [("BUY", 17), ("BUY", 2), ("SELL", 17)]
+    assert len(plan.rows("1h")) == 2
+    assert not plan.trades("1h")
+    assert sum(row.action == "CONTEXT" for row in plan.forecasts) == 2
+    assert sum(row.eligible for row in plan.forecasts) == 5
+    assert all(e.quantity != 9999 for e in plan.actions)
+
+
+def test_later_expiries_keep_dates_reserved_shares_and_missing_prices(tmp_path):
+    write_plan(tmp_path)
+    plan = load_gameplan(tmp_path)
+    later = plan.trades("4h", "GOOG")[0]
+    assert later.when.isoformat() == "2026-09-15T07:00:00-07:00"
+    assert later.quantity == 5 and later.reserved == 2
+    assert later.price is None and later.source == "remaining_allocation"
+    assert later.action == "EXPIRY" and later.reason == "LATER_EXPIRY"
+    weekly = plan.trades("1w")
+    assert weekly[-1].when.isoformat() == "2026-09-18T17:00:00-07:00"
+    assert weekly[-1].price is None
+    assert plan.forecast(later.forecast_id) is None  # An earlier owned allocation.
+
+
+def test_unresolved_expiry_is_not_rescheduled_to_an_invented_clock(tmp_path):
+    rows, ledger = plan_payload()
+    ledger["ending_allocations"][1]["end"] = "2026-09-14T05:00:00-07:00"
+    write_plan(tmp_path, rows=rows, ledger=ledger)
+    action = next(e for e in load_gameplan(tmp_path).actions if e.symbol == "GOOG")
+    assert action.reason == "UNRESOLVED_EXPIRY" and action.when.hour == 5
+    assert action.reserved == 2
+
+
+def test_saved_session_selection_prefers_latest_pointer_and_excludes_legacy_failures(tmp_path):
+    write_plan(tmp_path, session="2026-09-11", latest=False)
+    write_plan(tmp_path, session="2026-09-10", latest=False, version="legacy-v3")
+    write_plan(tmp_path, session="2026-09-15", latest=False, status="FAILED")
+    write_plan(tmp_path)
+    assert plan_sessions(tmp_path) == ("2026-09-14", "2026-09-11")
+    assert load_gameplan(tmp_path).session == "2026-09-14"
+    assert load_gameplan(tmp_path, "2026-09-11").session == "2026-09-11"
+    with pytest.raises(GameplanError, match="No completed"):
+        load_gameplan(tmp_path, "2026-09-10")
+
+
+@pytest.mark.parametrize("name", ["receipt.json", "manifest.json", "direction-ledger.json", "trade-plan.parquet", "Gameplan.md"])
+def test_changed_publication_or_output_is_rejected(tmp_path, name):
+    run = write_plan(tmp_path)
+    with (run/name).open("ab") as f:
+        f.write(b"changed")
+    with pytest.raises(GameplanError):
+        load_gameplan(tmp_path)
+
+
+@pytest.mark.parametrize("mutation", ["quantity", "missing_trade", "duplicate_event", "context_trade", "unzonetime", "session", "duplicate_forecast", "zero_price", "probability", "lot_identity"])
+def test_integrity_valid_but_semantically_inconsistent_data_is_rejected(tmp_path, mutation):
+    rows, ledger = plan_payload()
+    if mutation == "quantity": ledger["events"][0]["quantity"] = 9999
+    if mutation == "missing_trade": ledger["events"].pop(0)
+    if mutation == "duplicate_event": ledger["events"].append(ledger["events"][0].copy())
+    if mutation == "context_trade": ledger["events"][0]["forecast_id"] = rows[-1]["id"]
+    if mutation == "unzonetime": ledger["events"][0]["timestamp"] = "2026-09-14T04:00:00"
+    if mutation == "session": rows[0]["action_date"] = "2026-09-15"
+    if mutation == "duplicate_forecast": rows.append(rows[0].copy())
+    if mutation == "zero_price": ledger["events"][0]["price_base"] = 0
+    if mutation == "probability": rows[0]["calibrated_probability"] = 1.5
+    if mutation == "lot_identity": ledger["ending_allocations"][0]["symbol"] = "AAPL"
+    write_plan(tmp_path, rows=rows, ledger=ledger)
+    with pytest.raises(GameplanError):
+        load_gameplan(tmp_path)
+
+
+def test_no_trade_plan_is_valid_and_missing_plan_is_explained(tmp_path):
+    with pytest.raises(GameplanError, match="No saved Gameplan"):
+        load_gameplan(tmp_path)
+    rows, ledger = plan_payload()
+    for row in rows:
+        if row["execution_eligible"]:
+            row.update(direction_based_action="HOLD", direction_based_trade_quantity=0, direction_based_reason="NEUTRAL")
+    ledger.update(events=[], ending_allocations=[], summary=dict(trade_events=0, buy_events=0, sell_events=0))
+    write_plan(tmp_path, rows=rows, ledger=ledger)
+    assert not load_gameplan(tmp_path).actions
+
+
+def test_pointer_cannot_escape_runs_directory(tmp_path):
+    write_plan(tmp_path)
+    path = tmp_path/"ml/gameplan-trade-plan-latest/run.json"
+    pointer = json.loads(path.read_text())
+    pointer["current"]["run_path"] = "../unrelated"
+    path.write_text(json.dumps(pointer))
+    with pytest.raises(GameplanError, match="outside"):
+        load_gameplan(tmp_path)
