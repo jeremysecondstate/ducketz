@@ -1,0 +1,12 @@
+{
+  "plan_id": "87972193f79e7d1259f20ac4a7f98dd05270702c9c02fa3576a029ee864c8054",
+  "status": "COMPLETE",
+  "completed_at": "2026-09-14T09:19:28.167571+00:00",
+  "history_floor": "2018-01-01",
+  "sec_filing_count": 663,
+  "sec_stored_bytes": 121554310,
+  "sec_uncompressed_bytes": 490338295,
+  "sec_index_sha256": "30dfede1a3d6dd81d381582fa5109a8295c6d50610bde4bf3dfd5fc16f9e1da0",
+  "fmp_daily_rows": 2185,
+  "fmp_daily_sha256": "83ea1ce738d4cef3f6677c96739028e6764e08bc1bec0be03dfe9cdd9df4fc42"
+}

@@ -1,0 +1,23 @@
+{
+  "dataset": "XNAS.BASIC",
+  "schema": "ohlcv-1m",
+  "start": 1773990000000000000,
+  "end": 1789171200000000000,
+  "symbols": [
+    "SNDK"
+  ],
+  "stype_in": "raw_symbol",
+  "stype_out": "instrument_id",
+  "partial": [],
+  "not_found": [],
+  "mappings": {
+    "SNDK": [
+      {
+        "start_date": "2026-03-20",
+        "end_date": "2026-09-12",
+        "symbol": "20433"
+      }
+    ]
+  },
+  "version": 1
+}

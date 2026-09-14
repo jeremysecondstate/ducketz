@@ -1,0 +1,53 @@
+{
+  "plan_id": "12f9265f252523497c5ea3878e4cbaf6b6cc0d0c68cc78a7dd5cd58efaaf9944",
+  "status": "COMPLETE",
+  "results": [
+    {
+      "dataset": "EQUS.MINI",
+      "schema": "ohlcv-1s",
+      "reference_path": "C:\\DATASTORE\\stocks\\COST\\bars\\1s\\databento\\normalized\\COST_source_10d_1s_ohlcv-1s_1s.parquet",
+      "requested_start": "2026-08-10T00:00:00+00:00",
+      "requested_end": "2026-09-12T00:00:00+00:00",
+      "status": "BACKFILLED",
+      "rows": 22643,
+      "preflight": {
+        "estimated_download_size_bytes": 1268008,
+        "record_count": 22643,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "dataset": "EQUS.MINI",
+      "schema": "ohlcv-1m",
+      "reference_path": "C:\\DATASTORE\\stocks\\COST\\bars\\1m\\databento\\normalized\\COST_source_100d_1m_ohlcv-1m_1m.parquet",
+      "requested_start": "2026-05-11T00:00:00+00:00",
+      "requested_end": "2026-09-12T00:00:00+00:00",
+      "status": "BACKFILLED",
+      "rows": 26398,
+      "preflight": {
+        "estimated_download_size_bytes": 1478288,
+        "record_count": 26398,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "dataset": "EQUS.MINI",
+      "schema": "ohlcv-1h",
+      "reference_path": "C:\\DATASTORE\\stocks\\COST\\bars\\1h\\databento\\normalized\\COST_source_1825d_1h_ohlcv-1h_1h.parquet",
+      "requested_start": "2023-03-28T00:00:00+00:00",
+      "requested_end": "2026-09-12T00:00:00+00:00",
+      "status": "ALREADY_COVERED",
+      "rows": 6261
+    },
+    {
+      "dataset": "EQUS.MINI",
+      "schema": "ohlcv-1d",
+      "reference_path": "C:\\DATASTORE\\stocks\\COST\\bars\\1d\\databento\\normalized\\COST_source_2555d_1d_ohlcv-1d_1d.parquet",
+      "requested_start": "2023-03-28T00:00:00+00:00",
+      "requested_end": "2026-09-12T00:00:00+00:00",
+      "status": "ALREADY_COVERED",
+      "rows": 868
+    }
+  ],
+  "completed_at": "2026-09-14T09:22:26.961807+00:00"
+}

@@ -1,0 +1,13 @@
+{
+  "status": "PASSED",
+  "native_result": {
+    "completed_partitions": 0,
+    "skipped_partitions": 1,
+    "completed_rows": 0,
+    "completed_bytes": 0,
+    "errors": {}
+  },
+  "reports": [
+    "NO_DATA cbbo-1s/2025-11-27 provider returned no resolvable parent-symbol data"
+  ]
+}

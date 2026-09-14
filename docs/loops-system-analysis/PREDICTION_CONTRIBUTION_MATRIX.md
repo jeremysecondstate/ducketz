@@ -28,7 +28,7 @@ predictive lift or profit.
 
 ## Options Strategy chain
 
-1. Loop A advances all six parents across the three production OPRA schemas.
+1. Loop A advances all configured parents across the three production OPRA schemas.
 2. Strategy-profit training joins Loop B context with exact historical
    `cbbo-1m` candidate outcomes; `1h` requires exact CBBO, while older
    `4h`/`1d`/`1w` targets may use a separately labeled conservative hourly

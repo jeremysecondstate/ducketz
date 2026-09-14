@@ -1,0 +1,14 @@
+{
+  "status": "PASSED",
+  "native_sha256": "3bab58ef0d721de6346a5557cd785c0195c9afbcef2cab89fd05428ae80c4214",
+  "preserved_rows": 23754,
+  "identical_source_rows": 1,
+  "source_record_identity": {
+    "column": "source_record_ordinal",
+    "basis": "zero-based-native-dbn-record-order",
+    "record_count": 23754
+  },
+  "duplicate_natural_key_rows_after": 0,
+  "legacy_partition_verified": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\status\\CROX.OPT\\dates\\2024-07-17\\segments\\full-day",
+  "schema_reference": "https://databento.com/docs/schemas-and-data-formats/status"
+}

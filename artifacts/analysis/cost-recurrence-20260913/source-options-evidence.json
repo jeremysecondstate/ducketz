@@ -1,0 +1,380 @@
+{
+  "generated_at": "2026-09-13T04:28:21.640895+00:00",
+  "scope": "Offline feasibility only; close-boundary diagnostics do not authorize source substitution",
+  "inputs": {
+    "EQUS.MINI": {
+      "path": "C:\\DATASTORE\\stocks\\COST\\bars\\1m\\databento\\raw\\COST_source_100d_1m_ohlcv-1m_1m_raw.parquet",
+      "sha256": "5ef36ba2d588ea83410cc37116705c83e64b5055219287548a3001587365f4e0"
+    },
+    "SCHWAB_CANONICAL": {
+      "path": "C:\\DATASTORE\\stocks\\COST\\bars\\1m\\schwab\\normalized\\COST_day_10_minute_1.parquet",
+      "sha256": "d63ea9bb373e7c8e72ab7bb2eae741e9c81f43d4b6f61ec1c4a6a0f2c1d2fb4d"
+    },
+    "SCHWAB_SEP10_PROBE": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\cost-closing-gap-20260911\\schwab-raw.json",
+      "sha256": "7af70a3ac22736dc2507acfe228f77a06dd149379b3ae18c84b2e6c5a23601e2"
+    },
+    "SCHWAB_QUOTE_RAW": {
+      "path": "C:\\DATASTORE\\stocks\\COST\\quotes\\schwab\\raw\\COST_quotes.parquet",
+      "sha256": "051731c519ae069035839930b88c396dea36a0b28487a6350f6a89704c807737"
+    }
+  },
+  "minute_sources": {
+    "EQUS.MINI": [
+      {
+        "date": "2026-09-09",
+        "rows": 381,
+        "first_bar_start": "2026-09-09 13:30:00+00:00",
+        "last_bar_completion": "2026-09-09 20:00:00+00:00",
+        "close_boundaries": [
+          {
+            "clock_pacific": "05:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "14:00",
+            "last_bar_start_utc": "2026-09-09 19:59:00+00:00",
+            "age_minutes": 60.0,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "15:00",
+            "last_bar_start_utc": "2026-09-09 19:59:00+00:00",
+            "age_minutes": 120.0,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "16:00",
+            "last_bar_start_utc": "2026-09-09 19:59:00+00:00",
+            "age_minutes": 180.0,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "17:00",
+            "last_bar_start_utc": "2026-09-09 19:59:00+00:00",
+            "age_minutes": 240.0,
+            "within_five_minutes": false
+          }
+        ]
+      },
+      {
+        "date": "2026-09-10",
+        "rows": 359,
+        "first_bar_start": "2026-09-10 12:39:00+00:00",
+        "last_bar_completion": "2026-09-10 20:52:00+00:00",
+        "close_boundaries": [
+          {
+            "clock_pacific": "05:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "14:00",
+            "last_bar_start_utc": "2026-09-10 20:51:00+00:00",
+            "age_minutes": 8.0,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "15:00",
+            "last_bar_start_utc": "2026-09-10 20:51:00+00:00",
+            "age_minutes": 68.0,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "16:00",
+            "last_bar_start_utc": "2026-09-10 20:51:00+00:00",
+            "age_minutes": 128.0,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "17:00",
+            "last_bar_start_utc": "2026-09-10 20:51:00+00:00",
+            "age_minutes": 188.0,
+            "within_five_minutes": false
+          }
+        ]
+      },
+      {
+        "date": "2026-09-11",
+        "rows": 373,
+        "first_bar_start": "2026-09-11 13:30:00+00:00",
+        "last_bar_completion": "2026-09-11 20:00:00+00:00",
+        "close_boundaries": [
+          {
+            "clock_pacific": "05:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "14:00",
+            "last_bar_start_utc": "2026-09-11 19:59:00+00:00",
+            "age_minutes": 60.0,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "15:00",
+            "last_bar_start_utc": "2026-09-11 19:59:00+00:00",
+            "age_minutes": 120.0,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "16:00",
+            "last_bar_start_utc": "2026-09-11 19:59:00+00:00",
+            "age_minutes": 180.0,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "17:00",
+            "last_bar_start_utc": "2026-09-11 19:59:00+00:00",
+            "age_minutes": 240.0,
+            "within_five_minutes": false
+          }
+        ]
+      }
+    ],
+    "SCHWAB_CANONICAL": [
+      {
+        "date": "2026-09-09",
+        "rows": 0,
+        "first_bar_start": "NaT",
+        "last_bar_completion": "NaT",
+        "close_boundaries": [
+          {
+            "clock_pacific": "05:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "14:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "15:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "16:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "17:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          }
+        ]
+      },
+      {
+        "date": "2026-09-10",
+        "rows": 0,
+        "first_bar_start": "NaT",
+        "last_bar_completion": "NaT",
+        "close_boundaries": [
+          {
+            "clock_pacific": "05:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "14:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "15:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "16:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "17:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          }
+        ]
+      },
+      {
+        "date": "2026-09-11",
+        "rows": 0,
+        "first_bar_start": "NaT",
+        "last_bar_completion": "NaT",
+        "close_boundaries": [
+          {
+            "clock_pacific": "05:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "14:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "15:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "16:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "17:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          }
+        ]
+      }
+    ],
+    "SCHWAB_SEP10_PROBE": [
+      {
+        "date": "2026-09-09",
+        "rows": 0,
+        "first_bar_start": "NaT",
+        "last_bar_completion": "NaT",
+        "close_boundaries": [
+          {
+            "clock_pacific": "05:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "14:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "15:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "16:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "17:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          }
+        ]
+      },
+      {
+        "date": "2026-09-10",
+        "rows": 479,
+        "first_bar_start": "2026-09-10 11:01:00+00:00",
+        "last_bar_completion": "2026-09-10 23:51:00+00:00",
+        "close_boundaries": [
+          {
+            "clock_pacific": "05:00",
+            "last_bar_start_utc": "2026-09-10 11:57:00+00:00",
+            "age_minutes": 2.0,
+            "within_five_minutes": true
+          },
+          {
+            "clock_pacific": "14:00",
+            "last_bar_start_utc": "2026-09-10 20:40:00+00:00",
+            "age_minutes": 19.0,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "15:00",
+            "last_bar_start_utc": "2026-09-10 21:54:00+00:00",
+            "age_minutes": 5.0,
+            "within_five_minutes": true
+          },
+          {
+            "clock_pacific": "16:00",
+            "last_bar_start_utc": "2026-09-10 22:49:00+00:00",
+            "age_minutes": 10.0,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "17:00",
+            "last_bar_start_utc": "2026-09-10 23:50:00+00:00",
+            "age_minutes": 9.0,
+            "within_five_minutes": false
+          }
+        ]
+      },
+      {
+        "date": "2026-09-11",
+        "rows": 0,
+        "first_bar_start": "NaT",
+        "last_bar_completion": "NaT",
+        "close_boundaries": [
+          {
+            "clock_pacific": "05:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "14:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "15:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "16:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          },
+          {
+            "clock_pacific": "17:00",
+            "last_bar_start_utc": null,
+            "age_minutes": null,
+            "within_five_minutes": false
+          }
+        ]
+      }
+    ]
+  },
+  "quotes": [
+    {
+      "fetched_at": "2026-09-12 04:21:11.284769+00:00",
+      "quote_time": "2026-09-11T23:59:38.706000+00:00",
+      "trade_time": "2026-09-11T23:59:38.838000+00:00",
+      "last_price": 904.9808
+    }
+  ]
+}

@@ -128,7 +128,8 @@ def test_batch_preparation_reuses_jobs_without_publishing_data(tmp_path: Path) -
                                            for day in pd.bdate_range("2026-05-01", "2026-06-30")]))
     first = queue_history(path, client)
     second = queue_history(path, client)
-    assert len(submitted) == 1
+    assert len(submitted) == 2
+    assert {job['schema'] for job in submitted} == {'definition', 'cbbo-1s'}
     assert submitted[0]["schema"] == "definition"
     assert first["jobs"][0]["job_id"] == second["jobs"][0]["job_id"]
     assert second["jobs"][0]["status"] == "REUSED"

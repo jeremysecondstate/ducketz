@@ -1,0 +1,188 @@
+{
+  "row_counts": [
+    {
+      "source_window": "sep10-prior-close",
+      "rows": 17,
+      "positive": 15,
+      "zero": 2
+    },
+    {
+      "source_window": "sep11-afterhours",
+      "rows": 140,
+      "positive": 106,
+      "zero": 34
+    },
+    {
+      "source_window": "sep11-premarket",
+      "rows": 35,
+      "positive": 28,
+      "zero": 7
+    }
+  ],
+  "opening_sensitivity": [
+    {
+      "clock_pacific": "2026-09-11 14:00:00-07:00",
+      "positive_volume_only": false,
+      "open_observed_pacific": "2026-09-11 14:01:00-07:00",
+      "gap_minutes": 1.0,
+      "open_price": 904.82,
+      "volume": 1,
+      "within_five_minutes": true
+    },
+    {
+      "clock_pacific": "2026-09-11 14:00:00-07:00",
+      "positive_volume_only": true,
+      "open_observed_pacific": "2026-09-11 14:01:00-07:00",
+      "gap_minutes": 1.0,
+      "open_price": 904.82,
+      "volume": 1,
+      "within_five_minutes": true
+    },
+    {
+      "clock_pacific": "2026-09-11 15:00:00-07:00",
+      "positive_volume_only": false,
+      "open_observed_pacific": "2026-09-11 15:00:00-07:00",
+      "gap_minutes": 0.0,
+      "open_price": 904.82,
+      "volume": 0,
+      "within_five_minutes": true
+    },
+    {
+      "clock_pacific": "2026-09-11 15:00:00-07:00",
+      "positive_volume_only": true,
+      "open_observed_pacific": "2026-09-11 15:01:00-07:00",
+      "gap_minutes": 1.0,
+      "open_price": 904.9,
+      "volume": 1,
+      "within_five_minutes": true
+    },
+    {
+      "clock_pacific": "2026-09-11 16:00:00-07:00",
+      "positive_volume_only": false,
+      "open_observed_pacific": "2026-09-11 16:00:00-07:00",
+      "gap_minutes": 0.0,
+      "open_price": 904.82,
+      "volume": 1,
+      "within_five_minutes": true
+    },
+    {
+      "clock_pacific": "2026-09-11 16:00:00-07:00",
+      "positive_volume_only": true,
+      "open_observed_pacific": "2026-09-11 16:00:00-07:00",
+      "gap_minutes": 0.0,
+      "open_price": 904.82,
+      "volume": 1,
+      "within_five_minutes": true
+    }
+  ],
+  "closing_sensitivity": [
+    {
+      "clock_pacific": "2026-09-10 17:00:00-07:00",
+      "positive_volume_only": false,
+      "close_observed_pacific": "2026-09-10 17:00:00-07:00",
+      "gap_minutes": 0.0,
+      "close_price": 902.2,
+      "volume": 10,
+      "within_five_minutes": true
+    },
+    {
+      "clock_pacific": "2026-09-10 17:00:00-07:00",
+      "positive_volume_only": true,
+      "close_observed_pacific": "2026-09-10 17:00:00-07:00",
+      "gap_minutes": 0.0,
+      "close_price": 902.2,
+      "volume": 10,
+      "within_five_minutes": true
+    },
+    {
+      "clock_pacific": "2026-09-11 05:00:00-07:00",
+      "positive_volume_only": false,
+      "close_observed_pacific": "2026-09-11 05:00:00-07:00",
+      "gap_minutes": 0.0,
+      "close_price": 905.0,
+      "volume": 2,
+      "within_five_minutes": true
+    },
+    {
+      "clock_pacific": "2026-09-11 05:00:00-07:00",
+      "positive_volume_only": true,
+      "close_observed_pacific": "2026-09-11 05:00:00-07:00",
+      "gap_minutes": 0.0,
+      "close_price": 905.0,
+      "volume": 2,
+      "within_five_minutes": true
+    },
+    {
+      "clock_pacific": "2026-09-11 14:00:00-07:00",
+      "positive_volume_only": false,
+      "close_observed_pacific": "2026-09-11 14:00:00-07:00",
+      "gap_minutes": 0.0,
+      "close_price": 904.82,
+      "volume": 341,
+      "within_five_minutes": true
+    },
+    {
+      "clock_pacific": "2026-09-11 14:00:00-07:00",
+      "positive_volume_only": true,
+      "close_observed_pacific": "2026-09-11 14:00:00-07:00",
+      "gap_minutes": 0.0,
+      "close_price": 904.82,
+      "volume": 341,
+      "within_five_minutes": true
+    },
+    {
+      "clock_pacific": "2026-09-11 15:00:00-07:00",
+      "positive_volume_only": false,
+      "close_observed_pacific": "2026-09-11 14:59:00-07:00",
+      "gap_minutes": 1.0,
+      "close_price": 904.8117,
+      "volume": 2,
+      "within_five_minutes": true
+    },
+    {
+      "clock_pacific": "2026-09-11 15:00:00-07:00",
+      "positive_volume_only": true,
+      "close_observed_pacific": "2026-09-11 14:59:00-07:00",
+      "gap_minutes": 1.0,
+      "close_price": 904.8117,
+      "volume": 2,
+      "within_five_minutes": true
+    },
+    {
+      "clock_pacific": "2026-09-11 16:00:00-07:00",
+      "positive_volume_only": false,
+      "close_observed_pacific": "2026-09-11 16:00:00-07:00",
+      "gap_minutes": 0.0,
+      "close_price": 904.8,
+      "volume": 5,
+      "within_five_minutes": true
+    },
+    {
+      "clock_pacific": "2026-09-11 16:00:00-07:00",
+      "positive_volume_only": true,
+      "close_observed_pacific": "2026-09-11 16:00:00-07:00",
+      "gap_minutes": 0.0,
+      "close_price": 904.8,
+      "volume": 5,
+      "within_five_minutes": true
+    },
+    {
+      "clock_pacific": "2026-09-11 17:00:00-07:00",
+      "positive_volume_only": false,
+      "close_observed_pacific": "2026-09-11 17:00:00-07:00",
+      "gap_minutes": 0.0,
+      "close_price": 904.9808,
+      "volume": 60,
+      "within_five_minutes": true
+    },
+    {
+      "clock_pacific": "2026-09-11 17:00:00-07:00",
+      "positive_volume_only": true,
+      "close_observed_pacific": "2026-09-11 17:00:00-07:00",
+      "gap_minutes": 0.0,
+      "close_price": 904.9808,
+      "volume": 60,
+      "within_five_minutes": true
+    }
+  ]
+}

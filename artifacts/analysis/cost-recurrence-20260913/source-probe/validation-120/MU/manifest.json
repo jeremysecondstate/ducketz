@@ -1,0 +1,39 @@
+{
+  "completed_at": "2026-09-13T04:36:07.240109+00:00",
+  "dataset": "XNAS.BASIC",
+  "symbol": "MU",
+  "rows": 116138,
+  "zero_volume_rows": 5,
+  "request": {
+    "dataset": "XNAS.BASIC",
+    "schema": "ohlcv-1m",
+    "symbols": [
+      "MU"
+    ],
+    "stype_in": "raw_symbol",
+    "start": "2026-03-20T07:00:00+00:00",
+    "end": "2026-09-12T00:00:00+00:00"
+  },
+  "payloads": [
+    {
+      "path": "provider.dbn",
+      "bytes": 3496879,
+      "sha256": "a4cfcde630d3d068854874b5d5110f75a9a8e46e64b694afe1c762667d918960"
+    },
+    {
+      "path": "observations.parquet",
+      "bytes": 3511410,
+      "sha256": "108c97bb80a50daf0cc8e65619aba9c2b72ebab7022335ee7335ad67c61ca4a5"
+    },
+    {
+      "path": "preflight.json",
+      "bytes": 473,
+      "sha256": "4ba1c923fb9481a3b5289b8aaf61251c2f43dd6ad4fd14fd55db1490c1113183"
+    },
+    {
+      "path": "native-metadata.json",
+      "bytes": 431,
+      "sha256": "955ac348c1b7cc91ddfaee454a81776e1ef1e6a30ec08949ba4a838f17ec43c5"
+    }
+  ]
+}

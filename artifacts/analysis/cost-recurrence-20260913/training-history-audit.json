@@ -1,0 +1,415 @@
+{
+  "status": "READ_ONLY_AUDIT_NO_TRAINING",
+  "audited_at": "2026-09-13T05:10:51.232575+00:00",
+  "saved_gameplan": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260912T051210.050260Z",
+  "saved_loop_b": "C:\\DATASTORE\\ml\\runs\\20260912T045017.509319Z",
+  "stock_price_source": {
+    "dataset": "XNAS.ITCH",
+    "by_symbol": {
+      "AAPL": {
+        "first_timestamp": "2025-01-13T09:00:00+00:00",
+        "last_timestamp": "2026-09-11T23:59:00+00:00",
+        "rows": 348110
+      },
+      "AMZN": {
+        "first_timestamp": "2025-01-13T09:00:00+00:00",
+        "last_timestamp": "2026-09-11T23:59:00+00:00",
+        "rows": 353364
+      },
+      "COST": {
+        "first_timestamp": "2025-01-13T09:11:00+00:00",
+        "last_timestamp": "2026-09-11T23:59:00+00:00",
+        "rows": 208246
+      },
+      "GOOG": {
+        "first_timestamp": "2025-01-13T09:00:00+00:00",
+        "last_timestamp": "2026-09-11T23:59:00+00:00",
+        "rows": 323438
+      },
+      "MU": {
+        "first_timestamp": "2025-01-13T09:00:00+00:00",
+        "last_timestamp": "2026-09-11T23:59:00+00:00",
+        "rows": 340671
+      },
+      "NVDA": {
+        "first_timestamp": "2025-01-13T09:00:00+00:00",
+        "last_timestamp": "2026-09-11T23:54:00+00:00",
+        "rows": 385047
+      },
+      "SNDK": {
+        "first_timestamp": "2025-02-24T13:22:00+00:00",
+        "last_timestamp": "2026-09-11T23:59:00+00:00",
+        "rows": 259360
+      }
+    }
+  },
+  "partitions": {
+    "1h": {
+      "cohort_before_purge": {
+        "rows": 26273,
+        "action_date_min": "2025-01-13",
+        "action_date_max": "2026-09-11",
+        "decision_timestamp_min": "2025-01-11 00:05:00+00:00",
+        "decision_timestamp_max": "2026-09-11 00:05:00+00:00",
+        "COST_rows": 2196,
+        "COST_action_date_min": "2025-01-13",
+        "COST_action_date_max": "2026-09-11",
+        "COST_action_dates": 214
+      },
+      "train": {
+        "rows": 16614,
+        "action_date_min": "2025-01-13",
+        "action_date_max": "2026-03-19",
+        "decision_timestamp_min": "2025-01-11 00:05:00+00:00",
+        "decision_timestamp_max": "2026-03-19 00:05:00+00:00",
+        "COST_rows": 1322,
+        "COST_action_date_min": "2025-01-13",
+        "COST_action_date_max": "2025-12-26",
+        "COST_action_dates": 129
+      },
+      "selection": {
+        "rows": 2626,
+        "action_date_min": "2026-03-20",
+        "action_date_max": "2026-05-12",
+        "decision_timestamp_min": "2026-03-19 23:05:00+00:00",
+        "decision_timestamp_max": "2026-05-12 00:05:00+00:00",
+        "COST_rows": 18,
+        "COST_action_date_min": "2026-04-08",
+        "COST_action_date_max": "2026-05-12",
+        "COST_action_dates": 2
+      },
+      "calibration": {
+        "rows": 3314,
+        "action_date_min": "2026-05-13",
+        "action_date_max": "2026-07-09",
+        "decision_timestamp_min": "2026-05-12 23:05:00+00:00",
+        "decision_timestamp_max": "2026-07-09 00:05:00+00:00",
+        "COST_rows": 427,
+        "COST_action_date_min": "2026-05-13",
+        "COST_action_date_max": "2026-07-09",
+        "COST_action_dates": 39
+      },
+      "assessment": {
+        "rows": 3705,
+        "action_date_min": "2026-07-10",
+        "action_date_max": "2026-09-11",
+        "decision_timestamp_min": "2026-07-10 00:05:00+00:00",
+        "decision_timestamp_max": "2026-09-11 00:05:00+00:00",
+        "COST_rows": 428,
+        "COST_action_date_min": "2026-07-10",
+        "COST_action_date_max": "2026-09-11",
+        "COST_action_dates": 44
+      },
+      "final_fit_train_plus_selection": {
+        "rows": 19240,
+        "action_date_min": "2025-01-13",
+        "action_date_max": "2026-05-12",
+        "decision_timestamp_min": "2025-01-11 00:05:00+00:00",
+        "decision_timestamp_max": "2026-05-12 00:05:00+00:00",
+        "COST_rows": 1340,
+        "COST_action_date_min": "2025-01-13",
+        "COST_action_date_max": "2026-05-12",
+        "COST_action_dates": 131
+      }
+    },
+    "4h": {
+      "cohort_before_purge": {
+        "rows": 7261,
+        "action_date_min": "2025-01-13",
+        "action_date_max": "2026-09-11",
+        "decision_timestamp_min": "2025-01-11 00:05:00+00:00",
+        "decision_timestamp_max": "2026-09-11 00:05:00+00:00",
+        "COST_rows": 614,
+        "COST_action_date_min": "2025-01-13",
+        "COST_action_date_max": "2026-09-11",
+        "COST_action_dates": 214
+      },
+      "train": {
+        "rows": 4505,
+        "action_date_min": "2025-01-13",
+        "action_date_max": "2026-03-19",
+        "decision_timestamp_min": "2025-01-11 00:05:00+00:00",
+        "decision_timestamp_max": "2026-03-19 00:05:00+00:00",
+        "COST_rows": 367,
+        "COST_action_date_min": "2025-01-13",
+        "COST_action_date_max": "2025-12-26",
+        "COST_action_dates": 129
+      },
+      "selection": {
+        "rows": 746,
+        "action_date_min": "2026-03-20",
+        "action_date_max": "2026-05-12",
+        "decision_timestamp_min": "2026-03-19 23:05:00+00:00",
+        "decision_timestamp_max": "2026-05-12 00:05:00+00:00",
+        "COST_rows": 4,
+        "COST_action_date_min": "2026-04-08",
+        "COST_action_date_max": "2026-05-12",
+        "COST_action_dates": 2
+      },
+      "calibration": {
+        "rows": 943,
+        "action_date_min": "2026-05-13",
+        "action_date_max": "2026-07-09",
+        "decision_timestamp_min": "2026-05-12 23:05:00+00:00",
+        "decision_timestamp_max": "2026-07-09 00:05:00+00:00",
+        "COST_rows": 120,
+        "COST_action_date_min": "2026-05-13",
+        "COST_action_date_max": "2026-07-09",
+        "COST_action_dates": 39
+      },
+      "assessment": {
+        "rows": 1053,
+        "action_date_min": "2026-07-10",
+        "action_date_max": "2026-09-11",
+        "decision_timestamp_min": "2026-07-10 00:05:00+00:00",
+        "decision_timestamp_max": "2026-09-11 00:05:00+00:00",
+        "COST_rows": 122,
+        "COST_action_date_min": "2026-07-10",
+        "COST_action_date_max": "2026-09-11",
+        "COST_action_dates": 44
+      },
+      "final_fit_train_plus_selection": {
+        "rows": 5251,
+        "action_date_min": "2025-01-13",
+        "action_date_max": "2026-05-12",
+        "decision_timestamp_min": "2025-01-11 00:05:00+00:00",
+        "decision_timestamp_max": "2026-05-12 00:05:00+00:00",
+        "COST_rows": 371,
+        "COST_action_date_min": "2025-01-13",
+        "COST_action_date_max": "2026-05-12",
+        "COST_action_dates": 131
+      }
+    },
+    "1d": {
+      "cohort_before_purge": {
+        "rows": 7100,
+        "action_date_min": "2025-03-04",
+        "action_date_max": "2026-09-11",
+        "decision_timestamp_min": "2025-03-04 00:05:00+00:00",
+        "decision_timestamp_max": "2026-09-11 00:05:00+00:00",
+        "COST_rows": 460,
+        "COST_action_date_min": "2025-03-04",
+        "COST_action_date_max": "2026-09-11",
+        "COST_action_dates": 180
+      },
+      "train": {
+        "rows": 4263,
+        "action_date_min": "2025-03-04",
+        "action_date_max": "2026-04-17",
+        "decision_timestamp_min": "2025-03-04 00:05:00+00:00",
+        "decision_timestamp_max": "2026-04-17 00:05:00+00:00",
+        "COST_rows": 261,
+        "COST_action_date_min": "2025-03-04",
+        "COST_action_date_max": "2026-04-08",
+        "COST_action_dates": 103
+      },
+      "selection": {
+        "rows": 750,
+        "action_date_min": "2026-04-20",
+        "action_date_max": "2026-06-01",
+        "decision_timestamp_min": "2026-04-18 00:05:00+00:00",
+        "decision_timestamp_max": "2026-05-30 00:05:00+00:00",
+        "COST_rows": 28,
+        "COST_action_date_min": "2026-05-12",
+        "COST_action_date_max": "2026-06-01",
+        "COST_action_dates": 12
+      },
+      "calibration": {
+        "rows": 896,
+        "action_date_min": "2026-06-02",
+        "action_date_max": "2026-07-20",
+        "decision_timestamp_min": "2026-06-02 00:05:00+00:00",
+        "decision_timestamp_max": "2026-07-18 00:05:00+00:00",
+        "COST_rows": 92,
+        "COST_action_date_min": "2026-06-02",
+        "COST_action_date_max": "2026-07-16",
+        "COST_action_dates": 31
+      },
+      "assessment": {
+        "rows": 1001,
+        "action_date_min": "2026-07-21",
+        "action_date_max": "2026-09-11",
+        "decision_timestamp_min": "2026-07-21 00:05:00+00:00",
+        "decision_timestamp_max": "2026-09-11 00:05:00+00:00",
+        "COST_rows": 69,
+        "COST_action_date_min": "2026-07-21",
+        "COST_action_date_max": "2026-09-11",
+        "COST_action_dates": 32
+      },
+      "final_fit_train_plus_selection": {
+        "rows": 5013,
+        "action_date_min": "2025-03-04",
+        "action_date_max": "2026-06-01",
+        "decision_timestamp_min": "2025-03-04 00:05:00+00:00",
+        "decision_timestamp_max": "2026-05-30 00:05:00+00:00",
+        "COST_rows": 289,
+        "COST_action_date_min": "2025-03-04",
+        "COST_action_date_max": "2026-06-01",
+        "COST_action_dates": 115
+      }
+    },
+    "1w": {
+      "cohort_before_purge": {
+        "rows": 1416,
+        "action_date_min": "2025-03-04",
+        "action_date_max": "2026-09-04",
+        "decision_timestamp_min": "2025-03-04 00:05:00+00:00",
+        "decision_timestamp_max": "2026-09-04 00:05:00+00:00",
+        "COST_rows": 92,
+        "COST_action_date_min": "2025-03-04",
+        "COST_action_date_max": "2026-09-04",
+        "COST_action_dates": 92
+      },
+      "train": {
+        "rows": 855,
+        "action_date_min": "2025-03-04",
+        "action_date_max": "2026-04-14",
+        "decision_timestamp_min": "2025-03-04 00:05:00+00:00",
+        "decision_timestamp_max": "2026-04-14 00:05:00+00:00",
+        "COST_rows": 53,
+        "COST_action_date_min": "2025-03-04",
+        "COST_action_date_max": "2026-04-08",
+        "COST_action_dates": 53
+      },
+      "selection": {
+        "rows": 133,
+        "action_date_min": "2026-04-21",
+        "action_date_max": "2026-05-26",
+        "decision_timestamp_min": "2026-04-21 00:05:00+00:00",
+        "decision_timestamp_max": "2026-05-23 00:05:00+00:00",
+        "COST_rows": 4,
+        "COST_action_date_min": "2026-05-20",
+        "COST_action_date_max": "2026-05-26",
+        "COST_action_dates": 4
+      },
+      "calibration": {
+        "rows": 162,
+        "action_date_min": "2026-06-02",
+        "action_date_max": "2026-07-13",
+        "decision_timestamp_min": "2026-06-02 00:05:00+00:00",
+        "decision_timestamp_max": "2026-07-11 00:05:00+00:00",
+        "COST_rows": 17,
+        "COST_action_date_min": "2026-06-02",
+        "COST_action_date_max": "2026-07-10",
+        "COST_action_dates": 17
+      },
+      "assessment": {
+        "rows": 194,
+        "action_date_min": "2026-07-20",
+        "action_date_max": "2026-09-04",
+        "decision_timestamp_min": "2026-07-18 00:05:00+00:00",
+        "decision_timestamp_max": "2026-09-04 00:05:00+00:00",
+        "COST_rows": 13,
+        "COST_action_date_min": "2026-07-29",
+        "COST_action_date_max": "2026-09-04",
+        "COST_action_dates": 13
+      },
+      "final_fit_train_plus_selection": {
+        "rows": 988,
+        "action_date_min": "2025-03-04",
+        "action_date_max": "2026-05-26",
+        "decision_timestamp_min": "2025-03-04 00:05:00+00:00",
+        "decision_timestamp_max": "2026-05-23 00:05:00+00:00",
+        "COST_rows": 57,
+        "COST_action_date_min": "2025-03-04",
+        "COST_action_date_max": "2026-05-26",
+        "COST_action_dates": 57
+      }
+    }
+  },
+  "overnight_source_monthly_counts": {
+    "2026-01": {
+      "AAPL": 10,
+      "AMZN": 7,
+      "GOOG": 4,
+      "MU": 13,
+      "NVDA": 20,
+      "SNDK": 3,
+      "COST": 0
+    },
+    "2026-02": {
+      "AAPL": 12,
+      "AMZN": 15,
+      "GOOG": 3,
+      "MU": 12,
+      "NVDA": 19,
+      "SNDK": 7,
+      "COST": 0
+    },
+    "2026-03": {
+      "AAPL": 16,
+      "AMZN": 13,
+      "GOOG": 12,
+      "MU": 19,
+      "NVDA": 22,
+      "SNDK": 15,
+      "COST": 0
+    },
+    "2026-04": {
+      "AAPL": 19,
+      "AMZN": 18,
+      "GOOG": 14,
+      "MU": 20,
+      "NVDA": 21,
+      "SNDK": 16,
+      "COST": 1
+    },
+    "2026-05": {
+      "AAPL": 17,
+      "AMZN": 16,
+      "GOOG": 12,
+      "MU": 20,
+      "NVDA": 20,
+      "SNDK": 19,
+      "COST": 13
+    },
+    "2026-06": {
+      "AAPL": 20,
+      "AMZN": 17,
+      "GOOG": 18,
+      "MU": 21,
+      "NVDA": 21,
+      "SNDK": 21,
+      "COST": 21
+    },
+    "2026-07": {
+      "AAPL": 16,
+      "AMZN": 15,
+      "GOOG": 15,
+      "MU": 22,
+      "NVDA": 22,
+      "SNDK": 22,
+      "COST": 22
+    },
+    "2026-08": {
+      "AAPL": 19,
+      "AMZN": 16,
+      "GOOG": 12,
+      "MU": 21,
+      "NVDA": 21,
+      "SNDK": 21,
+      "COST": 21
+    }
+  },
+  "selection_interval_source_dates_by_symbol": {
+    "AAPL": 32,
+    "AMZN": 30,
+    "COST": 2,
+    "GOOG": 24,
+    "MU": 36,
+    "NVDA": 37,
+    "SNDK": 28
+  },
+  "forecast_rows": 168,
+  "forecast_rows_by_symbol": {
+    "AAPL": 24,
+    "AMZN": 24,
+    "COST": 24,
+    "GOOG": 24,
+    "MU": 24,
+    "NVDA": 24,
+    "SNDK": 24
+  },
+  "missing_raw_probability": 0,
+  "missing_calibrated_probability": 0
+}

@@ -181,7 +181,7 @@ def queue_history(path: Path, client: object) -> dict:
     canonical partitions, history cursors, or production publication pointers.
     """
     from datafetching.databento_opra_history import (
-        HIGH_VOLUME_SCHEMAS, OPRA_BATCH_MIN_DAYS, SyncScope,
+        OPRA_BATCH_MIN_DAYS, SyncScope,
         _batch_job_states, _load_or_submit_batch_job, _partition_plan,
     )
     plan = load_plan(path)
@@ -192,7 +192,7 @@ def queue_history(path: Path, client: object) -> dict:
     with exclusive_runtime_lock(path.parent / "queue.lock", process_name="Duckets onboarding batch preparation"):
         for request in plan["requests"]:
             schema = request["schema"]
-            if request["dataset"] != "OPRA.PILLAR" or schema in HIGH_VOLUME_SCHEMAS:
+            if request["dataset"] != "OPRA.PILLAR":
                 continue
             parents = request["symbol_scope"]
             existing = _batch_job_states(root, schema=schema, symbols=parents)

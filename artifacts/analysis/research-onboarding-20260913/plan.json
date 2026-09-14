@@ -1,0 +1,84 @@
+{
+  "schema_version": "research-symbol-onboarding-v1",
+  "created_at": "2026-09-14T03:31:29.211211+00:00",
+  "datastore_root": "C:\\DATASTORE",
+  "selected_symbols": [
+    "CROX",
+    "PATH",
+    "TWST",
+    "IONQ"
+  ],
+  "previous_symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST"
+  ],
+  "candidate_symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST",
+    "CROX",
+    "PATH",
+    "TWST",
+    "IONQ"
+  ],
+  "research_lineage": {
+    "week": "2026-09-13",
+    "publication_sha256": "b3bfb2142f6a7372b0fca511b76a96de8d392b37ff4154daa177807cd432f399",
+    "report_path": "C:\\DATASTORE\\research\\opportunities\\editions\\2026-09-13\\report.md",
+    "selected_companies": [
+      {
+        "symbol": "CROX",
+        "security_id": "CIK0001334036:COMMON",
+        "company_name": "Crocs, Inc.",
+        "decision": "watch"
+      },
+      {
+        "symbol": "PATH",
+        "security_id": "CIK0001734722:CLASS_A",
+        "company_name": "UiPath, Inc.",
+        "decision": "watch"
+      },
+      {
+        "symbol": "TWST",
+        "security_id": "CIK0001581280:COMMON",
+        "company_name": "Twist Bioscience Corporation",
+        "decision": "watch"
+      },
+      {
+        "symbol": "IONQ",
+        "security_id": "CIK0001824920:COMMON",
+        "company_name": "IonQ, Inc.",
+        "decision": "watch"
+      }
+    ]
+  },
+  "history_policy": "standard-included-history-2018-v1",
+  "history_floor": "2018-01-01",
+  "budget": {
+    "billable_uncompressed_bytes": 230492746800,
+    "estimated_cost_usd": 0.0,
+    "required_free_bytes": 466354202720,
+    "max_billable_bytes": 300000000000,
+    "max_cost_usd": 0.0
+  },
+  "symbol_plan_ids": {
+    "CROX": "87972193f79e7d1259f20ac4a7f98dd05270702c9c02fa3576a029ee864c8054",
+    "PATH": "af9f7ccd18bcf177e4b8e72604ba80f87de88e0e56fe7d0f80316212d22083e7",
+    "TWST": "12f9265f252523497c5ea3878e4cbaf6b6cc0d0c68cc78a7dd5cd58efaaf9944",
+    "IONQ": "326f356e97dcc16f3cfef3a71c70eee17e345c3a534f1b01f37e84df342b4bd5"
+  },
+  "preparation_scope": "STOCK_ONLY",
+  "independent_stock_horizons": true,
+  "stock_price_source": "xnas-itch-archive-v1",
+  "orders_authorized": false,
+  "plan_id": "df613ade510b2775a99c051abf8472367e2c70208e13c1eacce8bad4c577d487"
+}

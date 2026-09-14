@@ -218,7 +218,7 @@ def test_publication_follows_successor_and_preserves_saved_artifacts(publication
     assert (c.root / "ml/gameplan-actuals-review-by-date/2026-09-09/run.json").is_file()
     assert (c.root / "ml/gameplan-actuals-review-by-date/2026-09-09/Gameplan-results.md").read_bytes() == (run / "Gameplan-results.md").read_bytes()
     rendered = (run / "Gameplan-results.md").read_text(encoding="utf-8")
-    assert "Saved price range" in rendered and "Actual price" in rendered and "Waiting for data" in rendered
+    assert "Saved price range" in rendered and "Actual price" in rendered and "No observed price" in rendered
     assert "Pending target end" in rendered and "$999.00" not in rendered
 
 
@@ -267,3 +267,117 @@ def test_standard_time_keeps_local_price_clocks():
     bars = prices([("2027-01-12T12:00Z", 100., 100.), ("2027-01-13T00:59Z", 101., 105.)])
     result = compare_price_points(data, bars, action_date="2027-01-12", observed_at="2027-01-13T01:00Z", planning_path=path("2027-01-12"))
     assert result.iloc[0].actual_price == 100 and result.iloc[-1].actual_price == 105
+
+
+def _with_source_partitions(bars, intervals, *, symbol="AAPL"):
+    bars.attrs["stock_price_source"].update(native_archive_partitions_verified=len(intervals), schema="ohlcv-1m",
+        partitions=[{"symbol": symbol, "start": start, "end": end, "manifest_path": f"verified/{symbol}/{index}/manifest.json"}
+                    for index, (start, end) in enumerate(intervals)])
+    return bars
+
+
+def test_complete_source_still_retains_unscored_stale_boundary_with_exact_evidence():
+    data = forecasts().iloc[:1]
+    original = data.copy(deep=True)
+    bars = _with_source_partitions(prices([("2026-09-09T11:00Z", 100., 100.),
+                                          ("2026-09-09T11:53Z", 105., 105.)]),
+                                    [("2026-09-09", "2026-09-10")])
+    result = compare_forecasts(data, bars, observed_at="2026-09-10T00:00Z").iloc[0]
+    assert result.actuals_status == "MATURE_AWAITING_DATA"
+    assert result.actual_return is None and result.actual_end_price is None
+    assert result.actual_end_status == "OUTSIDE_TOLERANCE"
+    assert result.actual_end_source_coverage == "VERIFIED_COMPLETE"
+    assert result.actual_end_candidate_price == 105
+    assert result.actual_end_candidate_observed_at == "2026-09-09T11:54:00+00:00"
+    assert result.actual_end_gap_seconds == 360
+    assert result.actual_end_required_source_start == "2026-09-09T11:54:00+00:00"
+    assert result.actual_end_required_source_end == "2026-09-09T12:00:00+00:00"
+    pd.testing.assert_frame_equal(data, original)
+
+
+@pytest.mark.parametrize("intervals,expected", [
+    (None, "UNKNOWN"),
+    ([("2026-09-09T11:54Z", "2026-09-09T11:57Z"), ("2026-09-09T11:58Z", "2026-09-09T12:00Z")], "INCOMPLETE"),
+    ([("2026-09-09T11:54Z", "2026-09-09T11:57Z"), ("2026-09-09T11:57Z", "2026-09-09T12:00Z")], "VERIFIED_COMPLETE"),
+])
+def test_source_interval_coverage_requires_unbroken_same_symbol_window(intervals, expected):
+    bars = prices([("2026-09-09T11:00Z", 100., 100.), ("2026-09-09T11:53Z", 105., 105.)])
+    if intervals is not None:
+        _with_source_partitions(bars, intervals)
+    result = compare_forecasts(forecasts().iloc[:1], bars, observed_at="2026-09-10T00:00Z").iloc[0]
+    assert result.actual_end_source_coverage == expected
+    assert result.actual_end_status == "OUTSIDE_TOLERANCE"
+    if intervals is not None:
+        for item in bars.attrs["stock_price_source"]["partitions"]:
+            item["symbol"] = "COST"
+        result = compare_forecasts(forecasts().iloc[:1], bars, observed_at="2026-09-10T00:00Z").iloc[0]
+        assert result.actual_end_source_coverage == "INCOMPLETE"
+
+
+@pytest.mark.parametrize("field,value", [
+    ("native_archive_partitions_verified", None), ("native_archive_partitions_verified", 0),
+    ("native_archive_partitions_verified", True), ("native_archive_partitions_verified", 1.0),
+    ("native_archive_partitions_verified", 2), ("schema", "ohlcv-1h"), ("partitions", []),
+    ("partitions", [None]), ("partitions", [{"symbol": "AAPL", "start": "2026-09-09", "end": "2026-09-10"}]),
+    ("partitions", [{"symbol": "AAPL", "start": "2026-09-09T11:54", "end": "2026-09-10", "manifest_path": "verified"}]),
+])
+def test_unproven_native_partition_inventory_is_unknown_not_incomplete(field, value):
+    bars = _with_source_partitions(prices(), [("2026-09-09", "2026-09-10")])
+    bars.attrs["stock_price_source"][field] = value
+    result = compare_forecasts(forecasts().iloc[:1], bars, observed_at="2026-09-10T00:00Z").iloc[0]
+    assert result.actual_start_source_coverage == "UNKNOWN"
+    assert result.actual_end_source_coverage == "UNKNOWN"
+    assert result.actuals_status == "EVALUATED"
+
+
+def test_no_permitted_candidate_invalid_price_and_future_boundary_remain_distinct():
+    bars = prices([("2026-09-09T11:00Z", 0., 100.)])
+    result = compare_forecasts(forecasts().iloc[:1], bars, observed_at="2026-09-09T11:30Z").iloc[0]
+    assert result.actual_start_status == "INVALID_OBSERVATION"
+    assert result.actual_start_candidate_price == 0
+    assert result.actual_end_status == "PENDING_MATURITY"
+    assert result.actual_end_candidate_observed_at is None and result.actual_end_gap_seconds is None
+    bars = _with_source_partitions(prices([("2026-09-09T12:01Z", 100., 100.)]),
+                                    [("2026-09-09", "2026-09-10")])
+    result = compare_forecasts(forecasts().iloc[:1], bars, observed_at="2026-09-10T00:00Z").iloc[0]
+    assert result.actual_end_status == "NO_OBSERVATION"
+    assert result.actual_end_candidate_observed_at is None
+    assert result.actual_end_source_coverage == "VERIFIED_COMPLETE"
+
+
+def test_diagnostic_preserves_exact_five_minute_rules_and_opening_gap_sides():
+    bars = prices([("2026-09-08T23:53Z", 900., 100.), ("2026-09-09T11:05Z", 105., 950.),
+                   ("2026-09-09T11:54Z", 106., 110.)])
+    result = compare_forecasts(forecasts(), bars, observed_at="2026-09-10T00:00Z").set_index("route")
+    assert result.loc["1h@04:00", "actual_start_status"] == "OBSERVED"
+    assert result.loc["1h@04:00", "actual_end_status"] == "OBSERVED"
+    assert result.loc["1h@04:00", "actuals_status"] == "EVALUATED"
+    assert result.loc["1h@04:00", "actual_start_gap_seconds"] == 300
+    assert result.loc["1h@04:00", "actual_end_gap_seconds"] == 300
+    assert result.loc["1h@gap", "actual_start_status"] == "OUTSIDE_TOLERANCE"
+    assert result.loc["1h@gap", "actual_start_candidate_price"] == 100
+    assert result.loc["1h@gap", "actual_end_candidate_price"] == 105
+    assert result.loc["1h@gap", "actual_start_candidate_observed_at"] == "2026-09-08T23:54:00+00:00"
+
+
+def test_render_explains_verified_missing_boundary_and_preserves_legacy_rows():
+    data = forecasts()
+    bars = _with_source_partitions(prices([("2026-09-09T11:00Z", 100., 100.),
+                                          ("2026-09-09T11:53Z", 105., 105.)]),
+                                    [("2026-09-09", "2026-09-10")])
+    results = compare_forecasts(data, bars, observed_at="2026-09-10T00:00Z")
+    clocks = compare_price_points(data, bars, action_date="2026-09-09", observed_at="2026-09-10T00:00Z")
+    assert clocks.loc[clocks.clock_local.eq("05:00"), "actual_status"].iloc[0] == "NO_OBSERVATION"
+    assert clocks.loc[clocks.clock_local.eq("05:00"), "actual_source_coverage"].iloc[0] == "VERIFIED_COMPLETE"
+    report = {"action_date": "2026-09-09", "successor_action_date": "2026-09-10",
+              "forecasts": {"evaluated": 0, "pending_maturity": 6, "mature_awaiting_data": 18}}
+    rendered = render_actuals_review(results, clocks, report)
+    assert "No observed price within five minutes" in rendered
+    assert "nearest Sep 09 04:54; 6 minutes away" in rendered
+    assert "source request covers the full tolerance window" in rendered
+    assert "missing eligible price observations" in rendered
+    legacy = results.drop(columns=[name for name in results if name.startswith(("actual_start_", "actual_end_"))
+                                 and name not in {"actual_start_price", "actual_start_observed_at", "actual_end_price", "actual_end_observed_at"}])
+    legacy_clocks = clocks.drop(columns=[name for name in clocks if name.startswith("actual_")
+                                        and name not in {"actual_price", "actual_observed_at"}])
+    assert "Waiting for data" in render_actuals_review(legacy, legacy_clocks, report)

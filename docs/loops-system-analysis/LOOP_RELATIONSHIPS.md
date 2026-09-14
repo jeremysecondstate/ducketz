@@ -24,7 +24,7 @@ provider/session data
 - **Type:** D + C.
 - **Exchange:** newest completed-session EQUS equity data, macro/cross-asset
   inputs, and incremental OPRA `definition`, `cbbo-1m`, and `ohlcv-1h` for all
-  six parent symbols.
+  configured parent symbols from `datafetching/watchlist.txt`.
 - **Boundary:** OPRA provider estimate, byte/cost cap, lock, partition receipt,
   and exclusive `completed_through` cursor.
 - **Failure:** any required production cursor lag or invalid receipt stops the

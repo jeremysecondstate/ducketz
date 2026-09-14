@@ -1,0 +1,2808 @@
+{
+  "created_at": "2026-09-13T21:58:36.390728+00:00",
+  "method": "Metadata record counts only; no historical records downloaded. Multiply by matching COST measured native-plus-Parquet bytes per provider record. Not a measured download or bound. Standard schema windows with separate available daily extension; excludes operational/derived/filing storage and shared ML.",
+  "listing_dates_supplied_by_user": {
+    "TWST": "2018-10-31",
+    "IONQ": "2021-10-01",
+    "PATH": "2021-04-21",
+    "CROX": "2006-02-08"
+  },
+  "reference": "artifacts/analysis/cost-onboarding-implementation/archive-verification.json",
+  "dataset_ranges": {
+    "OPRA.PILLAR": {
+      "start": "2013-04-01T00:00:00.000000000Z",
+      "end": "2026-09-12T00:00:00.000000000Z",
+      "schema": {
+        "cmbp-1": {
+          "start": "2023-03-28T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "cbbo-1s": {
+          "start": "2025-02-20T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "cbbo-1m": {
+          "start": "2013-04-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "tcbbo": {
+          "start": "2023-03-28T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "trades": {
+          "start": "2013-04-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "ohlcv-1s": {
+          "start": "2013-04-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "ohlcv-1m": {
+          "start": "2013-04-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "ohlcv-1h": {
+          "start": "2013-04-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "ohlcv-1d": {
+          "start": "2013-04-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "statistics": {
+          "start": "2013-04-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "status": {
+          "start": "2024-07-17T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "definition": {
+          "start": "2013-04-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        }
+      }
+    },
+    "XNAS.ITCH": {
+      "start": "2018-05-01T00:00:00.000000000Z",
+      "end": "2026-09-12T00:00:00.000000000Z",
+      "schema": {
+        "mbo": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "mbp-1": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "mbp-10": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "bbo-1s": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "bbo-1m": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "tbbo": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "trades": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "ohlcv-1s": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "ohlcv-1m": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "ohlcv-1h": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "ohlcv-1d": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "definition": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "statistics": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "status": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "imbalance": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        }
+      }
+    }
+  },
+  "requests": [
+    {
+      "symbol": "CROX",
+      "dataset": "OPRA.PILLAR",
+      "schema": "ohlcv-1d",
+      "start": "2013-04-01",
+      "end": "2026-09-12",
+      "kind": "full_available_daily",
+      "days_cap": null,
+      "records": 934811,
+      "calibration_bytes_per_record": 42.5624076217815,
+      "estimated_raw_plus_parquet_bytes": 39787807
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1m",
+      "start": "2026-08-23",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 20,
+      "records": 1412974,
+      "calibration_bytes_per_record": 31.529562717766897,
+      "estimated_raw_plus_parquet_bytes": 44550452
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1s",
+      "start": "2026-09-11",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 1,
+      "records": 241832,
+      "calibration_bytes_per_record": 27.44574599814961,
+      "estimated_raw_plus_parquet_bytes": 6637260
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "OPRA.PILLAR",
+      "schema": "definition",
+      "start": "2026-06-04",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 100,
+      "records": 38270,
+      "calibration_bytes_per_record": 86.2361774840823,
+      "estimated_raw_plus_parquet_bytes": 3300259
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "OPRA.PILLAR",
+      "schema": "ohlcv-1d",
+      "start": "2019-09-14",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 2555,
+      "records": 864107,
+      "calibration_bytes_per_record": 42.5624076217815,
+      "estimated_raw_plus_parquet_bytes": 36778474
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "OPRA.PILLAR",
+      "schema": "ohlcv-1h",
+      "start": "2021-09-13",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 1825,
+      "records": 1095637,
+      "calibration_bytes_per_record": 33.18433621556241,
+      "estimated_raw_plus_parquet_bytes": 36357987
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "OPRA.PILLAR",
+      "schema": "ohlcv-1m",
+      "start": "2026-06-04",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 100,
+      "records": 18337,
+      "calibration_bytes_per_record": 26.426167405650396,
+      "estimated_raw_plus_parquet_bytes": 484577
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "OPRA.PILLAR",
+      "schema": "ohlcv-1s",
+      "start": "2026-09-02",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 10,
+      "records": 1303,
+      "calibration_bytes_per_record": 29.758588336078404,
+      "estimated_raw_plus_parquet_bytes": 38775
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "OPRA.PILLAR",
+      "schema": "statistics",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 943452,
+      "calibration_bytes_per_record": 12.034677890791464,
+      "estimated_raw_plus_parquet_bytes": 11354141
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "OPRA.PILLAR",
+      "schema": "status",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 76131,
+      "calibration_bytes_per_record": 14.342623045632434,
+      "estimated_raw_plus_parquet_bytes": 1091918
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "OPRA.PILLAR",
+      "schema": "tcbbo",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 5316,
+      "calibration_bytes_per_record": 52.9052758166872,
+      "estimated_raw_plus_parquet_bytes": 281244
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "OPRA.PILLAR",
+      "schema": "trades",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 5316,
+      "calibration_bytes_per_record": 52.300371758099146,
+      "estimated_raw_plus_parquet_bytes": 278029
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "XNAS.ITCH",
+      "schema": "ohlcv-1d",
+      "start": "2018-05-01",
+      "end": "2026-09-12",
+      "kind": "full_available_daily",
+      "days_cap": null,
+      "records": 2103,
+      "calibration_bytes_per_record": 84.36311895276039,
+      "estimated_raw_plus_parquet_bytes": 177416
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "XNAS.ITCH",
+      "schema": "bbo-1m",
+      "start": "2026-06-04",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 100,
+      "records": 31870,
+      "calibration_bytes_per_record": 72.81629148730977,
+      "estimated_raw_plus_parquet_bytes": 2320655
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "XNAS.ITCH",
+      "schema": "bbo-1s",
+      "start": "2026-09-09",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 3,
+      "records": 13600,
+      "calibration_bytes_per_record": 50.47198844139426,
+      "estimated_raw_plus_parquet_bytes": 686419
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "XNAS.ITCH",
+      "schema": "definition",
+      "start": "2026-06-04",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 100,
+      "records": 69,
+      "calibration_bytes_per_record": 587.7246376811594,
+      "estimated_raw_plus_parquet_bytes": 40553
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "XNAS.ITCH",
+      "schema": "imbalance",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 11630,
+      "calibration_bytes_per_record": 48.90790988324289,
+      "estimated_raw_plus_parquet_bytes": 568799
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "XNAS.ITCH",
+      "schema": "mbo",
+      "start": "2026-09-11",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 1,
+      "records": 139020,
+      "calibration_bytes_per_record": 43.935067961165046,
+      "estimated_raw_plus_parquet_bytes": 6107853
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "XNAS.ITCH",
+      "schema": "mbp-10",
+      "start": "2026-09-11",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 1,
+      "records": 46632,
+      "calibration_bytes_per_record": 81.47659782857858,
+      "estimated_raw_plus_parquet_bytes": 3799417
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "XNAS.ITCH",
+      "schema": "ohlcv-1d",
+      "start": "2019-09-14",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 2555,
+      "records": 1757,
+      "calibration_bytes_per_record": 84.36311895276039,
+      "estimated_raw_plus_parquet_bytes": 148226
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "XNAS.ITCH",
+      "schema": "ohlcv-1h",
+      "start": "2021-09-13",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 1825,
+      "records": 16870,
+      "calibration_bytes_per_record": 64.49885290508456,
+      "estimated_raw_plus_parquet_bytes": 1088096
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "XNAS.ITCH",
+      "schema": "ohlcv-1m",
+      "start": "2026-06-04",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 100,
+      "records": 22804,
+      "calibration_bytes_per_record": 46.03542115373421,
+      "estimated_raw_plus_parquet_bytes": 1049792
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "XNAS.ITCH",
+      "schema": "ohlcv-1s",
+      "start": "2026-09-02",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 10,
+      "records": 6152,
+      "calibration_bytes_per_record": 33.54874359189848,
+      "estimated_raw_plus_parquet_bytes": 206392
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "XNAS.ITCH",
+      "schema": "statistics",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 44,
+      "calibration_bytes_per_record": 273.3478260869565,
+      "estimated_raw_plus_parquet_bytes": 12027
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "XNAS.ITCH",
+      "schema": "status",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 88,
+      "calibration_bytes_per_record": 113.52173913043478,
+      "estimated_raw_plus_parquet_bytes": 9990
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "XNAS.ITCH",
+      "schema": "tbbo",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 94006,
+      "calibration_bytes_per_record": 52.14650194147866,
+      "estimated_raw_plus_parquet_bytes": 4902084
+    },
+    {
+      "symbol": "CROX",
+      "dataset": "XNAS.ITCH",
+      "schema": "trades",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 94006,
+      "calibration_bytes_per_record": 41.66120805439276,
+      "estimated_raw_plus_parquet_bytes": 3916404
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "OPRA.PILLAR",
+      "schema": "ohlcv-1d",
+      "start": "2021-10-01",
+      "end": "2026-09-12",
+      "kind": "full_available_daily",
+      "days_cap": null,
+      "records": 1881593,
+      "calibration_bytes_per_record": 42.5624076217815,
+      "estimated_raw_plus_parquet_bytes": 80085128
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1m",
+      "start": "2026-08-23",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 20,
+      "records": 4598753,
+      "calibration_bytes_per_record": 31.529562717766897,
+      "estimated_raw_plus_parquet_bytes": 144996671
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1s",
+      "start": "2026-09-11",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 1,
+      "records": 2648870,
+      "calibration_bytes_per_record": 27.44574599814961,
+      "estimated_raw_plus_parquet_bytes": 72700213
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "OPRA.PILLAR",
+      "schema": "definition",
+      "start": "2026-06-04",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 100,
+      "records": 77740,
+      "calibration_bytes_per_record": 86.2361774840823,
+      "estimated_raw_plus_parquet_bytes": 6704000
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "OPRA.PILLAR",
+      "schema": "ohlcv-1d",
+      "start": "2021-10-01",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 2555,
+      "records": 1881593,
+      "calibration_bytes_per_record": 42.5624076217815,
+      "estimated_raw_plus_parquet_bytes": 80085128
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "OPRA.PILLAR",
+      "schema": "ohlcv-1h",
+      "start": "2021-10-01",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 1825,
+      "records": 3525264,
+      "calibration_bytes_per_record": 33.18433621556241,
+      "estimated_raw_plus_parquet_bytes": 116983546
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "OPRA.PILLAR",
+      "schema": "ohlcv-1m",
+      "start": "2026-06-04",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 100,
+      "records": 696604,
+      "calibration_bytes_per_record": 26.426167405650396,
+      "estimated_raw_plus_parquet_bytes": 18408574
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "OPRA.PILLAR",
+      "schema": "ohlcv-1s",
+      "start": "2026-09-02",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 10,
+      "records": 87059,
+      "calibration_bytes_per_record": 29.758588336078404,
+      "estimated_raw_plus_parquet_bytes": 2590753
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "OPRA.PILLAR",
+      "schema": "statistics",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 1782504,
+      "calibration_bytes_per_record": 12.034677890791464,
+      "estimated_raw_plus_parquet_bytes": 21451861
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "OPRA.PILLAR",
+      "schema": "status",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 136309,
+      "calibration_bytes_per_record": 14.342623045632434,
+      "estimated_raw_plus_parquet_bytes": 1955029
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "OPRA.PILLAR",
+      "schema": "tcbbo",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 307333,
+      "calibration_bytes_per_record": 52.9052758166872,
+      "estimated_raw_plus_parquet_bytes": 16259537
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "OPRA.PILLAR",
+      "schema": "trades",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 307333,
+      "calibration_bytes_per_record": 52.300371758099146,
+      "estimated_raw_plus_parquet_bytes": 16073630
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "XNAS.ITCH",
+      "schema": "ohlcv-1d",
+      "start": "2021-10-01",
+      "end": "2026-09-12",
+      "kind": "full_available_daily",
+      "days_cap": null,
+      "records": 1241,
+      "calibration_bytes_per_record": 84.36311895276039,
+      "estimated_raw_plus_parquet_bytes": 104695
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "XNAS.ITCH",
+      "schema": "bbo-1m",
+      "start": "2026-06-04",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 100,
+      "records": 62863,
+      "calibration_bytes_per_record": 72.81629148730977,
+      "estimated_raw_plus_parquet_bytes": 4577451
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "XNAS.ITCH",
+      "schema": "bbo-1s",
+      "start": "2026-09-09",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 3,
+      "records": 75918,
+      "calibration_bytes_per_record": 50.47198844139426,
+      "estimated_raw_plus_parquet_bytes": 3831732
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "XNAS.ITCH",
+      "schema": "definition",
+      "start": "2026-06-04",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 100,
+      "records": 69,
+      "calibration_bytes_per_record": 587.7246376811594,
+      "estimated_raw_plus_parquet_bytes": 40553
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "XNAS.ITCH",
+      "schema": "imbalance",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 10317,
+      "calibration_bytes_per_record": 48.90790988324289,
+      "estimated_raw_plus_parquet_bytes": 504583
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "XNAS.ITCH",
+      "schema": "mbo",
+      "start": "2026-09-11",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 1,
+      "records": 1265534,
+      "calibration_bytes_per_record": 43.935067961165046,
+      "estimated_raw_plus_parquet_bytes": 55601322
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "XNAS.ITCH",
+      "schema": "mbp-10",
+      "start": "2026-09-11",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 1,
+      "records": 633248,
+      "calibration_bytes_per_record": 81.47659782857858,
+      "estimated_raw_plus_parquet_bytes": 51594893
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "XNAS.ITCH",
+      "schema": "ohlcv-1d",
+      "start": "2021-10-01",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 2555,
+      "records": 1241,
+      "calibration_bytes_per_record": 84.36311895276039,
+      "estimated_raw_plus_parquet_bytes": 104695
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "XNAS.ITCH",
+      "schema": "ohlcv-1h",
+      "start": "2021-10-01",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 1825,
+      "records": 18928,
+      "calibration_bytes_per_record": 64.49885290508456,
+      "estimated_raw_plus_parquet_bytes": 1220834
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "XNAS.ITCH",
+      "schema": "ohlcv-1m",
+      "start": "2026-06-04",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 100,
+      "records": 49179,
+      "calibration_bytes_per_record": 46.03542115373421,
+      "estimated_raw_plus_parquet_bytes": 2263976
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "XNAS.ITCH",
+      "schema": "ohlcv-1s",
+      "start": "2026-09-02",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 10,
+      "records": 45345,
+      "calibration_bytes_per_record": 33.54874359189848,
+      "estimated_raw_plus_parquet_bytes": 1521268
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "XNAS.ITCH",
+      "schema": "statistics",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 44,
+      "calibration_bytes_per_record": 273.3478260869565,
+      "estimated_raw_plus_parquet_bytes": 12027
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "XNAS.ITCH",
+      "schema": "status",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 88,
+      "calibration_bytes_per_record": 113.52173913043478,
+      "estimated_raw_plus_parquet_bytes": 9990
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "XNAS.ITCH",
+      "schema": "tbbo",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 738818,
+      "calibration_bytes_per_record": 52.14650194147866,
+      "estimated_raw_plus_parquet_bytes": 38526774
+    },
+    {
+      "symbol": "IONQ",
+      "dataset": "XNAS.ITCH",
+      "schema": "trades",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 738818,
+      "calibration_bytes_per_record": 41.66120805439276,
+      "estimated_raw_plus_parquet_bytes": 30780050
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "OPRA.PILLAR",
+      "schema": "ohlcv-1d",
+      "start": "2021-04-21",
+      "end": "2026-09-12",
+      "kind": "full_available_daily",
+      "days_cap": null,
+      "records": 1081851,
+      "calibration_bytes_per_record": 42.5624076217815,
+      "estimated_raw_plus_parquet_bytes": 46046183
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1m",
+      "start": "2026-08-23",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 20,
+      "records": 3446428,
+      "calibration_bytes_per_record": 31.529562717766897,
+      "estimated_raw_plus_parquet_bytes": 108664368
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1s",
+      "start": "2026-09-11",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 1,
+      "records": 1910668,
+      "calibration_bytes_per_record": 27.44574599814961,
+      "estimated_raw_plus_parquet_bytes": 52439709
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "OPRA.PILLAR",
+      "schema": "definition",
+      "start": "2026-06-04",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 100,
+      "records": 51824,
+      "calibration_bytes_per_record": 86.2361774840823,
+      "estimated_raw_plus_parquet_bytes": 4469104
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "OPRA.PILLAR",
+      "schema": "ohlcv-1d",
+      "start": "2021-04-21",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 2555,
+      "records": 1081851,
+      "calibration_bytes_per_record": 42.5624076217815,
+      "estimated_raw_plus_parquet_bytes": 46046183
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "OPRA.PILLAR",
+      "schema": "ohlcv-1h",
+      "start": "2021-09-13",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 1825,
+      "records": 1821522,
+      "calibration_bytes_per_record": 33.18433621556241,
+      "estimated_raw_plus_parquet_bytes": 60445998
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "OPRA.PILLAR",
+      "schema": "ohlcv-1m",
+      "start": "2026-06-04",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 100,
+      "records": 308877,
+      "calibration_bytes_per_record": 26.426167405650396,
+      "estimated_raw_plus_parquet_bytes": 8162435
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "OPRA.PILLAR",
+      "schema": "ohlcv-1s",
+      "start": "2026-09-02",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 10,
+      "records": 72360,
+      "calibration_bytes_per_record": 29.758588336078404,
+      "estimated_raw_plus_parquet_bytes": 2153331
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "OPRA.PILLAR",
+      "schema": "statistics",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 1333872,
+      "calibration_bytes_per_record": 12.034677890791464,
+      "estimated_raw_plus_parquet_bytes": 16052720
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "OPRA.PILLAR",
+      "schema": "status",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 103936,
+      "calibration_bytes_per_record": 14.342623045632434,
+      "estimated_raw_plus_parquet_bytes": 1490715
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "OPRA.PILLAR",
+      "schema": "tcbbo",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 179827,
+      "calibration_bytes_per_record": 52.9052758166872,
+      "estimated_raw_plus_parquet_bytes": 9513797
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "OPRA.PILLAR",
+      "schema": "trades",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 179827,
+      "calibration_bytes_per_record": 52.300371758099146,
+      "estimated_raw_plus_parquet_bytes": 9405019
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "XNAS.ITCH",
+      "schema": "ohlcv-1d",
+      "start": "2021-04-21",
+      "end": "2026-09-12",
+      "kind": "full_available_daily",
+      "days_cap": null,
+      "records": 1355,
+      "calibration_bytes_per_record": 84.36311895276039,
+      "estimated_raw_plus_parquet_bytes": 114312
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "XNAS.ITCH",
+      "schema": "bbo-1m",
+      "start": "2026-06-04",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 100,
+      "records": 41511,
+      "calibration_bytes_per_record": 72.81629148730977,
+      "estimated_raw_plus_parquet_bytes": 3022677
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "XNAS.ITCH",
+      "schema": "bbo-1s",
+      "start": "2026-09-09",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 3,
+      "records": 50723,
+      "calibration_bytes_per_record": 50.47198844139426,
+      "estimated_raw_plus_parquet_bytes": 2560091
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "XNAS.ITCH",
+      "schema": "definition",
+      "start": "2026-06-04",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 100,
+      "records": 69,
+      "calibration_bytes_per_record": 587.7246376811594,
+      "estimated_raw_plus_parquet_bytes": 40553
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "XNAS.ITCH",
+      "schema": "imbalance",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 10310,
+      "calibration_bytes_per_record": 48.90790988324289,
+      "estimated_raw_plus_parquet_bytes": 504241
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "XNAS.ITCH",
+      "schema": "mbo",
+      "start": "2026-09-11",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 1,
+      "records": 326373,
+      "calibration_bytes_per_record": 43.935067961165046,
+      "estimated_raw_plus_parquet_bytes": 14339220
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "XNAS.ITCH",
+      "schema": "mbp-10",
+      "start": "2026-09-11",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 1,
+      "records": 235023,
+      "calibration_bytes_per_record": 81.47659782857858,
+      "estimated_raw_plus_parquet_bytes": 19148874
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "XNAS.ITCH",
+      "schema": "ohlcv-1d",
+      "start": "2021-04-21",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 2555,
+      "records": 1355,
+      "calibration_bytes_per_record": 84.36311895276039,
+      "estimated_raw_plus_parquet_bytes": 114312
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "XNAS.ITCH",
+      "schema": "ohlcv-1h",
+      "start": "2021-09-13",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 1825,
+      "records": 17866,
+      "calibration_bytes_per_record": 64.49885290508456,
+      "estimated_raw_plus_parquet_bytes": 1152337
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "XNAS.ITCH",
+      "schema": "ohlcv-1m",
+      "start": "2026-06-04",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 100,
+      "records": 32503,
+      "calibration_bytes_per_record": 46.03542115373421,
+      "estimated_raw_plus_parquet_bytes": 1496289
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "XNAS.ITCH",
+      "schema": "ohlcv-1s",
+      "start": "2026-09-02",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 10,
+      "records": 29659,
+      "calibration_bytes_per_record": 33.54874359189848,
+      "estimated_raw_plus_parquet_bytes": 995022
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "XNAS.ITCH",
+      "schema": "statistics",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 44,
+      "calibration_bytes_per_record": 273.3478260869565,
+      "estimated_raw_plus_parquet_bytes": 12027
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "XNAS.ITCH",
+      "schema": "status",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 89,
+      "calibration_bytes_per_record": 113.52173913043478,
+      "estimated_raw_plus_parquet_bytes": 10103
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "XNAS.ITCH",
+      "schema": "tbbo",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 428773,
+      "calibration_bytes_per_record": 52.14650194147866,
+      "estimated_raw_plus_parquet_bytes": 22359012
+    },
+    {
+      "symbol": "PATH",
+      "dataset": "XNAS.ITCH",
+      "schema": "trades",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 428773,
+      "calibration_bytes_per_record": 41.66120805439276,
+      "estimated_raw_plus_parquet_bytes": 17863201
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "OPRA.PILLAR",
+      "schema": "ohlcv-1d",
+      "start": "2018-10-31",
+      "end": "2026-09-12",
+      "kind": "full_available_daily",
+      "days_cap": null,
+      "records": 62495,
+      "calibration_bytes_per_record": 42.5624076217815,
+      "estimated_raw_plus_parquet_bytes": 2659938
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1m",
+      "start": "2026-08-23",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 20,
+      "records": 1132287,
+      "calibration_bytes_per_record": 31.529562717766897,
+      "estimated_raw_plus_parquet_bytes": 35700514
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "OPRA.PILLAR",
+      "schema": "cbbo-1s",
+      "start": "2026-09-11",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 1,
+      "records": 241386,
+      "calibration_bytes_per_record": 27.44574599814961,
+      "estimated_raw_plus_parquet_bytes": 6625019
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "OPRA.PILLAR",
+      "schema": "definition",
+      "start": "2026-06-04",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 100,
+      "records": 27066,
+      "calibration_bytes_per_record": 86.2361774840823,
+      "estimated_raw_plus_parquet_bytes": 2334068
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "OPRA.PILLAR",
+      "schema": "ohlcv-1d",
+      "start": "2019-09-14",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 2555,
+      "records": 62458,
+      "calibration_bytes_per_record": 42.5624076217815,
+      "estimated_raw_plus_parquet_bytes": 2658363
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "OPRA.PILLAR",
+      "schema": "ohlcv-1h",
+      "start": "2021-09-13",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 1825,
+      "records": 50188,
+      "calibration_bytes_per_record": 33.18433621556241,
+      "estimated_raw_plus_parquet_bytes": 1665455
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "OPRA.PILLAR",
+      "schema": "ohlcv-1m",
+      "start": "2026-06-04",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 100,
+      "records": 7010,
+      "calibration_bytes_per_record": 26.426167405650396,
+      "estimated_raw_plus_parquet_bytes": 185247
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "OPRA.PILLAR",
+      "schema": "ohlcv-1s",
+      "start": "2026-09-02",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 10,
+      "records": 830,
+      "calibration_bytes_per_record": 29.758588336078404,
+      "estimated_raw_plus_parquet_bytes": 24700
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "OPRA.PILLAR",
+      "schema": "statistics",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 800600,
+      "calibration_bytes_per_record": 12.034677890791464,
+      "estimated_raw_plus_parquet_bytes": 9634963
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "OPRA.PILLAR",
+      "schema": "status",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 64996,
+      "calibration_bytes_per_record": 14.342623045632434,
+      "estimated_raw_plus_parquet_bytes": 932213
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "OPRA.PILLAR",
+      "schema": "tcbbo",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 4211,
+      "calibration_bytes_per_record": 52.9052758166872,
+      "estimated_raw_plus_parquet_bytes": 222784
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "OPRA.PILLAR",
+      "schema": "trades",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 4211,
+      "calibration_bytes_per_record": 52.300371758099146,
+      "estimated_raw_plus_parquet_bytes": 220237
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "XNAS.ITCH",
+      "schema": "ohlcv-1d",
+      "start": "2018-10-31",
+      "end": "2026-09-12",
+      "kind": "full_available_daily",
+      "days_cap": null,
+      "records": 1975,
+      "calibration_bytes_per_record": 84.36311895276039,
+      "estimated_raw_plus_parquet_bytes": 166617
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "XNAS.ITCH",
+      "schema": "bbo-1m",
+      "start": "2026-06-04",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 100,
+      "records": 32628,
+      "calibration_bytes_per_record": 72.81629148730977,
+      "estimated_raw_plus_parquet_bytes": 2375850
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "XNAS.ITCH",
+      "schema": "bbo-1s",
+      "start": "2026-09-09",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 3,
+      "records": 22943,
+      "calibration_bytes_per_record": 50.47198844139426,
+      "estimated_raw_plus_parquet_bytes": 1157979
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "XNAS.ITCH",
+      "schema": "definition",
+      "start": "2026-06-04",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 100,
+      "records": 69,
+      "calibration_bytes_per_record": 587.7246376811594,
+      "estimated_raw_plus_parquet_bytes": 40553
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "XNAS.ITCH",
+      "schema": "imbalance",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 11629,
+      "calibration_bytes_per_record": 48.90790988324289,
+      "estimated_raw_plus_parquet_bytes": 568750
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "XNAS.ITCH",
+      "schema": "mbo",
+      "start": "2026-09-11",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 1,
+      "records": 166903,
+      "calibration_bytes_per_record": 43.935067961165046,
+      "estimated_raw_plus_parquet_bytes": 7332895
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "XNAS.ITCH",
+      "schema": "mbp-10",
+      "start": "2026-09-11",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 1,
+      "records": 73721,
+      "calibration_bytes_per_record": 81.47659782857858,
+      "estimated_raw_plus_parquet_bytes": 6006536
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "XNAS.ITCH",
+      "schema": "ohlcv-1d",
+      "start": "2019-09-14",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 2555,
+      "records": 1757,
+      "calibration_bytes_per_record": 84.36311895276039,
+      "estimated_raw_plus_parquet_bytes": 148226
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "XNAS.ITCH",
+      "schema": "ohlcv-1h",
+      "start": "2021-09-13",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 1825,
+      "records": 12722,
+      "calibration_bytes_per_record": 64.49885290508456,
+      "estimated_raw_plus_parquet_bytes": 820554
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "XNAS.ITCH",
+      "schema": "ohlcv-1m",
+      "start": "2026-06-04",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 100,
+      "records": 24567,
+      "calibration_bytes_per_record": 46.03542115373421,
+      "estimated_raw_plus_parquet_bytes": 1130952
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "XNAS.ITCH",
+      "schema": "ohlcv-1s",
+      "start": "2026-09-02",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 10,
+      "records": 9307,
+      "calibration_bytes_per_record": 33.54874359189848,
+      "estimated_raw_plus_parquet_bytes": 312238
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "XNAS.ITCH",
+      "schema": "statistics",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 44,
+      "calibration_bytes_per_record": 273.3478260869565,
+      "estimated_raw_plus_parquet_bytes": 12027
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "XNAS.ITCH",
+      "schema": "status",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 88,
+      "calibration_bytes_per_record": 113.52173913043478,
+      "estimated_raw_plus_parquet_bytes": 9990
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "XNAS.ITCH",
+      "schema": "tbbo",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 136623,
+      "calibration_bytes_per_record": 52.14650194147866,
+      "estimated_raw_plus_parquet_bytes": 7124412
+    },
+    {
+      "symbol": "TWST",
+      "dataset": "XNAS.ITCH",
+      "schema": "trades",
+      "start": "2026-08-12",
+      "end": "2026-09-12",
+      "kind": "standard",
+      "days_cap": 31,
+      "records": 136623,
+      "calibration_bytes_per_record": 41.66120805439276,
+      "estimated_raw_plus_parquet_bytes": 5691879
+    }
+  ],
+  "summaries": {
+    "TWST": {
+      "standard_by_dataset_GiB": {
+        "OPRA.PILLAR": 0.05607,
+        "XNAS.ITCH": 0.03048
+      },
+      "daily_extension_extra_GiB": {
+        "OPRA.PILLAR": 0.0,
+        "XNAS.ITCH": 2e-05
+      },
+      "estimated_archive_standard_GiB": 0.08655,
+      "error_count": 0
+    },
+    "IONQ": {
+      "standard_by_dataset_GiB": {
+        "OPRA.PILLAR": 0.46399,
+        "XNAS.ITCH": 0.1775
+      },
+      "daily_extension_extra_GiB": {
+        "OPRA.PILLAR": 0.0,
+        "XNAS.ITCH": 0.0
+      },
+      "estimated_archive_standard_GiB": 0.64149,
+      "error_count": 0
+    },
+    "PATH": {
+      "standard_by_dataset_GiB": {
+        "OPRA.PILLAR": 0.29695,
+        "XNAS.ITCH": 0.07788
+      },
+      "daily_extension_extra_GiB": {
+        "OPRA.PILLAR": 0.0,
+        "XNAS.ITCH": 0.0
+      },
+      "estimated_archive_standard_GiB": 0.37482,
+      "error_count": 0
+    },
+    "CROX": {
+      "standard_by_dataset_GiB": {
+        "OPRA.PILLAR": 0.13146,
+        "XNAS.ITCH": 0.02315
+      },
+      "daily_extension_extra_GiB": {
+        "OPRA.PILLAR": 0.0028,
+        "XNAS.ITCH": 3e-05
+      },
+      "estimated_archive_standard_GiB": 0.15461,
+      "error_count": 0
+    }
+  },
+  "matched_cost_windows": {
+    "description": "Match the calendar duration of each actual verified COST onboarding request, ending September 12, 2026; clip listing/dataset start. These windows include the extra catch-up days present in the reference archive. They are longer than some current fresh-bootstrap caps.",
+    "requests": [
+      {
+        "symbol": "CROX",
+        "dataset": "OPRA.PILLAR",
+        "schema": "cbbo-1m",
+        "start": "2026-08-04",
+        "end": "2026-09-12",
+        "records": 2840181,
+        "reference_bytes_per_record": 31.529562717766897,
+        "reference_window_calendar_days": 39,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 89549665
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "OPRA.PILLAR",
+        "schema": "cbbo-1s",
+        "start": "2026-09-07",
+        "end": "2026-09-12",
+        "records": 995769,
+        "reference_bytes_per_record": 27.44574599814961,
+        "reference_window_calendar_days": 5,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 27329623
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "OPRA.PILLAR",
+        "schema": "definition",
+        "start": "2026-05-15",
+        "end": "2026-09-12",
+        "records": 44640,
+        "reference_bytes_per_record": 86.2361774840823,
+        "reference_window_calendar_days": 120,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 3849583
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1d",
+        "start": "2019-09-12",
+        "end": "2026-09-12",
+        "records": 864366,
+        "reference_bytes_per_record": 42.5624076217815,
+        "reference_window_calendar_days": 2557,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 36789498
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1h",
+        "start": "2021-08-24",
+        "end": "2026-09-12",
+        "records": 1103615,
+        "reference_bytes_per_record": 33.18433621556241,
+        "reference_window_calendar_days": 1845,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 36622731
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1m",
+        "start": "2026-05-31",
+        "end": "2026-09-12",
+        "records": 19443,
+        "reference_bytes_per_record": 26.426167405650396,
+        "reference_window_calendar_days": 104,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 513804
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1s",
+        "start": "2026-08-29",
+        "end": "2026-09-12",
+        "records": 1823,
+        "reference_bytes_per_record": 29.758588336078404,
+        "reference_window_calendar_days": 14,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 54250
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "OPRA.PILLAR",
+        "schema": "statistics",
+        "start": "2026-08-08",
+        "end": "2026-09-12",
+        "records": 1022628,
+        "reference_bytes_per_record": 12.034677890791464,
+        "reference_window_calendar_days": 35,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 12306999
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "OPRA.PILLAR",
+        "schema": "status",
+        "start": "2026-08-08",
+        "end": "2026-09-12",
+        "records": 82495,
+        "reference_bytes_per_record": 14.342623045632434,
+        "reference_window_calendar_days": 35,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 1183195
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "OPRA.PILLAR",
+        "schema": "tcbbo",
+        "start": "2026-08-08",
+        "end": "2026-09-12",
+        "records": 5812,
+        "reference_bytes_per_record": 52.9052758166872,
+        "reference_window_calendar_days": 35,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 307485
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "OPRA.PILLAR",
+        "schema": "trades",
+        "start": "2026-08-08",
+        "end": "2026-09-12",
+        "records": 5812,
+        "reference_bytes_per_record": 52.300371758099146,
+        "reference_window_calendar_days": 35,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 303970
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "XNAS.ITCH",
+        "schema": "bbo-1m",
+        "start": "2026-06-04",
+        "end": "2026-09-12",
+        "records": 31870,
+        "reference_bytes_per_record": 72.81629148730977,
+        "reference_window_calendar_days": 100,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 2320655
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "XNAS.ITCH",
+        "schema": "bbo-1s",
+        "start": "2026-09-09",
+        "end": "2026-09-12",
+        "records": 13600,
+        "reference_bytes_per_record": 50.47198844139426,
+        "reference_window_calendar_days": 3,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 686419
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "XNAS.ITCH",
+        "schema": "definition",
+        "start": "2026-06-04",
+        "end": "2026-09-12",
+        "records": 69,
+        "reference_bytes_per_record": 587.7246376811594,
+        "reference_window_calendar_days": 100,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 40553
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "XNAS.ITCH",
+        "schema": "imbalance",
+        "start": "2026-08-12",
+        "end": "2026-09-12",
+        "records": 11630,
+        "reference_bytes_per_record": 48.90790988324289,
+        "reference_window_calendar_days": 31,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 568799
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "XNAS.ITCH",
+        "schema": "mbo",
+        "start": "2026-09-11",
+        "end": "2026-09-12",
+        "records": 139020,
+        "reference_bytes_per_record": 43.935067961165046,
+        "reference_window_calendar_days": 1,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 6107853
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "XNAS.ITCH",
+        "schema": "mbp-10",
+        "start": "2026-09-11",
+        "end": "2026-09-12",
+        "records": 46632,
+        "reference_bytes_per_record": 81.47659782857858,
+        "reference_window_calendar_days": 1,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 3799417
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1d",
+        "start": "2019-09-14",
+        "end": "2026-09-12",
+        "records": 1757,
+        "reference_bytes_per_record": 84.36311895276039,
+        "reference_window_calendar_days": 2555,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 148226
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1h",
+        "start": "2021-09-13",
+        "end": "2026-09-12",
+        "records": 16870,
+        "reference_bytes_per_record": 64.49885290508456,
+        "reference_window_calendar_days": 1825,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 1088096
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1m",
+        "start": "2026-06-04",
+        "end": "2026-09-12",
+        "records": 22804,
+        "reference_bytes_per_record": 46.03542115373421,
+        "reference_window_calendar_days": 100,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 1049792
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1s",
+        "start": "2026-09-02",
+        "end": "2026-09-12",
+        "records": 6152,
+        "reference_bytes_per_record": 33.54874359189848,
+        "reference_window_calendar_days": 10,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 206392
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "XNAS.ITCH",
+        "schema": "statistics",
+        "start": "2026-08-12",
+        "end": "2026-09-12",
+        "records": 44,
+        "reference_bytes_per_record": 273.3478260869565,
+        "reference_window_calendar_days": 31,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 12027
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "XNAS.ITCH",
+        "schema": "status",
+        "start": "2026-08-12",
+        "end": "2026-09-12",
+        "records": 88,
+        "reference_bytes_per_record": 113.52173913043478,
+        "reference_window_calendar_days": 31,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 9990
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "XNAS.ITCH",
+        "schema": "tbbo",
+        "start": "2026-08-12",
+        "end": "2026-09-12",
+        "records": 94006,
+        "reference_bytes_per_record": 52.14650194147866,
+        "reference_window_calendar_days": 31,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 4902084
+      },
+      {
+        "symbol": "CROX",
+        "dataset": "XNAS.ITCH",
+        "schema": "trades",
+        "start": "2026-08-12",
+        "end": "2026-09-12",
+        "records": 94006,
+        "reference_bytes_per_record": 41.66120805439276,
+        "reference_window_calendar_days": 31,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 3916404
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "OPRA.PILLAR",
+        "schema": "cbbo-1m",
+        "start": "2026-08-04",
+        "end": "2026-09-12",
+        "records": 9914508,
+        "reference_bytes_per_record": 31.529562717766897,
+        "reference_window_calendar_days": 39,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 312600102
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "OPRA.PILLAR",
+        "schema": "cbbo-1s",
+        "start": "2026-09-07",
+        "end": "2026-09-12",
+        "records": 14906686,
+        "reference_bytes_per_record": 27.44574599814961,
+        "reference_window_calendar_days": 5,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 409125118
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "OPRA.PILLAR",
+        "schema": "definition",
+        "start": "2026-05-15",
+        "end": "2026-09-12",
+        "records": 92000,
+        "reference_bytes_per_record": 86.2361774840823,
+        "reference_window_calendar_days": 120,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 7933728
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1d",
+        "start": "2021-10-01",
+        "end": "2026-09-12",
+        "records": 1881593,
+        "reference_bytes_per_record": 42.5624076217815,
+        "reference_window_calendar_days": 2557,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 80085128
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1h",
+        "start": "2021-10-01",
+        "end": "2026-09-12",
+        "records": 3525264,
+        "reference_bytes_per_record": 33.18433621556241,
+        "reference_window_calendar_days": 1845,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 116983546
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1m",
+        "start": "2026-05-31",
+        "end": "2026-09-12",
+        "records": 733638,
+        "reference_bytes_per_record": 26.426167405650396,
+        "reference_window_calendar_days": 104,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 19387241
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1s",
+        "start": "2026-08-29",
+        "end": "2026-09-12",
+        "records": 109170,
+        "reference_bytes_per_record": 29.758588336078404,
+        "reference_window_calendar_days": 14,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 3248745
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "OPRA.PILLAR",
+        "schema": "statistics",
+        "start": "2026-08-08",
+        "end": "2026-09-12",
+        "records": 1949952,
+        "reference_bytes_per_record": 12.034677890791464,
+        "reference_window_calendar_days": 35,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 23467044
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "OPRA.PILLAR",
+        "schema": "status",
+        "start": "2026-08-08",
+        "end": "2026-09-12",
+        "records": 149325,
+        "reference_bytes_per_record": 14.342623045632434,
+        "reference_window_calendar_days": 35,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 2141712
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "OPRA.PILLAR",
+        "schema": "tcbbo",
+        "start": "2026-08-08",
+        "end": "2026-09-12",
+        "records": 327044,
+        "reference_bytes_per_record": 52.9052758166872,
+        "reference_window_calendar_days": 35,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 17302353
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "OPRA.PILLAR",
+        "schema": "trades",
+        "start": "2026-08-08",
+        "end": "2026-09-12",
+        "records": 327044,
+        "reference_bytes_per_record": 52.300371758099146,
+        "reference_window_calendar_days": 35,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 17104523
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "XNAS.ITCH",
+        "schema": "bbo-1m",
+        "start": "2026-06-04",
+        "end": "2026-09-12",
+        "records": 62863,
+        "reference_bytes_per_record": 72.81629148730977,
+        "reference_window_calendar_days": 100,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 4577451
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "XNAS.ITCH",
+        "schema": "bbo-1s",
+        "start": "2026-09-09",
+        "end": "2026-09-12",
+        "records": 75918,
+        "reference_bytes_per_record": 50.47198844139426,
+        "reference_window_calendar_days": 3,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 3831732
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "XNAS.ITCH",
+        "schema": "definition",
+        "start": "2026-06-04",
+        "end": "2026-09-12",
+        "records": 69,
+        "reference_bytes_per_record": 587.7246376811594,
+        "reference_window_calendar_days": 100,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 40553
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "XNAS.ITCH",
+        "schema": "imbalance",
+        "start": "2026-08-12",
+        "end": "2026-09-12",
+        "records": 10317,
+        "reference_bytes_per_record": 48.90790988324289,
+        "reference_window_calendar_days": 31,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 504583
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "XNAS.ITCH",
+        "schema": "mbo",
+        "start": "2026-09-11",
+        "end": "2026-09-12",
+        "records": 1265534,
+        "reference_bytes_per_record": 43.935067961165046,
+        "reference_window_calendar_days": 1,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 55601322
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "XNAS.ITCH",
+        "schema": "mbp-10",
+        "start": "2026-09-11",
+        "end": "2026-09-12",
+        "records": 633248,
+        "reference_bytes_per_record": 81.47659782857858,
+        "reference_window_calendar_days": 1,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 51594893
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1d",
+        "start": "2021-10-01",
+        "end": "2026-09-12",
+        "records": 1241,
+        "reference_bytes_per_record": 84.36311895276039,
+        "reference_window_calendar_days": 2555,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 104695
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1h",
+        "start": "2021-10-01",
+        "end": "2026-09-12",
+        "records": 18928,
+        "reference_bytes_per_record": 64.49885290508456,
+        "reference_window_calendar_days": 1825,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 1220834
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1m",
+        "start": "2026-06-04",
+        "end": "2026-09-12",
+        "records": 49179,
+        "reference_bytes_per_record": 46.03542115373421,
+        "reference_window_calendar_days": 100,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 2263976
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1s",
+        "start": "2026-09-02",
+        "end": "2026-09-12",
+        "records": 45345,
+        "reference_bytes_per_record": 33.54874359189848,
+        "reference_window_calendar_days": 10,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 1521268
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "XNAS.ITCH",
+        "schema": "statistics",
+        "start": "2026-08-12",
+        "end": "2026-09-12",
+        "records": 44,
+        "reference_bytes_per_record": 273.3478260869565,
+        "reference_window_calendar_days": 31,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 12027
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "XNAS.ITCH",
+        "schema": "status",
+        "start": "2026-08-12",
+        "end": "2026-09-12",
+        "records": 88,
+        "reference_bytes_per_record": 113.52173913043478,
+        "reference_window_calendar_days": 31,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 9990
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "XNAS.ITCH",
+        "schema": "tbbo",
+        "start": "2026-08-12",
+        "end": "2026-09-12",
+        "records": 738818,
+        "reference_bytes_per_record": 52.14650194147866,
+        "reference_window_calendar_days": 31,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 38526774
+      },
+      {
+        "symbol": "IONQ",
+        "dataset": "XNAS.ITCH",
+        "schema": "trades",
+        "start": "2026-08-12",
+        "end": "2026-09-12",
+        "records": 738818,
+        "reference_bytes_per_record": 41.66120805439276,
+        "reference_window_calendar_days": 31,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 30780050
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "OPRA.PILLAR",
+        "schema": "cbbo-1m",
+        "start": "2026-08-04",
+        "end": "2026-09-12",
+        "records": 6645647,
+        "reference_bytes_per_record": 31.529562717766897,
+        "reference_window_calendar_days": 39,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 209534344
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "OPRA.PILLAR",
+        "schema": "cbbo-1s",
+        "start": "2026-09-07",
+        "end": "2026-09-12",
+        "records": 8451637,
+        "reference_bytes_per_record": 27.44574599814961,
+        "reference_window_calendar_days": 5,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 231961482
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "OPRA.PILLAR",
+        "schema": "definition",
+        "start": "2026-05-15",
+        "end": "2026-09-12",
+        "records": 60456,
+        "reference_bytes_per_record": 86.2361774840823,
+        "reference_window_calendar_days": 120,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 5213494
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1d",
+        "start": "2021-04-21",
+        "end": "2026-09-12",
+        "records": 1081851,
+        "reference_bytes_per_record": 42.5624076217815,
+        "reference_window_calendar_days": 2557,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 46046183
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1h",
+        "start": "2021-08-24",
+        "end": "2026-09-12",
+        "records": 1834903,
+        "reference_bytes_per_record": 33.18433621556241,
+        "reference_window_calendar_days": 1845,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 60890038
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1m",
+        "start": "2026-05-31",
+        "end": "2026-09-12",
+        "records": 339166,
+        "reference_bytes_per_record": 26.426167405650396,
+        "reference_window_calendar_days": 104,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 8962857
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1s",
+        "start": "2026-08-29",
+        "end": "2026-09-12",
+        "records": 81687,
+        "reference_bytes_per_record": 29.758588336078404,
+        "reference_window_calendar_days": 14,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 2430890
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "OPRA.PILLAR",
+        "schema": "statistics",
+        "start": "2026-08-08",
+        "end": "2026-09-12",
+        "records": 1448248,
+        "reference_bytes_per_record": 12.034677890791464,
+        "reference_window_calendar_days": 35,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 17429198
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "OPRA.PILLAR",
+        "schema": "status",
+        "start": "2026-08-08",
+        "end": "2026-09-12",
+        "records": 112790,
+        "reference_bytes_per_record": 14.342623045632434,
+        "reference_window_calendar_days": 35,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 1617704
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "OPRA.PILLAR",
+        "schema": "tcbbo",
+        "start": "2026-08-08",
+        "end": "2026-09-12",
+        "records": 194167,
+        "reference_bytes_per_record": 52.9052758166872,
+        "reference_window_calendar_days": 35,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 10272459
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "OPRA.PILLAR",
+        "schema": "trades",
+        "start": "2026-08-08",
+        "end": "2026-09-12",
+        "records": 194167,
+        "reference_bytes_per_record": 52.300371758099146,
+        "reference_window_calendar_days": 35,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 10155006
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "XNAS.ITCH",
+        "schema": "bbo-1m",
+        "start": "2026-06-04",
+        "end": "2026-09-12",
+        "records": 41511,
+        "reference_bytes_per_record": 72.81629148730977,
+        "reference_window_calendar_days": 100,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 3022677
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "XNAS.ITCH",
+        "schema": "bbo-1s",
+        "start": "2026-09-09",
+        "end": "2026-09-12",
+        "records": 50723,
+        "reference_bytes_per_record": 50.47198844139426,
+        "reference_window_calendar_days": 3,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 2560091
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "XNAS.ITCH",
+        "schema": "definition",
+        "start": "2026-06-04",
+        "end": "2026-09-12",
+        "records": 69,
+        "reference_bytes_per_record": 587.7246376811594,
+        "reference_window_calendar_days": 100,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 40553
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "XNAS.ITCH",
+        "schema": "imbalance",
+        "start": "2026-08-12",
+        "end": "2026-09-12",
+        "records": 10310,
+        "reference_bytes_per_record": 48.90790988324289,
+        "reference_window_calendar_days": 31,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 504241
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "XNAS.ITCH",
+        "schema": "mbo",
+        "start": "2026-09-11",
+        "end": "2026-09-12",
+        "records": 326373,
+        "reference_bytes_per_record": 43.935067961165046,
+        "reference_window_calendar_days": 1,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 14339220
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "XNAS.ITCH",
+        "schema": "mbp-10",
+        "start": "2026-09-11",
+        "end": "2026-09-12",
+        "records": 235023,
+        "reference_bytes_per_record": 81.47659782857858,
+        "reference_window_calendar_days": 1,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 19148874
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1d",
+        "start": "2021-04-21",
+        "end": "2026-09-12",
+        "records": 1355,
+        "reference_bytes_per_record": 84.36311895276039,
+        "reference_window_calendar_days": 2555,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 114312
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1h",
+        "start": "2021-09-13",
+        "end": "2026-09-12",
+        "records": 17866,
+        "reference_bytes_per_record": 64.49885290508456,
+        "reference_window_calendar_days": 1825,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 1152337
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1m",
+        "start": "2026-06-04",
+        "end": "2026-09-12",
+        "records": 32503,
+        "reference_bytes_per_record": 46.03542115373421,
+        "reference_window_calendar_days": 100,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 1496289
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1s",
+        "start": "2026-09-02",
+        "end": "2026-09-12",
+        "records": 29659,
+        "reference_bytes_per_record": 33.54874359189848,
+        "reference_window_calendar_days": 10,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 995022
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "XNAS.ITCH",
+        "schema": "statistics",
+        "start": "2026-08-12",
+        "end": "2026-09-12",
+        "records": 44,
+        "reference_bytes_per_record": 273.3478260869565,
+        "reference_window_calendar_days": 31,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 12027
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "XNAS.ITCH",
+        "schema": "status",
+        "start": "2026-08-12",
+        "end": "2026-09-12",
+        "records": 89,
+        "reference_bytes_per_record": 113.52173913043478,
+        "reference_window_calendar_days": 31,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 10103
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "XNAS.ITCH",
+        "schema": "tbbo",
+        "start": "2026-08-12",
+        "end": "2026-09-12",
+        "records": 428773,
+        "reference_bytes_per_record": 52.14650194147866,
+        "reference_window_calendar_days": 31,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 22359012
+      },
+      {
+        "symbol": "PATH",
+        "dataset": "XNAS.ITCH",
+        "schema": "trades",
+        "start": "2026-08-12",
+        "end": "2026-09-12",
+        "records": 428773,
+        "reference_bytes_per_record": 41.66120805439276,
+        "reference_window_calendar_days": 31,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 17863201
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "OPRA.PILLAR",
+        "schema": "cbbo-1m",
+        "start": "2026-08-04",
+        "end": "2026-09-12",
+        "records": 1983256,
+        "reference_bytes_per_record": 31.529562717766897,
+        "reference_window_calendar_days": 39,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 62531194
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "OPRA.PILLAR",
+        "schema": "cbbo-1s",
+        "start": "2026-09-07",
+        "end": "2026-09-12",
+        "records": 1208090,
+        "reference_bytes_per_record": 27.44574599814961,
+        "reference_window_calendar_days": 5,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 33156931
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "OPRA.PILLAR",
+        "schema": "definition",
+        "start": "2026-05-15",
+        "end": "2026-09-12",
+        "records": 29600,
+        "reference_bytes_per_record": 86.2361774840823,
+        "reference_window_calendar_days": 120,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 2552591
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1d",
+        "start": "2019-09-12",
+        "end": "2026-09-12",
+        "records": 62460,
+        "reference_bytes_per_record": 42.5624076217815,
+        "reference_window_calendar_days": 2557,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 2658448
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1h",
+        "start": "2021-08-24",
+        "end": "2026-09-12",
+        "records": 50758,
+        "reference_bytes_per_record": 33.18433621556241,
+        "reference_window_calendar_days": 1845,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 1684371
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1m",
+        "start": "2026-05-31",
+        "end": "2026-09-12",
+        "records": 7130,
+        "reference_bytes_per_record": 26.426167405650396,
+        "reference_window_calendar_days": 104,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 188419
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "OPRA.PILLAR",
+        "schema": "ohlcv-1s",
+        "start": "2026-08-29",
+        "end": "2026-09-12",
+        "records": 1169,
+        "reference_bytes_per_record": 29.758588336078404,
+        "reference_window_calendar_days": 14,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 34788
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "OPRA.PILLAR",
+        "schema": "statistics",
+        "start": "2026-08-08",
+        "end": "2026-09-12",
+        "records": 863248,
+        "reference_bytes_per_record": 12.034677890791464,
+        "reference_window_calendar_days": 35,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 10388912
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "OPRA.PILLAR",
+        "schema": "status",
+        "start": "2026-08-08",
+        "end": "2026-09-12",
+        "records": 70084,
+        "reference_bytes_per_record": 14.342623045632434,
+        "reference_window_calendar_days": 35,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 1005188
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "OPRA.PILLAR",
+        "schema": "tcbbo",
+        "start": "2026-08-08",
+        "end": "2026-09-12",
+        "records": 4676,
+        "reference_bytes_per_record": 52.9052758166872,
+        "reference_window_calendar_days": 35,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 247385
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "OPRA.PILLAR",
+        "schema": "trades",
+        "start": "2026-08-08",
+        "end": "2026-09-12",
+        "records": 4676,
+        "reference_bytes_per_record": 52.300371758099146,
+        "reference_window_calendar_days": 35,
+        "reused_metadata": false,
+        "estimated_raw_plus_parquet_bytes": 244557
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "XNAS.ITCH",
+        "schema": "bbo-1m",
+        "start": "2026-06-04",
+        "end": "2026-09-12",
+        "records": 32628,
+        "reference_bytes_per_record": 72.81629148730977,
+        "reference_window_calendar_days": 100,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 2375850
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "XNAS.ITCH",
+        "schema": "bbo-1s",
+        "start": "2026-09-09",
+        "end": "2026-09-12",
+        "records": 22943,
+        "reference_bytes_per_record": 50.47198844139426,
+        "reference_window_calendar_days": 3,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 1157979
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "XNAS.ITCH",
+        "schema": "definition",
+        "start": "2026-06-04",
+        "end": "2026-09-12",
+        "records": 69,
+        "reference_bytes_per_record": 587.7246376811594,
+        "reference_window_calendar_days": 100,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 40553
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "XNAS.ITCH",
+        "schema": "imbalance",
+        "start": "2026-08-12",
+        "end": "2026-09-12",
+        "records": 11629,
+        "reference_bytes_per_record": 48.90790988324289,
+        "reference_window_calendar_days": 31,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 568750
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "XNAS.ITCH",
+        "schema": "mbo",
+        "start": "2026-09-11",
+        "end": "2026-09-12",
+        "records": 166903,
+        "reference_bytes_per_record": 43.935067961165046,
+        "reference_window_calendar_days": 1,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 7332895
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "XNAS.ITCH",
+        "schema": "mbp-10",
+        "start": "2026-09-11",
+        "end": "2026-09-12",
+        "records": 73721,
+        "reference_bytes_per_record": 81.47659782857858,
+        "reference_window_calendar_days": 1,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 6006536
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1d",
+        "start": "2019-09-14",
+        "end": "2026-09-12",
+        "records": 1757,
+        "reference_bytes_per_record": 84.36311895276039,
+        "reference_window_calendar_days": 2555,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 148226
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1h",
+        "start": "2021-09-13",
+        "end": "2026-09-12",
+        "records": 12722,
+        "reference_bytes_per_record": 64.49885290508456,
+        "reference_window_calendar_days": 1825,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 820554
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1m",
+        "start": "2026-06-04",
+        "end": "2026-09-12",
+        "records": 24567,
+        "reference_bytes_per_record": 46.03542115373421,
+        "reference_window_calendar_days": 100,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 1130952
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1s",
+        "start": "2026-09-02",
+        "end": "2026-09-12",
+        "records": 9307,
+        "reference_bytes_per_record": 33.54874359189848,
+        "reference_window_calendar_days": 10,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 312238
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "XNAS.ITCH",
+        "schema": "statistics",
+        "start": "2026-08-12",
+        "end": "2026-09-12",
+        "records": 44,
+        "reference_bytes_per_record": 273.3478260869565,
+        "reference_window_calendar_days": 31,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 12027
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "XNAS.ITCH",
+        "schema": "status",
+        "start": "2026-08-12",
+        "end": "2026-09-12",
+        "records": 88,
+        "reference_bytes_per_record": 113.52173913043478,
+        "reference_window_calendar_days": 31,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 9990
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "XNAS.ITCH",
+        "schema": "tbbo",
+        "start": "2026-08-12",
+        "end": "2026-09-12",
+        "records": 136623,
+        "reference_bytes_per_record": 52.14650194147866,
+        "reference_window_calendar_days": 31,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 7124412
+      },
+      {
+        "symbol": "TWST",
+        "dataset": "XNAS.ITCH",
+        "schema": "trades",
+        "start": "2026-08-12",
+        "end": "2026-09-12",
+        "records": 136623,
+        "reference_bytes_per_record": 41.66120805439276,
+        "reference_window_calendar_days": 31,
+        "reused_metadata": true,
+        "estimated_raw_plus_parquet_bytes": 5691879
+      }
+    ],
+    "summaries": {
+      "TWST": {
+        "archive_by_dataset_GiB": {
+          "OPRA.PILLAR": 0.106816,
+          "XNAS.ITCH": 0.030485
+        },
+        "archive_total_GiB": 0.137301,
+        "error_count": 0
+      },
+      "IONQ": {
+        "archive_by_dataset_GiB": {
+          "OPRA.PILLAR": 0.940058,
+          "XNAS.ITCH": 0.177501
+        },
+        "archive_total_GiB": 1.117559,
+        "error_count": 0
+      },
+      "PATH": {
+        "archive_by_dataset_GiB": {
+          "OPRA.PILLAR": 0.562997,
+          "XNAS.ITCH": 0.077875
+        },
+        "archive_total_GiB": 0.640873,
+        "error_count": 0
+      },
+      "CROX": {
+        "archive_by_dataset_GiB": {
+          "OPRA.PILLAR": 0.19447,
+          "XNAS.ITCH": 0.02315
+        },
+        "archive_total_GiB": 0.21762,
+        "error_count": 0
+      }
+    }
+  },
+  "updated_at": "2026-09-13T22:00:20.644473+00:00",
+  "measured_stock_research_comparators": {
+    "COST": {
+      "category_bytes": {
+        "bars": 6212741,
+        "corporate": 1153067,
+        "fundamentals": 114066,
+        "quotes": 25186,
+        "signals": 257117,
+        "technicals": 60564345
+      },
+      "total_GiB": 0.06363403238356113
+    },
+    "AAPL": {
+      "category_bytes": {
+        "bars": 14309169,
+        "corporate": 1889777,
+        "fundamentals": 114118,
+        "quotes": 169157,
+        "signals": 1012177,
+        "technicals": 172816549
+      },
+      "total_GiB": 0.17724088113754988
+    },
+    "SNDK": {
+      "category_bytes": {
+        "bars": 13339651,
+        "corporate": 2596917,
+        "fundamentals": 99355,
+        "quotes": 171555,
+        "signals": 153984,
+        "technicals": 135613166
+      },
+      "total_GiB": 0.1415374018251896
+    }
+  },
+  "planning_estimates": {
+    "scope": "Initial symbol-owned stored package: matched recent COST history windows, clipped at listing/provider availability, compressed provider files plus normalized Parquet, daily-price history toward listing using a suitable provider, operational bars/corporate/fundamentals/indicators and metadata allowance. Shared CME/macro are reused. Full SEC document libraries, shared ML rebuilds, long-running captures, backups and temporary download space are excluded.",
+    "allowance_explanation": "0.14 GiB per symbol consists of an illustrative 0.10 GiB operational/indicator budget plus 0.04 GiB metadata/small-partition allowance. Measured comparable stock-research folders range from about 0.064 to 0.18 GiB. Sensitivity applies 0.65-1.5 times measured archive compression plus 0.08-0.25 GiB overhead/operational storage; these are planning scenarios, not statistical confidence bounds.",
+    "per_symbol": {
+      "TWST": {
+        "matched_archive_GiB": 0.137301,
+        "daily_extension_allowance_GiB": 2e-05,
+        "operational_indicators_and_overhead_allowance_GiB": 0.14,
+        "central_total_GiB": 0.2773,
+        "central_total_GB": 0.2978,
+        "sensitivity_low_GiB": 0.1693,
+        "sensitivity_high_GiB": 0.456
+      },
+      "IONQ": {
+        "matched_archive_GiB": 1.117559,
+        "daily_extension_allowance_GiB": 0.0,
+        "operational_indicators_and_overhead_allowance_GiB": 0.14,
+        "central_total_GiB": 1.2576,
+        "central_total_GB": 1.3503,
+        "sensitivity_low_GiB": 0.8064,
+        "sensitivity_high_GiB": 1.9263
+      },
+      "PATH": {
+        "matched_archive_GiB": 0.640873,
+        "daily_extension_allowance_GiB": 0.0,
+        "operational_indicators_and_overhead_allowance_GiB": 0.14,
+        "central_total_GiB": 0.7809,
+        "central_total_GB": 0.8385,
+        "sensitivity_low_GiB": 0.4966,
+        "sensitivity_high_GiB": 1.2113
+      },
+      "CROX": {
+        "matched_archive_GiB": 0.21762,
+        "daily_extension_allowance_GiB": 0.00283,
+        "operational_indicators_and_overhead_allowance_GiB": 0.14,
+        "central_total_GiB": 0.3605,
+        "central_total_GB": 0.387,
+        "sensitivity_low_GiB": 0.2233,
+        "sensitivity_high_GiB": 0.5807
+      }
+    },
+    "central_total_GiB": 2.6763,
+    "central_total_GB": 2.8736,
+    "stock_research_only_GiB_per_symbol": [
+      0.06,
+      0.2
+    ],
+    "historical_market_data_downloaded": false,
+    "metadata_documentation": "https://databento.com/docs/api-reference-historical/metadata/metadata-get-record-count",
+    "billing_size_documentation": "https://databento.com/docs/api-reference-historical/metadata/metadata-get-billable-size",
+    "history_caveat": "Daily listing-date targets do not imply second/minute tick or order-book history since listing. XNAS starts 2018-05-01 and OPRA L0 starts 2013-04-01 in metadata. Older CROX daily prices need a different suitable provider; stock-day records are very small. Calendar month event windows are approximated as 31 days for the standard comparison, with exact historical-reference durations used for the main estimates."
+  }
+}

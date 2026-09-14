@@ -1,0 +1,40 @@
+{
+  "request": {
+    "dataset": "OPRA.PILLAR",
+    "schema": "cbbo-1s",
+    "symbols": [
+      "CROX.OPT"
+    ],
+    "stype_in": "parent",
+    "start": "2025-11-27",
+    "end": "2025-11-28"
+  },
+  "approved_scope_cost_usd": 0.0,
+  "conditions": [
+    {
+      "date": "2025-11-27",
+      "condition": "available",
+      "last_modified_date": "2025-11-27"
+    },
+    {
+      "date": "2025-11-28",
+      "condition": "available",
+      "last_modified_date": "2025-11-29"
+    }
+  ],
+  "count": {
+    "status": "ERROR",
+    "error_type": "BentoClientError",
+    "error": "422 symbology_invalid_request\nNone of the symbols could be resolved\ndocumentation: https://databento.com/docs/api-reference-historical/basics/symbology"
+  },
+  "download": {
+    "status": "ERROR",
+    "error_type": "BentoClientError",
+    "error": "422 symbology_invalid_request\nCould not resolve smart symbols: CROX.OPT\ndocumentation: https://databento.com/docs/api-reference-historical/basics/symbology"
+  },
+  "symbology": {
+    "status": "ERROR",
+    "error_type": "BentoClientError",
+    "error": "422 symbology_invalid_request\nCould not resolve smart symbols: CROX.OPT\ndocumentation: https://databento.com/docs/api-reference-historical/basics/symbology"
+  }
+}

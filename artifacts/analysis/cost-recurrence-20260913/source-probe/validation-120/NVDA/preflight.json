@@ -1,0 +1,19 @@
+{
+  "observed_at": "2026-09-13T04:34:59.830310+00:00",
+  "request": {
+    "dataset": "XNAS.BASIC",
+    "schema": "ohlcv-1m",
+    "symbols": [
+      "NVDA"
+    ],
+    "stype_in": "raw_symbol",
+    "start": "2026-03-20T07:00:00+00:00",
+    "end": "2026-09-12T00:00:00+00:00"
+  },
+  "estimated_cost_usd": 0.0,
+  "estimated_billable_bytes": 6503504,
+  "estimated_record_count": 116134,
+  "range_pass": true,
+  "max_bytes": 134217728,
+  "capacity_pass": true
+}

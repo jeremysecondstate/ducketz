@@ -2,6 +2,9 @@
 
 ```mermaid
 flowchart LR
+    WR["Sunday 09:00 Pacific research report"] --> OS["User selects companies for onboarding"]
+    OS --> PF["Verify report identity, 2018 floor,<br/>included-plan quote and history receipts"]
+    PF -->|candidate watchlist| A
     D["Existing DATASTORE + providers"] --> A["21:05 Pacific daily<br/>fetch and append completed session"]
     A --> B["Build directional data and models"]
     B --> X["Maintain verified XNAS target history"]
@@ -14,7 +17,10 @@ flowchart LR
     N --> Q["Required trade-plan review<br/>capacity + direction quantities, working prices"]
     Q --> C["One hourly cash/stock projection<br/>bearish sales, due exits, bullish buys"]
     C --> F["End-of-day cash and holdings<br/>later horizon positions remain held"]
-    Q --> V["Separate immutable review pointer<br/>all 168 forecast rows retained"]
+    Q --> V["Separate immutable review pointer<br/>all 24 × N forecast rows retained"]
+    Q -->|onboarding batch only| AV["Verify data, four horizons,<br/>Gameplan and review bindings"]
+    AV --> AW["Atomically activate selected symbols<br/>in production watchlist"]
+    AW --> D
     G --> P["Saved Gameplans<br/>September 4 onward"]
     P --> E
     G --> U["Duckets forecast display"]
@@ -32,15 +38,18 @@ flowchart LR
     O -.-> G
     O -.-> N
     O -.-> Q
-    K["Hourly :00 operations watch<br/>one supervision owner at a time"] -.-> O
+    K["Every 90 minutes operations watch<br/>one supervision owner at a time"] -.-> O
 ```
 
 ## Authority rules
 
 - Solid arrows show workflow/data dependencies; dashed arrows show supervision.
+- Research publication proposes companies; explicit selection starts the
+  [onboarding path](RESEARCH_SYMBOL_ONBOARDING.md). The candidate generation
+  must verify before membership changes, and membership does not start a trader.
 - The required review follows enrichment on the same pinned Gameplan and
   original deadline. Capacity quantities remain independent opportunities;
-  adjacent direction quantities use fresh cash/all-seven holdings through one
+  adjacent direction quantities use fresh cash/all-configured-symbol holdings through one
   shared ledger. Rows show post-hour balances; expiry proceeds enter once.
   Actual orders use current broker balances and quote prices. The manual
   Gameplan strategy shares forecast directions with this conditional projection
@@ -70,3 +79,5 @@ flowchart LR
 - Realized option P/L is not inferred from a frozen intent; it requires an
   exact-leg execution receipt. Unexecuted studies must be labeled
   counterfactual.
+
+Research-selected stocks enter through the [batch onboarding path](RESEARCH_SYMBOL_ONBOARDING.md), which verifies data, trains the full candidate universe, and activates membership atomically. Sunday report publication alone does not change the universe.

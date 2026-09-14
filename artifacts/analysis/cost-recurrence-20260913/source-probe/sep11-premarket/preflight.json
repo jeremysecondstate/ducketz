@@ -1,0 +1,20 @@
+{
+  "observed_at": "2026-09-13T04:30:36.951757+00:00",
+  "request": {
+    "dataset": "XNAS.BASIC",
+    "schema": "ohlcv-1m",
+    "symbols": [
+      "COST"
+    ],
+    "stype_in": "raw_symbol",
+    "start": "2026-09-11T11:30:00Z",
+    "end": "2026-09-11T12:15:00Z"
+  },
+  "range_pass": true,
+  "estimated_cost_usd": 0.0,
+  "estimated_billable_bytes": 1960,
+  "estimated_record_count": 35,
+  "available_bytes": 1416942403584,
+  "max_bytes": 67108864,
+  "capacity_pass": true
+}

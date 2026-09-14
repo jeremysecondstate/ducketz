@@ -76,8 +76,9 @@ _BATCH_JOB_ID_RE = re.compile(r"^[A-Za-z0-9-]+$")
 _BATCH_FILE_DATE_RE = re.compile(r"(?<!\d)(\d{8})(?!\d)")
 _BATCH_DEFINITION_FALLBACK_FILENAME = "point-in-time-definition.dbn.zst"
 _BATCH_DEFINITION_FALLBACK_SCHEMAS = frozenset(("ohlcv-1d", "ohlcv-1h"))
-_TCBBO_SOURCE_ORDINAL_COLUMN = "source_record_ordinal"
-_TCBBO_SOURCE_ORDINAL_BASIS = "zero-based-native-dbn-record-order"
+_SOURCE_ORDINAL_COLUMN = "source_record_ordinal"
+_SOURCE_ORDINAL_BASIS = "zero-based-native-dbn-record-order"
+_SOURCE_ORDINAL_SCHEMAS = frozenset(("tcbbo", "status"))
 
 
 class OpraSyncError(RuntimeError):
@@ -520,7 +521,6 @@ def _execute_batch_aware_plan(
     for schema, days in by_schema.items():
         use_batch = (
             bool(scope.symbols)
-            and schema not in HIGH_VOLUME_SCHEMAS
             and len(days) >= OPRA_BATCH_MIN_DAYS
         )
         try:
@@ -790,8 +790,8 @@ def validate_parquet(
     event_bounds = bounds.get(event_column, [None, None])
     partition_bounds = bounds.get(partition_column, [None, None])
     source_record_identity = (
-        _validate_tcbbo_source_record_identity(path, row_count=row_count)
-        if schema == "tcbbo"
+        _validate_source_record_identity(path, row_count=row_count, schema=schema)
+        if schema == "tcbbo" or (schema == "status" and _SOURCE_ORDINAL_COLUMN in names)
         else None
     )
     natural_key = tuple(name for name in _natural_key(schema) if name in names)
@@ -1135,6 +1135,21 @@ def _synchronize_daily_batch(
             satisfied.add(day)
         elif day in verified_no_data:
             progress.skipped_partitions += 1
+            satisfied.add(day)
+        elif schema in HIGH_VOLUME_SCHEMAS and any(
+            destination.parent.glob("*/receipt.json")
+        ):
+            # A dense day may already have bounded intraday partitions rather
+            # than a full-day directory. Reuse/finish those native segments so
+            # a completed batch never resubmits its already-published days.
+            current = _execute_stream_plan(
+                client, datastore_root=datastore_root, entitlement=entitlement,
+                symbols=symbols, plan=[(schema, day)], reporter=reporter, fail_fast=True,
+            )
+            if current.completed_rows < 1:
+                raise OpraSyncError("Existing dense-day partitions have no verified records in the current request")
+            progress.absorb(current)
+            existing.add(day)
             satisfied.add(day)
 
     missing = planned.difference(satisfied)
@@ -1589,29 +1604,42 @@ def _execute_batch_job_state(
             continue
         _verify_batch_source_file(source, raw_info)
         try:
-            manifest = _download_partition(
-                client,
-                datastore_root=datastore_root,
-                entitlement=entitlement,
-                schema=schema,
-                day=day,
-                symbols=symbols,
-                provider_file=source,
-                provider_delivery={
-                    "mode": "batch",
-                    "job_id": current["job_id"],
-                    "filename": raw_info["filename"],
-                    "provider_hash": raw_info["hash"],
-                },
-            )
+            segments = _partition_time_segments(client, schema=schema, day=day, symbols=symbols)
+            if any(segment is not None for _start, _end, segment in segments):
+                # Bulk delivery does not relax the exact-validation bound.
+                # Exceptionally dense days retain the existing source requests,
+                # deterministic intraday splits, and verified daily resume.
+                if reporter:
+                    reporter(f"STREAMING_DENSE_BATCH_DAY {schema}/{day} segments={len(segments)}")
+                bounded = _execute_stream_plan(
+                    client, datastore_root=datastore_root, entitlement=entitlement,
+                    symbols=symbols, plan=[(schema, day)], reporter=reporter, fail_fast=True,
+                )
+                progress.absorb(bounded)
+            else:
+                manifest = _download_partition(
+                    client,
+                    datastore_root=datastore_root,
+                    entitlement=entitlement,
+                    schema=schema,
+                    day=day,
+                    symbols=symbols,
+                    provider_file=source,
+                    provider_delivery={
+                        "mode": "batch",
+                        "job_id": current["job_id"],
+                        "filename": raw_info["filename"],
+                        "provider_hash": raw_info["hash"],
+                    },
+                )
+                progress.completed_partitions += 1
+                progress.completed_rows += int(manifest["normalized"]["row_count"])
+                progress.completed_bytes += int(manifest["normalized"]["size_bytes"])
         except Exception as exc:
             raise OpraSyncError(
                 f"Databento OPRA batch file failed canonical publication: "
                 f"{raw_info['filename']}: {type(exc).__name__}: {exc}"
             ) from exc
-        progress.completed_partitions += 1
-        progress.completed_rows += int(manifest["normalized"]["row_count"])
-        progress.completed_bytes += int(manifest["normalized"]["size_bytes"])
         try:
             source.unlink()
         except OSError:
@@ -2217,12 +2245,7 @@ def _download_partition(
                     operation=f"{schema} {day} download",
                 )
             except OpraSyncError as exc:
-                message = str(exc)
-                if (
-                    symbols
-                    and "symbology_invalid_request" in message
-                    and "Could not resolve smart symbols" in message
-                ):
+                if _unresolved_parent_request(exc, symbols=symbols):
                     raise OpraNoDataError(
                         "provider returned no resolvable parent-symbol data"
                     ) from None
@@ -2285,7 +2308,7 @@ def _download_partition(
                 start=effective_start,
                 end=effective_end,
             )
-        _add_tcbbo_source_record_identity(
+        _add_source_record_identity(
             raw_path,
             parquet_path,
             schema=schema,
@@ -3022,6 +3045,15 @@ def _partition_plan(
     return output
 
 
+def _unresolved_parent_request(error: Exception, *, symbols: Sequence[str]) -> bool:
+    message = str(error)
+    return bool(symbols) and "422 symbology_invalid_request" in message and any(
+        phrase in message for phrase in (
+            "Could not resolve smart symbols", "None of the symbols could be resolved",
+        )
+    )
+
+
 def _partition_time_segments(
     client: object,
     *,
@@ -3040,8 +3072,8 @@ def _partition_time_segments(
     output: list[tuple[str, str, str | None]] = []
 
     def visit(interval_start: pd.Timestamp, interval_end: pd.Timestamp, *, split: bool) -> None:
-        record_count = int(
-            _retry(
+        try:
+            record_count = int(_retry(
                 getattr(metadata, "get_record_count"),
                 kwargs=_metadata_request_kwargs(
                     schema=schema,
@@ -3050,8 +3082,17 @@ def _partition_time_segments(
                     symbols=symbols,
                 ),
                 operation=f"{schema} time-partition record count",
-            )
-        )
+            ))
+        except OpraSyncError as exc:
+            if not _unresolved_parent_request(exc, symbols=symbols):
+                raise
+            # A count endpoint can reject an empty holiday's parent mapping.
+            # Do not infer zero records from that failure: ask the native
+            # download path to verify this exact interval. It still enforces
+            # source identity, zero-data classification, and the exact-row cap.
+            segment = _time_segment_token(interval_start, interval_end) if split else None
+            output.append((interval_start.isoformat(), interval_end.isoformat(), segment))
+            return
         if record_count == 0:
             return
         duration_seconds = (interval_end - interval_start).total_seconds()
@@ -3231,20 +3272,21 @@ def _deduplicate_normalized_parquet(path: Path, *, schema: str) -> int:
     return removed
 
 
-def _add_tcbbo_source_record_identity(
+def _add_source_record_identity(
     raw_path: Path,
     parquet_path: Path,
     *,
     schema: str,
 ) -> Mapping[str, object] | None:
-    """Retain lossless TCBBO multiplicity using immutable native DBN order."""
+    """Retain every sequence-less event using immutable native DBN order."""
 
-    if schema != "tcbbo":
+    if schema not in _SOURCE_ORDINAL_SCHEMAS:
         return None
+    label = schema.upper()
     table = pq.read_table(parquet_path)
-    if _TCBBO_SOURCE_ORDINAL_COLUMN in table.column_names:
+    if _SOURCE_ORDINAL_COLUMN in table.column_names:
         raise OpraSyncError(
-            f"TCBBO normalized Parquet already contains {_TCBBO_SOURCE_ORDINAL_COLUMN}"
+            f"{label} normalized Parquet already contains {_SOURCE_ORDINAL_COLUMN}"
         )
     native_store: object | None = None
     native_records: object | None = None
@@ -3254,7 +3296,7 @@ def _add_tcbbo_source_record_identity(
         native_record_count = sum(1 for _record in native_records)
     except Exception as exc:
         raise OpraSyncError(
-            "TCBBO native DBN record-count verification failed"
+            f"{label} native DBN record-count verification failed"
         ) from exc
     finally:
         native_records = None
@@ -3262,45 +3304,47 @@ def _add_tcbbo_source_record_identity(
         gc.collect()
     if native_record_count != table.num_rows:
         raise OpraSyncError(
-            "TCBBO normalization did not preserve every native record: "
+            f"{label} normalization did not preserve every native record: "
             f"native_rows={native_record_count} normalized_rows={table.num_rows}"
         )
     table = table.append_column(
-        _TCBBO_SOURCE_ORDINAL_COLUMN,
+        _SOURCE_ORDINAL_COLUMN,
         pa.array(range(table.num_rows), type=pa.uint64()),
     )
     pending = _next_pending_file(parquet_path)
     pq.write_table(table, pending, compression="zstd")
     pending.replace(parquet_path)
     return {
-        "column": _TCBBO_SOURCE_ORDINAL_COLUMN,
-        "basis": _TCBBO_SOURCE_ORDINAL_BASIS,
+        "column": _SOURCE_ORDINAL_COLUMN,
+        "basis": _SOURCE_ORDINAL_BASIS,
         "record_count": table.num_rows,
     }
 
 
-def _validate_tcbbo_source_record_identity(
+def _validate_source_record_identity(
     path: Path,
     *,
     row_count: int,
+    schema: str,
 ) -> Mapping[str, object]:
+    label = schema.upper()
     parquet = pq.ParquetFile(path)
-    if _TCBBO_SOURCE_ORDINAL_COLUMN not in parquet.schema_arrow.names:
+    if _SOURCE_ORDINAL_COLUMN not in parquet.schema_arrow.names:
         raise OpraSyncError(
-            f"TCBBO normalized Parquet lacks {_TCBBO_SOURCE_ORDINAL_COLUMN}"
+            f"{label} normalized Parquet lacks {_SOURCE_ORDINAL_COLUMN}"
         )
     ordinals = pq.read_table(
         path,
-        columns=[_TCBBO_SOURCE_ORDINAL_COLUMN],
-    ).column(_TCBBO_SOURCE_ORDINAL_COLUMN).combine_chunks()
+        columns=[_SOURCE_ORDINAL_COLUMN],
+    ).column(_SOURCE_ORDINAL_COLUMN).combine_chunks()
     expected = pa.array(range(row_count), type=pa.uint64())
     if ordinals.null_count or not ordinals.equals(expected):
         raise OpraSyncError(
-            "TCBBO source record ordinals do not exactly preserve native DBN order"
+            f"{label} source record ordinals do not exactly preserve native DBN order"
         )
     return {
-        "column": _TCBBO_SOURCE_ORDINAL_COLUMN,
-        "basis": _TCBBO_SOURCE_ORDINAL_BASIS,
+        "column": _SOURCE_ORDINAL_COLUMN,
+        "basis": _SOURCE_ORDINAL_BASIS,
         "record_count": row_count,
     }
 
@@ -3336,15 +3380,19 @@ def _natural_key(schema: str) -> tuple[str, ...]:
         )
     if schema == "trades":
         return ("ts_recv", "publisher_id", "instrument_id", "sequence", "symbol")
-    if schema == "tcbbo":
+    if schema in _SOURCE_ORDINAL_SCHEMAS:
         # TCBBO contains every trade event but, unlike Trades and TBBO, its
         # provider schema has no venue sequence field. Native DBN order is the
         # only lossless identity for otherwise byte-equivalent executions.
+        # Status likewise has no sequence field, and native history contains
+        # repeated identical updates. Preserve their source multiplicity too.
+        # Previously published Status files without ordinals retain their
+        # legacy key: validate_parquet selects only columns present in the file.
         return (
             "ts_recv",
             "publisher_id",
             "instrument_id",
-            _TCBBO_SOURCE_ORDINAL_COLUMN,
+            _SOURCE_ORDINAL_COLUMN,
             "symbol",
         )
     if schema.startswith("cbbo-"):

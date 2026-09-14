@@ -708,7 +708,7 @@ def adapt_gameplan_forecasts(
         )
         if str(weekly.get("model_status") or "").upper() != "PROMOTED":
             warnings.append(
-                f"{symbol} weekly forecast is visible but remains research-only."
+                f"{symbol} weekly forecast has not passed model validation."
             )
 
     local_date = loaded.astimezone(GAMEPLAN_TIMEZONE).date()
@@ -927,7 +927,7 @@ def _gameplan_route_view(
         label = (
             "Frozen Overnight Forecast"
             if promoted
-            else "Research Forecast — Not Promoted"
+            else "Forecast — Model Validation Not Passed"
         )
         tone = "success" if promoted else "warning"
         actionable_until = end
@@ -937,7 +937,7 @@ def _gameplan_route_view(
         label = (
             f"Upcoming · {route}"
             if promoted
-            else f"Research · {route} · Not Promoted"
+            else f"Validation Not Passed · {route}"
         )
         tone = "success" if promoted else "warning"
         actionable_until = start
@@ -951,7 +951,7 @@ def _gameplan_route_view(
         label = (
             f"In Progress · {route}"
             if promoted
-            else f"Research In Progress · {route}"
+            else f"In Progress · {route} · Validation Not Passed"
         )
         tone = "warning"
         actionable_until = start
@@ -963,25 +963,25 @@ def _gameplan_route_view(
         actionable_until = start
     if target_role == "OPENING_GAP_RESEARCH":
         status = "OPENING_GAP_RESEARCH"
-        label = "Opening Gap · Research Context · No Entry"
+        label = "Opening Gap · Context · No Entry"
         tone = "warning"
         actionable_until = None
     elif target_role == "OUTLOOK":
         status = "FROZEN_DAILY_OUTLOOK"
-        label = f"{'Daily' if promoted else 'Research'} Outlook · {route} · No Entry"
+        label = f"Daily Outlook · {route} · No Entry" + ("" if promoted else " · Validation Not Passed")
         tone = "neutral" if promoted else "warning"
         actionable_until = None
     probability_warning = _text(row.get("_calibration_warning"))
     model_status = str(row.get("model_status") or "MODEL_STATUS_UNAVAILABLE")
     evidence_label = (
-        f"Frozen route {route} · model promoted"
+        f"Frozen route {route} · model validation passed"
         if promoted
-        else f"Frozen route {route} · research only; holdout gate not passed"
+        else f"Frozen route {route} · model validation not passed"
     )
     limitation = (
         None
         if promoted
-        else "Research-only forecast; the independent promotion gate did not pass."
+        else "This forecast has not passed the required model validation checks."
     )
     window_detail = None
     if independent:

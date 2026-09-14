@@ -1,0 +1,426 @@
+{
+  "checked_at": "2026-09-14T00:19:39.094186+00:00",
+  "scope": "Read-only availability checks; requested up to 1000 periods per statement endpoint plus the first 14 calendar days of stock prices. Saved counts/date boundaries and response lengths only, not financial response bodies. Provider completeness and revisions still need validation during an actual backfill.",
+  "rows": [
+    {
+      "symbol": "CROX",
+      "endpoint": "income-statement",
+      "requested_params": {
+        "symbol": "CROX",
+        "period": "annual",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 24,
+      "first_date": "2002-12-31",
+      "last_date": "2025-12-31",
+      "decoded_json_bytes": 32323,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "CROX",
+      "endpoint": "income-statement",
+      "requested_params": {
+        "symbol": "CROX",
+        "period": "quarter",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 84,
+      "first_date": "2005-09-30",
+      "last_date": "2026-06-30",
+      "decoded_json_bytes": 112361,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "CROX",
+      "endpoint": "balance-sheet-statement",
+      "requested_params": {
+        "symbol": "CROX",
+        "period": "annual",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 24,
+      "first_date": "2002-12-31",
+      "last_date": "2025-12-31",
+      "decoded_json_bytes": 49711,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "CROX",
+      "endpoint": "balance-sheet-statement",
+      "requested_params": {
+        "symbol": "CROX",
+        "period": "quarter",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 84,
+      "first_date": "2005-09-30",
+      "last_date": "2026-06-30",
+      "decoded_json_bytes": 175856,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "CROX",
+      "endpoint": "cash-flow-statement",
+      "requested_params": {
+        "symbol": "CROX",
+        "period": "annual",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 23,
+      "first_date": "2003-12-31",
+      "last_date": "2025-12-31",
+      "decoded_json_bytes": 39073,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "CROX",
+      "endpoint": "cash-flow-statement",
+      "requested_params": {
+        "symbol": "CROX",
+        "period": "quarter",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 83,
+      "first_date": "2005-12-31",
+      "last_date": "2026-06-30",
+      "decoded_json_bytes": 139139,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "CROX",
+      "endpoint": "historical-price-eod/full",
+      "requested_params": {
+        "symbol": "CROX",
+        "from": "2006-02-08",
+        "to": "2006-02-22"
+      },
+      "http_status": 200,
+      "returned_rows": 10,
+      "first_date": "2006-02-08",
+      "last_date": "2006-02-22",
+      "decoded_json_bytes": 2222,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "PATH",
+      "endpoint": "income-statement",
+      "requested_params": {
+        "symbol": "PATH",
+        "period": "annual",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 8,
+      "first_date": "2019-01-31",
+      "last_date": "2026-01-31",
+      "decoded_json_bytes": 10889,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "PATH",
+      "endpoint": "income-statement",
+      "requested_params": {
+        "symbol": "PATH",
+        "period": "quarter",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 26,
+      "first_date": "2020-04-30",
+      "last_date": "2026-07-31",
+      "decoded_json_bytes": 35267,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "PATH",
+      "endpoint": "balance-sheet-statement",
+      "requested_params": {
+        "symbol": "PATH",
+        "period": "annual",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 7,
+      "first_date": "2020-01-31",
+      "last_date": "2026-01-31",
+      "decoded_json_bytes": 14732,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "PATH",
+      "endpoint": "balance-sheet-statement",
+      "requested_params": {
+        "symbol": "PATH",
+        "period": "quarter",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 22,
+      "first_date": "2021-04-30",
+      "last_date": "2026-07-31",
+      "decoded_json_bytes": 46383,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "PATH",
+      "endpoint": "cash-flow-statement",
+      "requested_params": {
+        "symbol": "PATH",
+        "period": "annual",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 7,
+      "first_date": "2020-01-31",
+      "last_date": "2026-01-31",
+      "decoded_json_bytes": 11976,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "PATH",
+      "endpoint": "cash-flow-statement",
+      "requested_params": {
+        "symbol": "PATH",
+        "period": "quarter",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 26,
+      "first_date": "2020-04-30",
+      "last_date": "2026-07-31",
+      "decoded_json_bytes": 43795,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "PATH",
+      "endpoint": "historical-price-eod/full",
+      "requested_params": {
+        "symbol": "PATH",
+        "from": "2021-04-21",
+        "to": "2021-05-05"
+      },
+      "http_status": 200,
+      "returned_rows": 11,
+      "first_date": "2021-04-21",
+      "last_date": "2021-05-05",
+      "decoded_json_bytes": 2424,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "TWST",
+      "endpoint": "income-statement",
+      "requested_params": {
+        "symbol": "TWST",
+        "period": "annual",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 10,
+      "first_date": "2016-09-30",
+      "last_date": "2025-09-30",
+      "decoded_json_bytes": 13570,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "TWST",
+      "endpoint": "income-statement",
+      "requested_params": {
+        "symbol": "TWST",
+        "period": "quarter",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 37,
+      "first_date": "2017-06-30",
+      "last_date": "2026-06-30",
+      "decoded_json_bytes": 49526,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "TWST",
+      "endpoint": "balance-sheet-statement",
+      "requested_params": {
+        "symbol": "TWST",
+        "period": "annual",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 10,
+      "first_date": "2016-09-30",
+      "last_date": "2025-09-30",
+      "decoded_json_bytes": 20643,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "TWST",
+      "endpoint": "balance-sheet-statement",
+      "requested_params": {
+        "symbol": "TWST",
+        "period": "quarter",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 35,
+      "first_date": "2017-09-30",
+      "last_date": "2026-06-30",
+      "decoded_json_bytes": 72045,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "TWST",
+      "endpoint": "cash-flow-statement",
+      "requested_params": {
+        "symbol": "TWST",
+        "period": "annual",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 10,
+      "first_date": "2016-09-30",
+      "last_date": "2025-09-30",
+      "decoded_json_bytes": 16927,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "TWST",
+      "endpoint": "cash-flow-statement",
+      "requested_params": {
+        "symbol": "TWST",
+        "period": "quarter",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 37,
+      "first_date": "2017-06-30",
+      "last_date": "2026-06-30",
+      "decoded_json_bytes": 61569,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "TWST",
+      "endpoint": "historical-price-eod/full",
+      "requested_params": {
+        "symbol": "TWST",
+        "from": "2018-10-31",
+        "to": "2018-11-14"
+      },
+      "http_status": 200,
+      "returned_rows": 11,
+      "first_date": "2018-10-31",
+      "last_date": "2018-11-14",
+      "decoded_json_bytes": 2409,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "IONQ",
+      "endpoint": "income-statement",
+      "requested_params": {
+        "symbol": "IONQ",
+        "period": "annual",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 7,
+      "first_date": "2019-12-31",
+      "last_date": "2025-12-31",
+      "decoded_json_bytes": 9426,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "IONQ",
+      "endpoint": "income-statement",
+      "requested_params": {
+        "symbol": "IONQ",
+        "period": "quarter",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 26,
+      "first_date": "2020-03-31",
+      "last_date": "2026-06-30",
+      "decoded_json_bytes": 34746,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "IONQ",
+      "endpoint": "balance-sheet-statement",
+      "requested_params": {
+        "symbol": "IONQ",
+        "period": "annual",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 7,
+      "first_date": "2019-12-31",
+      "last_date": "2025-12-31",
+      "decoded_json_bytes": 14322,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "IONQ",
+      "endpoint": "balance-sheet-statement",
+      "requested_params": {
+        "symbol": "IONQ",
+        "period": "quarter",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 22,
+      "first_date": "2021-03-31",
+      "last_date": "2026-06-30",
+      "decoded_json_bytes": 45315,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "IONQ",
+      "endpoint": "cash-flow-statement",
+      "requested_params": {
+        "symbol": "IONQ",
+        "period": "annual",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 7,
+      "first_date": "2019-12-31",
+      "last_date": "2025-12-31",
+      "decoded_json_bytes": 11494,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "IONQ",
+      "endpoint": "cash-flow-statement",
+      "requested_params": {
+        "symbol": "IONQ",
+        "period": "quarter",
+        "limit": 1000
+      },
+      "http_status": 200,
+      "returned_rows": 26,
+      "first_date": "2020-03-31",
+      "last_date": "2026-06-30",
+      "decoded_json_bytes": 42456,
+      "row_limit_reached": false
+    },
+    {
+      "symbol": "IONQ",
+      "endpoint": "historical-price-eod/full",
+      "requested_params": {
+        "symbol": "IONQ",
+        "from": "2021-10-01",
+        "to": "2021-10-15"
+      },
+      "http_status": 200,
+      "returned_rows": 11,
+      "first_date": "2021-10-01",
+      "last_date": "2021-10-15",
+      "decoded_json_bytes": 2382,
+      "row_limit_reached": false
+    }
+  ]
+}

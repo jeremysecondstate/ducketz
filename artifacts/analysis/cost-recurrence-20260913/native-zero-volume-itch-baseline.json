@@ -1,0 +1,101 @@
+{
+  "source": "XNAS.ITCH",
+  "start": "2026-03-20T07:00:00+00:00",
+  "end_exclusive": "2026-09-12T00:00:00+00:00",
+  "rows": [
+    {
+      "symbol": "AAPL",
+      "rows": 102865,
+      "positive": 102865,
+      "zero": 0
+    },
+    {
+      "symbol": "AMZN",
+      "rows": 106249,
+      "positive": 106249,
+      "zero": 0
+    },
+    {
+      "symbol": "COST",
+      "rows": 59050,
+      "positive": 59050,
+      "zero": 0
+    },
+    {
+      "symbol": "GOOG",
+      "rows": 95955,
+      "positive": 95955,
+      "zero": 0
+    },
+    {
+      "symbol": "MU",
+      "rows": 115746,
+      "positive": 115746,
+      "zero": 0
+    },
+    {
+      "symbol": "NVDA",
+      "rows": 112944,
+      "positive": 112944,
+      "zero": 0
+    },
+    {
+      "symbol": "SNDK",
+      "rows": 113050,
+      "positive": 113050,
+      "zero": 0
+    }
+  ],
+  "normalized_sources": [
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-02-17_to_2026-05-28\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-08-13_to_2026-09-05\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-03_to_2026-09-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-07_to_2026-09-10\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-08_to_2026-09-11\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-09_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-02-17_to_2026-05-28\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-08-13_to_2026-09-05\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-03_to_2026-09-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-07_to_2026-09-10\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-08_to_2026-09-11\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-09_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-02-17_to_2026-05-28\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-28_to_2026-09-05\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-03_to_2026-09-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-07_to_2026-09-10\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-08_to_2026-09-11\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-09_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-02-17_to_2026-05-28\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-08-13_to_2026-09-05\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-03_to_2026-09-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-07_to_2026-09-10\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-08_to_2026-09-11\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-09_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-02-17_to_2026-05-28\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-08-13_to_2026-09-05\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-03_to_2026-09-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-07_to_2026-09-10\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-08_to_2026-09-11\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-09_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-02-17_to_2026-05-28\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-08-13_to_2026-09-05\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-03_to_2026-09-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-07_to_2026-09-10\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-08_to_2026-09-11\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-09_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-02-17_to_2026-05-28\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-08-13_to_2026-09-05\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-03_to_2026-09-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-07_to_2026-09-10\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-08_to_2026-09-11\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-09_to_2026-09-12\\normalized.parquet"
+  ],
+  "filter": "No replacement or source alteration; identical overlapping rows deduplicated; volume preserved."
+}

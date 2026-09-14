@@ -1,0 +1,371 @@
+{
+  "plan_id": "df613ade510b2775a99c051abf8472367e2c70208e13c1eacce8bad4c577d487",
+  "checked_at": "2026-09-14T05:54:50.968466+00:00",
+  "costs": [
+    {
+      "request_id": "93cc39038ecf1a6185dc123f",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "2014635a05a8f8af583c6efa",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "0d7e49251cd82a6b1ce49a49",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "a6bf038a84f55005194eb98d",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "d79c51e979520380265eadea",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "c082e1fa05ba68f98a27140d",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "37261501856209ce25f69688",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "cf8e1b1c181d620a9ee50fc5",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "e746754c0580e45a47c31a5b",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "a4745b1556e080fc2ec21cac",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "db9e886d11abf5e0b00eb9bf",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "8c72756c36e7711211e07ac1",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "f75cb7558a835d2ead68b0a0",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "4ba93a5cb285c6f7912dd429",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "e68d7829b38d00554dd451e5",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "0eabedd493706e3bb6a27fc7",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "8e0bab7989f517a10de07e3e",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "cac99e5a0d708101120f141e",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "c5404b2ec8400647360e1f00",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "b51196ed2b2c8eb37e901b1c",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "b46c18655e524393a4417438",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "5a54c20b97dafe9a62df706a",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "a1b99c5d1f6579d9305738bd",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "1b7ea3cb03b4c441f75269c4",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "79437b6101758029dd1b5888",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "4899c02ccf2644b49a7e4d9e",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "989afc597a95588ac0a8547c",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "be8da8e8050d18d56aa1c45e",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "e832edc573ce2123d88a38a0",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "087350bd37bc0401bb0ff58a",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "250d808825adc073a52df4b3",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "baf36c0447b504a32269d547",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "246977abfceb6d140ef6dfc4",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "676808b00bb81b2cac063efe",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "4cf633252ee6fce079b191d1",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "bfa5c7c32474c1d63c3c43a9",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "cea2d1c96f344115171db0d0",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "e69b094da97c5acf411e2436",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "ede47c89fc9b0674995765db",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "aa4b992ace4f18f56828d3cc",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "b2cc9c00b76fd2813be76784",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "65c73fe871a9a8b676dc2494",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "7582bd00ecc3043364f8adf8",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "0bbdf20f6f935ec30a581fe9",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "6bb703e52e145a9d492c0f98",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "81b035de59295204373a5512",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "66d6e370d2eaa6ecf0ca7ac2",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "ec00edd12f843e23b3dc824f",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "daf454c886ab83dd2755a207",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "28414b81664385554cfabedf",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "46d7719f6c9868f16f44c400",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "7bb101a79a49d7c472581a42",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "543f3ade9bc8ba6249e23f02",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "2eede89e65ee0ac35288ef21",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "56c045a93e896c1873195564",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "5fd970ca4b7b83dc15994bc4",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "4150b837a8eaefaf65ac872a",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "005b355356eeac597009f8c9",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "fb5bdad6bb636e1a177cb7d8",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "b53e4fc9e77366dbfef18b14",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "f3ebcdee5abeb0bf39364642",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "720874a1a0b771bf5bd810fa",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "b19f3c61d5aafbde8b4ab8c2",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "6d297e2a82ede5f3f23de541",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "5eb93d49c9497056e014db15",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "c8c0cdf85847755b109f2e30",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "269706325020642941047a6a",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "54bdc77e8c15c4e6a66a6eb0",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "bac2dc4530a5abe99e358525",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "63d0476126b3a62e61226263",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "23b28e77f28057937830d1fa",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "9b77c644d0b035f8e3d82e12",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "cac07e190c34c12791a919d7",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "8e343fe11867e06c92cb7bc5",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "ad1e459ed01c6effaa879277",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "2d3362823a30b410c3b1cab5",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "ef5f6d112a6f60b97fe820d7",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "cfffcda88013e3ec224c2c05",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "a56fc691e47d5a455efebe92",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "a167b4cc57c102b0b6f9f9de",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "8985aff01a00704cc7bf1c54",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "33fe029b1143819cc81f092c",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "c38ed5617b3a7ed0a53f6232",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "c8a6883a27e1cfd57dc1763d",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "1447ed9f73cdedc029848275",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "e39847dba9b0a00bd7047aaa",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "199ce445384d49609d13b5c1",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "3a287944e849d5c93ed319e0",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "5e98b111111e7f73ecd1cba4",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "cdf0f6730ac2e7c22a336705",
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "fbeebf00655fa064465e4654",
+      "cost_usd": 0.0
+    }
+  ],
+  "total_cost_usd": 0.0
+}

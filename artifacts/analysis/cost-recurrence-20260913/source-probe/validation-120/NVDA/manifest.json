@@ -1,0 +1,39 @@
+{
+  "completed_at": "2026-09-13T04:36:23.391723+00:00",
+  "dataset": "XNAS.BASIC",
+  "symbol": "NVDA",
+  "rows": 116134,
+  "zero_volume_rows": 3,
+  "request": {
+    "dataset": "XNAS.BASIC",
+    "schema": "ohlcv-1m",
+    "symbols": [
+      "NVDA"
+    ],
+    "stype_in": "raw_symbol",
+    "start": "2026-03-20T07:00:00+00:00",
+    "end": "2026-09-12T00:00:00+00:00"
+  },
+  "payloads": [
+    {
+      "path": "provider.dbn",
+      "bytes": 2934125,
+      "sha256": "7e4467512f059f900772d7396ec7b6d2aecf905bd818336b852567c308b8401b"
+    },
+    {
+      "path": "observations.parquet",
+      "bytes": 3051229,
+      "sha256": "6e2ef85675ef9e4444542f21ca06071e351a28538d614149c1168c99365d1b28"
+    },
+    {
+      "path": "preflight.json",
+      "bytes": 475,
+      "sha256": "b9f354b7650e7adb962b67c01ab6d73d57f9bb8a9c69e98ce271ae5e6bc05ee7"
+    },
+    {
+      "path": "native-metadata.json",
+      "bytes": 435,
+      "sha256": "532dbea3848956a85cbeed3007d9619681507f8032a3d7b0b6f4f0805d68f0bf"
+    }
+  ]
+}

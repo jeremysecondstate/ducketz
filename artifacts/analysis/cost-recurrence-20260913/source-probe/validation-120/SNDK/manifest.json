@@ -1,0 +1,39 @@
+{
+  "completed_at": "2026-09-13T04:36:35.690268+00:00",
+  "dataset": "XNAS.BASIC",
+  "symbol": "SNDK",
+  "rows": 115969,
+  "zero_volume_rows": 12,
+  "request": {
+    "dataset": "XNAS.BASIC",
+    "schema": "ohlcv-1m",
+    "symbols": [
+      "SNDK"
+    ],
+    "stype_in": "raw_symbol",
+    "start": "2026-03-20T07:00:00+00:00",
+    "end": "2026-09-12T00:00:00+00:00"
+  },
+  "payloads": [
+    {
+      "path": "provider.dbn",
+      "bytes": 3487140,
+      "sha256": "ae11a3c3849f1ea3a69d7d84f2bfa88399371f91f6a6e362622c6be60f1fd2c1"
+    },
+    {
+      "path": "observations.parquet",
+      "bytes": 3558092,
+      "sha256": "b7b87e0b4b455af619d60d86d125a5d4108b2f86cc11ba3a6c9a7680371f7797"
+    },
+    {
+      "path": "preflight.json",
+      "bytes": 475,
+      "sha256": "2e045daeeb20cbdf905b3346de51e35061b3894c0aa9f0344fdaa6c4fb3809e3"
+    },
+    {
+      "path": "native-metadata.json",
+      "bytes": 435,
+      "sha256": "0e9020cf032c7565b64518ce0a91d7a37bd675ac0719a560e654ecf3a115a1d9"
+    }
+  ]
+}

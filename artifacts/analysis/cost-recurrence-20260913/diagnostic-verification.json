@@ -1,0 +1,72 @@
+{
+  "verified_at": "2026-09-13T05:10:22.187805+00:00",
+  "status": "VERIFIED_DIAGNOSTICS_ONLY",
+  "source_review": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260912T051439.995563Z",
+  "original_forecast_columns_identical": true,
+  "original_price_columns_identical": true,
+  "forecast_rows": 168,
+  "price_rows": 98,
+  "forecast_statuses": {
+    "EVALUATED": 119,
+    "PENDING_MATURITY": 42,
+    "MATURE_AWAITING_DATA": 7
+  },
+  "price_statuses": {
+    "COMPARED": 95,
+    "MATURE_AWAITING_DATA": 3
+  },
+  "added_forecast_columns": [
+    "actual_end_candidate_observed_at",
+    "actual_end_candidate_price",
+    "actual_end_gap_seconds",
+    "actual_end_required_source_end",
+    "actual_end_required_source_start",
+    "actual_end_source_coverage",
+    "actual_end_status",
+    "actual_start_candidate_observed_at",
+    "actual_start_candidate_price",
+    "actual_start_gap_seconds",
+    "actual_start_required_source_end",
+    "actual_start_required_source_start",
+    "actual_start_source_coverage",
+    "actual_start_status"
+  ],
+  "added_price_columns": [
+    "actual_candidate_observed_at",
+    "actual_candidate_price",
+    "actual_gap_seconds",
+    "actual_required_source_end",
+    "actual_required_source_start",
+    "actual_source_coverage",
+    "actual_status"
+  ],
+  "pointer_checks": [
+    {
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-latest\\run.json",
+      "sha256": "2db2cb49f7b8882d7322d922b6e3ea680488463c8896fbb328edc28f5cd5c942",
+      "unchanged": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-latest\\run.json",
+      "sha256": "ca20a9d1c866fd763cb326d97fe7e87a417869360f79a841a2159ca9c5056e63",
+      "unchanged": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\gameplan-actuals-review-latest\\run.json",
+      "sha256": "6b4e8b395b6c8edc3b3921dc0298109b2c606d4043a19d40cf4b41a4baf78d47",
+      "unchanged": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\gameplan-evaluation-latest\\run.json",
+      "sha256": "24de84f7dba8324dbf4aa3569d6fa3008b2cd18fef4dd596b6de75b7c0e69e99",
+      "unchanged": true
+    },
+    {
+      "path": "C:\\DATASTORE\\ml\\overnight-latest\\run.json",
+      "sha256": "bca6ba464e86b81a50d45680156531991584d96516695d91b09f5d0fac6c1bf1",
+      "unchanged": true
+    }
+  ],
+  "orders_placed": 0,
+  "published": false
+}

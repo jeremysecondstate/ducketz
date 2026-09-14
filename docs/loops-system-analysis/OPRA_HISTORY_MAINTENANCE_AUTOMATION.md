@@ -7,7 +7,7 @@ duplicate ownership. Read this file before manually invoking that fallback.
 
 ## Purpose and ownership boundary
 
-The lane incrementally maintains the six production parents and the three
+The lane incrementally maintains every parent in `datafetching/watchlist.txt` and the three
 schemas required by options-strategy modeling: `ohlcv-1h`, `cbbo-1m`, and
 `definition`. Exact `cbbo-1m` snapshots supply historical candidate entry/exit
 BBO economics; hourly bars supply surface context/cross-checks; definitions
@@ -100,3 +100,32 @@ capacity-blocked, or bootstrap-required scopes. All six symbols' `ohlcv-1h`,
 `health/current.json` reports latest events on September 3. The stack and the
 former standalone schedule remained paused during this repair, and no broker or
 order action occurred.
+
+## Sequence-less native messages
+
+Status and TCBBO normalization preserves every native DBN record, including
+identical repeated events, using a zero-based `source_record_ordinal` checked
+against the native record count. Validation requires contiguous ordinals in
+native order. Existing Status partitions published before this additive field
+continue to verify with their recorded legacy key. This supports research
+symbol onboarding without discarding repeated source messages; see
+[the reusable onboarding path](RESEARCH_SYMBOL_ONBOARDING.md).
+
+For dense historical schemas, a provider `422 symbology_invalid_request` from
+the count endpoint is not interpreted as a zero count. The collector asks the
+native download endpoint to confirm the same interval, using the existing
+parent-resolution NO_DATA classification. Other count failures remain fatal,
+and any returned records still undergo the unchanged exact-size and integrity
+checks. Dataset-wide availability alone does not imply records for every parent.
+
+## Large research archives
+
+Explicit onboarding can use daily-split batch delivery for `cbbo-1s` and `cmbp-1`
+as well as lower-volume schemas. Ordinary days still publish individually after
+native-file and exact duplicate validation. Days above the existing 20-million
+record target fall back to deterministic intraday source requests; the
+25-million exact-validation maximum is unchanged. A split failure leaves the
+batch incomplete and retains its source for recovery. Existing intraday
+partitions are verified/reused, so resume does not submit a second archive for
+an already completed dense day. This does not expand the three-schema routine
+production maintenance scope or activate default-deferred research schemas.

@@ -1,0 +1,51 @@
+{
+  "verified_at": "2026-09-13T04:31:56.126425+00:00",
+  "status": "VERIFIED",
+  "windows": [
+    {
+      "window": "sep11-premarket",
+      "rows": 35,
+      "native_zero_volume_rows": 7,
+      "raw_reproduces_saved": true,
+      "hashes_verified": true
+    },
+    {
+      "window": "sep11-afterhours",
+      "rows": 140,
+      "native_zero_volume_rows": 34,
+      "raw_reproduces_saved": true,
+      "hashes_verified": true,
+      "first_open_observations": [
+        {
+          "clock_utc": "2026-09-11 21:00:00+00:00",
+          "bar_start": "2026-09-11 21:01:00+00:00",
+          "open": 904.82,
+          "distance_minutes": 1.0,
+          "within_five_minutes": true
+        },
+        {
+          "clock_utc": "2026-09-11 22:00:00+00:00",
+          "bar_start": "2026-09-11 22:00:00+00:00",
+          "open": 904.82,
+          "distance_minutes": 0.0,
+          "within_five_minutes": true
+        },
+        {
+          "clock_utc": "2026-09-11 23:00:00+00:00",
+          "bar_start": "2026-09-11 23:00:00+00:00",
+          "open": 904.82,
+          "distance_minutes": 0.0,
+          "within_five_minutes": true
+        }
+      ]
+    },
+    {
+      "window": "sep10-prior-close",
+      "rows": 17,
+      "native_zero_volume_rows": 2,
+      "raw_reproduces_saved": true,
+      "hashes_verified": true
+    }
+  ],
+  "production_writes": false
+}

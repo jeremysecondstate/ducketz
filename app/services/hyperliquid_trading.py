@@ -21,37 +21,15 @@ SPOT_EXECUTION_ALIASES = {
 }
 
 
-@dataclass(frozen=True)
-class HyperliquidLiveAccountProfile:
-    key: str
-    label: str
-    wallet_address_env_keys: tuple[str, ...]
-    api_address_env_keys: tuple[str, ...]
-    api_secret_env_keys: tuple[str, ...]
+# The portfolio reader and execution adapter use the same account registry.
+from app.hyperliquid_accounts import (
+    HYPERLIQUID_ACCOUNT_PROFILES,
+    HyperliquidAccountProfile as HyperliquidLiveAccountProfile,
+    first_env_value as _first_env_value,
+    resolve_portfolio_wallet,
+)
 
-
-HYPERLIQUID_LIVE_ACCOUNTS = {
-    "jeremy": HyperliquidLiveAccountProfile(
-        key="jeremy",
-        label="Jeremy",
-        wallet_address_env_keys=(
-            "HYPE_WALLET_ADDRESS_JEREMY_SECONDSTATE",
-            "HYPE_WALLET_ADDRESS_JEREMY",
-        ),
-        api_address_env_keys=("HYPE_API_ADDRESS_JEREMY",),
-        api_secret_env_keys=("HYPE_API_SECRET_JEREMY",),
-    ),
-    "alex": HyperliquidLiveAccountProfile(
-        key="alex",
-        label="Alex",
-        wallet_address_env_keys=(
-            "HYPE_WALLET_ADDRESS_ALEX_SECONDSTATE",
-            "HYPE_WALLET_ADDRESS_ALEX",
-        ),
-        api_address_env_keys=("HYPE_API_ADDRESS_ALEX",),
-        api_secret_env_keys=("HYPE_API_SECRET_ALEX",),
-    ),
-}
+HYPERLIQUID_LIVE_ACCOUNTS = HYPERLIQUID_ACCOUNT_PROFILES
 
 
 @dataclass(frozen=True)
@@ -88,13 +66,25 @@ class HyperliquidTradingConfig:
         self.live_enabled = os.getenv("HYPERLIQUID_ENABLE_LIVE_ORDERS", "").strip().lower() == "true"
         self.max_live_notional = _float_env("HYPERLIQUID_MAX_LIVE_ORDER_DOLLARS", 500.0)
 
+    def resolve_wallet(self) -> str:
+        self.wallet_address = resolve_portfolio_wallet(self.account)
+        return self.wallet_address
+
     def validate_for_live_action(self) -> None:
+        self.resolve_wallet()
         if not self.wallet_address.startswith("0x") or len(self.wallet_address) != 42:
             raise ValueError(f"{self.account_label} wallet address is missing or invalid.")
         if not self.api_address.startswith("0x") or len(self.api_address) != 42:
             raise ValueError(f"{self.account_label} API wallet address is missing or invalid.")
         if not self.has_signing_secret:
-            raise ValueError(f"{self.account_label} HYPE_API_SECRET is missing from local .env.")
+            raise ValueError(f"{self.account_label} API signing key is missing from local .env.")
+        from eth_account import Account
+        try:
+            signer = Account.from_key(self.api_secret).address
+        except Exception:
+            raise ValueError(f"{self.account_label} API signing key is invalid.") from None
+        if signer.lower() != self.api_address.lower():
+            raise ValueError(f"{self.account_label} API signing key does not match its API wallet.")
         if not self.live_enabled:
             raise PermissionError("Set HYPERLIQUID_ENABLE_LIVE_ORDERS=true before live Hyperliquid actions.")
 
@@ -132,12 +122,13 @@ class HyperliquidExecutionAdapter:
 
     def open_orders(self) -> list[dict[str, Any]]:
         config = self.config()
+        config.resolve_wallet()
         if not config.wallet_address.startswith("0x") or len(config.wallet_address) != 42:
             raise ValueError(f"{config.account_label} wallet address is missing or invalid.")
 
         payload = HyperliquidInfoClient().post_info(
             {
-                "type": "openOrders",
+                "type": "frontendOpenOrders",
                 "user": config.wallet_address,
             }
         )
@@ -402,14 +393,6 @@ def _live_account_profile(account_key: str) -> HyperliquidLiveAccountProfile:
     except KeyError as exc:
         choices = ", ".join(sorted(HYPERLIQUID_LIVE_ACCOUNTS))
         raise ValueError(f"Unknown Hyperliquid account '{account_key}'. Choices: {choices}") from exc
-
-
-def _first_env_value(keys: tuple[str, ...]) -> str:
-    for key in keys:
-        value = os.getenv(key, "").strip().strip("'\"")
-        if value and value.lower() != "key in here":
-            return value
-    return ""
 
 
 def _float_env(name: str, default: float) -> float:

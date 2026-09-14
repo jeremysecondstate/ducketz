@@ -71,7 +71,7 @@ def _verified_target_cursor(root: Path, symbol: str) -> dict | None:
 
 
 def build_target_history_manifest(root: Path, *, through: date, symbols=STOCK_TRADER_SYMBOLS) -> dict:
-    """Restrict native bootstrap/overlap requests to seven-symbol XNAS OHLCV1m."""
+    """Restrict native XNAS OHLCV1m upkeep to the configured stock universe."""
     root = Path(root).resolve()
     universe = tuple(symbols)
     if universe != tuple(STOCK_TRADER_SYMBOLS):

@@ -126,6 +126,8 @@ def fetch(
     include_price_history: bool = True,
 ) -> FetchResult:
     """Fetch Schwab evidence, optionally continuing its price-history series."""
+    from datafetching.history_scope import read_history_policy, price_floor
+    history_policy = read_history_policy(store.root_dir, symbol)
     specs = _specs_for_profile(profile) if include_price_history else ()
     request_observed_at = datetime.now(timezone.utc)
     session = session or DataFetchingSchwabSession()
@@ -204,6 +206,12 @@ def fetch(
                 else None
             )
             end_datetime = request_observed_at if latest_stored is not None else None
+            if history_policy is not None:
+                earliest = price_floor(history_policy)
+                if spec.frequency_type == 'minute' and start_datetime is None:
+                    start_datetime = request_observed_at - timedelta(days=_history_coverage_days(spec))
+                start_datetime = max(earliest, start_datetime or earliest)
+                end_datetime = request_observed_at
             request_metadata = _request_metadata(
                 metadata,
                 latest_stored=latest_stored,
@@ -223,6 +231,11 @@ def fetch(
                 start_datetime=start_datetime,
                 end_datetime=end_datetime,
             )
+            if history_policy is not None:
+                earliest = price_floor(history_policy)
+                bars = [bar for bar in bars if bar.timestamp >= earliest]
+                raw_payload = {**raw_payload, 'candles': [row for row in raw_payload.get('candles', [])
+                    if datetime.fromtimestamp(row['datetime']/1000, tz=timezone.utc) >= earliest]}
         except Exception as exc:
             detail = f"{type(exc).__name__}: {exc}"
             store.save_error(

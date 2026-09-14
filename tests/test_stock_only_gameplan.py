@@ -11,6 +11,24 @@ import pytest
 from ml import nightly_gameplan as nightly
 from ml.artifacts import file_checksum
 
+_REAL_CURRENT_SOURCE_SELECTOR = nightly._current_overnight_sources
+
+
+def test_invalid_source_selection_cannot_advance_pointer_or_write_receipt(tmp_path, monkeypatch):
+    run = tmp_path / "ml/nightly-gameplan-runs/invalid-selector"
+    run.mkdir(parents=True)
+    pointer = tmp_path / "ml/nightly-gameplan-latest/run.json"
+    pointer.parent.mkdir(parents=True)
+    pointer.write_bytes(b"previous publication pointer")
+    monkeypatch.setattr(nightly, "verify_manifest", lambda path: {
+        "configuration": {"source_selection_contract": "unknown-policy"}})
+    with pytest.raises(RuntimeError, match="source selection configuration"):
+        nightly._publish_gameplan(tmp_path, run=run, action_date=date(2026, 9, 14),
+                                  published_at=pd.Timestamp("2026-09-13T05:00Z"),
+                                  source_loop_b="fixture", source_strategy=None)
+    assert pointer.read_bytes() == b"previous publication pointer"
+    assert not (run / "receipt.json").exists()
+
 
 SYMBOLS = ("AAPL", "AMZN", "GOOG", "MU", "NVDA", "SNDK", "COST")
 ACTION_DATE = date(2026, 9, 8)
@@ -187,15 +205,19 @@ def test_independent_target_publication_uses_new_labels_and_preserves_native_con
             information = gap["target_window_start"] + pd.Timedelta(minutes=5)
             sources.append({"symbol": symbol, "action_date": day, "mr__test": float(index),
                             "decision_timestamp": information, "information_available_at": information,
-                            "bar_end_timestamp": gap["target_window_start"], "assumed_round_trip_cost": 0.0})
+                            "bar_end_timestamp": gap["target_window_start"],
+                            "bar_timestamp": gap["target_window_start"] - pd.Timedelta(hours=1),
+                            "exchange_session": str(gap["target_window_start"].tz_convert("America/Los_Angeles").date()),
+                            "exchange_calendar": "XNAS", "horizon": "1h", "timeframe": "1h",
+                            "target_window_start": nightly._local_timestamp(day, 4),
+                            "assumed_round_trip_cost": 0.0})
             for row in windows:
                 is_gap = row["target_role"] == "OPENING_GAP_RESEARCH"
                 points.add((symbol, row["target_window_start"] - pd.Timedelta(minutes=int(is_gap))))
                 points.add((symbol, row["target_window_end"] - pd.Timedelta(minutes=int(not is_gap))))
     sources = pd.DataFrame(sources)
-    current = sources.loc[sources.action_date.eq(ACTION_DATE)]
-    monkeypatch.setattr(nightly, "_overnight_sources", lambda *a, **k: sources)
-    monkeypatch.setattr(nightly, "_current_overnight_sources", lambda *a, **k: (current, ACTION_DATE))
+    sources.to_parquet(fixture.root / "ml/runs/loop-b-fixture/samples.parquet", index=False)
+    monkeypatch.setattr(nightly, "_current_overnight_sources", _REAL_CURRENT_SOURCE_SELECTOR)
     origin = min(timestamp for _, timestamp in points)
     rows = []
     for symbol, timestamp in sorted(points):
@@ -218,7 +240,9 @@ def test_independent_target_publication_uses_new_labels_and_preserves_native_con
         kwargs["current"] = kwargs["current"].assign(
             model_status="RESEARCH_NOT_PROMOTED" if kwargs["group"] == "1w" else "PROMOTED",
             calibrated_probability=0.7, raw_probability=0.71)
-        return fixture.fit(training, **kwargs)
+        result = fixture.fit(training, **kwargs)
+        result["report"]["source_selection_contract"] = nightly.GAMEPLAN_SOURCE_SELECTION_VERSION
+        return result
 
     monkeypatch.setattr(nightly, "_fit_group_model", fit_new_targets)
     result = nightly.run_nightly_gameplan_once(fixture.root, stock_only=True,
@@ -231,12 +255,15 @@ def test_independent_target_publication_uses_new_labels_and_preserves_native_con
     assert publication.manifest["configuration"]["target_calendar_feature_contract"] == "independent-stock-known-calendar-inputs-v1"
     assert forecasts.target_contract_version.eq(STOCK_TARGET_CONTRACT_VERSION).all()
     assert forecasts.target_price_source_contract.eq(price_source).all()
+    assert forecasts.source_selection_contract.eq(nightly.GAMEPLAN_SOURCE_SELECTION_VERSION).all()
+    assert publication.manifest["configuration"]["source_selection_contract"] == nightly.GAMEPLAN_SOURCE_SELECTION_VERSION
     assert publication.manifest["configuration"]["target_price_source_contract"] == price_source
     for group in nightly.MODEL_GROUPS:
         name = f"training-cohort-{group}.parquet"
         assert name in publication.manifest["output_files"]
         cohort = pd.read_parquet(result.run_directory / name)
         assert cohort.target_price_source_contract.eq(price_source).all()
+        assert cohort.source_selection_contract.eq(nightly.GAMEPLAN_SOURCE_SELECTION_VERSION).all()
         assert {"target", "observed_return", "decision_timestamp", "information_available_at",
                 "target_window_start", "target_window_end", "observed_open_timestamp", "observed_close_timestamp"} <= set(cohort)
     assert forecasts.execution_eligible.sum() == 19 * 7
@@ -246,3 +273,15 @@ def test_independent_target_publication_uses_new_labels_and_preserves_native_con
     assert forecasts.loc[forecasts.route.eq("1h@gap"), "action_anchor_local"].isna().all()
     assert intents.plan_status.eq("NO_TRADE_STOCK_ONLY").all()
     assert publication.receipt["orders_placed"] == 0
+    # Even internally consistent file hashes cannot mix feature-selection policies.
+    import copy
+    invalid = copy.deepcopy(publication.manifest)
+    invalid["configuration"]["source_selection_contract"] = "unknown-policy"
+    with pytest.raises(RuntimeError, match="source selection configuration"):
+        nightly._verify_source_selection_metadata(result.run_directory, invalid)
+    report_path = result.run_directory / "model-reports.json"
+    reports = json.loads(report_path.read_text())
+    reports["1h"]["source_selection_contract"] = None
+    report_path.write_text(json.dumps(reports))
+    with pytest.raises(RuntimeError, match="model reports and source selection"):
+        nightly._verify_source_selection_metadata(result.run_directory, publication.manifest)

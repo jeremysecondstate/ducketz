@@ -1,0 +1,22 @@
+[
+  {
+    "path": "C:\\DATASTORE\\ml\\nightly-gameplan-latest\\run.json",
+    "sha256": "2DB2CB49F7B8882D7322D922B6E3EA680488463C8896FBB328EDC28F5CD5C942"
+  },
+  {
+    "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-latest\\run.json",
+    "sha256": "CA20A9D1C866FD763CB326D97FE7E87A417869360F79A841A2159CA9C5056E63"
+  },
+  {
+    "path": "C:\\DATASTORE\\ml\\gameplan-actuals-review-latest\\run.json",
+    "sha256": "6B4E8B395B6C8EDC3B3921DC0298109B2C606D4043A19D40CF4B41A4BAF78D47"
+  },
+  {
+    "path": "C:\\DATASTORE\\ml\\gameplan-evaluation-latest\\run.json",
+    "sha256": "24DE84F7DBA8324DBF4AA3569D6FA3008B2CD18FEF4DD596B6DE75B7C0E69E99"
+  },
+  {
+    "path": "C:\\DATASTORE\\ml\\overnight-latest\\run.json",
+    "sha256": "BCA6BA464E86B81A50D45680156531991584D96516695D91B09F5D0FAC6C1BF1"
+  }
+]

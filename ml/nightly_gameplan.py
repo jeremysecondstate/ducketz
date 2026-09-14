@@ -36,6 +36,10 @@ from ml.training_progress import fit_with_progress
 from ml.calibration import IdentityCalibrator, fit_probability_calibrator
 from ml.current_publication import read_current_publication
 from ml.gameplan_estimators import ProbabilityBlend as _ProbabilityBlend
+from ml.gameplan_source_selection import (
+    GAMEPLAN_SOURCE_SELECTION_VERSION, SOURCE_SELECTION_COLUMNS,
+    select_prior_session_sources, source_selection_contract,
+)
 from ml.gameplan_promotion import (
     DIRECTIONAL_PROMOTION_POLICY, STRICT_PROMOTION_POLICY, build_promotion_gate,
 )
@@ -176,9 +180,16 @@ def run_nightly_gameplan_once(
     )
     symbols = _configured_symbols(loop_b.manifest, samples)
     feature_columns = _feature_columns(loop_b.manifest, samples)
+    source_feature_columns = feature_columns
     if independent_stock_horizons:
         feature_columns = tuple(dict.fromkeys((*feature_columns, *STOCK_CALENDAR_FEATURE_NAMES)))
-    sources = _overnight_sources(samples, symbols=symbols, available_at=created)
+    sources = (
+        select_prior_session_sources(samples, symbols=symbols, available_at=created,
+                                     feature_columns=source_feature_columns)
+        if independent_stock_horizons else
+        _overnight_sources(samples, symbols=symbols, available_at=created)
+    )
+    source_selection_report = sources.attrs.get("source_selection", {})
     current_sources, action_date = _current_overnight_sources(
         sources,
         symbols=symbols,
@@ -197,7 +208,8 @@ def run_nightly_gameplan_once(
         symbols=symbols,
         action_date=action_date,
         required_completed_through=pd.to_datetime(
-            current_sources["bar_end_timestamp"], utc=True, errors="coerce"
+            current_sources["source_feature_cutoff" if independent_stock_horizons else "bar_end_timestamp"],
+            utc=True, errors="coerce"
         ).max().date(),
     )
     if stock_price_source == CANONICAL_STOCK_PRICE_SOURCE:
@@ -224,20 +236,23 @@ def run_nightly_gameplan_once(
             samples, sources=sources, feature_columns=feature_columns, minute_bars=minute_bars,
         )
     # Save evaluation independently before fitting, even if this new plan fails.
-    from ml.gameplan_evaluation import evaluate_saved_gameplans, saved_independent_price_sources
+    from ml.gameplan_evaluation import evaluate_saved_gameplans, saved_independent_observation_sources
 
     evaluation_groups = dict(groups)
     evaluation_price_files = list(minute_bar_files)
     if independent_stock_horizons and any((root / "ml/nightly-gameplan-runs").glob("*/receipt.json")):
+        legacy_sources = _overnight_sources(samples, symbols=symbols, available_at=created)
         legacy_bars = minute_bars
         if stock_price_source != CANONICAL_STOCK_PRICE_SOURCE:
             legacy_bars, legacy_files = _load_equity_minute_bars(root, symbols=symbols)
             evaluation_price_files.extend(legacy_files)
-        legacy_hourly, legacy_four = _intraday_outcomes(sources=sources, feature_columns=(), minute_bars=legacy_bars)
+        legacy_hourly, legacy_four = _intraday_outcomes(sources=legacy_sources, feature_columns=(), minute_bars=legacy_bars)
         legacy_daily, legacy_weekly = _daily_weekly_outcomes(samples, feature_columns=())
         evaluation_groups.update({"legacy/1h": legacy_hourly, "legacy/4h": legacy_four,
                                   "legacy/1d": legacy_daily, "legacy/1w": legacy_weekly})
-        for historical_source in saved_independent_price_sources(root) - {stock_price_source}:
+        for historical_source, selection_contract in saved_independent_observation_sources(root):
+            if (historical_source, selection_contract) == (stock_price_source, GAMEPLAN_SOURCE_SELECTION_VERSION):
+                continue
             if historical_source == CANONICAL_STOCK_PRICE_SOURCE:
                 historical_bars = legacy_bars
             else:
@@ -245,9 +260,10 @@ def run_nightly_gameplan_once(
                     root, symbols=symbols, source_contract=historical_source,
                 )
                 evaluation_price_files.extend(historical_files)
-            historical = build_stock_training_groups(sources, feature_columns=(),
+            historical_sources = sources if selection_contract == GAMEPLAN_SOURCE_SELECTION_VERSION else legacy_sources
+            historical = build_stock_training_groups(historical_sources, feature_columns=(),
                 minute_bars=historical_bars, available_at=created, price_source_contract=historical_source)
-            evaluation_groups.update({f"{historical_source}/{group}": frame for group, frame in historical.items()})
+            evaluation_groups.update({f"{historical_source}/{selection_contract}/{group}": frame for group, frame in historical.items()})
     evaluation = evaluate_saved_gameplans(
         root, observed_groups=evaluation_groups, evaluated_at=created,
         input_files=(samples_path, *dict.fromkeys(evaluation_price_files)),
@@ -292,7 +308,8 @@ def run_nightly_gameplan_once(
         if independent_stock_horizons and trained["report"]["promotion_gate"]["status"] != "PROMOTED":
             from ml.gameplan_champions import latest_promoted_champion, retain_champion
             champion = latest_promoted_champion(root, group=group, action_date=action_date,
-                symbols=symbols, price_source=stock_price_source, before=created)
+                symbols=symbols, price_source=stock_price_source, before=created,
+                source_selection_contract=GAMEPLAN_SOURCE_SELECTION_VERSION)
             if champion is not None:
                 trained, retained_outputs = retain_champion(trained, champion=champion,
                     current=current[group], run=run, group=group, frozen_at=created)
@@ -356,7 +373,9 @@ def run_nightly_gameplan_once(
         "target_contract_version": target_contract,
         **({"target_price_source_contract": stock_price_source, "target_price_dataset": price_dataset,
             "stock_price_source": price_source_report,
-            "target_calendar_feature_contract": STOCK_CALENDAR_FEATURE_CONTRACT} if independent_stock_horizons else {}),
+            "target_calendar_feature_contract": STOCK_CALENDAR_FEATURE_CONTRACT,
+            "source_selection_contract": GAMEPLAN_SOURCE_SELECTION_VERSION,
+            "source_selection": source_selection_report} if independent_stock_horizons else {}),
         "action_date": action_date.isoformat(),
         "timezone": str(SCHEDULE_TIMEZONE),
         "action_window": {
@@ -454,7 +473,9 @@ def run_nightly_gameplan_once(
             "target_contract_version": target_contract,
             **({"target_price_source_contract": stock_price_source, "target_price_dataset": price_dataset,
                 "stock_price_source": price_source_report,
-                "target_calendar_feature_contract": STOCK_CALENDAR_FEATURE_CONTRACT} if independent_stock_horizons else {}),
+                "target_calendar_feature_contract": STOCK_CALENDAR_FEATURE_CONTRACT,
+                "source_selection_contract": GAMEPLAN_SOURCE_SELECTION_VERSION,
+                "source_selection": source_selection_report} if independent_stock_horizons else {}),
             "action_date": action_date.isoformat(),
             "timezone": str(SCHEDULE_TIMEZONE),
             "execution_authority": EXECUTION_AUTHORITY,
@@ -600,7 +621,8 @@ def _current_overnight_sources(
     symbols: Sequence[str],
     as_of: pd.Timestamp,
 ) -> tuple[pd.DataFrame, date]:
-    starts = pd.to_datetime(sources["target_window_start"], utc=True, errors="coerce")
+    starts = pd.to_datetime(sources["source_action_start" if "source_action_start" in sources else "target_window_start"],
+                            utc=True, errors="coerce")
     future = sources.loc[starts.gt(as_of)].copy()
     if future.empty:
         raise RuntimeError("No future 04:00 PT source row exists for a new gameplan")
@@ -1145,6 +1167,9 @@ def _fit_group_model(
     model_directory: Path,
     trained_at: pd.Timestamp,
 ) -> dict[str, object]:
+    selection_contract = source_selection_contract(current)
+    if source_selection_contract(samples) != selection_contract:
+        raise RuntimeError("Training and current Gameplan source selection contracts disagree")
     independent_selection = (
         "target_contract_version" in current
         and bool(current.target_contract_version.eq(STOCK_TARGET_CONTRACT_VERSION).all())
@@ -1329,6 +1354,7 @@ def _fit_group_model(
             "logistic_regularization_policy": DAILY_LOGISTIC_REGULARIZATION_POLICY if independent_selection and group == "1d" else None,
             "development_selection_policy": DEVELOPMENT_SELECTION_POLICY if independent_selection else None,
             "target_calendar_feature_contract": STOCK_CALENDAR_FEATURE_CONTRACT if independent_selection else None,
+            "source_selection_contract": selection_contract,
             "calibration_selection": calibration_selection,
             "trained_at": trained_at.isoformat(),
         },
@@ -1349,7 +1375,7 @@ def _fit_group_model(
         "target_window_start",
         "target_window_end",
         "target_semantics",
-        *(column for column in ("target_role", "execution_eligible", "target_contract_version", "trading_hours", "trading_segments_json", "target_price_source_contract", "target_price_dataset") if column in current),
+        *(column for column in ("target_role", "execution_eligible", "target_contract_version", "trading_hours", "trading_segments_json", "target_price_source_contract", "target_price_dataset", *SOURCE_SELECTION_COLUMNS) if column in current),
     ]].copy()
     if independent_selection:
         # Freeze the same causal inputs used by the current feature row. An
@@ -1406,6 +1432,7 @@ def _fit_group_model(
         "logistic_regularization_policy": DAILY_LOGISTIC_REGULARIZATION_POLICY if independent_selection and group == "1d" else None,
         "development_selection_policy": DEVELOPMENT_SELECTION_POLICY if independent_selection else None,
         "target_calendar_feature_contract": STOCK_CALENDAR_FEATURE_CONTRACT if independent_selection else None,
+        "source_selection_contract": selection_contract,
         "target_calendar_feature_names": list(STOCK_CALENDAR_FEATURE_NAMES) if independent_selection else [],
         "calibration_selection": calibration_selection,
         "selection_metrics": selection_metrics,
@@ -2135,6 +2162,7 @@ def _publish_gameplan(
     if run.resolve().parent != runs_root:
         raise RuntimeError("Gameplan run escapes immutable run root")
     manifest = verify_manifest(run)
+    _verify_source_selection_metadata(run, manifest)
     receipt = {
         "schema_version": GAMEPLAN_RECEIPT_VERSION,
         "run_path": run.relative_to(root).as_posix(),
@@ -2169,6 +2197,34 @@ def _publish_gameplan(
 
 
 
+def _verify_source_selection_metadata(run: Path, manifest: Mapping) -> None:
+    """Bind the prospective feature policy across immutable publication outputs."""
+    config = manifest.get("configuration", {})
+    contract = config.get("source_selection_contract")
+    if contract is None:
+        return  # Historical publications retain their original reader contract.
+    if (contract != GAMEPLAN_SOURCE_SELECTION_VERSION
+            or config.get("target_contract_version") != STOCK_TARGET_CONTRACT_VERSION
+            or config.get("source_selection", {}).get("source_selection_contract") != contract):
+        raise RuntimeError("Gameplan source selection configuration is invalid")
+    outputs = manifest.get("output_files", {})
+    required = ("gameplan.json", "model-reports.json", "forecasts.parquet",
+                *(f"training-cohort-{group}.parquet" for group in MODEL_GROUPS))
+    if not set(required).issubset(outputs):
+        raise RuntimeError("Gameplan source selection evidence is not manifest-bound")
+    plan = json.loads((run / "gameplan.json").read_text(encoding="utf-8"))
+    reports = json.loads((run / "model-reports.json").read_text(encoding="utf-8"))
+    if (plan.get("source_selection_contract") != contract
+            or plan.get("source_selection") != config.get("source_selection")
+            or any(reports.get(group, {}).get("source_selection_contract") != contract for group in MODEL_GROUPS)):
+        raise RuntimeError("Gameplan model reports and source selection configuration disagree")
+    for name in ("forecasts.parquet", *(f"training-cohort-{group}.parquet" for group in MODEL_GROUPS)):
+        frame = pd.read_parquet(run / name)
+        if (frame.empty or not set(SOURCE_SELECTION_COLUMNS).issubset(frame)
+                or source_selection_contract(frame) != contract):
+            raise RuntimeError("Gameplan rows lack their source selection evidence")
+
+
 def read_gameplan_run(datastore_root: Path, run_directory: Path) -> GameplanPublication:
     """Verify a saved publication without following the latest pointer."""
     root = Path(datastore_root).resolve()
@@ -2176,6 +2232,7 @@ def read_gameplan_run(datastore_root: Path, run_directory: Path) -> GameplanPubl
     if run.parent != (root / "ml/nightly-gameplan-runs").resolve():
         raise RuntimeError("Saved Gameplan escapes immutable run root")
     manifest = verify_manifest(run)
+    _verify_source_selection_metadata(run, manifest)
     receipt_path = run / "receipt.json"
     receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
     relative = run.relative_to(root).as_posix()
@@ -2219,6 +2276,7 @@ def read_current_gameplan(datastore_root: Path) -> GameplanPublication:
     if run.parent != (root / "ml" / "nightly-gameplan-runs").resolve():
         raise RuntimeError("Gameplan pointer escapes immutable run root")
     manifest = verify_manifest(run)
+    _verify_source_selection_metadata(run, manifest)
     receipt_path = run / "receipt.json"
     try:
         receipt = json.loads(receipt_path.read_text(encoding="utf-8"))

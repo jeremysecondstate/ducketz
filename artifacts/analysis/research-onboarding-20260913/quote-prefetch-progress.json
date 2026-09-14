@@ -1,0 +1,29 @@
+{
+  "plan_id": "df613ade510b2775a99c051abf8472367e2c70208e13c1eacce8bad4c577d487",
+  "jobs": [
+    {
+      "symbol": "TWST",
+      "schema": "cbbo-1s",
+      "job_id": "OPRA-20260914-8GGJ3HVGSH",
+      "linked_files": 249,
+      "verified_bytes": 336554801,
+      "completed_at": "2026-09-14T06:42:51.555362+00:00"
+    },
+    {
+      "symbol": "PATH",
+      "schema": "cbbo-1s",
+      "job_id": "OPRA-20260914-CHSLXAEJYY",
+      "linked_files": 249,
+      "verified_bytes": 6242975777,
+      "completed_at": "2026-09-14T07:13:14.430865+00:00"
+    },
+    {
+      "symbol": "IONQ",
+      "schema": "cbbo-1s",
+      "job_id": "OPRA-20260914-6SFLFUSJ8T",
+      "linked_files": 249,
+      "verified_bytes": 18719335452,
+      "completed_at": "2026-09-14T08:09:48.671097+00:00"
+    }
+  ]
+}

@@ -1,5 +1,10 @@
 # Hyperliquid Duckets UI concepts
 
+The next design round adds Clearpond and expandable HYPE/BTC/ETH/ZEC coverage:
+[September 13 — Clearpond and multi-asset concepts](2026-09-13-clearpond-multi-asset/README.md).
+
+The original two-account concepts are preserved below.
+
 These are design concepts only. No Hyperliquid UI, portfolio service, execution
 adapter, background loop, or scheduled task was changed while producing them.
 All values shown in the mockups are illustrative snapshot data, not live quotes

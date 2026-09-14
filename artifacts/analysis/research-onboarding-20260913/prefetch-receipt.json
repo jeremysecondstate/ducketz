@@ -1,0 +1,255 @@
+{
+  "plan_id": "df613ade510b2775a99c051abf8472367e2c70208e13c1eacce8bad4c577d487",
+  "status": "COMPLETE",
+  "jobs": [
+    {
+      "symbol": "CROX",
+      "schema": "trades",
+      "job_id": "OPRA-20260914-GBLF7RWDDK",
+      "linked_files": 249,
+      "verified_bytes": 5851104,
+      "completed_at": "2026-09-14T05:36:05.547140+00:00"
+    },
+    {
+      "symbol": "PATH",
+      "schema": "definition",
+      "job_id": "OPRA-20260914-LG5ANLBF77",
+      "linked_files": 1348,
+      "verified_bytes": 23573002,
+      "completed_at": "2026-09-14T05:38:02.821383+00:00"
+    },
+    {
+      "symbol": "PATH",
+      "schema": "ohlcv-1h",
+      "job_id": "OPRA-20260914-UVHSMCPPKJ",
+      "linked_files": 1348,
+      "verified_bytes": 26066144,
+      "completed_at": "2026-09-14T05:40:00.901502+00:00"
+    },
+    {
+      "symbol": "PATH",
+      "schema": "cbbo-1m",
+      "job_id": "OPRA-20260914-P5YPDTEMFV",
+      "linked_files": 249,
+      "verified_bytes": 713674264,
+      "completed_at": "2026-09-14T05:40:42.448050+00:00"
+    },
+    {
+      "symbol": "PATH",
+      "schema": "ohlcv-1s",
+      "job_id": "OPRA-20260914-GAKYKBY3WQ",
+      "linked_files": 1348,
+      "verified_bytes": 41735064,
+      "completed_at": "2026-09-14T05:42:34.106950+00:00"
+    },
+    {
+      "symbol": "PATH",
+      "schema": "ohlcv-1m",
+      "job_id": "OPRA-20260914-ATVN94JESA",
+      "linked_files": 1348,
+      "verified_bytes": 34942798,
+      "completed_at": "2026-09-14T05:44:36.260530+00:00"
+    },
+    {
+      "symbol": "PATH",
+      "schema": "ohlcv-1d",
+      "job_id": "OPRA-20260914-6U3A37KW77",
+      "linked_files": 1348,
+      "verified_bytes": 19284691,
+      "completed_at": "2026-09-14T05:46:18.591732+00:00"
+    },
+    {
+      "symbol": "PATH",
+      "schema": "statistics",
+      "job_id": "OPRA-20260914-BUSXGMJW8U",
+      "linked_files": 1348,
+      "verified_bytes": 189313091,
+      "completed_at": "2026-09-14T05:48:16.584232+00:00"
+    },
+    {
+      "symbol": "PATH",
+      "schema": "status",
+      "job_id": "OPRA-20260914-59U8NW3SA4",
+      "linked_files": 493,
+      "verified_bytes": 22561844,
+      "completed_at": "2026-09-14T05:49:02.296653+00:00"
+    },
+    {
+      "symbol": "PATH",
+      "schema": "tcbbo",
+      "job_id": "OPRA-20260914-R7BMLQYH95",
+      "linked_files": 249,
+      "verified_bytes": 52171427,
+      "completed_at": "2026-09-14T05:49:24.316481+00:00"
+    },
+    {
+      "symbol": "PATH",
+      "schema": "trades",
+      "job_id": "OPRA-20260914-YXW8SUBRVL",
+      "linked_files": 249,
+      "verified_bytes": 38388094,
+      "completed_at": "2026-09-14T05:49:45.201226+00:00"
+    },
+    {
+      "symbol": "TWST",
+      "schema": "definition",
+      "job_id": "OPRA-20260914-KFMMSWGN9S",
+      "linked_files": 1805,
+      "verified_bytes": 8325483,
+      "completed_at": "2026-09-14T05:52:08.599088+00:00"
+    },
+    {
+      "symbol": "TWST",
+      "schema": "ohlcv-1h",
+      "job_id": "OPRA-20260914-KPQLXAH45L",
+      "linked_files": 1736,
+      "verified_bytes": 3690138,
+      "completed_at": "2026-09-14T05:52:28.685810+00:00"
+    },
+    {
+      "symbol": "TWST",
+      "schema": "cbbo-1m",
+      "job_id": "OPRA-20260914-7KU7EKELCG",
+      "linked_files": 249,
+      "verified_bytes": 82484016,
+      "completed_at": "2026-09-14T05:52:54.892277+00:00"
+    },
+    {
+      "symbol": "TWST",
+      "schema": "ohlcv-1s",
+      "job_id": "OPRA-20260914-CCMTFUX7G5",
+      "linked_files": 1736,
+      "verified_bytes": 4133899,
+      "completed_at": "2026-09-14T05:53:15.582235+00:00"
+    },
+    {
+      "symbol": "TWST",
+      "schema": "ohlcv-1m",
+      "job_id": "OPRA-20260914-HM6BGD3ATP",
+      "linked_files": 1736,
+      "verified_bytes": 4013886,
+      "completed_at": "2026-09-14T05:53:37.621467+00:00"
+    },
+    {
+      "symbol": "TWST",
+      "schema": "ohlcv-1d",
+      "job_id": "OPRA-20260914-PNW7HB5DH5",
+      "linked_files": 1736,
+      "verified_bytes": 3508494,
+      "completed_at": "2026-09-14T05:53:56.491580+00:00"
+    },
+    {
+      "symbol": "TWST",
+      "schema": "statistics",
+      "job_id": "OPRA-20260914-VBUW5B7YTY",
+      "linked_files": 1805,
+      "verified_bytes": 46453011,
+      "completed_at": "2026-09-14T05:56:18.555832+00:00"
+    },
+    {
+      "symbol": "TWST",
+      "schema": "status",
+      "job_id": "OPRA-20260914-XHMWEQLBHF",
+      "linked_files": 493,
+      "verified_bytes": 5221322,
+      "completed_at": "2026-09-14T05:56:56.961745+00:00"
+    },
+    {
+      "symbol": "TWST",
+      "schema": "tcbbo",
+      "job_id": "OPRA-20260914-G48UQ8CJBV",
+      "linked_files": 249,
+      "verified_bytes": 1118452,
+      "completed_at": "2026-09-14T05:57:02.149894+00:00"
+    },
+    {
+      "symbol": "TWST",
+      "schema": "trades",
+      "job_id": "OPRA-20260914-LWSFVNYUVW",
+      "linked_files": 249,
+      "verified_bytes": 971480,
+      "completed_at": "2026-09-14T05:57:08.965875+00:00"
+    },
+    {
+      "symbol": "IONQ",
+      "schema": "definition",
+      "job_id": "OPRA-20260914-PDM5Y5RGTK",
+      "linked_files": 1239,
+      "verified_bytes": 25240112,
+      "completed_at": "2026-09-14T05:58:39.130301+00:00"
+    },
+    {
+      "symbol": "IONQ",
+      "schema": "ohlcv-1h",
+      "job_id": "OPRA-20260914-KA8QVGY3JH",
+      "linked_files": 1239,
+      "verified_bytes": 44768004,
+      "completed_at": "2026-09-14T06:00:08.959750+00:00"
+    },
+    {
+      "symbol": "IONQ",
+      "schema": "cbbo-1m",
+      "job_id": "OPRA-20260914-CTHA3CKY33",
+      "linked_files": 249,
+      "verified_bytes": 1360563232,
+      "completed_at": "2026-09-14T06:01:14.345646+00:00"
+    },
+    {
+      "symbol": "IONQ",
+      "schema": "ohlcv-1s",
+      "job_id": "OPRA-20260914-S8PGYNU6VL",
+      "linked_files": 1239,
+      "verified_bytes": 76675381,
+      "completed_at": "2026-09-14T06:02:45.280113+00:00"
+    },
+    {
+      "symbol": "IONQ",
+      "schema": "ohlcv-1m",
+      "job_id": "OPRA-20260914-JHTJAPFUGB",
+      "linked_files": 1239,
+      "verified_bytes": 63840511,
+      "completed_at": "2026-09-14T06:04:20.684478+00:00"
+    },
+    {
+      "symbol": "IONQ",
+      "schema": "ohlcv-1d",
+      "job_id": "OPRA-20260914-4APXL4DVBP",
+      "linked_files": 1239,
+      "verified_bytes": 29651970,
+      "completed_at": "2026-09-14T06:05:56.955257+00:00"
+    },
+    {
+      "symbol": "IONQ",
+      "schema": "statistics",
+      "job_id": "OPRA-20260914-WGJ6PGEFR5",
+      "linked_files": 1239,
+      "verified_bytes": 241562850,
+      "completed_at": "2026-09-14T06:07:30.204845+00:00"
+    },
+    {
+      "symbol": "IONQ",
+      "schema": "status",
+      "job_id": "OPRA-20260914-7VQAY6FFF9",
+      "linked_files": 493,
+      "verified_bytes": 33063506,
+      "completed_at": "2026-09-14T06:08:13.153577+00:00"
+    },
+    {
+      "symbol": "IONQ",
+      "schema": "tcbbo",
+      "job_id": "OPRA-20260914-SG99KA865P",
+      "linked_files": 249,
+      "verified_bytes": 105695384,
+      "completed_at": "2026-09-14T06:08:36.731989+00:00"
+    },
+    {
+      "symbol": "IONQ",
+      "schema": "trades",
+      "job_id": "OPRA-20260914-RYE3T4BW69",
+      "linked_files": 249,
+      "verified_bytes": 75823058,
+      "completed_at": "2026-09-14T06:08:59.559952+00:00"
+    }
+  ],
+  "completed_at": "2026-09-14T06:08:59.562332+00:00"
+}

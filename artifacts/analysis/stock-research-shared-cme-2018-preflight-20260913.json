@@ -1,0 +1,643 @@
+{
+  "checked_at": "2026-09-14T03:01:38.432040+00:00",
+  "scope": "OPTIONAL expansion of the shared CME cold archive using the existing 13 cold schemas and the nine currently configured continuous/dated scopes. This is not required just to add four equities. Metadata only.",
+  "dataset_range": {
+    "start": "2010-06-06T00:00:00.000000000Z",
+    "end": "2026-09-14T02:50:00.000000000Z",
+    "schema": {
+      "mbo": {
+        "start": "2017-05-21T00:00:00.000000000Z",
+        "end": "2026-09-13T19:01:38.361988000Z"
+      },
+      "mbp-1": {
+        "start": "2010-06-06T00:00:00.000000000Z",
+        "end": "2026-09-14T02:50:00.000000000Z"
+      },
+      "mbp-10": {
+        "start": "2010-06-06T00:00:00.000000000Z",
+        "end": "2026-09-13T19:01:38.361988000Z"
+      },
+      "tbbo": {
+        "start": "2010-06-06T00:00:00.000000000Z",
+        "end": "2026-09-14T02:50:00.000000000Z"
+      },
+      "trades": {
+        "start": "2010-06-06T00:00:00.000000000Z",
+        "end": "2026-09-14T02:50:00.000000000Z"
+      },
+      "bbo-1s": {
+        "start": "2010-06-06T00:00:00.000000000Z",
+        "end": "2026-09-14T02:50:00.000000000Z"
+      },
+      "bbo-1m": {
+        "start": "2010-06-06T00:00:00.000000000Z",
+        "end": "2026-09-14T02:50:00.000000000Z"
+      },
+      "ohlcv-1s": {
+        "start": "2010-06-06T00:00:00.000000000Z",
+        "end": "2026-09-14T02:50:00.000000000Z"
+      },
+      "ohlcv-1m": {
+        "start": "2010-06-06T00:00:00.000000000Z",
+        "end": "2026-09-14T02:50:00.000000000Z"
+      },
+      "ohlcv-1h": {
+        "start": "2010-06-06T00:00:00.000000000Z",
+        "end": "2026-09-14T00:10:00.000000000Z"
+      },
+      "ohlcv-1d": {
+        "start": "2010-06-06T00:00:00.000000000Z",
+        "end": "2026-09-14T00:00:00.000000000Z"
+      },
+      "definition": {
+        "start": "2010-06-06T00:00:00.000000000Z",
+        "end": "2026-09-14T02:50:00.000000000Z"
+      },
+      "statistics": {
+        "start": "2010-06-06T00:00:00.000000000Z",
+        "end": "2026-09-14T02:50:00.000000000Z"
+      },
+      "status": {
+        "start": "2010-06-06T00:00:00.000000000Z",
+        "end": "2026-09-14T02:50:00.000000000Z"
+      }
+    }
+  },
+  "requests": [
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "trades",
+      "level": "L1",
+      "stype_in": "continuous",
+      "symbols": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "start": "2025-09-14",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 44.471902163019315,
+      "existing_cold_bytes_inside_target": 1120202877,
+      "records": 299592150,
+      "billable_uncompressed_bytes": 14380423200,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 13323432784,
+      "estimated_incremental_cold_bytes": 12203229907
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "trades",
+      "level": "L1",
+      "stype_in": "raw_symbol",
+      "symbols": [
+        "CLV6",
+        "ESU6",
+        "GCZ6",
+        "NQU6"
+      ],
+      "start": "2025-09-14",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 44.13960850630893,
+      "existing_cold_bytes_inside_target": 841804323,
+      "records": 58951861,
+      "billable_uncompressed_bytes": 2829689328,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 2602112065,
+      "estimated_incremental_cold_bytes": 1760307742
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "tbbo",
+      "level": "L1",
+      "stype_in": "continuous",
+      "symbols": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "start": "2025-09-14",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 54.47071835276688,
+      "existing_cold_bytes_inside_target": 1372063088,
+      "records": 299592150,
+      "billable_uncompressed_bytes": 23967372000,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 16318999623,
+      "estimated_incremental_cold_bytes": 14946936535
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "tbbo",
+      "level": "L1",
+      "stype_in": "raw_symbol",
+      "symbols": [
+        "CLV6",
+        "ESU6",
+        "GCZ6",
+        "NQU6"
+      ],
+      "start": "2025-09-14",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 54.12461980500085,
+      "existing_cold_bytes_inside_target": 1035553028,
+      "records": 58951861,
+      "billable_uncompressed_bytes": 4716148880,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 3190747063,
+      "estimated_incremental_cold_bytes": 2155194035
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "status",
+      "level": "L0",
+      "stype_in": "continuous",
+      "symbols": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "start": "2018-01-01",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 71.60344827586206,
+      "existing_cold_bytes_inside_target": 62295,
+      "records": 95976,
+      "billable_uncompressed_bytes": 3839040,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 6872213,
+      "estimated_incremental_cold_bytes": 6809918
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "status",
+      "level": "L0",
+      "stype_in": "raw_symbol",
+      "symbols": [
+        "CLV6",
+        "ESU6",
+        "GCZ6",
+        "NQU6"
+      ],
+      "start": "2018-01-01",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 69.08879781420765,
+      "existing_cold_bytes_inside_target": 23953,
+      "records": 42628,
+      "billable_uncompressed_bytes": 1705120,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 2945117,
+      "estimated_incremental_cold_bytes": 2921164
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "statistics",
+      "level": "L0",
+      "stype_in": "continuous",
+      "symbols": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "start": "2018-01-01",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 50.87553027110549,
+      "existing_cold_bytes_inside_target": 7243658,
+      "records": 8462317,
+      "billable_uncompressed_bytes": 676985360,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 430524865,
+      "estimated_incremental_cold_bytes": 423281207
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "statistics",
+      "level": "L0",
+      "stype_in": "raw_symbol",
+      "symbols": [
+        "CLV6",
+        "ESU6",
+        "GCZ6",
+        "NQU6"
+      ],
+      "start": "2018-01-01",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 50.65957276154319,
+      "existing_cold_bytes_inside_target": 4369427,
+      "records": 640752,
+      "billable_uncompressed_bytes": 51260160,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 32460223,
+      "estimated_incremental_cold_bytes": 28090796
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "ohlcv-1s",
+      "level": "L0",
+      "stype_in": "continuous",
+      "symbols": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "start": "2018-01-01",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 25.360286797513734,
+      "existing_cold_bytes_inside_target": 34415304,
+      "records": 385868782,
+      "billable_uncompressed_bytes": 21608651792,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 9785742978,
+      "estimated_incremental_cold_bytes": 9751327674
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "ohlcv-1s",
+      "level": "L0",
+      "stype_in": "raw_symbol",
+      "symbols": [
+        "CLV6",
+        "ESU6",
+        "GCZ6",
+        "NQU6"
+      ],
+      "start": "2018-01-01",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 25.124419117686145,
+      "existing_cold_bytes_inside_target": 18439629,
+      "records": 9079142,
+      "billable_uncompressed_bytes": 508431952,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 228108169,
+      "estimated_incremental_cold_bytes": 209668540
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "ohlcv-1m",
+      "level": "L0",
+      "stype_in": "continuous",
+      "symbols": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "start": "2018-01-01",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 36.02186141730347,
+      "existing_cold_bytes_inside_target": 17578056,
+      "records": 15139597,
+      "billable_uncompressed_bytes": 847817432,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 545356465,
+      "estimated_incremental_cold_bytes": 527778409
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "ohlcv-1m",
+      "level": "L0",
+      "stype_in": "raw_symbol",
+      "symbols": [
+        "CLV6",
+        "ESU6",
+        "GCZ6",
+        "NQU6"
+      ],
+      "start": "2018-01-01",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 35.92279654881706,
+      "existing_cold_bytes_inside_target": 5907571,
+      "records": 452335,
+      "billable_uncompressed_bytes": 25330760,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 16249138,
+      "estimated_incremental_cold_bytes": 10341567
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "ohlcv-1h",
+      "level": "L0",
+      "stype_in": "continuous",
+      "symbols": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "start": "2018-01-01",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 54.25195582144501,
+      "existing_cold_bytes_inside_target": 8016486,
+      "records": 257091,
+      "billable_uncompressed_bytes": 14397096,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 13947690,
+      "estimated_incremental_cold_bytes": 5931204
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "ohlcv-1h",
+      "level": "L0",
+      "stype_in": "raw_symbol",
+      "symbols": [
+        "CLV6",
+        "ESU6",
+        "GCZ6",
+        "NQU6"
+      ],
+      "start": "2018-01-01",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 56.77899525823401,
+      "existing_cold_bytes_inside_target": 343816,
+      "records": 16383,
+      "billable_uncompressed_bytes": 917448,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 930210,
+      "estimated_incremental_cold_bytes": 586394
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "ohlcv-1d",
+      "level": "L0",
+      "stype_in": "continuous",
+      "symbols": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "start": "2018-01-01",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 75.66966663605473,
+      "existing_cold_bytes_inside_target": 823967,
+      "records": 13549,
+      "billable_uncompressed_bytes": 758744,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 1025248,
+      "estimated_incremental_cold_bytes": 201281
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "ohlcv-1d",
+      "level": "L0",
+      "stype_in": "raw_symbol",
+      "symbols": [
+        "CLV6",
+        "ESU6",
+        "GCZ6",
+        "NQU6"
+      ],
+      "start": "2018-01-01",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 89.53865546218488,
+      "existing_cold_bytes_inside_target": 40654,
+      "records": 1246,
+      "billable_uncompressed_bytes": 69776,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 111565,
+      "estimated_incremental_cold_bytes": 70911
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "mbp-10",
+      "level": "L2",
+      "stype_in": "continuous",
+      "symbols": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "start": "2026-08-14",
+      "end": "2026-09-13",
+      "calibration_bytes_per_record": 67.40010972101967,
+      "existing_cold_bytes_inside_target": 1596038440,
+      "records": 745782186,
+      "billable_uncompressed_bytes": 274447844448,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 50265801164,
+      "estimated_incremental_cold_bytes": 48669762724
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "mbp-10",
+      "level": "L2",
+      "stype_in": "raw_symbol",
+      "symbols": [
+        "CLV6",
+        "ESU6",
+        "GCZ6",
+        "NQU6"
+      ],
+      "start": "2026-08-14",
+      "end": "2026-09-13",
+      "calibration_bytes_per_record": 66.63703140578154,
+      "existing_cold_bytes_inside_target": 1105136054,
+      "records": 683129101,
+      "billable_uncompressed_bytes": 251391509168,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 45521695358,
+      "estimated_incremental_cold_bytes": 44416559304
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "mbo",
+      "level": "L3",
+      "stype_in": "continuous",
+      "symbols": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "start": "2026-08-14",
+      "end": "2026-09-13",
+      "calibration_bytes_per_record": 46.468612432231616,
+      "existing_cold_bytes_inside_target": 1419539576,
+      "records": 948202605,
+      "billable_uncompressed_bytes": 53099345880,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 44061659359,
+      "estimated_incremental_cold_bytes": 42642119783
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "mbo",
+      "level": "L3",
+      "stype_in": "raw_symbol",
+      "symbols": [
+        "CLV6",
+        "ESU6",
+        "GCZ6",
+        "NQU6"
+      ],
+      "start": "2026-08-14",
+      "end": "2026-09-13",
+      "calibration_bytes_per_record": 46.151995410082456,
+      "existing_cold_bytes_inside_target": 968676586,
+      "records": 877369058,
+      "billable_uncompressed_bytes": 49132667248,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 40492332738,
+      "estimated_incremental_cold_bytes": 39523656152
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "definition",
+      "level": "L0",
+      "stype_in": "continuous",
+      "symbols": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "start": "2018-01-01",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 526.7241379310345,
+      "existing_cold_bytes_inside_target": 229125,
+      "records": 13668,
+      "billable_uncompressed_bytes": 7107360,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 7199266,
+      "estimated_incremental_cold_bytes": 6970141
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "definition",
+      "level": "L0",
+      "stype_in": "raw_symbol",
+      "symbols": [
+        "CLV6",
+        "ESU6",
+        "GCZ6",
+        "NQU6"
+      ],
+      "start": "2018-01-01",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 523.9166666666666,
+      "existing_cold_bytes_inside_target": 91743,
+      "records": 5970,
+      "billable_uncompressed_bytes": 3104400,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 3127782,
+      "estimated_incremental_cold_bytes": 3036039
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "bbo-1s",
+      "level": "L1",
+      "stype_in": "continuous",
+      "symbols": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "start": "2025-09-14",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 50.788022619068656,
+      "existing_cold_bytes_inside_target": 48868083,
+      "records": 87318913,
+      "billable_uncompressed_bytes": 6985513040,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 4434754929,
+      "estimated_incremental_cold_bytes": 4385886846
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "bbo-1s",
+      "level": "L1",
+      "stype_in": "raw_symbol",
+      "symbols": [
+        "CLV6",
+        "ESU6",
+        "GCZ6",
+        "NQU6"
+      ],
+      "start": "2025-09-14",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 51.35425064637684,
+      "existing_cold_bytes_inside_target": 23080481,
+      "records": 31069428,
+      "billable_uncompressed_bytes": 2485554240,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 1595547193,
+      "estimated_incremental_cold_bytes": 1572466712
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "bbo-1m",
+      "level": "L1",
+      "stype_in": "continuous",
+      "symbols": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "start": "2025-09-14",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 69.68582312727096,
+      "existing_cold_bytes_inside_target": 34463751,
+      "records": 1773661,
+      "billable_uncompressed_bytes": 141892880,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 123599027,
+      "estimated_incremental_cold_bytes": 89135276
+    },
+    {
+      "dataset": "GLBX.MDP3",
+      "schema": "bbo-1m",
+      "level": "L1",
+      "stype_in": "raw_symbol",
+      "symbols": [
+        "CLV6",
+        "ESU6",
+        "GCZ6",
+        "NQU6"
+      ],
+      "start": "2025-09-14",
+      "end": "2026-09-14",
+      "calibration_bytes_per_record": 66.25742930915708,
+      "existing_cold_bytes_inside_target": 13163392,
+      "records": 918947,
+      "billable_uncompressed_bytes": 73515760,
+      "quoted_cost_usd": 0.0,
+      "estimated_full_cold_bytes": 60887066,
+      "estimated_incremental_cold_bytes": 47723674
+    }
+  ],
+  "method": "Metadata records times measured native DBN plus normalized Parquet bytes/row for the matching CME schema and symbology group; compression calibration may differ for rolled contracts. Incremental estimate subtracts existing cold partitions wholly inside the requested range for currently selected symbols; existing runtime cache and other contracts remain shared and unchanged. Continuous/dated overlaps are retained because the current archive stores both.",
+  "errors": [],
+  "totals": {
+    "estimated_full_cold_bytes": 233066169298,
+    "estimated_incremental_cold_bytes": 223389993935,
+    "existing_cold_bytes_inside_target": 9676175363,
+    "billable_uncompressed_bytes": 707401852512,
+    "quoted_cost_usd": 0.0,
+    "by_level_incremental_gib": {
+      "L0": 10.223142099566758,
+      "L1": 34.608767113648355,
+      "L2": 86.69339309260249,
+      "L3": 76.52284198906273
+    }
+  },
+  "completed_at": "2026-09-14T03:01:58.394278+00:00"
+}

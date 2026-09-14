@@ -1,0 +1,2839 @@
+{
+  "completed_at": "2026-09-13T04:36:53.887162+00:00",
+  "status": "COMPLETE",
+  "sessions": 120,
+  "first_session": "2026-03-23",
+  "last_session": "2026-09-11",
+  "prior_session": "2026-03-20",
+  "boundary_policy": "Native directional open-at-or-after and completed-close-at-or-before, maximum five minutes; no fill",
+  "maturity_cutoff": "2026-09-12T00:00:00+00:00",
+  "future_windows_excluded_per_symbol": 5,
+  "caveat": "Coverage-only qualification; no feature/sample-partition/model assessment performed; native zero-volume bars preserved and counted separately",
+  "boundary_rates": [
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 960,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 600,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 960,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 600,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 957,
+      "missing": 3,
+      "missing_rate": 0.003125
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 596,
+      "missing": 4,
+      "missing_rate": 0.006666666666666667
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 960,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 600,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 960,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 600,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 960,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 600,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 960,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 600,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 959,
+      "missing": 1,
+      "missing_rate": 0.0010416666666666667
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 600,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 960,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 600,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 584,
+      "missing": 376,
+      "missing_rate": 0.39166666666666666
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 429,
+      "missing": 171,
+      "missing_rate": 0.285
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 927,
+      "missing": 33,
+      "missing_rate": 0.034375
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 599,
+      "missing": 1,
+      "missing_rate": 0.0016666666666666668
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 960,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 600,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 959,
+      "missing": 1,
+      "missing_rate": 0.0010416666666666667
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 600,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 960,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 600,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    }
+  ],
+  "entry_routes": [
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 116,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AAPL",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 119,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 116,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "AMZN",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 119,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 117,
+      "missing": 3,
+      "missing_rate": 0.025
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 117,
+      "missing": 3,
+      "missing_rate": 0.025
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 118,
+      "missing": 2,
+      "missing_rate": 0.016666666666666666
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 119,
+      "missing": 1,
+      "missing_rate": 0.008333333333333333
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 113,
+      "missing": 3,
+      "missing_rate": 0.02586206896551724
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 118,
+      "missing": 2,
+      "missing_rate": 0.016666666666666666
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 119,
+      "missing": 1,
+      "missing_rate": 0.008333333333333333
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "COST",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 119,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 116,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "GOOG",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 119,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 116,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "MU",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 119,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 116,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "NVDA",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 119,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 116,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.BASIC",
+      "symbol": "SNDK",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 119,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 119,
+      "missing": 1,
+      "missing_rate": 0.008333333333333333
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 116,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AAPL",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 119,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 116,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "AMZN",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 119,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 50,
+      "missing": 70,
+      "missing_rate": 0.5833333333333334
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 65,
+      "missing": 55,
+      "missing_rate": 0.4583333333333333
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 57,
+      "missing": 63,
+      "missing_rate": 0.525
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 94,
+      "missing": 26,
+      "missing_rate": 0.21666666666666667
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 73,
+      "missing": 47,
+      "missing_rate": 0.39166666666666666
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 46,
+      "missing": 74,
+      "missing_rate": 0.6166666666666667
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 45,
+      "missing": 75,
+      "missing_rate": 0.625
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 30,
+      "missing": 90,
+      "missing_rate": 0.75
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 50,
+      "missing": 66,
+      "missing_rate": 0.5689655172413793
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 101,
+      "missing": 19,
+      "missing_rate": 0.15833333333333333
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 62,
+      "missing": 58,
+      "missing_rate": 0.48333333333333334
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "COST",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 56,
+      "missing": 63,
+      "missing_rate": 0.5294117647058824
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 117,
+      "missing": 3,
+      "missing_rate": 0.025
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 119,
+      "missing": 1,
+      "missing_rate": 0.008333333333333333
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 118,
+      "missing": 2,
+      "missing_rate": 0.016666666666666666
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 108,
+      "missing": 12,
+      "missing_rate": 0.1
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 109,
+      "missing": 11,
+      "missing_rate": 0.09166666666666666
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 113,
+      "missing": 7,
+      "missing_rate": 0.058333333333333334
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 113,
+      "missing": 3,
+      "missing_rate": 0.02586206896551724
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 113,
+      "missing": 7,
+      "missing_rate": 0.058333333333333334
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "GOOG",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 115,
+      "missing": 4,
+      "missing_rate": 0.03361344537815126
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 116,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "MU",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 119,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 119,
+      "missing": 1,
+      "missing_rate": 0.008333333333333333
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 116,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "NVDA",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 119,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 116,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "dataset": "XNAS.ITCH",
+      "symbol": "SNDK",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 119,
+      "missing": 0,
+      "missing_rate": 0.0
+    }
+  ],
+  "native_zero_volume_counts": [
+    {
+      "symbol": "AAPL",
+      "rows": 115183,
+      "zero_volume_rows": 659,
+      "manifest_sha256": "4d2adda829f76c49cdc6af3cdeeabe802e21b25c7da05ece16a1c6c7583aaf1c",
+      "raw_readback_verified": true
+    },
+    {
+      "symbol": "AMZN",
+      "rows": 115382,
+      "zero_volume_rows": 240,
+      "manifest_sha256": "ad2ecc1d1f887abdffacca62c4128420d092b19de048a0ed4f3ae83c8dde4638",
+      "raw_readback_verified": true
+    },
+    {
+      "symbol": "GOOG",
+      "rows": 113558,
+      "zero_volume_rows": 453,
+      "manifest_sha256": "55230a3c1a5d95b211fa4d15237d864d171ea21b29e5135057469066afcecf24",
+      "raw_readback_verified": true
+    },
+    {
+      "symbol": "MU",
+      "rows": 116138,
+      "zero_volume_rows": 5,
+      "manifest_sha256": "7dc6a88d8ad0e47e288ec904c0acba17ad440e4186fbd6471708c98d50037780",
+      "raw_readback_verified": true
+    },
+    {
+      "symbol": "NVDA",
+      "rows": 116134,
+      "zero_volume_rows": 3,
+      "manifest_sha256": "f33b3cc31548c04fa5becfbb78d2f4afc4131f835b7625af02eefc3117d360e2",
+      "raw_readback_verified": true
+    },
+    {
+      "symbol": "SNDK",
+      "rows": 115969,
+      "zero_volume_rows": 12,
+      "manifest_sha256": "2fcf27c7e22e592d83bd908ab2a094526e8afb2d4abc54d879d6cd8f5eabf6f2",
+      "raw_readback_verified": true
+    },
+    {
+      "symbol": "COST",
+      "rows": 89283,
+      "zero_volume_rows": 10967,
+      "manifest_sha256": "32ea8833b509547be1536f49a910f4b8042c5178934dde2b3ce062fb2dd37148",
+      "raw_readback_verified": true
+    }
+  ]
+}

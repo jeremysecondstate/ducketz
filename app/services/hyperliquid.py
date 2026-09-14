@@ -14,6 +14,8 @@ from app.config import (
     hyperevm_rpc_url,
 )
 from app.models.portfolio import CashBalance, Holding, PortfolioSnapshot
+from app.hyperliquid_accounts import HYPERLIQUID_ACCOUNT_PROFILES, resolve_portfolio_wallet
+from app.services.hyperliquid_markets import DEFAULT_MARKETS, market_watch, spot_catalog
 
 
 ZERO_EPSILON = 0.00000001
@@ -99,53 +101,42 @@ class HyperEvmRpcClient:
         }
 
 
-def sync_hyperliquid_portfolios() -> list[PortfolioSnapshot]:
-    client = HyperliquidInfoClient()
+def sync_hyperliquid_portfolios(watchlist=DEFAULT_MARKETS) -> list[PortfolioSnapshot]:
+    client = HyperliquidInfoClient(timeout_seconds=12)
     all_mids = client.post_info({"type": "allMids"})
-    spot_meta_and_asset_ctxs = client.post_info({"type": "spotMetaAndAssetCtxs"})
-
-    if not isinstance(all_mids, dict):
-        raise RuntimeError("Hyperliquid allMids returned an unexpected response.")
-    if not isinstance(spot_meta_and_asset_ctxs, list):
-        raise RuntimeError("Hyperliquid spotMetaAndAssetCtxs returned an unexpected response.")
-
-    hype_market = _hype_market_facts(all_mids, spot_meta_and_asset_ctxs)
-    market_coin = str(hype_market.get("coin") or "").strip()
-    if market_coin:
-        try:
-            candles = _hype_candle_closes(client, market_coin)
-        except Exception as exc:
-            hype_market["chart_status"] = f"{type(exc).__name__}: {exc}"
-        else:
-            hype_market["closes_24h"] = candles
-            hype_market["chart_status"] = "current" if candles else "unavailable"
-
+    spot_meta = client.post_info({"type": "spotMetaAndAssetCtxs"})
+    if not isinstance(all_mids, dict) or not isinstance(spot_meta, list):
+        raise RuntimeError("Hyperliquid market data is unavailable.")
+    common = market_watch(client, watchlist)
+    common["spot_catalog"] = spot_catalog(spot_meta)
     try:
-        chain_status = HyperEvmRpcClient().chain_status()
-    except Exception as exc:
-        chain_status = {
-            "available": False,
-            "status": f"{type(exc).__name__}: {exc}",
-        }
-
-    return [
-        _sync_hyperliquid_portfolio_with_market(
-            account,
-            client,
-            all_mids=all_mids,
-            spot_meta_and_asset_ctxs=spot_meta_and_asset_ctxs,
-            hype_market=hype_market,
-            chain_status=chain_status,
-        )
-        for account in hyperliquid_accounts()
-    ]
+        chain = HyperEvmRpcClient().chain_status()
+    except Exception:
+        chain = {"available": False}
+    snapshots = []
+    for account in hyperliquid_accounts():
+        try:
+            snapshot = _sync_hyperliquid_portfolio_with_market(
+                account, client, all_mids=all_mids,
+                spot_meta_and_asset_ctxs=spot_meta,
+                hype_market=_hype_market_facts(all_mids, spot_meta),
+                chain_status=chain,
+            )
+            snapshot.account_facts.update(common)
+        except Exception as exc:
+            snapshot = PortfolioSnapshot(
+                source="hyperliquid", account_label=account.label,
+                status=f"Account unavailable ({type(exc).__name__})",
+                account_facts={**common, "chain_status": chain, "sync_error": str(exc)},
+            )
+        snapshots.append(snapshot)
+    return snapshots
 
 
 def sync_hyperliquid_portfolio(
     account: HyperliquidAccountConfig,
     client: HyperliquidInfoClient | None = None,
 ) -> PortfolioSnapshot:
-    wallet_address = _normalize_wallet_address(account.wallet_address)
     client = client or HyperliquidInfoClient()
 
     all_mids = client.post_info({"type": "allMids"})
@@ -174,7 +165,9 @@ def _sync_hyperliquid_portfolio_with_market(
     hype_market: dict[str, object],
     chain_status: dict[str, object],
 ) -> PortfolioSnapshot:
-    wallet_address = _normalize_wallet_address(account.wallet_address)
+    wallet_address = _normalize_wallet_address(
+        account.wallet_address or resolve_portfolio_wallet(HYPERLIQUID_ACCOUNT_PROFILES[account.profile_key], client)
+    )
     clearinghouse_state = client.post_info(
         {"type": "clearinghouseState", "user": wallet_address}
     )
@@ -187,15 +180,21 @@ def _sync_hyperliquid_portfolio_with_market(
     if not isinstance(spot_state, dict):
         raise RuntimeError("Hyperliquid spotClearinghouseState returned an unexpected response.")
 
-    perp_holdings = _perp_holdings(clearinghouse_state)
+    abstraction = client.post_info({"type": "userAbstraction", "user": wallet_address})
+    if abstraction not in {"unifiedAccount", "portfolioMargin", "default", "standard", "disabled", "dexAbstraction", None}:
+        raise ValueError("Unknown Hyperliquid account abstraction mode.")
+    unified = abstraction in {"unifiedAccount", "portfolioMargin"}
+    perp_holdings = _perp_holdings(clearinghouse_state, all_mids)
     spot_cash, spot_holdings = _spot_balances(spot_state, all_mids, spot_meta_and_asset_ctxs)
 
     perp_account_value = _perp_account_value(clearinghouse_state)
-    perp_notional = round(sum(holding.value for holding in perp_holdings), 2)
-    perp_cash_value = round(perp_account_value - perp_notional, 2)
+    pnl = round(sum(h.unrealized_pnl or 0.0 for h in perp_holdings), 2)
+    # Perp notional is exposure, not purchased inventory. Show collateral cash,
+    # with total equity supplied separately by reported_total_value below.
+    perp_cash_value = round(perp_account_value - pnl, 2)
 
     cash = list(spot_cash)
-    if abs(perp_cash_value) > 0.005:
+    if not unified and abs(perp_cash_value) > 0.005:
         cash.append(
             CashBalance(
                 symbol="USDC",
@@ -219,12 +218,45 @@ def _sync_hyperliquid_portfolio_with_market(
         }
     )
 
+    spot_equity = round(sum(b.value for b in spot_cash) + sum(h.value for h in spot_holdings), 2)
+    available_by_token = {}
+    for row in spot_state.get("tokenToAvailableAfterMaintenance", []):
+        if isinstance(row, list) and len(row) == 2:
+            available_by_token[row[0]] = _to_float(row[1])
+    spot_available = {}
+    for balance in _dict_rows(spot_state.get("balances")):
+        free = max((_to_float(balance.get("total")) or 0) - (_to_float(balance.get("hold")) or 0), 0)
+        maintenance_free = available_by_token.get(balance.get("token"))
+        if maintenance_free is not None:
+            free = min(free, max(maintenance_free, 0))
+        spot_available[str(balance.get("coin", "")).upper()] = free
+    account_facts.update({
+        "account_mode": abstraction or "default", "unified": unified,
+        "spot_available": spot_available, "unrealized_pnl": pnl,
+        # Unified/portfolio-margin spot balances already include perp P/L.
+        "equity": spot_equity if unified else spot_equity + perp_account_value,
+        "cash_usdc": sum(b.amount for b in spot_cash if b.symbol == "USDC"),
+        "sync_error": "",
+    })
+    if unified:
+        account_facts["available"] = spot_available.get("USDC", 0.0)
+        account_facts["perp_equity"] = 0.0
+    for kind, key in (("frontendOpenOrders", "open_orders"), ("userFills", "activity")):
+        try:
+            rows = client.post_info({"type": kind, "user": wallet_address})
+            if not isinstance(rows, list):
+                raise ValueError("Unexpected account activity response.")
+            account_facts[key] = sorted(_dict_rows(rows), key=lambda r: _to_float(r.get("time")) or 0, reverse=True)[:50] if key == "activity" else _dict_rows(rows)
+        except Exception as exc:
+            account_facts[key + "_error"] = type(exc).__name__
+
     return PortfolioSnapshot(
         source="hyperliquid",
         account_label=account.label,
         cash=cash,
         holdings=[*perp_holdings, *spot_holdings],
         synced_at=datetime.now(),
+        reported_total_value=account_facts["equity"],
         status=f"{account.label} synced {wallet_address[:6]}...{wallet_address[-4:]}",
         account_facts=account_facts,
     )
@@ -377,7 +409,7 @@ def _pair_token_indices(pair: dict[str, Any]) -> tuple[int | None, int | None]:
     return _to_int(values[0]), _to_int(values[1])
 
 
-def _perp_holdings(clearinghouse_state: dict[str, Any]) -> list[Holding]:
+def _perp_holdings(clearinghouse_state: dict[str, Any], all_mids: dict | None = None) -> list[Holding]:
     holdings: list[Holding] = []
 
     for row in _dict_rows(clearinghouse_state.get("assetPositions")):
@@ -391,7 +423,11 @@ def _perp_holdings(clearinghouse_state: dict[str, Any]) -> list[Holding]:
 
         quantity = abs(signed_size)
         value = abs(_to_float(position.get("positionValue")) or 0.0)
-        price = _first_number(position, ("markPx", "oraclePx", "midPx", "entryPx"))
+        price = _first_number(position, ("markPx", "midPx"))
+        if price is None and quantity > ZERO_EPSILON and value > 0:
+            price = value / quantity
+        if price is None:
+            price = _to_float((all_mids or {}).get(coin))
 
         if price is None:
             price = value / quantity if quantity > ZERO_EPSILON else 0.0
@@ -488,19 +524,13 @@ def _spot_price(
     all_mids: dict[str, Any],
     spot_meta_and_asset_ctxs: list[Any],
 ) -> float | None:
-    direct_price = _to_float(all_mids.get(symbol))
-    if direct_price is not None:
-        return direct_price
-
-    token_index = _spot_token_index(balance)
-    candidate_keys = _spot_mid_keys(symbol, token_index, spot_meta_and_asset_ctxs)
-
-    for key in candidate_keys:
-        price = _to_float(all_mids.get(key))
-        if price is not None:
-            return price
-
-    return None
+    # Resolve the spot pair index, which is different from the token index.
+    # A matching naked symbol in allMids can be the perpetual mark instead.
+    from app.services.hyperliquid_markets import display_asset
+    route = spot_catalog(spot_meta_and_asset_ctxs).get(display_asset(symbol))
+    if route is None or route["base"] != symbol:
+        return None
+    return _to_float(all_mids.get(route["coin"])) or route["mid"]
 
 
 def _spot_token_index(balance: dict[str, Any]) -> int | None:
@@ -618,7 +648,8 @@ def _to_float(value: Any) -> float | None:
         return None
 
     try:
-        return float(value)
+        number = float(value)
+        return number if math.isfinite(number) else None
     except (TypeError, ValueError):
         return None
 

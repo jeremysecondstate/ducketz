@@ -20,7 +20,7 @@ CHAMPION_RETENTION_POLICY = "latest-compatible-promoted-same-action-date-v1"
 
 
 def latest_promoted_champion(root: Path, *, group: str, action_date, symbols,
-                             price_source: str, before) -> dict | None:
+                             price_source: str, before, source_selection_contract: str | None = None) -> dict | None:
     """Choose latest eligible publication, never compare held-out candidate scores."""
     from ml.nightly_gameplan import GAMEPLAN_VERSION, read_gameplan_run
     root = Path(root).resolve()
@@ -36,6 +36,7 @@ def latest_promoted_champion(root: Path, *, group: str, action_date, symbols,
                 or config.get("action_date") != str(action_date)
                 or tuple(config.get("symbols", ())) != tuple(symbols)
                 or config.get("target_price_source_contract") != price_source
+                or config.get("source_selection_contract") != source_selection_contract
                 or config.get("target_price_dataset") != stock_price_dataset(price_source)):
             continue
         published = pd.Timestamp(receipt["published_at"])
@@ -55,6 +56,7 @@ def latest_promoted_champion(root: Path, *, group: str, action_date, symbols,
         if (report.get("schema_version") != GAMEPLAN_VERSION or report.get("group") != group
                 or report.get("target_contract_version") != STOCK_TARGET_CONTRACT_VERSION
                 or report.get("target_price_source_contract") != price_source
+                or report.get("source_selection_contract") != source_selection_contract
                 or report.get("target_price_dataset") != stock_price_dataset(price_source)):
             raise RuntimeError("Champion promotion or model contract is invalid")
         try:
@@ -75,6 +77,7 @@ def latest_promoted_champion(root: Path, *, group: str, action_date, symbols,
                 or tuple(payload.get("feature_columns", ())) != tuple(report["features"]["admitted"])
                 or tuple(payload.get("categorical_columns", ())) != ("symbol", "route")
                 or payload.get("selected_family") != report["selected_family"]
+                or payload.get("source_selection_contract") != source_selection_contract
                 or pd.Timestamp(payload["trained_at"]) > pd.Timestamp(publication.receipt["published_at"])):
             raise RuntimeError("Champion fitted payload differs from its verified report")
         files = (run / "manifest.json", run / "receipt.json", run / "model-reports.json", model_path, run / cohort_name)
@@ -93,6 +96,9 @@ def retain_champion(challenger: dict, *, champion: dict, current: pd.DataFrame,
     """Fresh predictions from the retained model; preserve both sets of evidence."""
     from ml.nightly_gameplan import _model_frame, _write_json_atomic
     payload, original_report = champion["payload"], champion["report"]
+    from ml.gameplan_source_selection import source_selection_contract
+    if source_selection_contract(current) != original_report.get("source_selection_contract"):
+        raise RuntimeError("Current features cannot use a champion from another source selection contract")
     numeric, categorical = tuple(payload["feature_columns"]), tuple(payload["categorical_columns"])
     if not set((*numeric, *categorical)).issubset(current.columns):
         raise RuntimeError("Current causal inputs cannot support the retained champion")

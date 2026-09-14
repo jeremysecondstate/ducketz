@@ -120,6 +120,8 @@ def build_stock_current_groups(
 ) -> dict[str, pd.DataFrame]:
     if sources.empty:
         raise RuntimeError("Independent stock targets require causal source rows")
+    from ml.gameplan_source_selection import SOURCE_SELECTION_COLUMNS, source_selection_contract
+    source_selection_contract(sources)
     dates = [pd.Timestamp(value).date() for value in sources["action_date"]]
     calendar = _calendar(min(dates), max(dates))
     windows = {day: stock_target_windows(day, calendar=calendar) for day in set(dates)}
@@ -131,6 +133,7 @@ def build_stock_current_groups(
         if pd.isna(decision) or pd.isna(information) or max(decision, information) >= _clock(day, 4):
             raise RuntimeError("Independent stock features must be available before the action session")
         base = {key: source.get(key) for key in feature_columns}
+        base.update({key: source[key] for key in SOURCE_SELECTION_COLUMNS if key in source})
         base.update(symbol=str(source["symbol"]).upper(), action_date=day,
                     decision_timestamp=decision, information_available_at=information,
                     assumed_round_trip_cost=source.get("assumed_round_trip_cost", 0.001),

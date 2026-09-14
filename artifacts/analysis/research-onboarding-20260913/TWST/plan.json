@@ -1,0 +1,777 @@
+{
+  "schema_version": "symbol-onboarding-v1",
+  "created_at": "2026-09-14T03:31:10.832369+00:00",
+  "datastore_root": "C:\\DATASTORE",
+  "symbol": "TWST",
+  "reference": "COST",
+  "previous_symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST"
+  ],
+  "candidate_symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST",
+    "CROX",
+    "PATH",
+    "TWST",
+    "IONQ"
+  ],
+  "requests": [
+    {
+      "request_id": "65c73fe871a9a8b676dc2494",
+      "dataset": "OPRA.PILLAR",
+      "standard_plan_dataset": "OPRA",
+      "schema": "definition",
+      "symbol_scope": [
+        "TWST.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2018-10-31",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\definition\\TWST.OPT",
+      "storage_contract": "canonical-opra",
+      "window": {
+        "unit": "days",
+        "value": 100
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2018-10-31",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "7582bd00ecc3043364f8adf8",
+      "dataset": "OPRA.PILLAR",
+      "standard_plan_dataset": "OPRA",
+      "schema": "ohlcv-1h",
+      "symbol_scope": [
+        "TWST.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2018-10-31",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\ohlcv-1h\\TWST.OPT",
+      "storage_contract": "canonical-opra",
+      "window": {
+        "unit": "days",
+        "value": 1825
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2018-10-31",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "0bbdf20f6f935ec30a581fe9",
+      "dataset": "OPRA.PILLAR",
+      "standard_plan_dataset": "OPRA",
+      "schema": "cbbo-1m",
+      "symbol_scope": [
+        "TWST.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2025-09-14",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\cbbo-1m\\TWST.OPT",
+      "storage_contract": "canonical-opra",
+      "window": {
+        "unit": "days",
+        "value": 20
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2025-09-14",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "6bb703e52e145a9d492c0f98",
+      "dataset": "OPRA.PILLAR",
+      "standard_plan_dataset": "OPRA",
+      "schema": "ohlcv-1s",
+      "symbol_scope": [
+        "TWST.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2018-10-31",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\ohlcv-1s\\TWST.OPT",
+      "storage_contract": "canonical-opra",
+      "window": {
+        "unit": "days",
+        "value": 10
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2018-10-31",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "81b035de59295204373a5512",
+      "dataset": "OPRA.PILLAR",
+      "standard_plan_dataset": "OPRA",
+      "schema": "ohlcv-1m",
+      "symbol_scope": [
+        "TWST.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2018-10-31",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\ohlcv-1m\\TWST.OPT",
+      "storage_contract": "canonical-opra",
+      "window": {
+        "unit": "days",
+        "value": 100
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2018-10-31",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "66d6e370d2eaa6ecf0ca7ac2",
+      "dataset": "OPRA.PILLAR",
+      "standard_plan_dataset": "OPRA",
+      "schema": "ohlcv-1d",
+      "symbol_scope": [
+        "TWST.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2018-10-31",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\ohlcv-1d\\TWST.OPT",
+      "storage_contract": "canonical-opra",
+      "window": {
+        "unit": "days",
+        "value": 2555
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2018-10-31",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "ec00edd12f843e23b3dc824f",
+      "dataset": "OPRA.PILLAR",
+      "standard_plan_dataset": "OPRA",
+      "schema": "statistics",
+      "symbol_scope": [
+        "TWST.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2018-10-31",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\statistics\\TWST.OPT",
+      "storage_contract": "canonical-opra",
+      "window": {
+        "unit": "calendar_months",
+        "value": 1
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2018-10-31",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "daf454c886ab83dd2755a207",
+      "dataset": "OPRA.PILLAR",
+      "standard_plan_dataset": "OPRA",
+      "schema": "status",
+      "symbol_scope": [
+        "TWST.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2024-07-17",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\status\\TWST.OPT",
+      "storage_contract": "canonical-opra",
+      "window": {
+        "unit": "calendar_months",
+        "value": 1
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2024-07-17",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "28414b81664385554cfabedf",
+      "dataset": "OPRA.PILLAR",
+      "standard_plan_dataset": "OPRA",
+      "schema": "tcbbo",
+      "symbol_scope": [
+        "TWST.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2025-09-14",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\tcbbo\\TWST.OPT",
+      "storage_contract": "canonical-opra",
+      "window": {
+        "unit": "calendar_months",
+        "value": 1
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2025-09-14",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "46d7719f6c9868f16f44c400",
+      "dataset": "OPRA.PILLAR",
+      "standard_plan_dataset": "OPRA",
+      "schema": "cbbo-1s",
+      "symbol_scope": [
+        "TWST.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2025-09-14",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\cbbo-1s\\TWST.OPT",
+      "storage_contract": "canonical-opra",
+      "window": {
+        "unit": "days",
+        "value": 1
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2025-09-14",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "7bb101a79a49d7c472581a42",
+      "dataset": "OPRA.PILLAR",
+      "standard_plan_dataset": "OPRA",
+      "schema": "trades",
+      "symbol_scope": [
+        "TWST.OPT"
+      ],
+      "stype_in": "parent",
+      "start": "2025-09-14",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\trades\\TWST.OPT",
+      "storage_contract": "canonical-opra",
+      "window": {
+        "unit": "calendar_months",
+        "value": 1
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2025-09-14",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "543f3ade9bc8ba6249e23f02",
+      "dataset": "XNAS.ITCH",
+      "standard_plan_dataset": "US_EQUITIES",
+      "schema": "ohlcv-1s",
+      "symbol_scope": [
+        "TWST"
+      ],
+      "stype_in": "raw_symbol",
+      "start": "2018-10-31",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1s\\TWST\\windows\\2018-10-31_to_2026-09-12",
+      "storage_contract": "isolated-cold-start",
+      "window": {
+        "unit": "days",
+        "value": 10
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2018-10-31",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "2eede89e65ee0ac35288ef21",
+      "dataset": "XNAS.ITCH",
+      "standard_plan_dataset": "US_EQUITIES",
+      "schema": "ohlcv-1m",
+      "symbol_scope": [
+        "TWST"
+      ],
+      "stype_in": "raw_symbol",
+      "start": "2018-10-31",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2018-10-31_to_2026-09-12",
+      "storage_contract": "isolated-cold-start",
+      "window": {
+        "unit": "days",
+        "value": 100
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2018-10-31",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "56c045a93e896c1873195564",
+      "dataset": "XNAS.ITCH",
+      "standard_plan_dataset": "US_EQUITIES",
+      "schema": "ohlcv-1h",
+      "symbol_scope": [
+        "TWST"
+      ],
+      "stype_in": "raw_symbol",
+      "start": "2018-10-31",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\TWST\\windows\\2018-10-31_to_2026-09-12",
+      "storage_contract": "isolated-cold-start",
+      "window": {
+        "unit": "days",
+        "value": 1825
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2018-10-31",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "5fd970ca4b7b83dc15994bc4",
+      "dataset": "XNAS.ITCH",
+      "standard_plan_dataset": "US_EQUITIES",
+      "schema": "ohlcv-1d",
+      "symbol_scope": [
+        "TWST"
+      ],
+      "stype_in": "raw_symbol",
+      "start": "2018-10-31",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\TWST\\windows\\2018-10-31_to_2026-09-12",
+      "storage_contract": "isolated-cold-start",
+      "window": {
+        "unit": "days",
+        "value": 2555
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2018-10-31",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "4150b837a8eaefaf65ac872a",
+      "dataset": "XNAS.ITCH",
+      "standard_plan_dataset": "US_EQUITIES",
+      "schema": "definition",
+      "symbol_scope": [
+        "TWST"
+      ],
+      "stype_in": "raw_symbol",
+      "start": "2018-10-31",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\definition\\TWST\\windows\\2018-10-31_to_2026-09-12",
+      "storage_contract": "isolated-cold-start",
+      "window": {
+        "unit": "days",
+        "value": 100
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2018-10-31",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "005b355356eeac597009f8c9",
+      "dataset": "XNAS.ITCH",
+      "standard_plan_dataset": "US_EQUITIES",
+      "schema": "statistics",
+      "symbol_scope": [
+        "TWST"
+      ],
+      "stype_in": "raw_symbol",
+      "start": "2018-10-31",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\statistics\\TWST\\windows\\2018-10-31_to_2026-09-12",
+      "storage_contract": "isolated-cold-start",
+      "window": {
+        "unit": "calendar_months",
+        "value": 1
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2018-10-31",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "fb5bdad6bb636e1a177cb7d8",
+      "dataset": "XNAS.ITCH",
+      "standard_plan_dataset": "US_EQUITIES",
+      "schema": "status",
+      "symbol_scope": [
+        "TWST"
+      ],
+      "stype_in": "raw_symbol",
+      "start": "2018-10-31",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\status\\TWST\\windows\\2018-10-31_to_2026-09-12",
+      "storage_contract": "isolated-cold-start",
+      "window": {
+        "unit": "calendar_months",
+        "value": 1
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2018-10-31",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "b53e4fc9e77366dbfef18b14",
+      "dataset": "XNAS.ITCH",
+      "standard_plan_dataset": "US_EQUITIES",
+      "schema": "tbbo",
+      "symbol_scope": [
+        "TWST"
+      ],
+      "stype_in": "raw_symbol",
+      "start": "2025-09-14",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\tbbo\\TWST\\windows\\2025-09-14_to_2026-09-12",
+      "storage_contract": "isolated-cold-start",
+      "window": {
+        "unit": "calendar_months",
+        "value": 1
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2025-09-14",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "f3ebcdee5abeb0bf39364642",
+      "dataset": "XNAS.ITCH",
+      "standard_plan_dataset": "US_EQUITIES",
+      "schema": "bbo-1s",
+      "symbol_scope": [
+        "TWST"
+      ],
+      "stype_in": "raw_symbol",
+      "start": "2025-09-14",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\bbo-1s\\TWST\\windows\\2025-09-14_to_2026-09-12",
+      "storage_contract": "isolated-cold-start",
+      "window": {
+        "unit": "days",
+        "value": 3
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2025-09-14",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "720874a1a0b771bf5bd810fa",
+      "dataset": "XNAS.ITCH",
+      "standard_plan_dataset": "US_EQUITIES",
+      "schema": "bbo-1m",
+      "symbol_scope": [
+        "TWST"
+      ],
+      "stype_in": "raw_symbol",
+      "start": "2025-09-14",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\bbo-1m\\TWST\\windows\\2025-09-14_to_2026-09-12",
+      "storage_contract": "isolated-cold-start",
+      "window": {
+        "unit": "days",
+        "value": 100
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2025-09-14",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "b19f3c61d5aafbde8b4ab8c2",
+      "dataset": "XNAS.ITCH",
+      "standard_plan_dataset": "US_EQUITIES",
+      "schema": "trades",
+      "symbol_scope": [
+        "TWST"
+      ],
+      "stype_in": "raw_symbol",
+      "start": "2025-09-14",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\trades\\TWST\\windows\\2025-09-14_to_2026-09-12",
+      "storage_contract": "isolated-cold-start",
+      "window": {
+        "unit": "calendar_months",
+        "value": 1
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2025-09-14",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "6d297e2a82ede5f3f23de541",
+      "dataset": "XNAS.ITCH",
+      "standard_plan_dataset": "US_EQUITIES",
+      "schema": "mbp-10",
+      "symbol_scope": [
+        "TWST"
+      ],
+      "stype_in": "raw_symbol",
+      "start": "2026-08-14",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\mbp-10\\TWST\\windows\\2026-08-14_to_2026-09-12",
+      "storage_contract": "isolated-cold-start",
+      "window": {
+        "unit": "days",
+        "value": 1
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2026-08-14",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "5eb93d49c9497056e014db15",
+      "dataset": "XNAS.ITCH",
+      "standard_plan_dataset": "US_EQUITIES",
+      "schema": "mbo",
+      "symbol_scope": [
+        "TWST"
+      ],
+      "stype_in": "raw_symbol",
+      "start": "2026-08-14",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\mbo\\TWST\\windows\\2026-08-14_to_2026-09-12",
+      "storage_contract": "isolated-cold-start",
+      "window": {
+        "unit": "days",
+        "value": 1
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2026-08-14",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    },
+    {
+      "request_id": "c8c0cdf85847755b109f2e30",
+      "dataset": "XNAS.ITCH",
+      "standard_plan_dataset": "US_EQUITIES",
+      "schema": "imbalance",
+      "symbol_scope": [
+        "TWST"
+      ],
+      "stype_in": "raw_symbol",
+      "start": "2026-08-14",
+      "end": "2026-09-12",
+      "storage_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\imbalance\\TWST\\windows\\2026-08-14_to_2026-09-12",
+      "storage_contract": "isolated-cold-start",
+      "window": {
+        "unit": "calendar_months",
+        "value": 1
+      },
+      "fetch_mode": "initial-baseline",
+      "baseline_start": "2026-08-14",
+      "previous_completed_through": null,
+      "status": "PENDING"
+    }
+  ],
+  "estimates": [
+    {
+      "request_id": "65c73fe871a9a8b676dc2494",
+      "estimated_download_size_bytes": 105794280,
+      "record_count": 293873,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "7582bd00ecc3043364f8adf8",
+      "estimated_download_size_bytes": 4105080,
+      "record_count": 73305,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "0bbdf20f6f935ec30a581fe9",
+      "estimated_download_size_bytes": 662249920,
+      "record_count": 8278124,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "6bb703e52e145a9d492c0f98",
+      "estimated_download_size_bytes": 5294632,
+      "record_count": 94547,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "81b035de59295204373a5512",
+      "estimated_download_size_bytes": 4724720,
+      "record_count": 84370,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "66d6e370d2eaa6ecf0ca7ac2",
+      "estimated_download_size_bytes": 3499720,
+      "record_count": 62495,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "ec00edd12f843e23b3dc824f",
+      "estimated_download_size_bytes": 680443968,
+      "record_count": 10631937,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "daf454c886ab83dd2755a207",
+      "estimated_download_size_bytes": 26367120,
+      "record_count": 659178,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "28414b81664385554cfabedf",
+      "estimated_download_size_bytes": 1583920,
+      "record_count": 19799,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "46d7719f6c9868f16f44c400",
+      "estimated_download_size_bytes": 2625020880,
+      "record_count": 32812761,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "7bb101a79a49d7c472581a42",
+      "estimated_download_size_bytes": 950352,
+      "record_count": 19799,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "543f3ade9bc8ba6249e23f02",
+      "estimated_download_size_bytes": 128824136,
+      "record_count": 2300431,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "2eede89e65ee0ac35288ef21",
+      "estimated_download_size_bytes": 34943384,
+      "record_count": 623989,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "56c045a93e896c1873195564",
+      "estimated_download_size_bytes": 1064392,
+      "record_count": 19007,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "5fd970ca4b7b83dc15994bc4",
+      "estimated_download_size_bytes": 110600,
+      "record_count": 1975,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "4150b837a8eaefaf65ac872a",
+      "estimated_download_size_bytes": 711360,
+      "record_count": 1976,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "005b355356eeac597009f8c9",
+      "estimated_download_size_bytes": 253120,
+      "record_count": 3955,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "fb5bdad6bb636e1a177cb7d8",
+      "estimated_download_size_bytes": 320400,
+      "record_count": 8010,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "b53e4fc9e77366dbfef18b14",
+      "estimated_download_size_bytes": 131910480,
+      "record_count": 1648881,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "f3ebcdee5abeb0bf39364642",
+      "estimated_download_size_bytes": 99149600,
+      "record_count": 1239370,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "720874a1a0b771bf5bd810fa",
+      "estimated_download_size_bytes": 9313200,
+      "record_count": 116415,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "b19f3c61d5aafbde8b4ab8c2",
+      "estimated_download_size_bytes": 79146288,
+      "record_count": 1648881,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "6d297e2a82ede5f3f23de541",
+      "estimated_download_size_bytes": 502885248,
+      "record_count": 1366536,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "5eb93d49c9497056e014db15",
+      "estimated_download_size_bytes": 175921816,
+      "record_count": 3141461,
+      "cost_usd": 0.0
+    },
+    {
+      "request_id": "c8c0cdf85847755b109f2e30",
+      "estimated_download_size_bytes": 1184064,
+      "record_count": 10572,
+      "cost_usd": 0.0
+    }
+  ],
+  "budget": {
+    "billable_uncompressed_bytes": 5285772680,
+    "estimated_cost_usd": 0.0,
+    "required_free_bytes": 15940254480,
+    "max_billable_bytes": 300000000000,
+    "max_cost_usd": 0.0
+  },
+  "history_policy": "standard-included-history-2018-v1",
+  "history_floor": "2018-01-01",
+  "listing_date": "2018-10-31",
+  "cik": "1581280",
+  "research_lineage": {
+    "week": "2026-09-13",
+    "publication_sha256": "b3bfb2142f6a7372b0fca511b76a96de8d392b37ff4154daa177807cd432f399",
+    "report_path": "C:\\DATASTORE\\research\\opportunities\\editions\\2026-09-13\\report.md",
+    "selected_companies": [
+      {
+        "symbol": "CROX",
+        "security_id": "CIK0001334036:COMMON",
+        "company_name": "Crocs, Inc.",
+        "decision": "watch"
+      },
+      {
+        "symbol": "PATH",
+        "security_id": "CIK0001734722:CLASS_A",
+        "company_name": "UiPath, Inc.",
+        "decision": "watch"
+      },
+      {
+        "symbol": "TWST",
+        "security_id": "CIK0001581280:COMMON",
+        "company_name": "Twist Bioscience Corporation",
+        "decision": "watch"
+      },
+      {
+        "symbol": "IONQ",
+        "security_id": "CIK0001824920:COMMON",
+        "company_name": "IonQ, Inc.",
+        "decision": "watch"
+      }
+    ]
+  },
+  "shared_history": "Reuse existing CME, FRED/ALFRED and FMP macro data",
+  "plan_id": "12f9265f252523497c5ea3878e4cbaf6b6cc0d0c68cc78a7dd5cd58efaaf9944"
+}

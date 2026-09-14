@@ -1,0 +1,240 @@
+{
+  "generated_at": "2026-09-13T04:38:25.748926+00:00",
+  "bad_dates": [
+    "2026-08-31"
+  ],
+  "policy": "Conservative sensitivity only: original native data preserved; use positive-volume observations and exclude degraded action sessions plus any entry window touching them",
+  "summary": [
+    {
+      "symbol": "AAPL",
+      "itch": {
+        "boundary_total": 3120,
+        "boundary_missing": 1,
+        "entry_mature": 2275,
+        "entry_available": 2274
+      },
+      "basic": {
+        "boundary_total": 3120,
+        "boundary_missing": 0,
+        "entry_mature": 2275,
+        "entry_available": 2275
+      },
+      "basic_positive": {
+        "boundary_total": 3120,
+        "boundary_missing": 0,
+        "entry_mature": 2275,
+        "entry_available": 2275
+      },
+      "basic_conservative": {
+        "boundary_total": 3094,
+        "boundary_missing": 0,
+        "entry_mature": 2251,
+        "entry_available": 2251
+      },
+      "itch_matched_exclusions": {
+        "boundary_total": 3094,
+        "boundary_missing": 1,
+        "entry_mature": 2251,
+        "entry_available": 2250
+      }
+    },
+    {
+      "symbol": "AMZN",
+      "itch": {
+        "boundary_total": 3120,
+        "boundary_missing": 0,
+        "entry_mature": 2275,
+        "entry_available": 2275
+      },
+      "basic": {
+        "boundary_total": 3120,
+        "boundary_missing": 0,
+        "entry_mature": 2275,
+        "entry_available": 2275
+      },
+      "basic_positive": {
+        "boundary_total": 3120,
+        "boundary_missing": 0,
+        "entry_mature": 2275,
+        "entry_available": 2275
+      },
+      "basic_conservative": {
+        "boundary_total": 3094,
+        "boundary_missing": 0,
+        "entry_mature": 2251,
+        "entry_available": 2251
+      },
+      "itch_matched_exclusions": {
+        "boundary_total": 3094,
+        "boundary_missing": 0,
+        "entry_mature": 2251,
+        "entry_available": 2251
+      }
+    },
+    {
+      "symbol": "GOOG",
+      "itch": {
+        "boundary_total": 3120,
+        "boundary_missing": 34,
+        "entry_mature": 2275,
+        "entry_available": 2225
+      },
+      "basic": {
+        "boundary_total": 3120,
+        "boundary_missing": 0,
+        "entry_mature": 2275,
+        "entry_available": 2275
+      },
+      "basic_positive": {
+        "boundary_total": 3120,
+        "boundary_missing": 0,
+        "entry_mature": 2275,
+        "entry_available": 2275
+      },
+      "basic_conservative": {
+        "boundary_total": 3094,
+        "boundary_missing": 0,
+        "entry_mature": 2251,
+        "entry_available": 2251
+      },
+      "itch_matched_exclusions": {
+        "boundary_total": 3094,
+        "boundary_missing": 34,
+        "entry_mature": 2251,
+        "entry_available": 2201
+      }
+    },
+    {
+      "symbol": "MU",
+      "itch": {
+        "boundary_total": 3120,
+        "boundary_missing": 0,
+        "entry_mature": 2275,
+        "entry_available": 2275
+      },
+      "basic": {
+        "boundary_total": 3120,
+        "boundary_missing": 0,
+        "entry_mature": 2275,
+        "entry_available": 2275
+      },
+      "basic_positive": {
+        "boundary_total": 3120,
+        "boundary_missing": 0,
+        "entry_mature": 2275,
+        "entry_available": 2275
+      },
+      "basic_conservative": {
+        "boundary_total": 3094,
+        "boundary_missing": 0,
+        "entry_mature": 2251,
+        "entry_available": 2251
+      },
+      "itch_matched_exclusions": {
+        "boundary_total": 3094,
+        "boundary_missing": 0,
+        "entry_mature": 2251,
+        "entry_available": 2251
+      }
+    },
+    {
+      "symbol": "NVDA",
+      "itch": {
+        "boundary_total": 3120,
+        "boundary_missing": 1,
+        "entry_mature": 2275,
+        "entry_available": 2274
+      },
+      "basic": {
+        "boundary_total": 3120,
+        "boundary_missing": 0,
+        "entry_mature": 2275,
+        "entry_available": 2275
+      },
+      "basic_positive": {
+        "boundary_total": 3120,
+        "boundary_missing": 0,
+        "entry_mature": 2275,
+        "entry_available": 2275
+      },
+      "basic_conservative": {
+        "boundary_total": 3094,
+        "boundary_missing": 0,
+        "entry_mature": 2251,
+        "entry_available": 2251
+      },
+      "itch_matched_exclusions": {
+        "boundary_total": 3094,
+        "boundary_missing": 1,
+        "entry_mature": 2251,
+        "entry_available": 2250
+      }
+    },
+    {
+      "symbol": "SNDK",
+      "itch": {
+        "boundary_total": 3120,
+        "boundary_missing": 0,
+        "entry_mature": 2275,
+        "entry_available": 2275
+      },
+      "basic": {
+        "boundary_total": 3120,
+        "boundary_missing": 0,
+        "entry_mature": 2275,
+        "entry_available": 2275
+      },
+      "basic_positive": {
+        "boundary_total": 3120,
+        "boundary_missing": 0,
+        "entry_mature": 2275,
+        "entry_available": 2275
+      },
+      "basic_conservative": {
+        "boundary_total": 3094,
+        "boundary_missing": 0,
+        "entry_mature": 2251,
+        "entry_available": 2251
+      },
+      "itch_matched_exclusions": {
+        "boundary_total": 3094,
+        "boundary_missing": 0,
+        "entry_mature": 2251,
+        "entry_available": 2251
+      }
+    },
+    {
+      "symbol": "COST",
+      "itch": {
+        "boundary_total": 3120,
+        "boundary_missing": 547,
+        "entry_mature": 2275,
+        "entry_available": 1569
+      },
+      "basic": {
+        "boundary_total": 3120,
+        "boundary_missing": 7,
+        "entry_mature": 2275,
+        "entry_available": 2260
+      },
+      "basic_positive": {
+        "boundary_total": 3120,
+        "boundary_missing": 48,
+        "entry_mature": 2275,
+        "entry_available": 2199
+      },
+      "basic_conservative": {
+        "boundary_total": 3094,
+        "boundary_missing": 47,
+        "entry_mature": 2251,
+        "entry_available": 2177
+      },
+      "itch_matched_exclusions": {
+        "boundary_total": 3094,
+        "boundary_missing": 538,
+        "entry_mature": 2251,
+        "entry_available": 1558
+      }
+    }
+  ]
+}

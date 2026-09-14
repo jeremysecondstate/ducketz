@@ -1,5 +1,7 @@
 # Monitoring and recovery
 
+Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from `datafetching/watchlist.txt` and validate historical publications against their own saved universes.
+
 > September 8 daytime repair: the existing operations watch is now named
 > **Loops Operations Watch** and covers both daytime incidents and overnight
 > preparation. See [Independent stock horizons](INDEPENDENT_STOCK_HORIZONS.md#broker-recovery-and-operational-supervision)
@@ -7,10 +9,10 @@
 > and controlled repair/restart requirements. The older daytime monitoring
 > description below does not limit the user's explicitly authorized repairs.
 
-> Current overnight supervision (September 8, 2026): the 21:05 Pacific daily
+> Current overnight supervision (September 13, 2026): the 21:05 Pacific daily
 > Scheduled owner runs the full close fetch and downstream workflow, with native
 > weekend/holiday no-ops. It reads training progress/errors throughout its run.
-> `Loops Operations Watch` checks hourly at :00 and covers abandoned/failed
+> `Loops Operations Watch` checks every 90 minutes and covers abandoned/failed
 > runs; it may start a missing fresh run only after 21:15 Pacific. See
 > [NIGHTLY_GAMEPLAN.md](NIGHTLY_GAMEPLAN.md) for status, stop, recovery, repair,
 > and resume. The monitor/guardian implementations described below are diagnostic
@@ -31,7 +33,7 @@ trade-review publications:
 - trade-review pointer `C:\DATASTORE\ml\gameplan-trade-plan-latest\run.json`,
   pointing to the same action date and pinned source Gameplan;
 - selected generation manifest/receipt and exact row counts;
-- all `3 × configured symbols` production OPRA cursors (21 for seven symbols);
+- all `3 × configured symbols` production OPRA cursors (33 for eleven symbols);
 - optional daytime paper receipts under
   `C:\DATASTORE\ml\gameplan-decision-runs`;
 - live stock decisions under `C:\DATASTORE\ml\stock-trader-decision-runs` and
@@ -50,7 +52,7 @@ A successful run must prove:
    Strategy stages are omitted only under the explicit stock-only scope;
 4. four model reports exist for `1h`, `4h`, `1d`, and `1w`;
 5. the gameplan contains exactly 24 forecasts and 24 options intents per symbol
-   in its saved manifest (168 of each for seven symbols);
+   in its saved manifest (264 of each for eleven symbols);
 6. the pointer, manifest, receipt, and file checksums verify;
 7. forecasts remain advisory and overnight `orders_placed=0`;
 8. the separate trade-review has 24 rows per configured symbol, exact original

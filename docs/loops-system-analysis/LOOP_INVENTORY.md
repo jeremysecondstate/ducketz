@@ -1,5 +1,7 @@
 # Loop inventory
 
+Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from `datafetching/watchlist.txt` and validate historical publications against their own saved universes.
+
 ## Current scheduled owner
 
 Normal operation has one sequential overnight workflow, its health watch, the
@@ -24,7 +26,7 @@ The active stock-only XNAS workflow runs these stages sequentially:
 | 4 | `ml.gameplan_evaluation` | Evaluate all saved Gameplans from September 4 and retain pending forecasts |
 | 5 | `ml.nightly_gameplan` | Immutable next-session plan: 24 forecasts and 24 stock-only option placeholders per symbol |
 | 6 | `ml.stock_trader.independent_training` | Separate learned sizing fits and qualification from the four pinned cohorts |
-| 7 | `ml.gameplan_trade_planning` | Required separate review: fresh cash/all-seven holdings, capacity and direction quantities, working prices, shared hourly ledger and end-of-day projection |
+| 7 | `ml.gameplan_trade_planning` | Required separate review: fresh cash/all-configured-symbol holdings, capacity and direction quantities, working prices, shared hourly ledger and end-of-day projection |
 
 Explicit stock-and-options scopes retain `ml.strategy_profit_training_runtime`
 and `ml.strategy_runtime` before publication. Older resumes preserve their

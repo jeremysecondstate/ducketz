@@ -1,0 +1,34 @@
+{
+  "checked_at": "2026-09-14T03:02:28.491562+00:00",
+  "scope": "Shared ALFRED vintages from 2018 onward; one observation per API call to obtain provider count. No historical datasets imported.",
+  "requests": [
+    {
+      "series_id": "FEDFUNDS",
+      "http_status": 200,
+      "total_observations": 104,
+      "returned_sample_rows": 1,
+      "sample_json_bytes": 103
+    },
+    {
+      "series_id": "CPIAUCSL",
+      "http_status": 200,
+      "total_observations": 463,
+      "returned_sample_rows": 1,
+      "sample_json_bytes": 106
+    },
+    {
+      "series_id": "UNRATE",
+      "http_status": 200,
+      "total_observations": 173,
+      "returned_sample_rows": 1,
+      "sample_json_bytes": 102
+    },
+    {
+      "series_id": "GDP",
+      "http_status": 200,
+      "total_observations": 207,
+      "returned_sample_rows": 1,
+      "sample_json_bytes": 108
+    }
+  ]
+}

@@ -102,7 +102,9 @@ def evaluate_forecasts(
         # stock labels may never supply outcomes for those earlier contracts.
         if str(row.get("target_contract_version")) == STOCK_TARGET_CONTRACT_VERSION:
             from ml.stock_target_prices import independent_price_identity
-            return (STOCK_TARGET_CONTRACT_VERSION, *independent_price_identity(row))
+            selection = row.get("source_selection_contract")
+            selection = None if pd.isna(selection) else str(selection)
+            return (STOCK_TARGET_CONTRACT_VERSION, *independent_price_identity(row), selection)
         return "legacy"
     observed_frames = [frame for frame in observed_groups.values() if not frame.empty]
     lookup: dict[tuple, Mapping[str, object]] = {}
@@ -226,6 +228,11 @@ def evaluate_saved_gameplans(
 
 def saved_independent_price_sources(root: Path) -> set[str]:
     """Discover source identities from verified immutable independent plans."""
+    return {price for price, _ in saved_independent_observation_sources(root)}
+
+
+def saved_independent_observation_sources(root: Path) -> set[tuple[str, str | None]]:
+    """Keep old feature selection when reconstructing old saved target cohorts."""
     from ml.independent_stock_targets import STOCK_TARGET_CONTRACT_VERSION
     from ml.nightly_gameplan import read_gameplan_run
     from ml.stock_target_prices import independent_price_identity
@@ -234,7 +241,7 @@ def saved_independent_price_sources(root: Path) -> set[str]:
         publication = read_gameplan_run(root, receipt.parent)
         config = publication.manifest.get("configuration", {})
         if config.get("target_contract_version") == STOCK_TARGET_CONTRACT_VERSION:
-            sources.add(independent_price_identity(config)[0])
+            sources.add((independent_price_identity(config)[0], config.get("source_selection_contract")))
     return sources
 
 
@@ -255,16 +262,27 @@ def run_gameplan_evaluation_once(root: Path, *, evaluated_at: object | None = No
     daily, weekly = _daily_weekly_outcomes(samples, feature_columns=())
     from ml.independent_stock_targets import build_stock_training_groups
     from ml.stock_target_prices import CANONICAL_STOCK_PRICE_SOURCE, load_stock_target_prices
+    from ml.gameplan_source_selection import GAMEPLAN_SOURCE_SELECTION_VERSION, select_prior_session_sources
     groups = {"1h": hourly, "4h": four, "1d": daily, "1w": weekly}
     price_files = list(bar_files)
-    for contract in sorted(saved_independent_price_sources(root)):
+    independent_sources = None
+    for contract, selection_contract in sorted(saved_independent_observation_sources(root), key=str):
         source_bars = bars
         if contract != CANONICAL_STOCK_PRICE_SOURCE:
             source_bars, source_files, _ = load_stock_target_prices(root, symbols=symbols, source_contract=contract)
             price_files.extend(source_files)
-        independent = build_stock_training_groups(sources, feature_columns=(), minute_bars=source_bars,
+        selected_sources = sources
+        if selection_contract == GAMEPLAN_SOURCE_SELECTION_VERSION:
+            if independent_sources is None:
+                # Duplicate validation includes the original feature values even
+                # when this evaluator only needs observed target endpoints.
+                from ml.nightly_gameplan import _feature_columns
+                independent_sources = select_prior_session_sources(samples, symbols=symbols, available_at=now,
+                    feature_columns=_feature_columns(source.manifest, samples))
+            selected_sources = independent_sources
+        independent = build_stock_training_groups(selected_sources, feature_columns=(), minute_bars=source_bars,
                                                    available_at=now, price_source_contract=contract)
-        groups.update({f"{contract}/{name}": frame for name, frame in independent.items()})
+        groups.update({f"{contract}/{selection_contract}/{name}": frame for name, frame in independent.items()})
     return evaluate_saved_gameplans(root, observed_groups=groups,
                                    evaluated_at=now, input_files=(samples_path, *dict.fromkeys(price_files)))
 

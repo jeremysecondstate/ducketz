@@ -31,6 +31,8 @@ def fetch(
     | None = None,
 ) -> FetchResult:
     """Fetch FMP corporate data and optional shared commodity proxies."""
+    from datafetching.history_scope import read_history_policy, filter_dated_payload
+    history_policy = read_history_policy(store.root_dir, symbol)
     data_files = 0
     error_files = 0
     advisory_files = 0
@@ -79,6 +81,12 @@ def fetch(
             )
             error_files += 1
             continue
+
+        if history_policy is not None:
+            raw_payload = filter_dated_payload(raw_payload, history_policy['history_floor'])
+            payload_for_rows = raw_payload.get('historical', raw_payload) if isinstance(raw_payload, dict) else raw_payload
+            rows = _corporate_rows_from_payload(symbol=symbol, request_key=spec.key,
+                endpoint=endpoint_used, payload=payload_for_rows)
 
         metadata = {
             "provider_base_url": corporate.base_url,

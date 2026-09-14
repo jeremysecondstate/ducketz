@@ -1,0 +1,103 @@
+{
+  "started_at": "2026-09-13T04:30:28.720059+00:00",
+  "dataset": "XNAS.BASIC",
+  "schema": "ohlcv-1m",
+  "symbol": "COST",
+  "diagnostic_only": true,
+  "production_writes": false,
+  "orders": 0,
+  "windows": [
+    {
+      "window": "sep11-premarket",
+      "status": "COMPLETE",
+      "rows": 35,
+      "publisher_ids": [
+        93
+      ],
+      "raw_sha256": "5b7b8ede9f2dbe25c26e0c1e06c84cf6677cc334dc14578f671eae0d01c54b35",
+      "observations_sha256": "74d21eec21cad19a866460eeef9a6a8486c354fa2f94c9dceade4142988ea471",
+      "points": [
+        {
+          "boundary_utc": "2026-09-11T12:00:00Z",
+          "bar_start": "2026-09-11 11:59:00+00:00",
+          "bar_completion": "2026-09-11 12:00:00+00:00",
+          "close": 905.0,
+          "age_minutes": 0.0,
+          "within_five_minutes": true,
+          "publisher_id": 93
+        }
+      ]
+    },
+    {
+      "window": "sep11-afterhours",
+      "status": "COMPLETE",
+      "rows": 140,
+      "publisher_ids": [
+        93
+      ],
+      "raw_sha256": "aa3fbd75a20b6b88dbf6967585895e0987e3ca7d36c3d455c7a7f35ad91299bc",
+      "observations_sha256": "3cc2c12cefd46d1432a55ba14e5709c69c83137e64a1fa858e817e110db6a736",
+      "points": [
+        {
+          "boundary_utc": "2026-09-11T21:00:00Z",
+          "bar_start": "2026-09-11 20:59:00+00:00",
+          "bar_completion": "2026-09-11 21:00:00+00:00",
+          "close": 904.82,
+          "age_minutes": 0.0,
+          "within_five_minutes": true,
+          "publisher_id": 93
+        },
+        {
+          "boundary_utc": "2026-09-11T22:00:00Z",
+          "bar_start": "2026-09-11 21:58:00+00:00",
+          "bar_completion": "2026-09-11 21:59:00+00:00",
+          "close": 904.8117,
+          "age_minutes": 1.0,
+          "within_five_minutes": true,
+          "publisher_id": 93
+        },
+        {
+          "boundary_utc": "2026-09-11T23:00:00Z",
+          "bar_start": "2026-09-11 22:59:00+00:00",
+          "bar_completion": "2026-09-11 23:00:00+00:00",
+          "close": 904.8,
+          "age_minutes": 0.0,
+          "within_five_minutes": true,
+          "publisher_id": 93
+        },
+        {
+          "boundary_utc": "2026-09-12T00:00:00Z",
+          "bar_start": "2026-09-11 23:59:00+00:00",
+          "bar_completion": "2026-09-12 00:00:00+00:00",
+          "close": 904.9808,
+          "age_minutes": 0.0,
+          "within_five_minutes": true,
+          "publisher_id": 93
+        }
+      ]
+    },
+    {
+      "window": "sep10-prior-close",
+      "status": "COMPLETE",
+      "rows": 17,
+      "publisher_ids": [
+        93
+      ],
+      "raw_sha256": "da54a3f7aed3b88f8f07ae0d4c1b5ecf8b4de4b43bf60ecedf9c33c42486cc59",
+      "observations_sha256": "3828a2bcc71564b7481442809f445d206aa1b700b3eb419f2fcef758bce20112",
+      "points": [
+        {
+          "boundary_utc": "2026-09-11T00:00:00Z",
+          "bar_start": "2026-09-10 23:59:00+00:00",
+          "bar_completion": "2026-09-11 00:00:00+00:00",
+          "close": 902.2,
+          "age_minutes": 0.0,
+          "within_five_minutes": true,
+          "publisher_id": 93
+        }
+      ]
+    }
+  ],
+  "status": "COMPLETE",
+  "completed_at": "2026-09-13T04:31:10.655546+00:00"
+}

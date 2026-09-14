@@ -428,10 +428,11 @@ def render_trade_review(trade_rows: pd.DataFrame, report: Mapping, model_reports
         horizons = _mapping(enrichment.get("horizons", enrichment))
         sizing_rows = [(horizon, details.get("status"), f"{_count(details.get('fitted_scope_count'))} / {_count(details.get('qualified_scope_count'))}",
                         _sizing_failures(details)) for horizon in _HORIZONS if isinstance((details := horizons.get(horizon)), Mapping)]
-        model_details += ["### Independent sizing models", ""]
+        model_details += ["### Optional learned return and sizing models", ""]
         model_details += _table(["Horizon", "Fit status", "Fitted / qualified scopes", "Failed checks / recorded reason"], sizing_rows)
-        model_details += ["Fitted and qualified are separate outcomes. Scheduled entries require approved directional probabilities; "
-                  "learned sizing remains a separate assessment lane and retains its recorded research status.", ""]
+        model_details += ["These models are separate from the fixed sizing rule used for this plan's quantities. "
+                  "Fitted means training completed; qualified means the model passed validation for the indicated stock and entry window. "
+                  "A fitted model with zero qualified scopes is not used for learned sizing. The table records the checks that did not pass.", ""]
     model_details += ["</details>", ""]
     lines += ["## Forecasts and trade planning by stock", "",
               "Day 1 is the completed session used to build this plan; the next exchange session is Day 2. "

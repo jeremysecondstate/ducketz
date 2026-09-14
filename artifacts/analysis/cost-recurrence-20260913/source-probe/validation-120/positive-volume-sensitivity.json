@@ -1,0 +1,1241 @@
+{
+  "generated_at": "2026-09-13T04:37:01.358240+00:00",
+  "dataset": "XNAS.BASIC",
+  "policy": "Sensitivity only: native volume > 0, same five-minute boundary selectors, no provider data changed",
+  "boundary_rates": [
+    {
+      "symbol": "AAPL",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 960,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AAPL",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 600,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AAPL",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 960,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 600,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "COST",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 921,
+      "missing": 39,
+      "missing_rate": 0.040625
+    },
+    {
+      "symbol": "COST",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 591,
+      "missing": 9,
+      "missing_rate": 0.015
+    },
+    {
+      "symbol": "COST",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 960,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 600,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 960,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 600,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 960,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 600,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "period": "afterhours",
+      "boundaries": 960,
+      "available": 960,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "period": "premarket",
+      "boundaries": 600,
+      "available": 600,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "period": "regular",
+      "boundaries": 1560,
+      "available": 1560,
+      "missing": 0,
+      "missing_rate": 0.0
+    }
+  ],
+  "entry_routes": [
+    {
+      "symbol": "AAPL",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AAPL",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AAPL",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AAPL",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AAPL",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AAPL",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AAPL",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AAPL",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AAPL",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AAPL",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AAPL",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AAPL",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AAPL",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AAPL",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AAPL",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 116,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AAPL",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AAPL",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AAPL",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AAPL",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 119,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 116,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 119,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "COST",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 115,
+      "missing": 5,
+      "missing_rate": 0.041666666666666664
+    },
+    {
+      "symbol": "COST",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 115,
+      "missing": 5,
+      "missing_rate": 0.041666666666666664
+    },
+    {
+      "symbol": "COST",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 117,
+      "missing": 3,
+      "missing_rate": 0.025
+    },
+    {
+      "symbol": "COST",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "COST",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "COST",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "COST",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "COST",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "COST",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "COST",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "COST",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 119,
+      "missing": 1,
+      "missing_rate": 0.008333333333333333
+    },
+    {
+      "symbol": "COST",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 112,
+      "missing": 8,
+      "missing_rate": 0.06666666666666667
+    },
+    {
+      "symbol": "COST",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 107,
+      "missing": 13,
+      "missing_rate": 0.10833333333333334
+    },
+    {
+      "symbol": "COST",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 106,
+      "missing": 14,
+      "missing_rate": 0.11666666666666667
+    },
+    {
+      "symbol": "COST",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 111,
+      "missing": 5,
+      "missing_rate": 0.04310344827586207
+    },
+    {
+      "symbol": "COST",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 118,
+      "missing": 2,
+      "missing_rate": 0.016666666666666666
+    },
+    {
+      "symbol": "COST",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "COST",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 111,
+      "missing": 9,
+      "missing_rate": 0.075
+    },
+    {
+      "symbol": "COST",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 108,
+      "missing": 11,
+      "missing_rate": 0.09243697478991597
+    },
+    {
+      "symbol": "GOOG",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 116,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 119,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 116,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "MU",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 119,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 116,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 119,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "1d@D+1",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "1h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "1h@05:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "1h@06:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "1h@07:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "1h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "1h@09:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "1h@10:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "1h@11:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "1h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "1h@13:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "1h@14:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "1h@15:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "1h@16:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "1w@D+5",
+      "mature_windows": 116,
+      "available": 116,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "4h@04:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "4h@08:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "4h@12:00",
+      "mature_windows": 120,
+      "available": 120,
+      "missing": 0,
+      "missing_rate": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "4h@16:00",
+      "mature_windows": 119,
+      "available": 119,
+      "missing": 0,
+      "missing_rate": 0.0
+    }
+  ]
+}

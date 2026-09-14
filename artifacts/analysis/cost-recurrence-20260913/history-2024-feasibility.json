@@ -1,0 +1,2062 @@
+{
+  "started_at": "2026-09-13T05:36:25.018050+00:00",
+  "status": "METADATA_AND_SAVED_DATA_VERIFIED_NO_ACQUISITION",
+  "metadata_only": true,
+  "timeseries_requests": 0,
+  "production_writes": false,
+  "training_runs": 0,
+  "sdk_version": "0.81.0",
+  "preflights": [
+    {
+      "observed_at": "2026-09-13T05:36:29.059293+00:00",
+      "request": {
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "AAPL"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2023-12-29T00:00:00Z",
+        "end": "2025-01-13T00:00:00Z"
+      },
+      "estimated_cost_usd": 0.0,
+      "estimated_billable_bytes": 11691680,
+      "estimated_record_count": 208780,
+      "zero_cost": true,
+      "range_pass": true
+    },
+    {
+      "observed_at": "2026-09-13T05:36:30.845423+00:00",
+      "request": {
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "AMZN"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2023-12-29T00:00:00Z",
+        "end": "2025-01-13T00:00:00Z"
+      },
+      "estimated_cost_usd": 0.0,
+      "estimated_billable_bytes": 11105304,
+      "estimated_record_count": 198309,
+      "zero_cost": true,
+      "range_pass": true
+    },
+    {
+      "observed_at": "2026-09-13T05:36:33.105824+00:00",
+      "request": {
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2023-12-29T00:00:00Z",
+        "end": "2025-01-13T00:00:00Z"
+      },
+      "estimated_cost_usd": 0.0,
+      "estimated_billable_bytes": 6984880,
+      "estimated_record_count": 124730,
+      "zero_cost": true,
+      "range_pass": true
+    },
+    {
+      "observed_at": "2026-09-13T05:36:34.810799+00:00",
+      "request": {
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "GOOG"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2023-12-29T00:00:00Z",
+        "end": "2025-01-13T00:00:00Z"
+      },
+      "estimated_cost_usd": 0.0,
+      "estimated_billable_bytes": 10138632,
+      "estimated_record_count": 181047,
+      "zero_cost": true,
+      "range_pass": true
+    },
+    {
+      "observed_at": "2026-09-13T05:36:43.237196+00:00",
+      "request": {
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "MU"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2023-12-29T00:00:00Z",
+        "end": "2025-01-13T00:00:00Z"
+      },
+      "estimated_cost_usd": 0.0,
+      "estimated_billable_bytes": 9923368,
+      "estimated_record_count": 177203,
+      "zero_cost": true,
+      "range_pass": true
+    },
+    {
+      "observed_at": "2026-09-13T05:36:45.847909+00:00",
+      "request": {
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "NVDA"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2023-12-29T00:00:00Z",
+        "end": "2025-01-13T00:00:00Z"
+      },
+      "estimated_cost_usd": 0.0,
+      "estimated_billable_bytes": 13351128,
+      "estimated_record_count": 238413,
+      "zero_cost": true,
+      "range_pass": true
+    },
+    {
+      "observed_at": "2026-09-13T05:36:45.848614+00:00",
+      "request": {
+        "dataset": "XNAS.ITCH",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "SNDK"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2023-12-29T00:00:00Z",
+        "end": "2025-01-13T00:00:00Z"
+      },
+      "status": "NOT_AVAILABLE_SYMBOL_UNMAPPED",
+      "estimated_cost_usd": null,
+      "estimated_billable_bytes": 0,
+      "estimated_record_count": 0,
+      "zero_cost": null,
+      "range_pass": true,
+      "reason": "Native symbology has no mapping for this symbol during the requested period; no data request is appropriate."
+    }
+  ],
+  "saved_feature_evidence": {
+    "samples_path": "C:\\DATASTORE\\ml\\runs\\20260912T045017.509319Z\\samples.parquet",
+    "samples_sha256": "1702982e58bda38d875fa95f8b48e7aea21b1a813f2ea7f07957c82fa5c4fb21",
+    "row_time_basis": "information_available_at converted to America/Los_Angeles; year 2024",
+    "note": "Potential historical feature inputs; does not assert admissible independent target labels or complete optional features.",
+    "core_feature_columns_counted": [
+      "mr__trend_atr",
+      "mr__momentum_risk_adjusted",
+      "mr__range_position",
+      "mr__volume_score",
+      "mr__volatility_ratio",
+      "bp__compression_score",
+      "bp__range_contraction_score",
+      "bp__direction_score",
+      "bp__upside_pressure_score",
+      "bp__downside_pressure_score",
+      "bp__breakout_magnitude_atr",
+      "bp__volume_participation_score",
+      "mr__technical_score",
+      "mr__regime_strength",
+      "bp__breakout_readiness_score",
+      "bp__breakout_strength_score",
+      "bp__setup_quality",
+      "mr__confidence_score",
+      "bp__confidence_score",
+      "mr__atr_percent",
+      "mr__technical_score_change_5",
+      "bp__bars_since_state_change",
+      "mr__trend_score",
+      "mr__momentum_score",
+      "mr__range_score",
+      "bp__boundary_proximity_score",
+      "bar__intrabar_range_atr",
+      "bar__close_location",
+      "life__technical_consensus_score",
+      "life__technical_consensus_change_5d",
+      "life__long_term_technical_score",
+      "life__technical_term_spread",
+      "life__timing_score",
+      "bp__readiness_change_5",
+      "bar__overnight_gap_atr",
+      "weekly__technical_score",
+      "weekly__technical_score_change_5",
+      "weekly__breakout_readiness_score",
+      "mr__bars_since_regime_change"
+    ],
+    "symbols": [
+      {
+        "symbol": "AAPL",
+        "rows_all_horizons": 10785,
+        "hourly_rows": 6128,
+        "hourly_source_dates": 252,
+        "first_hourly_information_at": "2024-01-02 13:05:00+00:00",
+        "last_hourly_information_at": "2025-01-01 00:05:00+00:00",
+        "hourly_rows_with_any_core_features": 6128,
+        "hourly_rows_with_at_least_20_core_features": 6128,
+        "selected_feature_non_null_rows": {
+          "mr__trend_atr": 6128,
+          "mr__technical_score": 6128,
+          "bp__compression_score": 6128,
+          "bp__breakout_readiness_score": 6128
+        },
+        "horizon_rows": {
+          "1h": 6128,
+          "4h": 2893,
+          "1d": 252,
+          "1w": 252,
+          "1w-d1": 252,
+          "1w-d2": 252,
+          "1w-d3": 252,
+          "1w-d4": 252,
+          "1w-d5": 252
+        }
+      },
+      {
+        "symbol": "AMZN",
+        "rows_all_horizons": 10723,
+        "hourly_rows": 6094,
+        "hourly_source_dates": 252,
+        "first_hourly_information_at": "2024-01-02 13:05:00+00:00",
+        "last_hourly_information_at": "2025-01-01 00:05:00+00:00",
+        "hourly_rows_with_any_core_features": 6094,
+        "hourly_rows_with_at_least_20_core_features": 6094,
+        "selected_feature_non_null_rows": {
+          "mr__trend_atr": 6094,
+          "mr__technical_score": 6094,
+          "bp__compression_score": 6094,
+          "bp__breakout_readiness_score": 6094
+        },
+        "horizon_rows": {
+          "1h": 6094,
+          "4h": 2865,
+          "1d": 252,
+          "1w": 252,
+          "1w-d1": 252,
+          "1w-d2": 252,
+          "1w-d3": 252,
+          "1w-d4": 252,
+          "1w-d5": 252
+        }
+      },
+      {
+        "symbol": "COST",
+        "rows_all_horizons": 9245,
+        "hourly_rows": 5167,
+        "hourly_source_dates": 252,
+        "first_hourly_information_at": "2024-01-02 14:05:00+00:00",
+        "last_hourly_information_at": "2025-01-01 00:05:00+00:00",
+        "hourly_rows_with_any_core_features": 5167,
+        "hourly_rows_with_at_least_20_core_features": 5167,
+        "selected_feature_non_null_rows": {
+          "mr__trend_atr": 5167,
+          "mr__technical_score": 5167,
+          "bp__compression_score": 5167,
+          "bp__breakout_readiness_score": 5167
+        },
+        "horizon_rows": {
+          "1h": 5167,
+          "4h": 2314,
+          "1d": 252,
+          "1w": 252,
+          "1w-d1": 252,
+          "1w-d2": 252,
+          "1w-d3": 252,
+          "1w-d4": 252,
+          "1w-d5": 252
+        }
+      },
+      {
+        "symbol": "GOOG",
+        "rows_all_horizons": 10310,
+        "hourly_rows": 5853,
+        "hourly_source_dates": 252,
+        "first_hourly_information_at": "2024-01-02 13:05:00+00:00",
+        "last_hourly_information_at": "2025-01-01 00:05:00+00:00",
+        "hourly_rows_with_any_core_features": 5853,
+        "hourly_rows_with_at_least_20_core_features": 5853,
+        "selected_feature_non_null_rows": {
+          "mr__trend_atr": 5853,
+          "mr__technical_score": 5853,
+          "bp__compression_score": 5853,
+          "bp__breakout_readiness_score": 5853
+        },
+        "horizon_rows": {
+          "1h": 5853,
+          "4h": 2693,
+          "1d": 252,
+          "1w": 252,
+          "1w-d1": 252,
+          "1w-d2": 252,
+          "1w-d3": 252,
+          "1w-d4": 252,
+          "1w-d5": 252
+        }
+      },
+      {
+        "symbol": "MU",
+        "rows_all_horizons": 10389,
+        "hourly_rows": 5896,
+        "hourly_source_dates": 252,
+        "first_hourly_information_at": "2024-01-02 14:05:00+00:00",
+        "last_hourly_information_at": "2025-01-01 00:05:00+00:00",
+        "hourly_rows_with_any_core_features": 5896,
+        "hourly_rows_with_at_least_20_core_features": 5896,
+        "selected_feature_non_null_rows": {
+          "mr__trend_atr": 5896,
+          "mr__technical_score": 5896,
+          "bp__compression_score": 5896,
+          "bp__breakout_readiness_score": 5896
+        },
+        "horizon_rows": {
+          "1h": 5896,
+          "4h": 2729,
+          "1d": 252,
+          "1w": 252,
+          "1w-d1": 252,
+          "1w-d2": 252,
+          "1w-d3": 252,
+          "1w-d4": 252,
+          "1w-d5": 252
+        }
+      },
+      {
+        "symbol": "NVDA",
+        "rows_all_horizons": 10821,
+        "hourly_rows": 6146,
+        "hourly_source_dates": 252,
+        "first_hourly_information_at": "2024-01-02 13:05:00+00:00",
+        "last_hourly_information_at": "2025-01-01 00:05:00+00:00",
+        "hourly_rows_with_any_core_features": 6146,
+        "hourly_rows_with_at_least_20_core_features": 6146,
+        "selected_feature_non_null_rows": {
+          "mr__trend_atr": 6146,
+          "mr__technical_score": 6146,
+          "bp__compression_score": 6146,
+          "bp__breakout_readiness_score": 6146
+        },
+        "horizon_rows": {
+          "1h": 6146,
+          "4h": 2911,
+          "1d": 252,
+          "1w": 252,
+          "1w-d1": 252,
+          "1w-d2": 252,
+          "1w-d3": 252,
+          "1w-d4": 252,
+          "1w-d5": 252
+        }
+      },
+      {
+        "symbol": "SNDK",
+        "rows_all_horizons": 0,
+        "hourly_rows": 0,
+        "hourly_source_dates": 0,
+        "first_hourly_information_at": null,
+        "last_hourly_information_at": null,
+        "hourly_rows_with_any_core_features": 0,
+        "hourly_rows_with_at_least_20_core_features": 0,
+        "selected_feature_non_null_rows": {
+          "mr__trend_atr": 0,
+          "mr__technical_score": 0,
+          "bp__compression_score": 0,
+          "bp__breakout_readiness_score": 0
+        },
+        "horizon_rows": {}
+      }
+    ]
+  },
+  "dataset_metadata": {
+    "schemas": [
+      "mbo",
+      "mbp-1",
+      "mbp-10",
+      "bbo-1s",
+      "bbo-1m",
+      "tbbo",
+      "trades",
+      "ohlcv-1s",
+      "ohlcv-1m",
+      "ohlcv-1h",
+      "ohlcv-1d",
+      "definition",
+      "statistics",
+      "status",
+      "imbalance"
+    ],
+    "range": {
+      "start": "2018-05-01T00:00:00.000000000Z",
+      "end": "2026-09-12T00:00:00.000000000Z",
+      "schema": {
+        "mbo": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "mbp-1": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "mbp-10": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "bbo-1s": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "bbo-1m": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "tbbo": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "trades": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "ohlcv-1s": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "ohlcv-1m": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "ohlcv-1h": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "ohlcv-1d": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "definition": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "statistics": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "status": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        },
+        "imbalance": {
+          "start": "2018-05-01T00:00:00.000000000Z",
+          "end": "2026-09-12T00:00:00.000000000Z"
+        }
+      }
+    },
+    "conditions": [
+      {
+        "date": "2023-12-29",
+        "condition": "available",
+        "last_modified_date": "2025-11-27"
+      },
+      {
+        "date": "2024-01-01",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-02",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-03",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-04",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-05",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-08",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-09",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-10",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-11",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-12",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-15",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-16",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-17",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-18",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-19",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-22",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-23",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-24",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-25",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-26",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-29",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-30",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-01-31",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-01",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-02",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-05",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-06",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-07",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-08",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-09",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-12",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-13",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-14",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-15",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-16",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-19",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-20",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-21",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-22",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-23",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-26",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-27",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-28",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-02-29",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-01",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-04",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-05",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-06",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-07",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-08",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-11",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-12",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-13",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-14",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-15",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-18",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-19",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-20",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-21",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-22",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-25",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-26",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-27",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-28",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-03-29",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-01",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-02",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-03",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-04",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-05",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-08",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-09",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-10",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-11",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-12",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-15",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-16",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-17",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-18",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-19",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-22",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-23",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-24",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-25",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-26",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-29",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-04-30",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-01",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-02",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-03",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-06",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-07",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-08",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-09",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-10",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-13",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-14",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-15",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-16",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-17",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-20",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-21",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-22",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-23",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-24",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-27",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-28",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-29",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-30",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-05-31",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-06-03",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-06-04",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-06-05",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-06-06",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-06-07",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-06-10",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-06-11",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-06-12",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-06-13",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-06-14",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-06-17",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-06-18",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-06-19",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-06-20",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-06-21",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-06-24",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-06-25",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-06-26",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-06-27",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-06-28",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-01",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-02",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-03",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-04",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-05",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-08",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-09",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-10",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-11",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-12",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-15",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-16",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-17",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-18",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-19",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-22",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-23",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-24",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-25",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-26",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-29",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-30",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-07-31",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-01",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-02",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-05",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-06",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-07",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-08",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-09",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-12",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-13",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-14",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-15",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-16",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-19",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-20",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-21",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-22",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-23",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-26",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-27",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-28",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-29",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-08-30",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-02",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-03",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-04",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-05",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-06",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-09",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-10",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-11",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-12",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-13",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-16",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-17",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-18",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-19",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-20",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-23",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-24",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-25",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-26",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-27",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-09-30",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-01",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-02",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-03",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-04",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-07",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-08",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-09",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-10",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-11",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-14",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-15",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-16",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-17",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-18",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-21",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-22",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-23",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-24",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-25",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-28",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-29",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-30",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-10-31",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-01",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-04",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-05",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-06",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-07",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-08",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-11",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-12",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-13",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-14",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-15",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-18",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-19",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-20",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-21",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-22",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-25",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-26",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-27",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-28",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-11-29",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-02",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-03",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-04",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-05",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-06",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-09",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-10",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-11",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-12",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-13",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-16",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-17",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-18",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-19",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-20",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-23",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-24",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-25",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-26",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-27",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-30",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2024-12-31",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2025-01-01",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2025-01-02",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2025-01-03",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2025-01-06",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2025-01-07",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2025-01-08",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2025-01-09",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2025-01-10",
+        "condition": "available",
+        "last_modified_date": "2025-11-28"
+      },
+      {
+        "date": "2025-01-13",
+        "condition": "available",
+        "last_modified_date": "2025-12-09"
+      }
+    ],
+    "symbology": {
+      "result": {
+        "AAPL": [
+          {
+            "d0": "2023-12-29",
+            "d1": "2025-01-13",
+            "s": "38"
+          }
+        ],
+        "AMZN": [
+          {
+            "d0": "2023-12-29",
+            "d1": "2025-01-13",
+            "s": "853"
+          }
+        ],
+        "COST": [
+          {
+            "d0": "2023-12-29",
+            "d1": "2025-01-13",
+            "s": "3572"
+          }
+        ],
+        "GOOG": [
+          {
+            "d0": "2023-12-29",
+            "d1": "2025-01-13",
+            "s": "7151"
+          }
+        ],
+        "MU": [
+          {
+            "d0": "2023-12-29",
+            "d1": "2025-01-13",
+            "s": "10996"
+          }
+        ],
+        "NVDA": [
+          {
+            "d0": "2023-12-29",
+            "d1": "2025-01-13",
+            "s": "11667"
+          }
+        ],
+        "SNDK": []
+      },
+      "symbols": [
+        "AAPL",
+        "AMZN",
+        "COST",
+        "GOOG",
+        "MU",
+        "NVDA",
+        "SNDK"
+      ],
+      "stype_in": "raw_symbol",
+      "stype_out": "instrument_id",
+      "start_date": "2023-12-29",
+      "end_date": "2025-01-13",
+      "partial": [],
+      "not_found": [
+        "SNDK"
+      ],
+      "message": "Not found",
+      "status": 2
+    }
+  },
+  "sndk_early_2025_mapping": {
+    "result": {
+      "SNDK": [
+        {
+          "d0": "2025-02-24",
+          "d1": "2025-02-25",
+          "s": "20442"
+        },
+        {
+          "d0": "2025-02-25",
+          "d1": "2025-03-15",
+          "s": "20433"
+        }
+      ]
+    },
+    "symbols": [
+      "SNDK"
+    ],
+    "stype_in": "raw_symbol",
+    "stype_out": "instrument_id",
+    "start_date": "2025-01-01",
+    "end_date": "2025-03-15",
+    "partial": [
+      "SNDK"
+    ],
+    "not_found": [],
+    "message": "Partially resolved",
+    "status": 1
+  },
+  "capacity": {
+    "datastore_path": "C:/DATASTORE",
+    "available_bytes": 1416789389312,
+    "total_billable_bytes": 63194992,
+    "required_free_bytes": 5495099104,
+    "rule": "5 GiB reserve plus 2 times sum of estimated uncompressed billable bytes",
+    "capacity_pass": true,
+    "note": "Billable bytes are neither compressed download bytes nor final disk size."
+  },
+  "total_estimated_cost_usd": 0,
+  "existing_basic_historical_access_evidence": [
+    {
+      "symbol": "AAPL",
+      "completed_at": "2026-09-13T04:35:25.127039+00:00",
+      "dataset": "XNAS.BASIC",
+      "rows": 115183,
+      "quote_cost_usd": 0.0,
+      "native_dataset": "XNAS.BASIC",
+      "native_schema": "ohlcv-1m",
+      "payload_hashes_verified": true,
+      "request": {
+        "dataset": "XNAS.BASIC",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "AAPL"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-03-20T07:00:00+00:00",
+        "end": "2026-09-12T00:00:00+00:00"
+      }
+    },
+    {
+      "symbol": "AMZN",
+      "completed_at": "2026-09-13T04:35:40.138580+00:00",
+      "dataset": "XNAS.BASIC",
+      "rows": 115382,
+      "quote_cost_usd": 0.0,
+      "native_dataset": "XNAS.BASIC",
+      "native_schema": "ohlcv-1m",
+      "payload_hashes_verified": true,
+      "request": {
+        "dataset": "XNAS.BASIC",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "AMZN"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-03-20T07:00:00+00:00",
+        "end": "2026-09-12T00:00:00+00:00"
+      }
+    },
+    {
+      "symbol": "COST",
+      "completed_at": "2026-09-13T04:36:45.004289+00:00",
+      "dataset": "XNAS.BASIC",
+      "rows": 89283,
+      "quote_cost_usd": 0.0,
+      "native_dataset": "XNAS.BASIC",
+      "native_schema": "ohlcv-1m",
+      "payload_hashes_verified": true,
+      "request": {
+        "dataset": "XNAS.BASIC",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-03-20T07:00:00+00:00",
+        "end": "2026-09-12T00:00:00+00:00"
+      }
+    },
+    {
+      "symbol": "GOOG",
+      "completed_at": "2026-09-13T04:35:53.090535+00:00",
+      "dataset": "XNAS.BASIC",
+      "rows": 113558,
+      "quote_cost_usd": 0.0,
+      "native_dataset": "XNAS.BASIC",
+      "native_schema": "ohlcv-1m",
+      "payload_hashes_verified": true,
+      "request": {
+        "dataset": "XNAS.BASIC",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "GOOG"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-03-20T07:00:00+00:00",
+        "end": "2026-09-12T00:00:00+00:00"
+      }
+    },
+    {
+      "symbol": "MU",
+      "completed_at": "2026-09-13T04:36:07.240109+00:00",
+      "dataset": "XNAS.BASIC",
+      "rows": 116138,
+      "quote_cost_usd": 0.0,
+      "native_dataset": "XNAS.BASIC",
+      "native_schema": "ohlcv-1m",
+      "payload_hashes_verified": true,
+      "request": {
+        "dataset": "XNAS.BASIC",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "MU"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-03-20T07:00:00+00:00",
+        "end": "2026-09-12T00:00:00+00:00"
+      }
+    },
+    {
+      "symbol": "NVDA",
+      "completed_at": "2026-09-13T04:36:23.391723+00:00",
+      "dataset": "XNAS.BASIC",
+      "rows": 116134,
+      "quote_cost_usd": 0.0,
+      "native_dataset": "XNAS.BASIC",
+      "native_schema": "ohlcv-1m",
+      "payload_hashes_verified": true,
+      "request": {
+        "dataset": "XNAS.BASIC",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "NVDA"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-03-20T07:00:00+00:00",
+        "end": "2026-09-12T00:00:00+00:00"
+      }
+    },
+    {
+      "symbol": "SNDK",
+      "completed_at": "2026-09-13T04:36:35.690268+00:00",
+      "dataset": "XNAS.BASIC",
+      "rows": 115969,
+      "quote_cost_usd": 0.0,
+      "native_dataset": "XNAS.BASIC",
+      "native_schema": "ohlcv-1m",
+      "payload_hashes_verified": true,
+      "request": {
+        "dataset": "XNAS.BASIC",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "SNDK"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-03-20T07:00:00+00:00",
+        "end": "2026-09-12T00:00:00+00:00"
+      }
+    }
+  ],
+  "completed_at": "2026-09-13T05:36:46.308146+00:00"
+}

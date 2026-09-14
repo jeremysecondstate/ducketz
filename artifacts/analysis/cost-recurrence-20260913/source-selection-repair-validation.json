@@ -1,0 +1,163 @@
+{
+  "status": "VERIFIED_READ_ONLY_SOURCE_AND_LABEL_SELECTION",
+  "verified_at": "2026-09-13T05:39:41.536718+00:00",
+  "source_run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260912T051210.050260Z",
+  "source_samples": "C:\\DATASTORE\\ml\\runs\\20260912T045017.509319Z\\samples.parquet",
+  "source_samples_sha256": "1702982e58bda38d875fa95f8b48e7aea21b1a813f2ea7f07957c82fa5c4fb21",
+  "pinned_price_file_count_verified": 308,
+  "pinned_price_source": "xnas-itch-archive-v1",
+  "source_selection": {
+    "source_selection_contract": "independent-gameplan-prior-session-features-v1",
+    "as_of": "2026-09-12T05:12:10.050260+00:00",
+    "calendar_policy": "immediately-next-declared-XNAS-or-XNYS-session",
+    "freshness_policy": "completed-hour-ending-at-or-after-source-session-regular-close",
+    "cutoff_policy": "min(run-as-of,source-session-17:05-America/Los_Angeles)",
+    "source_rows": 130423,
+    "eligible_expanded_rows": 30300,
+    "unique_eligible_observations": 20108,
+    "selected_rows": 5564,
+    "selected_rows_by_symbol": {
+      "AAPL": 864,
+      "AMZN": 864,
+      "COST": 862,
+      "GOOG": 863,
+      "MU": 863,
+      "NVDA": 864,
+      "SNDK": 384
+    },
+    "action_date_start": "2023-04-04",
+    "action_date_end": "2026-09-14"
+  },
+  "legacy_source_counts": {
+    "AAPL": 724,
+    "AMZN": 718,
+    "COST": 372,
+    "GOOG": 565,
+    "MU": 591,
+    "NVDA": 825,
+    "SNDK": 149
+  },
+  "repaired_source_counts": {
+    "AAPL": 864,
+    "AMZN": 864,
+    "COST": 862,
+    "GOOG": 863,
+    "MU": 863,
+    "NVDA": 864,
+    "SNDK": 384
+  },
+  "current_monday_source_feature_values_and_clocks_exactly_unchanged_all_seven": true,
+  "original_outputs_and_five_pointers_unchanged": true,
+  "cohorts": {
+    "1h": {
+      "legacy_aligned_rows": 26273,
+      "repaired_aligned_rows": 35851,
+      "legacy_rows_by_symbol": {
+        "AAPL": 4393,
+        "AMZN": 4368,
+        "COST": 2196,
+        "GOOG": 3550,
+        "MU": 4293,
+        "NVDA": 5523,
+        "SNDK": 1950
+      },
+      "repaired_rows_by_symbol": {
+        "AAPL": 5569,
+        "AMZN": 5573,
+        "COST": 4169,
+        "GOOG": 5470,
+        "MU": 5410,
+        "NVDA": 5596,
+        "SNDK": 4064
+      },
+      "cost_january_march_legacy_rows": 0,
+      "cost_january_march_repaired_rows": 550,
+      "cost_january_march_repaired_sessions": 61,
+      "exact_legacy_reconstruction_matches_saved_cohort": true,
+      "five_minute_policy_unchanged": true
+    },
+    "4h": {
+      "legacy_aligned_rows": 7261,
+      "repaired_aligned_rows": 9763,
+      "legacy_rows_by_symbol": {
+        "AAPL": 1212,
+        "AMZN": 1201,
+        "COST": 614,
+        "GOOG": 981,
+        "MU": 1184,
+        "NVDA": 1526,
+        "SNDK": 543
+      },
+      "repaired_rows_by_symbol": {
+        "AAPL": 1530,
+        "AMZN": 1528,
+        "COST": 1142,
+        "GOOG": 1491,
+        "MU": 1479,
+        "NVDA": 1544,
+        "SNDK": 1049
+      },
+      "cost_january_march_legacy_rows": 0,
+      "cost_january_march_repaired_rows": 141,
+      "cost_january_march_repaired_sessions": 61,
+      "exact_legacy_reconstruction_matches_saved_cohort": true,
+      "five_minute_policy_unchanged": true
+    },
+    "1d": {
+      "legacy_aligned_rows": 7100,
+      "repaired_aligned_rows": 8700,
+      "legacy_rows_by_symbol": {
+        "AAPL": 1204,
+        "AMZN": 1191,
+        "COST": 460,
+        "GOOG": 1020,
+        "MU": 1182,
+        "NVDA": 1451,
+        "SNDK": 592
+      },
+      "repaired_rows_by_symbol": {
+        "AAPL": 1470,
+        "AMZN": 1465,
+        "COST": 690,
+        "GOOG": 1425,
+        "MU": 1390,
+        "NVDA": 1470,
+        "SNDK": 790
+      },
+      "cost_january_march_legacy_rows": 0,
+      "cost_january_march_repaired_rows": 12,
+      "cost_january_march_repaired_sessions": 7,
+      "exact_legacy_reconstruction_matches_saved_cohort": true,
+      "five_minute_policy_unchanged": true
+    },
+    "1w": {
+      "legacy_aligned_rows": 1416,
+      "repaired_aligned_rows": 1738,
+      "legacy_rows_by_symbol": {
+        "AAPL": 241,
+        "AMZN": 238,
+        "COST": 92,
+        "GOOG": 204,
+        "MU": 234,
+        "NVDA": 290,
+        "SNDK": 117
+      },
+      "repaired_rows_by_symbol": {
+        "AAPL": 294,
+        "AMZN": 293,
+        "COST": 138,
+        "GOOG": 285,
+        "MU": 278,
+        "NVDA": 294,
+        "SNDK": 156
+      },
+      "cost_january_march_legacy_rows": 0,
+      "cost_january_march_repaired_rows": 5,
+      "cost_january_march_repaired_sessions": 5,
+      "exact_legacy_reconstruction_matches_saved_cohort": true,
+      "five_minute_policy_unchanged": true
+    }
+  },
+  "model_training_performed": false,
+  "provider_calls": 0
+}

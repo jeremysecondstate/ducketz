@@ -1,0 +1,258 @@
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-6LSPSP4RFW
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-4DE6GWDMSF
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-8RS6YVN8JQ
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-QGU7JBSN8H
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-BYXVYSVFMA
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-CY4VJGUAJE
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-6N7KJK8TC8
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-NFU499CRAE
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-9XQFKJTEHM
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-95STNJ4FQR
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-7K94R5EH58
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-S6B5DL5W6B
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-5GQY54GDSX
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-TGAJ6CNSFK
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-PFEGJTLVVN
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-RY9NSX47Q7
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-PJTNWQSXVA
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-G7N8CF63TT
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-A39MHAFFEJ
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-JNH9JNL5CW
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-BGHTUAJAEM
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-W7BYXFDYPW
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-JYPXGFR3HF
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-383M4ETWHA
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-V6RV9E3K5V
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-9HPTWQDWU7
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-347YEGNX9P
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-QNP6W383PX
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-H47Y7RWLJW
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-HAJMTDYBX8
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-QQCB9YBFC6
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-3VWHHUXE6G
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-F3WV57QAP9
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-SCJ9W7AEGX
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-X9NG9M5NKD
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-EUHR5NUETE
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-ULVTRARV9M
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-JRA8KMW6ES
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-CEJPVRY5G6
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-48VDCAXFV3
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-6VF5Y9N5JD
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-9TXDSHDDD3
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-WSRPRSR5QD
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-V6Y66AK3QD
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-NCKKV7P4GB
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-VDMHH7KW55
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-BPP7H4A4ML
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-3WVX45KSK4
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-T86XBE5R3P
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-MWN8V9LDWB
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-T6QQYVM3E7
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-WNUAT5WEXK
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-4LLAQFXNSY
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-WC4TELWEEH
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-5B9GNGRYEK
+BATCH_FALLBACK_RESUMED job_id=XNAS-20260914-65KY8VYWTE
+ONBOARDING OPRA.PILLAR/definition 2018-01-01 to 2026-09-12
+BATCH_SCAN definition/CROX.OPT verified_existing=2181 verified_no_data=37 missing=0
+ONBOARDING OPRA.PILLAR/ohlcv-1h 2018-01-01 to 2026-09-12
+BATCH_SCAN ohlcv-1h/CROX.OPT verified_existing=2181 verified_no_data=37 missing=0
+ONBOARDING OPRA.PILLAR/cbbo-1m 2025-09-14 to 2026-09-12
+BATCH_SCAN cbbo-1m/CROX.OPT verified_existing=249 verified_no_data=10 missing=0
+ONBOARDING OPRA.PILLAR/ohlcv-1s 2018-01-01 to 2026-09-12
+BATCH_SCAN ohlcv-1s/CROX.OPT verified_existing=2181 verified_no_data=37 missing=0
+ONBOARDING OPRA.PILLAR/ohlcv-1m 2018-01-01 to 2026-09-12
+BATCH_SCAN ohlcv-1m/CROX.OPT verified_existing=2181 verified_no_data=37 missing=0
+ONBOARDING OPRA.PILLAR/ohlcv-1d 2018-01-01 to 2026-09-12
+BATCH_SCAN ohlcv-1d/CROX.OPT verified_existing=2181 verified_no_data=37 missing=0
+ONBOARDING OPRA.PILLAR/statistics 2018-01-01 to 2026-09-12
+BATCH_SCAN statistics/CROX.OPT verified_existing=2181 verified_no_data=37 missing=0
+ONBOARDING OPRA.PILLAR/status 2024-07-17 to 2026-09-12
+BATCH_SCAN status/CROX.OPT verified_existing=1 verified_no_data=0 missing=562
+BATCH_PROGRESS status/CROX.OPT job=OPRA-20260914-UEPVQ987D8 files=25/493 rows=546084
+BATCH_PROGRESS status/CROX.OPT job=OPRA-20260914-UEPVQ987D8 files=50/493 rows=1150934
+BATCH_PROGRESS status/CROX.OPT job=OPRA-20260914-UEPVQ987D8 files=75/493 rows=1783712
+BATCH_PROGRESS status/CROX.OPT job=OPRA-20260914-UEPVQ987D8 files=100/493 rows=2338963
+BATCH_PROGRESS status/CROX.OPT job=OPRA-20260914-UEPVQ987D8 files=125/493 rows=2790940
+BATCH_PROGRESS status/CROX.OPT job=OPRA-20260914-UEPVQ987D8 files=150/493 rows=3350062
+BATCH_PROGRESS status/CROX.OPT job=OPRA-20260914-UEPVQ987D8 files=175/493 rows=3792135
+BATCH_PROGRESS status/CROX.OPT job=OPRA-20260914-UEPVQ987D8 files=200/493 rows=4079633
+BATCH_PROGRESS status/CROX.OPT job=OPRA-20260914-UEPVQ987D8 files=225/493 rows=4247854
+BATCH_PROGRESS status/CROX.OPT job=OPRA-20260914-UEPVQ987D8 files=250/493 rows=4425572
+BATCH_PROGRESS status/CROX.OPT job=OPRA-20260914-UEPVQ987D8 files=275/493 rows=4593334
+BATCH_PROGRESS status/CROX.OPT job=OPRA-20260914-UEPVQ987D8 files=300/493 rows=4759976
+BATCH_PROGRESS status/CROX.OPT job=OPRA-20260914-UEPVQ987D8 files=325/493 rows=4912115
+BATCH_PROGRESS status/CROX.OPT job=OPRA-20260914-UEPVQ987D8 files=350/493 rows=4999681
+BATCH_PROGRESS status/CROX.OPT job=OPRA-20260914-UEPVQ987D8 files=375/493 rows=5085919
+BATCH_PROGRESS status/CROX.OPT job=OPRA-20260914-UEPVQ987D8 files=400/493 rows=5162868
+BATCH_PROGRESS status/CROX.OPT job=OPRA-20260914-UEPVQ987D8 files=425/493 rows=5236267
+BATCH_PROGRESS status/CROX.OPT job=OPRA-20260914-UEPVQ987D8 files=450/493 rows=5318357
+BATCH_PROGRESS status/CROX.OPT job=OPRA-20260914-UEPVQ987D8 files=475/493 rows=5403940
+COMPLETED_BATCH status/CROX.OPT job=OPRA-20260914-UEPVQ987D8 published=493 no_data=70
+ONBOARDING OPRA.PILLAR/tcbbo 2025-09-14 to 2026-09-12
+BATCH_SCAN tcbbo/CROX.OPT verified_existing=0 verified_no_data=0 missing=259
+WAITING_BATCH job=OPRA-20260914-VM7WW3HRBF state=done progress=100
+IGNORED_UNAVAILABLE_BATCH_FILES tcbbo/CROX.OPT job=OPRA-20260914-VM7WW3HRBF files=1
+DOWNLOADING_BATCH tcbbo/CROX.OPT job=OPRA-20260914-VM7WW3HRBF files=249 bytes=7400132
+BATCH_PROGRESS tcbbo/CROX.OPT job=OPRA-20260914-VM7WW3HRBF files=25/249 rows=48727
+BATCH_PROGRESS tcbbo/CROX.OPT job=OPRA-20260914-VM7WW3HRBF files=50/249 rows=81661
+BATCH_PROGRESS tcbbo/CROX.OPT job=OPRA-20260914-VM7WW3HRBF files=75/249 rows=107851
+BATCH_PROGRESS tcbbo/CROX.OPT job=OPRA-20260914-VM7WW3HRBF files=100/249 rows=124957
+BATCH_PROGRESS tcbbo/CROX.OPT job=OPRA-20260914-VM7WW3HRBF files=125/249 rows=144711
+BATCH_PROGRESS tcbbo/CROX.OPT job=OPRA-20260914-VM7WW3HRBF files=150/249 rows=158915
+BATCH_PROGRESS tcbbo/CROX.OPT job=OPRA-20260914-VM7WW3HRBF files=175/249 rows=170343
+BATCH_PROGRESS tcbbo/CROX.OPT job=OPRA-20260914-VM7WW3HRBF files=200/249 rows=181193
+BATCH_PROGRESS tcbbo/CROX.OPT job=OPRA-20260914-VM7WW3HRBF files=225/249 rows=190507
+BATCH_PROGRESS tcbbo/CROX.OPT job=OPRA-20260914-VM7WW3HRBF files=249/249 rows=196319
+COMPLETED_BATCH tcbbo/CROX.OPT job=OPRA-20260914-VM7WW3HRBF published=249 no_data=10
+ONBOARDING OPRA.PILLAR/cbbo-1s 2025-09-14 to 2026-09-12
+PUBLISHED cbbo-1s/2025-09-15 rows=3752752 bytes=39518537
+PUBLISHED cbbo-1s/2025-09-16 rows=3332290 bytes=34364170
+PUBLISHED cbbo-1s/2025-09-17 rows=4119852 bytes=43153948
+PUBLISHED cbbo-1s/2025-09-18 rows=2566556 bytes=26458959
+PUBLISHED cbbo-1s/2025-09-19 rows=2866247 bytes=29050427
+PUBLISHED cbbo-1s/2025-09-22 rows=3208432 bytes=34094947
+PUBLISHED cbbo-1s/2025-09-23 rows=2850557 bytes=29413506
+PUBLISHED cbbo-1s/2025-09-24 rows=2422286 bytes=24854642
+PUBLISHED cbbo-1s/2025-09-25 rows=3025962 bytes=31721628
+PUBLISHED cbbo-1s/2025-09-26 rows=4339556 bytes=46288502
+PUBLISHED cbbo-1s/2025-09-29 rows=3454342 bytes=36808390
+PUBLISHED cbbo-1s/2025-09-30 rows=3497362 bytes=36502823
+PUBLISHED cbbo-1s/2025-10-01 rows=3486100 bytes=36260279
+PUBLISHED cbbo-1s/2025-10-02 rows=3409702 bytes=36072009
+PUBLISHED cbbo-1s/2025-10-03 rows=3843246 bytes=39982039
+PUBLISHED cbbo-1s/2025-10-06 rows=3287514 bytes=34992728
+PUBLISHED cbbo-1s/2025-10-07 rows=2845758 bytes=29725449
+PUBLISHED cbbo-1s/2025-10-08 rows=2878676 bytes=29048863
+PUBLISHED cbbo-1s/2025-10-09 rows=2988742 bytes=30180391
+PUBLISHED cbbo-1s/2025-10-10 rows=2139932 bytes=22206629
+PUBLISHED cbbo-1s/2025-10-13 rows=2346490 bytes=24001043
+PUBLISHED cbbo-1s/2025-10-14 rows=2118845 bytes=21268777
+PUBLISHED cbbo-1s/2025-10-15 rows=2064937 bytes=20522722
+PUBLISHED cbbo-1s/2025-10-16 rows=1956208 bytes=18987942
+PUBLISHED cbbo-1s/2025-10-17 rows=1944419 bytes=19067806
+PUBLISHED cbbo-1s/2025-10-20 rows=1960574 bytes=19046838
+PUBLISHED cbbo-1s/2025-10-21 rows=2022214 bytes=19836398
+PUBLISHED cbbo-1s/2025-10-23 rows=1802127 bytes=17467011
+PUBLISHED cbbo-1s/2025-10-24 rows=1837216 bytes=18270195
+PUBLISHED cbbo-1s/2025-10-27 rows=2151642 bytes=21775591
+PUBLISHED cbbo-1s/2025-10-28 rows=1861280 bytes=17941726
+PUBLISHED cbbo-1s/2025-10-29 rows=2297195 bytes=23117219
+PUBLISHED cbbo-1s/2025-10-30 rows=2530048 bytes=26651182
+PUBLISHED cbbo-1s/2025-10-31 rows=2256207 bytes=23492243
+PUBLISHED cbbo-1s/2025-11-03 rows=2014809 bytes=20219921
+PUBLISHED cbbo-1s/2025-11-04 rows=1887784 bytes=18910032
+PUBLISHED cbbo-1s/2025-11-05 rows=1922127 bytes=19443672
+PUBLISHED cbbo-1s/2025-11-06 rows=1954639 bytes=19506080
+PUBLISHED cbbo-1s/2025-11-07 rows=2081899 bytes=20858367
+PUBLISHED cbbo-1s/2025-11-10 rows=2406616 bytes=24927262
+PUBLISHED cbbo-1s/2025-11-11 rows=2077283 bytes=21070149
+PUBLISHED cbbo-1s/2025-11-12 rows=2075553 bytes=20494069
+PUBLISHED cbbo-1s/2025-11-13 rows=2021861 bytes=20427704
+PUBLISHED cbbo-1s/2025-11-14 rows=2246570 bytes=22668472
+PUBLISHED cbbo-1s/2025-11-17 rows=2551954 bytes=26340490
+PUBLISHED cbbo-1s/2025-11-18 rows=1784645 bytes=17749835
+PUBLISHED cbbo-1s/2025-11-19 rows=1899136 bytes=19181474
+PUBLISHED cbbo-1s/2025-11-20 rows=1837959 bytes=18966975
+PUBLISHED cbbo-1s/2025-11-21 rows=1648744 bytes=16906499
+PUBLISHED cbbo-1s/2025-11-24 rows=1581248 bytes=16011640
+PUBLISHED cbbo-1s/2025-11-25 rows=1844681 bytes=18755056
+PUBLISHED cbbo-1s/2025-11-26 rows=1734265 bytes=17602022
+FAILED cbbo-1s/batch OpraSyncError: cbbo-1s time-partition record count failed after 3 attempts: BentoClientError: 422 symbology_invalid_request
+None of the symbols could be resolved
+documentation: https://databento.com/docs/api-reference-historical/basics/symbology
+Traceback (most recent call last):
+  File "C:\dev\ducketz\datafetching\databento_opra_history.py", line 3379, in _retry
+    return function(**kwargs)
+  File "C:\dev\ducketz\.venv\Lib\site-packages\databento\historical\api\metadata.py", line 323, in get_record_count
+    response: Response = self._post(
+                         ~~~~~~~~~~^
+        url=self._base_url + ".get_record_count",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        data=data,
+        ^^^^^^^^^^
+        basic_auth=True,
+        ^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\dev\ducketz\.venv\Lib\site-packages\databento\common\http.py", line 113, in _post
+    check_http_error(response)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\dev\ducketz\.venv\Lib\site-packages\databento\common\http.py", line 249, in check_http_error
+    raise BentoClientError(
+    ...<5 lines>...
+    )
+databento.common.error.BentoClientError: 422 symbology_invalid_request
+None of the symbols could be resolved
+documentation: https://databento.com/docs/api-reference-historical/basics/symbology
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\dev\ducketz\datafetching\research_onboarding.py", line 589, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "C:\dev\ducketz\datafetching\research_onboarding.py", line 571, in main
+    receipt = fetch_batch(path, batch, databento.Historical(os.environ['DATABENTO_API_KEY']), lost)
+  File "C:\dev\ducketz\datafetching\research_onboarding.py", line 295, in fetch_batch
+    results.append(fetch_plan(plan_path, client))
+                   ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\ducketz\datafetching\symbol_onboarding.py", line 251, in fetch_plan
+    _execute_opra_entry(client, datastore_root=root, request=request, manifest_id=plan["plan_id"],
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        reporter=print, preflight_estimate=estimate, available_free_bytes=shutil.disk_usage(root).free)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\ducketz\datafetching\databento_cold_start.py", line 1300, in _execute_opra_entry
+    result = synchronize_opra(
+        client,
+    ...<12 lines>...
+        refresh_health=False,
+    )
+  File "C:\dev\ducketz\datafetching\databento_opra_history.py", line 391, in synchronize
+    progress = _execute_batch_aware_plan(
+        client,
+    ...<5 lines>...
+        fail_fast=fail_fast,
+    )
+  File "C:\dev\ducketz\datafetching\databento_opra_history.py", line 539, in _execute_batch_aware_plan
+    current = _execute_stream_plan(
+        client,
+    ...<5 lines>...
+        fail_fast=fail_fast,
+    )
+  File "C:\dev\ducketz\datafetching\databento_opra_history.py", line 453, in _execute_stream_plan
+    for schema, day, request_start, request_end, segment in tasks:
+                                                            ^^^^^
+  File "C:\dev\ducketz\datafetching\databento_opra_history.py", line 443, in <genexpr>
+    for request_start, request_end, segment in _partition_time_segments(
+                                               ~~~~~~~~~~~~~~~~~~~~~~~~^
+        client,
+        ^^^^^^^
+    ...<2 lines>...
+        symbols=symbols,
+        ^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\dev\ducketz\datafetching\databento_opra_history.py", line 3085, in _partition_time_segments
+    visit(start, end, split=False)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\ducketz\datafetching\databento_opra_history.py", line 3045, in visit
+    _retry(
+    ~~~~~~^
+        getattr(metadata, "get_record_count"),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+        operation=f"{schema} time-partition record count",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\dev\ducketz\datafetching\databento_opra_history.py", line 3385, in _retry
+    raise OpraSyncError(
+    ...<2 lines>...
+    ) from last_error
+datafetching.databento_opra_history.OpraSyncError: cbbo-1s time-partition record count failed after 3 attempts: BentoClientError: 422 symbology_invalid_request
+None of the symbols could be resolved
+documentation: https://databento.com/docs/api-reference-historical/basics/symbology

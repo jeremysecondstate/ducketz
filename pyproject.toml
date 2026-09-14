@@ -8,6 +8,7 @@ version = "0.1.0"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "python-dotenv>=1.0.1",
+    "Pillow>=11,<14",
     "requests>=2.32.3",
     "hyperliquid-python-sdk>=0.16.0",
     "eth-account>=0.13.0",

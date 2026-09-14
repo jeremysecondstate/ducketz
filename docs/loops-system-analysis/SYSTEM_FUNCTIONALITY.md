@@ -1,5 +1,7 @@
 # System functionality
 
+Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from `datafetching/watchlist.txt` and validate historical publications against their own saved universes.
+
 ## System-wide operating model
 
 The current scheduled design is a single sequential overnight owner. The older
@@ -50,7 +52,7 @@ Loop A's overnight close cycle is the provider/data owner. It updates the shared
   lineage, not four independent copies.
 
 Production OPRA history is exactly `definition`, `cbbo-1m`, and `ohlcv-1h` for
-all six parent symbols. Loop A performs a provider estimate/preflight, bounded
+all configured parent symbols. Loop A performs a provider estimate/preflight, bounded
 incremental fetch, atomic partition publication, and cursor advance before
 model work. Its `completed_through` value is exclusive.
 
@@ -85,7 +87,7 @@ The gameplan freezes 24 rows per symbol:
 - five `1d` forecasts for D+1 through D+5;
 - one direct `1w` forecast spanning five eligible sessions.
 
-This is 24 rows per configured symbol (168 for seven). Historical intraday labels use exact
+This is 24 rows per configured symbol (24 × the saved symbol count; 264 for eleven). Historical intraday labels use exact
 one-minute stock bars. Daily labels use the explicit daily components. The
 weekly label is trained directly rather than fabricated as the mean of the five
 daily probabilities.

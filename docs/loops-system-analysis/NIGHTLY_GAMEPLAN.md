@@ -1,5 +1,7 @@
 # Overnight immutable gameplan
 
+Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from `datafetching/watchlist.txt` and validate historical publications against their own saved universes.
+
 This is the operating contract for the Scheduled overnight task and its health
 watch. The task stays with fetching, training, and prediction while they run.
 It investigates errors immediately, repairs verified defects, and resumes the
@@ -125,6 +127,16 @@ five-minute observation tolerance and minute-completion rules apply, with
 actual observation times retained. No missing price is filled or borrowed from
 another provider. Outcomes stop at the completed session's 17:00 boundary.
 Future windows remain pending; mature windows without endpoints await data.
+For each missing endpoint, new reviews retain the closest observation on the
+required side of the boundary, its actual timestamp and distance, and whether
+verified native request ranges cover the full permitted observation interval.
+Complete request coverage with no usable bar is an observation gap, not evidence
+of an unfinished download or proof that no trade occurred. The readable review
+states that distinction rather than implying another unchanged fetch will fix
+it. These diagnostics do not widen the five-minute rule, supply a price, change
+an outcome status, or alter an older saved review. A download or source change
+requires its own evidence; another symbol's denser bars establish no coverage
+for the missing symbol.
 Raw-price direction accuracy excludes neutral, pending and missing outcomes;
 the model's cost-adjusted target and Brier score remain separate fields. Market
 prices are not broker fills and this review does not claim realized trading P/L.
@@ -160,7 +172,7 @@ Its separate outputs live beneath
 - `receipt.json` — checksum-bound completion evidence, with zero orders.
 
 The separate `ml/gameplan-trade-plan-latest/run.json` pointer selects the review.
-Planning preserves the seven-symbol 168-row forecast identity and the frozen
+Planning preserves the source publication's `24 × N` forecast identity and the frozen
 Pacific entry/expiry windows. **Projected Trade Quantity** remains the standalone
 whole-share capacity for one opportunity under the full configured horizon
 budget, current cash/exposure limits and upper working price. It is not summed
@@ -170,7 +182,7 @@ Bearish P(up) <= 46% sells eligible held shares, and Neutral is zero. The main
 table displays BUY/SELL quantities, Plan action, Cash available after (range)
 and Shares remaining. Non-entry gap/outlook rows show a dash.
 
-The stage reads fresh literal cash, all seven stock balances including COST,
+The stage reads fresh literal cash, every configured stock balance,
 working-order reservations, options/other exposure and current horizon
 allocations. It never assumes a cached share count or silently adopts manual
 holdings into the live ownership ledger. The pure scenario may sell unallocated
@@ -326,8 +338,27 @@ substituted for XNAS target outcomes. Forecasts, reports, and the four
 `training-cohort-{horizon}.parquet` outputs carry the source identity. Historical
 Gameplans retain their own source and evaluation contract.
 
-The frozen grid remains 24 forecasts per symbol (168 for seven). The matching
-168 options rows are explicit `NO_TRADE_STOCK_ONLY` placeholders with no option
+New independent publications use `independent-gameplan-prior-session-features-v1`
+for historical and current feature selection. A full hourly source bar must
+belong to the immediately preceding exchange session, begin at or after its
+regular open, and finish between its actual regular close and 17:00 Pacific.
+Its recorded information and decision times must follow the bar end and be no
+later than both the run cutoff and that session's 17:05 Pacific cutoff. This
+admits the last regular-session features when extended-hours bars are sparse;
+it does not require another model's next target to be 04:00. It never carries a
+source across a missing exchange session or fills a target-price observation.
+
+Source clocks, selected-session counts and the versioned selection policy are
+bound into the Gameplan, model reports/payloads, forecasts and training cohorts.
+The OPRA completion requirement continues through the full source session,
+independently of an earlier selected feature bar. Retained models must match
+the selection version. Old publications keep their original source selection
+when evaluated, and the existing five-minute price-label rule is unchanged.
+The correction is used by the next new preparation; do not rerun a completed
+night or rewrite its immutable Gameplan merely to apply it.
+
+The frozen grid remains 24 forecasts per symbol (264 for eleven). The matching
+`24 × N` options rows are explicit `NO_TRADE_STOCK_ONLY` placeholders with no option
 legs, candidates, profit probabilities, or Strategy source authority. The plan,
 manifest configuration, and receipt identify `preparation_scope: STOCK_ONLY`.
 These placeholders preserve the immutable table contract without preparing
@@ -344,11 +375,15 @@ in [SYMBOL_ONBOARDING.md](SYMBOL_ONBOARDING.md#stock-only-candidate-continuation
 
 Stock-only publication and universe activation establish operational readiness;
 they do not guarantee a trade. Model promotion, edge, and trading risk checks
-still decide whether each stock signal can be used. Research-only models keep
-their research label. The deployed independent stock design uses separate
+still decide whether each stock signal can be used. Report whether a model
+passed validation and which checks failed, rather than calling it "research-only".
+Persisted model status identifiers and validation criteria stay unchanged.
+The deployed independent stock design uses separate
 holdings, exact entry/expiry windows and explicit `fixed-horizon-budget-v1`
-sizing. The scheduled worker starts at 03:55 Pacific; learned sizing remains a
-separate research/shadow lane. See
+sizing. The scheduled worker starts at 03:55 Pacific. Optional learned return
+and sizing models do not determine the current Gameplan quantities or the
+fixed-budget worker's sizing; their validation failures do not block those
+quantities. Only the optional `qualified-enrichment` strategy requires them. See
 [Independent stock horizons](INDEPENDENT_STOCK_HORIZONS.md). The default
 stock-only scope retains the original five daily forecast slices.
 
@@ -398,7 +433,7 @@ license denial or substitute another price source when Historical is late.
 
 It must remain active until the workflow completes or reaches an unresolved
 failure. Starting a command and ending the Scheduled task is not completion.
-`Loops Operations Watch` checks at :00 each hour, including weekends,
+`Loops Operations Watch` checks every 90 minutes, including weekends,
 for a missed start, abandoned run, or failure that needs attention. Healthy work
 continues across midnight, weekends, and exchange holidays.
 
@@ -414,8 +449,8 @@ time, CPU time, memory, I/O, log growth, recent output/issues, and time left.
 HGB/MLP fitting emits iteration progress, fit starts/completions, warnings, and
 failures. Non-finite loss fails the fit. A warning needs inspection; it does not
 automatically invalidate a model. Assessment/promotion criteria remain enforced.
-Flat calibration emits an immediate `FIT_WARNING` and keeps that model group
-research-only. This is a model-quality result, not a crashed training process:
+Flat calibration emits an immediate `FIT_WARNING` and that model group does
+not pass validation. This is a model-quality result, not a crashed training process:
 inspect and report it without blindly restarting or weakening the promotion gate.
 Target-boundary exclusions are reported before fitting, and assessment failures
 report raw, calibrated, and training-base-rate scores immediately after scoring.
@@ -490,7 +525,8 @@ The Scheduled operator must:
    24 forecasts and 24 intents per configured symbol (168 each for seven),
    evaluation coverage, model assessments, zero
    overnight orders, and completed-session provider coverage. Report missing
-   data and research-only model groups honestly. For new full independent runs,
+   data and model groups that have not passed validation honestly, identifying
+   whether a failed model is used by the selected strategy. For new full independent runs,
    also verify completed `stock_enrichment_training`,
    `gameplan_trade_planning` and `gameplan_actuals_review` stages, the separate trade-plan receipt and output
    checksums, its exact pinned Gameplan, 24 trade-plan rows per configured symbol,
@@ -795,7 +831,7 @@ authority.
 - The former standalone OPRA maintainer stays paused because OPRA maintenance is
   stage 1 of the overnight owner.
 - The separate Strategy paper-ledger stays paused. The stock daily-adaptation
-  schedule now runs `Loops Operations Watch` hourly at :00 for daytime and
+  schedule now runs `Loops Operations Watch` every 90 minutes for daytime and
   overnight supervision. Its missed overnight start threshold is 21:15 PT. The cumulative
   Gameplan evaluator owns matured directional evaluation; option-intent P/L is
   not claimed without exact-leg execution or separately labeled counterfactual

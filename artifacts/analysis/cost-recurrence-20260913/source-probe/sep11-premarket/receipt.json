@@ -1,0 +1,34 @@
+{
+  "window": "sep11-premarket",
+  "status": "COMPLETE",
+  "rows": 35,
+  "publisher_ids": [
+    93
+  ],
+  "raw_sha256": "5b7b8ede9f2dbe25c26e0c1e06c84cf6677cc334dc14578f671eae0d01c54b35",
+  "observations_sha256": "74d21eec21cad19a866460eeef9a6a8486c354fa2f94c9dceade4142988ea471",
+  "points": [
+    {
+      "boundary_utc": "2026-09-11T12:00:00Z",
+      "bar_start": "2026-09-11 11:59:00+00:00",
+      "bar_completion": "2026-09-11 12:00:00+00:00",
+      "close": 905.0,
+      "age_minutes": 0.0,
+      "within_five_minutes": true,
+      "publisher_id": 93
+    }
+  ],
+  "completed_at": "2026-09-13T04:30:55.150685+00:00",
+  "request": {
+    "dataset": "XNAS.BASIC",
+    "schema": "ohlcv-1m",
+    "symbols": [
+      "COST"
+    ],
+    "stype_in": "raw_symbol",
+    "start": "2026-09-11T11:30:00Z",
+    "end": "2026-09-11T12:15:00Z"
+  },
+  "preflight_sha256": "5c63984490ab39b76cf67f90de99c6014004d734128d4b73b1b637bec707d5f8",
+  "native_metadata_sha256": "a5d32de23eb0886924198135b8a1c5e1baddcdd803071a9ce106631d7ac9a277"
+}

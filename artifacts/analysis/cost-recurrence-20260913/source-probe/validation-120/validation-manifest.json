@@ -1,0 +1,251 @@
+{
+  "generated_at": "2026-09-13T04:38:26.020035+00:00",
+  "status": "VERIFIED_COVERAGE_ONLY_WITH_PROVIDER_QUALITY_LIMITATION",
+  "files": [
+    {
+      "path": "AAPL\\manifest.json",
+      "bytes": 1041,
+      "sha256": "4d2adda829f76c49cdc6af3cdeeabe802e21b25c7da05ece16a1c6c7583aaf1c"
+    },
+    {
+      "path": "AAPL\\native-metadata.json",
+      "bytes": 432,
+      "sha256": "48642314d88c24aa30977e5f37d171e35882aa89ae63e9a6741a295aa6905d78"
+    },
+    {
+      "path": "AAPL\\observations.parquet",
+      "bytes": 2994047,
+      "sha256": "a08dfa46c4abadd39e87c218645501ff72425481cd0690d583af526c73f6f1c2"
+    },
+    {
+      "path": "AAPL\\preflight.json",
+      "bytes": 475,
+      "sha256": "41de2fdf81624b75d7608bd5d3b4066f3c9b231a5e09ecf89725634ba8fcc939"
+    },
+    {
+      "path": "AAPL\\provider.dbn",
+      "bytes": 2874251,
+      "sha256": "9b6a9f7ee3a1853ed8bbd8acbd96477ac5c8f15fb18dc1df27751a356b4c217f"
+    },
+    {
+      "path": "AMZN\\manifest.json",
+      "bytes": 1041,
+      "sha256": "ad2ecc1d1f887abdffacca62c4128420d092b19de048a0ed4f3ae83c8dde4638"
+    },
+    {
+      "path": "AMZN\\native-metadata.json",
+      "bytes": 433,
+      "sha256": "d66e639fd4dc22e7f0813e10fe30bada2bfa8633b35099b67ed7c85a2c04756c"
+    },
+    {
+      "path": "AMZN\\observations.parquet",
+      "bytes": 2920482,
+      "sha256": "73ef53cc1f97d8197861cab40d4309f8ad1e13bb129675390d471c9df15a18ad"
+    },
+    {
+      "path": "AMZN\\preflight.json",
+      "bytes": 475,
+      "sha256": "49f711e20e2a0b50f72c09cb1c8d6184abe4f8074421bce1bebfd99c0c34aa6b"
+    },
+    {
+      "path": "AMZN\\provider.dbn",
+      "bytes": 2799980,
+      "sha256": "22c4d687ad34e2aaf921f8ef6dbfbdb1f950dd5dc6e6244ebff2bddce68f4b71"
+    },
+    {
+      "path": "baseline-inventory.json",
+      "bytes": 113723,
+      "sha256": "47f05a349090e26d6ba8f4de3aca03cda17e0ce191a1794921a1999af0d928a9"
+    },
+    {
+      "path": "boundary-results.parquet",
+      "bytes": 63806,
+      "sha256": "2ba8184c6cc9fc25ad17cd048e083055301635a83a85bb39ee8f10be0fbc6beb"
+    },
+    {
+      "path": "comparison.json",
+      "bytes": 64900,
+      "sha256": "3e3bbbff1c69b294e63480cc811530467ef50663f8814f19aa3ff8d32f62dc0d"
+    },
+    {
+      "path": "conservative-boundaries.parquet",
+      "bytes": 35893,
+      "sha256": "a03d89d50cbffece9a662af9ce2029ad538888d53b51f24ab0c02790a2b10982"
+    },
+    {
+      "path": "conservative-entry-windows.parquet",
+      "bytes": 72912,
+      "sha256": "d8e0ad4be243b1d48936b22182673984ef38f8dfc44a4b8c0413a8bd715c217b"
+    },
+    {
+      "path": "conservative-quality-summary.json",
+      "bytes": 6355,
+      "sha256": "aa7029ddfdd1cb1e499a47d3819a47ab7d7cac9d5fdf669d16084bc059e8972d"
+    },
+    {
+      "path": "COST\\manifest.json",
+      "bytes": 1042,
+      "sha256": "32ea8833b509547be1536f49a910f4b8042c5178934dde2b3ce062fb2dd37148"
+    },
+    {
+      "path": "COST\\native-metadata.json",
+      "bytes": 434,
+      "sha256": "6f615566e40fbb750f9dd596ad29346f5fb57531b6a47d5e9cdb5601080052b4"
+    },
+    {
+      "path": "COST\\observations.parquet",
+      "bytes": 2297111,
+      "sha256": "89a811ce006766e10b62c2e8c8b63c9fb26b66c1a9ca215d9452905cab4179f2"
+    },
+    {
+      "path": "COST\\preflight.json",
+      "bytes": 474,
+      "sha256": "c1b04dffb2b2e4c9de095a86d8915767966bcdd5aeb46bb80501dea0d75a5342"
+    },
+    {
+      "path": "COST\\provider.dbn",
+      "bytes": 2167025,
+      "sha256": "aba1a61a127e01e45c794c10ec9bc3d215f8542265687e2594e19b72fc84eb35"
+    },
+    {
+      "path": "coverage-review.md",
+      "bytes": 8439,
+      "sha256": "64dacc7726eda28de3428250e6fa7bb8adc46cc5caf38bf254830c1befc279e2"
+    },
+    {
+      "path": "dataset-metadata.json",
+      "bytes": 2019,
+      "sha256": "a651b1189cd55a954b290968eaf659904b2f7c9bc1d95e1973dbf0d927b71fc9"
+    },
+    {
+      "path": "entry-window-results.parquet",
+      "bytes": 198352,
+      "sha256": "31e131e6ad662d92479b028fe66780e78a7235e0d28a47c16cf9f0c7ff462269"
+    },
+    {
+      "path": "GOOG\\manifest.json",
+      "bytes": 1041,
+      "sha256": "55230a3c1a5d95b211fa4d15237d864d171ea21b29e5135057469066afcecf24"
+    },
+    {
+      "path": "GOOG\\native-metadata.json",
+      "bytes": 434,
+      "sha256": "3f0a0923ff654ce8a2947b08292b18294b427f548b82cc08dd766c5db4aafa11"
+    },
+    {
+      "path": "GOOG\\observations.parquet",
+      "bytes": 2888585,
+      "sha256": "90db76561ae2cf12e0486592558b92fd22c53dbd5857e3872a895ed4de32f5bb"
+    },
+    {
+      "path": "GOOG\\preflight.json",
+      "bytes": 475,
+      "sha256": "9372412ce4aff0a2bacb298f9971bebc5f8318f4e42cb70f8b4a48b456923301"
+    },
+    {
+      "path": "GOOG\\provider.dbn",
+      "bytes": 2797131,
+      "sha256": "e6da8ef4ed2f60fea1870839b730a1e3fc66d658f81592dd521ae406c8499ff3"
+    },
+    {
+      "path": "MU\\manifest.json",
+      "bytes": 1035,
+      "sha256": "7dc6a88d8ad0e47e288ec904c0acba17ad440e4186fbd6471708c98d50037780"
+    },
+    {
+      "path": "MU\\native-metadata.json",
+      "bytes": 431,
+      "sha256": "955ac348c1b7cc91ddfaee454a81776e1ef1e6a30ec08949ba4a838f17ec43c5"
+    },
+    {
+      "path": "MU\\observations.parquet",
+      "bytes": 3511410,
+      "sha256": "108c97bb80a50daf0cc8e65619aba9c2b72ebab7022335ee7335ad67c61ca4a5"
+    },
+    {
+      "path": "MU\\preflight.json",
+      "bytes": 473,
+      "sha256": "4ba1c923fb9481a3b5289b8aaf61251c2f43dd6ad4fd14fd55db1490c1113183"
+    },
+    {
+      "path": "MU\\provider.dbn",
+      "bytes": 3496879,
+      "sha256": "a4cfcde630d3d068854874b5d5110f75a9a8e46e64b694afe1c762667d918960"
+    },
+    {
+      "path": "NVDA\\manifest.json",
+      "bytes": 1039,
+      "sha256": "f33b3cc31548c04fa5becfbb78d2f4afc4131f835b7625af02eefc3117d360e2"
+    },
+    {
+      "path": "NVDA\\native-metadata.json",
+      "bytes": 435,
+      "sha256": "532dbea3848956a85cbeed3007d9619681507f8032a3d7b0b6f4f0805d68f0bf"
+    },
+    {
+      "path": "NVDA\\observations.parquet",
+      "bytes": 3051229,
+      "sha256": "6e2ef85675ef9e4444542f21ca06071e351a28538d614149c1168c99365d1b28"
+    },
+    {
+      "path": "NVDA\\preflight.json",
+      "bytes": 475,
+      "sha256": "b9f354b7650e7adb962b67c01ab6d73d57f9bb8a9c69e98ce271ae5e6bc05ee7"
+    },
+    {
+      "path": "NVDA\\provider.dbn",
+      "bytes": 2934125,
+      "sha256": "7e4467512f059f900772d7396ec7b6d2aecf905bd818336b852567c308b8401b"
+    },
+    {
+      "path": "positive-volume-boundaries.parquet",
+      "bytes": 35099,
+      "sha256": "f700caa71a0f9391aeec0c538dced2413f524e730c0ffc3eabfd3b41bf225c28"
+    },
+    {
+      "path": "positive-volume-entry-windows.parquet",
+      "bytes": 5433,
+      "sha256": "a5a8adb7467ba57bee8ca02cf62e86ca1a04efe0ffdb4b8380ea1fe75f390869"
+    },
+    {
+      "path": "positive-volume-sensitivity.json",
+      "bytes": 26647,
+      "sha256": "a34f464dc3451c55178314a5e2f06b69ba3f43c418ffdde60b848bb39097dce8"
+    },
+    {
+      "path": "provider-conditions.json",
+      "bytes": 32668,
+      "sha256": "1465ca6530b1c617e6dcd75088827b7a1aa257f96f2e7b2ce42e646ae6582d68"
+    },
+    {
+      "path": "run.json",
+      "bytes": 9048,
+      "sha256": "903ed47a4d44b21c69b20447bcbd7e9f34a37e57bd254a89c42a7e48a1f1afe0"
+    },
+    {
+      "path": "SNDK\\manifest.json",
+      "bytes": 1040,
+      "sha256": "2fcf27c7e22e592d83bd908ab2a094526e8afb2d4abc54d879d6cd8f5eabf6f2"
+    },
+    {
+      "path": "SNDK\\native-metadata.json",
+      "bytes": 435,
+      "sha256": "0e9020cf032c7565b64518ce0a91d7a37bd675ac0719a560e654ecf3a115a1d9"
+    },
+    {
+      "path": "SNDK\\observations.parquet",
+      "bytes": 3558092,
+      "sha256": "b7b87e0b4b455af619d60d86d125a5d4108b2f86cc11ba3a6c9a7680371f7797"
+    },
+    {
+      "path": "SNDK\\preflight.json",
+      "bytes": 475,
+      "sha256": "2e045daeeb20cbdf905b3346de51e35061b3894c0aa9f0344fdaa6c4fb3809e3"
+    },
+    {
+      "path": "SNDK\\provider.dbn",
+      "bytes": 3487140,
+      "sha256": "ae11a3c3849f1ea3a69d7d84f2bfa88399371f91f6a6e362622c6be60f1fd2c1"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "completed_at": "2026-09-13T04:35:25.127039+00:00",
+  "dataset": "XNAS.BASIC",
+  "symbol": "AAPL",
+  "rows": 115183,
+  "zero_volume_rows": 659,
+  "request": {
+    "dataset": "XNAS.BASIC",
+    "schema": "ohlcv-1m",
+    "symbols": [
+      "AAPL"
+    ],
+    "stype_in": "raw_symbol",
+    "start": "2026-03-20T07:00:00+00:00",
+    "end": "2026-09-12T00:00:00+00:00"
+  },
+  "payloads": [
+    {
+      "path": "provider.dbn",
+      "bytes": 2874251,
+      "sha256": "9b6a9f7ee3a1853ed8bbd8acbd96477ac5c8f15fb18dc1df27751a356b4c217f"
+    },
+    {
+      "path": "observations.parquet",
+      "bytes": 2994047,
+      "sha256": "a08dfa46c4abadd39e87c218645501ff72425481cd0690d583af526c73f6f1c2"
+    },
+    {
+      "path": "preflight.json",
+      "bytes": 475,
+      "sha256": "41de2fdf81624b75d7608bd5d3b4066f3c9b231a5e09ecf89725634ba8fcc939"
+    },
+    {
+      "path": "native-metadata.json",
+      "bytes": 432,
+      "sha256": "48642314d88c24aa30977e5f37d171e35882aa89ae63e9a6741a295aa6905d78"
+    }
+  ]
+}

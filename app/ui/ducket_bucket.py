@@ -8,8 +8,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox, ttk
+from PIL import Image, ImageTk
 
 from app.models.portfolio import PortfolioSnapshot
+from app.hyperliquid_accounts import HYPERLIQUID_ACCOUNT_PROFILES
+from app.ui.hyperliquid_workspace import HyperliquidWorkspaceMixin
+from app.services.hyperliquid_markets import display_asset
 from app.services.aggregate import DucketBucketSnapshot
 from app.ui.options_strategies import OptionsStrategiesTab
 from app.ui.rolling_forecasts import RollingForecastTab
@@ -52,13 +56,17 @@ HYPERLIQUID_ASSET_FILENAMES = {
     "jeremy": "jeremy.png",
     "alex": "alex.png",
     "hype": "hype.png",
+    "clearpond": "clearpond-avatar.png",
+    "btc": "btc.png",
+    "eth": "eth.png",
+    "zec": "zec.png",
 }
-HYPERLIQUID_ACCOUNT_CHOICES = ("Jeremy (JE)", "Alex (AL)")
+HYPERLIQUID_ACCOUNT_CHOICES = ("Jeremy (JE)", "Alex (AL)", "Clearpond (CP)")
 HYPE_ACCENT = "#78edc1"
 HYPE_ACCENT_DARK = "#123f3a"
-HYPERLIQUID_POSITION_ROW_HEIGHT = 38
+HYPERLIQUID_POSITION_ROW_HEIGHT = 44
 HYPERLIQUID_POSITION_ICON_SIZE = 28
-HYPERLIQUID_POSITION_ICON_COLUMN_WIDTH = 52
+HYPERLIQUID_POSITION_ICON_COLUMN_WIDTH = 42
 
 
 @dataclass(frozen=True)
@@ -105,11 +113,7 @@ class HyperliquidPositionView:
     def pnl_percent(self) -> float | None:
         if self.return_on_equity is not None:
             return self.return_on_equity * 100.0
-        pnl = _to_float(getattr(self.holding, "unrealized_pnl", None))
-        value = _to_float(getattr(self.holding, "value", None))
-        if pnl is None or value is None or value <= 0:
-            return None
-        return (pnl / value) * 100.0
+        return None
 
 
 def hyperliquid_asset_path(
@@ -124,12 +128,22 @@ def hyperliquid_asset_path(
     return candidate if candidate.is_file() else None
 
 
+def _hyperliquid_photo(path: Path, master: tk.Misc, size: int) -> ImageTk.PhotoImage | None:
+    """Antialias the supplied artwork at display size; keep source files intact."""
+    try:
+        with Image.open(path) as source:
+            artwork = source.convert("RGBA")
+            artwork.thumbnail((size, size), Image.Resampling.LANCZOS)
+            return ImageTk.PhotoImage(artwork, master=master)
+    except (OSError, ValueError, tk.TclError):
+        return None
+
+
 def hyperliquid_account_key(label: str) -> str:
     normalized = label.strip().casefold()
-    if "jeremy" in normalized or normalized.startswith("je"):
-        return "jeremy"
-    if "alex" in normalized or normalized.startswith("al"):
-        return "alex"
+    for key in HYPERLIQUID_ACCOUNT_PROFILES:
+        if normalized == key or normalized.startswith(key + " ("):
+            return key
     return normalized
 
 
@@ -151,11 +165,11 @@ def hyperliquid_account_summary(snapshot: PortfolioSnapshot) -> HyperliquidAccou
     if perp_equity is None:
         perp_equity = snapshot.total_value - spot_equity
     return HyperliquidAccountSummary(
-        equity=round(spot_equity + perp_equity, 2),
+        equity=snapshot.total_value,
         spot_equity=round(spot_equity, 2),
         perp_equity=round(perp_equity, 2),
         available=_mapping_float(facts, "available"),
-        unrealized_pnl=snapshot.unrealized_pnl,
+        unrealized_pnl=_mapping_float(facts, "unrealized_pnl") if "unrealized_pnl" in facts else snapshot.unrealized_pnl,
         margin_used=_mapping_float(facts, "margin_used"),
     )
 
@@ -210,23 +224,15 @@ class _HyperliquidAssetMark(tk.Canvas):
         )
         self._asset_key = asset_key.strip().lower()
         self._size = size
-        self._photo: tk.PhotoImage | None = None
+        self._photo: ImageTk.PhotoImage | None = None
         self._draw()
 
     def _draw(self) -> None:
         self.delete("all")
         path = hyperliquid_asset_path(self._asset_key)
         if path is not None:
-            try:
-                source = tk.PhotoImage(master=self, file=str(path))
-            except tk.TclError:
-                source = None
-            if source is not None:
-                factor = max(
-                    1,
-                    math.ceil(max(source.width(), source.height()) / max(self._size - 4, 1)),
-                )
-                self._photo = source.subsample(factor, factor)
+            self._photo = _hyperliquid_photo(path, self, self._size - 4)
+            if self._photo is not None:
                 self.create_image(self._size / 2, self._size / 2, image=self._photo)
                 return
 
@@ -258,7 +264,7 @@ class _HyperliquidAssetMark(tk.Canvas):
                 joinstyle=tk.ROUND,
             )
             return
-        initials = "JE" if self._asset_key == "jeremy" else "AL" if self._asset_key == "alex" else "--"
+        initials = {"jeremy": "JE", "alex": "AL", "clearpond": "CP", "btc": "B", "eth": "E", "zec": "Z"}.get(self._asset_key, self._asset_key[:2].upper())
         self.create_text(
             self._size / 2,
             self._size / 2,
@@ -278,6 +284,7 @@ class _HyperliquidSparkline(tk.Canvas):
             bd=0,
         )
         self._values: tuple[float, ...] = ()
+        self._line_color = HYPE_ACCENT
         self.bind("<Configure>", self._redraw)
 
     def set_values(self, values: Sequence[object]) -> None:
@@ -314,13 +321,13 @@ class _HyperliquidSparkline(tk.Canvas):
             x = pad_x + ((width - (pad_x * 2)) * index / (len(self._values) - 1))
             y = height - pad_y - ((height - (pad_y * 2)) * (value - low) / spread)
             points.extend((x, y))
-        self.create_line(*points, fill=HYPE_ACCENT, width=2, smooth=True)
+        self.create_line(*points, fill=self._line_color, width=2, smooth=True)
         self.create_oval(
             points[-2] - 2,
             points[-1] - 2,
             points[-2] + 2,
             points[-1] + 2,
-            fill=HYPE_ACCENT,
+            fill=self._line_color,
             outline="",
         )
 
@@ -762,7 +769,7 @@ class DucketsTab:
             table.delete(item_id)
 
 
-class HyperliquidDucketsTab(DucketsTab):
+class HyperliquidDucketsTab(HyperliquidWorkspaceMixin, DucketsTab):
     def __init__(self, root: tk.Tk, parent: ttk.Frame) -> None:
         self.spot_account = tk.StringVar(master=root, value=HYPERLIQUID_ACCOUNT_CHOICES[0])
         self.spot_market = tk.StringVar(master=root, value="HYPE")
@@ -805,13 +812,13 @@ class HyperliquidDucketsTab(DucketsTab):
                 metric: tk.StringVar(master=root, value="--")
                 for metric in ("equity", "spot", "perps", "available", "pnl", "margin")
             }
-            for account_key in ("jeremy", "alex")
+            for account_key in HYPERLIQUID_ACCOUNT_PROFILES
         }
         self.account_pnl_labels: dict[str, tk.Label] = {}
         self.hyperliquid_open_order_by_lookup_key: dict[str, dict[str, object]] = {}
         self.selected_hyperliquid_order_key = ""
         self._position_by_item_id: dict[str, HyperliquidPositionView] = {}
-        self._row_icons: dict[str, tk.PhotoImage] = {}
+        self._row_icons: dict[str, tk.PhotoImage | ImageTk.PhotoImage] = {}
         self._canvas_hovered = False
         self._canvas_viewport_height = 1
         self._last_hyperliquid_layout: str | None = None
@@ -827,46 +834,18 @@ class HyperliquidDucketsTab(DucketsTab):
             parent=parent,
             title="Hyperliquid Duckets",
             sync_button_text="Sync Hyperliquid",
-            sync_snapshots=sync_hyperliquid_portfolios,
+            sync_snapshots=lambda: sync_hyperliquid_portfolios(tuple(self.watchlist)),
         )
         self.status_icon.set("○")
 
-    def _build(self, parent: ttk.Frame, title: str, sync_button_text: str) -> None:
-        del title, sync_button_text
-        self._apply_hyperliquid_styles()
-        self.canvas = tk.Canvas(
-            parent,
-            background=BACKGROUND,
-            highlightthickness=0,
-            bd=0,
-        )
-        scrollbar = ttk.Scrollbar(parent, orient=tk.VERTICAL, command=self.canvas.yview)
-        self.canvas.configure(yscrollcommand=scrollbar.set)
-        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        self.body = ttk.Frame(
-            self.canvas,
-            style="HyperPage.TFrame",
-            padding=(14, 12, 14, 16),
-        )
-        self._body_window = self.canvas.create_window((0, 0), window=self.body, anchor="nw")
-        self.body.columnconfigure(0, weight=1)
-
-        self._build_hyperliquid_header()
-        self._build_overview_cards()
-        self._build_portfolio_workspace()
-        self._build_chain_strip()
-        self._build_trading_workspace()
-
-        self.body.bind("<Configure>", self._update_hyperliquid_scroll_region)
-        self.canvas.bind("<Configure>", self._resize_hyperliquid_body)
-        self.canvas.bind("<Enter>", lambda _event: self._set_hyperliquid_canvas_hover(True))
-        self.canvas.bind("<Leave>", lambda _event: self._set_hyperliquid_canvas_hover(False))
-        self.canvas.bind("<MouseWheel>", self._on_hyperliquid_mousewheel)
 
     def _apply_hyperliquid_styles(self) -> None:
         style = ttk.Style(self.root)
+        for orientation in ("Horizontal", "Vertical"):
+            style.configure(f"Hyper.{orientation}.TScrollbar", background="#253b4d", troughcolor=TABLE_FIELD, bordercolor=TABLE_FIELD, lightcolor=TABLE_FIELD, darkcolor=TABLE_FIELD, arrowcolor=MUTED_TEXT, arrowsize=11)
+        for kind in ("TButton", "TCombobox", "TEntry", "TCheckbutton"):
+            style.configure(f"Hyper.{kind}", font=("Segoe UI", 10), background=SURFACE, foreground=TEXT, bordercolor=BORDER, lightcolor=BORDER, darkcolor=BORDER, padding=5)
+        style.map("Hyper.TButton", foreground=[("disabled", MUTED_TEXT)], background=[("active", "#174b4a")])
         style.configure("HyperPage.TFrame", background=BACKGROUND)
         style.configure("HyperCard.TFrame", background=SURFACE)
         style.configure("HyperCard.TLabel", background=SURFACE, foreground=TEXT, font=BODY_FONT)
@@ -935,15 +914,18 @@ class HyperliquidDucketsTab(DucketsTab):
             lightcolor=TABLE_FIELD,
             darkcolor=TABLE_FIELD,
             rowheight=HYPERLIQUID_POSITION_ROW_HEIGHT,
-            font=("Segoe UI", 9),
+            font=("Segoe UI", 10),
         )
         style.configure(
             "HyperPortfolio.Treeview.Heading",
             background=SURFACE_ALT,
             foreground=MUTED_TEXT,
             bordercolor=BORDER,
+            lightcolor=BORDER,
+            darkcolor=BORDER,
+            relief="flat",
             padding=(5, 6),
-            font=("Segoe UI", 8, "bold"),
+            font=("Segoe UI", 9),
         )
         style.map(
             "HyperPortfolio.Treeview",
@@ -951,544 +933,6 @@ class HyperliquidDucketsTab(DucketsTab):
             foreground=[("selected", TEXT)],
         )
 
-    def _build_hyperliquid_header(self) -> None:
-        header = ttk.Frame(self.body, style="HyperPage.TFrame")
-        self.header_frame = header
-        header.grid(row=0, column=0, sticky="ew", pady=(0, 10))
-        header.columnconfigure(0, weight=1)
-
-        title_group = ttk.Frame(header, style="HyperPage.TFrame")
-        title_group.grid(row=0, column=0, sticky="w")
-        title_row = ttk.Frame(title_group, style="HyperPage.TFrame")
-        title_row.pack(anchor=tk.W)
-        ttk.Label(
-            title_row,
-            text="Hyperliquid Duckets",
-            background=BACKGROUND,
-            foreground=TEXT,
-            font=("Segoe UI", 18, "bold"),
-        ).pack(side=tk.LEFT)
-        tk.Label(
-            title_row,
-            text="●  READ-ONLY CHAIN DATA",
-            background="#0d2e2c",
-            foreground=HYPE_ACCENT,
-            font=("Segoe UI", 8, "bold"),
-            padx=9,
-            pady=4,
-        ).pack(side=tk.LEFT, padx=(12, 0))
-        status_row = ttk.Frame(title_group, style="HyperPage.TFrame")
-        status_row.pack(anchor=tk.W, pady=(3, 0))
-        ttk.Label(
-            status_row,
-            textvariable=self.status_icon,
-            background=BACKGROUND,
-            foreground=HYPE_ACCENT,
-            font=("Segoe UI", 8, "bold"),
-        ).pack(side=tk.LEFT, padx=(0, 4))
-        ttk.Label(
-            status_row,
-            textvariable=self.sync_status,
-            background=BACKGROUND,
-            foreground=MUTED_TEXT,
-            font=("Segoe UI", 8),
-        ).pack(side=tk.LEFT)
-        ttk.Label(
-            status_row,
-            text="  •  ",
-            background=BACKGROUND,
-            foreground=BORDER,
-            font=("Segoe UI", 8),
-        ).pack(side=tk.LEFT)
-        ttk.Label(
-            status_row,
-            textvariable=self.last_sync,
-            background=BACKGROUND,
-            foreground=MUTED_TEXT,
-            font=("Segoe UI", 8),
-        ).pack(side=tk.LEFT)
-
-        self.sync_button = ttk.Button(
-            header,
-            text="↻  Sync Hyperliquid",
-            command=self._sync,
-        )
-        self.sync_button.grid(row=0, column=1, sticky="e")
-
-    def _build_overview_cards(self) -> None:
-        overview = ttk.Frame(self.body, style="HyperPage.TFrame")
-        self.overview_frame = overview
-        overview.grid(row=1, column=0, sticky="ew", pady=(0, 10))
-        for column, weight in enumerate((1, 1, 1)):
-            overview.columnconfigure(column, weight=weight, uniform="hyper-overview")
-        self.account_cards = {
-            "jeremy": self._build_account_card(overview, "jeremy", "Jeremy", 0),
-            "alex": self._build_account_card(overview, "alex", "Alex", 1),
-        }
-        self.hype_pulse_card = self._build_hype_pulse_card(overview, 2)
-
-    def _build_account_card(
-        self,
-        parent: ttk.Frame,
-        account_key: str,
-        account_label: str,
-        column: int,
-    ) -> tk.Frame:
-        card = self._hyper_card(parent, padding=(12, 5))
-        card.grid(row=0, column=column, sticky="nsew", padx=(0 if column == 0 else 5, 5 if column < 2 else 0))
-        header = ttk.Frame(card, style="HyperCard.TFrame")
-        header.pack(fill=tk.X, pady=(0, 8))
-        _HyperliquidAssetMark(header, account_key, size=40).pack(side=tk.LEFT, padx=(0, 12))
-        copy = ttk.Frame(header, style="HyperCard.TFrame")
-        copy.pack(side=tk.LEFT)
-        ttk.Label(
-            copy,
-            text=account_label,
-            background=SURFACE,
-            foreground=TEXT,
-            font=("Segoe UI", 10, "bold"),
-        ).pack(anchor=tk.W)
-        ttk.Label(
-            copy,
-            text="Portfolio account",
-            style="HyperMuted.TLabel",
-        ).pack(anchor=tk.W)
-
-        metrics = ttk.Frame(card, style="HyperCard.TFrame")
-        metrics.pack(fill=tk.X)
-        specs = (
-            ("equity", "Equity"),
-            ("spot", "Spot"),
-            ("perps", "Perps"),
-            ("available", "Available"),
-            ("pnl", "Unrealized P/L"),
-            ("margin", "Margin Used"),
-        )
-        for index, (key, label) in enumerate(specs):
-            row, metric_column = divmod(index, 3)
-            metrics.columnconfigure(metric_column, weight=1, uniform=f"{account_key}-metrics")
-            cell = ttk.Frame(metrics, style="HyperCard.TFrame")
-            cell.grid(
-                row=row,
-                column=metric_column,
-                sticky="ew",
-                padx=(0 if metric_column == 0 else 8, 0),
-                pady=(0 if row == 0 else 5, 1),
-            )
-            ttk.Label(cell, text=label, style="HyperMuted.TLabel").pack(anchor=tk.W)
-            value = tk.Label(
-                cell,
-                textvariable=self.account_summary_values[account_key][key],
-                background=SURFACE,
-                foreground=TEXT,
-                font=("Segoe UI", 9, "bold"),
-            )
-            value.pack(anchor=tk.W, pady=(2, 0))
-            if key == "pnl":
-                self.account_pnl_labels[account_key] = value
-        return card
-
-    def _build_hype_pulse_card(self, parent: ttk.Frame, column: int) -> tk.Frame:
-        card = self._hyper_card(parent, padding=(12, 7))
-        card.grid(row=0, column=column, sticky="nsew", padx=(5, 0))
-        card.columnconfigure(0, weight=1)
-        card.columnconfigure(1, weight=2)
-
-        left = ttk.Frame(card, style="HyperCard.TFrame")
-        left.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
-        header = ttk.Frame(left, style="HyperCard.TFrame")
-        header.pack(fill=tk.X, pady=(0, 4))
-        _HyperliquidAssetMark(header, "hype", size=32).pack(side=tk.LEFT, padx=(0, 8))
-        ttk.Label(
-            header,
-            text="HYPE Pulse",
-            background=SURFACE,
-            foreground=TEXT,
-            font=("Segoe UI", 10, "bold"),
-        ).pack(side=tk.LEFT)
-        tk.Label(
-            left,
-            textvariable=self.hype_price,
-            background=SURFACE,
-            foreground=TEXT,
-            font=("Segoe UI", 16, "bold"),
-        ).pack(anchor=tk.W, pady=(2, 0))
-        self.hype_change_label = tk.Label(
-            left,
-            textvariable=self.hype_change,
-            background=SURFACE,
-            foreground=MUTED_TEXT,
-            font=("Segoe UI", 9, "bold"),
-        )
-        self.hype_change_label.pack(anchor=tk.W)
-        ttk.Label(left, text="24H volume", style="HyperMuted.TLabel").pack(anchor=tk.W, pady=(3, 0))
-        ttk.Label(left, textvariable=self.hype_volume, style="HyperCard.TLabel").pack(anchor=tk.W)
-        ttk.Label(left, text="Circulating supply", style="HyperMuted.TLabel").pack(anchor=tk.W, pady=(2, 0))
-        ttk.Label(left, textvariable=self.hype_supply, style="HyperCard.TLabel").pack(anchor=tk.W)
-
-        chart = ttk.Frame(card, style="HyperCard.TFrame")
-        chart.grid(row=0, column=1, sticky="nsew")
-        chart.columnconfigure(0, weight=1)
-        chart.rowconfigure(1, weight=1)
-        chart_header = ttk.Frame(chart, style="HyperCard.TFrame")
-        chart_header.grid(row=0, column=0, sticky="ew")
-        ttk.Label(chart_header, text="24H", style="HyperMuted.TLabel").pack(side=tk.LEFT)
-        ttk.Label(chart_header, textvariable=self.hype_status, style="HyperMuted.TLabel").pack(side=tk.RIGHT)
-        self.hype_sparkline = _HyperliquidSparkline(chart, height=52)
-        self.hype_sparkline.grid(row=1, column=0, sticky="nsew", pady=(3, 0))
-        return card
-
-    def _build_portfolio_workspace(self) -> None:
-        card = self._hyper_card(self.body, padding=(0, 0))
-        self.portfolio_card = card
-        card.grid(row=2, column=0, sticky="nsew", pady=(0, 10))
-        card.columnconfigure(0, weight=1)
-        card.rowconfigure(1, weight=1)
-        tabs = ttk.Frame(card, style="HyperCard.TFrame")
-        tabs.grid(row=0, column=0, sticky="ew", padx=8, pady=(5, 2))
-        for label in ("Positions", "Cash", "Open Orders"):
-            ttk.Radiobutton(
-                tabs,
-                text=label,
-                value=label,
-                variable=self.portfolio_view,
-                command=self._switch_hyperliquid_portfolio_view,
-                style="HyperTab.TRadiobutton",
-            ).pack(side=tk.LEFT, padx=(0, 3))
-
-        self.portfolio_stack = ttk.Frame(card, style="HyperCard.TFrame")
-        self.portfolio_stack.grid(row=1, column=0, sticky="nsew", padx=8, pady=(0, 7))
-        self.portfolio_stack.columnconfigure(0, weight=1)
-        self.portfolio_stack.rowconfigure(0, weight=1)
-        self.positions_view = ttk.Frame(self.portfolio_stack, style="HyperCard.TFrame")
-        self.cash_view = ttk.Frame(self.portfolio_stack, style="HyperCard.TFrame")
-        self.portfolio_orders_view = ttk.Frame(self.portfolio_stack, style="HyperCard.TFrame")
-        for view in (self.positions_view, self.cash_view, self.portfolio_orders_view):
-            view.grid(row=0, column=0, sticky="nsew")
-            view.columnconfigure(0, weight=1)
-            view.rowconfigure(0, weight=1)
-
-        position_columns = (
-            "account",
-            "market",
-            "type",
-            "side",
-            "size",
-            "entry",
-            "mark",
-            "value",
-            "pnl",
-            "pnl_pct",
-            "liquidation",
-        )
-        self.holdings_table = ttk.Treeview(
-            self.positions_view,
-            columns=position_columns,
-            show="tree headings",
-            height=5,
-            style="HyperPortfolio.Treeview",
-            selectmode="browse",
-        )
-        self.holdings_table.heading("#0", text="")
-        self.holdings_table.column(
-            "#0",
-            width=HYPERLIQUID_POSITION_ICON_COLUMN_WIDTH,
-            minwidth=HYPERLIQUID_POSITION_ICON_COLUMN_WIDTH,
-            stretch=False,
-        )
-        for column_name, label, width, anchor in (
-            ("account", "Account", 90, tk.W),
-            ("market", "Market", 130, tk.W),
-            ("type", "Type", 75, tk.W),
-            ("side", "Side", 65, tk.W),
-            ("size", "Size / Qty", 95, tk.E),
-            ("entry", "Entry Price", 90, tk.E),
-            ("mark", "Mark Price", 90, tk.E),
-            ("value", "Value", 100, tk.E),
-            ("pnl", "Unrealized P/L", 110, tk.E),
-            ("pnl_pct", "P/L %", 70, tk.E),
-            ("liquidation", "Liquidation", 95, tk.E),
-        ):
-            self._setup_column(self.holdings_table, column_name, label, width, anchor)
-        self.holdings_table.tag_configure("pnl_positive", foreground=SUCCESS)
-        self.holdings_table.tag_configure("pnl_negative", foreground=DANGER)
-        position_y = ttk.Scrollbar(self.positions_view, orient=tk.VERTICAL, command=self.holdings_table.yview)
-        self.holdings_table.configure(yscrollcommand=position_y.set)
-        self.holdings_table.grid(row=0, column=0, sticky="nsew")
-        position_y.grid(row=0, column=1, sticky="ns")
-        self.holdings_table.bind("<<TreeviewSelect>>", self._use_selected_hyperliquid_holding)
-
-        self.cash_table = ttk.Treeview(
-            self.cash_view,
-            columns=("account", "bucket", "symbol", "amount", "value"),
-            show="headings",
-            height=5,
-            style="HyperPortfolio.Treeview",
-        )
-        for column_name, label, width, anchor in (
-            ("account", "Account", 150, tk.W),
-            ("bucket", "Bucket", 110, tk.W),
-            ("symbol", "Asset", 90, tk.W),
-            ("amount", "Amount", 130, tk.E),
-            ("value", "Value", 130, tk.E),
-        ):
-            self._setup_column(self.cash_table, column_name, label, width, anchor)
-        cash_y = ttk.Scrollbar(self.cash_view, orient=tk.VERTICAL, command=self.cash_table.yview)
-        self.cash_table.configure(yscrollcommand=cash_y.set)
-        self.cash_table.grid(row=0, column=0, sticky="nsew")
-        cash_y.grid(row=0, column=1, sticky="ns")
-        self.portfolio_orders_table = ttk.Treeview(
-            self.portfolio_orders_view,
-            columns=("account", "market", "kind", "side", "size", "price", "type", "reduce", "oid"),
-            show="headings",
-            height=5,
-            style="HyperPortfolio.Treeview",
-            selectmode="browse",
-        )
-        self._configure_hyperliquid_order_columns(self.portfolio_orders_table)
-        portfolio_order_y = ttk.Scrollbar(
-            self.portfolio_orders_view,
-            orient=tk.VERTICAL,
-            command=self.portfolio_orders_table.yview,
-        )
-        self.portfolio_orders_table.configure(yscrollcommand=portfolio_order_y.set)
-        self.portfolio_orders_table.grid(row=0, column=0, sticky="nsew")
-        portfolio_order_y.grid(row=0, column=1, sticky="ns")
-        self.portfolio_orders_table.bind("<<TreeviewSelect>>", self._use_selected_hyperliquid_order)
-        self.portfolio_orders_table.bind("<Double-1>", self._edit_selected_hyperliquid_open_order)
-        self._switch_hyperliquid_portfolio_view()
-
-    def _build_chain_strip(self) -> None:
-        card = self._hyper_card(self.body, padding=(11, 5))
-        self.chain_card = card
-        card.grid(row=3, column=0, sticky="ew", pady=(0, 10))
-        for column in range(4):
-            card.columnconfigure(column, weight=1, uniform="chain")
-        self._chain_metric(card, "▥  Chain Status", "HyperEVM", 0)
-        self._chain_metric(card, "Chain ID", self.chain_id, 1)
-        self._chain_metric(card, "Block", self.chain_block, 2)
-        fee_group = ttk.Frame(card, style="HyperCard.TFrame")
-        fee_group.grid(row=0, column=3, sticky="ew")
-        fee_row = ttk.Frame(fee_group, style="HyperCard.TFrame")
-        fee_row.pack(anchor=tk.E)
-        ttk.Label(fee_row, text="Base fee  ", style="HyperMuted.TLabel").pack(side=tk.LEFT)
-        ttk.Label(fee_row, textvariable=self.chain_base_fee, style="HyperCard.TLabel").pack(side=tk.LEFT)
-        self.chain_health_label = tk.Label(
-            fee_group,
-            textvariable=self.chain_health,
-            background=SURFACE,
-            foreground=MUTED_TEXT,
-            font=("Segoe UI", 8, "bold"),
-        )
-        self.chain_health_label.pack(anchor=tk.E)
-
-    def _chain_metric(
-        self,
-        parent: tk.Frame,
-        label: str,
-        value: str | tk.StringVar,
-        column: int,
-    ) -> None:
-        group = ttk.Frame(parent, style="HyperCard.TFrame")
-        group.grid(row=0, column=column, sticky="ew")
-        ttk.Label(group, text=f"{label}  ", style="HyperMuted.TLabel").pack(side=tk.LEFT)
-        options = {"textvariable": value} if isinstance(value, tk.StringVar) else {"text": value}
-        ttk.Label(group, style="HyperCard.TLabel", **options).pack(side=tk.LEFT)
-
-    def _build_trading_workspace(self) -> None:
-        trading = ttk.Frame(self.body, style="HyperPage.TFrame")
-        self.trading_frame = trading
-        trading.grid(row=4, column=0, sticky="nsew")
-        trading.rowconfigure(0, weight=1)
-        for column, weight in enumerate((1, 1, 1)):
-            trading.columnconfigure(column, weight=weight, uniform="hyper-trading")
-        spot_card = self._hyper_card(trading, padding=(10, 9))
-        perp_card = self._hyper_card(trading, padding=(10, 9))
-        orders_card = self._hyper_card(trading, padding=(10, 9))
-        self.spot_ticket_card = spot_card
-        self.perp_ticket_card = perp_card
-        self.order_review_card = orders_card
-        spot_card.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
-        perp_card.grid(row=0, column=1, sticky="nsew", padx=5)
-        orders_card.grid(row=0, column=2, sticky="nsew", padx=(5, 0))
-        self._build_spot_ticket(spot_card)
-        self._build_perp_ticket(perp_card)
-        self._build_hyperliquid_orders_panel(orders_card)
-
-    def _show_bucket(self, bucket: DucketBucketSnapshot) -> None:
-        self.latest_hyperliquid_bucket = bucket
-        self._clear_table(self.cash_table)
-        self._clear_table(self.holdings_table)
-        self._position_by_item_id = {}
-        self._row_icons = {}
-
-        snapshots_by_key = {
-            hyperliquid_account_key(snapshot.account_label): snapshot
-            for snapshot in bucket.snapshots
-        }
-        for account_key in ("jeremy", "alex"):
-            snapshot = snapshots_by_key.get(account_key)
-            if snapshot is None:
-                self._set_account_summary_unavailable(account_key)
-                continue
-            self._set_account_summary(account_key, hyperliquid_account_summary(snapshot))
-            self._insert_hyperliquid_cash(snapshot)
-
-        rows = hyperliquid_position_views(bucket.snapshots)
-        for row in rows:
-            self._insert_hyperliquid_position(row)
-
-        common_facts = self._common_hyperliquid_facts(bucket.snapshots)
-        self._show_hype_market(common_facts.get("hype_market"))
-        self._show_chain_status(common_facts.get("chain_status"))
-        synced_times = [snapshot.synced_at for snapshot in bucket.snapshots if snapshot.synced_at is not None]
-        latest = max(synced_times) if synced_times else None
-        self.last_sync.set(f"Last synced: {_format_local_timestamp(latest)}")
-        self.sync_status.set("Current portfolio snapshot")
-        self.status_icon.set("✓")
-        if self.sync_button is not None:
-            self.sync_button.configure(state=tk.NORMAL)
-
-    def _show_error(self, exc: Exception) -> None:
-        self.status_icon.set("!")
-        self.sync_status.set(f"Sync failed: {type(exc).__name__}")
-        if self.sync_button is not None:
-            self.sync_button.configure(state=tk.NORMAL)
-        messagebox.showerror("Hyperliquid Sync Failed", f"{type(exc).__name__}: {exc}")
-
-    def _sync(self) -> None:
-        self.sync_status.set("Syncing portfolio and public chain data…")
-        super()._sync()
-
-    def _build_spot_ticket(self, parent: tk.Frame) -> None:
-        self._ticket_heading(parent, "Spot Ticket", "LIMIT")
-        form = ttk.Frame(parent, style="HyperCard.TFrame")
-        form.pack(fill=tk.BOTH, expand=True)
-        form.columnconfigure((0, 1), weight=1, uniform="spot-fields")
-        self._compact_combo(form, "Account", self.spot_account, HYPERLIQUID_ACCOUNT_CHOICES, 0, 0)
-        self._compact_entry(form, "Market", self.spot_market, 0, 1)
-        self._compact_side_row(form, "Side", self.spot_side, (("Buy", "buy"), ("Sell", "sell")), 1)
-        self._compact_entry(form, "Quantity", self.spot_quantity, 2, 0)
-        self._compact_combo(form, "Unit", self.spot_size_unit, HYPERLIQUID_SPOT_SIZE_UNITS, 2, 1)
-        self._compact_entry(form, "Limit Price", self.spot_entry_limit, 3, 0)
-        self._compact_combo(form, "Time in force", self.spot_tif, HYPERLIQUID_TIF_CHOICES, 3, 1)
-
-        size_row = ttk.Frame(form, style="HyperCard.TFrame")
-        size_row.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(7, 3))
-        for index, (label, percent) in enumerate((("25%", 25), ("50%", 50), ("75%", 75), ("Max", 100))):
-            size_row.columnconfigure(index, weight=1)
-            ttk.Button(
-                size_row,
-                text=label,
-                command=lambda pct=percent: self._apply_spot_size_percent(
-                    self._account_key_from_choice(self.spot_account.get()), pct
-                ),
-            ).grid(row=0, column=index, sticky="ew", padx=(0 if index == 0 else 3, 0))
-        size_row.columnconfigure(4, weight=1)
-        ttk.Button(size_row, text="Use Mid", command=self._use_spot_mid).grid(
-            row=0, column=4, sticky="ew", padx=(3, 0)
-        )
-        ttk.Label(
-            form,
-            textvariable=self.spot_size_status,
-            style="HyperMuted.TLabel",
-            wraplength=320,
-        ).grid(row=5, column=0, columnspan=2, sticky="w", pady=(2, 4))
-        form.rowconfigure(6, weight=1, minsize=8)
-        ttk.Button(
-            form,
-            text="Review Spot Order",
-            command=self._review_spot_order,
-            style="HyperPrimary.TButton",
-        ).grid(row=7, column=0, columnspan=2, sticky="ew", pady=(2, 0))
-
-    def _build_perp_ticket(self, parent: tk.Frame) -> None:
-        self._ticket_heading(parent, "Perp Ticket", "LIMIT")
-        form = ttk.Frame(parent, style="HyperCard.TFrame")
-        form.pack(fill=tk.BOTH, expand=True)
-        form.columnconfigure((0, 1), weight=1, uniform="perp-fields")
-        self._compact_combo(form, "Account", self.perp_account, HYPERLIQUID_ACCOUNT_CHOICES, 0, 0)
-        self._compact_entry(form, "Market", self.perp_coin, 0, 1)
-        self._compact_side_row(form, "Direction", self.perp_direction, (("Long", "buy"), ("Short", "sell")), 1)
-        self._compact_entry(form, "Size", self.perp_size, 2, 0)
-        self._compact_entry(form, "Limit Price", self.perp_entry_limit, 2, 1)
-        self._compact_combo(form, "Time in force", self.perp_tif, HYPERLIQUID_TIF_CHOICES, 3, 0)
-        reduce_box = ttk.Frame(form, style="HyperCard.TFrame")
-        reduce_box.grid(row=3, column=1, sticky="nsew", padx=(4, 0), pady=(4, 0))
-        ttk.Label(reduce_box, text="Position intent", style="HyperMuted.TLabel").pack(anchor=tk.W)
-        ttk.Checkbutton(
-            reduce_box,
-            text="Reduce only",
-            variable=self.perp_reduce_only,
-        ).pack(anchor=tk.W, pady=(3, 0))
-        ttk.Button(form, text="Use Mid", command=self._use_perp_mid).grid(
-            row=4, column=0, columnspan=2, sticky="ew", pady=(6, 4)
-        )
-        form.rowconfigure(5, weight=1, minsize=8)
-        ttk.Button(
-            form,
-            text="Review Perp Order",
-            command=self._review_perp_order,
-            style="HyperPrimary.TButton",
-        ).grid(row=6, column=0, columnspan=2, sticky="ew", pady=(2, 0))
-
-    def _build_hyperliquid_orders_panel(self, parent: tk.Frame) -> None:
-        header = ttk.Frame(parent, style="HyperCard.TFrame")
-        header.pack(fill=tk.X, pady=(0, 7))
-        ttk.Label(
-            header,
-            text="Order Review",
-            background=SURFACE,
-            foreground=TEXT,
-            font=("Segoe UI", 11, "bold"),
-        ).pack(side=tk.LEFT)
-        ttk.Label(header, text="SELECTED-ITEM ACTIONS", style="HyperMuted.TLabel").pack(side=tk.RIGHT)
-
-        table_frame = ttk.Frame(parent, style="HyperCard.TFrame")
-        table_frame.pack(fill=tk.BOTH, expand=True)
-        table_frame.columnconfigure(0, weight=1)
-        table_frame.rowconfigure(0, weight=1)
-        self.hyperliquid_open_orders_table = ttk.Treeview(
-            table_frame,
-            columns=("account", "market", "kind", "side", "size", "price", "type", "reduce", "oid"),
-            show="headings",
-            height=6,
-            style="HyperPortfolio.Treeview",
-            selectmode="browse",
-        )
-        self.hyperliquid_open_orders_table.configure(
-            displaycolumns=("account", "market", "side", "size", "price")
-        )
-        self._configure_hyperliquid_order_columns(self.hyperliquid_open_orders_table, compact=True)
-        order_y = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.hyperliquid_open_orders_table.yview)
-        self.hyperliquid_open_orders_table.configure(yscrollcommand=order_y.set)
-        self.hyperliquid_open_orders_table.grid(row=0, column=0, sticky="nsew")
-        order_y.grid(row=0, column=1, sticky="ns")
-        self.hyperliquid_open_orders_table.bind("<<TreeviewSelect>>", self._use_selected_hyperliquid_order)
-        self.hyperliquid_open_orders_table.bind("<Double-1>", self._edit_selected_hyperliquid_open_order)
-        ttk.Label(parent, textvariable=self.orders_status, style="HyperMuted.TLabel").pack(
-            anchor=tk.W, pady=(5, 5)
-        )
-        actions = ttk.Frame(parent, style="HyperCard.TFrame")
-        actions.pack(fill=tk.X)
-        for column in range(3):
-            actions.columnconfigure(column, weight=1)
-        ttk.Button(
-            actions,
-            text="Edit Selected",
-            command=self._edit_selected_hyperliquid_open_order,
-        ).grid(row=0, column=0, sticky="ew", padx=(0, 3))
-        ttk.Button(
-            actions,
-            text="Cancel Selected",
-            command=self._cancel_selected_hyperliquid_order,
-            style="HyperDanger.TButton",
-        ).grid(row=0, column=1, sticky="ew", padx=3)
-        ttk.Button(
-            actions,
-            text="Refresh",
-            command=self._refresh_hyperliquid,
-        ).grid(row=0, column=2, sticky="ew", padx=(3, 0))
 
     def _hyper_card(
         self,
@@ -1508,247 +952,6 @@ class HyperliquidDucketsTab(DucketsTab):
             pady=vertical,
         )
 
-    def _ticket_heading(self, parent: tk.Frame, title: str, badge: str) -> None:
-        header = ttk.Frame(parent, style="HyperCard.TFrame")
-        header.pack(fill=tk.X, pady=(0, 7))
-        ttk.Label(
-            header,
-            text=title,
-            background=SURFACE,
-            foreground=TEXT,
-            font=("Segoe UI", 11, "bold"),
-        ).pack(side=tk.LEFT)
-        tk.Label(
-            header,
-            text=badge,
-            background=HYPE_ACCENT_DARK,
-            foreground=HYPE_ACCENT,
-            font=("Segoe UI", 7, "bold"),
-            padx=7,
-            pady=2,
-        ).pack(side=tk.RIGHT)
-
-    def _compact_entry(
-        self,
-        parent: ttk.Frame,
-        label: str,
-        variable: tk.StringVar,
-        row: int,
-        column: int,
-    ) -> None:
-        field = ttk.Frame(parent, style="HyperCard.TFrame")
-        field.grid(
-            row=row,
-            column=column,
-            sticky="ew",
-            padx=(0 if column == 0 else 4, 4 if column == 0 else 0),
-            pady=(2, 0),
-        )
-        ttk.Label(field, text=label, style="HyperMuted.TLabel").pack(anchor=tk.W)
-        ttk.Entry(field, textvariable=variable).pack(fill=tk.X, pady=(1, 0))
-
-    def _compact_combo(
-        self,
-        parent: ttk.Frame,
-        label: str,
-        variable: tk.StringVar,
-        values: Sequence[str],
-        row: int,
-        column: int,
-    ) -> None:
-        field = ttk.Frame(parent, style="HyperCard.TFrame")
-        field.grid(
-            row=row,
-            column=column,
-            sticky="ew",
-            padx=(0 if column == 0 else 4, 4 if column == 0 else 0),
-            pady=(2, 0),
-        )
-        ttk.Label(field, text=label, style="HyperMuted.TLabel").pack(anchor=tk.W)
-        ttk.Combobox(
-            field,
-            textvariable=variable,
-            values=tuple(values),
-            state="readonly",
-        ).pack(fill=tk.X, pady=(1, 0))
-
-    def _compact_side_row(
-        self,
-        parent: ttk.Frame,
-        label: str,
-        variable: tk.StringVar,
-        choices: Sequence[tuple[str, str]],
-        row: int,
-    ) -> None:
-        field = ttk.Frame(parent, style="HyperCard.TFrame")
-        field.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(4, 0))
-        ttk.Label(field, text=label, style="HyperMuted.TLabel").pack(anchor=tk.W)
-        buttons = ttk.Frame(field, style="HyperCard.TFrame")
-        buttons.pack(fill=tk.X, pady=(1, 0))
-        for index, (text, value) in enumerate(choices):
-            buttons.columnconfigure(index, weight=1)
-            ttk.Radiobutton(
-                buttons,
-                text=text,
-                value=value,
-                variable=variable,
-                style="HyperSide.TRadiobutton",
-            ).grid(row=0, column=index, sticky="ew", padx=(0 if index == 0 else 3, 0))
-
-    def _configure_hyperliquid_order_columns(
-        self,
-        table: ttk.Treeview,
-        *,
-        compact: bool = False,
-    ) -> None:
-        widths = {
-            "account": 76 if compact else 100,
-            "market": 86 if compact else 120,
-            "kind": 58 if compact else 70,
-            "side": 58 if compact else 70,
-            "size": 78 if compact else 90,
-            "price": 82 if compact else 100,
-            "type": 76 if compact else 100,
-            "reduce": 62 if compact else 75,
-            "oid": 84 if compact else 110,
-        }
-        labels = {
-            "account": "Account",
-            "market": "Market",
-            "kind": "Kind",
-            "side": "Side",
-            "size": "Size",
-            "price": "Price",
-            "type": "Type",
-            "reduce": "Reduce",
-            "oid": "Order ID",
-        }
-        for column in table.cget("columns"):
-            anchor = tk.E if column in {"size", "price", "oid"} else tk.W
-            self._setup_column(table, str(column), labels[str(column)], widths[str(column)], anchor)
-
-    def _switch_hyperliquid_portfolio_view(self) -> None:
-        selected = self.portfolio_view.get()
-        if selected == "Cash":
-            self.cash_view.tkraise()
-        elif selected == "Open Orders":
-            self.portfolio_orders_view.tkraise()
-        else:
-            self.positions_view.tkraise()
-
-    def _update_hyperliquid_scroll_region(self, _event: object | None = None) -> None:
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-
-    def _resize_hyperliquid_body(self, event: tk.Event[tk.Canvas]) -> None:
-        self._canvas_viewport_height = max(event.height, 1)
-        self.canvas.itemconfigure(self._body_window, width=max(event.width, 1))
-        self._apply_hyperliquid_layout(event.width)
-        self.root.after_idle(self._sync_hyperliquid_body_height)
-
-    def _sync_hyperliquid_body_height(self) -> None:
-        """Share spare wide-screen height between portfolio and trading workspaces."""
-        if self._last_hyperliquid_layout == "wide":
-            fixed_height = (
-                12
-                + 16
-                + self.header_frame.winfo_reqheight()
-                + 10
-                + self.overview_frame.winfo_reqheight()
-                + 10
-                + self.chain_card.winfo_reqheight()
-                + 10
-            )
-            portfolio_natural = self.portfolio_card.winfo_reqheight() + 10
-            trading_natural = self.trading_frame.winfo_reqheight()
-            spare_height = max(
-                self._canvas_viewport_height
-                - fixed_height
-                - portfolio_natural
-                - trading_natural,
-                0,
-            )
-            portfolio_height = portfolio_natural + round(spare_height * 0.45)
-            trading_height = trading_natural + spare_height - round(spare_height * 0.45)
-        else:
-            portfolio_height = 0
-            trading_height = 0
-
-        current_portfolio_height = int(self.body.grid_rowconfigure(2)["minsize"])
-        current_trading_height = int(self.body.grid_rowconfigure(4)["minsize"])
-        self.body.rowconfigure(2, minsize=portfolio_height, weight=0)
-        self.body.rowconfigure(4, minsize=trading_height, weight=0)
-        self.canvas.itemconfigure(self._body_window, height=0)
-        if (
-            current_portfolio_height != portfolio_height
-            or current_trading_height != trading_height
-        ):
-            self.root.after(20, self._sync_hyperliquid_body_height)
-        else:
-            self.root.after_idle(self._update_hyperliquid_scroll_region)
-
-    def _apply_hyperliquid_layout(self, width: int, *, force: bool = False) -> None:
-        layout = "wide" if width >= 1450 else "medium" if width >= 760 else "narrow"
-        if not force and layout == self._last_hyperliquid_layout:
-            return
-        self._last_hyperliquid_layout = layout
-        for widget in (*self.account_cards.values(), self.hype_pulse_card):
-            widget.grid_forget()
-        for widget in (self.spot_ticket_card, self.perp_ticket_card, self.order_review_card):
-            widget.grid_forget()
-        for row in range(3):
-            self.overview_frame.rowconfigure(row, weight=0)
-            self.trading_frame.rowconfigure(row, weight=0)
-
-        if layout == "wide":
-            self.overview_frame.rowconfigure(0, weight=1)
-            self.trading_frame.rowconfigure(0, weight=1)
-            for column in range(3):
-                self.overview_frame.columnconfigure(column, weight=1, uniform="hyper-overview")
-                self.trading_frame.columnconfigure(column, weight=1, uniform="hyper-trading")
-            self.account_cards["jeremy"].grid(row=0, column=0, sticky="nsew", padx=(0, 5))
-            self.account_cards["alex"].grid(row=0, column=1, sticky="nsew", padx=5)
-            self.hype_pulse_card.grid(row=0, column=2, sticky="nsew", padx=(5, 0))
-            self.spot_ticket_card.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
-            self.perp_ticket_card.grid(row=0, column=1, sticky="nsew", padx=5)
-            self.order_review_card.grid(row=0, column=2, sticky="nsew", padx=(5, 0))
-            return
-
-        self.overview_frame.columnconfigure(0, weight=1, uniform="hyper-overview")
-        self.overview_frame.columnconfigure(1, weight=1, uniform="hyper-overview")
-        self.overview_frame.columnconfigure(2, weight=0, uniform="")
-        self.trading_frame.columnconfigure(0, weight=1, uniform="hyper-trading")
-        self.trading_frame.columnconfigure(1, weight=1, uniform="hyper-trading")
-        self.trading_frame.columnconfigure(2, weight=0, uniform="")
-        if layout == "medium":
-            self.overview_frame.rowconfigure((0, 1), weight=1)
-            self.trading_frame.rowconfigure((0, 1), weight=1)
-            self.account_cards["jeremy"].grid(row=0, column=0, sticky="nsew", padx=(0, 5), pady=(0, 5))
-            self.account_cards["alex"].grid(row=0, column=1, sticky="nsew", padx=(5, 0), pady=(0, 5))
-            self.hype_pulse_card.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(5, 0))
-            self.spot_ticket_card.grid(row=0, column=0, sticky="nsew", padx=(0, 5), pady=(0, 5))
-            self.perp_ticket_card.grid(row=0, column=1, sticky="nsew", padx=(5, 0), pady=(0, 5))
-            self.order_review_card.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(5, 0))
-            return
-
-        self.overview_frame.columnconfigure(1, weight=0, uniform="")
-        self.trading_frame.columnconfigure(1, weight=0, uniform="")
-        self.overview_frame.rowconfigure((0, 1, 2), weight=1)
-        self.trading_frame.rowconfigure((0, 1, 2), weight=1)
-        self.account_cards["jeremy"].grid(row=0, column=0, sticky="nsew", pady=(0, 5))
-        self.account_cards["alex"].grid(row=1, column=0, sticky="nsew", pady=5)
-        self.hype_pulse_card.grid(row=2, column=0, sticky="nsew", pady=(5, 0))
-        self.spot_ticket_card.grid(row=0, column=0, sticky="nsew", pady=(0, 5))
-        self.perp_ticket_card.grid(row=1, column=0, sticky="nsew", pady=5)
-        self.order_review_card.grid(row=2, column=0, sticky="nsew", pady=(5, 0))
-
-    def _set_hyperliquid_canvas_hover(self, hovered: bool) -> None:
-        self._canvas_hovered = hovered
-
-    def _on_hyperliquid_mousewheel(self, event: tk.Event[tk.Canvas]) -> str | None:
-        if not self._canvas_hovered:
-            return None
-        self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-        return "break"
 
     def _set_account_summary(
         self,
@@ -1800,7 +1003,7 @@ class HyperliquidDucketsTab(DucketsTab):
         mark = _to_float(getattr(holding, "price", None))
         value = _to_float(getattr(holding, "value", None))
         pnl = _to_float(getattr(holding, "unrealized_pnl", None))
-        entry = row.entry_price if row.entry_price is not None else (mark if row.kind == "Spot" else None)
+        entry = row.entry_price
         position_type = row.kind
         if row.kind == "Perp" and row.margin_mode:
             position_type = row.margin_mode.title()
@@ -1813,10 +1016,10 @@ class HyperliquidDucketsTab(DucketsTab):
             image=image,
             values=(
                 row.account_label,
-                row.market,
+                f"{display_asset(row.market)}-{'SPOT' if row.kind == 'Spot' else 'PERP'}",
                 position_type,
                 row.side,
-                f"{_number(quantity)} HYPE" if _hyperliquid_display_symbol(row.market) == "HYPE" else _number(quantity),
+                f"{_number(quantity)} {display_asset(row.market)}",
                 _money_or_dash(entry),
                 _money_or_dash(mark),
                 _money_or_dash(value),
@@ -1831,20 +1034,12 @@ class HyperliquidDucketsTab(DucketsTab):
         self,
         account_key: str,
         size: int = HYPERLIQUID_POSITION_ICON_SIZE,
-    ) -> tk.PhotoImage:
+    ) -> tk.PhotoImage | ImageTk.PhotoImage:
         cached = self._row_icons.get(account_key)
         if cached is not None:
             return cached
         path = hyperliquid_asset_path(account_key)
-        photo: tk.PhotoImage | None = None
-        if path is not None:
-            try:
-                source = tk.PhotoImage(master=self.holdings_table, file=str(path))
-            except tk.TclError:
-                source = None
-            if source is not None:
-                factor = max(1, math.ceil(max(source.width(), source.height()) / size))
-                photo = source.subsample(factor, factor)
+        photo = _hyperliquid_photo(path, self.holdings_table, size) if path is not None else None
         if photo is None:
             photo = tk.PhotoImage(master=self.holdings_table, width=size, height=size)
             radius = (size - 2) / 2
@@ -1867,28 +1062,6 @@ class HyperliquidDucketsTab(DucketsTab):
                 return snapshot.account_facts
         return {}
 
-    def _show_hype_market(self, value: object) -> None:
-        market = value if isinstance(value, Mapping) else {}
-        price = _mapping_float(market, "price")
-        change = _mapping_float(market, "change_percent_24h")
-        volume = _mapping_float(market, "volume_24h")
-        supply = _mapping_float(market, "circulating_supply")
-        self.hype_price.set(_money_or_dash(price))
-        self.hype_change.set(f"{change:+.2f}% 24H" if change is not None else "24H --")
-        self.hype_volume.set(_compact_money(volume))
-        self.hype_supply.set(
-            f"{_compact_number(supply)} HYPE" if supply is not None else "--"
-        )
-        closes = market.get("closes_24h")
-        chart_values = closes if isinstance(closes, Sequence) and not isinstance(closes, (str, bytes)) else ()
-        if self.hype_sparkline is not None:
-            self.hype_sparkline.set_values(chart_values)
-        chart_status = str(market.get("chart_status") or "").strip().casefold()
-        self.hype_status.set("Public market data" if price is not None else "Market data unavailable")
-        if price is not None and chart_status != "current":
-            self.hype_status.set("Quote current • chart unavailable")
-        if self.hype_change_label is not None:
-            self.hype_change_label.configure(foreground=_pnl_color(change))
 
     def _show_chain_status(self, value: object) -> None:
         chain = value if isinstance(value, Mapping) else {}
@@ -2031,67 +1204,6 @@ class HyperliquidDucketsTab(DucketsTab):
         self._sync()
         self._load_hyperliquid_open_orders()
 
-    def _load_hyperliquid_open_orders(self) -> None:
-        if self.hyperliquid_open_orders_table is None:
-            return
-
-        tables = tuple(
-            table
-            for table in (self.hyperliquid_open_orders_table, self.portfolio_orders_table)
-            if table is not None
-        )
-        for table in tables:
-            self._clear_table(table)
-        self.hyperliquid_open_order_by_lookup_key = {}
-        self.selected_hyperliquid_order_key = ""
-        self.orders_status.set("Loading open orders…")
-
-        errors: list[str] = []
-        order_count = 0
-
-        try:
-            spot_meta_and_asset_ctxs = HyperliquidInfoClient().post_info({"type": "spotMetaAndAssetCtxs"})
-        except Exception:
-            spot_meta_and_asset_ctxs = None
-
-        for account_key in ("alex", "jeremy"):
-            try:
-                orders = HyperliquidExecutionAdapter(account_key).open_orders()
-            except Exception as exc:
-                errors.append(f"{account_key}: {type(exc).__name__}: {exc}")
-                continue
-
-            for order in orders:
-                lookup_key = _hyperliquid_open_order_lookup_key(order)
-                self.hyperliquid_open_order_by_lookup_key[lookup_key] = order
-                raw_coin = str(order.get("coin") or "")
-                display_coin = _hyperliquid_display_open_order_coin(raw_coin, spot_meta_and_asset_ctxs)
-                values = (
-                    order.get("accountLabel") or account_key.title(),
-                    display_coin,
-                    _hyperliquid_order_kind(order).title(),
-                    _hyperliquid_side_label(order),
-                    order.get("sz") or "",
-                    order.get("limitPx") or order.get("price") or "",
-                    _hyperliquid_order_type_label(order),
-                    "Yes" if _to_bool(order.get("reduceOnly")) else "No",
-                    order.get("oid") or "",
-                )
-                for table in tables:
-                    table.insert("", tk.END, iid=lookup_key, values=values)
-                order_count += 1
-
-        if errors:
-            self.orders_status.set(
-                f"{order_count} open order{'s' if order_count != 1 else ''}; {len(errors)} account error{'s' if len(errors) != 1 else ''}."
-            )
-            messagebox.showwarning("Hyperliquid Open Orders Partially Loaded", "\n".join(errors))
-        else:
-            self.orders_status.set(
-                f"{order_count} open order{'s' if order_count != 1 else ''}."
-                if order_count
-                else "No open orders reported."
-            )
 
     def _spot_order_ticket(self) -> HyperliquidOrderTicket:
         order_type = self.spot_order_type.get().strip().lower()
@@ -2176,6 +1288,9 @@ class HyperliquidDucketsTab(DucketsTab):
         if order is None:
             messagebox.showinfo("Edit Hyperliquid Order", "Select an open order first.")
             return
+        if order.get("isTrigger") or _hyperliquid_order_type_label(order) != "Limit":
+            messagebox.showinfo("Edit Hyperliquid Order", "Editing is supported for limit orders only.")
+            return
 
         account_key = str(order.get("accountKey") or "").strip().lower()
         account_label = str(order.get("accountLabel") or account_key.title())
@@ -2238,53 +1353,6 @@ class HyperliquidDucketsTab(DucketsTab):
             pady=(12, 0),
         )
 
-    def _use_selected_hyperliquid_holding(self, _event: object) -> None:
-        if self.holdings_table is None:
-            return
-
-        selected = self.holdings_table.selection()
-        if not selected:
-            return
-        row = self._position_by_item_id.get(str(selected[0]))
-        if row is None:
-            return
-        bucket = str(getattr(row.holding, "bucket", "")).strip().upper()
-        symbol = str(getattr(row.holding, "symbol", "")).strip().upper()
-        if not symbol:
-            return
-
-        if bucket == "SPOT":
-            self.spot_market.set(_hyperliquid_display_symbol(symbol))
-            self.spot_account.set(_account_choice_for_key(row.account_key))
-        elif bucket == "PERPS":
-            self.perp_coin.set(_hyperliquid_display_symbol(symbol))
-            self.perp_account.set(_account_choice_for_key(row.account_key))
-
-    def _use_selected_hyperliquid_order(self, event: object | None) -> None:
-        default_table = self.hyperliquid_open_orders_table
-        event_widget = getattr(event, "widget", None)
-        table = event_widget if isinstance(event_widget, ttk.Treeview) else default_table
-        if table is None:
-            return
-
-        selected = table.selection()
-        if not selected:
-            return
-
-        lookup_key = str(selected[0])
-        values = table.item(lookup_key, "values")
-        if len(values) < 9:
-            return
-
-        self.selected_hyperliquid_order_key = lookup_key
-
-        display_coin = str(values[1])
-        kind = str(values[2])
-
-        if kind.upper() == "SPOT":
-            self.spot_market.set(display_coin)
-        else:
-            self.perp_coin.set(display_coin)
 
     def _selected_hyperliquid_order(self) -> dict[str, object] | None:
         if not self.selected_hyperliquid_order_key:
@@ -2597,7 +1665,10 @@ def _hyperliquid_order_type_label(order: dict[str, object]) -> str:
 
 
 def _account_choice_for_key(account_key: str) -> str:
-    return HYPERLIQUID_ACCOUNT_CHOICES[1] if account_key == "alex" else HYPERLIQUID_ACCOUNT_CHOICES[0]
+    for choice in HYPERLIQUID_ACCOUNT_CHOICES:
+        if hyperliquid_account_key(choice) == account_key:
+            return choice
+    raise ValueError(f"Unknown Hyperliquid account: {account_key}")
 
 
 def _pnl_row_tag(*values: float | None) -> tuple[str, ...]:

@@ -1,5 +1,7 @@
 # Ducketz Loops system analysis
 
+Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from `datafetching/watchlist.txt` and validate historical publications against their own saved universes.
+
 This directory documents the current Loops implementation. Code, immutable
 receipts, provider cursors, and datastore health are authoritative; prose alone
 is not proof that a provider is connected or an artifact is current.
@@ -21,7 +23,7 @@ The daily overnight schedule was updated on 2026-09-08:
   The native calendar skips fresh weekend/holiday work. XNAS Historical normally
   releases at 21:00 Pacific; actual provider coverage is still checked. The Scheduled
   operator watches progress/errors, repairs verified failures, and resumes the
-  failed stage. `Loops Operations Watch` checks hourly at :00, covers abandoned
+  failed stage. `Loops Operations Watch` checks every 90 minutes (verified September 13), covers abandoned
   work, and may start a missing fresh run only after 21:15 PT.
 - 04:00–17:00 PT: the Duckets `Rolling Forecasts` tab reads the frozen plan and
   rotates its displayed 1-hour and 4-hour routes on wall-clock boundaries. No
@@ -65,11 +67,11 @@ The 03:55 independent stock session worker owns daytime stock execution; the
 separate 13:00 transition task remains paused. No document authorizes restarting
 the old stack or enabling options orders.
 
-The separate `ml/gameplan-trade-plan-latest/run.json` publication retains all 168
+The separate `ml/gameplan-trade-plan-latest/run.json` publication retains all `24 × configured-symbol-count`
 forecasts. Projected Trade Quantity is standalone horizon capacity; the adjacent
 Direction Based Trade Qty follows one shared cash/stock ledger: approved 54%/46%
 directions buy/sell eligible holdings, and Neutral is zero. Fresh cash and all
-seven stock balances feed ordered bearish sales, due exits and bullish buys.
+all configured stock balances feed ordered bearish sales, due exits and bullish buys.
 Main rows show post-hour cash/shares, with hourly and end-of-day portfolio tables.
 Prices use a median-centered +/-20bps working range, a conditional fill
 assumption rather than a confidence interval; wider history stays in evidence.
@@ -135,7 +137,7 @@ scope omits optional Strategy training/generation:
 3. Exact Strategy candidates using completed-session option evidence for
    planning.
 4. One immutable gameplan: 24 forecasts and 24 options intents per symbol,
-   or 168 of each for seven symbols. Saved historical plans retain their own
+   or 264 of each for eleven symbols. Saved historical plans retain their own
    original universe and row counts.
 5. Separate learned sizing assessments from the pinned training cohorts.
 6. A separate immutable account-aware trade plan and readable Gameplan review;

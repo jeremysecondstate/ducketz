@@ -1,0 +1,23 @@
+{
+  "dataset": "XNAS.BASIC",
+  "schema": "ohlcv-1m",
+  "start": 1789083000000000000,
+  "end": 1789084800000000000,
+  "symbols": [
+    "COST"
+  ],
+  "stype_in": "raw_symbol",
+  "stype_out": "instrument_id",
+  "partial": [],
+  "not_found": [],
+  "mappings": {
+    "COST": [
+      {
+        "start_date": "2026-09-10",
+        "end_date": "2026-09-11",
+        "symbol": "3572"
+      }
+    ]
+  },
+  "version": 1
+}

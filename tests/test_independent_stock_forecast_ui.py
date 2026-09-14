@@ -68,7 +68,7 @@ def test_seven_symbol_independent_display_uses_forward_entry_routes(observed, ho
         assert weekly.target_window_start == pd.Timestamp("2026-09-08T11:00:00Z")
         assert weekly.target_window_end == pd.Timestamp("2026-09-15T00:00:00Z")
         assert weekly.model_evidence_status == "RESEARCH_NOT_PROMOTED"
-        assert "Research" in weekly.actionability_label
+        assert "Validation Not Passed" in weekly.actionability_label
         assert len(symbol.research_context) == 1
         gap = symbol.research_context[0]
         assert gap.id == f"{symbol.symbol}:1h@gap"
@@ -124,4 +124,4 @@ def test_seven_symbol_baseline_gameplan_still_uses_original_window_contract():
         assert symbol.routes[1].id.endswith("4h@08:00")
         assert symbol.routes[2].target_window_start == pd.Timestamp("2026-09-04T13:30:00Z")
         assert symbol.research_context == ()
-        assert symbol.weekly_outlook.aggregate.actionability_label == "Research Forecast — Not Promoted"
+        assert symbol.weekly_outlook.aggregate.actionability_label == "Forecast — Model Validation Not Passed"

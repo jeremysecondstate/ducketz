@@ -1,0 +1,61 @@
+{
+  "plan_id": "af9f7ccd18bcf177e4b8e72604ba80f87de88e0e56fe7d0f80316212d22083e7",
+  "prepared_at": "2026-09-14T05:54:55.282100+00:00",
+  "jobs": [
+    {
+      "schema": "definition",
+      "job_id": "OPRA-20260914-LG5ANLBF77",
+      "status": "REUSED"
+    },
+    {
+      "schema": "ohlcv-1h",
+      "job_id": "OPRA-20260914-UVHSMCPPKJ",
+      "status": "REUSED"
+    },
+    {
+      "schema": "cbbo-1m",
+      "job_id": "OPRA-20260914-P5YPDTEMFV",
+      "status": "REUSED"
+    },
+    {
+      "schema": "ohlcv-1s",
+      "job_id": "OPRA-20260914-GAKYKBY3WQ",
+      "status": "REUSED"
+    },
+    {
+      "schema": "ohlcv-1m",
+      "job_id": "OPRA-20260914-ATVN94JESA",
+      "status": "REUSED"
+    },
+    {
+      "schema": "ohlcv-1d",
+      "job_id": "OPRA-20260914-6U3A37KW77",
+      "status": "REUSED"
+    },
+    {
+      "schema": "statistics",
+      "job_id": "OPRA-20260914-BUSXGMJW8U",
+      "status": "REUSED"
+    },
+    {
+      "schema": "status",
+      "job_id": "OPRA-20260914-59U8NW3SA4",
+      "status": "REUSED"
+    },
+    {
+      "schema": "tcbbo",
+      "job_id": "OPRA-20260914-R7BMLQYH95",
+      "status": "REUSED"
+    },
+    {
+      "schema": "cbbo-1s",
+      "job_id": "OPRA-20260914-CHSLXAEJYY",
+      "status": "QUEUED"
+    },
+    {
+      "schema": "trades",
+      "job_id": "OPRA-20260914-YXW8SUBRVL",
+      "status": "REUSED"
+    }
+  ]
+}

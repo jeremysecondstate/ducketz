@@ -1,5 +1,7 @@
 # Adding a symbol to Loops
 
+Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from `datafetching/watchlist.txt` and validate historical publications against their own saved universes.
+
 `datafetching/watchlist.txt` is the production symbol list. `ml.universe`, stock
 trader contracts, option routes, and the normal overnight fetch read that list.
 The UI reads forecasts from the verified Gameplan and separately shows registered
@@ -7,8 +9,9 @@ unfinished onboardings. A candidate can have verified read-only directional
 forecasts while its options Gameplan is pending; otherwise its probability
 cells stay empty.
 Each activated symbol adds 24 directional
-forecasts and 24 options intents; seven symbols require 168 of each and 21
-production OPRA history cursors. An older saved six-symbol Gameplan remains a
+forecasts, 24 options intents, and three production OPRA history cursors. An
+eleven-symbol universe requires 264 of each forecast/intent and 33 cursors.
+An older saved six-symbol Gameplan remains a
 valid 144-row historical publication.
 
 An explicitly selected stock-only Gameplan can complete stock onboarding
@@ -17,7 +20,10 @@ without options-model preparation. Its matching options rows are non-executable
 [stock-only candidate continuation](#stock-only-candidate-continuation); the
 historical forecast-only path below remains a separate read-only authority.
 
-The reusable command is `python -m datafetching.symbol_onboarding`. It keeps a
+The single-symbol command below is `python -m datafetching.symbol_onboarding`;
+the retained examples document the COST migration. Use
+`python -m datafetching.research_onboarding` for new research selections under
+the current independent stock-horizon workflow. The single-symbol helper keeps a
 checksum-bound plan, provider results, completed request IDs, before/after byte
 inventories, and activation evidence together in the selected output directory.
 Existing Databento cold-start and OPRA writers retain their checksum checks,

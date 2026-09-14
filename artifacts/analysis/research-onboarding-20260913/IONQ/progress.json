@@ -1,0 +1,74 @@
+{
+  "plan_id": "326f356e97dcc16f3cfef3a71c70eee17e345c3a534f1b01f37e84df342b4bd5",
+  "before": {
+    "observed_at": "2026-09-14T08:04:56.740984+00:00",
+    "datastore_bytes": 229206784582,
+    "symbol_path_bytes": 2219870458,
+    "files": 335993,
+    "free_bytes": 1372851326976
+  },
+  "completed_requests": [
+    "269706325020642941047a6a",
+    "54bdc77e8c15c4e6a66a6eb0",
+    "bac2dc4530a5abe99e358525",
+    "63d0476126b3a62e61226263",
+    "23b28e77f28057937830d1fa",
+    "9b77c644d0b035f8e3d82e12",
+    "cac07e190c34c12791a919d7",
+    "8e343fe11867e06c92cb7bc5",
+    "ad1e459ed01c6effaa879277",
+    "2d3362823a30b410c3b1cab5",
+    "ef5f6d112a6f60b97fe820d7",
+    "cfffcda88013e3ec224c2c05",
+    "a56fc691e47d5a455efebe92",
+    "a167b4cc57c102b0b6f9f9de",
+    "8985aff01a00704cc7bf1c54",
+    "33fe029b1143819cc81f092c",
+    "c38ed5617b3a7ed0a53f6232",
+    "c8a6883a27e1cfd57dc1763d",
+    "1447ed9f73cdedc029848275",
+    "e39847dba9b0a00bd7047aaa",
+    "199ce445384d49609d13b5c1",
+    "3a287944e849d5c93ed319e0",
+    "5e98b111111e7f73ecd1cba4",
+    "cdf0f6730ac2e7c22a336705",
+    "fbeebf00655fa064465e4654"
+  ],
+  "providers": {
+    "databento": {
+      "provider": "databento",
+      "data_files": 13,
+      "error_files": 0,
+      "advisory_files": 0
+    },
+    "fmp": {
+      "provider": "fmp",
+      "data_files": 33,
+      "error_files": 0,
+      "advisory_files": 0
+    },
+    "schwab": {
+      "provider": "schwab",
+      "data_files": 23,
+      "error_files": 0,
+      "advisory_files": 0
+    },
+    "sec": {
+      "provider": "sec",
+      "data_files": 4,
+      "error_files": 0,
+      "advisory_files": 0
+    }
+  },
+  "status": "HISTORY_FETCHED",
+  "updated_at": "2026-09-14T09:18:43.711538+00:00",
+  "after": {
+    "observed_at": "2026-09-14T09:19:26.259955+00:00",
+    "datastore_bytes": 273630463201,
+    "symbol_path_bytes": 46643549077,
+    "files": 363171,
+    "free_bytes": 1327280668672
+  },
+  "datastore_growth_bytes": 44423678619,
+  "symbol_path_growth_bytes": 44423678619
+}

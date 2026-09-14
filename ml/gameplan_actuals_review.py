@@ -12,6 +12,7 @@ import pandas as pd
 
 from ml.artifacts import create_timestamp_directory, file_checksum, utc_timestamp, verify_manifest, write_manifest
 from ml.gameplan_price_bands import _aware_timestamp, _observation, _source_identity
+from ml.independent_stock_targets import STOCK_TARGET_BOUNDARY_TOLERANCE
 
 
 VERSION = "gameplan-actuals-review-v1"
@@ -68,6 +69,87 @@ def _observed_prices(prices: pd.DataFrame, forecasts: pd.DataFrame, observed_at:
             for symbol, frame in bars.groupby("symbol", sort=False)}
 
 
+def _source_window_coverage(inventory: Mapping, symbol: str, start: pd.Timestamp, end: pd.Timestamp) -> str:
+    """Describe requested archive coverage, never infer that missing bars mean no trades."""
+    partitions = inventory.get("partitions")
+    verified = inventory.get("native_archive_partitions_verified")
+    if (not isinstance(partitions, list) or not isinstance(verified, int) or isinstance(verified, bool)
+            or verified <= 0 or verified != len(partitions) or inventory.get("schema") != "ohlcv-1m"):
+        return "UNKNOWN"
+
+    def bound(value):
+        result = pd.Timestamp(value)
+        if pd.isna(result):
+            raise ValueError("Missing source interval bound")
+        if result.tzinfo is None:
+            if not isinstance(value, str) or value != result.date().isoformat():
+                raise ValueError("Source interval wall time has no timezone")
+            result = result.tz_localize("UTC")
+        return result.tz_convert("UTC")
+
+    intervals = []
+    for partition in partitions:
+        if (not isinstance(partition, Mapping) or not isinstance(partition.get("symbol"), str)
+                or not partition["symbol"] or not isinstance(partition.get("manifest_path"), str)
+                or not partition["manifest_path"]):
+            return "UNKNOWN"
+        try:
+            if partition.get("start") is not None and partition.get("end") is not None:
+                left, right = (bound(partition[field]) for field in ("start", "end"))
+            elif partition.get("delivery_mode") == "live-intraday-replay" and partition.get("session"):
+                left, right = _clock(partition["session"], 4), _clock(partition["session"], 17)
+            else:
+                return "UNKNOWN"
+        except (TypeError, ValueError, OverflowError):
+            return "UNKNOWN"
+        if pd.isna(left) or pd.isna(right) or right <= left:
+            return "UNKNOWN"
+        if partition["symbol"] == symbol:
+            intervals.append((left, right))
+    covered_to = start
+    for left, right in sorted(intervals):
+        if left > covered_to:
+            break
+        if right > covered_to:
+            covered_to = right
+        if covered_to >= end:
+            return "VERIFIED_COMPLETE"
+    return "INCOMPLETE"
+
+
+def _boundary_evidence(bars: pd.DataFrame, boundary: pd.Timestamp, *, close: bool,
+                       now: pd.Timestamp, inventory: Mapping, symbol: str) -> dict:
+    """Explain the existing selector without changing its five-minute eligibility."""
+    minute = pd.Timedelta(minutes=1)
+    # Open at boundary+5m needs that entire minute; close at boundary-5m
+    # belongs to the minute beginning boundary-6m. Archive ends are exclusive.
+    start = boundary - STOCK_TARGET_BOUNDARY_TOLERANCE - minute if close else boundary
+    end = boundary if close else boundary + STOCK_TARGET_BOUNDARY_TOLERANCE + minute
+    evidence = {"status": "PENDING_MATURITY" if boundary > now else "NO_OBSERVATION",
+                "candidate_price": None, "candidate_observed_at": None, "gap_seconds": None,
+                "source_coverage": _source_window_coverage(inventory, symbol, start, end),
+                "required_source_start": start.isoformat(), "required_source_end": end.isoformat()}
+    if boundary > now or bars.empty:
+        return evidence
+    timestamps = pd.DatetimeIndex(bars.timestamp)
+    position = (timestamps.searchsorted(boundary - minute, side="right") - 1
+                if close else timestamps.searchsorted(boundary, side="left"))
+    if position < 0 or position >= len(bars):
+        return evidence
+    candidate = bars.iloc[position]
+    observed = candidate.timestamp + (minute if close else pd.Timedelta(0))
+    gap = boundary - observed if close else observed - boundary
+    price = _number(candidate["close" if close else "open"])
+    evidence.update(candidate_price=price, candidate_observed_at=observed.isoformat(), gap_seconds=gap.total_seconds(),
+                    status="INVALID_OBSERVATION" if price is None or price <= 0 else
+                    "OUTSIDE_TOLERANCE" if gap > STOCK_TARGET_BOUNDARY_TOLERANCE else "OBSERVED")
+    return evidence
+
+
+def _evidence_columns(prefix: str, evidence: Mapping) -> dict:
+    return {f"{prefix}_{key}": value for key, value in evidence.items()}
+
+
 def _match_trade_rows(forecasts: pd.DataFrame, trades: pd.DataFrame) -> None:
     if trades.id.duplicated().any() or set(trades.id) != set(forecasts.id):
         raise ValueError("Saved trade plan differs from the frozen forecast identities")
@@ -89,6 +171,7 @@ def compare_forecasts(forecasts: pd.DataFrame, prices: pd.DataFrame, *, observed
     if forecasts.empty or forecasts.id.duplicated().any():
         raise ValueError("Actuals review requires unique frozen forecasts")
     by_symbol = _observed_prices(prices, forecasts, now)
+    inventory = prices.attrs.get("stock_price_source", {})
     if trade_rows is not None:
         _match_trade_rows(forecasts, trade_rows)
     planned = {} if trade_rows is None else {row["id"]: row for row in trade_rows.to_dict("records")}
@@ -103,6 +186,9 @@ def compare_forecasts(forecasts: pd.DataFrame, prices: pd.DataFrame, *, observed
         gap = row["target_role"] == "OPENING_GAP_RESEARCH"
         entry = _observation(bars, start, close=gap) if start <= now else None
         finish = _observation(bars, end, close=not gap) if end <= now else None
+        for prefix, boundary, is_close in (("actual_start", start, gap), ("actual_end", end, not gap)):
+            row.update(_evidence_columns(prefix, _boundary_evidence(
+                bars, boundary, close=is_close, now=now, inventory=inventory, symbol=str(row["symbol"]).upper())))
         mature = end <= now
         scored = bool(mature and entry and finish and pd.Timestamp(entry[1]) < pd.Timestamp(finish[1]))
         change = finish[0] / entry[0] - 1 if scored else None
@@ -138,6 +224,7 @@ def compare_price_points(forecasts: pd.DataFrame, prices: pd.DataFrame, *, actio
     now = _aware_timestamp(observed_at, "observed_at")
     contract, dataset = _source_identity(prices, forecasts)
     by_symbol = _observed_prices(prices, forecasts, now)
+    inventory = prices.attrs.get("stock_price_source", {})
     if planning_path is not None and (planning_path.get("price_source_contract") != contract
                                       or planning_path.get("price_dataset") != dataset
                                       or _aware_timestamp(planning_path["observed_at"], "planning observation") >= _clock(action_date, 4)):
@@ -168,7 +255,9 @@ def compare_price_points(forecasts: pd.DataFrame, prices: pd.DataFrame, *, actio
                          "price_error": actual[0] - mid if actual and estimate else None,
                          "price_error_fraction": actual[0] / mid - 1 if actual and estimate else None,
                          "in_planned_range": bool(low <= actual[0] <= high) if actual and estimate else None,
-                         "comparison_status": status})
+                         "comparison_status": status,
+                         **_evidence_columns("actual", _boundary_evidence(bars, timestamp, close=hour == 17,
+                            now=now, inventory=inventory, symbol=str(symbol).upper()))})
     return pd.DataFrame(rows)
 
 
@@ -237,6 +326,28 @@ def _table(headers, rows) -> list[str]:
             *("| " + " | ".join(map(text, row)) + " |" for row in rows), ""]
 
 
+def _missing_boundary_text(row: Mapping, prefix: str, *, detailed: bool = False) -> str | None:
+    status = row.get(f"{prefix}_status")
+    if status not in {"NO_OBSERVATION", "INVALID_OBSERVATION", "OUTSIDE_TOLERANCE"}:
+        return None
+    descriptions = {"NO_OBSERVATION": "No observed price on the required side of the clock",
+                    "INVALID_OBSERVATION": "Nearest observed price is invalid",
+                    "OUTSIDE_TOLERANCE": "No observed price within five minutes"}
+    text = descriptions[status]
+    if not detailed:
+        return text
+    candidate = row.get(f"{prefix}_candidate_observed_at")
+    seconds = _number(row.get(f"{prefix}_gap_seconds"))
+    if candidate is not None and pd.notna(candidate) and seconds is not None:
+        timestamp = pd.Timestamp(candidate).tz_convert(TIMEZONE).strftime("%b %d %H:%M")
+        text += f" (nearest {timestamp}; {seconds / 60:g} minutes away)"
+    coverage = row.get(f"{prefix}_source_coverage")
+    text += {"VERIFIED_COMPLETE": "; source request covers the full tolerance window",
+             "INCOMPLETE": "; source request coverage is incomplete",
+             "UNKNOWN": "; source request coverage is unknown"}.get(coverage, "")
+    return text
+
+
 def render_actuals_review(forecasts: pd.DataFrame, prices: pd.DataFrame, report: Mapping) -> str:
     lines = [f"# Gameplan results · {report['action_date']}", "",
              ("**Preview — final results await the completed-session data fetch.** All times are Pacific."
@@ -250,8 +361,9 @@ def render_actuals_review(forecasts: pd.DataFrame, prices: pd.DataFrame, report:
     if forecasts.empty:
         return "\n".join(lines + ["No saved independent-stock Gameplan was available for this completed session.", ""])
     totals = report["forecasts"]
+    missing_label = ("missing eligible price observations" if "actual_start_status" in forecasts else "waiting for price data")
     lines += [f"**{totals['evaluated']} evaluated · {totals['pending_maturity']} still pending · "
-              f"{totals['mature_awaiting_data']} waiting for price data.**", "",
+              f"{totals['mature_awaiting_data']} {missing_label}.**", "",
               "Direction results compare the saved Bullish/Bearish call with the actual price move. Neutral forecasts "
               "have no directional score. Future and missing outcomes are excluded from accuracy.", ""]
     summary_rows = []
@@ -266,12 +378,18 @@ def render_actuals_review(forecasts: pd.DataFrame, prices: pd.DataFrame, report:
     for symbol, frame in forecasts.groupby("symbol", sort=True):
         lines += [f"## {symbol}", "", "### Planned prices vs actual prices", ""]
         price_rows = []
+        missing_rows = []
         for row in prices.loc[prices.symbol.eq(symbol)].to_dict("records"):
             difference = _number(row["price_error"])
             observed = row["actual_observed_at"]
             observed = pd.Timestamp(observed).tz_convert(TIMEZONE).strftime("%H:%M") if pd.notna(observed) else "—"
             status = {"COMPARED": "Inside" if row["in_planned_range"] else "Outside", "NO_SAVED_ESTIMATE": "No saved estimate",
                       "MATURE_AWAITING_DATA": "Waiting for data", "PENDING_MATURITY": "Pending"}[row["comparison_status"]]
+            if row["comparison_status"] == "MATURE_AWAITING_DATA":
+                status = _missing_boundary_text(row, "actual") or status
+                detail = _missing_boundary_text(row, "actual", detailed=True)
+                if detail:
+                    missing_rows.append((f"Price {row['clock_local']}", detail))
             price_rows.append((row["clock_local"], f"{_money(row['planned_price_low'])}–{_money(row['planned_price_high'])}" if _number(row["planned_price_mid"]) else "—",
                                _money(row["planned_price_mid"]), _money(row["actual_price"]), observed,
                                f"{'+' if difference >= 0 else '−'}{_money(abs(difference))}" if difference is not None else "—",
@@ -283,10 +401,23 @@ def render_actuals_review(forecasts: pd.DataFrame, prices: pd.DataFrame, report:
             start, end = (pd.Timestamp(row[field]).tz_convert(TIMEZONE).strftime("%b %d %H:%M")
                           for field in ("target_window_start", "target_window_end"))
             status = {"PENDING_MATURITY": "Pending target end", "MATURE_AWAITING_DATA": "Waiting for data"}.get(row["actuals_status"], row["direction_result"])
+            if row["actuals_status"] == "MATURE_AWAITING_DATA":
+                reasons = [(label, _missing_boundary_text(row, prefix))
+                           for label, prefix in (("Start", "actual_start"), ("End", "actual_end"))]
+                status = "; ".join(f"{label}: {reason}" for label, reason in reasons if reason) or status
+                for label, prefix in (("Start", "actual_start"), ("End", "actual_end")):
+                    detail = _missing_boundary_text(row, prefix, detailed=True)
+                    if detail:
+                        missing_rows.append((f"{row['route']} {label.lower()}", detail))
             outcome_rows.append((row["route"], f"{start} → {end}", row["direction"], _percent(row["calibrated_probability"]),
                                  "Approved" if row["model_status"] == "PROMOTED" else "Research",
                                  _money(row["actual_start_price"]), _money(row["actual_end_price"]), _percent(row["actual_return"], signed=True), status))
         lines += _table(["Forecast", "Window", "Saved direction", "P(up)", "Model", "Actual start", "Actual end", "Price move", "Result"], outcome_rows)
+        if missing_rows:
+            lines += ["<details>", "<summary>Missing price observation details</summary>", ""]
+            lines += _table(["Boundary", "Observed evidence and source coverage"], missing_rows)
+            lines += ["Complete source request coverage does not prove that no trades occurred. "
+                      "Missing observations remain unscored; nearby observations are shown only to explain the gap.", "", "</details>", ""]
     lines += ["Actual prices use the Gameplan's own stock dataset and the existing five-minute boundary tolerance. "
               "The 17:00 price is a completed minute's closing price; earlier hourly clocks use opening prices. "
               "No missing prices are filled. Longer forecasts continue in the cumulative saved-Gameplan evaluation.", "",

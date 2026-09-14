@@ -1,0 +1,74 @@
+{
+  "plan_id": "12f9265f252523497c5ea3878e4cbaf6b6cc0d0c68cc78a7dd5cd58efaaf9944",
+  "before": {
+    "observed_at": "2026-09-14T07:40:09.038313+00:00",
+    "datastore_bytes": 227769325602,
+    "symbol_path_bytes": 656322667,
+    "files": 299705,
+    "free_bytes": 1375040548864
+  },
+  "completed_requests": [
+    "65c73fe871a9a8b676dc2494",
+    "7582bd00ecc3043364f8adf8",
+    "0bbdf20f6f935ec30a581fe9",
+    "6bb703e52e145a9d492c0f98",
+    "81b035de59295204373a5512",
+    "66d6e370d2eaa6ecf0ca7ac2",
+    "ec00edd12f843e23b3dc824f",
+    "daf454c886ab83dd2755a207",
+    "28414b81664385554cfabedf",
+    "46d7719f6c9868f16f44c400",
+    "7bb101a79a49d7c472581a42",
+    "543f3ade9bc8ba6249e23f02",
+    "2eede89e65ee0ac35288ef21",
+    "56c045a93e896c1873195564",
+    "5fd970ca4b7b83dc15994bc4",
+    "4150b837a8eaefaf65ac872a",
+    "005b355356eeac597009f8c9",
+    "fb5bdad6bb636e1a177cb7d8",
+    "b53e4fc9e77366dbfef18b14",
+    "f3ebcdee5abeb0bf39364642",
+    "720874a1a0b771bf5bd810fa",
+    "b19f3c61d5aafbde8b4ab8c2",
+    "6d297e2a82ede5f3f23de541",
+    "5eb93d49c9497056e014db15",
+    "c8c0cdf85847755b109f2e30"
+  ],
+  "providers": {
+    "databento": {
+      "provider": "databento",
+      "data_files": 13,
+      "error_files": 0,
+      "advisory_files": 0
+    },
+    "fmp": {
+      "provider": "fmp",
+      "data_files": 33,
+      "error_files": 0,
+      "advisory_files": 0
+    },
+    "schwab": {
+      "provider": "schwab",
+      "data_files": 23,
+      "error_files": 0,
+      "advisory_files": 0
+    },
+    "sec": {
+      "provider": "sec",
+      "data_files": 3,
+      "error_files": 0,
+      "advisory_files": 0
+    }
+  },
+  "status": "HISTORY_FETCHED",
+  "updated_at": "2026-09-14T08:03:52.356216+00:00",
+  "after": {
+    "observed_at": "2026-09-14T08:04:24.859202+00:00",
+    "datastore_bytes": 229206784582,
+    "symbol_path_bytes": 2093781647,
+    "files": 335993,
+    "free_bytes": 1372853686272
+  },
+  "datastore_growth_bytes": 1437458980,
+  "symbol_path_growth_bytes": 1437458980
+}

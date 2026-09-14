@@ -1,0 +1,352 @@
+{
+  "started_at": "2026-09-13T04:34:14.536812+00:00",
+  "status": "COMPLETE",
+  "source": "XNAS.BASIC",
+  "baseline": "XNAS.ITCH",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST"
+  ],
+  "sessions": [
+    "2026-03-23",
+    "2026-03-24",
+    "2026-03-25",
+    "2026-03-26",
+    "2026-03-27",
+    "2026-03-30",
+    "2026-03-31",
+    "2026-04-01",
+    "2026-04-02",
+    "2026-04-06",
+    "2026-04-07",
+    "2026-04-08",
+    "2026-04-09",
+    "2026-04-10",
+    "2026-04-13",
+    "2026-04-14",
+    "2026-04-15",
+    "2026-04-16",
+    "2026-04-17",
+    "2026-04-20",
+    "2026-04-21",
+    "2026-04-22",
+    "2026-04-23",
+    "2026-04-24",
+    "2026-04-27",
+    "2026-04-28",
+    "2026-04-29",
+    "2026-04-30",
+    "2026-05-01",
+    "2026-05-04",
+    "2026-05-05",
+    "2026-05-06",
+    "2026-05-07",
+    "2026-05-08",
+    "2026-05-11",
+    "2026-05-12",
+    "2026-05-13",
+    "2026-05-14",
+    "2026-05-15",
+    "2026-05-18",
+    "2026-05-19",
+    "2026-05-20",
+    "2026-05-21",
+    "2026-05-22",
+    "2026-05-26",
+    "2026-05-27",
+    "2026-05-28",
+    "2026-05-29",
+    "2026-06-01",
+    "2026-06-02",
+    "2026-06-03",
+    "2026-06-04",
+    "2026-06-05",
+    "2026-06-08",
+    "2026-06-09",
+    "2026-06-10",
+    "2026-06-11",
+    "2026-06-12",
+    "2026-06-15",
+    "2026-06-16",
+    "2026-06-17",
+    "2026-06-18",
+    "2026-06-22",
+    "2026-06-23",
+    "2026-06-24",
+    "2026-06-25",
+    "2026-06-26",
+    "2026-06-29",
+    "2026-06-30",
+    "2026-07-01",
+    "2026-07-02",
+    "2026-07-06",
+    "2026-07-07",
+    "2026-07-08",
+    "2026-07-09",
+    "2026-07-10",
+    "2026-07-13",
+    "2026-07-14",
+    "2026-07-15",
+    "2026-07-16",
+    "2026-07-17",
+    "2026-07-20",
+    "2026-07-21",
+    "2026-07-22",
+    "2026-07-23",
+    "2026-07-24",
+    "2026-07-27",
+    "2026-07-28",
+    "2026-07-29",
+    "2026-07-30",
+    "2026-07-31",
+    "2026-08-03",
+    "2026-08-04",
+    "2026-08-05",
+    "2026-08-06",
+    "2026-08-07",
+    "2026-08-10",
+    "2026-08-11",
+    "2026-08-12",
+    "2026-08-13",
+    "2026-08-14",
+    "2026-08-17",
+    "2026-08-18",
+    "2026-08-19",
+    "2026-08-20",
+    "2026-08-21",
+    "2026-08-24",
+    "2026-08-25",
+    "2026-08-26",
+    "2026-08-27",
+    "2026-08-28",
+    "2026-08-31",
+    "2026-09-01",
+    "2026-09-02",
+    "2026-09-03",
+    "2026-09-04",
+    "2026-09-08",
+    "2026-09-09",
+    "2026-09-10",
+    "2026-09-11"
+  ],
+  "prior_session": "2026-03-20",
+  "request_start": "2026-03-20T07:00:00+00:00",
+  "request_end": "2026-09-12T00:00:00+00:00",
+  "production_writes": false,
+  "orders": 0,
+  "model_training": false,
+  "preflights": [
+    {
+      "observed_at": "2026-09-13T04:34:24.164800+00:00",
+      "request": {
+        "dataset": "XNAS.BASIC",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "AAPL"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-03-20T07:00:00+00:00",
+        "end": "2026-09-12T00:00:00+00:00"
+      },
+      "estimated_cost_usd": 0.0,
+      "estimated_billable_bytes": 6450248,
+      "estimated_record_count": 115183,
+      "range_pass": true,
+      "max_bytes": 134217728,
+      "capacity_pass": true
+    },
+    {
+      "observed_at": "2026-09-13T04:34:43.464488+00:00",
+      "request": {
+        "dataset": "XNAS.BASIC",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "AMZN"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-03-20T07:00:00+00:00",
+        "end": "2026-09-12T00:00:00+00:00"
+      },
+      "estimated_cost_usd": 0.0,
+      "estimated_billable_bytes": 6461392,
+      "estimated_record_count": 115382,
+      "range_pass": true,
+      "max_bytes": 134217728,
+      "capacity_pass": true
+    },
+    {
+      "observed_at": "2026-09-13T04:34:48.506720+00:00",
+      "request": {
+        "dataset": "XNAS.BASIC",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "GOOG"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-03-20T07:00:00+00:00",
+        "end": "2026-09-12T00:00:00+00:00"
+      },
+      "estimated_cost_usd": 0.0,
+      "estimated_billable_bytes": 6359248,
+      "estimated_record_count": 113558,
+      "range_pass": true,
+      "max_bytes": 134217728,
+      "capacity_pass": true
+    },
+    {
+      "observed_at": "2026-09-13T04:34:54.151245+00:00",
+      "request": {
+        "dataset": "XNAS.BASIC",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "MU"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-03-20T07:00:00+00:00",
+        "end": "2026-09-12T00:00:00+00:00"
+      },
+      "estimated_cost_usd": 0.0,
+      "estimated_billable_bytes": 6503728,
+      "estimated_record_count": 116138,
+      "range_pass": true,
+      "max_bytes": 134217728,
+      "capacity_pass": true
+    },
+    {
+      "observed_at": "2026-09-13T04:34:59.830310+00:00",
+      "request": {
+        "dataset": "XNAS.BASIC",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "NVDA"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-03-20T07:00:00+00:00",
+        "end": "2026-09-12T00:00:00+00:00"
+      },
+      "estimated_cost_usd": 0.0,
+      "estimated_billable_bytes": 6503504,
+      "estimated_record_count": 116134,
+      "range_pass": true,
+      "max_bytes": 134217728,
+      "capacity_pass": true
+    },
+    {
+      "observed_at": "2026-09-13T04:35:06.478682+00:00",
+      "request": {
+        "dataset": "XNAS.BASIC",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "SNDK"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-03-20T07:00:00+00:00",
+        "end": "2026-09-12T00:00:00+00:00"
+      },
+      "estimated_cost_usd": 0.0,
+      "estimated_billable_bytes": 6494264,
+      "estimated_record_count": 115969,
+      "range_pass": true,
+      "max_bytes": 134217728,
+      "capacity_pass": true
+    },
+    {
+      "observed_at": "2026-09-13T04:35:12.161078+00:00",
+      "request": {
+        "dataset": "XNAS.BASIC",
+        "schema": "ohlcv-1m",
+        "symbols": [
+          "COST"
+        ],
+        "stype_in": "raw_symbol",
+        "start": "2026-03-20T07:00:00+00:00",
+        "end": "2026-09-12T00:00:00+00:00"
+      },
+      "estimated_cost_usd": 0.0,
+      "estimated_billable_bytes": 4999848,
+      "estimated_record_count": 89283,
+      "range_pass": true,
+      "max_bytes": 134217728,
+      "capacity_pass": true
+    }
+  ],
+  "acquisitions": [
+    {
+      "symbol": "AAPL",
+      "rows": 115183,
+      "zero_volume_rows": 659,
+      "manifest_sha256": "4d2adda829f76c49cdc6af3cdeeabe802e21b25c7da05ece16a1c6c7583aaf1c",
+      "raw_readback_verified": true
+    },
+    {
+      "symbol": "AMZN",
+      "rows": 115382,
+      "zero_volume_rows": 240,
+      "manifest_sha256": "ad2ecc1d1f887abdffacca62c4128420d092b19de048a0ed4f3ae83c8dde4638",
+      "raw_readback_verified": true
+    },
+    {
+      "symbol": "GOOG",
+      "rows": 113558,
+      "zero_volume_rows": 453,
+      "manifest_sha256": "55230a3c1a5d95b211fa4d15237d864d171ea21b29e5135057469066afcecf24",
+      "raw_readback_verified": true
+    },
+    {
+      "symbol": "MU",
+      "rows": 116138,
+      "zero_volume_rows": 5,
+      "manifest_sha256": "7dc6a88d8ad0e47e288ec904c0acba17ad440e4186fbd6471708c98d50037780",
+      "raw_readback_verified": true
+    },
+    {
+      "symbol": "NVDA",
+      "rows": 116134,
+      "zero_volume_rows": 3,
+      "manifest_sha256": "f33b3cc31548c04fa5becfbb78d2f4afc4131f835b7625af02eefc3117d360e2",
+      "raw_readback_verified": true
+    },
+    {
+      "symbol": "SNDK",
+      "rows": 115969,
+      "zero_volume_rows": 12,
+      "manifest_sha256": "2fcf27c7e22e592d83bd908ab2a094526e8afb2d4abc54d879d6cd8f5eabf6f2",
+      "raw_readback_verified": true
+    },
+    {
+      "symbol": "COST",
+      "rows": 89283,
+      "zero_volume_rows": 10967,
+      "manifest_sha256": "32ea8833b509547be1536f49a910f4b8042c5178934dde2b3ce062fb2dd37148",
+      "raw_readback_verified": true
+    }
+  ],
+  "total_preflight": {
+    "estimated_cost_usd": 0.0,
+    "estimated_billable_bytes": 43772232,
+    "max_bytes": 1073741824,
+    "available_bytes": 1416929931264,
+    "capacity_pass": true
+  },
+  "comparison_sha256": "3e3bbbff1c69b294e63480cc811530467ef50663f8814f19aa3ff8d32f62dc0d",
+  "output_manifests": [
+    {
+      "path": "boundary-results.parquet",
+      "sha256": "2ba8184c6cc9fc25ad17cd048e083055301635a83a85bb39ee8f10be0fbc6beb"
+    },
+    {
+      "path": "entry-window-results.parquet",
+      "sha256": "31e131e6ad662d92479b028fe66780e78a7235e0d28a47c16cf9f0c7ff462269"
+    },
+    {
+      "path": "baseline-inventory.json",
+      "sha256": "47f05a349090e26d6ba8f4de3aca03cda17e0ce191a1794921a1999af0d928a9"
+    }
+  ],
+  "finished_at": "2026-09-13T04:36:53.892815+00:00"
+}

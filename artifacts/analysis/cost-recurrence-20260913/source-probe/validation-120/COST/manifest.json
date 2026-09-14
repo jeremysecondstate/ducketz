@@ -1,0 +1,39 @@
+{
+  "completed_at": "2026-09-13T04:36:45.004289+00:00",
+  "dataset": "XNAS.BASIC",
+  "symbol": "COST",
+  "rows": 89283,
+  "zero_volume_rows": 10967,
+  "request": {
+    "dataset": "XNAS.BASIC",
+    "schema": "ohlcv-1m",
+    "symbols": [
+      "COST"
+    ],
+    "stype_in": "raw_symbol",
+    "start": "2026-03-20T07:00:00+00:00",
+    "end": "2026-09-12T00:00:00+00:00"
+  },
+  "payloads": [
+    {
+      "path": "provider.dbn",
+      "bytes": 2167025,
+      "sha256": "aba1a61a127e01e45c794c10ec9bc3d215f8542265687e2594e19b72fc84eb35"
+    },
+    {
+      "path": "observations.parquet",
+      "bytes": 2297111,
+      "sha256": "89a811ce006766e10b62c2e8c8b63c9fb26b66c1a9ca215d9452905cab4179f2"
+    },
+    {
+      "path": "preflight.json",
+      "bytes": 474,
+      "sha256": "c1b04dffb2b2e4c9de095a86d8915767966bcdd5aeb46bb80501dea0d75a5342"
+    },
+    {
+      "path": "native-metadata.json",
+      "bytes": 434,
+      "sha256": "6f615566e40fbb750f9dd596ad29346f5fb57531b6a47d5e9cdb5601080052b4"
+    }
+  ]
+}

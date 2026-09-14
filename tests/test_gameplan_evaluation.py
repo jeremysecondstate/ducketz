@@ -5,7 +5,9 @@ import pandas as pd
 import pytest
 
 from ml.artifacts import write_manifest
-from ml.gameplan_evaluation import evaluate_saved_gameplans, read_evaluation_history
+from ml.gameplan_evaluation import evaluate_forecasts, evaluate_saved_gameplans, read_evaluation_history
+from ml.gameplan_source_selection import GAMEPLAN_SOURCE_SELECTION_VERSION
+from ml.independent_stock_targets import STOCK_TARGET_CONTRACT_VERSION
 from ml.nightly_gameplan import _intraday_outcomes, _publish_gameplan
 
 
@@ -130,3 +132,68 @@ def test_four_hour_evaluation_waits_for_an_actual_window_end_price(tmp_path):
     scored = evaluate_saved_gameplans(tmp_path, observed_groups={"4h": complete}, evaluated_at="2026-09-05T02:00:00Z")
     assert scored.evaluations.iloc[0].evaluation_status == "EVALUATED"
     assert scored.evaluations.iloc[0].brier_score == 0.25
+
+
+def independent_forecast_and_outcome():
+    common = {
+        "symbol": "COST", "route": "1h@13:00",
+        "target_window_start": pd.Timestamp("2026-09-10T20:00:00Z"),
+        "target_window_end": pd.Timestamp("2026-09-10T21:00:00Z"),
+        "target_contract_version": STOCK_TARGET_CONTRACT_VERSION,
+        "target_price_source_contract": "xnas-itch-archive-v1",
+        "target_price_dataset": "XNAS.ITCH",
+    }
+    forecast = {**common, "id": "COST:1h@13:00", "source_gameplan_run": "old-selector-plan",
+                "action_date": "2026-09-10", "model_group": "1h",
+                "model_status": "PROMOTED", "calibrated_probability": 0.7}
+    return forecast, {**common, "target": 1, "observed_return": 0.02}
+
+
+@pytest.mark.parametrize("forecast_selection,outcome_selection", [
+    (None, GAMEPLAN_SOURCE_SELECTION_VERSION),
+    (GAMEPLAN_SOURCE_SELECTION_VERSION, None),
+])
+def test_independent_outcomes_do_not_cross_match_feature_selection_contracts(
+    forecast_selection, outcome_selection,
+):
+    forecast, outcome = independent_forecast_and_outcome()
+    forecast["source_selection_contract"] = forecast_selection
+    outcome["source_selection_contract"] = outcome_selection
+    result = evaluate_forecasts(pd.DataFrame([forecast]),
+        observed_groups={"same-physical-clocks": pd.DataFrame([outcome])},
+        evaluated_at="2026-09-11T01:00:00Z")
+    assert result.iloc[0].evaluation_status == "MATURE_AWAITING_DATA"
+    assert pd.isna(result.iloc[0].observed_target)
+    assert pd.isna(result.iloc[0].brier_score)
+
+
+def test_independent_contracts_keep_separate_outcomes_at_identical_clocks():
+    legacy, old_outcome = independent_forecast_and_outcome()
+    current = {**legacy, "source_gameplan_run": "prior-session-plan",
+               "source_selection_contract": GAMEPLAN_SOURCE_SELECTION_VERSION}
+    # Deliberately opposing fixture labels make accidental lookup overwrites
+    # visible even though the source, symbol, route and clocks are identical.
+    new_outcome = {**old_outcome, "source_selection_contract": GAMEPLAN_SOURCE_SELECTION_VERSION,
+                   "target": 0, "observed_return": -0.01}
+    result = evaluate_forecasts(pd.DataFrame([legacy, current]),
+        observed_groups={"legacy": pd.DataFrame([old_outcome]),
+                         "prior-session": pd.DataFrame([new_outcome])},
+        evaluated_at="2026-09-11T01:00:00Z").set_index("source_gameplan_run")
+    assert result.evaluation_status.tolist() == ["EVALUATED", "EVALUATED"]
+    assert result.loc["old-selector-plan", "observed_target"] == 1
+    assert result.loc["old-selector-plan", "brier_score"] == pytest.approx(0.09)
+    assert result.loc["prior-session-plan", "observed_target"] == 0
+    assert result.loc["prior-session-plan", "brier_score"] == pytest.approx(0.49)
+
+
+@pytest.mark.parametrize("null_selection", [None, float("nan"), pd.NA])
+def test_absent_and_null_legacy_feature_selection_preserve_matching(null_selection):
+    forecast, outcome = independent_forecast_and_outcome()
+    # Concatenating old publications with versioned publications produces a
+    # null column for old rows; it must match the original absent-column form.
+    forecast["source_selection_contract"] = null_selection
+    result = evaluate_forecasts(pd.DataFrame([forecast]),
+        observed_groups={"legacy": pd.DataFrame([outcome])},
+        evaluated_at="2026-09-11T01:00:00Z")
+    assert result.iloc[0].evaluation_status == "EVALUATED"
+    assert result.iloc[0].brier_score == pytest.approx(0.09)

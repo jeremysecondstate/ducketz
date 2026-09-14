@@ -171,6 +171,28 @@ Your Standard CME subscription gives you **16+ years of the listed L0 data**, **
 
 Live coverage is labeled **Databento US Equities Mini** in the screenshot.
 
+### Dataset-level access verified September 12, 2026
+
+The logged-in account's **Manage live data** panel confirms Standard with two
+active live datasets: **EQUS.MINI** and **EQUS.SUMMARY**. **XNAS.BASIC** (Nasdaq
+Basic with NLS Plus) and **XNAS.ITCH** are listed under enhanced live data, which
+requires Plus or Unlimited. The schema-level checkmarks below apply to the
+Standard live coverage; they do not grant real-time access to every historical
+dataset. No subscription or license was changed during verification.
+
+Standard historical L0 access is broader: the plan table includes 8+ years of
+OHLCV history across 45 venues, subject to each dataset's actual start date and
+symbol availability. This account successfully downloaded seven XNAS.BASIC
+`ohlcv-1m` historical requests covering March–September 2026, with exact $0
+preflights and verified native payloads. Thus **historical XNAS.BASIC minute bars
+are accessible; live XNAS.BASIC is not active on this Standard account**.
+Completed-session Historical availability must still be checked at fetch time.
+
+Sources: [account plans](https://databento.com/portal/live-data/plans/us-equities),
+[live licenses](https://databento.com/portal/live-data#manage), the saved
+`STANDARD=PLAN-2.png` and `STANDARD=PLAN-3.png` screenshots, and
+[native access verification](../../artifacts/analysis/cost-recurrence-20260913/history-2024-feasibility.md).
+
 | Level | Schema / data type      | Live on Standard | Explanation | What would be fetched | How much in GiB |
 | ----- | ----------------------- | ---------------- | ----------- | --------------------- | --------------- |
 | —     | Full market summary     | Yes              | This is a separate `EQUS.SUMMARY` provider dataset rather than one normalized schema: consolidated US-equity summary records expose daily OHLCV, statistics, and definitions as distinct outputs. | Not part of the normal venue-specific `XNAS.ITCH` cold archive and not synthesized from those records. | `0` in the normal cold archive because this separate dataset is not requested. |

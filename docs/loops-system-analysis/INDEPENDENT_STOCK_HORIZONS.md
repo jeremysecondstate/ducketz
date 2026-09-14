@@ -1,6 +1,8 @@
 # Independent stock horizons
 
-The accepted stock design covers AAPL, AMZN, GOOG, MU, NVDA, SNDK and COST.
+Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from `datafetching/watchlist.txt` and validate historical publications against their own saved universes.
+
+The accepted stock design covers the production symbols in `datafetching/watchlist.txt`.
 All clocks below are America/Los_Angeles. Options remain separate research.
 
 | Horizon | Forecast entry times | Holding target | Relative allocation cap |
@@ -10,8 +12,8 @@ All clocks below are America/Los_Angeles. Options remain separate research.
 | 1d | 04:00 | Same session 17:00 | 3 |
 | 1w | 04:00 when no weekly allocation is active | Fifth exchange session 17:00 | 4 |
 
-These are 19 entry opportunities per symbol (133 across seven stocks), not a
-requirement to force 133 orders. Bearish and neutral entry forecasts create no
+These are 19 entry opportunities per symbol (209 across eleven stocks), not a
+requirement to place an order in every window. Bearish and neutral entry forecasts create no
 BUY; scheduled exits can only reduce shares owned by their horizon. The runtime
 does not open shorts. A horizon with a working
 entry, unclosed position, or uncertain order cannot open another allocation.
@@ -68,7 +70,7 @@ definitions and evaluations.
 The publication retains 24 rows per symbol: 13 forward hourly entries plus one
 explicit opening-gap research row, four forward four-hour entries, one daily
 entry plus four later daily outlooks, and one weekly entry. The opening-gap and
-later daily outlooks have no independent entry authority. All 168 option-intent
+later daily outlooks have no independent entry authority. All `24 × N` option-intent
 rows in a stock-only publication are non-executable placeholders.
 
 The active source is explicitly selected with
@@ -99,13 +101,26 @@ declared and observed endpoints, and the price-source identity. The supervised
 rebuild them from changing market files. A resumed tail retains its pinned
 Gameplan source.
 
-The selected fixed-budget strategy requires a genuinely promoted stock forecast
-and the existing entry, ownership, quote, capital and order gates. Learned
-enrichment remains a separate research/shadow lane. Its four models use exact
-execution outcomes, causal inputs and chronological development/assessment;
-research models retain their status. The optional `qualified-enrichment`
-strategy still requires its own qualified sizing evidence. Selecting fixed
-budgets does not relabel an enrichment model or manufacture an `EnrichmentOutput`.
+Prospective feature selection uses `independent-gameplan-prior-session-features-v1`:
+choose the latest eligible completed hourly feature bar from the immediately
+previous exchange session, with recorded availability by that session's 17:05
+Pacific cutoff. The bar must finish at or after the actual regular close and
+by 17:00. No rolling-model target-clock prerequisite is imposed. The declared
+source clocks and selection version travel with forecasts, cohorts and models;
+old publications retain their legacy selector. See the full cutoff and source
+verification rules in `NIGHTLY_GAMEPLAN.md`.
+
+The selected fixed-budget strategy requires a stock forecast that passed model
+validation and the existing entry, ownership, quote, capital and order gates.
+The four optional learned return and allocation models use exact execution
+outcomes, causal inputs and chronological development/assessment. They do not
+determine quantities in the current Gameplan or the fixed-budget strategy.
+Only the optional `qualified-enrichment` strategy requires their qualified
+sizing evidence. Describe their state as training completed, validation passed
+or not passed, and used or not used by the selected strategy; report the actual
+failed checks instead of the ambiguous user-facing label "research-only".
+Persisted model status identifiers remain unchanged for compatibility.
+Selecting fixed budgets does not relabel a model or manufacture an `EnrichmentOutput`.
 All strategies preserve the exact target expiry and exclude opening-gap and
 later daily-outlook rows from entry authority.
 
@@ -131,7 +146,7 @@ These per-opportunity alternatives are not added as simultaneous orders and can
 be positive beside Sell or Hold. Non-entry outlooks show a dash. The adjacent
 Direction Based Trade Qty applies promoted >=54% bullish buys, <=46% bearish
 sales of eligible held stock, and Neutral zero through one shared cash balance.
-Fresh account evidence includes all seven stock balances, cash and pending-order
+Fresh account evidence includes every configured stock balance, cash and pending-order
 reservations, active horizon allocations and options/other exposure. Each clock
 processes bearish sales, due exits and bullish buys, with later horizon shares
 and pending sales protected. Conditional prior proceeds may fund later buys;
@@ -286,7 +301,7 @@ An unresolved quote block on an owned, due exit reports
 quote skip remains a valid no-trade decision. Windows time synchronization
 should still be maintained through its normal administrator-controlled service.
 
-`Loops Operations Watch` is the existing hourly :00 schedule, renamed from
+`Loops Operations Watch` uses the existing 90-minute recurrence (verified September 13), renamed from
 `Loops Overnight Health Watch`. It now covers daytime failure diagnosis and
 tested repairs as well as the documented overnight workflow. It verifies
 process/lock identities, heartbeat, actual cycle results and broker evidence;

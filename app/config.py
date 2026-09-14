@@ -4,6 +4,7 @@ import os
 from dataclasses import dataclass
 
 from dotenv import load_dotenv
+from app.hyperliquid_accounts import HYPERLIQUID_ACCOUNT_PROFILES, first_env_value
 
 
 DEFAULT_HYPERLIQUID_INFO_URL = "https://api.hyperliquid.xyz/info"
@@ -17,18 +18,17 @@ load_dotenv()
 class HyperliquidAccountConfig:
     label: str
     wallet_address: str
+    profile_key: str = ""
 
 
 def hyperliquid_accounts() -> list[HyperliquidAccountConfig]:
     return [
         HyperliquidAccountConfig(
-            label="Jeremy",
-            wallet_address=_required_env("HYPE_WALLET_ADDRESS_JEREMY_SECONDSTATE"),
-        ),
-        HyperliquidAccountConfig(
-            label="Alex",
-            wallet_address=_required_env("HYPE_WALLET_ADDRESS_ALEX_SECONDSTATE"),
-        ),
+            label=profile.label,
+            wallet_address=first_env_value(profile.wallet_address_env_keys),
+            profile_key=profile.key,
+        )
+        for profile in HYPERLIQUID_ACCOUNT_PROFILES.values()
     ]
 
 

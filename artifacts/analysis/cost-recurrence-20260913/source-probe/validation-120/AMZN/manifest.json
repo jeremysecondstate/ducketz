@@ -1,0 +1,39 @@
+{
+  "completed_at": "2026-09-13T04:35:40.138580+00:00",
+  "dataset": "XNAS.BASIC",
+  "symbol": "AMZN",
+  "rows": 115382,
+  "zero_volume_rows": 240,
+  "request": {
+    "dataset": "XNAS.BASIC",
+    "schema": "ohlcv-1m",
+    "symbols": [
+      "AMZN"
+    ],
+    "stype_in": "raw_symbol",
+    "start": "2026-03-20T07:00:00+00:00",
+    "end": "2026-09-12T00:00:00+00:00"
+  },
+  "payloads": [
+    {
+      "path": "provider.dbn",
+      "bytes": 2799980,
+      "sha256": "22c4d687ad34e2aaf921f8ef6dbfbdb1f950dd5dc6e6244ebff2bddce68f4b71"
+    },
+    {
+      "path": "observations.parquet",
+      "bytes": 2920482,
+      "sha256": "73ef53cc1f97d8197861cab40d4309f8ad1e13bb129675390d471c9df15a18ad"
+    },
+    {
+      "path": "preflight.json",
+      "bytes": 475,
+      "sha256": "49f711e20e2a0b50f72c09cb1c8d6184abe4f8074421bce1bebfd99c0c34aa6b"
+    },
+    {
+      "path": "native-metadata.json",
+      "bytes": 433,
+      "sha256": "d66e639fd4dc22e7f0813e10fe30bada2bfa8633b35099b67ed7c85a2c04756c"
+    }
+  ]
+}

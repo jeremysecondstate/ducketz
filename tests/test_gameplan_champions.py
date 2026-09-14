@@ -12,6 +12,7 @@ from sklearn.pipeline import Pipeline
 from ml.artifacts import file_checksum, write_manifest
 from ml.calibration import IdentityCalibrator
 from ml.gameplan_champions import latest_promoted_champion, retain_champion
+from ml.gameplan_source_selection import GAMEPLAN_SOURCE_SELECTION_VERSION
 from ml.nightly_gameplan import GAMEPLAN_VERSION, _publish_gameplan
 from ml.stock_trader.contracts import STOCK_TRADER_SYMBOLS
 
@@ -73,6 +74,40 @@ def test_failed_challenger_cannot_evict_latest_compatible_promoted_champion(tmp_
     qualified = publish(tmp_path)
     publish(tmp_path, "20260908T090000.000000Z", status="RESEARCH_NOT_PROMOTED")
     assert find(tmp_path)["run"] == qualified
+
+
+def test_prior_session_selector_cannot_retain_legacy_selector_champion(tmp_path):
+    legacy = publish(tmp_path)
+    # The same action date, symbols and native target-price feed are not enough:
+    # the model was fitted using a different historical feature-selection rule.
+    assert latest_promoted_champion(
+        tmp_path, group="1d", action_date=DAY, symbols=STOCK_TRADER_SYMBOLS,
+        price_source=SOURCE, before=pd.Timestamp("2026-09-08T10:00Z"),
+        source_selection_contract=GAMEPLAN_SOURCE_SELECTION_VERSION,
+    ) is None
+    assert latest_promoted_champion(
+        tmp_path, group="1d", action_date=DAY, symbols=STOCK_TRADER_SYMBOLS,
+        price_source=SOURCE, before=pd.Timestamp("2026-09-08T10:00Z"),
+        source_selection_contract=None,
+    )["run"] == legacy
+
+
+def test_retained_prediction_rejects_current_features_from_new_selector(tmp_path):
+    source_run = publish(tmp_path)
+    champion = find(tmp_path)
+    source_hash = file_checksum(source_run / "models/1d/model.joblib")
+    current = pd.DataFrame({
+        "x": [1.], "symbol": ["COST"], "route": ["1d@D+1"],
+        "decision_timestamp": ["2026-09-08T07:00Z"],
+        "information_available_at": ["2026-09-08T07:00Z"],
+        "source_selection_contract": [GAMEPLAN_SOURCE_SELECTION_VERSION],
+    })
+    destination = tmp_path / "unused"
+    with pytest.raises(RuntimeError, match="another source selection contract"):
+        retain_champion({}, champion=champion, current=current, run=destination,
+                        group="1d", frozen_at="2026-09-08T09:30Z")
+    assert not destination.exists()
+    assert file_checksum(source_run / "models/1d/model.joblib") == source_hash
 
 
 @pytest.mark.parametrize("change", [

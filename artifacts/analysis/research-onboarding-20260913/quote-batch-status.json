@@ -1,0 +1,42 @@
+{
+  "checked_at": "2026-09-14T08:04:48.087556+00:00",
+  "jobs": [
+    {
+      "symbol": "CROX",
+      "job_id": "OPRA-20260914-DLK5RBNH9M",
+      "state": "done",
+      "progress": 100,
+      "record_count": 71784681,
+      "actual_size": 5742774480,
+      "cost_usd": 0.0
+    },
+    {
+      "symbol": "PATH",
+      "job_id": "OPRA-20260914-CHSLXAEJYY",
+      "state": "done",
+      "progress": 100,
+      "record_count": 503233452,
+      "actual_size": 40258676160,
+      "cost_usd": 0.0
+    },
+    {
+      "symbol": "TWST",
+      "job_id": "OPRA-20260914-8GGJ3HVGSH",
+      "state": "done",
+      "progress": 100,
+      "record_count": 32812761,
+      "actual_size": 2625020880,
+      "cost_usd": 0.0
+    },
+    {
+      "symbol": "IONQ",
+      "job_id": "OPRA-20260914-6SFLFUSJ8T",
+      "state": "done",
+      "progress": 100,
+      "record_count": 1442726441,
+      "actual_size": 115418115280,
+      "cost_usd": 0.0,
+      "checked_at": "2026-09-14T08:04:48.087547+00:00"
+    }
+  ]
+}

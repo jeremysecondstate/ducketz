@@ -709,6 +709,53 @@ def test_parent_symbol_no_data_day_is_a_nonfatal_partition_skip(
         )
 
 
+def test_unresolved_high_volume_count_still_requires_native_download_confirmation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = []
+
+    class Metadata:
+        def get_record_count(self, **kwargs: object) -> int:
+            raise RuntimeError("422 symbology_invalid_request None of the symbols could be resolved")
+
+    class TimeSeries:
+        def get_range(self, **kwargs: object) -> object:
+            calls.append(kwargs)
+            raise RuntimeError("422 symbology_invalid_request Could not resolve smart symbols: CROX.OPT")
+
+    monkeypatch.setattr(opra_history.time, "sleep", lambda _seconds: None)
+    reports = []
+    progress = opra_history._execute_stream_plan(
+        SimpleNamespace(metadata=Metadata(), timeseries=TimeSeries()),
+        datastore_root=tmp_path, entitlement=_entitlement(),
+        symbols=("CROX.OPT",), plan=[("cbbo-1s", "2025-11-27")],
+        reporter=reports.append, fail_fast=True,
+    )
+    assert calls
+    assert all(c['start'] == '2025-11-27T00:00:00+00:00' for c in calls)
+    assert all(c['end'] == '2025-11-28T00:00:00+00:00' for c in calls)
+    assert all(c['symbols'] == ['CROX.OPT'] for c in calls)
+    assert progress.skipped_partitions == 1
+    assert progress.completed_partitions == 0
+    assert not progress.errors
+    assert any(r.startswith('NO_DATA cbbo-1s/2025-11-27') for r in reports)
+
+
+def test_high_volume_count_access_failure_does_not_become_empty_history(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def denied(**kwargs: object) -> int:
+        raise RuntimeError('403 access_denied')
+
+    monkeypatch.setattr(opra_history.time, "sleep", lambda _seconds: None)
+    with pytest.raises(opra_history.OpraSyncError, match='access_denied'):
+        opra_history._partition_time_segments(
+            SimpleNamespace(metadata=SimpleNamespace(get_record_count=denied)),
+            schema='cbbo-1s', day='2025-11-27', symbols=('CROX.OPT',),
+        )
+
+
 def test_readable_zero_record_dbn_without_parquet_is_no_data(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -1160,9 +1207,11 @@ def test_synchronize_fail_fast_skips_no_data_and_continues_after_existing_partit
     ]
 
 
+@pytest.mark.parametrize("schema", ("ohlcv-1d", "cbbo-1s", "cmbp-1"))
 def test_daily_batch_publishes_files_and_persists_no_data_coverage(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    schema: str,
 ) -> None:
     days = tuple(f"2025-01-{value:02d}" for value in range(1, 31))
     data_days = (days[0], days[-1])
@@ -1171,7 +1220,7 @@ def test_daily_batch_publishes_files_and_persists_no_data_coverage(
     class BatchStore:
         def __init__(self, day: str) -> None:
             self.dataset = opra_history.DATASET
-            self.schema = "ohlcv-1d"
+            self.schema = schema
             self.start = pd.Timestamp(day, tz="UTC")
             self.end = self.start + pd.Timedelta(days=1)
             self.symbols = ["AAPL.OPT"]
@@ -1189,6 +1238,7 @@ def test_daily_batch_publishes_files_and_persists_no_data_coverage(
             pd.DataFrame(
                 {
                     "ts_event": [self.start + pd.Timedelta(hours=21)],
+                    "ts_recv": [self.start + pd.Timedelta(hours=21)],
                     "publisher_id": [1],
                     "instrument_id": [2],
                     "symbol": ["AAPL  250117C00100000"],
@@ -1217,7 +1267,7 @@ def test_daily_batch_publishes_files_and_persists_no_data_coverage(
         def list_files(self, _job_id: str) -> list[dict[str, object]]:
             return [
                 {
-                    "filename": f"opra-pillar-{day.replace('-', '')}.ohlcv-1d.dbn.zst",
+                    "filename": f"opra-pillar-{day.replace('-', '')}.{schema}.dbn.zst",
                     "size": len(payload),
                     "hash": f"sha256:{hashlib.sha256(payload).hexdigest()}",
                 }
@@ -1238,14 +1288,14 @@ def test_daily_batch_publishes_files_and_persists_no_data_coverage(
             with zipfile.ZipFile(archive, "w") as output:
                 for day, payload in payloads.items():
                     output.writestr(
-                        f"opra-pillar-{day.replace('-', '')}.ohlcv-1d.dbn.zst",
+                        f"opra-pillar-{day.replace('-', '')}.{schema}.dbn.zst",
                         payload,
                     )
             return [archive]
 
     batch = Batch()
     client = SimpleNamespace(
-        metadata=SimpleNamespace(TIMEOUT=0),
+        metadata=SimpleNamespace(TIMEOUT=0, get_record_count=lambda **_kwargs: 1),
         timeseries=SimpleNamespace(TIMEOUT=0),
         batch=batch,
     )
@@ -1257,7 +1307,7 @@ def test_daily_batch_publishes_files_and_persists_no_data_coverage(
     monkeypatch.setattr(
         opra_history,
         "_partition_plan",
-        lambda *_args, **_kwargs: [("ohlcv-1d", day) for day in days],
+        lambda *_args, **_kwargs: [(schema, day) for day in days],
     )
     monkeypatch.setattr(
         opra_history,
@@ -1270,7 +1320,7 @@ def test_daily_batch_publishes_files_and_persists_no_data_coverage(
         datastore_root=tmp_path,
         entitlement=_entitlement(),
         scope=SyncScope(
-            schemas=("ohlcv-1d",),
+            schemas=(schema,),
             start=days[0],
             end="2025-01-31",
             symbols=("AAPL.OPT",),
@@ -1289,7 +1339,7 @@ def test_daily_batch_publishes_files_and_persists_no_data_coverage(
     assert batch.download_calls == 1
     states = list(
         opra_history.canonical_root(tmp_path).glob(
-            "state/batch-jobs/ohlcv-1d/AAPL.OPT/*/job.json"
+            f"state/batch-jobs/{schema}/AAPL.OPT/*/job.json"
         )
     )
     assert len(states) == 1
@@ -1300,7 +1350,7 @@ def test_daily_batch_publishes_files_and_persists_no_data_coverage(
     for day in data_days:
         destination = opra_history.partition_directory(
             tmp_path,
-            schema="ohlcv-1d",
+            schema=schema,
             day=day,
             symbols=("AAPL.OPT",),
         )
@@ -1315,7 +1365,7 @@ def test_daily_batch_publishes_files_and_persists_no_data_coverage(
         datastore_root=tmp_path,
         entitlement=_entitlement(),
         scope=SyncScope(
-            schemas=("ohlcv-1d",),
+            schemas=(schema,),
             start=days[0],
             end="2025-01-31",
             symbols=("AAPL.OPT",),
@@ -1331,6 +1381,80 @@ def test_daily_batch_publishes_files_and_persists_no_data_coverage(
     assert second.completed_rows == 2
     assert batch.submit_calls == 1
     assert batch.download_calls == 1
+
+
+@pytest.mark.parametrize("split_fails", (False, True))
+def test_dense_batch_day_uses_bounded_native_segments_before_completion(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    split_fails: bool,
+) -> None:
+    source = tmp_path / 'provider.dbn.zst'
+    source.write_bytes(b'controlled-dense-day')
+    info = {'day':'2025-01-02','filename':'opra-pillar-20250102.cbbo-1s.dbn.zst',
+            'size':source.stat().st_size, 'hash':'sha256:'+hashlib.sha256(source.read_bytes()).hexdigest()}
+    state = {'status':'FILES_READY','job_id':'OPRA-DENSE-TEST',
+             'planned_dates':['2025-01-02'],'provider_files':[info]}
+    updates, calls = [], []
+    monkeypatch.setattr(opra_history, '_wait_for_batch_job', lambda *_a, **_k: state)
+    monkeypatch.setattr(opra_history, '_prepare_batch_job_files', lambda *_a, **_k: state)
+    monkeypatch.setattr(opra_history, '_batch_local_file', lambda *_a, **_k: source)
+    monkeypatch.setattr(opra_history, '_partition_time_segments', lambda *_a, **_k: [
+        ('2025-01-02T00:00:00+00:00','2025-01-02T12:00:00+00:00','000000-120000'),
+        ('2025-01-02T12:00:00+00:00','2025-01-03T00:00:00+00:00','120000-000000'),
+    ])
+    def stream(*_args, **kwargs):
+        calls.append(kwargs)
+        if split_fails:
+            raise opra_history.OpraSyncError('second native segment failed validation')
+        return opra_history._SyncProgress(completed_partitions=2, completed_rows=40, completed_bytes=400)
+    def update(_path, prior, **kwargs):
+        updates.append(kwargs)
+        return {**prior, **kwargs}
+    monkeypatch.setattr(opra_history, '_execute_stream_plan', stream)
+    monkeypatch.setattr(opra_history, '_download_partition', lambda *_a, **_k: pytest.fail('dense full-day normalization bypassed the split'))
+    monkeypatch.setattr(opra_history, '_update_batch_job_state', update)
+    monkeypatch.setattr(opra_history, '_load_batch_job_state', lambda *_a, **_k: state)
+    arguments = dict(datastore_root=tmp_path, entitlement=_entitlement(), schema='cbbo-1s',
+        symbols=('AAPL.OPT',), state_path=tmp_path/'job.json', state=state,
+        target_days={'2025-01-02'}, reporter=None)
+    if split_fails:
+        with pytest.raises(opra_history.OpraSyncError, match='second native segment failed'):
+            opra_history._execute_batch_job_state(SimpleNamespace(), **arguments)
+        assert source.is_file()
+        assert updates == []
+    else:
+        result = opra_history._execute_batch_job_state(SimpleNamespace(), **arguments)
+        assert result.completed_partitions == 2
+        assert result.completed_rows == 40
+        assert result.completed_bytes == 400
+        assert updates[-1]['status'] == 'COMPLETE'
+        assert not source.exists()
+    assert calls[0]['plan'] == [('cbbo-1s','2025-01-02')]
+    assert calls[0]['symbols'] == ('AAPL.OPT',)
+    assert calls[0]['fail_fast'] is True
+
+
+def test_batch_resume_recognizes_existing_intraday_partitions(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    segment = opra_history.partition_directory(tmp_path, schema='cbbo-1s',
+        day='2025-01-02', symbols=('AAPL.OPT',), segment='000000-120000')
+    segment.mkdir(parents=True)
+    (segment/'receipt.json').write_text('{}',encoding='utf-8')
+    calls = []
+    def verify_segments(*_args, **kwargs):
+        calls.append(kwargs)
+        return opra_history._SyncProgress(skipped_partitions=2,completed_rows=40,completed_bytes=400)
+    monkeypatch.setattr(opra_history, '_execute_stream_plan', verify_segments)
+    monkeypatch.setattr(opra_history, '_load_or_submit_batch_job', lambda *_a, **_k: pytest.fail('existing dense segments must not be resubmitted'))
+    result = opra_history._synchronize_daily_batch(SimpleNamespace(), datastore_root=tmp_path,
+        entitlement=_entitlement(), schema='cbbo-1s', days=['2025-01-02'],
+        symbols=('AAPL.OPT',), reporter=None)
+    assert result.skipped_partitions == 2
+    assert result.completed_rows == 40
+    assert calls[0]['plan'] == [('cbbo-1s','2025-01-02')]
 
 
 def test_daily_batch_streams_a_short_remaining_gap(
@@ -1682,9 +1806,11 @@ def test_tcbbo_normalization_preserves_every_native_trade_event(
     assert "sequence" not in opra_history._natural_key("tcbbo")
 
 
-def test_tcbbo_normalization_rejects_native_record_count_mismatch(
+@pytest.mark.parametrize("schema", ("tcbbo", "status"))
+def test_sequence_less_normalization_rejects_native_record_count_mismatch(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    schema: str,
 ) -> None:
     parquet_path = tmp_path / "tcbbo.parquet"
     pd.DataFrame(
@@ -1703,10 +1829,10 @@ def test_tcbbo_normalization_rejects_native_record_count_mismatch(
         opra_history.OpraSyncError,
         match="native_rows=3 normalized_rows=2",
     ):
-        opra_history._add_tcbbo_source_record_identity(
+        opra_history._add_source_record_identity(
             tmp_path / "provider.dbn.zst",
             parquet_path,
-            schema="tcbbo",
+            schema=schema,
         )
 
 
@@ -1729,6 +1855,75 @@ def test_tcbbo_validation_rejects_missing_or_invalid_source_ordinals(
 
     with pytest.raises(opra_history.OpraSyncError, match="source record ordinal|lacks"):
         opra_history.validate_parquet(path, schema="tcbbo")
+
+
+def test_status_normalization_preserves_repeated_and_distinct_native_updates(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class StatusStore:
+        def to_parquet(self, path: Path, **_kwargs: object) -> None:
+            pd.DataFrame({
+                "ts_recv": [pd.Timestamp("2024-07-25T13:30:07.632092Z")] * 3,
+                "ts_event": [pd.Timestamp("2024-07-25T13:30:07.631881Z")] * 3,
+                "publisher_id": [20] * 3,
+                "instrument_id": [335571069] * 3,
+                "symbol": ["CROX  240802P00118000"] * 3,
+                "action": [5, 5, 7],
+                "is_trading": ["Y", "Y", "N"],
+            }).set_index("ts_recv").to_parquet(path)
+
+    class TimeSeries:
+        def get_range(self, **kwargs: object) -> object:
+            Path(str(kwargs["path"])).write_bytes(b"controlled-status-dbn")
+            return StatusStore()
+
+    monkeypatch.setattr(opra_history, "_load_dbn_store", lambda _path: (1, 2, 3))
+    manifest = opra_history._download_partition(
+        SimpleNamespace(timeseries=TimeSeries()),
+        datastore_root=tmp_path,
+        entitlement=_entitlement(),
+        schema="status", day="2024-07-25", symbols=("CROX.OPT",),
+    )
+    destination = opra_history.partition_directory(
+        tmp_path, schema="status", day="2024-07-25", symbols=("CROX.OPT",),
+    )
+    normalized = pd.read_parquet(destination / "normalized.parquet")
+    assert normalized["action"].tolist() == [5, 5, 7]
+    assert normalized["source_record_ordinal"].tolist() == [0, 1, 2]
+    assert manifest["normalized"]["provider_duplicate_rows_removed"] == 0
+    assert manifest["normalized"]["duplicate_natural_key_rows"] == 0
+    assert manifest["normalized"]["source_record_identity"]["record_count"] == 3
+    assert opra_history.verify_partition(
+        destination, datastore_root=tmp_path,
+    )["manifest"] == manifest
+
+
+@pytest.mark.parametrize("ordinals", ([0, 0], [1, 0], [0, 2]))
+def test_status_validation_rejects_invalid_source_ordinals(
+    tmp_path: Path,
+    ordinals: list[int],
+) -> None:
+    path = tmp_path / "status.parquet"
+    pd.DataFrame({
+        "ts_recv": pd.to_datetime(["2024-07-25T13:30:00Z", "2024-07-25T13:31:00Z"]),
+        "publisher_id": [20, 20], "instrument_id": [123, 123],
+        "source_record_ordinal": pd.Series(ordinals, dtype="uint64"),
+    }).set_index("ts_recv").to_parquet(path)
+    with pytest.raises(opra_history.OpraSyncError, match="source record ordinal"):
+        opra_history.validate_parquet(path, schema="status")
+
+
+def test_status_validation_accepts_previously_published_legacy_identity(tmp_path: Path) -> None:
+    path = tmp_path / "status.parquet"
+    pd.DataFrame({
+        "ts_recv": pd.to_datetime(["2024-07-25T13:30:00Z", "2024-07-25T13:31:00Z"]),
+        "publisher_id": [20, 20], "instrument_id": [123, 123],
+    }).set_index("ts_recv").to_parquet(path)
+    result = opra_history.validate_parquet(path, schema="status")
+    assert result["duplicate_natural_key_rows"] == 0
+    assert "source_record_ordinal" not in result["natural_key_columns"]
+    assert "source_record_identity" not in result
 
 
 def test_definition_asof_never_uses_future_definition() -> None:
