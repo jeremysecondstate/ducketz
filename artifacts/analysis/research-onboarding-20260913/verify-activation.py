@@ -46,6 +46,16 @@ assert view.source_row_count == 24*len(expected)
 assert not view.pending_symbols
 
 gameplan = Path(active['gameplan_run'])
+forecasts = pq.read_table(gameplan/'forecasts.parquet', columns=[
+    'symbol','route','model_group','raw_probability','calibrated_probability','model_status'
+]).to_pandas()
+selected_forecasts = forecasts[forecasts.symbol.isin(batch['selected_symbols'])]
+for column in ('raw_probability','calibrated_probability'):
+    assert selected_forecasts[column].notna().all() and selected_forecasts[column].between(0,1).all(), f'Invalid forecast probabilities: {column}'
+prediction_evidence = [
+    {'symbol':symbol,'horizon':horizon,'model_status':status,'rows':int(count)}
+    for (symbol,horizon,status),count in selected_forecasts.groupby(['symbol','model_group','model_status']).size().items()
+]
 model_pointer = json.loads((root/'ml/stock-trader-model-latest/run.json').read_text(encoding='utf-8'))
 training = json.loads((root/model_pointer['run_path']/'training-report.json').read_text(encoding='utf-8'))
 training_evidence = {}
@@ -80,6 +90,7 @@ result = {'plan_id':batch['plan_id'], 'status':'VERIFIED',
     'fitted_horizons':active['fitted_horizons'],
     'qualified_enrichment_horizons':active['qualified_enrichment_horizons'],
     'training_evidence':training_evidence,
+    'selected_prediction_evidence':prediction_evidence,
     'orders_submitted':active['orders_submitted'], 'gameplan_run':active['gameplan_run'],
     'symbol_path_bytes':sizes, 'datastore_logical_bytes':total,
     'size_basis':'Logical file sizes in symbol-named paths, including native, normalized, and retained staging; shared data counted once in datastore total.'}

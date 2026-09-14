@@ -1,0 +1,29 @@
+{
+  "status": "VERIFIED_BASELINE_RESTORED",
+  "plan_id": "df613ade510b2775a99c051abf8472367e2c70208e13c1eacce8bad4c577d487",
+  "production_symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST"
+  ],
+  "gameplan_run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260912T051210.050260Z",
+  "model_run": "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260912T051308.132302Z",
+  "trade_plan_run": "ml/gameplan-trade-plan-runs/20260912T051328.518994Z",
+  "dashboard_rows": 168,
+  "pending_symbols": [
+    "CROX",
+    "IONQ",
+    "PATH",
+    "TWST"
+  ],
+  "orders_placed": 0,
+  "pointer_sha256": {
+    "ml\\nightly-gameplan-latest\\run.json": "19e65d84fcb553e2a4627a764c73eb625ac19d5dbf90642995a35557bee8cc02",
+    "ml\\stock-trader-model-latest\\run.json": "c9391f7248e69b7a301ac3eb78d48346095d86511f89857170cd7c13ebb26af1",
+    "ml\\gameplan-trade-plan-latest\\run.json": "ca20a9d1c866fd763cb326d97fe7e87a417869360f79a841a2159ca9c5056e63"
+  }
+}

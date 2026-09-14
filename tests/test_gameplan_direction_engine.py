@@ -49,6 +49,22 @@ def orders(decisions, action=None):
     return [item for item in decisions if item.quantity and (action is None or item.action == action)]
 
 
+def test_explicit_late_opening_keeps_cash_quote_and_end_guards():
+    signals, portfolio = inputs()
+    later = '2026-09-08T11:30:00Z'
+    signals = {key:replace(signal, actionable_until='2026-09-08T12:00:00Z') for key,signal in signals.items()}
+    portfolio = replace(portfolio, observed_at=later,
+                        quotes={s:replace(q, observed_at=later) for s,q in portfolio.quotes.items()})
+    assert not orders(build(signals, portfolio, decided_at=later))
+    late = build(signals, portfolio, decided_at=later, late_opening_date='2026-09-08')
+    assert orders(late) and all(d.prediction['target_window_end'] == signals[d.symbol,d.prediction['primary_horizon']].target_window_end for d in late)
+    assert not orders(build(signals, portfolio, decided_at=later, late_opening_date='2026-09-08', ledger_ready=False))
+    stale = replace(portfolio, quotes={s:replace(q, observed_at=NOW) for s,q in portfolio.quotes.items()})
+    assert not orders(build(signals, stale, decided_at=later, late_opening_date='2026-09-08'))
+    with pytest.raises(ValueError, match='late-opening date'):
+        build(signals, portfolio, decided_at='2026-09-08T12:00:00Z', late_opening_date='2026-09-08')
+
+
 def notional(decisions):
     return sum((item.quantity * Decimal(str(item.limit_price)) for item in decisions), Decimal(0))
 

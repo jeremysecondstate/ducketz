@@ -1,7 +1,8 @@
 {
   "plan_id": "df613ade510b2775a99c051abf8472367e2c70208e13c1eacce8bad4c577d487",
-  "stage": "run",
-  "status": "RUNNING",
-  "updated_at": "2026-09-14T05:53:31.303833+00:00",
-  "owner_pid": 36724
+  "stage": "finalize",
+  "status": "COMPLETE",
+  "updated_at": "2026-09-14T11:21:01.864187+00:00",
+  "owner_pid": 6372,
+  "completed_at": "2026-09-14T11:21:43.597615+00:00"
 }

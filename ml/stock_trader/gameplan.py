@@ -39,7 +39,13 @@ _LIVE_PRIMARY_HORIZONS = ("1h", "4h")
 _FOUR_HOUR_ACTION_HOURS = frozenset((4, 8, 12))
 
 
-def _entry_deadline(action_start: pd.Timestamp) -> pd.Timestamp:
+def validate_late_opening_date(value: str, observed_at: object) -> None:
+    local = utc(observed_at).tz_convert(GAMEPLAN_TIMEZONE)
+    if value != local.date().isoformat() or local.hour != 4:
+        raise ValueError('The explicit late-opening date is valid only during that date\'s 04:00-05:00 Pacific hour')
+
+
+def _entry_deadline(action_start: pd.Timestamp, *, late_opening_date: str | None = None) -> pd.Timestamp:
     """Return the live-entry deadline for a frozen action boundary.
 
     Schwab's stock session changes from regular to PM extended hours at 13:00
@@ -49,6 +55,8 @@ def _entry_deadline(action_start: pd.Timestamp) -> pd.Timestamp:
     """
 
     local = utc(action_start).tz_convert(GAMEPLAN_TIMEZONE)
+    if late_opening_date is not None and local.hour == 4 and local.date().isoformat() == late_opening_date:
+        return utc(action_start) + pd.Timedelta(hours=1)
     grace_seconds = (
         10 * 60 if local.hour == 13 else GAMEPLAN_STOCK_ENTRY_GRACE_SECONDS
     )

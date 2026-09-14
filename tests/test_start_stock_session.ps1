@@ -85,6 +85,18 @@ $owners = New-Owners
 foreach ($owner in $owners) { $owner.CommandLine += ' --wait-for-open --wait-for-open' }
 Assert-Rejected 'Duplicate waiting flag' -Owners $owners
 
+$owners = New-Owners
+foreach ($owner in $owners) {
+    $owner.CommandLine = $commandLine.Replace('fixed-horizon-budget-v1', 'gameplan-direction-current-market-v1') + ' --late-opening-date 2026-09-08'
+    $owner.CreationDate = ([DateTimeOffset]$owner.CreationDate).AddHours(-10)
+}
+$lateLock = $lockText.Replace('2026-09-08T21:36:07.195720+00:00', '2026-09-08T11:36:07.195720+00:00')
+Assert-Accepted 'Explicit same-date late Gameplan worker' -Owners $owners -Lock $lateLock
+$owners[0].CommandLine = $owners[0].CommandLine.Replace('2026-09-08', '2026-09-09')
+Assert-Rejected 'Mismatched late-opening dates' -Owners $owners -Lock $lateLock
+$owners[1].CommandLine = $owners[1].CommandLine.Replace('2026-09-08', '2026-09-09')
+Assert-Rejected 'Different-session late-opening date' -Owners $owners -Lock $lateLock
+
 foreach ($suffix in @(' --execute', ' --datastore-target other', ' --target-horizon 1h', ' --sizing-policy another-policy', ' --unknown', ' # comment')) {
     $owners = New-Owners
     $owners[1].CommandLine += $suffix

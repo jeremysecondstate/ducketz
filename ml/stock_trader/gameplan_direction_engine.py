@@ -180,6 +180,7 @@ def build_gameplan_direction_trade_decisions(
     policy: StockTraderPolicy | None = None, time_in_force: str = "DAY",
     exit_decisions: tuple[TradeDecision, ...] = (),
     maximum_quote_age_seconds: float = 60.,
+    late_opening_date: str | None = None,
 ) -> tuple[TradeDecision, ...]:
     """Apply 54/46 directions using actual capital, inventory, and current quotes.
 
@@ -191,6 +192,9 @@ def build_gameplan_direction_trade_decisions(
     """
     active_policy = policy or StockTraderPolicy()
     active_policy.validate()
+    if late_opening_date is not None:
+        from ml.stock_trader.gameplan import validate_late_opening_date
+        validate_late_opening_date(late_opening_date, decided_at)
     if time_in_force not in {"DAY", "AM", "PM", "EXT", "GTC_EXT"}:
         raise ValueError("Unsupported Gameplan stock time in force")
     if not isinstance(verified_promoted_signals, frozenset) or not verified_promoted_signals.issubset(signals):
@@ -254,7 +258,7 @@ def build_gameplan_direction_trade_decisions(
         else:
             from ml.stock_trader.independent_signals import _entry_deadline
             start, end = utc(signal.target_window_start), utc(signal.target_window_end)
-            deadline = min(utc(signal.actionable_until), _entry_deadline(start), end)
+            deadline = min(utc(signal.actionable_until), _entry_deadline(start, late_opening_date=late_opening_date), end)
             if not start <= timestamp < deadline:
                 code = "ENTRY_WINDOW_CLOSED"
             elif action == "BUY" and key in active_allocations:

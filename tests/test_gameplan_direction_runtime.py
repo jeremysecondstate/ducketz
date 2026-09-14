@@ -84,6 +84,24 @@ def test_no_execution_request_only_publishes_decisions_without_assigning_stock(e
     assert state.allocations == state.reservations == ()
 
 
+def test_late_opening_uses_same_durable_slot_and_preserves_five_oclock_end(environment, monkeypatch):
+    env = environment
+    prepare(env, monkeypatch, probability=.7)
+    env.now = pd.Timestamp('2026-09-08T11:30:00Z')
+    env.signals = {('AAPL','1h'):replace(env.signals['AAPL','1h'], actionable_until='2026-09-08T12:00:00Z')}
+    def late():
+        return runtime.run_independent_stock_trader_once(env.root, execute=True, session=env.broker,
+            runtime_clock=lambda:env.now, session_managed=True, sizing_policy=GAMEPLAN_SIZING_POLICY,
+            late_opening_date='2026-09-08')
+    result = late()
+    assert result.status == 'ORDERS_SUBMITTED' and result.submitted_orders == 1, result.error
+    assert _decisions(result)['prediction_handoff']['late_opening_date'] == '2026-09-08'
+    state = HorizonLedger(env.root/runtime.LEDGER_RELATIVE_PATH, ACCOUNT).snapshot()
+    assert len(state.allocations) == 1 and pd.Timestamp(state.allocations[0].target_end) == pd.Timestamp('2026-09-08T12:00:00Z')
+    env.now += pd.Timedelta(seconds=1)
+    assert late().submitted_orders == 0 and len(env.broker.submissions) == 1
+
+
 def test_final_gate_rejection_returns_unsold_manual_stock_to_free_inventory(environment, monkeypatch):
     env = environment
     prepare(env, monkeypatch)

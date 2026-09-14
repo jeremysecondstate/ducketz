@@ -146,6 +146,22 @@ def test_fixed_policy_preflight_separates_qualified_bearish_forecasts_from_model
     assert result["bullish_entry_windows"] == []
 
 
+def test_explicit_late_opening_retains_frozen_ids_and_ends_and_expires(published):
+    _publish(published, _frame(), reports=_promoted_reports())
+    standard, _ = load_current_independent_gameplan_signals(published, as_of='2026-09-08T11:01:00Z')
+    assert load_current_independent_gameplan_signals(published, as_of='2026-09-08T11:30:00Z')[0] == {}
+    late, _ = load_current_independent_gameplan_signals(published, as_of='2026-09-08T11:30:00Z',
+                   require_promoted_model_reports=True, late_opening_date='2026-09-08')
+    assert set(late) == set(standard)
+    for key, signal in late.items():
+        assert signal.prediction_id == standard[key].prediction_id
+        assert signal.target_window_end == standard[key].target_window_end
+        assert signal.actionable_until == '2026-09-08T12:00:00+00:00'
+    for clock in ('2026-09-08T12:00:00Z', '2026-09-09T11:30:00Z'):
+        with pytest.raises(ValueError, match='late-opening date'):
+            load_current_independent_gameplan_signals(published, as_of=clock, late_opening_date='2026-09-08')
+
+
 @pytest.mark.parametrize("fault", ["bare_flags", "wrong_schema", "wrong_group", "wrong_source", "failed_metrics", "wrong_artifact", "unseen_symbol", "unseen_route"])
 def test_fixed_policy_rejects_qualification_without_actual_compatible_evidence(published, fault):
     reports = _promoted_reports()

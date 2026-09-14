@@ -1,0 +1,82 @@
+{
+  "plan_id": "326f356e97dcc16f3cfef3a71c70eee17e345c3a534f1b01f37e84df342b4bd5",
+  "validated_at": "2026-09-14T11:21:43.355103+00:00",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST",
+    "CROX",
+    "PATH",
+    "TWST",
+    "IONQ"
+  ],
+  "gameplan_run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260914T104432.295244Z",
+  "gameplan_receipt_sha256": "3b1d851590fbfec545f8565ca5feb9f40493ff3f30ca903aeee1e9e93c340d74",
+  "action_date": "2026-09-14",
+  "counts": {
+    "forecasts.parquet": 264,
+    "option-strategy-intents.parquet": 264
+  },
+  "trade_plan": {
+    "run_path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260914T111644.447379Z",
+    "receipt_sha256": "aaa72a4e65b399bbaa5b097aa56478f7453812d9efb5ec877429a8e7b7b9ef2a",
+    "rows": 264
+  },
+  "current_pointer_hashes": {
+    "ml/nightly-gameplan-latest/run.json": "17d7b7f0a0612afc26c59f7ff3d7930a3d72357f4af60100c5012230f4c552ee",
+    "ml/stock-trader-model-latest/run.json": "4ba42bf63a6615438e2a3f6a30a32ff76f2ae1dcd513fdfea2f563904913b57e",
+    "ml/gameplan-trade-plan-latest/run.json": "01befb394d62916d3f379fdecf957f5235a8b1f0d49abd29b3c6e0b840805ad0"
+  },
+  "stock_model_fingerprint": "56c09cc946e139282981bacf6fd976ac29235e1d73b97bb04baa94d56b0b62a8",
+  "fitted_horizons": [
+    "1d",
+    "1h",
+    "1w",
+    "4h"
+  ],
+  "qualified_enrichment_horizons": [
+    "1h",
+    "4h"
+  ],
+  "orders_submitted": 0,
+  "overnight_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260914T111641.913351Z",
+  "overnight_receipt_sha256": "241d109906ef2a9b8acd12a8138fa6b1be2fd8731802cf0a8de124b77fc56e32",
+  "status": "ACTIVE",
+  "activated_at": "2026-09-14T11:21:43.562305+00:00",
+  "research_lineage": {
+    "week": "2026-09-13",
+    "publication_sha256": "b3bfb2142f6a7372b0fca511b76a96de8d392b37ff4154daa177807cd432f399",
+    "report_path": "C:\\DATASTORE\\research\\opportunities\\editions\\2026-09-13\\report.md",
+    "selected_companies": [
+      {
+        "symbol": "CROX",
+        "security_id": "CIK0001334036:COMMON",
+        "company_name": "Crocs, Inc.",
+        "decision": "watch"
+      },
+      {
+        "symbol": "PATH",
+        "security_id": "CIK0001734722:CLASS_A",
+        "company_name": "UiPath, Inc.",
+        "decision": "watch"
+      },
+      {
+        "symbol": "TWST",
+        "security_id": "CIK0001581280:COMMON",
+        "company_name": "Twist Bioscience Corporation",
+        "decision": "watch"
+      },
+      {
+        "symbol": "IONQ",
+        "security_id": "CIK0001824920:COMMON",
+        "company_name": "IonQ, Inc.",
+        "decision": "watch"
+      }
+    ]
+  },
+  "batch_plan_id": "df613ade510b2775a99c051abf8472367e2c70208e13c1eacce8bad4c577d487"
+}

@@ -1,0 +1,21 @@
+{
+  "plan_id": "df613ade510b2775a99c051abf8472367e2c70208e13c1eacce8bad4c577d487",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST",
+    "CROX",
+    "PATH",
+    "TWST",
+    "IONQ"
+  ],
+  "observed_at": "2026-09-14T11:16:41.084855+00:00",
+  "status": "COMPLETE",
+  "orders_placed": 0,
+  "broker_orders_enabled": false,
+  "recorded_observed_holdings": false
+}

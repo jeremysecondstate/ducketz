@@ -198,13 +198,16 @@ def run_overnight_pipeline(
     stock_only: bool = False,
     independent_stock_horizons: bool = False,
     stock_price_source: str | None = None,
+    deadline_exception: Path | None = None,
 ) -> Path:
     """Run the one-owner post-close chain and fail before downstream stages."""
 
     root = Path(datastore_root).resolve()
     repository = Path(repository_root).resolve()
     created = utc_timestamp()
-    resume = _resume_configuration(root, resume_run) if resume_run else None
+    if deadline_exception is not None and resume_run is None:
+        raise ValueError('A deadline exception requires an existing pinned tail attempt')
+    resume = _resume_configuration(root, resume_run, deadline_exception=deadline_exception) if resume_run else None
     if resume:
         start_at, stop_after = resume["failed_stage"], resume["stage_order"][-1]
         stock_only = stock_only or resume.get("stock_only") is True
@@ -230,6 +233,7 @@ def run_overnight_pipeline(
     if stop_after in INDEPENDENT_TAIL_STAGES and not independent_stock_horizons:
         raise ValueError("Independent post-publication stages require independent stock horizons")
     deadline_at = utc_timestamp(resume["deadline_at"] if resume else deadline) if (resume or deadline is not None) else next_action_deadline(created)
+    effective_deadline = utc_timestamp(resume.get('effective_deadline_at', resume['deadline_at'])) if resume else deadline_at
     selected = ALL_STAGE_ORDER[start_index : stop_index + 1]
     if stock_price_source != "xnas-itch-archive-v1":
         selected = tuple(stage for stage in selected if stage != INDEPENDENT_HISTORY_STAGE)
@@ -361,6 +365,8 @@ def run_overnight_pipeline(
         "owner_created_at": _process_created_at(os.getpid()),
         "repository_root": str(repository), "datastore_root": str(root),
         "deadline_at": deadline_at.isoformat(), "stage_order": list(selected),
+        "effective_deadline_at": effective_deadline.isoformat(),
+        "deadline_exception": resume.get('deadline_exception') if resume else None,
         "resumed_from": str(Path(resume_run).resolve()) if resume_run else None,
         "completed_stages_from_previous_attempt": resume["completed_stages"] if resume else [],
         "broker_orders_enabled": False, "orders_placed": 0,
@@ -423,9 +429,11 @@ def run_overnight_pipeline(
                     command = (*command, "--gameplan-run", str(root / report["enrichment_gameplan"]["run_path"]))
                     if stage in (INDEPENDENT_TRADE_PLANNING_STAGE, INDEPENDENT_ACTUALS_REVIEW_STAGE):
                         command = (*command, "--deadline", deadline_at.isoformat())
+                        if deadline_exception is not None:
+                            command = (*command, '--deadline-exception', str(Path(deadline_exception).resolve()))
                     _write_json_atomic(report_path, report)
                 exit_code = _run_stage(command, repository=repository, log_path=log_path,
-                    deadline=deadline_at, stop_request=run / "stop-request.json",
+                    deadline=effective_deadline, stop_request=run / "stop-request.json",
                     progress=progress, poll_seconds=poll_seconds)
                 if exit_code:
                     raise RuntimeError(f"{stage} exited with code {exit_code}; inspect {log_path}")
@@ -661,7 +669,7 @@ def _validated_run(root: Path, run: Path) -> Path:
     return run
 
 
-def _resume_configuration(root: Path, run: Path) -> dict[str, object]:
+def _resume_configuration(root: Path, run: Path, *, deadline_exception: Path | None = None) -> dict[str, object]:
     run = _validated_run(root, run)
     receipt = json.loads((run / "receipt.json").read_text(encoding="utf-8"))
     report = json.loads((run / "stage-report.json").read_text(encoding="utf-8"))
@@ -672,7 +680,20 @@ def _resume_configuration(root: Path, run: Path) -> dict[str, object]:
         or receipt.get("stage_report_checksum_sha256") != file_checksum(run / "stage-report.json")
         or receipt.get("orders_placed") != 0 or receipt.get("broker_orders_enabled") is not False):
         raise RuntimeError("Only a verified failed or stopped overnight attempt can resume")
-    if utc_timestamp() >= utc_timestamp(report["deadline_at"]):
+    effective_deadline = utc_timestamp(report['deadline_at'])
+    exception_evidence = None
+    if deadline_exception is not None:
+        from ml.preparation_deadline import preparation_deadline
+        if (report.get('failed_stage') not in (INDEPENDENT_TRADE_PLANNING_STAGE, INDEPENDENT_ACTUALS_REVIEW_STAGE)
+                or report.get('preparation_scope') != 'STOCK_ONLY'
+                or report.get('independent_stock_horizons') is not True
+                or not report.get('enrichment_gameplan')):
+            raise ValueError('Deadline exceptions cover only a pinned stock planning/actuals tail')
+        effective_deadline, exception_evidence = preparation_deadline(
+            root, root/report['enrichment_gameplan']['run_path'], report['deadline_at'], utc_timestamp(), deadline_exception)
+        if exception_evidence['authorization']['gameplan_receipt_sha256'] != report['enrichment_gameplan']['receipt_sha256']:
+            raise ValueError('Deadline exception differs from the saved tail pin')
+    if utc_timestamp() >= effective_deadline:
         raise RuntimeError("The failed attempt's publication deadline has passed")
     for name, record in receipt.get("logs", {}).items():
         path = (run / name).resolve()
@@ -682,7 +703,8 @@ def _resume_configuration(root: Path, run: Path) -> dict[str, object]:
     completed.extend(row["stage"] for row in report["stages"] if row["status"] == "COMPLETE")
     if report.get("failed_stage") not in ALL_STAGE_ORDER:
         raise RuntimeError("Failed overnight stage is missing")
-    return {**report, "completed_stages": completed}
+    return {**report, "completed_stages": completed, 'effective_deadline_at':effective_deadline.isoformat(),
+            'deadline_exception':exception_evidence}
 
 
 def overnight_status(root: Path) -> dict[str, object]:
@@ -782,6 +804,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--claim-supervision", metavar="UUID", help="Acquire/renew this Scheduled operator's three-minute supervision lease")
     parser.add_argument("--release-supervision", metavar="UUID", help="Release this Scheduled operator's supervision lease")
     parser.add_argument("--reason", default="", help="Evidence-based reason for requesting a stage stop")
+    parser.add_argument('--deadline-exception', type=Path, help='Explicit operator-authorized pinned planning/actuals exception record')
     parser.add_argument("--once", action="store_true", help="Compatibility flag")
     parser.add_argument(
         "--scheduled",
@@ -843,6 +866,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 stock_only=args.stock_only,
                 independent_stock_horizons=args.independent_stock_horizons,
                 stock_price_source=args.stock_price_source,
+                deadline_exception=args.deadline_exception,
             )
         except Exception as exc:
             print(f"Overnight runtime failed: {type(exc).__name__}: {exc}")

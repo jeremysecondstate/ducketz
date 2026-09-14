@@ -66,7 +66,7 @@ and holds the research-batch lock. An operator already holding a lease may pass
 their own `--owner-token` UUID; never reuse a different operator's token. The
 claim is released on exit. A vanished process stops renewing it.
 
-The same workflow has separate `fetch`, `train`, `validate`, `activate`, and
+The same workflow has separate `fetch`, `train`, `validate`, `activate`, `finalize`, and
 `status` commands for supervised maintenance. `fetch` prepares reusable OPRA
 and XNAS batch jobs while the provider processes their histories, invokes the existing native Databento/FMP/Schwab/SEC collectors,
 and writes verified stock/options archives. It records the explicitly started
@@ -79,7 +79,18 @@ Other symbols' existing historical policies remain unchanged.
 complete submission files, compressed with per-file checksums, plus FMP daily
 prices. It checks secondary-price quality and operational-bar coverage before
 running the normal native pipeline with the candidate watchlist inherited only
-by child processes:
+by child processes.
+
+The candidate preparation also reads fresh broker holdings under the existing
+stock-trader lock. When the saved ownership reconciliation is missing only the
+new symbols, it appends the observed holdings through the native horizon ledger
+with zero execution budgets. It requires a matching account, a previously ready
+reconciliation, and no working orders, open reservations, or ownership blocks.
+It preserves manual inventory as unallocated and does not start a trader.
+Other discrepancies require the normal reconciliation workflow; this step does
+not waive them. Its receipts are `ownership.json` and `ownership-snapshot.json`.
+
+The native stages are:
 
 1. Loop A close fetch and production OPRA catchup.
 2. Loop B directional training and predictions.
@@ -93,6 +104,18 @@ retained, while option-strategy rows remain the normal `NO_TRADE_STOCK_ONLY`
 placeholders. Paused options Strategy jobs and legacy traders remain paused.
 Historical research documents do not become invented point-in-time features;
 normal feature admission and availability timestamps still govern training.
+Minute rows with both open and close undefined are disclosed as missing price
+observations in the source inventory. Their native files remain intact. Partial,
+nonfinite, nonpositive, or conflicting observed prices still fail validation.
+
+If valid native coverage lacks a required prior close or enough observed pairs,
+the price path explicitly records `UNAVAILABLE_REFERENCE_PRICE` or
+`UNAVAILABLE_MINIMUM_SAMPLES`. The informational report may complete with
+`direction_projection_status=UNAVAILABLE_PRICE_REFERENCES`; it provides no
+chronological trade simulation, ending cash, or ending holdings. Available
+independent opportunity estimates remain separate. Source, account, ownership,
+forecast and numeric validation still apply. Live execution uses its existing
+current-quote and actual-capital checks, not these unavailable estimates.
 
 Large second-level quote archives also use daily-split provider batch delivery.
 Each day retains its native source, normalized data and exact validation. A day
@@ -110,6 +133,15 @@ between validation and activation. Activation also
 requires every selected company's history, corporate archive, operational-bar,
 and secondary-quality receipt. It rejects an independently changed production
 watchlist and appends the entire batch in one atomic update.
+
+Use `finalize --plan ...` after a separate successful `train`; `run` includes
+this step automatically. It verifies the complete native attempt and matching
+trade plan before publishing its Gameplan/model references, validates in a fresh
+candidate process, then activates while holding the existing session, trader,
+overnight and publication locks. `production-baseline.json` preserves the prior
+references. A failed candidate attempt restores only references proven to belong
+to that batch; an independent publication change blocks automatic restoration.
+The immutable candidate files and restoration receipt remain available.
 
 For eleven symbols the expected publication contains **264 forecasts and 264
 options placeholders**, with **33 production OPRA cursors**. Use `24 × N` and
@@ -141,14 +173,24 @@ availability, continue with:
 
 ```powershell
 .\.venv\Scripts\python.exe -u -m datafetching.research_onboarding train --plan artifacts/analysis/research-onboarding-20260913/plan.json --resume-run C:/DATASTORE/ml/overnight-runs/EXACT_RECORDED_RUN
-.\.venv\Scripts\python.exe -m datafetching.research_onboarding validate --plan artifacts/analysis/research-onboarding-20260913/plan.json
-.\.venv\Scripts\python.exe -m datafetching.research_onboarding activate --plan artifacts/analysis/research-onboarding-20260913/plan.json
+.\.venv\Scripts\python.exe -m datafetching.research_onboarding finalize --plan artifacts/analysis/research-onboarding-20260913/plan.json
 ```
 
 The native resume retains completed stages, pinned sources, and its original
-deadline. Do not rerun successful training to retry an unchanged downstream
+deadline. It creates a descendant attempt, and the batch automatically updates
+`overnight-run.json` to that attempt. Use that latest binding for the next resume.
+Do not rerun successful training to retry an unchanged downstream
 failure. A completed bound attempt is reused. The same 04:00 deadline applies;
 missing a deadline does not authorize intraday publication.
+
+An explicit operator exception is distinct from normal recovery. The supported
+`--deadline-exception PATH` accepts a recorded authorization bound to the exact
+immutable Gameplan receipt, original action date/deadline and expiry. It permits
+only resuming the stock planning/actuals tail, never retraining or selecting new
+intraday forecasts. Original attempts and deadlines are retained; reports record
+the exception and effective cutoff. Historical actuals still select only
+estimates saved before their original opening. Scheduled tasks must not invent
+an exception or treat one expired authorization as standing permission.
 
 - **Loops Weekly Opportunity Research:** publish Sunday research and explain
   which memo symbols could be selected. Link to this path. Do not create or
@@ -171,11 +213,42 @@ September 13 edition. Evidence and logs are under
 `artifacts/analysis/research-onboarding-20260913`.
 The saved metadata preflight totals 230,492,746,800 uncompressed billable bytes,
 quotes $0, and requires 466,354,202,720 free bytes under the existing capacity
-policy. Consult its activation receipt for completion; a submitted batch job
-or running fetch is not activation.
+policy. The batch was **activated September 14, 2026**, following the user's
+explicit exception for completing today's preparation after 04:00. Its native
+attempt `20260914T111641.913351Z` completed the remaining planning and actuals
+stages, preserving the previously fitted Gameplan and six completed stages.
+
+All 100 planned symbol/schema requests completed, including native options
+archives, plus FMP, Schwab, SEC and company archives (3,536 SEC submissions).
+Shared CME/macro context was reused. Nine directional models trained; the
+Gameplan has 264 forecasts and 264 stock-only options placeholders, and all four
+independent enrichment fits are present. Learned enrichment qualifies only 1h
+and 4h; daily/weekly sizing remains research. The selected manual Gameplan policy
+uses separately verified directional forecast qualification; all 209 execution
+windows passed its preflight. An eligible signal is not a promise of an order.
+
+The final read-only audit is `completion-verification.json`; the account,
+ownership and forecast preflight is `trading-readiness.json`. Symbol-path logical
+sizes, including retained native/normalized/staging files, total approximately
+70.8 GiB. This is not a measurement of physical disk growth. CROX and TWST lack
+the prior extended-session close within the 15-minute planning allowance; their
+143- and 48-minute gaps remain disclosed, and the shared cash projection is
+unavailable. No prices or fills were fabricated.
+
+The preparation exception expires **05:00 PDT September 14 only**. The user also
+authorized a manual late opening on that date before 05:00. The exact optional
+CLI argument is `--late-opening-date 2026-09-14`, with `--run-session`,
+`--target-horizon all` and `--sizing-policy gameplan-direction-current-market-v1`.
+It permits one unconsumed 04:00 entry batch, retains original forecast IDs and
+target ends, uses the persistent hourly entry-slot claim, and expires at 05:00.
+It does not enable controls or start a worker. Ordinary hourly entries resume
+at HH:01 (13:06 transition); future sessions keep the normal 04:00 opening.
+Do not add the dated flag to recurring launch commands.
 
 Seven related Scheduled task prompts were updated through the app and verified
 against saved before/after snapshots. Their recurrence, active/paused state,
 model, reasoning effort, project/thread target, and notification settings were
-preserved. The two paused date-specific follow-ups were left intact. See
-`schedules-before.json` and `schedules-after.json` in the evidence directory.
+preserved. The two paused date-specific follow-ups were left intact. The final
+prompt updates explain verified activation, explicit unavailable projections,
+publication rollback, and the limited September 14 exceptions. See the schedule
+snapshots in the evidence directory.

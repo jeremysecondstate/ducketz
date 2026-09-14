@@ -277,7 +277,7 @@ def _latest_saved_gameplan(root: Path, action_date: str):
     return max(candidates, key=lambda item: item[:2])[2] if candidates else None
 
 
-def _saved_trade_plan(root: Path, publication):
+def _saved_trade_plan(root: Path, publication, *, preparation_cutoff=None):
     source = publication.run_directory.relative_to(root).as_posix()
     action_date = publication.receipt["action_date"]
     candidates = []
@@ -286,7 +286,7 @@ def _saved_trade_plan(root: Path, publication):
         if receipt.get("status") != "COMPLETE" or receipt.get("source_gameplan_run") != source:
             continue
         completed = _aware_timestamp(receipt["completed_at"], "trade plan completion")
-        if completed < _clock(action_date, 4):
+        if completed < (_clock(action_date, 4) if preparation_cutoff is None else preparation_cutoff):
             candidates.append((completed, path.parent.name, path.parent, receipt))
     if not candidates:
         return None
@@ -427,7 +427,8 @@ def render_actuals_review(forecasts: pd.DataFrame, prices: pd.DataFrame, report:
 
 
 def publish_actuals_review(root: Path, *, gameplan_run: Path, deadline: object | None = None,
-                           clock=utc_timestamp, price_loader=None) -> Path:
+                           clock=utc_timestamp, price_loader=None,
+                           deadline_exception: Path | None = None) -> Path:
     from ml.nightly_gameplan import read_gameplan_run
     from ml.stock_target_prices import load_stock_target_prices
     root = Path(root).resolve()
@@ -438,9 +439,16 @@ def publish_actuals_review(root: Path, *, gameplan_run: Path, deadline: object |
     expected_deadline = _clock(successor_date, 4)
     deadline_at = expected_deadline if deadline is None else _aware_timestamp(deadline, "deadline")
     now = _aware_timestamp(clock(), "review time")
-    if deadline_at != expected_deadline or now >= deadline_at:
+    if deadline_at != expected_deadline:
         raise ValueError("Actuals review must retain the successor's original 04:00 deadline")
-    successor_trade_plan = _saved_trade_plan(root, successor)
+    from ml.preparation_deadline import preparation_deadline
+    original_deadline = deadline_at
+    deadline_at, exception_evidence = preparation_deadline(root, successor.run_directory, deadline_at, now, deadline_exception)
+    if now >= deadline_at:
+        raise ValueError("Actuals review must retain the successor's original 04:00 deadline")
+    # A one-time late successor may finish its preparation now. Historical
+    # comparisons below still select only estimates saved before their opening.
+    successor_trade_plan = _saved_trade_plan(root, successor, preparation_cutoff=now if exception_evidence else None)
     if successor_trade_plan is None:
         raise ValueError("Successor Gameplan trade planning must finish before actuals review")
     if (_aware_timestamp(successor.receipt["published_at"], "successor publication") > now
@@ -455,7 +463,8 @@ def publish_actuals_review(root: Path, *, gameplan_run: Path, deadline: object |
     results, price_results = pd.DataFrame(), pd.DataFrame()
     report = {"schema_version": VERSION, "status": "COMPLETE", "action_date": action_date,
               "successor_action_date": successor_date, "successor_gameplan_run": successor.run_directory.relative_to(root).as_posix(),
-              "reviewed_at": now.isoformat(), "outcomes_through": cutoff.isoformat(), "deadline_at": deadline_at.isoformat(),
+              "reviewed_at": now.isoformat(), "outcomes_through": cutoff.isoformat(), "deadline_at": original_deadline.isoformat(),
+              "effective_deadline_at":deadline_at.isoformat(), "deadline_exception":exception_evidence,
               "source_selection": "Last verified publication and matching trade plan saved before the reviewed 04:00 opening",
               "orders_placed": 0, "broker_orders_enabled": False}
     if original is not None:
@@ -522,10 +531,12 @@ def main(argv: list[str] | None = None) -> int:
     group.add_argument("--datastore-target", choices=tuple(DATASTORE_TARGETS), default="pc")
     parser.add_argument("--gameplan-run", required=True, type=Path, help="The completed successor Gameplan")
     parser.add_argument("--deadline")
+    parser.add_argument('--deadline-exception', type=Path)
     args = parser.parse_args(argv)
     root = resolve_datastore_dir(root_dir=args.datastore, target=None if args.datastore else args.datastore_target)
     with exclusive_runtime_lock(root / "state/gameplan-actuals-review.lock", process_name="Gameplan actuals review"):
-        run = publish_actuals_review(root, gameplan_run=args.gameplan_run, deadline=args.deadline)
+        extra = {'deadline_exception':args.deadline_exception} if args.deadline_exception is not None else {}
+        run = publish_actuals_review(root, gameplan_run=args.gameplan_run, deadline=args.deadline, **extra)
     print(json.dumps({"status": "COMPLETE", "run_path": str(run), "review_path": str(run / "Gameplan-results.md"), "orders_placed": 0}))
     return 0
 

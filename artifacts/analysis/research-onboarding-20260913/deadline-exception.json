@@ -1,0 +1,15 @@
+{
+  "schema_version": "operator-preparation-deadline-exception-v1",
+  "scope": "PINNED_STOCK_PLANNING_AND_ACTUALS_ONLY",
+  "operator_authorized": true,
+  "orders_authorized": false,
+  "authorization_source": "User instruction in Codex thread 01a09501-ebb0-7693-a284-d0ea6bee7df8 on 2026-09-14",
+  "authorization_text": "It's okay if the deadline for overnight passed! We can make an exception. Let's finish up these new symbols and get them ready for trading, and whenever you are done I can run the active trader from the pycharm project's terminal. Exceptions just for today; future 4am execution remains the norm.",
+  "plan_id": "df613ade510b2775a99c051abf8472367e2c70208e13c1eacce8bad4c577d487",
+  "action_date": "2026-09-14",
+  "gameplan_run": "ml/nightly-gameplan-runs/20260914T104432.295244Z",
+  "gameplan_receipt_sha256": "3b1d851590fbfec545f8565ca5feb9f40493ff3f30ca903aeee1e9e93c340d74",
+  "original_deadline_at": "2026-09-14T11:00:00+00:00",
+  "approved_at": "2026-09-14T11:16:07+00:00",
+  "expires_at": "2026-09-14T12:00:00+00:00"
+}

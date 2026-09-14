@@ -19,6 +19,14 @@ VERSION = "direction-based-gameplan-cash-ledger-v1"
 ZERO = Decimal(0)
 
 
+class UnavailablePlanningPricePath(ValueError):
+    """Verified planning inputs explicitly lack a required price estimate."""
+
+    def __init__(self, points: list[dict]):
+        self.points = points
+        super().__init__(f"Missing observed planning price path: {points[0]['key']}")
+
+
 def _number(value: object) -> Decimal:
     result = Decimal(str(value))
     if not result.is_finite() or result < 0:
@@ -61,14 +69,22 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
     day = next(iter(days))
     times = [pd.Timestamp(f"{day} {hour:02d}:00", tz="America/Los_Angeles").tz_convert("UTC")
              for hour in range(4, 18)]
-    points = {}
+    points, unavailable = {}, []
     for timestamp in times:
         for symbol in symbols:
             key = f"{symbol}|{day}|{timestamp.tz_convert('America/Los_Angeles'):%H:%M}"
             point = price_path["points"].get(key, {})
-            if (point.get("status") != "AVAILABLE" or _time(point["timestamp"]) != timestamp
+            if (_time(point.get("timestamp")) != timestamp
                     or point.get("symbol") != symbol or str(point.get("action_date")) != day
                     or point.get("clock_local") != timestamp.tz_convert("America/Los_Angeles").strftime("%H:%M")):
+                raise ValueError(f"Missing observed planning price path: {key}")
+            if point.get("status") in {"UNAVAILABLE_REFERENCE_PRICE", "UNAVAILABLE_MINIMUM_SAMPLES"}:
+                if any(point.get(f"planned_price_{field}") is not None for field in ("low","mid","high")):
+                    raise ValueError("Unavailable planning prices cannot carry a numeric estimate")
+                unavailable.append({"key":key, **{name:point.get(name) for name in (
+                    "symbol","clock_local","status","reason","reference_session","reference_gap_minutes","sample_count")}})
+                continue
+            if point.get("status") != "AVAILABLE":
                 raise ValueError(f"Missing observed planning price path: {key}")
             values = tuple(_number(point[f"planned_price_{field}"]) for field in ("low", "mid", "high"))
             if not ZERO < values[0] <= values[1] <= values[2]:
@@ -152,6 +168,11 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
             elif record["symbol"] in blocked:
                 row["direction_based_reason"] = "SYMBOL_ALLOCATION_UNRESOLVED"
             batches[timestamp].append(row)
+
+    # Validate account, ownership and forecast contracts before classifying an
+    # otherwise valid projection as unavailable. No trades have been simulated.
+    if unavailable:
+        raise UnavailablePlanningPricePath(unavailable)
 
     def trade(timestamp, symbol, action, quantity, reason, *, row=None, lot=None):
         nonlocal cash

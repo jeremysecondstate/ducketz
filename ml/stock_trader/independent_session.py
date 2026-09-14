@@ -152,6 +152,7 @@ def run_independent_stock_session(
     runner=run_independent_stock_trader_once, reporter=print,
     sizing_policy: str = LEARNED_SIZING_POLICY,
     wait_for_open: bool = False,
+    late_opening_date: str | None = None,
 ) -> dict:
     """Serve one exchange date, optionally waiting for its opening first.
 
@@ -168,6 +169,11 @@ def run_independent_stock_session(
     root = Path(root).resolve()
     sizing_policy = validate_sizing_policy(sizing_policy)
     started = utc(clock())
+    if late_opening_date is not None:
+        from ml.stock_trader.gameplan import validate_late_opening_date
+        if sizing_policy != GAMEPLAN_SIZING_POLICY:
+            raise ValueError('Late opening requires the explicitly selected Gameplan policy')
+        validate_late_opening_date(late_opening_date, started)
     day = started.tz_convert("America/Los_Angeles").normalize()
     if wait_for_open:
         opening, closing = _next_supported_session_bounds(started)
@@ -193,6 +199,7 @@ def run_independent_stock_session(
             "closes_at": closing.isoformat(), "execute": execute, "sizing_policy": sizing_policy,
             "action_date": day.date().isoformat(), "wakes_at": opening.isoformat(),
             "wait_for_open": wait_for_open,
+            "late_opening_date":late_opening_date,
             "calls": calls, "orders_submitted": submitted, "failed_cycles": failed_cycles,
             "consecutive_failures": consecutive_failures, "last_cycle": last_cycle}
         _write_json_atomic(status_path, payload)
@@ -245,6 +252,9 @@ def run_independent_stock_session(
             entry_minute = 6 if local.hour == 13 else 1
             slot = local.floor("h").isoformat()
             due_entry = (4 <= local.hour < 17 and local.minute == entry_minute and slot not in attempted)
+            late_opening = (late_opening_date == local.date().isoformat() and local.hour == 4
+                            and local.minute >= 1 and slot not in attempted)
+            due_entry = due_entry or late_opening
             has_inventory = _has_inventory(root / LEDGER_RELATIVE_PATH)
             # Inventory polls wait through the broker's closed transitions.
             # No capture here can resolve an earlier failure; health stays
@@ -253,6 +263,8 @@ def run_independent_stock_session(
                 if due_entry:
                     attempted.add(slot)
                 sizing_options = {"sizing_policy": sizing_policy} if sizing_policy != LEARNED_SIZING_POLICY else {}
+                if late_opening_date == local.date().isoformat() and local.hour == 4:
+                    sizing_options['late_opening_date'] = late_opening_date
                 try:
                     result = runner(root, execute=execute, entries=due_entry, runtime_clock=clock, session_managed=True, **sizing_options)
                 except Exception as exc:

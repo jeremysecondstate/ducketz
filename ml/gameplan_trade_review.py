@@ -227,6 +227,19 @@ def _projection_tables(projection: Mapping, symbols: list[str], snapshot: Mappin
     """Present the supplied shared ledger once; never recompute fills or cash."""
     if not projection:
         return [], []
+    if projection.get("status") == "UNAVAILABLE_PRICE_REFERENCES":
+        missing = {}
+        for point in projection.get("unavailable_points", []):
+            key = (point.get("symbol"), point.get("reason"), point.get("reference_gap_minutes"))
+            missing[key] = missing.get(key, 0) + 1
+        main = ["## Cash projection unavailable", "",
+                "Required observed price references or historical pairs are missing. "
+                "No chronological trades, ending cash, or ending holdings were projected. "
+                "The recorded account information and independent quantity previews remain available below.", ""]
+        main += _table(["Stock", "Missing evidence", "Reference gap, minutes", "Affected clocks"],
+            [(_text(symbol), _text(reason), _text(gap) if gap is not None else "—", str(count))
+             for (symbol,reason,gap),count in missing.items()])
+        return main, []
     summary = _mapping(projection.get("summary"))
     ending = _mapping(projection.get("ending_positions"))
     main = ["## Projected end of day", "",
@@ -333,7 +346,7 @@ def render_trade_review(trade_rows: pd.DataFrame, report: Mapping, model_reports
     snapshot = _mapping(report.get("snapshot"))
     policy = _mapping(report.get("sizing_policy"))
     projection = _mapping(report.get("direction_based_projection"))
-    has_direction_plan = bool(projection) or "direction_based_trade_quantity" in trade_rows.columns
+    has_direction_plan = (bool(projection) and projection.get("status") != "UNAVAILABLE_PRICE_REFERENCES") or "direction_based_trade_quantity" in trade_rows.columns
     promoted_entries = sum(bool(row["execution_eligible"]) and row["model_status"] == "PROMOTED" for row in rows)
     entry_count = sum(bool(row["execution_eligible"]) for row in rows)
     positive = sum(_quantity(row, "scheduled_trade_quantity") > 0 for row in rows)

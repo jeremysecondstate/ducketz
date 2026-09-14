@@ -5,6 +5,14 @@ enter through [the verified onboarding path](RESEARCH_SYMBOL_ONBOARDING.md);
 each publication retains its own universe and `24 × N` forecast identity.
 Adding symbols preserves the existing risk limits and manual initial-start rule.
 
+September 14: all eleven symbols passed verified activation and the native
+directional preflight. The user may manually start today's managed Gameplan
+session with `--late-opening-date 2026-09-14` before 05:00 Pacific. That explicit
+dated flag preserves the original forecast expiry and persistent opening-slot
+claim, and does not enable controls or submit anything by itself. The launcher
+identity check recognizes identical dated flags on the verified process pair.
+Future opening runs retain their ordinary 04:00/04:01 behavior.
+
 Status: the legacy Loop-B schedules remain paused as of 2026-09-04. The active
 daytime stock entry point is `ml.gameplan_stock_trader`, a thin gameplan adapter
 over this proven risk/execution runtime. It consumes frozen forward routes and

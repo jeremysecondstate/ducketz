@@ -22,7 +22,7 @@ function Get-ValidatedStockSessionOwner {
     $executable = '(?i:' + [regex]::Escape($PythonPath) + ')'
     $executablePattern = '"' + $executable + '"'
     if ($PythonPath -notmatch '\s') { $executablePattern = '(?:' + $executablePattern + '|' + $executable + ')' }
-    $commandPattern = '\A' + $executablePattern + '[ \t]+-u[ \t]+-m[ \t]+ml\.gameplan_stock_trader[ \t]+--datastore-target[ \t]+pc[ \t]+--execute[ \t]+--target-horizon[ \t]+all[ \t]+--sizing-policy[ \t]+(?<policy>fixed-horizon-budget-v1|gameplan-direction-current-market-v1)[ \t]+--run-session(?<wait>[ \t]+--wait-for-open)?[ \t]*\z'
+    $commandPattern = '\A' + $executablePattern + '[ \t]+-u[ \t]+-m[ \t]+ml\.gameplan_stock_trader[ \t]+--datastore-target[ \t]+pc[ \t]+--execute[ \t]+--target-horizon[ \t]+all[ \t]+--sizing-policy[ \t]+(?<policy>fixed-horizon-budget-v1|gameplan-direction-current-market-v1)[ \t]+--run-session(?<wait>[ \t]+--wait-for-open)?(?:[ \t]+--late-opening-date[ \t]+(?<late>\d{4}-\d{2}-\d{2}))?[ \t]*\z'
     if ($Owners.Count -ne 2 -or @($Owners | Where-Object {
         $_.Name -ine 'python.exe' -or -not [regex]::IsMatch([string]$_.CommandLine, $commandPattern)
     }).Count -ne 0) {
@@ -30,7 +30,7 @@ function Get-ValidatedStockSessionOwner {
     }
     $commandIdentities = @($Owners | ForEach-Object {
         $matchedCommand = [regex]::Match([string]$_.CommandLine, $commandPattern)
-        $matchedCommand.Groups['policy'].Value + '/' + $matchedCommand.Groups['wait'].Success
+        $matchedCommand.Groups['policy'].Value + '/' + $matchedCommand.Groups['wait'].Success + '/' + $matchedCommand.Groups['late'].Value
     } | Select-Object -Unique)
     if ($commandIdentities.Count -ne 1) {
         throw 'Existing stock session launcher and child commands disagree on their policy or wait mode.'
@@ -70,6 +70,14 @@ function Get-ValidatedStockSessionOwner {
     }
     $launcherCreatedAt = [DateTimeOffset]$launcher.CreationDate
     $workerCreatedAt = [DateTimeOffset]$worker.CreationDate
+    $workerArguments = [regex]::Match([string]$worker.CommandLine, $commandPattern)
+    if ($workerArguments.Groups['late'].Success) {
+        $pacificStart = [TimeZoneInfo]::ConvertTimeBySystemTimeZoneId($workerCreatedAt, 'Pacific Standard Time')
+        if ($workerArguments.Groups['policy'].Value -cne 'gameplan-direction-current-market-v1' -or
+            $workerArguments.Groups['late'].Value -cne $pacificStart.ToString('yyyy-MM-dd') -or $pacificStart.Hour -ne 4) {
+            throw 'Late-opening exception does not match this Gameplan worker and opening date.'
+        }
+    }
     # Acquisition follows interpreter startup; do not require equal timestamps.
     # A lock predating this process belongs to an older instance of the PID.
     if ($launcherCreatedAt -gt $workerCreatedAt -or $workerCreatedAt -gt $lockStartedAt -or $lockStartedAt -gt $ObservedAt) {
@@ -83,6 +91,7 @@ function Get-ValidatedStockSessionOwner {
         lock_started_at = $lockStartedAt.ToUniversalTime().ToString('o')
         sizing_policy = [regex]::Match([string]$worker.CommandLine, $commandPattern).Groups['policy'].Value
         wait_for_open = [regex]::Match([string]$worker.CommandLine, $commandPattern).Groups['wait'].Success
+        late_opening_date = $workerArguments.Groups['late'].Value
     }
 }
 
@@ -175,8 +184,12 @@ $arguments = @(Get-StockSessionArguments -Policy $SizingPolicy -Wait $WaitForOpe
 if ($ActivateForManualStart) { Enable-ManualGameplanTrading -PythonPath $pythonPath -DatastoreRoot $datastoreRoot }
 $process = Start-Process -FilePath $pythonPath -ArgumentList $arguments -WorkingDirectory $repoRoot `
     -RedirectStandardOutput $stdout -RedirectStandardError $stderr -WindowStyle Hidden -PassThru
+# Windows PowerShell can lose a redirected child's exit code after it exits
+# unless its process handle was retained first. A null code becomes exit 0.
+$null = $process.Handle
 [pscustomobject]@{ status='STARTED'; launcher_pid=$process.Id; started_at=[DateTime]::UtcNow.ToString('o'); stdout=$stdout; stderr=$stderr } |
     ConvertTo-Json | Set-Content -LiteralPath (Join-Path $logDirectory 'launcher.json') -Encoding utf8
 $process.WaitForExit()
 $process.Refresh()
+if ($null -eq $process.ExitCode) { exit 1 }
 exit $process.ExitCode

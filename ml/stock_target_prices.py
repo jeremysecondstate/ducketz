@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Sequence
 
+import numpy as np
 import pandas as pd
 
 from datafetching.databento_archive import discover_archive_partitions
@@ -122,12 +123,28 @@ def load_stock_target_prices(
     bars = bars.drop_duplicates(["symbol", "timestamp", "open", "close"])
     if bars.duplicated(["symbol", "timestamp"]).any():
         raise RuntimeError("Stock price source contains conflicting minute observations")
+    # A provider row with both prices undefined contains no price observation.
+    # Preserve its verified native evidence and disclose the omitted minute;
+    # never fabricate a price or hide a partially invalid observation.
+    missing_prices = bars.loc[bars.open.isna() & bars.close.isna(), ["symbol", "timestamp"]]
+    bars = bars.loc[~(bars.open.isna() & bars.close.isna())].copy()
+    for field in ("open", "close"):
+        values = pd.to_numeric(bars[field], errors="raise")
+        if pd.api.types.is_bool_dtype(values) or not np.isfinite(values).all() or values.le(0).any():
+            raise RuntimeError(f"Stock price source contains invalid observed {field}")
+        bars[field] = values
+    if set(bars.symbol) != set(clean_symbols):
+        raise RuntimeError("Stock price source has a symbol without observed prices")
     bars = bars.sort_values(["symbol", "timestamp"], kind="stable").reset_index(drop=True)
     files = tuple(dict.fromkeys(Path(path).resolve() for path in files))
     report = {
         "source_contract": source_contract, "dataset": dataset, "schema": "ohlcv-1m",
         "price_basis": "unadjusted_market_scale", "timestamp_semantics": "minute_interval_open",
         "source_policy": "one_explicit_dataset_no_fill_no_cross_dataset_fallback",
+        "missing_price_policy": "omit_only_rows_with_both_prices_undefined_preserve_native_evidence",
+        "missing_price_rows_by_symbol": missing_prices.groupby("symbol").size().to_dict(),
+        "missing_price_examples": [{"symbol":row.symbol,"timestamp":row.timestamp.isoformat()}
+                                   for row in missing_prices.head(50).itertuples()],
         "native_archive_partitions_verified": len(partitions), "partitions": partitions,
         "by_symbol": {symbol: {"rows": len(frame), "first_timestamp": frame.timestamp.min().isoformat(),
                                "last_timestamp": frame.timestamp.max().isoformat()}

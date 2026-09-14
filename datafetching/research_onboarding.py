@@ -304,7 +304,8 @@ def candidate_environment(path: Path) -> dict:
     return {**os.environ, WATCHLIST_ENV: str(candidate.resolve())}
 
 
-def train_batch(path: Path, batch: dict, lost: threading.Event, *, resume_run: Path | None = None) -> None:
+def train_batch(path: Path, batch: dict, lost: threading.Event, *, resume_run: Path | None = None,
+                deadline_exception: Path | None = None) -> None:
     import databento
     from datafetching.research_corporate_history import SecReader, fetch_corporate_history
     from ml.overnight_runtime import overnight_status
@@ -312,6 +313,15 @@ def train_batch(path: Path, batch: dict, lost: threading.Event, *, resume_run: P
     current = overnight_status(root)
     if current.get('status') == 'RUNNING':
         raise RuntimeError('A native overnight owner is already running; supervise it without duplication')
+    from datafetching.research_publication import publication_locks, snapshot_references
+    with publication_locks(root):
+        snapshot_references(root, path.parent, batch['plan_id'])
+    if deadline_exception is not None:
+        from ml.overnight_runtime import _resume_configuration
+        bound = json.loads((path.parent/'overnight-run.json').read_text(encoding='utf-8'))
+        if resume_run is None or bound.get('plan_id') != batch['plan_id'] or Path(bound['run_path']).resolve() != resume_run.resolve():
+            raise ValueError('Deadline exception requires this batch\'s exact saved attempt')
+        _resume_configuration(root, resume_run, deadline_exception=deadline_exception)
     sec_reader = SecReader()
     for symbol in batch['selected_symbols']:
         if lost.is_set(): raise RuntimeError('Supervision lease lost')
@@ -323,6 +333,8 @@ def train_batch(path: Path, batch: dict, lost: threading.Event, *, resume_run: P
         fetch_corporate_history(plan, p.parent/'corporate-history.json', sec_reader=sec_reader)
         screen_secondary_history(plan, p.parent/'secondary-history-quality.json')
         complete_operational_history(plan, databento.Historical(os.environ['DATABENTO_API_KEY']), p.parent/'operational-history.json')
+    subprocess.run([sys.executable, '-m', 'datafetching.research_onboarding', 'ownership-internal', '--plan', str(path)],
+        env=candidate_environment(path), cwd=REPOSITORY_WATCHLIST.parent.parent, check=True)
     bound_path = path.parent/'overnight-run.json'
     prior = json.loads(bound_path.read_text()) if bound_path.exists() else None
     if prior:
@@ -341,6 +353,8 @@ def train_batch(path: Path, batch: dict, lost: threading.Event, *, resume_run: P
         '--once', '--stock-only', '--independent-stock-horizons', '--stock-price-source', 'xnas-itch-archive-v1']
     if resume_run is not None:
         command.extend(['--resume-run', str(resume_run.resolve())])
+    if deadline_exception is not None:
+        command.extend(['--deadline-exception', str(deadline_exception.resolve())])
     started = _now()
     with (path.parent/'overnight.log').open('a', encoding='utf-8') as log:
         process = subprocess.Popen(command, env=candidate_environment(path), cwd=REPOSITORY_WATCHLIST.parent.parent,
@@ -527,11 +541,12 @@ def main(argv=None) -> int:
     plan.add_argument('--output', type=Path, required=True)
     plan.add_argument('--reference', default='COST')
     plan.add_argument('--max-billable-bytes', type=int, default=300_000_000_000)
-    for command in ('fetch', 'train', 'validate', 'validate-internal', 'activate', 'run', 'status'):
+    for command in ('fetch', 'train', 'validate', 'validate-internal', 'ownership-internal', 'activate', 'finalize', 'run', 'status'):
         phase = sub.add_parser(command)
         phase.add_argument('--plan', type=Path, required=True)
         phase.add_argument('--owner-token', default=None)
         phase.add_argument('--resume-run', type=Path, default=None)
+        phase.add_argument('--deadline-exception', type=Path, default=None)
     args = parser.parse_args(argv)
     load_repository_environment()
     if args.command == 'plan':
@@ -545,6 +560,13 @@ def main(argv=None) -> int:
     batch = load_batch(path)
     if args.command == 'validate-internal':
         print(json.dumps(validate_batch(path))); return 0
+    if args.command == 'ownership-internal':
+        from datafetching.research_ownership import prepare_ownership
+        if read_symbols() != tuple(batch['candidate_symbols']):
+            raise ValueError('Ownership preparation requires the exact candidate universe')
+        print(json.dumps(prepare_ownership(Path(batch['datastore_root']), symbols=tuple(batch['candidate_symbols']),
+            plan_id=batch['plan_id'], output=path.parent/'ownership.json')))
+        return 0
     if args.command == 'status':
         result = {name:json.loads((path.parent/name).read_text()) for name in
             ('progress.json','validation.json','activation.json') if (path.parent/name).exists()}
@@ -571,14 +593,28 @@ def main(argv=None) -> int:
                     receipt = fetch_batch(path, batch, databento.Historical(os.environ['DATABENTO_API_KEY']), lost)
                     _write(path.parent/'history-receipt.json', receipt)
                 if args.command in ('train','run'):
-                    train_batch(path, batch, lost, resume_run=args.resume_run)
-                if args.command in ('validate','activate','run'):
+                    train_batch(path, batch, lost, resume_run=args.resume_run, deadline_exception=args.deadline_exception)
+                if args.command in ('validate','activate'):
                     validate_in_subprocess(path)
-                if args.command in ('activate','run'):
+                if args.command == 'activate':
                     activate_batch(path, batch)
+                if args.command in ('finalize','run'):
+                    from datafetching.research_publication import finalize_batch
+                    finalize_batch(path, batch)
                 progress.update(status='COMPLETE', completed_at=_now())
             except Exception as exc:
                 progress.update(status='FAILED', error_type=type(exc).__name__, error=str(exc), updated_at=_now())
+                if (args.command in ('train','run') and (path.parent/'production-baseline.json').exists()
+                        and (path.parent/'overnight-run.json').exists() and not lost.is_set()):
+                    try:
+                        from datafetching.research_publication import publication_locks, restore_references
+                        bound = json.loads((path.parent/'overnight-run.json').read_text(encoding='utf-8'))
+                        report = json.loads((Path(bound['run_path'])/'stage-report.json').read_text(encoding='utf-8'))
+                        if report.get('status') != 'RUNNING' and report.get('enrichment_gameplan'):
+                            with publication_locks(root):
+                                restore_references(root, path.parent, batch['plan_id'], report['enrichment_gameplan']['run_path'])
+                    except Exception as restore_error:
+                        progress['restoration_error'] = str(restore_error)
                 raise
             finally:
                 _write(path.parent/'progress.json', progress)

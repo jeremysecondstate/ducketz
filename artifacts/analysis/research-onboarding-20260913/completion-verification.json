@@ -1,0 +1,523 @@
+{
+  "plan_id": "df613ade510b2775a99c051abf8472367e2c70208e13c1eacce8bad4c577d487",
+  "status": "VERIFIED",
+  "verified_at": "2026-09-14T11:23:03.644525+00:00",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST",
+    "CROX",
+    "PATH",
+    "TWST",
+    "IONQ"
+  ],
+  "history": [
+    {
+      "symbol": "CROX",
+      "schemas": 25,
+      "providers": {
+        "databento": {
+          "provider": "databento",
+          "data_files": 13,
+          "error_files": 0,
+          "advisory_files": 0
+        },
+        "fmp": {
+          "provider": "fmp",
+          "data_files": 33,
+          "error_files": 0,
+          "advisory_files": 0
+        },
+        "schwab": {
+          "provider": "schwab",
+          "data_files": 23,
+          "error_files": 0,
+          "advisory_files": 0
+        },
+        "sec": {
+          "provider": "sec",
+          "data_files": 4,
+          "error_files": 0,
+          "advisory_files": 0
+        }
+      }
+    },
+    {
+      "symbol": "PATH",
+      "schemas": 25,
+      "providers": {
+        "databento": {
+          "provider": "databento",
+          "data_files": 13,
+          "error_files": 0,
+          "advisory_files": 0
+        },
+        "fmp": {
+          "provider": "fmp",
+          "data_files": 33,
+          "error_files": 0,
+          "advisory_files": 0
+        },
+        "schwab": {
+          "provider": "schwab",
+          "data_files": 23,
+          "error_files": 0,
+          "advisory_files": 0
+        },
+        "sec": {
+          "provider": "sec",
+          "data_files": 4,
+          "error_files": 0,
+          "advisory_files": 0
+        }
+      }
+    },
+    {
+      "symbol": "TWST",
+      "schemas": 25,
+      "providers": {
+        "databento": {
+          "provider": "databento",
+          "data_files": 13,
+          "error_files": 0,
+          "advisory_files": 0
+        },
+        "fmp": {
+          "provider": "fmp",
+          "data_files": 33,
+          "error_files": 0,
+          "advisory_files": 0
+        },
+        "schwab": {
+          "provider": "schwab",
+          "data_files": 23,
+          "error_files": 0,
+          "advisory_files": 0
+        },
+        "sec": {
+          "provider": "sec",
+          "data_files": 3,
+          "error_files": 0,
+          "advisory_files": 0
+        }
+      }
+    },
+    {
+      "symbol": "IONQ",
+      "schemas": 25,
+      "providers": {
+        "databento": {
+          "provider": "databento",
+          "data_files": 13,
+          "error_files": 0,
+          "advisory_files": 0
+        },
+        "fmp": {
+          "provider": "fmp",
+          "data_files": 33,
+          "error_files": 0,
+          "advisory_files": 0
+        },
+        "schwab": {
+          "provider": "schwab",
+          "data_files": 23,
+          "error_files": 0,
+          "advisory_files": 0
+        },
+        "sec": {
+          "provider": "sec",
+          "data_files": 4,
+          "error_files": 0,
+          "advisory_files": 0
+        }
+      }
+    }
+  ],
+  "production_cursor_count": 33,
+  "cursors": [
+    {
+      "symbol": "AAPL",
+      "schema": "definition",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "AAPL",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "AAPL",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "AMZN",
+      "schema": "definition",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "AMZN",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "AMZN",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "GOOG",
+      "schema": "definition",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "GOOG",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "GOOG",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "MU",
+      "schema": "definition",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "MU",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "MU",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "NVDA",
+      "schema": "definition",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "NVDA",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "NVDA",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "SNDK",
+      "schema": "definition",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "SNDK",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "SNDK",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "COST",
+      "schema": "definition",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "COST",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "COST",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "CROX",
+      "schema": "definition",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "CROX",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "CROX",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "PATH",
+      "schema": "definition",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "PATH",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "PATH",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "TWST",
+      "schema": "definition",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "TWST",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "TWST",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "IONQ",
+      "schema": "definition",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "IONQ",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-14"
+    },
+    {
+      "symbol": "IONQ",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-14"
+    }
+  ],
+  "dashboard": {
+    "source_rows": 264,
+    "symbols": [
+      "AAPL",
+      "AMZN",
+      "COST",
+      "CROX",
+      "GOOG",
+      "IONQ",
+      "MU",
+      "NVDA",
+      "PATH",
+      "SNDK",
+      "TWST"
+    ],
+    "pending_symbols": [],
+    "operational_label": "Clock-Rotating Frozen Forecasts",
+    "warnings": []
+  },
+  "fitted_horizons": [
+    "1d",
+    "1h",
+    "1w",
+    "4h"
+  ],
+  "qualified_enrichment_horizons": [
+    "1h",
+    "4h"
+  ],
+  "training_evidence": {
+    "1d": {
+      "cohort_rows_by_symbol": {
+        "AAPL": 1470,
+        "AMZN": 1465,
+        "GOOG": 1425,
+        "MU": 1390,
+        "NVDA": 1470,
+        "SNDK": 790,
+        "COST": 690,
+        "CROX": 125,
+        "PATH": 680,
+        "TWST": 15,
+        "IONQ": 1680
+      },
+      "status": "FITTED",
+      "admitted_rows": 2241,
+      "qualified_scope_count": 0,
+      "symbols_without_targets": []
+    },
+    "1h": {
+      "cohort_rows_by_symbol": {
+        "AAPL": 5569,
+        "AMZN": 5573,
+        "GOOG": 5470,
+        "MU": 5410,
+        "NVDA": 5596,
+        "SNDK": 4064,
+        "COST": 4169,
+        "CROX": 5936,
+        "PATH": 7131,
+        "TWST": 5345,
+        "IONQ": 10043
+      },
+      "status": "FITTED",
+      "admitted_rows": 62056,
+      "qualified_scope_count": 137,
+      "symbols_without_targets": []
+    },
+    "1w": {
+      "cohort_rows_by_symbol": {
+        "AAPL": 294,
+        "AMZN": 293,
+        "GOOG": 285,
+        "MU": 278,
+        "NVDA": 294,
+        "SNDK": 156,
+        "COST": 138,
+        "CROX": 31,
+        "PATH": 125,
+        "TWST": 8,
+        "IONQ": 334
+      },
+      "status": "FITTED",
+      "admitted_rows": 2236,
+      "qualified_scope_count": 0,
+      "symbols_without_targets": []
+    },
+    "4h": {
+      "cohort_rows_by_symbol": {
+        "AAPL": 1530,
+        "AMZN": 1528,
+        "GOOG": 1491,
+        "MU": 1479,
+        "NVDA": 1544,
+        "SNDK": 1049,
+        "COST": 1142,
+        "CROX": 1298,
+        "PATH": 1834,
+        "TWST": 1027,
+        "IONQ": 2525
+      },
+      "status": "FITTED",
+      "admitted_rows": 16447,
+      "qualified_scope_count": 76,
+      "symbols_without_targets": []
+    }
+  },
+  "selected_prediction_evidence": [
+    {
+      "symbol": "CROX",
+      "horizon": "1d",
+      "model_status": "PROMOTED",
+      "rows": 5
+    },
+    {
+      "symbol": "CROX",
+      "horizon": "1h",
+      "model_status": "PROMOTED",
+      "rows": 14
+    },
+    {
+      "symbol": "CROX",
+      "horizon": "1w",
+      "model_status": "PROMOTED",
+      "rows": 1
+    },
+    {
+      "symbol": "CROX",
+      "horizon": "4h",
+      "model_status": "PROMOTED",
+      "rows": 4
+    },
+    {
+      "symbol": "IONQ",
+      "horizon": "1d",
+      "model_status": "PROMOTED",
+      "rows": 5
+    },
+    {
+      "symbol": "IONQ",
+      "horizon": "1h",
+      "model_status": "PROMOTED",
+      "rows": 14
+    },
+    {
+      "symbol": "IONQ",
+      "horizon": "1w",
+      "model_status": "PROMOTED",
+      "rows": 1
+    },
+    {
+      "symbol": "IONQ",
+      "horizon": "4h",
+      "model_status": "PROMOTED",
+      "rows": 4
+    },
+    {
+      "symbol": "PATH",
+      "horizon": "1d",
+      "model_status": "PROMOTED",
+      "rows": 5
+    },
+    {
+      "symbol": "PATH",
+      "horizon": "1h",
+      "model_status": "PROMOTED",
+      "rows": 14
+    },
+    {
+      "symbol": "PATH",
+      "horizon": "1w",
+      "model_status": "PROMOTED",
+      "rows": 1
+    },
+    {
+      "symbol": "PATH",
+      "horizon": "4h",
+      "model_status": "PROMOTED",
+      "rows": 4
+    },
+    {
+      "symbol": "TWST",
+      "horizon": "1d",
+      "model_status": "PROMOTED",
+      "rows": 5
+    },
+    {
+      "symbol": "TWST",
+      "horizon": "1h",
+      "model_status": "PROMOTED",
+      "rows": 14
+    },
+    {
+      "symbol": "TWST",
+      "horizon": "1w",
+      "model_status": "PROMOTED",
+      "rows": 1
+    },
+    {
+      "symbol": "TWST",
+      "horizon": "4h",
+      "model_status": "PROMOTED",
+      "rows": 4
+    }
+  ],
+  "orders_submitted": 0,
+  "gameplan_run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260914T104432.295244Z",
+  "symbol_path_bytes": {
+    "CROX": 10149008472,
+    "PATH": 16935055671,
+    "TWST": 2138368750,
+    "IONQ": 46757508170
+  },
+  "datastore_logical_bytes": 274012505795,
+  "size_basis": "Logical file sizes in symbol-named paths, including native, normalized, and retained staging; shared data counted once in datastore total."
+}

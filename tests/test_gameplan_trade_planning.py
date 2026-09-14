@@ -374,6 +374,38 @@ def test_direction_ledger_failure_preserves_previous_pointer_without_raw_error(p
     assert "RAW_PRIVATE_FAILURE_SENTINEL" not in (run / "receipt.json").read_text()
 
 
+def test_known_missing_reference_publishes_explicitly_unavailable_cash_projection(publication_case, monkeypatch):
+    import json
+    from ml import gameplan_price_bands
+    from ml.artifacts import file_checksum, verify_manifest
+    from ml.gameplan_trade_planning import publish_trade_plan
+    c = publication_case
+    build_path = gameplan_price_bands.build_planning_price_path
+    def missing(*args, **kwargs):
+        result = build_path(*args, **kwargs)
+        result['points']['AAPL|2026-09-09|04:00'].update(
+            status='UNAVAILABLE_REFERENCE_PRICE', reference_gap_minutes=143,
+            planned_price_low=None, planned_price_mid=None, planned_price_high=None)
+        return result
+    monkeypatch.setattr(gameplan_price_bands, 'build_planning_price_path', missing)
+    before = {p.name: file_checksum(p) for p in c.source.iterdir()}
+    run = publish_trade_plan(c.root, gameplan_run=c.source, snapshot_loader=lambda *a, **kw: c.state,
+                             price_loader=c.prices, clock=c.clock)
+    verify_manifest(run)
+    report = json.loads((run/'report.json').read_text())
+    projection = report['direction_based_projection']
+    assert report['direction_projection_status'] == projection['status'] == 'UNAVAILABLE_PRICE_REFERENCES'
+    assert projection['events'] == projection['hourly'] == []
+    assert projection['summary'] == projection['ending_positions'] == {}
+    assert projection['orders_placed'] == 0 and projection['broker_orders_enabled'] is False
+    rows = pd.read_parquet(run/'trade-plan.parquet')
+    assert len(rows) == 24 and 'direction_based_trade_quantity' not in rows
+    assert 'projected_cash_after_low' not in rows
+    text = (run/'Gameplan.md').read_text(encoding='utf-8')
+    assert 'Cash projection unavailable' in text and '143' in text
+    assert {p.name: file_checksum(p) for p in c.source.iterdir()} == before
+
+
 def test_missing_account_retains_previous_review_and_audits_failure(publication_case):
     import json
     from ml.gameplan_trade_planning import publish_trade_plan
@@ -405,3 +437,41 @@ def test_publication_after_original_deadline_and_source_swap_fail_closed(publica
     with pytest.raises(RuntimeError, match="Trade planning failed"):
         publish_trade_plan(c.root, gameplan_run=c.source, snapshot_loader=changed, price_loader=c.prices, clock=c.clock)
     assert not (c.root / "ml/gameplan-trade-plan-latest/run.json").exists()
+
+
+def test_explicit_late_preparation_preserves_source_and_original_deadline(publication_case):
+    import json
+    from tests.test_preparation_deadline import exception_record
+    from ml.gameplan_trade_planning import publish_trade_plan
+    c = publication_case
+    record, _ = exception_record(c.root, c.source, session='2026-09-09')
+    run = publish_trade_plan(c.root, gameplan_run=c.source, deadline_exception=record,
+                            snapshot_loader=lambda *a, **kw:c.state, price_loader=c.prices,
+                            clock=lambda:pd.Timestamp('2026-09-09T11:20:00Z'))
+    report = json.loads((run/'report.json').read_text())
+    assert report['deadline_at'] == '2026-09-09T11:00:00+00:00'
+    assert report['effective_deadline_at'] == '2026-09-09T12:00:00+00:00'
+    assert report['orders_placed'] == 0 and report['broker_orders_enabled'] is False
+    assert report['deadline_exception']['authorization']['orders_authorized'] is False
+
+
+def test_cli_accepts_explicit_datastore_from_overnight_runtime(tmp_path, monkeypatch):
+    from ml import gameplan_trade_planning
+    calls = []
+    source = tmp_path / "source-gameplan"
+    deadline = "2026-09-14T11:00:00Z"
+    def publish(root, **kwargs):
+        calls.append((root, kwargs))
+        return tmp_path / "published-review"
+    monkeypatch.setattr(gameplan_trade_planning, "publish_trade_plan", publish)
+    assert gameplan_trade_planning.main([
+        "--datastore", str(tmp_path), "--gameplan-run", str(source), "--deadline", deadline,
+    ]) == 0
+    assert calls == [(tmp_path.resolve(), {"gameplan_run": source, "deadline": deadline})]
+
+
+def test_cli_rejects_conflicting_datastore_arguments(tmp_path):
+    from ml.gameplan_trade_planning import main
+    with pytest.raises(SystemExit) as error:
+        main(["--datastore", str(tmp_path), "--datastore-target", "pc", "--gameplan-run", str(tmp_path)])
+    assert error.value.code == 2

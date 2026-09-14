@@ -2,6 +2,26 @@
 
 Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from `datafetching/watchlist.txt` and validate historical publications against their own saved universes.
 
+September 14 onboarding: CROX, PATH, TWST and IONQ are now active, bringing the
+current universe to eleven (264 forecasts, 264 stock-only intents, 33 production
+OPRA cursors). The user authorized one late preparation tail for that date only;
+`deadline-exception.json` binds its source, original deadline and 05:00 PDT
+expiry. Reports preserve both original and effective deadlines. This exception
+does not change future overnight deadlines or permit intraday model retraining.
+
+A source-verified price path with explicit unavailable reference/pair status may
+complete the informational trade plan with `UNAVAILABLE_PRICE_REFERENCES`, no
+chronological trades, and no ending cash/holdings projection. Never fabricate a
+price or relax the native source, account, ownership or live quote checks.
+This supersedes requirements below to produce numeric projections at every
+clock when the underlying observations are unavailable.
+
+The user's separate manual late-opening exception is
+`--late-opening-date 2026-09-14`, valid only before 05:00 that day with the managed
+Gameplan policy. Original forecast IDs/target ends and persistent entry-slot
+claims remain unchanged. Do not add it to a Scheduled launch; later sessions
+retain the normal 04:00 opening and 04:01 first entry.
+
 This is the operating contract for the Scheduled overnight task and its health
 watch. The task stays with fetching, training, and prediction while they run.
 It investigates errors immediately, repairs verified defects, and resumes the

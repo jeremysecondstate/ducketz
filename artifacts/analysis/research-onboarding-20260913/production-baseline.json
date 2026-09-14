@@ -1,0 +1,34 @@
+{
+  "plan_id": "df613ade510b2775a99c051abf8472367e2c70208e13c1eacce8bad4c577d487",
+  "pointers": {
+    "ml/nightly-gameplan-latest/run.json": {
+      "schema_version": "immutable-overnight-gameplan-pointer-v1",
+      "current": {
+        "run_path": "ml/nightly-gameplan-runs/20260912T051210.050260Z",
+        "action_date": "2026-09-14",
+        "published_at": "2026-09-12T05:13:06.166333+00:00",
+        "manifest_checksum_sha256": "9823ad7e260ebdfaf42859df442b71e997807ffa415ab628851f494f5eac32ee",
+        "receipt_checksum_sha256": "ade1d82946b9701c987a384467052b7f328efd2cc6126d9d6b38e9b94fa6e4d8"
+      }
+    },
+    "ml/stock-trader-model-latest/run.json": {
+      "run_path": "ml/stock-trader-model-runs/20260912T051308.132302Z",
+      "trained_at": "2026-09-12T05:13:08.132302+00:00",
+      "model_fingerprint": "83a81f77aaff781f8887a2fa6d5229be2cc161a17ce2062d20dc32b33765a460",
+      "manifest_sha256": "9a02d396aeb442ae9082aa0791966ced4c4ae7c0ed33bb9f529f96141cf2c2e3",
+      "model_sha256": "23b5c3d18c3ee02b0539cb6e81cb4079892394c2d89d81efd22d033c2ddca0c7",
+      "schema_version": "stock-trader-enrichment-model-pointer-v1",
+      "receipt_sha256": "dcbfc6a198d18c882e55c71d6fbed05ca68fe27f770f2ddc21449f90eb840455"
+    },
+    "ml/gameplan-trade-plan-latest/run.json": {
+      "schema_version": "cash-aware-gameplan-trade-planning-v4",
+      "current": {
+        "action_date": "2026-09-14",
+        "receipt_sha256": "1e522c7fed918142f4476de8b0b2bf864e0af33a7d4e519b90950262729ea1fc",
+        "run_path": "ml/gameplan-trade-plan-runs/20260912T051328.518994Z",
+        "source_receipt_sha256": "ade1d82946b9701c987a384467052b7f328efd2cc6126d9d6b38e9b94fa6e4d8"
+      }
+    }
+  },
+  "sha256": "5ee60520dc1bbbfd31e7d080e40045d44ef5d29aca44c61bafda0ede7232ba5b"
+}

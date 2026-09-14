@@ -5,6 +5,17 @@ Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONB
 The accepted stock design covers the production symbols in `datafetching/watchlist.txt`.
 All clocks below are America/Los_Angeles. Options remain separate research.
 
+The September 14 production universe contains eleven symbols after verified
+CROX/PATH/TWST/IONQ onboarding. All 209 directional execution windows qualified;
+learned enrichment remains qualified only for 1h/4h. The manual Gameplan policy
+uses the separately verified directional forecasts.
+
+The operator's September 14 exception permits a manual
+`--late-opening-date 2026-09-14` only during 04:00–05:00 that date, with the managed
+Gameplan policy. It keeps forecast IDs, target ends, live capital/quote checks,
+and the durable one-batch-per-hour entry claim. It expires at 05:00; no future
+session or recurring launcher inherits it. All normal times below still apply.
+
 | Horizon | Forecast entry times | Holding target | Relative allocation cap |
 | --- | --- | --- | --- |
 | 1h | 04:00 through 16:00, every hour | Next hour | 1 |

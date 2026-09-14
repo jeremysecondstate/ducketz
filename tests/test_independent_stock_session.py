@@ -94,6 +94,32 @@ def test_worker_does_not_backfill_missed_entry_boundary(tmp_path, monkeypatch):
     assert calls == []
 
 
+def test_explicit_late_opening_attempts_once_then_resumes_normal_schedule(tmp_path, monkeypatch):
+    clock = Clock('2026-09-08T11:30:00Z')
+    calls = []
+    monkeypatch.setattr(worker, '_has_inventory', lambda _:False)
+    monkeypatch.setattr(worker, 'read_gameplan_stock_activation_intent', lambda _:SimpleNamespace(active=True))
+    monkeypatch.setattr(worker, '_independent_forecast_preflight', lambda *a,**kw:{'status':'READY'})
+    def runner(root, **kwargs):
+        calls.append((clock(), kwargs.get('late_opening_date')))
+        return SimpleNamespace(submitted_orders=0, to_dict=lambda:{'status':'SYNTHETIC_NO_ORDERS'})
+    result = worker.run_independent_stock_session(tmp_path, clock=clock, sleep=clock.sleep, runner=runner,
+                reporter=lambda _:None, sizing_policy='gameplan-direction-current-market-v1', late_opening_date='2026-09-08')
+    assert result['orders_submitted'] == 0 and len(calls) == 13
+    assert calls[0] == (pd.Timestamp('2026-09-08T11:30:00Z'), '2026-09-08')
+    assert all(flag is None for _,flag in calls[1:])
+    assert [at.tz_convert('America/Los_Angeles').minute for at,_ in calls[1:]] == [6 if hour==13 else 1 for hour in range(5,17)]
+
+
+@pytest.mark.parametrize('when,policy', [('2026-09-08T12:00:00Z','gameplan-direction-current-market-v1'),
+                                       ('2026-09-09T11:30:00Z','gameplan-direction-current-market-v1'),
+                                       ('2026-09-08T11:30:00Z','fixed-horizon-budget-v1')])
+def test_late_opening_flag_rejects_other_dates_hours_and_policies(tmp_path, when, policy):
+    with pytest.raises(ValueError):
+        worker.run_independent_stock_session(tmp_path, clock=lambda:pd.Timestamp(when),
+                       sizing_policy=policy, late_opening_date='2026-09-08')
+
+
 @pytest.mark.parametrize(("started", "reopens"), [
     ("2026-09-08T10:55:00Z", "2026-09-08T11:00:00Z"),
     ("2026-09-08T13:25:00Z", "2026-09-08T13:30:00Z"),
@@ -465,4 +491,19 @@ def test_manual_wait_cli_is_explicit_and_requires_session_mode(tmp_path, monkeyp
     assert cli.main(["--datastore-target", "pc", "--target-horizon", "all", "--run-session", "--wait-for-open", "--execute"]) == 0
     assert observed == [{"execute": True, "wait_for_open": True}]
     assert cli.main(["--datastore-target", "pc", "--wait-for-open"]) == 1
+    assert len(observed) == 1
+
+
+def test_dated_late_opening_cli_only_reaches_the_managed_session(tmp_path, monkeypatch):
+    from ml import gameplan_stock_trader as cli
+    monkeypatch.setattr(cli, 'resolve_datastore_dir', lambda **kwargs:tmp_path)
+    observed = []
+    monkeypatch.setattr(worker, 'run_independent_stock_session', lambda root, **kwargs:
+                        observed.append(kwargs) or {'status':'SESSION_FINISHED'})
+    assert cli.main(['--datastore-target','pc','--execute','--target-horizon','all',
+                     '--sizing-policy','gameplan-direction-current-market-v1','--run-session',
+                     '--wait-for-open','--late-opening-date','2026-09-14']) == 0
+    assert observed == [dict(execute=True, sizing_policy='gameplan-direction-current-market-v1',
+                             wait_for_open=True, late_opening_date='2026-09-14')]
+    assert cli.main(['--datastore-target','pc','--late-opening-date','2026-09-14']) == 1
     assert len(observed) == 1

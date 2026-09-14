@@ -232,6 +232,25 @@ def test_missing_successor_trade_plan_or_expired_deadline_cannot_publish(publica
     assert not (c.root / "ml/gameplan-actuals-review-latest/run.json").exists()
 
 
+def test_explicit_late_successor_does_not_admit_late_historical_estimates(publication_case):
+    from tests.test_preparation_deadline import exception_record
+    from ml.gameplan_actuals_review import _saved_trade_plan
+    c = publication_case
+    receipt_path = c.successor_trade/'receipt.json'
+    receipt = json.loads(receipt_path.read_text())
+    receipt['completed_at'] = '2026-09-10T11:10:00Z'
+    receipt_path.write_text(json.dumps(receipt))
+    assert _saved_trade_plan(c.root, c.successor) is None
+    exception, _ = exception_record(c.root, c.successor.run_directory, session='2026-09-10')
+    run = publish_actuals_review(c.root, gameplan_run=c.successor.run_directory, deadline_exception=exception,
+                                 price_loader=c.loader, clock=lambda:pd.Timestamp('2026-09-10T11:20:00Z'))
+    verify_manifest(run)
+    report = json.loads((run/'report.json').read_text())
+    assert report['source_trade_plan_path'] == c.original_trade.as_posix()
+    assert report['deadline_at'] == '2026-09-10T11:00:00+00:00'
+    assert _saved_trade_plan(c.root, c.successor) is None
+
+
 def test_tampered_saved_estimate_leaves_previous_results_pointer(publication_case):
     c = publication_case
     run = publish_actuals_review(c.root, gameplan_run=c.successor.run_directory, price_loader=c.loader, clock=c.clock)

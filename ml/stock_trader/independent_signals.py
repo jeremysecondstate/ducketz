@@ -43,6 +43,7 @@ def load_current_independent_gameplan_signals(
     *,
     as_of: object,
     require_promoted_model_reports: bool = False,
+    late_opening_date: str | None = None,
 ) -> tuple[dict[tuple[str, str], PredictionSignal], tuple[Path, ...]]:
     """Return only due, promoted, sufficiently directional independent signals.
 
@@ -56,6 +57,9 @@ neither late predictions nor missing action slots are replayed.
     root = Path(datastore_root).resolve()
     timestamp = utc(as_of)
     local = timestamp.tz_convert(GAMEPLAN_TIMEZONE)
+    if late_opening_date is not None:
+        from ml.stock_trader.gameplan import validate_late_opening_date
+        validate_late_opening_date(late_opening_date, timestamp)
     publication = read_current_gameplan(root)
     configuration = publication.manifest.get("configuration")
     if not isinstance(configuration, Mapping):
@@ -106,7 +110,7 @@ neither late predictions nor missing action slots are replayed.
     if not 4 <= local.hour < 17:
         return {}, source_files
     action_start = local.floor("h").tz_convert("UTC")
-    deadline = _entry_deadline(action_start)
+    deadline = _entry_deadline(action_start, late_opening_date=late_opening_date)
     if not action_start <= timestamp < deadline:
         return {}, source_files
     due = normalized.loc[

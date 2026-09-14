@@ -87,6 +87,7 @@ def _parser() -> argparse.ArgumentParser:
                         help="With --target-horizon all, manage this exchange day's independent entries and owned-share exits until 17:00 Pacific.")
     parser.add_argument("--wait-for-open", action="store_true",
                         help="With --run-session --target-horizon all, wait without broker activity until 04:00 Pacific on the next supported session; an open session starts immediately.")
+    parser.add_argument('--late-opening-date', help='Explicit one-session manual exception: allow the unconsumed 04:00 entry until 05:00 Pacific on YYYY-MM-DD')
     parser.add_argument("--sizing-policy", choices=SIZING_POLICIES, default=LEARNED_SIZING_POLICY,
                         help="Explicitly select qualified learned sizing or conservative fixed horizon budgets.")
     parser.add_argument(
@@ -106,12 +107,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         if args.wait_for_open and not args.run_session:
             raise ValueError("--wait-for-open requires --run-session --target-horizon all")
+        if args.late_opening_date and not args.run_session:
+            raise ValueError('--late-opening-date requires the managed all-horizon Gameplan session')
         if args.run_session:
             if args.target_horizon != "all" or args.decided_at is not None:
                 raise ValueError("--run-session requires --target-horizon all and the current wall clock")
             from ml.stock_trader.independent_session import run_independent_stock_session
             sizing_options = {"sizing_policy": args.sizing_policy} if args.sizing_policy != LEARNED_SIZING_POLICY else {}
             wait_options = {"wait_for_open": True} if args.wait_for_open else {}
+            if args.late_opening_date:
+                wait_options['late_opening_date'] = args.late_opening_date
             result = run_independent_stock_session(root, execute=bool(args.execute), **sizing_options, **wait_options)
             print(json.dumps(result, sort_keys=True))
             return 1 if result["status"] in {

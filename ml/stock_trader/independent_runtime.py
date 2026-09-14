@@ -111,6 +111,7 @@ def run_independent_stock_trader_once(
     runtime_clock: Callable[[], object] | None = None, entries: bool = True,
     session_managed: bool = False,
     sizing_policy: str = LEARNED_SIZING_POLICY,
+    late_opening_date: str | None = None,
     broker_state_retry_delay_seconds: float = DEFAULT_BROKER_STATE_RETRY_DELAY_SECONDS,
     broker_state_retry_max_seconds: float = DEFAULT_BROKER_STATE_RETRY_MAX_SECONDS,
     broker_state_retry_max_attempts: int = DEFAULT_BROKER_STATE_RETRY_MAX_ATTEMPTS,
@@ -138,6 +139,11 @@ def run_independent_stock_trader_once(
     sizing_policy = validate_sizing_policy(sizing_policy)
     clock = runtime_clock or (lambda: utc() if decided_at is None else utc(decided_at))
     timestamp = utc(clock())
+    if late_opening_date is not None:
+        from ml.stock_trader.gameplan import validate_late_opening_date
+        if sizing_policy != GAMEPLAN_SIZING_POLICY or not session_managed:
+            raise ValueError('Late opening requires the explicitly selected managed Gameplan policy')
+        validate_late_opening_date(late_opening_date, timestamp)
     active_policy = policy or StockTraderPolicy()
     if policy is None and sizing_policy == GAMEPLAN_SIZING_POLICY:
         # One exit and one directional decision per configured symbol/horizon
@@ -177,6 +183,9 @@ def run_independent_stock_trader_once(
         try:
             if entry_allowed:
                 signal_options = {"require_promoted_model_reports": True} if sizing_policy in {FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY} else {}
+                if late_opening_date is not None:
+                    signal_options['late_opening_date'] = late_opening_date
+                    metadata['late_opening_date'] = late_opening_date
                 signals, sources = load_current_independent_gameplan_signals(root, as_of=timestamp, **signal_options)
         except (OSError, ValueError, RuntimeError) as exc:
             metadata["entry_input_error"] = f"{type(exc).__name__}: {exc}"
@@ -284,9 +293,14 @@ def run_independent_stock_trader_once(
         if not window.executable:
             return finish("EXECUTION_WINDOW_CLOSED_AFTER_BROKER_CAPTURE", error=window.reason)
         state = ledger.snapshot()
+        if late_opening_date is not None and utc(clock()).tz_convert('America/Los_Angeles').hour != 4:
+            qualified = {}
+            late_opening_date = None
+            metadata['late_opening_expired_during_capture'] = True
         if execute:
             cancelled, cancellation_error = _cancel_expired_entries(
                 root, broker, ledger, state, portfolio, stable_identity, clock,
+                **({'late_opening_date':late_opening_date} if late_opening_date is not None else {}),
             )
             if cancelled or cancellation_error:
                 metadata["entry_cancellations_requested"] = cancelled
@@ -306,7 +320,7 @@ def run_independent_stock_trader_once(
             decisions = build_gameplan_direction_trade_decisions(
                 qualified, portfolio, activation, verified_promoted_signals=frozenset(qualified),
                 bearish_sell_capacities=capacities, maximum_quote_age_seconds=ledger.maximum_evidence_age_seconds,
-                **decision_options)
+                **decision_options, **({'late_opening_date':late_opening_date} if late_opening_date is not None else {}))
         elif sizing_policy == FIXED_SIZING_POLICY:
             from ml.stock_trader.fixed_horizon_engine import build_fixed_horizon_trade_decisions
             decisions = build_fixed_horizon_trade_decisions(
@@ -417,7 +431,7 @@ class _SubmissionStopped(RuntimeError):
     pass
 
 
-def _cancel_expired_entries(root, broker, ledger, state, portfolio, stable_identity, clock):
+def _cancel_expired_entries(root, broker, ledger, state, portfolio, stable_identity, clock, *, late_opening_date=None):
     requested = 0
     allocations = {a.allocation_id: a for a in state.allocations}
     for reservation in state.reservations:
@@ -425,7 +439,7 @@ def _cancel_expired_entries(root, broker, ledger, state, portfolio, stable_ident
                 or not reservation.broker_order_id or reservation.cancel_requested_at is not None):
             continue
         allocation = allocations[reservation.allocation_id]
-        if utc(clock()) < _entry_deadline(utc(allocation.target_start)):
+        if utc(clock()) < _entry_deadline(utc(allocation.target_start), late_opening_date=late_opening_date):
             continue
         try:
             context = broker.prepare_order_submission()

@@ -262,13 +262,14 @@ def _plan_working_price_rows(forecasts: pd.DataFrame, snapshot: Mapping,
 
 
 def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: object | None = None,
-                       snapshot_loader=None, price_loader=None, clock=utc_timestamp) -> Path:
+                       snapshot_loader=None, price_loader=None, clock=utc_timestamp,
+                       deadline_exception: Path | None = None) -> Path:
     """Publish a separate immutable account/price review for one verified Gameplan."""
     from ml.nightly_gameplan import read_gameplan_run
     from ml.stock_trader.independent_signals import _validated_independent_forecasts, verified_promoted_model_groups
     from ml.stock_target_prices import load_stock_target_prices
     from ml.gameplan_price_bands import build_entry_price_bands, build_planning_price_path
-    from ml.gameplan_cash_ledger import project_direction_trades
+    from ml.gameplan_cash_ledger import project_direction_trades, UnavailablePlanningPricePath
     from ml.gameplan_trade_snapshot import capture_trade_planning_snapshot
     from ml.gameplan_trade_review import render_trade_review
     from ml.gameplan_actuals_review import previous_action_date
@@ -286,6 +287,9 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     if deadline_at != expected_deadline.tz_convert("UTC"):
         raise ValueError("Trade planning deadline differs from the pinned action session")
     observed = utc(clock())
+    from ml.preparation_deadline import preparation_deadline
+    original_deadline = deadline_at
+    deadline_at, exception_evidence = preparation_deadline(root, source, original_deadline, observed, deadline_exception)
     if observed >= deadline_at:
         raise ValueError("Trade planning publication deadline has passed")
     symbols = tuple(config["symbols"])
@@ -303,7 +307,8 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     run = create_timestamp_directory(root / "ml/gameplan-trade-plan-runs", timestamp=observed)
     report = {"schema_version": VERSION, "observed_at": observed.isoformat(), "action_date": action_date,
               "source_gameplan_run": source.relative_to(root).as_posix(), "source_receipt_sha256": source_receipt_hash,
-              "deadline_at": deadline_at.isoformat(), "execution_authority": AUTHORITY,
+              "deadline_at": original_deadline.isoformat(), "effective_deadline_at":deadline_at.isoformat(),
+              "deadline_exception":exception_evidence, "execution_authority": AUTHORITY,
               "orders_placed": 0, "broker_orders_enabled": False, "status": "RUNNING"}
     prior_action_date = previous_action_date(action_date)
     report["previous_session_results_date"] = prior_action_date
@@ -338,7 +343,18 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
         policy = StockTraderPolicy()
         rows = _plan_working_price_rows(forecasts, snapshot, bands, price_path, policy=policy)
         phase = "DIRECTION_BASED_CASH_AND_SHARE_PROJECTION"
-        rows, direction_projection = project_direction_trades(rows, snapshot, price_path, policy=policy)
+        try:
+            rows, direction_projection = project_direction_trades(rows, snapshot, price_path, policy=policy)
+        except UnavailablePlanningPricePath as unavailable:
+            # Complete the informational report without manufacturing prices,
+            # fills, ending cash or ending holdings. Other validation errors
+            # continue to fail the publication.
+            direction_projection = {
+                "status":"UNAVAILABLE_PRICE_REFERENCES", "unavailable_points":unavailable.points,
+                "events":[], "hourly":[], "ending_positions":{}, "summary":{},
+                "orders_placed":0, "broker_orders_enabled":False,
+                "reason":"Required observed price references or historical pairs are missing; no shared cash projection was calculated.",
+            }
         rows.to_parquet(run / "trade-plan.parquet", index=False)
         _write_json(run / "price-bands.json", bands)
         _write_json(run / "planning-price-path.json", price_path)
@@ -357,6 +373,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
                       trade_reason_counts=rows.trade_planning_reason.value_counts().to_dict(),
                       snapshot=snapshot, sizing_policy=asdict(policy),
                       direction_based_projection=direction_projection,
+                      direction_projection_status=direction_projection.get("status", "AVAILABLE"),
                       opra_history=config.get("opra_history", {}),
                       price_band_policy={k: v for k, v in bands.items() if k not in {"rows", "statistics", "reference_completion"}},
                       planning_price_path={k: v for k, v in price_path.items() if k not in {"points", "reference_completion"}},
@@ -437,13 +454,17 @@ def main(argv: list[str] | None = None) -> int:
     from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
     from datafetching.runtime_lock import exclusive_runtime_lock
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--datastore-target", choices=tuple(DATASTORE_TARGETS), default="pc")
+    datastore = parser.add_mutually_exclusive_group()
+    datastore.add_argument("--datastore", type=Path)
+    datastore.add_argument("--datastore-target", choices=tuple(DATASTORE_TARGETS), default="pc")
     parser.add_argument("--gameplan-run", required=True, type=Path)
     parser.add_argument("--deadline")
+    parser.add_argument('--deadline-exception', type=Path)
     args = parser.parse_args(argv)
-    root = resolve_datastore_dir(target=args.datastore_target)
+    root = resolve_datastore_dir(root_dir=args.datastore, target=None if args.datastore else args.datastore_target)
     with exclusive_runtime_lock(root / "state/gameplan-trade-planning.lock", process_name="gameplan trade planning"):
-        run = publish_trade_plan(root, gameplan_run=args.gameplan_run, deadline=args.deadline)
+        extra = {'deadline_exception':args.deadline_exception} if args.deadline_exception is not None else {}
+        run = publish_trade_plan(root, gameplan_run=args.gameplan_run, deadline=args.deadline, **extra)
     print(json.dumps({"status": "COMPLETE", "run_path": str(run), "review_path": str(run / "Gameplan.md"), "orders_placed": 0}))
     return 0
 

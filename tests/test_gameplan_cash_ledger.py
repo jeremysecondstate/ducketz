@@ -3,7 +3,7 @@ from dataclasses import replace
 import pandas as pd
 import pytest
 
-from ml.gameplan_cash_ledger import project_direction_trades
+from ml.gameplan_cash_ledger import UnavailablePlanningPricePath, project_direction_trades
 from ml.stock_trader.contracts import StockTraderPolicy
 
 
@@ -39,6 +39,40 @@ def path(symbols=("AAPL",), low=10, mid=10.5, high=11):
 
 def run(rows, state=None, prices=None, policy=POLICY):
     return project_direction_trades(pd.DataFrame(rows), state or snapshot(), prices or path(), policy=policy)
+
+
+def unavailable_path():
+    prices = path()
+    prices['points']['AAPL|2026-09-09|04:00'].update(
+        status='UNAVAILABLE_REFERENCE_PRICE', reference_gap_minutes=143,
+        planned_price_low=None, planned_price_mid=None, planned_price_high=None)
+    return prices
+
+
+def test_missing_reference_has_typed_diagnostics_and_cannot_simulate_cash():
+    with pytest.raises(UnavailablePlanningPricePath) as error:
+        run([forecast()], prices=unavailable_path())
+    assert error.value.points[0]['symbol'] == 'AAPL'
+    assert error.value.points[0]['reference_gap_minutes'] == 143
+
+
+@pytest.mark.parametrize('invalid', ['ownership', 'exposure', 'allocation', 'clock', 'numeric-missing'])
+def test_unavailable_projection_does_not_hide_invalid_inputs(invalid):
+    state, prices, row = snapshot(), unavailable_path(), forecast()
+    if invalid == 'ownership':
+        state['ownership']['safe_for_planning'] = False
+    elif invalid == 'exposure':
+        state['symbol_exposure']['AAPL'] = 1
+    elif invalid == 'allocation':
+        state['ownership']['active_allocations'] = [dict(symbol='AAPL', horizon='1h', owned_shares=1,
+                                                       target_end='2026-09-09T12:00:00Z')]
+    elif invalid == 'clock':
+        row['target_window_end'] = row['target_window_start']
+    else:
+        prices['points']['AAPL|2026-09-09|04:00']['planned_price_mid'] = 10
+    with pytest.raises(ValueError) as error:
+        run([row], state, prices)
+    assert not isinstance(error.value, UnavailablePlanningPricePath)
 
 
 def test_user_example_cash_range_and_next_hour_bearish_sell():

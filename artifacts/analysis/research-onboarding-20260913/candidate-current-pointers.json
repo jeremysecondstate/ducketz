@@ -1,0 +1,21 @@
+{
+  "gameplan": {
+    "current": {
+      "action_date": "2026-09-14",
+      "manifest_checksum_sha256": "150d94368913d9963619d949dac55efd40a5cde708d4b53e90a43161ac111673",
+      "published_at": "2026-09-14T10:46:10.946407+00:00",
+      "receipt_checksum_sha256": "3b1d851590fbfec545f8565ca5feb9f40493ff3f30ca903aeee1e9e93c340d74",
+      "run_path": "ml/nightly-gameplan-runs/20260914T104432.295244Z"
+    },
+    "schema_version": "immutable-overnight-gameplan-pointer-v1"
+  },
+  "model": {
+    "manifest_sha256": "3d06cfe68edbd352685adf7281ecbc43ffbc18656a2a4ff88953cb2ff6688584",
+    "model_fingerprint": "56c09cc946e139282981bacf6fd976ac29235e1d73b97bb04baa94d56b0b62a8",
+    "model_sha256": "64bb9bf16e77812570fcdf971b6d18573e506ecbd15db65b4ed420942ea6fb64",
+    "receipt_sha256": "e19bdf2a5eaf41a43036d11373c2d2cf8c252877e9fec156430f4e37eebb35a5",
+    "run_path": "ml/stock-trader-model-runs/20260914T104613.232728Z",
+    "schema_version": "stock-trader-enrichment-model-pointer-v1",
+    "trained_at": "2026-09-14T10:46:13.232728+00:00"
+  }
+}

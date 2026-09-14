@@ -13,11 +13,11 @@ from ml.stock_target_prices import (
 )
 
 
-def archive_partition(root, symbol, *, suffix="first", open_price=100.0):
+def archive_partition(root, symbol, *, suffix="first", open_price=100.0, close_price=100.5):
     directory = root / "market-data/databento/us-equities/XNAS.ITCH/ohlcv-1m" / symbol / "windows" / suffix
     directory.mkdir(parents=True)
     frame = pd.DataFrame({"ts_event": pd.to_datetime(["2026-08-17T11:00Z", "2026-08-17T23:59Z"]),
-                          "open": [open_price, 101.0], "close": [100.5, 102.0], "symbol": symbol})
+                          "open": [open_price, 101.0], "close": [close_price, 102.0], "symbol": symbol})
     frame.to_parquet(directory / "normalized.parquet", index=False)
     (directory / "provider.dbn.zst").write_bytes(b"provider fixture bytes")
     normalized, raw = directory / "normalized.parquet", directory / "provider.dbn.zst"
@@ -91,6 +91,23 @@ def test_canonical_source_requires_its_declared_dataset(tmp_path):
                   "provider_dataset": ["XNAS.ITCH"]}).to_parquet(directory / "COST_ohlcv-1m_1m.parquet", index=False)
     with pytest.raises(RuntimeError, match="dataset differs"):
         load_stock_target_prices(tmp_path, symbols=("COST",))
+
+
+def test_undefined_price_row_is_disclosed_without_modifying_native_evidence(tmp_path):
+    directory = archive_partition(tmp_path, "COST", open_price=float('nan'), close_price=float('nan'))
+    before = {p.name:file_checksum(p) for p in directory.iterdir()}
+    bars,_,report = load_stock_target_prices(tmp_path,symbols=("COST",),source_contract=XNAS_STOCK_PRICE_SOURCE)
+    assert len(bars)==1 and bars.iloc[0].open==101
+    assert report['missing_price_rows_by_symbol']=={'COST':1}
+    assert report['missing_price_examples']==[{'symbol':'COST','timestamp':'2026-08-17T11:00:00+00:00'}]
+    assert before=={p.name:file_checksum(p) for p in directory.iterdir()}
+
+
+@pytest.mark.parametrize('invalid',[float('nan'),float('inf'),0,-1])
+def test_partial_or_invalid_price_observation_still_fails_closed(tmp_path,invalid):
+    archive_partition(tmp_path,"COST",open_price=invalid)
+    with pytest.raises(RuntimeError,match='invalid observed open'):
+        load_stock_target_prices(tmp_path,symbols=("COST",),source_contract=XNAS_STOCK_PRICE_SOURCE)
 
 
 def test_prospective_evaluation_never_changes_a_saved_forecast_price_source():

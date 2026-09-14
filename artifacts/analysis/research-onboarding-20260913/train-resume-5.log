@@ -1,0 +1,84 @@
+SEC_HISTORY CROX 50/663
+SEC_HISTORY CROX 100/663
+SEC_HISTORY CROX 150/663
+SEC_HISTORY CROX 200/663
+SEC_HISTORY CROX 250/663
+SEC_HISTORY CROX 300/663
+SEC_HISTORY CROX 350/663
+SEC_HISTORY CROX 400/663
+SEC_HISTORY CROX 450/663
+SEC_HISTORY CROX 500/663
+SEC_HISTORY CROX 550/663
+SEC_HISTORY CROX 600/663
+SEC_HISTORY CROX 650/663
+SEC_HISTORY PATH 50/665
+SEC_HISTORY PATH 100/665
+SEC_HISTORY PATH 150/665
+SEC_HISTORY PATH 200/665
+SEC_HISTORY PATH 250/665
+SEC_HISTORY PATH 300/665
+SEC_HISTORY PATH 350/665
+SEC_HISTORY PATH 400/665
+SEC_HISTORY PATH 450/665
+SEC_HISTORY PATH 500/665
+SEC_HISTORY PATH 550/665
+SEC_HISTORY PATH 600/665
+SEC_HISTORY PATH 650/665
+SEC_HISTORY TWST 50/1587
+SEC_HISTORY TWST 100/1587
+SEC_HISTORY TWST 150/1587
+SEC_HISTORY TWST 200/1587
+SEC_HISTORY TWST 250/1587
+SEC_HISTORY TWST 300/1587
+SEC_HISTORY TWST 350/1587
+SEC_HISTORY TWST 400/1587
+SEC_HISTORY TWST 450/1587
+SEC_HISTORY TWST 500/1587
+SEC_HISTORY TWST 550/1587
+SEC_HISTORY TWST 600/1587
+SEC_HISTORY TWST 650/1587
+SEC_HISTORY TWST 700/1587
+SEC_HISTORY TWST 750/1587
+SEC_HISTORY TWST 800/1587
+SEC_HISTORY TWST 850/1587
+SEC_HISTORY TWST 900/1587
+SEC_HISTORY TWST 950/1587
+SEC_HISTORY TWST 1000/1587
+SEC_HISTORY TWST 1050/1587
+SEC_HISTORY TWST 1100/1587
+SEC_HISTORY TWST 1150/1587
+SEC_HISTORY TWST 1200/1587
+SEC_HISTORY TWST 1250/1587
+SEC_HISTORY TWST 1300/1587
+SEC_HISTORY TWST 1350/1587
+SEC_HISTORY TWST 1400/1587
+SEC_HISTORY TWST 1450/1587
+SEC_HISTORY TWST 1500/1587
+SEC_HISTORY TWST 1550/1587
+SEC_HISTORY IONQ 50/621
+SEC_HISTORY IONQ 100/621
+SEC_HISTORY IONQ 150/621
+SEC_HISTORY IONQ 200/621
+SEC_HISTORY IONQ 250/621
+SEC_HISTORY IONQ 300/621
+SEC_HISTORY IONQ 350/621
+SEC_HISTORY IONQ 400/621
+SEC_HISTORY IONQ 450/621
+SEC_HISTORY IONQ 500/621
+SEC_HISTORY IONQ 550/621
+SEC_HISTORY IONQ 600/621
+{"plan_id": "df613ade510b2775a99c051abf8472367e2c70208e13c1eacce8bad4c577d487", "symbols": ["AAPL", "AMZN", "GOOG", "MU", "NVDA", "SNDK", "COST", "CROX", "PATH", "TWST", "IONQ"], "observed_at": "2026-09-14T10:52:59.237095+00:00", "status": "COMPLETE", "orders_placed": 0, "broker_orders_enabled": false, "recorded_observed_holdings": true, "reconciliation": {"snapshot_id": "922b0f4c0867cae672afe7f48e9a1bd7ee5198b1c629d8cbadce4e7e666d40f4", "ready": true, "reasons": []}, "source_snapshot_sha256": "c27f7fcbf886368526303ca304a21844b2730583dbac0cbb4e0d4a17a60c6155", "symbol_execution_budgets": 0, "prior_snapshot_at": "2026-09-11T23:01:18.098045+00:00"}
+OVERNIGHT RUNNING gameplan_trade_planning C:\DATASTORE\ml\overnight-runs\20260914T105300.145093Z
+OVERNIGHT FAILED gameplan_trade_planning C:\DATASTORE\ml\overnight-runs\20260914T105300.145093Z
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\dev\ducketz\datafetching\research_onboarding.py", line 598, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "C:\dev\ducketz\datafetching\research_onboarding.py", line 583, in main
+    train_batch(path, batch, lost, resume_run=args.resume_run)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\dev\ducketz\datafetching\research_onboarding.py", line 364, in train_batch
+    raise RuntimeError(f'Native overnight stage failed; inspect {path.parent / "overnight.log"} and resume the bound attempt')
+RuntimeError: Native overnight stage failed; inspect C:\dev\ducketz\artifacts\analysis\research-onboarding-20260913\overnight.log and resume the bound attempt

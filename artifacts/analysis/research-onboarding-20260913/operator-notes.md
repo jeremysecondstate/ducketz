@@ -179,3 +179,69 @@ existing collector rejected those divergent duplicates as non-blocking local
 advisories and retained its saved snapshot evidence. It did not overwrite or
 relax snapshot validation. Stock-only preparation continued into technical
 feature generation. The exact advisories are in the native Loop A log.
+
+Loop A completed successfully at approximately 2026-09-14T10:18:48Z. Its
+production OPRA maintenance reported all 33 scopes complete, zero failed,
+blocked or deferred scopes, and a $0 incremental preflight. The full canonical
+health inventory was refreshed after checksum and normalized-record validation:
+66,251 partitions, 4,797,094,856 rows, 79,834,155,216 raw bytes and
+63,180,246,971 normalized Parquet bytes across the shared OPRA archive.
+The market-data catalog also refreshed successfully. Loop B then started with
+the exact eleven-symbol candidate universe at 2026-09-14T10:18:49Z.
+
+Loop B completed in `ml/runs/20260914T101849.984899Z`: 335,211 admitted samples,
+9 models trained, 7,029 backtest prediction rows, 57 fresh live forecast rows,
+42 retained frozen weekly rows, and 33 actionable ordinary routes. No model was
+reused. All four selected companies passed each configured sample-readiness
+variant. The existing Option Pricing coverage/freshness gate quarantined that
+feature family across the universe; native stock-model fallbacks were fitted
+without relaxing the gate. The following stock-target history stage published
+the four new XNAS minute sources and completed successfully.
+
+Final preparation and activation, September 14:
+
+- Repaired the trade-plan CLI's explicit `--datastore` handling. Added fresh
+  candidate ownership preparation through native reconciliation with zero
+  execution budgets, without allocations/orders or manual-inventory claims.
+- Preserved four native historical rows with both prices undefined, disclosing
+  them as missing observations in the price-reader inventory. Partial invalid,
+  nonfinite, nonpositive and conflicting prices still fail.
+- CROX/TWST lack observed prior extended-session closes within the permitted
+  planning gap (143/48 minutes). The complete informational trade plan now
+  reports `UNAVAILABLE_PRICE_REFERENCES` and calculates no chronological fills,
+  ending cash or holdings. No source substitution or gap widening occurred.
+- Failed attempts at 10:48:47, 10:53:00 and 10:56:14 UTC retained their original
+  deadline and immutable upstream work. The original seven-stock Gameplan/model
+  references were restored and independently verified after the 04:00 deadline.
+- The user then explicitly authorized completion today despite that deadline,
+  and a user-initiated late opening before 05:00 PDT, followed by confirmation
+  that both exceptions are today only. `deadline-exception.json` binds the
+  frozen Gameplan receipt to that authorization. The native planning/actuals
+  resume `20260914T111641.913351Z` completed at 11:18:14 UTC, with zero orders.
+- `finalize` verified all stages and source-bound references under the native
+  session/publication locks, validated 264 forecasts and 264 intents, and
+  activated the full eleven-stock batch. Original pointer evidence is in
+  `production-baseline.json`; final references are in `activation.json`.
+- `completion-verification.json` verifies all 100 requests, provider receipts,
+  33 OPRA cursors, four fitted horizons and all eleven UI cards. Total logical
+  symbol-path storage is 75,979,941,063 bytes, approximately 70.8 GiB, including
+  native, normalized and retained staging files; shared models are separate.
+- `trading-readiness.json` confirms all 209 directional execution windows,
+  44 opening signals, active existing controls, observed bounded cash, safe
+  ownership and an unconsumed opening slot. No live trader was started.
+- The date-specific manual flag `--late-opening-date 2026-09-14` expires at
+  05:00, keeps frozen IDs/end times, uses actual quotes and capital, and reuses
+  the durable slot claim across restarts. No recurring launch command contains
+  the exception. Existing horizon ownership, submission identity and quote-age
+  guards remain in force.
+- Regression checks included 83 cash-ledger/planning/review tests, 140 native
+  supervision/planning/actuals/onboarding tests, 51 scoped-deadline/planning
+  tests, and focused runtime/rollback/late-entry tests. Test groups overlap;
+  counts are not additive. The final 98-test runtime/actuals/onboarding group
+  passed, as did the 12 focused late-entry/exception/rollback checks and 52
+  synthetic launcher identity checks. Broker-order tests used fake brokers.
+
+Scheduled updates were made through the app. Schedules, paused states, models,
+efforts, project/thread targets, working directories and notification preferences
+were verified unchanged. Final prompts retain the normal opening schedule and
+limit September 14 exceptions to the recorded authorization.
