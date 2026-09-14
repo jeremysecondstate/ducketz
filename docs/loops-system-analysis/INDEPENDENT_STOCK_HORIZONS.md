@@ -194,10 +194,11 @@ overnight cash range; the range is not an execution threshold.
 The user-approved planning-only policy may complete a trailing gap at the
 exact prior exchange session's 17:00 Pacific reference. A complete verified
 source partition must cover through that boundary. The last actual minute close
-must come from the same session, with observation age greater than five and no
-more than fifteen minutes at 17:00, measured from minute completion. Historical
-and Live APIs need not both return the same result. An incomplete source
-partition, invalid observation or longer gap remains unavailable.
+must come from the same session, at or after its regular-session close, with
+observation age greater than five and no more than 240 minutes at 17:00, measured
+from minute completion. This September 14 policy covers the after-hours interval.
+Historical and Live APIs need not both return the same result. An incomplete
+source partition, undefined/invalid observation or longer gap remains unavailable.
 
 The missing minutes use the last actual close for all four OHLC fields, zero
 volume and `is_synthetic=true`. These rows express a no-trade planning assumption;
@@ -206,15 +207,23 @@ The original actual observation time and source identity remain recorded beside
 the synthetic completion boundary and gap length. `planning-reference-completion.json`
 and `synthetic-reference-bars.parquet` preserve that evidence under the trade-plan
 manifest. Entry bands and all 04:00–17:00 working prices share this reference.
-Observed archives, historical sample pairs, training, evaluation and actuals
-receive no synthetic rows; their five-minute gates remain enforced. Live quote
-validation and order behavior are unchanged.
+Historical planning pairs use the same closing-reference policy and disclose each
+carried close's age, original timestamp and acquisition coverage. Intraday sample
+entry prices remain observed; at least two usable pairs are still required.
+Observed archives, training, evaluation and actuals receive no synthetic rows;
+their five-minute gates remain enforced. Live quote validation and order behavior
+are unchanged. Missing venue bars remain an assumed no-trade interval, not proof
+that no trading occurred elsewhere.
 
 New trade plans use `cash-aware-gameplan-trade-planning-v4`; enabling completion
-selects `historical-entry-price-band-v2` and
-`conditional-hourly-planning-price-path-v2`. The native price-source and forecast
-contracts retain their identities. Legacy v1 planning derivations keep their
-strict observed-reference behavior and saved publications remain immutable.
+selects `historical-entry-price-band-v3` and
+`conditional-hourly-planning-price-path-v3`, using the separately versioned
+`sparse-session-planning-reference-completion-v2`. Native price-source and forecast
+contracts retain their identities. Legacy v1 derivations stay strict, legacy v2
+retains the 15-minute current-anchor allowance, and saved publications remain
+immutable. The informational refresh command in [the review contract](NIGHTLY_GAMEPLAN.md#account-aware-trade-plan-review)
+can recalculate today's current review with its original snapshot and cutoff;
+it does not change forecasts or the live trading schedule.
 
 This planning stage cannot submit or cancel orders or activate the live worker.
 At execution the selected worker policy recalculates quantity and its current

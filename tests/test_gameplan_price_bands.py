@@ -269,6 +269,73 @@ def test_reused_bands_cannot_change_completion_policy_or_inject_a_synthetic_refe
                                   allow_reference_forward_fill=True)
 
 
+def _sparse_closing_history():
+    prices = _short_closing_gap(48)
+    local = prices.timestamp.dt.tz_convert("America/Los_Angeles")
+    prices.loc[local.dt.hour.eq(16) & local.dt.minute.eq(59), "timestamp"] -= pd.Timedelta(minutes=48)
+    prices.attrs["stock_price_source"]["partitions"][0]["start"] = "2026-09-01T00:00:00Z"
+    return prices
+
+
+def test_sparse_closing_policy_restores_planning_pairs_with_full_provenance_and_native_entries():
+    prices = _sparse_closing_history()
+    before = prices.copy(deep=True)
+    forecasts = pd.DataFrame([_forecast()])
+    legacy = _build(prices, forecasts, allow_reference_forward_fill=True)
+    assert legacy["rows"][0]["price_band_status"] == "UNAVAILABLE_REFERENCE_PRICE"
+    bands = _build(prices, forecasts, allow_reference_forward_fill=True, allow_sparse_session_references=True)
+    path = build_planning_price_path(prices, forecasts, observed_at=bands["observed_at"], entry_bands=bands,
+                                     allow_reference_forward_fill=True, allow_sparse_session_references=True)
+    assert len(path["points"]) == 14
+    assert all(p["status"] == "AVAILABLE" and p["sample_count"] == 3 for p in path["points"].values())
+    point = path["points"]["COST|2026-09-09|04:00"]
+    assert point["synthetic_close_sample_count"] == 3
+    assert point["observed_only_sample_count"] == 0
+    assert point["reference_gap_minutes"] == 48
+    assert point["ratio_median"] == 1.05
+    assert point["planned_price_mid"] == 210
+    for sample in point["samples"]:
+        ref = bands["reference_completion"]["historical_references"][sample["prior_close_reference_key"]]
+        assert ref["source_coverage"]["native_partition_verified"] is True
+        assert sample["prior_close_is_synthetic"] is True
+        assert sample["prior_close_observed_at"] == ref["observed_at"]
+        assert sample["prior_close_effective_at"] == ref["effective_at"]
+        assert pd.Timestamp(sample["entry_open_observed_at"]).tz_convert("America/Los_Angeles").hour == 4
+    assert path["points"]["COST|2026-09-09|17:00"]["samples"][-1]["endpoint_is_synthetic"] is True
+    pd.testing.assert_frame_equal(prices, before)
+    json.dumps(path, allow_nan=False)
+
+
+def test_sparse_policy_keeps_entry_gaps_missing_and_ignores_forecast_day_outcomes():
+    prices = _sparse_closing_history()
+    local = prices.timestamp.dt.tz_convert("America/Los_Angeles")
+    prices = prices.loc[~local.dt.hour.eq(4)].copy()
+    bands = _build(prices, allow_reference_forward_fill=True, allow_sparse_session_references=True)
+    assert bands["rows"][0]["price_band_status"] == "UNAVAILABLE_MINIMUM_SAMPLES"
+    assert bands["rows"][0]["price_band_sample_count"] == 0
+    # Today's and later outcomes must not change the historical planning path.
+    original = _sparse_closing_history()
+    baseline = _build(original, allow_reference_forward_fill=True, allow_sparse_session_references=True)
+    poisoned = pd.concat([original, _prices([_bar("2026-09-09 04:00", 99999), _bar("2026-09-09 16:59", 1)])], ignore_index=True)
+    poisoned.attrs = original.attrs.copy()
+    changed = _build(poisoned, allow_reference_forward_fill=True, allow_sparse_session_references=True,
+                     observed_at="2026-09-10T04:00Z")
+    assert changed["statistics"] == baseline["statistics"]
+
+
+def test_sparse_policy_reuse_cannot_inject_historical_closes_or_switch_policies():
+    prices = _sparse_closing_history()
+    bands = _build(prices, allow_reference_forward_fill=True, allow_sparse_session_references=True)
+    forecasts = pd.DataFrame([_forecast()])
+    with pytest.raises(ValueError, match="exact source"):
+        build_planning_price_path(prices, forecasts, observed_at=bands["observed_at"], entry_bands=bands,
+                                  allow_reference_forward_fill=True)
+    bands["reference_completion"]["historical_references"]["COST|2026-09-04"]["price"] = 1
+    with pytest.raises(ValueError, match="exact source"):
+        build_planning_price_path(prices, forecasts, observed_at=bands["observed_at"], entry_bands=bands,
+                                  allow_reference_forward_fill=True, allow_sparse_session_references=True)
+
+
 def test_native_forecast_ids_are_preserved_in_order():
     forecasts = pd.DataFrame([_forecast(), _forecast(route="4h@04:00")]).rename(columns={"forecast_id": "id"})
     rows = _build(forecasts=forecasts)["rows"]

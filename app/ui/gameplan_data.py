@@ -90,6 +90,7 @@ class Gameplan:
     actions: tuple[PlannedAction, ...]
     projection_status: str = "COMPLETE"
     projection_note: str = ""
+    planning_note: str = ""
 
     @property
     def projection_available(self) -> bool:
@@ -326,6 +327,26 @@ def _actions(ledger: dict, forecasts: tuple[PlanForecast, ...], session: str) ->
     return tuple(sorted(actions, key=lambda item: (item.when, item.sequence)))
 
 
+def _planning_note(report: dict, symbols: set[str]) -> str:
+    completion = report.get("reference_completion", {})
+    carried = []
+    for reference in completion.get("references", {}).values():
+        if reference.get("status") != "AVAILABLE_SYNTHETIC":
+            continue
+        symbol = reference["symbol"]
+        gap = _number(reference["gap_minutes"])
+        actual = _timestamp(reference["observed_at"])
+        effective = _timestamp(reference["effective_at"])
+        if symbol not in symbols or not 5 < gap <= 240 or abs((effective - actual).total_seconds() / 60 - gap) > 1e-6:
+            raise GameplanError("Invalid carried planning close provenance")
+        carried.append(f"{symbol} ({gap:g} min)")
+    if carried:
+        return "Planning estimates use carried closes: " + ", ".join(sorted(carried)) + ". See the report for source times."
+    if any(ref.get("status") == "AVAILABLE_SYNTHETIC" for ref in completion.get("historical_references", {}).values()):
+        return "Planning estimates include carried historical closes. See the report for source times."
+    return ""
+
+
 def load_gameplan(datastore_root: Path | None = None, session: str | None = None) -> Gameplan:
     root = resolve_datastore_dir(root_dir=datastore_root).resolve()
     try:
@@ -378,7 +399,8 @@ def load_gameplan(datastore_root: Path | None = None, session: str | None = None
         if file_checksum(receipt_path) != receipt_hash:
             raise GameplanError("Saved Gameplan changed while it was being read. Refresh again.")
         return Gameplan(selected, _timestamp(report["observed_at"]), _timestamp(receipt["completed_at"]),
-                        run, run / "Gameplan.md", forecasts, actions, projection_status, projection_note)
+                        run, run / "Gameplan.md", forecasts, actions, projection_status, projection_note,
+                        _planning_note(report, set(frame.symbol)))
     except GameplanError:
         raise
     except FileNotFoundError as exc:

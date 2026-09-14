@@ -385,7 +385,7 @@ class GameplanTab:
         self.report_button.configure(state="normal")
         self.status_label.configure(foreground=MUTED_TEXT if plan.projection_available else WARNING)
         self.status.set(f"Saved {plan.saved_at:%b %d, %H:%M %Z} · {len(plan.forecasts)} forecasts · "
-                        + ("Summary follows filters" if plan.projection_available else plan.projection_note))
+                        + ((plan.planning_note or "Summary follows filters") if plan.projection_available else plan.projection_note))
         self.render(reset_scroll=changed)
 
     def _choose_horizon(self, horizon):

@@ -235,15 +235,17 @@ fees and taxes. Assumed earlier sales may finance later projected buys; missing
 fills or changed broker cash require recalculation. The no-fill baseline keeps
 starting cash and shares unchanged. The base case is not an expected return.
 
-The user-approved planning-only completion policy permits a short trailing
-gap in the exact prior exchange session's 17:00 Pacific reference. The complete,
-verified source partition must cover through that boundary. If the last actual
-minute close was observed more than five but no more than fifteen minutes before
-17:00, the planner may carry that same session's close forward through the missing
-minutes. The limit is measured from the actual bar's completion time, not its
-start. No dual Historical/Live agreement is required. Incomplete acquisition,
-invalid observations, a different session, or a gap beyond fifteen minutes cannot
-use this exception.
+The September 14 sparse-session planning policy handles a completed acquisition
+that contains no recent OHLCV bar. It uses an observed close within five minutes
+of the exact prior exchange session's 17:00 Pacific boundary when available.
+Otherwise it may carry the same session's last close forward for at most **240
+minutes**, starting at the regular-session close or later. This covers the normal
+four-hour after-hours interval; it does not fill regular-session outages or borrow
+another day's price. Age is measured from minute completion, not bar start.
+The complete verified source partition must cover the observation through the
+boundary and have been published by the planning cutoff. Incomplete acquisition,
+undefined/invalid native prices, another session or longer gaps remain unavailable.
+Missing XNAS venue bars are not proof of no trading on other venues.
 
 Each derived minute has OHLC equal to the last actual close, volume zero and
 `is_synthetic=true`. These are explicit no-trade planning assumptions, not proof
@@ -251,16 +253,41 @@ that no trade occurred or new provider observations. The evidence retains the
 original source identity, actual close observation time, gap length and separate
 17:00 completion boundary; filling never makes the actual observation newer.
 Entry bands and every working-price clock use the same completed reference.
-Synthetic rows remain separate from the observed archive and are not used for
-historical sample pairs, model fitting, evaluation or actuals review. Their
-five-minute boundary gates remain unchanged, as do live quotes and order checks.
+The same rule also supplies **historical planning closing references** across the
+120-session lookback. Each affected pair records its synthetic-close flag, actual
+observation time, effective close, age and coverage-reference key. Reports separate
+observed-only pair counts from pairs using carried closes. The 17:00 planning
+endpoint can also use that rule; intraday entry opens remain actual observations
+within five minutes, with at least two usable pairs required. No future prices
+are backfilled. Historical reference evidence is compact; only current-anchor
+synthetic minutes are written to `synthetic-reference-bars.parquet`.
+
+Native archives, training targets, fitting, evaluation and actuals reviews receive
+no synthetic rows. Their five-minute boundary gates remain unchanged, as do live
+quotes and order checks. The Gameplan tab discloses carried current closes and
+their original ages; the report also lists historical closing-reference coverage.
 
 New trade plans use `cash-aware-gameplan-trade-planning-v4`. When this policy is
-enabled, planning derivations use `historical-entry-price-band-v2` and
-`conditional-hourly-planning-price-path-v2`, with the completion artifacts bound
-by the trade-plan manifest. The native price-source and forecast contracts are
-unchanged. Legacy v1 planning derivations retain their original strict reference
-behavior, and previously published artifacts remain immutable.
+enabled, new planning derivations use `historical-entry-price-band-v3` and
+`conditional-hourly-planning-price-path-v3`, with
+`sparse-session-planning-reference-completion-v2` evidence bound by the trade-plan
+manifest. The native price-source and forecast contracts are unchanged. Legacy v1
+derivations remain strict; explicit v2 derivations retain their 15-minute current
+anchor policy. Previously published artifacts remain immutable.
+
+An existing current review can be recalculated on its action date before 17:00:
+
+```powershell
+.\.venv\Scripts\python.exe -m ml.gameplan_trade_planning --datastore-target pc --gameplan-run <frozen-gameplan-run> --refresh-plan <current-trade-plan-run>
+```
+
+This `INFORMATIONAL_REFRESH` verifies the previous publication, exact frozen source
+and latest pointer. It reuses the original account snapshot and planning-data
+cutoff, creates a new immutable review, and records both its actual refresh time
+and original input times. It never fetches new broker state, retrains models,
+replays an entry, or changes execution deadlines. A changed latest pointer aborts
+publication. Ordinary overnight preparation and 04:00 trading schedules retain
+their existing deadlines.
 
 The scheduled-default long-only policy retains its confidence-weighted entry
 preview in expandable details and in the data. The opt-in manual policy

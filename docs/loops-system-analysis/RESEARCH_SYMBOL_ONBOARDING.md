@@ -230,10 +230,20 @@ windows passed its preflight. An eligible signal is not a promise of an order.
 The final read-only audit is `completion-verification.json`; the account,
 ownership and forecast preflight is `trading-readiness.json`. Symbol-path logical
 sizes, including retained native/normalized/staging files, total approximately
-70.8 GiB. This is not a measurement of physical disk growth. CROX and TWST lack
-the prior extended-session close within the 15-minute planning allowance; their
-143- and 48-minute gaps remain disclosed, and the shared cash projection is
-unavailable. No prices or fills were fabricated.
+70.8 GiB. This is not a measurement of physical disk growth. The original review
+had no shared cash projection because CROX and TWST's 143- and 48-minute trailing
+gaps exceeded its 15-minute allowance. The subsequent September 14 sparse-session
+planning policy carries these verified same-session closing prices explicitly,
+including historical planning closes. All 154 hourly planning points across the
+11 symbols resolve in the validation at
+`artifacts/analysis/sparse-session-planning-20260914/validation.json`. Native prices,
+training labels and live quote freshness remain unchanged.
+
+For future onboardings, inspect both native acquisition completeness and the
+planning-reference audit. A completed OHLCV download need not contain every minute.
+Apply the documented after-hours closing policy only within verified acquisition
+coverage, disclose observed versus carried references and pair counts, and leave
+uncovered or over-limit gaps unavailable. See [the planning policy](NIGHTLY_GAMEPLAN.md#account-aware-trade-plan-review).
 
 The preparation exception expires **05:00 PDT September 14 only**. The user also
 authorized a manual late opening on that date before 05:00. The exact optional

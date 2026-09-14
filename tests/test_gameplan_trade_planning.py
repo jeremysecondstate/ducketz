@@ -297,6 +297,7 @@ def publication_case(tmp_path, monkeypatch):
     calls = []
     def entry_bands(*a, **kw):
         assert kw["allow_reference_forward_fill"] is True
+        assert kw["allow_sparse_session_references"] is True
         result = bands(rows)
         result["reference_completion"] = {"contract_version": "bounded-planning-reference-completion-v1",
                                           "references": {}, "synthetic_bars": []}
@@ -304,9 +305,12 @@ def publication_case(tmp_path, monkeypatch):
         return result
     def price_path(*a, **kw):
         assert kw["allow_reference_forward_fill"] is True
+        assert kw["allow_sparse_session_references"] is True
         assert kw["entry_bands"] is calls[-1][2]
         calls.append(("path", kw["observed_at"], kw["entry_bands"]))
-        return planning_path(rows)
+        result = planning_path(rows)
+        result["observed_at"] = kw["observed_at"].isoformat()
+        return result
     monkeypatch.setattr(gameplan_price_bands, "build_entry_price_bands", entry_bands)
     monkeypatch.setattr(gameplan_price_bands, "build_planning_price_path", price_path)
     return SimpleNamespace(root=tmp_path, source=source, state=snapshot(),
@@ -372,6 +376,76 @@ def test_direction_ledger_failure_preserves_previous_pointer_without_raw_error(p
     assert report["failure_code"] == "TRADE_PLANNING_VALIDATION_FAILED"
     assert "RAW_PRIVATE_FAILURE_SENTINEL" not in (run / "report.json").read_text()
     assert "RAW_PRIVATE_FAILURE_SENTINEL" not in (run / "receipt.json").read_text()
+
+
+def test_informational_refresh_preserves_snapshot_cutoff_forecasts_and_previous_artifacts(publication_case, monkeypatch):
+    import json
+    from ml.artifacts import file_checksum, verify_manifest
+    from ml import gameplan_trade_snapshot
+    from ml.gameplan_trade_planning import publish_trade_plan
+    c = publication_case
+    prior = publish_trade_plan(c.root, gameplan_run=c.source, snapshot_loader=lambda *a, **kw: c.state,
+                               price_loader=c.prices, clock=c.clock)
+    before = {p: file_checksum(p) for folder in (prior, c.source) for p in folder.iterdir()}
+    def unexpected(*a, **kw):
+        pytest.fail("A review refresh must not capture new broker state")
+    monkeypatch.setattr(gameplan_trade_snapshot, "capture_trade_planning_snapshot", unexpected)
+    refreshed = publish_trade_plan(c.root, gameplan_run=c.source, refresh_plan=prior,
+                                   price_loader=c.prices, clock=lambda: pd.Timestamp("2026-09-09T12:30Z"))
+    verify_manifest(refreshed)
+    report = json.loads((refreshed / "report.json").read_text())
+    assert report["publication_mode"] == "INFORMATIONAL_REFRESH"
+    assert report["review_refresh"]["base_receipt_sha256"] == before[prior / "receipt.json"]
+    assert report["review_refresh"]["planning_price_asof"] == c.clock().isoformat()
+    assert report["observed_at"] == "2026-09-09T12:30:00+00:00"
+    assert json.loads((refreshed / "account-snapshot.json").read_text()) == c.state
+    assert c.calls[-1][1] == c.clock()
+    assert {p: file_checksum(p) for p in before} == before
+    assert report["orders_placed"] == 0 and report["broker_orders_enabled"] is False
+    assert "informational recalculation" in (refreshed / "Gameplan.md").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("damage", ["outside", "not_current", "source_hash", "tampered", "new_snapshot", "next_day", "session_closed"])
+def test_review_refresh_cannot_bypass_pinned_source_or_publication_scope(publication_case, damage):
+    import json
+    from ml.gameplan_trade_planning import publish_trade_plan
+    c = publication_case
+    prior = publish_trade_plan(c.root, gameplan_run=c.source, snapshot_loader=lambda *a, **kw: c.state,
+                               price_loader=c.prices, clock=c.clock)
+    pointer = c.root / "ml/gameplan-trade-plan-latest/run.json"
+    if damage in {"not_current", "source_hash"}:
+        current = json.loads(pointer.read_text())
+        current["current"]["run_path" if damage == "not_current" else "source_receipt_sha256"] = "other"
+        pointer.write_text(json.dumps(current))
+    if damage == "tampered":
+        with (prior / "account-snapshot.json").open("ab") as f:
+            f.write(b"changed")
+    before = pointer.read_bytes()
+    now = {"next_day": "2026-09-10T12:30Z", "session_closed": "2026-09-10T00:00Z"}.get(damage, "2026-09-09T12:30Z")
+    extra = {"snapshot_loader": lambda *a, **kw: c.state} if damage == "new_snapshot" else {}
+    with pytest.raises((ValueError, RuntimeError)):
+        publish_trade_plan(c.root, gameplan_run=c.source,
+                           refresh_plan=c.source if damage == "outside" else prior,
+                           price_loader=c.prices, clock=lambda: pd.Timestamp(now), **extra)
+    assert pointer.read_bytes() == before
+
+
+def test_review_refresh_does_not_override_a_changed_latest_plan(publication_case):
+    import json
+    from ml.gameplan_trade_planning import publish_trade_plan
+    c = publication_case
+    prior = publish_trade_plan(c.root, gameplan_run=c.source, snapshot_loader=lambda *a, **kw: c.state,
+                               price_loader=c.prices, clock=c.clock)
+    pointer = c.root / "ml/gameplan-trade-plan-latest/run.json"
+    def changed(*args, **kwargs):
+        pointer.write_text("newer-plan-published")
+        return c.prices(*args, **kwargs)
+    with pytest.raises(RuntimeError, match="Trade planning failed"):
+        publish_trade_plan(c.root, gameplan_run=c.source, refresh_plan=prior,
+                           price_loader=changed, clock=lambda: pd.Timestamp("2026-09-09T12:30Z"))
+    assert pointer.read_text() == "newer-plan-published"
+    reports = [json.loads(path.read_text()) for path in (c.root / "ml/gameplan-trade-plan-runs").glob("*/report.json")]
+    assert any(report.get("failure_code") == "REFRESH_PLAN_CHANGED" for report in reports)
 
 
 def test_known_missing_reference_publishes_explicitly_unavailable_cash_projection(publication_case, monkeypatch):

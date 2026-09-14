@@ -1,0 +1,103 @@
+{
+  "source_gameplan_run": "ml/nightly-gameplan-runs/20260914T104432.295244Z",
+  "source_receipt_sha256": "3b1d851590fbfec545f8565ca5feb9f40493ff3f30ca903aeee1e9e93c340d74",
+  "prior_review_run": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260914T111644.447379Z",
+  "planning_asof": "2026-09-14T11:16:56.574861+00:00",
+  "forecast_rows": 264,
+  "symbol_count": 11,
+  "planning_point_status_counts": {
+    "AVAILABLE": 154
+  },
+  "direction_ledger_version": "direction-based-gameplan-cash-ledger-v1",
+  "cash_projection_available": true,
+  "projection_event_count": 12,
+  "symbols": {
+    "AAPL": {
+      "reference_status": "AVAILABLE_OBSERVED",
+      "reference_gap_minutes": 0.0,
+      "minimum_hourly_pairs": 120,
+      "maximum_hourly_pairs": 120
+    },
+    "AMZN": {
+      "reference_status": "AVAILABLE_OBSERVED",
+      "reference_gap_minutes": 0.0,
+      "minimum_hourly_pairs": 120,
+      "maximum_hourly_pairs": 120
+    },
+    "COST": {
+      "reference_status": "AVAILABLE_OBSERVED",
+      "reference_gap_minutes": 0.0,
+      "minimum_hourly_pairs": 56,
+      "maximum_hourly_pairs": 120
+    },
+    "CROX": {
+      "reference_status": "AVAILABLE_SYNTHETIC",
+      "reference_gap_minutes": 143.0,
+      "minimum_hourly_pairs": 9,
+      "maximum_hourly_pairs": 120
+    },
+    "GOOG": {
+      "reference_status": "AVAILABLE_OBSERVED",
+      "reference_gap_minutes": 0.0,
+      "minimum_hourly_pairs": 113,
+      "maximum_hourly_pairs": 120
+    },
+    "IONQ": {
+      "reference_status": "AVAILABLE_OBSERVED",
+      "reference_gap_minutes": 0.0,
+      "minimum_hourly_pairs": 84,
+      "maximum_hourly_pairs": 100
+    },
+    "MU": {
+      "reference_status": "AVAILABLE_OBSERVED",
+      "reference_gap_minutes": 0.0,
+      "minimum_hourly_pairs": 120,
+      "maximum_hourly_pairs": 120
+    },
+    "NVDA": {
+      "reference_status": "AVAILABLE_OBSERVED",
+      "reference_gap_minutes": 5.0,
+      "minimum_hourly_pairs": 120,
+      "maximum_hourly_pairs": 120
+    },
+    "PATH": {
+      "reference_status": "AVAILABLE_OBSERVED",
+      "reference_gap_minutes": 2.0,
+      "minimum_hourly_pairs": 8,
+      "maximum_hourly_pairs": 36
+    },
+    "SNDK": {
+      "reference_status": "AVAILABLE_OBSERVED",
+      "reference_gap_minutes": 0.0,
+      "minimum_hourly_pairs": 120,
+      "maximum_hourly_pairs": 120
+    },
+    "TWST": {
+      "reference_status": "AVAILABLE_SYNTHETIC",
+      "reference_gap_minutes": 48.0,
+      "minimum_hourly_pairs": 9,
+      "maximum_hourly_pairs": 120
+    }
+  },
+  "publication": {
+    "published_review": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260914T124427.308015Z",
+    "publication_verified": true,
+    "cash_projection_status": "COMPLETE",
+    "planning_points": {
+      "AVAILABLE": 154
+    },
+    "source_receipt_unchanged": true,
+    "prior_review_receipt_unchanged": true,
+    "original_snapshot_preserved": true,
+    "ui_forecasts": 264,
+    "ui_symbols": 11,
+    "ui_planning_note": "Planning estimates use carried closes: CROX (143 min), TWST (48 min). See the report for source times.",
+    "orders_placed_by_review": 0,
+    "stats_dates_verified": [
+      "2026-09-11",
+      "2026-09-10",
+      "2026-09-09"
+    ]
+  },
+  "verification_tests": 317
+}

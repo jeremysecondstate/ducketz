@@ -1,11 +1,11 @@
 """Bounded, explicitly synthetic closing references for account planning.
 
 Sparse venue OHLCV can leave a completed session without a recent candle.
-This policy carries a verified same-session close forward for at most fifteen
-minutes. Missing candles are *assumed* to mean no trades; they do not establish
-that fact. The original observation time remains visible. Native prices and
-the observed history used for model targets and price-band samples are never
-modified here.
+The legacy policy permits fifteen minutes. The explicit sparse-session policy
+permits up to four after-hours hours and records historical closing marks for
+planning samples too. Missing candles are *assumed* to mean no trades; they do
+not establish that fact. Original observation times remain visible. Native
+prices, training labels and realized outcomes are never modified here.
 """
 from __future__ import annotations
 
@@ -21,8 +21,10 @@ from ml.stock_target_prices import independent_price_identity, stock_price_datas
 
 
 PLANNING_REFERENCE_COMPLETION_CONTRACT = "bounded-planning-reference-completion-v1"
+SPARSE_SESSION_COMPLETION_CONTRACT = "sparse-session-planning-reference-completion-v2"
 _MINUTE = pd.Timedelta(minutes=1)
 _HARD_MAX_GAP_MINUTES = 15
+_EXTENDED_HOURS_MAX_GAP_MINUTES = 240
 
 
 def _aware_timestamp(value: Any, label: str) -> pd.Timestamp:
@@ -124,7 +126,8 @@ def _complete_source_coverage(
 
 def complete_planning_reference_gaps(
     prices: pd.DataFrame, forecasts: pd.DataFrame, *, observed_at: Any,
-    max_gap_minutes: int = 15,
+    max_gap_minutes: int | None = None, allow_extended_hours: bool = False,
+    historical_sessions: int = 0,
 ) -> dict:
     """Qualify exact prior-session closing references without editing prices.
 
@@ -136,29 +139,51 @@ def complete_planning_reference_gaps(
     OHLC equal to the last actual close and zero *assumed* volume. Its actual
     ``observed_at`` is retained separately from its synthetic ``effective_at``.
 
+    The explicit extended-hours policy allows at most four hours, starting no
+    earlier than the same session's regular close. It also records up to
+    ``historical_sessions`` prior planning transitions as separate closing
+    references; actual intraday sample endpoints are not filled. Historical
+    reference evidence is compact (origin, boundary, age and acquisition),
+    rather than manufacturing a dense historical OHLCV archive.
+
     Missing prior-session data, longer gaps, unfinished boundaries and missing
     verified acquisition coverage through the boundary are ``UNAVAILABLE``.
     Malformed/conflicting data raises. No observations are
-    fetched, no quotes are consumed and no historical training/sample frame
-    is filled. The caller must already have verified the native source.
+    fetched, no quotes are consumed and no historical training frame is filled.
+    The caller must already have verified the native source.
     """
+    if not isinstance(allow_extended_hours, bool):
+        raise ValueError("Extended-hours planning policy must be boolean")
+    maximum = _EXTENDED_HOURS_MAX_GAP_MINUTES if allow_extended_hours else _HARD_MAX_GAP_MINUTES
+    if max_gap_minutes is None:
+        max_gap_minutes = maximum
     minimum = int(STOCK_TARGET_BOUNDARY_TOLERANCE / _MINUTE)
     if (not isinstance(max_gap_minutes, int) or isinstance(max_gap_minutes, bool)
-            or not minimum <= max_gap_minutes <= _HARD_MAX_GAP_MINUTES):
-        raise ValueError("Planning reference max_gap_minutes must be an integer between 5 and 15")
+            or not minimum <= max_gap_minutes <= maximum):
+        raise ValueError(f"Planning reference max_gap_minutes must be an integer between 5 and {maximum}")
+    if (not isinstance(historical_sessions, int) or isinstance(historical_sessions, bool)
+            or historical_sessions < 0 or (historical_sessions and not allow_extended_hours)):
+        raise ValueError("Historical planning references require the extended-hours policy and a nonnegative session count")
     now = _aware_timestamp(observed_at, "observed_at")
     contract, dataset = _source_identity(prices, forecasts)
+    completion_contract = SPARSE_SESSION_COMPLETION_CONTRACT if allow_extended_hours else PLANNING_REFERENCE_COMPLETION_CONTRACT
     report = {
-        "contract_version": PLANNING_REFERENCE_COMPLETION_CONTRACT,
+        "contract_version": completion_contract,
         "observed_at": now.isoformat(), "price_source_contract": contract,
         "price_dataset": dataset, "max_gap_minutes": max_gap_minutes,
         "native_boundary_tolerance_seconds": STOCK_TARGET_BOUNDARY_TOLERANCE.total_seconds(),
         "policy": "Carry the exact prior XNYS session's last actual close through a completed 17:00 Pacific boundary for a bounded planning reference only",
         "synthetic_reason": "ASSUMED_NO_TRADES",
         "limitation": "Missing venue candles do not prove no trades; synthetic prices and zero volume are assumptions, not market observations",
-        "historical_samples_modified": False, "native_prices_modified": False,
+        "historical_samples_modified": bool(historical_sessions), "native_prices_modified": False,
         "synthetic_bars": [], "references": {},
     }
+    if allow_extended_hours:
+        report.update(regular_session_prices_filled=False, model_training_prices_modified=False,
+                      historical_sessions=historical_sessions, historical_references={},
+                      historical_sample_scope="Planning closing references only; intraday endpoints remain observed",
+                      synthetic_bars_scope="Current anchors only; historical closing assumptions retain compact provenance",
+                      policy="Carry same-session prices from the regular close or later through the completed 17:00 Pacific planning boundary, for at most 240 minutes and only inside verified acquisition coverage")
     if forecasts.empty:
         return report
     required = {"symbol", "action_date"}
@@ -171,14 +196,18 @@ def complete_planning_reference_gaps(
             raise ValueError("Planning reference forecasts have an invalid symbol or action date")
         scopes.add((str(row["symbol"]).strip().upper(), day.date()))
     dates = [day for _, day in scopes]
-    calendar = xcals.get_calendar("XNYS", start=pd.Timestamp(min(dates)) - pd.Timedelta(days=370),
+    calendar = xcals.get_calendar("XNYS", start=pd.Timestamp(min(dates)) - pd.Timedelta(days=max(370, historical_sessions * 3 + 10)),
                                   end=pd.Timestamp(max(dates)) + pd.Timedelta(days=10))
     bars = _native_minutes(prices)
     by_symbol = {symbol: frame for symbol, frame in bars.groupby("symbol", sort=False)}
-    for symbol, day in sorted(scopes):
-        if not calendar.is_session(pd.Timestamp(day)):
-            raise ValueError("Planning reference action dates must be XNYS sessions")
-        session = pd.Timestamp(calendar.previous_session(pd.Timestamp(day))).date()
+    indexes = {symbol: pd.DatetimeIndex(frame.timestamp) for symbol, frame in by_symbol.items()}
+    cache = {}
+
+    def resolve(symbol, session):
+        key = (symbol, session)
+        if key in cache:
+            return cache[key]
+        day = pd.Timestamp(calendar.next_session(pd.Timestamp(session))).date()
         boundary = pd.Timestamp(session).tz_localize(STOCK_TIMEZONE).replace(hour=17).tz_convert("UTC")
         session_start = pd.Timestamp(session).tz_localize(STOCK_TIMEZONE).replace(hour=4).tz_convert("UTC")
         reference = {
@@ -188,19 +217,18 @@ def complete_planning_reference_gaps(
             "boundary_at": boundary.isoformat(), "origin_bar_start": None,
             "gap_minutes": None, "max_gap_minutes": max_gap_minutes, "fill_count": 0,
             "is_synthetic": False, "source_contract": contract, "dataset": dataset,
-            "completion_contract": PLANNING_REFERENCE_COMPLETION_CONTRACT, "source_coverage": None,
+            "completion_contract": completion_contract, "source_coverage": None,
         }
-        report["references"][f"{symbol}|{day.isoformat()}"] = reference
+        cache[key] = reference
         if boundary > now:
             reference["reason"] = "PRIOR_SESSION_BOUNDARY_NOT_COMPLETED"
-            continue
+            return reference
         symbol_bars = by_symbol.get(symbol, bars.iloc[:0])
-        candidates = symbol_bars.loc[symbol_bars.timestamp.ge(session_start)
-                                     & symbol_bars.timestamp.add(_MINUTE).le(boundary)
-                                     & symbol_bars.timestamp.add(_MINUTE).le(now)]
-        if candidates.empty:
-            continue
-        origin = candidates.iloc[-1]
+        index = indexes.get(symbol)
+        position = index.searchsorted(boundary - _MINUTE, side="right") - 1 if index is not None else -1
+        if position < 0 or symbol_bars.iloc[position].timestamp < session_start:
+            return reference
+        origin = symbol_bars.iloc[position]
         actual_time = origin.timestamp + _MINUTE
         gap = boundary - actual_time
         price = float(origin.close)
@@ -209,30 +237,59 @@ def complete_planning_reference_gaps(
         if gap <= STOCK_TARGET_BOUNDARY_TOLERANCE:
             reference.update(status="AVAILABLE_OBSERVED", reason="NATIVE_OBSERVATION_WITHIN_TOLERANCE",
                              price=price, effective_at=actual_time.isoformat())
-            continue
+            return reference
         if gap > pd.Timedelta(minutes=max_gap_minutes):
             reference["reason"] = "GAP_EXCEEDS_MAXIMUM"
-            continue
+            return reference
+        if allow_extended_hours:
+            regular_close = calendar.session_close(pd.Timestamp(session))
+            reference["regular_session_close_at"] = regular_close.isoformat()
+            if actual_time < regular_close:
+                reference["reason"] = "GAP_REACHES_REGULAR_SESSION"
+                return reference
+            # The native loader may omit provider rows whose prices are both
+            # undefined. Do not treat those known invalid observations as
+            # absent no-trade candles when their exact scope is unavailable.
+            if prices.attrs["stock_price_source"].get("missing_price_rows_by_symbol", {}).get(symbol, 0):
+                reference["reason"] = "UNDEFINED_NATIVE_PRICE_OBSERVATIONS"
+                return reference
         coverage = _complete_source_coverage(prices.attrs["stock_price_source"], symbol=symbol,
                                              origin_start=origin.timestamp, boundary=boundary, now=now)
         if coverage is None:
             reference["reason"] = "UNAVAILABLE_SOURCE_COVERAGE"
-            continue
+            return reference
         reference["source_coverage"] = coverage
-        synthetic_starts = pd.date_range(origin.timestamp + _MINUTE, boundary - _MINUTE, freq="min")
-        native_starts = set(symbol_bars.timestamp)
-        if any(timestamp in native_starts for timestamp in synthetic_starts):
-            raise ValueError("Planning reference completion would replace an existing native minute")
+        reference.update(status="AVAILABLE_SYNTHETIC", reason="ASSUMED_NO_TRADES", price=price,
+                         effective_at=boundary.isoformat(), is_synthetic=True, fill_count=int(gap / _MINUTE))
+        return reference
+
+    for symbol, day in sorted(scopes):
+        if not calendar.is_session(pd.Timestamp(day)):
+            raise ValueError("Planning reference action dates must be XNYS sessions")
+        session = pd.Timestamp(calendar.previous_session(pd.Timestamp(day))).date()
+        reference = resolve(symbol, session)
+        report["references"][f"{symbol}|{day.isoformat()}"] = reference
+        if historical_sessions:
+            candidates = calendar.sessions[calendar.sessions < pd.Timestamp(day)][-historical_sessions:]
+            required_sessions = {pd.Timestamp(value).date() for value in candidates}
+            required_sessions.update(pd.Timestamp(calendar.previous_session(value)).date() for value in candidates)
+            for historical_day in sorted(required_sessions):
+                report["historical_references"][f"{symbol}|{historical_day.isoformat()}"] = resolve(symbol, historical_day)
+        if reference["status"] != "AVAILABLE_SYNTHETIC":
+            continue
+        origin_start = pd.Timestamp(reference["origin_bar_start"])
+        boundary = pd.Timestamp(reference["boundary_at"])
+        price = reference["price"]
+        coverage = reference["source_coverage"]
+        synthetic_starts = pd.date_range(origin_start + _MINUTE, boundary - _MINUTE, freq="min")
         for timestamp in synthetic_starts:
             report["synthetic_bars"].append({
                 "symbol": symbol, "timestamp": timestamp.isoformat(), "open": price, "high": price,
                 "low": price, "close": price, "volume": 0, "is_synthetic": True,
-                "reason": "ASSUMED_NO_TRADES", "source_contract": PLANNING_REFERENCE_COMPLETION_CONTRACT,
+                "reason": "ASSUMED_NO_TRADES", "source_contract": completion_contract,
                 "origin_source_contract": contract, "origin_dataset": dataset,
-                "origin_bar_start": origin.timestamp.isoformat(), "original_observed_at": actual_time.isoformat(),
+                "origin_bar_start": origin_start.isoformat(), "original_observed_at": reference["observed_at"],
                 "source_coverage": dict(coverage),
                 "session": session.isoformat(), "action_date": day.isoformat(),
             })
-        reference.update(status="AVAILABLE_SYNTHETIC", reason="ASSUMED_NO_TRADES", price=price,
-                         effective_at=boundary.isoformat(), is_synthetic=True, fill_count=len(synthetic_starts))
     return report

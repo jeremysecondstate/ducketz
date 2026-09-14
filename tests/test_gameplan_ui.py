@@ -176,6 +176,17 @@ def test_cross_session_clock_and_fractional_share_formatting():
     assert "Sep 15" in plan_ui.clock_text(stamp, "2026-09-14")
 
 
+def test_available_projection_keeps_carried_price_notice_visible(tab, tmp_path):
+    write_plan(tmp_path, report_updates={"reference_completion": {"references": {
+        "AAPL|2026-09-14": {"status": "AVAILABLE_SYNTHETIC", "symbol": "AAPL", "gap_minutes": 143,
+                              "observed_at": "2026-09-11T14:37:00-07:00", "effective_at": "2026-09-11T17:00:00-07:00"}}}})
+    tab.refresh()
+    finish_refresh(tab)
+    assert "AAPL (143 min)" in tab.status.get()
+    assert tab.trade_button.cget("text") == "Trades 5"
+    assert tab.values["entries"].get() == "2 buys"
+
+
 def test_unavailable_projection_opens_forecasts_and_keeps_filters_and_details(tab, tmp_path, monkeypatch):
     rows, ledger, report = unavailable_payload()
     write_plan(tmp_path, rows=rows, ledger=ledger, report_updates=report)

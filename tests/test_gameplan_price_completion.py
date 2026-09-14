@@ -247,3 +247,55 @@ def test_empty_forecasts_are_json_safe_and_do_not_require_price_rows():
     assert report["references"] == {}
     assert report["synthetic_bars"] == []
     json.dumps(report, allow_nan=False)
+
+
+@pytest.mark.parametrize("symbol,local,gap", [
+    ("CROX", "2026-09-11 14:36", 143), ("TWST", "2026-09-11 16:11", 48),
+    ("CROX", "2026-09-11 12:59", 240),
+])
+def test_explicit_after_hours_policy_carries_sparse_same_session_close(symbol, local, gap):
+    prices = _prices([_bar(local, 100, symbol=symbol)])
+    before = prices.copy(deep=True)
+    report = _complete(prices, _forecasts("2026-09-14", symbol),
+                       observed_at="2026-09-14T11:00Z", allow_extended_hours=True, historical_sessions=3)
+    ref = report["references"][f"{symbol}|2026-09-14"]
+    assert ref["status"] == "AVAILABLE_SYNTHETIC"
+    assert ref["gap_minutes"] == ref["fill_count"] == gap
+    assert ref["max_gap_minutes"] == 240
+    assert ref["observed_at"] == (pd.Timestamp(local, tz="America/Los_Angeles") + pd.Timedelta(minutes=1)).tz_convert("UTC").isoformat()
+    assert report["historical_references"][f"{symbol}|2026-09-11"] == ref
+    assert len(report["synthetic_bars"]) == gap
+    assert report["historical_samples_modified"] is True
+    assert report["native_prices_modified"] is report["model_training_prices_modified"] is False
+    assert_frame_equal(prices, before)
+    json.dumps(report, allow_nan=False)
+
+
+@pytest.mark.parametrize("damage,reason", [
+    ("regular_session", "GAP_EXCEEDS_MAXIMUM"), ("older_session", "NO_PRIOR_SESSION_OBSERVATION"),
+    ("incomplete", "UNAVAILABLE_SOURCE_COVERAGE"), ("undefined", "UNDEFINED_NATIVE_PRICE_OBSERVATIONS"),
+])
+def test_extended_policy_does_not_disguise_missing_acquisitions_or_regular_session_gaps(damage, reason):
+    local = {"regular_session": "2026-09-11 12:58", "older_session": "2026-09-10 16:59"}.get(damage, "2026-09-11 14:36")
+    prices = _prices([_bar(local, symbol="CROX")])
+    if damage == "incomplete":
+        prices.attrs["stock_price_source"]["partitions"][0]["end"] = "2026-09-11T23:00Z"
+    if damage == "undefined":
+        prices.attrs["stock_price_source"]["missing_price_rows_by_symbol"] = {"CROX": 1}
+    report = _complete(prices, _forecasts("2026-09-14", "CROX"),
+                       observed_at="2026-09-14T11:00Z", allow_extended_hours=True)
+    ref = report["references"]["CROX|2026-09-14"]
+    assert ref["status"] == "UNAVAILABLE"
+    assert ref["reason"] == reason
+    assert ref["price"] is None
+    assert report["synthetic_bars"] == []
+
+
+@pytest.mark.parametrize("kwargs", [
+    {"allow_extended_hours": "true"}, {"allow_extended_hours": True, "max_gap_minutes": 241},
+    {"historical_sessions": 1}, {"allow_extended_hours": True, "historical_sessions": True},
+    {"allow_extended_hours": True, "historical_sessions": -1},
+])
+def test_extended_policy_has_explicit_validated_bounds(kwargs):
+    with pytest.raises(ValueError):
+        _complete(**kwargs)

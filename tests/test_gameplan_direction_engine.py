@@ -149,13 +149,13 @@ def test_same_horizon_owned_inventory_may_be_sold_but_active_horizon_cannot_be_b
     assert build(signals, portfolio, active_allocations=frozenset({key}))[0].decision_reason_code == "HORIZON_ALLOCATION_ALREADY_ACTIVE"
 
 
-def test_all_seven_bearish_opening_sales_fit_the_explicit_new_strategy_order_policy():
+def test_all_symbols_bearish_opening_sales_fit_the_explicit_new_strategy_order_policy():
     signals, portfolio = inputs(PRODUCTION_LOOPS_SYMBOLS, probability=.3)
     signals = {key: signal for key, signal in signals.items() if key[1] == "1h"}
     portfolio = replace(portfolio, held_shares={symbol: 1. for symbol in PRODUCTION_LOOPS_SYMBOLS})
     decisions = build(signals, portfolio, bearish_sell_capacities={key: 1 for key in signals},
         policy=StockTraderPolicy(maximum_orders_per_wake=28))
-    assert len(orders(decisions, "SELL")) == 7
+    assert len(orders(decisions, "SELL")) == len(PRODUCTION_LOOPS_SYMBOLS)
 
 
 def test_cash_is_shared_between_buys_and_estimated_cash_never_becomes_actual_cash():

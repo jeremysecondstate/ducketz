@@ -122,6 +122,27 @@ def test_unavailable_projection_preserves_verified_forecasts_without_inventing_a
     assert {path: path.read_bytes() for path in run.iterdir()} == before
 
 
+def test_carried_planning_closes_are_disclosed_with_original_age(tmp_path):
+    write_plan(tmp_path, report_updates={"reference_completion": {"references": {
+        "AAPL|2026-09-14": {"status": "AVAILABLE_SYNTHETIC", "symbol": "AAPL", "gap_minutes": 143,
+                              "observed_at": "2026-09-11T14:37:00-07:00", "effective_at": "2026-09-11T17:00:00-07:00"}}}})
+    plan = load_gameplan(tmp_path)
+    assert plan.projection_available
+    assert "AAPL (143 min)" in plan.planning_note
+
+
+@pytest.mark.parametrize("damage", ["symbol", "age", "time"])
+def test_carried_close_notice_rejects_inconsistent_provenance(tmp_path, damage):
+    ref = {"status": "AVAILABLE_SYNTHETIC", "symbol": "AAPL", "gap_minutes": 143,
+           "observed_at": "2026-09-11T14:37:00-07:00", "effective_at": "2026-09-11T17:00:00-07:00"}
+    if damage == "symbol": ref["symbol"] = "UNKNOWN"
+    if damage == "age": ref["gap_minutes"] = 1
+    if damage == "time": ref["observed_at"] = ref["effective_at"]
+    write_plan(tmp_path, report_updates={"reference_completion": {"references": {"anchor": ref}}})
+    with pytest.raises(GameplanError, match="carried planning close"):
+        load_gameplan(tmp_path)
+
+
 @pytest.mark.parametrize("mutation", ["unmarked", "report_status", "embedded_report", "events", "summary",
                                     "holdings", "cash", "allocations", "actions", "missing_points",
                                     "unknown_symbol", "missing_reason", "probability", "clock", "live"])

@@ -378,6 +378,11 @@ def render_trade_review(trade_rows: pd.DataFrame, report: Mapping, model_reports
     if report.get("previous_session_results_path"):
         lines[6:6] = [f"[Previous session's Gameplan vs actuals · {_text(report['previous_session_results_date'])}]"
                       f"({report['previous_session_results_path']}) — published after this plan is prepared.", ""]
+    refresh = _mapping(report.get("review_refresh"))
+    if refresh:
+        lines[6:6] = ["This is an informational recalculation of the saved plan. It preserves the original forecasts, "
+                      f"account snapshot ({_pacific(refresh.get('account_snapshot_observed_at'))}) and planning-data cutoff "
+                      f"({_pacific(refresh.get('planning_price_asof'))}). These estimates do not describe actual trades or restart any entry window.", ""]
     balances = _mapping(snapshot.get("balances"))
     lines += _table(["Account measure", "Recorded value"], [
         ("Account value", _money(snapshot.get("account_equity"))),
@@ -502,7 +507,7 @@ def render_trade_review(trade_rows: pd.DataFrame, report: Mapping, model_reports
         lines += ["The direction projection instead carries its conditional sale proceeds and purchase costs through one chronological balance. "
                   "Existing open-order reservations and allocations to later horizons remain protected. Shares remaining includes protected holdings; "
                   "a smaller amount in parentheses is the total after open-order reservations. Only eligible shares may be sold.", "",
-                  "Planning prices follow the observed historical median move from the prior session's close to each clock, with a working range of "
+                  "Planning prices follow the historical median move from the prior session's planning close to each clock, with a working range of "
                   f"±{_policy_number(_mapping(report.get('planning_price_path')), 'working_half_width_bps', 20):g} basis points. "
                   "Price and cash ranges are estimates only, never execution limits. Trades may proceed outside either range using the current "
                   "tradable quote, actual available cash and shares held. The wider historical range is retained for stress analysis.", ""]
@@ -512,11 +517,29 @@ def render_trade_review(trade_rows: pd.DataFrame, report: Mapping, model_reports
     filled_references = [item for item in _mapping(completion.get("references")).values()
                          if item.get("status") == "AVAILABLE_SYNTHETIC"]
     if filled_references:
-        lines += ["The following planning references carry forward the last observed close across a short gap. "
+        lines += ["The following planning references carry forward the last observed close across a verified gap. "
                   "These are synthetic zero-volume intervals under an assumed no-trade policy; the actual observation time is retained.", ""]
         lines += _table(["Stock", "Last observed close", "Observed at", "Carried through", "Synthetic minutes"],
                         [(item["symbol"], _money(item["price"]), _pacific(item["observed_at"]),
                           _pacific(item["effective_at"]), str(item["fill_count"])) for item in filled_references])
+        lines += [""]
+    if completion.get("historical_sessions"):
+        historical = list(_mapping(completion.get("historical_references")).values())
+        counts = {}
+        for item in historical:
+            symbol = item["symbol"]
+            count = counts.setdefault(symbol, {"observed": 0, "carried": 0, "unavailable": 0, "max_gap": 0})
+            status = item.get("status")
+            count["observed" if status == "AVAILABLE_OBSERVED" else "carried" if status == "AVAILABLE_SYNTHETIC" else "unavailable"] += 1
+            if status == "AVAILABLE_SYNTHETIC":
+                count["max_gap"] = max(count["max_gap"], item["gap_minutes"])
+        lines += ["Historical planning pairs use the same closing-mark rule, with a maximum four-hour after-hours carry. "
+                  "The table counts distinct closing references, not independent samples. Intraday entry prices remain actual observations. "
+                  "Missing candles do not prove that no trades occurred; carried prices retain their original observation times and verified source coverage. "
+                  "Training labels, realized performance and live quote freshness retain their observed-price rules.", ""]
+        lines += _table(["Stock", "Observed closes", "Carried closes", "Unavailable closes", "Longest carry (minutes)"],
+                        [(symbol, str(count["observed"]), str(count["carried"]), str(count["unavailable"]), f"{count['max_gap']:g}")
+                         for symbol, count in sorted(counts.items())])
         lines += [""]
     lines += ["At order time, buys use the current ask and sells use the current bid to set their live limit prices; "
               "quantities are recalculated from actual available cash and holdings. Estimated prices and balances do not veto an order.", "",
