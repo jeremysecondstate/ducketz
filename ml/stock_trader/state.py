@@ -162,6 +162,12 @@ def capture_portfolio_state(
         quote_at = _actual_quote_timestamp(raw_quote) if use_actual_quote_timestamps else timestamp.isoformat()
         if quote_at is None:
             continue
+        received_at = None
+        if use_actual_quote_timestamps and raw_quote.get("quote_received_at"):
+            try:
+                received_at = utc(raw_quote["quote_received_at"]).isoformat()
+            except (TypeError, ValueError):
+                pass
         quotes[symbol] = QuoteState(
             symbol=symbol,
             bid=bid,
@@ -170,6 +176,9 @@ def capture_portfolio_state(
             mark=_first_number(raw_quote, "mark", "markPrice"),
             volume=_first_number(raw_quote, "totalVolume", "volume"),
             observed_at=quote_at,
+            received_at=received_at,
+            realtime=raw_quote.get("quote_realtime") if use_actual_quote_timestamps else None,
+            quote_type=raw_quote.get("quote_type") if use_actual_quote_timestamps else None,
         )
     working_items = working.get("items")
     working_count = len(working_items) if isinstance(working_items, list) else 0
@@ -200,9 +209,11 @@ def capture_portfolio_state(
     if literal_cash_only:
         fingerprint_payload["cash_policy"] = "LITERAL_CASH_LESS_PENDING_RESERVES"
     if use_actual_quote_timestamps:
-        fingerprint_payload["quote_time_policy"] = "BROKER_BBO_TIMESTAMP"
+        fingerprint_payload["quote_time_policy"] = "REALTIME_NBBO_RESPONSE_WITH_PROVIDER_UPDATE_TIME_V1"
         for symbol, quote in quotes.items():
             fingerprint_payload["quotes"][symbol]["observed_at"] = quote.observed_at
+            fingerprint_payload["quotes"][symbol].update(
+                received_at=quote.received_at, realtime=quote.realtime, quote_type=quote.quote_type)
     return PortfolioState(
         observed_at=timestamp.isoformat(),
         account_equity=equity,

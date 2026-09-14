@@ -1046,6 +1046,7 @@ def _capture_portfolio_state_with_retry(
     sleep: Callable[[float], None],
     monotonic: Callable[[], float],
     capture_snapshot: Callable[[object], PortfolioState] | None = None,
+    refresh_snapshot: Callable[[PortfolioState], tuple[str, ...]] | None = None,
 ) -> tuple[PortfolioState, object, dict[str, object]]:
     """Retry only a complete read-only Schwab state snapshot.
 
@@ -1061,6 +1062,8 @@ def _capture_portfolio_state_with_retry(
     retry_wait_seconds = 0.0
     last_error_type: str | None = None
     last_error_operation: str | None = None
+    quote_refreshes = 0
+    unavailable_quotes: tuple[str, ...] = ()
 
     while True:
         attempts += 1
@@ -1109,9 +1112,16 @@ def _capture_portfolio_state_with_retry(
             continue
 
         elapsed = max(0.0, float(monotonic()) - started)
+        unavailable_quotes = refresh_snapshot(portfolio) if refresh_snapshot is not None else ()
+        if (unavailable_quotes and attempts < maximum_attempts
+                and elapsed + retry_delay_seconds <= maximum_retry_seconds):
+            quote_refreshes += 1
+            sleep(retry_delay_seconds)
+            retry_wait_seconds += retry_delay_seconds
+            continue
         completed_at = base_timestamp + timedelta(seconds=elapsed)
         metadata = _broker_state_capture_metadata(
-            status="CURRENT_AFTER_RETRY" if transient_failures else "CURRENT",
+            status="CURRENT_AFTER_RETRY" if transient_failures or quote_refreshes else "CURRENT",
             attempts=attempts,
             transient_failures=transient_failures,
             retry_delay_seconds=retry_delay_seconds,
@@ -1121,6 +1131,11 @@ def _capture_portfolio_state_with_retry(
             last_error_type=last_error_type,
             last_error_operation=last_error_operation,
         )
+        if refresh_snapshot is not None:
+            metadata["quote_refresh"] = {
+                "status": "EXHAUSTED" if unavailable_quotes else "CURRENT_AFTER_REFRESH" if quote_refreshes else "NOT_NEEDED",
+                "refreshes": quote_refreshes, "unavailable_symbols": list(unavailable_quotes),
+            }
         return portfolio, completed_at, metadata
 
 

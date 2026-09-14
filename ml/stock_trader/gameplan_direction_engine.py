@@ -32,7 +32,8 @@ def _fingerprint(policy: StockTraderPolicy, maximum_quote_age_seconds: float = 6
         "sizing_policy": GAMEPLAN_SIZING_POLICY, "risk_policy_fingerprint": policy.fingerprint,
         "direction_policy": STOCK_DIRECTION_POLICY_VERSION, "horizon_weights": FIXED_HORIZON_WEIGHTS,
         "ranking_policy": _RANKING_POLICY, "entry_budget_utilization": 1,
-        "order_pricing": "current-ask-buy-current-bid-sell",
+        "order_pricing": "current-ask-buy-current-bid-sell-wide-spread-midpoint-v1",
+        "quote_freshness_policy": "realtime-nbbo-response-with-provider-update-time-v1",
         "planning_ranges_have_execution_authority": False,
         "maximum_quote_age_seconds": maximum_quote_age_seconds,
     })
@@ -47,9 +48,15 @@ def _metadata(policy: StockTraderPolicy, maximum_quote_age_seconds: float = 60.)
         "entry_budget_utilization": 1., "ranking_policy": _RANKING_POLICY,
         "planning_ranges_have_execution_authority": False,
         "pending_sales_fund_this_batch": False,
-        "pricing_basis": "current_quote_ask_for_buy_bid_for_sell",
+        "pricing_basis": "current_ask_buy_bid_sell_with_wide_spread_midpoint_v1",
+        "quote_freshness_policy": "realtime-nbbo-response-with-provider-update-time-v1",
         "maximum_quote_age_seconds": maximum_quote_age_seconds,
     }
+
+
+def _uses_midpoint(quote, policy, action, time_in_force):
+    return (quote is not None and (action == "BUY" or time_in_force != "DAY")
+            and quote.relative_spread > policy.maximum_extended_relative_spread)
 
 
 def _current_price(symbol, portfolio, policy, timestamp, action, time_in_force, maximum_quote_age_seconds):
@@ -58,17 +65,20 @@ def _current_price(symbol, portfolio, policy, timestamp, action, time_in_force, 
     if quote is None or quote.symbol != symbol:
         return None, "USABLE_QUOTE_UNAVAILABLE"
     bid, ask = finite(quote.bid), finite(quote.ask)
+    if quote.realtime is False:
+        return None, "REALTIME_QUOTE_UNAVAILABLE"
     try:
         if bid is None or ask is None or not 0 < bid <= ask or utc(quote.observed_at) > timestamp:
             return None, "USABLE_QUOTE_UNAVAILABLE"
-        if (timestamp - utc(quote.observed_at)).total_seconds() > maximum_quote_age_seconds:
+        age = (timestamp - utc(quote.freshness_observed_at)).total_seconds()
+        if age < 0:
+            return None, "USABLE_QUOTE_UNAVAILABLE"
+        if age > maximum_quote_age_seconds:
             return None, "CURRENT_QUOTE_TOO_OLD"
     except (TypeError, ValueError):
         return None, "USABLE_QUOTE_UNAVAILABLE"
-    if ((action == "BUY" or time_in_force != "DAY")
-            and quote.relative_spread > policy.maximum_extended_relative_spread):
-        return None, "STOCK_SPREAD_TOO_WIDE"
-    raw = _money(ask if action == "BUY" else bid)
+    raw = ((_money(bid) + _money(ask)) / 2 if _uses_midpoint(quote, policy, action, time_in_force)
+           else _money(ask if action == "BUY" else bid))
     tick = Decimal(1).scaleb(-policy.price_decimals)
     price = raw.quantize(tick, rounding=ROUND_CEILING if action == "BUY" else ROUND_FLOOR)
     if price <= 0 or abs(price / raw - 1) * 10000 > _money(policy.maximum_limit_offset_bps) + Decimal("1e-9"):
@@ -97,6 +107,7 @@ def _make_decision(signal, portfolio, activation, policy, timestamp, *, action, 
         time_in_force=time_in_force, position_effect="OPENING" if action == "BUY" else "CLOSING",
         quantity=quantity, price=selected_price) if quantity else None)
     quote = portfolio.quotes.get(signal.symbol)
+    midpoint = _uses_midpoint(quote, policy, action, time_in_force)
     return TradeDecision(
         decision_id=identifier, decided_at=timestamp.isoformat(), symbol=signal.symbol,
         action=action if quantity else "NO_TRADE", suggested_action={"BULLISH": "BUY", "BEARISH": "SELL"}.get(direction, "HOLD"),
@@ -104,8 +115,9 @@ def _make_decision(signal, portfolio, activation, policy, timestamp, *, action, 
         order_type="LIMIT" if quantity else None, limit_price=selected_price, protective_price=None,
         expected_net_return=None, expected_net_dollars=None, trade_probability=None,
         allocation_fraction=None, execution_urgency=None, decision_reason_code=code, decision_reason=reason,
-        order_style_reason_code=f"GAMEPLAN_CURRENT_{'ASK' if action == 'BUY' else 'BID'}_LIMIT" if quantity else f"NO_ORDER_{code}",
-        order_style_reason="The limit uses the current ask for buys or current bid for sells, rounded to the permitted price increment." if quantity else "No order was selected.",
+        order_style_reason_code=f"GAMEPLAN_CURRENT_{'MIDPOINT' if midpoint else 'ASK' if action == 'BUY' else 'BID'}_LIMIT" if quantity else f"NO_ORDER_{code}",
+        order_style_reason=("The limit uses the current bid/ask midpoint because the spread exceeds the working spread threshold."
+                            if midpoint else "The limit uses the current ask for buys or current bid for sells, rounded to the permitted price increment.") if quantity else "No order was selected.",
         prediction=prediction, enrichment={**_metadata(policy, maximum_quote_age_seconds), "horizon_notional_ceiling": float(horizon_ceiling),
             "current_order_notional": float(quantity * price) if quantity else 0.},
         portfolio=_portfolio_summary(portfolio, signal.symbol), quote=asdict(quote) if quote is not None else {},
@@ -165,8 +177,8 @@ def _due_exit(decision, portfolio, activation, policy, timestamp, *, active_allo
         expected_net_return=None, expected_net_dollars=None, trade_probability=None, allocation_fraction=None,
         execution_urgency=None, decision_reason_code=code,
         decision_reason=decision.decision_reason if quantity else "The due exit remains pending because its current ownership, quote, window, or batch limit is unavailable.",
-        order_style_reason_code="GAMEPLAN_CURRENT_BID_LIMIT" if quantity else f"NO_ORDER_{code}",
-        order_style_reason="The due exit is repriced from the current bid." if quantity else "No order was selected.",
+        order_style_reason_code=("GAMEPLAN_CURRENT_MIDPOINT_LIMIT" if _uses_midpoint(quote, policy, "SELL", time_in_force) else "GAMEPLAN_CURRENT_BID_LIMIT") if quantity else f"NO_ORDER_{code}",
+        order_style_reason=("The due exit uses the current bid/ask midpoint for a wide spread." if _uses_midpoint(quote, policy, "SELL", time_in_force) else "The due exit is repriced from the current bid.") if quantity else "No order was selected.",
         prediction=prediction, enrichment={**_metadata(policy, maximum_quote_age_seconds), "position_purpose": "EXIT"},
         portfolio=_portfolio_summary(portfolio, decision.symbol), quote=asdict(quote) if quote is not None else {},
         policy_version=GAMEPLAN_SIZING_POLICY, policy_fingerprint=fingerprint)
@@ -181,6 +193,7 @@ def build_gameplan_direction_trade_decisions(
     exit_decisions: tuple[TradeDecision, ...] = (),
     maximum_quote_age_seconds: float = 60.,
     late_opening_date: str | None = None,
+    recovered_forecast_ids: frozenset[str] = frozenset(),
 ) -> tuple[TradeDecision, ...]:
     """Apply 54/46 directions using actual capital, inventory, and current quotes.
 
@@ -195,6 +208,9 @@ def build_gameplan_direction_trade_decisions(
     if late_opening_date is not None:
         from ml.stock_trader.gameplan import validate_late_opening_date
         validate_late_opening_date(late_opening_date, decided_at)
+    if (not isinstance(recovered_forecast_ids, frozenset)
+            or not recovered_forecast_ids.issubset({s.prediction_id for s in signals.values() if s.primary_horizon == "1h"})):
+        raise ValueError("Quote recovery must identify supplied one-hour forecasts")
     if time_in_force not in {"DAY", "AM", "PM", "EXT", "GTC_EXT"}:
         raise ValueError("Unsupported Gameplan stock time in force")
     if not isinstance(verified_promoted_signals, frozenset) or not verified_promoted_signals.issubset(signals):
@@ -258,7 +274,8 @@ def build_gameplan_direction_trade_decisions(
         else:
             from ml.stock_trader.independent_signals import _entry_deadline
             start, end = utc(signal.target_window_start), utc(signal.target_window_end)
-            deadline = min(utc(signal.actionable_until), _entry_deadline(start, late_opening_date=late_opening_date), end)
+            deadline = (min(utc(signal.actionable_until), end) if signal.prediction_id in recovered_forecast_ids
+                        else min(utc(signal.actionable_until), _entry_deadline(start, late_opening_date=late_opening_date), end))
             if not start <= timestamp < deadline:
                 code = "ENTRY_WINDOW_CLOSED"
             elif action == "BUY" and key in active_allocations:
@@ -280,9 +297,12 @@ def build_gameplan_direction_trade_decisions(
                     ceiling = _money(portfolio.account_equity) * min(
                         _money(active_policy.maximum_symbol_equity_fraction) * FIXED_HORIZON_WEIGHTS[key[1]] / 10,
                         _money(active_policy.maximum_single_order_equity_fraction))
-                    hypothetical = _shares(ceiling, price)
+                    # The native inventory ledger values exposure at the ask,
+                    # even when the operator's limit is the lower midpoint.
+                    valuation = max(price, _money(portfolio.quotes[signal.symbol].ask))
+                    hypothetical = _shares(ceiling, valuation)
                     quantity = min(hypothetical, _shares(available, price),
-                                   _shares(symbol_remaining.get(signal.symbol, _ZERO), price))
+                                   _shares(symbol_remaining.get(signal.symbol, _ZERO), valuation))
                     if not quantity or quantity * price < _money(active_policy.minimum_order_notional):
                         quantity, code = 0, "JOINT_PORTFOLIO_BUDGET_EXHAUSTED"
                 if quantity and not capacity:
@@ -292,7 +312,7 @@ def build_gameplan_direction_trade_decisions(
                         sell_remaining[signal.symbol] -= quantity
                     else:
                         available -= quantity * price
-                        symbol_remaining[signal.symbol] -= quantity * price
+                        symbol_remaining[signal.symbol] -= quantity * max(price, _money(portfolio.quotes[signal.symbol].ask))
                     capacity -= 1
         if not quantity and code not in {"TRADER_INACTIVE", "NEUTRAL_HOLD"}:
             reason = "The current forecast, entry window, quote, reconciled inventory, actual capital, or configured batch limit does not permit this order."

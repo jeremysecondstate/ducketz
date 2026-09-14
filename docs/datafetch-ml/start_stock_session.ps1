@@ -22,7 +22,7 @@ function Get-ValidatedStockSessionOwner {
     $executable = '(?i:' + [regex]::Escape($PythonPath) + ')'
     $executablePattern = '"' + $executable + '"'
     if ($PythonPath -notmatch '\s') { $executablePattern = '(?:' + $executablePattern + '|' + $executable + ')' }
-    $commandPattern = '\A' + $executablePattern + '[ \t]+-u[ \t]+-m[ \t]+ml\.gameplan_stock_trader[ \t]+--datastore-target[ \t]+pc[ \t]+--execute[ \t]+--target-horizon[ \t]+all[ \t]+--sizing-policy[ \t]+(?<policy>fixed-horizon-budget-v1|gameplan-direction-current-market-v1)[ \t]+--run-session(?<wait>[ \t]+--wait-for-open)?(?:[ \t]+--late-opening-date[ \t]+(?<late>\d{4}-\d{2}-\d{2}))?[ \t]*\z'
+    $commandPattern = '\A' + $executablePattern + '[ \t]+-u[ \t]+-m[ \t]+ml\.gameplan_stock_trader[ \t]+--datastore-target[ \t]+pc[ \t]+--execute[ \t]+--target-horizon[ \t]+all[ \t]+--sizing-policy[ \t]+(?<policy>fixed-horizon-budget-v1|gameplan-direction-current-market-v1)[ \t]+--run-session(?<wait>[ \t]+--wait-for-open)?(?:[ \t]+--late-opening-date[ \t]+(?<late>\d{4}-\d{2}-\d{2}))?(?:[ \t]+--resume-quote-run[ \t]+(?<resume>\d{8}T\d{6}\.\d{6}Z)[ \t]+--resume-quote-symbol[ \t]+(?<symbol>[A-Z][A-Z0-9.\-]{0,9}))?[ \t]*\z'
     if ($Owners.Count -ne 2 -or @($Owners | Where-Object {
         $_.Name -ine 'python.exe' -or -not [regex]::IsMatch([string]$_.CommandLine, $commandPattern)
     }).Count -ne 0) {
@@ -30,7 +30,7 @@ function Get-ValidatedStockSessionOwner {
     }
     $commandIdentities = @($Owners | ForEach-Object {
         $matchedCommand = [regex]::Match([string]$_.CommandLine, $commandPattern)
-        $matchedCommand.Groups['policy'].Value + '/' + $matchedCommand.Groups['wait'].Success + '/' + $matchedCommand.Groups['late'].Value
+        $matchedCommand.Groups['policy'].Value + '/' + $matchedCommand.Groups['wait'].Success + '/' + $matchedCommand.Groups['late'].Value + '/' + $matchedCommand.Groups['resume'].Value + '/' + $matchedCommand.Groups['symbol'].Value
     } | Select-Object -Unique)
     if ($commandIdentities.Count -ne 1) {
         throw 'Existing stock session launcher and child commands disagree on their policy or wait mode.'
@@ -71,6 +71,14 @@ function Get-ValidatedStockSessionOwner {
     $launcherCreatedAt = [DateTimeOffset]$launcher.CreationDate
     $workerCreatedAt = [DateTimeOffset]$worker.CreationDate
     $workerArguments = [regex]::Match([string]$worker.CommandLine, $commandPattern)
+    if ($workerArguments.Groups['resume'].Success) {
+        $pacificStart = [TimeZoneInfo]::ConvertTimeBySystemTimeZoneId($workerCreatedAt, 'Pacific Standard Time')
+        if ($workerArguments.Groups['policy'].Value -cne 'gameplan-direction-current-market-v1' -or
+            $workerArguments.Groups['late'].Success -or
+            -not $workerArguments.Groups['resume'].Value.StartsWith($pacificStart.ToString('yyyyMMdd'))) {
+            throw 'Quote recovery does not match this Gameplan worker and action date.'
+        }
+    }
     if ($workerArguments.Groups['late'].Success) {
         $pacificStart = [TimeZoneInfo]::ConvertTimeBySystemTimeZoneId($workerCreatedAt, 'Pacific Standard Time')
         if ($workerArguments.Groups['policy'].Value -cne 'gameplan-direction-current-market-v1' -or
@@ -92,6 +100,8 @@ function Get-ValidatedStockSessionOwner {
         sizing_policy = [regex]::Match([string]$worker.CommandLine, $commandPattern).Groups['policy'].Value
         wait_for_open = [regex]::Match([string]$worker.CommandLine, $commandPattern).Groups['wait'].Success
         late_opening_date = $workerArguments.Groups['late'].Value
+        resume_quote_run = $workerArguments.Groups['resume'].Value
+        resume_quote_symbol = $workerArguments.Groups['symbol'].Value
     }
 }
 

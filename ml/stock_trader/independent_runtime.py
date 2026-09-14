@@ -16,7 +16,7 @@ import pandas as pd
 from app.services.schwab import SchwabSession
 from app.services.schwab_stock_orders import build_schwab_stock_order_payload
 from datafetching.runtime_lock import exclusive_runtime_lock
-from ml.stock_trader.contracts import PredictionSignal, StockTraderPolicy, canonical_sha256, utc
+from ml.stock_trader.contracts import PredictionSignal, QuoteState, StockTraderPolicy, canonical_sha256, utc
 from ml.stock_trader.engine import _direct_no_trade
 from ml.stock_trader.gameplan import _entry_deadline, read_gameplan_stock_activation_intent
 from ml.stock_trader.horizon_ledger import HorizonLedger, PortfolioEvidence
@@ -112,6 +112,8 @@ def run_independent_stock_trader_once(
     session_managed: bool = False,
     sizing_policy: str = LEARNED_SIZING_POLICY,
     late_opening_date: str | None = None,
+    resume_quote_run: str | None = None,
+    resume_quote_symbol: str | None = None,
     broker_state_retry_delay_seconds: float = DEFAULT_BROKER_STATE_RETRY_DELAY_SECONDS,
     broker_state_retry_max_seconds: float = DEFAULT_BROKER_STATE_RETRY_MAX_SECONDS,
     broker_state_retry_max_attempts: int = DEFAULT_BROKER_STATE_RETRY_MAX_ATTEMPTS,
@@ -139,6 +141,9 @@ def run_independent_stock_trader_once(
     sizing_policy = validate_sizing_policy(sizing_policy)
     clock = runtime_clock or (lambda: utc() if decided_at is None else utc(decided_at))
     timestamp = utc(clock())
+    if resume_quote_run is not None or resume_quote_symbol is not None:
+        if not (resume_quote_run and resume_quote_symbol and session_managed and sizing_policy == GAMEPLAN_SIZING_POLICY) or late_opening_date:
+            raise ValueError("Quote recovery requires a run, symbol and the managed Gameplan session")
     if late_opening_date is not None:
         from ml.stock_trader.gameplan import validate_late_opening_date
         if sizing_policy != GAMEPLAN_SIZING_POLICY or not session_managed:
@@ -186,7 +191,12 @@ def run_independent_stock_trader_once(
                 if late_opening_date is not None:
                     signal_options['late_opening_date'] = late_opening_date
                     metadata['late_opening_date'] = late_opening_date
-                signals, sources = load_current_independent_gameplan_signals(root, as_of=timestamp, **signal_options)
+                if resume_quote_run:
+                    from ml.stock_trader.quote_recovery import load_quote_recovery
+                    signals, sources, metadata["quote_recovery"] = load_quote_recovery(
+                        root, resume_quote_run, resume_quote_symbol, as_of=timestamp)
+                else:
+                    signals, sources = load_current_independent_gameplan_signals(root, as_of=timestamp, **signal_options)
         except (OSError, ValueError, RuntimeError) as exc:
             metadata["entry_input_error"] = f"{type(exc).__name__}: {exc}"
         try:
@@ -213,9 +223,15 @@ def run_independent_stock_trader_once(
                 return finish("INDEPENDENT_TARGET_PLAN_UNAVAILABLE", error=metadata["entry_input_error"])
             return finish("NO_DIRECTIONAL_STOCK_ENTRY_SIGNAL" if sizing_policy in {FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY}
                           else "NO_QUALIFIED_INDEPENDENT_STOCK_ENTRIES")
-        if execute and qualified and not _claim_entry_slot(root, timestamp):
-            qualified = {}
-            metadata["entry_slot_already_consumed"] = True
+        if execute and qualified:
+            if resume_quote_run:
+                from ml.stock_trader.quote_recovery import claim_quote_recovery
+                claimed = claim_quote_recovery(root, metadata["quote_recovery"], as_of=timestamp)
+            else:
+                claimed = _claim_entry_slot(root, timestamp)
+            if not claimed:
+                qualified = {}
+                metadata["entry_slot_already_consumed"] = True
         broker = session or SchwabSession()
         from ml.stock_trader.horizon_broker import capture_order_evidence
         stable_identity = None
@@ -263,6 +279,22 @@ def run_independent_stock_trader_once(
             return current_portfolio
 
         try:
+            def quote_refresh_targets(current):
+                from ml.stock_trader.gameplan_direction_engine import _current_price
+                now = utc(clock())
+                # Do not delay other stocks for bearish signals with no shares.
+                required = {signal.symbol: "BUY" if stock_direction(signal.calibrated_probability) == "BULLISH" else "SELL"
+                            for signal in qualified.values()
+                            if ((stock_direction(signal.calibrated_probability) == "BULLISH" and current.available_cash > 0)
+                                or (stock_direction(signal.calibrated_probability) == "BEARISH"
+                                    and current.held_shares.get(signal.symbol, 0) > current.pending_sell_shares.get(signal.symbol, 0)))}
+                for allocation in ledger.snapshot().allocations:
+                    if allocation.status == "ACTIVE" and allocation.filled_shares > 0 and utc(allocation.target_end) <= now + pd.Timedelta(seconds=CLOSE_EXIT_LEAD_SECONDS):
+                        required[allocation.symbol] = "SELL"
+                return tuple(sorted(symbol for symbol, action in required.items()
+                    if _current_price(symbol, current, active_policy, now, action, stock_execution_window(now).time_in_force,
+                                      ledger.maximum_evidence_age_seconds)[1] is not None))
+
             portfolio, _, broker_state_capture = _capture_portfolio_state_with_retry(
                 broker, observed_at=capture_started, parallel=True,
                 retry_delay_seconds=broker_state_retry_delay_seconds,
@@ -270,6 +302,7 @@ def run_independent_stock_trader_once(
                 maximum_attempts=broker_state_retry_max_attempts,
                 sleep=broker_state_retry_sleep, monotonic=broker_state_retry_clock,
                 capture_snapshot=capture_snapshot,
+                **({"refresh_snapshot": quote_refresh_targets} if sizing_policy == GAMEPLAN_SIZING_POLICY else {}),
             )
             timestamp = utc(clock())
             snapshot_id = canonical_sha256([stable_identity, timestamp.isoformat(), portfolio.source_fingerprint])
@@ -305,7 +338,8 @@ def run_independent_stock_trader_once(
             if cancelled or cancellation_error:
                 metadata["entry_cancellations_requested"] = cancelled
                 return finish("ENTRY_CANCELLATION_AWAITING_RECONCILIATION", error=cancellation_error)
-        exits = _exit_decisions(ledger, portfolio, activation, active_policy, timestamp, snapshot_id, window.time_in_force)
+        exits = _exit_decisions(ledger, portfolio, activation, active_policy, timestamp, snapshot_id, window.time_in_force,
+                               gameplan_pricing=sizing_policy == GAMEPLAN_SIZING_POLICY)
         decision_options = dict(
             active_allocations=frozenset((a.symbol, a.horizon) for a in state.allocations if a.status == "ACTIVE"),
             ledger_ready=reconciliation.ready, decided_at=timestamp, policy=active_policy,
@@ -316,11 +350,12 @@ def run_independent_stock_trader_once(
             capacities = _direction_sell_capacities(qualified, state, portfolio, exits)
             metadata["planning_ranges_have_execution_authority"] = False
             metadata["direction_sell_capacities"] = {f"{s}/{h}": q for (s, h), q in capacities.items()}
-            metadata["pricing_basis"] = "current_quote_ask_for_buy_bid_for_sell"
+            metadata["pricing_basis"] = "current_ask_buy_bid_sell_with_wide_spread_midpoint_v1"
             decisions = build_gameplan_direction_trade_decisions(
                 qualified, portfolio, activation, verified_promoted_signals=frozenset(qualified),
                 bearish_sell_capacities=capacities, maximum_quote_age_seconds=ledger.maximum_evidence_age_seconds,
-                **decision_options, **({'late_opening_date':late_opening_date} if late_opening_date is not None else {}))
+                **decision_options, **({'late_opening_date':late_opening_date} if late_opening_date is not None else {}),
+                **({"recovered_forecast_ids":frozenset(s.prediction_id for s in qualified.values())} if resume_quote_run else {}))
         elif sizing_policy == FIXED_SIZING_POLICY:
             from ml.stock_trader.fixed_horizon_engine import build_fixed_horizon_trade_decisions
             decisions = build_fixed_horizon_trade_decisions(
@@ -343,6 +378,13 @@ def run_independent_stock_trader_once(
         if blocked_exit_quotes and not result.error:
             return replace(result, status="HORIZON_EXIT_QUOTE_UNAVAILABLE",
                            error="Due owned exit requires a current quote: " + ", ".join(sorted(set(blocked_exit_quotes))))
+        blocked_entries = sorted({d.symbol for d in decisions if d.quantity == 0
+            and d.decision_reason_code in {"USABLE_QUOTE_UNAVAILABLE", "CURRENT_QUOTE_TOO_OLD", "REALTIME_QUOTE_UNAVAILABLE"}
+            and ((d.suggested_action == "BUY" and portfolio.available_cash > 0)
+                 or (d.suggested_action == "SELL" and portfolio.held_shares.get(d.symbol, 0) > portfolio.pending_sell_shares.get(d.symbol, 0)))})
+        if sizing_policy == GAMEPLAN_SIZING_POLICY and blocked_entries and not result.error:
+            return replace(result, status="ORDERS_SUBMITTED_WITH_QUOTE_UNAVAILABLE" if result.submitted_orders else "HORIZON_ENTRY_QUOTE_UNAVAILABLE",
+                           error="Scheduled signals still lack usable quotes after bounded live refresh: " + ", ".join(blocked_entries))
         return result
 
 
@@ -372,7 +414,7 @@ def _direction_sell_capacities(signals, state, portfolio, exits):
     return capacities
 
 
-def _exit_decisions(ledger, portfolio, activation, policy, timestamp, snapshot_id, time_in_force):
+def _exit_decisions(ledger, portfolio, activation, policy, timestamp, snapshot_id, time_in_force, *, gameplan_pricing=False):
     decisions = []
     state = ledger.snapshot()
     for plan in ledger.due_exits(as_of=timestamp.isoformat(), snapshot_id=snapshot_id,
@@ -402,7 +444,7 @@ def _exit_decisions(ledger, portfolio, activation, policy, timestamp, snapshot_i
         if not plan.ready or quote is None:
             decisions.append(decision)
             continue
-        if time_in_force != "DAY" and quote.relative_spread > policy.maximum_extended_relative_spread:
+        if not gameplan_pricing and time_in_force != "DAY" and quote.relative_spread > policy.maximum_extended_relative_spread:
             decisions.append(replace(decision, decision_reason_code="EXTENDED_SPREAD_TOO_WIDE",
                                      decision_reason="The extended-hours spread exceeds the existing exit execution limit."))
             continue
@@ -439,7 +481,9 @@ def _cancel_expired_entries(root, broker, ledger, state, portfolio, stable_ident
                 or not reservation.broker_order_id or reservation.cancel_requested_at is not None):
             continue
         allocation = allocations[reservation.allocation_id]
-        if utc(clock()) < _entry_deadline(utc(allocation.target_start), late_opening_date=late_opening_date):
+        from ml.stock_trader.quote_recovery import recovered_entry_deadline
+        deadline = recovered_entry_deadline(root, allocation, _entry_deadline(utc(allocation.target_start), late_opening_date=late_opening_date))
+        if utc(clock()) < deadline:
             continue
         try:
             context = broker.prepare_order_submission()
@@ -486,7 +530,7 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
                 if not 0 <= age <= ledger.maximum_evidence_age_seconds:
                     raise _SubmissionStopped("BROKER_PORTFOLIO_TOO_OLD_FOR_SUBMISSION")
                 if decision.prediction.get("sizing_policy") == GAMEPLAN_SIZING_POLICY:
-                    quote_at = decision.quote.get("observed_at")
+                    quote_at = QuoteState(**decision.quote).freshness_observed_at
                     if not quote_at:
                         raise _SubmissionStopped("CURRENT_QUOTE_TIME_UNAVAILABLE")
                     quote_age = (utc(clock()) - utc(quote_at)).total_seconds()

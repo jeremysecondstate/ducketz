@@ -569,6 +569,7 @@ class SchwabSession:
         payload = response.json()
         if not isinstance(payload, dict):
             raise RuntimeError("Unexpected Schwab quote response.")
+        received_at = datetime.now(timezone.utc).isoformat()
 
         rows_by_symbol = {
             str(key).strip().upper(): row
@@ -581,7 +582,12 @@ class SchwabSession:
             if not isinstance(row, dict):
                 continue
             quote = row.get("quote")
-            quotes[symbol] = quote if isinstance(quote, dict) else row
+            quotes[symbol] = {
+                **(quote if isinstance(quote, dict) else row),
+                "quote_received_at": received_at,
+                "quote_realtime": row.get("realtime"),
+                "quote_type": row.get("quoteType"),
+            }
         return quotes
 
     def get_equity_quote(self, symbol: str) -> dict[str, Any]:

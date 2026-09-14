@@ -153,6 +153,8 @@ def run_independent_stock_session(
     sizing_policy: str = LEARNED_SIZING_POLICY,
     wait_for_open: bool = False,
     late_opening_date: str | None = None,
+    resume_quote_run: str | None = None,
+    resume_quote_symbol: str | None = None,
 ) -> dict:
     """Serve one exchange date, optionally waiting for its opening first.
 
@@ -169,6 +171,12 @@ def run_independent_stock_session(
     root = Path(root).resolve()
     sizing_policy = validate_sizing_policy(sizing_policy)
     started = utc(clock())
+    recovery_pending = bool(resume_quote_run or resume_quote_symbol)
+    if recovery_pending:
+        if not (resume_quote_run and resume_quote_symbol and sizing_policy == GAMEPLAN_SIZING_POLICY) or late_opening_date:
+            raise ValueError("Quote recovery requires a run and symbol with the Gameplan policy")
+        from ml.stock_trader.quote_recovery import load_quote_recovery
+        load_quote_recovery(root, resume_quote_run, resume_quote_symbol, as_of=started)
     if late_opening_date is not None:
         from ml.stock_trader.gameplan import validate_late_opening_date
         if sizing_policy != GAMEPLAN_SIZING_POLICY:
@@ -200,6 +208,7 @@ def run_independent_stock_session(
             "action_date": day.date().isoformat(), "wakes_at": opening.isoformat(),
             "wait_for_open": wait_for_open,
             "late_opening_date":late_opening_date,
+            "resume_quote_run": resume_quote_run, "resume_quote_symbol": resume_quote_symbol,
             "calls": calls, "orders_submitted": submitted, "failed_cycles": failed_cycles,
             "consecutive_failures": consecutive_failures, "last_cycle": last_cycle}
         _write_json_atomic(status_path, payload)
@@ -259,14 +268,18 @@ def run_independent_stock_session(
             # Inventory polls wait through the broker's closed transitions.
             # No capture here can resolve an earlier failure; health stays
             # degraded until a later executable cycle verifies broker state.
-            if due_entry or (has_inventory and stock_execution_window(now).executable):
+            recover_now = recovery_pending and stock_execution_window(now).executable
+            if due_entry or recover_now or (has_inventory and stock_execution_window(now).executable):
                 if due_entry:
                     attempted.add(slot)
                 sizing_options = {"sizing_policy": sizing_policy} if sizing_policy != LEARNED_SIZING_POLICY else {}
                 if late_opening_date == local.date().isoformat() and local.hour == 4:
                     sizing_options['late_opening_date'] = late_opening_date
+                if recover_now:
+                    sizing_options.update(resume_quote_run=resume_quote_run, resume_quote_symbol=resume_quote_symbol)
+                    recovery_pending = False
                 try:
-                    result = runner(root, execute=execute, entries=due_entry, runtime_clock=clock, session_managed=True, **sizing_options)
+                    result = runner(root, execute=execute, entries=due_entry or recover_now, runtime_clock=clock, session_managed=True, **sizing_options)
                 except Exception as exc:
                     last_cycle = {"status": "UNHANDLED_WORKER_ERROR", "error_type": type(exc).__name__}
                     failed_cycles += 1

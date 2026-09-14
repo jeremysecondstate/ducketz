@@ -43,18 +43,50 @@ def test_filtered_cards_table_and_forecasts_have_consistent_scope(tab):
     assert len(tab.visible_rows) == 5
     tab.horizon.set("1 hour")
     tab.horizon_box.event_generate("<<ComboboxSelected>>")
-    assert not tab.visible_rows
-    assert tab.selected_row is None
-    assert tab.values["entries"].get() == "0 buys"
-    assert tab.probability.cget("text") == "—"
-    tab.view.set("forecasts")
-    tab.render()
+    assert tab.view.get() == "forecasts"
     assert len(tab.visible_rows) == 2
+    assert tab.selected_row is not None
+    assert tab.values["entries"].get() == "0 buys"
+    assert "No projected trades for these filters" in tab.table_note.cget("text")
     assert {row.action for row in tab.visible_rows} == {"HOLD", "CONTEXT"}
     tab.company.set("NVDA")
     tab.render()
     assert not tab.visible_rows
     assert tab.values["coverage"].get() == "0 horizons"
+
+
+def test_company_dropdown_shows_saved_forecasts_when_only_other_symbols_have_trades(tab):
+    tab.company.set("AAPL")
+    tab.horizon.set("1 hour")
+    tab.company_box.event_generate("<<ComboboxSelected>>")
+    assert tab.view.get() == "forecasts"
+    assert tab.visible_rows == tab.plan.rows("1h", "AAPL")
+    assert tab.selected_row.symbol == "AAPL"
+    assert tab.selected_row.action == "CONTEXT"
+    assert tab.trade_button.cget("text") == "Trades 0"
+    assert tab.forecast_button.cget("text") == "All forecasts 2"
+    assert "disabled" not in tab.details_button.state()
+    assert tab.values["entries"].get() == "0 buys"
+    # An explicit request for the empty trade view still shows the explanation.
+    tab.trade_button.invoke()
+    assert tab.view.get() == "trades" and not tab.visible_rows
+    assert any("No projected actions" in tab.table.itemcget(item, "text")
+               for item in tab.table.find_all() if tab.table.type(item) == "text")
+    # A different company with a real trade keeps the requested trade view.
+    tab.company.set("NVDA")
+    tab.horizon.set("1 week")
+    tab.company_box.event_generate("<<ComboboxSelected>>")
+    assert tab.view.get() == "trades"
+    assert tab.visible_rows == tab.plan.trades("1w", "NVDA")
+    assert tab.selected_row.action == "BUY"
+
+
+def test_horizon_card_falls_back_to_forecasts_without_changing_trade_counts(tab):
+    tab._choose_horizon("1h")
+    assert tab.view.get() == "forecasts"
+    assert tab.visible_rows == tab.plan.rows("1h")
+    assert tab.values["entries"].get() == "0 buys"
+    assert tab.values["exits"].get() == "0 sells"
 
 
 def test_selection_does_not_filter_global_agenda_and_details_use_selected_forecast(tab, monkeypatch):

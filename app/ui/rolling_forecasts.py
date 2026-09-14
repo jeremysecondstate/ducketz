@@ -2745,10 +2745,16 @@ class RollingForecastTab:
     def _on_mousewheel(self, event: tk.Event[tk.Misc]) -> None:
         if self.canvas is None:
             return
-        widget = self.canvas.winfo_containing(
-            event.x_root,
-            event.y_root,
-        )
+        try:
+            widget = self.canvas.winfo_containing(
+                event.x_root,
+                event.y_root,
+            )
+        except (KeyError, tk.TclError):
+            # ttk combobox popdowns are Tcl-only widgets absent from tkinter's
+            # children map. A destroyed canvas can also outlive this global
+            # binding briefly. Leave those events to their own widget handlers.
+            return
         while widget is not None:
             if widget == self.canvas:
                 self.canvas.yview_scroll(

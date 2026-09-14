@@ -1,5 +1,24 @@
 # Independent stock horizons
 
+September 14 operator-approved execution correction: Gameplan buys and sells
+use current real-time Schwab NBBO responses. Keep the provider's bid/ask update
+time in `observed_at`; use the separately recorded HTTP `received_at` for the
+60-second submission freshness check when `realtime` is true and `quote_type`
+is `NBBO`. An unchanged bid/ask update timestamp does not reject a fresh real-time
+response. Delayed, malformed or unavailable data still triggers bounded complete
+snapshot refreshes; exhausted quote refreshes are reported as unavailable, rather
+than a healthy no-order cycle. Wide spreads use the operator-authorized midpoint
+limit, rounded to cents. Cash is charged at the limit; horizon and symbol exposure
+remain valued consistently with the native inventory ledger.
+
+An operator may explicitly restart with `--resume-quote-run RUN_ID
+--resume-quote-symbol SYMBOL` to recover one unsubmitted one-hour quote skip from
+the same action date. This is a once-only recovery of the original forecast with
+current cash/holdings/quotes and its original target end. A separate persistent
+recovery claim prevents duplication; normal hourly claims remain intact. On
+September 14 this was authorized for TWST from `20260914T130120.596605Z`, retaining
+its 07:00 Pacific target end. The recurring launcher never adds recovery flags.
+
 Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from `datafetching/watchlist.txt` and validate historical publications against their own saved universes.
 
 The accepted stock design covers the production symbols in `datafetching/watchlist.txt`.

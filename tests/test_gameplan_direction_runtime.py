@@ -44,6 +44,64 @@ def test_quote_that_ages_out_before_submission_is_not_disguised_by_fresh_account
     assert env.broker.submissions == []
 
 
+@pytest.mark.parametrize("probability,instruction,price", [(.7, "BUY", "124.21"), (.3, "SELL", "124.20")])
+def test_current_realtime_response_with_unchanged_bbo_reaches_submission(environment, monkeypatch, probability, instruction, price):
+    env = environment
+    prepare(env, monkeypatch, probability=probability)
+    env.signals = {("AAPL", "1h"): env.signals["AAPL", "1h"]}
+    original_capture = runtime.capture_portfolio_state
+    def capture(*args, **kwargs):
+        result = original_capture(*args, **kwargs)
+        return replace(result, quotes={symbol: replace(quote, bid=123.66, ask=124.75,
+            observed_at=(env.now - pd.Timedelta(minutes=13)).isoformat(),
+            received_at=env.now.isoformat(), realtime=True, quote_type="NBBO")
+            for symbol, quote in result.quotes.items()})
+    monkeypatch.setattr(runtime, "capture_portfolio_state", capture)
+    result = run(env)
+    assert result.status == "ORDERS_SUBMITTED", result.error
+    assert result.submitted_orders == len(env.broker.submissions) == 1
+    payload = env.broker.submissions[0]
+    assert payload["orderLegCollection"][0]["instruction"] == instruction
+    assert float(payload["price"]) == float(price)
+    assert run(env).submitted_orders == 0
+    assert len(env.broker.submissions) == 1
+
+
+def test_realtime_response_that_ages_before_post_is_not_submitted(environment, monkeypatch):
+    env = environment
+    prepare(env, monkeypatch, probability=.7)
+    env.signals = {("AAPL", "1h"): env.signals["AAPL", "1h"]}
+    original_capture = runtime.capture_portfolio_state
+    def capture(*args, **kwargs):
+        result = original_capture(*args, **kwargs)
+        return replace(result, quotes={symbol: replace(quote,
+            observed_at=(env.now - pd.Timedelta(minutes=13)).isoformat(),
+            received_at=(env.now - pd.Timedelta(seconds=59)).isoformat(), realtime=True, quote_type="NBBO")
+            for symbol, quote in result.quotes.items()})
+    monkeypatch.setattr(runtime, "capture_portfolio_state", capture)
+    env.broker.before_post_hook = lambda: setattr(env, "now", env.now + pd.Timedelta(seconds=2))
+    result = run(env)
+    assert result.status == "SUBMISSION_STOPPED_SAFETY_CHECK"
+    assert "CURRENT_QUOTE_TOO_OLD_FOR_SUBMISSION" in result.error
+    assert env.broker.submissions == []
+
+
+def test_midpoint_quantity_agrees_with_native_horizon_valuation(environment, monkeypatch):
+    env = environment
+    prepare(env, monkeypatch, probability=.7)
+    env.signals = {("AAPL", "1h"): env.signals["AAPL", "1h"]}
+    original = runtime.capture_portfolio_state
+    def capture(*args, **kwargs):
+        portfolio = original(*args, **kwargs)
+        return replace(portfolio, quotes={s:replace(q, bid=99., ask=101.) for s,q in portfolio.quotes.items()})
+    monkeypatch.setattr(runtime, "capture_portfolio_state", capture)
+    result = run(env)
+    assert result.status == "ORDERS_SUBMITTED", result.error
+    assert result.submitted_orders == 1
+    leg = env.broker.submissions[0]["orderLegCollection"][0]
+    assert leg["quantity"] == 14  # Fifteen at the ask would exceed the $1,500 horizon capacity.
+
+
 def test_seven_opening_bearish_sales_use_all_held_stocks_once_and_create_no_fabricated_buys(environment, monkeypatch):
     env = environment
     prepare(env, monkeypatch)

@@ -165,4 +165,16 @@ if ($manualWrapper -notmatch 'start_stock_session\.ps1" -WaitForOpen -SizingPoli
     throw 'Manual start must select the Gameplan strategy, wait mode, and explicit one-time activation together.'
 }
 $script:passed++
+$owners = New-Owners
+foreach ($owner in $owners) {
+    $owner.CommandLine = $commandLine.Replace('fixed-horizon-budget-v1', 'gameplan-direction-current-market-v1') + ' --wait-for-open --resume-quote-run 20260908T210100.000000Z --resume-quote-symbol TWST'
+}
+Assert-Accepted 'Explicit same-day quote recovery pair' -Owners $owners
+$owners[1].CommandLine = $owners[1].CommandLine.Replace('TWST', 'AAPL')
+Assert-Rejected 'Mismatched recovery symbol' -Owners $owners
+$owners = New-Owners
+foreach ($owner in $owners) { $owner.CommandLine += ' --resume-quote-run 20260908T210100.000000Z --resume-quote-symbol TWST' }
+Assert-Rejected 'Quote recovery requires Gameplan policy' -Owners $owners
+foreach ($owner in $owners) { $owner.CommandLine = $owner.CommandLine.Replace('fixed-horizon-budget-v1', 'gameplan-direction-current-market-v1').Replace('20260908T', '20260907T') }
+Assert-Rejected 'Quote recovery from another action date' -Owners $owners
 Write-Output "$script:passed synthetic stock session identity checks passed; no processes were launched or stopped."

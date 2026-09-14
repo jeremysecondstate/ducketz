@@ -326,9 +326,10 @@ def test_missing_model_is_immediate_noop_but_does_not_block_inventory_management
 
 def test_claimed_contract_metadata_alone_cannot_qualify_longer_current_targets(tmp_path, monkeypatch):
     from datetime import date
-    from test_independent_stock_signals import _frame, _publish
+    from test_independent_stock_signals import _frame, _publish, SYMBOLS
     from ml.independent_stock_targets import STOCK_TARGET_CONTRACT_VERSION
 
+    monkeypatch.setattr(worker, "STOCK_TRADER_SYMBOLS", SYMBOLS)
     _publish(tmp_path, _frame())
     monkeypatch.setattr(worker, "load_current_enrichment_model", lambda root: SimpleNamespace(
         qualified_target_contracts=(STOCK_TARGET_CONTRACT_VERSION,),
@@ -343,9 +344,10 @@ def test_claimed_contract_metadata_alone_cannot_qualify_longer_current_targets(t
 
 def test_qualified_hourly_entries_are_not_blocked_by_research_weekly_models(tmp_path, monkeypatch):
     from datetime import date
-    from test_independent_stock_signals import _frame, _publish
+    from test_independent_stock_signals import _frame, _publish, SYMBOLS
     from ml.independent_stock_targets import STOCK_TARGET_CONTRACT_VERSION
 
+    monkeypatch.setattr(worker, "STOCK_TRADER_SYMBOLS", SYMBOLS)
     frame = _frame()
     frame.loc[frame.model_group.ne("1h"), "model_status"] = "RESEARCH_NOT_PROMOTED"
     _publish(tmp_path, frame)

@@ -217,7 +217,6 @@ def test_buys_and_bearish_sells_preserve_activation_promotion_reconciliation_and
     (100., float("nan"), NOW, "USABLE_QUOTE_UNAVAILABLE"),
     (100., 100., "2026-09-08T11:02:00Z", "USABLE_QUOTE_UNAVAILABLE"),
     (100., 100., "2026-09-08T10:59:59Z", "CURRENT_QUOTE_TOO_OLD"),
-    (100., 102., NOW, "STOCK_SPREAD_TOO_WIDE"),
 ])
 def test_actual_quote_checks_are_retained_for_both_sides(bid, ask, observed, code):
     for probability in (.3, .7):
@@ -226,6 +225,32 @@ def test_actual_quote_checks_are_retained_for_both_sides(bid, ask, observed, cod
         decisions = build(signals, portfolio, bearish_sell_capacities={key: 1 for key in signals})
         assert not orders(decisions)
         assert {item.decision_reason_code for item in decisions} == {code}
+
+
+@pytest.mark.parametrize("probability", [.3, .7])
+def test_wide_live_quote_uses_authorized_midpoint_for_both_sides(probability):
+    signals, portfolio = inputs(probability=probability, bid=123.66, ask=124.75)
+    portfolio = replace(portfolio, held_shares={"AAPL": 5.}, quotes={"AAPL": replace(
+        portfolio.quotes["AAPL"], observed_at="2026-09-08T10:48:40Z",
+        received_at=NOW, realtime=True, quote_type="NBBO")})
+    selected = orders(build(signals, portfolio, bearish_sell_capacities={key: 1 for key in signals}))
+    assert selected
+    assert all(d.limit_price == (124.21 if probability > .5 else 124.20) for d in selected)
+    assert all(d.order_style_reason_code == "GAMEPLAN_CURRENT_MIDPOINT_LIMIT" for d in selected)
+    assert all(d.quote["observed_at"] == "2026-09-08T10:48:40Z" for d in selected)
+
+
+@pytest.mark.parametrize("realtime,quote_type,received", [
+    (False, "NBBO", NOW), (None, "NBBO", NOW), ("true", "NBBO", NOW),
+    (True, "INDICATIVE", NOW), (True, "NBBO", "2026-09-08T10:59:59Z"),
+    (True, "NBBO", "2026-09-08T11:02:00Z"),
+])
+def test_unverified_or_expired_response_cannot_relabel_an_old_quote(realtime, quote_type, received):
+    signals, portfolio = inputs()
+    portfolio = replace(portfolio, quotes={"AAPL": replace(portfolio.quotes["AAPL"],
+        observed_at="2026-09-08T10:48:40Z", received_at=received,
+        realtime=realtime, quote_type=quote_type)})
+    assert not orders(build(signals, portfolio))
 
 
 def test_due_exits_are_repriced_from_current_bid_and_share_inventory_with_bearish_sells():

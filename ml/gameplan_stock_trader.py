@@ -88,6 +88,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--wait-for-open", action="store_true",
                         help="With --run-session --target-horizon all, wait without broker activity until 04:00 Pacific on the next supported session; an open session starts immediately.")
     parser.add_argument('--late-opening-date', help='Explicit one-session manual exception: allow the unconsumed 04:00 entry until 05:00 Pacific on YYYY-MM-DD')
+    parser.add_argument('--resume-quote-run', help='Once-only recovery of one unsubmitted quote skip from this native decision run')
+    parser.add_argument('--resume-quote-symbol', help='Exact symbol to recover with --resume-quote-run')
     parser.add_argument("--sizing-policy", choices=SIZING_POLICIES, default=LEARNED_SIZING_POLICY,
                         help="Explicitly select qualified learned sizing or conservative fixed horizon budgets.")
     parser.add_argument(
@@ -109,6 +111,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise ValueError("--wait-for-open requires --run-session --target-horizon all")
         if args.late_opening_date and not args.run_session:
             raise ValueError('--late-opening-date requires the managed all-horizon Gameplan session')
+        if (args.resume_quote_run or args.resume_quote_symbol) and not args.run_session:
+            raise ValueError('Quote recovery requires the managed all-horizon Gameplan session')
         if args.run_session:
             if args.target_horizon != "all" or args.decided_at is not None:
                 raise ValueError("--run-session requires --target-horizon all and the current wall clock")
@@ -117,6 +121,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             wait_options = {"wait_for_open": True} if args.wait_for_open else {}
             if args.late_opening_date:
                 wait_options['late_opening_date'] = args.late_opening_date
+            if args.resume_quote_run or args.resume_quote_symbol:
+                wait_options.update(resume_quote_run=args.resume_quote_run, resume_quote_symbol=args.resume_quote_symbol)
             result = run_independent_stock_session(root, execute=bool(args.execute), **sizing_options, **wait_options)
             print(json.dumps(result, sort_keys=True))
             return 1 if result["status"] in {

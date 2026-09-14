@@ -59,6 +59,17 @@ class QuoteState:
     mark: float | None
     volume: float | None
     observed_at: str
+    received_at: str | None = None
+    realtime: bool | None = None
+    quote_type: str | None = None
+
+    @property
+    def freshness_observed_at(self) -> str:
+        # NBBO update time can remain unchanged while Schwab still serves the
+        # current real-time quote. Keep that provider time separately for audit.
+        if self.realtime is True and self.quote_type == "NBBO" and self.received_at:
+            return self.received_at
+        return self.observed_at
 
     @property
     def midpoint(self) -> float:

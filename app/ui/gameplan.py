@@ -155,7 +155,7 @@ class GameplanTab:
                                       values=("All companies",), width=13)
         self.company_box.pack(side="left", padx=(0, 6))
         for box in (self.horizon_box, self.company_box):
-            box.bind("<<ComboboxSelected>>", lambda _e: self.render(reset_scroll=True))
+            box.bind("<<ComboboxSelected>>", self._filters_changed)
         style = ttk.Style(self.root)
         style.configure("Gameplan.Toolbutton", background=SURFACE_ALT, foreground=TEXT, padding=(8, 5), font=("Segoe UI", 9))
         style.map("Gameplan.Toolbutton", background=[("selected", "#10394b")],
@@ -287,6 +287,9 @@ class GameplanTab:
         self.table_note.configure(wraplength=max(580, event.width-20))
 
     def _bind_wheel(self, widget):
+        if isinstance(widget, ttk.Combobox):
+            # Let Tk's dropdown handle its wheel rather than scrolling the page.
+            return
         widget.bind("<MouseWheel>", self._wheel, add="+")
         for child in widget.winfo_children():
             self._bind_wheel(child)
@@ -382,6 +385,8 @@ class GameplanTab:
         self.company_box.configure(values=("All companies", *plan.symbols))
         if self.selected_company not in (None, *plan.symbols):
             self.company.set("All companies")
+        if changed:
+            self._show_forecasts_if_no_trades()
         self.report_button.configure(state="normal")
         self.status_label.configure(foreground=MUTED_TEXT if plan.projection_available else WARNING)
         self.status.set(f"Saved {plan.saved_at:%b %d, %H:%M %Z} · {len(plan.forecasts)} forecasts · "
@@ -390,6 +395,16 @@ class GameplanTab:
 
     def _choose_horizon(self, horizon):
         self.horizon.set(HORIZON_NAMES[horizon])
+        self._filters_changed()
+
+    def _show_forecasts_if_no_trades(self):
+        if (self.plan is not None and self.view.get() == "trades"
+                and self.plan.rows(self.selected_horizon, self.selected_company)
+                and not self.plan.trades(self.selected_horizon, self.selected_company)):
+            self.view.set("forecasts")
+
+    def _filters_changed(self, _event=None):
+        self._show_forecasts_if_no_trades()
         self.render(reset_scroll=True)
 
     def render(self, *, reset_scroll=False):
@@ -433,7 +448,8 @@ class GameplanTab:
                 if unavailable:
                     self.table_note.configure(text=self.plan.projection_note + " Select All forecasts to review the saved windows.")
             else:
-                self.table_note.configure(text=f"{sum(row.eligible for row in forecasts)} entry windows · "
+                self.table_note.configure(text=("No projected trades for these filters. " if forecasts and not actions and not unavailable else "")
+                    + f"{sum(row.eligible for row in forecasts)} entry windows · "
                     f"{sum(not row.eligible for row in forecasts)} context forecasts. "
                     + ("Trade actions and quantities are unavailable." if unavailable else "Hold and outlook rows are not scheduled orders."))
         else:

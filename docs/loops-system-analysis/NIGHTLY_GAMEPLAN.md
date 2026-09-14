@@ -24,6 +24,13 @@ trade counts and quantities show unavailable rather than zero or an inferred
 hold. The notice names the companies with missing price references. This is a
 read-only view of the saved publication and does not change the live trader.
 
+Company/horizon dropdowns and horizon cards also switch an empty **Trades**
+selection to **All forecasts** when saved forecasts exist. A zero projected-trade
+count remains zero; the table shows the hold/context decisions and explains that
+the selected filters contain no projected trades. Explicitly selecting **Trades**
+still permits inspection of that empty trade view. Dropdown wheel events remain
+owned by Tk's native dropdown rather than scrolling the surrounding page.
+
 The user's separate manual late-opening exception is
 `--late-opening-date 2026-09-14`, valid only before 05:00 that day with the managed
 Gameplan policy. Original forecast IDs/target ends and persistent entry-slot

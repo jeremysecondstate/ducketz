@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import inspect
+import tkinter as tk
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -57,6 +59,28 @@ from ml.parquet_contracts import (
     INTELLIGENCE_SCHEMA,
     write_parquet_with_schema,
 )
+
+
+@pytest.mark.parametrize("error", [KeyError("popdown"), tk.TclError("bad window path name")])
+def test_mousewheel_ignores_native_dropdowns_and_destroyed_widgets(error):
+    scrolled = []
+    def containing(*args):
+        raise error
+    canvas = SimpleNamespace(winfo_containing=containing, yview_scroll=lambda *args: scrolled.append(args))
+    tab = SimpleNamespace(canvas=canvas)
+    result = RollingForecastTab._on_mousewheel(tab, SimpleNamespace(x_root=10, y_root=20, delta=-120))
+    assert result is None  # Do not consume the dropdown's own wheel event.
+    assert scrolled == []
+
+
+@pytest.mark.parametrize("inside", [True, False])
+def test_global_mousewheel_scrolls_only_the_rolling_forecast_canvas(inside):
+    scrolled = []
+    canvas = SimpleNamespace(master=None, yview_scroll=lambda *args: scrolled.append(args))
+    child = SimpleNamespace(master=canvas if inside else None)
+    canvas.winfo_containing = lambda *args: child
+    RollingForecastTab._on_mousewheel(SimpleNamespace(canvas=canvas), SimpleNamespace(x_root=10, y_root=20, delta=-120))
+    assert scrolled == ([(1, "units")] if inside else [])
 
 
 def test_supported_horizon_order_labels_and_subtitle_are_exact() -> None:
@@ -1659,7 +1683,7 @@ def test_gameplan_dashboard_rotates_frozen_hourly_and_four_hour_routes() -> None
         pytest.approx(0.55),
     ]
     assert first.weekly_outlook.aggregate.probability_up == pytest.approx(0.61)
-    assert "Research Forecast" in first.weekly_outlook.aggregate.actionability_label
+    assert first.weekly_outlook.aggregate.actionability_label == "Forecast — Model Validation Not Passed"
     assert at_0430.source_row_count == 24
     assert at_0430.published_route_count == 24
     assert at_0430.automated_action_allowed is False
