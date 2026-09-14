@@ -24,7 +24,8 @@ TABLE = "#0c1929"
 HORIZON_LABELS = {"All horizons": "all", "1 hour": "1h", "4 hours": "4h", "1 day": "1d", "1 week": "1w"}
 HORIZON_NAMES = dict(zip(HORIZONS, ("1 hour", "4 hours", "1 day", "1 week")))
 AUTO_REFRESH_MS = 5 * 60 * 1000
-ACTION_COLORS = {"BUY": SUCCESS, "SELL": DANGER, "EXPIRY": WARNING, "HOLD": MUTED_TEXT, "CONTEXT": "#87bafa"}
+ACTION_COLORS = {"BUY": SUCCESS, "SELL": DANGER, "EXPIRY": WARNING, "HOLD": MUTED_TEXT,
+                 "CONTEXT": "#87bafa", "UNAVAILABLE": WARNING}
 
 
 def money(value: float | None) -> str:
@@ -91,7 +92,7 @@ class GameplanTab:
         self.date_box = ttk.Combobox(self.controls, textvariable=self.session, state="readonly", width=13)
         self.date_box.pack(side="left", padx=(0, 8))
         self.date_box.bind("<<ComboboxSelected>>", self._date_changed)
-        Tooltip(self.date_box, "The action session of the saved Gameplan. Historical plans remain snapshots. Only completed plans with a direction-based trade schedule are listed.")
+        Tooltip(self.date_box, "The action session of the saved Gameplan. Historical plans remain snapshots. Completed plans can include forecasts with an unavailable cash projection.")
         ttk.Button(self.controls, text="Latest plan", command=self.follow_latest).pack(side="left", padx=(0, 8))
         self.report_button = ttk.Button(self.controls, text="Open Gameplan", command=self.open_report, state="disabled")
         self.report_button.pack(side="left", padx=(0, 8))
@@ -371,6 +372,8 @@ class GameplanTab:
 
     def set_plan(self, plan: Gameplan):
         changed = self.plan is None or self.plan.session != plan.session
+        if not plan.projection_available and (changed or self.plan.projection_available):
+            self.view.set("forecasts")
         if changed:
             self.selected_key = None
         self.plan = plan
@@ -380,8 +383,9 @@ class GameplanTab:
         if self.selected_company not in (None, *plan.symbols):
             self.company.set("All companies")
         self.report_button.configure(state="normal")
-        self.status_label.configure(foreground=MUTED_TEXT)
-        self.status.set(f"Saved {plan.saved_at:%b %d, %H:%M %Z} · {len(plan.forecasts)} forecasts · Summary follows filters")
+        self.status_label.configure(foreground=MUTED_TEXT if plan.projection_available else WARNING)
+        self.status.set(f"Saved {plan.saved_at:%b %d, %H:%M %Z} · {len(plan.forecasts)} forecasts · "
+                        + ("Summary follows filters" if plan.projection_available else plan.projection_note))
         self.render(reset_scroll=changed)
 
     def _choose_horizon(self, horizon):
@@ -394,7 +398,8 @@ class GameplanTab:
         self.visible_rows = actions if self.view.get() == "trades" else forecasts
         if self.selected_key not in {self._key(row) for row in self.visible_rows}:
             self.selected_key = self._key(self.visible_rows[0]) if self.visible_rows else None
-        self.trade_button.configure(text=f"Trades {len(actions)}")
+        unavailable = self.plan is not None and not self.plan.projection_available
+        self.trade_button.configure(text="Trades unavailable" if unavailable else f"Trades {len(actions)}")
         self.forecast_button.configure(text=f"All forecasts {len(forecasts)}")
         self.table_title.configure(text="Scheduled trade plan" if self.view.get() == "trades" else "Saved forecast windows")
         buys, sells = [row for row in actions if row.action == "BUY"], [row for row in actions if row.action == "SELL"]
@@ -408,6 +413,10 @@ class GameplanTab:
             self.values["exits"].set(counted(len(sells), "sell"))
             self.captions["exits"].set(f"{len(expiries)} remaining horizon expiries" if expiries else
                                       (f"First {clock_text(sells[0].when, self.plan.session)} · saved projection" if sells else "No projected exits"))
+            if unavailable:
+                for key in ("first", "entries", "exits"):
+                    self.values[key].set("—")
+                    self.captions[key].set("Cash projection unavailable")
             count = len({row.horizon for row in forecasts} | {row.horizon for row in actions})
             self.values["coverage"].set(f"{count} {'horizon' if count == 1 else 'horizons'}")
             self.captions["coverage"].set(f"{counted(len(forecasts), 'forecast')} · "
@@ -415,13 +424,18 @@ class GameplanTab:
             kind = "Upcoming session" if self.plan.session > datetime.now(PACIFIC).date().isoformat() else "Saved session"
             self.subtitle.configure(text=f"{kind} · {date.fromisoformat(self.plan.session):%A, %b %d, %Y} · All times Pacific")
             self.footer.configure(text=f"Saved {self.plan.saved_at:%b %d, %H:%M %Z} · Projected trades; quantities and exits depend on actual fills.")
+            if unavailable:
+                self.footer.configure(text="Saved forecasts remain available. Projected trades, quantities and exits require the missing price references.")
             if self.view.get() == "trades":
                 self.table_note.configure(text=f"{len(actions)} of {len(self.plan.actions)} saved actions shown. "
                     + ("Expiries include remaining allocations; reserved shares are disclosed in details." if expiries else
                        "Quantities follow the direction ledger; planning prices are estimates."))
+                if unavailable:
+                    self.table_note.configure(text=self.plan.projection_note + " Select All forecasts to review the saved windows.")
             else:
                 self.table_note.configure(text=f"{sum(row.eligible for row in forecasts)} entry windows · "
-                    f"{sum(not row.eligible for row in forecasts)} context forecasts. Hold and outlook rows are not scheduled orders.")
+                    f"{sum(not row.eligible for row in forecasts)} context forecasts. "
+                    + ("Trade actions and quantities are unavailable." if unavailable else "Hold and outlook rows are not scheduled orders."))
         else:
             for key in self.values:
                 self.values[key].set("—")
@@ -496,8 +510,10 @@ class GameplanTab:
                     canvas.create_text(edges[i]+45, center, anchor="w", text=value, fill=TEXT, font=("Segoe UI", 10, "bold"))
                 elif (not forecast_view and i == 2) or (forecast_view and i == 5):
                     color = ACTION_COLORS[row.action]
-                    canvas.create_rectangle(x-34, center-11, x+34, center+11, fill="#183044", outline=color)
-                    canvas.create_text(x, center, text=value, fill=color, font=("Segoe UI", 9, "bold"))
+                    half_width = 42 if row.action == "UNAVAILABLE" else 34
+                    canvas.create_rectangle(x-half_width, center-11, x+half_width, center+11, fill="#183044", outline=color)
+                    canvas.create_text(x, center, text="Unavailable" if row.action == "UNAVAILABLE" else value,
+                                       fill=color, font=("Segoe UI", 9, "bold"))
                 else:
                     color = TEXT
                     if forecast_view and i == 2:
@@ -510,6 +526,8 @@ class GameplanTab:
             text = "No saved plan loaded." if not self.plan else (
                 "No projected actions in these filters.\nAll forecasts shows the saved hold and context windows." if not forecast_view
                 else "No forecasts match these filters.")
+            if self.plan and not self.plan.projection_available and not forecast_view:
+                text = "Cash projection unavailable.\nSelect All forecasts to review the saved forecast windows."
             canvas.create_text(width/2, 100, text=text, fill=MUTED_TEXT, font=("Segoe UI", 11), justify="center")
         canvas.configure(scrollregion=(0, 0, width, max(y, 230)))
         if canvas.winfo_width() < width:
@@ -569,6 +587,8 @@ class GameplanTab:
             else:
                 journey.append((forecast.end, "Forecast window ends", "No separate exit saved for this forecast", MUTED_TEXT))
             note = "Exit quantity follows actual filled shares." if entry and entry.action == "BUY" else reason_text(forecast.reason)
+            if not self.plan.projection_available:
+                note = self.plan.projection_note
             if not forecast.eligible:
                 note = "Outlook / research context. This window is not a scheduled entry."
         else:
@@ -612,6 +632,8 @@ class GameplanTab:
             sells = sum(row.action == "SELL" for row in actions)
             expiries = sum(row.action == "EXPIRY" for row in actions)
             text = f"{counted(buys, 'buy')} · {counted(sells, 'sell')}" if actions else "No projected trades"
+            if self.plan and not self.plan.projection_available:
+                text = "Cash projection unavailable"
             if expiries:
                 text += f" · {counted(expiries, 'expiry', 'expiries')}"
             caption.configure(text=text if self.plan else "No plan loaded")
@@ -638,10 +660,14 @@ class GameplanTab:
             return
         row, forecast, _, note = self._selection_content()
         lines = [f"Saved session: {self.plan.session} · All times Pacific", f"Company: {row.symbol} · Horizon: {row.horizon}", ""]
+        if not self.plan.projection_available:
+            lines += [self.plan.projection_note, "Projected actions and quantities were not calculated.", ""]
         if forecast:
+            action_text = f"Saved action: {forecast.action}" if self.plan.projection_available else (
+                "Projected action: Unavailable" if forecast.eligible else "Forecast context only")
             lines += [f"Published P(up): {forecast.probability:.2%}" if forecast.probability is not None else "Published probability: unavailable",
                       f"Saved direction: {forecast.direction.replace('NO_EDGE', 'NEUTRAL')}",
-                      f"Saved action: {forecast.action} · Direction-based shares: {shares(forecast.quantity)}",
+                      f"{action_text} · Direction-based shares: {shares(forecast.quantity)}",
                       f"Reason: {reason_text(forecast.reason)}", f"Model status: {forecast.model_status}",
                       f"Window start: {forecast.start:%a, %b %d, %Y %H:%M %Z}",
                       f"Window end: {forecast.end:%a, %b %d, %Y %H:%M %Z}",

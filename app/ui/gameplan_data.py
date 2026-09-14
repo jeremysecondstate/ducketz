@@ -19,6 +19,7 @@ from ml.artifacts import file_checksum, verify_manifest
 
 VERSION = "cash-aware-gameplan-trade-planning-v4"
 LEDGER_VERSION = "direction-based-gameplan-cash-ledger-v1"
+UNAVAILABLE_PROJECTION = "UNAVAILABLE_PRICE_REFERENCES"
 PACIFIC = ZoneInfo("America/Los_Angeles")
 HORIZONS = ("1h", "4h", "1d", "1w")
 REASONS = {
@@ -31,6 +32,7 @@ REASONS = {
     "HORIZON_BUY_ALREADY_PENDING": "Buy already pending in this horizon",
     "HORIZON_POSITION_ALREADY_HELD": "Position already held in this horizon",
     "INSUFFICIENT_CASH_OR_ALLOCATION_FOR_ONE_SHARE": "Insufficient cash or allocation",
+    "PRICE_REFERENCES_UNAVAILABLE": "Cash projection unavailable",
 }
 
 
@@ -86,6 +88,12 @@ class Gameplan:
     report_path: Path
     forecasts: tuple[PlanForecast, ...]
     actions: tuple[PlannedAction, ...]
+    projection_status: str = "COMPLETE"
+    projection_note: str = ""
+
+    @property
+    def projection_available(self) -> bool:
+        return self.projection_status == "COMPLETE"
 
     @property
     def symbols(self) -> tuple[str, ...]:
@@ -185,23 +193,31 @@ def plan_sessions(datastore_root: Path | None = None) -> tuple[str, ...]:
     return tuple(sorted(sessions, reverse=True))
 
 
-def _forecast(row: dict) -> PlanForecast:
+def _forecast(row: dict, *, projection_available: bool = True) -> PlanForecast:
     probability = _number(row["calibrated_probability"], optional=True)
     eligible = row["execution_eligible"]
     if not isinstance(eligible, bool) or (probability is not None and probability > 1):
         raise GameplanError("Invalid forecast probability or entry status")
     if row["model_status"] == "PROMOTED" and probability is None:
         raise GameplanError("A promoted forecast is missing its probability")
-    horizon, direction, action = row["model_group"], row["direction"], row["direction_based_action"]
+    horizon, direction = row["model_group"], row["direction"]
+    if projection_available:
+        action = row["direction_based_action"]
+        quantity = _number(row["direction_based_trade_quantity"], optional=True, minimum=-math.inf)
+        reason = str(row["direction_based_reason"])
+    else:
+        # Missing simulation is not a HOLD decision or a zero-share trade.
+        action, quantity = ("UNAVAILABLE" if eligible else "CONTEXT"), None
+        reason = "PRICE_REFERENCES_UNAVAILABLE" if eligible else "NON_ENTRY_CONTEXT"
     if horizon not in HORIZONS or direction not in {"BULLISH", "BEARISH", "NO_EDGE"}:
         raise GameplanError("Unsupported forecast horizon or direction")
-    if (action not in {"BUY", "SELL", "HOLD", "CONTEXT"}
+    allowed = {"BUY", "SELL", "HOLD", "CONTEXT"} if projection_available else {"UNAVAILABLE", "CONTEXT"}
+    if (action not in allowed
             or (eligible and action == "CONTEXT") or (not eligible and action != "CONTEXT")):
         raise GameplanError("Forecast context cannot be a projected trade")
     start, end = _timestamp(row["target_window_start"]), _timestamp(row["target_window_end"])
     if start >= end:
         raise GameplanError("Invalid forecast target window")
-    quantity = _number(row["direction_based_trade_quantity"], optional=True, minimum=-math.inf)
     if ((action == "BUY" and (quantity is None or quantity <= 0))
             or (action == "SELL" and (quantity is None or quantity >= 0))
             or (action == "HOLD" and quantity != 0)
@@ -212,8 +228,37 @@ def _forecast(row: dict) -> PlanForecast:
         raise GameplanError("Saved planning prices must be positive when available")
     return PlanForecast(str(row["id"]), str(row["symbol"]), horizon, str(row["route"]),
                         str(row["target_role"]), eligible, str(row["model_status"]), probability,
-                        direction, action, quantity, str(row["direction_based_reason"]), start, end,
+                        direction, action, quantity, reason, start, end,
                         price)
+
+
+def _projection_metadata(ledger: dict, report: dict, frame: pd.DataFrame) -> tuple[str, str]:
+    status = ledger.get("status")
+    if report.get("direction_projection_status", "COMPLETE") != status:
+        raise GameplanError("Saved report and direction ledger projection statuses disagree")
+    if status == "COMPLETE":
+        return status, ""
+    if status != UNAVAILABLE_PROJECTION or report.get("direction_based_projection") != ledger:
+        raise GameplanError("Unsupported or inconsistent unavailable cash projection")
+    # Only the publisher's explicit unavailable state can omit direction columns.
+    # Integrity verification still applies to every original artifact.
+    if (any(ledger.get(key) != empty for key, empty in (
+            ("events", []), ("hourly", []), ("ending_positions", {}), ("summary", {})))
+            or ledger.get("ending_allocations", []) != []
+            or any(value is not None for key, value in ledger.items() if key.startswith("ending_cash"))
+            or ledger.get("orders_placed") != 0 or ledger.get("broker_orders_enabled") is not False):
+        raise GameplanError("Unavailable cash projection contains projected trades or balances")
+    columns = [name for name in frame if name.startswith(("direction_based_", "projected_cash_after_"))]
+    if columns and frame[columns].notna().any().any():
+        raise GameplanError("Unavailable cash projection contains projected forecast actions or cash")
+    points, reason = ledger.get("unavailable_points"), ledger.get("reason")
+    if (not isinstance(reason, str) or not reason.strip() or not isinstance(points, list) or not points
+            or any(not isinstance(point, dict) or point.get("symbol") not in set(frame.symbol)
+                   or not isinstance(point.get("reason"), str) or not point["reason"].strip()
+                   for point in points)):
+        raise GameplanError("Unavailable cash projection is missing its price-reference explanation")
+    symbols = ", ".join(sorted({point["symbol"] for point in points}))
+    return status, f"Cash projection unavailable: missing price references for {symbols}. Saved forecasts remain available."
 
 
 def _actions(ledger: dict, forecasts: tuple[PlanForecast, ...], session: str) -> tuple[PlannedAction, ...]:
@@ -324,14 +369,16 @@ def load_gameplan(datastore_root: Path | None = None, session: str | None = None
                 or frame.symbol.isna().any() or frame.duplicated(["symbol", "route"]).any()
                 or not frame.action_date.astype(str).eq(selected).all()):
             raise GameplanError("Invalid saved forecast identities, counts or session")
-        forecasts = tuple(sorted((_forecast(row) for row in frame.to_dict("records")),
-                                 key=lambda row: (row.start, HORIZONS.index(row.horizon), row.symbol, row.route)))
         ledger = _json(run / "direction-ledger.json")
-        actions = _actions(ledger, forecasts, selected)
+        projection_status, projection_note = _projection_metadata(ledger, report, frame)
+        available = projection_status == "COMPLETE"
+        forecasts = tuple(sorted((_forecast(row, projection_available=available) for row in frame.to_dict("records")),
+                                 key=lambda row: (row.start, HORIZONS.index(row.horizon), row.symbol, row.route)))
+        actions = _actions(ledger, forecasts, selected) if available else ()
         if file_checksum(receipt_path) != receipt_hash:
             raise GameplanError("Saved Gameplan changed while it was being read. Refresh again.")
         return Gameplan(selected, _timestamp(report["observed_at"]), _timestamp(receipt["completed_at"]),
-                        run, run / "Gameplan.md", forecasts, actions)
+                        run, run / "Gameplan.md", forecasts, actions, projection_status, projection_note)
     except GameplanError:
         raise
     except FileNotFoundError as exc:

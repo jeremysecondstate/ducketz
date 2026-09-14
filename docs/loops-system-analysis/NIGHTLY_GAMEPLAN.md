@@ -16,6 +16,14 @@ price or relax the native source, account, ownership or live quote checks.
 This supersedes requirements below to produce numeric projections at every
 clock when the underlying observations are unavailable.
 
+The desktop **Gameplan** tab validates the saved receipt, manifest and explicit
+projection status before loading these plans. When the cash projection is
+unavailable, it opens **All forecasts**, retaining company/horizon filters,
+published probabilities, directions, windows and report access. Projected
+trade counts and quantities show unavailable rather than zero or an inferred
+hold. The notice names the companies with missing price references. This is a
+read-only view of the saved publication and does not change the live trader.
+
 The user's separate manual late-opening exception is
 `--late-opening-date 2026-09-14`, valid only before 05:00 that day with the managed
 Gameplan policy. Original forecast IDs/target ends and persistent entry-slot

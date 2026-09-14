@@ -59,7 +59,7 @@ def plan_payload(session="2026-09-14"):
 
 
 def write_plan(root: Path, *, session="2026-09-14", rows=None, ledger=None, latest=True,
-               run_name=None, status="COMPLETE", version=VERSION):
+               run_name=None, status="COMPLETE", version=VERSION, report_updates=None):
     default_rows, default_ledger = plan_payload(session)
     rows = default_rows if rows is None else rows
     ledger = default_ledger if ledger is None else ledger
@@ -73,7 +73,7 @@ def write_plan(root: Path, *, session="2026-09-14", rows=None, ledger=None, late
     completed = (pd.Timestamp(observed) + pd.Timedelta(minutes=1)).isoformat()
     source = "a"*64
     save("report.json", dict(schema_version=version, status=status, action_date=session, observed_at=observed,
-                             forecast_rows=len(rows), source_receipt_sha256=source))
+                             forecast_rows=len(rows), source_receipt_sha256=source, **(report_updates or {})))
     (run/"Gameplan.md").write_text(f"# {session} Gameplan\nSaved fixture plan.\n", encoding="utf-8")
     write_manifest(run, run_timestamp=observed, input_files=[],
                    output_files=["trade-plan.parquet", "direction-ledger.json", "report.json", "Gameplan.md"],
@@ -88,3 +88,16 @@ def write_plan(root: Path, *, session="2026-09-14", rows=None, ledger=None, late
             run_path=run.relative_to(root).as_posix(), receipt_sha256=file_checksum(run/"receipt.json"),
             source_receipt_sha256=source))), encoding="utf-8")
     return run
+
+
+def unavailable_payload():
+    rows, _ = plan_payload()
+    for row in rows:
+        for key in tuple(row):
+            if key.startswith("direction_based_"):
+                del row[key]
+    ledger = dict(status="UNAVAILABLE_PRICE_REFERENCES", events=[], hourly=[], ending_positions={}, summary={},
+                  orders_placed=0, broker_orders_enabled=False, reason="Missing observed price references.",
+                  unavailable_points=[dict(symbol="AAPL", reason="Missing exact prior-session close")])
+    report = dict(direction_projection_status=ledger["status"], direction_based_projection=ledger)
+    return rows, ledger, report

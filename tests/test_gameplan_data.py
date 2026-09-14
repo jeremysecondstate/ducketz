@@ -5,7 +5,7 @@ import json
 import pytest
 
 from app.ui.gameplan_data import GameplanError, load_gameplan, plan_sessions
-from gameplan_fixture import plan_payload, write_plan
+from gameplan_fixture import plan_payload, unavailable_payload, write_plan
 
 
 def test_quantities_come_from_ledger_and_holds_and_context_remain_forecasts(tmp_path):
@@ -101,4 +101,47 @@ def test_pointer_cannot_escape_runs_directory(tmp_path):
     pointer["current"]["run_path"] = "../unrelated"
     path.write_text(json.dumps(pointer))
     with pytest.raises(GameplanError, match="outside"):
+        load_gameplan(tmp_path)
+
+
+def test_unavailable_projection_preserves_verified_forecasts_without_inventing_actions(tmp_path):
+    rows, ledger, report = unavailable_payload()
+    run = write_plan(tmp_path, rows=rows, ledger=ledger, report_updates=report)
+    before = {path: path.read_bytes() for path in run.iterdir()}
+    plan = load_gameplan(tmp_path)
+    assert not plan.projection_available
+    assert not plan.actions
+    assert len(plan.forecasts) == len(rows)
+    by_id = {row["id"]: row for row in rows}
+    for row in plan.forecasts:
+        assert row.probability == by_id[row.forecast_id]["calibrated_probability"]
+        assert row.direction == by_id[row.forecast_id]["direction"]
+        assert row.quantity is None
+        assert row.action == ("UNAVAILABLE" if row.eligible else "CONTEXT")
+    assert "AAPL" in plan.projection_note
+    assert {path: path.read_bytes() for path in run.iterdir()} == before
+
+
+@pytest.mark.parametrize("mutation", ["unmarked", "report_status", "embedded_report", "events", "summary",
+                                    "holdings", "cash", "allocations", "actions", "missing_points",
+                                    "unknown_symbol", "missing_reason", "probability", "clock", "live"])
+def test_unavailable_projection_does_not_bypass_publication_contracts(tmp_path, mutation):
+    rows, ledger, report = unavailable_payload()
+    if mutation == "unmarked": ledger["status"] = "COMPLETE"; report.clear()
+    if mutation == "report_status": report["direction_projection_status"] = "COMPLETE"
+    if mutation == "embedded_report": report["direction_based_projection"] = {}
+    if mutation == "events": ledger["events"] = [{"action": "BUY"}]
+    if mutation == "summary": ledger["summary"] = {"ending_cash_base": 100}
+    if mutation == "holdings": ledger["ending_positions"] = {"AAPL": 17}
+    if mutation == "cash": ledger["ending_cash_base"] = 0
+    if mutation == "allocations": ledger["ending_allocations"] = [{"quantity": 17}]
+    if mutation == "actions": rows[0]["direction_based_action"] = "BUY"
+    if mutation == "missing_points": ledger["unavailable_points"] = []
+    if mutation == "unknown_symbol": ledger["unavailable_points"][0]["symbol"] = "UNKNOWN"
+    if mutation == "missing_reason": ledger["reason"] = ""
+    if mutation == "probability": rows[0]["calibrated_probability"] = 1.5
+    if mutation == "clock": rows[0]["target_window_start"] = rows[0]["target_window_start"].tz_localize(None)
+    if mutation == "live": ledger["broker_orders_enabled"] = True
+    write_plan(tmp_path, rows=rows, ledger=ledger, report_updates=report)
+    with pytest.raises(GameplanError):
         load_gameplan(tmp_path)

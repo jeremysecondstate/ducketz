@@ -9,7 +9,7 @@ import pytest
 
 import app.ui.gameplan as plan_ui
 from app.ui.gameplan_data import GameplanError, load_gameplan
-from gameplan_fixture import write_plan
+from gameplan_fixture import unavailable_payload, write_plan
 
 
 @pytest.fixture
@@ -174,3 +174,49 @@ def test_cross_session_clock_and_fractional_share_formatting():
     assert plan_ui.money(None) == "—"
     stamp = datetime.fromisoformat("2026-09-15T07:00:00-07:00")
     assert "Sep 15" in plan_ui.clock_text(stamp, "2026-09-14")
+
+
+def test_unavailable_projection_opens_forecasts_and_keeps_filters_and_details(tab, tmp_path, monkeypatch):
+    rows, ledger, report = unavailable_payload()
+    write_plan(tmp_path, rows=rows, ledger=ledger, report_updates=report)
+    tab.refresh()
+    finish_refresh(tab)
+    assert tab.view.get() == "forecasts"
+    assert len(tab.visible_rows) == 7
+    assert "Cash projection unavailable" in tab.status.get()
+    assert tab.values["coverage"].get() == "4 horizons"
+    assert tab.captions["coverage"].get() == "7 forecasts · 3 companies"
+    for key in ("first", "entries", "exits"):
+        assert tab.values[key].get() == "—"
+        assert tab.captions[key].get() == "Cash projection unavailable"
+    assert tab.trade_button.cget("text") == "Trades unavailable"
+    assert "disabled" not in tab.report_button.state()
+    tab.company.set("NVDA")
+    tab.horizon.set("1 week")
+    tab.render()
+    assert len(tab.visible_rows) == 1
+    assert tab.selected_row.action == "UNAVAILABLE"
+    assert tab.probability.cget("text") == "70.00%"
+    shown = []
+    monkeypatch.setattr(tab, "_text_dialog", lambda title, text: shown.append(text))
+    tab.show_details()
+    assert "Direction-based shares: —" in shown[-1]
+    assert "Projected action: Unavailable" in shown[-1]
+    assert "Sep 18, 2026 17:00 PDT" in shown[-1]
+    assert "9999" not in shown[-1]
+    assert all(widgets[3].cget("text") == "Cash projection unavailable" for widgets in tab.horizon_widgets)
+    tab.refresh()
+    finish_refresh(tab)
+    assert tab.selected_row.symbol == "NVDA"
+    assert tab.horizon.get() == "1 week"
+    tab.view.set("trades")
+    tab.render()
+    assert not tab.visible_rows
+    assert "Cash projection unavailable" in tab.table_note.cget("text")
+    assert "No saved plan" not in tab.table_note.cget("text")
+    write_plan(tmp_path)
+    tab.refresh()
+    finish_refresh(tab)
+    assert tab.trade_button.cget("text") == "Trades 2"
+    assert tab.values["entries"].get() == "1 buy"
+    assert "Cash projection unavailable" not in tab.status.get()
