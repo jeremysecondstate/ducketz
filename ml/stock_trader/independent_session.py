@@ -1,7 +1,7 @@
 """Bounded native stock-session worker for independent entries and exits.
 
-An entry batch runs once per hourly action slot. Extra checks manage existing
-allocations only; they cannot multiply the number of entry batches.
+Legacy policies attempt each hourly slot once. Gameplan instructions retry
+within their scheduled hour; durable forecast reservations prevent duplicates.
 """
 from __future__ import annotations
 
@@ -242,7 +242,9 @@ def run_independent_stock_session(
                         "reason": "SESSION_ELAPSED_WHILE_SLEEPING"}
         if not _has_inventory(root / LEDGER_RELATIVE_PATH):
             forecast_sizing = sizing_policy in {FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY}
-            preflight = _independent_forecast_preflight if forecast_sizing else _independent_enrichment_preflight
+            from ml.stock_trader.gameplan_execution import execution_preflight
+            preflight = (execution_preflight if sizing_policy == GAMEPLAN_SIZING_POLICY else
+                         _independent_forecast_preflight if forecast_sizing else _independent_enrichment_preflight)
             readiness = preflight(root, action_date=day.date())
             if readiness["status"] != "READY":
                 publish_status("BLOCKED_PREFLIGHT")
@@ -261,6 +263,11 @@ def run_independent_stock_session(
             entry_minute = 6 if local.hour == 13 else 1
             slot = local.floor("h").isoformat()
             due_entry = (4 <= local.hour < 17 and local.minute == entry_minute and slot not in attempted)
+            if sizing_policy == GAMEPLAN_SIZING_POLICY:
+                # Recheck unfinished instructions after startup/read failures.
+                # Per-forecast broker reservations prevent duplicate orders.
+                due_entry = (4 <= local.hour < 17 and local.minute >= entry_minute
+                             and stock_execution_window(now).executable)
             late_opening = (late_opening_date == local.date().isoformat() and local.hour == 4
                             and local.minute >= 1 and slot not in attempted)
             due_entry = due_entry or late_opening

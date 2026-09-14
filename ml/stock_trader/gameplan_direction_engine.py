@@ -18,7 +18,7 @@ from ml.stock_trader.contracts import (
     TradeDecision, canonical_sha256, decision_identifier, finite, utc,
 )
 from ml.stock_trader.engine import _portfolio_summary
-from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS, fixed_budget_forecast_readiness
+from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS
 from ml.stock_trader.fixed_horizon_engine import _joint_budgets, _money, _shares
 from ml.stock_trader.sizing_policy import GAMEPLAN_SIZING_POLICY
 
@@ -213,8 +213,6 @@ def build_gameplan_direction_trade_decisions(
         raise ValueError("Quote recovery must identify supplied one-hour forecasts")
     if time_in_force not in {"DAY", "AM", "PM", "EXT", "GTC_EXT"}:
         raise ValueError("Unsupported Gameplan stock time in force")
-    if not isinstance(verified_promoted_signals, frozenset) or not verified_promoted_signals.issubset(signals):
-        raise ValueError("Verified promoted keys must name supplied native signals")
     if not isinstance(active_allocations, frozenset) or type(ledger_ready) is not bool:
         raise ValueError("Gameplan planning requires explicit reconciled allocation state")
     if type(active_policy.maximum_orders_per_wake) is not int:
@@ -254,28 +252,26 @@ def build_gameplan_direction_trade_decisions(
 
     for key in sorted(signals, key=rank):
         signal = signals[key]
-        readiness = fixed_budget_forecast_readiness(signal, forecast_promoted=key in verified_promoted_signals,
-            policy=active_policy)
+        probability = finite(signal.calibrated_probability)
+        ready = probability is not None and 0 <= probability <= 1
         code = "ELIGIBLE"
         reason = "The Gameplan direction uses current cash, eligible shares, and the current quote."
         quantity = hypothetical = 0
         price = None
         ceiling = _ZERO
-        direction = stock_direction(signal.calibrated_probability) if readiness["status"] != "NOT_READY" else "UNAVAILABLE"
+        direction = stock_direction(signal.calibrated_probability) if ready else "UNAVAILABLE"
         action = "SELL" if direction == "BEARISH" else "BUY" if direction == "BULLISH" else "HOLD"
         if not activation.active:
             code, reason = "TRADER_INACTIVE", activation.reason
         elif not ledger_ready:
             code = "HORIZON_LEDGER_UNRECONCILED"
-        elif readiness["status"] == "NOT_READY":
-            code = str(readiness["reason"])
+        elif not ready:
+            code = "FORECAST_PROBABILITY_INVALID"
         elif direction == "NO_EDGE":
             code, reason = "NEUTRAL_HOLD", "A probability strictly between 46% and 54% means no direction-based trade."
         else:
-            from ml.stock_trader.independent_signals import _entry_deadline
             start, end = utc(signal.target_window_start), utc(signal.target_window_end)
-            deadline = (min(utc(signal.actionable_until), end) if signal.prediction_id in recovered_forecast_ids
-                        else min(utc(signal.actionable_until), _entry_deadline(start, late_opening_date=late_opening_date), end))
+            deadline = min(utc(signal.actionable_until), end)
             if not start <= timestamp < deadline:
                 code = "ENTRY_WINDOW_CLOSED"
             elif action == "BUY" and key in active_allocations:
@@ -316,11 +312,14 @@ def build_gameplan_direction_trade_decisions(
                     capacity -= 1
         if not quantity and code not in {"TRADER_INACTIVE", "NEUTRAL_HOLD"}:
             reason = "The current forecast, entry window, quote, reconciled inventory, actual capital, or configured batch limit does not permit this order."
-        results.append(_make_decision(signal, portfolio, activation, active_policy, timestamp,
+        decision = _make_decision(signal, portfolio, activation, active_policy, timestamp,
             action=action, quantity=quantity, hypothetical_quantity=hypothetical, price=price,
             code=code, reason=reason, time_in_force=time_in_force,
             sell_capacity=bearish_sell_capacities.get(key, 0), horizon_ceiling=ceiling,
-            maximum_quote_age_seconds=maximum_quote_age_seconds))
+            maximum_quote_age_seconds=maximum_quote_age_seconds)
+        if signal.prediction_id in recovered_forecast_ids:
+            decision = replace(decision, prediction={**decision.prediction, "quote_recovery": True})
+        results.append(decision)
     return tuple(results)
 
 

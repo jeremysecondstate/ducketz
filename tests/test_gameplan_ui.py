@@ -36,6 +36,21 @@ def finish_refresh(tab):
     assert not tab._loading
 
 
+def test_planned_and_execution_mid_prices_are_adjacent_in_both_views(tab):
+    from dataclasses import replace
+    from app.ui.gameplan_data import ExecutionQuote
+    forecast=tab.plan.forecast(tab.visible_rows[0].forecast_id)
+    quote=ExecutionQuote(forecast.forecast_id,127.22,forecast.start,127.24,15.)
+    tab.set_plan(replace(tab.plan,execution_quotes=(quote,)))
+    for view in ('trades','forecasts'):
+        tab.view.set(view)
+        tab.render()
+        headers=[tab.table_header.itemcget(i,'text') for i in tab.table_header.find_all() if tab.table_header.type(i)=='text']
+        assert headers[headers.index('Planning price')+1] == 'Execution mid'
+        cells=[tab.table.itemcget(i,'text') for i in tab.table.find_all() if tab.table.type(i)=='text']
+        assert '$127.22' in cells
+
+
 def test_filtered_cards_table_and_forecasts_have_consistent_scope(tab):
     assert tab.values["entries"].get() == "2 buys"
     assert tab.values["exits"].get() == "1 sell"

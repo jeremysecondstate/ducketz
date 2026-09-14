@@ -122,10 +122,10 @@ def run_independent_stock_trader_once(
 ) -> StockTraderRunResult:
     """Consume exact independent forecasts and manage only their owned shares.
 
-    Both persistent stock controls, qualified models, coherent broker evidence,
-    and durable reservations remain mandatory. No model check is bypassed by
-    selecting all horizons. Exits remain available when a newer plan/model is
-    unavailable because they derive from previously filled allocations.
+    Both stock controls, current broker cash/shares, and durable reservations
+    apply. Gameplan execution uses saved instructions directly; learned and
+    fixed strategies retain their model qualification. Exits remain available
+    when a newer plan is unavailable because they derive from filled holdings.
     Live entries additionally require the bounded session worker so opening a
     longer holding cannot silently omit its subsequent exit management.
     """
@@ -187,7 +187,8 @@ def run_independent_stock_trader_once(
         signals = {}
         try:
             if entry_allowed:
-                signal_options = {"require_promoted_model_reports": True} if sizing_policy in {FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY} else {}
+                signal_options = ({"execution_ready_plan": True} if sizing_policy == GAMEPLAN_SIZING_POLICY else
+                                  {"require_promoted_model_reports": True} if sizing_policy == FIXED_SIZING_POLICY else {})
                 if late_opening_date is not None:
                     signal_options['late_opening_date'] = late_opening_date
                     metadata['late_opening_date'] = late_opening_date
@@ -223,7 +224,7 @@ def run_independent_stock_trader_once(
                 return finish("INDEPENDENT_TARGET_PLAN_UNAVAILABLE", error=metadata["entry_input_error"])
             return finish("NO_DIRECTIONAL_STOCK_ENTRY_SIGNAL" if sizing_policy in {FIXED_SIZING_POLICY, GAMEPLAN_SIZING_POLICY}
                           else "NO_QUALIFIED_INDEPENDENT_STOCK_ENTRIES")
-        if execute and qualified:
+        if execute and qualified and (resume_quote_run or sizing_policy != GAMEPLAN_SIZING_POLICY):
             if resume_quote_run:
                 from ml.stock_trader.quote_recovery import claim_quote_recovery
                 claimed = claim_quote_recovery(root, metadata["quote_recovery"], as_of=timestamp)
@@ -326,6 +327,11 @@ def run_independent_stock_trader_once(
         if not window.executable:
             return finish("EXECUTION_WINDOW_CLOSED_AFTER_BROKER_CAPTURE", error=window.reason)
         state = ledger.snapshot()
+        if sizing_policy == GAMEPLAN_SIZING_POLICY:
+            # A read failure or quote skip does not consume a forecast. Existing
+            # allocations, including completed ones, suppress its resubmission.
+            recorded = {allocation.forecast_id for allocation in state.allocations}
+            qualified = {key: signal for key, signal in qualified.items() if signal.prediction_id not in recorded}
         if late_opening_date is not None and utc(clock()).tz_convert('America/Los_Angeles').hour != 4:
             qualified = {}
             late_opening_date = None
@@ -333,6 +339,7 @@ def run_independent_stock_trader_once(
         if execute:
             cancelled, cancellation_error = _cancel_expired_entries(
                 root, broker, ledger, state, portfolio, stable_identity, clock,
+                gameplan_entries=sizing_policy == GAMEPLAN_SIZING_POLICY,
                 **({'late_opening_date':late_opening_date} if late_opening_date is not None else {}),
             )
             if cancelled or cancellation_error:
@@ -367,6 +374,9 @@ def run_independent_stock_trader_once(
             and d.quantity == 0 and d.decision_reason_code in {"USABLE_QUOTE_UNAVAILABLE", "CURRENT_QUOTE_TOO_OLD"}]
         if blocked_exit_quotes:
             metadata["blocked_owned_exit_quotes"] = sorted(set(blocked_exit_quotes))
+        if sizing_policy == GAMEPLAN_SIZING_POLICY:
+            from ml.stock_trader.price_comparison import attach_price_comparisons
+            decisions = attach_price_comparisons(root, decisions)
         publication = publish_decision_run(
             root, decisions, decided_at=timestamp, activation=activation, policy=active_policy,
             execution_requested=execute, source_files=sources, prediction_handoff=metadata,
@@ -473,7 +483,7 @@ class _SubmissionStopped(RuntimeError):
     pass
 
 
-def _cancel_expired_entries(root, broker, ledger, state, portfolio, stable_identity, clock, *, late_opening_date=None):
+def _cancel_expired_entries(root, broker, ledger, state, portfolio, stable_identity, clock, *, late_opening_date=None, gameplan_entries=False):
     requested = 0
     allocations = {a.allocation_id: a for a in state.allocations}
     for reservation in state.reservations:
@@ -482,7 +492,9 @@ def _cancel_expired_entries(root, broker, ledger, state, portfolio, stable_ident
             continue
         allocation = allocations[reservation.allocation_id]
         from ml.stock_trader.quote_recovery import recovered_entry_deadline
-        deadline = recovered_entry_deadline(root, allocation, _entry_deadline(utc(allocation.target_start), late_opening_date=late_opening_date))
+        deadline = (min(utc(allocation.target_start) + pd.Timedelta(hours=1), utc(allocation.target_end))
+                    if gameplan_entries else recovered_entry_deadline(root, allocation,
+                        _entry_deadline(utc(allocation.target_start), late_opening_date=late_opening_date)))
         if utc(clock()) < deadline:
             continue
         try:
@@ -540,6 +552,7 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
                     root, decision, as_of=utc(clock()), planned_window=window,
                     allow_open_queue=False, allow_premarket_queue=False, execution_lead_seconds=5,
                     activation_reader=read_gameplan_stock_activation_intent,
+                    allow_target_session_transition=decision.prediction.get("sizing_policy") == GAMEPLAN_SIZING_POLICY,
                 )
                 if reason:
                     raise _SubmissionStopped(reason)

@@ -485,13 +485,13 @@ class GameplanTab:
         header.delete("all")
         self._row_bounds = []
         forecast_view = self.view.get() == "forecasts"
-        weights = [205, 125, 105, 72, 85, 90, 215] if forecast_view else [95, 135, 90, 72, 75, 145, 230]
+        weights = [175, 125, 105, 72, 85, 105, 105, 90, 190] if forecast_view else [95, 135, 90, 72, 75, 120, 120, 210]
         width = max(sum(weights), canvas.winfo_width())
         edges = [0]
         for value in weights:
             edges.append(edges[-1] + value * width / sum(weights))
-        headers = ("Window (Pacific)", "Company", "Direction", "Horizon", "P(up)", "Action", "Reason") if forecast_view else (
-            "Time", "Company", "Action", "Horizon", "Shares", "Planning price", "Reason")
+        headers = ("Window (Pacific)", "Company", "Direction", "Horizon", "P(up)", "Planning price", "Execution mid", "Action", "Reason") if forecast_view else (
+            "Time", "Company", "Action", "Horizon", "Shares", "Planning price", "Execution mid", "Reason")
         for i, title in enumerate(headers):
             header.create_rectangle(edges[i], 0, edges[i+1], 31, fill=SURFACE_ALT, outline=BORDER)
             header.create_text((edges[i]+edges[i+1])/2, 15, text=title, fill=MUTED_TEXT, font=("Segoe UI", 10))
@@ -510,13 +510,16 @@ class GameplanTab:
             canvas.create_rectangle(0, top, width-1, top+40, fill="#102d3e" if selected else TABLE,
                                     outline=CYAN if selected else BORDER)
             if isinstance(row, PlannedAction):
+                execution = self.plan.execution_quote(row.forecast_id, is_exit=row.reason == "HORIZON_EXIT" or row.action == "EXPIRY")
                 texts = [clock_text(row.when, self.plan.session), row.symbol, row.action, row.horizon,
-                         shares(row.quantity), money(row.price), reason_text(row.reason)]
+                         shares(row.quantity), money(row.price), money(execution.midpoint) if execution else "—", reason_text(row.reason)]
                 # Dates are already in the batch header; keep individual time cells compact.
                 texts[0] = row.when.strftime("%H:%M")
             else:
+                execution = self.plan.execution_quote(row.forecast_id)
                 texts = [window_text(row, self.plan.session), row.symbol, row.direction.replace("NO_EDGE", "Neutral").title(),
-                         row.horizon, "—" if row.probability is None else f"{row.probability:.2%}", row.action, reason_text(row.reason)]
+                         row.horizon, "—" if row.probability is None else f"{row.probability:.2%}", money(row.price),
+                         money(execution.midpoint) if execution else "—", row.action, reason_text(row.reason)]
             for i, value in enumerate(texts):
                 x = (edges[i]+edges[i+1])/2
                 if i == 1:
@@ -524,7 +527,7 @@ class GameplanTab:
                     if photo:
                         canvas.create_image(edges[i]+22, center, image=photo)
                     canvas.create_text(edges[i]+45, center, anchor="w", text=value, fill=TEXT, font=("Segoe UI", 10, "bold"))
-                elif (not forecast_view and i == 2) or (forecast_view and i == 5):
+                elif (not forecast_view and i == 2) or (forecast_view and i == 7):
                     color = ACTION_COLORS[row.action]
                     half_width = 42 if row.action == "UNAVAILABLE" else 34
                     canvas.create_rectangle(x-half_width, center-11, x+half_width, center+11, fill="#183044", outline=color)
@@ -607,6 +610,11 @@ class GameplanTab:
                 note = self.plan.projection_note
             if not forecast.eligible:
                 note = "Outlook / research context. This window is not a scheduled entry."
+            execution = self.plan.execution_quote(forecast.forecast_id,
+                is_exit=isinstance(row, PlannedAction) and (row.reason == "HORIZON_EXIT" or row.action == "EXPIRY"))
+            if execution:
+                note += (f" Recorded midpoint {money(execution.midpoint)} at {execution.observed_at:%H:%M:%S %Z};"
+                         f" planned price {money(row.price)}. This comparison does not affect execution.")
         else:
             journey.append((row.when, reason_text(row.reason), f"{shares(row.quantity)} shares · {money(row.price)}", ACTION_COLORS[row.action]))
             note = "Allocation from an earlier plan. Its forecast is not part of this saved session."

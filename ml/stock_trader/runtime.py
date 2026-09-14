@@ -1204,6 +1204,7 @@ def _submission_safety_reason(
     allow_premarket_queue: bool,
     execution_lead_seconds: float,
     activation_reader: ActivationReader = read_activation_intent,
+    allow_target_session_transition: bool = False,
 ) -> str | None:
     if not activation_reader(root).active:
         return "OPERATOR_INTENT_NOT_ACTIVE_AT_SUBMISSION"
@@ -1222,7 +1223,11 @@ def _submission_safety_reason(
         return current_window.reason
     if current_window.checkpoint_session != planned_window.checkpoint_session:
         return "EXECUTION_SESSION_CHANGED_BEFORE_SUBMISSION"
-    if not decision_targets_open(
+    if allow_target_session_transition:
+        if not (utc(decision.prediction["target_window_start"]) <= utc(as_of)
+                < utc(decision.prediction["target_window_end"])):
+            return "RECOVERY_TARGET_ALREADY_ENDED"
+    elif not decision_targets_open(
         decision.prediction.get("target_window_start"), current_window
     ):
         return "QUEUE_TARGET_NO_LONGER_MATCHES_CURRENT_WINDOW"

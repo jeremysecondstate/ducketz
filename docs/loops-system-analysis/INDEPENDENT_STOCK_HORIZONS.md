@@ -1,5 +1,24 @@
 # Independent stock horizons
 
+September 14 follow-up operator instruction (all eleven symbols): the Gameplan
+execution policy reads published trading instructions directly. It does not
+rerun model promotion, training-artifact, manifest, receipt-checksum or exact
+research-contract validation at startup or on each order. Forecast creation
+during premarket does not restrict the session used by a later scheduled order.
+Normal execution first attempts at HH:01 (13:06 for the broker transition), then
+rechecks unfinished instructions through that action hour. Existing per-forecast
+order/allocation records prevent duplicates; an empty old hourly attempt claim
+does not discard an unsubmitted instruction. No entry is moved past its original
+holding target. Current available cash, eligible shares and allocation limits
+determine executable quantity. Plan prices and cash remain estimates.
+
+Every Gameplan decision records its planned price, fetched bid/ask midpoint,
+quote receipt/update times, actual limit and quantity under `price_comparison`.
+The Gameplan table shows Planning price and Execution mid side by side for every
+symbol, including historical recorded quotes. Planning files are unchanged;
+missing comparison data never vetoes execution. Legacy policies keep their
+existing research validation and hourly attempt behavior.
+
 September 14 operator-approved execution correction: Gameplan buys and sells
 use current real-time Schwab NBBO responses. Keep the provider's bid/ask update
 time in `observed_at`; use the separately recorded HTTP `received_at` for the
@@ -11,13 +30,17 @@ than a healthy no-order cycle. Wide spreads use the operator-authorized midpoint
 limit, rounded to cents. Cash is charged at the limit; horizon and symbol exposure
 remain valued consistently with the native inventory ledger.
 
-An operator may explicitly restart with `--resume-quote-run RUN_ID
+The earlier recovery interface remains available for historical compatibility:
+an operator may explicitly restart with `--resume-quote-run RUN_ID
 --resume-quote-symbol SYMBOL` to recover one unsubmitted one-hour quote skip from
-the same action date. This is a once-only recovery of the original forecast with
+the same action date. This recovers the original forecast with
 current cash/holdings/quotes and its original target end. A separate persistent
-recovery claim prevents duplication; normal hourly claims remain intact. On
+recovery claim records attempts; a proven failure before any allocation may be
+retried. Existing broker reservations prevent duplication. Old hourly claims remain intact. On
 September 14 this was authorized for TWST from `20260914T130120.596605Z`, retaining
-its 07:00 Pacific target end. The recurring launcher never adds recovery flags.
+its 07:00 Pacific target end. That entry was missed; the ordinary 07:00 TWST
+instruction subsequently filled 15 shares at $127.22 at 07:01:29 Pacific.
+Ordinary restarts of the current Gameplan policy do not need recovery flags.
 
 Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from `datafetching/watchlist.txt` and validate historical publications against their own saved universes.
 

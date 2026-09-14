@@ -80,6 +80,16 @@ class PlannedAction:
 
 
 @dataclass(frozen=True)
+class ExecutionQuote:
+    forecast_id: str
+    midpoint: float
+    observed_at: datetime
+    limit_price: float | None
+    quantity: float | None
+    is_exit: bool = False
+
+
+@dataclass(frozen=True)
 class Gameplan:
     session: str
     saved_at: datetime
@@ -91,6 +101,7 @@ class Gameplan:
     projection_status: str = "COMPLETE"
     projection_note: str = ""
     planning_note: str = ""
+    execution_quotes: tuple[ExecutionQuote, ...] = ()
 
     @property
     def projection_available(self) -> bool:
@@ -112,6 +123,43 @@ class Gameplan:
 
     def forecast(self, identifier: str) -> PlanForecast | None:
         return next((row for row in self.forecasts if row.forecast_id == identifier), None)
+
+    def execution_quote(self, identifier: str, *, is_exit=False) -> ExecutionQuote | None:
+        return next((row for row in self.execution_quotes if row.forecast_id == identifier and row.is_exit == is_exit), None)
+
+
+def _execution_quotes(root: Path, forecasts: tuple[PlanForecast, ...]) -> tuple[ExecutionQuote, ...]:
+    from ml.stock_trader.price_comparison import quote_comparison
+    identifiers = {row.forecast_id for row in forecasts}
+    recorded = {}
+    if not identifiers:
+        return ()
+    earliest = min(row.start for row in forecasts).strftime("%Y%m%d")
+    latest = max(row.start for row in forecasts).strftime("%Y%m%d")
+    for run in sorted((root / "ml/stock-trader-decision-runs").glob("*")):
+        if not earliest <= run.name[:8] <= latest:
+            continue
+        try:
+            document = _json(run / "decisions.json")
+            for decision in document.get("decisions", []):
+                prediction = decision.get("prediction") or {}
+                identifier = prediction.get("parent_forecast_id", prediction.get("prediction_id"))
+                if identifier not in identifiers:
+                    continue
+                comparison = quote_comparison(decision)
+                if comparison["live_midpoint"] is None:
+                    continue
+                is_exit = prediction.get("position_purpose") == "EXIT"
+                quote = ExecutionQuote(identifier, comparison["live_midpoint"],
+                    _timestamp(comparison["quote_received_at"] or comparison["quote_updated_at"]),
+                    _number(decision.get("limit_price"), optional=True), _number(decision.get("quantity"), optional=True), is_exit)
+                key = (identifier, is_exit)
+                if key not in recorded or quote.observed_at > recorded[key].observed_at:
+                    recorded[key] = quote
+        except (OSError, ValueError, TypeError, KeyError):
+            # A missing optional execution record does not hide the plan.
+            continue
+    return tuple(recorded.values())
 
 
 def _filter_horizon(horizon: str):
@@ -400,7 +448,7 @@ def load_gameplan(datastore_root: Path | None = None, session: str | None = None
             raise GameplanError("Saved Gameplan changed while it was being read. Refresh again.")
         return Gameplan(selected, _timestamp(report["observed_at"]), _timestamp(receipt["completed_at"]),
                         run, run / "Gameplan.md", forecasts, actions, projection_status, projection_note,
-                        _planning_note(report, set(frame.symbol)))
+                        _planning_note(report, set(frame.symbol)), _execution_quotes(root, forecasts))
     except GameplanError:
         raise
     except FileNotFoundError as exc:

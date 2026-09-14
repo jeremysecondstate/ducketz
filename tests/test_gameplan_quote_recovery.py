@@ -62,25 +62,56 @@ def test_exhausted_quote_refresh_is_reported_as_unavailable(environment, monkeyp
     assert env.broker.submissions == []
 
 
-def test_explicit_recovery_submits_only_once_preserves_expiry_and_original_claim(environment, monkeypatch):
+@pytest.mark.parametrize("opening_hour,recovery_minutes", [(4,29), (6,49)])
+def test_explicit_recovery_submits_only_once_preserves_expiry_and_original_claim(environment, monkeypatch, opening_hour, recovery_minutes):
     env = environment
     setup_quotes(env, monkeypatch)
+    shift = pd.Timedelta(hours=opening_hour-4)
+    env.now += shift
+    env.signals = {key:replace(signal,
+        target_window_start=(pd.Timestamp(signal.target_window_start)+shift).isoformat(),
+        target_window_end=(pd.Timestamp(signal.target_window_end)+shift).isoformat(),
+        actionable_until=(pd.Timestamp(signal.actionable_until)+shift).isoformat()) for key,signal in env.signals.items()}
     skipped = execute(env, broker_state_retry_max_seconds=0)
     assert skipped.selected_orders == skipped.submitted_orders == 0
     original_claims = {p:p.read_bytes() for p in (env.root/'state/independent-stock-trader/entry-slots').glob('*.json')}
-    env.now += pd.Timedelta(minutes=29)
+    env.now += pd.Timedelta(minutes=recovery_minutes)
     env.live_quote = True
     options = dict(resume_quote_run=skipped.run_directory.name, resume_quote_symbol="AAPL")
     result = execute(env, **options)
     assert result.status == "ORDERS_SUBMITTED", result.error
     assert result.submitted_orders == len(env.broker.submissions) == 1
     allocation = HorizonLedger(env.root/runtime.LEDGER_RELATIVE_PATH, ACCOUNT).snapshot().allocations[0]
-    assert pd.Timestamp(allocation.target_end) == pd.Timestamp("2026-09-08T12:00:00Z")
+    assert pd.Timestamp(allocation.target_end) == pd.Timestamp("2026-09-08T12:00:00Z") + shift
     assert quote_recovery.recovered_entry_deadline(env.root, allocation, pd.Timestamp("2026-09-08T11:05:00Z")) == pd.Timestamp(allocation.target_end)
     assert _decisions(result)["prediction_handoff"]["quote_recovery"]["source_run"] == skipped.run_directory.name
     assert execute(env, **options).submitted_orders == 0
     assert len(env.broker.submissions) == 1
     assert {p:p.read_bytes() for p in original_claims} == original_claims
+
+
+def test_operator_can_retry_a_local_failure_before_any_order_reservation(environment, monkeypatch):
+    env = environment
+    setup_quotes(env, monkeypatch)
+    skipped = execute(env, broker_state_retry_max_seconds=0)
+    env.now += pd.Timedelta(minutes=29)
+    env.live_quote = True
+    options = dict(resume_quote_run=skipped.run_directory.name, resume_quote_symbol="AAPL")
+    original_gate = runtime._submission_safety_reason
+    monkeypatch.setattr(runtime, "_submission_safety_reason", lambda *a, **kw:"QUEUE_TARGET_NO_LONGER_MATCHES_CURRENT_WINDOW")
+    stopped = execute(env, **options)
+    assert stopped.selected_orders == 1 and stopped.submitted_orders == 0
+    assert HorizonLedger(env.root/runtime.LEDGER_RELATIVE_PATH, ACCOUNT).snapshot().allocations == ()
+    claims = env.root/'state/independent-stock-trader/quote-recovery-slots'
+    original_claim = next(claims.glob('*.json'))
+    original_bytes = original_claim.read_bytes()
+    monkeypatch.setattr(runtime, "_submission_safety_reason", original_gate)
+    env.now += pd.Timedelta(seconds=1)
+    assert execute(env, **options).submitted_orders == 1
+    assert original_claim.read_bytes() == original_bytes
+    assert len(list(claims.glob('*.attempt-*.json'))) == 1
+    assert execute(env, **options).submitted_orders == 0
+    assert len(env.broker.submissions) == 1
 
 
 def test_recovery_rejects_expired_or_different_symbol_before_broker_reads(environment, monkeypatch):
@@ -110,7 +141,7 @@ def test_session_recovers_once_then_runs_next_normal_hour(tmp_path, monkeypatch)
     calls = []
     monkeypatch.setattr(worker, "_has_inventory", lambda _: False)
     monkeypatch.setattr(worker, "read_gameplan_stock_activation_intent", lambda _: SimpleNamespace(active=True))
-    monkeypatch.setattr(worker, "_independent_forecast_preflight", lambda *a, **kw: {"status":"READY"})
+    monkeypatch.setattr("ml.stock_trader.gameplan_execution.execution_preflight", lambda *a, **kw: {"status":"READY"})
     monkeypatch.setattr(quote_recovery, "load_quote_recovery", lambda *a, **kw: ({}, (), {}))
     def runner(root, **kwargs):
         calls.append((clock(), kwargs))
@@ -118,7 +149,7 @@ def test_session_recovers_once_then_runs_next_normal_hour(tmp_path, monkeypatch)
     worker.run_independent_stock_session(tmp_path, clock=clock, sleep=clock.sleep, runner=runner,
         reporter=lambda _: None, sizing_policy=GAMEPLAN_SIZING_POLICY,
         resume_quote_run="20260908T220100.000000Z", resume_quote_symbol="AAPL")
-    assert len(calls) == 2
+    assert len(calls) > 2  # Unfinished instructions are retried automatically within their action hour.
     assert calls[0][1]["resume_quote_symbol"] == "AAPL"
-    assert calls[1][0] == pd.Timestamp("2026-09-08T23:01:00Z")
-    assert "resume_quote_run" not in calls[1][1]
+    assert any(at == pd.Timestamp("2026-09-08T23:01:00Z") for at, _ in calls)
+    assert all("resume_quote_run" not in options for _, options in calls[1:])

@@ -55,7 +55,7 @@ def test_explicit_late_opening_keeps_cash_quote_and_end_guards():
     signals = {key:replace(signal, actionable_until='2026-09-08T12:00:00Z') for key,signal in signals.items()}
     portfolio = replace(portfolio, observed_at=later,
                         quotes={s:replace(q, observed_at=later) for s,q in portfolio.quotes.items()})
-    assert not orders(build(signals, portfolio, decided_at=later))
+    assert orders(build(signals, portfolio, decided_at=later))  # Saved instructions remain eligible through their supplied deadline.
     late = build(signals, portfolio, decided_at=later, late_opening_date='2026-09-08')
     assert orders(late) and all(d.prediction['target_window_end'] == signals[d.symbol,d.prediction['primary_horizon']].target_window_end for d in late)
     assert not orders(build(signals, portfolio, decided_at=later, late_opening_date='2026-09-08', ledger_ready=False))
@@ -197,14 +197,13 @@ def test_current_quote_rounding_is_used_for_whole_share_affordability():
 
 
 @pytest.mark.parametrize("kwargs,reason", [
-    ({"verified_promoted_signals": frozenset()}, "FORECAST_NOT_PROMOTED"),
     ({"ledger_ready": False}, "HORIZON_LEDGER_UNRECONCILED"),
     ({"activation": replace(ACTIVATION, active=False)}, "TRADER_INACTIVE"),
     ({"decided_at": "2026-09-08T10:59:00Z"}, "ENTRY_WINDOW_CLOSED"),
     ({"decided_at": "2026-09-08T11:05:00Z"}, "ENTRY_WINDOW_CLOSED"),
 ])
 @pytest.mark.parametrize("probability", [.3, .7])
-def test_buys_and_bearish_sells_preserve_activation_promotion_reconciliation_and_exact_window(kwargs, reason, probability):
+def test_buys_and_bearish_sells_preserve_activation_reconciliation_and_holding_window(kwargs, reason, probability):
     signals, portfolio = inputs(probability=probability)
     portfolio = replace(portfolio, held_shares={"AAPL": 5.})
     decisions = build(signals, portfolio, bearish_sell_capacities={key: 1 for key in signals}, **kwargs)

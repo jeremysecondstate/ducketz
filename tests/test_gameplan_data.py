@@ -8,6 +8,36 @@ from app.ui.gameplan_data import GameplanError, load_gameplan, plan_sessions
 from gameplan_fixture import plan_payload, unavailable_payload, write_plan
 
 
+def test_recorded_midpoint_is_joined_by_forecast_without_changing_saved_planning_price(tmp_path):
+    run=write_plan(tmp_path)
+    before=(run/'trade-plan.parquet').read_bytes()
+    plan=load_gameplan(tmp_path)
+    forecast=next(row for row in plan.forecasts if row.eligible and row.price is not None)
+    execution=tmp_path/'ml/stock-trader-decision-runs/20260914T140101.000000Z'
+    execution.mkdir(parents=True)
+    (execution/'decisions.json').write_text(json.dumps({'decisions':[{
+        'prediction':{'prediction_id':forecast.forecast_id,'position_purpose':'ENTRY'},
+        'action':'BUY','quantity':15,'limit_price':127.23,
+        'quote':{'bid':127.20,'ask':127.24,'observed_at':'2026-09-14T13:48:00Z',
+                 'received_at':'2026-09-14T14:01:00Z','realtime':True}}]}))
+    loaded=load_gameplan(tmp_path)
+    actual=loaded.execution_quote(forecast.forecast_id)
+    assert actual.midpoint == pytest.approx(127.22)
+    assert actual.observed_at.hour == 7 and actual.observed_at.minute == 1
+    assert loaded.forecast(forecast.forecast_id).price == forecast.price
+    assert (run/'trade-plan.parquet').read_bytes() == before
+    assert loaded.execution_quote(forecast.forecast_id, is_exit=True) is None
+    exit_run=tmp_path/'ml/stock-trader-decision-runs/20260914T150001.000000Z'
+    exit_run.mkdir(parents=True)
+    (exit_run/'decisions.json').write_text(json.dumps({'decisions':[{
+        'prediction':{'prediction_id':'generated-exit-id','parent_forecast_id':forecast.forecast_id,'position_purpose':'EXIT'},
+        'action':'SELL','quantity':15,'limit_price':128.,
+        'quote':{'bid':128.,'ask':128.02,'observed_at':'2026-09-14T15:00:00Z','received_at':'2026-09-14T15:00:01Z'}}]}))
+    loaded=load_gameplan(tmp_path)
+    assert loaded.execution_quote(forecast.forecast_id).midpoint == pytest.approx(127.22)
+    assert loaded.execution_quote(forecast.forecast_id, is_exit=True).midpoint == pytest.approx(128.01)
+
+
 def test_quantities_come_from_ledger_and_holds_and_context_remain_forecasts(tmp_path):
     write_plan(tmp_path)
     plan = load_gameplan(tmp_path)

@@ -94,21 +94,22 @@ def test_worker_does_not_backfill_missed_entry_boundary(tmp_path, monkeypatch):
     assert calls == []
 
 
-def test_explicit_late_opening_attempts_once_then_resumes_normal_schedule(tmp_path, monkeypatch):
+def test_gameplan_late_start_retries_unfinished_instructions_and_expires_dated_flag(tmp_path, monkeypatch):
     clock = Clock('2026-09-08T11:30:00Z')
     calls = []
     monkeypatch.setattr(worker, '_has_inventory', lambda _:False)
     monkeypatch.setattr(worker, 'read_gameplan_stock_activation_intent', lambda _:SimpleNamespace(active=True))
-    monkeypatch.setattr(worker, '_independent_forecast_preflight', lambda *a,**kw:{'status':'READY'})
+    monkeypatch.setattr('ml.stock_trader.gameplan_execution.execution_preflight', lambda *a,**kw:{'status':'READY'})
     def runner(root, **kwargs):
         calls.append((clock(), kwargs.get('late_opening_date')))
         return SimpleNamespace(submitted_orders=0, to_dict=lambda:{'status':'SYNTHETIC_NO_ORDERS'})
     result = worker.run_independent_stock_session(tmp_path, clock=clock, sleep=clock.sleep, runner=runner,
                 reporter=lambda _:None, sizing_policy='gameplan-direction-current-market-v1', late_opening_date='2026-09-08')
-    assert result['orders_submitted'] == 0 and len(calls) == 13
+    assert result['orders_submitted'] == 0 and len(calls) > 13
     assert calls[0] == (pd.Timestamp('2026-09-08T11:30:00Z'), '2026-09-08')
-    assert all(flag is None for _,flag in calls[1:])
-    assert [at.tz_convert('America/Los_Angeles').minute for at,_ in calls[1:]] == [6 if hour==13 else 1 for hour in range(5,17)]
+    assert all(flag is None for at,flag in calls if at >= pd.Timestamp('2026-09-08T12:00:00Z'))
+    assert all(at.tz_convert('America/Los_Angeles').minute >= (6 if at.tz_convert('America/Los_Angeles').hour == 13 else 1)
+               for at,_ in calls)
 
 
 @pytest.mark.parametrize('when,policy', [('2026-09-08T12:00:00Z','gameplan-direction-current-market-v1'),
@@ -430,7 +431,7 @@ def test_manual_wait_reads_latest_gameplan_at_open_and_keeps_original_execute_se
         return SimpleNamespace(submitted_orders=0, to_dict=lambda: {"status": "SYNTHETIC_NO_ORDERS"})
 
     monkeypatch.setattr(worker, "_has_inventory", has_inventory)
-    monkeypatch.setattr(worker, "_independent_forecast_preflight", preflight)
+    monkeypatch.setattr("ml.stock_trader.gameplan_execution.execution_preflight", preflight)
     monkeypatch.setattr(worker, "_independent_enrichment_preflight", lambda *a, **k: pytest.fail("Wrong preflight"))
     result = worker.run_independent_stock_session(tmp_path, execute=True, wait_for_open=True,
         sizing_policy=worker.GAMEPLAN_SIZING_POLICY, clock=clock, sleep=sleep, runner=runner, reporter=lambda message: None)

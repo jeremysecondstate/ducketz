@@ -218,6 +218,7 @@ def test_reader_accepts_numerically_verified_v2_tolerance_without_rewriting_lega
 @pytest.fixture
 def published(tmp_path, monkeypatch):
     monkeypatch.setattr(signals_module, "STOCK_TRADER_SYMBOLS", SYMBOLS)
+    monkeypatch.setattr("ml.stock_trader.independent_session.STOCK_TRADER_SYMBOLS", SYMBOLS)
     _publish(tmp_path, _frame())
     return tmp_path
 

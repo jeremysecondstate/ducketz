@@ -44,6 +44,7 @@ def load_current_independent_gameplan_signals(
     as_of: object,
     require_promoted_model_reports: bool = False,
     late_opening_date: str | None = None,
+    execution_ready_plan: bool = False,
 ) -> tuple[dict[tuple[str, str], PredictionSignal], tuple[Path, ...]]:
     """Return only due, promoted, sufficiently directional independent signals.
 
@@ -51,6 +52,10 @@ The frozen target end is retained verbatim as the required position expiry.
 Calls outside an action boundary's existing entry grace return no entries;
 neither late predictions nor missing action slots are replayed.
 """
+
+    if execution_ready_plan:
+        from ml.stock_trader.gameplan_execution import load_execution_signals
+        return load_execution_signals(datastore_root, as_of=as_of)
 
     from ml.independent_stock_targets import STOCK_TARGET_CONTRACT_VERSION
 

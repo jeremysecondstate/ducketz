@@ -8,6 +8,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import sqlite3
+import uuid
 from dataclasses import replace
 from datetime import timedelta
 from pathlib import Path
@@ -65,7 +67,18 @@ def claim_quote_recovery(root, metadata, *, as_of):
     try:
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     except FileExistsError:
-        return False
+        previous = json.loads(path.read_text(encoding="utf-8"))
+        if any(previous.get(k) != metadata.get(k) for k in ("forecast_id", "source_run", "symbol", "target_end")):
+            raise ValueError("Quote recovery claim belongs to another request")
+        ledger_path = root / "state/independent-stock-trader/holdings.sqlite3"
+        # Broker submission requires its durable forecast allocation first.
+        # An operator retry can proceed when no such reservation ever existed.
+        with sqlite3.connect(ledger_path.as_uri()+"?mode=ro", uri=True) as db:
+            db.execute("PRAGMA query_only=ON")
+            if db.execute("SELECT 1 FROM allocations WHERE forecast=? LIMIT 1", (metadata["forecast_id"],)).fetchone():
+                return False
+        path = path.with_name(path.stem + ".attempt-" + uuid.uuid4().hex + ".json")
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as stream:
         json.dump({**metadata, "claimed_at": utc(as_of).isoformat()}, stream)
         stream.flush()
