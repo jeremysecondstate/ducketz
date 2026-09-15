@@ -24,7 +24,7 @@ PACIFIC = ZoneInfo("America/Los_Angeles")
 HORIZONS = ("1h", "4h", "1d", "1w")
 REASONS = {
     "BULLISH_BUY": "Bullish entry", "BEARISH_SELL": "Bearish sale",
-    "HORIZON_EXIT": "Horizon exit", "LATER_EXPIRY": "Later horizon expiry",
+    "HORIZON_EXIT": "Scheduled horizon exit", "LATER_EXPIRY": "Later horizon expiry",
     "UNRESOLVED_EXPIRY": "Unresolved horizon expiry", "NEUTRAL": "Neutral forecast",
     "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON": "No eligible shares in this horizon",
     "NON_ENTRY_CONTEXT": "Forecast context only", "MODEL_NOT_PROMOTED": "Model not promoted",

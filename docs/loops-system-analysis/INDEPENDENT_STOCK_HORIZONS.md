@@ -19,6 +19,15 @@ symbol, including historical recorded quotes. Planning files are unchanged;
 missing comparison data never vetoes execution. Legacy policies keep their
 existing research validation and hourly attempt behavior.
 
+The Gameplan tab opens with All forecasts, and choosing All companies returns
+to that view. An explicitly selected Trades view survives refresh and reports
+how many companies have projected actions. Scheduled horizon sales display as
+EXIT, with the originating entry forecast identified in the inspector. A
+one-hour position closes at its saved target end even if the next hour is also
+bullish; a new entry follows only after the prior position closes. Equal
+projected quantities reflect the same allocation rounded to whole shares.
+These display changes do not merge horizons or change execution instructions.
+
 September 14 operator-approved execution correction: Gameplan buys and sells
 use current real-time Schwab NBBO responses. Keep the provider's bid/ask update
 time in `observed_at`; use the separately recorded HTTP `received_at` for the

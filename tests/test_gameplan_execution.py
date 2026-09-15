@@ -91,3 +91,89 @@ def test_quote_failure_retries_next_wake_without_recovery_flags_or_clearing_old_
     assert result.submitted_orders == 1
     assert execute(env).submitted_orders == 0
     assert old.read_text() == '{"previous_attempt":true}'
+
+
+def test_consecutive_bullish_hours_close_filled_position_then_open_next_saved_forecast(environment, monkeypatch):
+    """Exercise the saved loader, live pricing, reservations and fill reconciliation together."""
+    from test_independent_stock_runtime import ACCOUNT, BROKER_ID
+    from ml.stock_trader.contracts import PortfolioState, QuoteState
+    from ml.stock_trader.horizon_ledger import HorizonLedger, OrderEvidence, FillEvidence
+    from ml.stock_trader.independent_signals import load_current_independent_gameplan_signals
+
+    env = environment
+    env.held = {symbol: 0. for symbol in STOCK_TRADER_SYMBOLS}
+    env.cash = 100_000.
+    run = env.root / 'ml/nightly-gameplan-runs/saved'
+    run.mkdir(parents=True)
+    pointer = env.root / 'ml/nightly-gameplan-latest/run.json'
+    pointer.parent.mkdir(parents=True)
+    pointer.write_text(json.dumps({'current': {'run_path': 'ml/nightly-gameplan-runs/saved'}}))
+    rows = []
+    for hour in (6, 7, 8, 9):
+        start = pd.Timestamp(f'2026-09-15 {hour:02d}:00', tz='America/Los_Angeles')
+        for symbol in STOCK_TRADER_SYMBOLS:
+            bullish = symbol == 'TWST' and hour < 9
+            rows.append(dict(id=f'2026-09-15:{symbol}:1h@{hour:02d}:00', symbol=symbol,
+                model_group='1h', direction='BULLISH' if bullish else 'BEARISH',
+                calibrated_probability=.6 if bullish else .4, target_window_start=start,
+                target_window_end=start + pd.Timedelta(hours=1), execution_eligible=True,
+                action_date='2026-09-15', frozen_at='2026-09-15T09:00:00Z'))
+    pd.DataFrame(rows).to_parquet(run / 'forecasts.parquet')
+    monkeypatch.setattr(runtime, 'load_current_independent_gameplan_signals', load_current_independent_gameplan_signals)
+    monkeypatch.setattr(runtime, 'load_current_enrichment_model', lambda *_: pytest.fail('No research revalidation during execution'))
+
+    def fills(broker, ledger, **kwargs):
+        evidence = []
+        for order in ledger.snapshot().reservations:
+            if order.status != 'SUBMITTED':
+                continue
+            sign = 1 if order.side == 'BUY' else -1
+            env.held[order.symbol] += sign * order.quantity
+            env.cash -= sign * order.quantity * float(order.limit_price)
+            evidence.append(OrderEvidence('evidence-' + order.reservation_id, order.reservation_id,
+                ACCOUNT, env.now.isoformat(), order.broker_order_id, 'FILLED', order.quantity,
+                order.quantity, 0, (FillEvidence('fill-' + order.reservation_id, order.quantity,
+                    float(order.limit_price), env.now.isoformat()),)))
+        return tuple(evidence)
+
+    def capture(*args, **kwargs):
+        return PortfolioState(env.now.isoformat(), 100_000., env.cash,
+            sum(env.held.values()) * 100., 0., dict(env.held),
+            {s: q * 100. for s, q in env.held.items()}, {}, {}, 0,
+            {s: QuoteState(s, 99., 101., 100., 100., 1000.,
+                (env.now - pd.Timedelta(minutes=13)).isoformat(), received_at=env.now.isoformat(),
+                realtime=True, quote_type='NBBO') for s in STOCK_TRADER_SYMBOLS},
+            'snapshot-' + env.now.isoformat(), BROKER_ID)
+
+    monkeypatch.setattr('ml.stock_trader.horizon_broker.capture_order_evidence', fills)
+    monkeypatch.setattr(runtime, 'capture_portfolio_state', capture)
+
+    def wake(local_time):
+        env.now = pd.Timestamp('2026-09-15 ' + local_time, tz='America/Los_Angeles').tz_convert('UTC')
+        result = runtime.run_independent_stock_trader_once(env.root, execute=True, session=env.broker,
+            runtime_clock=lambda: env.now, session_managed=True, sizing_policy=GAMEPLAN_SIZING_POLICY)
+        assert not result.error, result.error
+        return result
+
+    assert wake('06:50:00').submitted_orders == 1  # Same saved hour, across the PRE/core transition.
+    assert wake('06:50:30').submitted_orders == 0  # Fill recorded; no duplicate entry.
+    for hour in (7, 8):
+        result = wake(f'{hour:02d}:01:00')
+        assert result.submitted_orders == 1
+        assert env.broker.submissions[-1]['orderLegCollection'][0]['instruction'] == 'SELL'
+        assert any(d['decision_reason_code'] == 'HORIZON_ALLOCATION_ALREADY_ACTIVE'
+                   for d in _decisions(result)['decisions'])
+        assert wake(f'{hour:02d}:01:30').submitted_orders == 1  # Prior exit now filled.
+        assert env.broker.submissions[-1]['orderLegCollection'][0]['instruction'] == 'BUY'
+        assert wake(f'{hour:02d}:02:00').submitted_orders == 0
+    assert wake('09:01:00').submitted_orders == 1
+    assert wake('09:01:30').submitted_orders == 0
+    legs = [p['orderLegCollection'][0] for p in env.broker.submissions]
+    assert [leg['instruction'] for leg in legs] == ['BUY', 'SELL'] * 3
+    assert all(leg['instrument']['symbol'] == 'TWST' and leg['quantity'] == 14 for leg in legs)
+    assert [float(p['price']) for p in env.broker.submissions] == [100., 99.] * 3
+    assert env.held['TWST'] == 0 and env.cash == 100_000. - 3 * 14.
+    state = HorizonLedger(env.root / runtime.LEDGER_RELATIVE_PATH, ACCOUNT).snapshot()
+    assert len(state.allocations) == 3 and all(a.status == 'CLOSED' for a in state.allocations)
+    assert [pd.Timestamp(a.target_end).tz_convert('America/Los_Angeles').hour
+            for a in sorted(state.allocations, key=lambda a: a.target_start)] == [7, 8, 9]

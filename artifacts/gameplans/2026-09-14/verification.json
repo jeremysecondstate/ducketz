@@ -1,0 +1,312 @@
+{
+  "reviewed_at": "2026-09-14T19:20:17.117981-07:00",
+  "plan_session": "2026-09-14",
+  "plan_run": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260914T124427.308015Z",
+  "saved_report": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260914T124427.308015Z\\Gameplan.md",
+  "by_symbol": {
+    "AAPL": {
+      "forecasts": 24,
+      "entry_directions": {
+        "BEARISH": 16,
+        "NO_EDGE": 3
+      },
+      "projected_actions": {}
+    },
+    "AMZN": {
+      "forecasts": 24,
+      "entry_directions": {
+        "BEARISH": 19
+      },
+      "projected_actions": {}
+    },
+    "COST": {
+      "forecasts": 24,
+      "entry_directions": {
+        "BEARISH": 19
+      },
+      "projected_actions": {}
+    },
+    "CROX": {
+      "forecasts": 24,
+      "entry_directions": {
+        "BEARISH": 19
+      },
+      "projected_actions": {}
+    },
+    "GOOG": {
+      "forecasts": 24,
+      "entry_directions": {
+        "BEARISH": 17,
+        "NO_EDGE": 2
+      },
+      "projected_actions": {}
+    },
+    "IONQ": {
+      "forecasts": 24,
+      "entry_directions": {
+        "BEARISH": 17,
+        "NO_EDGE": 2
+      },
+      "projected_actions": {}
+    },
+    "MU": {
+      "forecasts": 24,
+      "entry_directions": {
+        "BEARISH": 19
+      },
+      "projected_actions": {}
+    },
+    "NVDA": {
+      "forecasts": 24,
+      "entry_directions": {
+        "BEARISH": 15,
+        "NO_EDGE": 4
+      },
+      "projected_actions": {}
+    },
+    "PATH": {
+      "forecasts": 24,
+      "entry_directions": {
+        "BEARISH": 12,
+        "NO_EDGE": 7
+      },
+      "projected_actions": {}
+    },
+    "SNDK": {
+      "forecasts": 24,
+      "entry_directions": {
+        "BEARISH": 15,
+        "NO_EDGE": 4
+      },
+      "projected_actions": {}
+    },
+    "TWST": {
+      "forecasts": 24,
+      "entry_directions": {
+        "BEARISH": 11,
+        "NO_EDGE": 2,
+        "BULLISH": 6
+      },
+      "projected_actions": {
+        "BUY": 6,
+        "SELL": 6
+      }
+    }
+  },
+  "forecast_count": 264,
+  "entry_window_count": 209,
+  "planned_actions": [
+    {
+      "time": "2026-09-14T06:00:00-07:00",
+      "symbol": "TWST",
+      "horizon": "1h",
+      "action": "BUY",
+      "quantity": 14.0,
+      "reason": "BULLISH_BUY",
+      "forecast_id": "2026-09-14:TWST:1h@06:00"
+    },
+    {
+      "time": "2026-09-14T07:00:00-07:00",
+      "symbol": "TWST",
+      "horizon": "1h",
+      "action": "SELL",
+      "quantity": 14.0,
+      "reason": "HORIZON_EXIT",
+      "forecast_id": "2026-09-14:TWST:1h@06:00"
+    },
+    {
+      "time": "2026-09-14T07:00:00-07:00",
+      "symbol": "TWST",
+      "horizon": "1h",
+      "action": "BUY",
+      "quantity": 14.0,
+      "reason": "BULLISH_BUY",
+      "forecast_id": "2026-09-14:TWST:1h@07:00"
+    },
+    {
+      "time": "2026-09-14T08:00:00-07:00",
+      "symbol": "TWST",
+      "horizon": "1h",
+      "action": "SELL",
+      "quantity": 14.0,
+      "reason": "HORIZON_EXIT",
+      "forecast_id": "2026-09-14:TWST:1h@07:00"
+    },
+    {
+      "time": "2026-09-14T09:00:00-07:00",
+      "symbol": "TWST",
+      "horizon": "1h",
+      "action": "BUY",
+      "quantity": 14.0,
+      "reason": "BULLISH_BUY",
+      "forecast_id": "2026-09-14:TWST:1h@09:00"
+    },
+    {
+      "time": "2026-09-14T10:00:00-07:00",
+      "symbol": "TWST",
+      "horizon": "1h",
+      "action": "SELL",
+      "quantity": 14.0,
+      "reason": "HORIZON_EXIT",
+      "forecast_id": "2026-09-14:TWST:1h@09:00"
+    },
+    {
+      "time": "2026-09-14T10:00:00-07:00",
+      "symbol": "TWST",
+      "horizon": "1h",
+      "action": "BUY",
+      "quantity": 14.0,
+      "reason": "BULLISH_BUY",
+      "forecast_id": "2026-09-14:TWST:1h@10:00"
+    },
+    {
+      "time": "2026-09-14T11:00:00-07:00",
+      "symbol": "TWST",
+      "horizon": "1h",
+      "action": "SELL",
+      "quantity": 14.0,
+      "reason": "HORIZON_EXIT",
+      "forecast_id": "2026-09-14:TWST:1h@10:00"
+    },
+    {
+      "time": "2026-09-14T11:00:00-07:00",
+      "symbol": "TWST",
+      "horizon": "1h",
+      "action": "BUY",
+      "quantity": 14.0,
+      "reason": "BULLISH_BUY",
+      "forecast_id": "2026-09-14:TWST:1h@11:00"
+    },
+    {
+      "time": "2026-09-14T12:00:00-07:00",
+      "symbol": "TWST",
+      "horizon": "1h",
+      "action": "SELL",
+      "quantity": 14.0,
+      "reason": "HORIZON_EXIT",
+      "forecast_id": "2026-09-14:TWST:1h@11:00"
+    },
+    {
+      "time": "2026-09-14T12:00:00-07:00",
+      "symbol": "TWST",
+      "horizon": "1h",
+      "action": "BUY",
+      "quantity": 15.0,
+      "reason": "BULLISH_BUY",
+      "forecast_id": "2026-09-14:TWST:1h@12:00"
+    },
+    {
+      "time": "2026-09-14T13:00:00-07:00",
+      "symbol": "TWST",
+      "horizon": "1h",
+      "action": "SELL",
+      "quantity": 15.0,
+      "reason": "BEARISH_SELL",
+      "forecast_id": "2026-09-14:TWST:1h@13:00"
+    }
+  ],
+  "recorded_twst_orders": [
+    {
+      "forecast": "2026-09-14:TWST:1h@07:00",
+      "side": "BUY",
+      "quantity": 15,
+      "limit_price": "127.22",
+      "filled": 15,
+      "status": "FILLED"
+    },
+    {
+      "forecast": "2026-09-14:TWST:1h@07:00",
+      "side": "SELL",
+      "quantity": 15,
+      "limit_price": "128.11",
+      "filled": 15,
+      "status": "FILLED"
+    },
+    {
+      "forecast": "2026-09-14:TWST:1h@09:00",
+      "side": "BUY",
+      "quantity": 14,
+      "limit_price": "132.27",
+      "filled": 14,
+      "status": "FILLED"
+    },
+    {
+      "forecast": "2026-09-14:TWST:1h@09:00",
+      "side": "SELL",
+      "quantity": 14,
+      "limit_price": "133.74",
+      "filled": 14,
+      "status": "FILLED"
+    },
+    {
+      "forecast": "2026-09-14:TWST:1h@10:00",
+      "side": "BUY",
+      "quantity": 14,
+      "limit_price": "134.67",
+      "filled": 14,
+      "status": "FILLED"
+    },
+    {
+      "forecast": "2026-09-14:TWST:1h@10:00",
+      "side": "SELL",
+      "quantity": 14,
+      "limit_price": "134.44",
+      "filled": 14,
+      "status": "FILLED"
+    },
+    {
+      "forecast": "2026-09-14:TWST:1h@11:00",
+      "side": "BUY",
+      "quantity": 14,
+      "limit_price": "134.8",
+      "filled": 14,
+      "status": "FILLED"
+    },
+    {
+      "forecast": "2026-09-14:TWST:1h@11:00",
+      "side": "SELL",
+      "quantity": 14,
+      "limit_price": "134.83",
+      "filled": 14,
+      "status": "FILLED"
+    },
+    {
+      "forecast": "2026-09-14:TWST:1h@12:00",
+      "side": "BUY",
+      "quantity": 14,
+      "limit_price": "135.27",
+      "filled": 14,
+      "status": "FILLED"
+    },
+    {
+      "forecast": "2026-09-14:TWST:1h@12:00",
+      "side": "SELL",
+      "quantity": 14,
+      "limit_price": "134.02",
+      "filled": 14,
+      "status": "FILLED"
+    }
+  ],
+  "active_allocations_at_review": 0,
+  "tests": {
+    "focused_python_suite": {
+      "passed": 368,
+      "skipped": 1,
+      "seconds": 72.91
+    },
+    "isolated_ui_rerun": {
+      "passed": 1,
+      "skipped": 0
+    },
+    "synthetic_launcher_checks": 56
+  },
+  "manual_execution_verified": "Saved loader -> current quote -> reservation -> simulated fill -> horizon exit -> next-hour entry; repeated polls do not duplicate orders.",
+  "next_run": {
+    "nightly_start_pacific": "2026-09-14T21:05:00-07:00",
+    "next_manual_session_open_pacific": "2026-09-15T04:00:00-07:00",
+    "first_entry_pacific": "2026-09-15T04:01:00-07:00",
+    "tomorrow_publication": "PENDING_SCHEDULED_OVERNIGHT_RUN"
+  },
+  "live_broker_calls_during_review": 0,
+  "production_trader_or_controls_changed": false
+}

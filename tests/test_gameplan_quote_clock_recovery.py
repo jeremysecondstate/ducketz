@@ -44,7 +44,9 @@ def run_exit(env, *, advance_clock=True, deactivate=False):
     result = runtime.run_independent_stock_trader_once(
         env.root, execute=True, session=env.broker, runtime_clock=lambda: env.now,
         entries=False, sizing_policy=GAMEPLAN_SIZING_POLICY,
-        broker_state_retry_sleep=sleep)
+        # Isolate the clock wait from the separate complete-quote refresh loop.
+        # Quote retry behavior is covered in test_gameplan_quote_recovery.
+        broker_state_retry_max_seconds=0, broker_state_retry_sleep=sleep)
     return result, sleeps
 
 

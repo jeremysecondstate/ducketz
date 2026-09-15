@@ -39,6 +39,7 @@ def finish_refresh(tab):
 def test_planned_and_execution_mid_prices_are_adjacent_in_both_views(tab):
     from dataclasses import replace
     from app.ui.gameplan_data import ExecutionQuote
+    tab.trade_button.invoke()
     forecast=tab.plan.forecast(tab.visible_rows[0].forecast_id)
     quote=ExecutionQuote(forecast.forecast_id,127.22,forecast.start,127.24,15.)
     tab.set_plan(replace(tab.plan,execution_quotes=(quote,)))
@@ -55,6 +56,13 @@ def test_filtered_cards_table_and_forecasts_have_consistent_scope(tab):
     assert tab.values["entries"].get() == "2 buys"
     assert tab.values["exits"].get() == "1 sell"
     assert tab.captions["exits"].get() == "2 remaining horizon expiries"
+    assert tab.view.get() == "forecasts"
+    assert tab.visible_rows == tab.plan.rows()
+    assert {row.symbol for row in tab.visible_rows} == set(tab.plan.symbols)
+    tab.refresh()
+    finish_refresh(tab)
+    assert tab.visible_rows == tab.plan.rows()
+    tab.trade_button.invoke()
     assert len(tab.visible_rows) == 5
     tab.horizon.set("1 hour")
     tab.horizon_box.event_generate("<<ComboboxSelected>>")
@@ -71,6 +79,7 @@ def test_filtered_cards_table_and_forecasts_have_consistent_scope(tab):
 
 
 def test_company_dropdown_shows_saved_forecasts_when_only_other_symbols_have_trades(tab):
+    tab.trade_button.invoke()
     tab.company.set("AAPL")
     tab.horizon.set("1 hour")
     tab.company_box.event_generate("<<ComboboxSelected>>")
@@ -94,6 +103,10 @@ def test_company_dropdown_shows_saved_forecasts_when_only_other_symbols_have_tra
     assert tab.view.get() == "trades"
     assert tab.visible_rows == tab.plan.trades("1w", "NVDA")
     assert tab.selected_row.action == "BUY"
+    tab.company.set("All companies")
+    tab.company_box.event_generate("<<ComboboxSelected>>")
+    assert tab.view.get() == "forecasts"
+    assert tab.visible_rows == tab.plan.rows("1w")
 
 
 def test_horizon_card_falls_back_to_forecasts_without_changing_trade_counts(tab):
@@ -105,6 +118,7 @@ def test_horizon_card_falls_back_to_forecasts_without_changing_trade_counts(tab)
 
 
 def test_selection_does_not_filter_global_agenda_and_details_use_selected_forecast(tab, monkeypatch):
+    tab.trade_button.invoke()
     shown = []
     monkeypatch.setattr(tab, "_text_dialog", lambda title, text: shown.append((title, text)))
     before = tab.visible_rows
@@ -121,9 +135,18 @@ def test_selection_does_not_filter_global_agenda_and_details_use_selected_foreca
     tab._select_row(SimpleNamespace(y=(top+bottom)/2))
     assert tab.selected_row.symbol == "AAPL"
     assert tab.probability.cget("text") == "54.36%"
+    exit_row = next(row for row in tab.visible_rows if row.reason == "HORIZON_EXIT")
+    tab.selected_key = tab._key(exit_row)
+    tab.render()
+    assert "Entry forecast P(up)" in tab.direction.cget("text")
+    assert "scheduled" in tab.selection_note.cget("text")
+    cells = [tab.table.itemcget(item, "text") for item in tab.table.find_all() if tab.table.type(item) == "text"]
+    assert "EXIT" in cells
+    assert "Scheduled horizon exit" in cells
 
 
 def test_later_existing_expiry_never_borrows_a_current_forecast_or_price(tab, monkeypatch):
+    tab.trade_button.invoke()
     tab.company.set("GOOG")
     tab.render()
     assert tab.selected_row.action == "EXPIRY"
@@ -187,6 +210,7 @@ def test_stale_background_result_cannot_replace_newer_choice(tab, tmp_path):
 
 
 def test_refresh_preserves_selection_when_saved_session_is_unchanged(tab):
+    tab.trade_button.invoke()
     tab._step_row(1)
     selected = tab.selected_key
     tab.refresh()

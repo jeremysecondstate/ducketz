@@ -58,7 +58,7 @@ class GameplanTab:
         self.session = tk.StringVar(master=root)
         self.horizon = tk.StringVar(master=root, value="All horizons")
         self.company = tk.StringVar(master=root, value="All companies")
-        self.view = tk.StringVar(master=root, value="trades")
+        self.view = tk.StringVar(master=root, value="forecasts")
         self.status = tk.StringVar(master=root, value="Loading saved Gameplan…" if auto_load else "No plan loaded.")
         self.values = {key: tk.StringVar(master=root, value="—") for key in ("first", "entries", "exits", "coverage")}
         self.captions = {key: tk.StringVar(master=root, value="No saved plan") for key in self.values}
@@ -154,8 +154,8 @@ class GameplanTab:
         self.company_box = ttk.Combobox(self.filters, textvariable=self.company, state="readonly",
                                       values=("All companies",), width=13)
         self.company_box.pack(side="left", padx=(0, 6))
-        for box in (self.horizon_box, self.company_box):
-            box.bind("<<ComboboxSelected>>", self._filters_changed)
+        self.horizon_box.bind("<<ComboboxSelected>>", self._filters_changed)
+        self.company_box.bind("<<ComboboxSelected>>", self._company_changed)
         style = ttk.Style(self.root)
         style.configure("Gameplan.Toolbutton", background=SURFACE_ALT, foreground=TEXT, padding=(8, 5), font=("Segoe UI", 9))
         style.map("Gameplan.Toolbutton", background=[("selected", "#10394b")],
@@ -163,6 +163,7 @@ class GameplanTab:
         self.trade_button = ttk.Radiobutton(self.filters, text="Trades", variable=self.view, value="trades",
                                             command=lambda: self.render(reset_scroll=True), style="Gameplan.Toolbutton")
         self.trade_button.pack(side="left", padx=(0, 4))
+        Tooltip(self.trade_button, "Projected orders only. Companies with hold or context forecasts appear in All forecasts. EXIT closes a position at its scheduled horizon end.")
         self.forecast_button = ttk.Radiobutton(self.filters, text="All forecasts", variable=self.view, value="forecasts",
                                                command=lambda: self.render(reset_scroll=True), style="Gameplan.Toolbutton")
         self.forecast_button.pack(side="left")
@@ -407,6 +408,11 @@ class GameplanTab:
         self._show_forecasts_if_no_trades()
         self.render(reset_scroll=True)
 
+    def _company_changed(self, _event=None):
+        if self.selected_company is None:
+            self.view.set("forecasts")
+        self._filters_changed()
+
     def render(self, *, reset_scroll=False):
         forecasts = self.plan.rows(self.selected_horizon, self.selected_company) if self.plan else ()
         actions = self.plan.trades(self.selected_horizon, self.selected_company) if self.plan else ()
@@ -426,8 +432,10 @@ class GameplanTab:
             self.values["entries"].set(counted(len(buys), "buy"))
             self.captions["entries"].set(" · ".join(HORIZON_NAMES[h] for h in HORIZONS if any(row.horizon == h for row in buys)) or "No projected entries")
             self.values["exits"].set(counted(len(sells), "sell"))
+            scheduled_exits = sum(row.reason == "HORIZON_EXIT" for row in sells)
+            bearish_sales = sum(row.reason == "BEARISH_SELL" for row in sells)
             self.captions["exits"].set(f"{len(expiries)} remaining horizon expiries" if expiries else
-                                      (f"First {clock_text(sells[0].when, self.plan.session)} · saved projection" if sells else "No projected exits"))
+                                      (f"{counted(scheduled_exits, 'scheduled exit')} · {counted(bearish_sales, 'bearish sale')}" if sells else "No projected exits"))
             if unavailable:
                 for key in ("first", "entries", "exits"):
                     self.values[key].set("—")
@@ -442,7 +450,12 @@ class GameplanTab:
             if unavailable:
                 self.footer.configure(text="Saved forecasts remain available. Projected trades, quantities and exits require the missing price references.")
             if self.view.get() == "trades":
+                company_count = len({row.symbol for row in actions})
+                forecast_company_count = len({row.symbol for row in forecasts})
                 self.table_note.configure(text=f"{len(actions)} of {len(self.plan.actions)} saved actions shown. "
+                    + f"{company_count} of {forecast_company_count} companies have projected actions. "
+                    + ("All forecasts includes companies with no trades. " if company_count < forecast_company_count else "")
+                    + "EXIT means a scheduled horizon close. "
                     + ("Expiries include remaining allocations; reserved shares are disclosed in details." if expiries else
                        "Quantities follow the direction ledger; planning prices are estimates."))
                 if unavailable:
@@ -511,7 +524,8 @@ class GameplanTab:
                                     outline=CYAN if selected else BORDER)
             if isinstance(row, PlannedAction):
                 execution = self.plan.execution_quote(row.forecast_id, is_exit=row.reason == "HORIZON_EXIT" or row.action == "EXPIRY")
-                texts = [clock_text(row.when, self.plan.session), row.symbol, row.action, row.horizon,
+                texts = [clock_text(row.when, self.plan.session), row.symbol,
+                         "EXIT" if row.reason == "HORIZON_EXIT" else row.action, row.horizon,
                          shares(row.quantity), money(row.price), money(execution.midpoint) if execution else "—", reason_text(row.reason)]
                 # Dates are already in the batch header; keep individual time cells compact.
                 texts[0] = row.when.strftime("%H:%M")
@@ -528,7 +542,7 @@ class GameplanTab:
                         canvas.create_image(edges[i]+22, center, image=photo)
                     canvas.create_text(edges[i]+45, center, anchor="w", text=value, fill=TEXT, font=("Segoe UI", 10, "bold"))
                 elif (not forecast_view and i == 2) or (forecast_view and i == 7):
-                    color = ACTION_COLORS[row.action]
+                    color = CYAN if row.reason == "HORIZON_EXIT" else ACTION_COLORS[row.action]
                     half_width = 42 if row.action == "UNAVAILABLE" else 34
                     canvas.create_rectangle(x-half_width, center-11, x+half_width, center+11, fill="#183044", outline=color)
                     canvas.create_text(x, center, text="Unavailable" if row.action == "UNAVAILABLE" else value,
@@ -600,12 +614,15 @@ class GameplanTab:
             else:
                 journey.append((forecast.start, forecast.action.title(), reason_text(forecast.reason), ACTION_COLORS[forecast.action]))
             if closing:
-                journey.append((closing.when, "Horizon expiry" if closing.action == "EXPIRY" else "Planned exit",
+                journey.append((closing.when, "Horizon expiry" if closing.action == "EXPIRY" else "Scheduled horizon exit",
                                 f"{shares(closing.quantity)} shares" + (f" · {money(closing.price)} estimate" if closing.price is not None else " · Price not projected"),
-                                ACTION_COLORS[closing.action]))
+                                CYAN if closing.reason == "HORIZON_EXIT" else ACTION_COLORS[closing.action]))
             else:
                 journey.append((forecast.end, "Forecast window ends", "No separate exit saved for this forecast", MUTED_TEXT))
             note = "Exit quantity follows actual filled shares." if entry and entry.action == "BUY" else reason_text(forecast.reason)
+            if closing and closing.reason == "HORIZON_EXIT":
+                note += (f" The {forecast.start:%H:%M} position closes at its scheduled {forecast.end:%H:%M} end."
+                         " Consecutive bullish windows can schedule a new buy at the same time.")
             if not self.plan.projection_available:
                 note = self.plan.projection_note
             if not forecast.eligible:
@@ -630,7 +647,8 @@ class GameplanTab:
         self.selected_mark.configure(image=photo if photo else "")
         self.probability.configure(text=f"{forecast.probability:.2%}" if forecast and forecast.probability is not None else "—")
         direction = forecast.direction.replace("NO_EDGE", "NEUTRAL").title() if forecast else "Forecast unavailable"
-        self.direction.configure(text=f"Published P(up) · {direction}", foreground=SUCCESS if forecast and forecast.direction == "BULLISH" else
+        probability_label = "Entry forecast P(up)" if isinstance(row, PlannedAction) and row.reason == "HORIZON_EXIT" else "Published P(up)"
+        self.direction.configure(text=f"{probability_label} · {direction}", foreground=SUCCESS if forecast and forecast.direction == "BULLISH" else
                                  DANGER if forecast and forecast.direction == "BEARISH" else MUTED_TEXT)
         width = max(320, self.journey.winfo_width())
         if len(journey) > 1:
