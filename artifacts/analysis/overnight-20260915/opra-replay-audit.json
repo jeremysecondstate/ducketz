@@ -1,5 +1,5 @@
 {
-  "audited_at": "2026-09-15T04:32:48.932342+00:00",
+  "audited_at": "2026-09-15T05:18:36.162686+00:00",
   "completed_current_scopes": 33,
   "entitlement_path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\entitlement.json",
   "entitlement_snapshot": {
@@ -229,11 +229,197 @@
   "expected_scopes": 33,
   "historical_availability_interpretation": "The three production schema ranges end within Sep14, so the full-day entitled_end is Sep14, short of required Sep15. Existing cursors already reached Sep14; native planning skips unchanged Historical scopes and tries bounded OPRA replay. Zero selected Historical preflights does not mean a paid/unverified Historical download was performed.",
   "log_snapshot": {
-    "bytes": 112765,
+    "bytes": 113390,
     "path": "C:\\DATASTORE\\ml\\overnight-runs\\20260915T040742.365640Z\\loop_a_close_fetch.log",
-    "sha256": "4a229c34a2641ca945b2986c95acc19c4a3ea30263258237d45eb2b3f5bff18a"
+    "sha256": "00079b676ced08b1b670fce1206fca439d680b7195ff378657973dd2439b1852"
   },
   "metadata_errors": [],
+  "native_completion": {
+    "archive_failure_count_available": false,
+    "failed_partitions_listed": [],
+    "failed_partitions_listed_count": 0,
+    "final_maintenance_line": "Options history maintenance finished: requested_scopes=33; completed_scopes=33; capacity_blocked_scopes=0; failed_scopes=0; bootstrap_required_scopes=0; preflighted_scopes=0; deferred_scopes=0; live_replay_completed_scopes=33; live_replay_bytes=1236185072; selected_estimated_download_bytes=0; selected_estimated_cost_usd=0.0",
+    "full_archive_rehashed_by_this_audit": false,
+    "health_failure_count_limitation": "The native health-v1 schema has no failed-partition count or list. iter_verified_partitions catches OpraSyncError and excludes those partitions, and excludes replay superseded by verified Historical delivery. Thus zero failures are listed, but the total number of invalid retained archive partitions cannot be inferred from this health file.",
+    "health_path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\health\\current.json",
+    "health_sha256": "82e6838207ec0494cbb9028d2a94620fc9f861c3e305192e74c2c43b86fcd804",
+    "health_snapshot": {
+      "canonical_root": "C:/DATASTORE/market-data/databento/opra/OPRA.PILLAR",
+      "dataset": "OPRA.PILLAR",
+      "observed_at": "2026-09-15T05:15:55.198554+00:00",
+      "provider": "databento-opra",
+      "schema_version": "databento-opra-health-v1",
+      "schemas": {
+        "cbbo-1m": {
+          "consumer_read_count": 45,
+          "earliest_event_timestamp": "2025-09-15T13:30:00.620839909+00:00",
+          "latest_event_timestamp": "2026-09-14T20:00:00.000294599+00:00",
+          "parquet_bytes": 9709534075,
+          "partition_count": 1245,
+          "raw_bytes": 15674849340,
+          "row_count": 722180109
+        },
+        "cbbo-1s": {
+          "consumer_read_count": 0,
+          "earliest_event_timestamp": "2025-09-15T13:30:00.620839909+00:00",
+          "latest_event_timestamp": "2026-09-11T19:59:59.984486534+00:00",
+          "parquet_bytes": 43862135961,
+          "partition_count": 1089,
+          "raw_bytes": 57244315387,
+          "row_count": 3409748959
+        },
+        "definition": {
+          "consumer_read_count": 42,
+          "earliest_event_timestamp": "2018-01-02T14:31:00+00:00",
+          "latest_event_timestamp": "2026-09-14T12:00:01.207018672+00:00",
+          "parquet_bytes": 536115012,
+          "partition_count": 7200,
+          "raw_bytes": 249797308,
+          "row_count": 6537552
+        },
+        "ohlcv-1d": {
+          "consumer_read_count": 0,
+          "earliest_event_timestamp": "2018-01-02T00:00:00+00:00",
+          "latest_event_timestamp": "2026-09-11T00:00:00+00:00",
+          "parquet_bytes": 1632236492,
+          "partition_count": 17407,
+          "raw_bytes": 1586284880,
+          "row_count": 82886221
+        },
+        "ohlcv-1h": {
+          "consumer_read_count": 3,
+          "earliest_event_timestamp": "2018-01-02T15:00:00+00:00",
+          "latest_event_timestamp": "2026-09-14T20:00:00+00:00",
+          "parquet_bytes": 2381047937,
+          "partition_count": 14531,
+          "raw_bytes": 2116173875,
+          "row_count": 159001101
+        },
+        "ohlcv-1m": {
+          "consumer_read_count": 0,
+          "earliest_event_timestamp": "2018-01-02T15:01:00+00:00",
+          "latest_event_timestamp": "2026-09-11T19:59:00+00:00",
+          "parquet_bytes": 820072846,
+          "partition_count": 7001,
+          "raw_bytes": 645123643,
+          "row_count": 57200664
+        },
+        "ohlcv-1s": {
+          "consumer_read_count": 0,
+          "earliest_event_timestamp": "2018-01-02T15:01:57+00:00",
+          "latest_event_timestamp": "2026-09-11T19:59:59+00:00",
+          "parquet_bytes": 395714048,
+          "partition_count": 6574,
+          "raw_bytes": 279262092,
+          "row_count": 22658849
+        },
+        "statistics": {
+          "consumer_read_count": 0,
+          "earliest_event_timestamp": "2018-01-02T14:31:00+00:00",
+          "latest_event_timestamp": "2026-09-11T21:45:14.487475200+00:00",
+          "parquet_bytes": 1654304854,
+          "partition_count": 6748,
+          "raw_bytes": 1177153441,
+          "row_count": 249659512
+        },
+        "status": {
+          "consumer_read_count": 0,
+          "earliest_event_timestamp": "2024-07-17T12:00:00.004286976+00:00",
+          "latest_event_timestamp": "2026-09-11T13:30:02.120910220+00:00",
+          "parquet_bytes": 218121313,
+          "partition_count": 2147,
+          "raw_bytes": 130672742,
+          "row_count": 20279504
+        },
+        "tcbbo": {
+          "consumer_read_count": 0,
+          "earliest_event_timestamp": "2025-09-15T13:30:00.620839909+00:00",
+          "latest_event_timestamp": "2026-09-11T19:59:59.984486534+00:00",
+          "parquet_bytes": 1006800413,
+          "partition_count": 1171,
+          "raw_bytes": 1105555329,
+          "row_count": 40880805
+        },
+        "trades": {
+          "consumer_read_count": 0,
+          "earliest_event_timestamp": "2025-09-15T13:30:00.620839909+00:00",
+          "latest_event_timestamp": "2026-09-11T19:59:59.984486534+00:00",
+          "parquet_bytes": 1133780403,
+          "partition_count": 1171,
+          "raw_bytes": 861152251,
+          "row_count": 40880805
+        }
+      },
+      "total_parquet_bytes": 63349863354,
+      "total_partitions": 66284,
+      "total_raw_bytes": 81070340288,
+      "total_rows": 4811914081
+    },
+    "loop_a_stage": {
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "datafetching.orchestrate",
+        "--datastore-target",
+        "pc",
+        "--watchlist",
+        "C:\\dev\\ducketz\\datafetching\\watchlist.txt",
+        "--providers",
+        "databento",
+        "fmp",
+        "fred",
+        "schwab",
+        "sec",
+        "--cme-mode",
+        "inline",
+        "--options-mode",
+        "inline",
+        "--opra-history-mode",
+        "daily",
+        "--opra-history-utc-hour",
+        "0",
+        "--opra-history-max-estimated-download-bytes",
+        "20000000000",
+        "--opra-history-max-estimated-cost-usd",
+        "1",
+        "--opra-history-max-catchup-days",
+        "30",
+        "--bar-readiness-recovery-timeout-seconds",
+        "420",
+        "--bar-readiness-recovery-poll-seconds",
+        "10",
+        "--once"
+      ],
+      "elapsed_seconds": 4107.223865000007,
+      "error": null,
+      "exit_code": 0,
+      "finished_at": "2026-09-15T05:16:09.958768+00:00",
+      "log_path": "loop_a_close_fetch.log",
+      "stage": "loop_a_close_fetch",
+      "started_at": "2026-09-15T04:07:42.456675+00:00",
+      "status": "COMPLETE"
+    },
+    "loop_a_stage_report_path": "C:\\DATASTORE\\ml\\overnight-runs\\20260915T040742.365640Z\\stage-report.json",
+    "optional_history_boundary": "cbbo-1s, ohlcv-1d/1m/1s, statistics, status, tcbbo and trades remain retained research history, ending Sep11 in this health snapshot; they are outside the three production-schema freshness contract. Their earlier timestamp is not a listed failed partition or evidence of quarantine. The previously documented optional Pricing feature quarantine is separate from OPRA partition coverage and was not re-audited here.",
+    "parsed_summary": {
+      "bootstrap_required_scopes": 0,
+      "capacity_blocked_scopes": 0,
+      "completed_scopes": 33,
+      "deferred_scopes": 0,
+      "failed_scopes": 0,
+      "live_replay_bytes": 1236185072,
+      "live_replay_completed_scopes": 33,
+      "preflighted_scopes": 0,
+      "requested_scopes": 33,
+      "selected_estimated_cost_usd": 0.0,
+      "selected_estimated_download_bytes": 0
+    },
+    "source_code": [
+      "C:/dev/ducketz/datafetching/databento_opra_history.py:831",
+      "C:/dev/ducketz/datafetching/databento_opra_history.py:903"
+    ]
+  },
   "read_only": true,
   "relevant_log_lines": [
     "OPRA history guarded preflight: requested_scopes=33; preflighted_scopes=0; selected_scopes=0; deferred_scopes=0; selected_estimated_download_bytes=0; selected_estimated_cost_usd=0.0; preflight_only=false",
@@ -302,7 +488,11 @@
     "OPRA_LIVE_REPLAY_START symbol=TWST; schema=definition; start=2026-09-14T00:00:00+00:00; end=2026-09-15T00:00:00+00:00; byte_cap=18765129696",
     "OPRA_LIVE_REPLAY_COMPLETE symbol=TWST; schema=definition; session=2026-09-14; rows=518; path=C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\definition\\TWST.OPT\\dates\\2026-09-14\\segments\\live-session",
     "OPRA_LIVE_REPLAY_START symbol=IONQ; schema=definition; start=2026-09-14T00:00:00+00:00; end=2026-09-15T00:00:00+00:00; byte_cap=18764677232",
-    "OPRA_LIVE_REPLAY_COMPLETE symbol=IONQ; schema=definition; session=2026-09-14; rows=988; path=C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\definition\\IONQ.OPT\\dates\\2026-09-14\\segments\\live-session"
+    "OPRA_LIVE_REPLAY_COMPLETE symbol=IONQ; schema=definition; session=2026-09-14; rows=988; path=C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\definition\\IONQ.OPT\\dates\\2026-09-14\\segments\\live-session",
+    "REFRESHED_OPRA_HEALTH C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\health\\current.json",
+    "Options history maintenance finished: requested_scopes=33; completed_scopes=33; capacity_blocked_scopes=0; failed_scopes=0; bootstrap_required_scopes=0; preflighted_scopes=0; deferred_scopes=0; live_replay_completed_scopes=33; live_replay_bytes=1236185072; selected_estimated_download_bytes=0; selected_estimated_cost_usd=0.0",
+    "Market-data catalog refreshed: C:\\DATASTORE\\catalog\\market-data\\current.json; C:\\DATASTORE\\catalog\\market-data\\current.md",
+    "Loop A OPRA Strategy history maintenance: exit_code=0; attempt_date=2026-09-15"
   ],
   "replay_failure_lines": [],
   "required_exclusive_end": "2026-09-15",
@@ -4111,7 +4301,7 @@
   ],
   "source_separation": "This fallback uses OPRA.PILLAR option parents only. It is unrelated to the denied XNAS.ITCH Live route; this audit made no provider calls.",
   "source_session": "2026-09-14",
-  "status": "COMPLETE_CURRENT_SESSION_METADATA",
+  "status": "NATIVE_LOOP_A_AND_OPRA_COMPLETE",
   "symbols": [
     "AAPL",
     "AMZN",
