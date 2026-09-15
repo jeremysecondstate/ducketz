@@ -56,6 +56,15 @@ def test_projection_survives_wait_and_model_assessment_without_becoming_a_schedu
     assert "54.00%" in text and "46.00%" in text and "54.71%" in text
 
 
+def test_fifty_percent_rule_is_rendered_without_ambiguous_inclusive_boundaries(tmp_path):
+    details = {**report(), "direction_up_threshold": .5, "direction_down_threshold": .5,
+               "direction_policy_version": "stock-direction-50-v2"}
+    text = render_trade_review(pd.DataFrame([forecast()]), details, {}, source_gameplan=str(tmp_path))
+    assert "Bullish above 50.00%" in text and "Bearish below 50.00%" in text
+    assert "Neutral only at exactly 50.00%" in text
+    assert "Neutral between them" not in text
+
+
 def test_daily_dates_weekly_expiry_and_context_quantities_are_unambiguous(tmp_path):
     rows = [
         forecast(id="AAPL:1d@D+1", route="1d@D+1", target_window_end="2026-09-10T00:00:00Z"),

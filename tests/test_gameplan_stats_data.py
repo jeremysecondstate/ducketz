@@ -98,6 +98,16 @@ def test_duplicate_forecast_and_inconsistent_saved_score_rejected(tmp_path):
         load_gameplan_stats(tmp_path)
 
 
+def test_saved_legacy_neutral_and_new_bullish_calls_keep_their_original_scoring(tmp_path):
+    rows = [forecast(hour=4, probability=.51, direction="NO_EDGE", change=.01),
+            forecast(hour=5, probability=.51, direction="BULLISH", change=.01)]
+    write_review(tmp_path, rows)
+    review = load_gameplan_stats(tmp_path)
+    assert [row.direction for row in review.hourly("AAPL") if row is not None] == ["NO_EDGE", "BULLISH"]
+    assert review.metrics().neutral == 1 and review.metrics().scored == 1
+    assert review.metrics().accuracy == 1.
+
+
 def test_research_gap_is_in_summary_but_not_an_execution_grid_cell(tmp_path):
     rows = [forecast(role="OPENING_GAP_RESEARCH", direction="NO_EDGE", probability=.5), forecast()]
     unpromoted = forecast("MU")

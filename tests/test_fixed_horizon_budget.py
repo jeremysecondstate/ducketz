@@ -60,7 +60,7 @@ def test_horizon_weights_and_existing_order_cap_are_preserved():
     assert sum(item.order_notional for item in results) <= 15000.
 
 
-@pytest.mark.parametrize("probability", [0., .3, .46, .5, .539999])
+@pytest.mark.parametrize("probability", [0., .3, .46, .499999, .5])
 def test_qualified_bearish_or_neutral_is_ready_without_an_entry_or_short(probability):
     prediction = signal(probability=probability)
     readiness = fixed_budget_forecast_readiness(prediction, forecast_promoted=True)
@@ -72,6 +72,13 @@ def test_qualified_bearish_or_neutral_is_ready_without_an_entry_or_short(probabi
     assert result.quantity == 0
     assert result.limit_price is None
     assert result.reason_code == "NO_BULLISH_ENTRY_SIGNAL"
+
+
+@pytest.mark.parametrize("probability", [.500001, .51, .539999])
+def test_former_neutral_bullish_forecasts_are_entry_signals(probability):
+    readiness = fixed_budget_forecast_readiness(signal(probability=probability), forecast_promoted=True)
+    assert readiness["entry_signal"] is True
+    assert readiness["minimum_forecast_probability"] == .5
 
 
 @pytest.mark.parametrize("kwargs,code", [

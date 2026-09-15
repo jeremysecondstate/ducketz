@@ -11,7 +11,7 @@ from decimal import Decimal, ROUND_CEILING
 
 from ml.independent_stock_targets import STOCK_TARGET_CONTRACT_VERSION, STOCK_TIMEZONE, stock_target_windows
 from ml.stock_target_prices import stock_price_dataset
-from ml.stock_direction_policy import BULLISH_PROBABILITY
+from ml.stock_direction_policy import BULLISH_PROBABILITY, stock_direction
 from ml.stock_trader.contracts import (
     ActivationIntent, PortfolioState, PredictionSignal, QuoteState,
     STOCK_TRADER_SYMBOLS, StockTraderPolicy, finite, utc,
@@ -90,7 +90,7 @@ def fixed_budget_forecast_readiness(
     if reason is not None:
         return {"status": "NOT_READY", "reason": reason, "entry_signal": False,
                 "forecast_probability": probability, "minimum_forecast_probability": threshold}
-    bullish = probability >= threshold
+    bullish = stock_direction(probability) == "BULLISH" and probability >= threshold
     return {"status": "READY" if bullish else "READY_WITH_NO_ENTRY_SIGNAL",
             "reason": "QUALIFIED_BULLISH_STOCK_FORECAST" if bullish else "NO_BULLISH_ENTRY_SIGNAL",
             "entry_signal": bullish, "forecast_probability": probability,

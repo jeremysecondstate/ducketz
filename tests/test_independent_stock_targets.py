@@ -213,10 +213,11 @@ def test_future_endpoints_never_become_training_labels():
     assert set(groups["1h"].route) == {"1h@gap", "1h@04:00"}
 
 
-def test_independent_finalization_preserves_contract_and_action_starts():
+@pytest.mark.parametrize("probability,direction", [(.499999, "BEARISH"), (.5, "NO_EDGE"), (.500001, "BULLISH")])
+def test_independent_finalization_preserves_contract_and_action_starts(probability, direction):
     sources = _sources(days=(date(2026, 9, 8),))
     groups = build_stock_current_groups(sources, feature_columns=())
-    forecasts = pd.concat(groups.values(), ignore_index=True).assign(calibrated_probability=0.7, model_status="PROMOTED")
+    forecasts = pd.concat(groups.values(), ignore_index=True).assign(calibrated_probability=probability, model_status="PROMOTED")
     unsupported = forecasts.symbol.eq("COST") & forecasts.model_group.isin(["1d", "1w"])
     forecasts.loc[unsupported, "model_status"] = "RESEARCH_NO_TARGET_HISTORY"
     output = _finalize_forecasts(forecasts, symbols=("AAPL", "COST"), action_date=date(2026, 9, 8),
@@ -228,7 +229,9 @@ def test_independent_finalization_preserves_contract_and_action_starts():
     assert output.loc[~output.execution_eligible, "action_anchor_local"].isna().all()
     assert output.target_contract_version.eq(STOCK_TARGET_CONTRACT_VERSION).all()
     assert output.loc[output.model_status.eq("RESEARCH_NO_TARGET_HISTORY"), "direction"].eq("NO_EDGE").all()
-    assert output.loc[output.model_status.eq("PROMOTED"), "direction"].eq("BULLISH").all()
+    assert output.loc[output.model_status.eq("PROMOTED"), "direction"].eq(direction).all()
+    assert output.direction_policy_version.eq("stock-direction-50-v2").all()
+    assert output.direction_up_threshold.eq(.5).all() and output.direction_down_threshold.eq(.5).all()
 
 
 def test_new_and_legacy_evaluation_cannot_exchange_labels():

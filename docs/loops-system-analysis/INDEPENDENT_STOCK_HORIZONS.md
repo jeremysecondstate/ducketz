@@ -83,7 +83,7 @@ entry, unclosed position, or uncertain order cannot open another allocation.
 The scheduled-default `fixed-horizon-budget-v1` strategy divides the existing per-symbol
 allocation ceiling with 1:2:3:4 weights, applies the existing single-order cap,
 then uses `min(0.5, max(0, 2*p - 1))` of that horizon budget. Here `p` is the
-qualified stock forecast's probability; a long entry requires at least 0.54.
+qualified stock forecast's probability; a long entry requires more than 0.50.
 This is an explicit conservative capital rule, with separate policy audit
 fields and no invented learned return or profitability estimates. Whole shares, available cash,
 gross/symbol exposure, the existing single-order ceiling and six-order batch
@@ -93,7 +93,7 @@ not create spendable cash. Shares already owned manually are not assigned to
 any horizon.
 
 The manual Gameplan start selects `gameplan-direction-current-market-v1` instead.
-It uses the same promoted 54%/46% forecast directions, buys from the full horizon
+It uses the same promoted above/below-50% forecast directions, buys from the full horizon
 capacity permitted by actual cash/exposure, sells eligible current shares on
 bearish forecasts, and holds on neutral forecasts. Eligible unallocated manual
 shares can be assigned explicitly when a directional sell is reserved; shares
@@ -101,8 +101,11 @@ reserved for pending sells or protected by other horizons are excluded. A
 reservation is not a fill. The live ledger changes filled inventory only from
 broker evidence, and an unfilled sale cannot finance another order.
 
-The user-selected stock direction bands are bullish at P(up) >= 0.54,
-bearish at P(up) <= 0.46, and neutral in between. This classification is
+Effective for new Gameplans after the September 14, 2026 evening change,
+the user-selected stock direction rule is bullish at P(up) > 0.50,
+bearish at P(up) < 0.50, and neutral only at exactly 0.50. The previous
+46%–54% neutral band is removed. The rule is recorded as
+`stock-direction-50-v2`. This classification is
 independent of model approval. New forecasts record these thresholds; older
 published forecasts retain their original labels and measured probabilities.
 
@@ -206,7 +209,7 @@ account equity times min(0.15 * horizon weight / 10, 0.05), limited by current
 cash and remaining account/symbol exposure, divided by the upper planning price.
 These per-opportunity alternatives are not added as simultaneous orders and can
 be positive beside Sell or Hold. Non-entry outlooks show a dash. The adjacent
-Direction Based Trade Qty applies promoted >=54% bullish buys, <=46% bearish
+Direction Based Trade Qty applies promoted >50% bullish buys, <50% bearish
 sales of eligible held stock, and Neutral zero through one shared cash balance.
 Fresh account evidence includes every configured stock balance, cash and pending-order
 reservations, active horizon allocations and options/other exposure. Each clock

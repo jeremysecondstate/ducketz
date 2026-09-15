@@ -76,7 +76,7 @@ def test_unavailable_projection_does_not_hide_invalid_inputs(invalid):
 
 
 def test_user_example_cash_range_and_next_hour_bearish_sell():
-    rows, report = run([forecast(), forecast(hour=5, probability=.46)])
+    rows, report = run([forecast(probability=.51), forecast(hour=5, probability=.49)])
     assert rows.direction_based_trade_quantity.tolist() == [1, -1]
     assert rows.projected_cash_after_low.tolist() == [89, 99]
     assert rows.projected_cash_after_high.tolist() == [90, 101]
@@ -86,7 +86,7 @@ def test_user_example_cash_range_and_next_hour_bearish_sell():
 
 
 def test_neutral_quantity_zero_and_earlier_expiry_is_a_separate_event():
-    rows, report = run([forecast(), forecast(hour=5, probability=.5287)])
+    rows, report = run([forecast(), forecast(hour=5, probability=.5)])
     assert rows.direction_based_trade_quantity.tolist() == [1, 0]
     assert rows.iloc[1].direction_based_reason == "NEUTRAL"
     assert report["events"][1]["reason"] == "HORIZON_EXIT"

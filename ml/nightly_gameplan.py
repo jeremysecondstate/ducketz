@@ -1732,7 +1732,7 @@ def _finalize_forecasts(
         ]
     from ml.stock_direction_policy import BULLISH_PROBABILITY, BEARISH_PROBABILITY, STOCK_DIRECTION_POLICY_VERSION
     output["direction"] = np.select(
-        [probability.ge(BULLISH_PROBABILITY), probability.le(BEARISH_PROBABILITY)],
+        [probability.gt(BULLISH_PROBABILITY), probability.lt(BEARISH_PROBABILITY)],
         ["BULLISH", "BEARISH"],
         default="NO_EDGE",
     )

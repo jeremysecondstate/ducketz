@@ -69,8 +69,8 @@ the old stack or enabling options orders.
 
 The separate `ml/gameplan-trade-plan-latest/run.json` publication retains all `24 × configured-symbol-count`
 forecasts. Projected Trade Quantity is standalone horizon capacity; the adjacent
-Direction Based Trade Qty follows one shared cash/stock ledger: approved 54%/46%
-directions buy/sell eligible holdings, and Neutral is zero. Fresh cash and all
+Direction Based Trade Qty follows one shared cash/stock ledger: approved >50%/<50%
+directions buy/sell eligible holdings, and exactly 50% Neutral is zero. Fresh cash and all
 all configured stock balances feed ordered bearish sales, due exits and bullish buys.
 Main rows show post-hour cash/shares, with hourly and end-of-day portfolio tables.
 Prices use a median-centered +/-20bps working range, a conditional fill

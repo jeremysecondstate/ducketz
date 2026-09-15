@@ -13,14 +13,15 @@ from ml.stock_trader.gameplan_execution import load_execution_signals, execution
 from ml.stock_trader.sizing_policy import GAMEPLAN_SIZING_POLICY
 
 
-def test_saved_instructions_do_not_need_receipts_models_contract_hashes_or_planning_prices(tmp_path):
+@pytest.mark.parametrize('probability,direction', [(.499999, 'BEARISH'), (.5, 'NO_EDGE'), (.500001, 'BULLISH')])
+def test_saved_instructions_do_not_need_receipts_models_contract_hashes_or_planning_prices(tmp_path, probability, direction):
     run = tmp_path / 'ml/nightly-gameplan-runs/20260908T090000.000000Z'
     run.mkdir(parents=True)
     pointer = tmp_path / 'ml/nightly-gameplan-latest/run.json'
     pointer.parent.mkdir(parents=True)
     pointer.write_text(json.dumps({'current':{'run_path':run.relative_to(tmp_path).as_posix(), 'receipt_checksum_sha256':'obsolete'}}))
-    rows = [dict(id=f'2026-09-08:{symbol}:1h@06:00', symbol=symbol, model_group='1h', direction='BULLISH',
-                 calibrated_probability=.7, target_window_start='2026-09-08T13:00:00Z',
+    rows = [dict(id=f'2026-09-08:{symbol}:1h@06:00', symbol=symbol, model_group='1h', direction=direction,
+                 calibrated_probability=probability, target_window_start='2026-09-08T13:00:00Z',
                  target_window_end='2026-09-08T14:00:00Z', execution_eligible=True, action_date='2026-09-08',
                  frozen_at='2026-09-08T09:00:00Z', target_contract_version='older-metadata') for symbol in STOCK_TRADER_SYMBOLS]
     pd.DataFrame(rows).to_parquet(run/'forecasts.parquet')
@@ -32,7 +33,7 @@ def test_saved_instructions_do_not_need_receipts_models_contract_hashes_or_plann
     assert load_execution_signals(tmp_path, as_of='2026-09-08T14:01:00Z')[0] == {}
 
 
-@pytest.mark.parametrize('probability,side', [(.7,'BUY'),(.3,'SELL')])
+@pytest.mark.parametrize('probability,side', [(.51,'BUY'),(.49,'SELL')])
 def test_all_eleven_symbols_submit_live_prices_and_log_estimates_without_using_them_as_limits(environment, monkeypatch, probability, side):
     env = environment
     prepare(env, monkeypatch, probability=probability)
@@ -93,7 +94,8 @@ def test_quote_failure_retries_next_wake_without_recovery_flags_or_clearing_old_
     assert old.read_text() == '{"previous_attempt":true}'
 
 
-def test_consecutive_bullish_hours_close_filled_position_then_open_next_saved_forecast(environment, monkeypatch):
+@pytest.mark.parametrize('bullish_probability,bearish_probability', [(.6, .4), (.51, .49)])
+def test_consecutive_bullish_hours_close_filled_position_then_open_next_saved_forecast(environment, monkeypatch, bullish_probability, bearish_probability):
     """Exercise the saved loader, live pricing, reservations and fill reconciliation together."""
     from test_independent_stock_runtime import ACCOUNT, BROKER_ID
     from ml.stock_trader.contracts import PortfolioState, QuoteState
@@ -115,7 +117,7 @@ def test_consecutive_bullish_hours_close_filled_position_then_open_next_saved_fo
             bullish = symbol == 'TWST' and hour < 9
             rows.append(dict(id=f'2026-09-15:{symbol}:1h@{hour:02d}:00', symbol=symbol,
                 model_group='1h', direction='BULLISH' if bullish else 'BEARISH',
-                calibrated_probability=.6 if bullish else .4, target_window_start=start,
+                calibrated_probability=bullish_probability if bullish else bearish_probability, target_window_start=start,
                 target_window_end=start + pd.Timedelta(hours=1), execution_eligible=True,
                 action_date='2026-09-15', frozen_at='2026-09-15T09:00:00Z'))
     pd.DataFrame(rows).to_parquet(run / 'forecasts.parquet')

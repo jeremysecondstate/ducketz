@@ -88,14 +88,15 @@ def test_four_horizon_weights_share_the_existing_symbol_budget_without_fake_mode
         assert item.order_payload["orderLegCollection"][0]["instruction"] == "BUY"
 
 
-def test_twenty_eight_opening_candidates_and_due_exits_share_six_order_cap():
+def test_all_symbols_opening_candidates_and_due_exits_share_six_order_cap():
     signals, state = inputs(STOCK_TRADER_SYMBOLS)
     state = replace(state, held_shares={"AAPL": 5., "AMZN": 5.}, gross_exposure=1000.,
                     symbol_exposure={"AAPL": 500., "AMZN": 500.})
     exits = (owned_exit("AAPL"), owned_exit("AMZN"))
     decisions = build(signals, state, active_allocations=frozenset({("AAPL", "1w"), ("AMZN", "1w")}),
                       exit_decisions=exits)
-    assert len(signals) == 28 and len(decisions) == 30
+    assert len(signals) == 4 * len(STOCK_TRADER_SYMBOLS)
+    assert len(decisions) == len(signals) + len(exits)
     assert [item.action for item in decisions[:2]] == ["SELL", "SELL"]
     assert len(orders(decisions)) == 6
     assert [(item.symbol, item.prediction["primary_horizon"]) for item in orders(decisions, "BUY")] == [
@@ -195,8 +196,8 @@ def test_entry_authority_and_bounded_window_cannot_be_bypassed(kwargs, reason):
     assert {item.decision_reason_code for item in decisions} == {reason}
 
 
-def test_qualified_probability_must_cross_existing_floor():
-    signals, state = inputs(probability=.539999)
+def test_qualified_probability_must_exceed_fifty_percent():
+    signals, state = inputs(probability=.5)
     assert not orders(build(signals, state, policy=StockTraderPolicy(minimum_trade_probability=.1)))
 
 

@@ -46,7 +46,7 @@ identity; no price-source mixing or regular-session label substitution occurs.
 The $0 native historical backfill completed 35 chunks and approximately 1.79
 million minute rows. Forecast source, exact target, promotion and entry-window
 checks remain mandatory. Fixed budgets use `min(0.5, max(0, 2*p - 1))` of each
-capped horizon amount, with a minimum bullish forecast probability of 0.54.
+capped horizon amount, with a bullish forecast probability above 0.50.
 They produce policy audit fields, not fabricated learned probabilities or
 expected returns. The CLI default `qualified-enrichment` keeps its separate
 model gate; deployment selects fixed budgets explicitly. The September 8 broker/ledger
@@ -56,8 +56,8 @@ and evaluation place zero orders.
 
 The current review puts **Direction Based Trade Qty** beside the standalone
 **Projected Trade Quantity** capacity estimate. The direction plan uses fresh
-cash and all seven current stock balances, approved Bullish >=54% / Bearish <=46%
-probabilities and Neutral zero. At each hour one shared cash ledger processes
+cash and all configured stock balances, approved Bullish >50% / Bearish <50%
+probabilities and exactly 50% Neutral zero. At each hour one shared cash ledger processes
 eligible bearish sales, due horizon exits, then bullish purchases. Rows show
 post-hour cash and shares; the hourly/EOD tables preserve later horizon holdings.
 The conditional scenario may sell unallocated held shares, while protecting

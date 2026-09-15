@@ -268,7 +268,7 @@ def build_gameplan_direction_trade_decisions(
         elif not ready:
             code = "FORECAST_PROBABILITY_INVALID"
         elif direction == "NO_EDGE":
-            code, reason = "NEUTRAL_HOLD", "A probability strictly between 46% and 54% means no direction-based trade."
+            code, reason = "NEUTRAL_HOLD", "An exact 50% probability has no directional signal."
         else:
             start, end = utc(signal.target_window_start), utc(signal.target_window_end)
             deadline = min(utc(signal.actionable_until), end)

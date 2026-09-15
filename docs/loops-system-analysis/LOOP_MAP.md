@@ -54,7 +54,7 @@ flowchart LR
   Actual orders use current broker balances and quote prices. The manual
   Gameplan strategy shares forecast directions with this conditional projection
   and does not copy assumed fills or cash into the live ledger.
-- Direction uses 54%/46% thresholds separately from model approval. Review
+- Direction uses >50% Bullish, <50% Bearish, and exactly 50% Neutral separately from model approval. Review
   labels count the completed source session as Day 1 and the upcoming session
   as Day 2, with actual dates. Neutral adds no trade. Working prices use a
   historical median with +/-20bps allowance, not a confidence interval; at least

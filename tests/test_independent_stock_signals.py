@@ -316,7 +316,7 @@ def test_malformed_frozen_grid_fails_closed(published, fault):
     elif fault == "bad_probability":
         frame.loc[index, "calibrated_probability"] = float("nan")
     elif fault == "mismatched_direction":
-        frame.loc[index, "calibrated_probability"] = 0.51
+        frame.loc[index, "calibrated_probability"] = 0.49
     elif fault == "duplicate":
         frame.loc[index, "id"] = frame.iloc[0].id
     elif fault == "legacy_row":

@@ -351,8 +351,13 @@ def render_trade_review(trade_rows: pd.DataFrame, report: Mapping, model_reports
     entry_count = sum(bool(row["execution_eligible"]) for row in rows)
     positive = sum(_quantity(row, "scheduled_trade_quantity") > 0 for row in rows)
     planned = report.get("planned_notional", sum(_number(row.get("trade_notional_reserved")) or 0 for row in rows))
-    threshold = _policy_number(report, "direction_up_threshold", _policy_number(policy, "minimum_trade_probability", .54))
+    threshold = _policy_number(report, "direction_up_threshold", _policy_number(policy, "minimum_trade_probability", .5))
     down_threshold = _policy_number(report, "direction_down_threshold", 1 - threshold)
+    direction_rule = (
+        f"Direction is Bullish above {_percent(threshold)} P(up), Bearish below {_percent(down_threshold)}, and Neutral only at exactly {_percent(threshold)}. "
+        if threshold == down_threshold else
+        f"Direction is Bullish at {_percent(threshold)} P(up) or higher, Bearish at {_percent(down_threshold)} or lower, and Neutral between them. "
+    )
     lines = [f"# {_text(report.get('action_date'))} Gameplan — quantities and planning prices", "",
              f"**{len(symbols)} stocks · {len(rows):,} forecasts · " + ("" if has_direction_plan else f"{positive} scheduled entries · ") +
              f"{_count(report.get('orders_placed'))} orders submitted**", "",
@@ -363,8 +368,7 @@ def render_trade_review(trade_rows: pd.DataFrame, report: Mapping, model_reports
              "Each capacity estimate stands alone and is not added to other rows as a simultaneous order.", "",
              ("" if has_direction_plan else f"Scheduled capital reserved: **{_money(planned)}**. ") +
              f"{_count(promoted_entries)} of {_count(entry_count)} entry windows have passed model assessment. "
-             f"Direction is Bullish at {_percent(threshold)} P(up) or higher, Bearish at {_percent(down_threshold)} or lower, and Neutral between them. "
-             "Direction and model approval are separate checks.", "", "## Cash and holdings", "",
+             + direction_rule + "Direction and model approval are separate checks.", "", "## Cash and holdings", "",
              f"Account information captured {_pacific(snapshot.get('observed_at'))}.", ""]
     if has_direction_plan:
         lines[8:8] = [

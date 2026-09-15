@@ -17,7 +17,7 @@ def forecast(symbol="AAPL", horizon="1d", *, session="2026-09-14", hour=4, actio
     route = route or f"{horizon}@{hour:02d}:00"
     return dict(id=f"{session}:{symbol}:{route}", symbol=symbol, action_date=session, model_group=horizon,
                 route=route, target_role=role, execution_eligible=role == "EXECUTION", model_status="PROMOTED",
-                calibrated_probability=probability, direction="BULLISH" if probability >= .54 else "BEARISH" if probability <= .46 else "NO_EDGE",
+                calibrated_probability=probability, direction="BULLISH" if probability > .5 else "BEARISH" if probability < .5 else "NO_EDGE",
                 direction_based_action=action, direction_based_trade_quantity=quantity,
                 direction_based_reason="BULLISH_BUY" if action == "BUY" else "NON_ENTRY_CONTEXT" if action == "CONTEXT" else
                 "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON" if probability <= .46 else "NEUTRAL",

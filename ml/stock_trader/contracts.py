@@ -160,7 +160,7 @@ class EnrichmentOutput:
 @dataclass(frozen=True)
 class StockTraderPolicy:
     policy_version: str = "stock-trader-bootstrap-policy-v1"
-    minimum_trade_probability: float = 0.54
+    minimum_trade_probability: float = 0.50
     minimum_expected_net_return: float = 0.0
     maximum_symbol_equity_fraction: float = 0.15
     maximum_gross_equity_fraction: float = 1.30

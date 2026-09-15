@@ -1,6 +1,6 @@
 # Shared equity security marks
 
-The Schwab Duckets and Rolling Forecasts UIs load optional, locally bundled PNG
+The Schwab Duckets, Rolling Forecasts, Gameplan and Gameplan Stats UIs load optional, locally bundled PNG
 security marks from this directory. At runtime they never download marks.
 Missing, invalid, and unknown-symbol assets use a built-in ticker-monogram
 fallback, with the ticker also shown as text.
@@ -12,20 +12,24 @@ fallback, with the ticker also shown as text.
 | AAPL | `aapl.png` | `docs/logos-icons/appl-logo.png` |
 | AMZN | `amzn.png` | `docs/logos-icons/amzn-logo.png` |
 | COST | `cost.png` | `docs/logos-icons/costco-logo.png` |
+| CROX | `crox.png` | `docs/logos-icons/crox-logo.png` |
 | EWY | `ewy.png` | `docs/logos-icons/ewy-logo.png` |
 | GOOG, GOOGL | `goog.png` | `docs/logos-icons/goog-logo.png` |
+| IONQ | `ionq.png` | `docs/logos-icons/ionq-logo.png` |
 | MRNA | `mrna.png` | `docs/logos-icons/mrna-logo.png` |
 | MU | `mu.png` | `docs/logos-icons/micron-logo.png` |
 | NBIS | `nbis.png` | `docs/logos-icons/nbis-logo.png` |
 | NVDA | `nvda.png` | `docs/logos-icons/nvda-logo.png` |
+| PATH | `path.png` | `docs/logos-icons/path-logo.png` |
 | SLS | `sls.png` | `docs/logos-icons/sls-logo.png` |
 | SNDK | `sndk.png` | `docs/logos-icons/sndk-logo.png` |
 | TENB | `tenb.png` | `docs/logos-icons/tenb-logo.png` |
+| TWST | `twst.png` | `docs/logos-icons/twst-logo.png` |
 | VXUS | `vxus.png` | `docs/logos-icons/vxus-logo.png` |
 | ZETA | `zeta.png` | `docs/logos-icons/zeta-logo.png` |
 
 These 512x512 PNGs were supplied by the project owner on
-2026-08-30, 2026-08-31, and 2026-09-06 for local display in this project. This provenance
+2026-08-30, 2026-08-31, 2026-09-06, and 2026-09-14 for local display in this project. This provenance
 record does not grant or independently verify trademark or redistribution
 rights; confirm those rights before redistributing the image files.
 

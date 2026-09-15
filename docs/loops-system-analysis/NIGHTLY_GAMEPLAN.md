@@ -212,8 +212,8 @@ Pacific entry/expiry windows. **Projected Trade Quantity** remains the standalon
 whole-share capacity for one opportunity under the full configured horizon
 budget, current cash/exposure limits and upper working price. It is not summed
 as simultaneous orders. The adjacent **Direction Based Trade Qty** is the
-chronological plan: promoted Bullish P(up) >= 54% buys with available cash,
-Bearish P(up) <= 46% sells eligible held shares, and Neutral is zero. The main
+chronological plan: promoted Bullish P(up) > 50% buys with available cash,
+Bearish P(up) < 50% sells eligible held shares, and exactly 50% is Neutral with zero quantity. The main
 table displays BUY/SELL quantities, Plan action, Cash available after (range)
 and Shares remaining. Non-entry gap/outlook rows show a dash.
 
@@ -456,7 +456,7 @@ own held-out horizon quality and observed symbol/route/duration/source support.
 Its unqualified models cannot enter through that strategy. The selected fixed
 strategy instead uses the qualified stock probability directly for the explicit
 capital rule `min(0.5, max(0, 2*p - 1))`, within the existing 1:2:3:4 horizon,
-symbol, single-order and shared account limits. It requires at least 0.54 for a
+symbol, single-order and shared account limits. It requires more than 0.50 for a
 long entry and creates no synthetic learned-return or profitability output.
 
 September 8, 2026 selected deployment: current XNAS Gameplan

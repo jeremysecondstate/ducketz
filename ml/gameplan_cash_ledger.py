@@ -289,7 +289,7 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                           "cash_change_low": float(cash[0] - starting_cash), "cash_change_high": float(cash[2] - starting_cash)},
               "no_fill_baseline": {"cash": float(starting_cash), "held_shares": {symbol: float(value) for symbol, value in initial_held.items()}},
               "assumptions": [
-                  "Promoted bullish probabilities at or above 54% buy; bearish at or below 46% sell; neutral holds with zero direction quantity.",
+                  "Promoted bullish probabilities above 50% buy; bearish below 50% sell; an exact 50% holds with zero direction quantity.",
                   "One shared cash balance and separate symbol/horizon holdings; all row balances are after the entire hour's batch.",
                   "Each hour processes bearish sales, remaining due horizon exits, then bullish buys. Sales use shorter horizons first, then symbol order; buys use highest probability first, then shorter horizon and symbol.",
                   "Bearish sales use unallocated shares and that horizon's own shares only, never another horizon's allocation; pending sell shares remain reserved.",

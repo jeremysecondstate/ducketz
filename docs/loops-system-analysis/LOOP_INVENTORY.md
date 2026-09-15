@@ -34,7 +34,7 @@ recorded stage endpoint. New full independent-stock runs complete only after
 trade planning, under the original next-session 04:00 Pacific deadline.
 
 Projected Trade Quantity is standalone horizon capacity. Adjacent Direction Based
-Trade Qty uses approved 54%/46% directions through one shared hourly ledger:
+Trade Qty uses approved >50% Bullish / <50% Bearish directions through one shared hourly ledger:
 bearish sales, due horizon exits, then bullish buys; Neutral adds no trade.
 Post-hour cash/shares and EOD holdings retain protected later allocations.
 Median-centered +/-20bps working prices are conditional assumptions, not confidence

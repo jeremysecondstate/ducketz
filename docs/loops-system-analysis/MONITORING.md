@@ -85,7 +85,8 @@ baseline and assumptions must remain recorded; unavailable or different fills
 require a newly calculated projection. See
 [the full review contract](NIGHTLY_GAMEPLAN.md#account-aware-trade-plan-review).
 
-Check 54%/46% direction labels independently of each saved model's approval.
+New plans use >50% Bullish, <50% Bearish, and exactly 50% Neutral independently of each saved model's approval.
+Historical plans retain their saved direction thresholds and labels.
 New directional policy v2 permits +0.005 Brier and +0.01 log-loss differences
 above baseline; verify the actual scores, remaining checks and declared policy,
 without relabeling older strict-policy reports. Regularized daily logistic

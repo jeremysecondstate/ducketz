@@ -164,14 +164,14 @@ def test_context_has_no_entry_quantity_and_high_price_does_not_invent_fractional
 
 
 def test_new_bullish_boundary_supplies_a_scheduled_entry():
-    row = forecast(probability=.54)
+    row = forecast(probability=.51)
     result = plan_trade_rows(pd.DataFrame([row]), snapshot(equity=100000), bands([row])).iloc[0]
     assert result.planning_direction == "BULLISH"
     assert result.scheduled_trade_quantity > 0
 
 
 @pytest.mark.parametrize("change,reason", [
-    ({"calibrated_probability": .539999}, "NO_BULLISH_ENTRY_SIGNAL"),
+    ({"calibrated_probability": .5}, "NO_BULLISH_ENTRY_SIGNAL"),
     ({"model_status": "RESEARCH_NOT_PROMOTED"}, "FORECAST_NOT_PROMOTED"),
     ({"execution_eligible": False}, "NON_ENTRY_CONTEXT"),
     ({"symbol_route_fitted_target_rows": 0}, "NO_EXACT_ROUTE_FITTED_HISTORY"),
