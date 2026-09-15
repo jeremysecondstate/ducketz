@@ -1,5 +1,11 @@
 {
   "loop_a_close_fetch.log": 113390,
-  "health.jsonl": 93048,
-  "loop_b_directional_generation.log": 1082
+  "health.jsonl": 142515,
+  "loop_b_directional_generation.log": 7801,
+  "stock_target_history.log": 493,
+  "gameplan_evaluation.log": 3879,
+  "gameplan_publication.log": 37055,
+  "stock_enrichment_training.log": 236,
+  "gameplan_trade_planning.log": 228,
+  "gameplan_actuals_review.log": 244
 }

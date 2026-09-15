@@ -28,6 +28,8 @@ parser.add_argument("--expected-original-run", default="20260915T040742.365640Z"
 parser.add_argument("--expected-source-date", default="2026-09-14")
 parser.add_argument("--expected-action-date", default="2026-09-15")
 parser.add_argument("--expected-deadline", default="2026-09-15T11:00:00Z")
+parser.add_argument("--only-fetch-log", action="store_true",
+                    help="Verify overnight ancestry/log hashes and OPRA fetch scope logs only; skip heavy publication/source checks")
 args = parser.parse_args()
 sys.path.insert(0, str(args.repository.resolve()))
 
@@ -375,14 +377,58 @@ def check_fetch_log():
     opra = [line for line in lines if line.startswith("Options history maintenance finished:")]
     require(len(opra) == 1, "Fetch stage lacks one completed OPRA maintenance summary")
     stats = dict(re.findall(r"(\w+)=([^; ]+)", opra[0]))
-    expected_scopes = len(context["symbols"]) * 3
+    from datafetching.databento_opra_history import OPRA_STRATEGY_HISTORY_SCHEMAS
+    expected = {(symbol, schema) for symbol in context["symbols"] for schema in OPRA_STRATEGY_HISTORY_SCHEMAS}
+    expected_scopes = len(expected)
     require(int(stats["requested_scopes"]) == int(stats["completed_scopes"]) == expected_scopes
             and all(int(stats[key]) == 0 for key in ("capacity_blocked_scopes", "failed_scopes", "bootstrap_required_scopes", "deferred_scopes"))
             and float(stats["selected_estimated_cost_usd"]) == 0,
             "Production OPRA maintenance did not complete every configured zero-dollar scope")
-    scopes = [line for line in lines if line.startswith("OPRA symbol/schema history:")]
-    require(len(scopes) == expected_scopes and all("status=COMPLETE;" in line for line in scopes),
-            "OPRA per-scope completions differ")
+    required_start = pd.Timestamp(args.expected_source_date).date()
+    required_end = (pd.Timestamp(args.expected_source_date) + pd.Timedelta(days=1)).date()
+    historical, historical_earlier, replay = {}, {}, {}
+    seen_historical = set()
+    for line_number, line in enumerate(lines, start=1):
+        prefix = next((prefix for prefix in ("OPRA symbol/schema history:", "OPRA_LIVE_REPLAY_COMPLETE ")
+                       if line.startswith(prefix)), None)
+        if prefix is None:
+            continue
+        pairs = re.findall(r"(?:^|;\s*)([a-z_]+)=([^;]+)", line[len(prefix):].strip())
+        values = {key: value.strip() for key, value in pairs}
+        require(len(pairs) == len(values), "OPRA scope log repeats a field")
+        scope = (values.get("symbol"), values.get("schema"))
+        require(scope in expected, "OPRA completion log contains an unknown symbol/schema: " + str(scope))
+        if prefix.startswith("OPRA symbol"):
+            require(scope not in seen_historical, "Historical OPRA completion repeats a symbol/schema: " + str(scope))
+            seen_historical.add(scope)
+            require(values.get("status") == "COMPLETE", "Historical OPRA scope did not complete: " + str(scope))
+            start, end = pd.Timestamp(values["start"]).date(), pd.Timestamp(values["end"]).date()
+            require(start < end, "Historical OPRA scope has an invalid exclusive range")
+            require(int(values["rows"]) >= 0, "Historical OPRA scope has an invalid row count")
+            evidence = {"line": line_number, **values}
+            if start <= required_start and end >= required_end:
+                historical[scope] = evidence
+            else:
+                # Historical can advance an earlier interval before the same
+                # native owner fills the required session by Live replay.
+                historical_earlier[scope] = evidence
+        else:
+            require(scope not in replay, "Live OPRA completion repeats a symbol/schema: " + str(scope))
+            require(values.get("session") == args.expected_source_date,
+                    "Live OPRA completion is for a different required session: " + str(scope))
+            require(int(values["rows"]) >= 0, "Live OPRA scope has an invalid row count")
+            expected_path = (root / "market-data/databento/opra/OPRA.PILLAR" / scope[1]
+                             / (scope[0] + ".OPT") / "dates" / args.expected_source_date / "segments/live-session")
+            require(Path(values["path"]).resolve() == expected_path.resolve(),
+                    "Live OPRA completion path differs from its exact symbol/schema/session")
+            replay[scope] = {"line": line_number, **values}
+    require(not set(historical).intersection(replay), "Required-session OPRA completion is duplicated across deliveries")
+    require(set(historical).union(replay) == expected,
+            "OPRA per-scope completions differ: " + str(sorted(expected - set(historical).union(replay))))
+    require(int(stats.get("live_replay_completed_scopes", 0)) == len(replay)
+            and int(stats["completed_scopes"]) == len(historical) + len(replay),
+            "OPRA summary does not match exact Historical/Live completion counts")
+    require(int(stats.get("live_replay_bytes", 0)) >= 0, "OPRA summary has invalid Live replay bytes")
     # Other providers' scope semantics differ; preserve their exact native
     # summaries and warnings for the supervisor's evidence-based assessment.
     native_summaries = [line for line in lines if re.search(
@@ -390,6 +436,13 @@ def check_fetch_log():
     providers = sorted({match.group(1) for line in lines
                         for match in [re.search(r"src=([^/ ]+)", line)] if match})
     return {"log": str(log_path), "opra_summary": stats,
+            "required_session": args.expected_source_date, "expected_scope_count": expected_scopes,
+            "historical_completed_scopes": len(historical), "live_replay_completed_scopes": len(replay),
+            "live_replay_bytes": int(stats.get("live_replay_bytes", 0)),
+            "completion_scopes": {"/".join(scope): {"delivery": "HISTORICAL" if scope in historical else "LIVE_REPLAY",
+                **(historical.get(scope) or replay[scope])} for scope in sorted(expected)},
+            "earlier_historical_intervals_not_counted": {"/".join(scope): value for scope, value in historical_earlier.items()},
+            "scope_summary_counts_bound": True,
             "providers_in_request_log": providers, "native_scope_summaries": native_summaries,
             "remaining_manual_review": "Assess FMP/FRED/Schwab/SEC and nonproduction Databento scope warnings from the preserved native summaries; these providers do not share the OPRA cursor contract."}
 
@@ -812,11 +865,18 @@ def check_actuals():
             "direction_accuracy": float(calls.mean()) if len(calls) else None}
 
 
-for name, function in (("overnight", check_overnight), ("gameplan", check_gameplan),
+if args.only_fetch_log:
+    from datafetching.symbol_universe import read_symbols
+    context["symbols"] = read_symbols(args.repository / "datafetching/watchlist.txt")
+    summary["verification_scope"] = "OVERNIGHT_ANCESTRY_AND_FETCH_LOG_ONLY"
+    selected_checks = (("overnight", check_overnight), ("fetch_scope_log", check_fetch_log))
+else:
+    selected_checks = (("overnight", check_overnight), ("gameplan", check_gameplan),
         ("opra_coverage", check_opra), ("stock_history", check_stock_history), ("fetch_scope_log", check_fetch_log),
         ("enrichment", check_enrichment), ("trade_plan", check_trade_plan),
         ("planning_prices", check_planning_prices), ("reference_completion", check_reference_completion),
-        ("cumulative_evaluation", check_evaluation), ("actuals_review", check_actuals)):
+        ("cumulative_evaluation", check_evaluation), ("actuals_review", check_actuals))
+for name, function in selected_checks:
     section(name, function)
 summary["status"] = "FAILED" if summary["errors"] else "VERIFIED_WITH_COVERAGE_NOTES" if summary["coverage_notes"] else "VERIFIED"
 print(json.dumps(summary, indent=2, default=str, sort_keys=True))
