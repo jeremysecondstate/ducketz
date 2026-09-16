@@ -82,6 +82,8 @@ class ReservationState:
     batch_id: str
     last_evidence_at: str | None
     cancel_requested_at: str | None = None
+    target_start: str | None = None
+    target_end: str | None = None
 
     @property
     def reserved_quantity(self) -> int:
@@ -265,9 +267,17 @@ class HorizonLedger:
             LEFT JOIN cancellations c ON c.reservation=r.id WHERE r.id=?""", (reservation_id,)).fetchone()
         if row is None:
             raise LedgerError("UNKNOWN_RESERVATION")
+        request = json.loads(row["request"])
         return ReservationState(row["id"], row["allocation"], row["symbol"], row["horizon"],
-            row["forecast"], row["side"], row["quantity"], row["price"], row["filled"],
-            row["status"], row["broker_order"], row["idempotency_key"], row["batch"], row["last_evidence_at"], row["requested_at"])
+            request.get("forecast", row["forecast"]), row["side"], row["quantity"], row["price"], row["filled"],
+            row["status"], row["broker_order"], row["idempotency_key"], row["batch"], row["last_evidence_at"], row["requested_at"],
+            request.get("start"), request.get("end"))
+
+    @staticmethod
+    def _forecast_reserved(db, account, symbol, horizon, forecast):
+        rows = db.execute("""SELECT r.request FROM reservations r JOIN allocations a ON a.id=r.allocation
+            WHERE a.account=? AND a.symbol=? AND a.horizon=?""", (account, symbol, horizon))
+        return any(json.loads(row["request"]).get("forecast") == forecast for row in rows)
 
     @staticmethod
     def _assigned_shares(db, allocation_id):
@@ -584,7 +594,8 @@ class HorizonLedger:
 
     def reserve_entry(self, *, symbol: str, horizon: str, forecast_id: str, target_start: str,
                       target_end: str, quantity: int, limit_price: str | float, snapshot_id: str,
-                      idempotency_key: str, batch_id: str, as_of: str) -> ReservationState:
+                      idempotency_key: str, batch_id: str, as_of: str,
+                      allow_accumulation: bool = False) -> ReservationState:
         symbol, forecast_id = _name(symbol).upper(), _name(forecast_id)
         if not re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,14}", symbol) or horizon not in HORIZON_WEIGHTS:
             raise LedgerError("Unsupported symbol or horizon")
@@ -596,6 +607,10 @@ class HorizonLedger:
         request = {"kind": "entry", "symbol": symbol, "horizon": horizon, "forecast": forecast_id,
                    "start": start, "end": end, "quantity": quantity, "price": price,
                    "snapshot": snapshot_id, "batch": batch}
+        if type(allow_accumulation) is not bool:
+            raise LedgerError("Accumulation policy must be boolean")
+        if allow_accumulation:
+            request["allow_accumulation"] = True
         with self._transaction() as db:
             existing = self._idempotent(db, key, request)
             if existing is not None:
@@ -606,11 +621,16 @@ class HorizonLedger:
             cap = _number(portfolio["symbol_budgets"][symbol]) * HORIZON_WEIGHTS[horizon] / 10
             if quantity * max(_number(price), _number(portfolio["prices"][symbol])) > cap:
                 raise LedgerError("HORIZON_WEIGHTED_BUDGET_EXCEEDED")
+            if self._forecast_reserved(db, self.account_fingerprint, symbol, horizon, forecast_id):
+                raise LedgerError("FORECAST_ALREADY_RESERVED_NO_REENTRY")
             if db.execute("SELECT 1 FROM allocations WHERE account=? AND symbol=? AND horizon=? AND forecast=?",
                           (self.account_fingerprint, symbol, horizon, forecast_id)).fetchone():
                 raise LedgerError("FORECAST_ALREADY_RESERVED_NO_REENTRY")
-            if db.execute("SELECT 1 FROM allocations WHERE symbol=? AND horizon=? AND status='ACTIVE'", (symbol, horizon)).fetchone():
-                raise LedgerError("HORIZON_ALREADY_HAS_ACTIVE_ALLOCATION")
+            active = db.execute("SELECT id FROM allocations WHERE symbol=? AND horizon=? AND status='ACTIVE'", (symbol, horizon)).fetchone()
+            if active:
+                if not allow_accumulation:
+                    raise LedgerError("HORIZON_ALREADY_HAS_ACTIVE_ALLOCATION")
+                return self._insert_reservation(db, active["id"], "BUY", quantity, price, key, batch, request)
             allocation_id = _identity([self.account_fingerprint, symbol, horizon, forecast_id])
             db.execute("INSERT INTO allocations VALUES (?,?,?,?,?,?,?,'ACTIVE')",
                 (allocation_id, self.account_fingerprint, symbol, horizon, forecast_id, start, end))
@@ -715,6 +735,8 @@ class HorizonLedger:
             if existing is not None:
                 return existing
             portfolio = self._require_snapshot(db, snapshot_id, now, batch_id=batch)
+            if self._forecast_reserved(db, self.account_fingerprint, symbol, horizon, forecast_id):
+                raise LedgerError("FORECAST_ALREADY_RESERVED_NO_REENTRY")
             state = self._snapshot(db)
             owned = sum(a.filled_shares for a in state.allocations if a.symbol == symbol)
             owned_reserved = sum(a.reserved_sell_shares for a in state.allocations if a.symbol == symbol)

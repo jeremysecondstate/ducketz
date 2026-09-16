@@ -4,7 +4,7 @@ from dataclasses import replace
 import pandas as pd
 import pytest
 
-from test_independent_stock_runtime import environment, _fixed_signals, _decisions, ACCOUNT, NOW, SYMBOLS
+from test_independent_stock_runtime import environment, _fixed_signals, _decisions, _owned_allocation, ACCOUNT, NOW, SYMBOLS
 from ml.stock_trader import independent_runtime as runtime
 from ml.stock_trader.horizon_ledger import HorizonLedger, PortfolioEvidence, OrderEvidence, FillEvidence
 from ml.stock_trader.sizing_policy import GAMEPLAN_SIZING_POLICY
@@ -264,3 +264,32 @@ def test_prior_purchased_inventory_is_consumed_first_and_never_released_as_manua
     assert state.allocations[0].status == ("ACTIVE" if owned_remaining else "CLOSED")
     assert ledger.reconcile(p("quiet", "2026-09-08T11:00:07Z", 5-sold)).ready
     assert state.persistent_blocks == ()
+
+
+@pytest.mark.parametrize("horizon", ["1h", "4h", "1d", "1w"])
+def test_manual_forecast_boundary_never_submits_an_expiry_sale(environment, monkeypatch, horizon):
+    env = environment
+    prepare(env, monkeypatch)
+    ledger = _owned_allocation(env, horizon=horizon)
+    env.now = pd.Timestamp("2026-09-08T12:01:00Z")
+    env.signals = {}
+    run(env)
+    assert env.broker.submissions == []
+    assert ledger.snapshot().allocations[0].filled_shares == 10
+
+
+def test_manual_next_bullish_forecast_adds_to_expired_forecast_bucket(environment, monkeypatch):
+    env = environment
+    prepare(env, monkeypatch, probability=.7)
+    ledger = _owned_allocation(env, symbol="AAPL", manual=0)
+    signal = env.signals["AAPL", "1h"]
+    env.now = pd.Timestamp("2026-09-08T12:01:00Z")
+    env.signals = {("AAPL", "1h"): replace(signal, prediction_id="next-hour-bullish", actionable_until="2026-09-08T12:59:59Z",
+        target_window_start="2026-09-08T12:00:00Z", target_window_end="2026-09-08T13:00:00Z")}
+    result = run(env)
+    assert result.submitted_orders == 1, result.error
+    assert env.broker.submissions[0]["orderLegCollection"][0]["instruction"] == "BUY"
+    assert len(ledger.snapshot().allocations) == 1
+    assert run(env).submitted_orders == 0
+    assert len(env.broker.submissions) == 1
+    assert env.broker.cancellations == []  # New order uses its own hour, not the bucket's original end.

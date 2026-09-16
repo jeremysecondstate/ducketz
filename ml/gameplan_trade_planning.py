@@ -399,7 +399,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
         rows = _plan_working_price_rows(forecasts, snapshot, bands, price_path, policy=policy)
         phase = "DIRECTION_BASED_CASH_AND_SHARE_PROJECTION"
         try:
-            rows, direction_projection = project_direction_trades(rows, snapshot, price_path, policy=policy)
+            rows, direction_projection = project_direction_trades(rows, snapshot, price_path, policy=policy, signal_driven=True)
         except UnavailablePlanningPricePath as unavailable:
             # Complete the informational report without manufacturing prices,
             # fills, ending cash or ending holdings. Other validation errors
@@ -438,7 +438,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
                       limitations=["Review projections only; the existing live worker revalidates all controls and capital.",
                                    "Price and cash ranges are estimates only. Live orders use the current tradable quote, actual available cash and holdings even when those values are outside the estimates.",
                                    "Planning closing marks may carry the same session's last actual close through up to four after-hours hours in a verified source window. Historical planning pairs disclose these closing carries too; entry prices stay observed. Zero volume is an assumption, not an exchange observation.",
-                                   "The direction-based cash/share projection depends on its recorded sale and expiry fills; projected proceeds are not actual spendable broker cash.",
+                                   "The direction-based cash/share projection depends on its projected purchase and bearish-sale fills; projected proceeds are not actual spendable broker cash.",
                                    "The separate scheduled-entry preview uses current cash only and requires prior exit confirmation for later entries in a planned horizon."])
         # Optional research assessments add context, never alter the pinned
         # forecast or supply authority for a proposed quantity.

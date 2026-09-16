@@ -195,7 +195,7 @@ def build_gameplan_direction_trade_decisions(
     late_opening_date: str | None = None,
     recovered_forecast_ids: frozenset[str] = frozenset(),
 ) -> tuple[TradeDecision, ...]:
-    """Apply 54/46 directions using actual capital, inventory, and current quotes.
+    """Apply saved directions using actual capital, inventory, and current quotes.
 
     Bearish capacities are an explicit caller attestation of authorized,
     disjoint inventory slices. They must exclude pending sells, protected other
@@ -274,8 +274,6 @@ def build_gameplan_direction_trade_decisions(
             deadline = min(utc(signal.actionable_until), end)
             if not start <= timestamp < deadline:
                 code = "ENTRY_WINDOW_CLOSED"
-            elif action == "BUY" and key in active_allocations:
-                code = "HORIZON_ALLOCATION_ALREADY_ACTIVE"
             else:
                 price, quote_error = _current_price(signal.symbol, portfolio, active_policy, timestamp, action, time_in_force, maximum_quote_age_seconds)
                 if quote_error:

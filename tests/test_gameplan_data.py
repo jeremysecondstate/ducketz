@@ -196,3 +196,14 @@ def test_unavailable_projection_does_not_bypass_publication_contracts(tmp_path, 
     write_plan(tmp_path, rows=rows, ledger=ledger, report_updates=report)
     with pytest.raises(GameplanError):
         load_gameplan(tmp_path)
+
+
+def test_signal_driven_remaining_holdings_do_not_create_synthetic_expiry_actions(tmp_path):
+    from app.ui.gameplan_data import SIGNAL_DRIVEN_HOLDING_POLICY
+    rows, ledger = plan_payload()
+    ledger["holding_policy"] = SIGNAL_DRIVEN_HOLDING_POLICY
+    write_plan(tmp_path, rows=rows, ledger=ledger)
+    plan = load_gameplan(tmp_path)
+    assert plan.holding_policy == SIGNAL_DRIVEN_HOLDING_POLICY
+    assert all(action.action != "EXPIRY" for action in plan.actions)
+    assert len(plan.actions) == ledger["summary"]["trade_events"]

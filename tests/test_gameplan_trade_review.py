@@ -50,7 +50,7 @@ def test_projection_survives_wait_and_model_assessment_without_becoming_a_schedu
                                 target_window_end="2026-09-10T00:00:00Z")]
     text = render(tmp_path, rows)
     assert "| Bullish | 6 | $313.54–$318.45 | Wait |" in text
-    assert "| Bullish | 18 | $313.54–$318.45 | Model assessment pending |" in text
+    assert "| Bullish | 18 | $313.54–$318.45 | Model assessment not passed |" in text
     assert "0 scheduled entries" in text and "Scheduled capital reserved: **$0.00**" in text
     assert "Only scheduled entries commit shared cash" in text
     assert "54.00%" in text and "46.00%" in text and "54.71%" in text

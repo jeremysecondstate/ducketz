@@ -139,14 +139,16 @@ def test_bearish_inventory_requires_explicit_authority_and_never_shorts_or_multi
     assert not orders(build(signals, replace(portfolio, held_shares={}), bearish_sell_capacities={key: 1 for key in signals}))
 
 
-def test_same_horizon_owned_inventory_may_be_sold_but_active_horizon_cannot_be_bought_twice():
+def test_same_horizon_inventory_can_be_sold_or_increased_by_a_new_bullish_signal():
     signals, portfolio = inputs(probability=.3)
     key = ("AAPL", "1w")
     signals = {key: signals[key]}
     portfolio = replace(portfolio, held_shares={"AAPL": 2.})
     assert build(signals, portfolio, active_allocations=frozenset({key}), bearish_sell_capacities={key: 2})[0].quantity == 2
     signals[key] = replace(signals[key], calibrated_probability=.8)
-    assert build(signals, portfolio, active_allocations=frozenset({key}))[0].decision_reason_code == "HORIZON_ALLOCATION_ALREADY_ACTIVE"
+    decision = build(signals, portfolio, active_allocations=frozenset({key}))[0]
+    assert decision.decision_reason_code == "ELIGIBLE"
+    assert decision.action == "BUY" and decision.quantity > 0
 
 
 def test_all_symbols_bearish_opening_sales_fit_the_explicit_new_strategy_order_policy():

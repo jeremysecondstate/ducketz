@@ -289,7 +289,7 @@ def run_independent_stock_trader_once(
                             if ((stock_direction(signal.calibrated_probability) == "BULLISH" and current.available_cash > 0)
                                 or (stock_direction(signal.calibrated_probability) == "BEARISH"
                                     and current.held_shares.get(signal.symbol, 0) > current.pending_sell_shares.get(signal.symbol, 0)))}
-                for allocation in ledger.snapshot().allocations:
+                for allocation in (() if sizing_policy == GAMEPLAN_SIZING_POLICY else ledger.snapshot().allocations):
                     if allocation.status == "ACTIVE" and allocation.filled_shares > 0 and utc(allocation.target_end) <= now + pd.Timedelta(seconds=CLOSE_EXIT_LEAD_SECONDS):
                         required[allocation.symbol] = "SELL"
                 return tuple(sorted(symbol for symbol, action in required.items()
@@ -331,6 +331,7 @@ def run_independent_stock_trader_once(
             # A read failure or quote skip does not consume a forecast. Existing
             # allocations, including completed ones, suppress its resubmission.
             recorded = {allocation.forecast_id for allocation in state.allocations}
+            recorded.update(reservation.forecast_id for reservation in state.reservations)
             qualified = {key: signal for key, signal in qualified.items() if signal.prediction_id not in recorded}
         if late_opening_date is not None and utc(clock()).tz_convert('America/Los_Angeles').hour != 4:
             qualified = {}
@@ -345,8 +346,12 @@ def run_independent_stock_trader_once(
             if cancelled or cancellation_error:
                 metadata["entry_cancellations_requested"] = cancelled
                 return finish("ENTRY_CANCELLATION_AWAITING_RECONCILIATION", error=cancellation_error)
-        exits = _exit_decisions(ledger, portfolio, activation, active_policy, timestamp, snapshot_id, window.time_in_force,
-                               gameplan_pricing=sizing_policy == GAMEPLAN_SIZING_POLICY)
+        # Manual Gameplan holdings persist across forecast boundaries. Only a
+        # new bearish instruction sells from that horizon's inventory.
+        exits = (() if sizing_policy == GAMEPLAN_SIZING_POLICY else
+                 _exit_decisions(ledger, portfolio, activation, active_policy, timestamp, snapshot_id, window.time_in_force))
+        if sizing_policy == GAMEPLAN_SIZING_POLICY:
+            metadata["holding_policy"] = "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1"
         decision_options = dict(
             active_allocations=frozenset((a.symbol, a.horizon) for a in state.allocations if a.status == "ACTIVE"),
             ledger_ready=reconciliation.ready, decided_at=timestamp, policy=active_policy,
@@ -492,7 +497,8 @@ def _cancel_expired_entries(root, broker, ledger, state, portfolio, stable_ident
             continue
         allocation = allocations[reservation.allocation_id]
         from ml.stock_trader.quote_recovery import recovered_entry_deadline
-        deadline = (min(utc(allocation.target_start) + pd.Timedelta(hours=1), utc(allocation.target_end))
+        deadline = (min(utc(reservation.target_start or allocation.target_start) + pd.Timedelta(hours=1),
+                        utc(reservation.target_end or allocation.target_end))
                     if gameplan_entries else recovered_entry_deadline(root, allocation,
                         _entry_deadline(utc(allocation.target_start), late_opening_date=late_opening_date)))
         if utc(clock()) < deadline:
@@ -584,6 +590,7 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
                     forecast_id=decision.prediction["prediction_id"],
                     target_start=decision.prediction["target_window_start"],
                     target_end=decision.prediction["target_window_end"], **common,
+                    **({"allow_accumulation": True} if decision.policy_version == GAMEPLAN_SIZING_POLICY else {}),
                 )
             final_gate()
         except Exception as exc:

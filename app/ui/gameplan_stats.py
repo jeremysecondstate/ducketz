@@ -91,7 +91,7 @@ class GameplanStatsTab:
         self.report_button.pack(side="left", padx=(0, 8))
         self.refresh_button = ttk.Button(self.controls, text="Refresh", command=self.refresh)
         self.refresh_button.pack(side="left")
-        _label(self.page, "Saved predictions compared with observed outcomes. All times Pacific.",
+        _label(self.page, "Forecast windows measure prediction accuracy; they do not schedule sales. All times Pacific.",
                color=MUTED_TEXT, background=BACKGROUND).pack(anchor="w", pady=(3, 1))
         self.status_label = _label(self.page, textvariable=self.status, size=9, color=MUTED_TEXT,
                                    background=BACKGROUND, wraplength=1100, justify="left")

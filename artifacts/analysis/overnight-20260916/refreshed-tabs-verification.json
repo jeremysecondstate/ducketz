@@ -1,7 +1,7 @@
 {
   "status": "VERIFIED",
-  "checked_at": "2026-09-16T07:06:43.119021+00:00",
-  "run": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260916T070315.010940Z",
+  "checked_at": "2026-09-16T09:07:49.069191+00:00",
+  "run": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260916T090047.150473Z",
   "available_price_points": 154,
   "eligible_rows_with_prices": 209,
   "gameplan_filter_views": 60,

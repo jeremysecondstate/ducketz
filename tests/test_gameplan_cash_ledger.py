@@ -258,3 +258,23 @@ def test_events_reconcile_every_cash_endpoint_and_symbol_inventory():
     for symbol in symbols:
         assert report["ending_positions"][symbol] == report["starting_positions"][symbol] + sum(
             event["quantity"] * (1 if event["action"] == "BUY" else -1) for event in report["events"] if event["symbol"] == symbol)
+
+
+def test_signal_driven_consecutive_buys_accumulate_without_expiry_sales():
+    rows, report = project_direction_trades(pd.DataFrame([
+        forecast(probability=.7), forecast(hour=5, probability=.7), forecast(hour=6, probability=.3)
+    ]), snapshot(), path(), policy=POLICY, signal_driven=True)
+    assert rows.direction_based_trade_quantity.tolist() == [1, 1, -2]
+    assert rows.projected_shares_after.tolist() == [1, 2, 0]
+    assert [e["reason"] for e in report["events"]] == ["BULLISH_BUY", "BULLISH_BUY", "BEARISH_SELL"]
+
+
+def test_signal_driven_weekly_research_buy_survives_hourly_bearish_and_window_end():
+    rows, report = project_direction_trades(pd.DataFrame([
+        forecast(probability=.7, horizon="1w", promoted=False), forecast(hour=5, probability=.3)
+    ]), snapshot(), path(), policy=POLICY, signal_driven=True)
+    assert rows.iloc[0].direction_based_trade_quantity > 0
+    assert rows.iloc[1].direction_based_trade_quantity == 0
+    assert len(report["events"]) == 1
+    assert report["events"][0]["reason"] == "BULLISH_BUY"
+    assert report["ending_allocations"]

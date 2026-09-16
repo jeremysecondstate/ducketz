@@ -12,7 +12,7 @@ _HORIZONS = ("1h", "4h", "1d", "1w")
 _REASONS = {
     "NON_ENTRY_CONTEXT": "Outlook",
     "NO_BULLISH_ENTRY_SIGNAL": "Wait",
-    "FORECAST_NOT_PROMOTED": "Model assessment pending",
+    "FORECAST_NOT_PROMOTED": "Model assessment not passed",
     "PROVISIONAL_BUY": "Enter",
     "NO_EXACT_ROUTE_FITTED_HISTORY": "Wait — more price history needed",
     "ACCOUNT_OR_OWNERSHIP_EVIDENCE_UNAVAILABLE": "Wait — account check needed",
@@ -147,7 +147,7 @@ def _entry_decision(row: Mapping) -> str:
     if not row["execution_eligible"]:
         return "Outlook"
     if row["model_status"] != "PROMOTED":
-        return "Model assessment pending"
+        return "Model assessment not passed"
     if _quantity(row, "scheduled_trade_quantity") > 0:
         return "Enter"
     return _REASONS.get(str(row.get("trade_planning_reason")), "Wait")
@@ -189,7 +189,7 @@ def _plain_reason(value) -> str:
         "HORIZON_EXPIRY": "Horizon expiry", "EXPIRY": "Horizon expiry", "EXPIRING_LOT": "Horizon expiry",
         "BULLISH_BUY": "Buy with available cash", "BEARISH_SELL": "Sell eligible held shares",
         "BEARISH_SELL_HELD": "Sell eligible held shares", "PRICE_RANGE_UNAVAILABLE": "Price range unavailable",
-        "MODEL_NOT_PROMOTED": "Model assessment pending",
+        "MODEL_NOT_PROMOTED": "Model assessment not passed",
         "SYMBOL_ALLOCATION_UNRESOLVED": "Hold — position allocation needs checking",
         "NO_AVAILABLE_SHARES_FOR_THIS_HORIZON": "Hold — no eligible shares for this horizon",
         "HORIZON_POSITION_ALREADY_HELD": "Hold — this horizon already owns shares",
@@ -240,12 +240,13 @@ def _projection_tables(projection: Mapping, symbols: list[str], snapshot: Mappin
             [(_text(symbol), _text(reason), _text(gap) if gap is not None else "—", str(count))
              for (symbol,reason,gap),count in missing.items()])
         return main, []
+    signal_driven = projection.get("holding_policy") == "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1"
     summary = _mapping(projection.get("summary"))
     ending = _mapping(projection.get("ending_positions"))
     main = ["## Projected end of day", "",
             "Cash is estimated before fees and taxes using the planned transactions and estimated prices. "
-            "Price and cash ranges do not limit execution; each order uses the current quote and actual available cash and holdings. "
-            "Holdings with later overnight or weekly expiries remain held at 17:00.", ""]
+            "Price and cash ranges do not limit execution; each order uses the current quote and actual available cash and holdings. " +
+            ("Bullish instructions add shares; bearish instructions sell within their horizon. Holdings have no scheduled expiry sale." if signal_driven else "Holdings with later overnight or weekly expiries remain held at 17:00."), ""]
     main += _table(["Cash measure", "Low", "Base", "High"], [
         ("Starting available cash", *[_money(summary.get("starting_cash", snapshot.get("available_cash")))] * 3),
         ("End-of-day cash", _money(summary.get("ending_cash_low")), _money(summary.get("ending_cash_base")), _money(summary.get("ending_cash_high"))),
@@ -260,8 +261,8 @@ def _projection_tables(projection: Mapping, symbols: list[str], snapshot: Mappin
     if _number(summary.get("cash_buffer")) is not None:
         main += [f"Purchases preserve a cash buffer of {_money(summary['cash_buffer'])} throughout this projection.", ""]
     main += ["## Cash and holdings by hour", "",
-             "Each line shows the balance after that hour's entire planned batch: bearish sales, expiring positions, then bullish purchases. "
-             "The same balance applies to forecast rows at that hour. Neutral forecasts add no trade; separate horizon expiries may still change that hour's balance.", ""]
+             ("Each line shows the balance after bearish sales and bullish purchases. Forecast boundaries do not sell shares. " if signal_driven else "Each line shows the balance after that hour's entire planned batch: bearish sales, expiring positions, then bullish purchases. ") +
+             ("Neutral forecasts add no trade." if signal_driven else "The same balance applies to forecast rows at that hour. Neutral forecasts add no trade; separate horizon expiries may still change that hour's balance."), ""]
     hourly = list(projection.get("hourly") or [])
     hourly.sort(key=lambda row: pd.Timestamp(row["timestamp"]))
     hourly_rows = []
@@ -271,9 +272,9 @@ def _projection_tables(projection: Mapping, symbols: list[str], snapshot: Mappin
                             _money(row.get("cash_base")), _money(row.get("cash_high")),
                             *(_shares(held.get(symbol)) for symbol in symbols)))
     main += _table(["Hour, Pacific", "Cash low", "Cash base", "Cash high", *(f"{symbol} shares" for symbol in symbols)], hourly_rows)
-    details = ["<details>", "<summary>Chronological buys, sales and expiries</summary>", "",
-               "Each event below is one planned transaction. Sale proceeds and purchase costs enter the shared balance once; "
-               "expired lots appear as sales here. These are projected events, not reported fills.", ""]
+    details = ["<details>", "<summary>Chronological buys and sales</summary>" if signal_driven else "<summary>Chronological buys, sales and expiries</summary>", "",
+               "Each event below is one planned transaction. Sale proceeds and purchase costs enter the shared balance once; " +
+               ("holdings remain until a bearish instruction. These are projected events, not reported fills." if signal_driven else "expired lots appear as sales here. These are projected events, not reported fills."), ""]
     events = list(projection.get("events") or [])
     events.sort(key=lambda row: pd.Timestamp(row["timestamp"]))
     event_rows = []
@@ -364,11 +365,11 @@ def render_trade_review(trade_rows: pd.DataFrame, report: Mapping, model_reports
              f"Review generated {_pacific(report.get('observed_at'))}. All target windows and recorded times below are Pacific.", "",
              "**Projected Trade Quantity** is the share capacity available for each opportunity using current cash and holdings. "
              + ("A positive capacity can accompany a Sell or Hold plan action. " if has_direction_plan else
-                "It can be positive beside **Wait** or **Model assessment pending**. ") +
+                "It can be positive beside **Wait** or **Model assessment not passed**. ") +
              "Each capacity estimate stands alone and is not added to other rows as a simultaneous order.", "",
              ("" if has_direction_plan else f"Scheduled capital reserved: **{_money(planned)}**. ") +
              f"{_count(promoted_entries)} of {_count(entry_count)} entry windows have passed model assessment. "
-             + direction_rule + "Direction and model approval are separate checks.", "", "## Cash and holdings", "",
+             + direction_rule + "Model assessment is informational for the manual Gameplan strategy and does not block its saved instructions.", "", "## Cash and holdings", "",
              f"Account information captured {_pacific(snapshot.get('observed_at'))}.", ""]
     if has_direction_plan:
         lines[8:8] = [
@@ -424,7 +425,7 @@ def render_trade_review(trade_rows: pd.DataFrame, report: Mapping, model_reports
         details = _mapping(model_reports[horizon])
         scores, base = _mapping(details.get("assessment")), _mapping(details.get("training_base_rate_assessment"))
         partitions, gate = _mapping(details.get("partitions")), _mapping(details.get("promotion_gate"))
-        assessment_rows.append((horizon, "Passed" if gate.get("status") == "PROMOTED" else "Model assessment pending", " / ".join(_count(partitions.get(key)) for key in
+        assessment_rows.append((horizon, "Passed" if gate.get("status") == "PROMOTED" else "Model assessment not passed", " / ".join(_count(partitions.get(key)) for key in
                                ("train_rows", "selection_rows", "calibration_rows", "assessment_rows")),
                                f"{_metric(scores.get('brier_score'))} / {_metric(base.get('brier_score'))}",
                                f"{_metric(scores.get('log_loss'))} / {_metric(base.get('log_loss'))}",
@@ -442,7 +443,7 @@ def render_trade_review(trade_rows: pd.DataFrame, report: Mapping, model_reports
                               "The actual model and baseline scores are shown above; passing this rule does not imply baseline outperformance.", ""]
         failures = [str(key) for key, passed in _mapping(gate.get("checks")).items() if passed is False]
         if failures:
-            model_details += [f"**{_text(horizon)} — model assessment pending:** "
+            model_details += [f"**{_text(horizon)} — model assessment not passed:** "
                       + "; ".join(_CHECKS.get(check, check) for check in failures) + ". "
                       "This records failed promotion criteria; it does not establish the underlying cause of weaker performance.", ""]
     enrichment = _mapping(report.get("enrichment_summary"))

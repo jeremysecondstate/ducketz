@@ -19,6 +19,7 @@ from ml.artifacts import file_checksum, verify_manifest
 
 VERSION = "cash-aware-gameplan-trade-planning-v4"
 LEDGER_VERSION = "direction-based-gameplan-cash-ledger-v1"
+SIGNAL_DRIVEN_HOLDING_POLICY = "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1"
 UNAVAILABLE_PROJECTION = "UNAVAILABLE_PRICE_REFERENCES"
 PACIFIC = ZoneInfo("America/Los_Angeles")
 HORIZONS = ("1h", "4h", "1d", "1w")
@@ -102,6 +103,7 @@ class Gameplan:
     projection_note: str = ""
     planning_note: str = ""
     execution_quotes: tuple[ExecutionQuote, ...] = ()
+    holding_policy: str = "fixed_target_expiry"
 
     @property
     def projection_available(self) -> bool:
@@ -357,7 +359,7 @@ def _actions(ledger: dict, forecasts: tuple[PlanForecast, ...], session: str) ->
     close = pd.Timestamp(f"{session} 17:00", tz=PACIFIC).to_pydatetime()
     # These are expiry obligations, NOT additional simulated sell events. Reserved
     # shares stay disclosed so an existing pending sale is never counted twice.
-    for index, lot in enumerate(ledger["ending_allocations"]):
+    for index, lot in enumerate([] if ledger.get("holding_policy") == SIGNAL_DRIVEN_HOLDING_POLICY else ledger["ending_allocations"]):
         quantity, reserved = _number(lot["quantity"]), _number(lot["reserved"])
         if quantity + reserved == 0:
             continue
@@ -448,7 +450,8 @@ def load_gameplan(datastore_root: Path | None = None, session: str | None = None
             raise GameplanError("Saved Gameplan changed while it was being read. Refresh again.")
         return Gameplan(selected, _timestamp(report["observed_at"]), _timestamp(receipt["completed_at"]),
                         run, run / "Gameplan.md", forecasts, actions, projection_status, projection_note,
-                        _planning_note(report, set(frame.symbol)), _execution_quotes(root, forecasts))
+                        _planning_note(report, set(frame.symbol)), _execution_quotes(root, forecasts),
+                        ledger.get("holding_policy", "fixed_target_expiry"))
     except GameplanError:
         raise
     except FileNotFoundError as exc:

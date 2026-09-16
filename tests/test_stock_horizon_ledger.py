@@ -85,6 +85,33 @@ def test_one_active_allocation_and_never_reenter_a_cancelled_forecast(ledger):
               as_of="2026-09-08T11:00:22+00:00")
 
 
+def test_manual_buys_accumulate_and_bearish_sale_keeps_each_forecast_identity(ledger):
+    first = filled_entry(ledger, allow_accumulation=True)
+    assert ledger.reconcile(portfolio("second-start", END, 30)).ready
+    second = entry(ledger, allow_accumulation=True, forecast_id="forecast-2", target_start=END,
+        target_end="2026-09-08T13:00:00+00:00", snapshot_id="second-start", as_of=END,
+        idempotency_key="entry-2", batch_id="batch-2")
+    assert second.allocation_id == first.allocation_id
+    assert second.forecast_id == "forecast-2" and second.target_start == END
+    assert ledger.reconcile(portfolio("second-filled", "2026-09-08T12:00:21+00:00", 40),
+        order_evidence=(order(second, identity="second-fill", at="2026-09-08T12:00:20+00:00"),)).ready
+    reopened = HorizonLedger(ledger.path, ACCOUNT)
+    assert reopened.snapshot().allocations[0].filled_shares == 20
+    assert {r.forecast_id for r in reopened.snapshot().reservations} == {"forecast-1", "forecast-2"}
+    with pytest.raises(LedgerError, match="FORECAST_ALREADY_RESERVED"):
+        entry(reopened, allow_accumulation=True, forecast_id="forecast-2", target_start=END,
+              target_end="2026-09-08T13:00:00+00:00", snapshot_id="second-filled",
+              as_of="2026-09-08T12:00:22+00:00", idempotency_key="duplicate-second", batch_id="new-batch")
+    sell = reopened.reserve_direction_exit(symbol="COST", horizon="1h", forecast_id="bearish-3",
+        target_start=END, target_end="2026-09-08T13:00:00+00:00", quantity=10, limit_price=100,
+        snapshot_id="second-filled", as_of="2026-09-08T12:00:22+00:00",
+        idempotency_key="sell-3", batch_id="sell-batch")
+    assert sell.forecast_id == "bearish-3" and sell.allocation_id == first.allocation_id
+    assert reopened.reconcile(portfolio("sold", "2026-09-08T12:00:24+00:00", 30),
+        order_evidence=(order(sell, identity="sell-fill", at="2026-09-08T12:00:23+00:00"),)).ready
+    assert reopened.snapshot().allocations[0].filled_shares == 10
+
+
 @pytest.mark.parametrize("horizon,max_shares", [("1h", 10), ("4h", 20), ("1d", 30), ("1w", 40)])
 def test_allocation_weights_stay_inside_the_shared_symbol_budget(ledger, horizon, max_shares):
     with pytest.raises(LedgerError, match="WEIGHTED_BUDGET"):

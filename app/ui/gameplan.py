@@ -14,7 +14,7 @@ from tkinter import messagebox, ttk
 
 from app.ui.gameplan_data import (
     HORIZONS, PACIFIC, Gameplan, PlanForecast, PlannedAction, load_gameplan,
-    plan_sessions, reason_text,
+    plan_sessions, reason_text, SIGNAL_DRIVEN_HOLDING_POLICY,
 )
 from app.ui.gameplan_widgets import Tooltip, label, panel
 from app.ui.theme import BACKGROUND, BORDER, DANGER, MUTED_TEXT, SUCCESS, SURFACE, SURFACE_ALT, TEXT, WARNING
@@ -122,7 +122,7 @@ class GameplanTab:
         for key, title, icon, tip in (
             ("first", "First planned batch", "◷", "Earliest saved action in the current filters; this is not a live countdown."),
             ("entries", "Projected entries", "↗", "Saved direction-ledger buys, not standalone affordable quantities."),
-            ("exits", "Projected exits", "↘", "Ledger sells and separately disclosed remaining horizon expiries. Actual exits follow actual fills."),
+            ("exits", "Projected sells", "↘", "Sales from saved directions. Historical fixed-duration plans may also show horizon exits."),
             ("coverage", "Plan coverage", "▦", "Summary follows the company and horizon filters. Includes hold and outlook forecasts."),
         ):
             card = panel(self.cards)
@@ -435,7 +435,7 @@ class GameplanTab:
             scheduled_exits = sum(row.reason == "HORIZON_EXIT" for row in sells)
             bearish_sales = sum(row.reason == "BEARISH_SELL" for row in sells)
             self.captions["exits"].set(f"{len(expiries)} remaining horizon expiries" if expiries else
-                                      (f"{counted(scheduled_exits, 'scheduled exit')} · {counted(bearish_sales, 'bearish sale')}" if sells else "No projected exits"))
+                                      (f"{counted(scheduled_exits, 'scheduled exit')} · {counted(bearish_sales, 'bearish sale')}" if sells else "No projected sells"))
             if unavailable:
                 for key in ("first", "entries", "exits"):
                     self.values[key].set("—")
@@ -446,7 +446,9 @@ class GameplanTab:
                                         f"{counted(len({row.symbol for row in forecasts}), 'company', 'companies')}")
             kind = "Upcoming session" if self.plan.session > datetime.now(PACIFIC).date().isoformat() else "Saved session"
             self.subtitle.configure(text=f"{kind} · {date.fromisoformat(self.plan.session):%A, %b %d, %Y} · All times Pacific")
-            self.footer.configure(text=f"Saved {self.plan.saved_at:%b %d, %H:%M %Z} · Projected trades; quantities and exits depend on actual fills.")
+            self.footer.configure(text=("Bullish adds shares · Bearish sells own-horizon shares · No automatic expiry sales · Quantities depend on actual fills."
+                if self.plan.holding_policy == SIGNAL_DRIVEN_HOLDING_POLICY else
+                f"Saved {self.plan.saved_at:%b %d, %H:%M %Z} · Projected trades; quantities and exits depend on actual fills."))
             if unavailable:
                 self.footer.configure(text="Saved forecasts remain available. Projected trades, quantities and exits require the missing price references.")
             if self.view.get() == "trades":
@@ -455,7 +457,7 @@ class GameplanTab:
                 self.table_note.configure(text=f"{len(actions)} of {len(self.plan.actions)} saved actions shown. "
                     + f"{company_count} of {forecast_company_count} companies have projected actions. "
                     + ("All forecasts includes companies with no trades. " if company_count < forecast_company_count else "")
-                    + "EXIT means a scheduled horizon close. "
+                    + ("Bullish adds shares; bearish sells within its horizon. No automatic expiry sales. " if self.plan.holding_policy == SIGNAL_DRIVEN_HOLDING_POLICY else "EXIT means a scheduled horizon close. ")
                     + ("Expiries include remaining allocations; reserved shares are disclosed in details." if expiries else
                        "Quantities follow the direction ledger; planning prices are estimates."))
                 if unavailable:
@@ -618,8 +620,11 @@ class GameplanTab:
                                 f"{shares(closing.quantity)} shares" + (f" · {money(closing.price)} estimate" if closing.price is not None else " · Price not projected"),
                                 CYAN if closing.reason == "HORIZON_EXIT" else ACTION_COLORS[closing.action]))
             else:
-                journey.append((forecast.end, "Forecast window ends", "No separate exit saved for this forecast", MUTED_TEXT))
-            note = "Exit quantity follows actual filled shares." if entry and entry.action == "BUY" else reason_text(forecast.reason)
+                journey.append((forecast.end, "Forecast window ends",
+                    "Measurement boundary only; holdings continue until a bearish instruction"
+                    if self.plan.holding_policy == SIGNAL_DRIVEN_HOLDING_POLICY else
+                    "No separate exit saved for this forecast", MUTED_TEXT))
+            note = ("Bullish buys add to this horizon; bearish instructions sell its held shares." if self.plan.holding_policy == SIGNAL_DRIVEN_HOLDING_POLICY else "Exit quantity follows actual filled shares.") if entry and entry.action == "BUY" else reason_text(forecast.reason)
             if closing and closing.reason == "HORIZON_EXIT":
                 note += (f" The {forecast.start:%H:%M} position closes at its scheduled {forecast.end:%H:%M} end."
                          " Consecutive bullish windows can schedule a new buy at the same time.")

@@ -16,6 +16,7 @@ from ml.stock_trader.fixed_horizon_budget import FIXED_HORIZON_WEIGHTS
 
 
 VERSION = "direction-based-gameplan-cash-ledger-v1"
+SIGNAL_DRIVEN_HOLDING_POLICY = "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1"
 ZERO = Decimal(0)
 
 
@@ -44,13 +45,15 @@ def _time(value: object) -> pd.Timestamp:
 
 
 def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
-                             price_path: Mapping, *, policy: StockTraderPolicy | None = None
+                             price_path: Mapping, *, policy: StockTraderPolicy | None = None,
+                             signal_driven: bool = False
                              ) -> tuple[pd.DataFrame, dict]:
-    """Simulate promoted directions, conditional fills and horizon exits.
+    """Simulate saved directions with conditional fills and shared accounting.
 
     SELL uses unallocated holdings plus that horizon's lots. BUY creates a lot
-    through its target end. At each clock: direction sells, remaining due exits,
-    then buys. Row balances are after the entire clock; events retain every
+    through its target end in the legacy policy. Signal-driven holdings instead
+    accumulate on bullish forecasts and sell only on bearish forecasts, without
+    model-promotion filtering or timed exits. Row balances are after the entire clock; events retain every
     transaction's before/after balances. Quantity is signed only on row fields.
     """
     policy = policy or StockTraderPolicy()
@@ -163,7 +166,7 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                 raise ValueError("Unknown independent horizon")
             row.update(direction_based_trade_quantity=0, direction_based_action="HOLD",
                        direction_based_reason="NEUTRAL")
-            if record["model_status"] != "PROMOTED":
+            if not signal_driven and record["model_status"] != "PROMOTED":
                 row["direction_based_reason"] = "MODEL_NOT_PROMOTED"
             elif record["symbol"] in blocked:
                 row["direction_based_reason"] = "SYMBOL_ALLOCATION_UNRESOLVED"
@@ -226,7 +229,7 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                 lot["quantity"] -= taken
                 remaining -= taken
             trade(timestamp, symbol, "SELL", quantity, "BEARISH_SELL", row=row)
-        for lot in sorted(lots, key=lambda item: (item["end"], item["symbol"], item["horizon"], item["forecast_id"])):
+        for lot in ([] if signal_driven else sorted(lots, key=lambda item: (item["end"], item["symbol"], item["horizon"], item["forecast_id"]))):
             if lot["symbol"] not in blocked and lot["end"] <= timestamp and lot["quantity"] >= 1:
                 quantity = Decimal(int(lot["quantity"]))
                 lot["quantity"] -= quantity
@@ -239,7 +242,7 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
             if (symbol, horizon) in pending_horizons:
                 row["direction_based_reason"] = "HORIZON_BUY_ALREADY_PENDING"
                 continue
-            if any(lot["symbol"] == symbol and lot["horizon"] == horizon
+            if not signal_driven and any(lot["symbol"] == symbol and lot["horizon"] == horizon
                    and lot["quantity"] + lot["reserved"] > 0 for lot in lots):
                 row["direction_based_reason"] = "HORIZON_POSITION_ALREADY_HELD"
                 continue
@@ -301,4 +304,15 @@ def project_direction_trades(trade_rows: pd.DataFrame, snapshot: Mapping,
                   "A neutral row adds no trade; a previous trade may separately reach its scheduled horizon exit at that hour. Positions ending after this session remain held at 17:00.",
                   "Unfilled trades leave the corresponding cash and shares unchanged; dependent later quantities must then be recalculated. The no-fill baseline is included separately.",
               ]}
+    if signal_driven:
+        report["holding_policy"] = SIGNAL_DRIVEN_HOLDING_POLICY
+        report["assumptions"] = [
+            "Each new bullish forecast adds shares using current capacity; bearish forecasts sell eligible shares in their own horizon. An exact 50% holds.",
+            "Research assessment is disclosed separately and does not veto saved manual Gameplan instructions.",
+            "Forecast window ends are prediction measurement times, not sale instructions. There are no scheduled expiry sales, including at day end.",
+            "Each hour processes bearish sales, then bullish purchases. Holdings remain separated by symbol and horizon; cash and exposure are shared.",
+            "Unallocated shares may be assigned to bearish sales; another horizon's shares and pending sells remain protected.",
+            "These quantities assume fills at planning estimates and available sale proceeds. Live orders use current quotes, actual cash and confirmed holdings; no fill is guaranteed.",
+            "Unfilled trades leave cash and shares unchanged. Subsequent projected quantities then require recalculation.",
+        ]
     return pd.DataFrame([rows[str(identifier)] for identifier in trade_rows.id]), report

@@ -21,12 +21,17 @@ existing research validation and hourly attempt behavior.
 
 The Gameplan tab opens with All forecasts, and choosing All companies returns
 to that view. An explicitly selected Trades view survives refresh and reports
-how many companies have projected actions. Scheduled horizon sales display as
-EXIT, with the originating entry forecast identified in the inspector. A
-one-hour position closes at its saved target end even if the next hour is also
-bullish; a new entry follows only after the prior position closes. Equal
-projected quantities reflect the same allocation rounded to whole shares.
-These display changes do not merge horizons or change execution instructions.
+how many companies have projected actions.
+
+September 16 operator instruction: the manual Gameplan strategy buys on each new
+bullish forecast and sells on bearish forecasts within the respective horizon.
+Successive bullish forecasts accumulate shares in that horizon's bucket.
+Forecast target ends measure model outcomes; they never trigger automatic sales.
+Per-forecast records prevent duplicate processing. Other horizons retain ownership
+of their shares. Historical fixed-duration plans and the disabled legacy launcher
+retain their old semantics; the launcher must be updated before any reactivation.
+Gameplan projections show this signal-driven behavior; Stats scores forecast
+windows independently of holding duration.
 
 September 14 operator-approved execution correction: Gameplan buys and sells
 use current real-time Schwab NBBO responses. Keep the provider's bid/ask update
