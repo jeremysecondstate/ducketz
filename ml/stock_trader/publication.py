@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import sqlite3
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Sequence
@@ -434,7 +435,16 @@ def _write_json_atomic(path: Path, payload: Mapping[str, object]) -> None:
         json.dumps(dict(payload), indent=2, sort_keys=True, default=str) + "\n",
         encoding="utf-8",
     )
-    temporary.replace(target)
+    for attempt in range(6):
+        try:
+            temporary.replace(target)
+            return
+        except PermissionError as exc:
+            # Windows readers may briefly deny replacement while holding the
+            # destination open. Keep the old JSON intact and retry the rename.
+            if getattr(exc, "winerror", None) not in {5, 32, 33} or attempt == 5:
+                raise
+            time.sleep(0.05 * (2 ** attempt))
 
 
 def _write_json_exclusive(path: Path, payload: Mapping[str, object]) -> None:
