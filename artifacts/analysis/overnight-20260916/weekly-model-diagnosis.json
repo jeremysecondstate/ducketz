@@ -1,0 +1,2527 @@
+{
+  "assessment_used_to_select_or_modify_candidate": false,
+  "calibrator_changes": {
+    "fit": {
+      "added": [],
+      "added_count": 0,
+      "removed": [
+        {
+          "decision_timestamp": "2026-06-10T00:05:00.000Z",
+          "observed_return": 0.0271124704,
+          "route": "1w@D+5",
+          "symbol": "AAPL",
+          "target": 1,
+          "target_window_end": "2026-06-17T00:00:00.000Z",
+          "target_window_start": "2026-06-10T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-06-10T00:05:00.000Z",
+          "observed_return": 0.0106907895,
+          "route": "1w@D+5",
+          "symbol": "AMZN",
+          "target": 1,
+          "target_window_end": "2026-06-17T00:00:00.000Z",
+          "target_window_start": "2026-06-10T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-06-10T00:05:00.000Z",
+          "observed_return": 0.027360029,
+          "route": "1w@D+5",
+          "symbol": "IONQ",
+          "target": 1,
+          "target_window_end": "2026-06-17T00:00:00.000Z",
+          "target_window_start": "2026-06-10T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-06-10T00:05:00.000Z",
+          "observed_return": 0.1377519013,
+          "route": "1w@D+5",
+          "symbol": "MU",
+          "target": 1,
+          "target_window_end": "2026-06-17T00:00:00.000Z",
+          "target_window_start": "2026-06-10T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-06-10T00:05:00.000Z",
+          "observed_return": 0.014173998,
+          "route": "1w@D+5",
+          "symbol": "NVDA",
+          "target": 1,
+          "target_window_end": "2026-06-17T00:00:00.000Z",
+          "target_window_start": "2026-06-10T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-06-10T00:05:00.000Z",
+          "observed_return": 0.247752007,
+          "route": "1w@D+5",
+          "symbol": "SNDK",
+          "target": 1,
+          "target_window_end": "2026-06-17T00:00:00.000Z",
+          "target_window_start": "2026-06-10T11:00:00.000Z"
+        }
+      ],
+      "removed_count": 6
+    },
+    "validation": {
+      "added": [],
+      "added_count": 0,
+      "removed": [],
+      "removed_count": 0
+    }
+  },
+  "cohort_change": {
+    "added": [
+      {
+        "decision_timestamp": "2026-09-09T00:05:00.000Z",
+        "observed_return": 0.0528268383,
+        "route": "1w@D+5",
+        "symbol": "AAPL",
+        "target": 1,
+        "target_window_end": "2026-09-16T00:00:00.000Z",
+        "target_window_start": "2026-09-09T11:00:00.000Z"
+      },
+      {
+        "decision_timestamp": "2026-09-09T00:05:00.000Z",
+        "observed_return": -0.0258079699,
+        "route": "1w@D+5",
+        "symbol": "AMZN",
+        "target": 0,
+        "target_window_end": "2026-09-16T00:00:00.000Z",
+        "target_window_start": "2026-09-09T11:00:00.000Z"
+      },
+      {
+        "decision_timestamp": "2026-09-09T00:05:00.000Z",
+        "observed_return": 0.0260400987,
+        "route": "1w@D+5",
+        "symbol": "GOOG",
+        "target": 1,
+        "target_window_end": "2026-09-16T00:00:00.000Z",
+        "target_window_start": "2026-09-09T11:00:00.000Z"
+      },
+      {
+        "decision_timestamp": "2026-09-09T00:05:00.000Z",
+        "observed_return": -0.0726270974,
+        "route": "1w@D+5",
+        "symbol": "IONQ",
+        "target": 0,
+        "target_window_end": "2026-09-16T00:00:00.000Z",
+        "target_window_start": "2026-09-09T11:00:00.000Z"
+      },
+      {
+        "decision_timestamp": "2026-09-09T00:05:00.000Z",
+        "observed_return": -0.0704503926,
+        "route": "1w@D+5",
+        "symbol": "MU",
+        "target": 0,
+        "target_window_end": "2026-09-16T00:00:00.000Z",
+        "target_window_start": "2026-09-09T11:00:00.000Z"
+      },
+      {
+        "decision_timestamp": "2026-09-09T00:05:00.000Z",
+        "observed_return": -0.0534337537,
+        "route": "1w@D+5",
+        "symbol": "NVDA",
+        "target": 0,
+        "target_window_end": "2026-09-16T00:00:00.000Z",
+        "target_window_start": "2026-09-09T11:00:00.000Z"
+      },
+      {
+        "decision_timestamp": "2026-09-09T00:05:00.000Z",
+        "observed_return": -0.1186295849,
+        "route": "1w@D+5",
+        "symbol": "SNDK",
+        "target": 0,
+        "target_window_end": "2026-09-16T00:00:00.000Z",
+        "target_window_start": "2026-09-09T11:00:00.000Z"
+      }
+    ],
+    "added_count": 7,
+    "changed_common_cells": 0,
+    "changed_common_fields": {},
+    "common_rows": 2243,
+    "removed": [],
+    "removed_count": 0
+  },
+  "conclusion": {
+    "approved_action": "Preserve immutable reports, model status and current execution policy; no unchanged retry or assessment-driven calibration substitution.",
+    "calibration_change": "Six positive fit rows leave the rolling calibration partition; identity then wins the unchanged later development set.",
+    "champion_retention": "latest-compatible-promoted-same-action-date-v1 excludes the September 15 action-date model from September 16.",
+    "classification": "Expected rolling development sample sensitivity and valid held-out rejection",
+    "concrete_training_or_data_defect_found": false,
+    "immediate_retrain_justified": false,
+    "potential_future_research": "Prospectively preregister calibration stability work on development-only data with an untouched future assessment; current evidence does not identify a concrete corrective patch."
+  },
+  "enrichment": {
+    "horizons": {
+      "1d": {
+        "diagnostic_scope_count": 11,
+        "fitted_scope_count": 11,
+        "qualified_scope_count": 0,
+        "status": "FITTED",
+        "symbols_without_targets": []
+      },
+      "1h": {
+        "diagnostic_scope_count": 143,
+        "fitted_scope_count": 143,
+        "qualified_scope_count": 137,
+        "status": "FITTED",
+        "symbols_without_targets": []
+      },
+      "1w": {
+        "diagnostic_scope_count": 41,
+        "fitted_scope_count": 41,
+        "qualified_scope_count": 0,
+        "status": "FITTED",
+        "symbols_without_targets": []
+      },
+      "4h": {
+        "diagnostic_scope_count": 78,
+        "fitted_scope_count": 78,
+        "qualified_scope_count": 0,
+        "status": "FITTED",
+        "symbols_without_targets": []
+      }
+    },
+    "report": "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260916T060336.201575Z\\training-report.json",
+    "sha256": "366a6ba57c4e9cca10189afe12108d67250cbb7388ffc76b3661588c2b7974ba"
+  },
+  "manual_instruction_read": {
+    "broker_or_runtime_invoked": false,
+    "inspection_only_as_of": "2026-09-16T11:01:00Z",
+    "interpretation": "Manual selected policy consumes saved research-status weekly instructions; actual account, quote, ownership, activation and deduplication checks still govern any order.",
+    "opening_signal_count": 44,
+    "orders_placed": 0,
+    "run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260916T060149.932707Z",
+    "saved_execution_rows": 209,
+    "weekly_opening_signals": {
+      "AAPL": {
+        "probability": 0.6691244475711007,
+        "target_end": "2026-09-23T00:00:00+00:00"
+      },
+      "AMZN": {
+        "probability": 0.4949131243244843,
+        "target_end": "2026-09-23T00:00:00+00:00"
+      },
+      "COST": {
+        "probability": 0.3798068244407772,
+        "target_end": "2026-09-23T00:00:00+00:00"
+      },
+      "CROX": {
+        "probability": 0.42680718463240697,
+        "target_end": "2026-09-23T00:00:00+00:00"
+      },
+      "GOOG": {
+        "probability": 0.6082741548666774,
+        "target_end": "2026-09-23T00:00:00+00:00"
+      },
+      "IONQ": {
+        "probability": 0.47952182925827047,
+        "target_end": "2026-09-23T00:00:00+00:00"
+      },
+      "MU": {
+        "probability": 0.666479184076432,
+        "target_end": "2026-09-23T00:00:00+00:00"
+      },
+      "NVDA": {
+        "probability": 0.7189197934701215,
+        "target_end": "2026-09-23T00:00:00+00:00"
+      },
+      "PATH": {
+        "probability": 0.3601383636170653,
+        "target_end": "2026-09-23T00:00:00+00:00"
+      },
+      "SNDK": {
+        "probability": 0.7144731571913672,
+        "target_end": "2026-09-23T00:00:00+00:00"
+      },
+      "TWST": {
+        "probability": 0.29008319393151943,
+        "target_end": "2026-09-23T00:00:00+00:00"
+      }
+    }
+  },
+  "observed_at": "2026-09-16T06:09:38.345451+00:00",
+  "partition_changes": {
+    "assessment": {
+      "added": [
+        {
+          "decision_timestamp": "2026-09-09T00:05:00.000Z",
+          "observed_return": 0.0528268383,
+          "route": "1w@D+5",
+          "symbol": "AAPL",
+          "target": 1,
+          "target_window_end": "2026-09-16T00:00:00.000Z",
+          "target_window_start": "2026-09-09T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-09-09T00:05:00.000Z",
+          "observed_return": -0.0258079699,
+          "route": "1w@D+5",
+          "symbol": "AMZN",
+          "target": 0,
+          "target_window_end": "2026-09-16T00:00:00.000Z",
+          "target_window_start": "2026-09-09T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-09-09T00:05:00.000Z",
+          "observed_return": 0.0260400987,
+          "route": "1w@D+5",
+          "symbol": "GOOG",
+          "target": 1,
+          "target_window_end": "2026-09-16T00:00:00.000Z",
+          "target_window_start": "2026-09-09T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-09-09T00:05:00.000Z",
+          "observed_return": -0.0726270974,
+          "route": "1w@D+5",
+          "symbol": "IONQ",
+          "target": 0,
+          "target_window_end": "2026-09-16T00:00:00.000Z",
+          "target_window_start": "2026-09-09T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-09-09T00:05:00.000Z",
+          "observed_return": -0.0704503926,
+          "route": "1w@D+5",
+          "symbol": "MU",
+          "target": 0,
+          "target_window_end": "2026-09-16T00:00:00.000Z",
+          "target_window_start": "2026-09-09T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-09-09T00:05:00.000Z",
+          "observed_return": -0.0534337537,
+          "route": "1w@D+5",
+          "symbol": "NVDA",
+          "target": 0,
+          "target_window_end": "2026-09-16T00:00:00.000Z",
+          "target_window_start": "2026-09-09T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-09-09T00:05:00.000Z",
+          "observed_return": -0.1186295849,
+          "route": "1w@D+5",
+          "symbol": "SNDK",
+          "target": 0,
+          "target_window_end": "2026-09-16T00:00:00.000Z",
+          "target_window_start": "2026-09-09T11:00:00.000Z"
+        }
+      ],
+      "added_count": 7,
+      "removed": [
+        {
+          "decision_timestamp": "2026-07-24T21:05:00.000Z",
+          "observed_return": -0.0789931076,
+          "route": "1w@D+5",
+          "symbol": "AAPL",
+          "target": 0,
+          "target_window_end": "2026-08-01T00:00:00.000Z",
+          "target_window_start": "2026-07-27T11:00:00.000Z"
+        }
+      ],
+      "removed_count": 1
+    },
+    "calibration": {
+      "added": [],
+      "added_count": 0,
+      "removed": [
+        {
+          "decision_timestamp": "2026-06-10T00:05:00.000Z",
+          "observed_return": 0.0271124704,
+          "route": "1w@D+5",
+          "symbol": "AAPL",
+          "target": 1,
+          "target_window_end": "2026-06-17T00:00:00.000Z",
+          "target_window_start": "2026-06-10T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-06-10T00:05:00.000Z",
+          "observed_return": 0.0106907895,
+          "route": "1w@D+5",
+          "symbol": "AMZN",
+          "target": 1,
+          "target_window_end": "2026-06-17T00:00:00.000Z",
+          "target_window_start": "2026-06-10T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-06-10T00:05:00.000Z",
+          "observed_return": 0.027360029,
+          "route": "1w@D+5",
+          "symbol": "IONQ",
+          "target": 1,
+          "target_window_end": "2026-06-17T00:00:00.000Z",
+          "target_window_start": "2026-06-10T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-06-10T00:05:00.000Z",
+          "observed_return": 0.1377519013,
+          "route": "1w@D+5",
+          "symbol": "MU",
+          "target": 1,
+          "target_window_end": "2026-06-17T00:00:00.000Z",
+          "target_window_start": "2026-06-10T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-06-10T00:05:00.000Z",
+          "observed_return": 0.014173998,
+          "route": "1w@D+5",
+          "symbol": "NVDA",
+          "target": 1,
+          "target_window_end": "2026-06-17T00:00:00.000Z",
+          "target_window_start": "2026-06-10T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-06-10T00:05:00.000Z",
+          "observed_return": 0.247752007,
+          "route": "1w@D+5",
+          "symbol": "SNDK",
+          "target": 1,
+          "target_window_end": "2026-06-17T00:00:00.000Z",
+          "target_window_start": "2026-06-10T11:00:00.000Z"
+        }
+      ],
+      "removed_count": 6
+    },
+    "selection": {
+      "added": [
+        {
+          "decision_timestamp": "2026-06-04T00:05:00.000Z",
+          "observed_return": -0.0686243115,
+          "route": "1w@D+5",
+          "symbol": "AAPL",
+          "target": 0,
+          "target_window_end": "2026-06-11T00:00:00.000Z",
+          "target_window_start": "2026-06-04T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-06-03T23:05:00.000Z",
+          "observed_return": -0.0619219624,
+          "route": "1w@D+5",
+          "symbol": "AMZN",
+          "target": 0,
+          "target_window_end": "2026-06-11T00:00:00.000Z",
+          "target_window_start": "2026-06-04T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-06-04T00:05:00.000Z",
+          "observed_return": 0.0053121258,
+          "route": "1w@D+5",
+          "symbol": "COST",
+          "target": 1,
+          "target_window_end": "2026-06-11T00:00:00.000Z",
+          "target_window_start": "2026-06-04T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-06-03T23:05:00.000Z",
+          "observed_return": -0.0140343997,
+          "route": "1w@D+5",
+          "symbol": "GOOG",
+          "target": 0,
+          "target_window_end": "2026-06-11T00:00:00.000Z",
+          "target_window_start": "2026-06-04T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-06-04T00:05:00.000Z",
+          "observed_return": -0.136567974,
+          "route": "1w@D+5",
+          "symbol": "IONQ",
+          "target": 0,
+          "target_window_end": "2026-06-11T00:00:00.000Z",
+          "target_window_start": "2026-06-04T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-06-04T00:05:00.000Z",
+          "observed_return": -0.1306223655,
+          "route": "1w@D+5",
+          "symbol": "MU",
+          "target": 0,
+          "target_window_end": "2026-06-11T00:00:00.000Z",
+          "target_window_start": "2026-06-04T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-06-04T00:05:00.000Z",
+          "observed_return": -0.0644434007,
+          "route": "1w@D+5",
+          "symbol": "NVDA",
+          "target": 0,
+          "target_window_end": "2026-06-11T00:00:00.000Z",
+          "target_window_start": "2026-06-04T11:00:00.000Z"
+        },
+        {
+          "decision_timestamp": "2026-06-03T23:05:00.000Z",
+          "observed_return": -0.065176596,
+          "route": "1w@D+5",
+          "symbol": "SNDK",
+          "target": 0,
+          "target_window_end": "2026-06-11T00:00:00.000Z",
+          "target_window_start": "2026-06-04T11:00:00.000Z"
+        }
+      ],
+      "added_count": 8,
+      "removed": [
+        {
+          "decision_timestamp": "2026-05-04T21:05:00.000Z",
+          "observed_return": 0.2158675554,
+          "route": "1w@D+5",
+          "symbol": "IONQ",
+          "target": 1,
+          "target_window_end": "2026-05-12T00:00:00.000Z",
+          "target_window_start": "2026-05-05T11:00:00.000Z"
+        }
+      ],
+      "removed_count": 1
+    },
+    "train": {
+      "added": [],
+      "added_count": 0,
+      "removed": [],
+      "removed_count": 0
+    }
+  },
+  "read_only": true,
+  "runs": {
+    "20260915T054345.154531Z": {
+      "artifact_checksums": {
+        "forecasts.parquet": {
+          "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260915T054345.154531Z\\forecasts.parquet",
+          "sha256": "8da2275caffd552b5e37a50df48d268e7c1f9c8a54ceb20ac833e5481c4d6340",
+          "size": 58007
+        },
+        "model-reports.json": {
+          "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260915T054345.154531Z\\model-reports.json",
+          "sha256": "b5c913316af9c7b035df0e04d72bb6f1f118631ef2130eb0814ee88b0c544c1f",
+          "size": 106877
+        },
+        "models/1w/model.joblib": {
+          "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260915T054345.154531Z\\models\\1w\\model.joblib",
+          "sha256": "8ce35e67b0ba82e024c28e9e6e9bff13565982e1d99920c934454cf803a62592",
+          "size": 374351
+        },
+        "training-cohort-1w.parquet": {
+          "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260915T054345.154531Z\\training-cohort-1w.parquet",
+          "sha256": "2a9dd9818c148d28f46426e159582ac95825223755d98fccc52bfc0b6bbccf9f",
+          "size": 777616
+        }
+      },
+      "calibrator_fit": {
+        "classes": {
+          "0": 43,
+          "1": 26
+        },
+        "decision_clusters": 17,
+        "decision_first": "2026-06-10 00:05:00+00:00",
+        "decision_last": "2026-06-23 00:05:00+00:00",
+        "rows": 69,
+        "symbols": {
+          "AAPL": 9,
+          "AMZN": 9,
+          "COST": 6,
+          "GOOG": 6,
+          "IONQ": 9,
+          "MU": 9,
+          "NVDA": 9,
+          "PATH": 3,
+          "SNDK": 9
+        },
+        "target_first_start": "2026-06-10 11:00:00+00:00",
+        "target_last_end": "2026-06-30 00:00:00+00:00"
+      },
+      "calibrator_validation": {
+        "classes": {
+          "0": 51,
+          "1": 46
+        },
+        "decision_clusters": 28,
+        "decision_first": "2026-06-30 23:05:00+00:00",
+        "decision_last": "2026-07-18 00:05:00+00:00",
+        "rows": 97,
+        "symbols": {
+          "AAPL": 13,
+          "AMZN": 13,
+          "COST": 7,
+          "CROX": 1,
+          "GOOG": 12,
+          "IONQ": 11,
+          "MU": 13,
+          "NVDA": 13,
+          "PATH": 1,
+          "SNDK": 13
+        },
+        "target_first_start": "2026-07-01 11:00:00+00:00",
+        "target_last_end": "2026-07-25 00:00:00+00:00"
+      },
+      "cohort": {
+        "classes": {
+          "0": 986,
+          "1": 1257
+        },
+        "decision_clusters": 827,
+        "decision_first": "2023-04-04 22:05:00+00:00",
+        "decision_last": "2026-09-05 00:05:00+00:00",
+        "rows": 2243,
+        "symbols": {
+          "AAPL": 295,
+          "AMZN": 294,
+          "COST": 139,
+          "CROX": 31,
+          "GOOG": 286,
+          "IONQ": 334,
+          "MU": 279,
+          "NVDA": 295,
+          "PATH": 125,
+          "SNDK": 157,
+          "TWST": 8
+        },
+        "target_first_start": "2023-04-05 11:00:00+00:00",
+        "target_last_end": "2026-09-15 00:00:00+00:00"
+      },
+      "forecast_status_counts": {
+        "1d/PROMOTED/False/BEARISH": 44,
+        "1d/PROMOTED/True/BEARISH": 11,
+        "1h/PROMOTED/False/BEARISH": 7,
+        "1h/PROMOTED/False/BULLISH": 4,
+        "1h/PROMOTED/True/BEARISH": 143,
+        "1w/PROMOTED/True/BEARISH": 11,
+        "4h/PROMOTED/True/BEARISH": 44
+      },
+      "groups": {
+        "1d": {
+          "assessment": {
+            "brier_score": 0.25162196542325216,
+            "direction_accuracy_at_0_5": 0.5352480417754569,
+            "expected_calibration_error_10_bin": 0.056907469632917526,
+            "log_loss": 0.6965112037391377,
+            "mean_probability": 0.40861722567555314,
+            "positive_rate": 0.46475195822454307,
+            "rows": 1149
+          },
+          "baseline": {
+            "brier_score": 0.2496149791381937,
+            "direction_accuracy_at_0_5": 0.5352480417754569,
+            "expected_calibration_error_10_bin": 0.029281454663285078,
+            "log_loss": 0.6923771039717506,
+            "mean_probability": 0.49403341288782815,
+            "positive_rate": 0.46475195822454307,
+            "rows": 1149
+          },
+          "family": "regularized-logistic-c0.001",
+          "gate": {
+            "assessment_beats_baseline": {
+              "brier_score": false,
+              "log_loss": false
+            },
+            "assessment_minus_baseline": {
+              "brier_score": 0.00200698628505846,
+              "log_loss": 0.0041340997673871
+            },
+            "baseline_tolerances": {
+              "brier_score": 0.005,
+              "log_loss": 0.01
+            },
+            "checks": {
+              "assessment_has_at_least_10_decision_clusters": true,
+              "brier_within_baseline_tolerance": true,
+              "calibration_retains_directional_information": true,
+              "expected_calibration_error_at_most_0_15": true,
+              "log_loss_within_baseline_tolerance": true
+            },
+            "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+            "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes.",
+            "policy_version": "independent-stock-directional-promotion-v2",
+            "status": "PROMOTED"
+          }
+        },
+        "1h": {
+          "assessment": {
+            "brier_score": 0.2284287025594316,
+            "direction_accuracy_at_0_5": 0.6161328588374851,
+            "expected_calibration_error_10_bin": 0.011110982572151618,
+            "log_loss": 0.6479892794716595,
+            "mean_probability": 0.3879422420144956,
+            "positive_rate": 0.3819691577698695,
+            "rows": 4215
+          },
+          "baseline": {
+            "brier_score": 0.2366317089255186,
+            "direction_accuracy_at_0_5": 0.6180308422301305,
+            "expected_calibration_error_10_bin": 0.023727381715489826,
+            "log_loss": 0.6661951653537119,
+            "mean_probability": 0.40569653948535933,
+            "positive_rate": 0.3819691577698695,
+            "rows": 4215
+          },
+          "family": "regularized-logistic-c1",
+          "gate": {
+            "assessment_beats_baseline": {
+              "brier_score": true,
+              "log_loss": true
+            },
+            "assessment_minus_baseline": {
+              "brier_score": -0.008203006366087,
+              "log_loss": -0.0182058858820524
+            },
+            "baseline_tolerances": {
+              "brier_score": 0.005,
+              "log_loss": 0.01
+            },
+            "checks": {
+              "assessment_has_at_least_10_decision_clusters": true,
+              "brier_within_baseline_tolerance": true,
+              "calibration_retains_directional_information": true,
+              "expected_calibration_error_at_most_0_15": true,
+              "log_loss_within_baseline_tolerance": true
+            },
+            "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+            "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes.",
+            "policy_version": "independent-stock-directional-promotion-v2",
+            "status": "PROMOTED"
+          }
+        },
+        "1w": {
+          "assessment": {
+            "brier_score": 0.2547558651621045,
+            "direction_accuracy_at_0_5": 0.4892703862660944,
+            "expected_calibration_error_10_bin": 0.06004939052023275,
+            "log_loss": 0.7027533045303003,
+            "mean_probability": 0.45071099221451966,
+            "positive_rate": 0.5107296137339056,
+            "rows": 233
+          },
+          "baseline": {
+            "brier_score": 0.2547966900679406,
+            "direction_accuracy_at_0_5": 0.5107296137339056,
+            "expected_calibration_error_10_bin": 0.07008433975446637,
+            "log_loss": 0.702883516976331,
+            "mean_probability": 0.580813953488372,
+            "positive_rate": 0.5107296137339056,
+            "rows": 233
+          },
+          "family": "hist-gradient-mlp-0.50",
+          "gate": {
+            "assessment_beats_baseline": {
+              "brier_score": true,
+              "log_loss": true
+            },
+            "assessment_minus_baseline": {
+              "brier_score": -4.08249058361e-05,
+              "log_loss": -0.0001302124460307
+            },
+            "baseline_tolerances": {
+              "brier_score": 0.005,
+              "log_loss": 0.01
+            },
+            "checks": {
+              "assessment_has_at_least_10_decision_clusters": true,
+              "brier_within_baseline_tolerance": true,
+              "calibration_retains_directional_information": true,
+              "expected_calibration_error_at_most_0_15": true,
+              "log_loss_within_baseline_tolerance": true
+            },
+            "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+            "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes.",
+            "policy_version": "independent-stock-directional-promotion-v2",
+            "status": "PROMOTED"
+          }
+        },
+        "4h": {
+          "assessment": {
+            "brier_score": 0.24819579358437596,
+            "direction_accuracy_at_0_5": 0.5426356589147286,
+            "expected_calibration_error_10_bin": 0.015610840420040906,
+            "log_loss": 0.6895352930753179,
+            "mean_probability": 0.4417535006652304,
+            "positive_rate": 0.4573643410852713,
+            "rows": 1161
+          },
+          "baseline": {
+            "brier_score": 0.2482344686523177,
+            "direction_accuracy_at_0_5": 0.5426356589147286,
+            "expected_calibration_error_10_bin": 0.0072296655116829145,
+            "log_loss": 0.6896123018016165,
+            "mean_probability": 0.4645940065969542,
+            "positive_rate": 0.4573643410852713,
+            "rows": 1161
+          },
+          "family": "hist-gradient-mlp-0.75",
+          "gate": {
+            "assessment_beats_baseline": {
+              "brier_score": true,
+              "log_loss": true
+            },
+            "assessment_minus_baseline": {
+              "brier_score": -3.867506794174e-05,
+              "log_loss": -7.70087262986e-05
+            },
+            "baseline_tolerances": {
+              "brier_score": 0.005,
+              "log_loss": 0.01
+            },
+            "checks": {
+              "assessment_has_at_least_10_decision_clusters": true,
+              "brier_within_baseline_tolerance": true,
+              "calibration_retains_directional_information": true,
+              "expected_calibration_error_at_most_0_15": true,
+              "log_loss_within_baseline_tolerance": true
+            },
+            "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+            "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes.",
+            "policy_version": "independent-stock-directional-promotion-v2",
+            "status": "PROMOTED"
+          }
+        }
+      },
+      "manifest_sha256": "da82eb907756ff0bef0efcf75617b4770138b8ac49afe0a446b3708fd1594939",
+      "partition_details": {
+        "assessment": {
+          "classes": {
+            "0": 114,
+            "1": 119
+          },
+          "decision_clusters": 63,
+          "decision_first": "2026-07-24 21:05:00+00:00",
+          "decision_last": "2026-09-05 00:05:00+00:00",
+          "rows": 233,
+          "symbols": {
+            "AAPL": 31,
+            "AMZN": 31,
+            "COST": 14,
+            "GOOG": 30,
+            "IONQ": 22,
+            "MU": 31,
+            "NVDA": 31,
+            "PATH": 10,
+            "SNDK": 31,
+            "TWST": 2
+          },
+          "target_first_start": "2026-07-27 11:00:00+00:00",
+          "target_last_end": "2026-09-15 00:00:00+00:00"
+        },
+        "calibration": {
+          "classes": {
+            "0": 112,
+            "1": 92
+          },
+          "decision_clusters": 56,
+          "decision_first": "2026-06-10 00:05:00+00:00",
+          "decision_last": "2026-07-18 00:05:00+00:00",
+          "rows": 204,
+          "symbols": {
+            "AAPL": 27,
+            "AMZN": 27,
+            "COST": 16,
+            "CROX": 1,
+            "GOOG": 24,
+            "IONQ": 24,
+            "MU": 27,
+            "NVDA": 27,
+            "PATH": 4,
+            "SNDK": 27
+          },
+          "target_first_start": "2026-06-10 11:00:00+00:00",
+          "target_last_end": "2026-07-25 00:00:00+00:00"
+        },
+        "selection": {
+          "classes": {
+            "0": 78,
+            "1": 88
+          },
+          "decision_clusters": 53,
+          "decision_first": "2026-05-04 21:05:00+00:00",
+          "decision_last": "2026-06-03 00:05:00+00:00",
+          "rows": 166,
+          "symbols": {
+            "AAPL": 21,
+            "AMZN": 21,
+            "COST": 11,
+            "CROX": 1,
+            "GOOG": 21,
+            "IONQ": 19,
+            "MU": 21,
+            "NVDA": 21,
+            "PATH": 9,
+            "SNDK": 21
+          },
+          "target_first_start": "2026-05-05 11:00:00+00:00",
+          "target_last_end": "2026-06-10 00:00:00+00:00"
+        },
+        "train": {
+          "classes": {
+            "0": 643,
+            "1": 911
+          },
+          "decision_clusters": 626,
+          "decision_first": "2023-04-04 22:05:00+00:00",
+          "decision_last": "2026-04-28 00:05:00+00:00",
+          "rows": 1554,
+          "symbols": {
+            "AAPL": 204,
+            "AMZN": 203,
+            "COST": 97,
+            "CROX": 29,
+            "GOOG": 198,
+            "IONQ": 259,
+            "MU": 188,
+            "NVDA": 204,
+            "PATH": 100,
+            "SNDK": 66,
+            "TWST": 6
+          },
+          "target_first_start": "2023-04-05 11:00:00+00:00",
+          "target_last_end": "2026-05-05 00:00:00+00:00"
+        }
+      },
+      "partition_information_timing": {
+        "calibration_to_assessment": {
+          "labels_not_complete_at_first_right_decision": 7,
+          "rows": [
+            {
+              "decision_timestamp": "2026-07-17T23:05:00.000Z",
+              "observed_return": 0.0024324324,
+              "route": "1w@D+5",
+              "symbol": "AAPL",
+              "target": 1,
+              "target_window_end": "2026-07-25T00:00:00.000Z",
+              "target_window_start": "2026-07-20T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-07-18T00:05:00.000Z",
+              "observed_return": -0.0625455429,
+              "route": "1w@D+5",
+              "symbol": "AMZN",
+              "target": 0,
+              "target_window_end": "2026-07-25T00:00:00.000Z",
+              "target_window_start": "2026-07-20T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-07-18T00:05:00.000Z",
+              "observed_return": -0.08287261,
+              "route": "1w@D+5",
+              "symbol": "GOOG",
+              "target": 0,
+              "target_window_end": "2026-07-25T00:00:00.000Z",
+              "target_window_start": "2026-07-20T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-07-18T00:05:00.000Z",
+              "observed_return": -0.0813597102,
+              "route": "1w@D+5",
+              "symbol": "IONQ",
+              "target": 0,
+              "target_window_end": "2026-07-25T00:00:00.000Z",
+              "target_window_start": "2026-07-20T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-07-18T00:05:00.000Z",
+              "observed_return": 0.0312369091,
+              "route": "1w@D+5",
+              "symbol": "MU",
+              "target": 1,
+              "target_window_end": "2026-07-25T00:00:00.000Z",
+              "target_window_start": "2026-07-20T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-07-18T00:05:00.000Z",
+              "observed_return": 0.0109530096,
+              "route": "1w@D+5",
+              "symbol": "NVDA",
+              "target": 1,
+              "target_window_end": "2026-07-25T00:00:00.000Z",
+              "target_window_start": "2026-07-20T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-07-18T00:05:00.000Z",
+              "observed_return": 0.0189527673,
+              "route": "1w@D+5",
+              "symbol": "SNDK",
+              "target": 1,
+              "target_window_end": "2026-07-25T00:00:00.000Z",
+              "target_window_start": "2026-07-20T11:00:00.000Z"
+            }
+          ]
+        },
+        "selection_to_calibration": {
+          "labels_not_complete_at_first_right_decision": 0,
+          "rows": []
+        },
+        "train_to_selection": {
+          "labels_not_complete_at_first_right_decision": 7,
+          "rows": [
+            {
+              "decision_timestamp": "2026-04-27T21:05:00.000Z",
+              "observed_return": 0.0870001146,
+              "route": "1w@D+5",
+              "symbol": "GOOG",
+              "target": 1,
+              "target_window_end": "2026-05-05T00:00:00.000Z",
+              "target_window_start": "2026-04-28T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-04-27T21:05:00.000Z",
+              "observed_return": 0.0750175275,
+              "route": "1w@D+5",
+              "symbol": "IONQ",
+              "target": 1,
+              "target_window_end": "2026-05-05T00:00:00.000Z",
+              "target_window_start": "2026-04-28T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-04-27T23:05:00.000Z",
+              "observed_return": 0.0464355788,
+              "route": "1w@D+5",
+              "symbol": "AMZN",
+              "target": 1,
+              "target_window_end": "2026-05-05T00:00:00.000Z",
+              "target_window_start": "2026-04-28T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-04-27T23:05:00.000Z",
+              "observed_return": 0.1825112406,
+              "route": "1w@D+5",
+              "symbol": "SNDK",
+              "target": 1,
+              "target_window_end": "2026-05-05T00:00:00.000Z",
+              "target_window_start": "2026-04-28T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-04-28T00:05:00.000Z",
+              "observed_return": 0.029143559,
+              "route": "1w@D+5",
+              "symbol": "AAPL",
+              "target": 1,
+              "target_window_end": "2026-05-05T00:00:00.000Z",
+              "target_window_start": "2026-04-28T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-04-28T00:05:00.000Z",
+              "observed_return": 0.1270209654,
+              "route": "1w@D+5",
+              "symbol": "MU",
+              "target": 1,
+              "target_window_end": "2026-05-05T00:00:00.000Z",
+              "target_window_start": "2026-04-28T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-04-28T00:05:00.000Z",
+              "observed_return": -0.0745786517,
+              "route": "1w@D+5",
+              "symbol": "NVDA",
+              "target": 0,
+              "target_window_end": "2026-05-05T00:00:00.000Z",
+              "target_window_start": "2026-04-28T11:00:00.000Z"
+            }
+          ]
+        }
+      },
+      "weekly": {
+        "assessment": {
+          "brier_score": 0.2547558651621045,
+          "direction_accuracy_at_0_5": 0.4892703862660944,
+          "expected_calibration_error_10_bin": 0.06004939052023275,
+          "log_loss": 0.7027533045303003,
+          "mean_probability": 0.45071099221451966,
+          "positive_rate": 0.5107296137339056,
+          "rows": 233
+        },
+        "assessment_raw_scores": {
+          "brier_score": 0.2731560107233598,
+          "direction_accuracy_at_0_5": 0.48497854077253216,
+          "expected_calibration_error_10_bin": 0.1256184000083491,
+          "log_loss": 0.7450797501347333,
+          "mean_probability": 0.5605397515722104,
+          "positive_rate": 0.5107296137339056,
+          "rows": 233
+        },
+        "calibration_diagnostics": {
+          "assessment_probability_range": [
+            0.3905181451246558,
+            0.5034191887637927
+          ],
+          "calibrated_probability_range": [
+            0.37964159062433545,
+            0.5034191887637927
+          ],
+          "calibration_positive_rate": 0.45098039215686275,
+          "calibration_rows": 204,
+          "information_available": true,
+          "nondecreasing_constraint_active": false,
+          "platt_slope": 0.14777391712438265,
+          "raw_probability_range": [
+            0.15093535707295136,
+            0.8440116480525759
+          ],
+          "status": "DIRECTIONAL_INFORMATION_AVAILABLE"
+        },
+        "calibration_selection": {
+          "assessment_used_for_selection": false,
+          "candidate_metrics": {
+            "identity": {
+              "brier_score": 0.272140613796396,
+              "log_loss": 0.7431445182705243,
+              "rows": 97
+            },
+            "platt": {
+              "brier_score": 0.26215266493784134,
+              "log_loss": 0.7186668919063184,
+              "rows": 97
+            }
+          },
+          "fit_class_counts": {
+            "0": 43,
+            "1": 26
+          },
+          "fit_decision_clusters": 17,
+          "fit_last_target_end": "2026-06-30T00:00:00+00:00",
+          "fit_rows": 69,
+          "full_calibration_refit_rows": 204,
+          "policy": "independent-stock-development-selection-v1",
+          "purged_rows": 38,
+          "selected_family": "platt",
+          "selection_basis": "minimum_later_calibration_development_log_loss_identity_wins_ties",
+          "selection_status": "SELECTED_ON_PURGED_DEVELOPMENT",
+          "split": "first_half_vs_second_half_decision_clusters",
+          "validation_decision_clusters": 28,
+          "validation_first_decision": "2026-06-30T23:05:00+00:00",
+          "validation_rows": 97
+        },
+        "partition_decision_clusters": {
+          "assessment": 63,
+          "calibration": 56,
+          "selection": 53,
+          "train": 626
+        },
+        "partitions": {
+          "assessment_rows": 233,
+          "calibration_rows": 204,
+          "selection_rows": 166,
+          "train_rows": 1554
+        },
+        "promotion_gate": {
+          "assessment_beats_baseline": {
+            "brier_score": true,
+            "log_loss": true
+          },
+          "assessment_minus_baseline": {
+            "brier_score": -4.08249058361e-05,
+            "log_loss": -0.0001302124460307
+          },
+          "baseline_tolerances": {
+            "brier_score": 0.005,
+            "log_loss": 0.01
+          },
+          "checks": {
+            "assessment_has_at_least_10_decision_clusters": true,
+            "brier_within_baseline_tolerance": true,
+            "calibration_retains_directional_information": true,
+            "expected_calibration_error_at_most_0_15": true,
+            "log_loss_within_baseline_tolerance": true
+          },
+          "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+          "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes.",
+          "policy_version": "independent-stock-directional-promotion-v2",
+          "status": "PROMOTED"
+        },
+        "selected_family": "hist-gradient-mlp-0.50",
+        "selection_metrics": {
+          "hist-gradient": {
+            "brier_score": 0.2525074634129141,
+            "direction_accuracy_at_0_5": 0.6024096385542169,
+            "expected_calibration_error_10_bin": 0.12451119068974857,
+            "log_loss": 0.7036714286217937,
+            "mean_probability": 0.5548126090413891,
+            "positive_rate": 0.5301204819277109,
+            "rows": 166
+          },
+          "hist-gradient-mlp-0.25": {
+            "brier_score": 0.2479177051505423,
+            "direction_accuracy_at_0_5": 0.5963855421686747,
+            "expected_calibration_error_10_bin": 0.06632284020055473,
+            "log_loss": 0.6916364927567606,
+            "mean_probability": 0.568408870341763,
+            "positive_rate": 0.5301204819277109,
+            "rows": 166
+          },
+          "hist-gradient-mlp-0.50": {
+            "brier_score": 0.24632391898864747,
+            "direction_accuracy_at_0_5": 0.5481927710843374,
+            "expected_calibration_error_10_bin": 0.05523319643302799,
+            "log_loss": 0.6872947548688648,
+            "mean_probability": 0.582005131642137,
+            "positive_rate": 0.5301204819277109,
+            "rows": 166
+          },
+          "hist-gradient-mlp-0.75": {
+            "brier_score": 0.24772610492722982,
+            "direction_accuracy_at_0_5": 0.5542168674698795,
+            "expected_calibration_error_10_bin": 0.06548091101480025,
+            "log_loss": 0.6898089014971782,
+            "mean_probability": 0.595601392942511,
+            "positive_rate": 0.5301204819277109,
+            "rows": 166
+          },
+          "mlp": {
+            "brier_score": 0.2521242629662892,
+            "direction_accuracy_at_0_5": 0.5542168674698795,
+            "expected_calibration_error_10_bin": 0.0883400690938707,
+            "log_loss": 0.6992751122710331,
+            "mean_probability": 0.6091976542428851,
+            "positive_rate": 0.5301204819277109,
+            "rows": 166
+          },
+          "regularized-logistic-c1": {
+            "brier_score": 0.26335173270015444,
+            "direction_accuracy_at_0_5": 0.5,
+            "expected_calibration_error_10_bin": 0.14753307883304606,
+            "log_loss": 0.7460921205040313,
+            "mean_probability": 0.6141118590700607,
+            "positive_rate": 0.5301204819277109,
+            "rows": 166
+          }
+        },
+        "target_boundary_quality": {
+          "admitted_rows_by_route": {
+            "1w@D+5": 2243
+          },
+          "admitted_rows_by_symbol": {
+            "AAPL": 295,
+            "AMZN": 294,
+            "COST": 139,
+            "CROX": 31,
+            "GOOG": 286,
+            "IONQ": 334,
+            "MU": 279,
+            "NVDA": 295,
+            "PATH": 125,
+            "SNDK": 157,
+            "TWST": 8
+          },
+          "aligned_rows": 2243,
+          "candidate_rows": 8968,
+          "conflicting_minute_rows_excluded": 0,
+          "enforced": true,
+          "excluded_rows": 6725,
+          "excluded_rows_by_route": {
+            "1w@D+5": 6725
+          },
+          "maximum_boundary_gap_seconds": 300.0,
+          "policy": "clock-window-boundaries-within-five-minutes-v1",
+          "target_contract_version": "independent-stock-targets-v1",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        },
+        "target_support_by_symbol": {
+          "AAPL": {
+            "admitted_decision_clusters": 295,
+            "admitted_rows": 295,
+            "admitted_rows_by_route": {
+              "1w@D+5": 295
+            },
+            "assessment_decision_clusters": 31,
+            "assessment_rows": 31,
+            "assessment_rows_by_route": {
+              "1w@D+5": 31
+            },
+            "fitted_decision_clusters": 225,
+            "fitted_rows": 225,
+            "fitted_rows_by_route": {
+              "1w@D+5": 225
+            }
+          },
+          "AMZN": {
+            "admitted_decision_clusters": 294,
+            "admitted_rows": 294,
+            "admitted_rows_by_route": {
+              "1w@D+5": 294
+            },
+            "assessment_decision_clusters": 31,
+            "assessment_rows": 31,
+            "assessment_rows_by_route": {
+              "1w@D+5": 31
+            },
+            "fitted_decision_clusters": 224,
+            "fitted_rows": 224,
+            "fitted_rows_by_route": {
+              "1w@D+5": 224
+            }
+          },
+          "COST": {
+            "admitted_decision_clusters": 139,
+            "admitted_rows": 139,
+            "admitted_rows_by_route": {
+              "1w@D+5": 139
+            },
+            "assessment_decision_clusters": 14,
+            "assessment_rows": 14,
+            "assessment_rows_by_route": {
+              "1w@D+5": 14
+            },
+            "fitted_decision_clusters": 108,
+            "fitted_rows": 108,
+            "fitted_rows_by_route": {
+              "1w@D+5": 108
+            }
+          },
+          "CROX": {
+            "admitted_decision_clusters": 31,
+            "admitted_rows": 31,
+            "admitted_rows_by_route": {
+              "1w@D+5": 31
+            },
+            "assessment_decision_clusters": 0,
+            "assessment_rows": 0,
+            "assessment_rows_by_route": {},
+            "fitted_decision_clusters": 30,
+            "fitted_rows": 30,
+            "fitted_rows_by_route": {
+              "1w@D+5": 30
+            }
+          },
+          "GOOG": {
+            "admitted_decision_clusters": 286,
+            "admitted_rows": 286,
+            "admitted_rows_by_route": {
+              "1w@D+5": 286
+            },
+            "assessment_decision_clusters": 30,
+            "assessment_rows": 30,
+            "assessment_rows_by_route": {
+              "1w@D+5": 30
+            },
+            "fitted_decision_clusters": 219,
+            "fitted_rows": 219,
+            "fitted_rows_by_route": {
+              "1w@D+5": 219
+            }
+          },
+          "IONQ": {
+            "admitted_decision_clusters": 334,
+            "admitted_rows": 334,
+            "admitted_rows_by_route": {
+              "1w@D+5": 334
+            },
+            "assessment_decision_clusters": 22,
+            "assessment_rows": 22,
+            "assessment_rows_by_route": {
+              "1w@D+5": 22
+            },
+            "fitted_decision_clusters": 278,
+            "fitted_rows": 278,
+            "fitted_rows_by_route": {
+              "1w@D+5": 278
+            }
+          },
+          "MU": {
+            "admitted_decision_clusters": 279,
+            "admitted_rows": 279,
+            "admitted_rows_by_route": {
+              "1w@D+5": 279
+            },
+            "assessment_decision_clusters": 31,
+            "assessment_rows": 31,
+            "assessment_rows_by_route": {
+              "1w@D+5": 31
+            },
+            "fitted_decision_clusters": 209,
+            "fitted_rows": 209,
+            "fitted_rows_by_route": {
+              "1w@D+5": 209
+            }
+          },
+          "NVDA": {
+            "admitted_decision_clusters": 295,
+            "admitted_rows": 295,
+            "admitted_rows_by_route": {
+              "1w@D+5": 295
+            },
+            "assessment_decision_clusters": 31,
+            "assessment_rows": 31,
+            "assessment_rows_by_route": {
+              "1w@D+5": 31
+            },
+            "fitted_decision_clusters": 225,
+            "fitted_rows": 225,
+            "fitted_rows_by_route": {
+              "1w@D+5": 225
+            }
+          },
+          "PATH": {
+            "admitted_decision_clusters": 125,
+            "admitted_rows": 125,
+            "admitted_rows_by_route": {
+              "1w@D+5": 125
+            },
+            "assessment_decision_clusters": 10,
+            "assessment_rows": 10,
+            "assessment_rows_by_route": {
+              "1w@D+5": 10
+            },
+            "fitted_decision_clusters": 109,
+            "fitted_rows": 109,
+            "fitted_rows_by_route": {
+              "1w@D+5": 109
+            }
+          },
+          "SNDK": {
+            "admitted_decision_clusters": 157,
+            "admitted_rows": 157,
+            "admitted_rows_by_route": {
+              "1w@D+5": 157
+            },
+            "assessment_decision_clusters": 31,
+            "assessment_rows": 31,
+            "assessment_rows_by_route": {
+              "1w@D+5": 31
+            },
+            "fitted_decision_clusters": 87,
+            "fitted_rows": 87,
+            "fitted_rows_by_route": {
+              "1w@D+5": 87
+            }
+          },
+          "TWST": {
+            "admitted_decision_clusters": 8,
+            "admitted_rows": 8,
+            "admitted_rows_by_route": {
+              "1w@D+5": 8
+            },
+            "assessment_decision_clusters": 2,
+            "assessment_rows": 2,
+            "assessment_rows_by_route": {
+              "1w@D+5": 2
+            },
+            "fitted_decision_clusters": 6,
+            "fitted_rows": 6,
+            "fitted_rows_by_route": {
+              "1w@D+5": 6
+            }
+          }
+        },
+        "training_base_rate_assessment": {
+          "brier_score": 0.2547966900679406,
+          "direction_accuracy_at_0_5": 0.5107296137339056,
+          "expected_calibration_error_10_bin": 0.07008433975446637,
+          "log_loss": 0.702883516976331,
+          "mean_probability": 0.580813953488372,
+          "positive_rate": 0.5107296137339056,
+          "rows": 233
+        }
+      },
+      "weekly_forecasts": [
+        {
+          "calibrated_probability": 0.4542971738,
+          "direction": "BEARISH",
+          "execution_eligible": true,
+          "model_status": "PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "AAPL"
+        },
+        {
+          "calibrated_probability": 0.4489495321,
+          "direction": "BEARISH",
+          "execution_eligible": true,
+          "model_status": "PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "AMZN"
+        },
+        {
+          "calibrated_probability": 0.4169907309,
+          "direction": "BEARISH",
+          "execution_eligible": true,
+          "model_status": "PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "COST"
+        },
+        {
+          "calibrated_probability": 0.4249693052,
+          "direction": "BEARISH",
+          "execution_eligible": true,
+          "model_status": "PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "CROX"
+        },
+        {
+          "calibrated_probability": 0.4235438117,
+          "direction": "BEARISH",
+          "execution_eligible": true,
+          "model_status": "PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "GOOG"
+        },
+        {
+          "calibrated_probability": 0.460492895,
+          "direction": "BEARISH",
+          "execution_eligible": true,
+          "model_status": "PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "IONQ"
+        },
+        {
+          "calibrated_probability": 0.4477592859,
+          "direction": "BEARISH",
+          "execution_eligible": true,
+          "model_status": "PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "MU"
+        },
+        {
+          "calibrated_probability": 0.4352948906,
+          "direction": "BEARISH",
+          "execution_eligible": true,
+          "model_status": "PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "NVDA"
+        },
+        {
+          "calibrated_probability": 0.4380217046,
+          "direction": "BEARISH",
+          "execution_eligible": true,
+          "model_status": "PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "PATH"
+        },
+        {
+          "calibrated_probability": 0.4634695666,
+          "direction": "BEARISH",
+          "execution_eligible": true,
+          "model_status": "PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "SNDK"
+        },
+        {
+          "calibrated_probability": 0.4283245769,
+          "direction": "BEARISH",
+          "execution_eligible": true,
+          "model_status": "PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "TWST"
+        }
+      ]
+    },
+    "20260916T060149.932707Z": {
+      "artifact_checksums": {
+        "forecasts.parquet": {
+          "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260916T060149.932707Z\\forecasts.parquet",
+          "sha256": "a4e67081d92d5db5571974e2f25d6ae96906b8bd0f79a6c63f76b49a7ed693e1",
+          "size": 58125
+        },
+        "model-reports.json": {
+          "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260916T060149.932707Z\\model-reports.json",
+          "sha256": "13e8d5824974ecaecb94e715474add70d6fd7b3bbdd7779e143ba0ac11a6bc40",
+          "size": 106764
+        },
+        "models/1w/model.joblib": {
+          "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260916T060149.932707Z\\models\\1w\\model.joblib",
+          "sha256": "89a35270ed866fa5e54d9079e030024ce4d836e9ab5e814838aa23985bda5109",
+          "size": 373591
+        },
+        "training-cohort-1w.parquet": {
+          "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260916T060149.932707Z\\training-cohort-1w.parquet",
+          "sha256": "9d8baff63123f528060f5c1f75145e9b5372b95797156cc6d804284d6586c850",
+          "size": 779509
+        }
+      },
+      "calibrator_fit": {
+        "classes": {
+          "0": 43,
+          "1": 20
+        },
+        "decision_clusters": 16,
+        "decision_first": "2026-06-10 23:05:00+00:00",
+        "decision_last": "2026-06-23 00:05:00+00:00",
+        "rows": 63,
+        "symbols": {
+          "AAPL": 8,
+          "AMZN": 8,
+          "COST": 6,
+          "GOOG": 6,
+          "IONQ": 8,
+          "MU": 8,
+          "NVDA": 8,
+          "PATH": 3,
+          "SNDK": 8
+        },
+        "target_first_start": "2026-06-11 11:00:00+00:00",
+        "target_last_end": "2026-06-30 00:00:00+00:00"
+      },
+      "calibrator_validation": {
+        "classes": {
+          "0": 51,
+          "1": 46
+        },
+        "decision_clusters": 28,
+        "decision_first": "2026-06-30 23:05:00+00:00",
+        "decision_last": "2026-07-18 00:05:00+00:00",
+        "rows": 97,
+        "symbols": {
+          "AAPL": 13,
+          "AMZN": 13,
+          "COST": 7,
+          "CROX": 1,
+          "GOOG": 12,
+          "IONQ": 11,
+          "MU": 13,
+          "NVDA": 13,
+          "PATH": 1,
+          "SNDK": 13
+        },
+        "target_first_start": "2026-07-01 11:00:00+00:00",
+        "target_last_end": "2026-07-25 00:00:00+00:00"
+      },
+      "cohort": {
+        "classes": {
+          "0": 991,
+          "1": 1259
+        },
+        "decision_clusters": 828,
+        "decision_first": "2023-04-04 22:05:00+00:00",
+        "decision_last": "2026-09-09 00:05:00+00:00",
+        "rows": 2250,
+        "symbols": {
+          "AAPL": 296,
+          "AMZN": 295,
+          "COST": 139,
+          "CROX": 31,
+          "GOOG": 287,
+          "IONQ": 335,
+          "MU": 280,
+          "NVDA": 296,
+          "PATH": 125,
+          "SNDK": 158,
+          "TWST": 8
+        },
+        "target_first_start": "2023-04-05 11:00:00+00:00",
+        "target_last_end": "2026-09-16 00:00:00+00:00"
+      },
+      "forecast_status_counts": {
+        "1d/PROMOTED/False/BEARISH": 44,
+        "1d/PROMOTED/True/BEARISH": 11,
+        "1h/PROMOTED/False/BEARISH": 11,
+        "1h/PROMOTED/True/BEARISH": 143,
+        "1w/RESEARCH_NOT_PROMOTED/True/BEARISH": 6,
+        "1w/RESEARCH_NOT_PROMOTED/True/BULLISH": 5,
+        "4h/PROMOTED/True/BEARISH": 44
+      },
+      "groups": {
+        "1d": {
+          "assessment": {
+            "brier_score": 0.24945967815126194,
+            "direction_accuracy_at_0_5": 0.5495652173913044,
+            "expected_calibration_error_10_bin": 0.046746844419793626,
+            "log_loss": 0.6921577635130466,
+            "mean_probability": 0.40368793818890203,
+            "positive_rate": 0.4504347826086956,
+            "rows": 1150
+          },
+          "baseline": {
+            "brier_score": 0.2494341125771719,
+            "direction_accuracy_at_0_5": 0.5495652173913044,
+            "expected_calibration_error_10_bin": 0.04348359865764534,
+            "log_loss": 0.6920153517202813,
+            "mean_probability": 0.49391838126634097,
+            "positive_rate": 0.4504347826086956,
+            "rows": 1150
+          },
+          "family": "regularized-logistic-c0.001",
+          "gate": {
+            "assessment_beats_baseline": {
+              "brier_score": false,
+              "log_loss": false
+            },
+            "assessment_minus_baseline": {
+              "brier_score": 2.556557409004e-05,
+              "log_loss": 0.0001424117927653
+            },
+            "baseline_tolerances": {
+              "brier_score": 0.005,
+              "log_loss": 0.01
+            },
+            "checks": {
+              "assessment_has_at_least_10_decision_clusters": true,
+              "brier_within_baseline_tolerance": true,
+              "calibration_retains_directional_information": true,
+              "expected_calibration_error_at_most_0_15": true,
+              "log_loss_within_baseline_tolerance": true
+            },
+            "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+            "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes.",
+            "policy_version": "independent-stock-directional-promotion-v2",
+            "status": "PROMOTED"
+          }
+        },
+        "1h": {
+          "assessment": {
+            "brier_score": 0.22850411089515624,
+            "direction_accuracy_at_0_5": 0.6259469696969697,
+            "expected_calibration_error_10_bin": 0.0287069848076897,
+            "log_loss": 0.648844760023555,
+            "mean_probability": 0.40352909249526625,
+            "positive_rate": 0.37736742424242425,
+            "rows": 4224
+          },
+          "baseline": {
+            "brier_score": 0.235764502640013,
+            "direction_accuracy_at_0_5": 0.6226325757575758,
+            "expected_calibration_error_10_bin": 0.028341687969324014,
+            "log_loss": 0.6644397718125454,
+            "mean_probability": 0.40570911221174827,
+            "positive_rate": 0.37736742424242425,
+            "rows": 4224
+          },
+          "family": "regularized-logistic-c1",
+          "gate": {
+            "assessment_beats_baseline": {
+              "brier_score": true,
+              "log_loss": true
+            },
+            "assessment_minus_baseline": {
+              "brier_score": -0.00726039174485676,
+              "log_loss": -0.0155950117889904
+            },
+            "baseline_tolerances": {
+              "brier_score": 0.005,
+              "log_loss": 0.01
+            },
+            "checks": {
+              "assessment_has_at_least_10_decision_clusters": true,
+              "brier_within_baseline_tolerance": true,
+              "calibration_retains_directional_information": true,
+              "expected_calibration_error_at_most_0_15": true,
+              "log_loss_within_baseline_tolerance": true
+            },
+            "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+            "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes.",
+            "policy_version": "independent-stock-directional-promotion-v2",
+            "status": "PROMOTED"
+          }
+        },
+        "1w": {
+          "assessment": {
+            "brier_score": 0.26803058337926167,
+            "direction_accuracy_at_0_5": 0.4895397489539749,
+            "expected_calibration_error_10_bin": 0.11321763345952132,
+            "log_loss": 0.7326357996414441,
+            "mean_probability": 0.5604404375903752,
+            "positive_rate": 0.5062761506276151,
+            "rows": 239
+          },
+          "baseline": {
+            "brier_score": 0.2551710829338844,
+            "direction_accuracy_at_0_5": 0.5062761506276151,
+            "expected_calibration_error_10_bin": 0.07218360617609088,
+            "log_loss": 0.7036270534450724,
+            "mean_probability": 0.578459756803706,
+            "positive_rate": 0.5062761506276151,
+            "rows": 239
+          },
+          "family": "hist-gradient-mlp-0.50",
+          "gate": {
+            "assessment_beats_baseline": {
+              "brier_score": false,
+              "log_loss": false
+            },
+            "assessment_minus_baseline": {
+              "brier_score": 0.01285950044537727,
+              "log_loss": 0.0290087461963717
+            },
+            "baseline_tolerances": {
+              "brier_score": 0.005,
+              "log_loss": 0.01
+            },
+            "checks": {
+              "assessment_has_at_least_10_decision_clusters": true,
+              "brier_within_baseline_tolerance": false,
+              "calibration_retains_directional_information": true,
+              "expected_calibration_error_at_most_0_15": true,
+              "log_loss_within_baseline_tolerance": false
+            },
+            "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+            "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes.",
+            "policy_version": "independent-stock-directional-promotion-v2",
+            "status": "RESEARCH_NOT_PROMOTED"
+          }
+        },
+        "4h": {
+          "assessment": {
+            "brier_score": 0.24788341049458226,
+            "direction_accuracy_at_0_5": 0.5438144329896907,
+            "expected_calibration_error_10_bin": 0.014963869968199265,
+            "log_loss": 0.6889075497122156,
+            "mean_probability": 0.44123028617398147,
+            "positive_rate": 0.45446735395189003,
+            "rows": 1164
+          },
+          "baseline": {
+            "brier_score": 0.24802836683925358,
+            "direction_accuracy_at_0_5": 0.5455326460481099,
+            "expected_calibration_error_10_bin": 0.01007912175718062,
+            "log_loss": 0.6891994006462329,
+            "mean_probability": 0.46454647570907065,
+            "positive_rate": 0.45446735395189003,
+            "rows": 1164
+          },
+          "family": "hist-gradient-mlp-0.75",
+          "gate": {
+            "assessment_beats_baseline": {
+              "brier_score": true,
+              "log_loss": true
+            },
+            "assessment_minus_baseline": {
+              "brier_score": -0.00014495634467132,
+              "log_loss": -0.0002918509340173
+            },
+            "baseline_tolerances": {
+              "brier_score": 0.005,
+              "log_loss": 0.01
+            },
+            "checks": {
+              "assessment_has_at_least_10_decision_clusters": true,
+              "brier_within_baseline_tolerance": true,
+              "calibration_retains_directional_information": true,
+              "expected_calibration_error_at_most_0_15": true,
+              "log_loss_within_baseline_tolerance": true
+            },
+            "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+            "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes.",
+            "policy_version": "independent-stock-directional-promotion-v2",
+            "status": "PROMOTED"
+          }
+        }
+      },
+      "manifest_sha256": "96bae6997e81f1b1d8b9c2e0812c28afb471adae227c23b910eb7588932f5e61",
+      "partition_details": {
+        "assessment": {
+          "classes": {
+            "0": 118,
+            "1": 121
+          },
+          "decision_clusters": 63,
+          "decision_first": "2026-07-25 00:05:00+00:00",
+          "decision_last": "2026-09-09 00:05:00+00:00",
+          "rows": 239,
+          "symbols": {
+            "AAPL": 31,
+            "AMZN": 32,
+            "COST": 14,
+            "GOOG": 31,
+            "IONQ": 23,
+            "MU": 32,
+            "NVDA": 32,
+            "PATH": 10,
+            "SNDK": 32,
+            "TWST": 2
+          },
+          "target_first_start": "2026-07-27 11:00:00+00:00",
+          "target_last_end": "2026-09-16 00:00:00+00:00"
+        },
+        "calibration": {
+          "classes": {
+            "0": 112,
+            "1": 86
+          },
+          "decision_clusters": 55,
+          "decision_first": "2026-06-10 23:05:00+00:00",
+          "decision_last": "2026-07-18 00:05:00+00:00",
+          "rows": 198,
+          "symbols": {
+            "AAPL": 26,
+            "AMZN": 26,
+            "COST": 16,
+            "CROX": 1,
+            "GOOG": 24,
+            "IONQ": 23,
+            "MU": 26,
+            "NVDA": 26,
+            "PATH": 4,
+            "SNDK": 26
+          },
+          "target_first_start": "2026-06-11 11:00:00+00:00",
+          "target_last_end": "2026-07-25 00:00:00+00:00"
+        },
+        "selection": {
+          "classes": {
+            "0": 85,
+            "1": 88
+          },
+          "decision_clusters": 54,
+          "decision_first": "2026-05-04 23:05:00+00:00",
+          "decision_last": "2026-06-04 00:05:00+00:00",
+          "rows": 173,
+          "symbols": {
+            "AAPL": 22,
+            "AMZN": 22,
+            "COST": 12,
+            "CROX": 1,
+            "GOOG": 22,
+            "IONQ": 19,
+            "MU": 22,
+            "NVDA": 22,
+            "PATH": 9,
+            "SNDK": 22
+          },
+          "target_first_start": "2026-05-05 11:00:00+00:00",
+          "target_last_end": "2026-06-11 00:00:00+00:00"
+        },
+        "train": {
+          "classes": {
+            "0": 643,
+            "1": 911
+          },
+          "decision_clusters": 626,
+          "decision_first": "2023-04-04 22:05:00+00:00",
+          "decision_last": "2026-04-28 00:05:00+00:00",
+          "rows": 1554,
+          "symbols": {
+            "AAPL": 204,
+            "AMZN": 203,
+            "COST": 97,
+            "CROX": 29,
+            "GOOG": 198,
+            "IONQ": 259,
+            "MU": 188,
+            "NVDA": 204,
+            "PATH": 100,
+            "SNDK": 66,
+            "TWST": 6
+          },
+          "target_first_start": "2023-04-05 11:00:00+00:00",
+          "target_last_end": "2026-05-05 00:00:00+00:00"
+        }
+      },
+      "partition_information_timing": {
+        "calibration_to_assessment": {
+          "labels_not_complete_at_first_right_decision": 0,
+          "rows": []
+        },
+        "selection_to_calibration": {
+          "labels_not_complete_at_first_right_decision": 8,
+          "rows": [
+            {
+              "decision_timestamp": "2026-06-03T23:05:00.000Z",
+              "observed_return": -0.0619219624,
+              "route": "1w@D+5",
+              "symbol": "AMZN",
+              "target": 0,
+              "target_window_end": "2026-06-11T00:00:00.000Z",
+              "target_window_start": "2026-06-04T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-06-03T23:05:00.000Z",
+              "observed_return": -0.0140343997,
+              "route": "1w@D+5",
+              "symbol": "GOOG",
+              "target": 0,
+              "target_window_end": "2026-06-11T00:00:00.000Z",
+              "target_window_start": "2026-06-04T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-06-03T23:05:00.000Z",
+              "observed_return": -0.065176596,
+              "route": "1w@D+5",
+              "symbol": "SNDK",
+              "target": 0,
+              "target_window_end": "2026-06-11T00:00:00.000Z",
+              "target_window_start": "2026-06-04T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-06-04T00:05:00.000Z",
+              "observed_return": -0.0686243115,
+              "route": "1w@D+5",
+              "symbol": "AAPL",
+              "target": 0,
+              "target_window_end": "2026-06-11T00:00:00.000Z",
+              "target_window_start": "2026-06-04T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-06-04T00:05:00.000Z",
+              "observed_return": 0.0053121258,
+              "route": "1w@D+5",
+              "symbol": "COST",
+              "target": 1,
+              "target_window_end": "2026-06-11T00:00:00.000Z",
+              "target_window_start": "2026-06-04T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-06-04T00:05:00.000Z",
+              "observed_return": -0.136567974,
+              "route": "1w@D+5",
+              "symbol": "IONQ",
+              "target": 0,
+              "target_window_end": "2026-06-11T00:00:00.000Z",
+              "target_window_start": "2026-06-04T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-06-04T00:05:00.000Z",
+              "observed_return": -0.1306223655,
+              "route": "1w@D+5",
+              "symbol": "MU",
+              "target": 0,
+              "target_window_end": "2026-06-11T00:00:00.000Z",
+              "target_window_start": "2026-06-04T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-06-04T00:05:00.000Z",
+              "observed_return": -0.0644434007,
+              "route": "1w@D+5",
+              "symbol": "NVDA",
+              "target": 0,
+              "target_window_end": "2026-06-11T00:00:00.000Z",
+              "target_window_start": "2026-06-04T11:00:00.000Z"
+            }
+          ]
+        },
+        "train_to_selection": {
+          "labels_not_complete_at_first_right_decision": 7,
+          "rows": [
+            {
+              "decision_timestamp": "2026-04-27T21:05:00.000Z",
+              "observed_return": 0.0870001146,
+              "route": "1w@D+5",
+              "symbol": "GOOG",
+              "target": 1,
+              "target_window_end": "2026-05-05T00:00:00.000Z",
+              "target_window_start": "2026-04-28T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-04-27T21:05:00.000Z",
+              "observed_return": 0.0750175275,
+              "route": "1w@D+5",
+              "symbol": "IONQ",
+              "target": 1,
+              "target_window_end": "2026-05-05T00:00:00.000Z",
+              "target_window_start": "2026-04-28T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-04-27T23:05:00.000Z",
+              "observed_return": 0.0464355788,
+              "route": "1w@D+5",
+              "symbol": "AMZN",
+              "target": 1,
+              "target_window_end": "2026-05-05T00:00:00.000Z",
+              "target_window_start": "2026-04-28T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-04-27T23:05:00.000Z",
+              "observed_return": 0.1825112406,
+              "route": "1w@D+5",
+              "symbol": "SNDK",
+              "target": 1,
+              "target_window_end": "2026-05-05T00:00:00.000Z",
+              "target_window_start": "2026-04-28T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-04-28T00:05:00.000Z",
+              "observed_return": 0.029143559,
+              "route": "1w@D+5",
+              "symbol": "AAPL",
+              "target": 1,
+              "target_window_end": "2026-05-05T00:00:00.000Z",
+              "target_window_start": "2026-04-28T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-04-28T00:05:00.000Z",
+              "observed_return": 0.1270209654,
+              "route": "1w@D+5",
+              "symbol": "MU",
+              "target": 1,
+              "target_window_end": "2026-05-05T00:00:00.000Z",
+              "target_window_start": "2026-04-28T11:00:00.000Z"
+            },
+            {
+              "decision_timestamp": "2026-04-28T00:05:00.000Z",
+              "observed_return": -0.0745786517,
+              "route": "1w@D+5",
+              "symbol": "NVDA",
+              "target": 0,
+              "target_window_end": "2026-05-05T00:00:00.000Z",
+              "target_window_start": "2026-04-28T11:00:00.000Z"
+            }
+          ]
+        }
+      },
+      "weekly": {
+        "assessment": {
+          "brier_score": 0.26803058337926167,
+          "direction_accuracy_at_0_5": 0.4895397489539749,
+          "expected_calibration_error_10_bin": 0.11321763345952132,
+          "log_loss": 0.7326357996414441,
+          "mean_probability": 0.5604404375903752,
+          "positive_rate": 0.5062761506276151,
+          "rows": 239
+        },
+        "assessment_raw_scores": {
+          "brier_score": 0.26803058337926167,
+          "direction_accuracy_at_0_5": 0.4895397489539749,
+          "expected_calibration_error_10_bin": 0.11321763345952132,
+          "log_loss": 0.7326357996414441,
+          "mean_probability": 0.5604404375903752,
+          "positive_rate": 0.5062761506276151,
+          "rows": 239
+        },
+        "calibration_diagnostics": {
+          "assessment_probability_range": [
+            0.23443542406547688,
+            0.8080791001497762
+          ],
+          "calibrated_probability_range": [
+            0.22022725877396349,
+            0.7977690098835535
+          ],
+          "calibration_positive_rate": 0.43434343434343436,
+          "calibration_rows": 198,
+          "information_available": true,
+          "nondecreasing_constraint_active": false,
+          "platt_slope": null,
+          "raw_probability_range": [
+            0.22022725877396349,
+            0.7977690098835535
+          ],
+          "status": "DIRECTIONAL_INFORMATION_AVAILABLE"
+        },
+        "calibration_selection": {
+          "assessment_used_for_selection": false,
+          "candidate_metrics": {
+            "identity": {
+              "brier_score": 0.2723076316461617,
+              "log_loss": 0.7411467751574365,
+              "rows": 97
+            },
+            "platt": {
+              "brier_score": 0.2770402939595673,
+              "log_loss": 0.7522803937247898,
+              "rows": 97
+            }
+          },
+          "fit_class_counts": {
+            "0": 43,
+            "1": 20
+          },
+          "fit_decision_clusters": 16,
+          "fit_last_target_end": "2026-06-30T00:00:00+00:00",
+          "fit_rows": 63,
+          "full_calibration_refit_rows": 0,
+          "policy": "independent-stock-development-selection-v1",
+          "purged_rows": 38,
+          "selected_family": "identity",
+          "selection_basis": "minimum_later_calibration_development_log_loss_identity_wins_ties",
+          "selection_status": "SELECTED_ON_PURGED_DEVELOPMENT",
+          "split": "first_half_vs_second_half_decision_clusters",
+          "validation_decision_clusters": 28,
+          "validation_first_decision": "2026-06-30T23:05:00+00:00",
+          "validation_rows": 97
+        },
+        "partition_decision_clusters": {
+          "assessment": 63,
+          "calibration": 55,
+          "selection": 54,
+          "train": 626
+        },
+        "partitions": {
+          "assessment_rows": 239,
+          "calibration_rows": 198,
+          "selection_rows": 173,
+          "train_rows": 1554
+        },
+        "promotion_gate": {
+          "assessment_beats_baseline": {
+            "brier_score": false,
+            "log_loss": false
+          },
+          "assessment_minus_baseline": {
+            "brier_score": 0.01285950044537727,
+            "log_loss": 0.0290087461963717
+          },
+          "baseline_tolerances": {
+            "brier_score": 0.005,
+            "log_loss": 0.01
+          },
+          "checks": {
+            "assessment_has_at_least_10_decision_clusters": true,
+            "brier_within_baseline_tolerance": false,
+            "calibration_retains_directional_information": true,
+            "expected_calibration_error_at_most_0_15": true,
+            "log_loss_within_baseline_tolerance": false
+          },
+          "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+          "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes.",
+          "policy_version": "independent-stock-directional-promotion-v2",
+          "status": "RESEARCH_NOT_PROMOTED"
+        },
+        "selected_family": "hist-gradient-mlp-0.50",
+        "selection_metrics": {
+          "hist-gradient": {
+            "brier_score": 0.2532153906056944,
+            "direction_accuracy_at_0_5": 0.6011560693641619,
+            "expected_calibration_error_10_bin": 0.12176463443884555,
+            "log_loss": 0.70490216129414,
+            "mean_probability": 0.5537057947094444,
+            "positive_rate": 0.5086705202312138,
+            "rows": 173
+          },
+          "hist-gradient-mlp-0.25": {
+            "brier_score": 0.24959952831300544,
+            "direction_accuracy_at_0_5": 0.5895953757225434,
+            "expected_calibration_error_10_bin": 0.07235965657384293,
+            "log_loss": 0.6949999473686415,
+            "mean_probability": 0.5671578535032695,
+            "positive_rate": 0.5086705202312138,
+            "rows": 173
+          },
+          "hist-gradient-mlp-0.50": {
+            "brier_score": 0.24889881769146782,
+            "direction_accuracy_at_0_5": 0.5375722543352601,
+            "expected_calibration_error_10_bin": 0.07193939206588086,
+            "log_loss": 0.6926128846731733,
+            "mean_probability": 0.5806099122970948,
+            "positive_rate": 0.5086705202312138,
+            "rows": 173
+          },
+          "hist-gradient-mlp-0.75": {
+            "brier_score": 0.2511132587410817,
+            "direction_accuracy_at_0_5": 0.5433526011560693,
+            "expected_calibration_error_10_bin": 0.0853914508597062,
+            "log_loss": 0.6969841204846937,
+            "mean_probability": 0.5940619710909201,
+            "positive_rate": 0.5086705202312138,
+            "rows": 173
+          },
+          "mlp": {
+            "brier_score": 0.2562428514618469,
+            "direction_accuracy_at_0_5": 0.5433526011560693,
+            "expected_calibration_error_10_bin": 0.10773160714060452,
+            "log_loss": 0.7082765356197434,
+            "mean_probability": 0.6075140298847453,
+            "positive_rate": 0.5086705202312138,
+            "rows": 173
+          },
+          "regularized-logistic-c1": {
+            "brier_score": 0.26964468601485864,
+            "direction_accuracy_at_0_5": 0.4797687861271676,
+            "expected_calibration_error_10_bin": 0.16680861663324595,
+            "log_loss": 0.7582938634182953,
+            "mean_probability": 0.6134371815327648,
+            "positive_rate": 0.5086705202312138,
+            "rows": 173
+          }
+        },
+        "target_boundary_quality": {
+          "admitted_rows_by_route": {
+            "1w@D+5": 2250
+          },
+          "admitted_rows_by_symbol": {
+            "AAPL": 296,
+            "AMZN": 295,
+            "COST": 139,
+            "CROX": 31,
+            "GOOG": 287,
+            "IONQ": 335,
+            "MU": 280,
+            "NVDA": 296,
+            "PATH": 125,
+            "SNDK": 158,
+            "TWST": 8
+          },
+          "aligned_rows": 2250,
+          "candidate_rows": 8979,
+          "conflicting_minute_rows_excluded": 0,
+          "enforced": true,
+          "excluded_rows": 6729,
+          "excluded_rows_by_route": {
+            "1w@D+5": 6729
+          },
+          "maximum_boundary_gap_seconds": 300.0,
+          "policy": "clock-window-boundaries-within-five-minutes-v1",
+          "target_contract_version": "independent-stock-targets-v1",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        },
+        "target_support_by_symbol": {
+          "AAPL": {
+            "admitted_decision_clusters": 296,
+            "admitted_rows": 296,
+            "admitted_rows_by_route": {
+              "1w@D+5": 296
+            },
+            "assessment_decision_clusters": 31,
+            "assessment_rows": 31,
+            "assessment_rows_by_route": {
+              "1w@D+5": 31
+            },
+            "fitted_decision_clusters": 226,
+            "fitted_rows": 226,
+            "fitted_rows_by_route": {
+              "1w@D+5": 226
+            }
+          },
+          "AMZN": {
+            "admitted_decision_clusters": 295,
+            "admitted_rows": 295,
+            "admitted_rows_by_route": {
+              "1w@D+5": 295
+            },
+            "assessment_decision_clusters": 32,
+            "assessment_rows": 32,
+            "assessment_rows_by_route": {
+              "1w@D+5": 32
+            },
+            "fitted_decision_clusters": 225,
+            "fitted_rows": 225,
+            "fitted_rows_by_route": {
+              "1w@D+5": 225
+            }
+          },
+          "COST": {
+            "admitted_decision_clusters": 139,
+            "admitted_rows": 139,
+            "admitted_rows_by_route": {
+              "1w@D+5": 139
+            },
+            "assessment_decision_clusters": 14,
+            "assessment_rows": 14,
+            "assessment_rows_by_route": {
+              "1w@D+5": 14
+            },
+            "fitted_decision_clusters": 109,
+            "fitted_rows": 109,
+            "fitted_rows_by_route": {
+              "1w@D+5": 109
+            }
+          },
+          "CROX": {
+            "admitted_decision_clusters": 31,
+            "admitted_rows": 31,
+            "admitted_rows_by_route": {
+              "1w@D+5": 31
+            },
+            "assessment_decision_clusters": 0,
+            "assessment_rows": 0,
+            "assessment_rows_by_route": {},
+            "fitted_decision_clusters": 30,
+            "fitted_rows": 30,
+            "fitted_rows_by_route": {
+              "1w@D+5": 30
+            }
+          },
+          "GOOG": {
+            "admitted_decision_clusters": 287,
+            "admitted_rows": 287,
+            "admitted_rows_by_route": {
+              "1w@D+5": 287
+            },
+            "assessment_decision_clusters": 31,
+            "assessment_rows": 31,
+            "assessment_rows_by_route": {
+              "1w@D+5": 31
+            },
+            "fitted_decision_clusters": 220,
+            "fitted_rows": 220,
+            "fitted_rows_by_route": {
+              "1w@D+5": 220
+            }
+          },
+          "IONQ": {
+            "admitted_decision_clusters": 335,
+            "admitted_rows": 335,
+            "admitted_rows_by_route": {
+              "1w@D+5": 335
+            },
+            "assessment_decision_clusters": 23,
+            "assessment_rows": 23,
+            "assessment_rows_by_route": {
+              "1w@D+5": 23
+            },
+            "fitted_decision_clusters": 278,
+            "fitted_rows": 278,
+            "fitted_rows_by_route": {
+              "1w@D+5": 278
+            }
+          },
+          "MU": {
+            "admitted_decision_clusters": 280,
+            "admitted_rows": 280,
+            "admitted_rows_by_route": {
+              "1w@D+5": 280
+            },
+            "assessment_decision_clusters": 32,
+            "assessment_rows": 32,
+            "assessment_rows_by_route": {
+              "1w@D+5": 32
+            },
+            "fitted_decision_clusters": 210,
+            "fitted_rows": 210,
+            "fitted_rows_by_route": {
+              "1w@D+5": 210
+            }
+          },
+          "NVDA": {
+            "admitted_decision_clusters": 296,
+            "admitted_rows": 296,
+            "admitted_rows_by_route": {
+              "1w@D+5": 296
+            },
+            "assessment_decision_clusters": 32,
+            "assessment_rows": 32,
+            "assessment_rows_by_route": {
+              "1w@D+5": 32
+            },
+            "fitted_decision_clusters": 226,
+            "fitted_rows": 226,
+            "fitted_rows_by_route": {
+              "1w@D+5": 226
+            }
+          },
+          "PATH": {
+            "admitted_decision_clusters": 125,
+            "admitted_rows": 125,
+            "admitted_rows_by_route": {
+              "1w@D+5": 125
+            },
+            "assessment_decision_clusters": 10,
+            "assessment_rows": 10,
+            "assessment_rows_by_route": {
+              "1w@D+5": 10
+            },
+            "fitted_decision_clusters": 109,
+            "fitted_rows": 109,
+            "fitted_rows_by_route": {
+              "1w@D+5": 109
+            }
+          },
+          "SNDK": {
+            "admitted_decision_clusters": 158,
+            "admitted_rows": 158,
+            "admitted_rows_by_route": {
+              "1w@D+5": 158
+            },
+            "assessment_decision_clusters": 32,
+            "assessment_rows": 32,
+            "assessment_rows_by_route": {
+              "1w@D+5": 32
+            },
+            "fitted_decision_clusters": 88,
+            "fitted_rows": 88,
+            "fitted_rows_by_route": {
+              "1w@D+5": 88
+            }
+          },
+          "TWST": {
+            "admitted_decision_clusters": 8,
+            "admitted_rows": 8,
+            "admitted_rows_by_route": {
+              "1w@D+5": 8
+            },
+            "assessment_decision_clusters": 2,
+            "assessment_rows": 2,
+            "assessment_rows_by_route": {
+              "1w@D+5": 2
+            },
+            "fitted_decision_clusters": 6,
+            "fitted_rows": 6,
+            "fitted_rows_by_route": {
+              "1w@D+5": 6
+            }
+          }
+        },
+        "training_base_rate_assessment": {
+          "brier_score": 0.2551710829338844,
+          "direction_accuracy_at_0_5": 0.5062761506276151,
+          "expected_calibration_error_10_bin": 0.07218360617609088,
+          "log_loss": 0.7036270534450724,
+          "mean_probability": 0.578459756803706,
+          "positive_rate": 0.5062761506276151,
+          "rows": 239
+        }
+      },
+      "weekly_forecasts": [
+        {
+          "calibrated_probability": 0.6691244476,
+          "direction": "BULLISH",
+          "execution_eligible": true,
+          "model_status": "RESEARCH_NOT_PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "AAPL"
+        },
+        {
+          "calibrated_probability": 0.4949131243,
+          "direction": "BEARISH",
+          "execution_eligible": true,
+          "model_status": "RESEARCH_NOT_PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "AMZN"
+        },
+        {
+          "calibrated_probability": 0.3798068244,
+          "direction": "BEARISH",
+          "execution_eligible": true,
+          "model_status": "RESEARCH_NOT_PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "COST"
+        },
+        {
+          "calibrated_probability": 0.4268071846,
+          "direction": "BEARISH",
+          "execution_eligible": true,
+          "model_status": "RESEARCH_NOT_PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "CROX"
+        },
+        {
+          "calibrated_probability": 0.6082741549,
+          "direction": "BULLISH",
+          "execution_eligible": true,
+          "model_status": "RESEARCH_NOT_PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "GOOG"
+        },
+        {
+          "calibrated_probability": 0.4795218293,
+          "direction": "BEARISH",
+          "execution_eligible": true,
+          "model_status": "RESEARCH_NOT_PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "IONQ"
+        },
+        {
+          "calibrated_probability": 0.6664791841,
+          "direction": "BULLISH",
+          "execution_eligible": true,
+          "model_status": "RESEARCH_NOT_PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "MU"
+        },
+        {
+          "calibrated_probability": 0.7189197935,
+          "direction": "BULLISH",
+          "execution_eligible": true,
+          "model_status": "RESEARCH_NOT_PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "NVDA"
+        },
+        {
+          "calibrated_probability": 0.3601383636,
+          "direction": "BEARISH",
+          "execution_eligible": true,
+          "model_status": "RESEARCH_NOT_PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "PATH"
+        },
+        {
+          "calibrated_probability": 0.7144731572,
+          "direction": "BULLISH",
+          "execution_eligible": true,
+          "model_status": "RESEARCH_NOT_PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "SNDK"
+        },
+        {
+          "calibrated_probability": 0.2900831939,
+          "direction": "BEARISH",
+          "execution_eligible": true,
+          "model_status": "RESEARCH_NOT_PROMOTED",
+          "route": "1w@D+5",
+          "symbol": "TWST"
+        }
+      ]
+    }
+  },
+  "training_performed": false
+}

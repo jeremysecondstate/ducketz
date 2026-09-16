@@ -273,15 +273,13 @@ def test_explicit_after_hours_policy_carries_sparse_same_session_close(symbol, l
 
 @pytest.mark.parametrize("damage,reason", [
     ("regular_session", "GAP_EXCEEDS_MAXIMUM"), ("older_session", "NO_PRIOR_SESSION_OBSERVATION"),
-    ("incomplete", "UNAVAILABLE_SOURCE_COVERAGE"), ("undefined", "UNDEFINED_NATIVE_PRICE_OBSERVATIONS"),
+    ("incomplete", "UNAVAILABLE_SOURCE_COVERAGE"),
 ])
 def test_extended_policy_does_not_disguise_missing_acquisitions_or_regular_session_gaps(damage, reason):
     local = {"regular_session": "2026-09-11 12:58", "older_session": "2026-09-10 16:59"}.get(damage, "2026-09-11 14:36")
     prices = _prices([_bar(local, symbol="CROX")])
     if damage == "incomplete":
         prices.attrs["stock_price_source"]["partitions"][0]["end"] = "2026-09-11T23:00Z"
-    if damage == "undefined":
-        prices.attrs["stock_price_source"]["missing_price_rows_by_symbol"] = {"CROX": 1}
     report = _complete(prices, _forecasts("2026-09-14", "CROX"),
                        observed_at="2026-09-14T11:00Z", allow_extended_hours=True)
     ref = report["references"]["CROX|2026-09-14"]
@@ -289,6 +287,26 @@ def test_extended_policy_does_not_disguise_missing_acquisitions_or_regular_sessi
     assert ref["reason"] == reason
     assert ref["price"] is None
     assert report["synthetic_bars"] == []
+
+
+def test_historical_undefined_prices_do_not_veto_valid_path_planning_anchor():
+    prices = _prices([_bar("2026-09-11 16:47", 18.25, symbol="PATH")])
+    prices.attrs["stock_price_source"].update(
+        missing_price_rows_by_symbol={"PATH": 1},
+        missing_price_examples=[{"symbol": "PATH", "timestamp": "2021-06-01T12:00:00+00:00"}],
+    )
+    before = prices.copy(deep=True)
+    report = _complete(prices, _forecasts("2026-09-14", "PATH"),
+                       observed_at="2026-09-14T11:00Z", allow_extended_hours=True,
+                       historical_sessions=3)
+    ref = report["references"]["PATH|2026-09-14"]
+    assert ref["status"] == "AVAILABLE_SYNTHETIC"
+    assert ref["price"] == 18.25 and ref["gap_minutes"] == 12
+    assert ref["source_coverage"]["native_partition_verified"] is True
+    assert len(report["synthetic_bars"]) == 12
+    assert report["historical_references"]["PATH|2026-09-11"] == ref
+    assert_frame_equal(prices, before)
+    assert prices.attrs == before.attrs
 
 
 @pytest.mark.parametrize("kwargs", [

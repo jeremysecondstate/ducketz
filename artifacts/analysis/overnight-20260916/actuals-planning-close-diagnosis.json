@@ -1,0 +1,334 @@
+{
+  "observed_at": "2026-09-16T06:09:18.044349+00:00",
+  "status": "REPRODUCED_WRITER_READER_ENDPOINT_KIND_VERSION_MISMATCH",
+  "source_trade_plan": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260915T054710.644968Z",
+  "source_gameplan": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260915T054345.154531Z",
+  "saved_source_bindings": {
+    "manifest_sha256": "87065701e3ae170907e3876f965d2e5a0aa9bb3fa183c156975769a9da54524a",
+    "planning_path_sha256": "5c82e6529a6fb1fa3402441285f39700110f924ebb099addee3ebdc37b2fe2d4",
+    "source_receipt_sha256": "45e4b355c3b459679fc6ee32eba93e9dfa9ee6de98c61c31349a3b2dceb1cff5",
+    "all_match": true
+  },
+  "writer_contract": "conditional-hourly-planning-price-path-v3",
+  "reference_completion_contract": "sparse-session-planning-reference-completion-v2",
+  "trade_plan_schema": "cash-aware-gameplan-trade-planning-v4",
+  "saved_observed_at": "2026-09-15T05:47:28.506292+00:00",
+  "source_contract": "xnas-itch-archive-v1",
+  "dataset": "XNAS.ITCH",
+  "point_count": 154,
+  "point_status_counts": {
+    "AVAILABLE": 126,
+    "UNAVAILABLE_REFERENCE_PRICE": 28
+  },
+  "saved_projection_status": "UNAVAILABLE_PRICE_REFERENCES",
+  "unavailable_symbols": [
+    "IONQ",
+    "PATH"
+  ],
+  "unavailable_price_values_all_null": true,
+  "failed_identity_predicate": "Pre-repair compare_price_points requires observed_close at17:00 for all path versions; v3 writer deliberately emits planning_close for every17:00 point, even unavailable or observed-only estimates.",
+  "first_failure_key": "AAPL|2026-09-15|17:00",
+  "differences": [
+    {
+      "key": "AAPL|2026-09-15|17:00",
+      "differences": {
+        "endpoint_kind": {
+          "actual": "planning_close",
+          "expected": "observed_close"
+        }
+      },
+      "point": {
+        "symbol": "AAPL",
+        "action_date": "2026-09-15",
+        "clock_local": "17:00",
+        "timestamp": "2026-09-16T00:00:00+00:00",
+        "endpoint_kind": "planning_close",
+        "status": "AVAILABLE",
+        "reason": "Conditional planned fill around the historical median; closing carries are explicitly labeled",
+        "planned_price_low": 332.42,
+        "planned_price_mid": 333.1,
+        "planned_price_high": 333.77,
+        "sample_count": 120,
+        "observed_only_sample_count": 120,
+        "synthetic_close_sample_count": 0,
+        "reference_is_synthetic": false,
+        "reference_completion_status": "AVAILABLE_OBSERVED",
+        "reference_completion_reason": "NATIVE_OBSERVATION_WITHIN_TOLERANCE"
+      }
+    },
+    {
+      "key": "AMZN|2026-09-15|17:00",
+      "differences": {
+        "endpoint_kind": {
+          "actual": "planning_close",
+          "expected": "observed_close"
+        }
+      },
+      "point": {
+        "symbol": "AMZN",
+        "action_date": "2026-09-15",
+        "clock_local": "17:00",
+        "timestamp": "2026-09-16T00:00:00+00:00",
+        "endpoint_kind": "planning_close",
+        "status": "AVAILABLE",
+        "reason": "Conditional planned fill around the historical median; closing carries are explicitly labeled",
+        "planned_price_low": 252.67,
+        "planned_price_mid": 253.18,
+        "planned_price_high": 253.69,
+        "sample_count": 120,
+        "observed_only_sample_count": 120,
+        "synthetic_close_sample_count": 0,
+        "reference_is_synthetic": false,
+        "reference_completion_status": "AVAILABLE_OBSERVED",
+        "reference_completion_reason": "NATIVE_OBSERVATION_WITHIN_TOLERANCE"
+      }
+    },
+    {
+      "key": "COST|2026-09-15|17:00",
+      "differences": {
+        "endpoint_kind": {
+          "actual": "planning_close",
+          "expected": "observed_close"
+        }
+      },
+      "point": {
+        "symbol": "COST",
+        "action_date": "2026-09-15",
+        "clock_local": "17:00",
+        "timestamp": "2026-09-16T00:00:00+00:00",
+        "endpoint_kind": "planning_close",
+        "status": "AVAILABLE",
+        "reason": "Conditional planned fill around the historical median; closing carries are explicitly labeled",
+        "planned_price_low": 914.85,
+        "planned_price_mid": 916.69,
+        "planned_price_high": 918.53,
+        "sample_count": 120,
+        "observed_only_sample_count": 31,
+        "synthetic_close_sample_count": 89,
+        "reference_is_synthetic": false,
+        "reference_completion_status": "AVAILABLE_OBSERVED",
+        "reference_completion_reason": "NATIVE_OBSERVATION_WITHIN_TOLERANCE"
+      }
+    },
+    {
+      "key": "CROX|2026-09-15|17:00",
+      "differences": {
+        "endpoint_kind": {
+          "actual": "planning_close",
+          "expected": "observed_close"
+        }
+      },
+      "point": {
+        "symbol": "CROX",
+        "action_date": "2026-09-15",
+        "clock_local": "17:00",
+        "timestamp": "2026-09-16T00:00:00+00:00",
+        "endpoint_kind": "planning_close",
+        "status": "AVAILABLE",
+        "reason": "Conditional planned fill around the historical median; closing carries are explicitly labeled",
+        "planned_price_low": 113.08,
+        "planned_price_mid": 113.31,
+        "planned_price_high": 113.55,
+        "sample_count": 120,
+        "observed_only_sample_count": 1,
+        "synthetic_close_sample_count": 119,
+        "reference_is_synthetic": true,
+        "reference_completion_status": "AVAILABLE_SYNTHETIC",
+        "reference_completion_reason": "ASSUMED_NO_TRADES"
+      }
+    },
+    {
+      "key": "GOOG|2026-09-15|17:00",
+      "differences": {
+        "endpoint_kind": {
+          "actual": "planning_close",
+          "expected": "observed_close"
+        }
+      },
+      "point": {
+        "symbol": "GOOG",
+        "action_date": "2026-09-15",
+        "clock_local": "17:00",
+        "timestamp": "2026-09-16T00:00:00+00:00",
+        "endpoint_kind": "planning_close",
+        "status": "AVAILABLE",
+        "reason": "Conditional planned fill around the historical median; closing carries are explicitly labeled",
+        "planned_price_low": 343.59,
+        "planned_price_mid": 344.28,
+        "planned_price_high": 344.97,
+        "sample_count": 120,
+        "observed_only_sample_count": 114,
+        "synthetic_close_sample_count": 6,
+        "reference_is_synthetic": false,
+        "reference_completion_status": "AVAILABLE_OBSERVED",
+        "reference_completion_reason": "NATIVE_OBSERVATION_WITHIN_TOLERANCE"
+      }
+    },
+    {
+      "key": "IONQ|2026-09-15|17:00",
+      "differences": {
+        "endpoint_kind": {
+          "actual": "planning_close",
+          "expected": "observed_close"
+        }
+      },
+      "point": {
+        "symbol": "IONQ",
+        "action_date": "2026-09-15",
+        "clock_local": "17:00",
+        "timestamp": "2026-09-16T00:00:00+00:00",
+        "endpoint_kind": "planning_close",
+        "status": "UNAVAILABLE_REFERENCE_PRICE",
+        "reason": "Missing exact prior-session close",
+        "planned_price_low": null,
+        "planned_price_mid": null,
+        "planned_price_high": null,
+        "sample_count": 83,
+        "observed_only_sample_count": 83,
+        "synthetic_close_sample_count": 0,
+        "reference_is_synthetic": false,
+        "reference_completion_status": "UNAVAILABLE",
+        "reference_completion_reason": "UNDEFINED_NATIVE_PRICE_OBSERVATIONS"
+      }
+    },
+    {
+      "key": "MU|2026-09-15|17:00",
+      "differences": {
+        "endpoint_kind": {
+          "actual": "planning_close",
+          "expected": "observed_close"
+        }
+      },
+      "point": {
+        "symbol": "MU",
+        "action_date": "2026-09-15",
+        "clock_local": "17:00",
+        "timestamp": "2026-09-16T00:00:00+00:00",
+        "endpoint_kind": "planning_close",
+        "status": "AVAILABLE",
+        "reason": "Conditional planned fill around the historical median; closing carries are explicitly labeled",
+        "planned_price_low": 933.8,
+        "planned_price_mid": 935.67,
+        "planned_price_high": 937.55,
+        "sample_count": 120,
+        "observed_only_sample_count": 120,
+        "synthetic_close_sample_count": 0,
+        "reference_is_synthetic": false,
+        "reference_completion_status": "AVAILABLE_OBSERVED",
+        "reference_completion_reason": "NATIVE_OBSERVATION_WITHIN_TOLERANCE"
+      }
+    },
+    {
+      "key": "NVDA|2026-09-15|17:00",
+      "differences": {
+        "endpoint_kind": {
+          "actual": "planning_close",
+          "expected": "observed_close"
+        }
+      },
+      "point": {
+        "symbol": "NVDA",
+        "action_date": "2026-09-15",
+        "clock_local": "17:00",
+        "timestamp": "2026-09-16T00:00:00+00:00",
+        "endpoint_kind": "planning_close",
+        "status": "AVAILABLE",
+        "reason": "Conditional planned fill around the historical median; closing carries are explicitly labeled",
+        "planned_price_low": 211.41,
+        "planned_price_mid": 211.84,
+        "planned_price_high": 212.27,
+        "sample_count": 120,
+        "observed_only_sample_count": 120,
+        "synthetic_close_sample_count": 0,
+        "reference_is_synthetic": false,
+        "reference_completion_status": "AVAILABLE_OBSERVED",
+        "reference_completion_reason": "NATIVE_OBSERVATION_WITHIN_TOLERANCE"
+      }
+    },
+    {
+      "key": "PATH|2026-09-15|17:00",
+      "differences": {
+        "endpoint_kind": {
+          "actual": "planning_close",
+          "expected": "observed_close"
+        }
+      },
+      "point": {
+        "symbol": "PATH",
+        "action_date": "2026-09-15",
+        "clock_local": "17:00",
+        "timestamp": "2026-09-16T00:00:00+00:00",
+        "endpoint_kind": "planning_close",
+        "status": "UNAVAILABLE_REFERENCE_PRICE",
+        "reason": "Missing exact prior-session close",
+        "planned_price_low": null,
+        "planned_price_mid": null,
+        "planned_price_high": null,
+        "sample_count": 13,
+        "observed_only_sample_count": 13,
+        "synthetic_close_sample_count": 0,
+        "reference_is_synthetic": false,
+        "reference_completion_status": "UNAVAILABLE",
+        "reference_completion_reason": "UNDEFINED_NATIVE_PRICE_OBSERVATIONS"
+      }
+    },
+    {
+      "key": "SNDK|2026-09-15|17:00",
+      "differences": {
+        "endpoint_kind": {
+          "actual": "planning_close",
+          "expected": "observed_close"
+        }
+      },
+      "point": {
+        "symbol": "SNDK",
+        "action_date": "2026-09-15",
+        "clock_local": "17:00",
+        "timestamp": "2026-09-16T00:00:00+00:00",
+        "endpoint_kind": "planning_close",
+        "status": "AVAILABLE",
+        "reason": "Conditional planned fill around the historical median; closing carries are explicitly labeled",
+        "planned_price_low": 1570.17,
+        "planned_price_mid": 1573.32,
+        "planned_price_high": 1576.47,
+        "sample_count": 120,
+        "observed_only_sample_count": 120,
+        "synthetic_close_sample_count": 0,
+        "reference_is_synthetic": false,
+        "reference_completion_status": "AVAILABLE_OBSERVED",
+        "reference_completion_reason": "NATIVE_OBSERVATION_WITHIN_TOLERANCE"
+      }
+    },
+    {
+      "key": "TWST|2026-09-15|17:00",
+      "differences": {
+        "endpoint_kind": {
+          "actual": "planning_close",
+          "expected": "observed_close"
+        }
+      },
+      "point": {
+        "symbol": "TWST",
+        "action_date": "2026-09-15",
+        "clock_local": "17:00",
+        "timestamp": "2026-09-16T00:00:00+00:00",
+        "endpoint_kind": "planning_close",
+        "status": "AVAILABLE",
+        "reason": "Conditional planned fill around the historical median; closing carries are explicitly labeled",
+        "planned_price_low": 133.81,
+        "planned_price_mid": 134.08,
+        "planned_price_high": 134.35,
+        "sample_count": 120,
+        "observed_only_sample_count": 1,
+        "synthetic_close_sample_count": 119,
+        "reference_is_synthetic": false,
+        "reference_completion_status": "AVAILABLE_OBSERVED",
+        "reference_completion_reason": "NATIVE_OBSERVATION_WITHIN_TOLERANCE"
+      }
+    }
+  ],
+  "missing_points": [],
+  "field_conclusion": "All154 symbol/date/clock/timestamp identities agree; only11 endpoint_kind labels differ, each at17:00. Current writer labels planning methodology, while actuals expects legacy endpoint label.",
+  "compatibility": "Permit the declared v3 planning_close estimate identity at17:00 while retaining strict clock/source checks and observed-close actual lookup with five-minute tolerance. Unavailable saved points must retain null estimates, with observed actuals allowed but no price error/range comparison. Do not rewrite historical points or supply synthetic actuals.",
+  "no_mutations": true
+}

@@ -11,7 +11,9 @@ import numpy as np
 import pandas as pd
 
 from ml.artifacts import create_timestamp_directory, file_checksum, utc_timestamp, verify_manifest, write_manifest
-from ml.gameplan_price_bands import _aware_timestamp, _observation, _source_identity
+from ml.gameplan_price_bands import (
+    SPARSE_PLANNING_PRICE_PATH_CONTRACT, _aware_timestamp, _observation, _source_identity,
+)
 from ml.independent_stock_targets import STOCK_TARGET_BOUNDARY_TOLERANCE
 
 
@@ -230,6 +232,8 @@ def compare_price_points(forecasts: pd.DataFrame, prices: pd.DataFrame, *, actio
                                       or _aware_timestamp(planning_path["observed_at"], "planning observation") >= _clock(action_date, 4)):
         raise ValueError("Saved price path must match the forecast source and predate the action session")
     points = (planning_path or {}).get("points", {})
+    closing_kind = ("planning_close" if (planning_path or {}).get("contract_version")
+                    == SPARSE_PLANNING_PRICE_PATH_CONTRACT else "observed_close")
     rows = []
     for symbol in sorted(forecasts.symbol.unique()):
         bars = by_symbol.get(symbol, prices.iloc[:0])
@@ -240,7 +244,7 @@ def compare_price_points(forecasts: pd.DataFrame, prices: pd.DataFrame, *, actio
             if point is not None and (point.get("symbol") != symbol or point.get("action_date") != action_date
                                       or point.get("clock_local") != clock
                                       or _aware_timestamp(point["timestamp"], "planning clock") != timestamp
-                                      or point.get("endpoint_kind") != ("observed_close" if hour == 17 else "observed_open")):
+                                      or point.get("endpoint_kind") != (closing_kind if hour == 17 else "observed_open")):
                 raise ValueError("Saved planning price point differs from its declared market clock")
             estimate = point is not None and point.get("status") == "AVAILABLE"
             low, mid, high = ((_number(point.get(f"planned_price_{field}")) for field in ("low", "mid", "high"))

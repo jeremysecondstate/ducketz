@@ -1,0 +1,197 @@
+{
+  "17_close_results": [
+    {
+      "actual_gap_seconds": 0.0,
+      "actual_observed_at": "2026-09-16T00:00:00+00:00",
+      "actual_price": 332.03,
+      "actual_source_coverage": "VERIFIED_COMPLETE",
+      "comparison_status": "COMPARED",
+      "planned_price_mid": 333.1,
+      "symbol": "AAPL"
+    },
+    {
+      "actual_gap_seconds": 0.0,
+      "actual_observed_at": "2026-09-16T00:00:00+00:00",
+      "actual_price": 248.38,
+      "actual_source_coverage": "VERIFIED_COMPLETE",
+      "comparison_status": "COMPARED",
+      "planned_price_mid": 253.18,
+      "symbol": "AMZN"
+    },
+    {
+      "actual_gap_seconds": 1560.0,
+      "actual_observed_at": null,
+      "actual_price": null,
+      "actual_source_coverage": "VERIFIED_COMPLETE",
+      "comparison_status": "MATURE_AWAITING_DATA",
+      "planned_price_mid": 916.69,
+      "symbol": "COST"
+    },
+    {
+      "actual_gap_seconds": 14340.0,
+      "actual_observed_at": null,
+      "actual_price": null,
+      "actual_source_coverage": "VERIFIED_COMPLETE",
+      "comparison_status": "MATURE_AWAITING_DATA",
+      "planned_price_mid": 113.31,
+      "symbol": "CROX"
+    },
+    {
+      "actual_gap_seconds": 0.0,
+      "actual_observed_at": "2026-09-16T00:00:00+00:00",
+      "actual_price": 340.83,
+      "actual_source_coverage": "VERIFIED_COMPLETE",
+      "comparison_status": "COMPARED",
+      "planned_price_mid": 344.28,
+      "symbol": "GOOG"
+    },
+    {
+      "actual_gap_seconds": 60.0,
+      "actual_observed_at": "2026-09-15T23:59:00+00:00",
+      "actual_price": 37.03,
+      "actual_source_coverage": "VERIFIED_COMPLETE",
+      "comparison_status": "NO_SAVED_ESTIMATE",
+      "planned_price_mid": null,
+      "symbol": "IONQ"
+    },
+    {
+      "actual_gap_seconds": 0.0,
+      "actual_observed_at": "2026-09-16T00:00:00+00:00",
+      "actual_price": 925.85,
+      "actual_source_coverage": "VERIFIED_COMPLETE",
+      "comparison_status": "COMPARED",
+      "planned_price_mid": 935.67,
+      "symbol": "MU"
+    },
+    {
+      "actual_gap_seconds": 60.0,
+      "actual_observed_at": "2026-09-15T23:59:00+00:00",
+      "actual_price": 212.4,
+      "actual_source_coverage": "VERIFIED_COMPLETE",
+      "comparison_status": "COMPARED",
+      "planned_price_mid": 211.84,
+      "symbol": "NVDA"
+    },
+    {
+      "actual_gap_seconds": 720.0,
+      "actual_observed_at": null,
+      "actual_price": null,
+      "actual_source_coverage": "VERIFIED_COMPLETE",
+      "comparison_status": "MATURE_AWAITING_DATA",
+      "planned_price_mid": null,
+      "symbol": "PATH"
+    },
+    {
+      "actual_gap_seconds": 0.0,
+      "actual_observed_at": "2026-09-16T00:00:00+00:00",
+      "actual_price": 1526.56,
+      "actual_source_coverage": "VERIFIED_COMPLETE",
+      "comparison_status": "COMPARED",
+      "planned_price_mid": 1573.32,
+      "symbol": "SNDK"
+    },
+    {
+      "actual_gap_seconds": 2820.0,
+      "actual_observed_at": null,
+      "actual_price": null,
+      "actual_source_coverage": "VERIFIED_COMPLETE",
+      "comparison_status": "MATURE_AWAITING_DATA",
+      "planned_price_mid": 134.08,
+      "symbol": "TWST"
+    }
+  ],
+  "actuals_run": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260916T061453.637702Z",
+  "archive_loaded_or_outcomes_recomputed": false,
+  "bound_saved_inputs": {
+    "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260915T054710.644968Z\\manifest.json": "87065701e3ae170907e3876f965d2e5a0aa9bb3fa183c156975769a9da54524a",
+    "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260915T054710.644968Z\\planning-price-path.json": "5c82e6529a6fb1fa3402441285f39700110f924ebb099addee3ebdc37b2fe2d4",
+    "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260915T054710.644968Z\\receipt.json": "72c53e6e6a392f2c3ab9eb6b58db85dcb17224e08929de1006499a48478c25b6",
+    "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260915T054710.644968Z\\trade-plan.parquet": "5673efa46eabe4991637e916a5995094abd6e6796c6a2f542f5efdfe02e7221b",
+    "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260916T060421.076865Z\\receipt.json": "b792fd789bf0b905865e775dda850646102a634ea385e3b350bd26f44338201b",
+    "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260915T054345.154531Z\\forecasts.parquet": "8da2275caffd552b5e37a50df48d268e7c1f9c8a54ceb20ac833e5481c4d6340",
+    "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260915T054345.154531Z\\manifest.json": "da82eb907756ff0bef0efcf75617b4770138b8ac49afe0a446b3708fd1594939",
+    "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260915T054345.154531Z\\receipt.json": "45e4b355c3b459679fc6ee32eba93e9dfa9ee6de98c61c31349a3b2dceb1cff5",
+    "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260916T060149.932707Z\\receipt.json": "460df262cf47d973c609fc7588227ac99597b1808a180693661f6a6d477f524c"
+  },
+  "checked_at": "2026-09-16T06:18:15.282430+00:00",
+  "direction_accuracy": 0.5660377358490566,
+  "directional_calls_correct": 90,
+  "directional_calls_scored": 159,
+  "forecast_counts": {
+    "EVALUATED": 159,
+    "MATURE_AWAITING_DATA": 39,
+    "PENDING_MATURITY": 66
+  },
+  "forecast_rows": 264,
+  "latest_and_dated_readers_match": true,
+  "manifest_sha256": "bae96bb5cf6816604707ad04d9903f42cea45ffd596091c37e50816a6e5115f9",
+  "missing_price_boundary_statuses": {
+    "NO_OBSERVATION": 3,
+    "OUTSIDE_TOLERANCE": 21
+  },
+  "missing_price_source_coverage": {
+    "VERIFIED_COMPLETE": 24
+  },
+  "native_completed_at": "2026-09-16T06:15:09.431187+00:00",
+  "orders_placed": 0,
+  "outputs": {
+    "Gameplan-results.md": {
+      "sha256": "a0cb8a43aa4c4cee3a1a04c634c0cd23c1216878111867c4529335d58b26be4b",
+      "size": 65783
+    },
+    "forecast-results.parquet": {
+      "sha256": "e5eedd751beabb68f6007fff34c707850bc78fed1ec33b947180796e986d7a48",
+      "size": 136294
+    },
+    "price-results.parquet": {
+      "sha256": "583c40a1671d16b91867aabe9d86b699b794357efea7b75525a98c23a552362e",
+      "size": 20817
+    },
+    "report.json": {
+      "sha256": "89547e24fd07cb9f7fbf60ebbe837d02e240da6b3f79fc095cd3c2791609b3c4",
+      "size": 166245
+    }
+  },
+  "price_comparisons_in_range": 19,
+  "price_counts": {
+    "COMPARED": 110,
+    "MATURE_AWAITING_DATA": 24,
+    "NO_SAVED_ESTIMATE": 20
+  },
+  "price_rows": 154,
+  "prior_action_date": "2026-09-15",
+  "readable_results": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260916T061453.637702Z\\Gameplan-results.md",
+  "receipt_sha256": "2af6658bd69b197f17a6fe03ace8a626211eb63c26ddebf4ac64e45828a67bd1",
+  "resume_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260916T061451.489725Z",
+  "same_clock_actual_boundary_within_300_seconds": true,
+  "saved_estimates_preserved_exactly": true,
+  "status": "VERIFIED_BOUNDED_SAVED_ARTIFACT_AUDIT",
+  "successor_action_date": "2026-09-16",
+  "unchanged_pre_repair_artifacts": {
+    "20260915T054345.154531Z_forecasts": {
+      "after": "8da2275caffd552b5e37a50df48d268e7c1f9c8a54ceb20ac833e5481c4d6340",
+      "before": "8da2275caffd552b5e37a50df48d268e7c1f9c8a54ceb20ac833e5481c4d6340",
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260915T054345.154531Z\\forecasts.parquet"
+    },
+    "20260916T060149.932707Z_forecasts": {
+      "after": "a4e67081d92d5db5571974e2f25d6ae96906b8bd0f79a6c63f76b49a7ed693e1",
+      "before": "a4e67081d92d5db5571974e2f25d6ae96906b8bd0f79a6c63f76b49a7ed693e1",
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260916T060149.932707Z\\forecasts.parquet"
+    },
+    "prior_gameplan_receipt": {
+      "after": "45e4b355c3b459679fc6ee32eba93e9dfa9ee6de98c61c31349a3b2dceb1cff5",
+      "before": "45e4b355c3b459679fc6ee32eba93e9dfa9ee6de98c61c31349a3b2dceb1cff5",
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260915T054345.154531Z\\receipt.json"
+    },
+    "prior_planning_path": {
+      "after": "5c82e6529a6fb1fa3402441285f39700110f924ebb099addee3ebdc37b2fe2d4",
+      "before": "5c82e6529a6fb1fa3402441285f39700110f924ebb099addee3ebdc37b2fe2d4",
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260915T054710.644968Z\\planning-price-path.json"
+    },
+    "prior_trade_plan_manifest": {
+      "after": "87065701e3ae170907e3876f965d2e5a0aa9bb3fa183c156975769a9da54524a",
+      "before": "87065701e3ae170907e3876f965d2e5a0aa9bb3fa183c156975769a9da54524a",
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260915T054710.644968Z\\manifest.json"
+    }
+  }
+}

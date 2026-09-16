@@ -247,12 +247,10 @@ def complete_planning_reference_gaps(
             if actual_time < regular_close:
                 reference["reason"] = "GAP_REACHES_REGULAR_SESSION"
                 return reference
-            # The native loader may omit provider rows whose prices are both
-            # undefined. Do not treat those known invalid observations as
-            # absent no-trade candles when their exact scope is unavailable.
-            if prices.attrs["stock_price_source"].get("missing_price_rows_by_symbol", {}).get(symbol, 0):
-                reference["reason"] = "UNDEFINED_NATIVE_PRICE_OBSERVATIONS"
-                return reference
+            # Omitted undefined prices elsewhere in a symbol's archive do not
+            # invalidate this observed anchor. Planning carries use the valid
+            # same-session close and its acquisition coverage below; the native
+            # loader retains missing-price diagnostics without filling prices.
         coverage = _complete_source_coverage(prices.attrs["stock_price_source"], symbol=symbol,
                                              origin_start=origin.timestamp, boundary=boundary, now=now)
         if coverage is None:

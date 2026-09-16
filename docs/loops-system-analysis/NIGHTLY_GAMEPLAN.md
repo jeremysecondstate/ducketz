@@ -251,7 +251,10 @@ four-hour after-hours interval; it does not fill regular-session outages or borr
 another day's price. Age is measured from minute completion, not bar start.
 The complete verified source partition must cover the observation through the
 boundary and have been published by the planning cutoff. Incomplete acquisition,
-undefined/invalid native prices, another session or longer gaps remain unavailable.
+an invalid selected price, another session or longer gaps remain unavailable.
+Undefined-price rows omitted elsewhere in the symbol's history are diagnostic
+only; they do not veto a valid same-session planning reference. This planning
+rule leaves native price loading, training targets, actuals and live quotes unchanged.
 Missing XNAS venue bars are not proof of no trading on other venues.
 
 Each derived minute has OHLC equal to the last actual close, volume zero and

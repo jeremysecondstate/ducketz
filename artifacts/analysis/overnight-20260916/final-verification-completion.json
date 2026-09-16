@@ -1,0 +1,8 @@
+{
+  "final_audit_sha256": "E09527C28E1232FD64899A22429594591CC4B022357F7830067B73C2B1570510",
+  "observed_complete_at": "2026-09-15T23:19:41.9591173-07:00",
+  "exit_code": 0,
+  "all_checks": 11,
+  "errors": 0,
+  "status": "VERIFIED_WITH_COVERAGE_NOTES"
+}

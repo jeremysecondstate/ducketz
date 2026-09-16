@@ -1,0 +1,17 @@
+# Loop A and production OPRA completion
+
+Bounded read-only audit completed **2026-09-16 05:36:49 UTC** (September 15 22:36:49 Pacific). **Native Loop A and all 33 production OPRA scopes completed for source session September 15.**
+
+The base cycle `20260916T040758.032086Z-pid29216` and complete receipt agree: `COMPLETE`, **zero failures**, eleven configured symbols, providers Databento/FMP/FRED/Schwab/SEC, finished **04:29:29.523354 UTC**. All eleven symbol summaries have zero blocking and optional capture failures. The two known shared-context advisories remain: CME old partition-source rejection and FMP retained historical quote clock skew; they were individually investigated earlier in this run.
+
+Native feature output is complete for the configured universe: **11 fundamentals, 11 technical and 11 signal stage successes**, eleven technical summaries with zero failed calculations, and all **456 distinct logged stock Parquet paths** exist. Schwab option capture evidence is present for all eleven symbols. This verifies native completion and output presence, not qualification of every optional feature family or downstream model.
+
+OPRA maintenance finished with **33 requested/completed/preflighted scopes**, zero failures, capacity blocks, bootstrap requirements or deferrals, and **zero Live replay scopes/bytes**. All eleven symbols have current `ohlcv-1h`, `cbbo-1m` and `definition` cursor JSONs at **exclusive September 16**, covering the September 15 session. No cursor has `replay_coverage`.
+
+For every current September 15 scope, the bounded audit checked the exact parent-symbol/schema/dataset identity, full-day request bounds **September 15 00:00–September 16 00:00 UTC**, Historical `timeseries-stream` delivery, the small manifest hash against its receipt, receipt/raw/normalized checksum identity, and raw/normalized file sizes. It did not repeat native raw-data hashing or Parquet verification. All 33 current preflight JSON semantic checksums match; costs are complete at **$0.00**, all capacity checks pass, and selected estimated bytes total **2,433,747,144**.
+
+The native health refresh published at **05:34:00.084590 UTC**, selecting **66,317 verified partitions / 4,827,063,283 rows**. Production-schema counts are 14,542 hourly OHLCV, 1,256 minute CBBO and 7,211 definition partitions; each advanced by eleven since the preceding health snapshot. The refreshed health record describes selected verified inventory. Its iterator can omit invalid partitions and supersede retained Live segments with matching Historical days; it exposes no skipped-invalid count. Do not interpret this summary as certification of every retained archive directory.
+
+No new provider failure requires action. The later XNAS.ITCH target-history, model and final source-bound receipt checks remain separate from this completed Loop A audit. No provider/broker calls, claims, process actions, production edits, training or archive-wide checks were performed.
+
+Evidence: [completion JSON](C:/dev/ducketz/artifacts/analysis/overnight-20260916/provider-completion.json), [native log](C:/DATASTORE/ml/overnight-runs/20260916T040757.217937Z/loop_a_close_fetch.log), [base completion receipt](C:/DATASTORE/.ducketz-loop-a-complete.json), [current OPRA health](C:/DATASTORE/market-data/databento/opra/OPRA.PILLAR/health/current.json), [known advisories](C:/dev/ducketz/artifacts/analysis/overnight-20260916/provider-advisories.md).

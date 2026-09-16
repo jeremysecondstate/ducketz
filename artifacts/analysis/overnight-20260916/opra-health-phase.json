@@ -1,0 +1,326 @@
+{
+  "observed_at": "2026-09-16T05:24:23.850474+00:00",
+  "cursor_count": 33,
+  "all_cursors_completed_through_20260916": true,
+  "replay_coverage_cursor_count": 0,
+  "prior_health": {
+    "observed_at": "2026-09-15T05:15:55.198554+00:00",
+    "total_partitions": 66284,
+    "total_rows": 4811914081,
+    "total_raw_bytes": 81070340288,
+    "total_parquet_bytes": 63349863354
+  },
+  "prior_health_schemas": {
+    "cbbo-1m": 1245,
+    "cbbo-1s": 1089,
+    "definition": 7200,
+    "ohlcv-1d": 17407,
+    "ohlcv-1h": 14531,
+    "ohlcv-1m": 7001,
+    "ohlcv-1s": 6574,
+    "statistics": 6748,
+    "status": 2147,
+    "tcbbo": 1171,
+    "trades": 1171
+  },
+  "process_samples": [
+    {
+      "at": "2026-09-16T05:24:20.098432+00:00",
+      "cpu_seconds": 2483.25,
+      "read_bytes": 234276858458,
+      "open_files": []
+    },
+    {
+      "at": "2026-09-16T05:24:20.851066+00:00",
+      "cpu_seconds": 2483.625,
+      "read_bytes": 234278228993,
+      "open_files": []
+    },
+    {
+      "at": "2026-09-16T05:24:21.602010+00:00",
+      "cpu_seconds": 2483.96875,
+      "read_bytes": 234279562243,
+      "open_files": [
+        "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\ohlcv-1m\\TWST.OPT\\dates\\2022-01-24\\segments\\full-day\\normalized.parquet"
+      ]
+    },
+    {
+      "at": "2026-09-16T05:24:22.351343+00:00",
+      "cpu_seconds": 2484.3125,
+      "read_bytes": 234280910078,
+      "open_files": []
+    },
+    {
+      "at": "2026-09-16T05:24:23.097041+00:00",
+      "cpu_seconds": 2484.8125,
+      "read_bytes": 234282257853,
+      "open_files": []
+    }
+  ],
+  "cursors": [
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\AAPL\\ohlcv-1h.json",
+      "symbol": "AAPL",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:35:31.797192+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\AAPL\\cbbo-1m.json",
+      "symbol": "AAPL",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:39:15.373289+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\AAPL\\definition.json",
+      "symbol": "AAPL",
+      "schema": "definition",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:45:09.662999+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\AMZN\\ohlcv-1h.json",
+      "symbol": "AMZN",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:35:49.345410+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\AMZN\\cbbo-1m.json",
+      "symbol": "AMZN",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:39:43.988553+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\AMZN\\definition.json",
+      "symbol": "AMZN",
+      "schema": "definition",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:45:20.989784+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\GOOG\\ohlcv-1h.json",
+      "symbol": "GOOG",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:36:03.492360+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\GOOG\\cbbo-1m.json",
+      "symbol": "GOOG",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:40:33.967601+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\GOOG\\definition.json",
+      "symbol": "GOOG",
+      "schema": "definition",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:45:38.488149+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\MU\\ohlcv-1h.json",
+      "symbol": "MU",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:36:22.701413+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\MU\\cbbo-1m.json",
+      "symbol": "MU",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:41:45.545655+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\MU\\definition.json",
+      "symbol": "MU",
+      "schema": "definition",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:45:52.254430+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\NVDA\\ohlcv-1h.json",
+      "symbol": "NVDA",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:36:46.107210+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\NVDA\\cbbo-1m.json",
+      "symbol": "NVDA",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:42:28.619299+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\NVDA\\definition.json",
+      "symbol": "NVDA",
+      "schema": "definition",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:46:03.969178+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\SNDK\\ohlcv-1h.json",
+      "symbol": "SNDK",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:37:17.247915+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\SNDK\\cbbo-1m.json",
+      "symbol": "SNDK",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:43:26.707635+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\SNDK\\definition.json",
+      "symbol": "SNDK",
+      "schema": "definition",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:46:21.327101+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\COST\\ohlcv-1h.json",
+      "symbol": "COST",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:37:40.280130+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\COST\\cbbo-1m.json",
+      "symbol": "COST",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:43:49.937963+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\COST\\definition.json",
+      "symbol": "COST",
+      "schema": "definition",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:46:30.164759+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\CROX\\ohlcv-1h.json",
+      "symbol": "CROX",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:37:55.160022+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\CROX\\cbbo-1m.json",
+      "symbol": "CROX",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:44:03.315239+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\CROX\\definition.json",
+      "symbol": "CROX",
+      "schema": "definition",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:46:38.468314+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\PATH\\ohlcv-1h.json",
+      "symbol": "PATH",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:38:09.515567+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\PATH\\cbbo-1m.json",
+      "symbol": "PATH",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:44:22.919624+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\PATH\\definition.json",
+      "symbol": "PATH",
+      "schema": "definition",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:46:50.780695+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\TWST\\ohlcv-1h.json",
+      "symbol": "TWST",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:38:27.054670+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\TWST\\cbbo-1m.json",
+      "symbol": "TWST",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:44:41.356393+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\TWST\\definition.json",
+      "symbol": "TWST",
+      "schema": "definition",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:47:04.730806+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\IONQ\\ohlcv-1h.json",
+      "symbol": "IONQ",
+      "schema": "ohlcv-1h",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:38:42.317146+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\IONQ\\cbbo-1m.json",
+      "symbol": "IONQ",
+      "schema": "cbbo-1m",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:44:58.432789+00:00",
+      "has_replay_coverage": false
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\IONQ\\definition.json",
+      "symbol": "IONQ",
+      "schema": "definition",
+      "completed_through": "2026-09-16",
+      "updated_at": "2026-09-16T04:47:15.502885+00:00",
+      "has_replay_coverage": false
+    }
+  ]
+}

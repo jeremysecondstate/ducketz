@@ -1,0 +1,25 @@
+{
+  "status": "VERIFIED",
+  "checked_at": "2026-09-16T07:06:43.119021+00:00",
+  "run": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260916T070315.010940Z",
+  "available_price_points": 154,
+  "eligible_rows_with_prices": 209,
+  "gameplan_filter_views": 60,
+  "stats_filter_views": 55,
+  "stats_metrics": {
+    "total": 264,
+    "evaluated": 159,
+    "pending": 66,
+    "awaiting_data": 39,
+    "neutral": 0,
+    "correct": 90,
+    "scored": 159,
+    "bullish_correct": 2,
+    "bullish_scored": 2,
+    "bearish_correct": 88,
+    "bearish_scored": 157,
+    "brier": 0.21070981230844738
+  },
+  "original_account_snapshot_preserved": true,
+  "orders_placed": 0
+}

@@ -154,6 +154,69 @@ def test_missing_saved_estimates_are_explicit_and_not_rebuilt():
     assert result.iloc[0].actual_price == 100 and result.iloc[0].planned_price_mid is None
 
 
+@pytest.mark.parametrize("stale_actual", [False, True])
+def test_native_sparse_planning_close_keeps_observed_actuals_strict(stale_actual):
+    from ml.gameplan_price_bands import build_entry_price_bands, build_planning_price_path
+
+    history = _with_source_partitions(prices([
+        ("2026-09-02T23:11Z", 100., 100.),
+        ("2026-09-03T11:00Z", 95., 95.), ("2026-09-03T23:11Z", 100., 100.),
+        ("2026-09-04T11:00Z", 105., 105.), ("2026-09-04T23:11Z", 100., 100.),
+        ("2026-09-08T11:00Z", 110., 110.), ("2026-09-08T23:11Z", 200., 200.),
+    ]), [("2026-09-01", "2026-09-09")])
+    history.attrs["stock_price_source"]["partitions"][0]["published_at"] = "2026-09-09T01:00Z"
+    bands = build_entry_price_bands(history, forecasts(), observed_at="2026-09-09T04:00Z",
+                                    lookback_sessions=3, minimum_samples=2,
+                                    allow_reference_forward_fill=True, allow_sparse_session_references=True)
+    saved = build_planning_price_path(history, forecasts(), observed_at=bands["observed_at"],
+                                     entry_bands=bands,
+                                     allow_reference_forward_fill=True, allow_sparse_session_references=True)
+    point = saved["points"]["AAPL|2026-09-09|17:00"]
+    assert point["endpoint_kind"] == "planning_close" and point["status"] == "AVAILABLE"
+    assert point["reference_is_synthetic"] and point["synthetic_close_sample_count"] == 3
+    original = copy.deepcopy(saved)
+    bars = prices([("2026-09-09T11:00Z", 100., 100.),
+                   ("2026-09-09T23:53Z" if stale_actual else "2026-09-09T23:59Z", 108., 110.)])
+    result = compare_price_points(forecasts(), bars, action_date="2026-09-09",
+                                  observed_at="2026-09-10T00:00Z", planning_path=saved).iloc[-1]
+    assert result.planned_price_mid == point["planned_price_mid"]
+    if stale_actual:
+        assert result.comparison_status == "MATURE_AWAITING_DATA" and pd.isna(result.actual_price)
+    else:
+        assert result.comparison_status == "COMPARED" and result.actual_price == 110
+        assert result.price_error == 110 - point["planned_price_mid"]
+    assert saved == original
+
+
+@pytest.mark.parametrize("status", ["UNAVAILABLE_REFERENCE_PRICE", "UNAVAILABLE_MINIMUM_SAMPLES"])
+def test_sparse_unavailable_close_keeps_no_saved_estimate(status):
+    saved = path()
+    saved["contract_version"] = "conditional-hourly-planning-price-path-v3"
+    point = saved["points"]["AAPL|2026-09-09|17:00"]
+    point.update(endpoint_kind="planning_close", status=status,
+                 planned_price_low=None, planned_price_mid=None, planned_price_high=None)
+    result = compare_price_points(forecasts(), prices(), action_date="2026-09-09",
+                                  observed_at="2026-09-10T00:00Z", planning_path=saved).iloc[-1]
+    assert result.comparison_status == "NO_SAVED_ESTIMATE" and result.actual_price == 110
+    assert pd.isna(result.planned_price_mid) and pd.isna(result.price_error)
+
+
+@pytest.mark.parametrize("version,hour,endpoint", [
+    (None, 17, "planning_close"),
+    ("conditional-hourly-planning-price-path-v1", 17, "planning_close"),
+    ("conditional-hourly-planning-price-path-v2", 17, "planning_close"),
+    ("conditional-hourly-planning-price-path-v3", 17, "observed_close"),
+    ("conditional-hourly-planning-price-path-v3", 4, "planning_close"),
+])
+def test_saved_close_kind_is_bound_to_version_and_clock(version, hour, endpoint):
+    saved = path()
+    saved["contract_version"] = version
+    saved["points"][f"AAPL|2026-09-09|{hour:02d}:00"]["endpoint_kind"] = endpoint
+    with pytest.raises(ValueError, match="declared market clock"):
+        compare_price_points(forecasts(), prices(), action_date="2026-09-09",
+                             observed_at="2026-09-10T00:00Z", planning_path=saved)
+
+
 def _publication(root, day, name, publications, *, published_hour=1):
     run = root / "ml/nightly-gameplan-runs" / name
     run.mkdir(parents=True)

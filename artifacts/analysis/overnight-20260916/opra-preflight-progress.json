@@ -1,0 +1,718 @@
+{
+  "observed_at": "2026-09-16T04:35:47.242430+00:00",
+  "worker_identity": "48476 -> 48416; datafetching.options_history incremental source session 2026-09-15",
+  "inferred_phase": "Guarded preflight selection complete; subsequent download verification belongs to native worker",
+  "observed_preflights": 33,
+  "expected_scopes": 33,
+  "observed_by_schema": {
+    "ohlcv-1h": 11,
+    "cbbo-1m": 11,
+    "definition": 11
+  },
+  "all_observed_costs_zero": true,
+  "all_observed_costs_complete": true,
+  "all_observed_capacity_pass": true,
+  "observed_aggregate_estimated_bytes": 2433747144,
+  "observed_aggregate_estimated_cost_usd": 0.0,
+  "log_path": "C:\\DATASTORE\\ml\\overnight-runs\\20260916T040757.217937Z\\loop_a_close_fetch.log",
+  "selection_summary_lines": [
+    "OPRA history guarded preflight: requested_scopes=33; preflighted_scopes=33; selected_scopes=33; deferred_scopes=0; selected_estimated_download_bytes=2433747144; selected_estimated_cost_usd=0.0; preflight_only=false"
+  ],
+  "current_preflights": [
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\AAPL.OPT\\2026-09-10_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:30:14.917534+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-10",
+        "symbols": [
+          "AAPL.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 7118496,
+      "capacity_pass": true,
+      "required_free_bytes": 5382946112,
+      "available_free_bytes": 1334796840960,
+      "semantic_checksum_sha256": "2bbfe7c62df725439bb434488e6f01c6392e5193aad2a4a4e707c33f22063125"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\AMZN.OPT\\2026-09-10_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:30:23.416287+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-10",
+        "symbols": [
+          "AMZN.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 5244568,
+      "capacity_pass": true,
+      "required_free_bytes": 5379198256,
+      "available_free_bytes": 1334796746752,
+      "semantic_checksum_sha256": "18b215a0e7f90118f59916f2df2a7336305bc1e149ad75fc4926635357951f70"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\GOOG.OPT\\2026-09-10_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:30:28.186752+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-10",
+        "symbols": [
+          "GOOG.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 3252648,
+      "capacity_pass": true,
+      "required_free_bytes": 5375214416,
+      "available_free_bytes": 1334796738560,
+      "semantic_checksum_sha256": "a0281d57d01d57223b822b0584b875fc78cd13e77a7cf2a90b8f4429efbb4e83"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\MU.OPT\\2026-09-10_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:30:34.287627+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-10",
+        "symbols": [
+          "MU.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 10839528,
+      "capacity_pass": true,
+      "required_free_bytes": 5390388176,
+      "available_free_bytes": 1334796623872,
+      "semantic_checksum_sha256": "00d708181dea03a7c2504df893e741edfe9acbaf7164f32e7641b7f22a40d43a"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\NVDA.OPT\\2026-09-10_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:30:40.620083+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-10",
+        "symbols": [
+          "NVDA.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 9031624,
+      "capacity_pass": true,
+      "required_free_bytes": 5386772368,
+      "available_free_bytes": 1334801035264,
+      "semantic_checksum_sha256": "10ffe10e728278c9fdc9102e6d37c603811f27a5861799c81d830120111b51fe"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\SNDK.OPT\\2026-09-10_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:30:52.461198+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-10",
+        "symbols": [
+          "SNDK.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 4983552,
+      "capacity_pass": true,
+      "required_free_bytes": 5378676224,
+      "available_free_bytes": 1334800457728,
+      "semantic_checksum_sha256": "9cb008802f8d7b516fc4c9e1da83063fa57dc837bf1d8b90965a558b5eed9a36"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\COST.OPT\\2026-09-10_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:31:00.223702+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-10",
+        "symbols": [
+          "COST.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 1625960,
+      "capacity_pass": true,
+      "required_free_bytes": 5371961040,
+      "available_free_bytes": 1334800924672,
+      "semantic_checksum_sha256": "a68aef12d4ac07fa47f5355aac941851e60e687dc9487219669537d65246a552"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\CROX.OPT\\2026-09-10_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:31:04.123498+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-10",
+        "symbols": [
+          "CROX.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 32984,
+      "capacity_pass": true,
+      "required_free_bytes": 5368775088,
+      "available_free_bytes": 1334800920576,
+      "semantic_checksum_sha256": "b40e052a5fdf638264ded5a493503db7483472a4e68450ef637c2475172f2363"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\PATH.OPT\\2026-09-10_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:31:09.280810+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-10",
+        "symbols": [
+          "PATH.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 560448,
+      "capacity_pass": true,
+      "required_free_bytes": 5369830016,
+      "available_free_bytes": 1334800809984,
+      "semantic_checksum_sha256": "92c9b50837c214dcdc9386859f815cf6ac58f818da5c3b925dc2ff81482d92fd"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\TWST.OPT\\2026-09-10_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:31:16.860355+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-10",
+        "symbols": [
+          "TWST.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 13888,
+      "capacity_pass": true,
+      "required_free_bytes": 5368736896,
+      "available_free_bytes": 1334800736256,
+      "semantic_checksum_sha256": "246afad75721dd538dfd15ce48adc14e8734621ba8356d7817da0f629c21434d"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\ohlcv-1h\\IONQ.OPT\\2026-09-10_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:31:25.041309+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "ohlcv-1h"
+        ],
+        "start": "2026-09-10",
+        "symbols": [
+          "IONQ.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 1082088,
+      "capacity_pass": true,
+      "required_free_bytes": 5370873296,
+      "available_free_bytes": 1334800605184,
+      "semantic_checksum_sha256": "fc4984852c5f701a97ccdb4c1234a7680b2d3eae9e9a2fb6f9055f153c3c56f4"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\cbbo-1m\\AAPL.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:31:39.980074+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "cbbo-1m"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "AAPL.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 203747520,
+      "capacity_pass": true,
+      "required_free_bytes": 5776204160,
+      "available_free_bytes": 1334800138240,
+      "semantic_checksum_sha256": "8b501c65e636eb1c6e5998709293dbb3a9c8350a2262edb88171d615201e9b25"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\cbbo-1m\\AMZN.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:31:44.467920+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "cbbo-1m"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "AMZN.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 154272960,
+      "capacity_pass": true,
+      "required_free_bytes": 5677255040,
+      "available_free_bytes": 1334799675392,
+      "semantic_checksum_sha256": "283162a8b6dc0759992fca7593e3a816591e1a339a66eaa7568179e440b0f0dc"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\cbbo-1m\\GOOG.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:32:01.290897+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "cbbo-1m"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "GOOG.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 147584400,
+      "capacity_pass": true,
+      "required_free_bytes": 5663877920,
+      "available_free_bytes": 1334799192064,
+      "semantic_checksum_sha256": "d8c4d8adfad88f2f67d52450274674acc3615f3f5214bc6f14302a8f29f02424"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\cbbo-1m\\MU.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:32:19.143690+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "cbbo-1m"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "MU.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 633309840,
+      "capacity_pass": true,
+      "required_free_bytes": 6635328800,
+      "available_free_bytes": 1334799179776,
+      "semantic_checksum_sha256": "1c03e6b84d37788f36b51b97087df3f3a17949f04fbe96010c015d9ae08450c2"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\cbbo-1m\\NVDA.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:32:36.217966+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "cbbo-1m"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "NVDA.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 243533760,
+      "capacity_pass": true,
+      "required_free_bytes": 5855776640,
+      "available_free_bytes": 1334798798848,
+      "semantic_checksum_sha256": "e43d0226d7789ff5899930478b95f301a0d060e3634b7e952f71a6b4dcf32357"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\cbbo-1m\\SNDK.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:32:49.818059+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "cbbo-1m"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "SNDK.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 651847920,
+      "capacity_pass": true,
+      "required_free_bytes": 6672404960,
+      "available_free_bytes": 1334798598144,
+      "semantic_checksum_sha256": "2a123635d4c5f343b5b7f74577ce4fc7c71e318947c85c7ab9c97af45183e94a"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\cbbo-1m\\COST.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:33:12.198288+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "cbbo-1m"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "COST.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 205179200,
+      "capacity_pass": true,
+      "required_free_bytes": 5779067520,
+      "available_free_bytes": 1334808354816,
+      "semantic_checksum_sha256": "c3c9181a3c7b46b669f163999dbf0aeea6d785cabf65800791a62d21026ec32a"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\cbbo-1m\\CROX.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:33:18.001696+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "cbbo-1m"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "CROX.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 14826720,
+      "capacity_pass": true,
+      "required_free_bytes": 5398362560,
+      "available_free_bytes": 1334808215552,
+      "semantic_checksum_sha256": "87a353d239dfa4d71c175575e5f2611af322927a8c73ba7298408d0510f1b1c9"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\cbbo-1m\\PATH.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:33:46.582686+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "cbbo-1m"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "PATH.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 38114400,
+      "capacity_pass": true,
+      "required_free_bytes": 5444937920,
+      "available_free_bytes": 1334806728704,
+      "semantic_checksum_sha256": "2a5089dc911cf438b61f40d892607ce87e8975f059fc91bc4953a3a0c401c18e"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\cbbo-1m\\TWST.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:33:54.197805+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "cbbo-1m"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "TWST.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 13368720,
+      "capacity_pass": true,
+      "required_free_bytes": 5395446560,
+      "available_free_bytes": 1334806700032,
+      "semantic_checksum_sha256": "c4f1d926d8ce2857f0903ec480d7164f1903ca7409a080ba9c9adf949fcfcd1e"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\cbbo-1m\\IONQ.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:34:05.120378+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "cbbo-1m"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "IONQ.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 55232640,
+      "capacity_pass": true,
+      "required_free_bytes": 5479174400,
+      "available_free_bytes": 1334806482944,
+      "semantic_checksum_sha256": "ec7d7188664e3807ca4fc1ec0dcde6511cbb11dc652da2ff235fb487c9e82878"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\AAPL.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:34:09.457550+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "AAPL.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 2486880,
+      "capacity_pass": true,
+      "required_free_bytes": 5373682880,
+      "available_free_bytes": 1334806126592,
+      "semantic_checksum_sha256": "a6a8614042ad2043714172594d5f61059a59123466fe1974d0d9b108f124b352"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\AMZN.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:34:13.264226+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "AMZN.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 1831680,
+      "capacity_pass": true,
+      "required_free_bytes": 5372372480,
+      "available_free_bytes": 1334806106112,
+      "semantic_checksum_sha256": "8bb5c0c979586e99bd75abb594a558815b958f39a92c107c073d87b8d760cb00"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\GOOG.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:34:26.387918+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "GOOG.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 1728720,
+      "capacity_pass": true,
+      "required_free_bytes": 5372166560,
+      "available_free_bytes": 1334804615168,
+      "semantic_checksum_sha256": "232267bf59505cc21a1222d2f8117b6515430a7a0d054fa7faa9191ebaad6bf6"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\MU.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:34:31.849637+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "MU.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 7576560,
+      "capacity_pass": true,
+      "required_free_bytes": 5383862240,
+      "available_free_bytes": 1334804598784,
+      "semantic_checksum_sha256": "acf4618986d64bc1ecbe3aa85f15bda3585e82ee1880bfad11d2319e4e453501"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\NVDA.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:34:39.590872+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "NVDA.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 2892960,
+      "capacity_pass": true,
+      "required_free_bytes": 5374495040,
+      "available_free_bytes": 1334803939328,
+      "semantic_checksum_sha256": "d5c096e496ebc19e327a1c8ca227689bb706fc66ed46818329928827559a7e2e"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\SNDK.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:34:46.180737+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "SNDK.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 7794000,
+      "capacity_pass": true,
+      "required_free_bytes": 5384297120,
+      "available_free_bytes": 1334803816448,
+      "semantic_checksum_sha256": "16d2c55415da41fd70cb700593a6e7292c7be02967c47df69a9dad75249b372e"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\COST.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:34:52.461558+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "COST.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 2553840,
+      "capacity_pass": true,
+      "required_free_bytes": 5373816800,
+      "available_free_bytes": 1334803681280,
+      "semantic_checksum_sha256": "4fa365a8ebca2ccd3fe5cd3e6f938e999841305d79b08ad16c2b3e39f0636c49"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\CROX.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:34:58.980054+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "CROX.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 451440,
+      "capacity_pass": true,
+      "required_free_bytes": 5369612000,
+      "available_free_bytes": 1334803738624,
+      "semantic_checksum_sha256": "1f34eb916c5a963abc2533f3bfda57117e1f574e1ad68240539a9a8be73ea5c3"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\PATH.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:35:01.833055+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "PATH.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 541440,
+      "capacity_pass": true,
+      "required_free_bytes": 5369792000,
+      "available_free_bytes": 1334803709952,
+      "semantic_checksum_sha256": "fe80e4e9b097148f96d6769e6f6b96b9cd15d34607496a6fe07eb8248e2a0a9e"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\TWST.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:35:05.988647+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "TWST.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 372960,
+      "capacity_pass": true,
+      "required_free_bytes": 5369455040,
+      "available_free_bytes": 1334803705856,
+      "semantic_checksum_sha256": "1f8862a5a8cc419f67b296849be1cd65952e16a8b491e3a6565d1ef2fa16744f"
+    },
+    {
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\metadata\\preflights\\definition\\IONQ.OPT\\2026-09-12_to_2026-09-16\\preflight.json",
+      "generated_at": "2026-09-16T04:35:09.960744+00:00",
+      "scope": {
+        "end": "2026-09-16",
+        "schemas": [
+          "definition"
+        ],
+        "start": "2026-09-12",
+        "symbols": [
+          "IONQ.OPT"
+        ]
+      },
+      "estimated_cost_usd": 0.0,
+      "cost_estimates_complete": true,
+      "estimated_download_size_bytes": 712800,
+      "capacity_pass": true,
+      "required_free_bytes": 5370134720,
+      "available_free_bytes": 1334803689472,
+      "semantic_checksum_sha256": "bfb0df63c17c6ce05e04a1a2d22b90b5a8699d64fec538a7808864029cde7afa"
+    }
+  ],
+  "source_explanation": "options_runtime.py collects and publishes each scope preflight sequentially, then prints a single guarded-preflight summary after all scope plans. Each preflight obtains billable size, record count and estimated cost in sequence (databento_opra_history.py storage_preflight). Continuing new generated_at receipts show local forward progress during quiet stdout.",
+  "limits": "No provider calls, archive scans, process changes, claims or publication verification. Native summary confirms scope selection only, not completion of downloads or cursor coverage."
+}

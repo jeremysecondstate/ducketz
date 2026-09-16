@@ -1,0 +1,538 @@
+{
+  "audited_at": "2026-09-16T06:17:12.362444+00:00",
+  "status": "CURRENT_SAVED_TRADE_PLAN_BOUNDED_AUDIT_PASSED",
+  "run_path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260916T060421.076865Z",
+  "receipt": {
+    "action_date": "2026-09-16",
+    "broker_orders_enabled": false,
+    "completed_at": "2026-09-16T06:06:39.807439+00:00",
+    "execution_authority": "REVIEW_ONLY_REVALIDATE_AT_ENTRY",
+    "forecast_rows": 264,
+    "manifest_sha256": "a67d60f2b3b3e178bc4fb033d9e894fc0017ea56bf8ec74fb40d94f23e31ff8e",
+    "orders_placed": 0,
+    "run_path": "ml/gameplan-trade-plan-runs/20260916T060421.076865Z",
+    "schema_version": "cash-aware-gameplan-trade-planning-v4",
+    "source_gameplan_run": "ml/nightly-gameplan-runs/20260916T060149.932707Z",
+    "source_receipt_sha256": "460df262cf47d973c609fc7588227ac99597b1808a180693661f6a6d477f524c",
+    "status": "COMPLETE"
+  },
+  "original_deadline": "2026-09-16T11:00:00+00:00",
+  "effective_deadline": "2026-09-16T11:00:00+00:00",
+  "manifest_receipt_binding": "PASS",
+  "snapshot": {
+    "observed_at": "2026-09-16T06:05:04.100832+00:00",
+    "authority": "INFORMATIONAL_READ_ONLY",
+    "status": "OBSERVED",
+    "cash_status": "CASH_ONLY_BOUNDED",
+    "cash_policy": "MIN_REPORTED_LITERAL_CASH_AND_CASH_TRADING_BALANCE_LESS_ALL_PENDING_RESERVES_CAPPED_BY_BROKER_CAPACITY",
+    "available_cash": 115930.67,
+    "broker_available_cash": 122534.66,
+    "reserved_cash": 0.0,
+    "working_order_count": 0,
+    "held_shares": {
+      "AAPL": 0.0,
+      "AMZN": 0.0,
+      "COST": 0.0,
+      "CROX": 0.0,
+      "GOOG": 0.0,
+      "IONQ": 0.0,
+      "MU": 0.0,
+      "NVDA": 0.0,
+      "PATH": 0.0,
+      "SNDK": 0.0,
+      "TWST": 0.0
+    },
+    "pending_buy_shares": {
+      "AAPL": 0.0,
+      "AMZN": 0.0,
+      "COST": 0.0,
+      "CROX": 0.0,
+      "GOOG": 0.0,
+      "IONQ": 0.0,
+      "MU": 0.0,
+      "NVDA": 0.0,
+      "PATH": 0.0,
+      "SNDK": 0.0,
+      "TWST": 0.0
+    },
+    "pending_sell_shares": {
+      "AAPL": 0.0,
+      "AMZN": 0.0,
+      "COST": 0.0,
+      "CROX": 0.0,
+      "GOOG": 0.0,
+      "IONQ": 0.0,
+      "MU": 0.0,
+      "NVDA": 0.0,
+      "PATH": 0.0,
+      "SNDK": 0.0,
+      "TWST": 0.0
+    },
+    "account_equity": 128068.07,
+    "gross_exposure": 12137.399999999998,
+    "broker_data_http_methods": [
+      "GET"
+    ],
+    "broker_state_capture": {
+      "attempts": 3,
+      "elapsed_seconds": 42.73101710000083,
+      "last_error_operation": "WORKING_ORDERS",
+      "last_error_type": "ReadTimeout",
+      "maximum_retry_seconds": 120.0,
+      "retry_delay_seconds": 3.0,
+      "retry_wait_seconds": 6.0,
+      "schema_version": "stock-trader-broker-state-capture-v1",
+      "status": "CURRENT_AFTER_RETRY",
+      "transient_failures": 2
+    },
+    "ownership": {
+      "account_matches": true,
+      "active_allocations": [],
+      "blocked_symbols": [],
+      "current_broker_reconciliation_performed": false,
+      "last_saved_reconciliation_at": "2026-09-15T23:49:43.748642+00:00",
+      "last_saved_reconciliation_ready": true,
+      "owned_shares": {
+        "AAPL": 0,
+        "AMZN": 0,
+        "COST": 0,
+        "CROX": 0,
+        "GOOG": 0,
+        "IONQ": 0,
+        "MU": 0,
+        "NVDA": 0,
+        "PATH": 0,
+        "SNDK": 0,
+        "TWST": 0
+      },
+      "reason_codes": [],
+      "safe_for_planning": true,
+      "status": "OBSERVED_CONSISTENT"
+    },
+    "reason_codes": [],
+    "cash_reason_codes": [],
+    "orders_placed": 0,
+    "orders_enabled": false
+  },
+  "rows_by_symbol": {
+    "AAPL": 24,
+    "AMZN": 24,
+    "COST": 24,
+    "CROX": 24,
+    "GOOG": 24,
+    "IONQ": 24,
+    "MU": 24,
+    "NVDA": 24,
+    "PATH": 24,
+    "SNDK": 24,
+    "TWST": 24
+  },
+  "option_intent_rows": 264,
+  "path_contract": "conditional-hourly-planning-price-path-v3",
+  "price_observation_time": "2026-09-16T06:05:12.994793+00:00",
+  "source_contract": "xnas-itch-archive-v1",
+  "dataset": "XNAS.ITCH",
+  "hourly_price_point_count": 154,
+  "point_availability_by_symbol": {
+    "AAPL": {
+      "AVAILABLE": 14
+    },
+    "AMZN": {
+      "AVAILABLE": 14
+    },
+    "COST": {
+      "AVAILABLE": 14
+    },
+    "CROX": {
+      "AVAILABLE": 14
+    },
+    "GOOG": {
+      "AVAILABLE": 14
+    },
+    "IONQ": {
+      "AVAILABLE": 14
+    },
+    "MU": {
+      "AVAILABLE": 14
+    },
+    "NVDA": {
+      "AVAILABLE": 14
+    },
+    "PATH": {
+      "UNAVAILABLE_REFERENCE_PRICE": 14
+    },
+    "SNDK": {
+      "AVAILABLE": 14
+    },
+    "TWST": {
+      "AVAILABLE": 14
+    }
+  },
+  "price_band_status_counts": {
+    "AVAILABLE": 190,
+    "NOT_ENTRY": 55,
+    "UNAVAILABLE_REFERENCE_PRICE": 19
+  },
+  "reference_completion_contract": "sparse-session-planning-reference-completion-v2",
+  "current_references": {
+    "AAPL|2026-09-16": {
+      "symbol": "AAPL",
+      "status": "AVAILABLE_OBSERVED",
+      "reason": "NATIVE_OBSERVATION_WITHIN_TOLERANCE",
+      "price": 332.03,
+      "observed_at": "2026-09-16T00:00:00+00:00",
+      "effective_at": "2026-09-16T00:00:00+00:00",
+      "gap_minutes": 0.0,
+      "fill_count": 0,
+      "is_synthetic": false,
+      "session": "2026-09-15",
+      "action_date": "2026-09-16",
+      "source_contract": "xnas-itch-archive-v1",
+      "dataset": "XNAS.ITCH",
+      "source_coverage": null
+    },
+    "AMZN|2026-09-16": {
+      "symbol": "AMZN",
+      "status": "AVAILABLE_OBSERVED",
+      "reason": "NATIVE_OBSERVATION_WITHIN_TOLERANCE",
+      "price": 248.38,
+      "observed_at": "2026-09-16T00:00:00+00:00",
+      "effective_at": "2026-09-16T00:00:00+00:00",
+      "gap_minutes": 0.0,
+      "fill_count": 0,
+      "is_synthetic": false,
+      "session": "2026-09-15",
+      "action_date": "2026-09-16",
+      "source_contract": "xnas-itch-archive-v1",
+      "dataset": "XNAS.ITCH",
+      "source_coverage": null
+    },
+    "COST|2026-09-16": {
+      "symbol": "COST",
+      "status": "AVAILABLE_SYNTHETIC",
+      "reason": "ASSUMED_NO_TRADES",
+      "price": 903.03,
+      "observed_at": "2026-09-15T23:34:00+00:00",
+      "effective_at": "2026-09-16T00:00:00+00:00",
+      "gap_minutes": 26.0,
+      "fill_count": 26,
+      "is_synthetic": true,
+      "session": "2026-09-15",
+      "action_date": "2026-09-16",
+      "source_contract": "xnas-itch-archive-v1",
+      "dataset": "XNAS.ITCH",
+      "source_coverage": {
+        "end": "2026-09-16T00:00:00+00:00",
+        "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-13_to_2026-09-16\\manifest.json",
+        "native_partition_verified": true,
+        "published_at": "2026-09-16T05:59:51.232409+00:00",
+        "request_id": "94ca330cf4c72ccad1e87ac4",
+        "start": "2026-09-13T00:00:00+00:00",
+        "symbol": "COST"
+      }
+    },
+    "CROX|2026-09-16": {
+      "symbol": "CROX",
+      "status": "AVAILABLE_SYNTHETIC",
+      "reason": "ASSUMED_NO_TRADES",
+      "price": 111.48,
+      "observed_at": "2026-09-15T20:01:00+00:00",
+      "effective_at": "2026-09-16T00:00:00+00:00",
+      "gap_minutes": 239.0,
+      "fill_count": 239,
+      "is_synthetic": true,
+      "session": "2026-09-15",
+      "action_date": "2026-09-16",
+      "source_contract": "xnas-itch-archive-v1",
+      "dataset": "XNAS.ITCH",
+      "source_coverage": {
+        "end": "2026-09-16T00:00:00+00:00",
+        "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-13_to_2026-09-16\\manifest.json",
+        "native_partition_verified": true,
+        "published_at": "2026-09-16T05:59:55.707161+00:00",
+        "request_id": "f338860d5c6f6edec63c2d89",
+        "start": "2026-09-13T00:00:00+00:00",
+        "symbol": "CROX"
+      }
+    },
+    "GOOG|2026-09-16": {
+      "symbol": "GOOG",
+      "status": "AVAILABLE_OBSERVED",
+      "reason": "NATIVE_OBSERVATION_WITHIN_TOLERANCE",
+      "price": 340.83,
+      "observed_at": "2026-09-16T00:00:00+00:00",
+      "effective_at": "2026-09-16T00:00:00+00:00",
+      "gap_minutes": 0.0,
+      "fill_count": 0,
+      "is_synthetic": false,
+      "session": "2026-09-15",
+      "action_date": "2026-09-16",
+      "source_contract": "xnas-itch-archive-v1",
+      "dataset": "XNAS.ITCH",
+      "source_coverage": null
+    },
+    "IONQ|2026-09-16": {
+      "symbol": "IONQ",
+      "status": "AVAILABLE_OBSERVED",
+      "reason": "NATIVE_OBSERVATION_WITHIN_TOLERANCE",
+      "price": 37.03,
+      "observed_at": "2026-09-15T23:59:00+00:00",
+      "effective_at": "2026-09-15T23:59:00+00:00",
+      "gap_minutes": 1.0,
+      "fill_count": 0,
+      "is_synthetic": false,
+      "session": "2026-09-15",
+      "action_date": "2026-09-16",
+      "source_contract": "xnas-itch-archive-v1",
+      "dataset": "XNAS.ITCH",
+      "source_coverage": null
+    },
+    "MU|2026-09-16": {
+      "symbol": "MU",
+      "status": "AVAILABLE_OBSERVED",
+      "reason": "NATIVE_OBSERVATION_WITHIN_TOLERANCE",
+      "price": 925.85,
+      "observed_at": "2026-09-16T00:00:00+00:00",
+      "effective_at": "2026-09-16T00:00:00+00:00",
+      "gap_minutes": 0.0,
+      "fill_count": 0,
+      "is_synthetic": false,
+      "session": "2026-09-15",
+      "action_date": "2026-09-16",
+      "source_contract": "xnas-itch-archive-v1",
+      "dataset": "XNAS.ITCH",
+      "source_coverage": null
+    },
+    "NVDA|2026-09-16": {
+      "symbol": "NVDA",
+      "status": "AVAILABLE_OBSERVED",
+      "reason": "NATIVE_OBSERVATION_WITHIN_TOLERANCE",
+      "price": 212.4,
+      "observed_at": "2026-09-15T23:59:00+00:00",
+      "effective_at": "2026-09-15T23:59:00+00:00",
+      "gap_minutes": 1.0,
+      "fill_count": 0,
+      "is_synthetic": false,
+      "session": "2026-09-15",
+      "action_date": "2026-09-16",
+      "source_contract": "xnas-itch-archive-v1",
+      "dataset": "XNAS.ITCH",
+      "source_coverage": null
+    },
+    "PATH|2026-09-16": {
+      "symbol": "PATH",
+      "status": "UNAVAILABLE",
+      "reason": "UNDEFINED_NATIVE_PRICE_OBSERVATIONS",
+      "price": null,
+      "observed_at": "2026-09-15T23:48:00+00:00",
+      "effective_at": null,
+      "gap_minutes": 12.0,
+      "fill_count": 0,
+      "is_synthetic": false,
+      "session": "2026-09-15",
+      "action_date": "2026-09-16",
+      "source_contract": "xnas-itch-archive-v1",
+      "dataset": "XNAS.ITCH",
+      "source_coverage": null
+    },
+    "SNDK|2026-09-16": {
+      "symbol": "SNDK",
+      "status": "AVAILABLE_OBSERVED",
+      "reason": "NATIVE_OBSERVATION_WITHIN_TOLERANCE",
+      "price": 1526.56,
+      "observed_at": "2026-09-16T00:00:00+00:00",
+      "effective_at": "2026-09-16T00:00:00+00:00",
+      "gap_minutes": 0.0,
+      "fill_count": 0,
+      "is_synthetic": false,
+      "session": "2026-09-15",
+      "action_date": "2026-09-16",
+      "source_contract": "xnas-itch-archive-v1",
+      "dataset": "XNAS.ITCH",
+      "source_coverage": null
+    },
+    "TWST|2026-09-16": {
+      "symbol": "TWST",
+      "status": "AVAILABLE_SYNTHETIC",
+      "reason": "ASSUMED_NO_TRADES",
+      "price": 137.01,
+      "observed_at": "2026-09-15T23:13:00+00:00",
+      "effective_at": "2026-09-16T00:00:00+00:00",
+      "gap_minutes": 47.0,
+      "fill_count": 47,
+      "is_synthetic": true,
+      "session": "2026-09-15",
+      "action_date": "2026-09-16",
+      "source_contract": "xnas-itch-archive-v1",
+      "dataset": "XNAS.ITCH",
+      "source_coverage": {
+        "end": "2026-09-16T00:00:00+00:00",
+        "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-13_to_2026-09-16\\manifest.json",
+        "native_partition_verified": true,
+        "published_at": "2026-09-16T06:00:44.669154+00:00",
+        "request_id": "f828779a10811be5e0b15168",
+        "start": "2026-09-13T00:00:00+00:00",
+        "symbol": "TWST"
+      }
+    }
+  },
+  "historical_reference_status_counts": {
+    "AVAILABLE_OBSERVED": 937,
+    "AVAILABLE_SYNTHETIC": 288,
+    "UNAVAILABLE": 106
+  },
+  "synthetic_minute_rows": 312,
+  "synthetic_rows_by_symbol": {
+    "COST": 26,
+    "CROX": 239,
+    "TWST": 47
+  },
+  "synthetic_basic_saved_row_checks": {
+    "all_explicitly_synthetic": true,
+    "all_zero_volume": true,
+    "all_ohlc_equal": true,
+    "recomputed_price_path": false
+  },
+  "projection": {
+    "status": "UNAVAILABLE_PRICE_REFERENCES",
+    "reason": "Required observed price references or historical pairs are missing; no shared cash projection was calculated.",
+    "unavailable_point_count": 14,
+    "events": 0,
+    "hourly_summaries": 0,
+    "has_ending_projection": false,
+    "interpretation": "Unavailable chronological projection, not zero projected trades or a zero ending balance."
+  },
+  "scheduled_preview_reason_counts": {
+    "FORECAST_NOT_PROMOTED": 11,
+    "NON_ENTRY_CONTEXT": 55,
+    "NO_BULLISH_ENTRY_SIGNAL": 198
+  },
+  "provisional_buy_rows": 0,
+  "weekly_saved_rows": [
+    {
+      "symbol": "AAPL",
+      "model_group": "1w",
+      "model_status": "RESEARCH_NOT_PROMOTED",
+      "direction": "BULLISH",
+      "trade_planning_reason": "FORECAST_NOT_PROMOTED",
+      "trade_quantity": 0,
+      "projected_trade_quantity": 19.0,
+      "price_band_status": "AVAILABLE"
+    },
+    {
+      "symbol": "AMZN",
+      "model_group": "1w",
+      "model_status": "RESEARCH_NOT_PROMOTED",
+      "direction": "BEARISH",
+      "trade_planning_reason": "FORECAST_NOT_PROMOTED",
+      "trade_quantity": 0,
+      "projected_trade_quantity": 25.0,
+      "price_band_status": "AVAILABLE"
+    },
+    {
+      "symbol": "COST",
+      "model_group": "1w",
+      "model_status": "RESEARCH_NOT_PROMOTED",
+      "direction": "BEARISH",
+      "trade_planning_reason": "FORECAST_NOT_PROMOTED",
+      "trade_quantity": 0,
+      "projected_trade_quantity": 7.0,
+      "price_band_status": "AVAILABLE"
+    },
+    {
+      "symbol": "CROX",
+      "model_group": "1w",
+      "model_status": "RESEARCH_NOT_PROMOTED",
+      "direction": "BEARISH",
+      "trade_planning_reason": "FORECAST_NOT_PROMOTED",
+      "trade_quantity": 0,
+      "projected_trade_quantity": 57.0,
+      "price_band_status": "AVAILABLE"
+    },
+    {
+      "symbol": "GOOG",
+      "model_group": "1w",
+      "model_status": "RESEARCH_NOT_PROMOTED",
+      "direction": "BULLISH",
+      "trade_planning_reason": "FORECAST_NOT_PROMOTED",
+      "trade_quantity": 0,
+      "projected_trade_quantity": 18.0,
+      "price_band_status": "AVAILABLE"
+    },
+    {
+      "symbol": "IONQ",
+      "model_group": "1w",
+      "model_status": "RESEARCH_NOT_PROMOTED",
+      "direction": "BEARISH",
+      "trade_planning_reason": "FORECAST_NOT_PROMOTED",
+      "trade_quantity": 0,
+      "projected_trade_quantity": 172.0,
+      "price_band_status": "AVAILABLE"
+    },
+    {
+      "symbol": "MU",
+      "model_group": "1w",
+      "model_status": "RESEARCH_NOT_PROMOTED",
+      "direction": "BULLISH",
+      "trade_planning_reason": "FORECAST_NOT_PROMOTED",
+      "trade_quantity": 0,
+      "projected_trade_quantity": 6.0,
+      "price_band_status": "AVAILABLE"
+    },
+    {
+      "symbol": "NVDA",
+      "model_group": "1w",
+      "model_status": "RESEARCH_NOT_PROMOTED",
+      "direction": "BULLISH",
+      "trade_planning_reason": "FORECAST_NOT_PROMOTED",
+      "trade_quantity": 0,
+      "projected_trade_quantity": 30.0,
+      "price_band_status": "AVAILABLE"
+    },
+    {
+      "symbol": "PATH",
+      "model_group": "1w",
+      "model_status": "RESEARCH_NOT_PROMOTED",
+      "direction": "BEARISH",
+      "trade_planning_reason": "FORECAST_NOT_PROMOTED",
+      "trade_quantity": 0,
+      "projected_trade_quantity": NaN,
+      "price_band_status": "UNAVAILABLE_REFERENCE_PRICE"
+    },
+    {
+      "symbol": "SNDK",
+      "model_group": "1w",
+      "model_status": "RESEARCH_NOT_PROMOTED",
+      "direction": "BULLISH",
+      "trade_planning_reason": "FORECAST_NOT_PROMOTED",
+      "trade_quantity": 0,
+      "projected_trade_quantity": 4.0,
+      "price_band_status": "AVAILABLE"
+    },
+    {
+      "symbol": "TWST",
+      "model_group": "1w",
+      "model_status": "RESEARCH_NOT_PROMOTED",
+      "direction": "BEARISH",
+      "trade_planning_reason": "FORECAST_NOT_PROMOTED",
+      "trade_quantity": 0,
+      "projected_trade_quantity": 46.0,
+      "price_band_status": "AVAILABLE"
+    }
+  ],
+  "weekly_direction_counts": {
+    "BEARISH": 6,
+    "BULLISH": 5
+  },
+  "manual_policy_limit": "The saved scheduled-entry preview exclusions are not evidence that the separately selected manual Gameplan policy skips its 11 weekly instructions. Model assessment status is preserved.",
+  "planning_limitations": [
+    "Review projections only; the existing live worker revalidates all controls and capital.",
+    "Price and cash ranges are estimates only. Live orders use the current tradable quote, actual available cash and holdings even when those values are outside the estimates.",
+    "Planning closing marks may carry the same session's last actual close through up to four after-hours hours in a verified source window. Historical planning pairs disclose these closing carries too; entry prices stay observed. Zero volume is an assumption, not an exchange observation.",
+    "The direction-based cash/share projection depends on its recorded sale and expiry fills; projected proceeds are not actual spendable broker cash.",
+    "The separate scheduled-entry preview uses current cash only and requires prior exit confirmation for later entries in a planned horizon."
+  ],
+  "native_prices_modified": false,
+  "model_training_prices_modified": false,
+  "scope": "Saved artifact inspection only; no full price-path recomputation, raw-source verification or final-helper duplication. Root owns full final verification. No provider/broker calls, claims, process, pipeline or control mutations."
+}
