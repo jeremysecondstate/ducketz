@@ -1,0 +1,19 @@
+# September 17 Gameplan and September 16 actuals review
+
+Bounded saved-output review **2026-09-17T05:53:58.927283+00:00** passed with **no material defect found**. Full native archive and recomputation verification remains the root supervisor's separate check.
+
+The new [Gameplan](C:/DATASTORE/ml/gameplan-trade-plan-runs/20260917T054857.515593Z/Gameplan.md) and its receipt bind exactly to the frozen September 17 source `20260917T054622.686474Z` and its original 04:00 Pacific deadline. All **264 forecasts, 264 stock-only intents and 264 augmented rows** are present, 24 per symbol, with forecast identities preserved. The report places Projected Trade Quantity immediately before Direction Based Trade Qty.
+
+All **154 hourly planning prices** are AVAILABLE under XNAS.ITCH and the recorded single planning-data cutoff. The report explicitly discloses CROX **$115.58**, original September 16 **15:44 PDT**, carried **76 minutes**, and TWST **$143.00**, original **16:16 PDT**, carried **44 minutes**, both to the 17:00 boundary. The **120 synthetic minutes** have equal OHLC, zero assumed volume and explicit synthetic flags. The saved policy allows a maximum 240-minute same-session after-hours carry; native/training prices remain unchanged.
+
+A fresh **read-only GET snapshot at September 16 22:49:37 PDT** supports the plan. Native capture recovered one transient working-orders read timeout in two attempts; final status is `CURRENT_AFTER_RETRY`, with zero working orders/reservations and no snapshot reason codes. Cash-only available funds are **$85,282.76**; the separately reported broker availability is **$113,835.31**.
+
+The chronological plan uses the current **50%** direction policy and `accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1`. It contains **five conditional bearish weekly sales at 04:00**, totaling 19 AAPL, 18 GOOG, 6 MU, 30 NVDA and 4 SNDK; **zero buys and zero expiry sales**. Each event's before/change/after cash and share arithmetic conserves the saved balances, and all 14 hourly summaries agree. If those sales fill at the assumed ranges, cash ends at **$115,985.87–$116,109.60**, base **$116,047.79**, with zero modeled stock holdings. The no-fill baseline preserves starting cash and all starting shares. These are estimates, not submitted orders or broker fills.
+
+The [September 16 actuals](C:/DATASTORE/ml/gameplan-actuals-review-runs/20260917T055121.360000Z/Gameplan-results.md) select the correct prior frozen forecast and last verified matching trade plan saved before its 04:00 opening, including the September 16 pre-open informational refresh. Their frozen forecast identities and every saved low/mid/high price estimate match exactly. The successor binding, unchanged deadline, latest pointer, dated reader and link in tomorrow's Gameplan verify.
+
+Actuals contain **264 rows: 163 evaluated, 66 pending and 35 mature missing eligible endpoints**. Direction accuracy is **73/163 (44.79%)**, excluding unobserved/future outcomes. Of **154 same-clock prices**, **135 compare successfully**, with **34 inside** their original ranges; **19 lack eligible observations**. All present observations obey the original side and five-minute limit. Missing prices are **18 outside tolerance and one without an observation**, all with **VERIFIED_COMPLETE** native request-window coverage: COST 2, CROX 7, PATH 3, TWST 7. This is an observation gap, not evidence of an incomplete download or permission to substitute a synthetic actual. The report explicitly distinguishes market-price results from broker fills and trading P/L.
+
+Only saved reports, small receipts/manifests and bounded tables were read. No archive/source reload, price-path recomputation, broker/provider calls, model reruns, native writes, supervision claims or pipeline controls were used. Zero orders are recorded throughout.
+
+[Detailed output review JSON](C:/dev/ducketz/artifacts/analysis/overnight-20260917/output-review.json)
