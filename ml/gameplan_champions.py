@@ -13,6 +13,9 @@ import pandas as pd
 from ml.artifacts import file_checksum
 from ml.independent_stock_targets import STOCK_TARGET_CONTRACT_VERSION
 from ml.gameplan_promotion import validate_promoted_report
+from ml.gameplan_probability_target import (
+    probability_target_contract, resolve_probability_target,
+)
 from ml.stock_target_prices import stock_price_dataset
 
 
@@ -20,10 +23,12 @@ CHAMPION_RETENTION_POLICY = "latest-compatible-promoted-same-action-date-v1"
 
 
 def latest_promoted_champion(root: Path, *, group: str, action_date, symbols,
-                             price_source: str, before, source_selection_contract: str | None = None) -> dict | None:
+                             price_source: str, before, source_selection_contract: str | None = None,
+                             probability_target: str | None = None) -> dict | None:
     """Choose latest eligible publication, never compare held-out candidate scores."""
     from ml.nightly_gameplan import GAMEPLAN_VERSION, read_gameplan_run
     root = Path(root).resolve()
+    requested_target = resolve_probability_target(probability_target)
     candidates = []
     for run in (root / "ml/nightly-gameplan-runs").glob("*"):
         if not (run / "receipt.json").is_file():
@@ -37,6 +42,7 @@ def latest_promoted_champion(root: Path, *, group: str, action_date, symbols,
                 or tuple(config.get("symbols", ())) != tuple(symbols)
                 or config.get("target_price_source_contract") != price_source
                 or config.get("source_selection_contract") != source_selection_contract
+                or probability_target_contract(config) != requested_target
                 or config.get("target_price_dataset") != stock_price_dataset(price_source)):
             continue
         published = pd.Timestamp(receipt["published_at"])
@@ -57,6 +63,7 @@ def latest_promoted_champion(root: Path, *, group: str, action_date, symbols,
                 or report.get("target_contract_version") != STOCK_TARGET_CONTRACT_VERSION
                 or report.get("target_price_source_contract") != price_source
                 or report.get("source_selection_contract") != source_selection_contract
+                or probability_target_contract(report) != requested_target
                 or report.get("target_price_dataset") != stock_price_dataset(price_source)):
             raise RuntimeError("Champion promotion or model contract is invalid")
         try:
@@ -78,6 +85,7 @@ def latest_promoted_champion(root: Path, *, group: str, action_date, symbols,
                 or tuple(payload.get("categorical_columns", ())) != ("symbol", "route")
                 or payload.get("selected_family") != report["selected_family"]
                 or payload.get("source_selection_contract") != source_selection_contract
+                or probability_target_contract(payload) != requested_target
                 or pd.Timestamp(payload["trained_at"]) > pd.Timestamp(publication.receipt["published_at"])):
             raise RuntimeError("Champion fitted payload differs from its verified report")
         files = (run / "manifest.json", run / "receipt.json", run / "model-reports.json", model_path, run / cohort_name)
@@ -99,6 +107,11 @@ def retain_champion(challenger: dict, *, champion: dict, current: pd.DataFrame,
     from ml.gameplan_source_selection import source_selection_contract
     if source_selection_contract(current) != original_report.get("source_selection_contract"):
         raise RuntimeError("Current features cannot use a champion from another source selection contract")
+    target = probability_target_contract(current)
+    if (probability_target_contract(original_report) != target
+            or probability_target_contract(payload) != target
+            or probability_target_contract(challenger.get("report", {})) != target):
+        raise RuntimeError("Current features cannot use a champion from another probability target contract")
     numeric, categorical = tuple(payload["feature_columns"]), tuple(payload["categorical_columns"])
     if not set((*numeric, *categorical)).issubset(current.columns):
         raise RuntimeError("Current causal inputs cannot support the retained champion")

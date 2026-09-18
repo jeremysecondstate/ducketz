@@ -1,0 +1,58 @@
+{
+  "status": "VERIFIED",
+  "checked_at": "2026-09-18T07:36:07.484093+00:00",
+  "action_date": "2026-09-18",
+  "deployment": {
+    "OG": {
+      "receipt_sha256": "ba53f5f4b62443c426190da8cad96cf7e18644ee8c3f278b0fa5092c93b3de97",
+      "run_path": "ml/nightly-gameplan-runs/20260918T054532.489998Z"
+    },
+    "OG_execution_allowed": false,
+    "OG_trade_plan": {
+      "receipt_sha256": "ac9959153e990c359caac865e5caa36d448a77ff4d3935fba8f792fe5ed15916",
+      "run_path": "ml/gameplan-trade-plan-runs/20260918T054811.145288Z"
+    },
+    "YG": {
+      "receipt_sha256": "7dce646633d24be44ee7de183abbc561e3e7f9b2a362b50acae4ad471efe35b7",
+      "run_path": "ml/nightly-gameplan-runs/20260918T072555.813034Z"
+    },
+    "YG_enrichment": {
+      "receipt_sha256": "1a3707fb344ccabb20761c78ea936d1410e407062a0024aadee3520d41517812",
+      "run_path": "ml/stock-trader-model-runs/20260918T072819.180746Z"
+    },
+    "YG_trade_plan": {
+      "receipt_sha256": "a0b78c4f5993070d3ae1037964e516bcb8d8ae5bc30e9ad224133045a7901a01",
+      "run_path": "ml/gameplan-trade-plan-runs/20260918T072910.923004Z"
+    },
+    "action_date": "2026-09-18",
+    "active_variant": "YG",
+    "authorization": "Operator selected Yung Gameplan for September 18; original OG evaluation only.",
+    "broker_orders_enabled": false,
+    "execution_authority": "SOURCE_SELECTION_ONLY",
+    "native_preparation": {
+      "receipt_sha256": "f9bb52369e66658b23a25f53c684d4f8fe4cb4e5cea7800120dd3f7df3c94f82",
+      "run_path": "ml/overnight-runs/20260918T072554.369355Z"
+    },
+    "orders_placed": 0,
+    "original_deadline": "2026-09-18T04:00:00-07:00",
+    "required_variant": "YG",
+    "schema_version": "gameplan-variant-deployment-v1",
+    "status": "ACTIVE",
+    "updated_at": "2026-09-18T07:35:23.985203+00:00"
+  },
+  "yg_execution_source_accepted": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260918T072555.813034Z",
+  "og_execution_source_rejected": "OG_OR_UNSELECTED_GAMEPLAN_IS_NOT_EXECUTION_SOURCE",
+  "opening_reader_signals": 44,
+  "opening_reader_source_ids": [
+    "20260918T072555.813034Z"
+  ],
+  "reading_only_as_of": "2026-09-18T11:01:00Z",
+  "broker_calls": 0,
+  "orders_placed": 0,
+  "entry_slots_claimed": 0,
+  "preserved_sep17_og_stats": {
+    "correct": 62,
+    "scored": 164,
+    "brier": 0.24128772600598308
+  }
+}

@@ -324,6 +324,7 @@ class GameplanStatsTab:
         self.review = review
         self._last_load = time.monotonic()
         self.session.set(review.session)
+        self.heading.configure(text=f"{review.display_name} Stats")
         self.report_button.configure(state="normal")
         self.status_label.configure(foreground=MUTED_TEXT)
         self.status.set(f"Verified session {review.session} · Outcomes through {review.outcomes_through:%b %d, %H:%M %Z} · Reviewed {review.reviewed_at:%b %d, %H:%M %Z}")
@@ -505,16 +506,17 @@ class GameplanStatsTab:
         text = (f"Saved call: {outcome.direction.replace('NO_EDGE', 'NEUTRAL').title()}\n"
                 f"Outcome: {CELL_STYLES[outcome.state][3]}\n\n"
                 f"Saved model probability: {outcome.probability:.2%}\n"
-                f"Probability target: return above {outcome.target_cost:.2%}\n"
+                f"Probability target: return above {outcome.probability_target_threshold:.2%}\n"
+                f"Separate assumed round-trip cost: {outcome.target_cost:.2%}\n"
                 f"Observed return: {move}\nBrier score: {brier_text(outcome.brier)}\n\n"
                 f"Target start: {outcome.start:%b %d, %H:%M %Z}\nTarget end: {outcome.end:%b %d, %H:%M %Z}\n"
                 f"Start observation: {observed_start}\nEnd observation: {observed_end}\n\n"
-                "Direction checks the sign of the actual return. The probability target includes the saved cost threshold.\n"
+                "Direction checks the sign of the actual return. Probability scores retain this forecast's saved target.\n"
                 "Observations follow the review's five-minute boundary tolerance; these are market outcomes, not broker fills.")
         self._text_dialog(title, text)
 
     def _probability_definition(self):
-        costs = sorted({row.target_cost for row in self.review.rows(self.selected_horizon)}) if self.review else [.001]
+        costs = sorted({row.probability_target_threshold for row in self.review.rows(self.selected_horizon)}) if self.review else [.001]
         target = ", ".join(f"{cost:.2%}" for cost in costs) or "the saved cost threshold"
         return ("Brier score: average squared error of the saved model probability against its actual binary target. "
                 f"Target: return above {target} over the saved window. Lower is better; zero is perfect. "
@@ -533,7 +535,8 @@ class GameplanStatsTab:
             "The bottom grid always shows the thirteen 1h execution windows for the selected session. "
             "Its score excludes neutral, pending and missing cells.\n\n"
             "Results are a saved review snapshot, not a live rescore. Refresh loads newly published reviews; "
-            "it does not fetch prices or mature an old forecast. Direction and Brier measure different targets and populations. "
+            "it does not fetch prices or mature an old forecast. OG Brier retains its cost-adjusted target; YG Brier uses raw positive returns. "
+            "Neutral calls are included only in Brier; flat moves fail either directional call. "
             "These are prediction outcomes, not realized trading profit.")
 
     def _text_dialog(self, title, text):

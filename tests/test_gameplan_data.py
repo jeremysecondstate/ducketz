@@ -8,6 +8,27 @@ from app.ui.gameplan_data import GameplanError, load_gameplan, plan_sessions
 from gameplan_fixture import plan_payload, unavailable_payload, write_plan
 
 
+def test_plan_edition_comes_from_verified_probability_contract(tmp_path):
+    from ml.gameplan_probability_target import RAW_DIRECTION_TARGET
+    write_plan(tmp_path)
+    assert load_gameplan(tmp_path).display_name == "OG Gameplan"
+    rows, ledger = plan_payload()
+    for row in rows:
+        row.update(probability_target_contract=RAW_DIRECTION_TARGET, gameplan_variant="YG")
+    write_plan(tmp_path, rows=rows, ledger=ledger, run_name="yg")
+    assert load_gameplan(tmp_path).display_name == "Yung Gameplan (YG)"
+    rows[0]["probability_target_contract"] = "unknown"
+    write_plan(tmp_path, rows=rows, ledger=ledger, run_name="invalid")
+    with pytest.raises(GameplanError, match="probability target"):
+        load_gameplan(tmp_path)
+
+
+def test_plan_report_cannot_disagree_with_forecast_target(tmp_path):
+    write_plan(tmp_path, report_updates={"probability_target_contract": "raw-price-direction-v1"})
+    with pytest.raises(GameplanError, match="probability targets disagree"):
+        load_gameplan(tmp_path)
+
+
 def test_recorded_midpoint_is_joined_by_forecast_without_changing_saved_planning_price(tmp_path):
     run=write_plan(tmp_path)
     before=(run/'trade-plan.parquet').read_bytes()

@@ -1,0 +1,294 @@
+{
+  "completed_at": "2026-09-18T07:54:33.169122+00:00",
+  "preregistration_sha256": "7c5317ec3039e1d6e2ccf0cf8ffdbf79a970fd504ca6705ba78c1fa30254a47a",
+  "source_run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260918T072555.813034Z",
+  "train_rows": 1561,
+  "selection_rows": 174,
+  "original_selected_family": "hist-gradient-mlp-0.50",
+  "original_selection_scores": {
+    "brier_score": 0.25413863493169403,
+    "direction_accuracy_at_0_5": 0.5517241379310345,
+    "expected_calibration_error_10_bin": 0.08186658619015297,
+    "log_loss": 0.7036979245019893,
+    "mean_probability": 0.5761194597533713,
+    "positive_rate": 0.4942528735632184,
+    "rows": 174
+  },
+  "timing_selected_family": "regularized-logistic-c0.001",
+  "timing_selection_scores": {
+    "rows": 174,
+    "positive_rate": 0.4942528735632184,
+    "mean_probability": 0.5980728678412439,
+    "brier_score": 0.2581699473968294,
+    "log_loss": 0.7098065704669546,
+    "expected_calibration_error_10_bin": 0.10381999427802552,
+    "direction_accuracy_at_0_5": 0.4942528735632184,
+    "probability_range": [
+      0.5255796501340064,
+      0.6443794165713153
+    ],
+    "probability_quantiles": [
+      0.5558459371292612,
+      0.5881865272159952,
+      0.6022708785811723,
+      0.6122548913335721,
+      0.6226362695578248
+    ],
+    "probability_std": 0.02144357046575871
+  },
+  "selection_log_loss_change": 0.006108645964965298,
+  "source_timing_candidate_beats_original_development_winner": false,
+  "candidate_metrics": {
+    "hist-gradient": {
+      "rows": 174,
+      "positive_rate": 0.4942528735632184,
+      "mean_probability": 0.5576861842683246,
+      "brier_score": 0.2627991472489459,
+      "log_loss": 0.7266584189711602,
+      "expected_calibration_error_10_bin": 0.09252411254433802,
+      "direction_accuracy_at_0_5": 0.5344827586206896,
+      "probability_range": [
+        0.16206211133417184,
+        0.9086779662553275
+      ],
+      "probability_quantiles": [
+        0.3432141495999245,
+        0.4495678866012999,
+        0.5533264506412798,
+        0.6536596316767633,
+        0.7852579908487339
+      ],
+      "probability_std": 0.1426082642331501
+    },
+    "mlp": {
+      "rows": 174,
+      "positive_rate": 0.4942528735632184,
+      "mean_probability": 0.5896624771527325,
+      "brier_score": 0.2620510899844273,
+      "log_loss": 0.7196894968861568,
+      "expected_calibration_error_10_bin": 0.09540960358951432,
+      "direction_accuracy_at_0_5": 0.5114942528735632,
+      "probability_range": [
+        0.36060662671055016,
+        0.804344906459103
+      ],
+      "probability_quantiles": [
+        0.47584033183112395,
+        0.5392273738002676,
+        0.586782647458031,
+        0.6394031238532231,
+        0.7231160228959493
+      ],
+      "probability_std": 0.07743199720595902
+    },
+    "hist-gradient-mlp-0.25": {
+      "rows": 174,
+      "positive_rate": 0.4942528735632184,
+      "mean_probability": 0.5656802574894266,
+      "brier_score": 0.2589337783553423,
+      "log_loss": 0.7150900337892612,
+      "expected_calibration_error_10_bin": 0.09107186836170933,
+      "direction_accuracy_at_0_5": 0.5229885057471264,
+      "probability_range": [
+        0.2594181833209106,
+        0.8406851173994349
+      ],
+      "probability_quantiles": [
+        0.38835259554982543,
+        0.4735942564401835,
+        0.5635000803988531,
+        0.6485624744471042,
+        0.7666172323554712
+      ],
+      "probability_std": 0.11517433464552286
+    },
+    "hist-gradient-mlp-0.50": {
+      "rows": 174,
+      "positive_rate": 0.4942528735632184,
+      "mean_probability": 0.5736743307105286,
+      "brier_score": 0.25752064584672124,
+      "log_loss": 0.7106095526012567,
+      "expected_calibration_error_10_bin": 0.07942145714731022,
+      "direction_accuracy_at_0_5": 0.5229885057471264,
+      "probability_range": [
+        0.3567742553076493,
+        0.7850888787379319
+      ],
+      "probability_quantiles": [
+        0.4265067630980807,
+        0.5014498017775666,
+        0.5731926972217796,
+        0.6292822511047936,
+        0.7455210172184557
+      ],
+      "probability_std": 0.09229064777180736
+    },
+    "hist-gradient-mlp-0.75": {
+      "rows": 174,
+      "positive_rate": 0.4942528735632184,
+      "mean_probability": 0.5816684039316306,
+      "brier_score": 0.2585597497230829,
+      "log_loss": 0.7121677045036768,
+      "expected_calibration_error_10_bin": 0.08741553036841226,
+      "direction_accuracy_at_0_5": 0.5172413793103449,
+      "probability_range": [
+        0.37387349778373336,
+        0.7695953137367205
+      ],
+      "probability_quantiles": [
+        0.4606055213744127,
+        0.5292575053046258,
+        0.579746427276862,
+        0.630669769572627,
+        0.728440107828037
+      ],
+      "probability_std": 0.07806680435943776
+    },
+    "regularized-logistic-c0.001": {
+      "rows": 174,
+      "positive_rate": 0.4942528735632184,
+      "mean_probability": 0.5980728678412439,
+      "brier_score": 0.2581699473968294,
+      "log_loss": 0.7098065704669546,
+      "expected_calibration_error_10_bin": 0.10381999427802552,
+      "direction_accuracy_at_0_5": 0.4942528735632184,
+      "probability_range": [
+        0.5255796501340064,
+        0.6443794165713153
+      ],
+      "probability_quantiles": [
+        0.5558459371292612,
+        0.5881865272159952,
+        0.6022708785811723,
+        0.6122548913335721,
+        0.6226362695578248
+      ],
+      "probability_std": 0.02144357046575871
+    },
+    "regularized-logistic-c0.01": {
+      "rows": 174,
+      "positive_rate": 0.4942528735632184,
+      "mean_probability": 0.6073347102442872,
+      "brier_score": 0.2601202574283499,
+      "log_loss": 0.7143470960517287,
+      "expected_calibration_error_10_bin": 0.12162057129438411,
+      "direction_accuracy_at_0_5": 0.5,
+      "probability_range": [
+        0.3581858078775743,
+        0.7283451137532285
+      ],
+      "probability_quantiles": [
+        0.513677817609237,
+        0.5818606117378626,
+        0.6131385009381323,
+        0.6455155164780434,
+        0.6905819882857518
+      ],
+      "probability_std": 0.05881035119268902
+    },
+    "regularized-logistic-c0.1": {
+      "rows": 174,
+      "positive_rate": 0.4942528735632184,
+      "mean_probability": 0.6112864461988625,
+      "brier_score": 0.2693886318858914,
+      "log_loss": 0.7363388076091889,
+      "expected_calibration_error_10_bin": 0.15115853125038028,
+      "direction_accuracy_at_0_5": 0.4827586206896552,
+      "probability_range": [
+        0.08611656933880689,
+        0.830772707606218
+      ],
+      "probability_quantiles": [
+        0.45336848142386876,
+        0.5531517662740812,
+        0.6249861738137161,
+        0.6868187880924937,
+        0.7631125639808737
+      ],
+      "probability_std": 0.11094136438579415
+    },
+    "regularized-logistic-c1": {
+      "rows": 174,
+      "positive_rate": 0.4942528735632184,
+      "mean_probability": 0.6157273441250769,
+      "brier_score": 0.27580006874317925,
+      "log_loss": 0.7736012502732711,
+      "expected_calibration_error_10_bin": 0.16852249726853433,
+      "direction_accuracy_at_0_5": 0.4827586206896552,
+      "probability_range": [
+        0.0009864214578432185,
+        0.8868547484858518
+      ],
+      "probability_quantiles": [
+        0.4105400041580748,
+        0.5405570493074098,
+        0.6262897116950829,
+        0.7008062620891891,
+        0.7905100320511201
+      ],
+      "probability_std": 0.13779750679204258
+    }
+  },
+  "fit_warnings": [],
+  "final_assessment_touched": false,
+  "calibration_touched": false,
+  "production_changed": false,
+  "current_feature_values": [
+    {
+      "symbol": "AAPL",
+      "source__hours_after_regular_close": 4.0,
+      "source__hours_until_action_start": 11.0
+    },
+    {
+      "symbol": "AMZN",
+      "source__hours_after_regular_close": 4.0,
+      "source__hours_until_action_start": 11.0
+    },
+    {
+      "symbol": "COST",
+      "source__hours_after_regular_close": 4.0,
+      "source__hours_until_action_start": 11.0
+    },
+    {
+      "symbol": "CROX",
+      "source__hours_after_regular_close": 4.0,
+      "source__hours_until_action_start": 11.0
+    },
+    {
+      "symbol": "GOOG",
+      "source__hours_after_regular_close": 4.0,
+      "source__hours_until_action_start": 11.0
+    },
+    {
+      "symbol": "IONQ",
+      "source__hours_after_regular_close": 4.0,
+      "source__hours_until_action_start": 11.0
+    },
+    {
+      "symbol": "MU",
+      "source__hours_after_regular_close": 4.0,
+      "source__hours_until_action_start": 11.0
+    },
+    {
+      "symbol": "NVDA",
+      "source__hours_after_regular_close": 4.0,
+      "source__hours_until_action_start": 11.0
+    },
+    {
+      "symbol": "PATH",
+      "source__hours_after_regular_close": 4.0,
+      "source__hours_until_action_start": 11.0
+    },
+    {
+      "symbol": "SNDK",
+      "source__hours_after_regular_close": 4.0,
+      "source__hours_until_action_start": 11.0
+    },
+    {
+      "symbol": "TWST",
+      "source__hours_after_regular_close": 4.0,
+      "source__hours_until_action_start": 11.0
+    }
+  ],
+  "interpretation": "One independent fixed development experiment. Any selection improvement is not evidence of final-assessment success. No post-hoc source/shrinkage combination or candidate expansion was performed."
+}

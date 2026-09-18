@@ -14,12 +14,25 @@ from ml.stock_trader.contracts import PredictionSignal, STOCK_TRADER_SYMBOLS, fi
 from ml.stock_trader.session import checkpoint_session_for_target
 
 
+class GameplanDeploymentUnavailable(ValueError):
+    """The selected source handoff does not authorize this loaded Gameplan."""
+
+
+def _assert_execution_deployment(root, publication, *, action_date):
+    from ml.gameplan_deployment import assert_execution_gameplan
+    try:
+        assert_execution_gameplan(root, publication, action_date=action_date)
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise GameplanDeploymentUnavailable(str(exc)) from exc
+
+
 def execution_frame(root: Path, *, action_date: str):
     root = Path(root).resolve()
     pointer = json.loads((root / "ml/nightly-gameplan-latest/run.json").read_text(encoding="utf-8"))
     run = (root / pointer["current"]["run_path"]).resolve()
     if run.parent != (root / "ml/nightly-gameplan-runs").resolve():
         raise ValueError("Gameplan run is outside its saved directory")
+    _assert_execution_deployment(root, run, action_date=action_date)
     frame = pd.read_parquet(run / "forecasts.parquet")
     required = {"id", "symbol", "model_group", "direction", "calibrated_probability",
                 "target_window_start", "target_window_end", "execution_eligible", "action_date"}

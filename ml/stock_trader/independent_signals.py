@@ -66,6 +66,8 @@ neither late predictions nor missing action slots are replayed.
         from ml.stock_trader.gameplan import validate_late_opening_date
         validate_late_opening_date(late_opening_date, timestamp)
     publication = read_current_gameplan(root)
+    from ml.stock_trader.gameplan_execution import _assert_execution_deployment
+    _assert_execution_deployment(root, publication, action_date=local.date().isoformat())
     configuration = publication.manifest.get("configuration")
     if not isinstance(configuration, Mapping):
         raise ValueError("Independent stock Gameplan has no configuration")

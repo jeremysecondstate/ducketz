@@ -68,6 +68,18 @@ def test_selection_and_grid_click_show_frozen_observations(tab, monkeypatch):
     assert "return above 0.10%" in shown[0][1]
 
 
+def test_yg_stats_identifies_raw_probability_target(tab, tmp_path):
+    from ml.gameplan_probability_target import RAW_DIRECTION_TARGET
+    row = forecast(change=.0005, probability=.9, direction="BULLISH")
+    row.update(probability_target_contract=RAW_DIRECTION_TARGET, gameplan_variant="YG",
+               model_observed_target=1, model_brier_score=.01)
+    write_review(tmp_path, [row], version="yg")
+    tab.set_review(load_gameplan_stats(tmp_path))
+    assert tab.heading.cget("text") == "Yung Gameplan (YG) Stats"
+    assert "return above 0.00%" in tab._probability_definition()
+    assert tab.values["brier"].get() == "0.010"
+
+
 def test_date_change_clears_old_values_and_loads_requested_publication(tab, tmp_path):
     write_review(tmp_path, [forecast(session="2026-09-10")], session="2026-09-10", latest=False)
     tab.session.set("2026-09-10")

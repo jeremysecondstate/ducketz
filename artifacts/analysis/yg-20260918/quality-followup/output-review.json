@@ -1,0 +1,3192 @@
+{
+  "reviewed_at": "2026-09-18T08:08:17.655337+00:00",
+  "status": "PASS",
+  "scope": "Read-only saved-output audit. No provider/broker calls, fitting, trading, claim or publication.",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260918T080015.173923Z",
+  "gameplan": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260918T080016.713533Z",
+  "trade_plan": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260918T080320.581880Z",
+  "original_deadline": "2026-09-18T11:00:00+00:00",
+  "stage_order": [
+    "gameplan_publication",
+    "stock_enrichment_training",
+    "gameplan_trade_planning"
+  ],
+  "publication_identity": {
+    "gameplan_variant": "YG",
+    "probability_target_contract": "raw-price-direction-v1",
+    "action_date": "2026-09-18",
+    "published_at": "2026-09-18T08:02:27.060238+00:00"
+  },
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "COST",
+    "CROX",
+    "GOOG",
+    "IONQ",
+    "MU",
+    "NVDA",
+    "PATH",
+    "SNDK",
+    "TWST"
+  ],
+  "forecast_rows": 264,
+  "intent_rows": 264,
+  "augmented_rows": 264,
+  "price_points": 154,
+  "model_status_counts": {
+    "PROMOTED": 264
+  },
+  "model_review_scope": "Status counts only; separate model-review agent audits fitting/inference.",
+  "direction_policy": {
+    "direction_policy_version": "stock-direction-50-v2",
+    "direction_up_threshold": 0.5,
+    "direction_down_threshold": 0.5
+  },
+  "holding_policy": "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1",
+  "cash_summary": {
+    "buy_events": 54,
+    "cash_buffer": 5799.85,
+    "cash_change_high": -65422.43,
+    "cash_change_low": -66221.15,
+    "direction_buy_rows": 54,
+    "direction_sell_rows": 17,
+    "ending_cash_base": 50177.05,
+    "ending_cash_high": 50574.57,
+    "ending_cash_low": 49775.85,
+    "sell_events": 17,
+    "starting_cash": 115997.0,
+    "trade_events": 71
+  },
+  "event_reasons": {
+    "BULLISH_BUY": 54,
+    "BEARISH_SELL": 17
+  },
+  "ending_positions": {
+    "AAPL": 19.0,
+    "AMZN": 25.0,
+    "COST": 0.0,
+    "CROX": 52.0,
+    "GOOG": 18.0,
+    "IONQ": 160.0,
+    "MU": 7.0,
+    "NVDA": 30.0,
+    "PATH": 465.0,
+    "SNDK": 5.0,
+    "TWST": 41.0
+  },
+  "no_fill_baseline": {
+    "cash": 115997.0,
+    "held_shares": {
+      "AAPL": 0.0,
+      "AMZN": 0.0,
+      "COST": 0.0,
+      "CROX": 0.0,
+      "GOOG": 0.0,
+      "IONQ": 0.0,
+      "MU": 0.0,
+      "NVDA": 1.0,
+      "PATH": 0.0,
+      "SNDK": 0.0,
+      "TWST": 0.0
+    }
+  },
+  "snapshot_at": "2026-09-18T08:03:25.089332+00:00",
+  "snapshot_working_orders": 0,
+  "snapshot_reserved_cash": 0.0,
+  "synthetic_anchors": [
+    {
+      "action_date": "2026-09-18",
+      "boundary_at": "2026-09-18T00:00:00+00:00",
+      "completion_contract": "sparse-session-planning-reference-completion-v2",
+      "dataset": "XNAS.ITCH",
+      "effective_at": "2026-09-18T00:00:00+00:00",
+      "fill_count": 7,
+      "gap_minutes": 7.0,
+      "is_synthetic": true,
+      "max_gap_minutes": 240,
+      "observed_at": "2026-09-17T23:53:00+00:00",
+      "origin_bar_start": "2026-09-17T23:52:00+00:00",
+      "price": 123.19,
+      "reason": "ASSUMED_NO_TRADES",
+      "regular_session_close_at": "2026-09-17T20:00:00+00:00",
+      "session": "2026-09-17",
+      "source_contract": "xnas-itch-archive-v1",
+      "source_coverage": {
+        "end": "2026-09-18T00:00:00+00:00",
+        "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-15_to_2026-09-18\\manifest.json",
+        "native_partition_verified": true,
+        "published_at": "2026-09-18T05:43:56.718908+00:00",
+        "request_id": "f34b1a693f0b78d627284721",
+        "start": "2026-09-15T00:00:00+00:00",
+        "symbol": "CROX"
+      },
+      "status": "AVAILABLE_SYNTHETIC",
+      "symbol": "CROX"
+    }
+  ],
+  "original_receipt_sha256": "ba53f5f4b62443c426190da8cad96cf7e18644ee8c3f278b0fa5092c93b3de97",
+  "original_manifest_sha256": "dea097efa941b0610a6a018a05beecf870ec239cbf3e39a27d3433e849fc8987",
+  "all_checks_passed": true,
+  "checks": [
+    {
+      "check": "20260918T080016.713533Z/forecasts.parquet: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "20260918T080016.713533Z/gameplan.json: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "20260918T080016.713533Z/model-reports.json: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "20260918T080016.713533Z/models/1d/model.joblib: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "20260918T080016.713533Z/models/1h/model.joblib: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "20260918T080016.713533Z/models/1w/model.joblib: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "20260918T080016.713533Z/models/4h/model.joblib: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "20260918T080016.713533Z/option-strategy-intents.parquet: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "20260918T080016.713533Z/prior-gameplan-evaluations.parquet: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "20260918T080016.713533Z/training-cohort-1d.parquet: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "20260918T080016.713533Z/training-cohort-1h.parquet: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "20260918T080016.713533Z/training-cohort-1w.parquet: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "20260918T080016.713533Z/training-cohort-4h.parquet: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "all four immutable baselines present",
+      "passed": true
+    },
+    {
+      "check": "quality revision is a new YG",
+      "passed": true
+    },
+    {
+      "check": "preserved OG/forecasts.parquet",
+      "passed": true
+    },
+    {
+      "check": "preserved OG/gameplan.json",
+      "passed": true
+    },
+    {
+      "check": "preserved OG/manifest.json",
+      "passed": true
+    },
+    {
+      "check": "preserved OG/model-reports.json",
+      "passed": true
+    },
+    {
+      "check": "preserved OG/models/1d/model.joblib",
+      "passed": true
+    },
+    {
+      "check": "preserved OG/models/1h/model.joblib",
+      "passed": true
+    },
+    {
+      "check": "preserved OG/models/1w/model.joblib",
+      "passed": true
+    },
+    {
+      "check": "preserved OG/models/4h/model.joblib",
+      "passed": true
+    },
+    {
+      "check": "preserved OG/option-strategy-intents.parquet",
+      "passed": true
+    },
+    {
+      "check": "preserved OG/prior-gameplan-evaluations.parquet",
+      "passed": true
+    },
+    {
+      "check": "preserved OG/receipt.json",
+      "passed": true
+    },
+    {
+      "check": "preserved OG/training-cohort-1d.parquet",
+      "passed": true
+    },
+    {
+      "check": "preserved OG/training-cohort-1h.parquet",
+      "passed": true
+    },
+    {
+      "check": "preserved OG/training-cohort-1w.parquet",
+      "passed": true
+    },
+    {
+      "check": "preserved OG/training-cohort-4h.parquet",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first/forecasts.parquet",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first/gameplan.json",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first/manifest.json",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first/model-reports.json",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first/models/1d/model.joblib",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first/models/1h/model.joblib",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first/models/1w/model.joblib",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first/models/4h/model.joblib",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first/option-strategy-intents.parquet",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first/prior-gameplan-evaluations.parquet",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first/receipt.json",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first/training-cohort-1d.parquet",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first/training-cohort-1h.parquet",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first/training-cohort-1w.parquet",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first/training-cohort-4h.parquet",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first_trade_plan/Gameplan.md",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first_trade_plan/account-snapshot.json",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first_trade_plan/direction-ledger.json",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first_trade_plan/manifest.json",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first_trade_plan/planning-price-path.json",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first_trade_plan/planning-reference-completion.json",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first_trade_plan/price-bands.json",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first_trade_plan/receipt.json",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first_trade_plan/report.json",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first_trade_plan/synthetic-reference-bars.parquet",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first_trade_plan/trade-plan.parquet",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first_deployment/Comparison.md",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first_deployment/deployment.json",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first_deployment/forecast-comparison.parquet",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first_deployment/manifest.json",
+      "passed": true
+    },
+    {
+      "check": "preserved YG_first_deployment/receipt.json",
+      "passed": true
+    },
+    {
+      "check": "all four directional models and all264 exact-supported forecasts promoted",
+      "passed": true
+    },
+    {
+      "check": "native receipt binds final report",
+      "passed": true
+    },
+    {
+      "check": "native log gameplan_publication.log",
+      "passed": true
+    },
+    {
+      "check": "native log gameplan_trade_planning.log",
+      "passed": true
+    },
+    {
+      "check": "native log stock_enrichment_training.log",
+      "passed": true
+    },
+    {
+      "check": "20260918T080320.581880Z/Gameplan.md: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "20260918T080320.581880Z/account-snapshot.json: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "20260918T080320.581880Z/direction-ledger.json: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "20260918T080320.581880Z/planning-price-path.json: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "20260918T080320.581880Z/planning-reference-completion.json: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "20260918T080320.581880Z/price-bands.json: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "20260918T080320.581880Z/report.json: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "20260918T080320.581880Z/synthetic-reference-bars.parquet: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "20260918T080320.581880Z/trade-plan.parquet: output hash and size",
+      "passed": true
+    },
+    {
+      "check": "three-stage native endpoint preserved",
+      "passed": true
+    },
+    {
+      "check": "all three native stages complete",
+      "passed": true
+    },
+    {
+      "check": "original deadline and no exception",
+      "passed": true
+    },
+    {
+      "check": "published before original deadline",
+      "passed": true
+    },
+    {
+      "check": "YG raw-price identity",
+      "passed": true
+    },
+    {
+      "check": "YG receipt binds manifest",
+      "passed": true
+    },
+    {
+      "check": "trade receipt binds manifest",
+      "passed": true
+    },
+    {
+      "check": "pointer and native source bind YG",
+      "passed": true
+    },
+    {
+      "check": "action date Sep18",
+      "passed": true
+    },
+    {
+      "check": "forecasts: 264 rows and exact eleven-symbol universe",
+      "passed": true
+    },
+    {
+      "check": "intents: 264 rows and exact eleven-symbol universe",
+      "passed": true
+    },
+    {
+      "check": "augmented rows: 264 rows and exact eleven-symbol universe",
+      "passed": true
+    },
+    {
+      "check": "forecast identities unchanged in augmented rows",
+      "passed": true
+    },
+    {
+      "check": "all frozen forecast columns retained exactly",
+      "passed": true
+    },
+    {
+      "check": "all option intents are stock-only placeholders",
+      "passed": true
+    },
+    {
+      "check": "154 available hourly price points",
+      "passed": true
+    },
+    {
+      "check": "AAPL: fourteen hourly clocks",
+      "passed": true
+    },
+    {
+      "check": "AMZN: fourteen hourly clocks",
+      "passed": true
+    },
+    {
+      "check": "COST: fourteen hourly clocks",
+      "passed": true
+    },
+    {
+      "check": "CROX: fourteen hourly clocks",
+      "passed": true
+    },
+    {
+      "check": "GOOG: fourteen hourly clocks",
+      "passed": true
+    },
+    {
+      "check": "IONQ: fourteen hourly clocks",
+      "passed": true
+    },
+    {
+      "check": "MU: fourteen hourly clocks",
+      "passed": true
+    },
+    {
+      "check": "NVDA: fourteen hourly clocks",
+      "passed": true
+    },
+    {
+      "check": "PATH: fourteen hourly clocks",
+      "passed": true
+    },
+    {
+      "check": "SNDK: fourteen hourly clocks",
+      "passed": true
+    },
+    {
+      "check": "TWST: fourteen hourly clocks",
+      "passed": true
+    },
+    {
+      "check": "ledger projection complete",
+      "passed": true
+    },
+    {
+      "check": "no-fill baseline and snapshot preserved",
+      "passed": true
+    },
+    {
+      "check": "event 1: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 1: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 1: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 1: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 1: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 1: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 2: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 2: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 2: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 2: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 2: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 2: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 3: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 3: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 3: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 3: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 3: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 3: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 4: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 4: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 4: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 4: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 4: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 4: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 5: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 5: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 5: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 5: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 5: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 5: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 6: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 6: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 6: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 6: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 6: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 6: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 7: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 7: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 7: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 7: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 7: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 7: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 8: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 8: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 8: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 8: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 8: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 8: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 9: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 9: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 9: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 9: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 9: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 9: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 10: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 10: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 10: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 10: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 10: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 10: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 11: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 11: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 11: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 11: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 11: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 11: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 12: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 12: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 12: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 12: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 12: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 12: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 13: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 13: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 13: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 13: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 13: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 13: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 14: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 14: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 14: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 14: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 14: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 14: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 15: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 15: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 15: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 15: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 15: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 15: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 16: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 16: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 16: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 16: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 16: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 16: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 17: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 17: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 17: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 17: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 17: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 17: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 18: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 18: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 18: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 18: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 18: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 18: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 19: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 19: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 19: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 19: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 19: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 19: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 20: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 20: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 20: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 20: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 20: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 20: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 21: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 21: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 21: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 21: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 21: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 21: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 22: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 22: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 22: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 22: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 22: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 22: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 23: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 23: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 23: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 23: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 23: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 23: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 24: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 24: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 24: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 24: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 24: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 24: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 25: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 25: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 25: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 25: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 25: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 25: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 26: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 26: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 26: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 26: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 26: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 26: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 27: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 27: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 27: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 27: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 27: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 27: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 28: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 28: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 28: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 28: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 28: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 28: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 29: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 29: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 29: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 29: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 29: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 29: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 30: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 30: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 30: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 30: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 30: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 30: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 31: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 31: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 31: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 31: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 31: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 31: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 32: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 32: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 32: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 32: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 32: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 32: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 33: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 33: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 33: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 33: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 33: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 33: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 34: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 34: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 34: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 34: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 34: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 34: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 35: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 35: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 35: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 35: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 35: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 35: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 36: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 36: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 36: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 36: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 36: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 36: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 37: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 37: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 37: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 37: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 37: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 37: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 38: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 38: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 38: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 38: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 38: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 38: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 39: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 39: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 39: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 39: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 39: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 39: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 40: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 40: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 40: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 40: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 40: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 40: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 41: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 41: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 41: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 41: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 41: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 41: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 42: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 42: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 42: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 42: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 42: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 42: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 43: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 43: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 43: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 43: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 43: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 43: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 44: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 44: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 44: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 44: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 44: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 44: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 45: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 45: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 45: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 45: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 45: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 45: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 46: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 46: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 46: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 46: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 46: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 46: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 47: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 47: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 47: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 47: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 47: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 47: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 48: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 48: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 48: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 48: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 48: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 48: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 49: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 49: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 49: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 49: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 49: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 49: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 50: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 50: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 50: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 50: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 50: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 50: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 51: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 51: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 51: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 51: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 51: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 51: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 52: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 52: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 52: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 52: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 52: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 52: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 53: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 53: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 53: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 53: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 53: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 53: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 54: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 54: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 54: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 54: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 54: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 54: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 55: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 55: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 55: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 55: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 55: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 55: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 56: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 56: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 56: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 56: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 56: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 56: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 57: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 57: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 57: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 57: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 57: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 57: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 58: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 58: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 58: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 58: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 58: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 58: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 59: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 59: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 59: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 59: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 59: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 59: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 60: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 60: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 60: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 60: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 60: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 60: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 61: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 61: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 61: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 61: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 61: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 61: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 62: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 62: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 62: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 62: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 62: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 62: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 63: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 63: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 63: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 63: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 63: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 63: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 64: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 64: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 64: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 64: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 64: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 64: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 65: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 65: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 65: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 65: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 65: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 65: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 66: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 66: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 66: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 66: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 66: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 66: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 67: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 67: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 67: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 67: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 67: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 67: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 68: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 68: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 68: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 68: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 68: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 68: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 69: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 69: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 69: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 69: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 69: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 69: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 70: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 70: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 70: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 70: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 70: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 70: shares after",
+      "passed": true
+    },
+    {
+      "check": "event 71: identity and nonnegative whole shares",
+      "passed": true
+    },
+    {
+      "check": "event 71: shares before",
+      "passed": true
+    },
+    {
+      "check": "event 71: low cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 71: base cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 71: high cash conservation",
+      "passed": true
+    },
+    {
+      "check": "event 71: shares after",
+      "passed": true
+    },
+    {
+      "check": "ending holdings conserve all events",
+      "passed": true
+    },
+    {
+      "check": "ending cash conserves all events",
+      "passed": true
+    },
+    {
+      "check": "hour 2026-09-18T11:00:00+00:00: shared cash and shares",
+      "passed": true
+    },
+    {
+      "check": "hour 2026-09-18T12:00:00+00:00: shared cash and shares",
+      "passed": true
+    },
+    {
+      "check": "hour 2026-09-18T13:00:00+00:00: shared cash and shares",
+      "passed": true
+    },
+    {
+      "check": "hour 2026-09-18T14:00:00+00:00: shared cash and shares",
+      "passed": true
+    },
+    {
+      "check": "hour 2026-09-18T15:00:00+00:00: shared cash and shares",
+      "passed": true
+    },
+    {
+      "check": "hour 2026-09-18T16:00:00+00:00: shared cash and shares",
+      "passed": true
+    },
+    {
+      "check": "hour 2026-09-18T17:00:00+00:00: shared cash and shares",
+      "passed": true
+    },
+    {
+      "check": "hour 2026-09-18T18:00:00+00:00: shared cash and shares",
+      "passed": true
+    },
+    {
+      "check": "hour 2026-09-18T19:00:00+00:00: shared cash and shares",
+      "passed": true
+    },
+    {
+      "check": "hour 2026-09-18T20:00:00+00:00: shared cash and shares",
+      "passed": true
+    },
+    {
+      "check": "hour 2026-09-18T21:00:00+00:00: shared cash and shares",
+      "passed": true
+    },
+    {
+      "check": "hour 2026-09-18T22:00:00+00:00: shared cash and shares",
+      "passed": true
+    },
+    {
+      "check": "hour 2026-09-18T23:00:00+00:00: shared cash and shares",
+      "passed": true
+    },
+    {
+      "check": "hour 2026-09-19T00:00:00+00:00: shared cash and shares",
+      "passed": true
+    },
+    {
+      "check": "fourteen portfolio clocks",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AAPL:1h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AAPL:1h@05:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AAPL:1h@06:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AAPL:1h@07:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AAPL:1h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AAPL:1h@09:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AAPL:1h@10:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AAPL:1h@11:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AAPL:1h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AAPL:1h@13:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AAPL:1h@14:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AAPL:1h@15:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AAPL:1h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AAPL:4h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AAPL:4h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AAPL:4h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AAPL:4h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AAPL:1d@D+1: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AAPL:1w@D+5: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AMZN:1h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AMZN:1h@05:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AMZN:1h@06:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AMZN:1h@07:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AMZN:1h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AMZN:1h@09:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AMZN:1h@10:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AMZN:1h@11:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AMZN:1h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AMZN:1h@13:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AMZN:1h@14:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AMZN:1h@15:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AMZN:1h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AMZN:4h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AMZN:4h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AMZN:4h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AMZN:4h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AMZN:1d@D+1: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:AMZN:1w@D+5: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:COST:1h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:COST:1h@05:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:COST:1h@06:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:COST:1h@07:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:COST:1h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:COST:1h@09:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:COST:1h@10:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:COST:1h@11:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:COST:1h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:COST:1h@13:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:COST:1h@14:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:COST:1h@15:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:COST:1h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:COST:4h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:COST:4h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:COST:4h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:COST:4h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:COST:1d@D+1: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:COST:1w@D+5: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:CROX:1h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:CROX:1h@05:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:CROX:1h@06:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:CROX:1h@07:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:CROX:1h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:CROX:1h@09:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:CROX:1h@10:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:CROX:1h@11:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:CROX:1h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:CROX:1h@13:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:CROX:1h@14:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:CROX:1h@15:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:CROX:1h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:CROX:4h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:CROX:4h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:CROX:4h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:CROX:4h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:CROX:1d@D+1: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:CROX:1w@D+5: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:GOOG:1h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:GOOG:1h@05:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:GOOG:1h@06:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:GOOG:1h@07:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:GOOG:1h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:GOOG:1h@09:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:GOOG:1h@10:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:GOOG:1h@11:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:GOOG:1h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:GOOG:1h@13:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:GOOG:1h@14:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:GOOG:1h@15:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:GOOG:1h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:GOOG:4h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:GOOG:4h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:GOOG:4h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:GOOG:4h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:GOOG:1d@D+1: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:GOOG:1w@D+5: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:IONQ:1h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:IONQ:1h@05:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:IONQ:1h@06:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:IONQ:1h@07:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:IONQ:1h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:IONQ:1h@09:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:IONQ:1h@10:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:IONQ:1h@11:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:IONQ:1h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:IONQ:1h@13:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:IONQ:1h@14:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:IONQ:1h@15:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:IONQ:1h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:IONQ:4h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:IONQ:4h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:IONQ:4h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:IONQ:4h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:IONQ:1d@D+1: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:IONQ:1w@D+5: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:MU:1h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:MU:1h@05:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:MU:1h@06:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:MU:1h@07:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:MU:1h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:MU:1h@09:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:MU:1h@10:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:MU:1h@11:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:MU:1h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:MU:1h@13:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:MU:1h@14:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:MU:1h@15:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:MU:1h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:MU:4h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:MU:4h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:MU:4h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:MU:4h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:MU:1d@D+1: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:MU:1w@D+5: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:NVDA:1h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:NVDA:1h@05:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:NVDA:1h@06:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:NVDA:1h@07:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:NVDA:1h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:NVDA:1h@09:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:NVDA:1h@10:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:NVDA:1h@11:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:NVDA:1h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:NVDA:1h@13:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:NVDA:1h@14:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:NVDA:1h@15:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:NVDA:1h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:NVDA:4h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:NVDA:4h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:NVDA:4h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:NVDA:4h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:NVDA:1d@D+1: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:NVDA:1w@D+5: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:PATH:1h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:PATH:1h@05:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:PATH:1h@06:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:PATH:1h@07:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:PATH:1h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:PATH:1h@09:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:PATH:1h@10:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:PATH:1h@11:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:PATH:1h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:PATH:1h@13:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:PATH:1h@14:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:PATH:1h@15:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:PATH:1h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:PATH:4h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:PATH:4h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:PATH:4h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:PATH:4h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:PATH:1d@D+1: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:PATH:1w@D+5: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:SNDK:1h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:SNDK:1h@05:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:SNDK:1h@06:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:SNDK:1h@07:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:SNDK:1h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:SNDK:1h@09:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:SNDK:1h@10:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:SNDK:1h@11:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:SNDK:1h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:SNDK:1h@13:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:SNDK:1h@14:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:SNDK:1h@15:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:SNDK:1h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:SNDK:4h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:SNDK:4h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:SNDK:4h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:SNDK:4h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:SNDK:1d@D+1: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:SNDK:1w@D+5: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:TWST:1h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:TWST:1h@05:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:TWST:1h@06:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:TWST:1h@07:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:TWST:1h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:TWST:1h@09:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:TWST:1h@10:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:TWST:1h@11:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:TWST:1h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:TWST:1h@13:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:TWST:1h@14:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:TWST:1h@15:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:TWST:1h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:TWST:4h@04:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:TWST:4h@08:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:TWST:4h@12:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:TWST:4h@16:00: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:TWST:1d@D+1: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "forecast 2026-09-18:TWST:1w@D+5: post-entire-hour balances",
+      "passed": true
+    },
+    {
+      "check": "55 non-entry context rows omit projection quantities and balances",
+      "passed": true
+    },
+    {
+      "check": "original OG receipt unchanged",
+      "passed": true
+    },
+    {
+      "check": "original OG manifest unchanged",
+      "passed": true
+    },
+    {
+      "check": "all original current price observations preserved",
+      "passed": true
+    },
+    {
+      "check": "same seven disclosed synthetic CROX bars",
+      "passed": true
+    },
+    {
+      "check": "native prices and training unmodified",
+      "passed": true
+    },
+    {
+      "check": "all receipts zero orders",
+      "passed": true
+    },
+    {
+      "check": "snapshot read-only zero orders",
+      "passed": true
+    }
+  ],
+  "orders_placed": 0,
+  "immutable_baseline": "C:\\dev\\ducketz\\artifacts\\analysis\\yg-20260918\\quality-followup\\immutable-baseline.json",
+  "immutable_baseline_files_checked": 46
+}

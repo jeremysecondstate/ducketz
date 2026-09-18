@@ -1,0 +1,14 @@
+# Independent YG training-code review
+
+Reviewed 2026-09-18T08:00:46.787497+00:00. Result: **no unresolved findings**. This is a source-code and test-evidence review before the new native preparation, not a claim that its final model assessment has passed.
+
+- Weekly shrinkage applies only to independent raw-direction 1w training. Nine base families receive fixed weights 0.25, 0.5, 0.75 and 1: 36 candidates. No zero/epsilon weight exists. Selection uses the existing development log loss, preferring unshrunk weight 1 on an exact tie.
+- Selection prior is computed only from the purged TRAIN labels. The chosen base estimator is refitted on TRAIN plus selection, and the serialized wrapper uses only that final fitted partition's prior. Calibration and assessment labels cannot enter either prior.
+- Selection metrics, base-family mapping, neural blend weight, logistic C, shrinkage policy/weight and both priors are stored consistently in report and fitted payload. The stable `ml.gameplan_estimators.PriorProbabilityShrinkage` wrapper is actually serialized, validates binary probabilities, and preserves a nonzero model contribution.
+- The integration regression changes only assessment labels and confirms identical development metrics, chosen family and calibration selection. Its fixture must choose weight below 1, reloads `model.joblib`, rebuilds the current feature frame, and reproduces both saved raw and calibrated forecasts exactly. A separate fresh-interpreter test verifies joblib portability.
+- Raw-direction calibration rejects constant/constrained candidates using the later development half before ranking. Full-refit eligibility uses calibration data only. The review found an unconditional identity fallback edge: a tiny raw spread can make identity development-ineligible while an amplified Platt map is eligible. The implementer fixed it to reject that fallback and added the requested regression. This finding is resolved.
+- `ml/gameplan_promotion.py` and `ml/calibration.py` have no Git diff. Numerical final gates remain unchanged. Legacy targets keep their prior candidate/calibration behavior; new shrinkage metadata does not alter their predictions.
+
+The implementation agent reported 13 shrinkage tests and 58 broader tests passing after the fix. These regression assertions were reviewed; equivalent tests were not rerun merely to repeat successful validation. The reused assessment is not fresh independent evidence of prospective improvement. Only the new native run's verified result can establish readiness under the unchanged operating criteria.
+
+[Reviewed file hashes](C:/dev/ducketz/artifacts/analysis/yg-20260918/quality-followup/training-code-review.json). No training files were edited by the reviewer, and no training, provider, broker, order or production handoff operation was performed.

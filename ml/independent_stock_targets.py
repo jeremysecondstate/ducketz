@@ -15,6 +15,10 @@ import numpy as np
 import pandas as pd
 
 from ml.stock_target_prices import CANONICAL_STOCK_PRICE_SOURCE, stock_price_dataset
+from ml.gameplan_probability_target import (
+    LEGACY_COST_TARGET, RAW_DIRECTION_TARGET, probability_target_metadata,
+    resolve_probability_target,
+)
 
 
 STOCK_TARGET_CONTRACT_VERSION = "independent-stock-targets-v1"
@@ -117,6 +121,7 @@ def stock_target_windows(action_date: date, *, calendar=None) -> tuple[dict, ...
 def build_stock_current_groups(
     sources: pd.DataFrame, *, feature_columns: Sequence[str],
     price_source_contract: str = CANONICAL_STOCK_PRICE_SOURCE,
+    probability_target: str = LEGACY_COST_TARGET,
 ) -> dict[str, pd.DataFrame]:
     if sources.empty:
         raise RuntimeError("Independent stock targets require causal source rows")
@@ -139,6 +144,7 @@ def build_stock_current_groups(
                     assumed_round_trip_cost=source.get("assumed_round_trip_cost", 0.001),
                     target_price_source_contract=price_source_contract,
                     target_price_dataset=stock_price_dataset(price_source_contract))
+        base.update(probability_target_metadata(probability_target))
         rows.extend({**base, **window} for window in windows[day])
     frame = with_stock_calendar_features(pd.DataFrame(rows))
     return {group: frame.loc[frame.model_group.eq(group)].reset_index(drop=True) for group in GROUPS}
@@ -146,14 +152,16 @@ def build_stock_current_groups(
 
 def build_stock_training_groups(sources: pd.DataFrame, *, feature_columns: Sequence[str],
                                 minute_bars: pd.DataFrame, available_at: object,
-                                price_source_contract: str | None = None) -> dict[str, pd.DataFrame]:
+                                price_source_contract: str | None = None,
+                                probability_target: str = LEGACY_COST_TARGET) -> dict[str, pd.DataFrame]:
     """Use the native five-minute boundary policy and genuine equity observations."""
     source_report = minute_bars.attrs.get("stock_price_source", {})
     selected_source = price_source_contract or source_report.get("source_contract", CANONICAL_STOCK_PRICE_SOURCE)
     if source_report and source_report.get("source_contract") != selected_source:
         raise RuntimeError("Independent target labels disagree with the selected minute price source")
     groups = build_stock_current_groups(sources, feature_columns=feature_columns,
-                                        price_source_contract=selected_source)
+                                        price_source_contract=selected_source,
+                                        probability_target=probability_target)
     now = pd.to_datetime(available_at, utc=True)
     bars = minute_bars.loc[:, ["symbol", "timestamp", "open", "close"]].copy()
     bars["symbol"] = bars.symbol.astype("string").str.upper()
@@ -180,7 +188,13 @@ def build_stock_training_groups(sources: pd.DataFrame, *, feature_columns: Seque
         admitted = targets.loc[valid].copy()
         admitted["observed_return"] = exit_prices.loc[valid] / entry_prices.loc[valid] - 1.0
         cost = pd.to_numeric(admitted.assumed_round_trip_cost, errors="coerce").fillna(0.001)
-        admitted["target"] = admitted.observed_return.sub(cost).gt(0).astype(int)
+        if not np.isfinite(cost).all() or cost.lt(0).any():
+            raise ValueError("Independent stock round-trip costs must be finite and nonnegative")
+        admitted["target_raw_price_direction"] = admitted.observed_return.gt(0).astype(int)
+        admitted["target_cost_adjusted_positive"] = admitted.observed_return.sub(cost).gt(0).astype(int)
+        label = ("target_raw_price_direction" if resolve_probability_target(probability_target) == RAW_DIRECTION_TARGET
+                 else "target_cost_adjusted_positive")
+        admitted["target"] = admitted[label]
         admitted["target_open"] = entry_prices.loc[valid]
         admitted["target_close"] = exit_prices.loc[valid]
         admitted["observed_open_timestamp"] = observations.loc[valid, "observed_open_timestamp"]

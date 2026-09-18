@@ -15,6 +15,10 @@ from ml.gameplan_price_bands import (
     SPARSE_PLANNING_PRICE_PATH_CONTRACT, _aware_timestamp, _observation, _source_identity,
 )
 from ml.independent_stock_targets import STOCK_TARGET_BOUNDARY_TOLERANCE
+from ml.gameplan_probability_target import (
+    RAW_DIRECTION_TARGET, observed_probability_target, probability_target_contract,
+    probability_target_metadata,
+)
 
 
 VERSION = "gameplan-actuals-review-v1"
@@ -22,7 +26,7 @@ TIMEZONE = "America/Los_Angeles"
 RUNS = "ml/gameplan-actuals-review-runs"
 IDENTITY_COLUMNS = ("id", "symbol", "route", "model_group", "model_status", "target_role",
                     "target_window_start", "target_window_end", "calibrated_probability",
-                    "direction", "target_price_source_contract")
+                    "direction", "target_price_source_contract", "probability_target_contract", "gameplan_variant")
 
 
 def _json(path: Path) -> dict:
@@ -153,6 +157,8 @@ def _evidence_columns(prefix: str, evidence: Mapping) -> dict:
 
 
 def _match_trade_rows(forecasts: pd.DataFrame, trades: pd.DataFrame) -> None:
+    if probability_target_contract(forecasts) != probability_target_contract(trades):
+        raise ValueError("Saved trade plan changed the frozen probability target")
     if trades.id.duplicated().any() or set(trades.id) != set(forecasts.id):
         raise ValueError("Saved trade plan differs from the frozen forecast identities")
     columns = [column for column in IDENTITY_COLUMNS if column in forecasts]
@@ -172,6 +178,10 @@ def compare_forecasts(forecasts: pd.DataFrame, prices: pd.DataFrame, *, observed
     now = _aware_timestamp(observed_at, "observed_at")
     if forecasts.empty or forecasts.id.duplicated().any():
         raise ValueError("Actuals review requires unique frozen forecasts")
+    target_contract = probability_target_contract(forecasts)
+    target_metadata = probability_target_metadata(target_contract)
+    if "gameplan_variant" in forecasts and not forecasts.gameplan_variant.eq(target_metadata["gameplan_variant"]).all():
+        raise ValueError("Saved Gameplan variant disagrees with its probability target")
     by_symbol = _observed_prices(prices, forecasts, now)
     inventory = prices.attrs.get("stock_price_source", {})
     if trade_rows is not None:
@@ -201,7 +211,7 @@ def compare_forecasts(forecasts: pd.DataFrame, prices: pd.DataFrame, *, observed
             raise ValueError("Frozen forecast has an invalid probability")
         cost = _number(row.get("assumed_round_trip_cost"))
         cost = 0.001 if cost is None else cost
-        model_target = int(change > cost) if scored else None
+        model_target = observed_probability_target(change, cost, target_contract) if scored else None
         low, mid, high = (_number(row.get(f"trade_price_{field}")) for field in ("low", "mid", "high"))
         comparable = bool(entry and mid is not None and mid > 0)
         row.update(actual_start_price=entry[0] if entry else None,
@@ -214,7 +224,11 @@ def compare_forecasts(forecasts: pd.DataFrame, prices: pd.DataFrame, *, observed
                    entry_price_error=entry[0] - mid if comparable else None,
                    entry_price_error_fraction=entry[0] / mid - 1 if comparable else None,
                    entry_price_in_range=bool(low <= entry[0] <= high) if entry and low is not None and high is not None else None,
+                   **target_metadata, assumed_round_trip_cost=cost,
                    model_observed_target=model_target,
+                   observed_raw_price_direction=int(change > 0) if scored else None,
+                   observed_cost_adjusted_positive=int(change > cost) if scored else None,
+                   cost_adjusted_return=change - cost if scored else None,
                    model_brier_score=(probability - model_target) ** 2 if scored else None)
         rows.append(row)
     return pd.DataFrame(rows)
@@ -353,7 +367,9 @@ def _missing_boundary_text(row: Mapping, prefix: str, *, detailed: bool = False)
 
 
 def render_actuals_review(forecasts: pd.DataFrame, prices: pd.DataFrame, report: Mapping) -> str:
-    lines = [f"# Gameplan results · {report['action_date']}", "",
+    contract = probability_target_contract(forecasts) if not forecasts.empty else probability_target_contract(report)
+    plan_name = "Yung Gameplan (YG)" if contract == RAW_DIRECTION_TARGET else "OG Gameplan"
+    lines = [f"# {plan_name} results · {report['action_date']}", "",
              ("**Preview — final results await the completed-session data fetch.** All times are Pacific."
               if report.get("preview") else f"Tomorrow's Gameplan for **{report['successor_action_date']}** is prepared. All times are Pacific."), "",
              "The saved price estimates below are compared with actual market prices at the same clock. "
@@ -369,7 +385,10 @@ def render_actuals_review(forecasts: pd.DataFrame, prices: pd.DataFrame, report:
     lines += [f"**{totals['evaluated']} evaluated · {totals['pending_maturity']} still pending · "
               f"{totals['mature_awaiting_data']} {missing_label}.**", "",
               "Direction results compare the saved Bullish/Bearish call with the actual price move. Neutral forecasts "
-              "have no directional score. Future and missing outcomes are excluded from accuracy.", ""]
+              "have no directional score. Future and missing outcomes are excluded from accuracy.", "",
+              ("YG probability scores use a strictly positive raw price return. Cost-adjusted outcomes remain separate."
+               if contract == RAW_DIRECTION_TARGET else
+               "OG probability scores retain the saved cost-adjusted return target; direction accuracy uses the raw price move."), ""]
     summary_rows = []
     for symbol, frame in forecasts.groupby("symbol", sort=True):
         calls = frame.loc[frame.direction_correct.notna() & frame.model_status.eq("PROMOTED")]
@@ -425,8 +444,8 @@ def render_actuals_review(forecasts: pd.DataFrame, prices: pd.DataFrame, report:
     lines += ["Actual prices use the Gameplan's own stock dataset and the existing five-minute boundary tolerance. "
               "The 17:00 price is a completed minute's closing price; earlier hourly clocks use opening prices. "
               "No missing prices are filled. Longer forecasts continue in the cumulative saved-Gameplan evaluation.", "",
-              "The machine-readable results also retain the model's cost-adjusted target and Brier score, "
-              "separately from the raw-price direction results above.", ""]
+              "The machine-readable results retain the model's own frozen probability target and Brier score, "
+              "plus separate raw-price and cost-adjusted outcomes. These are not broker fills or realized profit.", ""]
     return "\n".join(lines)
 
 
@@ -487,6 +506,7 @@ def publish_actuals_review(root: Path, *, gameplan_run: Path, deadline: object |
             if trades[2] is not None:
                 inputs.append(trades[0] / "planning-price-path.json")
         report.update(source_gameplan_run=original.run_directory.relative_to(root).as_posix(),
+                      **probability_target_metadata(probability_target_contract(forecasts)),
                       source_gameplan_path=original.run_directory.as_posix(),
                       source_trade_plan_path=trades[0].as_posix() if trades else None,
                       target_price_source_contract=contract, price_inventory=inventory,

@@ -9,25 +9,57 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from ml.gameplan_probability_target import RAW_DIRECTION_TARGET, resolve_probability_target
 
 from ml.calibration import IdentityCalibrator, fit_probability_calibrator
 
 
 DEVELOPMENT_SELECTION_POLICY = "independent-stock-development-selection-v1"
+RAW_DIRECTION_DEVELOPMENT_SELECTION_POLICY = "independent-stock-information-retaining-development-selection-v2"
 DAILY_LOGISTIC_REGULARIZATION_POLICY = "independent-stock-daily-logistic-regularization-v1"
 # Fixed before scoring the final assessment: the daily cohort's correlated
 # market features need a low-complexity option alongside the existing C=1 fit.
 # The native chronological selection partition alone chooses among candidates.
 DAILY_LOGISTIC_REGULARIZATION_CANDIDATES = (0.001, 0.01, 0.1, 1.0)
+RAW_DIRECTION_LOGISTIC_REGULARIZATION_POLICY = "independent-stock-raw-direction-logistic-regularization-v2"
+WEEKLY_PROBABILITY_SHRINKAGE_POLICY = "independent-stock-weekly-prior-probability-shrinkage-v1"
+WEEKLY_PROBABILITY_SHRINKAGE_WEIGHTS = (0.25, 0.5, 0.75, 1.0)
 
 
-def logistic_regularization_candidates(group: str) -> tuple[float, ...]:
-    return DAILY_LOGISTIC_REGULARIZATION_CANDIDATES if group == "1d" else (1.0,)
+def logistic_regularization_candidates(group: str, *, probability_target=None) -> tuple[float, ...]:
+    expanded = resolve_probability_target(probability_target) == RAW_DIRECTION_TARGET and group in {"1h", "4h", "1w"}
+    return DAILY_LOGISTIC_REGULARIZATION_CANDIDATES if group == "1d" or expanded else (1.0,)
 
 
-def select_development_calibrator(calibration: pd.DataFrame, raw_probability: object):
+def logistic_regularization_policy(group: str, *, probability_target=None) -> str | None:
+    if resolve_probability_target(probability_target) == RAW_DIRECTION_TARGET and group in {"1h", "4h", "1w"}:
+        return RAW_DIRECTION_LOGISTIC_REGULARIZATION_POLICY
+    return DAILY_LOGISTIC_REGULARIZATION_POLICY if group == "1d" else None
+
+
+def development_selection_policy(probability_target=None) -> str:
+    return (RAW_DIRECTION_DEVELOPMENT_SELECTION_POLICY
+            if resolve_probability_target(probability_target) == RAW_DIRECTION_TARGET else DEVELOPMENT_SELECTION_POLICY)
+
+
+def _information_eligibility(calibrator, raw_probability) -> dict:
+    prediction = np.asarray(calibrator.predict(raw_probability), dtype=float)
+    finite = bool(np.isfinite(prediction).all())
+    spread = float(np.ptp(prediction)) if finite and prediction.size else 0.0
+    constrained = bool(getattr(calibrator, "nondecreasing_constraint_active", False))
+    slope = (float(np.asarray(calibrator.model.coef_, dtype=float).reshape(-1)[0])
+             if getattr(calibrator, "method", "none") == "platt" else None)
+    orientation = slope is None or bool(np.isfinite(slope) and slope > 0)
+    eligible = finite and spread > 1e-12 and not constrained and orientation
+    return {"eligible": bool(eligible), "probability_span": spread,
+            "nondecreasing_constraint_active": constrained, "platt_slope": slope,
+            "reason": "INFORMATION_RETAINED" if eligible else "CONSTANT_OR_ORIENTATION_CONSTRAINED"}
+
+
+def select_development_calibrator(calibration: pd.DataFrame, raw_probability: object, *, probability_target=None):
     """Choose on purged development observations; refit only the selected family."""
     frame = calibration.copy().reset_index(drop=True)
+    information_required = resolve_probability_target(probability_target) == RAW_DIRECTION_TARGET
     probability = np.asarray(raw_probability, dtype=float)
     if (frame.empty or probability.ndim != 1 or len(probability) != len(frame)
             or not np.isfinite(probability).all() or ((probability < 0) | (probability > 1)).any()):
@@ -47,7 +79,7 @@ def select_development_calibrator(calibration: pd.DataFrame, raw_probability: ob
     if not validation.empty:
         fit = fit.loc[fit.target_window_end.lt(validation.decision_timestamp.min())].copy()
     report = {
-        "policy": DEVELOPMENT_SELECTION_POLICY,
+        "policy": development_selection_policy(probability_target),
         "selection_basis": "minimum_later_calibration_development_log_loss_identity_wins_ties",
         "assessment_used_for_selection": False,
         "split": "first_half_vs_second_half_decision_clusters",
@@ -74,12 +106,30 @@ def select_development_calibrator(calibration: pd.DataFrame, raw_probability: ob
             "brier_score": float(np.mean((prediction - target) ** 2)),
             "rows": len(validation),
         }
-    selected = min(candidates, key=lambda family: report["candidate_metrics"][family]["log_loss"])
+    eligible = list(candidates)
+    if information_required:
+        report["selection_basis"] = "minimum_later_calibration_development_log_loss_among_information_retaining_candidates_identity_wins_ties"
+        report["candidate_eligibility"] = {
+            family: _information_eligibility(candidate, validation.raw_probability.to_numpy())
+            for family, candidate in candidates.items()}
+        eligible = [family for family in candidates if report["candidate_eligibility"][family]["eligible"]]
+        if not eligible:
+            report["selection_status"] = "NO_INFORMATION_RETAINING_DEVELOPMENT_CANDIDATE"
+            return IdentityCalibrator(), report  # The unchanged promotion gate rejects a flat raw map.
+    selected = min(eligible, key=lambda family: report["candidate_metrics"][family]["log_loss"])
     report.update(selected_family=selected, selection_status="SELECTED_ON_PURGED_DEVELOPMENT")
     if selected == "identity":
         return IdentityCalibrator(), report
     report["full_calibration_refit_rows"] = len(frame)
-    return _fit_platt(probability, frame.target.to_numpy()), report
+    fitted = _fit_platt(probability, frame.target.to_numpy())
+    if information_required:
+        report["full_refit_eligibility"] = _information_eligibility(fitted, probability)
+        if not report["full_refit_eligibility"]["eligible"]:
+            if not report["candidate_eligibility"]["identity"]["eligible"]:
+                raise ValueError("Full development calibration refit lost information and identity is ineligible")
+            report.update(selected_family="identity", selection_status="IDENTITY_AFTER_INELIGIBLE_FULL_DEVELOPMENT_REFIT")
+            return IdentityCalibrator(), report
+    return fitted, report
 
 
 def _fit_platt(probability, target):

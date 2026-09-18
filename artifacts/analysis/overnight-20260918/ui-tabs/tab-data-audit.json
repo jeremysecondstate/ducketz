@@ -1,0 +1,728 @@
+{
+  "status": "VERIFIED",
+  "checked_at": "2026-09-18T06:09:34.489848+00:00",
+  "configured_symbols": [
+    "AAPL",
+    "AMZN",
+    "COST",
+    "CROX",
+    "GOOG",
+    "IONQ",
+    "MU",
+    "NVDA",
+    "PATH",
+    "SNDK",
+    "TWST"
+  ],
+  "gameplan": {
+    "session": "2026-09-18",
+    "run": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260918T054811.145288Z",
+    "report": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260918T054811.145288Z\\Gameplan.md",
+    "sessions": [
+      "2026-09-18",
+      "2026-09-17",
+      "2026-09-16",
+      "2026-09-15",
+      "2026-09-14",
+      "2026-09-11"
+    ],
+    "rows": 264,
+    "per_horizon": {
+      "1h": 154,
+      "4h": 44,
+      "1d": 55,
+      "1w": 11
+    },
+    "per_symbol": {
+      "AAPL": 24,
+      "AMZN": 24,
+      "COST": 24,
+      "CROX": 24,
+      "GOOG": 24,
+      "IONQ": 24,
+      "MU": 24,
+      "NVDA": 24,
+      "PATH": 24,
+      "SNDK": 24,
+      "TWST": 24
+    },
+    "model_statuses": {
+      "PROMOTED": 253,
+      "RESEARCH_NOT_PROMOTED": 11
+    },
+    "actions": {
+      "BUY": 30,
+      "SELL": 3
+    },
+    "entry_windows": 209,
+    "price_points": 154,
+    "projection_status": "COMPLETE",
+    "planning_note": "Planning estimates use carried closes: CROX (7 min). See the report for source times."
+  },
+  "stats": {
+    "session": "2026-09-17",
+    "run": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260918T055047.136335Z",
+    "report": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260918T055047.136335Z\\Gameplan-results.md",
+    "sessions": [
+      "2026-09-17",
+      "2026-09-16",
+      "2026-09-15",
+      "2026-09-14",
+      "2026-09-11",
+      "2026-09-10",
+      "2026-09-09"
+    ],
+    "source_rows": 264,
+    "approved_rows": 264,
+    "excluded_unpromoted": 0,
+    "saved_status_counts": {
+      "EVALUATED": 164,
+      "PENDING_MATURITY": 66,
+      "MATURE_AWAITING_DATA": 34
+    },
+    "saved_model_status_counts": {
+      "PROMOTED": 264
+    },
+    "metrics": {
+      "total": 264,
+      "evaluated": 164,
+      "pending": 66,
+      "awaiting_data": 34,
+      "neutral": 0,
+      "correct": 62,
+      "scored": 164,
+      "bullish_correct": 0,
+      "bullish_scored": 0,
+      "bearish_correct": 62,
+      "bearish_scored": 164,
+      "brier": 0.24128772600598308,
+      "accuracy": 0.3780487804878049,
+      "bullish_accuracy": null,
+      "bearish_accuracy": 0.3780487804878049
+    },
+    "by_horizon": {
+      "1h": {
+        "total": 154,
+        "evaluated": 130,
+        "pending": 0,
+        "awaiting_data": 24,
+        "neutral": 0,
+        "correct": 53,
+        "scored": 130,
+        "bullish_correct": 0,
+        "bullish_scored": 0,
+        "bearish_correct": 53,
+        "bearish_scored": 130,
+        "brier": 0.23189811329049545,
+        "accuracy": 0.4076923076923077,
+        "bullish_accuracy": null,
+        "bearish_accuracy": 0.4076923076923077
+      },
+      "4h": {
+        "total": 44,
+        "evaluated": 26,
+        "pending": 11,
+        "awaiting_data": 7,
+        "neutral": 0,
+        "correct": 8,
+        "scored": 26,
+        "bullish_correct": 0,
+        "bullish_scored": 0,
+        "bearish_correct": 8,
+        "bearish_scored": 26,
+        "brier": 0.2580476439248929,
+        "accuracy": 0.3076923076923077,
+        "bullish_accuracy": null,
+        "bearish_accuracy": 0.3076923076923077
+      },
+      "1d": {
+        "total": 55,
+        "evaluated": 8,
+        "pending": 44,
+        "awaiting_data": 3,
+        "neutral": 0,
+        "correct": 1,
+        "scored": 8,
+        "bullish_correct": 0,
+        "bullish_scored": 0,
+        "bearish_correct": 1,
+        "bearish_scored": 8,
+        "brier": 0.3393991993961999,
+        "accuracy": 0.125,
+        "bullish_accuracy": null,
+        "bearish_accuracy": 0.125
+      },
+      "1w": {
+        "total": 11,
+        "evaluated": 0,
+        "pending": 11,
+        "awaiting_data": 0,
+        "neutral": 0,
+        "correct": 0,
+        "scored": 0,
+        "bullish_correct": 0,
+        "bullish_scored": 0,
+        "bearish_correct": 0,
+        "bearish_scored": 0,
+        "brier": null,
+        "accuracy": null,
+        "bullish_accuracy": null,
+        "bearish_accuracy": null
+      }
+    },
+    "by_symbol": {
+      "AAPL": {
+        "total": 24,
+        "evaluated": 18,
+        "pending": 6,
+        "awaiting_data": 0,
+        "neutral": 0,
+        "correct": 7,
+        "scored": 18,
+        "bullish_correct": 0,
+        "bullish_scored": 0,
+        "bearish_correct": 7,
+        "bearish_scored": 18,
+        "brier": 0.2162688375469134,
+        "accuracy": 0.3888888888888889,
+        "bullish_accuracy": null,
+        "bearish_accuracy": 0.3888888888888889
+      },
+      "AMZN": {
+        "total": 24,
+        "evaluated": 18,
+        "pending": 6,
+        "awaiting_data": 0,
+        "neutral": 0,
+        "correct": 7,
+        "scored": 18,
+        "bullish_correct": 0,
+        "bullish_scored": 0,
+        "bearish_correct": 7,
+        "bearish_scored": 18,
+        "brier": 0.2086127871014656,
+        "accuracy": 0.3888888888888889,
+        "bullish_accuracy": null,
+        "bearish_accuracy": 0.3888888888888889
+      },
+      "COST": {
+        "total": 24,
+        "evaluated": 10,
+        "pending": 6,
+        "awaiting_data": 8,
+        "neutral": 0,
+        "correct": 4,
+        "scored": 10,
+        "bullish_correct": 0,
+        "bullish_scored": 0,
+        "bearish_correct": 4,
+        "bearish_scored": 10,
+        "brier": 0.19512524744956677,
+        "accuracy": 0.4,
+        "bullish_accuracy": null,
+        "bearish_accuracy": 0.4
+      },
+      "CROX": {
+        "total": 24,
+        "evaluated": 7,
+        "pending": 6,
+        "awaiting_data": 11,
+        "neutral": 0,
+        "correct": 3,
+        "scored": 7,
+        "bullish_correct": 0,
+        "bullish_scored": 0,
+        "bearish_correct": 3,
+        "bearish_scored": 7,
+        "brier": 0.2614078884999003,
+        "accuracy": 0.42857142857142855,
+        "bullish_accuracy": null,
+        "bearish_accuracy": 0.42857142857142855
+      },
+      "GOOG": {
+        "total": 24,
+        "evaluated": 18,
+        "pending": 6,
+        "awaiting_data": 0,
+        "neutral": 0,
+        "correct": 9,
+        "scored": 18,
+        "bullish_correct": 0,
+        "bullish_scored": 0,
+        "bearish_correct": 9,
+        "bearish_scored": 18,
+        "brier": 0.2252967777925674,
+        "accuracy": 0.5,
+        "bullish_accuracy": null,
+        "bearish_accuracy": 0.5
+      },
+      "IONQ": {
+        "total": 24,
+        "evaluated": 17,
+        "pending": 6,
+        "awaiting_data": 1,
+        "neutral": 0,
+        "correct": 7,
+        "scored": 17,
+        "bullish_correct": 0,
+        "bullish_scored": 0,
+        "bearish_correct": 7,
+        "bearish_scored": 17,
+        "brier": 0.24315385181103555,
+        "accuracy": 0.4117647058823529,
+        "bullish_accuracy": null,
+        "bearish_accuracy": 0.4117647058823529
+      },
+      "MU": {
+        "total": 24,
+        "evaluated": 18,
+        "pending": 6,
+        "awaiting_data": 0,
+        "neutral": 0,
+        "correct": 5,
+        "scored": 18,
+        "bullish_correct": 0,
+        "bullish_scored": 0,
+        "bearish_correct": 5,
+        "bearish_scored": 18,
+        "brier": 0.2856657556361401,
+        "accuracy": 0.2777777777777778,
+        "bullish_accuracy": null,
+        "bearish_accuracy": 0.2777777777777778
+      },
+      "NVDA": {
+        "total": 24,
+        "evaluated": 18,
+        "pending": 6,
+        "awaiting_data": 0,
+        "neutral": 0,
+        "correct": 5,
+        "scored": 18,
+        "bullish_correct": 0,
+        "bullish_scored": 0,
+        "bearish_correct": 5,
+        "bearish_scored": 18,
+        "brier": 0.21235491397476774,
+        "accuracy": 0.2777777777777778,
+        "bullish_accuracy": null,
+        "bearish_accuracy": 0.2777777777777778
+      },
+      "PATH": {
+        "total": 24,
+        "evaluated": 13,
+        "pending": 6,
+        "awaiting_data": 5,
+        "neutral": 0,
+        "correct": 5,
+        "scored": 13,
+        "bullish_correct": 0,
+        "bullish_scored": 0,
+        "bearish_correct": 5,
+        "bearish_scored": 13,
+        "brier": 0.2576917470077996,
+        "accuracy": 0.38461538461538464,
+        "bullish_accuracy": null,
+        "bearish_accuracy": 0.38461538461538464
+      },
+      "SNDK": {
+        "total": 24,
+        "evaluated": 18,
+        "pending": 6,
+        "awaiting_data": 0,
+        "neutral": 0,
+        "correct": 4,
+        "scored": 18,
+        "bullish_correct": 0,
+        "bullish_scored": 0,
+        "bearish_correct": 4,
+        "bearish_scored": 18,
+        "brier": 0.29640570520656195,
+        "accuracy": 0.2222222222222222,
+        "bullish_accuracy": null,
+        "bearish_accuracy": 0.2222222222222222
+      },
+      "TWST": {
+        "total": 24,
+        "evaluated": 9,
+        "pending": 6,
+        "awaiting_data": 9,
+        "neutral": 0,
+        "correct": 6,
+        "scored": 9,
+        "bullish_correct": 0,
+        "bullish_scored": 0,
+        "bearish_correct": 6,
+        "bearish_scored": 9,
+        "brier": 0.25595390982730704,
+        "accuracy": 0.6666666666666666,
+        "bullish_accuracy": null,
+        "bearish_accuracy": 0.6666666666666666
+      }
+    },
+    "hourly_grid_cells": 143
+  },
+  "filter_checks": [
+    {
+      "symbol": "all",
+      "horizon": "all",
+      "plan_rows": 264,
+      "stats_rows": 264
+    },
+    {
+      "symbol": "all",
+      "horizon": "1h",
+      "plan_rows": 154,
+      "stats_rows": 154
+    },
+    {
+      "symbol": "all",
+      "horizon": "4h",
+      "plan_rows": 44,
+      "stats_rows": 44
+    },
+    {
+      "symbol": "all",
+      "horizon": "1d",
+      "plan_rows": 55,
+      "stats_rows": 55
+    },
+    {
+      "symbol": "all",
+      "horizon": "1w",
+      "plan_rows": 11,
+      "stats_rows": 11
+    },
+    {
+      "symbol": "AAPL",
+      "horizon": "all",
+      "plan_rows": 24,
+      "stats_rows": 24
+    },
+    {
+      "symbol": "AAPL",
+      "horizon": "1h",
+      "plan_rows": 14,
+      "stats_rows": 14
+    },
+    {
+      "symbol": "AAPL",
+      "horizon": "4h",
+      "plan_rows": 4,
+      "stats_rows": 4
+    },
+    {
+      "symbol": "AAPL",
+      "horizon": "1d",
+      "plan_rows": 5,
+      "stats_rows": 5
+    },
+    {
+      "symbol": "AAPL",
+      "horizon": "1w",
+      "plan_rows": 1,
+      "stats_rows": 1
+    },
+    {
+      "symbol": "AMZN",
+      "horizon": "all",
+      "plan_rows": 24,
+      "stats_rows": 24
+    },
+    {
+      "symbol": "AMZN",
+      "horizon": "1h",
+      "plan_rows": 14,
+      "stats_rows": 14
+    },
+    {
+      "symbol": "AMZN",
+      "horizon": "4h",
+      "plan_rows": 4,
+      "stats_rows": 4
+    },
+    {
+      "symbol": "AMZN",
+      "horizon": "1d",
+      "plan_rows": 5,
+      "stats_rows": 5
+    },
+    {
+      "symbol": "AMZN",
+      "horizon": "1w",
+      "plan_rows": 1,
+      "stats_rows": 1
+    },
+    {
+      "symbol": "COST",
+      "horizon": "all",
+      "plan_rows": 24,
+      "stats_rows": 24
+    },
+    {
+      "symbol": "COST",
+      "horizon": "1h",
+      "plan_rows": 14,
+      "stats_rows": 14
+    },
+    {
+      "symbol": "COST",
+      "horizon": "4h",
+      "plan_rows": 4,
+      "stats_rows": 4
+    },
+    {
+      "symbol": "COST",
+      "horizon": "1d",
+      "plan_rows": 5,
+      "stats_rows": 5
+    },
+    {
+      "symbol": "COST",
+      "horizon": "1w",
+      "plan_rows": 1,
+      "stats_rows": 1
+    },
+    {
+      "symbol": "CROX",
+      "horizon": "all",
+      "plan_rows": 24,
+      "stats_rows": 24
+    },
+    {
+      "symbol": "CROX",
+      "horizon": "1h",
+      "plan_rows": 14,
+      "stats_rows": 14
+    },
+    {
+      "symbol": "CROX",
+      "horizon": "4h",
+      "plan_rows": 4,
+      "stats_rows": 4
+    },
+    {
+      "symbol": "CROX",
+      "horizon": "1d",
+      "plan_rows": 5,
+      "stats_rows": 5
+    },
+    {
+      "symbol": "CROX",
+      "horizon": "1w",
+      "plan_rows": 1,
+      "stats_rows": 1
+    },
+    {
+      "symbol": "GOOG",
+      "horizon": "all",
+      "plan_rows": 24,
+      "stats_rows": 24
+    },
+    {
+      "symbol": "GOOG",
+      "horizon": "1h",
+      "plan_rows": 14,
+      "stats_rows": 14
+    },
+    {
+      "symbol": "GOOG",
+      "horizon": "4h",
+      "plan_rows": 4,
+      "stats_rows": 4
+    },
+    {
+      "symbol": "GOOG",
+      "horizon": "1d",
+      "plan_rows": 5,
+      "stats_rows": 5
+    },
+    {
+      "symbol": "GOOG",
+      "horizon": "1w",
+      "plan_rows": 1,
+      "stats_rows": 1
+    },
+    {
+      "symbol": "IONQ",
+      "horizon": "all",
+      "plan_rows": 24,
+      "stats_rows": 24
+    },
+    {
+      "symbol": "IONQ",
+      "horizon": "1h",
+      "plan_rows": 14,
+      "stats_rows": 14
+    },
+    {
+      "symbol": "IONQ",
+      "horizon": "4h",
+      "plan_rows": 4,
+      "stats_rows": 4
+    },
+    {
+      "symbol": "IONQ",
+      "horizon": "1d",
+      "plan_rows": 5,
+      "stats_rows": 5
+    },
+    {
+      "symbol": "IONQ",
+      "horizon": "1w",
+      "plan_rows": 1,
+      "stats_rows": 1
+    },
+    {
+      "symbol": "MU",
+      "horizon": "all",
+      "plan_rows": 24,
+      "stats_rows": 24
+    },
+    {
+      "symbol": "MU",
+      "horizon": "1h",
+      "plan_rows": 14,
+      "stats_rows": 14
+    },
+    {
+      "symbol": "MU",
+      "horizon": "4h",
+      "plan_rows": 4,
+      "stats_rows": 4
+    },
+    {
+      "symbol": "MU",
+      "horizon": "1d",
+      "plan_rows": 5,
+      "stats_rows": 5
+    },
+    {
+      "symbol": "MU",
+      "horizon": "1w",
+      "plan_rows": 1,
+      "stats_rows": 1
+    },
+    {
+      "symbol": "NVDA",
+      "horizon": "all",
+      "plan_rows": 24,
+      "stats_rows": 24
+    },
+    {
+      "symbol": "NVDA",
+      "horizon": "1h",
+      "plan_rows": 14,
+      "stats_rows": 14
+    },
+    {
+      "symbol": "NVDA",
+      "horizon": "4h",
+      "plan_rows": 4,
+      "stats_rows": 4
+    },
+    {
+      "symbol": "NVDA",
+      "horizon": "1d",
+      "plan_rows": 5,
+      "stats_rows": 5
+    },
+    {
+      "symbol": "NVDA",
+      "horizon": "1w",
+      "plan_rows": 1,
+      "stats_rows": 1
+    },
+    {
+      "symbol": "PATH",
+      "horizon": "all",
+      "plan_rows": 24,
+      "stats_rows": 24
+    },
+    {
+      "symbol": "PATH",
+      "horizon": "1h",
+      "plan_rows": 14,
+      "stats_rows": 14
+    },
+    {
+      "symbol": "PATH",
+      "horizon": "4h",
+      "plan_rows": 4,
+      "stats_rows": 4
+    },
+    {
+      "symbol": "PATH",
+      "horizon": "1d",
+      "plan_rows": 5,
+      "stats_rows": 5
+    },
+    {
+      "symbol": "PATH",
+      "horizon": "1w",
+      "plan_rows": 1,
+      "stats_rows": 1
+    },
+    {
+      "symbol": "SNDK",
+      "horizon": "all",
+      "plan_rows": 24,
+      "stats_rows": 24
+    },
+    {
+      "symbol": "SNDK",
+      "horizon": "1h",
+      "plan_rows": 14,
+      "stats_rows": 14
+    },
+    {
+      "symbol": "SNDK",
+      "horizon": "4h",
+      "plan_rows": 4,
+      "stats_rows": 4
+    },
+    {
+      "symbol": "SNDK",
+      "horizon": "1d",
+      "plan_rows": 5,
+      "stats_rows": 5
+    },
+    {
+      "symbol": "SNDK",
+      "horizon": "1w",
+      "plan_rows": 1,
+      "stats_rows": 1
+    },
+    {
+      "symbol": "TWST",
+      "horizon": "all",
+      "plan_rows": 24,
+      "stats_rows": 24
+    },
+    {
+      "symbol": "TWST",
+      "horizon": "1h",
+      "plan_rows": 14,
+      "stats_rows": 14
+    },
+    {
+      "symbol": "TWST",
+      "horizon": "4h",
+      "plan_rows": 4,
+      "stats_rows": 4
+    },
+    {
+      "symbol": "TWST",
+      "horizon": "1d",
+      "plan_rows": 5,
+      "stats_rows": 5
+    },
+    {
+      "symbol": "TWST",
+      "horizon": "1w",
+      "plan_rows": 1,
+      "stats_rows": 1
+    }
+  ],
+  "orders_placed": 0,
+  "production_files_modified": false
+}

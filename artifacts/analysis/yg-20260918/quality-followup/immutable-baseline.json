@@ -1,0 +1,71 @@
+{
+  "saved_at": "2026-09-18T07:48:59.219341+00:00",
+  "runs": {
+    "OG": {
+      "run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260918T054532.489998Z",
+      "files": {
+        "forecasts.parquet": "12d2663d3df4e77a0210091461d54cfe568f5762f80467df4bac73dc5288bd80",
+        "gameplan.json": "886e50a35c2b36824008fe166991d436ec2279ac9f7721b77bf1357d676c541a",
+        "manifest.json": "dea097efa941b0610a6a018a05beecf870ec239cbf3e39a27d3433e849fc8987",
+        "model-reports.json": "2fd452810a5aabf9b2694058e88301c1d32fe3574c8115d065e8c6a6a7a0b510",
+        "models/1d/model.joblib": "7dab68b56922e9c86c2a9b49874752091b85857abf6764d51a84470d184db104",
+        "models/1h/model.joblib": "2681a966d86e844a7ff7209f7cc839df802a1744720b146df23dd659ecfbcf8f",
+        "models/1w/model.joblib": "eff79e5a012a6ef9aa7af7672298c1f3899aab44ef97eb4ffb9a134c3033b6fd",
+        "models/4h/model.joblib": "91b13470b9c28d6e6842b8f756e15a97b1be5b36c4d97ebc7d2428d581484a85",
+        "option-strategy-intents.parquet": "f5fc8dacf8a20338dd95633b189fa020128cb986a9d8a344c93632ee3b45fbe8",
+        "prior-gameplan-evaluations.parquet": "6ee3ef3db6b48abdcf93f09573070c0bc9c4a6b3965fcc90aa1fedd3fff6d6ee",
+        "receipt.json": "ba53f5f4b62443c426190da8cad96cf7e18644ee8c3f278b0fa5092c93b3de97",
+        "training-cohort-1d.parquet": "bef02b212b3362077d658e64fcfab4815fd419fb218d53330187d45ffb25d474",
+        "training-cohort-1h.parquet": "69ab19635b17ad06f05820ff96176cd2315dfee236479468edf13956a829b3d9",
+        "training-cohort-1w.parquet": "6a485c3241bd48fc59d8edfbf9960124743c19a63d9da9f7357139c103d46c65",
+        "training-cohort-4h.parquet": "8abd9c44d7bbed47b1e1c1b3cbb4983954c2a8c69a718c57f2554635989d31ef"
+      }
+    },
+    "YG_first": {
+      "run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260918T072555.813034Z",
+      "files": {
+        "forecasts.parquet": "a6a8a65ac48f4fc6a7d96aeaaa3ca89b25dec574e2c1098d2482aa55c9c57e62",
+        "gameplan.json": "91f019e17015b89c33a750dadc8a4526689d9a1ea0292ddb8f19a85d7784347b",
+        "manifest.json": "ffc73241bf4b597f680329ee5808c1445f60ea465519bf91b651d852c0fae67c",
+        "model-reports.json": "0e5c2a925bf51bedf09063bd6a4220e24ae0b8da7e9435daf461bf418ba9c1a5",
+        "models/1d/model.joblib": "ad321f4fb56fa159e07f8fe4bd9a0ceeb4b3d183fa5a5b5703aff1652d210c5c",
+        "models/1h/model.joblib": "b9e313145357330653629762be3bad65b6b2e6be339f60e202a392aadf06ac33",
+        "models/1w/model.joblib": "52e4e6a21f4de20934eb10db9fa9ed7b9999d40d42902352f99bca7ee2a6859a",
+        "models/4h/model.joblib": "3051ef4790cab919b4d530a586d0dffee17735ce7720316a87b10f760b0bf015",
+        "option-strategy-intents.parquet": "77c8e438ff5b20d1891b993b237d4abdf312d7a14c4187568a097eab0455b614",
+        "prior-gameplan-evaluations.parquet": "6227b78ca4e98a724fb31b1772b02b0f0c7ff277795d6a644a0329b93dd7c45e",
+        "receipt.json": "7dce646633d24be44ee7de183abbc561e3e7f9b2a362b50acae4ad471efe35b7",
+        "training-cohort-1d.parquet": "3ea041094c3f277bba85cf254410be5d7a1be3a98fe1364056fbe0fe29039622",
+        "training-cohort-1h.parquet": "8c47eb9eeee24c3a33b001a24d4d675ce7e53b35b15be49288ef32c084e4a4e1",
+        "training-cohort-1w.parquet": "b9817c60310b730bed37b669095a36eaa3a547b019b5ada2e0560ded3b2dc533",
+        "training-cohort-4h.parquet": "8c55b5b0e0b429468f912109bce59f50bb10ad17776d7295e213723ec9a605ac"
+      }
+    },
+    "YG_first_trade_plan": {
+      "run": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260918T072910.923004Z",
+      "files": {
+        "Gameplan.md": "d384292bb77df2f684031fa8aac5cb3d4374954875bb6329a10991336ce615a9",
+        "account-snapshot.json": "22b1113d77a1c2566e044a223b3e8a545677f97229f5a08ce4d0f75499ea2abc",
+        "direction-ledger.json": "052331fec4a5ecea32c793a3fde58dd89abc7b02847bf3613c14e2a31b52c0be",
+        "manifest.json": "58795cf6dba2d33e396119b857a49158600a8c89da9d1f6c027bb343e46a6ea8",
+        "planning-price-path.json": "120235f0583700f0373d61e6aa8868599cebfa63f3ac3d40c1d7bd0cb6f85dd3",
+        "planning-reference-completion.json": "cab4348ee266e210dd42c36abfba3e7978a86674cf8fa8a49f1b2a46f9a30bff",
+        "price-bands.json": "18406f490f7117a2151a465f073c8f1111c99907214c1779049a3cf71df55e83",
+        "receipt.json": "a0b78c4f5993070d3ae1037964e516bcb8d8ae5bc30e9ad224133045a7901a01",
+        "report.json": "2c54339c481e378d83fcf21e80d1302a2117b2adcf5f0229da361e70a33e00ba",
+        "synthetic-reference-bars.parquet": "cff1f891d9b65e8ebeda3d00ce97b29d88f2e2122300e85db6373aff5c0f0046",
+        "trade-plan.parquet": "e3e45bcec3ad6dfc9c0fdf0ba9c8f0099e486eb53a7f180f5b12d41c7b9fb581"
+      }
+    },
+    "YG_first_deployment": {
+      "run": "C:\\DATASTORE\\ml\\gameplan-deployment-runs\\20260918T073523.985203Z",
+      "files": {
+        "Comparison.md": "f189f3f52a4b92b720a743de4366f5fe0c59db03a4ae609c7fad4997c1849ff7",
+        "deployment.json": "c6224b0703256a555b305c7c25ff6a50749935e4a2e1193f9979c4967471cd7d",
+        "forecast-comparison.parquet": "8296748cc8d69a06a6d02556af412986792ad2c95eed14a80973186c7590429e",
+        "manifest.json": "5e3d578590592693b64417d28348d3bd17c14a82b0cc3ae203f0b108f3955b1d",
+        "receipt.json": "cacea7d17b41c0aabf7709d5f68b35df9f96bf76ac3b094aef4d29aa23855fa6"
+      }
+    }
+  }
+}

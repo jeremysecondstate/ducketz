@@ -119,6 +119,33 @@ def test_neutral_calls_and_cost_adjusted_model_scores_are_distinct():
     assert compare_forecasts(data, bars, observed_at="2026-09-10T00:00Z").iloc[0].direction_correct == False
 
 
+def test_yg_uses_raw_positive_target_and_retains_separate_cost_outcomes():
+    from ml.gameplan_probability_target import RAW_DIRECTION_TARGET
+    data = forecasts().iloc[:1].copy()
+    bars = prices([("2026-09-09T11:00Z", 100., 100.), ("2026-09-09T11:59Z", 100., 100.05)])
+    og = compare_forecasts(data, bars, observed_at="2026-09-10T00:00Z").iloc[0]
+    data["probability_target_contract"] = RAW_DIRECTION_TARGET
+    data["gameplan_variant"] = "YG"
+    before = data.copy(deep=True)
+    yg = compare_forecasts(data, bars, observed_at="2026-09-10T00:00Z").iloc[0]
+    assert og.model_observed_target == 0 and og.model_brier_score == pytest.approx(.49)
+    assert yg.model_observed_target == 1 and yg.model_brier_score == pytest.approx(.09)
+    assert og.direction_correct == yg.direction_correct == True
+    assert yg.observed_cost_adjusted_positive == 0 and yg.observed_raw_price_direction == 1
+    assert yg.cost_adjusted_return == pytest.approx(-.0005)
+    pd.testing.assert_frame_equal(data, before)
+    legacy_trades = data.drop(columns=["probability_target_contract", "gameplan_variant"])
+    with pytest.raises(ValueError, match="probability target"):
+        compare_forecasts(data, bars, observed_at="2026-09-10T00:00Z", trade_rows=legacy_trades)
+
+
+@pytest.mark.parametrize("contract", ["unknown", ""])
+def test_actuals_refuses_unknown_probability_target_before_scoring(contract):
+    data = forecasts().assign(probability_target_contract=contract)
+    with pytest.raises(ValueError, match="Unknown Gameplan probability target"):
+        compare_forecasts(data, prices(), observed_at="2026-09-09T11:01Z")
+
+
 def test_opening_gap_uses_prior_close_and_current_open():
     data = forecasts().loc[lambda df: df.route.eq("1h@gap")]
     bars = prices([("2026-09-08T23:59Z", 900., 100.), ("2026-09-09T11:00Z", 105., 950.)])

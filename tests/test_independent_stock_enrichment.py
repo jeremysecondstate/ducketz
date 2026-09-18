@@ -332,7 +332,7 @@ def test_new_feature_contract_and_runtime_transport(fitted):
     features = build_feature_values(signal, portfolio, quote, as_of=signal.target_window_start)
     assert {name: features[name] for name in INDEPENDENT_MARKET_FEATURE_NAMES} == signal.enrichment_feature_values
     model = model_from_payload(fitted[0])
-    assert len(model.horizon_models["1h"].feature_names) == 21
+    assert tuple(model.horizon_models["1h"].feature_names) == tuple(training.FEATURES)
     assert model.predict(features).feature_values[INDEPENDENT_MARKET_FEATURE_NAMES[0]] == signal.enrichment_feature_values[INDEPENDENT_MARKET_FEATURE_NAMES[0]]
     features.pop(INDEPENDENT_MARKET_FEATURE_NAMES[0])
     with pytest.raises(ValueError, match="features are missing"):

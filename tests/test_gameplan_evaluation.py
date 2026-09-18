@@ -197,3 +197,62 @@ def test_absent_and_null_legacy_feature_selection_preserve_matching(null_selecti
         evaluated_at="2026-09-11T01:00:00Z")
     assert result.iloc[0].evaluation_status == "EVALUATED"
     assert result.iloc[0].brier_score == pytest.approx(0.09)
+
+
+def test_og_and_yg_score_their_own_targets_and_compare_same_observed_window():
+    from ml.gameplan_evaluation import compare_gameplan_variants
+    from ml.gameplan_probability_target import RAW_DIRECTION_TARGET
+    og, outcome = independent_forecast_and_outcome()
+    og.update(calibrated_probability=.3, direction="BEARISH")
+    yg = {**og, "source_gameplan_run": "yg-plan", "calibrated_probability": .7,
+          "direction": "BULLISH", "probability_target_contract": RAW_DIRECTION_TARGET, "gameplan_variant": "YG"}
+    # The physical observation can come from a YG cohort; OG must still score
+    # the small gain below cost as class zero, and YG as raw class one.
+    outcome.update(observed_return=.0005, target=1, probability_target_contract=RAW_DIRECTION_TARGET)
+    result = evaluate_forecasts(pd.DataFrame([og, yg]), observed_groups={"verified": pd.DataFrame([outcome])},
+                                evaluated_at="2026-09-11T01:00:00Z")
+    assert result.observed_target.tolist() == [0, 1]
+    assert result.gameplan_variant.tolist() == ["OG", "YG"]
+    assert result.brier_score.tolist() == pytest.approx([.09, .09])
+    assert result.raw_direction_correct.tolist() == [False, True]
+    assert result.observed_cost_adjusted_positive.tolist() == [0, 0]
+    assert result.cost_adjusted_return.tolist() == pytest.approx([-.0005, -.0005])
+    comparison = compare_gameplan_variants(result)["pairs"][0]
+    assert comparison["evaluated_same_windows"] == 1
+    assert comparison["og_direction_accuracy"] == 0 and comparison["yg_direction_accuracy"] == 1
+    assert compare_gameplan_variants(result.loc[result.gameplan_variant.eq("YG")])["pairs"] == []
+    preserved = evaluate_forecasts(pd.DataFrame([og, yg]), observed_groups={}, previous=result,
+                                   evaluated_at="2026-09-12T01:00:00Z")
+    pd.testing.assert_frame_equal(result, preserved)
+
+
+@pytest.mark.parametrize("contract", ["future-unknown-target", ""])
+def test_unknown_probability_contract_rejected_even_for_pending_forecast(contract):
+    row, _ = independent_forecast_and_outcome()
+    row["probability_target_contract"] = contract
+    with pytest.raises(ValueError, match="Unknown Gameplan probability target"):
+        evaluate_forecasts(pd.DataFrame([row]), observed_groups={}, evaluated_at="2026-09-09T01:00:00Z")
+
+
+def test_an_evaluated_og_cannot_be_reinterpreted_as_yg():
+    from ml.gameplan_probability_target import RAW_DIRECTION_TARGET
+    row, outcome = independent_forecast_and_outcome()
+    original = evaluate_forecasts(pd.DataFrame([row]), observed_groups={"verified": pd.DataFrame([outcome])},
+                                 evaluated_at="2026-09-11T01:00:00Z")
+    row["probability_target_contract"] = RAW_DIRECTION_TARGET
+    with pytest.raises(RuntimeError, match="immutable forecast changed"):
+        evaluate_forecasts(pd.DataFrame([row]), observed_groups={}, previous=original,
+                           evaluated_at="2026-09-12T01:00:00Z")
+
+
+def test_og_yg_comparison_never_pairs_other_sources_or_counts_pending():
+    from ml.gameplan_evaluation import compare_gameplan_variants
+    from ml.gameplan_probability_target import RAW_DIRECTION_TARGET
+    og, outcome = independent_forecast_and_outcome()
+    yg = {**og, "source_gameplan_run": "yg-plan", "probability_target_contract": RAW_DIRECTION_TARGET}
+    pending = evaluate_forecasts(pd.DataFrame([og, yg]), observed_groups={}, evaluated_at="2026-09-09T01:00:00Z")
+    pair = compare_gameplan_variants(pending)["pairs"][0]
+    assert pair["status"] == "AWAITING_MATCHED_OUTCOMES"
+    assert pair["evaluated_same_windows"] == 0 and pair["yg_direction_accuracy"] is None
+    pending.loc[pending.gameplan_variant.eq("YG"), "target_price_dataset"] = "EQUS.MINI"
+    assert compare_gameplan_variants(pending)["pairs"][0]["matched_windows"] == 0

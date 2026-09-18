@@ -1,0 +1,713 @@
+{
+  "audited_at": "2026-09-18T05:45:09.133172+00:00",
+  "status": "KNOWN_PRICING_QUARANTINE_UNCHANGED_COMPACT_AUTHORITY",
+  "scope": "Bounded comparison with September 17 verified compact evidence. No broad historical re-audit, source normalization rerun, training or provider/broker calls.",
+  "overnight_run_path": "C:/DATASTORE/ml/overnight-runs/20260918T040804.048018Z",
+  "loop_b_run_path": "C:/DATASTORE/ml/runs/20260918T051928.441440Z",
+  "log_path": "C:/DATASTORE/ml/overnight-runs/20260918T040804.048018Z/loop_b_directional_generation.log",
+  "log_snapshot_sha256": "579dabb0e7e797e86a5c358d86b243b5cf781f1532cb9169dce0e94479288afc",
+  "prior_evidence_path": "C:/dev/ducketz/artifacts/analysis/overnight-20260917/option-pricing-quarantine.json",
+  "prior_evidence_sha256": "c8f49fcee19ccab9e1240f49e383088122d74d15ca28c81fcceff1a68244ad7a",
+  "pricing_pointer_path": "C:/DATASTORE/ml/option-pricing-latest/run.json",
+  "pricing_pointer": {
+    "current": {
+      "manifest_checksum_sha256": "83b531569f30b7277087604060c397d330884df9c899777e140eab4f678f0477",
+      "published_at": "2026-08-20T20:15:01.002032+00:00",
+      "receipt_checksum_sha256": "7e95e62a6057bf868b0935788c000214dbfc9b04bab703c615017669003fbb9c",
+      "run_path": "ml/option-pricing-runs/20260820T200404.173684Z",
+      "run_timestamp": "2026-08-20T20:04:04.173684+00:00"
+    },
+    "schema_version": "option-pricing-pointer-v3"
+  },
+  "pricing_pointer_matches_prior": true,
+  "compact_source_files_checked": 51,
+  "compact_source_files_matched": 51,
+  "compact_source_comparison": [
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T200404.173684Z/pricing-surfaces.parquet",
+      "sha256": "51576a07e8b29a8a7b224af7e131e1b3dcda35d7d117f041b893117aaddb6ad8",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T200404.173684Z/manifest.json",
+      "sha256": "83b531569f30b7277087604060c397d330884df9c899777e140eab4f678f0477",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T200404.173684Z/publication.json",
+      "sha256": "7e95e62a6057bf868b0935788c000214dbfc9b04bab703c615017669003fbb9c",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T194217.879490Z/pricing-surfaces.parquet",
+      "sha256": "1025314c5657c1c0a10a4ffc9c518bc05403f8aeac2bb1c4412d07be2177dffd",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T194217.879490Z/manifest.json",
+      "sha256": "98afab508f1b9d8333890585f24b678f91b9ad726659b8e05018e183713bf097",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T194217.879490Z/publication.json",
+      "sha256": "593d1aa32a032ddabcb835d4e1bd24fc492ea7bddbb9f51aff71edc995aa4c8c",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T192732.797962Z/pricing-surfaces.parquet",
+      "sha256": "c3dd53cac5e84b62d4a83ee75d6d24a7004c89a7415f04c37c464ffa2d3fbc14",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T192732.797962Z/manifest.json",
+      "sha256": "f515b9e38c04c20c39e1cd9eaae76332d5dd0cfc47b122a6c13165c4550ab101",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T192732.797962Z/publication.json",
+      "sha256": "c2ae18d447efc8a10b8ddba57b9aeb49649d608cf6b63c6af78fedeab67851c5",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T190132.156632Z/pricing-surfaces.parquet",
+      "sha256": "5dcfff66742767e938ac89fae82a65d1afcfcbe1d08121469a52884b06d5ea5a",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T190132.156632Z/manifest.json",
+      "sha256": "57cdff69c15b61909941a5a77f2e7fe7e2c2512ddbc2fed53fbd94091766ff4c",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T190132.156632Z/publication.json",
+      "sha256": "94d1a0c85b46cf6432bb9382a133f8cdd186e94fc6dbe7f904e5a9a4ccfed3a7",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T184231.686555Z/pricing-surfaces.parquet",
+      "sha256": "469c5d6d4a01cbafc25e337e39c1b4fbcdeaaa4ba8cea9f7320b618b8ebd8ed8",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T184231.686555Z/manifest.json",
+      "sha256": "e820a2079e61f010d8bb532a256fb5afbd28b048b702c2c37409ded8255230c8",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T184231.686555Z/publication.json",
+      "sha256": "af30e96c948a3501ab4444091fa70b0f53281a35e3ae47cf2a7cffe11cdd8183",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T180311.548485Z/pricing-surfaces.parquet",
+      "sha256": "2cc336bd91b80bd042478f108aa539e2bfb8b172bb057e636dcb9dd44644637a",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T180311.548485Z/manifest.json",
+      "sha256": "0fb36cd9ed29c50f08a8cff0a68df11fc64935f384c86a75ae58587566ee2c50",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T180311.548485Z/publication.json",
+      "sha256": "0ac2c1f02b7c5a7419fc4d8d025427a59863cf654e77b2bd9542ca8836990f84",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T174627.853351Z/pricing-surfaces.parquet",
+      "sha256": "220735fc8fea041224239f563720e3d9e36c7d45aa3b62c14a46b150272d7fcc",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T174627.853351Z/manifest.json",
+      "sha256": "cf2016c6d14120e1d6ec72141b7ce397656fdee788561eb872971e9e8956fa95",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T174627.853351Z/publication.json",
+      "sha256": "e635df19aee7cde9760333adce1fd152e7435ec238bcb33b07789d7d040d1189",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T170436.275730Z/pricing-surfaces.parquet",
+      "sha256": "5b88b91da4a80b1eadf0fddd4af11b4169d84d44a38b366a711487b069e9fd65",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T170436.275730Z/manifest.json",
+      "sha256": "703ba1535997cdf0ba0d4683f9fcf168ad2abf1d239e50ef0c2012c3394ec7ca",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T170436.275730Z/publication.json",
+      "sha256": "c51ebeb7ee5ad149bb1df08dcd73d67aff91bfe344d85d4b61d75e3a779b77cd",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T164739.943872Z/pricing-surfaces.parquet",
+      "sha256": "4202094ac296875bc40c331a527450787821761c441830cd0faa08d8fa80dc05",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T164739.943872Z/manifest.json",
+      "sha256": "1b622090f5902c05e469042c63a4f5e672e2cbb0d2f0599d561f6d87aa6f7473",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T164739.943872Z/publication.json",
+      "sha256": "f33001ef85f8af2c895bbe9f1ff0c2a6fbc08da640db4edb95a9d7ed52651c6c",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T162831.529620Z/pricing-surfaces.parquet",
+      "sha256": "a53bc549fd87de3aef4a15937e26bae0f4e788e21215a2eaf55f373e821c3aff",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T162831.529620Z/manifest.json",
+      "sha256": "3e7964e7bf7223f5d56f0820a6c3a3a5faa1aab5dc5e86f50b07db81a6d83138",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T162831.529620Z/publication.json",
+      "sha256": "80dafbddd9f71e51e2cb92ace296c0fbcb38085a5997495945392045f093d6cd",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T161246.150196Z/pricing-surfaces.parquet",
+      "sha256": "9bd63493c34e97eaa5110bd601acf3b59a1d3219053f3bee8e3faeb885159ce2",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T161246.150196Z/manifest.json",
+      "sha256": "f595f8df326a3307e020f5e1754aea65cfcf364f9262cf486bb1698e89298eb2",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T161246.150196Z/publication.json",
+      "sha256": "aaef63b6a2ffad4ebfcde7180df5a05cb4b375d41708c7a0d04b1f41a2573822",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T155723.808366Z/pricing-surfaces.parquet",
+      "sha256": "1354af5ccbbd27392d647e92c02ec7c759ee3057f01708c393c2aab434cc7f9c",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T155723.808366Z/manifest.json",
+      "sha256": "789e910671078e63ea78618f261ec724078812d1f5fd81786ff3be27bb68619e",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T155723.808366Z/publication.json",
+      "sha256": "e2398bbb7dfc08e1e36a15194d066752e1b73df38cc4b08fe0d2b0a42167bc4f",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T153747.444582Z/pricing-surfaces.parquet",
+      "sha256": "dcd02cb4a578dfd61a6c1a8762758bab0210784369fd788e4e8c6a2ff6072dd1",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T153747.444582Z/manifest.json",
+      "sha256": "65cde224a1616e339a936cdbf0f2d8cd9ac79486f64813daabb6127fce006c7e",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T153747.444582Z/publication.json",
+      "sha256": "4e4471407b34eb589e5d99aba4c08d7ce1ce5a2455f04a75cd13ee4d0a7def61",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T152800.475729Z/pricing-surfaces.parquet",
+      "sha256": "dc465de3bce3f6ad6f24ee5bbdab9366c84ce0f8717b54f242d3acca3dfb2b54",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T152800.475729Z/manifest.json",
+      "sha256": "edfeb986476dbdd11e2c9263a84811a072546fe4d92784e965f78868aa8f04ba",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T152800.475729Z/publication.json",
+      "sha256": "8aa917eaf6b14b6d0977f9abf47cba8e3c7389dd54cbad5e6c8a55f2810b21f9",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T151222.856197Z/pricing-surfaces.parquet",
+      "sha256": "03af480a411434bcb39dc071ae735fa1e034ed2970083508f61db9e4feadf162",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T151222.856197Z/manifest.json",
+      "sha256": "78c090ae15e4c88802fee4edc0febd96674c59cd3af1b6fd774ef5be58f9bc0b",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T151222.856197Z/publication.json",
+      "sha256": "307904871557581c961c7f93802c25c09c6580eedc2480f334e4c9b087d3f5b9",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T144413.316990Z/pricing-surfaces.parquet",
+      "sha256": "b6848763b9082e6477d0299bd1ea36233a8654da9ab5974767a315f382c39f68",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T144413.316990Z/manifest.json",
+      "sha256": "70cc552c8825a57cc8d11ac1fca59a68c0b1eee0c5a21fa527cd48ba1f281f42",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T144413.316990Z/publication.json",
+      "sha256": "70cbaabd98cec93b9cb79dd4280f9343d07cdb027dbf3a3a78335d4e111de8b7",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T143004.844416Z/pricing-surfaces.parquet",
+      "sha256": "ccb5ba0251f44ec075e6be7a9ce87215e82bc50d4c711881296df5426a69a7b8",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T143004.844416Z/manifest.json",
+      "sha256": "464183bf4939b18fc8baddcdd074a799a0c9771201af4f17e4fea3c475aac907",
+      "matches_prior": true
+    },
+    {
+      "path": "C:/DATASTORE/ml/option-pricing-runs/20260820T143004.844416Z/publication.json",
+      "sha256": "cdb67f2d653117d04500107238c878bf5f10d88c9b7dea0cf89884adb311daef",
+      "matches_prior": true
+    }
+  ],
+  "source_characteristics_from_unchanged_verified_prior_evidence": {
+    "rows": 72,
+    "symbols": [
+      "AAPL",
+      "AMZN",
+      "GOOG",
+      "MU",
+      "NVDA",
+      "SNDK"
+    ],
+    "missing_production_symbols": [
+      "COST",
+      "CROX",
+      "IONQ",
+      "PATH",
+      "TWST"
+    ],
+    "distinct_targets": 17,
+    "latest_target": "2026-08-20 19:45:00+00:00",
+    "latest_availability": "2026-08-20 20:15:01.002032+00:00",
+    "all_rows_missing_features": [
+      "median_predictive_standard_deviation",
+      "interval_80_coverage",
+      "interval_95_coverage"
+    ],
+    "verified_compact_generation_count": 17
+  },
+  "native_quarantine": [
+    {
+      "horizon": "1h",
+      "effective_feature_set": "loop-a-all-v1-1h",
+      "failed_routes": [
+        "AAPL|1h",
+        "AMZN|1h",
+        "COST|1h",
+        "CROX|1h",
+        "GOOG|1h",
+        "IONQ|1h",
+        "MU|1h",
+        "NVDA|1h",
+        "PATH|1h",
+        "SNDK|1h",
+        "TWST|1h"
+      ]
+    },
+    {
+      "horizon": "4h",
+      "effective_feature_set": "loop-a-all-v1-4h",
+      "failed_routes": [
+        "AAPL|4h",
+        "AMZN|4h",
+        "COST|4h",
+        "CROX|4h",
+        "GOOG|4h",
+        "IONQ|4h",
+        "MU|4h",
+        "NVDA|4h",
+        "PATH|4h",
+        "SNDK|4h",
+        "TWST|4h"
+      ]
+    },
+    {
+      "horizon": "1d",
+      "effective_feature_set": "loop-a-all-v3-1d",
+      "failed_routes": [
+        "AAPL|1d",
+        "AMZN|1d",
+        "COST|1d",
+        "CROX|1d",
+        "GOOG|1d",
+        "IONQ|1d",
+        "MU|1d",
+        "NVDA|1d",
+        "PATH|1d",
+        "SNDK|1d",
+        "TWST|1d"
+      ]
+    },
+    {
+      "horizon": "1w",
+      "effective_feature_set": "loop-a-all-v3-1w",
+      "failed_routes": [
+        "AAPL|1w",
+        "AMZN|1w",
+        "COST|1w",
+        "CROX|1w",
+        "GOOG|1w",
+        "IONQ|1w",
+        "MU|1w",
+        "NVDA|1w",
+        "PATH|1w",
+        "SNDK|1w",
+        "TWST|1w"
+      ]
+    },
+    {
+      "horizon": "1w-d1",
+      "effective_feature_set": "loop-a-all-v3-1w",
+      "failed_routes": [
+        "AAPL|1w-d1",
+        "AMZN|1w-d1",
+        "COST|1w-d1",
+        "CROX|1w-d1",
+        "GOOG|1w-d1",
+        "IONQ|1w-d1",
+        "MU|1w-d1",
+        "NVDA|1w-d1",
+        "PATH|1w-d1",
+        "SNDK|1w-d1",
+        "TWST|1w-d1"
+      ]
+    },
+    {
+      "horizon": "1w-d2",
+      "effective_feature_set": "loop-a-all-v3-1w",
+      "failed_routes": [
+        "AAPL|1w-d2",
+        "AMZN|1w-d2",
+        "COST|1w-d2",
+        "CROX|1w-d2",
+        "GOOG|1w-d2",
+        "IONQ|1w-d2",
+        "MU|1w-d2",
+        "NVDA|1w-d2",
+        "PATH|1w-d2",
+        "SNDK|1w-d2",
+        "TWST|1w-d2"
+      ]
+    },
+    {
+      "horizon": "1w-d3",
+      "effective_feature_set": "loop-a-all-v3-1w",
+      "failed_routes": [
+        "AAPL|1w-d3",
+        "AMZN|1w-d3",
+        "COST|1w-d3",
+        "CROX|1w-d3",
+        "GOOG|1w-d3",
+        "IONQ|1w-d3",
+        "MU|1w-d3",
+        "NVDA|1w-d3",
+        "PATH|1w-d3",
+        "SNDK|1w-d3",
+        "TWST|1w-d3"
+      ]
+    },
+    {
+      "horizon": "1w-d4",
+      "effective_feature_set": "loop-a-all-v3-1w",
+      "failed_routes": [
+        "AAPL|1w-d4",
+        "AMZN|1w-d4",
+        "COST|1w-d4",
+        "CROX|1w-d4",
+        "GOOG|1w-d4",
+        "IONQ|1w-d4",
+        "MU|1w-d4",
+        "NVDA|1w-d4",
+        "PATH|1w-d4",
+        "SNDK|1w-d4",
+        "TWST|1w-d4"
+      ]
+    },
+    {
+      "horizon": "1w-d5",
+      "effective_feature_set": "loop-a-all-v3-1w",
+      "failed_routes": [
+        "AAPL|1w-d5",
+        "AMZN|1w-d5",
+        "COST|1w-d5",
+        "CROX|1w-d5",
+        "GOOG|1w-d5",
+        "IONQ|1w-d5",
+        "MU|1w-d5",
+        "NVDA|1w-d5",
+        "PATH|1w-d5",
+        "SNDK|1w-d5",
+        "TWST|1w-d5"
+      ]
+    }
+  ],
+  "native_quarantine_matches_prior": true,
+  "failed_route_count": 99,
+  "gate_policy": {
+    "version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+    "minimum_complete_row_fraction": 0.8,
+    "minimum_fresh_joined_row_fraction": 0.8,
+    "minimum_distinct_surface_targets": 20
+  },
+  "gate_policy_evidence": "ml/runtime_pipeline.py constants at lines 102-106 and gate thresholds at lines 2373-2382 retain version v1, 0.80 complete and fresh joined fractions, 20 distinct targets. Native helper validates exact requested non-Pricing feature preservation before emitting quarantine.",
+  "current_manifest_available": true,
+  "current_route_fraction_review": "VERIFIED_SAVED_NATIVE_MANIFEST; current native route values summarized below, no samples rebuilt.",
+  "conclusion": "Current observed quarantine is consistent with unchanged retained August 20 sparse/stale Pricing source authority. No new defect or justified focused repair identified in bounded evidence.",
+  "actions": "Evidence artifacts only. Preserve native gate and reduced feature contracts; no repair, retry, acquisition or retraining indicated.",
+  "current_group_summary": {
+    "constraints": {
+      "routes": 99,
+      "passing_routes": 0,
+      "maximum_complete_fraction": 0.014492753623188406,
+      "maximum_fresh_joined_fraction": 0.014492753623188406,
+      "maximum_distinct_targets": 1
+    },
+    "edge": {
+      "routes": 99,
+      "passing_routes": 0,
+      "maximum_complete_fraction": 0.006075334143377886,
+      "maximum_fresh_joined_fraction": 0.006075334143377886,
+      "maximum_distinct_targets": 1
+    },
+    "fair_value": {
+      "routes": 99,
+      "passing_routes": 0,
+      "maximum_complete_fraction": 0.006075334143377886,
+      "maximum_fresh_joined_fraction": 0.006075334143377886,
+      "maximum_distinct_targets": 1
+    },
+    "interval_calibration": {
+      "routes": 99,
+      "passing_routes": 0,
+      "maximum_complete_fraction": 0,
+      "maximum_fresh_joined_fraction": 0,
+      "maximum_distinct_targets": 0
+    },
+    "liquidity": {
+      "routes": 99,
+      "passing_routes": 0,
+      "maximum_complete_fraction": 0.006075334143377886,
+      "maximum_fresh_joined_fraction": 0.006075334143377886,
+      "maximum_distinct_targets": 1
+    },
+    "uncertainty": {
+      "routes": 99,
+      "passing_routes": 0,
+      "maximum_complete_fraction": 0,
+      "maximum_fresh_joined_fraction": 0,
+      "maximum_distinct_targets": 0
+    }
+  },
+  "causal_input_cutoff": "2026-09-18T04:27:28.741812+00:00",
+  "current_publication_binding": {
+    "manifest_path": "C:/DATASTORE/ml/runs/20260918T051928.441440Z/manifest.json",
+    "manifest_sha256": "f434ea744546a2a579bbaa60f8a9fe7e7aa0f54a77c1148a359bfea86e0a1e5a",
+    "publication_path": "C:/DATASTORE/ml/runs/20260918T051928.441440Z/publication.json",
+    "publication_sha256": "9e517b56ead1cd2745b942d4c855486aebc5109b06bf688d9b3001db6a2d5380",
+    "publication_to_manifest_binding": "PASS",
+    "promoted_at": "2026-09-18T05:43:17.069973+00:00",
+    "route_errors": {}
+  },
+  "native_model_admission_by_horizon": {
+    "1d": {
+      "effective_model_feature_set": "loop-a-all-v3-1d",
+      "failed_routes": [
+        "AAPL|1d",
+        "AMZN|1d",
+        "COST|1d",
+        "CROX|1d",
+        "GOOG|1d",
+        "IONQ|1d",
+        "MU|1d",
+        "NVDA|1d",
+        "PATH|1d",
+        "SNDK|1d",
+        "TWST|1d"
+      ],
+      "policy_version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+      "pricing_family_admitted": false,
+      "pricing_family_selected": true,
+      "requested_feature_set": "loop-a-all-bsgp-active-v3-1d"
+    },
+    "1h": {
+      "effective_model_feature_set": "loop-a-all-v1-1h",
+      "failed_routes": [
+        "AAPL|1h",
+        "AMZN|1h",
+        "COST|1h",
+        "CROX|1h",
+        "GOOG|1h",
+        "IONQ|1h",
+        "MU|1h",
+        "NVDA|1h",
+        "PATH|1h",
+        "SNDK|1h",
+        "TWST|1h"
+      ],
+      "policy_version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+      "pricing_family_admitted": false,
+      "pricing_family_selected": true,
+      "requested_feature_set": "loop-a-all-bsgp-active-v2-1h"
+    },
+    "1w": {
+      "effective_model_feature_set": "loop-a-all-v3-1w",
+      "failed_routes": [
+        "AAPL|1w",
+        "AMZN|1w",
+        "COST|1w",
+        "CROX|1w",
+        "GOOG|1w",
+        "IONQ|1w",
+        "MU|1w",
+        "NVDA|1w",
+        "PATH|1w",
+        "SNDK|1w",
+        "TWST|1w"
+      ],
+      "policy_version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+      "pricing_family_admitted": false,
+      "pricing_family_selected": true,
+      "requested_feature_set": "loop-a-all-bsgp-active-v3-1w"
+    },
+    "1w-d1": {
+      "effective_model_feature_set": "loop-a-all-v3-1w",
+      "failed_routes": [
+        "AAPL|1w-d1",
+        "AMZN|1w-d1",
+        "COST|1w-d1",
+        "CROX|1w-d1",
+        "GOOG|1w-d1",
+        "IONQ|1w-d1",
+        "MU|1w-d1",
+        "NVDA|1w-d1",
+        "PATH|1w-d1",
+        "SNDK|1w-d1",
+        "TWST|1w-d1"
+      ],
+      "policy_version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+      "pricing_family_admitted": false,
+      "pricing_family_selected": true,
+      "requested_feature_set": "loop-a-all-bsgp-active-v3-1w"
+    },
+    "1w-d2": {
+      "effective_model_feature_set": "loop-a-all-v3-1w",
+      "failed_routes": [
+        "AAPL|1w-d2",
+        "AMZN|1w-d2",
+        "COST|1w-d2",
+        "CROX|1w-d2",
+        "GOOG|1w-d2",
+        "IONQ|1w-d2",
+        "MU|1w-d2",
+        "NVDA|1w-d2",
+        "PATH|1w-d2",
+        "SNDK|1w-d2",
+        "TWST|1w-d2"
+      ],
+      "policy_version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+      "pricing_family_admitted": false,
+      "pricing_family_selected": true,
+      "requested_feature_set": "loop-a-all-bsgp-active-v3-1w"
+    },
+    "1w-d3": {
+      "effective_model_feature_set": "loop-a-all-v3-1w",
+      "failed_routes": [
+        "AAPL|1w-d3",
+        "AMZN|1w-d3",
+        "COST|1w-d3",
+        "CROX|1w-d3",
+        "GOOG|1w-d3",
+        "IONQ|1w-d3",
+        "MU|1w-d3",
+        "NVDA|1w-d3",
+        "PATH|1w-d3",
+        "SNDK|1w-d3",
+        "TWST|1w-d3"
+      ],
+      "policy_version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+      "pricing_family_admitted": false,
+      "pricing_family_selected": true,
+      "requested_feature_set": "loop-a-all-bsgp-active-v3-1w"
+    },
+    "1w-d4": {
+      "effective_model_feature_set": "loop-a-all-v3-1w",
+      "failed_routes": [
+        "AAPL|1w-d4",
+        "AMZN|1w-d4",
+        "COST|1w-d4",
+        "CROX|1w-d4",
+        "GOOG|1w-d4",
+        "IONQ|1w-d4",
+        "MU|1w-d4",
+        "NVDA|1w-d4",
+        "PATH|1w-d4",
+        "SNDK|1w-d4",
+        "TWST|1w-d4"
+      ],
+      "policy_version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+      "pricing_family_admitted": false,
+      "pricing_family_selected": true,
+      "requested_feature_set": "loop-a-all-bsgp-active-v3-1w"
+    },
+    "1w-d5": {
+      "effective_model_feature_set": "loop-a-all-v3-1w",
+      "failed_routes": [
+        "AAPL|1w-d5",
+        "AMZN|1w-d5",
+        "COST|1w-d5",
+        "CROX|1w-d5",
+        "GOOG|1w-d5",
+        "IONQ|1w-d5",
+        "MU|1w-d5",
+        "NVDA|1w-d5",
+        "PATH|1w-d5",
+        "SNDK|1w-d5",
+        "TWST|1w-d5"
+      ],
+      "policy_version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+      "pricing_family_admitted": false,
+      "pricing_family_selected": true,
+      "requested_feature_set": "loop-a-all-bsgp-active-v3-1w"
+    },
+    "4h": {
+      "effective_model_feature_set": "loop-a-all-v1-4h",
+      "failed_routes": [
+        "AAPL|4h",
+        "AMZN|4h",
+        "COST|4h",
+        "CROX|4h",
+        "GOOG|4h",
+        "IONQ|4h",
+        "MU|4h",
+        "NVDA|4h",
+        "PATH|4h",
+        "SNDK|4h",
+        "TWST|4h"
+      ],
+      "policy_version": "option-pricing-loop-b-family-coverage-freshness-gate-v1",
+      "pricing_family_admitted": false,
+      "pricing_family_selected": true,
+      "requested_feature_set": "loop-a-all-bsgp-active-v2-4h"
+    }
+  }
+}

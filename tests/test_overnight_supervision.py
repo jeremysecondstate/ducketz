@@ -23,6 +23,42 @@ def test_weekend_and_holiday_preserve_long_training_window():
     assert next_action_deadline("2026-09-09T09:00:00Z") == pd.Timestamp("2026-09-09T11:00:00Z")
 
 
+@pytest.mark.parametrize("saved_target", [None, "cost-adjusted-positive-return-v1", "raw-price-direction-v1"])
+def test_probability_target_resume_keeps_original_identity(tmp_path, monkeypatch, saved_target):
+    def fail(command, **kwargs):
+        kwargs["log_path"].write_text("synthetic publication failure")
+        return 9
+    monkeypatch.setattr("ml.overnight_runtime._run_stage", fail)
+    with pytest.raises(RuntimeError, match="exited with code 9"):
+        run(tmp_path, start_at="gameplan_publication", stop_after="gameplan_publication", stock_only=True,
+            independent_stock_horizons=True, probability_target_contract=saved_target)
+    prior = Path(overnight_status(tmp_path)["run_path"])
+    if saved_target is None:
+        # Simulate an immutable attempt created before probability versioning.
+        report = json.loads((prior/"stage-report.json").read_text())
+        report.pop("probability_target_contract")
+        report.pop("gameplan_variant")
+        (prior/"stage-report.json").write_text(json.dumps(report))
+        receipt = json.loads((prior/"receipt.json").read_text())
+        receipt["stage_report_checksum_sha256"] = file_checksum(prior/"stage-report.json")
+        (prior/"receipt.json").write_text(json.dumps(receipt))
+    before = _evidence_snapshot(prior)
+    calls = []
+    def complete(command, **kwargs):
+        calls.append(command)
+        kwargs["log_path"].write_text("synthetic completion")
+        return 0
+    monkeypatch.setattr("ml.overnight_runtime._run_stage", complete)
+    resumed = run(tmp_path, resume_run=prior)
+    expected = saved_target or "cost-adjusted-positive-return-v1"
+    assert calls[0][-2:] == ("--probability-target-contract", expected)
+    assert json.loads((resumed/"stage-report.json").read_text())["probability_target_contract"] == expected
+    assert _evidence_snapshot(prior) == before
+    alternate = "raw-price-direction-v1" if expected != "raw-price-direction-v1" else "cost-adjusted-positive-return-v1"
+    with pytest.raises(ValueError, match="preserve its verified probability target"):
+        run(tmp_path, resume_run=prior, probability_target_contract=alternate)
+
+
 def test_failed_stage_has_receipt_and_resume_skips_completed_stages(tmp_path, monkeypatch):
     calls = []
     def fail_training(command, **kwargs):
@@ -424,7 +460,10 @@ def test_independent_pipeline_trains_sizing_then_plans_trades_from_same_publicat
     assert report["stage_order"] == ["gameplan_publication", "stock_enrichment_training", "gameplan_trade_planning", "gameplan_actuals_review"]
     assert report["stock_price_source"] == "xnas-itch-archive-v1"
     assert calls[0][3] == "ml.nightly_gameplan"
-    assert calls[0][-2:] == ("--stock-price-source", "xnas-itch-archive-v1")
+    assert calls[0][-4:] == ("--stock-price-source", "xnas-itch-archive-v1",
+                              "--probability-target-contract", "raw-price-direction-v1")
+    assert report["probability_target_contract"] == "raw-price-direction-v1"
+    assert report["gameplan_variant"] == "YG"
     assert calls[1][3] == "ml.stock_trader.independent_training"
     assert calls[2][3] == "ml.gameplan_trade_planning"
     pinned_path = str(tmp_path / report["enrichment_gameplan"]["run_path"])

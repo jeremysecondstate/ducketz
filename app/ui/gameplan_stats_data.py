@@ -16,6 +16,10 @@ import pandas as pd
 
 from datafetching.parquet_store import resolve_datastore_dir
 from ml.artifacts import file_checksum, verify_manifest
+from ml.gameplan_probability_target import (
+    LEGACY_COST_TARGET, RAW_DIRECTION_TARGET, observed_probability_target,
+    probability_target_contract, probability_target_metadata,
+)
 
 VERSION = "gameplan-actuals-review-v1"
 PACIFIC = ZoneInfo("America/Los_Angeles")
@@ -45,6 +49,11 @@ class PredictionOutcome:
     end: datetime
     observed_start: datetime | None
     observed_end: datetime | None
+    probability_target_contract: str = LEGACY_COST_TARGET
+
+    @property
+    def probability_target_threshold(self) -> float:
+        return 0.0 if self.probability_target_contract == RAW_DIRECTION_TARGET else self.target_cost
 
     @property
     def state(self) -> str:
@@ -112,6 +121,11 @@ class GameplanStatsReview:
     report_path: Path
     outcomes: tuple[PredictionOutcome, ...]
     excluded_forecasts: int = 0
+    probability_target_contract: str = LEGACY_COST_TARGET
+
+    @property
+    def display_name(self) -> str:
+        return "Yung Gameplan (YG)" if self.probability_target_contract == RAW_DIRECTION_TARGET else "OG Gameplan"
 
     @property
     def symbols(self) -> tuple[str, ...]:
@@ -196,6 +210,7 @@ def _number(value: object) -> float | None:
 
 
 def _outcome(row: dict) -> PredictionOutcome:
+    contract = probability_target_contract(row)
     probability = _number(row["calibrated_probability"])
     status, direction = str(row["actuals_status"]), str(row["direction"])
     if probability is None or not 0 <= probability <= 1 or status not in STATUSES:
@@ -215,7 +230,7 @@ def _outcome(row: dict) -> PredictionOutcome:
     correct = brier = None
     if status == "EVALUATED":
         target, saved_brier = _number(row["model_observed_target"]), _number(row["model_brier_score"])
-        if actual_return is None or target not in (0, 1) or target != int(actual_return > cost):
+        if actual_return is None or target not in (0, 1) or target != observed_probability_target(actual_return, cost, contract):
             raise GameplanStatsError("A saved evaluated forecast has invalid target evidence")
         brier = (probability - target) ** 2
         if saved_brier is None or not math.isclose(brier, saved_brier, rel_tol=1e-9, abs_tol=1e-12):
@@ -230,7 +245,7 @@ def _outcome(row: dict) -> PredictionOutcome:
     return PredictionOutcome(
         str(row["id"]), str(row["symbol"]), str(row["model_group"]), str(row["route"]),
         str(row["target_role"]), direction, status, probability, correct, brier,
-        actual_return, cost, start, end, *observed,
+        actual_return, cost, start, end, *observed, contract,
     )
 
 
@@ -267,6 +282,12 @@ def load_gameplan_stats(datastore_root: Path | None = None, session: str | None 
                 or report.get("action_date") != selected or report.get("preview")):
             raise GameplanStatsError("Only completed, verified session reviews can be displayed")
         frame = pd.read_parquet(run / "forecast-results.parquet")
+        contract = probability_target_contract(frame) if not frame.empty else probability_target_contract(report)
+        for metadata in (report, configuration):
+            if "probability_target_contract" in metadata and probability_target_contract(metadata) != contract:
+                raise GameplanStatsError("Saved review probability targets disagree")
+        if "gameplan_variant" in frame and not frame.gameplan_variant.eq(probability_target_metadata(contract)["gameplan_variant"]).all():
+            raise GameplanStatsError("Saved review variant disagrees with its probability target")
         outcomes: tuple[PredictionOutcome, ...] = ()
         excluded = 0
         if not frame.empty:
@@ -283,7 +304,7 @@ def load_gameplan_stats(datastore_root: Path | None = None, session: str | None 
         return GameplanStatsReview(
             selected, _timestamp(report["reviewed_at"], "review time"),
             _timestamp(report["outcomes_through"], "outcome cutoff"), run,
-            run / "Gameplan-results.md", outcomes, excluded,
+            run / "Gameplan-results.md", outcomes, excluded, contract,
         )
     except GameplanStatsError:
         raise

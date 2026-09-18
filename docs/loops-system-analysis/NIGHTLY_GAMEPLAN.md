@@ -1,5 +1,84 @@
 # Overnight immutable gameplan
 
+## September 18 Yung Gameplan deployment
+
+The operator explicitly selected **Yung Gameplan (YG)** for the September 18,
+2026 session, replacing the already saved **OG Gameplan** as the execution
+source. OG remains immutable for evaluation and differential analysis. This
+authorizes a new publication/enrichment/trade-planning tail from the verified
+September 17 inputs, with the same September 18 04:00 Pacific deadline; it does
+not require repeating successful provider acquisition or Directional generation.
+
+New independent stock publications use `raw-price-direction-v1`: the positive
+class is observed raw return strictly above zero. The independent clock/window
+contract and five-minute observed-price rules are unchanged. Cohorts retain both
+`target_raw_price_direction` and `target_cost_adjusted_positive`; costs remain
+separate in profitability/enrichment and actuals. The hourly and four-hour
+logistic candidates now use C = 0.001, 0.01, 0.1, 1, selected only on development
+data, as the daily group already does. The September 18 quality follow-up extends
+that same fixed grid to weekly YG models. Raw-direction calibration selection
+admits only development candidates that retain varying directional information,
+including after the full calibration refit. It cannot choose a flat probability
+merely because that candidate has the lowest development log loss. Legacy target
+policies retain their recorded selection behavior. All final promotion thresholds
+and sample, source and calibration checks remain unchanged. This is not evidence
+of better future scores.
+
+The quality revision also adds a fixed weekly raw-direction probability
+regularization grid: retain 0.25, 0.5, 0.75 or 1 of each candidate's deviation
+from the training positive rate. Apply these weights uniformly to the existing
+tree, neural, blended and logistic candidates. Development log loss chooses the
+family and weight; exact ties prefer no shrinkage. Selection uses the purged
+TRAIN base rate; the final selected model uses the TRAIN-plus-selection base
+rate after refitting. All weights retain model variation; a constant baseline
+is not an eligible promoted substitute. The selected weight, baseline, base
+family and full development metrics are recorded. The final assessment and
+calibration gates remain unchanged. This fixed change was selected using
+development evidence before the revised final assessment, and does not make
+that previously inspected assessment an independent test of future accuracy.
+
+`probability_target_contract` and `gameplan_variant` bind the forecasts, cohorts,
+models, reports, manifest and receipt. Missing historical metadata means the
+original cost-adjusted OG target, never an inferred raw-direction target.
+Champions cannot cross probability-target identities. Native overnight reports
+record the target and pass it explicitly; a resumed older attempt without the
+field retains the OG target and its original deadline.
+
+`python -m ml.gameplan_deployment prepare --action-date 2026-09-18` records the
+verified OG forecast/trade-plan references and prevents them supplying new entry
+or directional-sale instructions during preparation. After the verified native
+tail, `activate --action-date 2026-09-18 --overnight-run <run>` records YG as the
+only selected source. Both operations require the normal supervision owner.
+Immutable records live under `ml/gameplan-deployment-runs`; their dated pointer
+is `ml/gameplan-deployment-by-date/<date>/run.json`. Activation requires matching
+source/date/universe, exact paired windows, native completion and the original
+04:00 deadline. The execution path rechecks the loaded source before submission;
+it never blesses an old decision by merely reading a newer latest pointer.
+Owned expiry exits remain managed independently of this source selection.
+
+The saved comparison pairs OG/YG forecasts without rewriting either. Cumulative
+evaluation emits `og-yg-comparison.json` with observed same-window direction
+outcomes and each model's own target score, excluding missing/immature outcomes.
+The UI and readable plan name YG explicitly. No deployment operation starts a
+trader, enables controls, claims a session entry slot or submits an order. The
+existing user-started session and current execution/ownership checks still apply.
+
+The operator's September 18 quality follow-up requires all four directional model
+reports and all 24 forecasts per configured symbol to pass the existing
+promotion and exact fitted-history checks before the revised YG source becomes
+ACTIVE. An explicit preopening `prepare-revision` handoff preserves the original
+OG and preceding YG artifacts and blocks new instructions while preparing.
+Activation validates the new complete native tail and fails closed if any
+directional group or row remains unqualified. Optional learned sizing retains
+its separate status; it is not used by the selected manual Gameplan policy.
+This revision retains the original September 18 04:00 Pacific deadline and does
+not authorize a trader start, changing controls, or extending preparation
+intraday. Never weaken a gate, repeatedly select on assessment results, or claim
+improved accuracy merely to satisfy the readiness request.
+
+This versioned target contract supersedes cost-adjusted-only descriptions below
+for new YG publications; historical publications keep their saved semantics.
+
 Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from `datafetching/watchlist.txt` and validate historical publications against their own saved universes.
 
 September 14 onboarding: CROX, PATH, TWST and IONQ are now active, bringing the

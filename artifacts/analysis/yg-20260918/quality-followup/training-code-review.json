@@ -1,0 +1,18 @@
+{
+  "reviewed_at": "2026-09-18T08:00:46.787497+00:00",
+  "status": "PASS_NO_UNRESOLVED_FINDINGS",
+  "files": {
+    "ml/gameplan_development_selection.py": "d6d1ff2b4ca37a8ace10213cc15dc3fd490a08a22aba91323f8b2137742f712a",
+    "ml/gameplan_estimators.py": "1c5e8c2e39876c92ae90449f77a074a539b539d79f1cdc384bd54ba785cd2ae2",
+    "ml/nightly_gameplan.py": "350db0e215ffc01876bae933b655817a7240758b40166ddd7ebd25c539ea2410",
+    "ml/gameplan_promotion.py": "948088dcb3a76920432ab9bbe336ea0b886af2ceeb48d1bbdbb374c230856dd1",
+    "ml/calibration.py": "a525fd7a9e9697b9d70945474a8387b137bbfca9b5d7d9650058d717cbbb32fa",
+    "tests/test_gameplan_raw_calibration_eligibility.py": "0887106c689b29a46572519f1f419c7e8e747307a9d69a66b8e936bfc5ebb821",
+    "tests/test_gameplan_probability_shrinkage.py": "0d042e18266de0ce1eff07f8c48ed5112dd3ef06d94a7b54f7255789015b54bb"
+  },
+  "resolved_finding": "Full development Platt refit fallback now rejects development-ineligible identity; dedicated tiny-spread regression covers this edge.",
+  "tests": "Implementer reported 13 shrinkage tests and 58 broader tests passing after patch; reviewer inspected regression and serialized prediction assertions without duplicating the runs.",
+  "gate_modules_git_diff": "No diff in ml/gameplan_promotion.py or ml/calibration.py",
+  "broker_calls": 0,
+  "production_mutations": 0
+}

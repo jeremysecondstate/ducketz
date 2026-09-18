@@ -158,7 +158,8 @@ def _production_watchlist(repository_root: Path) -> Path:
 
 
 def _pin_stock_gameplan(root: Path, *, stock_price_source: str, deadline_at: pd.Timestamp,
-                        pinned: Mapping[str, object] | None = None) -> dict[str, str]:
+                        pinned: Mapping[str, object] | None = None,
+                        probability_target: str | None = None) -> dict[str, str]:
     """Keep post-publication stages on one immutable successor across resume."""
     from ml.nightly_gameplan import read_current_gameplan, read_gameplan_run
 
@@ -173,6 +174,10 @@ def _pin_stock_gameplan(root: Path, *, stock_price_source: str, deadline_at: pd.
         if file_checksum(path / "receipt.json") != pinned.get("receipt_sha256"):
             raise ValueError("Pinned stock training publication receipt changed")
     config = publication.manifest.get("configuration", {})
+    if probability_target is not None:
+        from ml.gameplan_probability_target import probability_target_contract
+        if probability_target_contract(config) != probability_target:
+            raise ValueError("Pinned stock publication differs from the saved probability target")
     action_date = deadline_at.tz_convert(SCHEDULE_TIMEZONE).date().isoformat()
     if (config.get("target_contract_version") != "independent-stock-targets-v1"
             or config.get("target_price_source_contract", STOCK_PRICE_SOURCES[0]) != stock_price_source
@@ -198,6 +203,7 @@ def run_overnight_pipeline(
     stock_only: bool = False,
     independent_stock_horizons: bool = False,
     stock_price_source: str | None = None,
+    probability_target_contract: str | None = None,
     deadline_exception: Path | None = None,
 ) -> Path:
     """Run the one-owner post-close chain and fail before downstream stages."""
@@ -205,6 +211,7 @@ def run_overnight_pipeline(
     root = Path(datastore_root).resolve()
     repository = Path(repository_root).resolve()
     created = utc_timestamp()
+    from ml.gameplan_probability_target import RAW_DIRECTION_TARGET, LEGACY_COST_TARGET, resolve_probability_target
     if deadline_exception is not None and resume_run is None:
         raise ValueError('A deadline exception requires an existing pinned tail attempt')
     resume = _resume_configuration(root, resume_run, deadline_exception=deadline_exception) if resume_run else None
@@ -216,11 +223,19 @@ def run_overnight_pipeline(
         if stock_price_source is not None and stock_price_source != previous_source:
             raise ValueError("Resume must preserve its verified stock price source; use a separate experiment run")
         stock_price_source = previous_source
+        previous_target = resolve_probability_target(resume.get("probability_target_contract"))
+        if probability_target_contract is not None and probability_target_contract != previous_target:
+            raise ValueError("Resume must preserve its verified probability target contract")
+        probability_target_contract = previous_target
     stock_price_source = stock_price_source or STOCK_PRICE_SOURCES[0]
     if stock_price_source not in STOCK_PRICE_SOURCES:
         raise ValueError("Unknown stock price source contract")
     if independent_stock_horizons and not stock_only:
         raise ValueError("Independent stock horizons require explicit stock-only preparation")
+    probability_target_contract = resolve_probability_target(
+        probability_target_contract or (RAW_DIRECTION_TARGET if independent_stock_horizons else LEGACY_COST_TARGET))
+    if not independent_stock_horizons and probability_target_contract != LEGACY_COST_TARGET:
+        raise ValueError("Raw direction preparation requires independent stock horizons")
     if stock_price_source != STOCK_PRICE_SOURCES[0] and not independent_stock_horizons:
         raise ValueError("Alternate stock price sources require independent stock horizons")
     if stop_after is None:
@@ -345,6 +360,7 @@ def run_overnight_pipeline(
             *(("--stock-only",) if stock_only else ()),
             *(("--independent-stock-horizons",) if independent_stock_horizons else ()),
             *(("--stock-price-source", stock_price_source) if independent_stock_horizons else ()),
+            *(("--probability-target-contract", probability_target_contract) if independent_stock_horizons else ()),
         ),
         INDEPENDENT_ENRICHMENT_STAGE: (
             python, "-u", "-m", "ml.stock_trader.independent_training", *datastore_argument,
@@ -380,7 +396,8 @@ def run_overnight_pipeline(
         )
     if independent_stock_horizons:
         report.update(independent_stock_horizons=True, target_contract_version="independent-stock-targets-v1",
-                      stock_price_source=stock_price_source)
+                      stock_price_source=stock_price_source, probability_target_contract=probability_target_contract,
+                      gameplan_variant="YG" if probability_target_contract == RAW_DIRECTION_TARGET else "OG")
         if resume and resume.get("enrichment_gameplan"):
             report["enrichment_gameplan"] = resume["enrichment_gameplan"]
     report_path = run / "stage-report.json"
@@ -425,6 +442,7 @@ def run_overnight_pipeline(
                     report["enrichment_gameplan"] = _pin_stock_gameplan(
                         root, stock_price_source=stock_price_source, deadline_at=deadline_at,
                         pinned=report.get("enrichment_gameplan"),
+                        probability_target=probability_target_contract,
                     )
                     command = (*command, "--gameplan-run", str(root / report["enrichment_gameplan"]["run_path"]))
                     if stage in (INDEPENDENT_TRADE_PLANNING_STAGE, INDEPENDENT_ACTUALS_REVIEW_STAGE):
@@ -798,6 +816,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                         help="Publish versioned independent stock entry/exit targets with --stock-only")
     parser.add_argument("--stock-price-source", choices=STOCK_PRICE_SOURCES, default=None,
                         help="Explicit historical equity source for independent stock targets; preserved on resume")
+    parser.add_argument("--probability-target-contract", choices=("raw-price-direction-v1", "cost-adjusted-positive-return-v1"),
+                        help="Frozen directional target identity; new independent runs use raw direction and resumes retain their saved target")
     parser.add_argument("--status", action="store_true", help="Read the latest overnight progress without starting work")
     parser.add_argument("--request-stop-run", type=Path, help="Ask the owner to stop its current stage")
     parser.add_argument("--recover-run", type=Path, help="Recover an attempt whose supervisor process exited")
@@ -866,6 +886,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 stock_only=args.stock_only,
                 independent_stock_horizons=args.independent_stock_horizons,
                 stock_price_source=args.stock_price_source,
+                probability_target_contract=args.probability_target_contract,
                 deadline_exception=args.deadline_exception,
             )
         except Exception as exc:

@@ -36,6 +36,16 @@ def finish_refresh(tab):
     assert not tab._loading
 
 
+def test_heading_identifies_og_and_yg_without_changing_session_or_filters(tab):
+    from dataclasses import replace
+    from ml.gameplan_probability_target import RAW_DIRECTION_TARGET
+    assert tab.heading.cget("text") == "OG Gameplan"
+    session = tab.plan.session
+    tab.set_plan(replace(tab.plan, probability_target_contract=RAW_DIRECTION_TARGET))
+    assert tab.heading.cget("text") == "Yung Gameplan (YG)"
+    assert tab.plan.session == session and tab.visible_rows == tab.plan.rows()
+
+
 def test_planned_and_execution_mid_prices_are_adjacent_in_both_views(tab):
     from dataclasses import replace
     from app.ui.gameplan_data import ExecutionQuote

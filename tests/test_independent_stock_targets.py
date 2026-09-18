@@ -113,6 +113,29 @@ def test_training_and_current_export_the_same_known_calendar_contract():
         assert frame.target_calendar_feature_contract.eq(STOCK_CALENDAR_FEATURE_CONTRACT).all()
 
 
+def test_raw_direction_training_changes_only_label_meaning_and_retains_cost_outcome():
+    from ml.gameplan_probability_target import RAW_DIRECTION_TARGET, LEGACY_COST_TARGET
+    sources = _sources().assign(assumed_round_trip_cost=.001)
+    bars = _endpoint_bars(sources)
+    args = dict(feature_columns=("mr__test",), minute_bars=bars, available_at="2026-09-15T00:00Z")
+    original = build_stock_training_groups(sources, **args)
+    raw = build_stock_training_groups(sources, probability_target=RAW_DIRECTION_TARGET, **args)
+    for group in raw:
+        before, after = original[group], raw[group]
+        retained = [name for name in before if name not in {"target", "probability_target_contract", "gameplan_variant"}]
+        pd.testing.assert_frame_equal(before[retained], after[retained])
+        assert before.probability_target_contract.eq(LEGACY_COST_TARGET).all()
+        assert after.probability_target_contract.eq(RAW_DIRECTION_TARGET).all()
+        assert after.gameplan_variant.eq("YG").all()
+        assert after.target.equals(after.target_raw_price_direction)
+        assert before.target.equals(before.target_cost_adjusted_positive)
+    hourly = raw["1h"]
+    small_gains = hourly.observed_return.between(0, .001, inclusive="neither")
+    assert small_gains.any()
+    assert hourly.loc[small_gains, "target"].eq(1).all()
+    assert hourly.loc[small_gains, "target_cost_adjusted_positive"].eq(0).all()
+
+
 def test_new_labels_use_observed_extended_equity_endpoints_not_regular_labels():
     sources = _sources()
     bars = _endpoint_bars(sources)

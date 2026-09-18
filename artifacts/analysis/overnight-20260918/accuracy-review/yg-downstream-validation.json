@@ -1,0 +1,24 @@
+{
+  "checked_at": "2026-09-18T07:23:24.912765+00:00",
+  "status": "PASSED",
+  "scope": "Target-aware evaluation, actuals and native UI; no fitting or publication performed by this agent",
+  "tests": {
+    "six_downstream_suites": "156 passed in 15.59s",
+    "evaluation_suite_after_history_reader_validation": "19 passed in 2.91s"
+  },
+  "legacy_production_readonly_smoke": {
+    "stats_session": "2026-09-17",
+    "edition": "OG Gameplan",
+    "forecasts": 264,
+    "correct": 62,
+    "scored": 164,
+    "brier": 0.24128772600598308,
+    "upcoming_plan_session": "2026-09-18",
+    "upcoming_plan_edition_at_check": "OG Gameplan",
+    "upcoming_forecasts": 264,
+    "upcoming_symbols": 11,
+    "evaluation_history_rows": 3192
+  },
+  "comparison_output": "On next native cumulative evaluation, manifest-bound og-yg-comparison.json pairs all frozen OG/YG editions by same action date, symbol, route, exact windows and source. It excludes pending/missing from accuracy and keeps original probability targets separate.",
+  "immutability": "No existing production artifacts rewritten; no fitting/publishing/trading calls."
+}

@@ -1,0 +1,34 @@
+{
+  "registered_at": "2026-09-18T07:54:29.927902+00:00",
+  "status": "PREREGISTERED_BEFORE_ANY_FIT",
+  "source_run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260918T072555.813034Z",
+  "cohort_sha256": "b9817c60310b730bed37b669095a36eaa3a547b019b5ada2e0560ded3b2dc533",
+  "train_rows": 1561,
+  "selection_rows": 174,
+  "change": "Add exactly two causal source timing fields to the original admitted weekly features; all original features retained.",
+  "feature_derivations": {
+    "source__hours_after_regular_close": "(source_bar_end_timestamp-source_regular_close).total_seconds()/3600",
+    "source__hours_until_action_start": "(source_action_start-source_bar_end_timestamp).total_seconds()/3600"
+  },
+  "unchanged_families": [
+    "hist-gradient",
+    "mlp",
+    "hist-gradient-mlp-0.25",
+    "hist-gradient-mlp-0.50",
+    "hist-gradient-mlp-0.75"
+  ],
+  "fixed_logistic_C_grid": [
+    0.001,
+    0.01,
+    0.1,
+    1.0
+  ],
+  "selection_basis": "minimum original selection-partition log loss; fixed original family order breaks ties",
+  "assessment_policy": "No assessment features or labels loaded. Only label-free global clocks set the original chronological boundaries.",
+  "calibration_policy": "No calibration fit, refit, or score in this experiment.",
+  "independence": "No probability-shrinkage candidate, no combination with the other independent development study.",
+  "source_file_sha256": {
+    "ml/nightly_gameplan.py": "f2be1ccadcbf3a6c2e130a8859db0e7d13c33158cbfc3f7ffde4fb21922b0632"
+  },
+  "authorization": "Root explicitly authorized one fixed DEVELOPMENT-only weekly comparison; no production feature integration until review."
+}

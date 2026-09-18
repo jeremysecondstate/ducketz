@@ -25,6 +25,36 @@ def test_separate_direction_probability_and_incomplete_populations(tmp_path):
     assert other.accuracy == 1 and other.brier == pytest.approx(.81)
 
 
+def test_yg_scores_raw_target_while_og_keeps_its_original_cost_target(tmp_path):
+    from ml.gameplan_probability_target import RAW_DIRECTION_TARGET
+    row = forecast(change=.0005, direction="BULLISH", probability=.9)
+    original = write_review(tmp_path, [row])
+    original_bytes = (original / "forecast-results.parquet").read_bytes()
+    assert load_gameplan_stats(tmp_path).display_name == "OG Gameplan"
+    row.update(probability_target_contract=RAW_DIRECTION_TARGET, gameplan_variant="YG",
+               model_observed_target=1, model_brier_score=.01)
+    write_review(tmp_path, [row], version="02")
+    review = load_gameplan_stats(tmp_path)
+    assert review.display_name == "Yung Gameplan (YG)"
+    assert review.metrics().accuracy == 1 and review.metrics().brier == pytest.approx(.01)
+    assert review.outcomes[0].probability_target_threshold == 0
+    assert review.outcomes[0].target_cost == .001
+    assert (original / "forecast-results.parquet").read_bytes() == original_bytes
+    row.update(model_observed_target=0, model_brier_score=.81)
+    write_review(tmp_path, [row], version="03")
+    with pytest.raises(GameplanStatsError, match="invalid target evidence"):
+        load_gameplan_stats(tmp_path)
+
+
+@pytest.mark.parametrize("contract,variant", [("unknown", "YG"), ("raw-price-direction-v1", "OG")])
+def test_stats_rejects_unknown_target_or_inconsistent_variant(tmp_path, contract, variant):
+    row = forecast(status="PENDING_MATURITY")
+    row.update(probability_target_contract=contract, gameplan_variant=variant)
+    write_review(tmp_path, [row])
+    with pytest.raises(GameplanStatsError, match="probability target"):
+        load_gameplan_stats(tmp_path)
+
+
 def test_horizon_filter_does_not_relabel_the_hourly_grid(tmp_path):
     write_review(tmp_path)
     review = load_gameplan_stats(tmp_path)

@@ -1,5 +1,30 @@
 # Independent stock horizons
 
+September 18, 2026: the operator selected **Yung Gameplan (YG)** as the stock
+execution source, retaining the frozen **OG Gameplan** for evaluation only.
+YG probabilities use `raw-price-direction-v1` (observed return > 0), with
+profitability after costs retained separately. Versioned targets never change
+the clock windows, source-price tolerances, model assessment records, sizing,
+current quote/cash/ownership checks or pending-order treatment. The new hourly
+and four-hour logistic candidates use the daily model's fixed development-only
+C grid. See [YG deployment](NIGHTLY_GAMEPLAN.md#september-18-yung-gameplan-deployment).
+
+The dated deployment registry is checked against the actual loaded source in
+both stock readers and again before reservation/submission. PREPARING blocks
+new OG/YG entries; ACTIVE selects the exact verified YG receipt and rejects OG
+or a stale decision even if the latest pointer has changed. Existing owned
+expiry exits remain available. This handoff does not start a trader or enable
+controls; the established user-started worker and session ownership continue.
+
+The September 18 quality revision additionally requires all four directional
+models and every saved forecast to pass the existing numerical assessment and
+exact symbol/route fitted-history checks before activation. `prepare-revision`
+preserves the original OG and prior YG while blocking new instructions until the
+verified replacement passes. The source's immutable activation record binds
+that preparation result; it does not start a trader or change the user's manual
+strategy. Optional learned sizing remains separately qualified and unused by
+that strategy. Original source, account, quote and ownership checks continue.
+
 September 14 follow-up operator instruction (all eleven symbols): the Gameplan
 execution policy reads published trading instructions directly. It does not
 rerun model promotion, training-artifact, manifest, receipt-checksum or exact

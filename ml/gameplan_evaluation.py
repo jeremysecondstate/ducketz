@@ -14,6 +14,9 @@ import pandas as pd
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.artifacts import create_timestamp_directory, file_checksum, utc_timestamp, verify_manifest, write_manifest
+from ml.gameplan_probability_target import (
+    observed_probability_target, probability_target_contract, probability_target_metadata,
+)
 
 FIRST_GAMEPLAN_ACTION_DATE = "2026-09-04"
 EVALUATION_VERSION = "saved-gameplan-evaluations-v1"
@@ -22,6 +25,9 @@ EVALUATION_COLUMNS = (
     "model_group", "model_status", "route", "target_window_start", "target_window_end",
     "predicted_probability", "observed_target", "observed_return", "brier_score",
     "direction_correct", "evaluation_status", "evaluated_at",
+    "probability_target_contract", "gameplan_variant", "direction", "raw_direction_correct",
+    "assumed_round_trip_cost", "observed_cost_adjusted_positive", "cost_adjusted_return",
+    "target_price_source_contract", "target_price_dataset",
 )
 
 
@@ -56,8 +62,13 @@ def read_evaluation_history(root: Path) -> GameplanEvaluationResult | None:
         or manifest.get("configuration", {}).get("first_action_date") != FIRST_GAMEPLAN_ACTION_DATE
     ):
         raise RuntimeError("Gameplan evaluation receipt and pointer disagree")
+    evaluations = pd.read_parquet(run / "evaluations.parquet")
+    for row in evaluations.to_dict("records"):
+        metadata = probability_target_metadata(probability_target_contract(row))
+        if pd.notna(row.get("gameplan_variant")) and row["gameplan_variant"] != metadata["gameplan_variant"]:
+            raise RuntimeError("Saved evaluation variant disagrees with its probability target")
     return GameplanEvaluationResult(
-        run, pd.read_parquet(run / "evaluations.parquet"),
+        run, evaluations,
         json.loads((run / "summary.json").read_text(encoding="utf-8")),
     )
 
@@ -110,6 +121,7 @@ def evaluate_forecasts(
     lookup: dict[tuple, Mapping[str, object]] = {}
     for frame in observed_frames:
         for row in frame.to_dict("records"):
+            probability_target_contract(row)  # Unknown explicit contracts never become outcome evidence.
             start, end = utc_timestamp(row["target_window_start"]), utc_timestamp(row["target_window_end"])
             key = (target_family(row), str(row["symbol"]).upper(), str(row["route"]), start, end)
             target, change = row.get("target"), row.get("observed_return")
@@ -122,16 +134,46 @@ def evaluate_forecasts(
         if not np.isfinite(probability) or not 0 <= probability <= 1:
             raise RuntimeError("Saved Gameplan contains an invalid probability")
         identity = f"{forecast['source_gameplan_run']}:{forecast['id']}"
+        contract = probability_target_contract(forecast)
+        metadata = probability_target_metadata(contract)
+        variant = forecast.get("gameplan_variant")
+        if pd.notna(variant) and variant != metadata["gameplan_variant"]:
+            raise RuntimeError("Saved Gameplan variant disagrees with its probability target")
+        cost = forecast.get("assumed_round_trip_cost", .001)
+        cost = .001 if pd.isna(cost) else float(cost)
+        observed_probability_target(0., cost, contract)  # Validate costs even for pending forecasts.
+        direction = forecast.get("direction")
+        if pd.isna(direction):
+            direction = "BULLISH" if probability > .5 else "BEARISH" if probability < .5 else "NO_EDGE"
+        if direction not in {"BULLISH", "BEARISH", "NO_EDGE"}:
+            raise RuntimeError("Saved Gameplan contains an invalid direction")
+
+        def evidence(change):
+            known = change is not None and pd.notna(change)
+            return {**metadata, "direction": direction, "assumed_round_trip_cost": cost,
+                    "raw_direction_correct": (bool(change > 0) if direction == "BULLISH" else bool(change < 0))
+                    if known and direction != "NO_EDGE" else None,
+                    "observed_cost_adjusted_positive": int(change > cost) if known else None,
+                    "cost_adjusted_return": float(change) - cost if known else None,
+                    "target_price_source_contract": forecast.get("target_price_source_contract", "legacy"),
+                    "target_price_dataset": forecast.get("target_price_dataset", "legacy")}
+
         old = prior.get(identity)
         if old is not None and old["evaluation_status"] == "EVALUATED":
-            if float(old["predicted_probability"]) != probability or utc_timestamp(old["target_window_end"]) != end:
+            if (float(old["predicted_probability"]) != probability or utc_timestamp(old["target_window_end"]) != end
+                    or probability_target_contract(old) != contract
+                    or (pd.notna(old.get("assumed_round_trip_cost")) and float(old["assumed_round_trip_cost"]) != cost)
+                    or (pd.notna(old.get("direction")) and old["direction"] != direction)):
                 raise RuntimeError("An evaluated immutable forecast changed")
-            rows.append(old)
+            # Retain the original scored target and errors. New descriptive
+            # columns expose the same saved observation without relabeling OG.
+            rows.append({**old, **evidence(old.get("observed_return"))})
             continue
         outcome = lookup.get((target_family(forecast), str(forecast["symbol"]).upper(), str(forecast["route"]), start, end))
         matured = end <= now
         scored = matured and outcome is not None
-        target = int(outcome["target"]) if scored else None
+        change = float(outcome["observed_return"]) if scored else None
+        target = observed_probability_target(change, cost, contract) if scored else None
         rows.append({
             "id": identity, "source_gameplan_run": forecast["source_gameplan_run"],
             "source_forecast_id": forecast["id"], "action_date": forecast["action_date"],
@@ -139,11 +181,12 @@ def evaluate_forecasts(
             "model_status": forecast.get("model_status", ""), "route": forecast["route"],
             "target_window_start": start, "target_window_end": end,
             "predicted_probability": probability, "observed_target": target,
-            "observed_return": float(outcome["observed_return"]) if scored else None,
+            "observed_return": change,
             "brier_score": (probability - target) ** 2 if scored else None,
             "direction_correct": bool((probability >= 0.5) == bool(target)) if scored else None,
             "evaluation_status": "EVALUATED" if scored else "MATURE_AWAITING_DATA" if matured else "PENDING_MATURITY",
             "evaluated_at": now if scored else pd.NaT,
+            **evidence(change),
         })
     frame = pd.DataFrame(rows, columns=EVALUATION_COLUMNS)
     if len(frame) and frame["id"].duplicated().any():
@@ -163,7 +206,50 @@ def _counts(frame: pd.DataFrame) -> dict[str, object]:
         "mature_awaiting_data": int(frame["evaluation_status"].eq("MATURE_AWAITING_DATA").sum()),
         "mean_brier_score": float(scored["brier_score"].mean()) if len(scored) else None,
         "direction_accuracy": float(scored["direction_correct"].astype(float).mean()) if len(scored) else None,
+        "raw_direction_accuracy": (float(scored["raw_direction_correct"].dropna().astype(float).mean())
+                                   if len(scored) and scored["raw_direction_correct"].notna().any() else None),
     }
+
+
+def compare_gameplan_variants(evaluations: pd.DataFrame) -> dict[str, object]:
+    """Compare every frozen OG/YG pair on identical, mutually observed windows.
+
+    Probability scores retain each edition's own target and are not ranked
+    against each other. No best historical edition is selected after results.
+    """
+    pairs = []
+    keys = ["symbol", "model_group", "route", "target_window_start", "target_window_end",
+            "target_price_source_contract", "target_price_dataset"]
+    for day, dated in evaluations.groupby("action_date", sort=True):
+        editions = {str(run): frame for run, frame in dated.groupby("source_gameplan_run", sort=True)}
+        for og_run, og in editions.items():
+            if not og.gameplan_variant.eq("OG").all():
+                continue
+            for yg_run, yg in editions.items():
+                if not yg.gameplan_variant.eq("YG").all():
+                    continue
+                joined = og.merge(yg, on=keys, suffixes=("_og", "_yg"), validate="one_to_one")
+                scored = joined.loc[joined.evaluation_status_og.eq("EVALUATED") & joined.evaluation_status_yg.eq("EVALUATED")]
+                if len(scored) and not np.allclose(scored.observed_return_og, scored.observed_return_yg, rtol=0., atol=1e-12):
+                    raise RuntimeError("OG/YG comparison has conflicting observations for the same source window")
+                calls = scored.loc[scored.raw_direction_correct_og.notna() & scored.raw_direction_correct_yg.notna()]
+                pairs.append({
+                    "action_date": str(day), "og_source_gameplan_run": og_run, "yg_source_gameplan_run": yg_run,
+                    "status": "EVALUATED" if len(scored) else "AWAITING_MATCHED_OUTCOMES",
+                    "og_forecasts": len(og), "yg_forecasts": len(yg), "matched_windows": len(joined),
+                    "evaluated_same_windows": len(scored), "directional_calls_in_both": len(calls),
+                    "og_direction_correct": int(calls.raw_direction_correct_og.sum()),
+                    "yg_direction_correct": int(calls.raw_direction_correct_yg.sum()),
+                    "og_direction_accuracy": float(calls.raw_direction_correct_og.astype(float).mean()) if len(calls) else None,
+                    "yg_direction_accuracy": float(calls.raw_direction_correct_yg.astype(float).mean()) if len(calls) else None,
+                    "og_cost_target_brier": float(scored.brier_score_og.mean()) if len(scored) else None,
+                    "yg_raw_direction_brier": float(scored.brier_score_yg.mean()) if len(scored) else None,
+                    "both_promoted_windows": int((scored.model_status_og.eq("PROMOTED") & scored.model_status_yg.eq("PROMOTED")).sum()),
+                })
+    return {"schema_version": "og-yg-gameplan-comparison-v1", "pairs": pairs,
+            "scope": "All frozen OG/YG editions, paired by action date, symbol, route, exact windows and price source; no edition selected after observing outcomes.",
+            "probability_score_note": "OG and YG Brier scores have different targets and are not directly ranked. Direction accuracy compares the same raw price moves.",
+            "orders_placed": 0}
 
 
 def evaluate_saved_gameplans(
@@ -188,9 +274,11 @@ def evaluate_saved_gameplans(
         weekly = frame.loc[frame["action_date"].ge(str(monday)) & frame["action_date"].le(str(friday))]
         summary = {
             "schema_version": EVALUATION_VERSION, "observed_at": now.isoformat(),
+            "metric_semantics": "Brier and historical direction_accuracy score each forecast's own frozen binary target. raw_direction_accuracy scores saved bullish/bearish calls against the price-move sign. Compare probability quality within probability_target_contract, not across OG and YG targets.",
             "first_action_date": FIRST_GAMEPLAN_ACTION_DATE, "all_saved_gameplans": _counts(frame),
             "review_week": {"start": str(monday), "end": str(friday), **_counts(weekly)},
             "by_action_date": {str(day): _counts(group) for day, group in frame.groupby("action_date", sort=True)},
+            "by_probability_target": {str(contract): _counts(group) for contract, group in frame.groupby("probability_target_contract", sort=True)},
             "by_model_group_and_status": {
                 f"{horizon}/{status}": _counts(group)
                 for (horizon, status), group in frame.groupby(["model_group", "model_status"], sort=True)
@@ -201,6 +289,8 @@ def evaluate_saved_gameplans(
         run = create_timestamp_directory(root / "ml/gameplan-evaluation-runs", timestamp=utc_timestamp())
         frame.to_parquet(run / "evaluations.parquet", index=False)
         _write_json(run / "summary.json", summary)
+        comparison = compare_gameplan_variants(frame)
+        _write_json(run / "og-yg-comparison.json", comparison)
         lines = ["# Gameplan review", "", f"First Gameplan date: {FIRST_GAMEPLAN_ACTION_DATE}.", "",
                  f"Review week: {monday} through {friday}.", "", summary["scope"], "",
                  "| Gameplan date | Forecasts | Evaluated | Not mature yet | Mature, waiting for data |",
@@ -208,11 +298,19 @@ def evaluate_saved_gameplans(
         for day, counts in summary["by_action_date"].items():
             lines.append(f"| {day} | {counts['forecasts']} | {counts['evaluated']} | {counts['pending_maturity']} | {counts['mature_awaiting_data']} |")
         lines.extend(["", "Longer forecasts remain saved until their exact target windows mature.",
-                      "Missing outcome data is reported explicitly and retried on the next evaluation.", ""])
+                      "Missing outcome data is reported explicitly and retried on the next evaluation.", "",
+                      "## OG Gameplan vs Yung Gameplan (YG)", "", comparison["scope"], "", comparison["probability_score_note"], ""])
+        for pair in comparison["pairs"]:
+            count = pair["directional_calls_in_both"]
+            lines.append(f"- {pair['action_date']}: {pair['evaluated_same_windows']} observed matching windows; "
+                         f"OG {pair['og_direction_correct']}/{count}, YG {pair['yg_direction_correct']}/{count} correct directional calls. "
+                         f"{pair['status']}. OG: `{pair['og_source_gameplan_run']}`; YG: `{pair['yg_source_gameplan_run']}`.")
+        if not comparison["pairs"]:
+            lines.append("No matching frozen OG/YG editions are available yet.")
         (run / "review.md").write_text("\n".join(lines), encoding="utf-8")
         previous_files = (prior.run_directory / "receipt.json", prior.run_directory / "evaluations.parquet") if prior else ()
         write_manifest(run, run_timestamp=now, input_files=(*source_files, *input_files, *previous_files),
-                       output_files=("evaluations.parquet", "summary.json", "review.md"),
+                       output_files=("evaluations.parquet", "summary.json", "review.md", "og-yg-comparison.json"),
                        configuration={"first_action_date": FIRST_GAMEPLAN_ACTION_DATE}, datastore_root=root)
         _write_json(run / "receipt.json", {
             "schema_version": EVALUATION_VERSION, "run_path": run.relative_to(root).as_posix(),

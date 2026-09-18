@@ -454,7 +454,7 @@ def test_pooled_promotion_cannot_promote_a_symbol_without_fitted_targets(tmp_pat
 
     # This test isolates exact fitted-symbol/route support with a tree stub;
     # the real logistic C grid is covered by development-selection tests.
-    monkeypatch.setattr("ml.nightly_gameplan.logistic_regularization_candidates", lambda _group: (1.0,))
+    monkeypatch.setattr("ml.nightly_gameplan.logistic_regularization_candidates", lambda _group, **kwargs: (1.0,))
 
     monkeypatch.setattr("ml.nightly_gameplan._estimator", lambda *args: Pipeline([
         ("features", ColumnTransformer([("x", "passthrough", ["mr__x"])])),

@@ -95,8 +95,8 @@ def test_quote_failure_retries_next_wake_without_recovery_flags_or_clearing_old_
 
 
 @pytest.mark.parametrize('bullish_probability,bearish_probability', [(.6, .4), (.51, .49)])
-def test_consecutive_bullish_hours_close_filled_position_then_open_next_saved_forecast(environment, monkeypatch, bullish_probability, bearish_probability):
-    """Exercise the saved loader, live pricing, reservations and fill reconciliation together."""
+def test_consecutive_bullish_hours_accumulate_until_same_horizon_bearish_forecast(environment, monkeypatch, bullish_probability, bearish_probability):
+    """Saved instructions accumulate, preserve forecast deduplication, then sell on direction."""
     from test_independent_stock_runtime import ACCOUNT, BROKER_ID
     from ml.stock_trader.contracts import PortfolioState, QuoteState
     from ml.stock_trader.horizon_ledger import HorizonLedger, OrderEvidence, FillEvidence
@@ -162,20 +162,19 @@ def test_consecutive_bullish_hours_close_filled_position_then_open_next_saved_fo
     for hour in (7, 8):
         result = wake(f'{hour:02d}:01:00')
         assert result.submitted_orders == 1
-        assert env.broker.submissions[-1]['orderLegCollection'][0]['instruction'] == 'SELL'
-        assert any(d['decision_reason_code'] == 'HORIZON_ALLOCATION_ALREADY_ACTIVE'
-                   for d in _decisions(result)['decisions'])
-        assert wake(f'{hour:02d}:01:30').submitted_orders == 1  # Prior exit now filled.
         assert env.broker.submissions[-1]['orderLegCollection'][0]['instruction'] == 'BUY'
+        assert wake(f'{hour:02d}:01:30').submitted_orders == 0  # The new forecast filled once.
         assert wake(f'{hour:02d}:02:00').submitted_orders == 0
     assert wake('09:01:00').submitted_orders == 1
     assert wake('09:01:30').submitted_orders == 0
     legs = [p['orderLegCollection'][0] for p in env.broker.submissions]
-    assert [leg['instruction'] for leg in legs] == ['BUY', 'SELL'] * 3
-    assert all(leg['instrument']['symbol'] == 'TWST' and leg['quantity'] == 14 for leg in legs)
-    assert [float(p['price']) for p in env.broker.submissions] == [100., 99.] * 3
-    assert env.held['TWST'] == 0 and env.cash == 100_000. - 3 * 14.
+    assert [leg['instruction'] for leg in legs] == ['BUY', 'BUY', 'BUY', 'SELL']
+    assert all(leg['instrument']['symbol'] == 'TWST' for leg in legs)
+    assert [leg['quantity'] for leg in legs] == [14, 14, 14, 42]
+    assert [float(p['price']) for p in env.broker.submissions] == [100., 100., 100., 99.]
+    assert env.held['TWST'] == 0 and env.cash == 100_000. - 42.
     state = HorizonLedger(env.root / runtime.LEDGER_RELATIVE_PATH, ACCOUNT).snapshot()
-    assert len(state.allocations) == 3 and all(a.status == 'CLOSED' for a in state.allocations)
-    assert [pd.Timestamp(a.target_end).tz_convert('America/Los_Angeles').hour
-            for a in sorted(state.allocations, key=lambda a: a.target_start)] == [7, 8, 9]
+    assert len(state.allocations) == 1 and state.allocations[0].status == 'CLOSED'
+    assert {r.forecast_id for r in state.reservations} == {
+        f'2026-09-15:TWST:1h@{hour:02d}:00' for hour in (6, 7, 8, 9)}
+    assert all(r.status == 'FILLED' for r in state.reservations)

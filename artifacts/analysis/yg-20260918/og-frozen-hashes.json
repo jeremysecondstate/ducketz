@@ -1,0 +1,28 @@
+{
+  "captured_at": "2026-09-18T07:30:14.265300+00:00",
+  "run_path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260918T054532.489998Z",
+  "sha256": {
+    "manifest.json": "dea097efa941b0610a6a018a05beecf870ec239cbf3e39a27d3433e849fc8987",
+    "receipt.json": "ba53f5f4b62443c426190da8cad96cf7e18644ee8c3f278b0fa5092c93b3de97",
+    "forecasts.parquet": "12d2663d3df4e77a0210091461d54cfe568f5762f80467df4bac73dc5288bd80",
+    "gameplan.json": "886e50a35c2b36824008fe166991d436ec2279ac9f7721b77bf1357d676c541a",
+    "model-reports.json": "2fd452810a5aabf9b2694058e88301c1d32fe3574c8115d065e8c6a6a7a0b510",
+    "models/1d/model.joblib": "7dab68b56922e9c86c2a9b49874752091b85857abf6764d51a84470d184db104",
+    "models/1h/model.joblib": "2681a966d86e844a7ff7209f7cc839df802a1744720b146df23dd659ecfbcf8f",
+    "models/1w/model.joblib": "eff79e5a012a6ef9aa7af7672298c1f3899aab44ef97eb4ffb9a134c3033b6fd",
+    "models/4h/model.joblib": "91b13470b9c28d6e6842b8f756e15a97b1be5b36c4d97ebc7d2428d581484a85",
+    "option-strategy-intents.parquet": "f5fc8dacf8a20338dd95633b189fa020128cb986a9d8a344c93632ee3b45fbe8",
+    "prior-gameplan-evaluations.parquet": "6ee3ef3db6b48abdcf93f09573070c0bc9c4a6b3965fcc90aa1fedd3fff6d6ee",
+    "training-cohort-1d.parquet": "bef02b212b3362077d658e64fcfab4815fd419fb218d53330187d45ffb25d474",
+    "training-cohort-1h.parquet": "69ab19635b17ad06f05820ff96176cd2315dfee236479468edf13956a829b3d9",
+    "training-cohort-1w.parquet": "6a485c3241bd48fc59d8edfbf9960124743c19a63d9da9f7357139c103d46c65",
+    "training-cohort-4h.parquet": "8abd9c44d7bbed47b1e1c1b3cbb4983954c2a8c69a718c57f2554635989d31ef"
+  },
+  "checks": {
+    "original_manifest_hash": true,
+    "original_receipt_hash": true,
+    "all_original_outputs_match_manifest": true,
+    "original_manifest_has_legacy_probability_target": true
+  },
+  "scope": "Frozen same-action-date OG comparison only; never YG champion authority."
+}

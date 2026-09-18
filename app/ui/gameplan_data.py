@@ -16,6 +16,9 @@ import pandas as pd
 
 from datafetching.parquet_store import resolve_datastore_dir
 from ml.artifacts import file_checksum, verify_manifest
+from ml.gameplan_probability_target import (
+    LEGACY_COST_TARGET, RAW_DIRECTION_TARGET, probability_target_contract, probability_target_metadata,
+)
 
 VERSION = "cash-aware-gameplan-trade-planning-v4"
 LEDGER_VERSION = "direction-based-gameplan-cash-ledger-v1"
@@ -104,6 +107,11 @@ class Gameplan:
     planning_note: str = ""
     execution_quotes: tuple[ExecutionQuote, ...] = ()
     holding_policy: str = "fixed_target_expiry"
+    probability_target_contract: str = LEGACY_COST_TARGET
+
+    @property
+    def display_name(self) -> str:
+        return "Yung Gameplan (YG)" if self.probability_target_contract == RAW_DIRECTION_TARGET else "OG Gameplan"
 
     @property
     def projection_available(self) -> bool:
@@ -435,6 +443,12 @@ def load_gameplan(datastore_root: Path | None = None, session: str | None = None
                 or report.get("source_receipt_sha256") != receipt.get("source_receipt_sha256")):
             raise GameplanError("Saved Gameplan report does not match its publication")
         frame = pd.read_parquet(run / "trade-plan.parquet")
+        contract = probability_target_contract(frame)
+        for metadata in (report, config, receipt):
+            if "probability_target_contract" in metadata and probability_target_contract(metadata) != contract:
+                raise GameplanError("Saved Gameplan probability targets disagree")
+        if "gameplan_variant" in frame and not frame.gameplan_variant.eq(probability_target_metadata(contract)["gameplan_variant"]).all():
+            raise GameplanError("Saved Gameplan variant disagrees with its probability target")
         if (len(frame) != receipt.get("forecast_rows") or len(frame) != report.get("forecast_rows")
                 or frame.empty or frame.id.isna().any() or frame.id.duplicated().any()
                 or frame.symbol.isna().any() or frame.duplicated(["symbol", "route"]).any()
@@ -451,7 +465,7 @@ def load_gameplan(datastore_root: Path | None = None, session: str | None = None
         return Gameplan(selected, _timestamp(report["observed_at"]), _timestamp(receipt["completed_at"]),
                         run, run / "Gameplan.md", forecasts, actions, projection_status, projection_note,
                         _planning_note(report, set(frame.symbol)), _execution_quotes(root, forecasts),
-                        ledger.get("holding_policy", "fixed_target_expiry"))
+                        ledger.get("holding_policy", "fixed_target_expiry"), contract)
     except GameplanError:
         raise
     except FileNotFoundError as exc:

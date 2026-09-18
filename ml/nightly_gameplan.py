@@ -35,7 +35,7 @@ from ml.artifacts import (
 from ml.training_progress import fit_with_progress
 from ml.calibration import IdentityCalibrator, fit_probability_calibrator
 from ml.current_publication import read_current_publication
-from ml.gameplan_estimators import ProbabilityBlend as _ProbabilityBlend
+from ml.gameplan_estimators import ProbabilityBlend as _ProbabilityBlend, PriorProbabilityShrinkage
 from ml.gameplan_source_selection import (
     GAMEPLAN_SOURCE_SELECTION_VERSION, SOURCE_SELECTION_COLUMNS,
     select_prior_session_sources, source_selection_contract,
@@ -44,10 +44,16 @@ from ml.gameplan_promotion import (
     DIRECTIONAL_PROMOTION_POLICY, STRICT_PROMOTION_POLICY, build_promotion_gate,
 )
 from ml.gameplan_development_selection import (
-    DAILY_LOGISTIC_REGULARIZATION_POLICY,
     DEVELOPMENT_SELECTION_POLICY,
+    development_selection_policy,
+    WEEKLY_PROBABILITY_SHRINKAGE_POLICY, WEEKLY_PROBABILITY_SHRINKAGE_WEIGHTS,
     logistic_regularization_candidates,
+    logistic_regularization_policy,
     select_development_calibrator,
+)
+from ml.gameplan_probability_target import (
+    LEGACY_COST_TARGET, RAW_DIRECTION_TARGET, probability_target_contract,
+    probability_target_metadata, resolve_probability_target,
 )
 from ml.independent_stock_targets import (
     STOCK_TARGET_CONTRACT_VERSION,
@@ -140,6 +146,7 @@ def run_nightly_gameplan_once(
     stock_only: bool = False,
     independent_stock_horizons: bool = False,
     stock_price_source: str = CANONICAL_STOCK_PRICE_SOURCE,
+    probability_target_contract: str | None = None,
 ) -> NightlyGameplanResult:
     """Train, freeze, and atomically publish one next-session gameplan.
 
@@ -154,6 +161,12 @@ def run_nightly_gameplan_once(
     if stock_price_source != CANONICAL_STOCK_PRICE_SOURCE and not independent_stock_horizons:
         raise ValueError("An alternate stock price source requires explicit independent stock horizons")
     target_contract = STOCK_TARGET_CONTRACT_VERSION if independent_stock_horizons else TARGET_CONTRACT_VERSION
+    probability_target = resolve_probability_target(
+        probability_target_contract if probability_target_contract is not None else
+        RAW_DIRECTION_TARGET if independent_stock_horizons else LEGACY_COST_TARGET)
+    if not independent_stock_horizons and probability_target != LEGACY_COST_TARGET:
+        raise ValueError("Raw-price direction requires explicit independent stock horizons")
+    probability_metadata = probability_target_metadata(probability_target)
     root = Path(datastore_root).resolve()
     created = utc_timestamp(run_timestamp)
     loop_b = read_current_publication(root)
@@ -224,6 +237,7 @@ def run_nightly_gameplan_once(
         groups = build_stock_training_groups(
             sources, feature_columns=feature_columns, minute_bars=minute_bars, available_at=created,
             price_source_contract=stock_price_source,
+            probability_target=probability_target,
         )
         for group, frame in groups.items():
             if frame.empty or frame["target"].nunique() != 2:
@@ -271,7 +285,8 @@ def run_nightly_gameplan_once(
     prior_evaluations = evaluation.evaluations
     current = (
         build_stock_current_groups(current_sources, feature_columns=feature_columns,
-                                   price_source_contract=stock_price_source)
+                                   price_source_contract=stock_price_source,
+                                   probability_target=probability_target)
         if independent_stock_horizons else _build_current_groups(
             samples, current_sources=current_sources, action_date=action_date,
             as_of=created, symbols=symbols, feature_columns=feature_columns,
@@ -309,7 +324,8 @@ def run_nightly_gameplan_once(
             from ml.gameplan_champions import latest_promoted_champion, retain_champion
             champion = latest_promoted_champion(root, group=group, action_date=action_date,
                 symbols=symbols, price_source=stock_price_source, before=created,
-                source_selection_contract=GAMEPLAN_SOURCE_SELECTION_VERSION)
+                source_selection_contract=GAMEPLAN_SOURCE_SELECTION_VERSION,
+                probability_target=probability_target)
             if champion is not None:
                 trained, retained_outputs = retain_champion(trained, champion=champion,
                     current=current[group], run=run, group=group, frozen_at=created)
@@ -368,6 +384,7 @@ def run_nightly_gameplan_once(
     }
     plan_payload = {
         "schema_version": GAMEPLAN_VERSION,
+        **probability_metadata,
         "preparation_scope": "STOCK_ONLY" if stock_only else "STOCK_AND_OPTIONS_RESEARCH",
         "forecast_contract_version": FORECAST_CONTRACT_VERSION,
         "target_contract_version": target_contract,
@@ -465,9 +482,11 @@ def run_nightly_gameplan_once(
         output_files=output_names,
         model_name="nightly-path-hgb-mlp-challenger",
         feature_columns=feature_columns,
-        target_column="target_cost_adjusted_positive",
+        target_column=("target_raw_price_direction" if probability_target == RAW_DIRECTION_TARGET
+                       else "target_cost_adjusted_positive"),
         configuration={
             "schema_version": GAMEPLAN_VERSION,
+            **probability_metadata,
             "preparation_scope": "STOCK_ONLY" if stock_only else "STOCK_AND_OPTIONS_RESEARCH",
             "forecast_contract_version": FORECAST_CONTRACT_VERSION,
             "target_contract_version": target_contract,
@@ -1170,6 +1189,12 @@ def _fit_group_model(
     selection_contract = source_selection_contract(current)
     if source_selection_contract(samples) != selection_contract:
         raise RuntimeError("Training and current Gameplan source selection contracts disagree")
+    probability_target = probability_target_contract(current)
+    if probability_target_contract(samples) != probability_target:
+        raise RuntimeError("Training and current Gameplan probability target contracts disagree")
+    probability_metadata = probability_target_metadata(probability_target)
+    if probability_target == RAW_DIRECTION_TARGET:
+        _verify_probability_cohort(samples, probability_target)
     independent_selection = (
         "target_contract_version" in current
         and bool(current.target_contract_version.eq(STOCK_TARGET_CONTRACT_VERSION).all())
@@ -1220,7 +1245,7 @@ def _fit_group_model(
         )
     logistic_candidates = {}
     if independent_selection:
-        for regularization_c in logistic_regularization_candidates(group):
+        for regularization_c in logistic_regularization_candidates(group, probability_target=probability_target):
             logistic = _estimator("logistic", admitted, categorical)
             if regularization_c != 1.0:
                 logistic.set_params(classifier__C=regularization_c)
@@ -1229,14 +1254,28 @@ def _fit_group_model(
                               label=f"gameplan/{group}/logistic-c{regularization_c:g}-selection")
             candidates.append((name, None, logistic.predict_proba(selection_matrix)[:, 1]))
             logistic_candidates[name] = regularization_c
+    shrinkage = {name: (name, 1.0) for name, _, _ in candidates}
+    shrinkage_policy = (WEEKLY_PROBABILITY_SHRINKAGE_POLICY
+                        if independent_selection and group == "1w" and probability_target == RAW_DIRECTION_TARGET else None)
+    selection_prior = float(target_train.mean())
+    if shrinkage_policy is not None:
+        for name, neural_weight, probability in tuple(candidates):
+            for weight in WEEKLY_PROBABILITY_SHRINKAGE_WEIGHTS:
+                if weight == 1.0:
+                    continue
+                candidate_name = f"{name}-prior-shrinkage-w{weight:g}"
+                candidates.append((candidate_name, neural_weight,
+                                   weight * probability + (1.0 - weight) * selection_prior))
+                shrinkage[candidate_name] = (name, weight)
     selection_metrics = {
         name: _proper_scores(target_selection, probability)
         for name, _weight, probability in candidates
     }
     selected_name, selected_weight, _ = min(
         candidates,
-        key=lambda candidate: selection_metrics[candidate[0]]["log_loss"],
+        key=lambda candidate: (selection_metrics[candidate[0]]["log_loss"], shrinkage[candidate[0]][1] != 1.0),
     )
+    selected_base_name, selected_shrinkage_weight = shrinkage[selected_name]
 
     fit_frame = pd.concat(
         [partitions["train"], partitions["selection"]],
@@ -1251,11 +1290,11 @@ def _fit_group_model(
     fit_with_progress(final_neural, fit_matrix, fit_target, label=f"gameplan/{group}/neural-final")
     if independent_selection:
         final_logistic = _estimator("logistic", admitted, categorical)
-        selected_logistic_c = logistic_candidates.get(selected_name)
+        selected_logistic_c = logistic_candidates.get(selected_base_name)
         if selected_logistic_c is not None and selected_logistic_c != 1.0:
             final_logistic.set_params(classifier__C=selected_logistic_c)
         fit_with_progress(final_logistic, fit_matrix, fit_target, label=f"gameplan/{group}/logistic-final")
-    if selected_name in logistic_candidates:
+    if selected_base_name in logistic_candidates:
         estimator: object = final_logistic
     elif selected_weight <= 0.0:
         estimator = final_tree
@@ -1267,6 +1306,18 @@ def _fit_group_model(
             final_neural,
             neural_weight=selected_weight,
         )
+    fitted_prior = float(fit_target.mean())
+    if selected_shrinkage_weight != 1.0:
+        estimator = PriorProbabilityShrinkage(estimator, prior_probability=fitted_prior,
+                                              weight=selected_shrinkage_weight)
+    shrinkage_metadata = {
+        "selected_base_family": selected_base_name,
+        "probability_shrinkage_policy": shrinkage_policy,
+        "selected_probability_shrinkage_weight": selected_shrinkage_weight,
+        "selection_shrinkage_prior": selection_prior if shrinkage_policy else None,
+        "fitted_shrinkage_prior": fitted_prior if shrinkage_policy else None,
+        "probability_shrinkage_weights": list(WEEKLY_PROBABILITY_SHRINKAGE_WEIGHTS) if shrinkage_policy else [1.0],
+    }
 
     calibration_matrix = _model_frame(
         partitions["calibration"], admitted, categorical
@@ -1277,6 +1328,7 @@ def _fit_group_model(
     if independent_selection:
         calibrator, calibration_selection = select_development_calibrator(
             partitions["calibration"], calibration_raw,
+            probability_target=probability_target,
         )
     elif np.unique(calibration_target).size == 2:
         calibrator = fit_probability_calibrator(
@@ -1343,16 +1395,20 @@ def _fit_group_model(
     joblib.dump(
         {
             "schema_version": GAMEPLAN_VERSION,
+            **probability_metadata,
             "group": group,
             "estimator": estimator,
             "calibrator": calibrator,
             "feature_columns": admitted,
             "categorical_columns": categorical,
             "selected_family": selected_name,
-            "selected_logistic_regularization_c": logistic_candidates.get(selected_name),
+            "selected_neural_weight": selected_weight,
+            "selected_logistic_regularization_c": logistic_candidates.get(selected_base_name),
+            **shrinkage_metadata,
+            "selection_metrics": selection_metrics,
             "directional_promotion_policy": gate["policy_version"],
-            "logistic_regularization_policy": DAILY_LOGISTIC_REGULARIZATION_POLICY if independent_selection and group == "1d" else None,
-            "development_selection_policy": DEVELOPMENT_SELECTION_POLICY if independent_selection else None,
+            "logistic_regularization_policy": logistic_regularization_policy(group, probability_target=probability_target) if independent_selection else None,
+            "development_selection_policy": development_selection_policy(probability_target) if independent_selection else None,
             "target_calendar_feature_contract": STOCK_CALENDAR_FEATURE_CONTRACT if independent_selection else None,
             "source_selection_contract": selection_contract,
             "calibration_selection": calibration_selection,
@@ -1377,6 +1433,9 @@ def _fit_group_model(
         "target_semantics",
         *(column for column in ("target_role", "execution_eligible", "target_contract_version", "trading_hours", "trading_segments_json", "target_price_source_contract", "target_price_dataset", *SOURCE_SELECTION_COLUMNS) if column in current),
     ]].copy()
+    for name, value in probability_metadata.items():
+        forecasts[name] = value
+    forecasts["assumed_round_trip_cost"] = current.get("assumed_round_trip_cost", ASSUMED_ROUND_TRIP_COST)
     if independent_selection:
         # Freeze the same causal inputs used by the current feature row. An
         # incomplete map remains explicitly unsupported by market-aware sizing.
@@ -1418,19 +1477,21 @@ def _fit_group_model(
     )
     report = {
         "schema_version": GAMEPLAN_VERSION,
+        **probability_metadata,
         "group": group,
         "target_contract_version": str(current["target_contract_version"].iloc[0]) if "target_contract_version" in current else TARGET_CONTRACT_VERSION,
         **({"target_price_source_contract": str(current["target_price_source_contract"].iloc[0]),
             "target_price_dataset": str(current["target_price_dataset"].iloc[0])}
            if "target_price_source_contract" in current else {}),
         "selected_family": selected_name,
+        **shrinkage_metadata,
         "selected_neural_weight": selected_weight,
         "both_hist_gradient_and_mlp_trained": True,
         "regularized_logistic_trained": independent_selection,
-        "logistic_regularization_candidates": list(logistic_regularization_candidates(group)) if independent_selection else [],
-        "selected_logistic_regularization_c": logistic_candidates.get(selected_name),
-        "logistic_regularization_policy": DAILY_LOGISTIC_REGULARIZATION_POLICY if independent_selection and group == "1d" else None,
-        "development_selection_policy": DEVELOPMENT_SELECTION_POLICY if independent_selection else None,
+        "logistic_regularization_candidates": list(logistic_regularization_candidates(group, probability_target=probability_target)) if independent_selection else [],
+        "selected_logistic_regularization_c": logistic_candidates.get(selected_base_name),
+        "logistic_regularization_policy": logistic_regularization_policy(group, probability_target=probability_target) if independent_selection else None,
+        "development_selection_policy": development_selection_policy(probability_target) if independent_selection else None,
         "target_calendar_feature_contract": STOCK_CALENDAR_FEATURE_CONTRACT if independent_selection else None,
         "source_selection_contract": selection_contract,
         "target_calendar_feature_names": list(STOCK_CALENDAR_FEATURE_NAMES) if independent_selection else [],
@@ -2163,8 +2224,11 @@ def _publish_gameplan(
         raise RuntimeError("Gameplan run escapes immutable run root")
     manifest = verify_manifest(run)
     _verify_source_selection_metadata(run, manifest)
+    _verify_probability_target_metadata(run, manifest)
     receipt = {
         "schema_version": GAMEPLAN_RECEIPT_VERSION,
+        **({key: manifest["configuration"][key] for key in ("probability_target_contract", "gameplan_variant")}
+           if "probability_target_contract" in manifest.get("configuration", {}) else {}),
         "run_path": run.relative_to(root).as_posix(),
         "run_timestamp": str(manifest["run_timestamp"]),
         "action_date": action_date.isoformat(),
@@ -2225,6 +2289,71 @@ def _verify_source_selection_metadata(run: Path, manifest: Mapping) -> None:
             raise RuntimeError("Gameplan rows lack their source selection evidence")
 
 
+def _verify_probability_cohort(frame: pd.DataFrame, contract: str) -> None:
+    required = {"observed_return", "assumed_round_trip_cost", "target", "target_raw_price_direction",
+                "target_cost_adjusted_positive", "probability_target_contract", "gameplan_variant"}
+    if frame.empty or not required.issubset(frame):
+        raise RuntimeError("Gameplan cohort lacks separate raw-direction and cost-adjusted target evidence")
+    raw = pd.to_numeric(frame.observed_return, errors="coerce")
+    cost = pd.to_numeric(frame.assumed_round_trip_cost, errors="coerce")
+    expected = {"target_raw_price_direction": raw.gt(0).astype(int),
+                "target_cost_adjusted_positive": raw.gt(cost).astype(int)}
+    expected["target"] = expected["target_raw_price_direction" if contract == RAW_DIRECTION_TARGET
+                                  else "target_cost_adjusted_positive"]
+    if (not np.isfinite(raw).all() or not np.isfinite(cost).all() or cost.lt(0).any()
+            or probability_target_contract(frame) != contract
+            or not frame.gameplan_variant.eq(probability_target_metadata(contract)["gameplan_variant"]).all()
+            or any(not pd.to_numeric(frame[name], errors="coerce").eq(values).all()
+                   for name, values in expected.items())):
+        raise RuntimeError("Gameplan cohort labels disagree with their probability target contract")
+
+
+def _verify_probability_target_metadata(run: Path, manifest: Mapping, receipt: Mapping | None = None) -> None:
+    """New target semantics are bound everywhere; absent historical metadata stays legacy."""
+    config = manifest.get("configuration", {})
+    if "probability_target_contract" not in config:
+        if "forecasts.parquet" in manifest.get("output_files", {}):
+            historical = pd.read_parquet(run / "forecasts.parquet")
+            if probability_target_contract(historical) != LEGACY_COST_TARGET:
+                raise RuntimeError("Gameplan raw-direction rows lack manifest probability target provenance")
+        return
+    contract = probability_target_contract(config)
+    metadata = probability_target_metadata(contract)
+    if any(config.get(key) != value for key, value in metadata.items()):
+        raise RuntimeError("Gameplan probability target and variant disagree")
+    if receipt is not None and any(receipt.get(key) != value for key, value in metadata.items()):
+        raise RuntimeError("Gameplan receipt and probability target disagree")
+    if contract != RAW_DIRECTION_TARGET:
+        return
+    expected_target = "target_raw_price_direction"
+    if manifest.get("target_column") != expected_target:
+        raise RuntimeError("Gameplan manifest does not identify the raw-direction fitting target")
+    outputs = manifest.get("output_files", {})
+    required = ("gameplan.json", "model-reports.json", "forecasts.parquet",
+                *(f"training-cohort-{group}.parquet" for group in MODEL_GROUPS))
+    if not set(required).issubset(outputs):
+        raise RuntimeError("Gameplan probability target evidence is not manifest-bound")
+    plan = json.loads((run / "gameplan.json").read_text(encoding="utf-8"))
+    reports = json.loads((run / "model-reports.json").read_text(encoding="utf-8"))
+    for item in (plan, *(reports.get(group, {}) for group in MODEL_GROUPS)):
+        if any(item.get(key) != value for key, value in metadata.items()):
+            raise RuntimeError("Gameplan model reports and probability target disagree")
+    for name in ("forecasts.parquet", *(f"training-cohort-{group}.parquet" for group in MODEL_GROUPS)):
+        frame = pd.read_parquet(run / name)
+        if frame.empty or any(key not in frame or not frame[key].eq(value).all() for key, value in metadata.items()):
+            raise RuntimeError("Gameplan rows lack their probability target evidence")
+        if name.startswith("training-cohort-"):
+            _verify_probability_cohort(frame, contract)
+    for group in MODEL_GROUPS:
+        report = reports[group]
+        name = report.get("model_file", {}).get("path")
+        if name not in outputs or not (run / str(name)).resolve().is_relative_to(run.resolve()):
+            raise RuntimeError("Gameplan probability model is not manifest-bound")
+        payload = joblib.load(run / name)
+        if any(payload.get(key) != value for key, value in metadata.items()):
+            raise RuntimeError("Gameplan fitted model and probability target disagree")
+
+
 def read_gameplan_run(datastore_root: Path, run_directory: Path) -> GameplanPublication:
     """Verify a saved publication without following the latest pointer."""
     root = Path(datastore_root).resolve()
@@ -2235,6 +2364,7 @@ def read_gameplan_run(datastore_root: Path, run_directory: Path) -> GameplanPubl
     _verify_source_selection_metadata(run, manifest)
     receipt_path = run / "receipt.json"
     receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    _verify_probability_target_metadata(run, manifest, receipt)
     relative = run.relative_to(root).as_posix()
     if (
         receipt.get("schema_version") != GAMEPLAN_RECEIPT_VERSION
@@ -2289,6 +2419,7 @@ def read_current_gameplan(datastore_root: Path) -> GameplanPublication:
         "manifest_checksum_sha256": file_checksum(run / "manifest.json"),
         "receipt_checksum_sha256": file_checksum(receipt_path),
     }
+    _verify_probability_target_metadata(run, manifest, receipt)
     if (
         receipt.get("schema_version") != GAMEPLAN_RECEIPT_VERSION
         or dict(current) != expected
@@ -2374,6 +2505,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--stock-price-source", choices=tuple(STOCK_PRICE_SOURCES),
                         default=CANONICAL_STOCK_PRICE_SOURCE,
                         help="Explicit single-dataset price source for independent target labels and evaluation")
+    parser.add_argument("--probability-target-contract", choices=(RAW_DIRECTION_TARGET, LEGACY_COST_TARGET),
+                        default=None,
+                        help="Frozen positive-class meaning; new independent plans default to raw price direction")
     args = parser.parse_args(argv)
     root = resolve_datastore_dir(
         root_dir=args.datastore,
@@ -2384,7 +2518,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         try:
             run_nightly_gameplan_once(root, stock_only=args.stock_only,
                                       independent_stock_horizons=args.independent_stock_horizons,
-                                      stock_price_source=args.stock_price_source)
+                                      stock_price_source=args.stock_price_source,
+                                      probability_target_contract=args.probability_target_contract)
         except Exception as exc:
             print(f"Nightly gameplan failed: {type(exc).__name__}: {exc}")
             return 1

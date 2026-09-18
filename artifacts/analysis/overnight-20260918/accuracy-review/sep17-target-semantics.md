@@ -1,0 +1,15 @@
+# September 17 prediction diagnosis
+
+This is a read-only analysis of the frozen September 17 forecast and actuals artifacts; no refitting, model selection, publication, trading or control changes were made.
+
+The Stats tab is faithful to the saved contract. Its directional accuracy scores raw return sign, while its Brier score evaluates the distinct cost-adjusted target, return greater than 0.10%. Those metrics therefore measure different objectives. This is explicitly disclosed by the Stats probability explanation and per-cell detail; it is not a table arithmetic defect.
+
+All 264 frozen calls were bearish under saved stock-direction-50-v2. The 164 evaluated calls comprise 62 declines, 3 flat outcomes, 24 positive returns no greater than 10 basis points, and 75 returns above 10 basis points. Thus raw-direction accuracy is 62/164 = 37.8049%; cost-target classification accuracy is 89/164 = 54.2683%, with Brier 0.2412877. The latter does not erase 102 failed raw-direction calls. Daily was 1/8, four-hour 8/26, hourly 53/130.
+
+The label and action semantics deserve investigation before parameter tuning: P(return > 10bp) below 50% does not mathematically imply P(return < 0) above 50%. The hourly training cohort has 40.41% positive cost labels but 49.38% raw positive moves; calling its negative class bearish can create a systematic directional skew. Any raw-direction or separate downside probability model must be a versioned research candidate, with costs retained separately and assessed on untouched chronological data.
+
+Calibration also compresses probabilities, but it is not sufficient to explain today's misses: only 3 of 164 scored predictions had raw model probability above 50% before calibration. All 264 forecasts contain 34 raw values above 50%, mostly future daily/weekly outlooks, and zero calibrated values above 50%. The daily saved Platt slope is 0.2054 and assessment probabilities range 38.16% to 41.79%; its development selection improved log loss from 0.68988 (identity) to 0.67364 (Platt). It was selected without assessment outcomes, so disabling calibration on the basis of this day would be post-hoc tuning, not evidence of an improvement.
+
+Evidence in code: ml/independent_stock_targets.py:181-183 defines cost labels; ml/gameplan_actuals_review.py:198,204,218 computes raw direction and cost-target Brier separately; app/ui/gameplan_stats_data.py:217-226 verifies both; app/ui/gameplan_stats.py:505-520 discloses target semantics; ml/stock_direction_policy.py:6-8 and 15-20 uses 50% bands; ml/nightly_gameplan.py:1222-1240 selects fit candidates on development log loss; ml/gameplan_development_selection.py:28-82 selects calibrator on purged development, not assessment.
+
+Exact source paths and machine-readable counts, probability ranges, model diagnostics and training target prevalence are in sep17-target-semantics.json. One day is one correlated market session, not 164 independent trials; multi-session and chronological out-of-sample evidence should govern any candidate selection.

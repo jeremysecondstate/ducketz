@@ -92,6 +92,20 @@ def test_prior_session_selector_cannot_retain_legacy_selector_champion(tmp_path)
     )["run"] == legacy
 
 
+def test_raw_direction_publication_cannot_retain_cost_adjusted_champion(tmp_path):
+    from ml.gameplan_probability_target import RAW_DIRECTION_TARGET
+    publish(tmp_path)
+    assert latest_promoted_champion(
+        tmp_path, group="1d", action_date=DAY, symbols=STOCK_TRADER_SYMBOLS,
+        price_source=SOURCE, before=pd.Timestamp("2026-09-08T10:00Z"),
+        probability_target=RAW_DIRECTION_TARGET,
+    ) is None
+    current = pd.DataFrame({"probability_target_contract": [RAW_DIRECTION_TARGET]})
+    with pytest.raises(RuntimeError, match="another probability target contract"):
+        retain_champion({}, champion=find(tmp_path), current=current, run=tmp_path / "unused",
+                        group="1d", frozen_at="2026-09-08T09:30Z")
+
+
 def test_retained_prediction_rejects_current_features_from_new_selector(tmp_path):
     source_run = publish(tmp_path)
     champion = find(tmp_path)

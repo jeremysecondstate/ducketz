@@ -85,7 +85,8 @@ class GameplanTab:
         self.page.pack(fill="both", expand=True, padx=18, pady=12)
         self.header = tk.Frame(self.page, background=BACKGROUND)
         self.header.pack(fill="x")
-        label(self.header, "Gameplan", size=21, bold=True, background=BACKGROUND).grid(row=0, column=0, sticky="w")
+        self.heading = label(self.header, "Gameplan", size=21, bold=True, background=BACKGROUND)
+        self.heading.grid(row=0, column=0, sticky="w")
         self.header.columnconfigure(0, weight=1)
         self.controls = tk.Frame(self.header, background=BACKGROUND)
         self.controls.grid(row=0, column=1, sticky="e")
@@ -445,6 +446,7 @@ class GameplanTab:
             self.captions["coverage"].set(f"{counted(len(forecasts), 'forecast')} · "
                                         f"{counted(len({row.symbol for row in forecasts}), 'company', 'companies')}")
             kind = "Upcoming session" if self.plan.session > datetime.now(PACIFIC).date().isoformat() else "Saved session"
+            self.heading.configure(text=self.plan.display_name)
             self.subtitle.configure(text=f"{kind} · {date.fromisoformat(self.plan.session):%A, %b %d, %Y} · All times Pacific")
             self.footer.configure(text=("Bullish adds shares · Bearish sells own-horizon shares · No automatic expiry sales · Quantities depend on actual fills."
                 if self.plan.holding_policy == SIGNAL_DRIVEN_HOLDING_POLICY else
@@ -471,6 +473,7 @@ class GameplanTab:
             for key in self.values:
                 self.values[key].set("—")
                 self.captions[key].set("No saved plan")
+            self.heading.configure(text="Gameplan")
             self.subtitle.configure(text="Saved plan · All times Pacific")
             self.footer.configure(text="Projected trades; quantities and exits depend on actual fills.")
             self.table_note.configure(text="Refresh to load a completed saved Gameplan.")

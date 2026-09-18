@@ -359,7 +359,14 @@ def render_trade_review(trade_rows: pd.DataFrame, report: Mapping, model_reports
         if threshold == down_threshold else
         f"Direction is Bullish at {_percent(threshold)} P(up) or higher, Bearish at {_percent(down_threshold)} or lower, and Neutral between them. "
     )
-    lines = [f"# {_text(report.get('action_date'))} Gameplan — quantities and planning prices", "",
+    from ml.gameplan_probability_target import RAW_DIRECTION_TARGET, probability_target_contract
+    target_contract = probability_target_contract(trade_rows)
+    plan_name = "Yung Gameplan (YG)" if target_contract == RAW_DIRECTION_TARGET else "OG Gameplan"
+    probability_meaning = ("P(up) predicts a strictly positive raw price move. Trading costs remain separate from the directional target."
+                           if target_contract == RAW_DIRECTION_TARGET else
+                           "The saved OG probability predicts a positive return after assumed round-trip costs; its original direction labels are retained for evaluation.")
+    lines = [f"# {_text(report.get('action_date'))} {plan_name} — quantities and planning prices", "",
+             probability_meaning, "",
              f"**{len(symbols)} stocks · {len(rows):,} forecasts · " + ("" if has_direction_plan else f"{positive} scheduled entries · ") +
              f"{_count(report.get('orders_placed'))} orders submitted**", "",
              f"Review generated {_pacific(report.get('observed_at'))}. All target windows and recorded times below are Pacific.", "",

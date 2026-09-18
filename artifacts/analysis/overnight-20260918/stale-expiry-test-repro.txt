@@ -1,0 +1,87 @@
+Original HEAD test, deployment guard patched to no-op.
+F                                                                        [100%]
+================================== FAILURES ===================================
+_ test_consecutive_bullish_hours_close_filled_position_then_open_next_saved_forecast[0.6-0.4] _
+
+environment = namespace(root=WindowsPath('C:/Users/7980X/AppData/Local/Temp/pytest-of-7980X/pytest-2883/test_consecutive_bullish_hou...ker=<test_independent_stock_runtime.Broker object at 0x00000147D990A510>, captures=0, after_capture=None, cash=98600.0)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000147F6A6CE90>
+bullish_probability = 0.6, bearish_probability = 0.4
+
+    @pytest.mark.parametrize('bullish_probability,bearish_probability', [(.6, .4), (.51, .49)])
+    def test_consecutive_bullish_hours_close_filled_position_then_open_next_saved_forecast(environment, monkeypatch, bullish_probability, bearish_probability):
+        """Exercise the saved loader, live pricing, reservations and fill reconciliation together."""
+        from test_independent_stock_runtime import ACCOUNT, BROKER_ID
+        from ml.stock_trader.contracts import PortfolioState, QuoteState
+        from ml.stock_trader.horizon_ledger import HorizonLedger, OrderEvidence, FillEvidence
+        from ml.stock_trader.independent_signals import load_current_independent_gameplan_signals
+    
+        env = environment
+        env.held = {symbol: 0. for symbol in STOCK_TRADER_SYMBOLS}
+        env.cash = 100_000.
+        run = env.root / 'ml/nightly-gameplan-runs/saved'
+        run.mkdir(parents=True)
+        pointer = env.root / 'ml/nightly-gameplan-latest/run.json'
+        pointer.parent.mkdir(parents=True)
+        pointer.write_text(json.dumps({'current': {'run_path': 'ml/nightly-gameplan-runs/saved'}}))
+        rows = []
+        for hour in (6, 7, 8, 9):
+            start = pd.Timestamp(f'2026-09-15 {hour:02d}:00', tz='America/Los_Angeles')
+            for symbol in STOCK_TRADER_SYMBOLS:
+                bullish = symbol == 'TWST' and hour < 9
+                rows.append(dict(id=f'2026-09-15:{symbol}:1h@{hour:02d}:00', symbol=symbol,
+                    model_group='1h', direction='BULLISH' if bullish else 'BEARISH',
+                    calibrated_probability=bullish_probability if bullish else bearish_probability, target_window_start=start,
+                    target_window_end=start + pd.Timedelta(hours=1), execution_eligible=True,
+                    action_date='2026-09-15', frozen_at='2026-09-15T09:00:00Z'))
+        pd.DataFrame(rows).to_parquet(run / 'forecasts.parquet')
+        monkeypatch.setattr(runtime, 'load_current_independent_gameplan_signals', load_current_independent_gameplan_signals)
+        monkeypatch.setattr(runtime, 'load_current_enrichment_model', lambda *_: pytest.fail('No research revalidation during execution'))
+    
+        def fills(broker, ledger, **kwargs):
+            evidence = []
+            for order in ledger.snapshot().reservations:
+                if order.status != 'SUBMITTED':
+                    continue
+                sign = 1 if order.side == 'BUY' else -1
+                env.held[order.symbol] += sign * order.quantity
+                env.cash -= sign * order.quantity * float(order.limit_price)
+                evidence.append(OrderEvidence('evidence-' + order.reservation_id, order.reservation_id,
+                    ACCOUNT, env.now.isoformat(), order.broker_order_id, 'FILLED', order.quantity,
+                    order.quantity, 0, (FillEvidence('fill-' + order.reservation_id, order.quantity,
+                        float(order.limit_price), env.now.isoformat()),)))
+            return tuple(evidence)
+    
+        def capture(*args, **kwargs):
+            return PortfolioState(env.now.isoformat(), 100_000., env.cash,
+                sum(env.held.values()) * 100., 0., dict(env.held),
+                {s: q * 100. for s, q in env.held.items()}, {}, {}, 0,
+                {s: QuoteState(s, 99., 101., 100., 100., 1000.,
+                    (env.now - pd.Timedelta(minutes=13)).isoformat(), received_at=env.now.isoformat(),
+                    realtime=True, quote_type='NBBO') for s in STOCK_TRADER_SYMBOLS},
+                'snapshot-' + env.now.isoformat(), BROKER_ID)
+    
+        monkeypatch.setattr('ml.stock_trader.horizon_broker.capture_order_evidence', fills)
+        monkeypatch.setattr(runtime, 'capture_portfolio_state', capture)
+    
+        def wake(local_time):
+            env.now = pd.Timestamp('2026-09-15 ' + local_time, tz='America/Los_Angeles').tz_convert('UTC')
+            result = runtime.run_independent_stock_trader_once(env.root, execute=True, session=env.broker,
+                runtime_clock=lambda: env.now, session_managed=True, sizing_policy=GAMEPLAN_SIZING_POLICY)
+            assert not result.error, result.error
+            return result
+    
+        assert wake('06:50:00').submitted_orders == 1  # Same saved hour, across the PRE/core transition.
+        assert wake('06:50:30').submitted_orders == 0  # Fill recorded; no duplicate entry.
+        for hour in (7, 8):
+            result = wake(f'{hour:02d}:01:00')
+            assert result.submitted_orders == 1
+>           assert env.broker.submissions[-1]['orderLegCollection'][0]['instruction'] == 'SELL'
+E           AssertionError: assert 'BUY' == 'SELL'
+E             
+E             - SELL
+E             + BUY
+
+C:\Users\7980X\AppData\Local\Temp\ducketz-stale-expiry-eekik1q9\test_legacy_expiry_repro.py:165: AssertionError
+=========================== short test summary info ===========================
+FAILED ..\..\Users\7980X\AppData\Local\Temp\ducketz-stale-expiry-eekik1q9\test_legacy_expiry_repro.py::test_consecutive_bullish_hours_close_filled_position_then_open_next_saved_forecast[0.6-0.4]
+1 failed, 7 deselected in 1.92s

@@ -31,6 +31,8 @@ def _independent_forecast_preflight(root: Path, *, action_date) -> dict:
     from ml.stock_trader.independent_signals import verified_promoted_model_groups
     try:
         publication = read_current_gameplan(root)
+        from ml.stock_trader.gameplan_execution import _assert_execution_deployment
+        _assert_execution_deployment(root, publication, action_date=action_date.isoformat())
         config = publication.manifest.get("configuration", {})
         if (config.get("target_contract_version") != STOCK_TARGET_CONTRACT_VERSION
                 or config.get("action_date") != action_date.isoformat()
@@ -85,6 +87,8 @@ an unqualified horizon cannot block another horizon with qualified evidence.
                 "qualified_target_contracts": list(model.qualified_target_contracts)}
     try:
         publication = read_current_gameplan(root)
+        from ml.stock_trader.gameplan_execution import _assert_execution_deployment
+        _assert_execution_deployment(root, publication, action_date=action_date.isoformat())
         config = publication.manifest.get("configuration", {})
         if (config.get("target_contract_version") != STOCK_TARGET_CONTRACT_VERSION
                 or config.get("action_date") != action_date.isoformat()

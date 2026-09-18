@@ -318,6 +318,8 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     publication = read_gameplan_run(root, Path(gameplan_run))
     source = publication.run_directory
     config = publication.manifest["configuration"]
+    from ml.gameplan_probability_target import probability_target_contract, probability_target_metadata
+    probability_metadata = probability_target_metadata(probability_target_contract(config))
     if config.get("preparation_scope") != "STOCK_ONLY" or config.get("target_contract_version") != "independent-stock-targets-v1":
         raise ValueError("Trade planning requires the explicit independent stock-only Gameplan")
     action_date = str(publication.receipt["action_date"])
@@ -359,6 +361,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
         raise ValueError("A forecast claims promotion without verified model authority")
     run = create_timestamp_directory(root / "ml/gameplan-trade-plan-runs", timestamp=observed)
     report = {"schema_version": VERSION, "observed_at": observed.isoformat(), "action_date": action_date,
+              **probability_metadata,
               "source_gameplan_run": source.relative_to(root).as_posix(), "source_receipt_sha256": source_receipt_hash,
               "deadline_at": original_deadline.isoformat(), "effective_deadline_at":deadline_at.isoformat(),
               "deadline_exception":exception_evidence, "execution_authority": AUTHORITY,
@@ -472,6 +475,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
         write_manifest(run, run_timestamp=observed,
                        input_files=[source / "receipt.json", source / "manifest.json", source / "forecasts.parquet", *price_files, *refresh_inputs],
                        output_files=outputs, configuration={"schema_version": VERSION, "action_date": action_date,
+                       **probability_metadata,
                        "source_gameplan_run": report["source_gameplan_run"], "source_receipt_sha256": source_receipt_hash,
                        "reference_completion_contract": completion["contract_version"],
                        "allow_reference_forward_fill": True,
@@ -483,6 +487,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
         if utc(clock()) >= deadline_at:
             raise ValueError("TRADE_PLANNING_DEADLINE_PASSED")
         terminal = {"schema_version": VERSION, "status": "COMPLETE", "run_path": run.relative_to(root).as_posix(),
+                    **probability_metadata,
                     "action_date": action_date, "source_gameplan_run": report["source_gameplan_run"],
                     "source_receipt_sha256": source_receipt_hash, "manifest_sha256": file_checksum(run / "manifest.json"),
                     "forecast_rows": len(rows), "orders_placed": 0, "broker_orders_enabled": False,

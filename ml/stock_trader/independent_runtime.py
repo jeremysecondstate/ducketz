@@ -19,6 +19,7 @@ from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.stock_trader.contracts import PredictionSignal, QuoteState, StockTraderPolicy, canonical_sha256, utc
 from ml.stock_trader.engine import _direct_no_trade
 from ml.stock_trader.gameplan import _entry_deadline, read_gameplan_stock_activation_intent
+from ml.stock_trader.gameplan_execution import GameplanDeploymentUnavailable, _assert_execution_deployment
 from ml.stock_trader.horizon_ledger import HorizonLedger, PortfolioEvidence
 from ml.stock_trader.independent_engine import build_independent_trade_decisions
 from ml.stock_trader.independent_signals import load_current_independent_gameplan_signals
@@ -105,6 +106,26 @@ def _claim_entry_slot(root: Path, timestamp) -> bool:
     return True
 
 
+def _loaded_gameplan_run(root: Path, signals, sources, *, execution_ready_plan: bool) -> Path | None:
+    """Retain the loaded source identity; never infer it from a newer pointer."""
+    run_root = (root / "ml/nightly-gameplan-runs").resolve()
+    runs = {Path(source).resolve().parent for source in sources
+            if Path(source).name == "receipt.json" and Path(source).resolve().parent.parent == run_root}
+    if len(runs) > 1:
+        raise ValueError("Loaded stock signals refer to multiple Gameplan publications")
+    if runs:
+        return next(iter(runs))
+    if execution_ready_plan and signals:
+        fingerprints = {signal.source_fingerprint for signal in signals.values()}
+        if len(fingerprints) != 1:
+            raise ValueError("Loaded stock instructions refer to multiple Gameplan publications")
+        run = (run_root / next(iter(fingerprints))).resolve()
+        if run.parent != run_root:
+            raise ValueError("Loaded Gameplan identity escapes its saved directory")
+        return run
+    return None
+
+
 def run_independent_stock_trader_once(
     datastore_root: Path, *, decided_at=None, execute: bool = False,
     session=None, policy: StockTraderPolicy | None = None,
@@ -185,6 +206,7 @@ def run_independent_stock_trader_once(
         if not window.executable:
             return finish("EXECUTION_WINDOW_CLOSED", error=window.reason)
         signals = {}
+        source_gameplan_run = None
         try:
             if entry_allowed:
                 signal_options = ({"execution_ready_plan": True} if sizing_policy == GAMEPLAN_SIZING_POLICY else
@@ -198,8 +220,18 @@ def run_independent_stock_trader_once(
                         root, resume_quote_run, resume_quote_symbol, as_of=timestamp)
                 else:
                     signals, sources = load_current_independent_gameplan_signals(root, as_of=timestamp, **signal_options)
+                if signals:
+                    source_gameplan_run = _loaded_gameplan_run(root, signals, sources,
+                        execution_ready_plan=sizing_policy == GAMEPLAN_SIZING_POLICY and not resume_quote_run)
+                    _assert_execution_deployment(root, source_gameplan_run,
+                        action_date=timestamp.tz_convert("America/Los_Angeles").date().isoformat())
+                    metadata["source_gameplan_run"] = (source_gameplan_run.relative_to(root).as_posix()
+                                                       if source_gameplan_run is not None else None)
         except (OSError, ValueError, RuntimeError) as exc:
+            signals = {}
             metadata["entry_input_error"] = f"{type(exc).__name__}: {exc}"
+            if isinstance(exc, GameplanDeploymentUnavailable):
+                metadata["gameplan_deployment_error"] = str(exc)
         try:
             model = load_current_enrichment_model(root) if sizing_policy == LEARNED_SIZING_POLICY else None
         except (OSError, ValueError, RuntimeError) as exc:
@@ -327,6 +359,14 @@ def run_independent_stock_trader_once(
         if not window.executable:
             return finish("EXECUTION_WINDOW_CLOSED_AFTER_BROKER_CAPTURE", error=window.reason)
         state = ledger.snapshot()
+        if qualified:
+            try:
+                _assert_execution_deployment(root, source_gameplan_run,
+                    action_date=timestamp.tz_convert("America/Los_Angeles").date().isoformat())
+            except (OSError, ValueError, RuntimeError) as exc:
+                qualified = {}
+                metadata["entry_input_error"] = f"{type(exc).__name__}: {exc}"
+                metadata["gameplan_deployment_error"] = str(exc)
         if sizing_policy == GAMEPLAN_SIZING_POLICY:
             # A read failure or quote skip does not consume a forecast. Existing
             # allocations, including completed ones, suppress its resubmission.
@@ -389,7 +429,12 @@ def run_independent_stock_trader_once(
         )
         if not execute:
             return finish("DRY_RUN_INDEPENDENT_STOCK_DECISIONS", decisions=decisions, publication=publication)
-        result = _submit_batch(root, broker, ledger, decisions, publication, window, snapshot_id, stable_identity, clock, finish)
+        result = _submit_batch(root, broker, ledger, decisions, publication, window, snapshot_id, stable_identity, clock, finish,
+                               source_gameplan_run=source_gameplan_run)
+        if metadata.get("gameplan_deployment_error") and not result.error:
+            return replace(result,
+                status="OWNED_EXITS_SUBMITTED_WITH_ENTRY_PLAN_UNAVAILABLE" if result.submitted_orders else "INDEPENDENT_TARGET_PLAN_UNAVAILABLE",
+                error=metadata["gameplan_deployment_error"])
         if blocked_exit_quotes and not result.error:
             return replace(result, status="HORIZON_EXIT_QUOTE_UNAVAILABLE",
                            error="Due owned exit requires a current quote: " + ", ".join(sorted(set(blocked_exit_quotes))))
@@ -527,7 +572,8 @@ def _cancel_expired_entries(root, broker, ledger, state, portfolio, stable_ident
     return requested, None
 
 
-def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot_id, stable_identity, clock, finish):
+def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot_id, stable_identity, clock, finish,
+                  *, source_gameplan_run=None):
     submitted = duplicates = 0
     batch_id = publication.run_directory.name
     for decision in decisions:
@@ -538,6 +584,13 @@ def _submit_batch(root, broker, ledger, decisions, publication, window, snapshot
             context = broker.prepare_order_submission()
 
             def final_gate():
+                if decision.prediction.get("position_purpose") != "EXIT":
+                    try:
+                        _assert_execution_deployment(root, source_gameplan_run,
+                            action_date=utc(decision.prediction["target_window_start"]).tz_convert(
+                                "America/Los_Angeles").date().isoformat())
+                    except (OSError, ValueError, RuntimeError) as exc:
+                        raise _SubmissionStopped("GAMEPLAN_DEPLOYMENT_NOT_APPROVED: " + str(exc)) from exc
                 reason = _submission_identity_safety_reason(decision, context)
                 if reason:
                     raise _SubmissionStopped(reason)
