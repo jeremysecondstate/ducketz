@@ -1,0 +1,13 @@
+{
+  "verified_at": "2026-09-19T04:13:43.086724+00:00",
+  "overnight_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260919T040748.657031Z",
+  "scope": "Read-only saved-model inference and arithmetic; no fit, archive/account/provider/broker reads.",
+  "orders_placed": 0,
+  "errors": [],
+  "coverage_notes": [],
+  "directional": {},
+  "status": "NOT_READY_FOR_FINAL_VERIFICATION",
+  "heavy_checks_started": false,
+  "native_report_status": "RUNNING",
+  "native_receipt_status": "MISSING"
+}
