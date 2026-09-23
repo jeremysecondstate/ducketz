@@ -1,0 +1,130 @@
+{
+  "observed_at": "2026-09-22T04:11:25.200007+00:00",
+  "scope": "READ_ONLY_EXACT_TRACKED_ORDER_HISTORY",
+  "ledger_mutations": 0,
+  "orders_submitted": 0,
+  "orders_cancelled": 0,
+  "orders_replaced": 0,
+  "broker_data_http_methods": [
+    "GET"
+  ],
+  "orders": [
+    {
+      "status": "CANCELED",
+      "quantity": 31.0,
+      "filledQuantity": 0.0,
+      "remainingQuantity": 0.0,
+      "cancelable": false,
+      "enteredTime": "2026-09-21T20:06:11+0000",
+      "closeTime": "2026-09-22T00:00:28+0000",
+      "orderType": "LIMIT",
+      "price": 123.87,
+      "duration": "DAY",
+      "session": "PM",
+      "symbol": "CROX",
+      "horizon": "1h",
+      "ledger_status": "WORKING",
+      "reserved_quantity": 31,
+      "ledger_filled_quantity": 0,
+      "exact_broker_order_id_matched": true,
+      "present_fields": [
+        "accountNumber",
+        "cancelable",
+        "closeTime",
+        "complexOrderStrategyType",
+        "destinationLinkName",
+        "duration",
+        "editable",
+        "enteredTime",
+        "filledQuantity",
+        "orderId",
+        "orderLegCollection",
+        "orderStrategyType",
+        "orderType",
+        "price",
+        "quantity",
+        "remainingQuantity",
+        "requestedDestination",
+        "session",
+        "status",
+        "tag"
+      ],
+      "order_legs": [
+        {
+          "instruction": "SELL",
+          "quantity": 31.0,
+          "legId": 1,
+          "instrument": {
+            "symbol": "CROX",
+            "assetType": "EQUITY"
+          }
+        }
+      ],
+      "activity_collection": [],
+      "native_normalization": "VERIFIED",
+      "native_status": "CANCELLED",
+      "native_filled": 0,
+      "native_remaining": 0
+    },
+    {
+      "status": "CANCELED",
+      "quantity": 48.0,
+      "filledQuantity": 0.0,
+      "remainingQuantity": 0.0,
+      "cancelable": false,
+      "enteredTime": "2026-09-21T23:01:06+0000",
+      "closeTime": "2026-09-22T00:00:50+0000",
+      "orderType": "LIMIT",
+      "price": 40.6,
+      "duration": "DAY",
+      "session": "PM",
+      "symbol": "IONQ",
+      "horizon": "1h",
+      "ledger_status": "WORKING",
+      "reserved_quantity": 48,
+      "ledger_filled_quantity": 0,
+      "exact_broker_order_id_matched": true,
+      "present_fields": [
+        "accountNumber",
+        "cancelable",
+        "closeTime",
+        "complexOrderStrategyType",
+        "destinationLinkName",
+        "duration",
+        "editable",
+        "enteredTime",
+        "filledQuantity",
+        "orderId",
+        "orderLegCollection",
+        "orderStrategyType",
+        "orderType",
+        "price",
+        "quantity",
+        "remainingQuantity",
+        "requestedDestination",
+        "session",
+        "status",
+        "tag"
+      ],
+      "order_legs": [
+        {
+          "instruction": "BUY",
+          "quantity": 48.0,
+          "legId": 1,
+          "instrument": {
+            "symbol": "IONQ",
+            "assetType": "EQUITY"
+          }
+        }
+      ],
+      "activity_collection": [],
+      "native_normalization": "VERIFIED",
+      "native_status": "CANCELLED",
+      "native_filled": 0,
+      "native_remaining": 0
+    }
+  ],
+  "account_matches": true,
+  "history_rows": 126,
+  "status": "READ_COMPLETE"
+}

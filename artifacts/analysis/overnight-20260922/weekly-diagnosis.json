@@ -1,0 +1,380 @@
+{
+  "reviewed_at": "2026-09-22T05:57:02.107512+00:00",
+  "status": "VALID_RESEARCH_NOT_PROMOTED_NO_CONCRETE_REPAIR_IDENTIFIED",
+  "publication": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260922T054940.677673Z",
+  "baseline": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260919T061628.240412Z",
+  "probability_target_contract": "raw-price-direction-v1",
+  "gate": {
+    "assessment_beats_baseline": {
+      "brier_score": false,
+      "log_loss": false
+    },
+    "assessment_minus_baseline": {
+      "brier_score": 0.00782801960561753,
+      "log_loss": 0.0170698975572075
+    },
+    "baseline_tolerances": {
+      "brier_score": 0.005,
+      "log_loss": 0.01
+    },
+    "checks": {
+      "assessment_has_at_least_10_decision_clusters": true,
+      "brier_within_baseline_tolerance": false,
+      "calibration_retains_directional_information": true,
+      "expected_calibration_error_at_most_0_15": true,
+      "log_loss_within_baseline_tolerance": false
+    },
+    "interpretation": "Qualification within operator-authorized baseline-error tolerances; not statistical or measured baseline outperformance.",
+    "policy_adoption_context": "Authorized prospectively after the reference development candidate was locked and its assessment results were known. Model selection does not use assessment outcomes.",
+    "policy_version": "independent-stock-directional-promotion-v2",
+    "status": "RESEARCH_NOT_PROMOTED"
+  },
+  "assessment": {
+    "brier_score": 0.2613715351641155,
+    "direction_accuracy_at_0_5": 0.5058823529411764,
+    "expected_calibration_error_10_bin": 0.08764194810560774,
+    "log_loss": 0.7174201322752929,
+    "mean_probability": 0.5590604506232094,
+    "positive_rate": 0.5176470588235295,
+    "rows": 255
+  },
+  "baseline_scores": {
+    "brier_score": 0.25354351555849797,
+    "direction_accuracy_at_0_5": 0.5176470588235295,
+    "expected_calibration_error_10_bin": 0.062088116766568446,
+    "log_loss": 0.7003502347180854,
+    "mean_probability": 0.5797351755900979,
+    "positive_rate": 0.5176470588235295,
+    "rows": 255
+  },
+  "failed_margin_beyond_tolerance": {
+    "brier_score": 0.0028280196056175303,
+    "log_loss": 0.007069897557207499
+  },
+  "old_cohort_rows": 2274,
+  "new_cohort_rows": 2282,
+  "common_rows": 2274,
+  "common_columns_changed": {},
+  "removed_rows": [],
+  "new_targets": [
+    {
+      "symbol": "AAPL",
+      "route": "1w@D+5",
+      "decision_timestamp": "2026-09-15 00:05:00+00:00",
+      "target_window_start": "2026-09-15 11:00:00+00:00",
+      "target_window_end": "2026-09-22 00:00:00+00:00",
+      "observed_return": 0.023194008214544537,
+      "target": 1,
+      "target_start_gap_seconds": 0.0,
+      "target_end_gap_seconds": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "1w@D+5",
+      "decision_timestamp": "2026-09-15 00:05:00+00:00",
+      "target_window_start": "2026-09-15 11:00:00+00:00",
+      "target_window_end": "2026-09-22 00:00:00+00:00",
+      "observed_return": 0.02617407143422823,
+      "target": 1,
+      "target_start_gap_seconds": 0.0,
+      "target_end_gap_seconds": 0.0
+    },
+    {
+      "symbol": "COST",
+      "route": "1w@D+5",
+      "decision_timestamp": "2026-09-15 00:05:00+00:00",
+      "target_window_start": "2026-09-15 11:00:00+00:00",
+      "target_window_end": "2026-09-22 00:00:00+00:00",
+      "observed_return": -0.01966114276980846,
+      "target": 0,
+      "target_start_gap_seconds": 0.0,
+      "target_end_gap_seconds": 0.0
+    },
+    {
+      "symbol": "GOOG",
+      "route": "1w@D+5",
+      "decision_timestamp": "2026-09-15 00:05:00+00:00",
+      "target_window_start": "2026-09-15 11:00:00+00:00",
+      "target_window_end": "2026-09-22 00:00:00+00:00",
+      "observed_return": 0.028590619706792664,
+      "target": 1,
+      "target_start_gap_seconds": 0.0,
+      "target_end_gap_seconds": 0.0
+    },
+    {
+      "symbol": "IONQ",
+      "route": "1w@D+5",
+      "decision_timestamp": "2026-09-15 00:05:00+00:00",
+      "target_window_start": "2026-09-15 11:00:00+00:00",
+      "target_window_end": "2026-09-22 00:00:00+00:00",
+      "observed_return": 0.09421841541755893,
+      "target": 1,
+      "target_start_gap_seconds": 0.0,
+      "target_end_gap_seconds": 300.0
+    },
+    {
+      "symbol": "MU",
+      "route": "1w@D+5",
+      "decision_timestamp": "2026-09-15 00:05:00+00:00",
+      "target_window_start": "2026-09-15 11:00:00+00:00",
+      "target_window_end": "2026-09-22 00:00:00+00:00",
+      "observed_return": 0.12051502145922743,
+      "target": 1,
+      "target_start_gap_seconds": 0.0,
+      "target_end_gap_seconds": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "1w@D+5",
+      "decision_timestamp": "2026-09-15 00:05:00+00:00",
+      "target_window_start": "2026-09-15 11:00:00+00:00",
+      "target_window_end": "2026-09-22 00:00:00+00:00",
+      "observed_return": 0.07049350160105483,
+      "target": 1,
+      "target_start_gap_seconds": 0.0,
+      "target_end_gap_seconds": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "1w@D+5",
+      "decision_timestamp": "2026-09-15 00:05:00+00:00",
+      "target_window_start": "2026-09-15 11:00:00+00:00",
+      "target_window_end": "2026-09-22 00:00:00+00:00",
+      "observed_return": 0.13435581646406503,
+      "target": 1,
+      "target_start_gap_seconds": 0.0,
+      "target_end_gap_seconds": 0.0
+    }
+  ],
+  "partition_changes": {
+    "train": {
+      "old_rows": 1561,
+      "new_rows": 1561,
+      "added_rows": 0,
+      "removed_rows": 0,
+      "old_clusters": 629,
+      "new_clusters": 629,
+      "old_first_decision": "2023-04-04 22:05:00+00:00",
+      "new_first_decision": "2023-04-04 22:05:00+00:00",
+      "old_last_decision": "2026-04-29 00:05:00+00:00",
+      "new_last_decision": "2026-04-29 00:05:00+00:00",
+      "old_positive_rate": 0.590006406149904,
+      "new_positive_rate": 0.590006406149904
+    },
+    "selection": {
+      "old_rows": 173,
+      "new_rows": 176,
+      "added_rows": 6,
+      "removed_rows": 3,
+      "old_clusters": 53,
+      "new_clusters": 54,
+      "old_first_decision": "2026-05-05 23:05:00+00:00",
+      "new_first_decision": "2026-05-06 00:05:00+00:00",
+      "old_last_decision": "2026-06-05 00:05:00+00:00",
+      "new_last_decision": "2026-06-06 00:05:00+00:00",
+      "old_positive_rate": 0.4913294797687861,
+      "new_positive_rate": 0.48863636363636365
+    },
+    "calibration": {
+      "old_rows": 203,
+      "new_rows": 197,
+      "added_rows": 0,
+      "removed_rows": 6,
+      "old_clusters": 56,
+      "new_clusters": 55,
+      "old_first_decision": "2026-06-12 00:05:00+00:00",
+      "new_first_decision": "2026-06-12 23:05:00+00:00",
+      "old_last_decision": "2026-07-22 00:05:00+00:00",
+      "new_last_decision": "2026-07-22 00:05:00+00:00",
+      "old_positive_rate": 0.4236453201970443,
+      "new_positive_rate": 0.41624365482233505
+    },
+    "assessment": {
+      "old_rows": 248,
+      "new_rows": 255,
+      "added_rows": 8,
+      "removed_rows": 1,
+      "old_clusters": 63,
+      "new_clusters": 63,
+      "old_first_decision": "2026-07-28 23:05:00+00:00",
+      "new_first_decision": "2026-07-29 00:05:00+00:00",
+      "old_last_decision": "2026-09-12 00:05:00+00:00",
+      "new_last_decision": "2026-09-15 00:05:00+00:00",
+      "old_positive_rate": 0.5080645161290323,
+      "new_positive_rate": 0.5176470588235295
+    }
+  },
+  "selected_family": "hist-gradient-mlp-0.25-prior-shrinkage-w0.75",
+  "previous_selected_family": "hist-gradient-prior-shrinkage-w0.5",
+  "selected_development_log_loss": 0.6989911432975857,
+  "runner_up_family": "hist-gradient-prior-shrinkage-w0.5",
+  "runner_up_development_log_loss": 0.699006252487914,
+  "development_winner_margin": 1.5109190328321809e-05,
+  "fixed_candidate_count": 36,
+  "fixed_C_grid": [
+    0.001,
+    0.01,
+    0.1,
+    1.0
+  ],
+  "fixed_shrinkage_weights": [
+    0.25,
+    0.5,
+    0.75,
+    1.0
+  ],
+  "calibration_selection": {
+    "assessment_used_for_selection": false,
+    "candidate_eligibility": {
+      "identity": {
+        "eligible": true,
+        "nondecreasing_constraint_active": false,
+        "platt_slope": null,
+        "probability_span": 0.3969399346754259,
+        "reason": "INFORMATION_RETAINED"
+      },
+      "platt": {
+        "eligible": true,
+        "nondecreasing_constraint_active": false,
+        "platt_slope": 0.271419843293631,
+        "probability_span": 0.09364279444638304,
+        "reason": "INFORMATION_RETAINED"
+      }
+    },
+    "candidate_metrics": {
+      "identity": {
+        "brier_score": 0.27451667158023485,
+        "log_loss": 0.7450369989966821,
+        "rows": 95
+      },
+      "platt": {
+        "brier_score": 0.2812048426023612,
+        "log_loss": 0.7651325816775889,
+        "rows": 95
+      }
+    },
+    "fit_class_counts": {
+      "0": 46,
+      "1": 18
+    },
+    "fit_decision_clusters": 16,
+    "fit_last_target_end": "2026-07-02T00:00:00+00:00",
+    "fit_rows": 64,
+    "full_calibration_refit_rows": 0,
+    "policy": "independent-stock-information-retaining-development-selection-v2",
+    "purged_rows": 38,
+    "selected_family": "identity",
+    "selection_basis": "minimum_later_calibration_development_log_loss_among_information_retaining_candidates_identity_wins_ties",
+    "selection_status": "SELECTED_ON_PURGED_DEVELOPMENT",
+    "split": "first_half_vs_second_half_decision_clusters",
+    "validation_decision_clusters": 28,
+    "validation_first_decision": "2026-07-02T21:05:00+00:00",
+    "validation_rows": 95
+  },
+  "calibration_diagnostics": {
+    "assessment_probability_range": [
+      0.3271491837954729,
+      0.7851838418359752
+    ],
+    "calibrated_probability_range": [
+      0.32639026577157093,
+      0.7577963129445331
+    ],
+    "calibration_positive_rate": 0.41624365482233505,
+    "calibration_rows": 197,
+    "information_available": true,
+    "nondecreasing_constraint_active": false,
+    "platt_slope": null,
+    "raw_probability_range": [
+      0.32639026577157093,
+      0.7577963129445331
+    ],
+    "status": "DIRECTIONAL_INFORMATION_AVAILABLE"
+  },
+  "fit_events": [
+    {
+      "training_event": "FIT_COMPLETE",
+      "fit": "gameplan/1w/tree-selection",
+      "elapsed_seconds": 1.56,
+      "iterations": 120,
+      "loss": null,
+      "warnings": 0
+    },
+    {
+      "training_event": "FIT_COMPLETE",
+      "fit": "gameplan/1w/neural-selection",
+      "elapsed_seconds": 0.06,
+      "iterations": 18,
+      "loss": 0.6305327693476637,
+      "warnings": 0
+    },
+    {
+      "training_event": "FIT_COMPLETE",
+      "fit": "gameplan/1w/logistic-c0.001-selection",
+      "elapsed_seconds": 0.01,
+      "iterations": "[8]",
+      "loss": null,
+      "warnings": 0
+    },
+    {
+      "training_event": "FIT_COMPLETE",
+      "fit": "gameplan/1w/logistic-c0.01-selection",
+      "elapsed_seconds": 0.01,
+      "iterations": "[15]",
+      "loss": null,
+      "warnings": 0
+    },
+    {
+      "training_event": "FIT_COMPLETE",
+      "fit": "gameplan/1w/logistic-c0.1-selection",
+      "elapsed_seconds": 0.02,
+      "iterations": "[41]",
+      "loss": null,
+      "warnings": 0
+    },
+    {
+      "training_event": "FIT_COMPLETE",
+      "fit": "gameplan/1w/logistic-c1-selection",
+      "elapsed_seconds": 0.02,
+      "iterations": "[60]",
+      "loss": null,
+      "warnings": 0
+    },
+    {
+      "training_event": "FIT_COMPLETE",
+      "fit": "gameplan/1w/tree-final",
+      "elapsed_seconds": 1.5,
+      "iterations": 120,
+      "loss": null,
+      "warnings": 0
+    },
+    {
+      "training_event": "FIT_COMPLETE",
+      "fit": "gameplan/1w/neural-final",
+      "elapsed_seconds": 0.07,
+      "iterations": 24,
+      "loss": 0.611323259321917,
+      "warnings": 0
+    },
+    {
+      "training_event": "FIT_COMPLETE",
+      "fit": "gameplan/1w/logistic-final",
+      "elapsed_seconds": 0.02,
+      "iterations": "[60]",
+      "loss": null,
+      "warnings": 0
+    }
+  ],
+  "concrete_defect_identified": false,
+  "repair_or_retry_justified": false,
+  "reason": "All common source cohort fields are unchanged; newly matured targets drive deterministic partition movement. Saved development selection is correct and completes before assessment, actual arithmetic fails preserved v2 tolerances. No fitting warnings or broken source/time/label/support invariant found. Choosing a different candidate after seeing this assessment would not be a defect repair.",
+  "orders_placed": 0,
+  "models_fitted_or_relabelled": 0,
+  "code_changes": 0,
+  "code_references": [
+    "C:/dev/ducketz/ml/nightly_gameplan.py:1270",
+    "C:/dev/ducketz/ml/nightly_gameplan.py:1303",
+    "C:/dev/ducketz/ml/nightly_gameplan.py:1344",
+    "C:/dev/ducketz/ml/nightly_gameplan.py:1604"
+  ]
+}

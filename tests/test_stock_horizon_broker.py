@@ -143,6 +143,100 @@ def test_expired_partial_order_retains_fills_but_releases_unfilled_reservation(l
     assert ledger.snapshot().allocations[0].reserved_buy_shares == 0
 
 
+def cancellation_activity(quantity):
+    return {"activityType": "EXECUTION", "activityId": "cancel-1", "executionType": "CANCELED",
+        "quantity": quantity, "orderRemainingQuantity": 0.0,
+        "executionLegs": [{"legId": 1, "quantity": quantity, "mismarkedQuantity": 0.0,
+                           "price": 0.0, "time": "2026-09-08T11:00:25Z"}]}
+
+
+def test_observed_crox_cancellation_is_not_a_zero_price_fill(ledger):
+    reservation = replace(submitted(ledger), symbol="CROX", quantity=52)
+    raw = raw_order(status="CANCELED", filled=0)
+    raw["quantity"], raw["remainingQuantity"] = 52.0, 0.0
+    raw["orderLegCollection"][0]["quantity"] = 52.0
+    raw["orderLegCollection"][0]["instrument"]["symbol"] = "CROX"
+    raw["orderActivityCollection"] = [cancellation_activity(52.0)]
+    evidence = normalize_order_evidence(raw, reservation, account_fingerprint=ACCOUNT, observed_at=OBSERVED)
+    assert (evidence.status, evidence.order_quantity, evidence.cumulative_filled_quantity,
+            evidence.remaining_quantity, evidence.fills) == ("CANCELLED", 52, 0, 0, ())
+
+
+@pytest.mark.parametrize("filled", [0, 4])
+@pytest.mark.parametrize("status", ["CANCELED", "CANCELLED", "EXPIRED"])
+def test_explicit_cancellation_releases_only_unfilled_shares(ledger, filled, status):
+    reservation = submitted(ledger)
+    raw = raw_order(status=status, filled=filled)
+    raw["remainingQuantity"] = 0
+    if filled:
+        raw["orderActivityCollection"][0]["executionType"] = "FILL"
+    raw["orderActivityCollection"].append(cancellation_activity(10 - filled))
+    evidence = normalize_order_evidence(raw, reservation, account_fingerprint=ACCOUNT, observed_at=OBSERVED)
+    assert sum(fill.quantity for fill in evidence.fills) == filled
+    assert all(fill.price == "99.99" for fill in evidence.fills)
+    assert ledger.reconcile(portfolio("cancel", "2026-09-08T11:00:31Z", 20 + filled),
+                            order_evidence=(evidence,)).ready
+    assert ledger.lookup_reservation(reservation.reservation_id).status == "CANCELLED"
+    assert ledger.snapshot().allocations[0].filled_shares == filled
+    assert ledger.snapshot().allocations[0].reserved_buy_shares == 0
+
+
+@pytest.mark.parametrize("damage", ["working", "filled", "rejected", "wrong_kind", "wrong_leg", "missing_leg_id",
+    "nonzero_price", "missing_price", "fractional", "quantity", "activity_quantity", "activity_remaining",
+    "missing_activity_quantity", "missing_activity_remaining", "missing_timestamp", "future_timestamp",
+    "post_cancel_fill", "duplicate", "missing_legs", "malformed_leg", "missing_type"])
+def test_unproven_or_contradictory_cancellation_fails_closed(ledger, damage):
+    reservation = submitted(ledger)
+    raw = raw_order(status="CANCELED", filled=4)
+    cancel = cancellation_activity(6)
+    raw["orderActivityCollection"].append(cancel)
+    leg = cancel["executionLegs"][0]
+    if damage == "working": raw["status"] = "WORKING"
+    elif damage == "filled": raw.update(status="FILLED", filledQuantity=10, remainingQuantity=0)
+    elif damage == "rejected": raw.update(status="REJECTED", filledQuantity=0, remainingQuantity=0)
+    elif damage == "wrong_kind": cancel["activityType"] = "FILL"
+    elif damage == "wrong_leg": leg["legId"] = 2
+    elif damage == "missing_leg_id": leg.pop("legId")
+    elif damage == "nonzero_price": leg["price"] = 99.99
+    elif damage == "missing_price": leg.pop("price")
+    elif damage == "fractional": leg["quantity"] = 5.5
+    elif damage == "quantity": leg["quantity"], cancel["quantity"] = 5, 5
+    elif damage == "activity_quantity": cancel["quantity"] = 7
+    elif damage == "activity_remaining": cancel["orderRemainingQuantity"] = 6
+    elif damage == "missing_activity_quantity": cancel.pop("quantity")
+    elif damage == "missing_activity_remaining": cancel.pop("orderRemainingQuantity")
+    elif damage == "missing_timestamp": leg.pop("time")
+    elif damage == "future_timestamp": leg["time"] = "2026-09-08T11:00:31Z"
+    elif damage == "post_cancel_fill": leg["time"] = "2026-09-08T11:00:19Z"
+    elif damage == "duplicate": raw["orderActivityCollection"].append(deepcopy(cancel))
+    elif damage == "missing_legs": cancel["executionLegs"] = []
+    elif damage == "malformed_leg": cancel["executionLegs"] = [None]
+    elif damage == "missing_type": cancel.pop("executionType")
+    with pytest.raises(OrderHistoryError):
+        normalize_order_evidence(raw, reservation, account_fingerprint=ACCOUNT, observed_at=OBSERVED)
+    assert ledger.lookup_reservation(reservation.reservation_id) == reservation
+    assert ledger.snapshot().allocations[0].filled_shares == 0
+
+
+@pytest.mark.parametrize("execution_type", ["CORRECTED", "BUSTED", "REJECTED", "UNKNOWN"])
+def test_unknown_execution_types_cannot_become_fills(ledger, execution_type):
+    reservation = submitted(ledger)
+    raw = raw_order()
+    raw["orderActivityCollection"][0]["executionType"] = execution_type
+    with pytest.raises(OrderHistoryError, match="UNSUPPORTED_OR_UNCERTAIN_EXECUTION_TYPE"):
+        normalize_order_evidence(raw, reservation, account_fingerprint=ACCOUNT, observed_at=OBSERVED)
+
+
+@pytest.mark.parametrize("execution_type", [None, "FILL"])
+def test_genuine_fill_still_requires_positive_price(ledger, execution_type):
+    reservation = submitted(ledger)
+    raw = raw_order()
+    raw["orderActivityCollection"][0]["executionType"] = execution_type
+    raw["orderActivityCollection"][0]["executionLegs"][0]["price"] = 0
+    with pytest.raises(OrderHistoryError, match="INVALID_BROKER_NUMERIC_EVIDENCE"):
+        normalize_order_evidence(raw, reservation, account_fingerprint=ACCOUNT, observed_at=OBSERVED)
+
+
 @pytest.mark.parametrize("response,reason", [([], "MISSING"), ({"orders": []}, "COMPLETE_LIST"),
     ([raw_order(), raw_order()], "DUPLICATE_ORDER_IDS"), ([raw_order()] * ORDER_HISTORY_LIMIT, "TRUNCATED")])
 def test_history_completeness_failures_are_not_silently_ignored(ledger, response, reason):

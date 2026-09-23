@@ -1,0 +1,191 @@
+{
+  "observed_at": "2026-09-21T04:10:39.884300+00:00",
+  "status": "UNCHANGED_PLANNING_BLOCKER_REQUIRES_TRADING_CODE_AUTHORIZATION",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260919T040748.657031Z",
+  "native_status": "FAILED",
+  "completed_stages": [
+    "loop_a_close_fetch",
+    "loop_b_directional_generation",
+    "stock_target_history",
+    "gameplan_evaluation",
+    "gameplan_publication",
+    "stock_enrichment_training"
+  ],
+  "failed_stage": "gameplan_trade_planning",
+  "pending_stage": "gameplan_actuals_review",
+  "deadline_at": "2026-09-21T11:00:00+00:00",
+  "pinned_gameplan": {
+    "action_date": "2026-09-21",
+    "receipt_sha256": "a858eea4ee4621de2131d6e5f9ce73a8fd9eee3e723394c30dcc2c82c6f2d269",
+    "run_path": "ml/nightly-gameplan-runs/20260919T061628.240412Z"
+  },
+  "native_report_and_log_hashes_verified": true,
+  "production_pointers": {
+    "overnight-latest": {
+      "sha256": "2427c653ea8b6eaba554e39c92608cdbcddff70fdc5dcf73458aded803f00803",
+      "value": {
+        "run_path": "ml/overnight-runs/20260919T040748.657031Z"
+      }
+    },
+    "nightly-gameplan-latest": {
+      "sha256": "c46478be42650e6f77bce8143ee76d2b18011c30a5e0ac6874010225b0ba15cd",
+      "value": {
+        "current": {
+          "action_date": "2026-09-21",
+          "manifest_checksum_sha256": "a6b2ff145655b56c6aa51719cd2a5cf260cd426096f89954987e21dcf4885d30",
+          "published_at": "2026-09-19T06:18:37.121392+00:00",
+          "receipt_checksum_sha256": "a858eea4ee4621de2131d6e5f9ce73a8fd9eee3e723394c30dcc2c82c6f2d269",
+          "run_path": "ml/nightly-gameplan-runs/20260919T061628.240412Z"
+        },
+        "schema_version": "immutable-overnight-gameplan-pointer-v1"
+      }
+    },
+    "stock-trader-model-latest": {
+      "sha256": "a2a7dba383e21f5e9b8a8f9e8a096b7b73fd468b1e1bc3d243a153ec200596e4",
+      "value": {
+        "manifest_sha256": "0b36d2eba6feddc1f062ffc4ba0709ab8e54e6cf4151a6574871af02f577679f",
+        "model_fingerprint": "635cfd4d5816f8d3a815095344ea37c3de2f6d26718d32c8326a24607462b65b",
+        "model_sha256": "64bff9de8b588f5673faeeb292f0298b3113f84044d99d675f19e3455adba549",
+        "receipt_sha256": "904e04c7f15161f90d4f909570172a670648e18c38037f09977c38bab367de68",
+        "run_path": "ml/stock-trader-model-runs/20260919T061839.948292Z",
+        "schema_version": "stock-trader-enrichment-model-pointer-v1",
+        "trained_at": "2026-09-19T06:18:39.948292+00:00"
+      }
+    },
+    "gameplan-trade-plan-latest": {
+      "sha256": "536298f8172255e462ff1e847920c05a2a36e91881a6dc99bb37f6ea92991d26",
+      "value": {
+        "current": {
+          "action_date": "2026-09-18",
+          "receipt_sha256": "5c69044aab8a11fbad8dae78faf333abf5ae136e36e7b1931afe9e7692f7d549",
+          "run_path": "ml/gameplan-trade-plan-runs/20260918T080320.581880Z",
+          "source_receipt_sha256": "25b7e40ff361244b6fd4b1e31465bb138c468140f8cc6495a4bfa10594998fc5"
+        },
+        "schema_version": "cash-aware-gameplan-trade-planning-v4"
+      }
+    },
+    "gameplan-actuals-review-latest": {
+      "sha256": "618e92e831d452da83d57146958fd8b75c88df3505e664cdee6da3e37e39ba53",
+      "value": {
+        "current": {
+          "action_date": "2026-09-17",
+          "receipt_sha256": "7958b76827e2ac60aac0430e283bc6fa01d181c00ad31dff6a0fb613c804c4c2",
+          "run_path": "ml/gameplan-actuals-review-runs/20260918T055047.136335Z"
+        },
+        "schema_version": "gameplan-actuals-review-v1"
+      }
+    },
+    "gameplan-evaluation-latest": {
+      "sha256": "728dd31b2258506c6e1c398816f547aeac983fd9ca3a5a4bc6c19e48b1eba4c4",
+      "value": {
+        "current": {
+          "receipt_checksum_sha256": "a82768605b5b88f5ed8a5daf7d48d33602b14977a67378dbe5800b54622c07ed",
+          "run_path": "ml/gameplan-evaluation-runs/20260919T160206.179587Z"
+        },
+        "schema_version": "saved-gameplan-evaluations-v1"
+      }
+    }
+  },
+  "pointers_unchanged_since_previous_audit": {
+    "overnight-latest": true,
+    "nightly-gameplan-latest": true,
+    "stock-trader-model-latest": true,
+    "gameplan-trade-plan-latest": true,
+    "gameplan-actuals-review-latest": true,
+    "gameplan-evaluation-latest": true
+  },
+  "open_ledger_reservations": [
+    {
+      "symbol": "CROX",
+      "horizon": "1w",
+      "side": "BUY",
+      "quantity": 52,
+      "filled": 0,
+      "status": "WORKING",
+      "last_evidence_at": "2026-09-18T12:00:05.766412+00:00"
+    }
+  ],
+  "last_persisted_ownership_snapshot": {
+    "observed_at": "2026-09-18T12:00:05.766585+00:00",
+    "ready": 1,
+    "reasons": "[]"
+  },
+  "ownership_block_count": 0,
+  "broker_evidence_reused_from": "C:/dev/ducketz/artifacts/analysis/overnight-20260920/broker-order-status-readonly.json",
+  "fresh_broker_read_performed": false,
+  "manual_worker_status": {
+    "action_date": "2026-09-21",
+    "calls": 0,
+    "closes_at": "2026-09-21T17:00:00-07:00",
+    "consecutive_failures": 0,
+    "execute": true,
+    "failed_cycles": 0,
+    "heartbeat_at": "2026-09-21T04:10:28.570104+00:00",
+    "last_cycle": null,
+    "late_opening_date": null,
+    "orders_submitted": 0,
+    "pid": 40912,
+    "resume_quote_run": null,
+    "resume_quote_symbol": null,
+    "schema_version": "independent-stock-session-status-v1",
+    "sizing_policy": "gameplan-direction-current-market-v1",
+    "started_at": "2026-09-21T02:20:57.293884+00:00",
+    "status": "SLEEPING_UNTIL_OPEN",
+    "wait_for_open": true,
+    "wakes_at": "2026-09-21T04:00:00-07:00"
+  },
+  "manual_worker_heartbeat_age_seconds": 11.381334,
+  "manual_worker_processes": [
+    {
+      "pid": 33480,
+      "parent_pid": 60976,
+      "created_at": 1789957256.0130155,
+      "executable": "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "ml.gameplan_stock_trader",
+        "--datastore-target",
+        "pc",
+        "--execute",
+        "--target-horizon",
+        "all",
+        "--sizing-policy",
+        "gameplan-direction-current-market-v1",
+        "--run-session",
+        "--wait-for-open"
+      ]
+    },
+    {
+      "pid": 40912,
+      "parent_pid": 33480,
+      "created_at": 1789957256.0447915,
+      "executable": "C:\\Users\\7980X\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "ml.gameplan_stock_trader",
+        "--datastore-target",
+        "pc",
+        "--execute",
+        "--target-horizon",
+        "all",
+        "--sizing-policy",
+        "gameplan-direction-current-market-v1",
+        "--run-session",
+        "--wait-for-open"
+      ]
+    }
+  ],
+  "manual_worker_lock": {
+    "process": "independent-stock-session",
+    "pid": 40912,
+    "started_at": "2026-09-21T02:20:57.388823+00:00"
+  },
+  "orders_submitted_by_audit": 0,
+  "ledger_mutations": 0,
+  "pipeline_started_or_resumed": false,
+  "repair_scope": "C:/dev/ducketz/artifacts/analysis/overnight-20260920/recovery-review.md"
+}

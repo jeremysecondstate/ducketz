@@ -1,0 +1,25 @@
+{
+  "observed_at": "2026-09-23T04:11:47.028229+00:00",
+  "status": "AUDIT_HELPERS_PREPARED_COMPLETION_AUDIT_NOT_EXECUTED",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260923T040814.422433Z",
+  "expected_cycle_id": "20260923T040815.264882Z-pid33836",
+  "source_session": "2026-09-22",
+  "action_date": "2026-09-23",
+  "production_scope": "11 symbols; all five configured providers; 33 exact OPRA symbol/schema scopes",
+  "latest_log_line": "[databento/bar-consolidation] symbol=AAPL; shadowed_derived_rows_removed=16; derived_gap_rows_retained=22",
+  "log_sha256_at_snapshot": "0fdc37760e1b1dcbab4040dd27de061e524985ac40803b5bc1c1e437f4873ae9",
+  "completed_provider_request_lines": 27,
+  "non_ok_provider_completion_lines": [],
+  "warning_lines": [],
+  "preparation_checks": [
+    "Both helpers parsed using ast.parse without execution.",
+    "Read only compact CME capture schema to verify required identity and timestamp columns.",
+    "Completion helper refuses unless native Loop A stage COMPLETE with exit_code zero.",
+    "Exact native cycle is pinned and must match current cycle and native log.",
+    "Previous optional advisory comparator advanced to September 22 completed audit.",
+    "Explicit current CME raw/continuous symbol coverage included without cross-symbol price substitution."
+  ],
+  "waiting_for": "Native loop_a_close_fetch COMPLETE before full evidence audit and optional --hash-current.",
+  "command_after_completion": ".\\.venv\\Scripts\\python.exe -B artifacts/analysis/overnight-20260923/audit_provider_completion.py --hash-current",
+  "scope": "Audit evidence files only. No provider/broker calls, supervision/process/lock actions, production mutations, or archive scans. No full completion audit executed."
+}

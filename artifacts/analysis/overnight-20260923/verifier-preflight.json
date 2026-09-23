@@ -1,0 +1,41 @@
+{
+  "prepared_at": "2026-09-23T04:11:33.018374+00:00",
+  "overnight_run": "C:/DATASTORE/ml/overnight-runs/20260923T040814.422433Z",
+  "expected_original_run": "20260923T040814.422433Z",
+  "expected_source_date": "2026-09-22",
+  "expected_action_date": "2026-09-23",
+  "expected_deadline": "2026-09-23T11:00:00Z",
+  "scope": "RUN_LOCAL_VERIFIER_PREPARATION_ONLY",
+  "completion_audits_executed": false,
+  "production_files_modified": false,
+  "provider_or_broker_calls": false,
+  "helpers": [
+    {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260923\\verify_completed_run.py",
+      "sha256": "898831ee02054c116d415931c0b61750dc56a5a6313fc04168069fa506cf2381",
+      "source_path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260922\\verify_completed_run.py",
+      "source_sha256": "e9b5901fbb4bdd5fc8d16bd764009c060623a5cdbf824aee03c9e776c9443f03",
+      "syntax": "AST_PARSE_PASS",
+      "changed_text": {
+        "September 21 source / September 22 action": "September 22 source / September 23 action",
+        "default=\"20260922T040810.607319Z\"": "default=\"20260923T040814.422433Z\"",
+        "parser.add_argument(\"--expected-source-date\", default=\"2026-09-21\")": "parser.add_argument(\"--expected-source-date\", default=\"2026-09-22\")",
+        "parser.add_argument(\"--expected-action-date\", default=\"2026-09-22\")": "parser.add_argument(\"--expected-action-date\", default=\"2026-09-23\")",
+        "default=\"2026-09-22T11:00:00Z\"": "default=\"2026-09-23T11:00:00Z\""
+      }
+    },
+    {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260923\\verify_yg_completion.py",
+      "sha256": "32f8427ad69543ed81683f20fbcf53a90428e34728d7f44bad717c4b6c7797b6",
+      "source_path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260922\\verify_yg_completion.py",
+      "source_sha256": "d6fe064372ab449068df1b80e92c7745f97048deb30730bf4903cac8f5349882",
+      "syntax": "AST_PARSE_PASS",
+      "changed_text": {
+        "default='20260922T040810.607319Z'": "default='20260923T040814.422433Z'",
+        "default='2026-09-22'": "default='2026-09-23'",
+        "default='2026-09-22T11:00:00Z'": "default='2026-09-23T11:00:00Z'",
+        "REPOSITORY/'artifacts/analysis/overnight-20260922'": "REPOSITORY/'artifacts/analysis/overnight-20260923'"
+      }
+    }
+  ]
+}

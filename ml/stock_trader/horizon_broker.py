@@ -70,16 +70,25 @@ def _walk_orders(rows):
         yield from _walk_orders(children)
 
 
-def _fills(raw: Mapping, *, broker_id: str, order_leg_id: str, observed: str) -> tuple[FillEvidence, ...]:
+def _fills(raw: Mapping, *, broker_id: str, order_leg_id: str, observed: str,
+           broker_status: str, order_quantity: int, filled_quantity: int) -> tuple[FillEvidence, ...]:
     activities = raw.get("orderActivityCollection", ())
     if not isinstance(activities, (list, tuple)):
         raise OrderHistoryError("EXECUTION_ACTIVITY_COLLECTION_REQUIRED")
     records = []
     explicit_ids = set()
+    cancelled_quantity = 0
+    cancellation_times = []
     for activity in activities:
         if not isinstance(activity, Mapping):
             raise OrderHistoryError("MALFORMED_EXECUTION_ACTIVITY")
         kind = _text(activity.get("activityType")).upper()
+        execution_type = _text(activity.get("executionType")).upper()
+        if execution_type not in {"", "FILL", "CANCELED", "CANCELLED"}:
+            raise OrderHistoryError("UNSUPPORTED_OR_UNCERTAIN_EXECUTION_TYPE")
+        cancellation = execution_type in {"CANCELED", "CANCELLED"}
+        if cancellation and (kind != "EXECUTION" or broker_status not in _CANCELLED):
+            raise OrderHistoryError("CANCELLATION_ACTIVITY_CONTRADICTS_ORDER_STATUS")
         executions = activity.get("executionLegs", ())
         if kind and kind not in {"EXECUTION", "FILL"}:
             if executions:
@@ -87,20 +96,33 @@ def _fills(raw: Mapping, *, broker_id: str, order_leg_id: str, observed: str) ->
             continue
         if not isinstance(executions, (list, tuple)) or (kind in {"EXECUTION", "FILL"} and not executions):
             raise OrderHistoryError("COMPLETE_EXECUTION_LEGS_REQUIRED")
+        activity_cancelled_quantity = 0
         for leg in executions:
             if not isinstance(leg, Mapping):
                 raise OrderHistoryError("MALFORMED_EXECUTION_LEG")
-            leg_id = _text(leg.get("legId")) or order_leg_id
+            leg_id = _text(leg.get("legId"))
+            if not leg_id and not cancellation:
+                leg_id = order_leg_id
             if leg_id != order_leg_id:
                 raise OrderHistoryError("EXECUTION_LEG_DOES_NOT_MATCH_ORDER_LEG")
             quantity = int(_number(leg.get("quantity"), whole=True, positive=True))
-            price = format(_number(leg.get("price"), positive=True).normalize(), "f")
+            price_number = _number(leg.get("price"), positive=not cancellation)
+            price = format(price_number.normalize(), "f")
             stamp = leg.get("time") or leg.get("executionTime") or activity.get("executionTime") or activity.get("time")
             if not stamp:
                 raise OrderHistoryError("EXACT_EXECUTION_TIMESTAMP_REQUIRED")
             executed_at = _utc(stamp)
             if executed_at > observed:
                 raise OrderHistoryError("EXECUTION_POSTDATES_CAPTURE_BOUNDARY")
+            if cancellation:
+                # Schwab represents canceled, unfilled shares as EXECUTION
+                # activity with executionType=CANCELED and a zero-price leg.
+                # These are terminal quantity evidence, never stock fills.
+                if price_number != 0:
+                    raise OrderHistoryError("CANCELLATION_ACTIVITY_HAS_NONZERO_PRICE")
+                activity_cancelled_quantity += quantity
+                cancellation_times.append(executed_at)
+                continue
             execution_id = _text(leg.get("executionId"))
             activity_id = _text(activity.get("activityId"))
             if execution_id:
@@ -116,6 +138,16 @@ def _fills(raw: Mapping, *, broker_id: str, order_leg_id: str, observed: str) ->
                 # complete economics, not their changing list/response order.
                 key = ("derived", broker_id, activity_id, leg_id, executed_at, quantity, price)
             records.append((key, quantity, price, executed_at))
+        if cancellation:
+            if (int(_number(activity.get("quantity"), whole=True, positive=True)) != activity_cancelled_quantity
+                    or _number(activity.get("orderRemainingQuantity"), whole=True) != 0):
+                raise OrderHistoryError("CANCELLATION_ACTIVITY_HAS_INCONSISTENT_QUANTITIES")
+            cancelled_quantity += activity_cancelled_quantity
+    if cancellation_times:
+        if cancelled_quantity != order_quantity - filled_quantity:
+            raise OrderHistoryError("CANCELLATION_ACTIVITY_HAS_INCONSISTENT_QUANTITIES")
+        if any(record[3] > min(cancellation_times) for record in records):
+            raise OrderHistoryError("FILL_POSTDATES_TERMINAL_CANCELLATION")
     occurrences = Counter()
     output = []
     for key, quantity, price, executed_at in sorted(records, key=lambda value: json.dumps(value[0])):
@@ -167,7 +199,8 @@ def normalize_order_evidence(raw: Mapping, reservation: ReservationState, *, acc
         # Replaced/unknown/suspended identities cannot silently release cash or
         # invent a successor order. Require explicit operator reconciliation.
         raise OrderHistoryError("UNSUPPORTED_OR_UNCERTAIN_BROKER_ORDER_STATUS")
-    fills = _fills(raw, broker_id=broker_id, order_leg_id=_text(leg.get("legId")) or "1", observed=observed)
+    fills = _fills(raw, broker_id=broker_id, order_leg_id=_text(leg.get("legId")) or "1", observed=observed,
+                   broker_status=broker_status, order_quantity=quantity, filled_quantity=filled)
     if sum(item.quantity for item in fills) != filled:
         raise OrderHistoryError("COMPLETE_PER_ORDER_FILL_EVIDENCE_REQUIRED")
     payload = {"reservation_id": reservation.reservation_id, "account_fingerprint": account_fingerprint,

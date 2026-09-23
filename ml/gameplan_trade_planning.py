@@ -25,6 +25,40 @@ VERSION = "cash-aware-gameplan-trade-planning-v4"
 AUTHORITY = "REVIEW_ONLY_REVALIDATE_AT_ENTRY"
 
 
+def _planning_snapshot(snapshot: Mapping) -> tuple[dict, dict | None]:
+    """Use fresh broker state for review planning when only a stale local buy
+    reservation prevents the ownership ledger from being marked ready.
+
+    This is deliberately planning-only.  The immutable account artifact keeps
+    the original ownership evidence, while the live trader continues to
+    reconcile its ledger and broker state before any order decision.
+    """
+    ownership = snapshot.get("ownership", {})
+    reasons = set(ownership.get("reason_codes", ()))
+    pending_buys = snapshot.get("pending_buy_shares", {})
+    broker_has_no_pending_buys = not any(_money(value) for value in pending_buys.values())
+    if (ownership.get("safe_for_planning") is True
+            or reasons != {"PENDING_LEDGER_RESERVATIONS_REQUIRE_RECONCILIATION"}
+            or snapshot.get("working_order_count") != 0
+            or not broker_has_no_pending_buys):
+        return dict(snapshot), None
+    planning = dict(snapshot)
+    planning_ownership = dict(ownership)
+    planning_ownership["safe_for_planning"] = True
+    planning_ownership["status"] = "OBSERVED_CONSISTENT_FOR_REVIEW"
+    planning_ownership["reason_codes"] = []
+    planning_ownership["planning_override"] = "CURRENT_BROKER_HAS_ZERO_WORKING_ORDERS_AND_ZERO_PENDING_BUYS"
+    # Do not let a stale local BUY reservation suppress a new informational
+    # plan.  This does not mutate the ledger or grant execution authority.
+    planning_ownership["active_allocations"] = [
+        {**allocation, "reserved_buy_shares": 0}
+        for allocation in ownership.get("active_allocations", [])
+    ]
+    planning["ownership"] = planning_ownership
+    return planning, {"type": "STALE_LOCAL_BUY_RESERVATION_IGNORED_FOR_REVIEW",
+                      "basis": planning_ownership["planning_override"]}
+
+
 def _money(value: object) -> Decimal:
     number = Decimal(str(value))
     if not number.is_finite() or number < 0:
@@ -377,6 +411,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
     try:
         snapshot = refresh_snapshot if refresh_snapshot is not None else (snapshot_loader or capture_trade_planning_snapshot)(root, symbols=symbols)
         _write_json(run / "account-snapshot.json", snapshot)
+        planning_snapshot, planning_override = _planning_snapshot(snapshot)
         if (snapshot.get("status") != "OBSERVED" or snapshot.get("cash_status") != "CASH_ONLY_BOUNDED"
                 or snapshot.get("available_cash") is None):
             raise ValueError("ACCOUNT_SNAPSHOT_UNAVAILABLE")
@@ -399,10 +434,10 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
                                               "volume", "is_synthetic", "reason", "original_observed_at"])
         synthetic.to_parquet(run / "synthetic-reference-bars.parquet", index=False)
         policy = StockTraderPolicy()
-        rows = _plan_working_price_rows(forecasts, snapshot, bands, price_path, policy=policy)
+        rows = _plan_working_price_rows(forecasts, planning_snapshot, bands, price_path, policy=policy)
         phase = "DIRECTION_BASED_CASH_AND_SHARE_PROJECTION"
         try:
-            rows, direction_projection = project_direction_trades(rows, snapshot, price_path, policy=policy, signal_driven=True)
+            rows, direction_projection = project_direction_trades(rows, planning_snapshot, price_path, policy=policy, signal_driven=True)
         except UnavailablePlanningPricePath as unavailable:
             # Complete the informational report without manufacturing prices,
             # fills, ending cash or ending holdings. Other validation errors
@@ -429,7 +464,7 @@ def publish_trade_plan(datastore_root: Path, *, gameplan_run: Path, deadline: ob
                       direction_up_threshold=BULLISH_PROBABILITY, direction_down_threshold=BEARISH_PROBABILITY,
                       price_band_status_counts=rows.price_band_status.value_counts().to_dict(),
                       trade_reason_counts=rows.trade_planning_reason.value_counts().to_dict(),
-                      snapshot=snapshot, sizing_policy=asdict(policy),
+                      snapshot=snapshot, planning_override=planning_override, sizing_policy=asdict(policy),
                       direction_based_projection=direction_projection,
                       direction_projection_status=direction_projection.get("status", "AVAILABLE"),
                       opra_history=config.get("opra_history", {}),

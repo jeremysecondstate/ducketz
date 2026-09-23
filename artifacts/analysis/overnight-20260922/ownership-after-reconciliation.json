@@ -1,0 +1,195 @@
+{
+  "status": "OBSERVED_CONSISTENT",
+  "safe_for_planning": true,
+  "account_matches": true,
+  "active_allocations": [
+    {
+      "symbol": "AAPL",
+      "horizon": "1h",
+      "owned_shares": 5,
+      "reserved_buy_shares": 0,
+      "reserved_sell_shares": 0,
+      "target_start": "2026-09-21T23:00:00+00:00",
+      "target_end": "2026-09-22T00:00:00+00:00",
+      "status": "ACTIVE"
+    },
+    {
+      "symbol": "AAPL",
+      "horizon": "1w",
+      "owned_shares": 19,
+      "reserved_buy_shares": 0,
+      "reserved_sell_shares": 0,
+      "target_start": "2026-09-18T11:00:00+00:00",
+      "target_end": "2026-09-25T00:00:00+00:00",
+      "status": "ACTIVE"
+    },
+    {
+      "symbol": "AMZN",
+      "horizon": "1h",
+      "owned_shares": 14,
+      "reserved_buy_shares": 0,
+      "reserved_sell_shares": 0,
+      "target_start": "2026-09-21T22:00:00+00:00",
+      "target_end": "2026-09-21T23:00:00+00:00",
+      "status": "ACTIVE"
+    },
+    {
+      "symbol": "AMZN",
+      "horizon": "1w",
+      "owned_shares": 25,
+      "reserved_buy_shares": 0,
+      "reserved_sell_shares": 0,
+      "target_start": "2026-09-18T11:00:00+00:00",
+      "target_end": "2026-09-25T00:00:00+00:00",
+      "status": "ACTIVE"
+    },
+    {
+      "symbol": "CROX",
+      "horizon": "1h",
+      "owned_shares": 46,
+      "reserved_buy_shares": 0,
+      "reserved_sell_shares": 0,
+      "target_start": "2026-09-21T14:00:00+00:00",
+      "target_end": "2026-09-21T15:00:00+00:00",
+      "status": "ACTIVE"
+    },
+    {
+      "symbol": "GOOG",
+      "horizon": "1h",
+      "owned_shares": 22,
+      "reserved_buy_shares": 0,
+      "reserved_sell_shares": 0,
+      "target_start": "2026-09-21T12:00:00+00:00",
+      "target_end": "2026-09-21T13:00:00+00:00",
+      "status": "ACTIVE"
+    },
+    {
+      "symbol": "GOOG",
+      "horizon": "1w",
+      "owned_shares": 18,
+      "reserved_buy_shares": 0,
+      "reserved_sell_shares": 0,
+      "target_start": "2026-09-18T11:00:00+00:00",
+      "target_end": "2026-09-25T00:00:00+00:00",
+      "status": "ACTIVE"
+    },
+    {
+      "symbol": "IONQ",
+      "horizon": "1w",
+      "owned_shares": 159,
+      "reserved_buy_shares": 0,
+      "reserved_sell_shares": 0,
+      "target_start": "2026-09-18T11:00:00+00:00",
+      "target_end": "2026-09-25T00:00:00+00:00",
+      "status": "ACTIVE"
+    },
+    {
+      "symbol": "MU",
+      "horizon": "1h",
+      "owned_shares": 3,
+      "reserved_buy_shares": 0,
+      "reserved_sell_shares": 0,
+      "target_start": "2026-09-21T21:00:00+00:00",
+      "target_end": "2026-09-21T22:00:00+00:00",
+      "status": "ACTIVE"
+    },
+    {
+      "symbol": "MU",
+      "horizon": "1w",
+      "owned_shares": 6,
+      "reserved_buy_shares": 0,
+      "reserved_sell_shares": 0,
+      "target_start": "2026-09-18T11:00:00+00:00",
+      "target_end": "2026-09-25T00:00:00+00:00",
+      "status": "ACTIVE"
+    },
+    {
+      "symbol": "NVDA",
+      "horizon": "1h",
+      "owned_shares": 16,
+      "reserved_buy_shares": 0,
+      "reserved_sell_shares": 0,
+      "target_start": "2026-09-21T22:00:00+00:00",
+      "target_end": "2026-09-21T23:00:00+00:00",
+      "status": "ACTIVE"
+    },
+    {
+      "symbol": "NVDA",
+      "horizon": "1w",
+      "owned_shares": 30,
+      "reserved_buy_shares": 0,
+      "reserved_sell_shares": 0,
+      "target_start": "2026-09-16T11:00:00+00:00",
+      "target_end": "2026-09-23T00:00:00+00:00",
+      "status": "ACTIVE"
+    },
+    {
+      "symbol": "PATH",
+      "horizon": "1w",
+      "owned_shares": 467,
+      "reserved_buy_shares": 0,
+      "reserved_sell_shares": 0,
+      "target_start": "2026-09-18T11:00:00+00:00",
+      "target_end": "2026-09-25T00:00:00+00:00",
+      "status": "ACTIVE"
+    },
+    {
+      "symbol": "SNDK",
+      "horizon": "1h",
+      "owned_shares": 6,
+      "reserved_buy_shares": 0,
+      "reserved_sell_shares": 0,
+      "target_start": "2026-09-18T11:00:00+00:00",
+      "target_end": "2026-09-18T12:00:00+00:00",
+      "status": "ACTIVE"
+    },
+    {
+      "symbol": "SNDK",
+      "horizon": "1w",
+      "owned_shares": 3,
+      "reserved_buy_shares": 0,
+      "reserved_sell_shares": 0,
+      "target_start": "2026-09-18T11:00:00+00:00",
+      "target_end": "2026-09-25T00:00:00+00:00",
+      "status": "ACTIVE"
+    },
+    {
+      "symbol": "TWST",
+      "horizon": "1h",
+      "owned_shares": 22,
+      "reserved_buy_shares": 0,
+      "reserved_sell_shares": 0,
+      "target_start": "2026-09-21T22:00:00+00:00",
+      "target_end": "2026-09-21T23:00:00+00:00",
+      "status": "ACTIVE"
+    },
+    {
+      "symbol": "TWST",
+      "horizon": "1w",
+      "owned_shares": 39,
+      "reserved_buy_shares": 0,
+      "reserved_sell_shares": 0,
+      "target_start": "2026-09-18T11:00:00+00:00",
+      "target_end": "2026-09-25T00:00:00+00:00",
+      "status": "ACTIVE"
+    }
+  ],
+  "blocked_symbols": [],
+  "owned_shares": {
+    "AAPL": 24,
+    "AMZN": 39,
+    "GOOG": 40,
+    "MU": 9,
+    "NVDA": 46,
+    "SNDK": 9,
+    "COST": 0,
+    "CROX": 46,
+    "PATH": 467,
+    "TWST": 61,
+    "IONQ": 159
+  },
+  "reason_codes": [],
+  "last_saved_reconciliation_at": "2026-09-22T04:15:59.755090+00:00",
+  "last_saved_reconciliation_ready": true,
+  "current_broker_reconciliation_performed": false
+}

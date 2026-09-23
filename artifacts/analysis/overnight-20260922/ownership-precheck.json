@@ -1,0 +1,224 @@
+{
+  "reviewed_at": "2026-09-22T04:15:54.249594+00:00",
+  "scope": "LOCAL_READ_ONLY_PRECHECK_NO_BROKER_CALLS_BY_SUBAGENT_NO_PRODUCTION_WRITES",
+  "overnight_run": "20260922T040810.607319Z",
+  "status": "NATIVE_RECONCILIATION_COMPLETE_OWNERSHIP_SAFE",
+  "repaired_prior_reservation": {
+    "reservation_id": "f3eac1b53520856d0ab2c4f152d8bd08962c6a13978f6a4efb2d63eea8bdd100",
+    "side": "BUY",
+    "quantity": 52,
+    "price": "120.51",
+    "filled_quantity": 0,
+    "status": "CANCELLED",
+    "broker_order_id": "1007973368571",
+    "last_evidence_at": "2026-09-21T12:17:37.968236+00:00",
+    "symbol": "CROX",
+    "horizon": "1w",
+    "cancel_requested_at": "2026-09-18T12:00:07.891114+00:00"
+  },
+  "prior_terminal_order_evidence": {
+    "account_fingerprint": "85dc27ef421228b44aa818e0b541306fa5d6cc5cc7448a2bc5a09f99f746258c",
+    "broker_order_id": "1007973368571",
+    "broker_status": "CANCELED",
+    "cumulative_filled_quantity": 0,
+    "evidence_id": "schwab-order:33962d3783c8af18fc42cce9fcb594feeb51a020ef6e70843868efe7a5bda3e7",
+    "fills": [],
+    "observed_at": "2026-09-21T12:17:37.968236+00:00",
+    "order_quantity": 52,
+    "remaining_quantity": 0,
+    "reservation_id": "f3eac1b53520856d0ab2c4f152d8bd08962c6a13978f6a4efb2d63eea8bdd100",
+    "status": "CANCELLED"
+  },
+  "latest_saved_ownership_reconciliation": {
+    "id": "10e71ca239650eaf01601763127f83b7c5f037623f61b8cc1742f4d27a25cd35",
+    "observed_at": "2026-09-21T23:59:55.264933+00:00",
+    "ready": true,
+    "reasons": [],
+    "owned_shares": {
+      "AAPL": 24,
+      "AMZN": 39,
+      "COST": 0,
+      "CROX": 46,
+      "GOOG": 40,
+      "IONQ": 159,
+      "MU": 9,
+      "NVDA": 46,
+      "PATH": 467,
+      "SNDK": 9,
+      "TWST": 61
+    }
+  },
+  "open_reservations": [
+    {
+      "reservation_id": "8755dd3b6ec6379052315568b53519e4dcdc8ccd6bb3e290991deac9e598461a",
+      "side": "SELL",
+      "quantity": 31,
+      "price": "123.87",
+      "filled_quantity": 0,
+      "status": "WORKING",
+      "broker_order_id": "1008007537441",
+      "last_evidence_at": "2026-09-21T23:59:55.264700+00:00",
+      "symbol": "CROX",
+      "horizon": "1h",
+      "cancel_requested_at": null
+    },
+    {
+      "reservation_id": "488fcc7ae18dad004f2ad6cdb98464f4ed2fda505223f19192ac7af167262474",
+      "side": "BUY",
+      "quantity": 48,
+      "price": "40.6",
+      "filled_quantity": 0,
+      "status": "WORKING",
+      "broker_order_id": "1008008404182",
+      "last_evidence_at": "2026-09-21T23:59:55.264700+00:00",
+      "symbol": "IONQ",
+      "horizon": "1h",
+      "cancel_requested_at": null
+    }
+  ],
+  "persistent_blocks": [],
+  "reservation_status_counts": [
+    {
+      "status": "CANCELLED",
+      "count": 5
+    },
+    {
+      "status": "FILLED",
+      "count": 118
+    },
+    {
+      "status": "WORKING",
+      "count": 2
+    }
+  ],
+  "terminal_session": {
+    "action_date": "2026-09-21",
+    "calls": 1496,
+    "closes_at": "2026-09-21T17:00:00-07:00",
+    "consecutive_failures": 0,
+    "execute": true,
+    "failed_cycles": 0,
+    "heartbeat_at": "2026-09-22T00:00:00.000780+00:00",
+    "last_cycle": {
+      "activation_active": true,
+      "broker_state_capture": {
+        "attempts": 1,
+        "elapsed_seconds": 3.0310710999765433,
+        "last_error_operation": null,
+        "last_error_type": null,
+        "maximum_retry_seconds": 0.0,
+        "quote_refresh": {
+          "refreshes": 0,
+          "status": "NOT_NEEDED",
+          "unavailable_symbols": []
+        },
+        "retry_delay_seconds": 3.0,
+        "retry_wait_seconds": 0.0,
+        "schema_version": "stock-trader-broker-state-capture-v1",
+        "status": "CURRENT",
+        "transient_failures": 0
+      },
+      "duplicate_suppressions": 0,
+      "error": null,
+      "execution_requested": true,
+      "prediction_handoff_status": null,
+      "run_directory": "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260921T235957.407324Z",
+      "selected_orders": 0,
+      "status": "NO_ORDERS_SUBMITTED",
+      "stopped_after_error": false,
+      "submitted_orders": 0,
+      "target_window_start": null
+    },
+    "late_opening_date": null,
+    "orders_submitted": 72,
+    "pid": 42576,
+    "resume_quote_run": null,
+    "resume_quote_symbol": null,
+    "schema_version": "independent-stock-session-status-v1",
+    "sizing_policy": "gameplan-direction-current-market-v1",
+    "started_at": "2026-09-21T12:18:05.386720+00:00",
+    "status": "FINISHED",
+    "wait_for_open": true,
+    "wakes_at": "2026-09-21T04:00:00-07:00"
+  },
+  "last_decision_receipt_hashes_verified": {
+    "manifest": true,
+    "decisions": true
+  },
+  "last_decision_inventory_reconciliation": {
+    "ready": true,
+    "reasons": []
+  },
+  "root_fresh_get_only_evidence": {
+    "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260922\\broker-order-status-readonly.json",
+    "observed_at": "2026-09-22T04:11:25.200007+00:00",
+    "status": "READ_COMPLETE",
+    "account_matches": true,
+    "orders": [
+      {
+        "symbol": "CROX",
+        "horizon": "1h",
+        "side": "SELL",
+        "quantity": 31,
+        "broker_status": "CANCELED",
+        "native_status": "CANCELLED",
+        "native_filled": 0,
+        "native_remaining": 0,
+        "native_normalization": "VERIFIED"
+      },
+      {
+        "symbol": "IONQ",
+        "horizon": "1h",
+        "side": "BUY",
+        "quantity": 48,
+        "broker_status": "CANCELED",
+        "native_status": "CANCELLED",
+        "native_filled": 0,
+        "native_remaining": 0,
+        "native_normalization": "VERIFIED"
+      }
+    ]
+  },
+  "planning_implication": {
+    "safe_for_planning_before_native_reconciliation": false,
+    "reason": "PENDING_LEDGER_RESERVATIONS_REQUIRE_RECONCILIATION",
+    "code": "C:/dev/ducketz/ml/gameplan_trade_snapshot.py:265",
+    "note": "READY at the terminal runtime snapshot does not imply the read-only planning ownership gate accepts pending reservations. Fresh planning snapshot must still run after native reconciliation."
+  },
+  "prepared_helper": {
+    "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260922\\native_reconcile.py",
+    "syntax_valid": true,
+    "executed_by_subagent": false,
+    "command": "C:/dev/ducketz/.venv/Scripts/python.exe C:/dev/ducketz/artifacts/analysis/overnight-20260922/native_reconcile.py --apply",
+    "old_helper_reusable_unchanged": false,
+    "old_helper_reason": "September21 helper hardcodes expired supervisor, stopped worker, inactive control, single CROX weekly reservation and old evidence outputs."
+  },
+  "source_paths": [
+    "C:\\DATASTORE\\state\\independent-stock-trader\\holdings.sqlite3",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\session-status.json",
+    "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260921T235957.407324Z\\receipt.json",
+    "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260921T235957.407324Z\\manifest.json",
+    "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260921T235957.407324Z\\decisions.json"
+  ],
+  "source_sha256": {
+    "C:\\DATASTORE\\state\\independent-stock-trader\\session-status.json": "e84f8414c4de87c59ef03210c050d9e16339c68132a4d33df7eebed319332726",
+    "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260921T235957.407324Z\\receipt.json": "5c672cbbc7b4d07523c38a3944363ea8d1ac9e39802d060aceb3f17eac3128b8",
+    "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260921T235957.407324Z\\manifest.json": "e6f704bed954bc80d552a80a0ddf16cae304ba9235a5c47e3d5bb60f5feb8891",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260922\\broker-order-status-readonly.json": "fd276a946be4070fd3b69eed4844fdf141aaa4798433ffaa6a1734b65dda7ef3",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260922\\native_reconcile.py": "8ad5e21eebe64622d3ceab7966a3d8bdf060ae2a8e672698462dd52d86c9f54a"
+  },
+  "completion": {
+    "finished_at": "2026-09-22T04:16:19.183545+00:00",
+    "native_status": "RECONCILED",
+    "native_ready": true,
+    "pending_reservations": 0,
+    "filled_allocations_preserved": true,
+    "controls_session_and_entry_claims_preserved": true,
+    "planning_ownership_safe": true,
+    "reason_codes": [],
+    "evidence": [
+      "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260922\\native-reconciliation.json",
+      "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260922\\ownership-after-reconciliation.json"
+    ]
+  }
+}

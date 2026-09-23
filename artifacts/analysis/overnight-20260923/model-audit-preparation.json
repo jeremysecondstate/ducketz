@@ -1,0 +1,37 @@
+{
+  "prepared_at": "2026-09-23T05:17:52.432288+00:00",
+  "status": "PREPARED_SYNTAX_ONLY",
+  "helper": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260923\\review_models.py",
+  "sha256": "6233fda241201a212731b8b0b89c93b1f0906ad0d3715ac7b51f31df8fd233bf",
+  "source": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260922\\review_models.py",
+  "source_sha256": "ea9606467972839cc556132e72bd9aeb6a9ad621e904175a2801d95de00a47a5",
+  "expected_native_root": "20260923T040814.422433Z",
+  "expected_action_date": "2026-09-23",
+  "expected_original_deadline": "2026-09-23T11:00:00Z",
+  "comparison_publication": "C:/DATASTORE/ml/nightly-gameplan-runs/20260922T054940.677673Z",
+  "comparison_action_date": "2026-09-22",
+  "outputs": [
+    "model-review.json",
+    "model-review.md",
+    "model-metric-summary.json"
+  ],
+  "checks": [
+    "immutable_current_native_pin",
+    "completed_publication_stage",
+    "original_run_ancestry_and_deadline",
+    "raw_direction_YG_identity",
+    "saved_v2_promotion_arithmetic",
+    "numeric_score_limits_and_margins",
+    "strict_baseline_wins_separate",
+    "exact_symbol_route_fitted_support",
+    "development_only_selection",
+    "five_minute_observed_prices",
+    "purged_chronology",
+    "learned_sizing_fitted_vs_qualified_separate"
+  ],
+  "executed": false,
+  "models_fitted_or_relabelled": false,
+  "production_files_modified": false,
+  "provider_or_broker_calls": false,
+  "estimator_inference_reproduction": "Use the separate YG companion after its terminal status guard admits the attempt; this review reproduces saved-score promotion arithmetic."
+}

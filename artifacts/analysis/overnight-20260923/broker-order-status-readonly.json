@@ -1,0 +1,56 @@
+{
+  "observed_at": "2026-09-23T04:13:32.460385+00:00",
+  "supervision_owner": "858e2b00-276f-485e-946a-6e63b799ede3",
+  "scope": "READ_ONLY_EXACT_TRACKED_ORDER_HISTORY",
+  "ledger_mutations": 0,
+  "orders_submitted": 0,
+  "orders_cancelled": 0,
+  "orders_replaced": 0,
+  "broker_data_http_methods": [
+    "GET"
+  ],
+  "orders": [
+    {
+      "status": "CANCELED",
+      "quantity": 38.0,
+      "filledQuantity": 0.0,
+      "remainingQuantity": 0.0,
+      "cancelable": false,
+      "enteredTime": "2026-09-22T20:06:09+0000",
+      "closeTime": "2026-09-23T00:00:45+0000",
+      "orderType": "LIMIT",
+      "price": 166.31,
+      "duration": "DAY",
+      "session": "PM",
+      "reservation_id": "a7083119fa00a0e82844e93f0d5958e997ff4ad76c34f27927273cb89d2d5055",
+      "broker_order_id": "1008025436225",
+      "symbol": "TWST",
+      "horizon": "1h",
+      "side": "SELL",
+      "ledger_status": "WORKING",
+      "reserved_quantity": 38,
+      "ledger_filled_quantity": 0,
+      "exact_broker_order_id_matched": true,
+      "native_normalization": "VERIFIED",
+      "native_status": "CANCELLED",
+      "native_filled": 0,
+      "native_remaining": 0,
+      "native_evidence": {
+        "evidence_id": "schwab-order:dc38a4e2fab1b3e6421d25029794e7f137b47498d9019a41c9ce10da83ea1947",
+        "reservation_id": "a7083119fa00a0e82844e93f0d5958e997ff4ad76c34f27927273cb89d2d5055",
+        "account_fingerprint": "85dc27ef421228b44aa818e0b541306fa5d6cc5cc7448a2bc5a09f99f746258c",
+        "observed_at": "2026-09-23T04:13:32.460385+00:00",
+        "broker_order_id": "1008025436225",
+        "status": "CANCELLED",
+        "order_quantity": 38,
+        "cumulative_filled_quantity": 0,
+        "remaining_quantity": 0,
+        "fills": [],
+        "broker_status": "CANCELED"
+      }
+    }
+  ],
+  "account_matches": true,
+  "history_rows": 175,
+  "status": "READ_COMPLETE"
+}

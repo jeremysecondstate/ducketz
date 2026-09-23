@@ -1,0 +1,224 @@
+{
+  "reviewed_at": "2026-09-23T05:48:30.063506+00:00",
+  "run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260923T054513.490247Z",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260923T040814.422433Z",
+  "action_date": "2026-09-23",
+  "status": "VERIFIED_SAVED_MODELS_WITH_COVERAGE_NOTES",
+  "full_native_completion_verified": false,
+  "scope": "Reproduced saved promotion arithmetic; estimator-inference score reproduction is a separate audit.",
+  "source_receipt_sha256": "4cedcf50f6d556181b0b007965e86fd7dffbaa5919a1858e5de9b0c4134f2473",
+  "model_reports_sha256": "5f20e20f241647119358c857e00c51fa2e3f9a3a5235deb26560afd4d0759018",
+  "forecasts_sha256": "4fabf381161814bf7baeef78d6d85cb873e08de79eecbaee17eb6a867cda811d",
+  "groups": {
+    "1h": {
+      "fitted_target_rows": 56544,
+      "evidence_checks_pass": true,
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "strictly_beats_both_baselines": false,
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.2501590594110101,
+          "training_rate_baseline": 0.2500615729198717,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.2550615729198717,
+          "actual_baseline_excess": 9.74864911384e-05,
+          "margin_to_maximum": 0.0049025135088616,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.6934694934446916,
+          "training_rate_baseline": 0.6932703362682556,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7032703362682556,
+          "actual_baseline_excess": 0.000199157176436,
+          "margin_to_maximum": 0.009800842823564,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "failed_promotion_checks": [],
+      "forecast_statuses": {
+        "PROMOTED": 154
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1h@15:00",
+        "fitted_rows": 2
+      },
+      "zero_assessment_symbols": [],
+      "learned_sizing": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 143,
+        "qualified_scopes": 137,
+        "reason_counts": {
+          "HELD_OUT_POOLED_HORIZON_QUALIFIED_WITH_OBSERVED_SCOPE": 137,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 6
+        }
+      }
+    },
+    "4h": {
+      "fitted_target_rows": 14303,
+      "evidence_checks_pass": true,
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "strictly_beats_both_baselines": false,
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.2508766924862597,
+          "training_rate_baseline": 0.24998864085896147,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.25498864085896145,
+          "actual_baseline_excess": 0.00088805162729823,
+          "margin_to_maximum": 0.00411194837270177,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.6949017925770178,
+          "training_rate_baseline": 0.6931244622696402,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7031244622696402,
+          "actual_baseline_excess": 0.0017773303073776,
+          "margin_to_maximum": 0.0082226696926224,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "failed_promotion_checks": [],
+      "forecast_statuses": {
+        "PROMOTED": 44
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "4h@16:00",
+        "fitted_rows": 18
+      },
+      "zero_assessment_symbols": [],
+      "learned_sizing": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 78,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 76,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+        }
+      }
+    },
+    "1d": {
+      "fitted_target_rows": 8855,
+      "evidence_checks_pass": true,
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "strictly_beats_both_baselines": false,
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.2540181516002018,
+          "training_rate_baseline": 0.25028436877221305,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.25528436877221306,
+          "actual_baseline_excess": 0.00373378282798875,
+          "margin_to_maximum": 0.00126621717201125,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.7012666320377495,
+          "training_rate_baseline": 0.6937160685826228,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7037160685826228,
+          "actual_baseline_excess": 0.0075505634551267,
+          "margin_to_maximum": 0.0024494365448733,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "failed_promotion_checks": [],
+      "forecast_statuses": {
+        "PROMOTED": 55
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1d@D+1",
+        "fitted_rows": 1
+      },
+      "zero_assessment_symbols": [
+        "CROX"
+      ],
+      "learned_sizing": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 11,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 10,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 1
+        }
+      }
+    },
+    "1w": {
+      "fitted_target_rows": 1740,
+      "evidence_checks_pass": true,
+      "promotion_status": "RESEARCH_NOT_PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "strictly_beats_both_baselines": false,
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.2605119888203955,
+          "training_rate_baseline": 0.2527680960166469,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.2577680960166469,
+          "actual_baseline_excess": 0.0077438928037486,
+          "margin_to_maximum": -0.0027438928037486,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": false
+        },
+        "log_loss": {
+          "assessment": 0.714423656466066,
+          "training_rate_baseline": 0.6987913505921706,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7087913505921706,
+          "actual_baseline_excess": 0.0156323058738954,
+          "margin_to_maximum": -0.0056323058738954,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": false
+        }
+      },
+      "failed_promotion_checks": [
+        "brier_within_baseline_tolerance",
+        "log_loss_within_baseline_tolerance"
+      ],
+      "forecast_statuses": {
+        "RESEARCH_NOT_PROMOTED": 11
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1w@D+5",
+        "fitted_rows": 6
+      },
+      "zero_assessment_symbols": [
+        "CROX"
+      ],
+      "learned_sizing": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 41,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 39,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+        }
+      }
+    }
+  },
+  "errors": [],
+  "models_fitted_or_relabelled": false,
+  "orders_placed": 0
+}

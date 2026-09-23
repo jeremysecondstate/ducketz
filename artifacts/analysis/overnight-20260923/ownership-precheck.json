@@ -1,0 +1,393 @@
+{
+  "reviewed_at": "2026-09-23T04:11:08.585729+00:00",
+  "scope": "LOCAL_READ_ONLY_PRECHECK_NO_BROKER_CALLS_NO_PRODUCTION_WRITES",
+  "overnight_run": "20260923T040814.422433Z",
+  "status": "NEW_PENDING_RESERVATION_REQUIRES_NATIVE_RECONCILIATION",
+  "terminal_session": {
+    "action_date": "2026-09-22",
+    "calls": 1114,
+    "closes_at": "2026-09-22T17:00:00-07:00",
+    "consecutive_failures": 1,
+    "execute": true,
+    "failed_cycles": 1,
+    "heartbeat_at": "2026-09-23T00:00:01.814921+00:00",
+    "last_cycle": {
+      "activation_active": true,
+      "broker_state_capture": {
+        "attempts": 1,
+        "elapsed_seconds": 3.5986802999395877,
+        "last_error_operation": null,
+        "last_error_type": null,
+        "maximum_retry_seconds": 0.0,
+        "quote_refresh": {
+          "refreshes": 0,
+          "status": "NOT_NEEDED",
+          "unavailable_symbols": []
+        },
+        "retry_delay_seconds": 3.0,
+        "retry_wait_seconds": 0.0,
+        "schema_version": "stock-trader-broker-state-capture-v1",
+        "status": "CURRENT",
+        "transient_failures": 0
+      },
+      "duplicate_suppressions": 0,
+      "error": "OUTSIDE_US_EQUITY_ACTIONABLE_SESSION",
+      "execution_requested": true,
+      "prediction_handoff_status": null,
+      "run_directory": "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260923T000001.790133Z",
+      "selected_orders": 0,
+      "status": "EXECUTION_WINDOW_CLOSED_AFTER_BROKER_CAPTURE",
+      "stopped_after_error": false,
+      "submitted_orders": 0,
+      "target_window_start": null
+    },
+    "late_opening_date": null,
+    "orders_submitted": 49,
+    "pid": 23456,
+    "resume_quote_run": null,
+    "resume_quote_symbol": null,
+    "schema_version": "independent-stock-session-status-v1",
+    "sizing_policy": "gameplan-direction-current-market-v1",
+    "started_at": "2026-09-22T15:07:59.988392+00:00",
+    "status": "FINISHED_WITH_ERRORS",
+    "wait_for_open": true,
+    "wakes_at": "2026-09-22T04:00:00-07:00"
+  },
+  "latest_saved_ownership_reconciliation": {
+    "id": "bb5c7f6018873b610b4ec56b0eca26d752445dc3b071c761de1989481386a21c",
+    "observed_at": "2026-09-22T23:59:59.039417+00:00",
+    "ready": 1,
+    "reasons": [],
+    "owned": {
+      "AAPL": 19,
+      "AMZN": 32,
+      "COST": 2,
+      "CROX": 0,
+      "GOOG": 28,
+      "IONQ": 159,
+      "MU": 8,
+      "NVDA": 30,
+      "PATH": 467,
+      "SNDK": 6,
+      "TWST": 77
+    }
+  },
+  "saved_held_shares": {
+    "AAPL": "19.0",
+    "AMZN": "32.0",
+    "COST": "2.0",
+    "CROX": "0.0",
+    "GOOG": "28.0",
+    "IONQ": "159.0",
+    "MU": "8.0",
+    "NVDA": "30.0",
+    "PATH": "467.0",
+    "SNDK": "6.0",
+    "TWST": "77.0"
+  },
+  "changed_held_shares_since_prior_reconciliation": {
+    "AAPL": {
+      "prior": 24.0,
+      "current_saved": "19.0"
+    },
+    "AMZN": {
+      "prior": 39.0,
+      "current_saved": "32.0"
+    },
+    "COST": {
+      "prior": 0.0,
+      "current_saved": "2.0"
+    },
+    "CROX": {
+      "prior": 46.0,
+      "current_saved": "0.0"
+    },
+    "GOOG": {
+      "prior": 40.0,
+      "current_saved": "28.0"
+    },
+    "MU": {
+      "prior": 9.0,
+      "current_saved": "8.0"
+    },
+    "NVDA": {
+      "prior": 46.0,
+      "current_saved": "30.0"
+    },
+    "SNDK": {
+      "prior": 9.0,
+      "current_saved": "6.0"
+    },
+    "TWST": {
+      "prior": 61.0,
+      "current_saved": "77.0"
+    }
+  },
+  "reservation_status_counts": [
+    {
+      "status": "CANCELLED",
+      "count": 7
+    },
+    {
+      "status": "FILLED",
+      "count": 166
+    },
+    {
+      "status": "WORKING",
+      "count": 1
+    }
+  ],
+  "pending_reservations": [
+    {
+      "reservation_id": "a7083119fa00a0e82844e93f0d5958e997ff4ad76c34f27927273cb89d2d5055",
+      "symbol": "TWST",
+      "horizon": "1h",
+      "side": "SELL",
+      "quantity": 38,
+      "price": "166.31",
+      "filled_quantity": 0,
+      "status": "WORKING",
+      "broker_order_id": "1008025436225",
+      "last_evidence_at": "2026-09-22T23:59:59.039079+00:00",
+      "cancel_requested_at": null
+    }
+  ],
+  "persistent_blocks": [],
+  "previously_reconciled_reservations": [
+    {
+      "reservation_id": "f3eac1b53520856d0ab2c4f152d8bd08962c6a13978f6a4efb2d63eea8bdd100",
+      "status": "CANCELLED",
+      "filled_quantity": 0,
+      "last_evidence_at": "2026-09-21T12:17:37.968236+00:00"
+    },
+    {
+      "reservation_id": "8755dd3b6ec6379052315568b53519e4dcdc8ccd6bb3e290991deac9e598461a",
+      "status": "CANCELLED",
+      "filled_quantity": 0,
+      "last_evidence_at": "2026-09-22T04:15:59.754838+00:00"
+    },
+    {
+      "reservation_id": "488fcc7ae18dad004f2ad6cdb98464f4ed2fda505223f19192ac7af167262474",
+      "status": "CANCELLED",
+      "filled_quantity": 0,
+      "last_evidence_at": "2026-09-22T04:15:59.754838+00:00"
+    }
+  ],
+  "last_decision_receipt_hashes_verified": {
+    "manifest": true,
+    "decisions": true
+  },
+  "last_decision_inventory_reconciliation": {
+    "ready": true,
+    "reasons": []
+  },
+  "planning_ownership_check_using_saved_snapshot": {
+    "status": "REVIEW_REQUIRED",
+    "safe_for_planning": false,
+    "account_matches": true,
+    "active_allocations": [
+      {
+        "symbol": "AAPL",
+        "horizon": "1w",
+        "owned_shares": 19,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-18T11:00:00+00:00",
+        "target_end": "2026-09-25T00:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "AMZN",
+        "horizon": "1h",
+        "owned_shares": 7,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-22T23:00:00+00:00",
+        "target_end": "2026-09-23T00:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "AMZN",
+        "horizon": "1w",
+        "owned_shares": 25,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-18T11:00:00+00:00",
+        "target_end": "2026-09-25T00:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "COST",
+        "horizon": "1h",
+        "owned_shares": 2,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-22T23:00:00+00:00",
+        "target_end": "2026-09-23T00:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "GOOG",
+        "horizon": "1h",
+        "owned_shares": 10,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-22T22:00:00+00:00",
+        "target_end": "2026-09-22T23:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "GOOG",
+        "horizon": "1w",
+        "owned_shares": 18,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-18T11:00:00+00:00",
+        "target_end": "2026-09-25T00:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "IONQ",
+        "horizon": "1w",
+        "owned_shares": 159,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-18T11:00:00+00:00",
+        "target_end": "2026-09-25T00:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "MU",
+        "horizon": "1h",
+        "owned_shares": 2,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-22T22:00:00+00:00",
+        "target_end": "2026-09-22T23:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "MU",
+        "horizon": "1w",
+        "owned_shares": 6,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-18T11:00:00+00:00",
+        "target_end": "2026-09-25T00:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "NVDA",
+        "horizon": "1w",
+        "owned_shares": 30,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-16T11:00:00+00:00",
+        "target_end": "2026-09-23T00:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "PATH",
+        "horizon": "1w",
+        "owned_shares": 467,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-18T11:00:00+00:00",
+        "target_end": "2026-09-25T00:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "SNDK",
+        "horizon": "1h",
+        "owned_shares": 3,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-18T11:00:00+00:00",
+        "target_end": "2026-09-18T12:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "SNDK",
+        "horizon": "1w",
+        "owned_shares": 3,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-18T11:00:00+00:00",
+        "target_end": "2026-09-25T00:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "TWST",
+        "horizon": "1h",
+        "owned_shares": 38,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 38,
+        "target_start": "2026-09-21T22:00:00+00:00",
+        "target_end": "2026-09-21T23:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "TWST",
+        "horizon": "1w",
+        "owned_shares": 39,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-18T11:00:00+00:00",
+        "target_end": "2026-09-25T00:00:00+00:00",
+        "status": "ACTIVE"
+      }
+    ],
+    "blocked_symbols": [],
+    "owned_shares": {
+      "AAPL": 19,
+      "AMZN": 32,
+      "COST": 2,
+      "CROX": 0,
+      "GOOG": 28,
+      "IONQ": 159,
+      "MU": 8,
+      "NVDA": 30,
+      "PATH": 467,
+      "SNDK": 6,
+      "TWST": 77
+    },
+    "reason_codes": [
+      "PENDING_LEDGER_RESERVATIONS_REQUIRE_RECONCILIATION"
+    ],
+    "last_saved_reconciliation_at": "2026-09-22T23:59:59.039417+00:00",
+    "last_saved_reconciliation_ready": true,
+    "current_broker_reconciliation_performed": false
+  },
+  "source_paths": [
+    "C:\\DATASTORE\\state\\independent-stock-trader\\session-status.json",
+    "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260923T000001.790133Z\\receipt.json",
+    "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260923T000001.790133Z\\manifest.json",
+    "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260923T000001.790133Z\\decisions.json",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260922\\native-reconciliation.json",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\holdings.sqlite3"
+  ],
+  "source_sha256": {
+    "C:\\DATASTORE\\state\\independent-stock-trader\\session-status.json": "88b99f0c50cff53a2a62d9accfaddecbe37ff1830b9231fd1cac65ccb798909b",
+    "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260923T000001.790133Z\\receipt.json": "53a8e38f1e890ba7875a678ab38b27b2ced629852265c15bf448f53c8e1013f9",
+    "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260923T000001.790133Z\\manifest.json": "36e167c525a92f2daa6c837065dc0cc1f59c22f15c8537ae1a99f0a39aa7472c",
+    "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260923T000001.790133Z\\decisions.json": "832e6df706d8fdcbe88c2b2a26b6a885d7b957cefec7e835cdaf1162b85e4c8f",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260922\\native-reconciliation.json": "f38a2904037404e1dd135ad939f735818c4602c0ca7e4222229c23808020a714"
+  },
+  "broker_status_now": "UNKNOWN_NO_PROVIDER_CALLS",
+  "next_step": "Fresh GET-only exact-order history evidence; only verified native terminal reconciliation may clear the pending ledger reservation.",
+  "prepared_helpers": {
+    "native_reconcile.py": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260923\\native_reconcile.py",
+      "syntax_valid": true,
+      "sha256": "380d20213e10b5c445e7f0030daf6b99a1657dbb16879eeae676e6e2bc67a382",
+      "executed_by_subagent": false
+    },
+    "capture_order_status_readonly.py": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260923\\capture_order_status_readonly.py",
+      "syntax_valid": true,
+      "sha256": "b5534e14add1b6c9b63f368182bb9c96c95e87a9e6517a99b93f6f9057e2c334",
+      "executed_by_subagent": false
+    }
+  },
+  "prepared_helpers_notes": "Root-review-only. Exact TWST SELL38 order; root supervision lease; pinned terminal closing-boundary receipt; native zero-budget reconciliation only after fresh cancelled zero-fill evidence and unchanged matching-account complete holdings; refuses working/missing/partial evidence."
+}

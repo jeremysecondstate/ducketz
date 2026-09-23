@@ -1,0 +1,370 @@
+{
+  "observed_at": "2026-09-22T05:25:07.581472+00:00",
+  "status": "NEW_EXPLICIT_RAW_CONTRACT_COVERAGE_LIMITATION",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260922T040810.607319Z",
+  "native_log": "C:\\DATASTORE\\ml\\overnight-runs\\20260922T040810.607319Z\\loop_a_close_fetch.log",
+  "native_log_sha256": "225bc1b1a759cff1882d841be8461ce9090abac31b36d35aa2befbc38788288a",
+  "native_warnings": [
+    {
+      "line": 146,
+      "text": "C:\\dev\\ducketz\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request had one or more symbols which did not resolve: ESU6, NQU6."
+    },
+    {
+      "line": 152,
+      "text": "C:\\dev\\ducketz\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request had one or more symbols which did not resolve: ESU6, NQU6."
+    },
+    {
+      "line": 154,
+      "text": "C:\\dev\\ducketz\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request had one or more symbols which did not resolve: ESU6, NQU6."
+    },
+    {
+      "line": 156,
+      "text": "C:\\dev\\ducketz\\app\\services\\databento_cme_context.py:268: BentoWarning: The streaming request had one or more symbols which did not resolve: ESU6, NQU6."
+    }
+  ],
+  "prior_log": "C:\\DATASTORE\\ml\\overnight-runs\\20260919T040748.657031Z\\loop_a_close_fetch.log",
+  "prior_unresolved_symbol_warnings": [],
+  "explicit_configuration": {
+    "path": "C:/dev/ducketz/.env",
+    "selected_nonsecret_keys_only": {
+      "DATABENTO_CME_CONTEXT_SYMBOLS": {
+        "line": 101,
+        "value": "[\"ES.v.0\", \"NQ.v.0\", \"RTY.v.0\", \"CL.v.0\", \"GC.v.0\"]"
+      },
+      "DATABENTO_CME_CONTEXT_STYPE_IN": {
+        "line": 102,
+        "value": "continuous"
+      },
+      "DATABENTO_CME_CONTRACT_SYMBOLS": {
+        "line": 105,
+        "value": "[\"ESU6\", \"NQU6\", \"CLV6\", \"GCZ6\"]"
+      },
+      "DATABENTO_CME_CONTRACT_STYPE_IN": {
+        "line": 106,
+        "value": "raw_symbol"
+      }
+    }
+  },
+  "current_captures": [
+    {
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_ohlcv-1m\\databento\\normalized\\CME_CONTEXT_cme_context_ohlcv-1m.parquet",
+      "scope": "CME_CONTEXT",
+      "schema": "ohlcv-1m",
+      "file_rows": 40877,
+      "current_stage_rows": 2384,
+      "symbols": [
+        {
+          "symbol": "CL.v.0",
+          "rows": 477,
+          "first_market_time": "2026-09-21 19:00:00+00:00",
+          "last_market_time": "2026-09-22 03:59:00+00:00"
+        },
+        {
+          "symbol": "ES.v.0",
+          "rows": 480,
+          "first_market_time": "2026-09-21 19:00:00+00:00",
+          "last_market_time": "2026-09-22 03:59:00+00:00"
+        },
+        {
+          "symbol": "GC.v.0",
+          "rows": 480,
+          "first_market_time": "2026-09-21 19:00:00+00:00",
+          "last_market_time": "2026-09-22 03:59:00+00:00"
+        },
+        {
+          "symbol": "NQ.v.0",
+          "rows": 480,
+          "first_market_time": "2026-09-21 19:00:00+00:00",
+          "last_market_time": "2026-09-22 03:59:00+00:00"
+        },
+        {
+          "symbol": "RTY.v.0",
+          "rows": 467,
+          "first_market_time": "2026-09-21 19:00:00+00:00",
+          "last_market_time": "2026-09-22 03:59:00+00:00"
+        }
+      ],
+      "expected_symbols": [
+        "ES.v.0",
+        "NQ.v.0",
+        "RTY.v.0",
+        "CL.v.0",
+        "GC.v.0"
+      ],
+      "missing_requested_symbols": [],
+      "request_metadata": [
+        {
+          "provider_stype_in": "continuous",
+          "request_limit_saturated": false,
+          "initial_range_start": "2026-09-19 04:00:00+00:00",
+          "initial_range_end": "2026-09-22 04:00:00+00:00",
+          "effective_range_start": "2026-09-21 19:00:00+00:00",
+          "effective_range_end": "2026-09-22 04:00:00+00:00",
+          "latest_window_shrink_count": 3,
+          "empty_window_expansion_count": 0
+        }
+      ]
+    },
+    {
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_bbo-1m\\databento\\normalized\\CME_CONTEXT_cme_context_bbo-1m.parquet",
+      "scope": "CME_CONTEXT",
+      "schema": "bbo-1m",
+      "file_rows": 3630,
+      "current_stage_rows": 300,
+      "symbols": [
+        {
+          "symbol": "CL.v.0",
+          "rows": 60,
+          "first_market_time": "2026-09-22 02:59:53.985217947+00:00",
+          "last_market_time": "2026-09-22 03:58:48.701979511+00:00"
+        },
+        {
+          "symbol": "ES.v.0",
+          "rows": 60,
+          "first_market_time": "2026-09-22 02:59:58.979593887+00:00",
+          "last_market_time": "2026-09-22 03:58:53.871659341+00:00"
+        },
+        {
+          "symbol": "GC.v.0",
+          "rows": 60,
+          "first_market_time": "2026-09-22 02:59:58.812479617+00:00",
+          "last_market_time": "2026-09-22 03:58:55.379023657+00:00"
+        },
+        {
+          "symbol": "NQ.v.0",
+          "rows": 60,
+          "first_market_time": "2026-09-22 02:59:58.807273843+00:00",
+          "last_market_time": "2026-09-22 03:58:59.864816803+00:00"
+        },
+        {
+          "symbol": "RTY.v.0",
+          "rows": 60,
+          "first_market_time": "2026-09-22 02:59:25.936018419+00:00",
+          "last_market_time": "2026-09-22 03:58:56.327906237+00:00"
+        }
+      ],
+      "expected_symbols": [
+        "ES.v.0",
+        "NQ.v.0",
+        "RTY.v.0",
+        "CL.v.0",
+        "GC.v.0"
+      ],
+      "missing_requested_symbols": [],
+      "request_metadata": [
+        {
+          "provider_stype_in": "continuous",
+          "request_limit_saturated": false,
+          "initial_range_start": "2026-09-22 03:00:00+00:00",
+          "initial_range_end": "2026-09-22 04:00:00+00:00",
+          "effective_range_start": "2026-09-22 03:00:00+00:00",
+          "effective_range_end": "2026-09-22 04:00:00+00:00",
+          "latest_window_shrink_count": 0,
+          "empty_window_expansion_count": 0
+        }
+      ]
+    },
+    {
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_mbp-10\\databento\\normalized\\CME_CONTEXT_cme_context_mbp-10.parquet",
+      "scope": "CME_CONTEXT",
+      "schema": "mbp-10",
+      "file_rows": 63884,
+      "current_stage_rows": 4999,
+      "symbols": [
+        {
+          "symbol": "CL.v.0",
+          "rows": 894,
+          "first_market_time": "2026-09-21 20:13:45.951221701+00:00",
+          "last_market_time": "2026-09-21 20:14:12.202173907+00:00"
+        },
+        {
+          "symbol": "ES.v.0",
+          "rows": 1243,
+          "first_market_time": "2026-09-21 20:13:45.900263001+00:00",
+          "last_market_time": "2026-09-21 20:14:13.051734763+00:00"
+        },
+        {
+          "symbol": "GC.v.0",
+          "rows": 271,
+          "first_market_time": "2026-09-21 20:13:45.856627199+00:00",
+          "last_market_time": "2026-09-21 20:14:12.847445335+00:00"
+        },
+        {
+          "symbol": "NQ.v.0",
+          "rows": 2203,
+          "first_market_time": "2026-09-21 20:13:45.900393659+00:00",
+          "last_market_time": "2026-09-21 20:14:13.051734857+00:00"
+        },
+        {
+          "symbol": "RTY.v.0",
+          "rows": 388,
+          "first_market_time": "2026-09-21 20:13:46.640638529+00:00",
+          "last_market_time": "2026-09-21 20:14:13.051734709+00:00"
+        }
+      ],
+      "expected_symbols": [
+        "ES.v.0",
+        "NQ.v.0",
+        "RTY.v.0",
+        "CL.v.0",
+        "GC.v.0"
+      ],
+      "missing_requested_symbols": [],
+      "request_metadata": [
+        {
+          "provider_stype_in": "continuous",
+          "request_limit_saturated": true,
+          "initial_range_start": "2026-09-21 19:49:32.506783+00:00",
+          "initial_range_end": "2026-09-21 20:14:32.506783+00:00",
+          "effective_range_start": "2026-09-21 20:13:45.631783+00:00",
+          "effective_range_end": "2026-09-21 20:14:32.506783+00:00",
+          "latest_window_shrink_count": 5,
+          "empty_window_expansion_count": 0
+        }
+      ]
+    },
+    {
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_ohlcv-1m\\databento\\normalized\\CME_CONTRACTS_cme_contracts_ohlcv-1m.parquet",
+      "scope": "CME_CONTRACTS",
+      "schema": "ohlcv-1m",
+      "file_rows": 43284,
+      "current_stage_rows": 2788,
+      "symbols": [
+        {
+          "symbol": "CLV6",
+          "rows": 1049,
+          "first_market_time": "2026-09-20 22:00:00+00:00",
+          "last_market_time": "2026-09-22 03:34:00+00:00"
+        },
+        {
+          "symbol": "GCZ6",
+          "rows": 1739,
+          "first_market_time": "2026-09-20 22:00:00+00:00",
+          "last_market_time": "2026-09-22 03:59:00+00:00"
+        }
+      ],
+      "expected_symbols": [
+        "ESU6",
+        "NQU6",
+        "CLV6",
+        "GCZ6"
+      ],
+      "missing_requested_symbols": [
+        "ESU6",
+        "NQU6"
+      ],
+      "request_metadata": [
+        {
+          "provider_stype_in": "raw_symbol",
+          "request_limit_saturated": false,
+          "initial_range_start": "2026-09-19 04:00:00+00:00",
+          "initial_range_end": "2026-09-22 04:00:00+00:00",
+          "effective_range_start": "2026-09-19 04:00:00+00:00",
+          "effective_range_end": "2026-09-22 04:00:00+00:00",
+          "latest_window_shrink_count": 0,
+          "empty_window_expansion_count": 0
+        }
+      ]
+    },
+    {
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_bbo-1m\\databento\\normalized\\CME_CONTRACTS_cme_contracts_bbo-1m.parquet",
+      "scope": "CME_CONTRACTS",
+      "schema": "bbo-1m",
+      "file_rows": 2632,
+      "current_stage_rows": 90,
+      "symbols": [
+        {
+          "symbol": "CLV6",
+          "rows": 30,
+          "first_market_time": "2026-09-22 02:55:25.388916961+00:00",
+          "last_market_time": "2026-09-22 03:34:00.846214605+00:00"
+        },
+        {
+          "symbol": "GCZ6",
+          "rows": 60,
+          "first_market_time": "2026-09-22 02:59:58.812479617+00:00",
+          "last_market_time": "2026-09-22 03:58:55.379023657+00:00"
+        }
+      ],
+      "expected_symbols": [
+        "ESU6",
+        "NQU6",
+        "CLV6",
+        "GCZ6"
+      ],
+      "missing_requested_symbols": [
+        "ESU6",
+        "NQU6"
+      ],
+      "request_metadata": [
+        {
+          "provider_stype_in": "raw_symbol",
+          "request_limit_saturated": false,
+          "initial_range_start": "2026-09-22 03:00:00+00:00",
+          "initial_range_end": "2026-09-22 04:00:00+00:00",
+          "effective_range_start": "2026-09-22 03:00:00+00:00",
+          "effective_range_end": "2026-09-22 04:00:00+00:00",
+          "latest_window_shrink_count": 0,
+          "empty_window_expansion_count": 0
+        }
+      ]
+    },
+    {
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_mbp-10\\databento\\normalized\\CME_CONTRACTS_cme_contracts_mbp-10.parquet",
+      "scope": "CME_CONTRACTS",
+      "schema": "mbp-10",
+      "file_rows": 57267,
+      "current_stage_rows": 4093,
+      "symbols": [
+        {
+          "symbol": "CLV6",
+          "rows": 96,
+          "first_market_time": "2026-09-21 20:08:37.984636373+00:00",
+          "last_market_time": "2026-09-21 20:13:33.167813985+00:00"
+        },
+        {
+          "symbol": "GCZ6",
+          "rows": 3997,
+          "first_market_time": "2026-09-21 20:08:17.588462847+00:00",
+          "last_market_time": "2026-09-21 20:14:31.046544371+00:00"
+        }
+      ],
+      "expected_symbols": [
+        "ESU6",
+        "NQU6",
+        "CLV6",
+        "GCZ6"
+      ],
+      "missing_requested_symbols": [
+        "ESU6",
+        "NQU6"
+      ],
+      "request_metadata": [
+        {
+          "provider_stype_in": "raw_symbol",
+          "request_limit_saturated": false,
+          "initial_range_start": "2026-09-21 19:49:32.506783+00:00",
+          "initial_range_end": "2026-09-21 20:14:32.506783+00:00",
+          "effective_range_start": "2026-09-21 20:08:17.506783+00:00",
+          "effective_range_end": "2026-09-21 20:14:32.506783+00:00",
+          "latest_window_shrink_count": 2,
+          "empty_window_expansion_count": 0
+        }
+      ]
+    }
+  ],
+  "missing_raw_symbols": [
+    "ESU6",
+    "NQU6"
+  ],
+  "continuous_context_complete_for_configured_roots": true,
+  "capture_stage_status": "COMPLETE_WITH_ZERO_CAPTURE_FAILURES",
+  "interpretation": "Fixed configured raw symbols are passed through unchanged, with no rollover selection. Requests return remaining CLV6/GCZ6 data; successful request status does not mean all four raw contracts returned. Continuous roots remain separately present and the cross-asset derivation explicitly filters continuous stype. The exact futures-expiry interpretation was not independently established by this local-only review.",
+  "disposition": "No unchanged retry, provider request, configuration mutation or pipeline restart. Preserve and disclose missing raw-contract observations; any future rollover must use verified requested source identities.",
+  "code_evidence": {
+    "explicit_config": "C:/dev/ducketz/app/services/databento_cme_context.py:114",
+    "passthrough_specs": "C:/dev/ducketz/app/services/databento_cme_context.py:149",
+    "continuous_only_derivation": "C:/dev/ducketz/datafetching/cme_cross_asset_context.py:752"
+  },
+  "scope": "Six existing compact normalized CME tables projected to current-stage rows and selected fields, exact native logs and four nonsecret config values. No provider/broker calls, raw archive scan or additional OPRA file hashes."
+}

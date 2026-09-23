@@ -1,0 +1,426 @@
+{
+  "reviewed_at": "2026-09-23T05:53:57.890902+00:00",
+  "scope": "INDEPENDENT_READ_ONLY_USER_OUTPUT_REVIEW_NO_PROVIDER_OR_BROKER_CALLS",
+  "status": "PASS",
+  "checks": {
+    "trade_rows_264": true,
+    "per_symbol_24": true,
+    "hourly_prices_154": true,
+    "hourly_prices_all_available": true,
+    "table_quantity_columns_adjacent": true,
+    "all_three_current_synthetic_anchors_disclosed": true,
+    "snapshot_literal_cash": true,
+    "snapshot_ready": true,
+    "zero_working_orders": true,
+    "source_gameplan_pinned": true,
+    "saved_price_estimates_unchanged": true,
+    "frozen_forecast_values_unchanged": true,
+    "prior_plan_preopening": true,
+    "actuals_prices_explicitly_not_fills": true,
+    "both_zero_orders": true,
+    "no_fill_baseline_preserved": true,
+    "accepted_forecast_boundaries_within_300_seconds": true,
+    "accepted_price_boundaries_within_300_seconds": true
+  },
+  "tradeplan": {
+    "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260923T054803.564321Z",
+    "action_date": "2026-09-23",
+    "rows": 264,
+    "rows_by_symbol": {
+      "AAPL": 24,
+      "AMZN": 24,
+      "COST": 24,
+      "CROX": 24,
+      "GOOG": 24,
+      "IONQ": 24,
+      "MU": 24,
+      "NVDA": 24,
+      "PATH": 24,
+      "SNDK": 24,
+      "TWST": 24
+    },
+    "hourly_price_points": 154,
+    "hourly_price_status_counts": {
+      "AVAILABLE": 154
+    },
+    "price_observation_fixed_at": "2026-09-23T05:48:24.061100+00:00",
+    "entry_price_bands": {
+      "AVAILABLE": 209,
+      "NOT_ENTRY": 55
+    },
+    "policy": {
+      "direction": "stock-direction-50-v2",
+      "direction_up_threshold": 0.5,
+      "direction_down_threshold": 0.5,
+      "holding_policy": "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1",
+      "reference_contract": "sparse-session-planning-reference-completion-v2",
+      "reference_max_gap_minutes": 240,
+      "price_path_contract": "conditional-hourly-planning-price-path-v3",
+      "reference_native_tolerance_seconds": 300.0,
+      "minimum_path_samples": 2,
+      "fill_allowance_basis_points": 20.0
+    },
+    "current_synthetic_anchors": [
+      {
+        "symbol": "CROX",
+        "price": 125.0,
+        "observed_at": "2026-09-22T20:31:00+00:00",
+        "effective_at": "2026-09-23T00:00:00+00:00",
+        "gap_minutes": 209.0,
+        "fill_count": 209,
+        "reason": "ASSUMED_NO_TRADES",
+        "source_coverage": {
+          "end": "2026-09-23T00:00:00+00:00",
+          "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-20_to_2026-09-23\\manifest.json",
+          "native_partition_verified": true,
+          "published_at": "2026-09-23T05:43:22.203417+00:00",
+          "request_id": "336d0cdcfc409876dd909a8c",
+          "start": "2026-09-20T00:00:00+00:00",
+          "symbol": "CROX"
+        }
+      },
+      {
+        "symbol": "PATH",
+        "price": 13.26,
+        "observed_at": "2026-09-22T23:42:00+00:00",
+        "effective_at": "2026-09-23T00:00:00+00:00",
+        "gap_minutes": 18.0,
+        "fill_count": 18,
+        "reason": "ASSUMED_NO_TRADES",
+        "source_coverage": {
+          "end": "2026-09-23T00:00:00+00:00",
+          "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-20_to_2026-09-23\\manifest.json",
+          "native_partition_verified": true,
+          "published_at": "2026-09-23T05:43:41.401874+00:00",
+          "request_id": "5bb3ef7b5612f63d623d9cf7",
+          "start": "2026-09-20T00:00:00+00:00",
+          "symbol": "PATH"
+        }
+      },
+      {
+        "symbol": "TWST",
+        "price": 164.55,
+        "observed_at": "2026-09-22T23:46:00+00:00",
+        "effective_at": "2026-09-23T00:00:00+00:00",
+        "gap_minutes": 14.0,
+        "fill_count": 14,
+        "reason": "ASSUMED_NO_TRADES",
+        "source_coverage": {
+          "end": "2026-09-23T00:00:00+00:00",
+          "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-20_to_2026-09-23\\manifest.json",
+          "native_partition_verified": true,
+          "published_at": "2026-09-23T05:43:57.462422+00:00",
+          "request_id": "8fd4a7a5fa37ba989ea81245",
+          "start": "2026-09-20T00:00:00+00:00",
+          "symbol": "TWST"
+        }
+      }
+    ],
+    "synthetic_bar_count": 241,
+    "original_prices_preservation": {
+      "native_prices_modified": false,
+      "model_training_prices_modified": false,
+      "historical_samples_modified": true,
+      "regular_session_prices_filled": false
+    },
+    "snapshot": {
+      "observed_at": "2026-09-23T05:48:14.341975+00:00",
+      "status": "OBSERVED",
+      "cash_status": "CASH_ONLY_BOUNDED",
+      "cash_policy": "MIN_REPORTED_LITERAL_CASH_AND_CASH_TRADING_BALANCE_LESS_ALL_PENDING_RESERVES_CAPPED_BY_BROKER_CAPACITY",
+      "available_cash": 40346.79,
+      "balances": {
+        "cash_available_for_trading": null,
+        "cash_balance": 40346.79,
+        "settled_cash": null
+      },
+      "broker_available_cash": 99621.18,
+      "reserved_cash": 0.0,
+      "held_shares": {
+        "AAPL": 19.0,
+        "AMZN": 32.0,
+        "COST": 2.0,
+        "CROX": 0.0,
+        "GOOG": 28.0,
+        "IONQ": 159.0,
+        "MU": 8.0,
+        "NVDA": 30.0,
+        "PATH": 467.0,
+        "SNDK": 6.0,
+        "TWST": 77.0
+      },
+      "working_order_count": 0
+    },
+    "ownership": {
+      "safe_for_planning": true,
+      "account_matches": true,
+      "reason_codes": [],
+      "last_saved_reconciliation_at": "2026-09-23T04:14:05.585364+00:00"
+    },
+    "direction_ledger": {
+      "status": "COMPLETE",
+      "summary": {
+        "buy_events": 54,
+        "cash_buffer": 2017.3395,
+        "cash_change_high": 72192.15,
+        "cash_change_low": 71161.99,
+        "direction_buy_rows": 54,
+        "direction_sell_rows": 26,
+        "ending_cash_base": 112025.2,
+        "ending_cash_high": 112538.94,
+        "ending_cash_low": 111508.78,
+        "sell_events": 26,
+        "starting_cash": 40346.79,
+        "trade_events": 80
+      },
+      "events": 80,
+      "hourly": 14,
+      "ending_positions": {
+        "AAPL": 0.0,
+        "AMZN": 0.0,
+        "COST": 0.0,
+        "CROX": 0.0,
+        "GOOG": 5.0,
+        "IONQ": 0.0,
+        "MU": 2.0,
+        "NVDA": 0.0,
+        "PATH": 0.0,
+        "SNDK": 2.0,
+        "TWST": 0.0
+      },
+      "no_fill_baseline": {
+        "cash": 40346.79,
+        "held_shares": {
+          "AAPL": 19.0,
+          "AMZN": 32.0,
+          "COST": 2.0,
+          "CROX": 0.0,
+          "GOOG": 28.0,
+          "IONQ": 159.0,
+          "MU": 8.0,
+          "NVDA": 30.0,
+          "PATH": 467.0,
+          "SNDK": 6.0,
+          "TWST": 77.0
+        }
+      },
+      "event_reason_counts": {
+        "BEARISH_SELL": 26,
+        "BULLISH_BUY": 54
+      },
+      "assumptions": [
+        "Each new bullish forecast adds shares using current capacity; bearish forecasts sell eligible shares in their own horizon. An exact 50% holds.",
+        "Research assessment is disclosed separately and does not veto saved manual Gameplan instructions.",
+        "Forecast window ends are prediction measurement times, not sale instructions. There are no scheduled expiry sales, including at day end.",
+        "Each hour processes bearish sales, then bullish purchases. Holdings remain separated by symbol and horizon; cash and exposure are shared.",
+        "Unallocated shares may be assigned to bearish sales; another horizon's shares and pending sells remain protected.",
+        "These quantities assume fills at planning estimates and available sale proceeds. Live orders use current quotes, actual cash and confirmed holdings; no fill is guaranteed.",
+        "Unfilled trades leave cash and shares unchanged. Subsequent projected quantities then require recalculation."
+      ]
+    },
+    "readable_path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260923T054803.564321Z\\Gameplan.md"
+  },
+  "actuals": {
+    "path": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260923T055028.498627Z",
+    "action_date": "2026-09-22",
+    "successor_action_date": "2026-09-23",
+    "source_selection": "Last verified publication and matching trade plan saved before the reviewed 04:00 opening",
+    "forecasts": {
+      "evaluated": 165,
+      "mature_awaiting_data": 33,
+      "pending_maturity": 66,
+      "total": 264
+    },
+    "prices": {
+      "COMPARED": 137,
+      "MATURE_AWAITING_DATA": 17
+    },
+    "missing_forecasts_by_symbol_and_group": [
+      {
+        "symbol": "COST",
+        "group": "1h",
+        "count": 3
+      },
+      {
+        "symbol": "CROX",
+        "group": "1d",
+        "count": 1
+      },
+      {
+        "symbol": "CROX",
+        "group": "1h",
+        "count": 8
+      },
+      {
+        "symbol": "CROX",
+        "group": "4h",
+        "count": 1
+      },
+      {
+        "symbol": "IONQ",
+        "group": "1h",
+        "count": 1
+      },
+      {
+        "symbol": "PATH",
+        "group": "1d",
+        "count": 1
+      },
+      {
+        "symbol": "PATH",
+        "group": "1h",
+        "count": 6
+      },
+      {
+        "symbol": "PATH",
+        "group": "4h",
+        "count": 1
+      },
+      {
+        "symbol": "TWST",
+        "group": "1d",
+        "count": 1
+      },
+      {
+        "symbol": "TWST",
+        "group": "1h",
+        "count": 8
+      },
+      {
+        "symbol": "TWST",
+        "group": "4h",
+        "count": 2
+      }
+    ],
+    "missing_prices": [
+      {
+        "symbol": "CROX",
+        "clock_local": "05:00",
+        "comparison_status": "MATURE_AWAITING_DATA",
+        "actual_status": "OUTSIDE_TOLERANCE"
+      },
+      {
+        "symbol": "CROX",
+        "clock_local": "06:00",
+        "comparison_status": "MATURE_AWAITING_DATA",
+        "actual_status": "OUTSIDE_TOLERANCE"
+      },
+      {
+        "symbol": "CROX",
+        "clock_local": "14:00",
+        "comparison_status": "MATURE_AWAITING_DATA",
+        "actual_status": "NO_OBSERVATION"
+      },
+      {
+        "symbol": "CROX",
+        "clock_local": "15:00",
+        "comparison_status": "MATURE_AWAITING_DATA",
+        "actual_status": "NO_OBSERVATION"
+      },
+      {
+        "symbol": "CROX",
+        "clock_local": "16:00",
+        "comparison_status": "MATURE_AWAITING_DATA",
+        "actual_status": "NO_OBSERVATION"
+      },
+      {
+        "symbol": "CROX",
+        "clock_local": "17:00",
+        "comparison_status": "MATURE_AWAITING_DATA",
+        "actual_status": "OUTSIDE_TOLERANCE"
+      },
+      {
+        "symbol": "PATH",
+        "clock_local": "04:00",
+        "comparison_status": "MATURE_AWAITING_DATA",
+        "actual_status": "OUTSIDE_TOLERANCE"
+      },
+      {
+        "symbol": "PATH",
+        "clock_local": "05:00",
+        "comparison_status": "MATURE_AWAITING_DATA",
+        "actual_status": "OUTSIDE_TOLERANCE"
+      },
+      {
+        "symbol": "PATH",
+        "clock_local": "16:00",
+        "comparison_status": "MATURE_AWAITING_DATA",
+        "actual_status": "OUTSIDE_TOLERANCE"
+      },
+      {
+        "symbol": "PATH",
+        "clock_local": "17:00",
+        "comparison_status": "MATURE_AWAITING_DATA",
+        "actual_status": "OUTSIDE_TOLERANCE"
+      },
+      {
+        "symbol": "TWST",
+        "clock_local": "04:00",
+        "comparison_status": "MATURE_AWAITING_DATA",
+        "actual_status": "OUTSIDE_TOLERANCE"
+      },
+      {
+        "symbol": "TWST",
+        "clock_local": "05:00",
+        "comparison_status": "MATURE_AWAITING_DATA",
+        "actual_status": "OUTSIDE_TOLERANCE"
+      },
+      {
+        "symbol": "TWST",
+        "clock_local": "06:00",
+        "comparison_status": "MATURE_AWAITING_DATA",
+        "actual_status": "OUTSIDE_TOLERANCE"
+      },
+      {
+        "symbol": "TWST",
+        "clock_local": "14:00",
+        "comparison_status": "MATURE_AWAITING_DATA",
+        "actual_status": "OUTSIDE_TOLERANCE"
+      },
+      {
+        "symbol": "TWST",
+        "clock_local": "15:00",
+        "comparison_status": "MATURE_AWAITING_DATA",
+        "actual_status": "OUTSIDE_TOLERANCE"
+      },
+      {
+        "symbol": "TWST",
+        "clock_local": "16:00",
+        "comparison_status": "MATURE_AWAITING_DATA",
+        "actual_status": "OUTSIDE_TOLERANCE"
+      },
+      {
+        "symbol": "TWST",
+        "clock_local": "17:00",
+        "comparison_status": "MATURE_AWAITING_DATA",
+        "actual_status": "OUTSIDE_TOLERANCE"
+      }
+    ],
+    "direction_results": {
+      "Pending": 99,
+      "Correct": 84,
+      "Incorrect": 81
+    },
+    "prior_gameplan_published_at": "2026-09-22T05:51:37.335068+00:00",
+    "prior_tradeplan_completed_at": "2026-09-22T05:54:45.027502+00:00",
+    "reviewed_session_opening": "2026-09-22T11:00:00+00:00",
+    "frozen_forecast_fields_match": {
+      "symbol": true,
+      "calibrated_probability": true,
+      "direction": true,
+      "model_status": true,
+      "target_window_start": true,
+      "target_window_end": true
+    },
+    "saved_price_estimates_match_rows": 154,
+    "source_gameplan_path": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260922T054940.677673Z",
+    "source_tradeplan_path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260922T055228.508721Z",
+    "actual_prices_are_broker_fills": false,
+    "actual_prices_are_realized_pnl": false,
+    "readable_path": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260923T055028.498627Z\\Gameplan-results.md",
+    "dated_path": "C:/DATASTORE/ml/gameplan-actuals-review-by-date/2026-09-22/Gameplan-results.md"
+  },
+  "policy_context": "Root confirmed current NIGHTLY_GAMEPLAN persisted contracts supersede older recurring wording; this review reports each saved policy without altering immutable artifacts.",
+  "orders_placed": 0,
+  "production_changes": 0
+}

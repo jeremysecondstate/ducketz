@@ -1,0 +1,121 @@
+{
+  "verified_at": "2026-09-21T12:21:10.418990+00:00",
+  "status": "TRADER_RUNNING_VERIFIED",
+  "session": {
+    "action_date": "2026-09-21",
+    "calls": 6,
+    "closes_at": "2026-09-21T17:00:00-07:00",
+    "consecutive_failures": 0,
+    "execute": true,
+    "failed_cycles": 0,
+    "heartbeat_at": "2026-09-21T12:20:59.830936+00:00",
+    "last_cycle": {
+      "activation_active": true,
+      "broker_state_capture": {
+        "attempts": 1,
+        "elapsed_seconds": 2.592530899972189,
+        "last_error_operation": null,
+        "last_error_type": null,
+        "maximum_retry_seconds": 120.0,
+        "quote_refresh": {
+          "refreshes": 0,
+          "status": "NOT_NEEDED",
+          "unavailable_symbols": []
+        },
+        "retry_delay_seconds": 3.0,
+        "retry_wait_seconds": 0.0,
+        "schema_version": "stock-trader-broker-state-capture-v1",
+        "status": "CURRENT",
+        "transient_failures": 0
+      },
+      "duplicate_suppressions": 0,
+      "error": null,
+      "execution_requested": true,
+      "prediction_handoff_status": null,
+      "run_directory": "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260921T122059.726870Z",
+      "selected_orders": 0,
+      "status": "NO_ORDERS_SUBMITTED",
+      "stopped_after_error": false,
+      "submitted_orders": 0,
+      "target_window_start": null
+    },
+    "late_opening_date": null,
+    "orders_submitted": 5,
+    "pid": 42576,
+    "resume_quote_run": null,
+    "resume_quote_symbol": null,
+    "schema_version": "independent-stock-session-status-v1",
+    "sizing_policy": "gameplan-direction-current-market-v1",
+    "started_at": "2026-09-21T12:18:05.386720+00:00",
+    "status": "RUNNING",
+    "wait_for_open": true,
+    "wakes_at": "2026-09-21T04:00:00-07:00"
+  },
+  "source_gameplan": "ml/nightly-gameplan-runs/20260919T061628.240412Z",
+  "first_decision_run": "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260921T121812.194975Z",
+  "first_decision_receipt_hashes_verified": true,
+  "filled_orders": [
+    {
+      "symbol": "GOOG",
+      "horizon": "1h",
+      "side": "BUY",
+      "quantity": 5,
+      "filled": 5,
+      "status": "FILLED",
+      "batch": "20260921T121812.194975Z",
+      "idempotency_key": "dd663e22dd5a5f2322809616018f39392d5180bdab262cf7860f10aeddce98cb"
+    },
+    {
+      "symbol": "MU",
+      "horizon": "1h",
+      "side": "BUY",
+      "quantity": 1,
+      "filled": 1,
+      "status": "FILLED",
+      "batch": "20260921T121812.194975Z",
+      "idempotency_key": "8bf8bfb95d7a0f113cca45a431d46a79f04620422ea97ccff9df89c49bdd00c5"
+    },
+    {
+      "symbol": "NVDA",
+      "horizon": "1h",
+      "side": "BUY",
+      "quantity": 8,
+      "filled": 8,
+      "status": "FILLED",
+      "batch": "20260921T121812.194975Z",
+      "idempotency_key": "48ab3ac626e9d80c83bdcf8b939ce524967935393fd11b2c7e2e19c9b75515fd"
+    },
+    {
+      "symbol": "SNDK",
+      "horizon": "1h",
+      "side": "BUY",
+      "quantity": 1,
+      "filled": 1,
+      "status": "FILLED",
+      "batch": "20260921T121812.194975Z",
+      "idempotency_key": "0d9f32b8c9dec5c892f360ed8ac655ffd8ce080659ecb174a62ab8f598488443"
+    },
+    {
+      "symbol": "TWST",
+      "horizon": "1h",
+      "side": "BUY",
+      "quantity": 11,
+      "filled": 11,
+      "status": "FILLED",
+      "batch": "20260921T121812.194975Z",
+      "idempotency_key": "d65ba278c14a10c62f916a69e34375a89057ec9d677c0526f597d09a76f9a2e4"
+    }
+  ],
+  "pending_reservations": 0,
+  "persistent_blocks": [],
+  "duplicate_execution_identities": 0,
+  "latest_ownership_snapshot": {
+    "observed_at": "2026-09-21T12:20:57.559264+00:00",
+    "ready": 1,
+    "reasons": "[]"
+  },
+  "original_controls_restored": true,
+  "tests_passed": 209,
+  "native_reconciliation": "C:\\dev\\ducketz\\artifacts\\analysis\\trader-recovery-20260921\\native-reconciliation.json",
+  "overnight_tail_completed": false
+}

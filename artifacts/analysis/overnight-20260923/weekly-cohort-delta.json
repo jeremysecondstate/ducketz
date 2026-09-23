@@ -1,0 +1,154 @@
+{
+  "old_rows": 2282,
+  "new_rows": 2290,
+  "common_rows": 2282,
+  "added": [
+    {
+      "symbol": "AAPL",
+      "route": "1w@D+5",
+      "decision_timestamp": "2026-09-16 00:05:00+00:00",
+      "target_window_start": "2026-09-16 11:00:00+00:00",
+      "target_window_end": "2026-09-23 00:00:00+00:00",
+      "observed_return": 0.024720388290977224,
+      "target": 1,
+      "target_start_gap_seconds": 0.0,
+      "target_end_gap_seconds": 0.0
+    },
+    {
+      "symbol": "AMZN",
+      "route": "1w@D+5",
+      "decision_timestamp": "2026-09-16 00:05:00+00:00",
+      "target_window_start": "2026-09-16 11:00:00+00:00",
+      "target_window_end": "2026-09-23 00:00:00+00:00",
+      "observed_return": 0.02536929993577397,
+      "target": 1,
+      "target_start_gap_seconds": 0.0,
+      "target_end_gap_seconds": 0.0
+    },
+    {
+      "symbol": "COST",
+      "route": "1w@D+5",
+      "decision_timestamp": "2026-09-16 00:05:00+00:00",
+      "target_window_start": "2026-09-16 11:00:00+00:00",
+      "target_window_end": "2026-09-23 00:00:00+00:00",
+      "observed_return": -0.004361108651377066,
+      "target": 0,
+      "target_start_gap_seconds": 0.0,
+      "target_end_gap_seconds": 240.0
+    },
+    {
+      "symbol": "GOOG",
+      "route": "1w@D+5",
+      "decision_timestamp": "2026-09-16 00:05:00+00:00",
+      "target_window_start": "2026-09-16 11:00:00+00:00",
+      "target_window_end": "2026-09-23 00:00:00+00:00",
+      "observed_return": 0.018129185063890718,
+      "target": 1,
+      "target_start_gap_seconds": 0.0,
+      "target_end_gap_seconds": 0.0
+    },
+    {
+      "symbol": "IONQ",
+      "route": "1w@D+5",
+      "decision_timestamp": "2026-09-16 00:05:00+00:00",
+      "target_window_start": "2026-09-16 11:00:00+00:00",
+      "target_window_end": "2026-09-23 00:00:00+00:00",
+      "observed_return": 0.23236402800215417,
+      "target": 1,
+      "target_start_gap_seconds": 0.0,
+      "target_end_gap_seconds": 0.0
+    },
+    {
+      "symbol": "MU",
+      "route": "1w@D+5",
+      "decision_timestamp": "2026-09-16 00:05:00+00:00",
+      "target_window_start": "2026-09-16 11:00:00+00:00",
+      "target_window_end": "2026-09-23 00:00:00+00:00",
+      "observed_return": 0.17456393793472458,
+      "target": 1,
+      "target_start_gap_seconds": 0.0,
+      "target_end_gap_seconds": 0.0
+    },
+    {
+      "symbol": "NVDA",
+      "route": "1w@D+5",
+      "decision_timestamp": "2026-09-16 00:05:00+00:00",
+      "target_window_start": "2026-09-16 11:00:00+00:00",
+      "target_window_end": "2026-09-23 00:00:00+00:00",
+      "observed_return": 0.0713046739487131,
+      "target": 1,
+      "target_start_gap_seconds": 0.0,
+      "target_end_gap_seconds": 0.0
+    },
+    {
+      "symbol": "SNDK",
+      "route": "1w@D+5",
+      "decision_timestamp": "2026-09-16 00:05:00+00:00",
+      "target_window_start": "2026-09-16 11:00:00+00:00",
+      "target_window_end": "2026-09-23 00:00:00+00:00",
+      "observed_return": 0.2305344204072639,
+      "target": 1,
+      "target_start_gap_seconds": 0.0,
+      "target_end_gap_seconds": 0.0
+    }
+  ],
+  "removed": [],
+  "common_columns_changed": {},
+  "common_column_count": 196,
+  "new_columns": [],
+  "removed_columns": [],
+  "partitions": {
+    "train": {
+      "old_rows": 1561,
+      "new_rows": 1569,
+      "old_clusters": 629,
+      "new_clusters": 633,
+      "entered_rows": 8,
+      "left_rows": 0,
+      "old_positive_rate": 0.590006406149904,
+      "new_positive_rate": 0.591459528362014,
+      "first_decision": "2023-04-04T22:05:00+00:00",
+      "last_decision": "2026-04-30T00:05:00+00:00",
+      "last_target_end": "2026-05-07T00:00:00+00:00"
+    },
+    "selection": {
+      "old_rows": 176,
+      "new_rows": 171,
+      "old_clusters": 54,
+      "new_clusters": 53,
+      "entered_rows": 0,
+      "left_rows": 5,
+      "old_positive_rate": 0.48863636363636365,
+      "new_positive_rate": 0.4853801169590643,
+      "first_decision": "2026-05-06T20:05:00+00:00",
+      "last_decision": "2026-06-06T00:05:00+00:00",
+      "last_target_end": "2026-06-13T00:00:00+00:00"
+    },
+    "calibration": {
+      "old_rows": 197,
+      "new_rows": 203,
+      "old_clusters": 55,
+      "new_clusters": 56,
+      "entered_rows": 7,
+      "left_rows": 1,
+      "old_positive_rate": 0.41624365482233505,
+      "new_positive_rate": 0.4187192118226601,
+      "first_decision": "2026-06-13T00:05:00+00:00",
+      "last_decision": "2026-07-23T00:05:00+00:00",
+      "last_target_end": "2026-07-30T00:00:00+00:00"
+    },
+    "assessment": {
+      "old_rows": 255,
+      "new_rows": 256,
+      "old_clusters": 63,
+      "new_clusters": 63,
+      "entered_rows": 8,
+      "left_rows": 7,
+      "old_positive_rate": 0.5176470588235295,
+      "new_positive_rate": 0.5234375,
+      "first_decision": "2026-07-29T23:05:00+00:00",
+      "last_decision": "2026-09-16T00:05:00+00:00",
+      "last_target_end": "2026-09-23T00:00:00+00:00"
+    }
+  }
+}

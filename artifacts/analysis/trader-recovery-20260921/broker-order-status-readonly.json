@@ -1,0 +1,92 @@
+{
+  "observed_at": "2026-09-21T12:13:27.910233+00:00",
+  "scope": "READ_ONLY_EXACT_TRACKED_ORDER_HISTORY",
+  "ledger_mutations": 0,
+  "orders_submitted": 0,
+  "orders_cancelled": 0,
+  "orders_replaced": 0,
+  "broker_data_http_methods": [
+    "GET"
+  ],
+  "orders": [
+    {
+      "status": "CANCELED",
+      "quantity": 52.0,
+      "filledQuantity": 0.0,
+      "remainingQuantity": 0.0,
+      "cancelable": false,
+      "enteredTime": "2026-09-18T11:01:15+0000",
+      "closeTime": "2026-09-18T12:00:08+0000",
+      "orderType": "LIMIT",
+      "price": 120.51,
+      "duration": "DAY",
+      "session": "AM",
+      "symbol": "CROX",
+      "horizon": "1w",
+      "ledger_status": "WORKING",
+      "reserved_quantity": 52,
+      "ledger_filled_quantity": 0,
+      "exact_broker_order_id_matched": true,
+      "present_fields": [
+        "accountNumber",
+        "cancelable",
+        "closeTime",
+        "complexOrderStrategyType",
+        "destinationLinkName",
+        "duration",
+        "editable",
+        "enteredTime",
+        "filledQuantity",
+        "orderActivityCollection",
+        "orderId",
+        "orderLegCollection",
+        "orderStrategyType",
+        "orderType",
+        "price",
+        "quantity",
+        "remainingQuantity",
+        "requestedDestination",
+        "session",
+        "status",
+        "tag"
+      ],
+      "order_legs": [
+        {
+          "instruction": "BUY",
+          "quantity": 52.0,
+          "legId": 1,
+          "instrument": {
+            "symbol": "CROX",
+            "assetType": "EQUITY"
+          }
+        }
+      ],
+      "activity_collection": [
+        {
+          "activityType": "EXECUTION",
+          "activityId": 131049243388,
+          "executionType": "CANCELED",
+          "quantity": 52.0,
+          "orderRemainingQuantity": 0.0,
+          "executionLegs": [
+            {
+              "legId": 1,
+              "quantity": 52.0,
+              "mismarkedQuantity": 0.0,
+              "price": 0.0,
+              "time": "2026-09-18T12:00:08+0000",
+              "instrumentId": 1449935
+            }
+          ]
+        }
+      ],
+      "native_normalization": "VERIFIED",
+      "native_status": "CANCELLED",
+      "native_filled": 0,
+      "native_remaining": 0
+    }
+  ],
+  "account_matches": true,
+  "history_rows": 54,
+  "status": "READ_COMPLETE"
+}

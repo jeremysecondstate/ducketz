@@ -1,0 +1,361 @@
+{
+  "verified_at": "2026-09-22T05:55:56.907073+00:00",
+  "overnight_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260922T040810.607319Z",
+  "scope": "Read-only saved-model inference and arithmetic; no fit, archive/account/provider/broker reads.",
+  "orders_placed": 0,
+  "errors": [],
+  "coverage_notes": [
+    {
+      "group": "1w",
+      "status": "RESEARCH_NOT_PROMOTED",
+      "failed_promotion_checks": [
+        "brier_within_baseline_tolerance",
+        "log_loss_within_baseline_tolerance"
+      ]
+    }
+  ],
+  "directional": {
+    "1h": {
+      "status": "VERIFIED",
+      "checks": {
+        "train_counts": true,
+        "selection_counts": true,
+        "calibration_counts": true,
+        "assessment_counts": true,
+        "train_before_selection_target": true,
+        "train_before_selection_source_cutoff": true,
+        "selection_before_calibration_target": true,
+        "selection_before_calibration_source_cutoff": true,
+        "calibration_before_assessment_target": true,
+        "calibration_before_assessment_source_cutoff": true,
+        "same_source": true,
+        "observed_boundaries_within_five_minutes": true,
+        "returns_match_observed_prices": true,
+        "labels_mature_at_fit": true,
+        "fixed_logistic_grid": true,
+        "regularization_policy": true,
+        "v2_promotion_policy": true,
+        "fixed_C_candidates_present": true,
+        "minimum_development_log_loss": true,
+        "eligible_calibration_selection": true,
+        "development_calibration_policy": true,
+        "assessment_not_used_in_calibration_selection": true,
+        "exact_symbol_route_support_and_status": true
+      },
+      "cohort_output": "training-cohort-1h.parquet",
+      "retained_champion": null,
+      "fitted_rows": 56558,
+      "score_max_abs_error": 0.0,
+      "assessment": {
+        "rows": 4484,
+        "positive_rate": 0.5006690454950936,
+        "mean_probability": 0.49792886988445867,
+        "brier_score": 0.25017276227834945,
+        "log_loss": 0.6934971677240308,
+        "expected_calibration_error_10_bin": 0.008381843748826173,
+        "direction_accuracy_at_0_5": 0.5115967885816235
+      },
+      "raw_assessment": {
+        "rows": 4484,
+        "positive_rate": 0.5006690454950936,
+        "mean_probability": 0.49792886988445867,
+        "brier_score": 0.25017276227834945,
+        "log_loss": 0.6934971677240308,
+        "expected_calibration_error_10_bin": 0.008381843748826173,
+        "direction_accuracy_at_0_5": 0.5115967885816235
+      },
+      "baseline": {
+        "rows": 4484,
+        "positive_rate": 0.5006690454950936,
+        "mean_probability": 0.49340500017680977,
+        "brier_score": 0.2500523187325116,
+        "log_loss": 0.6932518266163988,
+        "expected_calibration_error_10_bin": 0.0072640453182838405,
+        "direction_accuracy_at_0_5": 0.49933095450490633
+      },
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "failed_promotion_checks": [],
+      "forecast_status_counts": {
+        "PROMOTED": 154
+      },
+      "support_errors": [],
+      "selected_family": "regularized-logistic-c0.1",
+      "shrinkage": null
+    },
+    "4h": {
+      "status": "VERIFIED",
+      "checks": {
+        "train_counts": true,
+        "selection_counts": true,
+        "calibration_counts": true,
+        "assessment_counts": true,
+        "train_before_selection_target": true,
+        "train_before_selection_source_cutoff": true,
+        "selection_before_calibration_target": true,
+        "selection_before_calibration_source_cutoff": true,
+        "calibration_before_assessment_target": true,
+        "calibration_before_assessment_source_cutoff": true,
+        "same_source": true,
+        "observed_boundaries_within_five_minutes": true,
+        "returns_match_observed_prices": true,
+        "labels_mature_at_fit": true,
+        "fixed_logistic_grid": true,
+        "regularization_policy": true,
+        "v2_promotion_policy": true,
+        "fixed_C_candidates_present": true,
+        "minimum_development_log_loss": true,
+        "eligible_calibration_selection": true,
+        "development_calibration_policy": true,
+        "assessment_not_used_in_calibration_selection": true,
+        "exact_symbol_route_support_and_status": true
+      },
+      "cohort_output": "training-cohort-4h.parquet",
+      "retained_champion": null,
+      "fitted_rows": 14307,
+      "score_max_abs_error": 0.0,
+      "assessment": {
+        "rows": 1230,
+        "positive_rate": 0.5097560975609756,
+        "mean_probability": 0.4796385106832929,
+        "brier_score": 0.25083524943888375,
+        "log_loss": 0.6948188890386495,
+        "expected_calibration_error_10_bin": 0.030117586877682734,
+        "direction_accuracy_at_0_5": 0.4902439024390244
+      },
+      "raw_assessment": {
+        "rows": 1230,
+        "positive_rate": 0.5097560975609756,
+        "mean_probability": 0.5079796197115302,
+        "brier_score": 0.2513349468859435,
+        "log_loss": 0.6958462950661845,
+        "expected_calibration_error_10_bin": 0.04130762351521035,
+        "direction_accuracy_at_0_5": 0.4788617886178862
+      },
+      "baseline": {
+        "rows": 1230,
+        "positive_rate": 0.5097560975609756,
+        "mean_probability": 0.5006640106241701,
+        "brier_score": 0.2499874846052472,
+        "log_loss": 0.6931221497559836,
+        "expected_calibration_error_10_bin": 0.009092086936805521,
+        "direction_accuracy_at_0_5": 0.5097560975609756
+      },
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "failed_promotion_checks": [],
+      "forecast_status_counts": {
+        "PROMOTED": 44
+      },
+      "support_errors": [],
+      "selected_family": "hist-gradient-mlp-0.25",
+      "shrinkage": null
+    },
+    "1d": {
+      "status": "VERIFIED",
+      "checks": {
+        "train_counts": true,
+        "selection_counts": true,
+        "calibration_counts": true,
+        "assessment_counts": true,
+        "train_before_selection_target": true,
+        "train_before_selection_source_cutoff": true,
+        "selection_before_calibration_target": true,
+        "selection_before_calibration_source_cutoff": true,
+        "calibration_before_assessment_target": true,
+        "calibration_before_assessment_source_cutoff": true,
+        "same_source": true,
+        "observed_boundaries_within_five_minutes": true,
+        "returns_match_observed_prices": true,
+        "labels_mature_at_fit": true,
+        "fixed_logistic_grid": true,
+        "regularization_policy": true,
+        "v2_promotion_policy": true,
+        "fixed_C_candidates_present": true,
+        "minimum_development_log_loss": true,
+        "eligible_calibration_selection": true,
+        "development_calibration_policy": true,
+        "assessment_not_used_in_calibration_selection": true,
+        "exact_symbol_route_support_and_status": true
+      },
+      "cohort_output": "training-cohort-1d.parquet",
+      "retained_champion": null,
+      "fitted_rows": 8860,
+      "score_max_abs_error": 0.0,
+      "assessment": {
+        "rows": 1226,
+        "positive_rate": 0.4902120717781403,
+        "mean_probability": 0.4303374502453461,
+        "brier_score": 0.253619694701406,
+        "log_loss": 0.7004710298735046,
+        "expected_calibration_error_10_bin": 0.059874621532794214,
+        "direction_accuracy_at_0_5": 0.5097879282218597
+      },
+      "raw_assessment": {
+        "rows": 1226,
+        "positive_rate": 0.4902120717781403,
+        "mean_probability": 0.5144863276039143,
+        "brier_score": 0.25185657883890933,
+        "log_loss": 0.6968630963559219,
+        "expected_calibration_error_10_bin": 0.04611088943020867,
+        "direction_accuracy_at_0_5": 0.4812398042414356
+      },
+      "baseline": {
+        "rows": 1226,
+        "positive_rate": 0.4902120717781403,
+        "mean_probability": 0.5125282167042889,
+        "brier_score": 0.2504022067854886,
+        "log_loss": 0.6939517954014865,
+        "expected_calibration_error_10_bin": 0.02231614492614864,
+        "direction_accuracy_at_0_5": 0.4902120717781403
+      },
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "failed_promotion_checks": [],
+      "forecast_status_counts": {
+        "PROMOTED": 55
+      },
+      "support_errors": [],
+      "selected_family": "regularized-logistic-c0.001",
+      "shrinkage": null
+    },
+    "1w": {
+      "status": "VERIFIED",
+      "checks": {
+        "train_counts": true,
+        "selection_counts": true,
+        "calibration_counts": true,
+        "assessment_counts": true,
+        "train_before_selection_target": true,
+        "train_before_selection_source_cutoff": true,
+        "selection_before_calibration_target": true,
+        "selection_before_calibration_source_cutoff": true,
+        "calibration_before_assessment_target": true,
+        "calibration_before_assessment_source_cutoff": true,
+        "same_source": true,
+        "observed_boundaries_within_five_minutes": true,
+        "returns_match_observed_prices": true,
+        "labels_mature_at_fit": true,
+        "fixed_logistic_grid": true,
+        "regularization_policy": true,
+        "v2_promotion_policy": true,
+        "fixed_C_candidates_present": true,
+        "minimum_development_log_loss": true,
+        "eligible_calibration_selection": true,
+        "development_calibration_policy": true,
+        "assessment_not_used_in_calibration_selection": true,
+        "exact_symbol_route_support_and_status": true,
+        "shrinkage_payload_matches_report": true,
+        "fixed_weekly_shrinkage_policy": true,
+        "fixed_weekly_weight_grid": true,
+        "selected_weight_in_grid": true,
+        "all_fixed_weekly_candidates_recorded": true,
+        "no_shrinkage_wins_exact_loss_ties": true,
+        "selected_name_matches_family_and_weight": true,
+        "selection_prior_train_only": true,
+        "fitted_prior_train_plus_selection": true,
+        "portable_shrinkage_wrapper": true,
+        "weekly_shrinkage_formula": true
+      },
+      "cohort_output": "training-cohort-1w.parquet",
+      "retained_champion": null,
+      "fitted_rows": 1737,
+      "score_max_abs_error": 0.0,
+      "assessment": {
+        "rows": 255,
+        "positive_rate": 0.5176470588235295,
+        "mean_probability": 0.5590604506232094,
+        "brier_score": 0.2613715351641155,
+        "log_loss": 0.7174201322752929,
+        "expected_calibration_error_10_bin": 0.08764194810560774,
+        "direction_accuracy_at_0_5": 0.5058823529411764
+      },
+      "raw_assessment": {
+        "rows": 255,
+        "positive_rate": 0.5176470588235295,
+        "mean_probability": 0.5590604506232094,
+        "brier_score": 0.2613715351641155,
+        "log_loss": 0.7174201322752929,
+        "expected_calibration_error_10_bin": 0.08764194810560774,
+        "direction_accuracy_at_0_5": 0.5058823529411764
+      },
+      "baseline": {
+        "rows": 255,
+        "positive_rate": 0.5176470588235295,
+        "mean_probability": 0.5797351755900979,
+        "brier_score": 0.25354351555849797,
+        "log_loss": 0.7003502347180854,
+        "expected_calibration_error_10_bin": 0.062088116766568446,
+        "direction_accuracy_at_0_5": 0.5176470588235295
+      },
+      "promotion_status": "RESEARCH_NOT_PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "failed_promotion_checks": [
+        "brier_within_baseline_tolerance",
+        "log_loss_within_baseline_tolerance"
+      ],
+      "forecast_status_counts": {
+        "RESEARCH_NOT_PROMOTED": 11
+      },
+      "support_errors": [],
+      "selected_family": "hist-gradient-mlp-0.25-prior-shrinkage-w0.75",
+      "shrinkage": {
+        "selected_base_family": "hist-gradient-mlp-0.25",
+        "probability_shrinkage_policy": "independent-stock-weekly-prior-probability-shrinkage-v1",
+        "selected_probability_shrinkage_weight": 0.75,
+        "selection_shrinkage_prior": 0.590006406149904,
+        "fitted_shrinkage_prior": 0.5797351755900979,
+        "probability_shrinkage_weights": [
+          0.25,
+          0.5,
+          0.75,
+          1.0
+        ]
+      }
+    }
+  },
+  "native_report_status": "COMPLETE",
+  "native_receipt_status": "COMPLETE",
+  "verification_scope": "NATIVE_COMPLETION_AND_MODELS",
+  "full_native_completion_verified": true,
+  "publication_run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260922T054940.677673Z",
+  "native_ancestry": [
+    {
+      "run": "C:\\DATASTORE\\ml\\overnight-runs\\20260922T040810.607319Z",
+      "status": "COMPLETE",
+      "target": "raw-price-direction-v1",
+      "receipt_binds_target_via_report_checksum": true
+    }
+  ],
+  "expected_action_date": "2026-09-22",
+  "probability_target_contract": "raw-price-direction-v1",
+  "gameplan_variant": "YG",
+  "forecast_rows": 264,
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST",
+    "CROX",
+    "PATH",
+    "TWST",
+    "IONQ"
+  ],
+  "verified_promoted_groups": [
+    "1d",
+    "1h",
+    "4h"
+  ],
+  "heavy_checks_started": true,
+  "native_probability_metadata_verifier_passed": true,
+  "all_forecasts_promoted_exact_history": false,
+  "all_directional_groups_promoted": false,
+  "status": "VERIFIED_WITH_COVERAGE_NOTES",
+  "verifier": {
+    "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260922\\verify_yg_completion.py",
+    "sha256": "d6fe064372ab449068df1b80e92c7745f97048deb30730bf4903cac8f5349882"
+  }
+}

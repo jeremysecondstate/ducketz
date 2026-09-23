@@ -1,0 +1,344 @@
+{
+  "reviewed_at": "2026-09-22T05:59:38.447327+00:00",
+  "status": "READABLE_OUTPUTS_REVIEWED_WITH_EXPLICIT_LIMITATIONS",
+  "scope": "Saved report/ledger/path JSON,264-row trade and forecast output,154-row actual-price output and readable Markdown only. No broker/provider calls, source-price archive reads, full source recomputation or repeated artifact hash audit. Root complete-run verifier handles full conservation/source/hash validation.",
+  "evidence": {
+    "source_gameplan": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260922T054940.677673Z",
+    "readable_gameplan": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260922T055228.508721Z\\Gameplan.md",
+    "trade_report": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260922T055228.508721Z\\report.json",
+    "account_snapshot": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260922T055228.508721Z\\account-snapshot.json",
+    "direction_ledger": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260922T055228.508721Z\\direction-ledger.json",
+    "planning_price_path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260922T055228.508721Z\\planning-price-path.json",
+    "reference_completion": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260922T055228.508721Z\\planning-reference-completion.json",
+    "synthetic_bars": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260922T055228.508721Z\\synthetic-reference-bars.parquet",
+    "actuals_report": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260922T055447.175940Z\\report.json",
+    "readable_actuals": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260922T055447.175940Z\\Gameplan-results.md",
+    "dated_actuals_reader": "C:/DATASTORE/ml/gameplan-actuals-review-by-date/2026-09-21/Gameplan-results.md",
+    "forecast_results": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260922T055447.175940Z\\forecast-results.parquet",
+    "price_results": "C:\\DATASTORE\\ml\\gameplan-actuals-review-runs\\20260922T055447.175940Z\\price-results.parquet"
+  },
+  "planning": {
+    "action_date": "2026-09-22",
+    "source_gameplan_run": "ml/nightly-gameplan-runs/20260922T054940.677673Z",
+    "report_observed_at": "2026-09-22T05:52:28.508721+00:00",
+    "report_completed_at": "2026-09-22T05:54:44.473191+00:00",
+    "snapshot_observed_at": "2026-09-22T05:52:39.468982+00:00",
+    "cash_status": "CASH_ONLY_BOUNDED",
+    "cash_policy": "MIN_REPORTED_LITERAL_CASH_AND_CASH_TRADING_BALANCE_LESS_ALL_PENDING_RESERVES_CAPPED_BY_BROKER_CAPACITY",
+    "available_cash": 21142.53,
+    "broker_available_cash_not_used_as_literal_cash": 90672.03,
+    "balances": {
+      "cash_available_for_trading": null,
+      "cash_balance": 21142.53,
+      "settled_cash": null
+    },
+    "account_equity": 130802.57,
+    "gross_exposure": 109660.04000000001,
+    "reserved_cash": 0.0,
+    "working_order_count": 0,
+    "starting_holdings": {
+      "AAPL": 24.0,
+      "AMZN": 39.0,
+      "COST": 0.0,
+      "CROX": 46.0,
+      "GOOG": 40.0,
+      "IONQ": 159.0,
+      "MU": 9.0,
+      "NVDA": 46.0,
+      "PATH": 467.0,
+      "SNDK": 9.0,
+      "TWST": 61.0
+    },
+    "ownership": {
+      "account_matches": true,
+      "safe_for_planning": true,
+      "status": "OBSERVED_CONSISTENT",
+      "reason_codes": [],
+      "blocked_symbols": [],
+      "current_broker_reconciliation_performed": false,
+      "last_saved_reconciliation_at": "2026-09-22T04:15:59.755090+00:00",
+      "last_saved_reconciliation_ready": true
+    },
+    "owned_allocation_count": 17,
+    "planning_override": null,
+    "broker_capture": {
+      "attempts": 1,
+      "elapsed_seconds": 10.692819899995811,
+      "last_error_operation": null,
+      "last_error_type": null,
+      "maximum_retry_seconds": 120.0,
+      "retry_delay_seconds": 3.0,
+      "retry_wait_seconds": 0.0,
+      "schema_version": "stock-trader-broker-state-capture-v1",
+      "status": "CURRENT",
+      "transient_failures": 0
+    },
+    "forecast_rows": 264,
+    "rows_by_symbol": {
+      "AAPL": 24,
+      "AMZN": 24,
+      "COST": 24,
+      "CROX": 24,
+      "GOOG": 24,
+      "IONQ": 24,
+      "MU": 24,
+      "NVDA": 24,
+      "PATH": 24,
+      "SNDK": 24,
+      "TWST": 24
+    },
+    "readable_symbol_capacity_direction_tables": 11,
+    "price_points": 154,
+    "price_statuses": {
+      "AVAILABLE": 154
+    },
+    "fixed_price_path_observed_at": "2026-09-22T05:52:49.078114+00:00",
+    "price_path_contract": "conditional-hourly-planning-price-path-v3",
+    "reference_contract": "sparse-session-planning-reference-completion-v2",
+    "current_synthetic_anchors": [
+      {
+        "symbol": "CROX",
+        "session": "2026-09-21",
+        "price": 123.0,
+        "observed_at": "2026-09-21T23:53:00+00:00",
+        "effective_at": "2026-09-22T00:00:00+00:00",
+        "gap_minutes": 7.0,
+        "fill_count": 7,
+        "reason": "ASSUMED_NO_TRADES",
+        "source_coverage": {
+          "end": "2026-09-22T00:00:00+00:00",
+          "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-17_to_2026-09-22\\manifest.json",
+          "native_partition_verified": true,
+          "published_at": "2026-09-22T05:47:42.680089+00:00",
+          "request_id": "fad26ddefc6771f8da196ad0",
+          "start": "2026-09-17T00:00:00+00:00",
+          "symbol": "CROX"
+        }
+      },
+      {
+        "symbol": "PATH",
+        "session": "2026-09-21",
+        "price": 13.62,
+        "observed_at": "2026-09-21T23:31:00+00:00",
+        "effective_at": "2026-09-22T00:00:00+00:00",
+        "gap_minutes": 29.0,
+        "fill_count": 29,
+        "reason": "ASSUMED_NO_TRADES",
+        "source_coverage": {
+          "end": "2026-09-22T00:00:00+00:00",
+          "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-17_to_2026-09-22\\manifest.json",
+          "native_partition_verified": true,
+          "published_at": "2026-09-22T05:48:14.781837+00:00",
+          "request_id": "223d8844d718f5d2973240db",
+          "start": "2026-09-17T00:00:00+00:00",
+          "symbol": "PATH"
+        }
+      },
+      {
+        "symbol": "TWST",
+        "session": "2026-09-21",
+        "price": 165.0,
+        "observed_at": "2026-09-21T20:32:00+00:00",
+        "effective_at": "2026-09-22T00:00:00+00:00",
+        "gap_minutes": 208.0,
+        "fill_count": 208,
+        "reason": "ASSUMED_NO_TRADES",
+        "source_coverage": {
+          "end": "2026-09-22T00:00:00+00:00",
+          "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-17_to_2026-09-22\\manifest.json",
+          "native_partition_verified": true,
+          "published_at": "2026-09-22T05:48:25.305974+00:00",
+          "request_id": "0a1d4db5e3519110e88d7689",
+          "start": "2026-09-17T00:00:00+00:00",
+          "symbol": "TWST"
+        }
+      }
+    ],
+    "current_synthetic_bars": 244,
+    "historical_reference_statuses": {
+      "AVAILABLE_OBSERVED": 941,
+      "AVAILABLE_SYNTHETIC": 390
+    },
+    "native_and_training_prices_modified": {
+      "native": false,
+      "model_training": false
+    },
+    "ledger_policy": "accumulate_bullish_sell_on_bearish_no_scheduled_expiry_v1",
+    "ledger_summary": {
+      "buy_events": 38,
+      "cash_buffer": 1057.1265,
+      "cash_change_high": 6314.58,
+      "cash_change_low": 5578.02,
+      "direction_buy_rows": 38,
+      "direction_sell_rows": 20,
+      "ending_cash_base": 27091.3,
+      "ending_cash_high": 27457.11,
+      "ending_cash_low": 26720.55,
+      "sell_events": 20,
+      "starting_cash": 21142.53,
+      "trade_events": 58
+    },
+    "event_reasons": {
+      "BEARISH_SELL": 20,
+      "BULLISH_BUY": 38
+    },
+    "event_horizon_actions": {
+      "1h_SELL": 17,
+      "1w_SELL": 3,
+      "1w_BUY": 7,
+      "1h_BUY": 31
+    },
+    "hourly_rows": 14,
+    "ending_positions": {
+      "AAPL": 0.0,
+      "AMZN": 57.0,
+      "COST": 2.0,
+      "CROX": 53.0,
+      "GOOG": 10.0,
+      "IONQ": 0.0,
+      "MU": 14.0,
+      "NVDA": 58.0,
+      "PATH": 945.0,
+      "SNDK": 6.0,
+      "TWST": 78.0
+    },
+    "ending_allocation_count": 21,
+    "no_fill_baseline": {
+      "cash": 21142.53,
+      "held_shares": {
+        "AAPL": 24.0,
+        "AMZN": 39.0,
+        "COST": 0.0,
+        "CROX": 46.0,
+        "GOOG": 40.0,
+        "IONQ": 159.0,
+        "MU": 9.0,
+        "NVDA": 46.0,
+        "PATH": 467.0,
+        "SNDK": 9.0,
+        "TWST": 61.0
+      }
+    },
+    "entry_model_status_counts": {
+      "PROMOTED": 198,
+      "RESEARCH_NOT_PROMOTED": 11
+    },
+    "model_caveat": "Readable plan says198/209 execution windows passed model assessment. Eleven weekly forecasts did not pass; recorded signal-driven policy still includes7weeklyBUY and3weeklySELL scenario events. This is not an assertion that all directional models qualified.",
+    "zero_orders": true
+  },
+  "actuals": {
+    "action_date": "2026-09-21",
+    "successor_action_date": "2026-09-22",
+    "source_gameplan_run": "ml/nightly-gameplan-runs/20260919T061628.240412Z",
+    "source_trade_plan_path": null,
+    "reviewed_at": "2026-09-22T05:54:47.175940+00:00",
+    "outcomes_through": "2026-09-22T00:00:00+00:00",
+    "forecast_counts": {
+      "evaluated": 161,
+      "mature_awaiting_data": 37,
+      "pending_maturity": 66,
+      "total": 264
+    },
+    "price_counts": {
+      "MATURE_AWAITING_DATA": 21,
+      "NO_SAVED_ESTIMATE": 133
+    },
+    "scored_direction_calls": 161,
+    "correct_direction_calls": 93,
+    "raw_direction_accuracy": 0.577639751552795,
+    "forecast_counts_by_symbol": {
+      "AAPL": {
+        "EVALUATED": 18,
+        "MATURE_AWAITING_DATA": 0,
+        "PENDING_MATURITY": 6
+      },
+      "AMZN": {
+        "EVALUATED": 18,
+        "MATURE_AWAITING_DATA": 0,
+        "PENDING_MATURITY": 6
+      },
+      "COST": {
+        "EVALUATED": 12,
+        "MATURE_AWAITING_DATA": 6,
+        "PENDING_MATURITY": 6
+      },
+      "CROX": {
+        "EVALUATED": 7,
+        "MATURE_AWAITING_DATA": 11,
+        "PENDING_MATURITY": 6
+      },
+      "GOOG": {
+        "EVALUATED": 18,
+        "MATURE_AWAITING_DATA": 0,
+        "PENDING_MATURITY": 6
+      },
+      "IONQ": {
+        "EVALUATED": 18,
+        "MATURE_AWAITING_DATA": 0,
+        "PENDING_MATURITY": 6
+      },
+      "MU": {
+        "EVALUATED": 18,
+        "MATURE_AWAITING_DATA": 0,
+        "PENDING_MATURITY": 6
+      },
+      "NVDA": {
+        "EVALUATED": 18,
+        "MATURE_AWAITING_DATA": 0,
+        "PENDING_MATURITY": 6
+      },
+      "PATH": {
+        "EVALUATED": 8,
+        "MATURE_AWAITING_DATA": 10,
+        "PENDING_MATURITY": 6
+      },
+      "SNDK": {
+        "EVALUATED": 18,
+        "MATURE_AWAITING_DATA": 0,
+        "PENDING_MATURITY": 6
+      },
+      "TWST": {
+        "EVALUATED": 8,
+        "MATURE_AWAITING_DATA": 10,
+        "PENDING_MATURITY": 6
+      }
+    },
+    "non_null_price_fields": {
+      "planned_price_low": 0,
+      "planned_price_mid": 0,
+      "planned_price_high": 0,
+      "actual_price": 133,
+      "price_error": 0,
+      "in_planned_range": 0
+    },
+    "missing_forecast_boundary_evidence": {
+      "actual_start_status": {
+        "OUTSIDE_TOLERANCE": 25,
+        "OBSERVED": 9,
+        "NO_OBSERVATION": 3
+      },
+      "actual_end_status": {
+        "OUTSIDE_TOLERANCE": 29,
+        "OBSERVED": 8
+      },
+      "actual_start_source_coverage": {
+        "VERIFIED_COMPLETE": 37
+      },
+      "actual_end_source_coverage": {
+        "VERIFIED_COMPLETE": 37
+      }
+    },
+    "price_actual_evidence": {
+      "actual_status": {
+        "OBSERVED": 133,
+        "OUTSIDE_TOLERANCE": 18,
+        "NO_OBSERVATION": 3
+      },
+      "actual_source_coverage": {
+        "VERIFIED_COMPLETE": 154
+      }
+    },
+    "implication": "No verified matching estimate was saved before September21 opening, so all154 planned price ranges/midpoints and their errors/in-range results remain absent. The161eligible frozen forecast outcomes can still be scored. No past estimates were reconstructed. Missing native observations remain unscored despite saved complete acquisition coverage; no broker fills or P/L are inferred."
+  },
+  "verification_limit": "Read-only consistency and human presentation review; complete source/hash/cash-conservation verification is separately performed by root."
+}

@@ -1,0 +1,57 @@
+{
+  "status": "VERIFIED",
+  "verified_at": "2026-09-21T15:52:18.387308+00:00",
+  "automations": [
+    {
+      "id": "loops-stock-trader-daily-adaptation",
+      "changed_fields": [
+        "model",
+        "prompt",
+        "reasoning_effort",
+        "status",
+        "updated_at"
+      ],
+      "status": "ACTIVE",
+      "model": "gpt-5.6-luna",
+      "reasoning_effort": "low",
+      "rrule": "FREQ=MINUTELY;INTERVAL=90;BYSECOND=0",
+      "prompt_chars": 4952
+    },
+    {
+      "id": "loops-stock-trader-live-shadow",
+      "changed_fields": [
+        "model",
+        "prompt",
+        "reasoning_effort",
+        "status",
+        "updated_at"
+      ],
+      "status": "ACTIVE",
+      "model": "gpt-5.6-luna",
+      "reasoning_effort": "low",
+      "rrule": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=3;BYMINUTE=55",
+      "prompt_chars": 4349
+    },
+    {
+      "id": "loops-hourly-operations",
+      "changed_fields": [],
+      "status": "ACTIVE",
+      "model": "gpt-6-astra",
+      "reasoning_effort": "ultra",
+      "rrule": "FREQ=DAILY;BYHOUR=21;BYMINUTE=5",
+      "prompt_chars": 23014
+    },
+    {
+      "id": "loops-gameplan-stock-trader-1-p-m-transition",
+      "status": "PAUSED"
+    },
+    {
+      "id": "loops-options-strategy-paper-tracking",
+      "status": "PAUSED"
+    },
+    {
+      "id": "september-9-gameplan-review",
+      "status": "PAUSED"
+    }
+  ]
+}

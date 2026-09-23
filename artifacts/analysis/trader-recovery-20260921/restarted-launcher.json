@@ -1,0 +1,7 @@
+{
+  "status": "REPLACEMENT_LAUNCHER_STARTED",
+  "pid": 40600,
+  "started_at": "2026-09-21T12:18:02.8348096+00:00",
+  "stdout": "C:/dev/ducketz/artifacts/analysis/trader-recovery-20260921/restarted-launcher.stdout.log",
+  "stderr": "C:/dev/ducketz/artifacts/analysis/trader-recovery-20260921/restarted-launcher.stderr.log"
+}
