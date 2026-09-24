@@ -1,0 +1,78 @@
+{
+  "verified_at": "2026-09-24T04:26:11.610408+00:00",
+  "status": "VERIFIED_STOPPED_EXTERNAL_AUTH_BLOCKER",
+  "run": "C:\\DATASTORE\\ml\\overnight-runs\\20260924T040733.615371Z",
+  "checks": {
+    "terminal_cancelled": true,
+    "fetch_is_failed_stage": true,
+    "no_completed_stages": true,
+    "original_deadline": true,
+    "no_deadline_exception": true,
+    "saved_archive_policy": true,
+    "saved_native_stock_scope": true,
+    "saved_xnas_source": true,
+    "saved_raw_direction_target": true,
+    "zero_order_authority": true,
+    "receipt_report_size": true,
+    "all_saved_log_sizes": true,
+    "nightly-gameplan-latest_preserved": true,
+    "gameplan-trade-plan-latest_preserved": true,
+    "gameplan-actuals-review-latest_preserved": true
+  },
+  "receipt": {
+    "broker_orders_enabled": false,
+    "completed_at": "2026-09-24T04:24:35.085678+00:00",
+    "failed_stage": "loop_a_close_fetch",
+    "logs": {
+      "loop_a_close_fetch.log": {
+        "checksum_sha256": "17a4e56cd31bfea967741353e18ba159425fe08f7286d3daca64e4341a21fbee",
+        "size": 51416
+      }
+    },
+    "orders_placed": 0,
+    "run_path": "ml/overnight-runs/20260924T040733.615371Z",
+    "schema_version": "supervised-overnight-gameplan-runtime-v2",
+    "stage_report_checksum_sha256": "64056e192455b64a00737abceb9f2b08cd53b335fcd2b2430c9b280b92249394",
+    "stage_report_size": 5808,
+    "status": "CANCELLED"
+  },
+  "receipt_sha256": "f96f50e1027fa1810178877ce6b1146cbd604dcb42438c8ac15303cf592b8f2a",
+  "pointers": {
+    "nightly-gameplan-latest": {
+      "path": "C:\\DATASTORE\\ml\\nightly-gameplan-latest\\run.json",
+      "sha256": "bb4648badb4874b38461f93cc0481e123e3b9a09e2468977e325cc0949171730",
+      "current": {
+        "action_date": "2026-09-23",
+        "manifest_checksum_sha256": "255c752dec92b526dd4326bb60628a3b87b2b1f59de31d02ac01c89def29c1dd",
+        "published_at": "2026-09-23T05:47:11.779332+00:00",
+        "receipt_checksum_sha256": "4cedcf50f6d556181b0b007965e86fd7dffbaa5919a1858e5de9b0c4134f2473",
+        "run_path": "ml/nightly-gameplan-runs/20260923T054513.490247Z"
+      }
+    },
+    "gameplan-trade-plan-latest": {
+      "path": "C:\\DATASTORE\\ml\\gameplan-trade-plan-latest\\run.json",
+      "sha256": "9e31e6e5a30976a6f59b59131e3c6cadc1367ade6ea7e222dc9d00ed1fc23be3",
+      "current": {
+        "action_date": "2026-09-23",
+        "receipt_sha256": "30ad87bb5fad44a0c2ac48cd78cd70be8906d2510527f2e960ea9e7c58be2557",
+        "run_path": "ml/gameplan-trade-plan-runs/20260923T054803.564321Z",
+        "source_receipt_sha256": "4cedcf50f6d556181b0b007965e86fd7dffbaa5919a1858e5de9b0c4134f2473"
+      }
+    },
+    "gameplan-actuals-review-latest": {
+      "path": "C:\\DATASTORE\\ml\\gameplan-actuals-review-latest\\run.json",
+      "sha256": "f2084ef21e650aed12dd1a21385affaf4a6efa644d10297d336ac017b3c08387",
+      "current": {
+        "action_date": "2026-09-22",
+        "receipt_sha256": "3c7279137d614792090c966f79fffd4d70ef33a358c9e23610d681c4f872386f",
+        "run_path": "ml/gameplan-actuals-review-runs/20260923T055028.498627Z"
+      }
+    }
+  },
+  "unresolved_failure": "Schwab OAuth HTTP400 invalid_grant; local reauthorization required",
+  "new_action_date": "2026-09-24",
+  "new_publication_created": false,
+  "opra_and_archive_extension_and_training_reached": false,
+  "resume_policy": "After new authorization, acquire own supervision claim and resume this attempt only, preserving archive policy, source and original deadline.",
+  "orders_placed": 0
+}

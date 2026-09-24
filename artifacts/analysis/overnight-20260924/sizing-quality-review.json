@@ -1,0 +1,178 @@
+{
+  "reviewed_at": "2026-09-24T06:48:21.180698+00:00",
+  "run": "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260924T064431.699829Z",
+  "scope": "Saved metric and development-selection arithmetic only; no fitting or assessment-driven selection. Native source validation is performed by review_models.py.",
+  "groups": {
+    "1d": {
+      "fit_status": "FITTED",
+      "fitted_scopes": 11,
+      "qualified_scopes": 0,
+      "saved_quality_arithmetic": {
+        "assessment_minimum_clusters": true,
+        "brier_better_than_training_base": false,
+        "logloss_better_than_training_base": false,
+        "calibration_error_at_most_015": true,
+        "return_mse_better_than_training_base": false,
+        "adverse_mse_no_worse_than_training_base": true,
+        "probability_variation": true
+      },
+      "failed_quality_checks": [
+        "brier_better_than_training_base",
+        "logloss_better_than_training_base",
+        "return_mse_better_than_training_base"
+      ],
+      "scores": {
+        "adverse_mse": 0.0004866461504506917,
+        "base_adverse_mse": 0.0005191961524411567,
+        "base_brier": 0.24887045205966268,
+        "base_log_loss": 0.6908876073314245,
+        "base_return_mse": 0.0016717128924526967,
+        "brier": 0.2586932194542388,
+        "ece": 0.06770146220674257,
+        "log_loss": 0.7146543066792871,
+        "probability_range": [
+          0.31961605220774414,
+          0.9700484869484508
+        ],
+        "return_mse": 0.001781234077090795
+      },
+      "development_invariants": {
+        "adverse_return": true,
+        "allocation_fraction": true,
+        "expected_net_return": true,
+        "trade_probability": true,
+        "head_selection_excludes_assessment": true,
+        "calibration_selection_excludes_assessment": true,
+        "calibration_minimum_development_logloss": true
+      }
+    },
+    "1h": {
+      "fit_status": "FITTED",
+      "fitted_scopes": 143,
+      "qualified_scopes": 0,
+      "saved_quality_arithmetic": {
+        "assessment_minimum_clusters": true,
+        "brier_better_than_training_base": true,
+        "logloss_better_than_training_base": true,
+        "calibration_error_at_most_015": true,
+        "return_mse_better_than_training_base": false,
+        "adverse_mse_no_worse_than_training_base": true,
+        "probability_variation": true
+      },
+      "failed_quality_checks": [
+        "return_mse_better_than_training_base"
+      ],
+      "scores": {
+        "adverse_mse": 4.6708254229035265e-05,
+        "base_adverse_mse": 5.055376961802982e-05,
+        "base_brier": 0.23668220419695277,
+        "base_log_loss": 0.6662701244253347,
+        "base_return_mse": 0.00011819803091168759,
+        "brier": 0.23229368471492384,
+        "ece": 0.0164011372722859,
+        "log_loss": 0.65670244512685,
+        "probability_range": [
+          0.16002790678389137,
+          0.6043028525271111
+        ],
+        "return_mse": 0.00011832973397914031
+      },
+      "development_invariants": {
+        "adverse_return": true,
+        "allocation_fraction": true,
+        "expected_net_return": true,
+        "trade_probability": true,
+        "head_selection_excludes_assessment": true,
+        "calibration_selection_excludes_assessment": true,
+        "calibration_minimum_development_logloss": true
+      }
+    },
+    "1w": {
+      "fit_status": "FITTED",
+      "fitted_scopes": 39,
+      "qualified_scopes": 0,
+      "saved_quality_arithmetic": {
+        "assessment_minimum_clusters": true,
+        "brier_better_than_training_base": false,
+        "logloss_better_than_training_base": false,
+        "calibration_error_at_most_015": true,
+        "return_mse_better_than_training_base": false,
+        "adverse_mse_no_worse_than_training_base": false,
+        "probability_variation": true
+      },
+      "failed_quality_checks": [
+        "brier_better_than_training_base",
+        "logloss_better_than_training_base",
+        "return_mse_better_than_training_base",
+        "adverse_mse_no_worse_than_training_base"
+      ],
+      "scores": {
+        "adverse_mse": 0.0029195409098021897,
+        "base_adverse_mse": 0.002891046942414876,
+        "base_brier": 0.2551140746553259,
+        "base_log_loss": 0.7034530420358368,
+        "base_return_mse": 0.008263185786114874,
+        "brier": 0.27979677747765963,
+        "ece": 0.13446371369450297,
+        "log_loss": 0.7713046692384239,
+        "probability_range": [
+          0.22379099679920827,
+          0.9342455681926475
+        ],
+        "return_mse": 0.010371883860806657
+      },
+      "development_invariants": {
+        "adverse_return": true,
+        "allocation_fraction": true,
+        "expected_net_return": true,
+        "trade_probability": true,
+        "head_selection_excludes_assessment": true,
+        "calibration_selection_excludes_assessment": true,
+        "calibration_minimum_development_logloss": true
+      }
+    },
+    "4h": {
+      "fit_status": "FITTED",
+      "fitted_scopes": 78,
+      "qualified_scopes": 0,
+      "saved_quality_arithmetic": {
+        "assessment_minimum_clusters": true,
+        "brier_better_than_training_base": true,
+        "logloss_better_than_training_base": true,
+        "calibration_error_at_most_015": true,
+        "return_mse_better_than_training_base": false,
+        "adverse_mse_no_worse_than_training_base": true,
+        "probability_variation": true
+      },
+      "failed_quality_checks": [
+        "return_mse_better_than_training_base"
+      ],
+      "scores": {
+        "adverse_mse": 0.00019678369314643198,
+        "base_adverse_mse": 0.00022170978767107607,
+        "base_brier": 0.2481595809949307,
+        "base_log_loss": 0.689462193832047,
+        "base_return_mse": 0.000566310680927607,
+        "brier": 0.2472451943890827,
+        "ece": 0.013721564976221566,
+        "log_loss": 0.6876370244944735,
+        "probability_range": [
+          0.35380430261865753,
+          0.6936475395488229
+        ],
+        "return_mse": 0.0005696472068683566
+      },
+      "development_invariants": {
+        "adverse_return": true,
+        "allocation_fraction": true,
+        "expected_net_return": true,
+        "trade_probability": true,
+        "head_selection_excludes_assessment": true,
+        "calibration_selection_excludes_assessment": true,
+        "calibration_minimum_development_logloss": true
+      }
+    }
+  },
+  "concrete_defects": [],
+  "conclusion": "All four horizons fitted and all remain unqualified under unchanged saved sizing gates; no concrete scoring or development-selection defect identified."
+}

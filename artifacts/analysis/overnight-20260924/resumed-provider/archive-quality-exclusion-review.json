@@ -1,0 +1,870 @@
+{
+  "reviewed_at": "2026-09-24T06:44:57.832955+00:00",
+  "status": "PASS",
+  "publication": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260924T062615.050242Z",
+  "scope": "Saved archive quality and cohort windows; no providers, rebuilding, code edits or production changes",
+  "checks": {
+    "archive_manifest_bound": true,
+    "warned_manifest_bd22e7e73edaa8ff67c5ec1d": true,
+    "warned_metadata_bd22e7e73edaa8ff67c5ec1d": true,
+    "warned_manifest_7efea11d9c326e251b29b0b6": true,
+    "warned_metadata_7efea11d9c326e251b29b0b6": true,
+    "warned_manifest_6f83bcf51cfce278bbd8b273": true,
+    "warned_metadata_6f83bcf51cfce278bbd8b273": true,
+    "warned_manifest_bce20b7f92918637d3818c0c": true,
+    "warned_metadata_bce20b7f92918637d3818c0c": true,
+    "warned_manifest_b9f69dbf85f0bb52d327cfc5": true,
+    "warned_metadata_b9f69dbf85f0bb52d327cfc5": true,
+    "warned_manifest_9f63cbb5b334bbd83f5ccf9c": true,
+    "warned_metadata_9f63cbb5b334bbd83f5ccf9c": true,
+    "warned_manifest_28eaa98ee3bcf4244a0d1ce0": true,
+    "warned_metadata_28eaa98ee3bcf4244a0d1ce0": true,
+    "daily_normalized_hash_28eaa98ee3bcf4244a0d1ce0": true,
+    "warned_manifest_91f586b0f43a87a19f9a28ef": true,
+    "warned_metadata_91f586b0f43a87a19f9a28ef": true,
+    "daily_normalized_hash_91f586b0f43a87a19f9a28ef": true,
+    "warned_manifest_bd11607f2187fb2743ef5056": true,
+    "warned_metadata_bd11607f2187fb2743ef5056": true,
+    "daily_normalized_hash_bd11607f2187fb2743ef5056": true,
+    "warned_manifest_9af0794ed972a515051999e4": true,
+    "warned_metadata_9af0794ed972a515051999e4": true,
+    "daily_normalized_hash_9af0794ed972a515051999e4": true,
+    "warned_manifest_f1c0901aa90c41a0de2fc8f7": true,
+    "warned_metadata_f1c0901aa90c41a0de2fc8f7": true,
+    "daily_normalized_hash_f1c0901aa90c41a0de2fc8f7": true,
+    "warned_manifest_4fb5bf6c00d8eee9569b9673": true,
+    "warned_metadata_4fb5bf6c00d8eee9569b9673": true,
+    "daily_normalized_hash_4fb5bf6c00d8eee9569b9673": true,
+    "warned_manifest_822fdab851a79a8a3d8cf0f9": true,
+    "warned_metadata_822fdab851a79a8a3d8cf0f9": true,
+    "daily_normalized_hash_822fdab851a79a8a3d8cf0f9": true,
+    "warned_manifest_c6be92af5cce577152ea8787": true,
+    "warned_metadata_c6be92af5cce577152ea8787": true,
+    "warned_manifest_d04676ade9bd99d1ed623584": true,
+    "warned_metadata_d04676ade9bd99d1ed623584": true,
+    "warned_manifest_de4bab88acf6920372989c48": true,
+    "warned_metadata_de4bab88acf6920372989c48": true,
+    "warned_manifest_6f2b6c35b554fe53aa7d4152": true,
+    "warned_metadata_6f2b6c35b554fe53aa7d4152": true,
+    "warned_manifest_00ffa72fc3bbf0e6372439cd": true,
+    "warned_metadata_00ffa72fc3bbf0e6372439cd": true,
+    "warned_manifest_7ac9a4ce85833b27953924ea": true,
+    "warned_metadata_7ac9a4ce85833b27953924ea": true,
+    "warned_manifest_52a15be35a3ee9130606f4c8": true,
+    "warned_metadata_52a15be35a3ee9130606f4c8": true,
+    "all_warned_intervals_registered": true,
+    "three_known_dates_evidenced": true,
+    "all_missing_resets_predate_first_daily_observation": true,
+    "cohort_manifest_1h": true,
+    "no_target_quality_intersections_1h": true,
+    "no_target_split_crossings_1h": true,
+    "excluded_and_twenty_warmup_sessions_1h": true,
+    "core_daily_features_finite_1h": true,
+    "daily_context_complete_causal_1h": true,
+    "endpoint_gaps_at_most_five_minutes_1h": true,
+    "cohort_count_1h": true,
+    "cohort_manifest_4h": true,
+    "no_target_quality_intersections_4h": true,
+    "no_target_split_crossings_4h": true,
+    "excluded_and_twenty_warmup_sessions_4h": true,
+    "core_daily_features_finite_4h": true,
+    "daily_context_complete_causal_4h": true,
+    "endpoint_gaps_at_most_five_minutes_4h": true,
+    "cohort_count_4h": true,
+    "cohort_manifest_1d": true,
+    "no_target_quality_intersections_1d": true,
+    "no_target_split_crossings_1d": true,
+    "excluded_and_twenty_warmup_sessions_1d": true,
+    "core_daily_features_finite_1d": true,
+    "daily_context_complete_causal_1d": true,
+    "endpoint_gaps_at_most_five_minutes_1d": true,
+    "cohort_count_1d": true,
+    "cohort_manifest_1w": true,
+    "no_target_quality_intersections_1w": true,
+    "no_target_split_crossings_1w": true,
+    "excluded_and_twenty_warmup_sessions_1w": true,
+    "core_daily_features_finite_1w": true,
+    "daily_context_complete_causal_1w": true,
+    "endpoint_gaps_at_most_five_minutes_1w": true,
+    "cohort_count_1w": true
+  },
+  "excluded_intervals": 70,
+  "reasons": {
+    "PROVIDER_QUALITY_DEGRADED": 53,
+    "UNDEFINED_OBSERVED_OHLC": 17
+  },
+  "known_dates": [
+    "2021-07-07",
+    "2021-10-26",
+    "2022-09-19"
+  ],
+  "warned_source_partitions": [
+    {
+      "manifest": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2019-08-19_to_2025-01-13\\manifest.json",
+      "symbol": "AAPL",
+      "schema": "ohlcv-1m",
+      "dates": [
+        "2021-07-07",
+        "2021-10-26",
+        "2022-09-19"
+      ],
+      "source_size_receipt_binding": true,
+      "raw_hash_repeated": false
+    },
+    {
+      "manifest": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2019-08-19_to_2025-01-13\\manifest.json",
+      "symbol": "AMZN",
+      "schema": "ohlcv-1m",
+      "dates": [
+        "2021-07-07",
+        "2021-10-26",
+        "2022-09-19"
+      ],
+      "source_size_receipt_binding": true,
+      "raw_hash_repeated": false
+    },
+    {
+      "manifest": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2019-08-19_to_2025-01-13\\manifest.json",
+      "symbol": "GOOG",
+      "schema": "ohlcv-1m",
+      "dates": [
+        "2021-07-07",
+        "2021-10-26",
+        "2022-09-19"
+      ],
+      "source_size_receipt_binding": true,
+      "raw_hash_repeated": false
+    },
+    {
+      "manifest": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2019-08-19_to_2025-01-13\\manifest.json",
+      "symbol": "MU",
+      "schema": "ohlcv-1m",
+      "dates": [
+        "2021-07-07",
+        "2021-10-26",
+        "2022-09-19"
+      ],
+      "source_size_receipt_binding": true,
+      "raw_hash_repeated": false
+    },
+    {
+      "manifest": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2019-08-19_to_2025-01-13\\manifest.json",
+      "symbol": "NVDA",
+      "schema": "ohlcv-1m",
+      "dates": [
+        "2021-07-07",
+        "2021-10-26",
+        "2022-09-19"
+      ],
+      "source_size_receipt_binding": true,
+      "raw_hash_repeated": false
+    },
+    {
+      "manifest": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2019-08-19_to_2025-01-13\\manifest.json",
+      "symbol": "COST",
+      "schema": "ohlcv-1m",
+      "dates": [
+        "2021-07-07",
+        "2021-10-26",
+        "2022-09-19"
+      ],
+      "source_size_receipt_binding": true,
+      "raw_hash_repeated": false
+    },
+    {
+      "manifest": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\AAPL\\windows\\2019-08-17_to_2026-08-15\\manifest.json",
+      "symbol": "AAPL",
+      "schema": "ohlcv-1d",
+      "dates": [
+        "2021-07-07",
+        "2021-10-26",
+        "2022-09-19"
+      ],
+      "source_size_receipt_binding": true,
+      "raw_hash_repeated": false,
+      "degraded_native_daily_rows": {
+        "2021-07-07": 1,
+        "2021-10-26": 1,
+        "2022-09-19": 1
+      }
+    },
+    {
+      "manifest": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\AMZN\\windows\\2019-08-17_to_2026-08-15\\manifest.json",
+      "symbol": "AMZN",
+      "schema": "ohlcv-1d",
+      "dates": [
+        "2021-07-07",
+        "2021-10-26",
+        "2022-09-19"
+      ],
+      "source_size_receipt_binding": true,
+      "raw_hash_repeated": false,
+      "degraded_native_daily_rows": {
+        "2021-07-07": 1,
+        "2021-10-26": 1,
+        "2022-09-19": 1
+      }
+    },
+    {
+      "manifest": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\COST\\windows\\2019-08-17_to_2026-08-15\\manifest.json",
+      "symbol": "COST",
+      "schema": "ohlcv-1d",
+      "dates": [
+        "2021-07-07",
+        "2021-10-26",
+        "2022-09-19"
+      ],
+      "source_size_receipt_binding": true,
+      "raw_hash_repeated": false,
+      "degraded_native_daily_rows": {
+        "2021-07-07": 1,
+        "2021-10-26": 1,
+        "2022-09-19": 1
+      }
+    },
+    {
+      "manifest": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\GOOG\\windows\\2019-08-17_to_2026-08-15\\manifest.json",
+      "symbol": "GOOG",
+      "schema": "ohlcv-1d",
+      "dates": [
+        "2021-07-07",
+        "2021-10-26",
+        "2022-09-19"
+      ],
+      "source_size_receipt_binding": true,
+      "raw_hash_repeated": false,
+      "degraded_native_daily_rows": {
+        "2021-07-07": 1,
+        "2021-10-26": 1,
+        "2022-09-19": 1
+      }
+    },
+    {
+      "manifest": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\MU\\windows\\2019-08-17_to_2026-08-15\\manifest.json",
+      "symbol": "MU",
+      "schema": "ohlcv-1d",
+      "dates": [
+        "2021-07-07",
+        "2021-10-26",
+        "2022-09-19"
+      ],
+      "source_size_receipt_binding": true,
+      "raw_hash_repeated": false,
+      "degraded_native_daily_rows": {
+        "2021-07-07": 1,
+        "2021-10-26": 1,
+        "2022-09-19": 1
+      }
+    },
+    {
+      "manifest": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\NVDA\\windows\\2019-08-17_to_2026-08-15\\manifest.json",
+      "symbol": "NVDA",
+      "schema": "ohlcv-1d",
+      "dates": [
+        "2021-07-07",
+        "2021-10-26",
+        "2022-09-19"
+      ],
+      "source_size_receipt_binding": true,
+      "raw_hash_repeated": false,
+      "degraded_native_daily_rows": {
+        "2021-07-07": 1,
+        "2021-10-26": 1,
+        "2022-09-19": 1
+      }
+    },
+    {
+      "manifest": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\SNDK\\windows\\2019-08-17_to_2026-08-15\\manifest.json",
+      "symbol": "SNDK",
+      "schema": "ohlcv-1d",
+      "dates": [
+        "2021-07-07",
+        "2021-10-26",
+        "2022-09-19"
+      ],
+      "source_size_receipt_binding": true,
+      "raw_hash_repeated": false,
+      "degraded_native_daily_rows": {
+        "2021-07-07": 0,
+        "2021-10-26": 0,
+        "2022-09-19": 0
+      }
+    },
+    {
+      "manifest": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\AAPL\\windows\\2021-08-16_to_2026-08-15\\manifest.json",
+      "symbol": "AAPL",
+      "schema": "ohlcv-1h",
+      "dates": [
+        "2021-10-26",
+        "2022-09-19"
+      ],
+      "source_size_receipt_binding": true,
+      "raw_hash_repeated": false
+    },
+    {
+      "manifest": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\AMZN\\windows\\2021-08-16_to_2026-08-15\\manifest.json",
+      "symbol": "AMZN",
+      "schema": "ohlcv-1h",
+      "dates": [
+        "2021-10-26",
+        "2022-09-19"
+      ],
+      "source_size_receipt_binding": true,
+      "raw_hash_repeated": false
+    },
+    {
+      "manifest": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\COST\\windows\\2021-08-16_to_2026-08-15\\manifest.json",
+      "symbol": "COST",
+      "schema": "ohlcv-1h",
+      "dates": [
+        "2021-10-26",
+        "2022-09-19"
+      ],
+      "source_size_receipt_binding": true,
+      "raw_hash_repeated": false
+    },
+    {
+      "manifest": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\GOOG\\windows\\2021-08-16_to_2026-08-15\\manifest.json",
+      "symbol": "GOOG",
+      "schema": "ohlcv-1h",
+      "dates": [
+        "2021-10-26",
+        "2022-09-19"
+      ],
+      "source_size_receipt_binding": true,
+      "raw_hash_repeated": false
+    },
+    {
+      "manifest": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\MU\\windows\\2021-08-16_to_2026-08-15\\manifest.json",
+      "symbol": "MU",
+      "schema": "ohlcv-1h",
+      "dates": [
+        "2021-10-26",
+        "2022-09-19"
+      ],
+      "source_size_receipt_binding": true,
+      "raw_hash_repeated": false
+    },
+    {
+      "manifest": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\NVDA\\windows\\2021-08-16_to_2026-08-15\\manifest.json",
+      "symbol": "NVDA",
+      "schema": "ohlcv-1h",
+      "dates": [
+        "2021-10-26",
+        "2022-09-19"
+      ],
+      "source_size_receipt_binding": true,
+      "raw_hash_repeated": false
+    },
+    {
+      "manifest": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\SNDK\\windows\\2021-08-16_to_2026-08-15\\manifest.json",
+      "symbol": "SNDK",
+      "schema": "ohlcv-1h",
+      "dates": [
+        "2021-10-26",
+        "2022-09-19"
+      ],
+      "source_size_receipt_binding": true,
+      "raw_hash_repeated": false
+    }
+  ],
+  "warned_symbol_schema_date_intervals": 53,
+  "no_reset_needed_before_first_daily_observation": [
+    [
+      "SNDK",
+      "2021-07-07"
+    ],
+    [
+      "SNDK",
+      "2021-10-26"
+    ],
+    [
+      "SNDK",
+      "2022-09-19"
+    ]
+  ],
+  "quality_resets": [
+    {
+      "reasons": [
+        "KNOWN_SPLIT_RESET",
+        "RAW_PRICE_DISCONTINUITY_RESET"
+      ],
+      "session": "2020-08-31",
+      "symbol": "AAPL"
+    },
+    {
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ],
+      "session": "2021-07-07",
+      "symbol": "AAPL"
+    },
+    {
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ],
+      "session": "2021-10-26",
+      "symbol": "AAPL"
+    },
+    {
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ],
+      "session": "2022-09-19",
+      "symbol": "AAPL"
+    },
+    {
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ],
+      "session": "2021-07-07",
+      "symbol": "AMZN"
+    },
+    {
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ],
+      "session": "2021-10-26",
+      "symbol": "AMZN"
+    },
+    {
+      "reasons": [
+        "KNOWN_SPLIT_RESET",
+        "RAW_PRICE_DISCONTINUITY_RESET"
+      ],
+      "session": "2022-06-06",
+      "symbol": "AMZN"
+    },
+    {
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ],
+      "session": "2022-09-19",
+      "symbol": "AMZN"
+    },
+    {
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ],
+      "session": "2021-07-07",
+      "symbol": "GOOG"
+    },
+    {
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ],
+      "session": "2021-10-26",
+      "symbol": "GOOG"
+    },
+    {
+      "reasons": [
+        "KNOWN_SPLIT_RESET",
+        "RAW_PRICE_DISCONTINUITY_RESET"
+      ],
+      "session": "2022-07-18",
+      "symbol": "GOOG"
+    },
+    {
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ],
+      "session": "2022-09-19",
+      "symbol": "GOOG"
+    },
+    {
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ],
+      "session": "2021-07-07",
+      "symbol": "MU"
+    },
+    {
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ],
+      "session": "2021-10-26",
+      "symbol": "MU"
+    },
+    {
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ],
+      "session": "2022-09-19",
+      "symbol": "MU"
+    },
+    {
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ],
+      "session": "2021-07-07",
+      "symbol": "NVDA"
+    },
+    {
+      "reasons": [
+        "KNOWN_SPLIT_RESET",
+        "RAW_PRICE_DISCONTINUITY_RESET"
+      ],
+      "session": "2021-07-20",
+      "symbol": "NVDA"
+    },
+    {
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ],
+      "session": "2021-10-26",
+      "symbol": "NVDA"
+    },
+    {
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ],
+      "session": "2022-09-19",
+      "symbol": "NVDA"
+    },
+    {
+      "reasons": [
+        "KNOWN_SPLIT_RESET",
+        "RAW_PRICE_DISCONTINUITY_RESET"
+      ],
+      "session": "2024-06-10",
+      "symbol": "NVDA"
+    },
+    {
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ],
+      "session": "2021-07-07",
+      "symbol": "COST"
+    },
+    {
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ],
+      "session": "2021-10-26",
+      "symbol": "COST"
+    },
+    {
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ],
+      "session": "2022-09-19",
+      "symbol": "COST"
+    },
+    {
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ],
+      "session": "2021-10-26",
+      "symbol": "PATH"
+    },
+    {
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ],
+      "session": "2022-09-19",
+      "symbol": "IONQ"
+    }
+  ],
+  "cohorts": {
+    "1h": {
+      "rows": 171511,
+      "native_quality_excluded_rows": 217,
+      "remaining_target_intersections": 0,
+      "remaining_split_crossings": 0,
+      "source_sessions_in_excluded_or_warmup": 0,
+      "by_symbol": {
+        "AAPL": {
+          "rows": 21804,
+          "first_action_date": "2019-09-18",
+          "last_action_date": "2026-09-23"
+        },
+        "AMZN": {
+          "rows": 21292,
+          "first_action_date": "2019-09-18",
+          "last_action_date": "2026-09-23"
+        },
+        "COST": {
+          "rows": 14874,
+          "first_action_date": "2019-09-18",
+          "last_action_date": "2026-09-23"
+        },
+        "CROX": {
+          "rows": 14248,
+          "first_action_date": "2018-05-31",
+          "last_action_date": "2026-09-23"
+        },
+        "GOOG": {
+          "rows": 19302,
+          "first_action_date": "2019-09-18",
+          "last_action_date": "2026-09-23"
+        },
+        "IONQ": {
+          "rows": 13337,
+          "first_action_date": "2021-11-01",
+          "last_action_date": "2026-09-23"
+        },
+        "MU": {
+          "rows": 18941,
+          "first_action_date": "2019-09-18",
+          "last_action_date": "2026-09-23"
+        },
+        "NVDA": {
+          "rows": 21337,
+          "first_action_date": "2019-09-18",
+          "last_action_date": "2026-09-23"
+        },
+        "PATH": {
+          "rows": 10601,
+          "first_action_date": "2021-05-20",
+          "last_action_date": "2026-09-23"
+        },
+        "SNDK": {
+          "rows": 4088,
+          "first_action_date": "2025-03-25",
+          "last_action_date": "2026-09-23"
+        },
+        "TWST": {
+          "rows": 11687,
+          "first_action_date": "2018-11-30",
+          "last_action_date": "2026-09-23"
+        }
+      }
+    },
+    "4h": {
+      "rows": 42858,
+      "native_quality_excluded_rows": 66,
+      "remaining_target_intersections": 0,
+      "remaining_split_crossings": 0,
+      "source_sessions_in_excluded_or_warmup": 0,
+      "by_symbol": {
+        "AAPL": {
+          "rows": 5856,
+          "first_action_date": "2019-09-18",
+          "last_action_date": "2026-09-23"
+        },
+        "AMZN": {
+          "rows": 5646,
+          "first_action_date": "2019-09-18",
+          "last_action_date": "2026-09-23"
+        },
+        "COST": {
+          "rows": 3741,
+          "first_action_date": "2019-09-18",
+          "last_action_date": "2026-09-23"
+        },
+        "CROX": {
+          "rows": 2926,
+          "first_action_date": "2018-05-31",
+          "last_action_date": "2026-09-23"
+        },
+        "GOOG": {
+          "rows": 4959,
+          "first_action_date": "2019-09-18",
+          "last_action_date": "2026-09-23"
+        },
+        "IONQ": {
+          "rows": 3230,
+          "first_action_date": "2021-11-01",
+          "last_action_date": "2026-09-23"
+        },
+        "MU": {
+          "rows": 4922,
+          "first_action_date": "2019-09-18",
+          "last_action_date": "2026-09-23"
+        },
+        "NVDA": {
+          "rows": 5717,
+          "first_action_date": "2019-09-18",
+          "last_action_date": "2026-09-23"
+        },
+        "PATH": {
+          "rows": 2649,
+          "first_action_date": "2021-05-20",
+          "last_action_date": "2026-09-23"
+        },
+        "SNDK": {
+          "rows": 1064,
+          "first_action_date": "2025-03-25",
+          "last_action_date": "2026-09-23"
+        },
+        "TWST": {
+          "rows": 2148,
+          "first_action_date": "2018-11-30",
+          "last_action_date": "2026-09-23"
+        }
+      }
+    },
+    "1d": {
+      "rows": 29602,
+      "native_quality_excluded_rows": 105,
+      "remaining_target_intersections": 0,
+      "remaining_split_crossings": 0,
+      "source_sessions_in_excluded_or_warmup": 0,
+      "by_symbol": {
+        "AAPL": {
+          "rows": 5366,
+          "first_action_date": "2019-09-18",
+          "last_action_date": "2026-09-23"
+        },
+        "AMZN": {
+          "rows": 5202,
+          "first_action_date": "2019-09-18",
+          "last_action_date": "2026-09-23"
+        },
+        "COST": {
+          "rows": 1684,
+          "first_action_date": "2020-03-03",
+          "last_action_date": "2026-09-23"
+        },
+        "CROX": {
+          "rows": 300,
+          "first_action_date": "2020-09-25",
+          "last_action_date": "2026-07-17"
+        },
+        "GOOG": {
+          "rows": 4191,
+          "first_action_date": "2019-09-30",
+          "last_action_date": "2026-09-23"
+        },
+        "IONQ": {
+          "rows": 1790,
+          "first_action_date": "2021-11-01",
+          "last_action_date": "2026-09-23"
+        },
+        "MU": {
+          "rows": 4063,
+          "first_action_date": "2019-09-18",
+          "last_action_date": "2026-09-23"
+        },
+        "NVDA": {
+          "rows": 5202,
+          "first_action_date": "2019-09-18",
+          "last_action_date": "2026-09-23"
+        },
+        "PATH": {
+          "rows": 954,
+          "first_action_date": "2021-05-20",
+          "last_action_date": "2026-09-17"
+        },
+        "SNDK": {
+          "rows": 830,
+          "first_action_date": "2025-04-03",
+          "last_action_date": "2026-09-23"
+        },
+        "TWST": {
+          "rows": 20,
+          "first_action_date": "2021-03-23",
+          "last_action_date": "2026-08-19"
+        }
+      }
+    },
+    "1w": {
+      "rows": 5831,
+      "native_quality_excluded_rows": 89,
+      "remaining_target_intersections": 0,
+      "remaining_split_crossings": 0,
+      "source_sessions_in_excluded_or_warmup": 0,
+      "by_symbol": {
+        "AAPL": {
+          "rows": 1060,
+          "first_action_date": "2019-09-19",
+          "last_action_date": "2026-09-17"
+        },
+        "AMZN": {
+          "rows": 1025,
+          "first_action_date": "2019-09-20",
+          "last_action_date": "2026-09-17"
+        },
+        "COST": {
+          "rows": 333,
+          "first_action_date": "2019-09-19",
+          "last_action_date": "2026-09-16"
+        },
+        "CROX": {
+          "rows": 62,
+          "first_action_date": "2021-04-29",
+          "last_action_date": "2026-07-13"
+        },
+        "GOOG": {
+          "rows": 829,
+          "first_action_date": "2019-09-20",
+          "last_action_date": "2026-09-17"
+        },
+        "IONQ": {
+          "rows": 354,
+          "first_action_date": "2021-11-01",
+          "last_action_date": "2026-09-17"
+        },
+        "MU": {
+          "rows": 798,
+          "first_action_date": "2019-09-18",
+          "last_action_date": "2026-09-17"
+        },
+        "NVDA": {
+          "rows": 1026,
+          "first_action_date": "2019-09-20",
+          "last_action_date": "2026-09-17"
+        },
+        "PATH": {
+          "rows": 170,
+          "first_action_date": "2021-05-21",
+          "last_action_date": "2026-09-10"
+        },
+        "SNDK": {
+          "rows": 164,
+          "first_action_date": "2025-05-29",
+          "last_action_date": "2026-09-17"
+        },
+        "TWST": {
+          "rows": 10,
+          "first_action_date": "2021-03-12",
+          "last_action_date": "2026-08-20"
+        }
+      }
+    }
+  },
+  "raw_scope": "Verified source manifest bindings, receipt raw checksum identity and raw/normalized sizes; daily normalized payload hashes also checked. Full raw payload audit belongs to parallel verifier and was not repeated.",
+  "causal_clock_checks": {
+    "1h": {
+      "daily_bar_complete": true,
+      "five_minute_processing_delay": true,
+      "information_available_by_decision": true,
+      "information_before_action_start": true,
+      "all_entry_rows_before_target_start": true,
+      "only_nonentry_opening_gap_can_start_before_information": true,
+      "nonentry_opening_gap_rows_with_earlier_target_start": 5962
+    },
+    "4h": {
+      "daily_bar_complete": true,
+      "five_minute_processing_delay": true,
+      "information_available_by_decision": true,
+      "information_before_action_start": true,
+      "all_entry_rows_before_target_start": true,
+      "only_nonentry_opening_gap_can_start_before_information": true,
+      "nonentry_opening_gap_rows_with_earlier_target_start": 0
+    },
+    "1d": {
+      "daily_bar_complete": true,
+      "five_minute_processing_delay": true,
+      "information_available_by_decision": true,
+      "information_before_action_start": true,
+      "all_entry_rows_before_target_start": true,
+      "only_nonentry_opening_gap_can_start_before_information": true,
+      "nonentry_opening_gap_rows_with_earlier_target_start": 0
+    },
+    "1w": {
+      "daily_bar_complete": true,
+      "five_minute_processing_delay": true,
+      "information_available_by_decision": true,
+      "information_before_action_start": true,
+      "all_entry_rows_before_target_start": true,
+      "only_nonentry_opening_gap_can_start_before_information": true,
+      "nonentry_opening_gap_rows_with_earlier_target_start": 0
+    }
+  },
+  "auditor_corrections": [
+    "Normalized daily timestamps may be a Parquet index; reset the index before reading the timestamp column.",
+    "Provider warnings predate SNDK observed history; absence of a reset there reflects no corresponding observed daily bar.",
+    "The 1h opening-gap research target starts at prior17:00; completed daily inputs become available17:05. Those5962rows are explicitly non-entry. Entry timing and all decision/action availability checks pass."
+  ]
+}

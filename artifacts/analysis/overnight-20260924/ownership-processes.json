@@ -1,0 +1,50 @@
+[
+  {
+    "ProcessId": 46740,
+    "ParentProcessId": 52236,
+    "CreationDate": "2026-09-23T19:32:07.339728-07:00",
+    "CommandLine": "\"C:\\dev\\ducketz\\.venv/Scripts\\python.exe\" -m app.main ui"
+  },
+  {
+    "ProcessId": 43032,
+    "ParentProcessId": 46740,
+    "CreationDate": "2026-09-23T19:32:07.350804-07:00",
+    "CommandLine": "\"C:\\dev\\ducketz\\.venv/Scripts\\python.exe\" -m app.main ui"
+  },
+  {
+    "ProcessId": 69076,
+    "ParentProcessId": 69340,
+    "CreationDate": "2026-09-23T21:07:32.767774-07:00",
+    "CommandLine": "\"C:\\dev\\ducketz\\.venv\\Scripts\\python.exe\" -u -m ml.overnight_runtime --datastore-target pc --once --scheduled --stock-only --independent-stock-horizons --stock-price-source xnas-itch-archive-v1 --archive-history"
+  },
+  {
+    "ProcessId": 26200,
+    "ParentProcessId": 69076,
+    "CreationDate": "2026-09-23T21:07:32.778947-07:00",
+    "CommandLine": "\"C:\\dev\\ducketz\\.venv\\Scripts\\python.exe\" -u -m ml.overnight_runtime --datastore-target pc --once --scheduled --stock-only --independent-stock-horizons --stock-price-source xnas-itch-archive-v1 --archive-history"
+  },
+  {
+    "ProcessId": 69520,
+    "ParentProcessId": 26200,
+    "CreationDate": "2026-09-23T21:07:33.729465-07:00",
+    "CommandLine": "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe -u -m datafetching.orchestrate --datastore-target pc --watchlist C:\\dev\\ducketz\\datafetching\\watchlist.txt --providers databento fmp fred schwab sec --cme-mode inline --options-mode inline --opra-history-mode daily --opra-history-utc-hour 0 --opra-history-max-estimated-download-bytes 20000000000 --opra-history-max-estimated-cost-usd 1 --opra-history-max-catchup-days 30 --bar-readiness-recovery-timeout-seconds 420 --bar-readiness-recovery-poll-seconds 10 --once"
+  },
+  {
+    "ProcessId": 69476,
+    "ParentProcessId": 69520,
+    "CreationDate": "2026-09-23T21:07:33.759759-07:00",
+    "CommandLine": "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe -u -m datafetching.orchestrate --datastore-target pc --watchlist C:\\dev\\ducketz\\datafetching\\watchlist.txt --providers databento fmp fred schwab sec --cme-mode inline --options-mode inline --opra-history-mode daily --opra-history-utc-hour 0 --opra-history-max-estimated-download-bytes 20000000000 --opra-history-max-estimated-cost-usd 1 --opra-history-max-catchup-days 30 --bar-readiness-recovery-timeout-seconds 420 --bar-readiness-recovery-poll-seconds 10 --once"
+  },
+  {
+    "ProcessId": 41252,
+    "ParentProcessId": 2612,
+    "CreationDate": "2026-09-23T21:09:01.09321-07:00",
+    "CommandLine": "\"C:\\dev\\ducketz\\.venv\\Scripts\\python.exe\" -u artifacts/analysis/overnight-20260924/monitor-agent/renewal_loop.py"
+  },
+  {
+    "ProcessId": 69444,
+    "ParentProcessId": 41252,
+    "CreationDate": "2026-09-23T21:09:01.105204-07:00",
+    "CommandLine": "\"C:\\dev\\ducketz\\.venv\\Scripts\\python.exe\" -u artifacts/analysis/overnight-20260924/monitor-agent/renewal_loop.py"
+  }
+]

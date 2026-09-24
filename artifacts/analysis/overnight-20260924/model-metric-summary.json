@@ -1,0 +1,219 @@
+{
+  "reviewed_at": "2026-09-24T06:46:39.752970+00:00",
+  "run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260924T062615.050242Z",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260924T064422.315446Z",
+  "action_date": "2026-09-24",
+  "status": "VERIFIED_SAVED_MODELS_WITH_COVERAGE_NOTES",
+  "full_native_completion_verified": false,
+  "scope": "Reproduced saved promotion arithmetic; estimator-inference score reproduction is a separate audit.",
+  "source_receipt_sha256": "c107c5300ae50ff24d26cd77451db49224969f38b318d01c0c75376466235853",
+  "model_reports_sha256": "be89a814140ebaac6644595cf12b9995758fbe15d8187ec0aa2039a36ac566fd",
+  "forecasts_sha256": "7339dabab121ba9eb2ba0f5eb4998dc8133e6315414dc96ffd42ff58d6557b97",
+  "groups": {
+    "1h": {
+      "fitted_target_rows": 155312,
+      "evidence_checks_pass": true,
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "strictly_beats_both_baselines": false,
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.25020564952400187,
+          "training_rate_baseline": 0.2500000302150383,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.2550000302150383,
+          "actual_baseline_excess": 0.00020561930896357,
+          "margin_to_maximum": 0.00479438069103643,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.6935658463531262,
+          "training_rate_baseline": 0.6931472409900222,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7031472409900222,
+          "actual_baseline_excess": 0.000418605363104,
+          "margin_to_maximum": 0.009581394636896,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "failed_promotion_checks": [],
+      "forecast_statuses": {
+        "PROMOTED": 154
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1h@16:00",
+        "fitted_rows": 1
+      },
+      "zero_assessment_symbols": [],
+      "learned_sizing": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 143,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 137,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 6
+        }
+      }
+    },
+    "4h": {
+      "fitted_target_rows": 38377,
+      "evidence_checks_pass": true,
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "strictly_beats_both_baselines": true,
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.2497752653100583,
+          "training_rate_baseline": 0.25008866985626765,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.25508866985626766,
+          "actual_baseline_excess": -0.00031340454620935,
+          "margin_to_maximum": 0.00531340454620935,
+          "strictly_beats_training_baseline": true,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.6926971207673641,
+          "training_rate_baseline": 0.6933245364249813,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7033245364249813,
+          "actual_baseline_excess": -0.0006274156576172,
+          "margin_to_maximum": 0.0106274156576172,
+          "strictly_beats_training_baseline": true,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "failed_promotion_checks": [],
+      "forecast_statuses": {
+        "PROMOTED": 44
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "4h@16:00",
+        "fitted_rows": 23
+      },
+      "zero_assessment_symbols": [],
+      "learned_sizing": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 78,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 76,
+          "UNSEEN_EXACT_TARGET_SCOPE": 1,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+        }
+      }
+    },
+    "1d": {
+      "fitted_target_rows": 24787,
+      "evidence_checks_pass": true,
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "strictly_beats_both_baselines": true,
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.2504378204769917,
+          "training_rate_baseline": 0.2508818952761032,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.2558818952761032,
+          "actual_baseline_excess": -0.0004440747991115,
+          "margin_to_maximum": 0.0054440747991115,
+          "strictly_beats_training_baseline": true,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.6940274258078013,
+          "training_rate_baseline": 0.6949114046688618,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7049114046688618,
+          "actual_baseline_excess": -0.0008839788610605,
+          "margin_to_maximum": 0.0108839788610605,
+          "strictly_beats_training_baseline": true,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "failed_promotion_checks": [],
+      "forecast_statuses": {
+        "PROMOTED": 55
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1d@D+1",
+        "fitted_rows": 2
+      },
+      "zero_assessment_symbols": [],
+      "learned_sizing": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 11,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 10,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 1
+        }
+      }
+    },
+    "1w": {
+      "fitted_target_rows": 4826,
+      "evidence_checks_pass": true,
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "strictly_beats_both_baselines": false,
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.2555232831842859,
+          "training_rate_baseline": 0.2530752371660546,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.2580752371660546,
+          "actual_baseline_excess": 0.0024480460182313,
+          "margin_to_maximum": 0.0025519539817687,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.7044485071582114,
+          "training_rate_baseline": 0.6993399248149207,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7093399248149207,
+          "actual_baseline_excess": 0.0051085823432907,
+          "margin_to_maximum": 0.0048914176567093,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "failed_promotion_checks": [],
+      "forecast_statuses": {
+        "PROMOTED": 11
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1w@D+5",
+        "fitted_rows": 8
+      },
+      "zero_assessment_symbols": [],
+      "learned_sizing": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 39,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 37,
+          "UNSEEN_EXACT_TARGET_SCOPE": 1,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+        }
+      }
+    }
+  },
+  "errors": [],
+  "models_fitted_or_relabelled": false,
+  "orders_placed": 0
+}

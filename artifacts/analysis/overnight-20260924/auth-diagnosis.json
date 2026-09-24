@@ -1,0 +1,34 @@
+{
+  "scope": "Read-only local source inspection and allowlisted token-store metadata; no credentials emitted, no broker/network calls, and no cache/lock writes.",
+  "token_metadata": {
+    "observed_at": "2026-09-24T04:25:01.435327+00:00",
+    "path": "C:\\dev\\ducketz\\data\\schwab_tokens.json",
+    "modified_at": "2026-09-24T04:22:15.445132+00:00",
+    "saved_at": "2026-09-24T03:11:31.089898+00:00",
+    "access_expires_at": "2026-09-24T03:40:31.089898+00:00",
+    "refresh_expires_at": null,
+    "refresh_attempt_at": "2026-09-24T04:22:15.444389+00:00",
+    "refresh_attempt_status": "FAILED_REAUTH_REQUIRED",
+    "reauthorization_required": true,
+    "reauthorization_error_code": "invalid_grant",
+    "uncertain_refresh_attempt": false,
+    "metadata_stable_during_read": true,
+    "newer_successful_authorization_observed": false
+  },
+  "native_log_evidence": {
+    "path": "C:/DATASTORE/ml/overnight-runs/20260924T040733.615371Z/loop_a_close_fetch.log",
+    "initial_oauth_failure_message_count": 1,
+    "local_reauthorization_required_message_count": 22
+  },
+  "code_path": {
+    "reauthorization_pre_post_guard": "C:/dev/ducketz/app/services/schwab.py:183",
+    "oauth_refresh_post": "C:/dev/ducketz/app/services/schwab.py:203",
+    "durable_rejection_marker": "C:/dev/ducketz/app/services/schwab.py:753",
+    "allowlisted_rejection_reader": "C:/dev/ducketz/app/services/schwab_token_store.py:202",
+    "successful_authorization_replaces_payload_and_clears_marker": "C:/dev/ducketz/app/services/schwab_token_store.py:126",
+    "local_authorization_command": "C:/dev/ducketz/app/main.py:8",
+    "existing_duplicate_post_regression_test": "C:/dev/ducketz/tests/test_schwab_portfolio.py:978"
+  },
+  "conclusion": "No newer successful authorization is present in the shared cache at the observation time. The invalid_grant rejection marker stops subsequent refresh attempts before requests.post; log repetition is local refusal, not evidence of repeated OAuth POSTs.",
+  "retry_decision": "Do not retry unchanged credentials. Wait for user-owned local schwab-auth completion and verify that saved_at advanced and the rejection marker cleared before native resume."
+}

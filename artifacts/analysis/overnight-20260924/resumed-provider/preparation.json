@@ -1,0 +1,9 @@
+{
+  "prepared_at": "2026-09-24T04:44:55.356431+00:00",
+  "native_run": "C:/DATASTORE/ml/overnight-runs/20260924T044352.904210Z",
+  "original_run": "C:/DATASTORE/ml/overnight-runs/20260924T040733.615371Z",
+  "native_cycle": "20260924T044353.640845Z-pid64532",
+  "status": "COMPLETE_PASS",
+  "scope": "Read-only resumed capture audit. Original partial evidence preserved. No provider/broker calls or production writes.",
+  "completed_at": "2026-09-24T05:56:51.475592+00:00"
+}

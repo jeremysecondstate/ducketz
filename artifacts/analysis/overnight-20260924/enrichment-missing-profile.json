@@ -1,0 +1,406 @@
+{
+  "source_gameplan": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260924T062615.050242Z",
+  "created_at": "2026-09-24T06:39:30.101319+00:00",
+  "groups": {
+    "1h": {
+      "all_cohort_rows": 171511,
+      "execution_rows": 165549,
+      "finite_rows": 92800,
+      "all_eight_missing_rows": 72749,
+      "partially_missing_rows": 0,
+      "infinity_cells": 0,
+      "missing_by_feature": {
+        "mr__trend_atr": 72749,
+        "mr__momentum_risk_adjusted": 72749,
+        "mr__range_position": 72749,
+        "mr__volume_score": 72749,
+        "mr__volatility_ratio": 72749,
+        "mr__atr_percent": 72749,
+        "bp__compression_score": 72749,
+        "bp__direction_score": 72749
+      },
+      "by_symbol": {
+        "AAPL": {
+          "candidate": 20730,
+          "finite": 10912,
+          "excluded_missing": 9818,
+          "finite_first_action": "2023-04-04",
+          "finite_last_action": "2026-09-23"
+        },
+        "AMZN": {
+          "candidate": 20252,
+          "finite": 10803,
+          "excluded_missing": 9449,
+          "finite_first_action": "2023-04-04",
+          "finite_last_action": "2026-09-23"
+        },
+        "COST": {
+          "candidate": 14531,
+          "finite": 7787,
+          "excluded_missing": 6744,
+          "finite_first_action": "2023-04-06",
+          "finite_last_action": "2026-09-23"
+        },
+        "CROX": {
+          "candidate": 14164,
+          "finite": 5942,
+          "excluded_missing": 8222,
+          "finite_first_action": "2023-04-10",
+          "finite_last_action": "2026-09-23"
+        },
+        "GOOG": {
+          "candidate": 18462,
+          "finite": 10459,
+          "excluded_missing": 8003,
+          "finite_first_action": "2023-04-05",
+          "finite_last_action": "2026-09-23"
+        },
+        "IONQ": {
+          "candidate": 12980,
+          "finite": 9802,
+          "excluded_missing": 3178,
+          "finite_first_action": "2023-04-04",
+          "finite_last_action": "2026-09-23"
+        },
+        "MU": {
+          "candidate": 18122,
+          "finite": 9947,
+          "excluded_missing": 8175,
+          "finite_first_action": "2023-04-05",
+          "finite_last_action": "2026-09-23"
+        },
+        "NVDA": {
+          "candidate": 20296,
+          "finite": 10768,
+          "excluded_missing": 9528,
+          "finite_first_action": "2023-04-04",
+          "finite_last_action": "2026-09-23"
+        },
+        "PATH": {
+          "candidate": 10409,
+          "finite": 7063,
+          "excluded_missing": 3346,
+          "finite_first_action": "2023-04-06",
+          "finite_last_action": "2026-09-23"
+        },
+        "SNDK": {
+          "candidate": 3923,
+          "finite": 3923,
+          "excluded_missing": 0,
+          "finite_first_action": "2025-03-25",
+          "finite_last_action": "2026-09-23"
+        },
+        "TWST": {
+          "candidate": 11680,
+          "finite": 5394,
+          "excluded_missing": 6286,
+          "finite_first_action": "2023-04-10",
+          "finite_last_action": "2026-09-23"
+        }
+      },
+      "source_selection_contracts": [
+        "xnas-archive-prior-session-features-v1"
+      ]
+    },
+    "4h": {
+      "all_cohort_rows": 42858,
+      "execution_rows": 42858,
+      "finite_rows": 25012,
+      "all_eight_missing_rows": 17846,
+      "partially_missing_rows": 0,
+      "infinity_cells": 0,
+      "missing_by_feature": {
+        "mr__trend_atr": 17846,
+        "mr__momentum_risk_adjusted": 17846,
+        "mr__range_position": 17846,
+        "mr__volume_score": 17846,
+        "mr__volatility_ratio": 17846,
+        "mr__atr_percent": 17846,
+        "bp__compression_score": 17846,
+        "bp__direction_score": 17846
+      },
+      "by_symbol": {
+        "AAPL": {
+          "candidate": 5856,
+          "finite": 3134,
+          "excluded_missing": 2722,
+          "finite_first_action": "2023-04-04",
+          "finite_last_action": "2026-09-23"
+        },
+        "AMZN": {
+          "candidate": 5646,
+          "finite": 3090,
+          "excluded_missing": 2556,
+          "finite_first_action": "2023-04-04",
+          "finite_last_action": "2026-09-23"
+        },
+        "COST": {
+          "candidate": 3741,
+          "finite": 2100,
+          "excluded_missing": 1641,
+          "finite_first_action": "2023-04-06",
+          "finite_last_action": "2026-09-23"
+        },
+        "CROX": {
+          "candidate": 2926,
+          "finite": 1307,
+          "excluded_missing": 1619,
+          "finite_first_action": "2023-04-10",
+          "finite_last_action": "2026-09-23"
+        },
+        "GOOG": {
+          "candidate": 4959,
+          "finite": 2951,
+          "excluded_missing": 2008,
+          "finite_first_action": "2023-04-05",
+          "finite_last_action": "2026-09-23"
+        },
+        "IONQ": {
+          "candidate": 3230,
+          "finite": 2555,
+          "excluded_missing": 675,
+          "finite_first_action": "2023-04-04",
+          "finite_last_action": "2026-09-23"
+        },
+        "MU": {
+          "candidate": 4922,
+          "finite": 2797,
+          "excluded_missing": 2125,
+          "finite_first_action": "2023-04-05",
+          "finite_last_action": "2026-09-23"
+        },
+        "NVDA": {
+          "candidate": 5717,
+          "finite": 3126,
+          "excluded_missing": 2591,
+          "finite_first_action": "2023-04-04",
+          "finite_last_action": "2026-09-23"
+        },
+        "PATH": {
+          "candidate": 2649,
+          "finite": 1851,
+          "excluded_missing": 798,
+          "finite_first_action": "2023-04-06",
+          "finite_last_action": "2026-09-23"
+        },
+        "SNDK": {
+          "candidate": 1064,
+          "finite": 1064,
+          "excluded_missing": 0,
+          "finite_first_action": "2025-03-25",
+          "finite_last_action": "2026-09-23"
+        },
+        "TWST": {
+          "candidate": 2148,
+          "finite": 1037,
+          "excluded_missing": 1111,
+          "finite_first_action": "2023-04-10",
+          "finite_last_action": "2026-09-23"
+        }
+      },
+      "source_selection_contracts": [
+        "xnas-archive-prior-session-features-v1"
+      ]
+    },
+    "1d": {
+      "all_cohort_rows": 29602,
+      "execution_rows": 5917,
+      "finite_rows": 3776,
+      "all_eight_missing_rows": 2141,
+      "partially_missing_rows": 0,
+      "infinity_cells": 0,
+      "missing_by_feature": {
+        "mr__trend_atr": 2141,
+        "mr__momentum_risk_adjusted": 2141,
+        "mr__range_position": 2141,
+        "mr__volume_score": 2141,
+        "mr__volatility_ratio": 2141,
+        "mr__atr_percent": 2141,
+        "bp__compression_score": 2141,
+        "bp__direction_score": 2141
+      },
+      "by_symbol": {
+        "AAPL": {
+          "candidate": 1073,
+          "finite": 610,
+          "excluded_missing": 463,
+          "finite_first_action": "2023-04-04",
+          "finite_last_action": "2026-09-23"
+        },
+        "AMZN": {
+          "candidate": 1039,
+          "finite": 600,
+          "excluded_missing": 439,
+          "finite_first_action": "2023-04-04",
+          "finite_last_action": "2026-09-23"
+        },
+        "COST": {
+          "candidate": 336,
+          "finite": 219,
+          "excluded_missing": 117,
+          "finite_first_action": "2023-04-10",
+          "finite_last_action": "2026-09-23"
+        },
+        "CROX": {
+          "candidate": 60,
+          "finite": 25,
+          "excluded_missing": 35,
+          "finite_first_action": "2023-04-27",
+          "finite_last_action": "2026-07-17"
+        },
+        "GOOG": {
+          "candidate": 837,
+          "finite": 575,
+          "excluded_missing": 262,
+          "finite_first_action": "2023-04-05",
+          "finite_last_action": "2026-09-23"
+        },
+        "IONQ": {
+          "candidate": 359,
+          "finite": 344,
+          "excluded_missing": 15,
+          "finite_first_action": "2023-04-05",
+          "finite_last_action": "2026-09-23"
+        },
+        "MU": {
+          "candidate": 812,
+          "finite": 502,
+          "excluded_missing": 310,
+          "finite_first_action": "2023-04-06",
+          "finite_last_action": "2026-09-23"
+        },
+        "NVDA": {
+          "candidate": 1039,
+          "finite": 595,
+          "excluded_missing": 444,
+          "finite_first_action": "2023-04-04",
+          "finite_last_action": "2026-09-23"
+        },
+        "PATH": {
+          "candidate": 192,
+          "finite": 137,
+          "excluded_missing": 55,
+          "finite_first_action": "2023-04-19",
+          "finite_last_action": "2026-09-17"
+        },
+        "SNDK": {
+          "candidate": 166,
+          "finite": 166,
+          "excluded_missing": 0,
+          "finite_first_action": "2025-04-09",
+          "finite_last_action": "2026-09-23"
+        },
+        "TWST": {
+          "candidate": 4,
+          "finite": 3,
+          "excluded_missing": 1,
+          "finite_first_action": "2025-06-16",
+          "finite_last_action": "2026-08-19"
+        }
+      },
+      "source_selection_contracts": [
+        "xnas-archive-prior-session-features-v1"
+      ]
+    },
+    "1w": {
+      "all_cohort_rows": 5831,
+      "execution_rows": 5831,
+      "finite_rows": 3750,
+      "all_eight_missing_rows": 2081,
+      "partially_missing_rows": 0,
+      "infinity_cells": 0,
+      "missing_by_feature": {
+        "mr__trend_atr": 2081,
+        "mr__momentum_risk_adjusted": 2081,
+        "mr__range_position": 2081,
+        "mr__volume_score": 2081,
+        "mr__volatility_ratio": 2081,
+        "mr__atr_percent": 2081,
+        "bp__compression_score": 2081,
+        "bp__direction_score": 2081
+      },
+      "by_symbol": {
+        "AAPL": {
+          "candidate": 1060,
+          "finite": 606,
+          "excluded_missing": 454,
+          "finite_first_action": "2023-04-04",
+          "finite_last_action": "2026-09-17"
+        },
+        "AMZN": {
+          "candidate": 1025,
+          "finite": 597,
+          "excluded_missing": 428,
+          "finite_first_action": "2023-04-04",
+          "finite_last_action": "2026-09-17"
+        },
+        "COST": {
+          "candidate": 333,
+          "finite": 218,
+          "excluded_missing": 115,
+          "finite_first_action": "2023-04-11",
+          "finite_last_action": "2026-09-16"
+        },
+        "CROX": {
+          "candidate": 62,
+          "finite": 31,
+          "excluded_missing": 31,
+          "finite_first_action": "2023-04-20",
+          "finite_last_action": "2026-07-13"
+        },
+        "GOOG": {
+          "candidate": 829,
+          "finite": 571,
+          "excluded_missing": 258,
+          "finite_first_action": "2023-04-05",
+          "finite_last_action": "2026-09-17"
+        },
+        "IONQ": {
+          "candidate": 354,
+          "finite": 341,
+          "excluded_missing": 13,
+          "finite_first_action": "2023-04-05",
+          "finite_last_action": "2026-09-17"
+        },
+        "MU": {
+          "candidate": 798,
+          "finite": 501,
+          "excluded_missing": 297,
+          "finite_first_action": "2023-04-05",
+          "finite_last_action": "2026-09-17"
+        },
+        "NVDA": {
+          "candidate": 1026,
+          "finite": 587,
+          "excluded_missing": 439,
+          "finite_first_action": "2023-04-04",
+          "finite_last_action": "2026-09-17"
+        },
+        "PATH": {
+          "candidate": 170,
+          "finite": 126,
+          "excluded_missing": 44,
+          "finite_first_action": "2023-04-19",
+          "finite_last_action": "2026-09-10"
+        },
+        "SNDK": {
+          "candidate": 164,
+          "finite": 164,
+          "excluded_missing": 0,
+          "finite_first_action": "2025-05-29",
+          "finite_last_action": "2026-09-17"
+        },
+        "TWST": {
+          "candidate": 10,
+          "finite": 8,
+          "excluded_missing": 2,
+          "finite_first_action": "2025-04-03",
+          "finite_last_action": "2026-08-20"
+        }
+      },
+      "source_selection_contracts": [
+        "xnas-archive-prior-session-features-v1"
+      ]
+    }
+  }
+}

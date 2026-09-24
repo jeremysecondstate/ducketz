@@ -1,0 +1,174 @@
+{
+  "observed_at": "2026-09-24T06:18:16.914675+00:00",
+  "status": "NATIVE_PRICING_EXCLUSION_MATCHES_PRIOR_PENDING_PUBLICATION_BINDING",
+  "horizon_groups": 9,
+  "unique_failed_routes": 99,
+  "native_quarantine_matches_prior": true,
+  "native_quarantine": [
+    {
+      "horizon": "1h",
+      "effective_feature_set": "loop-a-all-v1-1h",
+      "failed_routes": [
+        "AAPL|1h",
+        "AMZN|1h",
+        "COST|1h",
+        "CROX|1h",
+        "GOOG|1h",
+        "IONQ|1h",
+        "MU|1h",
+        "NVDA|1h",
+        "PATH|1h",
+        "SNDK|1h",
+        "TWST|1h"
+      ],
+      "line": 120
+    },
+    {
+      "horizon": "4h",
+      "effective_feature_set": "loop-a-all-v1-4h",
+      "failed_routes": [
+        "AAPL|4h",
+        "AMZN|4h",
+        "COST|4h",
+        "CROX|4h",
+        "GOOG|4h",
+        "IONQ|4h",
+        "MU|4h",
+        "NVDA|4h",
+        "PATH|4h",
+        "SNDK|4h",
+        "TWST|4h"
+      ],
+      "line": 121
+    },
+    {
+      "horizon": "1d",
+      "effective_feature_set": "loop-a-all-v3-1d",
+      "failed_routes": [
+        "AAPL|1d",
+        "AMZN|1d",
+        "COST|1d",
+        "CROX|1d",
+        "GOOG|1d",
+        "IONQ|1d",
+        "MU|1d",
+        "NVDA|1d",
+        "PATH|1d",
+        "SNDK|1d",
+        "TWST|1d"
+      ],
+      "line": 122
+    },
+    {
+      "horizon": "1w",
+      "effective_feature_set": "loop-a-all-v3-1w",
+      "failed_routes": [
+        "AAPL|1w",
+        "AMZN|1w",
+        "COST|1w",
+        "CROX|1w",
+        "GOOG|1w",
+        "IONQ|1w",
+        "MU|1w",
+        "NVDA|1w",
+        "PATH|1w",
+        "SNDK|1w",
+        "TWST|1w"
+      ],
+      "line": 123
+    },
+    {
+      "horizon": "1w-d1",
+      "effective_feature_set": "loop-a-all-v3-1w",
+      "failed_routes": [
+        "AAPL|1w-d1",
+        "AMZN|1w-d1",
+        "COST|1w-d1",
+        "CROX|1w-d1",
+        "GOOG|1w-d1",
+        "IONQ|1w-d1",
+        "MU|1w-d1",
+        "NVDA|1w-d1",
+        "PATH|1w-d1",
+        "SNDK|1w-d1",
+        "TWST|1w-d1"
+      ],
+      "line": 124
+    },
+    {
+      "horizon": "1w-d2",
+      "effective_feature_set": "loop-a-all-v3-1w",
+      "failed_routes": [
+        "AAPL|1w-d2",
+        "AMZN|1w-d2",
+        "COST|1w-d2",
+        "CROX|1w-d2",
+        "GOOG|1w-d2",
+        "IONQ|1w-d2",
+        "MU|1w-d2",
+        "NVDA|1w-d2",
+        "PATH|1w-d2",
+        "SNDK|1w-d2",
+        "TWST|1w-d2"
+      ],
+      "line": 125
+    },
+    {
+      "horizon": "1w-d3",
+      "effective_feature_set": "loop-a-all-v3-1w",
+      "failed_routes": [
+        "AAPL|1w-d3",
+        "AMZN|1w-d3",
+        "COST|1w-d3",
+        "CROX|1w-d3",
+        "GOOG|1w-d3",
+        "IONQ|1w-d3",
+        "MU|1w-d3",
+        "NVDA|1w-d3",
+        "PATH|1w-d3",
+        "SNDK|1w-d3",
+        "TWST|1w-d3"
+      ],
+      "line": 126
+    },
+    {
+      "horizon": "1w-d4",
+      "effective_feature_set": "loop-a-all-v3-1w",
+      "failed_routes": [
+        "AAPL|1w-d4",
+        "AMZN|1w-d4",
+        "COST|1w-d4",
+        "CROX|1w-d4",
+        "GOOG|1w-d4",
+        "IONQ|1w-d4",
+        "MU|1w-d4",
+        "NVDA|1w-d4",
+        "PATH|1w-d4",
+        "SNDK|1w-d4",
+        "TWST|1w-d4"
+      ],
+      "line": 127
+    },
+    {
+      "horizon": "1w-d5",
+      "effective_feature_set": "loop-a-all-v3-1w",
+      "failed_routes": [
+        "AAPL|1w-d5",
+        "AMZN|1w-d5",
+        "COST|1w-d5",
+        "CROX|1w-d5",
+        "GOOG|1w-d5",
+        "IONQ|1w-d5",
+        "MU|1w-d5",
+        "NVDA|1w-d5",
+        "PATH|1w-d5",
+        "SNDK|1w-d5",
+        "TWST|1w-d5"
+      ],
+      "line": 128
+    }
+  ],
+  "compact_authority_hash_audit": "Prepared; execute once after native Loop B completion with manifest route fractions and saved model/sample counts",
+  "provider_native_attempt": "C:\\DATASTORE\\ml\\overnight-runs\\20260924T044352.904210Z",
+  "scope": "Current log and saved prior route list only; no source mutation or training."
+}

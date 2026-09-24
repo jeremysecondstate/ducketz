@@ -1,0 +1,44 @@
+{
+  "verified_at": "2026-09-24T06:55:35.902021+00:00",
+  "scope": "Read-only selector and optional-input columns only; no target reconstruction, source reads, model inference or fitting.",
+  "source_gameplan": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260924T062615.050242Z",
+  "groups": {
+    "1h": {
+      "execution_rows": 165549,
+      "null_selector_values": 0,
+      "archive_selector_rows": 165549,
+      "all_optional_inputs_absent_rows": 72749,
+      "old_excluded_rows": 72749,
+      "new_excluded_rows": 72749,
+      "same_mask": true
+    },
+    "4h": {
+      "execution_rows": 42858,
+      "null_selector_values": 0,
+      "archive_selector_rows": 42858,
+      "all_optional_inputs_absent_rows": 17846,
+      "old_excluded_rows": 17846,
+      "new_excluded_rows": 17846,
+      "same_mask": true
+    },
+    "1d": {
+      "execution_rows": 5917,
+      "null_selector_values": 0,
+      "archive_selector_rows": 5917,
+      "all_optional_inputs_absent_rows": 2141,
+      "old_excluded_rows": 2141,
+      "new_excluded_rows": 2141,
+      "same_mask": true
+    },
+    "1w": {
+      "execution_rows": 5831,
+      "null_selector_values": 0,
+      "archive_selector_rows": 5831,
+      "all_optional_inputs_absent_rows": 2081,
+      "old_excluded_rows": 2081,
+      "new_excluded_rows": 2081,
+      "same_mask": true
+    }
+  },
+  "conclusion": "All four actual execution cohorts have valid nonnull archive selectors; fillna(False) changes no admitted row or completed model."
+}

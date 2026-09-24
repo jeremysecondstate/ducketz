@@ -244,6 +244,10 @@ def test_native_publication_staging_loading_and_source_checksum(tmp_path, monkey
     native_payload = json.loads((published / "model.json").read_text(encoding="utf-8"))
     native_manifest = json.loads((published / "manifest.json").read_text(encoding="utf-8"))
     altered = deepcopy(native_payload)
+    altered["horizons"]["1h"]["market_feature_admission"]["excluded_missing_market_rows"] += 1
+    with pytest.raises(ValueError, match="market admission differs"):
+        training.verify_independent_model_sources(tmp_path, _resign(altered), native_manifest)
+    altered = deepcopy(native_payload)
     changed_scope = next(iter(altered["horizons"]["1h"]["fit_scope_decision_clusters"]))
     altered["horizons"]["1h"]["fit_scope_decision_clusters"][changed_scope] += 1
     with pytest.raises(ValueError, match="scope counts differ"):
@@ -345,11 +349,13 @@ def test_legacy_calendar_feature_shape_remains_readable(fitted):
     legacy.pop("feature_contract_version")
     legacy.pop("market_feature_contract")
     legacy.pop("scope_qualification_policy")
+    legacy.pop("market_feature_admission_policy")
     count = len(INDEPENDENT_ENRICHMENT_FEATURE_NAMES)
     for record in legacy["horizons"].values():
         record.pop("feature_contract_version")
         record.pop("market_feature_contract")
         record.pop("scope_qualification_policy")
+        record.pop("market_feature_admission")
         record["feature_names"] = record["feature_names"][:count]
         record["feature_means"] = record["feature_means"][:count]
         record["feature_scales"] = record["feature_scales"][:count]
@@ -366,6 +372,25 @@ def test_legacy_calendar_feature_shape_remains_readable(fitted):
     values = independent_target_feature_values(symbol=signal.symbol, horizon=signal.primary_horizon,
         start=signal.target_window_start, end=signal.target_window_end, cost=.001)
     assert model.predict(values).expected_holding_minutes == 60.
+
+
+def test_all_absent_archive_sizing_inputs_are_reported_as_insufficient_evidence(cohorts):
+    from ml.gameplan_archive_features import ARCHIVE_FEATURE_CONTRACT
+    missing = {group: frame.copy() for group, frame in cohorts.items()}
+    for frame in missing.values():
+        frame["source_selection_contract"] = ARCHIVE_FEATURE_CONTRACT
+        frame[list(INDEPENDENT_MARKET_FEATURE_NAMES)] = np.nan
+    payload, report = training.fit_independent_enrichment_model_payload(
+        missing, trained_at=TRAINED, source_fingerprint="d" * 64)
+    assert report["status"] == "INSUFFICIENT_EVIDENCE"
+    for group, frame in missing.items():
+        record = payload["horizons"][group]
+        assert record["fitted"] is False
+        evidence = record["market_feature_admission"]
+        assert evidence["input_execution_rows"] == evidence["excluded_missing_market_rows"] == len(frame)
+        assert evidence["admitted_rows"] == 0
+        assert report["horizons"][group]["market_feature_admission"] == evidence
+        assert report["horizons"][group]["excluded_context_rows"] == 0
 
 
 def _calibration_frame():

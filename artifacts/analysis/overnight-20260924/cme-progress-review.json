@@ -1,0 +1,153 @@
+{
+  "observed_at": "2026-09-24T04:18:58.469039+00:00",
+  "captures": [
+    {
+      "scope": "CME_CONTEXT",
+      "schema": "ohlcv-1m",
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_ohlcv-1m\\databento\\normalized\\CME_CONTEXT_cme_context_ohlcv-1m.parquet",
+      "current_rows": 2387,
+      "symbols": {
+        "CL.v.0": 479,
+        "ES.v.0": 480,
+        "GC.v.0": 478,
+        "NQ.v.0": 480,
+        "RTY.v.0": 470
+      },
+      "stypes": [
+        "continuous"
+      ],
+      "first_market": "2026-09-23 19:00:00+00:00",
+      "last_market": "2026-09-24 03:59:00+00:00",
+      "request_evidence": [
+        {
+          "request_limit_saturated": false,
+          "effective_range_start": "2026-09-23 19:00:00+00:00",
+          "effective_range_end": "2026-09-24 04:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "scope": "CME_CONTEXT",
+      "schema": "bbo-1m",
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_bbo-1m\\databento\\normalized\\CME_CONTEXT_cme_context_bbo-1m.parquet",
+      "current_rows": 300,
+      "symbols": {
+        "CL.v.0": 60,
+        "ES.v.0": 60,
+        "GC.v.0": 60,
+        "NQ.v.0": 60,
+        "RTY.v.0": 60
+      },
+      "stypes": [
+        "continuous"
+      ],
+      "first_market": "2026-09-24 02:59:09.105756981+00:00",
+      "last_market": "2026-09-24 03:58:58.647515505+00:00",
+      "request_evidence": [
+        {
+          "request_limit_saturated": false,
+          "effective_range_start": "2026-09-24 03:00:00+00:00",
+          "effective_range_end": "2026-09-24 04:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "scope": "CME_CONTEXT",
+      "schema": "mbp-10",
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_mbp-10\\databento\\normalized\\CME_CONTEXT_cme_context_mbp-10.parquet",
+      "current_rows": 4998,
+      "symbols": {
+        "CL.v.0": 556,
+        "ES.v.0": 1582,
+        "GC.v.0": 372,
+        "NQ.v.0": 1902,
+        "RTY.v.0": 586
+      },
+      "stypes": [
+        "continuous"
+      ],
+      "first_market": "2026-09-23 20:13:37.284329555+00:00",
+      "last_market": "2026-09-23 20:14:12.116429507+00:00",
+      "request_evidence": [
+        {
+          "request_limit_saturated": true,
+          "effective_range_start": "2026-09-23 20:13:37.167420+00:00",
+          "effective_range_end": "2026-09-23 20:14:24.042420+00:00"
+        }
+      ]
+    },
+    {
+      "scope": "CME_CONTRACTS",
+      "schema": "ohlcv-1m",
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_ohlcv-1m\\databento\\normalized\\CME_CONTRACTS_cme_contracts_ohlcv-1m.parquet",
+      "current_rows": 4077,
+      "symbols": {
+        "CLX6": 1019,
+        "ESZ6": 1020,
+        "GCZ6": 1018,
+        "NQZ6": 1020
+      },
+      "stypes": [
+        "raw_symbol"
+      ],
+      "first_market": "2026-09-23 10:00:00+00:00",
+      "last_market": "2026-09-24 03:59:00+00:00",
+      "request_evidence": [
+        {
+          "request_limit_saturated": false,
+          "effective_range_start": "2026-09-23 10:00:00+00:00",
+          "effective_range_end": "2026-09-24 04:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "scope": "CME_CONTRACTS",
+      "schema": "bbo-1m",
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_bbo-1m\\databento\\normalized\\CME_CONTRACTS_cme_contracts_bbo-1m.parquet",
+      "current_rows": 240,
+      "symbols": {
+        "CLX6": 60,
+        "ESZ6": 60,
+        "GCZ6": 60,
+        "NQZ6": 60
+      },
+      "stypes": [
+        "raw_symbol"
+      ],
+      "first_market": "2026-09-24 02:59:45.181898991+00:00",
+      "last_market": "2026-09-24 03:58:58.647515505+00:00",
+      "request_evidence": [
+        {
+          "request_limit_saturated": false,
+          "effective_range_start": "2026-09-24 03:00:00+00:00",
+          "effective_range_end": "2026-09-24 04:00:00+00:00"
+        }
+      ]
+    },
+    {
+      "scope": "CME_CONTRACTS",
+      "schema": "mbp-10",
+      "path": "C:\\DATASTORE\\pools\\cme\\CME_CONTRACTS\\cme_contracts_mbp-10\\databento\\normalized\\CME_CONTRACTS_cme_contracts_mbp-10.parquet",
+      "current_rows": 4998,
+      "symbols": {
+        "CLX6": 561,
+        "ESZ6": 1892,
+        "GCZ6": 378,
+        "NQZ6": 2167
+      },
+      "stypes": [
+        "raw_symbol"
+      ],
+      "first_market": "2026-09-23 20:13:37.284329555+00:00",
+      "last_market": "2026-09-23 20:14:16.116677775+00:00",
+      "request_evidence": [
+        {
+          "request_limit_saturated": true,
+          "effective_range_start": "2026-09-23 20:13:37.167420+00:00",
+          "effective_range_end": "2026-09-23 20:14:24.042420+00:00"
+        }
+      ]
+    }
+  ],
+  "scope": "Current-stage rows from six compact projected files only; no hashes or provider requests"
+}

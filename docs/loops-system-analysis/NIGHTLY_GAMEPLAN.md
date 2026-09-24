@@ -183,6 +183,16 @@ Publication uses `xnas-archive-prior-session-features-v1`: causal daily-return,
 range, volume and volatility features from verified XNAS daily history, plus
 available hourly context and existing causal optional features. Older absent
 optional columns remain missing under the existing feature-admission rules.
+The separate market-aware sizing fit admits archive execution rows only when
+its eight operational market inputs are observed and finite. Rows with all eight
+inputs genuinely absent under this archive contract receive explicit
+`archive-optional-market-observations-v1` exclusions; partial, malformed or
+infinite inputs still fail closed. Validate every candidate's target prices and
+causal clocks before exclusion. Bind counts, symbols, feature counts and excluded
+target-identity hashes into the sizing model/report, and reproduce that admission
+from the immutable source cohorts when loading. Historical models retain their
+saved admission policy. This does not remove rows from directional training,
+impute observations or change sizing qualification gates.
 Daily/hourly tails may be aggregated only from actual native minute observations
 whose verified request coverage contains the complete source interval. No missing
 prices, zero-volume bars or pre-IPO samples are manufactured. Warmup requires 21

@@ -1,0 +1,15 @@
+.............................F.....                                      [100%]
+================================== FAILURES ===================================
+_____________ test_legacy_calendar_feature_shape_remains_readable _____________
+tests\test_independent_stock_enrichment.py:361: in test_legacy_calendar_feature_shape_remains_readable
+    model = model_from_payload(_resign(legacy))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ml\stock_trader\model.py:254: in model_from_payload
+    return independent_model_from_payload(payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ml\stock_trader\independent_training.py:594: in independent_model_from_payload
+    raise ValueError("Archive market admission requires the market-aware enrichment contract")
+E   ValueError: Archive market admission requires the market-aware enrichment contract
+=========================== short test summary info ===========================
+FAILED tests/test_independent_stock_enrichment.py::test_legacy_calendar_feature_shape_remains_readable
+1 failed, 34 passed in 17.38s

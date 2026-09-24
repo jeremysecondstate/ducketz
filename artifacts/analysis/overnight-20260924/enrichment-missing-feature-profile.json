@@ -1,0 +1,546 @@
+{
+  "1h": {
+    "rows": 171511,
+    "execution": 165549,
+    "complete_market": 92800,
+    "missing_by_feature": {
+      "mr__trend_atr": 72749,
+      "mr__momentum_risk_adjusted": 72749,
+      "mr__range_position": 72749,
+      "mr__volume_score": 72749,
+      "mr__volatility_ratio": 72749,
+      "mr__atr_percent": 72749,
+      "bp__compression_score": 72749,
+      "bp__direction_score": 72749
+    },
+    "infinite": 0,
+    "archive_contracts": {},
+    "complete_ranges": {
+      "AAPL": {
+        "n": 10912,
+        "start": "2023-04-04",
+        "end": "2026-09-23"
+      },
+      "AMZN": {
+        "n": 10803,
+        "start": "2023-04-04",
+        "end": "2026-09-23"
+      },
+      "COST": {
+        "n": 7787,
+        "start": "2023-04-06",
+        "end": "2026-09-23"
+      },
+      "CROX": {
+        "n": 5942,
+        "start": "2023-04-10",
+        "end": "2026-09-23"
+      },
+      "GOOG": {
+        "n": 10459,
+        "start": "2023-04-05",
+        "end": "2026-09-23"
+      },
+      "IONQ": {
+        "n": 9802,
+        "start": "2023-04-04",
+        "end": "2026-09-23"
+      },
+      "MU": {
+        "n": 9947,
+        "start": "2023-04-05",
+        "end": "2026-09-23"
+      },
+      "NVDA": {
+        "n": 10768,
+        "start": "2023-04-04",
+        "end": "2026-09-23"
+      },
+      "PATH": {
+        "n": 7063,
+        "start": "2023-04-06",
+        "end": "2026-09-23"
+      },
+      "SNDK": {
+        "n": 3923,
+        "start": "2025-03-25",
+        "end": "2026-09-23"
+      },
+      "TWST": {
+        "n": 5394,
+        "start": "2023-04-10",
+        "end": "2026-09-23"
+      }
+    },
+    "missing_ranges": {
+      "AAPL": {
+        "n": 9818,
+        "start": "2019-09-18",
+        "end": "2023-04-03"
+      },
+      "AMZN": {
+        "n": 9449,
+        "start": "2019-09-18",
+        "end": "2023-04-03"
+      },
+      "COST": {
+        "n": 6744,
+        "start": "2019-09-18",
+        "end": "2023-04-05"
+      },
+      "CROX": {
+        "n": 8222,
+        "start": "2018-05-31",
+        "end": "2023-04-06"
+      },
+      "GOOG": {
+        "n": 8003,
+        "start": "2019-09-18",
+        "end": "2023-04-04"
+      },
+      "IONQ": {
+        "n": 3178,
+        "start": "2021-11-01",
+        "end": "2023-04-03"
+      },
+      "MU": {
+        "n": 8175,
+        "start": "2019-09-18",
+        "end": "2023-04-04"
+      },
+      "NVDA": {
+        "n": 9528,
+        "start": "2019-09-18",
+        "end": "2023-04-03"
+      },
+      "PATH": {
+        "n": 3346,
+        "start": "2021-05-20",
+        "end": "2023-04-05"
+      },
+      "TWST": {
+        "n": 6286,
+        "start": "2018-11-30",
+        "end": "2023-04-06"
+      }
+    },
+    "clock_columns": [
+      "bp__range_contraction_score",
+      "opt__contract_count",
+      "source_selection_contract",
+      "information_available_at",
+      "target_price_source_contract",
+      "probability_target_contract",
+      "target_contract_version",
+      "target_calendar_feature_contract"
+    ]
+  },
+  "4h": {
+    "rows": 42858,
+    "execution": 42858,
+    "complete_market": 25012,
+    "missing_by_feature": {
+      "mr__trend_atr": 17846,
+      "mr__momentum_risk_adjusted": 17846,
+      "mr__range_position": 17846,
+      "mr__volume_score": 17846,
+      "mr__volatility_ratio": 17846,
+      "mr__atr_percent": 17846,
+      "bp__compression_score": 17846,
+      "bp__direction_score": 17846
+    },
+    "infinite": 0,
+    "archive_contracts": {},
+    "complete_ranges": {
+      "AAPL": {
+        "n": 3134,
+        "start": "2023-04-04",
+        "end": "2026-09-23"
+      },
+      "AMZN": {
+        "n": 3090,
+        "start": "2023-04-04",
+        "end": "2026-09-23"
+      },
+      "COST": {
+        "n": 2100,
+        "start": "2023-04-06",
+        "end": "2026-09-23"
+      },
+      "CROX": {
+        "n": 1307,
+        "start": "2023-04-10",
+        "end": "2026-09-23"
+      },
+      "GOOG": {
+        "n": 2951,
+        "start": "2023-04-05",
+        "end": "2026-09-23"
+      },
+      "IONQ": {
+        "n": 2555,
+        "start": "2023-04-04",
+        "end": "2026-09-23"
+      },
+      "MU": {
+        "n": 2797,
+        "start": "2023-04-05",
+        "end": "2026-09-23"
+      },
+      "NVDA": {
+        "n": 3126,
+        "start": "2023-04-04",
+        "end": "2026-09-23"
+      },
+      "PATH": {
+        "n": 1851,
+        "start": "2023-04-06",
+        "end": "2026-09-23"
+      },
+      "SNDK": {
+        "n": 1064,
+        "start": "2025-03-25",
+        "end": "2026-09-23"
+      },
+      "TWST": {
+        "n": 1037,
+        "start": "2023-04-10",
+        "end": "2026-09-23"
+      }
+    },
+    "missing_ranges": {
+      "AAPL": {
+        "n": 2722,
+        "start": "2019-09-18",
+        "end": "2023-04-03"
+      },
+      "AMZN": {
+        "n": 2556,
+        "start": "2019-09-18",
+        "end": "2023-04-03"
+      },
+      "COST": {
+        "n": 1641,
+        "start": "2019-09-18",
+        "end": "2023-04-05"
+      },
+      "CROX": {
+        "n": 1619,
+        "start": "2018-05-31",
+        "end": "2023-04-06"
+      },
+      "GOOG": {
+        "n": 2008,
+        "start": "2019-09-18",
+        "end": "2023-04-04"
+      },
+      "IONQ": {
+        "n": 675,
+        "start": "2021-11-01",
+        "end": "2023-04-03"
+      },
+      "MU": {
+        "n": 2125,
+        "start": "2019-09-18",
+        "end": "2023-04-04"
+      },
+      "NVDA": {
+        "n": 2591,
+        "start": "2019-09-18",
+        "end": "2023-04-03"
+      },
+      "PATH": {
+        "n": 798,
+        "start": "2021-05-20",
+        "end": "2023-04-05"
+      },
+      "TWST": {
+        "n": 1111,
+        "start": "2018-11-30",
+        "end": "2023-04-06"
+      }
+    },
+    "clock_columns": [
+      "bp__range_contraction_score",
+      "opt__contract_count",
+      "source_selection_contract",
+      "information_available_at",
+      "target_price_source_contract",
+      "probability_target_contract",
+      "target_contract_version",
+      "target_calendar_feature_contract"
+    ]
+  },
+  "1d": {
+    "rows": 29602,
+    "execution": 5917,
+    "complete_market": 3776,
+    "missing_by_feature": {
+      "mr__trend_atr": 2141,
+      "mr__momentum_risk_adjusted": 2141,
+      "mr__range_position": 2141,
+      "mr__volume_score": 2141,
+      "mr__volatility_ratio": 2141,
+      "mr__atr_percent": 2141,
+      "bp__compression_score": 2141,
+      "bp__direction_score": 2141
+    },
+    "infinite": 0,
+    "archive_contracts": {},
+    "complete_ranges": {
+      "AAPL": {
+        "n": 610,
+        "start": "2023-04-04",
+        "end": "2026-09-23"
+      },
+      "AMZN": {
+        "n": 600,
+        "start": "2023-04-04",
+        "end": "2026-09-23"
+      },
+      "COST": {
+        "n": 219,
+        "start": "2023-04-10",
+        "end": "2026-09-23"
+      },
+      "CROX": {
+        "n": 25,
+        "start": "2023-04-27",
+        "end": "2026-07-17"
+      },
+      "GOOG": {
+        "n": 575,
+        "start": "2023-04-05",
+        "end": "2026-09-23"
+      },
+      "IONQ": {
+        "n": 344,
+        "start": "2023-04-05",
+        "end": "2026-09-23"
+      },
+      "MU": {
+        "n": 502,
+        "start": "2023-04-06",
+        "end": "2026-09-23"
+      },
+      "NVDA": {
+        "n": 595,
+        "start": "2023-04-04",
+        "end": "2026-09-23"
+      },
+      "PATH": {
+        "n": 137,
+        "start": "2023-04-19",
+        "end": "2026-09-17"
+      },
+      "SNDK": {
+        "n": 166,
+        "start": "2025-04-09",
+        "end": "2026-09-23"
+      },
+      "TWST": {
+        "n": 3,
+        "start": "2025-06-16",
+        "end": "2026-08-19"
+      }
+    },
+    "missing_ranges": {
+      "AAPL": {
+        "n": 463,
+        "start": "2019-09-18",
+        "end": "2023-04-03"
+      },
+      "AMZN": {
+        "n": 439,
+        "start": "2019-09-19",
+        "end": "2023-04-03"
+      },
+      "COST": {
+        "n": 117,
+        "start": "2020-03-09",
+        "end": "2023-03-27"
+      },
+      "CROX": {
+        "n": 35,
+        "start": "2020-10-01",
+        "end": "2023-03-31"
+      },
+      "GOOG": {
+        "n": 262,
+        "start": "2019-10-04",
+        "end": "2023-04-04"
+      },
+      "IONQ": {
+        "n": 15,
+        "start": "2021-11-02",
+        "end": "2023-03-24"
+      },
+      "MU": {
+        "n": 310,
+        "start": "2019-09-18",
+        "end": "2023-04-03"
+      },
+      "NVDA": {
+        "n": 444,
+        "start": "2019-09-20",
+        "end": "2023-04-03"
+      },
+      "PATH": {
+        "n": 55,
+        "start": "2021-05-21",
+        "end": "2023-03-29"
+      },
+      "TWST": {
+        "n": 1,
+        "start": "2021-03-29",
+        "end": "2021-03-29"
+      }
+    },
+    "clock_columns": [
+      "bp__range_contraction_score",
+      "opt__contract_count",
+      "source_selection_contract",
+      "information_available_at",
+      "target_price_source_contract",
+      "probability_target_contract",
+      "target_contract_version",
+      "target_calendar_feature_contract"
+    ]
+  },
+  "1w": {
+    "rows": 5831,
+    "execution": 5831,
+    "complete_market": 3750,
+    "missing_by_feature": {
+      "mr__trend_atr": 2081,
+      "mr__momentum_risk_adjusted": 2081,
+      "mr__range_position": 2081,
+      "mr__volume_score": 2081,
+      "mr__volatility_ratio": 2081,
+      "mr__atr_percent": 2081,
+      "bp__compression_score": 2081,
+      "bp__direction_score": 2081
+    },
+    "infinite": 0,
+    "archive_contracts": {},
+    "complete_ranges": {
+      "AAPL": {
+        "n": 606,
+        "start": "2023-04-04",
+        "end": "2026-09-17"
+      },
+      "AMZN": {
+        "n": 597,
+        "start": "2023-04-04",
+        "end": "2026-09-17"
+      },
+      "COST": {
+        "n": 218,
+        "start": "2023-04-11",
+        "end": "2026-09-16"
+      },
+      "CROX": {
+        "n": 31,
+        "start": "2023-04-20",
+        "end": "2026-07-13"
+      },
+      "GOOG": {
+        "n": 571,
+        "start": "2023-04-05",
+        "end": "2026-09-17"
+      },
+      "IONQ": {
+        "n": 341,
+        "start": "2023-04-05",
+        "end": "2026-09-17"
+      },
+      "MU": {
+        "n": 501,
+        "start": "2023-04-05",
+        "end": "2026-09-17"
+      },
+      "NVDA": {
+        "n": 587,
+        "start": "2023-04-04",
+        "end": "2026-09-17"
+      },
+      "PATH": {
+        "n": 126,
+        "start": "2023-04-19",
+        "end": "2026-09-10"
+      },
+      "SNDK": {
+        "n": 164,
+        "start": "2025-05-29",
+        "end": "2026-09-17"
+      },
+      "TWST": {
+        "n": 8,
+        "start": "2025-04-03",
+        "end": "2026-08-20"
+      }
+    },
+    "missing_ranges": {
+      "AAPL": {
+        "n": 454,
+        "start": "2019-09-19",
+        "end": "2023-04-03"
+      },
+      "AMZN": {
+        "n": 428,
+        "start": "2019-09-20",
+        "end": "2023-03-31"
+      },
+      "COST": {
+        "n": 115,
+        "start": "2019-09-19",
+        "end": "2023-03-30"
+      },
+      "CROX": {
+        "n": 31,
+        "start": "2021-04-29",
+        "end": "2023-03-31"
+      },
+      "GOOG": {
+        "n": 258,
+        "start": "2019-09-20",
+        "end": "2023-04-04"
+      },
+      "IONQ": {
+        "n": 13,
+        "start": "2021-11-01",
+        "end": "2023-03-31"
+      },
+      "MU": {
+        "n": 297,
+        "start": "2019-09-18",
+        "end": "2023-04-03"
+      },
+      "NVDA": {
+        "n": 439,
+        "start": "2019-09-20",
+        "end": "2023-04-03"
+      },
+      "PATH": {
+        "n": 44,
+        "start": "2021-05-21",
+        "end": "2023-04-05"
+      },
+      "TWST": {
+        "n": 2,
+        "start": "2021-03-12",
+        "end": "2021-04-27"
+      }
+    },
+    "clock_columns": [
+      "bp__range_contraction_score",
+      "opt__contract_count",
+      "source_selection_contract",
+      "information_available_at",
+      "target_price_source_contract",
+      "probability_target_contract",
+      "target_contract_version",
+      "target_calendar_feature_contract"
+    ]
+  }
+}

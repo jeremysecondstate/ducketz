@@ -1,0 +1,21 @@
+{
+  "prepared_at": "2026-09-24T04:10:30.096394+00:00",
+  "native_run": "C:/DATASTORE/ml/overnight-runs/20260924T040733.615371Z",
+  "observed_original_cycle": "20260924T040734.527994Z-pid69476",
+  "helpers": [
+    {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260924\\audit_provider_completion.py",
+      "syntax_valid": true,
+      "sha256": "829bad38c8cca20f5032f87224c7364fd3f4e0daade73275e4b6cc95e46063e2"
+    },
+    {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260924\\provider_advisories.py",
+      "syntax_valid": true,
+      "sha256": "7bd0b37023d3abe51ebfd5964c6e8ed80f0cf3345281c078b1589b3e8b57419d"
+    }
+  ],
+  "status": "NOT_EXECUTED_NATIVE_STOPPED",
+  "scope": "Local reads and analysis artifacts only. No provider calls, broker calls, production writes, claims or processes controlled. Full current partition hashes run once after native Loop A completion.",
+  "updated_at": "2026-09-24T04:25:18.143335+00:00",
+  "blocking_reason": "Schwab invalid_grant; native controlled stop"
+}

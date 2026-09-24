@@ -1,0 +1,15 @@
+{
+  "_metrics": {
+    "current_stage": "stock_enrichment_training",
+    "cpu_seconds": 0.015625,
+    "io_bytes": 620,
+    "log_bytes": 120
+  },
+  "loop_a_close_fetch.log": 117370,
+  "health.jsonl": 159873,
+  "loop_b_directional_generation.log": 7803,
+  "stock_target_history.log": 2755,
+  "gameplan_evaluation.log": 7067,
+  "gameplan_publication.log": 2137162,
+  "stock_enrichment_training.log": 120
+}

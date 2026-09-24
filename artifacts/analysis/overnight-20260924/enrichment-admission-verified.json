@@ -1,0 +1,122 @@
+{
+  "1h": {
+    "policy": "archive-optional-market-observations-v1",
+    "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing",
+    "input_execution_rows": 165549,
+    "admitted_rows": 92800,
+    "excluded_missing_market_rows": 72749,
+    "excluded_by_symbol": {
+      "AAPL": 9818,
+      "AMZN": 9449,
+      "COST": 6744,
+      "CROX": 8222,
+      "GOOG": 8003,
+      "IONQ": 3178,
+      "MU": 8175,
+      "NVDA": 9528,
+      "PATH": 3346,
+      "TWST": 6286
+    },
+    "excluded_by_feature": {
+      "mr__trend_atr": 72749,
+      "mr__momentum_risk_adjusted": 72749,
+      "mr__range_position": 72749,
+      "mr__volume_score": 72749,
+      "mr__volatility_ratio": 72749,
+      "mr__atr_percent": 72749,
+      "bp__compression_score": 72749,
+      "bp__direction_score": 72749
+    },
+    "excluded_rows_sha256": "6d61443903d04989c556d28d9a0ec757f796a7e1d4cbf9145c12dfb66eeaf45b"
+  },
+  "4h": {
+    "policy": "archive-optional-market-observations-v1",
+    "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing",
+    "input_execution_rows": 42858,
+    "admitted_rows": 25012,
+    "excluded_missing_market_rows": 17846,
+    "excluded_by_symbol": {
+      "AAPL": 2722,
+      "AMZN": 2556,
+      "COST": 1641,
+      "CROX": 1619,
+      "GOOG": 2008,
+      "IONQ": 675,
+      "MU": 2125,
+      "NVDA": 2591,
+      "PATH": 798,
+      "TWST": 1111
+    },
+    "excluded_by_feature": {
+      "mr__trend_atr": 17846,
+      "mr__momentum_risk_adjusted": 17846,
+      "mr__range_position": 17846,
+      "mr__volume_score": 17846,
+      "mr__volatility_ratio": 17846,
+      "mr__atr_percent": 17846,
+      "bp__compression_score": 17846,
+      "bp__direction_score": 17846
+    },
+    "excluded_rows_sha256": "58b584a4e3bd16d28ead11647dbff93daf3942a70b8246a5850789b4bafd7f3f"
+  },
+  "1d": {
+    "policy": "archive-optional-market-observations-v1",
+    "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing",
+    "input_execution_rows": 5917,
+    "admitted_rows": 3776,
+    "excluded_missing_market_rows": 2141,
+    "excluded_by_symbol": {
+      "AAPL": 463,
+      "AMZN": 439,
+      "COST": 117,
+      "CROX": 35,
+      "GOOG": 262,
+      "IONQ": 15,
+      "MU": 310,
+      "NVDA": 444,
+      "PATH": 55,
+      "TWST": 1
+    },
+    "excluded_by_feature": {
+      "mr__trend_atr": 2141,
+      "mr__momentum_risk_adjusted": 2141,
+      "mr__range_position": 2141,
+      "mr__volume_score": 2141,
+      "mr__volatility_ratio": 2141,
+      "mr__atr_percent": 2141,
+      "bp__compression_score": 2141,
+      "bp__direction_score": 2141
+    },
+    "excluded_rows_sha256": "7bcf89f69d35fab3292794fa4084870824da79d7d3b52f17e0f312ec961bf9cb"
+  },
+  "1w": {
+    "policy": "archive-optional-market-observations-v1",
+    "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing",
+    "input_execution_rows": 5831,
+    "admitted_rows": 3750,
+    "excluded_missing_market_rows": 2081,
+    "excluded_by_symbol": {
+      "AAPL": 454,
+      "AMZN": 428,
+      "COST": 115,
+      "CROX": 31,
+      "GOOG": 258,
+      "IONQ": 13,
+      "MU": 297,
+      "NVDA": 439,
+      "PATH": 44,
+      "TWST": 2
+    },
+    "excluded_by_feature": {
+      "mr__trend_atr": 2081,
+      "mr__momentum_risk_adjusted": 2081,
+      "mr__range_position": 2081,
+      "mr__volume_score": 2081,
+      "mr__volatility_ratio": 2081,
+      "mr__atr_percent": 2081,
+      "bp__compression_score": 2081,
+      "bp__direction_score": 2081
+    },
+    "excluded_rows_sha256": "819e35da28ed9a7e7bae7c883b7bc6cc56b6144940e71c6e09271e6001f9b7da"
+  }
+}

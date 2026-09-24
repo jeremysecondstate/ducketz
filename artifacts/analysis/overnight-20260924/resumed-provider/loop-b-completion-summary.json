@@ -1,0 +1,131 @@
+{
+  "audited_at": "2026-09-24T06:19:57.138193+00:00",
+  "status": "VERIFIED_NATIVE_LOOP_B_MODEL_SAMPLE_AND_PRICING_GATES",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260924T044352.904210Z",
+  "loop_b_run": "C:\\DATASTORE\\ml\\runs\\20260924T055454.147678Z",
+  "native_completed_at": "2026-09-24T06:19:28.838601+00:00",
+  "models": {
+    "1d": "logistic-1d",
+    "1h": "logistic-1h",
+    "1w": "logistic-1w",
+    "1w-d1": "logistic-1w-d1",
+    "1w-d2": "logistic-1w-d2",
+    "1w-d3": "logistic-1w-d3",
+    "1w-d4": "logistic-1w-d4",
+    "1w-d5": "logistic-1w-d5",
+    "4h": "logistic-4h"
+  },
+  "native_training_completion": {
+    "samples": "339763",
+    "backtest_prediction_rows": "6996",
+    "fresh_live_rows": "66",
+    "carried_active_live_rows": "0",
+    "retained_frozen_weekly_live_rows": "0",
+    "actionable_ordinary_routes": "33",
+    "in_progress_ordinary_routes": "0",
+    "evaluations": "24097",
+    "models_trained": "9",
+    "models_reused": "0"
+  },
+  "sample_route_count": 99,
+  "sample_counts_by_horizon": {
+    "1d": {
+      "min": 223,
+      "max": 701,
+      "sum": 7233
+    },
+    "1h": {
+      "min": 8173,
+      "max": 22637,
+      "sum": 199118
+    },
+    "1w": {
+      "min": 223,
+      "max": 701,
+      "sum": 7233
+    },
+    "1w-d1": {
+      "min": 223,
+      "max": 701,
+      "sum": 7233
+    },
+    "1w-d2": {
+      "min": 223,
+      "max": 701,
+      "sum": 7233
+    },
+    "1w-d3": {
+      "min": 223,
+      "max": 701,
+      "sum": 7233
+    },
+    "1w-d4": {
+      "min": 223,
+      "max": 701,
+      "sum": 7233
+    },
+    "1w-d5": {
+      "min": 223,
+      "max": 701,
+      "sum": 7233
+    },
+    "4h": {
+      "min": 3605,
+      "max": 10729,
+      "sum": 90014
+    }
+  },
+  "publication_counts": {
+    "actionable_ordinary_routes": 33,
+    "backtest_prediction_rows": 6996,
+    "carried_active_live_rows": 0,
+    "expired_fresh_live_rows_pruned": 0,
+    "fresh_live_rows": 66,
+    "in_progress_ordinary_routes": 0,
+    "retained_frozen_weekly_live_rows": 0,
+    "total_prediction_rows": 7062
+  },
+  "intelligence_rows_by_horizon": {
+    "1d": 11,
+    "1h": 11,
+    "1w": 11,
+    "1w-d1": 11,
+    "1w-d2": 11,
+    "1w-d3": 11,
+    "1w-d4": 11,
+    "1w-d5": 11,
+    "4h": 11
+  },
+  "pricing_failed_routes": 99,
+  "pricing_source_bindings_verified": 51,
+  "pricing_source_bytes": 10208882,
+  "route_fraction_review": "VERIFIED",
+  "issues": [],
+  "verifier_only_correction": "Initial helper expected prior nested model-admission field at an obsolete top-level key. Corrected analysis helper to prior current_native_gate.model_admission_by_horizon and reran bounded source audit. No production defect, policy change, training or provider calls.",
+  "intelligence_status_counts": {
+    "actionability_status": {
+      "ACTIONABLE": 33,
+      "FROZEN_WEEKLY_SNAPSHOT": 33,
+      "NOT_ACTIONABLE": 33
+    },
+    "operational_status": {
+      "OPERATIONALLY_CURRENT": 99
+    },
+    "model_evidence_status": {
+      "OFFLINE_EVALUATED_CANDIDATE": 99
+    },
+    "live_evidence_status": {
+      "INSUFFICIENT_LIVE_EVIDENCE": 99
+    },
+    "intelligence_status": {
+      "RISK_ANALYSIS_SUPPORT": 33,
+      "PENDING_EVIDENCE": 33,
+      "NOT_APPLICABLE_TO_REMAINING_WEEK": 33
+    },
+    "automated_action_allowed": {
+      "False": 99
+    }
+  },
+  "intelligence_rows": 99,
+  "intelligence_route_count": 99
+}

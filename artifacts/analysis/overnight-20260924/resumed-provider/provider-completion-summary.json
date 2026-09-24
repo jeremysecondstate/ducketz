@@ -1,0 +1,44 @@
+{
+  "reviewed_at": "2026-09-24T05:56:51.475592+00:00",
+  "status": "PASS_PROVIDER_COMPLETION_WITH_EXPLAINED_OPTIONAL_LIMITATIONS",
+  "run": "C:\\DATASTORE\\ml\\overnight-runs\\20260924T044352.904210Z",
+  "resumed_from": "C:\\DATASTORE\\ml\\overnight-runs\\20260924T040733.615371Z",
+  "native_stage_finished_at": "2026-09-24T05:54:52.614799+00:00",
+  "original_partial_evidence": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260924\\provider-partial.json",
+  "original_partial_evidence_sha256": "da7cf5db19c6fb13482abc3a7a277b1e4e92cd095cfb0cd446468f222749b6fd",
+  "original_native_status": "CANCELLED",
+  "all_eleven_provider_capture_failures_zero": true,
+  "schwab_option_capture_symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST",
+    "CROX",
+    "PATH",
+    "TWST",
+    "IONQ"
+  ],
+  "resumed_invalid_grant_lines": 0,
+  "opra_scopes": 33,
+  "opra_current_data_files_hashed": 66,
+  "opra_current_partition_rows": 14993791,
+  "opra_current_partition_bytes": 558134448,
+  "optional_advisory_review": {
+    "cme_same_prior_diagnosed_partition_shadowing": true,
+    "cme_diagnosis_path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260924\\cme-derived-diagnosis.json",
+    "cme_note": "All six actual current scopes retain every configured symbol. Aggregate files preserve fetched_at on deduplicated observations, so current-stage row counts are newly stored rows, not full provider response counts. Resumed MBP request_limit_saturated is false for both current captures, unlike the original stopped attempt; these remain explicitly narrowed prior-session windows, not continuous depth coverage. Stale derived Sep3 gate exclusion is unchanged.",
+    "fmp_current_validation": {
+      "status": "PASS",
+      "rows": 1
+    },
+    "fmp_retained_full_validation": {
+      "status": "REJECTED",
+      "error": "FmpEnergyContextQualityError: FMP provider quote timestamp exceeds local receipt by 9.471s (maximum allowed clock skew is 5.000s)"
+    },
+    "fmp_retained_result_matches_prior": true
+  },
+  "scope": "Provider acquisition/receipts only. Does not establish completion of downstream Directional, XNAS target history, archive training, publication, enrichment, planning or actuals."
+}

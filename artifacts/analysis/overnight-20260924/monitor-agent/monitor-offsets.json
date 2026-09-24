@@ -1,0 +1,10 @@
+{
+  "loop_a_close_fetch.log": 51416,
+  "health.jsonl": 31958,
+  "_metrics": {
+    "current_stage": "loop_a_close_fetch",
+    "cpu_seconds": 819.6875,
+    "io_bytes": 7540481431,
+    "log_bytes": 50931
+  }
+}

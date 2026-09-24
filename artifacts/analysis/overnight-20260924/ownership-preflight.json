@@ -1,0 +1,260 @@
+{
+  "reviewed_at": "2026-09-24T04:09:28.240168+00:00",
+  "scope": "LOCAL_READ_ONLY_PRECHECK_NO_BROKER_CALLS_NO_PRODUCTION_WRITES",
+  "status": "NO_LOCAL_RECONCILIATION_BLOCKER",
+  "symbols": [
+    "AAPL",
+    "AMZN",
+    "GOOG",
+    "MU",
+    "NVDA",
+    "SNDK",
+    "COST",
+    "CROX",
+    "PATH",
+    "TWST",
+    "IONQ"
+  ],
+  "expected_forecasts": 264,
+  "expected_intents": 264,
+  "expected_production_opra_cursors": 33,
+  "terminal_session": {
+    "action_date": "2026-09-23",
+    "calls": 1612,
+    "closes_at": "2026-09-23T17:00:00-07:00",
+    "consecutive_failures": 1,
+    "execute": true,
+    "failed_cycles": 2,
+    "heartbeat_at": "2026-09-24T00:00:00.679691+00:00",
+    "last_cycle": {
+      "activation_active": true,
+      "broker_state_capture": {
+        "attempts": 1,
+        "elapsed_seconds": 2.8468252999009565,
+        "last_error_operation": null,
+        "last_error_type": null,
+        "maximum_retry_seconds": 0.0,
+        "quote_refresh": {
+          "refreshes": 0,
+          "status": "NOT_NEEDED",
+          "unavailable_symbols": []
+        },
+        "retry_delay_seconds": 3.0,
+        "retry_wait_seconds": 0.0,
+        "schema_version": "stock-trader-broker-state-capture-v1",
+        "status": "CURRENT",
+        "transient_failures": 0
+      },
+      "duplicate_suppressions": 0,
+      "error": "OUTSIDE_US_EQUITY_ACTIONABLE_SESSION",
+      "execution_requested": true,
+      "prediction_handoff_status": null,
+      "run_directory": "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260924T000000.654028Z",
+      "selected_orders": 0,
+      "status": "EXECUTION_WINDOW_CLOSED_AFTER_BROKER_CAPTURE",
+      "stopped_after_error": false,
+      "submitted_orders": 0,
+      "target_window_start": null
+    },
+    "late_opening_date": null,
+    "orders_submitted": 86,
+    "pid": 42084,
+    "resume_quote_run": null,
+    "resume_quote_symbol": null,
+    "schema_version": "independent-stock-session-status-v1",
+    "sizing_policy": "gameplan-direction-current-market-v1",
+    "started_at": "2026-09-23T11:19:17.254402+00:00",
+    "status": "FINISHED_WITH_ERRORS",
+    "wait_for_open": true,
+    "wakes_at": "2026-09-23T04:00:00-07:00"
+  },
+  "matching_trader_processes": [],
+  "latest_saved_ownership_reconciliation": {
+    "id": "a1b3ffaf40dfe9cc09cf7b3ecbf3122f669ff61c579bf12d5e9301a4b1bd21c1",
+    "observed_at": "2026-09-23T23:59:58.236816+00:00",
+    "ready": 1,
+    "reasons": [],
+    "owned": {
+      "AAPL": 0,
+      "AMZN": 0,
+      "COST": 0,
+      "CROX": 0,
+      "GOOG": 5,
+      "IONQ": 15,
+      "MU": 2,
+      "NVDA": 1,
+      "PATH": 0,
+      "SNDK": 4,
+      "TWST": 39
+    }
+  },
+  "saved_held_shares": {
+    "AAPL": "0.0",
+    "AMZN": "0.0",
+    "COST": "0.0",
+    "CROX": "0.0",
+    "GOOG": "5.0",
+    "IONQ": "15.0",
+    "MU": "2.0",
+    "NVDA": "1.0",
+    "PATH": "0.0",
+    "SNDK": "4.0",
+    "TWST": "39.0"
+  },
+  "reservation_status_counts": [
+    {
+      "status": "CANCELLED",
+      "count": 11
+    },
+    {
+      "status": "FILLED",
+      "count": 249
+    }
+  ],
+  "pending_reservations": [],
+  "persistent_blocks": [],
+  "planning_ownership_check_using_saved_snapshot": {
+    "status": "OBSERVED_CONSISTENT",
+    "safe_for_planning": true,
+    "account_matches": true,
+    "active_allocations": [
+      {
+        "symbol": "GOOG",
+        "horizon": "1h",
+        "owned_shares": 5,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-23T23:00:00+00:00",
+        "target_end": "2026-09-24T00:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "IONQ",
+        "horizon": "1w",
+        "owned_shares": 15,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-18T11:00:00+00:00",
+        "target_end": "2026-09-25T00:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "MU",
+        "horizon": "1h",
+        "owned_shares": 2,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-23T22:00:00+00:00",
+        "target_end": "2026-09-23T23:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "NVDA",
+        "horizon": "1w",
+        "owned_shares": 1,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-16T11:00:00+00:00",
+        "target_end": "2026-09-23T00:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "SNDK",
+        "horizon": "1h",
+        "owned_shares": 4,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-18T11:00:00+00:00",
+        "target_end": "2026-09-18T12:00:00+00:00",
+        "status": "ACTIVE"
+      },
+      {
+        "symbol": "TWST",
+        "horizon": "1w",
+        "owned_shares": 39,
+        "reserved_buy_shares": 0,
+        "reserved_sell_shares": 0,
+        "target_start": "2026-09-18T11:00:00+00:00",
+        "target_end": "2026-09-25T00:00:00+00:00",
+        "status": "ACTIVE"
+      }
+    ],
+    "blocked_symbols": [],
+    "owned_shares": {
+      "AAPL": 0,
+      "AMZN": 0,
+      "GOOG": 5,
+      "MU": 2,
+      "NVDA": 1,
+      "SNDK": 4,
+      "COST": 0,
+      "CROX": 0,
+      "PATH": 0,
+      "TWST": 39,
+      "IONQ": 15
+    },
+    "reason_codes": [],
+    "last_saved_reconciliation_at": "2026-09-23T23:59:58.236816+00:00",
+    "last_saved_reconciliation_ready": true,
+    "current_broker_reconciliation_performed": false
+  },
+  "last_decision_receipt_hashes_verified": {
+    "manifest": true,
+    "decisions": true
+  },
+  "last_decision_inventory_reconciliation": {
+    "ready": true,
+    "reasons": []
+  },
+  "batches": [
+    {
+      "registry_path": "C:\\DATASTORE\\state\\research-onboarding\\df613ade510b2775a99c051abf8472367e2c70208e13c1eacce8bad4c577d487.json",
+      "plan_path": "C:\\dev\\ducketz\\artifacts\\analysis\\research-onboarding-20260913\\plan.json",
+      "selected_symbols": [
+        "CROX",
+        "PATH",
+        "TWST",
+        "IONQ"
+      ],
+      "activation_path": "C:\\dev\\ducketz\\artifacts\\analysis\\research-onboarding-20260913\\activation.json",
+      "status": "ACTIVE",
+      "activated_at": "2026-09-14T11:21:43.562305+00:00",
+      "progress": {
+        "plan_id": "df613ade510b2775a99c051abf8472367e2c70208e13c1eacce8bad4c577d487",
+        "stage": "finalize",
+        "status": "COMPLETE",
+        "updated_at": "2026-09-14T11:21:01.864187+00:00",
+        "owner_pid": 6372,
+        "completed_at": "2026-09-14T11:21:43.597615+00:00"
+      },
+      "verified": {
+        "watchlist_matches_activation": true,
+        "selected_symbols_in_production": true,
+        "gameplan_receipt": true,
+        "trade_plan_receipt": true,
+        "overnight_receipt": true
+      },
+      "unfinished": false
+    }
+  ],
+  "unfinished_authorized_batches": [],
+  "source_paths": [
+    "C:\\dev\\ducketz\\datafetching\\watchlist.txt",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\session-status.json",
+    "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260924T000000.654028Z\\receipt.json",
+    "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260924T000000.654028Z\\manifest.json",
+    "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260924T000000.654028Z\\decisions.json",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\research-onboarding-20260913\\activation.json",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\holdings.sqlite3"
+  ],
+  "source_sha256": {
+    "C:\\dev\\ducketz\\datafetching\\watchlist.txt": "00637389e03b995ab5bb238b7170a9e6fd282143215c5ccf2c6ed2134c25491f",
+    "C:\\DATASTORE\\state\\independent-stock-trader\\session-status.json": "d8d491080e7cbca0c4dd445ea302be0c897bf2325e214104ccbffaef6e34579a",
+    "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260924T000000.654028Z\\receipt.json": "5341acf637ee1d03755bf672ccaf9120d3e6bef5c05dc982106dc2766e3fda7f",
+    "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260924T000000.654028Z\\manifest.json": "7bd7f1666cc1597ab6331f9514cb2199b98f04f9828a41226779abb5ca2d1be9",
+    "C:\\DATASTORE\\ml\\stock-trader-decision-runs\\20260924T000000.654028Z\\decisions.json": "39de770e3c231584412c91d41b9355d27cec48d2e03dc032ea83aab2d960d95d",
+    "C:\\dev\\ducketz\\artifacts\\analysis\\research-onboarding-20260913\\activation.json": "d9ebc672034b7af269c136666e3c5c6b590603dff89ef24d6c9e52eef6823d28"
+  },
+  "broker_status_now": "UNKNOWN_NO_PROVIDER_CALLS",
+  "next_step": "Native trade planning must still capture a fresh account snapshot. Local evidence does not justify extra post-close reconciliation."
+}

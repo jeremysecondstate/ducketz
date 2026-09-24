@@ -1,0 +1,289 @@
+{
+  "reviewed_at": "2026-09-24T04:23:03.097557+00:00",
+  "partition_evidence": {
+    "ohlcv-1m": {
+      "partition_count": 18,
+      "newest_partition": "C:\\DATASTORE\\pools\\cme\\events\\databento\\context\\ohlcv-1m\\normalized\\date=2026-09-04\\events.parquet",
+      "newest_partition_bytes": 54669,
+      "newest_partition_rows": 1520,
+      "column_stats": [
+        {
+          "row_group": 0,
+          "column": "request_limit_saturated",
+          "min": "False",
+          "max": "False",
+          "nulls": 0
+        },
+        {
+          "row_group": 0,
+          "column": "fetched_at",
+          "min": "2026-09-04 00:52:10.958094+00:00",
+          "max": "2026-09-04 05:14:24.159664+00:00",
+          "nulls": 0
+        },
+        {
+          "row_group": 0,
+          "column": "timestamp",
+          "min": "2026-09-04 00:00:00+00:00",
+          "max": "2026-09-04 05:09:00+00:00",
+          "nulls": 0
+        }
+      ]
+    },
+    "bbo-1m": {
+      "partition_count": 290,
+      "newest_partition": "C:\\DATASTORE\\pools\\cme\\events\\databento\\context\\bbo-1m\\normalized\\date=2026-09-04\\hour=05\\events.parquet",
+      "newest_partition_bytes": 30210,
+      "newest_partition_rows": 44,
+      "column_stats": [
+        {
+          "row_group": 0,
+          "column": "request_limit_saturated",
+          "min": "False",
+          "max": "False",
+          "nulls": 0
+        },
+        {
+          "row_group": 0,
+          "column": "fetched_at",
+          "min": "2026-09-04 05:14:29.784903+00:00",
+          "max": "2026-09-04 05:14:29.784903+00:00",
+          "nulls": 0
+        },
+        {
+          "row_group": 0,
+          "column": "timestamp",
+          "min": "2026-09-04 05:00:53.452881367+00:00",
+          "max": "2026-09-04 05:08:57.977083319+00:00",
+          "nulls": 0
+        },
+        {
+          "row_group": 0,
+          "column": "ts_recv",
+          "min": "2026-09-04 05:01:00+00:00",
+          "max": "2026-09-04 05:09:00+00:00",
+          "nulls": 0
+        }
+      ]
+    },
+    "mbp-10": {
+      "partition_count": 295,
+      "newest_partition": "C:\\DATASTORE\\pools\\cme\\events\\databento\\context\\mbp-10\\normalized\\date=2026-09-03\\hour=20\\events.parquet",
+      "newest_partition_bytes": 436357,
+      "newest_partition_rows": 5247,
+      "column_stats": [
+        {
+          "row_group": 0,
+          "column": "request_limit_saturated",
+          "min": "False",
+          "max": "False",
+          "nulls": 0
+        },
+        {
+          "row_group": 0,
+          "column": "fetched_at",
+          "min": "2026-09-04 04:12:41.782274+00:00",
+          "max": "2026-09-04 05:00:05.700315+00:00",
+          "nulls": 0
+        },
+        {
+          "row_group": 0,
+          "column": "timestamp",
+          "min": "2026-09-03 20:09:55.007740971+00:00",
+          "max": "2026-09-03 20:54:59.975289743+00:00",
+          "nulls": 0
+        },
+        {
+          "row_group": 0,
+          "column": "ts_recv",
+          "min": "2026-09-03 20:09:55.007866206+00:00",
+          "max": "2026-09-03 20:54:59.975388789+00:00",
+          "nulls": 0
+        }
+      ]
+    },
+    "common_bar_windows_in_latest_two_partitions": [
+      "2026-09-03 00:00:00+00:00",
+      "2026-09-03 01:00:00+00:00",
+      "2026-09-03 05:00:00+00:00",
+      "2026-09-03 06:00:00+00:00",
+      "2026-09-03 07:00:00+00:00",
+      "2026-09-03 08:00:00+00:00",
+      "2026-09-03 09:00:00+00:00",
+      "2026-09-03 10:00:00+00:00",
+      "2026-09-03 11:00:00+00:00",
+      "2026-09-03 12:00:00+00:00",
+      "2026-09-03 13:00:00+00:00",
+      "2026-09-03 14:00:00+00:00",
+      "2026-09-03 15:00:00+00:00",
+      "2026-09-03 16:00:00+00:00",
+      "2026-09-03 17:00:00+00:00",
+      "2026-09-03 18:00:00+00:00",
+      "2026-09-03 19:00:00+00:00",
+      "2026-09-03 20:00:00+00:00"
+    ]
+  },
+  "pure_current_capture_derivation": {
+    "status": "REJECTED",
+    "error": "CmeCrossAssetNotReady: Persisted CME OHLCV contains no continuous one-minute rows"
+  },
+  "scope": "Metadata-only on latest native partitions, projected OHLCV from latest two partitions, and six small current captures; no scan of 13.9GB MBP history, no provider or output materialization.",
+  "current_capture_causality_and_identity": [
+    {
+      "scope": "CME_CONTEXT",
+      "schema": "ohlcv-1m",
+      "rows": 2387,
+      "symbol_field": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "provider_symbol_field": [
+        "CME_CONTEXT"
+      ],
+      "latest_event": "2026-09-24 03:59:00+00:00",
+      "latest_receipt": "2026-09-24 04:14:53.908571+00:00",
+      "latest_event_age_at_materialization_seconds": 1301.708407,
+      "events_after_receipt_plus_5seconds": 0,
+      "receipts_after_materialization": 0,
+      "request_limit_saturated": false,
+      "source_root_rows_by_current_reader": 0
+    },
+    {
+      "scope": "CME_CONTEXT",
+      "schema": "bbo-1m",
+      "rows": 300,
+      "symbol_field": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "provider_symbol_field": [
+        "CME_CONTEXT"
+      ],
+      "latest_event": "2026-09-24 03:58:58.647515505+00:00",
+      "latest_receipt": "2026-09-24 04:16:05.014884+00:00",
+      "latest_event_age_at_materialization_seconds": 1303.060891,
+      "events_after_receipt_plus_5seconds": 0,
+      "receipts_after_materialization": 0,
+      "request_limit_saturated": false,
+      "source_root_rows_by_current_reader": 0
+    },
+    {
+      "scope": "CME_CONTEXT",
+      "schema": "mbp-10",
+      "rows": 4998,
+      "symbol_field": [
+        "CL.v.0",
+        "ES.v.0",
+        "GC.v.0",
+        "NQ.v.0",
+        "RTY.v.0"
+      ],
+      "provider_symbol_field": [
+        "CME_CONTEXT"
+      ],
+      "latest_event": "2026-09-23 20:14:12.116429507+00:00",
+      "latest_receipt": "2026-09-24 04:16:59.128062+00:00",
+      "latest_event_age_at_materialization_seconds": 29189.591977,
+      "events_after_receipt_plus_5seconds": 0,
+      "receipts_after_materialization": 0,
+      "request_limit_saturated": true,
+      "source_root_rows_by_current_reader": 0
+    },
+    {
+      "scope": "CME_CONTRACTS",
+      "schema": "ohlcv-1m",
+      "rows": 4077,
+      "symbol_field": [
+        "CLX6",
+        "ESZ6",
+        "GCZ6",
+        "NQZ6"
+      ],
+      "provider_symbol_field": [
+        "CME_CONTRACTS"
+      ],
+      "latest_event": "2026-09-24 03:59:00+00:00",
+      "latest_receipt": "2026-09-24 04:15:35.052213+00:00",
+      "latest_event_age_at_materialization_seconds": 1301.708407,
+      "events_after_receipt_plus_5seconds": 0,
+      "receipts_after_materialization": 0,
+      "request_limit_saturated": false,
+      "source_root_rows_by_current_reader": 0
+    },
+    {
+      "scope": "CME_CONTRACTS",
+      "schema": "bbo-1m",
+      "rows": 240,
+      "symbol_field": [
+        "CLX6",
+        "ESZ6",
+        "GCZ6",
+        "NQZ6"
+      ],
+      "provider_symbol_field": [
+        "CME_CONTRACTS"
+      ],
+      "latest_event": "2026-09-24 03:58:58.647515505+00:00",
+      "latest_receipt": "2026-09-24 04:16:12.451972+00:00",
+      "latest_event_age_at_materialization_seconds": 1303.060891,
+      "events_after_receipt_plus_5seconds": 0,
+      "receipts_after_materialization": 0,
+      "request_limit_saturated": false,
+      "source_root_rows_by_current_reader": 0
+    },
+    {
+      "scope": "CME_CONTRACTS",
+      "schema": "mbp-10",
+      "rows": 4998,
+      "symbol_field": [
+        "CLX6",
+        "ESZ6",
+        "GCZ6",
+        "NQZ6"
+      ],
+      "provider_symbol_field": [
+        "CME_CONTRACTS"
+      ],
+      "latest_event": "2026-09-23 20:14:16.116677775+00:00",
+      "latest_receipt": "2026-09-24 04:18:17.688626+00:00",
+      "latest_event_age_at_materialization_seconds": 29185.591729,
+      "events_after_receipt_plus_5seconds": 0,
+      "receipts_after_materialization": 0,
+      "request_limit_saturated": true,
+      "source_root_rows_by_current_reader": 0
+    }
+  ],
+  "diagnostic_only_using_actual_symbol_field_instead_of_aggregate_provider_symbol": {
+    "status": "REJECTED",
+    "error": "CmeCrossAssetQualityError: CME MBP request was limit-saturated"
+  },
+  "findings": [
+    {
+      "finding": "PARTITIONED_SOURCE_SHADOWS_FRESH_INLINE_CAPTURES",
+      "reader": "C:/dev/ducketz/datafetching/cme_cross_asset_context.py:441",
+      "writer": "C:/dev/ducketz/datafetching/databento_fetch.py:1332",
+      "explanation": "Existing partitioned history is exclusively selected whenever nonempty. The inline fetch writes aggregate pool files, not those event partitions. Latest complete common OHLCV window from newest partitions ends Sep3 21:00; its BBO is rejected as stale at current calculation time."
+    },
+    {
+      "finding": "AGGREGATE_PROVIDER_SYMBOL_IS_GROUP_ALIAS",
+      "reader": "C:/dev/ducketz/datafetching/cme_cross_asset_context.py:759",
+      "writer": "C:/dev/ducketz/datafetching/databento_fetch.py:1280",
+      "explanation": "Inline metadata sets provider_symbol=spec.symbol (CME_CONTEXT group alias), while the actual row symbol holds the continuous root. Reader prefers provider_symbol, rejecting all aggregate rows as unidentified roots. This is an existing writer/reader contract mismatch; fresh direct capture coverage remains real."
+    },
+    {
+      "finding": "CURRENT_CAPTURE_CANNOT_QUALIFY_OPTIONAL_CONTEXT_UNDER_EXISTING_GATES",
+      "explanation": "Even a diagnostic using actual row symbol immediately rejects limit-saturated MBP. Both MBP scope captures end around prior-session20:14Z, more than eight hours before materialization. Current BBO at03:58Z is also more than21minutes old, beyond15minute gate; no source-selector correction alone can produce a valid current context."
+    }
+  ],
+  "prior_night_comparison": {
+    "prior_advisory": "Same Sep3 21:00 window, NQ BBO stale19 days vs20 days tonight",
+    "classification": "Existing optional derived-source mismatch and gate exclusion, not a newly failed provider acquisition",
+    "raw_scope_fix": "All corrected literal contracts ESZ6/NQZ6/CLX6/GCZ6 now appear in each raw capture; continuous scopes remain separate."
+  }
+}

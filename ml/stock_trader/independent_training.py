@@ -37,6 +37,7 @@ from ml.stock_trader.training import _inverse_softplus, _logit, _ridge, _write_j
 FIT_BASIS = "exact-independent-long-stock-return-v1"
 MINIMUM_ASSESSMENT_CLUSTERS = 10
 MINIMUM_TRAIN_SCOPE_CLUSTERS = 20
+ARCHIVE_MARKET_ADMISSION_POLICY = "archive-optional-market-observations-v1"
 _PARTITIONS = ("train", "selection", "calibration", "assessment")
 _VERIFIED_COHORT_EVIDENCE: set[tuple[str, str, str]] = set()
 
@@ -45,11 +46,30 @@ def _plain_records(frame: pd.DataFrame) -> list[dict]:
     return json.loads(frame.to_json(orient="records", date_format="iso", double_precision=15))
 
 
+def _market_admission_evidence(data: pd.DataFrame, excluded: pd.DataFrame) -> dict:
+    identity = ["symbol", "route", "model_group", "decision_timestamp", "target_window_start",
+                "target_window_end", "source_selection_contract"]
+    keys = excluded.reindex(columns=identity).sort_values(identity, kind="stable")
+    return {"policy": ARCHIVE_MARKET_ADMISSION_POLICY,
+            "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing",
+            "input_execution_rows": len(data), "admitted_rows": len(data) - len(excluded),
+            "excluded_missing_market_rows": len(excluded),
+            "excluded_by_symbol": {str(key): int(value) for key, value in
+                                   excluded.get("symbol", pd.Series(dtype=str)).value_counts().sort_index().items()},
+            "excluded_by_feature": {name: int(excluded[name].isna().sum()) if name in excluded else 0
+                                    for name in INDEPENDENT_MARKET_FEATURE_NAMES},
+            "excluded_rows_sha256": canonical_sha256(_plain_records(keys))}
+
+
 def _admit_targets(frame: pd.DataFrame, *, group: str, trained_at: pd.Timestamp,
-                   require_market_features: bool = True) -> pd.DataFrame:
+                   require_market_features: bool = True,
+                   allow_missing_archive_market_features: bool = False) -> pd.DataFrame:
     """Validate real boundary observations and causal availability independently."""
     if frame.empty:
-        return frame.copy()
+        data = frame.copy()
+        if allow_missing_archive_market_features:
+            data.attrs["market_feature_admission"] = _market_admission_evidence(data, data)
+        return data
     required = {"symbol", "route", "model_group", "action_date", "target_role", "execution_eligible",
                 "target_contract_version", "decision_timestamp", "information_available_at",
                 "target_window_start", "target_window_end", "observed_open_timestamp", "observed_close_timestamp",
@@ -60,15 +80,9 @@ def _admit_targets(frame: pd.DataFrame, *, group: str, trained_at: pd.Timestamp,
         raise ValueError("Independent enrichment cohort missing: " + ", ".join(sorted(missing)))
     data = frame.loc[frame.target_role.eq("EXECUTION") & frame.execution_eligible.eq(True)].copy()
     if data.empty:
+        if allow_missing_archive_market_features:
+            data.attrs["market_feature_admission"] = _market_admission_evidence(data, data)
         return data
-    if require_market_features:
-        missing_market = set(INDEPENDENT_MARKET_FEATURE_NAMES).difference(data.columns)
-        if missing_market:
-            raise ValueError("Independent enrichment missing market features: " + ", ".join(sorted(missing_market)))
-        market = data[list(INDEPENDENT_MARKET_FEATURE_NAMES)].apply(pd.to_numeric, errors="coerce")
-        if not np.isfinite(market.to_numpy(dtype=float)).all():
-            raise ValueError("Independent enrichment market features must be finite causal observations")
-        data[list(INDEPENDENT_MARKET_FEATURE_NAMES)] = market
     if not data.model_group.eq(group).all() or not data.target_contract_version.eq(STOCK_TARGET_CONTRACT_VERSION).all():
         raise ValueError("Independent enrichment rejects a relabelled horizon/target contract")
     if not data.symbol.isin(STOCK_TRADER_SYMBOLS).all():
@@ -115,6 +129,28 @@ def _admit_targets(frame: pd.DataFrame, *, group: str, trained_at: pd.Timestamp,
     from ml.stock_target_prices import stock_price_dataset
     if stock_price_dataset(str(data.target_price_source_contract.iloc[0])) != str(data.target_price_dataset.iloc[0]):
         raise ValueError("Independent enrichment target price source and dataset differ")
+    # Validate every real outcome above before filtering unavailable optional
+    # observations. This must never conceal invalid clocks, labels or prices.
+    if require_market_features:
+        missing_market = set(INDEPENDENT_MARKET_FEATURE_NAMES).difference(data.columns)
+        if missing_market:
+            raise ValueError("Independent enrichment missing market features: " + ", ".join(sorted(missing_market)))
+        market = data[list(INDEPENDENT_MARKET_FEATURE_NAMES)].apply(pd.to_numeric, errors="coerce")
+        excluded = pd.Series(False, index=data.index)
+        if allow_missing_archive_market_features:
+            from ml.gameplan_archive_features import ARCHIVE_FEATURE_CONTRACT
+            archive = data.get("source_selection_contract", pd.Series("", index=data.index)).eq(ARCHIVE_FEATURE_CONTRACT).fillna(False)
+            # Only genuinely absent optional inputs are an availability state.
+            # Partial, malformed and infinite observations still fail closed.
+            excluded = archive & data[list(INDEPENDENT_MARKET_FEATURE_NAMES)].isna().all(axis=1)
+            data.attrs["market_feature_admission"] = _market_admission_evidence(data, data.loc[excluded])
+        if not np.isfinite(market.loc[~excluded].to_numpy(dtype=float)).all():
+            raise ValueError("Independent enrichment market features must be finite causal observations")
+        data[list(INDEPENDENT_MARKET_FEATURE_NAMES)] = market
+        data = data.loc[~excluded].copy()
+        raw, costs = raw.loc[data.index], costs.loc[data.index]
+        if data.empty:
+            return data.reset_index(drop=True)
     data["net_return"] = raw - costs
     data["target"] = data.net_return.gt(0).astype(int)
     data["scope"] = [independent_scope_key(row.symbol, group, row.target_window_start, row.target_window_end)
@@ -471,12 +507,15 @@ def fit_independent_enrichment_model_payload(training_groups: Mapping[str, pd.Da
     horizons, reports = {}, {}
     source_contracts = set()
     for group in GROUPS:
-        data = _admit_targets(training_groups[group], group=group, trained_at=timestamp)
+        data = _admit_targets(training_groups[group], group=group, trained_at=timestamp,
+                              allow_missing_archive_market_features=True)
+        admission = data.attrs["market_feature_admission"]
         source_contracts.update(zip(data.get("target_price_source_contract", ()), data.get("target_price_dataset", ())))
         if len(source_contracts) > 1:
             raise ValueError("Independent enrichment refuses cross-group mixed price sources")
         report = {"status": "INSUFFICIENT_EVIDENCE", "admitted_rows": len(data),
-                  "excluded_context_rows": len(training_groups[group]) - len(data),
+                  "excluded_context_rows": len(training_groups[group]) - admission["input_execution_rows"],
+                  "market_feature_admission": admission,
                   "symbols_without_targets": sorted(set(STOCK_TRADER_SYMBOLS) - set(data.get("symbol", ())))}
         try:
             if data.empty:
@@ -484,7 +523,7 @@ def fit_independent_enrichment_model_payload(training_groups: Mapping[str, pd.Da
             parts = _partitions(data, group=group)
         except RuntimeError as exc:
             report["reason"] = str(exc)
-            horizons[group] = {"fitted": False, "reason": str(exc)}
+            horizons[group] = {"fitted": False, "reason": str(exc), "market_feature_admission": admission}
             reports[group] = report
             continue
         fit = pd.concat([parts["train"], parts["selection"]], ignore_index=True)
@@ -494,12 +533,14 @@ def fit_independent_enrichment_model_payload(training_groups: Mapping[str, pd.Da
         try:
             calibrated, calibration_selection = _select_development_calibration(parts["calibration"], raw)
         except RuntimeError:
-            horizons[group] = {"fitted": False, "reason": "Probability calibration did not converge"}
+            horizons[group] = {"fitted": False, "reason": "Probability calibration did not converge",
+                               "market_feature_admission": admission}
             reports[group] = {**report, "reason": horizons[group]["reason"]}
             continue
         evidence_columns = list(dict.fromkeys([*FEATURES, "symbol", "route", "scope", "decision_timestamp",
                            "target_window_start", "target_window_end", "target", "net_return", "observed_return"]))
         record.update({"fitted": True, "fit_basis": FIT_BASIS, "probability_calibration": list(calibrated),
+                       "market_feature_admission": admission,
                        "scope_qualification_policy": POOLED_SCOPE_QUALIFICATION_VERSION,
                        "calibration_selection": calibration_selection,
                        "partition_evidence": {name: _summary(frame) for name, frame in parts.items()},
@@ -518,6 +559,7 @@ def fit_independent_enrichment_model_payload(training_groups: Mapping[str, pd.Da
                       diagnostic_scope_count=len(support), scope_readiness=support)
         horizons[group], reports[group] = record, report
     payload = {"schema_version": INDEPENDENT_ENRICHMENT_SCHEMA_VERSION,
+               "market_feature_admission_policy": ARCHIVE_MARKET_ADMISSION_POLICY,
                "scope_qualification_policy": POOLED_SCOPE_QUALIFICATION_VERSION,
                "feature_contract_version": INDEPENDENT_ENRICHMENT_FEATURE_CONTRACT_VERSION,
                "market_feature_contract": INDEPENDENT_MARKET_FEATURE_CONTRACT,
@@ -545,7 +587,14 @@ def independent_model_from_payload(payload: Mapping) -> IndependentEnrichmentMod
             or set(payload.get("horizons", {})) != set(GROUPS)):
         raise ValueError("Independent enrichment training contract is invalid")
     models, calibrators, support = {}, {}, {}
+    admission_policy = payload.get("market_feature_admission_policy")
+    if admission_policy not in (None, ARCHIVE_MARKET_ADMISSION_POLICY):
+        raise ValueError("Independent enrichment market admission policy is unsupported")
+    if admission_policy is not None and payload.get("feature_contract_version") != INDEPENDENT_ENRICHMENT_FEATURE_CONTRACT_VERSION:
+        raise ValueError("Archive market admission requires the market-aware enrichment contract")
     for group, record in payload["horizons"].items():
+        if admission_policy is not None and record.get("market_feature_admission", {}).get("policy") != admission_policy:
+            raise ValueError("Independent enrichment market admission evidence is missing")
         if not record.get("fitted"):
             continue
         if record.get("fit_basis") != FIT_BASIS:
@@ -643,7 +692,12 @@ def verify_independent_model_sources(root: Path, payload: Mapping, manifest: Map
             raise ValueError("Independent enrichment source publication omits a cohort")
         require_market = payload.get("feature_contract_version") == INDEPENDENT_ENRICHMENT_FEATURE_CONTRACT_VERSION
         data = _admit_targets(pd.read_parquet(run / cohort_name), group=group, trained_at=trained_at,
-                             require_market_features=require_market)
+                             require_market_features=require_market,
+                             allow_missing_archive_market_features=payload.get("market_feature_admission_policy") == ARCHIVE_MARKET_ADMISSION_POLICY)
+        if payload.get("market_feature_admission_policy") == ARCHIVE_MARKET_ADMISSION_POLICY and (
+            data.attrs["market_feature_admission"] != record.get("market_feature_admission")
+        ):
+            raise ValueError("Independent enrichment market admission differs from its immutable source")
         if not record.get("fitted"):
             continue
         if canonical_sha256(_plain_records(data)) != record.get("cohort_rows_sha256"):
@@ -684,6 +738,7 @@ def train_and_publish_independent_enrichment_model(datastore_root: Path, *, trai
         output_files=(model_path.name, report_path.name), model_name=str(payload["model_name"]),
         feature_columns=FEATURES, target_column="exact_long_stock_net_return",
         configuration={"target_contract_version": STOCK_TARGET_CONTRACT_VERSION, "source_fingerprint": source_metadata["source_fingerprint"],
+                       "market_feature_admission_policy": ARCHIVE_MARKET_ADMISSION_POLICY,
                        "feature_contract_version": INDEPENDENT_ENRICHMENT_FEATURE_CONTRACT_VERSION,
                        "market_feature_contract": INDEPENDENT_MARKET_FEATURE_CONTRACT,
                        "supported_horizons": report["supported_horizons"], "automatic_activation_allowed": publish_current}, datastore_root=root)

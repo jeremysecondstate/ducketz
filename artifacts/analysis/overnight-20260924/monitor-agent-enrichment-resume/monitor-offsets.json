@@ -1,0 +1,12 @@
+{
+  "_metrics": {
+    "current_stage": null,
+    "cpu_seconds": 34.109375,
+    "io_bytes": 1322276159,
+    "log_bytes": 244
+  },
+  "stock_enrichment_training.log": 236,
+  "health.jsonl": 7374,
+  "gameplan_trade_planning.log": 228,
+  "gameplan_actuals_review.log": 244
+}

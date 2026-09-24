@@ -1,0 +1,213 @@
+{
+  "scope": "Saved cohort quality-interval overlap check only; native completion and full archive audit pending",
+  "source_gameplan": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260924T062615.050242Z",
+  "checked_at": "2026-09-24T06:43:40.650085+00:00",
+  "provider_quality_intervals": [
+    {
+      "symbol": "AAPL",
+      "start": "2021-07-07T00:00:00+00:00",
+      "end": "2021-07-08T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d",
+        "ohlcv-1m"
+      ]
+    },
+    {
+      "symbol": "AAPL",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d",
+        "ohlcv-1h",
+        "ohlcv-1m"
+      ]
+    },
+    {
+      "symbol": "AAPL",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d",
+        "ohlcv-1h",
+        "ohlcv-1m"
+      ]
+    },
+    {
+      "symbol": "AMZN",
+      "start": "2021-07-07T00:00:00+00:00",
+      "end": "2021-07-08T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d",
+        "ohlcv-1m"
+      ]
+    },
+    {
+      "symbol": "AMZN",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d",
+        "ohlcv-1h",
+        "ohlcv-1m"
+      ]
+    },
+    {
+      "symbol": "AMZN",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d",
+        "ohlcv-1h",
+        "ohlcv-1m"
+      ]
+    },
+    {
+      "symbol": "COST",
+      "start": "2021-07-07T00:00:00+00:00",
+      "end": "2021-07-08T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d",
+        "ohlcv-1m"
+      ]
+    },
+    {
+      "symbol": "COST",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d",
+        "ohlcv-1h",
+        "ohlcv-1m"
+      ]
+    },
+    {
+      "symbol": "COST",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d",
+        "ohlcv-1h",
+        "ohlcv-1m"
+      ]
+    },
+    {
+      "symbol": "GOOG",
+      "start": "2021-07-07T00:00:00+00:00",
+      "end": "2021-07-08T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d",
+        "ohlcv-1m"
+      ]
+    },
+    {
+      "symbol": "GOOG",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d",
+        "ohlcv-1h",
+        "ohlcv-1m"
+      ]
+    },
+    {
+      "symbol": "GOOG",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d",
+        "ohlcv-1h",
+        "ohlcv-1m"
+      ]
+    },
+    {
+      "symbol": "MU",
+      "start": "2021-07-07T00:00:00+00:00",
+      "end": "2021-07-08T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d",
+        "ohlcv-1m"
+      ]
+    },
+    {
+      "symbol": "MU",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d",
+        "ohlcv-1h",
+        "ohlcv-1m"
+      ]
+    },
+    {
+      "symbol": "MU",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d",
+        "ohlcv-1h",
+        "ohlcv-1m"
+      ]
+    },
+    {
+      "symbol": "NVDA",
+      "start": "2021-07-07T00:00:00+00:00",
+      "end": "2021-07-08T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d",
+        "ohlcv-1m"
+      ]
+    },
+    {
+      "symbol": "NVDA",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d",
+        "ohlcv-1h",
+        "ohlcv-1m"
+      ]
+    },
+    {
+      "symbol": "NVDA",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d",
+        "ohlcv-1h",
+        "ohlcv-1m"
+      ]
+    },
+    {
+      "symbol": "SNDK",
+      "start": "2021-07-07T00:00:00+00:00",
+      "end": "2021-07-08T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d"
+      ]
+    },
+    {
+      "symbol": "SNDK",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d",
+        "ohlcv-1h"
+      ]
+    },
+    {
+      "symbol": "SNDK",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "schemas": [
+        "ohlcv-1d",
+        "ohlcv-1h"
+      ]
+    }
+  ],
+  "crossing_rows_by_horizon": {
+    "1h": 0,
+    "4h": 0,
+    "1d": 0,
+    "1w": 0
+  }
+}

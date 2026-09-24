@@ -1,0 +1,376 @@
+{
+  "observed_at": "2026-09-24T04:25:18.143335+00:00",
+  "status": "PARTIAL_PROVIDER_CAPTURE_NATIVE_STOPPED_SCHWAB_REAUTH_REQUIRED",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260924T040733.615371Z",
+  "native_status": "CANCELLED",
+  "native_current_stage": "loop_a_close_fetch",
+  "native_stages": [
+    {
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-u",
+        "-m",
+        "datafetching.orchestrate",
+        "--datastore-target",
+        "pc",
+        "--watchlist",
+        "C:\\dev\\ducketz\\datafetching\\watchlist.txt",
+        "--providers",
+        "databento",
+        "fmp",
+        "fred",
+        "schwab",
+        "sec",
+        "--cme-mode",
+        "inline",
+        "--options-mode",
+        "inline",
+        "--opra-history-mode",
+        "daily",
+        "--opra-history-utc-hour",
+        "0",
+        "--opra-history-max-estimated-download-bytes",
+        "20000000000",
+        "--opra-history-max-estimated-cost-usd",
+        "1",
+        "--opra-history-max-catchup-days",
+        "30",
+        "--bar-readiness-recovery-timeout-seconds",
+        "420",
+        "--bar-readiness-recovery-poll-seconds",
+        "10",
+        "--once"
+      ],
+      "elapsed_seconds": 1021.2894219999434,
+      "error": "InterruptedError: Supervisor requested stop: {\n  \"reason\": \"Verified Schwab OAuth HTTP400 invalid_grant caused 22 blocking quote/option capture failures; local user reauthorization required before failed-stage resume; preserve native completed acquisitions and original archive policy/deadline.\",\n  \"requested_at\": \"2026-09-24T04:24:25.031128+00:00\"\n}\n",
+      "exit_code": null,
+      "finished_at": "2026-09-24T04:24:35.085575+00:00",
+      "log_path": "loop_a_close_fetch.log",
+      "stage": "loop_a_close_fetch",
+      "started_at": "2026-09-24T04:07:33.727800+00:00",
+      "status": "CANCELLED"
+    }
+  ],
+  "deadline_at": "2026-09-24T11:00:00+00:00",
+  "archive_history": true,
+  "orders_placed": 0,
+  "broker_orders_enabled": false,
+  "schwab_invalid_grant_capture_failure_lines": [
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests.",
+    "[schwab]   1 x RuntimeError: Schwab OAuth refresh was rejected (invalid_grant); authorize Schwab again before making broker requests."
+  ],
+  "schwab_failure_count": 22,
+  "databento_completion_lines": [
+    "[2026-09-24T04:20:41.766315Z] END   loop-a.databento-watchlist src=databento elapsed=787004.1ms rows=11 op=wrote status=ok cme_mode=inline symbol_count=11"
+  ],
+  "provider_phase_lines": [
+    "[fmp] fetching 11 symbols with provider batching where supported...",
+    "[schwab] fetching 11 symbols with provider batching where supported...",
+    "[sec] fetching 11 symbols with provider batching where supported..."
+  ],
+  "provider_summary_lines": [
+    "[AAPL] changed parquet files: 53; blocking provider failures: 2 (schwab=2); optional capture failures: 0; local advisories: 2 (databento=1, fmp=1)",
+    "[AMZN] changed parquet files: 26; blocking provider failures: 2 (schwab=2); optional capture failures: 0; local advisories: 0",
+    "[GOOG] changed parquet files: 26; blocking provider failures: 2 (schwab=2); optional capture failures: 0; local advisories: 0",
+    "[MU] changed parquet files: 26; blocking provider failures: 2 (schwab=2); optional capture failures: 0; local advisories: 0"
+  ],
+  "opra_scope_logs": [],
+  "opra_current_cursor_count": 0,
+  "opra_scope_count": 33,
+  "opra_cursors": [
+    {
+      "symbol": "AAPL",
+      "schema": "ohlcv-1h",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\AAPL\\ohlcv-1h.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:30:02.135325+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "AAPL",
+      "schema": "cbbo-1m",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\AAPL\\cbbo-1m.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:32:10.916299+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "AAPL",
+      "schema": "definition",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\AAPL\\definition.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:34:39.571472+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "AMZN",
+      "schema": "ohlcv-1h",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\AMZN\\ohlcv-1h.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:30:10.137165+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "AMZN",
+      "schema": "cbbo-1m",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\AMZN\\cbbo-1m.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:32:24.205816+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "AMZN",
+      "schema": "definition",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\AMZN\\definition.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:34:45.503037+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "GOOG",
+      "schema": "ohlcv-1h",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\GOOG\\ohlcv-1h.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:30:15.563708+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "GOOG",
+      "schema": "cbbo-1m",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\GOOG\\cbbo-1m.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:32:38.903834+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "GOOG",
+      "schema": "definition",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\GOOG\\definition.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:34:52.979285+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "MU",
+      "schema": "ohlcv-1h",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\MU\\ohlcv-1h.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:30:22.858855+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "MU",
+      "schema": "cbbo-1m",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\MU\\cbbo-1m.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:33:02.334329+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "MU",
+      "schema": "definition",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\MU\\definition.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:34:59.227560+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "NVDA",
+      "schema": "ohlcv-1h",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\NVDA\\ohlcv-1h.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:30:32.040601+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "NVDA",
+      "schema": "cbbo-1m",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\NVDA\\cbbo-1m.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:33:10.992760+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "NVDA",
+      "schema": "definition",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\NVDA\\definition.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:35:05.259402+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "SNDK",
+      "schema": "ohlcv-1h",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\SNDK\\ohlcv-1h.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:30:39.599884+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "SNDK",
+      "schema": "cbbo-1m",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\SNDK\\cbbo-1m.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:33:49.122898+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "SNDK",
+      "schema": "definition",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\SNDK\\definition.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:35:13.839082+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "COST",
+      "schema": "ohlcv-1h",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\COST\\ohlcv-1h.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:30:47.743346+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "COST",
+      "schema": "cbbo-1m",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\COST\\cbbo-1m.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:34:00.491474+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "COST",
+      "schema": "definition",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\COST\\definition.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:35:22.177923+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "CROX",
+      "schema": "ohlcv-1h",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\CROX\\ohlcv-1h.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:30:53.769116+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "CROX",
+      "schema": "cbbo-1m",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\CROX\\cbbo-1m.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:34:13.054380+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "CROX",
+      "schema": "definition",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\CROX\\definition.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:35:27.434330+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "PATH",
+      "schema": "ohlcv-1h",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\PATH\\ohlcv-1h.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:31:01.206273+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "PATH",
+      "schema": "cbbo-1m",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\PATH\\cbbo-1m.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:34:19.701797+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "PATH",
+      "schema": "definition",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\PATH\\definition.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:35:31.814927+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "TWST",
+      "schema": "ohlcv-1h",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\TWST\\ohlcv-1h.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:31:08.668292+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "TWST",
+      "schema": "cbbo-1m",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\TWST\\cbbo-1m.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:34:28.509545+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "TWST",
+      "schema": "definition",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\TWST\\definition.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:35:44.121305+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "IONQ",
+      "schema": "ohlcv-1h",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\IONQ\\ohlcv-1h.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:31:22.019415+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "IONQ",
+      "schema": "cbbo-1m",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\IONQ\\cbbo-1m.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:34:33.552822+00:00",
+      "source_session_current": false
+    },
+    {
+      "symbol": "IONQ",
+      "schema": "definition",
+      "path": "C:\\DATASTORE\\market-data\\databento\\opra\\OPRA.PILLAR\\state\\symbol-history\\IONQ\\definition.json",
+      "completed_through": "2026-09-23",
+      "updated_at": "2026-09-23T04:35:48.660638+00:00",
+      "source_session_current": false
+    }
+  ],
+  "cme_capture_evidence": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260924\\cme-progress-review.json",
+  "cme_diagnosis": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260924\\cme-derived-diagnosis.json",
+  "completion_audit_executed": false,
+  "current_partition_data_files_hashed": 0,
+  "log_path": "C:\\DATASTORE\\ml\\overnight-runs\\20260924T040733.615371Z\\loop_a_close_fetch.log",
+  "log_sha256": "17a4e56cd31bfea967741353e18ba159425fe08f7286d3daca64e4341a21fbee",
+  "next_step": "Root-controlled recovery only after fresh Schwab authorization evidence. Resume saved attempt/configuration/deadline; no completed provider/publication claim.",
+  "downstream_training_started": false,
+  "gameplan_published": false,
+  "terminal_at": "2026-09-24T04:24:35.085678+00:00"
+}

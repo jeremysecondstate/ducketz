@@ -1,0 +1,44 @@
+{
+  "captured_at": "2026-09-24T06:28:36.521842+00:00",
+  "prior_action_date": "2026-09-23",
+  "prior_gameplan": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260923T054513.490247Z",
+  "prior_trade_plan": "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260923T054803.564321Z",
+  "prior_published_at": "2026-09-23T05:47:11.779332+00:00",
+  "prior_trade_plan_completed_at": "2026-09-23T05:50:26.313422+00:00",
+  "opening": "2026-09-23T11:00:00+00:00",
+  "selection": "Latest original prior-date preopening Gameplan, latest matching preopening trade-plan",
+  "files": {
+    "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260923T054513.490247Z\\receipt.json": {
+      "sha256": "4cedcf50f6d556181b0b007965e86fd7dffbaa5919a1858e5de9b0c4134f2473",
+      "size": 703
+    },
+    "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260923T054513.490247Z\\manifest.json": {
+      "sha256": "255c752dec92b526dd4326bb60628a3b87b2b1f59de31d02ac01c89def29c1dd",
+      "size": 500185
+    },
+    "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260923T054513.490247Z\\forecasts.parquet": {
+      "sha256": "4fabf381161814bf7baeef78d6d85cb873e08de79eecbaee17eb6a867cda811d",
+      "size": 60073
+    },
+    "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260923T054803.564321Z\\receipt.json": {
+      "sha256": "30ad87bb5fad44a0c2ac48cd78cd70be8906d2510527f2e960ea9e7c58be2557",
+      "size": 746
+    },
+    "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260923T054803.564321Z\\manifest.json": {
+      "sha256": "042de1ac950cb9f10d0fb32bbe9a61c310b572e365ab19df2eaa82498c2487d6",
+      "size": 222252
+    },
+    "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260923T054803.564321Z\\trade-plan.parquet": {
+      "sha256": "8e61ca2e7d879c32de20e30870749099cd9c50fa6b8e997366c04b026890f36c",
+      "size": 116798
+    },
+    "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260923T054803.564321Z\\planning-price-path.json": {
+      "sha256": "7bf6b6f03b64b24bed7777ac0d14f721dc2d5402b9eb00f91add076830969f82",
+      "size": 11828681
+    },
+    "C:\\DATASTORE\\ml\\gameplan-trade-plan-runs\\20260923T054803.564321Z\\Gameplan.md": {
+      "sha256": "2e0f9c49109dbf0c5f7da66317aaa03d55c0ba540f1b5cd608c2afc0e131467e",
+      "size": 102155
+    }
+  }
+}

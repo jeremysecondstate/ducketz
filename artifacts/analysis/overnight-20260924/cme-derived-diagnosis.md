@@ -1,0 +1,11 @@
+# CME derived context diagnosis
+
+Fresh capture coverage is complete across the six configured CME scopes. All four corrected literal contracts and all five continuous roots appear. Event times precede receipt times; receipts precede this calculation. These checks establish causal acquisition evidence, not eligibility for the strict one-hour cross-asset feature.
+
+The September 3 advisory is explained by an existing writer/reader mismatch. `datafetching/cme_cross_asset_context.py:441` chooses partitioned event history whenever any exists and ignores aggregate pool captures. Those selected partitions end September 4 for OHLCV/BBO and September 3 for MBP. The latest exact common 60-minute OHLCV window ends September 3 at 21:00, so current calculation properly rejects that window's stale BBO. The inline fetch writes aggregate capture files at `datafetching/databento_fetch.py:1332`, without advancing partitioned event history.
+
+There is a second aggregate-source incompatibility: inline metadata sets `provider_symbol` to group alias CME_CONTEXT, while actual row `symbol` carries ES.v.0/NQ.v.0/etc. `_continuous_roots` prefers `provider_symbol`; a pure calculation on fresh aggregate captures therefore reports no continuous one-minute rows. This is an existing source contract mismatch, not corruption or missing raw captures.
+
+Changing the selector alone cannot qualify tonight's context. A diagnostic-only calculation using actual row symbols rejects current MBP as limit-saturated. Both fresh MBP requests contain only bounded prior-session 20:13â€“20:14Z observations; they are more than eight hours old at 04:20Z materialization. The latest BBO is 21 minutes old, exceeding the 15-minute gate. These gates and data limitations must remain explicit. No prices, sources, gates or production code were changed.
+
+Yesterday's advisory named the same September 3 21:00 window with 19 days of NQ staleness; today's 20 days is the same unresolved optional derived limitation. Detailed selected-file metadata, exact current timestamps, identity and pure diagnostic results are in cme-derived-diagnosis.json. No provider calls, broad MBP scan, output materialization or production writes were performed.
