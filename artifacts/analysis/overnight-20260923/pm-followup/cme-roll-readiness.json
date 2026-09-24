@@ -1,0 +1,225 @@
+{
+  "reviewed_at": "2026-09-23T20:41:29.457511+00:00",
+  "status": "EXPIRED_RAW_CONFIG_WITH_SOURCE_VERIFIED_CURRENT_REPLACEMENTS",
+  "pre_change_configuration_observed": {
+    "path": "C:\\dev\\ducketz\\.env",
+    "raw_symbols_line": 105,
+    "raw_symbols": [
+      "ESU6",
+      "NQU6",
+      "CLV6",
+      "GCZ6"
+    ],
+    "raw_stype": "raw_symbol",
+    "continuous_symbols": [
+      "ES.v.0",
+      "NQ.v.0",
+      "RTY.v.0",
+      "CL.v.0",
+      "GC.v.0"
+    ],
+    "continuous_stype": "continuous",
+    "process_user_machine_overrides": "NONE_FOR_SELECTED_CME_KEYS"
+  },
+  "verified_old_definitions": [
+    {
+      "scope": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\definition\\ESU6\\windows\\2026-05-07_to_2026-08-15",
+      "receipt_sha256": "045ecab9ff7884aa649d64d14eaf29a321a212d517fde45675d7a965d05b69e9",
+      "manifest_sha256": "3737e2fc15d4a34a30f70e2010072f7e1ab55ef5cfaebcca64c620caefc6aecc",
+      "raw_and_normalized_verified": true,
+      "definitions": [
+        {
+          "raw_symbol": "ESU6",
+          "instrument_id": 42140870,
+          "expiration": "2026-09-18 13:30:00+00:00",
+          "activation": "2023-08-18 21:30:00+00:00"
+        }
+      ]
+    },
+    {
+      "scope": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\definition\\NQU6\\windows\\2026-05-07_to_2026-08-15",
+      "receipt_sha256": "a48353f5af69fd00005b119d487708b46067e9ecb91a4a1ba26f0bd079e29b1c",
+      "manifest_sha256": "1602f7adfac7156045cb501a3833f48bcd57fb64056e7be81c2b609f9527b52d",
+      "raw_and_normalized_verified": true,
+      "definitions": [
+        {
+          "raw_symbol": "NQU6",
+          "instrument_id": 42004177,
+          "expiration": "2026-09-18 13:30:00+00:00",
+          "activation": "2025-03-21 13:30:00+00:00"
+        }
+      ]
+    },
+    {
+      "scope": "C:\\DATASTORE\\market-data\\databento\\cme\\GLBX.MDP3\\definition\\GC.V.0\\windows\\2026-05-07_to_2026-08-15",
+      "receipt_sha256": "59a49287865b598e61cbe3a286d7d300cfd3db02590cea2be8ab96290bc06199",
+      "manifest_sha256": "f93f957bcfc61b401e922284489bc217736bc628b13c2f241905b69e681ca4c6",
+      "raw_and_normalized_verified": true,
+      "definitions": [
+        {
+          "raw_symbol": "GCZ6",
+          "instrument_id": 41271,
+          "expiration": "2026-12-29 18:30:00+00:00",
+          "activation": "2020-12-30 22:30:00+00:00"
+        }
+      ]
+    }
+  ],
+  "new_mapping": {
+    "ES.v.0": "ESZ6",
+    "NQ.v.0": "NQZ6",
+    "CL.v.0": "CLX6"
+  },
+  "verified_replacement_candidate": [
+    "ESZ6",
+    "NQZ6",
+    "CLX6",
+    "GCZ6"
+  ],
+  "mapping_valid_inclusive": "2026-09-22",
+  "mapping_valid_exclusive": "2026-09-24",
+  "symbology_evidence": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260923\\pm-followup\\cme-current-instrument-symbology.json",
+  "symbology_evidence_sha256": "2212b78979996152bcbb1de6eb021074b57dad93a76d8ac0b65e13ddc5f56b16",
+  "clv6_expiry": "UNAVAILABLE_IN_LOCAL_DEFINITIONS_AND_SYMBOLOGY_HAS_NO_EXPIRY_FIELD",
+  "roll_contract": {
+    "continuous_policy": "databento-continuous-v0-roll-v1",
+    "continuous_consumer_filter": "provider_stype_in == continuous",
+    "raw_contract_automatic_roll": "NONE_LITERAL_CONFIGURED_SYMBOLS",
+    "code_evidence": [
+      "app/services/databento_cme_context.py:112",
+      "app/services/databento_cme_context.py:114",
+      "app/services/databento_cme_context.py:146",
+      "datafetching/cme_cross_asset_context.py:25",
+      "datafetching/cme_cross_asset_context.py:752"
+    ]
+  },
+  "model_impact": {
+    "publication": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260923T054513.490247Z",
+    "admitted_feature_families": {
+      "1d": {
+        "admitted_count": 30,
+        "admitted_cme_features": [],
+        "admitted_pricing_features": []
+      },
+      "1h": {
+        "admitted_count": 35,
+        "admitted_cme_features": [],
+        "admitted_pricing_features": []
+      },
+      "1w": {
+        "admitted_count": 32,
+        "admitted_cme_features": [],
+        "admitted_pricing_features": []
+      },
+      "4h": {
+        "admitted_count": 34,
+        "admitted_cme_features": [],
+        "admitted_pricing_features": []
+      }
+    },
+    "weekly_target_cohort": [
+      {
+        "symbol": "AAPL",
+        "admitted_rows": 301,
+        "first_decision": "2025-03-04 00:05:00+00:00",
+        "last_decision": "2026-09-16 00:05:00+00:00",
+        "fitted_rows": 228,
+        "assessment_rows": 34
+      },
+      {
+        "symbol": "AMZN",
+        "admitted_rows": 300,
+        "first_decision": "2025-03-04 00:05:00+00:00",
+        "last_decision": "2026-09-16 00:05:00+00:00",
+        "fitted_rows": 227,
+        "assessment_rows": 34
+      },
+      {
+        "symbol": "COST",
+        "admitted_rows": 143,
+        "first_decision": "2025-03-04 00:05:00+00:00",
+        "last_decision": "2026-09-16 00:05:00+00:00",
+        "fitted_rows": 108,
+        "assessment_rows": 17
+      },
+      {
+        "symbol": "CROX",
+        "admitted_rows": 31,
+        "first_decision": "2023-04-19 20:05:00+00:00",
+        "last_decision": "2026-07-11 00:05:00+00:00",
+        "fitted_rows": 30,
+        "assessment_rows": 0
+      },
+      {
+        "symbol": "GOOG",
+        "admitted_rows": 292,
+        "first_decision": "2025-03-04 00:05:00+00:00",
+        "last_decision": "2026-09-16 00:05:00+00:00",
+        "fitted_rows": 222,
+        "assessment_rows": 33
+      },
+      {
+        "symbol": "IONQ",
+        "admitted_rows": 340,
+        "first_decision": "2023-04-04 22:05:00+00:00",
+        "last_decision": "2026-09-16 00:05:00+00:00",
+        "fitted_rows": 280,
+        "assessment_rows": 25
+      },
+      {
+        "symbol": "MU",
+        "admitted_rows": 285,
+        "first_decision": "2025-03-04 00:05:00+00:00",
+        "last_decision": "2026-09-16 00:05:00+00:00",
+        "fitted_rows": 212,
+        "assessment_rows": 34
+      },
+      {
+        "symbol": "NVDA",
+        "admitted_rows": 301,
+        "first_decision": "2025-03-04 00:05:00+00:00",
+        "last_decision": "2026-09-16 00:05:00+00:00",
+        "fitted_rows": 228,
+        "assessment_rows": 34
+      },
+      {
+        "symbol": "PATH",
+        "admitted_rows": 126,
+        "first_decision": "2023-04-18 20:05:00+00:00",
+        "last_decision": "2026-09-10 00:05:00+00:00",
+        "fitted_rows": 109,
+        "assessment_rows": 9
+      },
+      {
+        "symbol": "SNDK",
+        "admitted_rows": 163,
+        "first_decision": "2025-05-28 20:05:00+00:00",
+        "last_decision": "2026-09-16 00:05:00+00:00",
+        "fitted_rows": 90,
+        "assessment_rows": 34
+      },
+      {
+        "symbol": "TWST",
+        "admitted_rows": 8,
+        "first_decision": "2025-04-03 00:05:00+00:00",
+        "last_decision": "2026-08-20 00:05:00+00:00",
+        "fitted_rows": 6,
+        "assessment_rows": 2
+      }
+    ],
+    "conclusion": "Expired raw-contract inputs are auxiliary and are excluded by the continuous-context consumer. No current independent model admitted cme__ or opx__ features. Refreshing raw futures configuration does not repair the recorded weekly heldout-quality failure or supply missing stock target boundaries."
+  },
+  "optional_source_limits": [
+    "Continuous MBP latest saved request explicitly saturated at5000 rows",
+    "CME derived context rejects retained stale BBO with unchanged15-minute gate",
+    "Optional Pricing all99 routes fail existing coverage/sample criteria"
+  ],
+  "actions": {
+    "metadata_lookup_calls": 1,
+    "market_data_downloads": 0,
+    "configuration_edits": 0,
+    "production_edits": 0,
+    "orders": 0,
+    "claim_actions": 0
+  }
+}

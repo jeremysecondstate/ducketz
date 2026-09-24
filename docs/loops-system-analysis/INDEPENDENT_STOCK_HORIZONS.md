@@ -1,5 +1,14 @@
 # Independent stock horizons
 
+September 23, 2026: fresh nightly runs opt into `--archive-history`, the verified
+XNAS daily/hourly feature history and matching minute-target prefix integration.
+The 21:05 Pacific operation targets 03:30 completion with the existing 04:00 hard
+deadline. Source verification, chronological assessment, exact horizon labels and
+model qualification remain mandatory. See [the historical training operating
+contract](NIGHTLY_GAMEPLAN.md#historical-training-integration-approved-september-23-2026)
+for source availability, split/quality exclusions, second/minute consistency,
+manifest evidence and unchanged historical-resume behavior.
+
 September 18, 2026: the operator selected **Yung Gameplan (YG)** as the stock
 execution source, retaining the frozen **OG Gameplan** for evaluation only.
 YG probabilities use `raw-price-direction-v1` (observed return > 0), with
@@ -123,7 +132,8 @@ not create spendable cash. Shares already owned manually are not assigned to
 any horizon.
 
 The manual Gameplan start selects `gameplan-direction-current-market-v1` instead.
-It uses the same promoted above/below-50% forecast directions, buys from the full horizon
+It uses saved above/below-50% forecast directions under the September 14
+instruction-reading contract above, buys from the full horizon
 capacity permitted by actual cash/exposure, sells eligible current shares on
 bearish forecasts, and holds on neutral forecasts. Eligible unallocated manual
 shares can be assigned explicitly when a directional sell is reserved; shares
@@ -357,7 +367,7 @@ Training/publication uses the native supervised overnight owner and its original
 04:00 publication deadline:
 
 ```powershell
-.\.venv\Scripts\python.exe -u -m ml.overnight_runtime --datastore-target pc --once --stock-only --independent-stock-horizons --stock-price-source xnas-itch-archive-v1
+.\.venv\Scripts\python.exe -u -m ml.overnight_runtime --datastore-target pc --once --stock-only --independent-stock-horizons --stock-price-source xnas-itch-archive-v1 --archive-history
 ```
 
 A non-submitting inspection of a published independent plan:

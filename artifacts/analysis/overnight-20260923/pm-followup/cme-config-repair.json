@@ -1,0 +1,21 @@
+{
+  "changed_at": "2026-09-23T20:41:23.044562+00:00",
+  "setting": "DATABENTO_CME_CONTRACT_SYMBOLS",
+  "previous": [
+    "ESU6",
+    "NQU6",
+    "CLV6",
+    "GCZ6"
+  ],
+  "current": [
+    "ESZ6",
+    "NQZ6",
+    "CLX6",
+    "GCZ6"
+  ],
+  "all_other_bytes_unchanged": true,
+  "evidence": "cme-current-instrument-symbology.json",
+  "market_data_downloaded": false,
+  "orders_placed": 0,
+  "applies_to": "subsequent provider construction; no running process restarted"
+}

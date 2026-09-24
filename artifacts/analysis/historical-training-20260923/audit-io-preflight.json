@@ -1,0 +1,89 @@
+{
+  "observed_at": "2026-09-23T22:39:14.676173+00:00",
+  "schemas": {
+    "ohlcv-1d": {
+      "partitions": 11,
+      "raw_bytes": 645566,
+      "normalized_bytes": 755559,
+      "rows": 17587,
+      "symbols": [
+        "AAPL",
+        "AMZN",
+        "COST",
+        "CROX",
+        "GOOG",
+        "IONQ",
+        "MU",
+        "NVDA",
+        "PATH",
+        "SNDK",
+        "TWST"
+      ]
+    },
+    "ohlcv-1h": {
+      "partitions": 11,
+      "raw_bytes": 5521487,
+      "normalized_bytes": 6476352,
+      "rows": 203953,
+      "symbols": [
+        "AAPL",
+        "AMZN",
+        "COST",
+        "CROX",
+        "GOOG",
+        "IONQ",
+        "MU",
+        "NVDA",
+        "PATH",
+        "SNDK",
+        "TWST"
+      ]
+    },
+    "ohlcv-1m": {
+      "partitions": 162,
+      "raw_bytes": 97164407,
+      "normalized_bytes": 112142647,
+      "rows": 5449294,
+      "symbols": [
+        "AAPL",
+        "AMZN",
+        "COST",
+        "CROX",
+        "GOOG",
+        "IONQ",
+        "MU",
+        "NVDA",
+        "PATH",
+        "SNDK",
+        "TWST"
+      ]
+    },
+    "ohlcv-1s": {
+      "partitions": 11,
+      "raw_bytes": 189987625,
+      "normalized_bytes": 267701476,
+      "rows": 16443370,
+      "symbols": [
+        "AAPL",
+        "AMZN",
+        "COST",
+        "CROX",
+        "GOOG",
+        "IONQ",
+        "MU",
+        "NVDA",
+        "PATH",
+        "SNDK",
+        "TWST"
+      ]
+    }
+  },
+  "raw_bytes_total": 293319085,
+  "normalized_bytes_total": 387076034,
+  "largest_raw_file_bytes": 64937430,
+  "raw_hash_budget_bytes": 1073741824,
+  "raw_file_limit_bytes": 134217728,
+  "provider_cost_usd": 0,
+  "provider_requests": 0,
+  "note": "Local filesystem I/O estimate only; no provider acquisition or cost request."
+}

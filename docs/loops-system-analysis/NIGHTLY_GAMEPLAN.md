@@ -146,7 +146,7 @@ Single-owner command:
 
 ```powershell
 cd C:\dev\ducketz
-.\.venv\Scripts\python.exe -u -m ml.overnight_runtime --datastore-target pc --once --scheduled --stock-only --independent-stock-horizons --stock-price-source xnas-itch-archive-v1
+.\.venv\Scripts\python.exe -u -m ml.overnight_runtime --datastore-target pc --once --scheduled --stock-only --independent-stock-horizons --stock-price-source xnas-itch-archive-v1 --archive-history
 ```
 
 The command has no order authority. The fetch stage may read Schwab market data.
@@ -157,6 +157,58 @@ session eligibility guard, not the daily start time. A weekend or holiday writes
 a checksum-bound `NOOP_NON_SESSION_DATE`
 receipt beneath `ml/overnight-runs`, runs no stage, and preserves the prior
 gameplan pointer. A premature wake on an actual session fails closed.
+
+## Historical training integration approved September 23, 2026
+
+The existing **Loops Overnight Gameplan** Scheduled task retains its **21:05
+America/Los_Angeles** wake. Fresh full independent-stock attempts now use
+`--archive-history`. Aim to finish preparation by **03:30 Pacific**, leaving a
+buffer before the existing **04:00 next-exchange-session hard deadline**. Use all
+eligible verified history; do not delay a completed fit merely to consume the
+window. More history is an opportunity to improve held-out results, not a promise
+of higher accuracy or permission to relax assessment thresholds.
+
+This option extends the native `stock_target_history` stage with
+`--extend-to-feature-history`. It verifies the configured universe's existing
+XNAS.ITCH daily, hourly and minute partitions and acquires only a missing minute
+prefix back to the first observed feature history (respecting IPO/history policy).
+Each required prefix needs fresh exact zero-dollar cost, included provider-range,
+record-count, disk-capacity and native source checks. The total estimate is capped
+at 20 GB. Existing verified prefixes are reused. The extension saves its manifest,
+preflight, receipt and original current cursor bytes in the native history run;
+it never moves a current production minute cursor backwards. A failed extension
+fails the stage with evidence; it must not silently claim all history is ready.
+
+Publication uses `xnas-archive-prior-session-features-v1`: causal daily-return,
+range, volume and volatility features from verified XNAS daily history, plus
+available hourly context and existing causal optional features. Older absent
+optional columns remain missing under the existing feature-admission rules.
+Daily/hourly tails may be aggregated only from actual native minute observations
+whose verified request coverage contains the complete source interval. No missing
+prices, zero-volume bars or pre-IPO samples are manufactured. Warmup requires 21
+consecutive valid exchange sessions and resets across gaps, known splits, provider
+quality intervals and large raw discontinuities. Target windows crossing known
+splits, detected discontinuities or excluded observations are omitted explicitly.
+Daily bars provide features; all four horizons retain their exact XNAS minute
+target endpoints and native five-minute observation tolerance.
+
+Verified one-second history is aggregated for exact overlapping minute OHLCV
+consistency evidence. Conflicts fail closed. Identical resolutions do not create
+duplicate training examples; unmatched seconds are disclosed as unused by the
+unchanged `xnas-itch-archive-v1` target contract. Native undefined OHLC observations
+are excluded and reported, not filled.
+
+Verify the manifest-bound `archive-history.json`, its raw/normalized source
+inputs, per-symbol feature dates, per-horizon cohort counts/date ranges, source
+quality exclusions and second/minute consistency report. Four horizon training
+cohorts, source-specific cumulative evaluation, independent sizing qualification,
+264 forecasts/intents for the current eleven symbols, account-aware planning and
+actuals review retain their existing gates and stage order. The new feature
+contract cannot reuse an older-feature champion. Frozen historical publications
+retain their own selector and universe. Resume inherits the original attempt's
+archive flag, source, probability target and deadline; never append the new flag
+to an older failed attempt. Pinned tail publications must match that saved policy.
+The integration has no trader or order authority.
 
 ## Sequential stages
 
@@ -387,8 +439,12 @@ sell reservations; it never counts reservations as fills or spends unconfirmed
 sale proceeds. **Planning price and cash ranges are estimates only: neither
 range can reject an order for being above or below it.** BUY limits use the
 current ask and SELL limits the current bid, with permitted tick rounding.
-The hypothetical ledger is not copied into actual broker balances. Model approval remains a separate
-requirement. This section describes the implemented publication contract;
+The hypothetical ledger is not copied into actual broker balances. Model quality
+is assessed and recorded during publication. Under the September 14 manual-policy
+instruction, execution consumes saved trading instructions without using model
+promotion as a separate execution veto; a failed quality check must therefore
+not be described as automatically blocking that policy's trades. Legacy readers
+retain their promotion requirements. This section describes the implemented publication contract;
 completion of any generation still requires its own verified native receipt.
 
 The user can manually launch [`Start-Gameplan-Trader.cmd`](../../Start-Gameplan-Trader.cmd)
@@ -623,6 +679,30 @@ If renewal returns `BUSY`, stop making changes. Release your claim when finished
 using `--release-supervision <your-uuid>`. This coordinates the human-readable
 Scheduled operators separately from the Python pipeline's process lock.
 
+Before account-aware planning, inspect post-close ownership evidence. PM/DAY
+orders can receive broker cancellation after the session worker has exited, so
+a locally working reservation does not prove that the broker order is still
+working. Conversely, absence from open orders does not prove cancellation. When
+this blocks planning, use the documented supervised native reconciliation path:
+require the trader to be terminal and absent, acquire the native session then
+cycle locks, preserve a ledger backup, capture exact matching-account terminal
+order history followed by a newer coherent portfolio snapshot, and reconcile
+through the existing native ledger with zero execution budgets. Preserve filled
+allocations and entry claims. Unknown, contradictory, partial or still-working
+evidence remains unresolved; never infer a terminal state or write SQL to release
+a reservation. This is maintenance of proven broker state, not a trader start or
+an order cancellation. Do not perform it while a live or waiting trader owns the
+session. Record the evidence and result in operator notes. The trade-planning
+stage itself remains a read-only consumer of the resulting ownership snapshot.
+
+Also inspect configured literal raw CME contracts against saved definition and
+current instrument-mapping evidence. Continuous `*.v.0` requests roll separately;
+they do not update the literal raw-symbol list. Expired auxiliary contracts can
+therefore produce missing-data warnings while continuous context is complete.
+Use exact provider mappings before correcting a stale raw scope, preserve old
+partitions, and retain acquisition cost, capacity and coverage checks. Do not
+infer a stock-model repair from this auxiliary configuration change.
+
 The Scheduled operator must:
 
 1. Follow the active process session and inspect status, new logs, and health
@@ -840,10 +920,12 @@ candidates using final assessment outcomes.
 Promotion also requires varying calibrated probabilities on both the calibration
 and assessment partitions, with both target classes available. A constant
 base-rate fallback cannot pass as a promoted directional model. The report saves
-the calibration status, slope, positive rate, and probability ranges. Promotion
-now requires lower Brier score **and** lower log loss than a constant probability
-estimated from training plus selection rows. The former tolerances could promote
-a model that performed worse than that baseline. Varying output alone is insufficient.
+the calibration status, slope, positive rate, and probability ranges. The baseline
+is a constant probability estimated from training plus selection rows. Strict v1
+requires lower Brier score **and** lower log loss than that baseline; current v2
+uses the explicit +0.005/+0.01 tolerances above. A v2 pass may therefore still
+score worse than the baseline. Varying output alone is insufficient under either
+policy. Always report the saved policy and numeric comparisons.
 
 Intraday target contract `overnight-path-targets-v2` requires the observed prices
 to be within five minutes of both stated window boundaries. Minute-bar closing

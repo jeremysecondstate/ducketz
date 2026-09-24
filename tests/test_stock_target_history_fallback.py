@@ -59,16 +59,16 @@ def test_unavailable_historical_range_permanently_routes_all_symbols_to_exact_li
     receipt = json.loads((run / "receipt.json").read_text())
     assert receipt["status"] == "COMPLETE"
     assert receipt["coverage_basis"] == "HISTORICAL_PLUS_VERIFIED_XNAS_ACTION_SESSIONS"
-    assert len(receipt["replay_manifests"]) == 7
+    assert len(receipt["replay_manifests"]) == len(STOCK_TRADER_SYMBOLS)
     assert set(receipt["historical_cursor_ends"].values()) == {"2026-09-05"}
-    assert [x[0] for x in state.calls] == ["cost"] * 7 + ["publish"] * 7
-    for _, request in state.calls[:7]:
+    assert [x[0] for x in state.calls] == ["cost"] * len(STOCK_TRADER_SYMBOLS) + ["publish"] * len(STOCK_TRADER_SYMBOLS)
+    for _, request in state.calls[:len(STOCK_TRADER_SYMBOLS)]:
         assert request["dataset"] == "XNAS.ITCH"
         assert request["schema"] == "ohlcv-1m"
         assert request["stype_in"] == "raw_symbol"
         assert request["start"] == "2026-09-08T11:00:00+00:00"
         assert request["end"] == "2026-09-09T00:00:00+00:00"
-    assert {x[2] for x in state.calls[7:]} == {"2026-09-08"}  # holiday is not replayed
+    assert {x[2] for x in state.calls[len(STOCK_TRADER_SYMBOLS):]} == {"2026-09-08"}  # holiday is not replayed
 
 
 def test_restart_reuses_verified_replay_without_cost_queries_subscriptions_or_cursor_relabel(fallback):
@@ -134,7 +134,7 @@ def test_historical_remains_first_choice_when_required_range_is_available(fallba
         fallback.calls.append(("historical",))
         for cursor in fallback.cursors.values():
             cursor["completed_through"] = "2026-09-09"
-        return {"downloaded": 7}
+        return {"downloaded": len(STOCK_TRADER_SYMBOLS)}
     monkeypatch.setattr(history, "_historical_acquisition", native)
     run = history.maintain_target_history(fallback.root, client=fallback.client, execute=True, api_key="fixture")
     assert fallback.calls == [("historical",)]
@@ -149,7 +149,7 @@ def test_old_missing_exchange_session_is_caught_up_by_historical_first(fallback,
         fallback.calls.append(("historical_prefix",))
         for cursor in fallback.cursors.values():
             cursor["completed_through"] = "2026-09-08"
-        return {"downloaded": 7}
+        return {"downloaded": len(STOCK_TRADER_SYMBOLS)}
     monkeypatch.setattr(history, "_historical_acquisition", native)
     history.maintain_target_history(fallback.root, client=fallback.client, execute=True, api_key="fixture")
     assert fallback.calls[0] == ("historical_prefix",)
@@ -247,11 +247,11 @@ def test_unavailable_winter_tail_replays_full_action_window_without_future_histo
                   cursor_end="2026-11-04", provider_end="2026-11-04")
     run = history.maintain_target_history(fallback.root, client=fallback.client,
         through=date(2026, 11, 4), execute=True, api_key="fixture")
-    assert [call[0] for call in fallback.calls] == ["cost"] * 7 + ["publish"] * 7
-    for _, request in fallback.calls[:7]:
+    assert [call[0] for call in fallback.calls] == ["cost"] * len(STOCK_TRADER_SYMBOLS) + ["publish"] * len(STOCK_TRADER_SYMBOLS)
+    for _, request in fallback.calls[:len(STOCK_TRADER_SYMBOLS)]:
         assert request["start"] == "2026-11-03T12:00:00+00:00"
         assert request["end"] == "2026-11-04T01:00:00+00:00"
-    assert {call[2] for call in fallback.calls[7:]} == {"2026-11-03"}
+    assert {call[2] for call in fallback.calls[len(STOCK_TRADER_SYMBOLS):]} == {"2026-11-03"}
     receipt = json.loads((run / "receipt.json").read_text())
     assert receipt["status"] == "COMPLETE"
     assert receipt["completed_through"] == "2026-11-04"
@@ -266,13 +266,13 @@ def test_winter_historical_prefix_stays_within_provider_date_and_preserves_missi
     assert fallback.calls[0] == ("historical", "historical-prefix-", "2026-11-05")
     assert json.loads((run / "manifest.json").read_text())["as_of"] == "2026-11-06"
     assert json.loads((run / "historical-prefix-manifest.json").read_text())["as_of"] == "2026-11-05"
-    assert [call[0] for call in fallback.calls[1:]] == ["cost"] * 7 + ["publish"] * 7
+    assert [call[0] for call in fallback.calls[1:]] == ["cost"] * len(STOCK_TRADER_SYMBOLS) + ["publish"] * len(STOCK_TRADER_SYMBOLS)
     for _, request in fallback.calls[1:8]:
         assert request["start"] == "2026-11-04T12:00:00+00:00"
         assert request["end"] == "2026-11-05T01:00:00+00:00"
     receipt = json.loads((run / "receipt.json").read_text())
     assert set(receipt["historical_cursor_ends"].values()) == {"2026-11-05"}
-    assert len(receipt["replay_manifests"]) == 7
+    assert len(receipt["replay_manifests"]) == len(STOCK_TRADER_SYMBOLS)
 
 
 def test_unavailable_old_winter_tail_does_not_claim_historical_completion(fallback, monkeypatch):

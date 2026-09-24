@@ -1,0 +1,1625 @@
+{
+  "contract_version": "xnas-archive-prior-session-features-v1",
+  "dataset": "XNAS.ITCH",
+  "as_of": "2026-09-23T22:48:57.380091+00:00",
+  "source_selection_contract": "xnas-archive-prior-session-features-v1",
+  "selected_rows": 17069,
+  "selected_rows_by_symbol": {
+    "AAPL": 1680,
+    "AMZN": 1680,
+    "COST": 1700,
+    "CROX": 2090,
+    "GOOG": 1680,
+    "IONQ": 1207,
+    "MU": 1700,
+    "NVDA": 1672,
+    "PATH": 1321,
+    "SNDK": 377,
+    "TWST": 1962
+  },
+  "by_symbol": {
+    "AAPL": {
+      "status": "READY",
+      "daily_observations": 1780,
+      "selected_rows": 1680,
+      "known_split_ex_dates": [
+        "1987-06-16",
+        "2000-06-21",
+        "2005-02-28",
+        "2014-06-09",
+        "2020-08-31"
+      ],
+      "first_daily_observation": "2019-08-19 00:00:00+00:00"
+    },
+    "AMZN": {
+      "status": "READY",
+      "daily_observations": 1780,
+      "selected_rows": 1680,
+      "known_split_ex_dates": [
+        "1998-06-02",
+        "1999-01-05",
+        "1999-09-02",
+        "2022-06-06"
+      ],
+      "first_daily_observation": "2019-08-19 00:00:00+00:00"
+    },
+    "GOOG": {
+      "status": "READY",
+      "daily_observations": 1780,
+      "selected_rows": 1680,
+      "known_split_ex_dates": [
+        "2014-03-27",
+        "2022-07-18"
+      ],
+      "first_daily_observation": "2019-08-19 00:00:00+00:00"
+    },
+    "MU": {
+      "status": "READY",
+      "daily_observations": 1780,
+      "selected_rows": 1700,
+      "known_split_ex_dates": [
+        "1994-04-19",
+        "1995-05-23",
+        "2000-05-02"
+      ],
+      "first_daily_observation": "2019-08-19 00:00:00+00:00"
+    },
+    "NVDA": {
+      "status": "READY",
+      "daily_observations": 1780,
+      "selected_rows": 1672,
+      "known_split_ex_dates": [
+        "2000-06-27",
+        "2001-09-12",
+        "2006-04-07",
+        "2007-09-11",
+        "2021-07-20",
+        "2024-06-10"
+      ],
+      "first_daily_observation": "2019-08-19 00:00:00+00:00"
+    },
+    "SNDK": {
+      "status": "READY",
+      "daily_observations": 397,
+      "selected_rows": 377,
+      "known_split_ex_dates": [],
+      "first_daily_observation": "2025-02-24 00:00:00+00:00"
+    },
+    "COST": {
+      "status": "READY",
+      "daily_observations": 1780,
+      "selected_rows": 1700,
+      "known_split_ex_dates": [
+        "1984-06-13",
+        "1986-02-04",
+        "1991-05-16",
+        "1992-03-09",
+        "1993-10-22",
+        "2000-01-14"
+      ],
+      "first_daily_observation": "2019-08-19 00:00:00+00:00"
+    },
+    "CROX": {
+      "status": "READY",
+      "daily_observations": 2110,
+      "selected_rows": 2090,
+      "known_split_ex_dates": [],
+      "first_daily_observation": "2018-05-01 00:00:00+00:00"
+    },
+    "PATH": {
+      "status": "READY",
+      "daily_observations": 1361,
+      "selected_rows": 1321,
+      "known_split_ex_dates": [],
+      "first_daily_observation": "2021-04-21 00:00:00+00:00"
+    },
+    "TWST": {
+      "status": "READY",
+      "daily_observations": 1982,
+      "selected_rows": 1962,
+      "known_split_ex_dates": [],
+      "first_daily_observation": "2018-10-31 00:00:00+00:00"
+    },
+    "IONQ": {
+      "status": "READY",
+      "daily_observations": 1247,
+      "selected_rows": 1207,
+      "known_split_ex_dates": [],
+      "first_daily_observation": "2021-10-01 00:00:00+00:00"
+    }
+  },
+  "action_date_start": "2018-05-31",
+  "action_date_end": "2026-09-23",
+  "core_features": [
+    "arch__daily_return_1",
+    "arch__daily_return_5",
+    "arch__daily_return_20",
+    "arch__daily_volatility_20",
+    "arch__daily_open_close_return",
+    "arch__daily_range_fraction",
+    "arch__daily_volume_ratio_20",
+    "arch__daily_close_position_20"
+  ],
+  "optional_hourly_features": [
+    "arch__hourly_open_close_return",
+    "arch__hourly_range_fraction",
+    "arch__hourly_volume_ratio_20_observed"
+  ],
+  "feature_non_null_rows": {
+    "arch__daily_return_1": 17069,
+    "arch__daily_return_5": 17069,
+    "arch__daily_return_20": 17069,
+    "arch__daily_volatility_20": 17069,
+    "arch__daily_open_close_return": 17069,
+    "arch__daily_range_fraction": 17069,
+    "arch__daily_volume_ratio_20": 17069,
+    "arch__daily_close_position_20": 17069,
+    "arch__hourly_open_close_return": 14330,
+    "arch__hourly_range_fraction": 14330,
+    "arch__hourly_volume_ratio_20_observed": 14325
+  },
+  "minimum_core_daily_observations": 21,
+  "synthetic_feature_bars": 0,
+  "daily_timestamp_semantics": "UTC interval start; availability is full interval end plus five minutes",
+  "split_policy": "causal warmup reset; no historical backadjustment; >=3x heuristic is not complete split detection",
+  "quality_resets": [
+    {
+      "symbol": "AAPL",
+      "session": "2020-08-31",
+      "reasons": [
+        "KNOWN_SPLIT_RESET",
+        "RAW_PRICE_DISCONTINUITY_RESET"
+      ]
+    },
+    {
+      "symbol": "AAPL",
+      "session": "2021-07-07",
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ]
+    },
+    {
+      "symbol": "AAPL",
+      "session": "2021-10-26",
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ]
+    },
+    {
+      "symbol": "AAPL",
+      "session": "2022-09-19",
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ]
+    },
+    {
+      "symbol": "AMZN",
+      "session": "2021-07-07",
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ]
+    },
+    {
+      "symbol": "AMZN",
+      "session": "2021-10-26",
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ]
+    },
+    {
+      "symbol": "AMZN",
+      "session": "2022-06-06",
+      "reasons": [
+        "KNOWN_SPLIT_RESET",
+        "RAW_PRICE_DISCONTINUITY_RESET"
+      ]
+    },
+    {
+      "symbol": "AMZN",
+      "session": "2022-09-19",
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ]
+    },
+    {
+      "symbol": "GOOG",
+      "session": "2021-07-07",
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ]
+    },
+    {
+      "symbol": "GOOG",
+      "session": "2021-10-26",
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ]
+    },
+    {
+      "symbol": "GOOG",
+      "session": "2022-07-18",
+      "reasons": [
+        "KNOWN_SPLIT_RESET",
+        "RAW_PRICE_DISCONTINUITY_RESET"
+      ]
+    },
+    {
+      "symbol": "GOOG",
+      "session": "2022-09-19",
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ]
+    },
+    {
+      "symbol": "MU",
+      "session": "2021-07-07",
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ]
+    },
+    {
+      "symbol": "MU",
+      "session": "2021-10-26",
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ]
+    },
+    {
+      "symbol": "MU",
+      "session": "2022-09-19",
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ]
+    },
+    {
+      "symbol": "NVDA",
+      "session": "2021-07-07",
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ]
+    },
+    {
+      "symbol": "NVDA",
+      "session": "2021-07-20",
+      "reasons": [
+        "KNOWN_SPLIT_RESET",
+        "RAW_PRICE_DISCONTINUITY_RESET"
+      ]
+    },
+    {
+      "symbol": "NVDA",
+      "session": "2021-10-26",
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ]
+    },
+    {
+      "symbol": "NVDA",
+      "session": "2022-09-19",
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ]
+    },
+    {
+      "symbol": "NVDA",
+      "session": "2024-06-10",
+      "reasons": [
+        "KNOWN_SPLIT_RESET",
+        "RAW_PRICE_DISCONTINUITY_RESET"
+      ]
+    },
+    {
+      "symbol": "COST",
+      "session": "2021-07-07",
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ]
+    },
+    {
+      "symbol": "COST",
+      "session": "2021-10-26",
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ]
+    },
+    {
+      "symbol": "COST",
+      "session": "2022-09-19",
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ]
+    },
+    {
+      "symbol": "PATH",
+      "session": "2021-10-26",
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ]
+    },
+    {
+      "symbol": "IONQ",
+      "session": "2022-09-19",
+      "reasons": [
+        "PROVIDER_QUALITY_INTERVAL"
+      ]
+    }
+  ],
+  "excluded_intervals": [
+    {
+      "symbol": "AAPL",
+      "start": "2021-07-07T00:00:00+00:00",
+      "end": "2021-07-08T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\AAPL\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "AAPL",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\AAPL\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "AAPL",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\AAPL\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "AMZN",
+      "start": "2021-07-07T00:00:00+00:00",
+      "end": "2021-07-08T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\AMZN\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "AMZN",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\AMZN\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "AMZN",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\AMZN\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "COST",
+      "start": "2021-07-07T00:00:00+00:00",
+      "end": "2021-07-08T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\COST\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "COST",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\COST\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "COST",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\COST\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "GOOG",
+      "start": "2021-07-07T00:00:00+00:00",
+      "end": "2021-07-08T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\GOOG\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "GOOG",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\GOOG\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "GOOG",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\GOOG\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "MU",
+      "start": "2021-07-07T00:00:00+00:00",
+      "end": "2021-07-08T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\MU\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "MU",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\MU\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "MU",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\MU\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "NVDA",
+      "start": "2021-07-07T00:00:00+00:00",
+      "end": "2021-07-08T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\NVDA\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "NVDA",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\NVDA\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "NVDA",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\NVDA\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "SNDK",
+      "start": "2021-07-07T00:00:00+00:00",
+      "end": "2021-07-08T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\SNDK\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "SNDK",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\SNDK\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "SNDK",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1d",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\SNDK\\windows\\2019-08-17_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "AAPL",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1h",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\AAPL\\windows\\2021-08-16_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "AAPL",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1h",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\AAPL\\windows\\2021-08-16_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "AMZN",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1h",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\AMZN\\windows\\2021-08-16_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "AMZN",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1h",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\AMZN\\windows\\2021-08-16_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "COST",
+      "start": "2021-10-26T23:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "reason": "UNDEFINED_OBSERVED_OHLC",
+      "schema": "ohlcv-1h",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\COST\\windows\\2021-08-16_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "COST",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1h",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\COST\\windows\\2021-08-16_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "COST",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1h",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\COST\\windows\\2021-08-16_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "GOOG",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1h",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\GOOG\\windows\\2021-08-16_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "GOOG",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1h",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\GOOG\\windows\\2021-08-16_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "MU",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1h",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\MU\\windows\\2021-08-16_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "MU",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1h",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\MU\\windows\\2021-08-16_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "NVDA",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1h",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\NVDA\\windows\\2021-08-16_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "NVDA",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1h",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\NVDA\\windows\\2021-08-16_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "SNDK",
+      "start": "2021-10-26T00:00:00+00:00",
+      "end": "2021-10-27T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1h",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\SNDK\\windows\\2021-08-16_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "SNDK",
+      "start": "2022-09-19T00:00:00+00:00",
+      "end": "2022-09-20T00:00:00+00:00",
+      "reason": "PROVIDER_QUALITY_DEGRADED",
+      "schema": "ohlcv-1h",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\SNDK\\windows\\2021-08-16_to_2026-08-15\\manifest.json"
+    },
+    {
+      "symbol": "IONQ",
+      "start": "2022-09-19T09:06:00+00:00",
+      "end": "2022-09-19T09:07:00+00:00",
+      "reason": "UNDEFINED_OBSERVED_OHLC",
+      "schema": "ohlcv-1m",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2021-01-04_to_2026-09-12\\manifest.json"
+    },
+    {
+      "symbol": "IONQ",
+      "start": "2022-09-19T09:08:00+00:00",
+      "end": "2022-09-19T09:09:00+00:00",
+      "reason": "UNDEFINED_OBSERVED_OHLC",
+      "schema": "ohlcv-1m",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2021-01-04_to_2026-09-12\\manifest.json"
+    },
+    {
+      "symbol": "IONQ",
+      "start": "2022-09-19T09:32:00+00:00",
+      "end": "2022-09-19T09:33:00+00:00",
+      "reason": "UNDEFINED_OBSERVED_OHLC",
+      "schema": "ohlcv-1m",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2021-01-04_to_2026-09-12\\manifest.json"
+    },
+    {
+      "symbol": "PATH",
+      "start": "2021-10-26T22:20:00+00:00",
+      "end": "2021-10-26T22:21:00+00:00",
+      "reason": "UNDEFINED_OBSERVED_OHLC",
+      "schema": "ohlcv-1m",
+      "manifest_path": "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2021-04-21_to_2026-09-12\\manifest.json"
+    }
+  ],
+  "excluded_undefined_observations": 5,
+  "split_boundaries": [
+    {
+      "symbol": "AAPL",
+      "at": "1987-06-16T07:00:00+00:00"
+    },
+    {
+      "symbol": "AAPL",
+      "at": "2000-06-21T07:00:00+00:00"
+    },
+    {
+      "symbol": "AAPL",
+      "at": "2005-02-28T08:00:00+00:00"
+    },
+    {
+      "symbol": "AAPL",
+      "at": "2014-06-09T07:00:00+00:00"
+    },
+    {
+      "symbol": "AAPL",
+      "at": "2020-08-31T07:00:00+00:00"
+    },
+    {
+      "symbol": "AMZN",
+      "at": "1998-06-02T07:00:00+00:00"
+    },
+    {
+      "symbol": "AMZN",
+      "at": "1999-01-05T08:00:00+00:00"
+    },
+    {
+      "symbol": "AMZN",
+      "at": "1999-09-02T07:00:00+00:00"
+    },
+    {
+      "symbol": "AMZN",
+      "at": "2022-06-06T07:00:00+00:00"
+    },
+    {
+      "symbol": "GOOG",
+      "at": "2014-03-27T07:00:00+00:00"
+    },
+    {
+      "symbol": "GOOG",
+      "at": "2022-07-18T07:00:00+00:00"
+    },
+    {
+      "symbol": "MU",
+      "at": "1994-04-19T07:00:00+00:00"
+    },
+    {
+      "symbol": "MU",
+      "at": "1995-05-23T07:00:00+00:00"
+    },
+    {
+      "symbol": "MU",
+      "at": "2000-05-02T07:00:00+00:00"
+    },
+    {
+      "symbol": "NVDA",
+      "at": "2000-06-27T07:00:00+00:00"
+    },
+    {
+      "symbol": "NVDA",
+      "at": "2001-09-12T07:00:00+00:00"
+    },
+    {
+      "symbol": "NVDA",
+      "at": "2006-04-07T07:00:00+00:00"
+    },
+    {
+      "symbol": "NVDA",
+      "at": "2007-09-11T07:00:00+00:00"
+    },
+    {
+      "symbol": "NVDA",
+      "at": "2021-07-20T07:00:00+00:00"
+    },
+    {
+      "symbol": "NVDA",
+      "at": "2024-06-10T07:00:00+00:00"
+    },
+    {
+      "symbol": "COST",
+      "at": "1984-06-13T07:00:00+00:00"
+    },
+    {
+      "symbol": "COST",
+      "at": "1986-02-04T08:00:00+00:00"
+    },
+    {
+      "symbol": "COST",
+      "at": "1991-05-16T07:00:00+00:00"
+    },
+    {
+      "symbol": "COST",
+      "at": "1992-03-09T08:00:00+00:00"
+    },
+    {
+      "symbol": "COST",
+      "at": "1993-10-22T07:00:00+00:00"
+    },
+    {
+      "symbol": "COST",
+      "at": "2000-01-14T08:00:00+00:00"
+    }
+  ],
+  "target_discontinuity_boundaries": [
+    {
+      "symbol": "AAPL",
+      "at": "2020-08-31T07:00:00+00:00",
+      "reason": "RAW_PRICE_DISCONTINUITY_RESET"
+    },
+    {
+      "symbol": "AMZN",
+      "at": "2022-06-06T07:00:00+00:00",
+      "reason": "RAW_PRICE_DISCONTINUITY_RESET"
+    },
+    {
+      "symbol": "GOOG",
+      "at": "2022-07-18T07:00:00+00:00",
+      "reason": "RAW_PRICE_DISCONTINUITY_RESET"
+    },
+    {
+      "symbol": "NVDA",
+      "at": "2021-07-20T07:00:00+00:00",
+      "reason": "RAW_PRICE_DISCONTINUITY_RESET"
+    },
+    {
+      "symbol": "NVDA",
+      "at": "2024-06-10T07:00:00+00:00",
+      "reason": "RAW_PRICE_DISCONTINUITY_RESET"
+    }
+  ],
+  "label_policy_changed": false,
+  "elapsed_seconds": 115.15,
+  "source_file_count": 742,
+  "source_files": [
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\CROX\\windows\\2018-05-01_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\CROX\\windows\\2018-05-01_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\CROX\\windows\\2018-05-01_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\CROX\\windows\\2018-05-01_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\TWST\\windows\\2018-10-31_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\TWST\\windows\\2018-10-31_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\TWST\\windows\\2018-10-31_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\TWST\\windows\\2018-10-31_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\AAPL\\windows\\2019-08-17_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\AAPL\\windows\\2019-08-17_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\AAPL\\windows\\2019-08-17_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\AAPL\\windows\\2019-08-17_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\AMZN\\windows\\2019-08-17_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\AMZN\\windows\\2019-08-17_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\AMZN\\windows\\2019-08-17_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\AMZN\\windows\\2019-08-17_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\COST\\windows\\2019-08-17_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\COST\\windows\\2019-08-17_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\COST\\windows\\2019-08-17_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\COST\\windows\\2019-08-17_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\GOOG\\windows\\2019-08-17_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\GOOG\\windows\\2019-08-17_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\GOOG\\windows\\2019-08-17_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\GOOG\\windows\\2019-08-17_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\MU\\windows\\2019-08-17_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\MU\\windows\\2019-08-17_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\MU\\windows\\2019-08-17_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\MU\\windows\\2019-08-17_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\NVDA\\windows\\2019-08-17_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\NVDA\\windows\\2019-08-17_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\NVDA\\windows\\2019-08-17_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\NVDA\\windows\\2019-08-17_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\SNDK\\windows\\2019-08-17_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\SNDK\\windows\\2019-08-17_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\SNDK\\windows\\2019-08-17_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\SNDK\\windows\\2019-08-17_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\IONQ\\windows\\2021-01-04_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\IONQ\\windows\\2021-01-04_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\IONQ\\windows\\2021-01-04_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\IONQ\\windows\\2021-01-04_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\PATH\\windows\\2021-04-21_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\PATH\\windows\\2021-04-21_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\PATH\\windows\\2021-04-21_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1d\\PATH\\windows\\2021-04-21_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\CROX\\windows\\2018-05-01_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\CROX\\windows\\2018-05-01_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\CROX\\windows\\2018-05-01_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\CROX\\windows\\2018-05-01_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\TWST\\windows\\2018-10-31_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\TWST\\windows\\2018-10-31_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\TWST\\windows\\2018-10-31_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\TWST\\windows\\2018-10-31_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\IONQ\\windows\\2021-01-04_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\IONQ\\windows\\2021-01-04_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\IONQ\\windows\\2021-01-04_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\IONQ\\windows\\2021-01-04_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\PATH\\windows\\2021-04-21_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\PATH\\windows\\2021-04-21_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\PATH\\windows\\2021-04-21_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\PATH\\windows\\2021-04-21_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\AAPL\\windows\\2021-08-16_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\AAPL\\windows\\2021-08-16_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\AAPL\\windows\\2021-08-16_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\AAPL\\windows\\2021-08-16_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\AMZN\\windows\\2021-08-16_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\AMZN\\windows\\2021-08-16_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\AMZN\\windows\\2021-08-16_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\AMZN\\windows\\2021-08-16_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\COST\\windows\\2021-08-16_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\COST\\windows\\2021-08-16_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\COST\\windows\\2021-08-16_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\COST\\windows\\2021-08-16_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\GOOG\\windows\\2021-08-16_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\GOOG\\windows\\2021-08-16_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\GOOG\\windows\\2021-08-16_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\GOOG\\windows\\2021-08-16_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\MU\\windows\\2021-08-16_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\MU\\windows\\2021-08-16_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\MU\\windows\\2021-08-16_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\MU\\windows\\2021-08-16_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\NVDA\\windows\\2021-08-16_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\NVDA\\windows\\2021-08-16_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\NVDA\\windows\\2021-08-16_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\NVDA\\windows\\2021-08-16_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\SNDK\\windows\\2021-08-16_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\SNDK\\windows\\2021-08-16_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\SNDK\\windows\\2021-08-16_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1h\\SNDK\\windows\\2021-08-16_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2018-05-01_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2018-05-01_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2018-05-01_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2018-05-01_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2018-10-31_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2018-10-31_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2018-10-31_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2018-10-31_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2021-01-04_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2021-01-04_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2021-01-04_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2021-01-04_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2021-04-21_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2021-04-21_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2021-04-21_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2021-04-21_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2025-01-13_to_2025-04-23\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2025-01-13_to_2025-04-23\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2025-01-13_to_2025-04-23\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2025-01-13_to_2025-04-23\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2025-01-13_to_2025-04-23\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2025-01-13_to_2025-04-23\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2025-01-13_to_2025-04-23\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2025-01-13_to_2025-04-23\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2025-01-13_to_2025-04-23\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2025-01-13_to_2025-04-23\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2025-01-13_to_2025-04-23\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2025-01-13_to_2025-04-23\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2025-01-13_to_2025-04-23\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2025-01-13_to_2025-04-23\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2025-01-13_to_2025-04-23\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2025-01-13_to_2025-04-23\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2025-01-13_to_2025-04-23\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2025-01-13_to_2025-04-23\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2025-01-13_to_2025-04-23\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2025-01-13_to_2025-04-23\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2025-01-13_to_2025-04-23\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2025-01-13_to_2025-04-23\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2025-01-13_to_2025-04-23\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2025-01-13_to_2025-04-23\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2025-01-13_to_2025-04-23\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2025-01-13_to_2025-04-23\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2025-01-13_to_2025-04-23\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2025-01-13_to_2025-04-23\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2025-04-23_to_2025-08-01\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2025-04-23_to_2025-08-01\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2025-04-23_to_2025-08-01\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2025-04-23_to_2025-08-01\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2025-04-23_to_2025-08-01\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2025-04-23_to_2025-08-01\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2025-04-23_to_2025-08-01\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2025-04-23_to_2025-08-01\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2025-04-23_to_2025-08-01\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2025-04-23_to_2025-08-01\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2025-04-23_to_2025-08-01\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2025-04-23_to_2025-08-01\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2025-04-23_to_2025-08-01\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2025-04-23_to_2025-08-01\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2025-04-23_to_2025-08-01\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2025-04-23_to_2025-08-01\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2025-04-23_to_2025-08-01\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2025-04-23_to_2025-08-01\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2025-04-23_to_2025-08-01\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2025-04-23_to_2025-08-01\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2025-04-23_to_2025-08-01\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2025-04-23_to_2025-08-01\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2025-04-23_to_2025-08-01\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2025-04-23_to_2025-08-01\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2025-04-23_to_2025-08-01\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2025-04-23_to_2025-08-01\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2025-04-23_to_2025-08-01\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2025-04-23_to_2025-08-01\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2025-08-01_to_2025-11-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2025-08-01_to_2025-11-09\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2025-08-01_to_2025-11-09\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2025-08-01_to_2025-11-09\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2025-08-01_to_2025-11-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2025-08-01_to_2025-11-09\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2025-08-01_to_2025-11-09\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2025-08-01_to_2025-11-09\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2025-08-01_to_2025-11-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2025-08-01_to_2025-11-09\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2025-08-01_to_2025-11-09\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2025-08-01_to_2025-11-09\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2025-08-01_to_2025-11-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2025-08-01_to_2025-11-09\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2025-08-01_to_2025-11-09\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2025-08-01_to_2025-11-09\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2025-08-01_to_2025-11-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2025-08-01_to_2025-11-09\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2025-08-01_to_2025-11-09\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2025-08-01_to_2025-11-09\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2025-08-01_to_2025-11-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2025-08-01_to_2025-11-09\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2025-08-01_to_2025-11-09\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2025-08-01_to_2025-11-09\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2025-08-01_to_2025-11-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2025-08-01_to_2025-11-09\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2025-08-01_to_2025-11-09\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2025-08-01_to_2025-11-09\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2025-11-09_to_2026-02-17\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2025-11-09_to_2026-02-17\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2025-11-09_to_2026-02-17\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2025-11-09_to_2026-02-17\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2025-11-09_to_2026-02-17\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2025-11-09_to_2026-02-17\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2025-11-09_to_2026-02-17\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2025-11-09_to_2026-02-17\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2025-11-09_to_2026-02-17\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2025-11-09_to_2026-02-17\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2025-11-09_to_2026-02-17\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2025-11-09_to_2026-02-17\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2025-11-09_to_2026-02-17\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2025-11-09_to_2026-02-17\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2025-11-09_to_2026-02-17\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2025-11-09_to_2026-02-17\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2025-11-09_to_2026-02-17\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2025-11-09_to_2026-02-17\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2025-11-09_to_2026-02-17\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2025-11-09_to_2026-02-17\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2025-11-09_to_2026-02-17\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2025-11-09_to_2026-02-17\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2025-11-09_to_2026-02-17\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2025-11-09_to_2026-02-17\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2025-11-09_to_2026-02-17\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2025-11-09_to_2026-02-17\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2025-11-09_to_2026-02-17\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2025-11-09_to_2026-02-17\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-02-17_to_2026-05-28\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-02-17_to_2026-05-28\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-02-17_to_2026-05-28\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-02-17_to_2026-05-28\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-02-17_to_2026-05-28\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-02-17_to_2026-05-28\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-02-17_to_2026-05-28\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-02-17_to_2026-05-28\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-02-17_to_2026-05-28\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-02-17_to_2026-05-28\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-02-17_to_2026-05-28\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-02-17_to_2026-05-28\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-02-17_to_2026-05-28\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-02-17_to_2026-05-28\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-02-17_to_2026-05-28\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-02-17_to_2026-05-28\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-02-17_to_2026-05-28\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-02-17_to_2026-05-28\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-02-17_to_2026-05-28\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-02-17_to_2026-05-28\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-02-17_to_2026-05-28\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-02-17_to_2026-05-28\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-02-17_to_2026-05-28\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-02-17_to_2026-05-28\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-02-17_to_2026-05-28\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-02-17_to_2026-05-28\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-02-17_to_2026-05-28\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-02-17_to_2026-05-28\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-05-07_to_2026-08-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-05-07_to_2026-08-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-05-07_to_2026-08-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-05-07_to_2026-08-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-28_to_2026-09-05\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-28_to_2026-09-05\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-28_to_2026-09-05\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-05-28_to_2026-09-05\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-06-04_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-06-04_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-06-04_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-06-04_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-06-04_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-06-04_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-06-04_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-06-04_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-06-04_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-06-04_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-06-04_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-06-04_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-06-04_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-06-04_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-06-04_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-06-04_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-08-13_to_2026-09-05\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-08-13_to_2026-09-05\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-08-13_to_2026-09-05\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-08-13_to_2026-09-05\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-08-13_to_2026-09-05\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-08-13_to_2026-09-05\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-08-13_to_2026-09-05\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-08-13_to_2026-09-05\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-08-13_to_2026-09-05\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-08-13_to_2026-09-05\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-08-13_to_2026-09-05\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-08-13_to_2026-09-05\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-08-13_to_2026-09-05\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-08-13_to_2026-09-05\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-08-13_to_2026-09-05\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-08-13_to_2026-09-05\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-08-13_to_2026-09-05\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-08-13_to_2026-09-05\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-08-13_to_2026-09-05\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-08-13_to_2026-09-05\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-08-13_to_2026-09-05\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-08-13_to_2026-09-05\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-08-13_to_2026-09-05\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-08-13_to_2026-09-05\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-03_to_2026-09-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-03_to_2026-09-09\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-03_to_2026-09-09\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-03_to_2026-09-09\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-03_to_2026-09-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-03_to_2026-09-09\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-03_to_2026-09-09\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-03_to_2026-09-09\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-03_to_2026-09-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-03_to_2026-09-09\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-03_to_2026-09-09\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-03_to_2026-09-09\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-03_to_2026-09-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-03_to_2026-09-09\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-03_to_2026-09-09\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-03_to_2026-09-09\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-03_to_2026-09-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-03_to_2026-09-09\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-03_to_2026-09-09\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-03_to_2026-09-09\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-03_to_2026-09-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-03_to_2026-09-09\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-03_to_2026-09-09\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-03_to_2026-09-09\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-03_to_2026-09-09\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-03_to_2026-09-09\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-03_to_2026-09-09\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-03_to_2026-09-09\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-07_to_2026-09-10\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-07_to_2026-09-10\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-07_to_2026-09-10\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-07_to_2026-09-10\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-07_to_2026-09-10\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-07_to_2026-09-10\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-07_to_2026-09-10\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-07_to_2026-09-10\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-07_to_2026-09-10\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-07_to_2026-09-10\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-07_to_2026-09-10\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-07_to_2026-09-10\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-07_to_2026-09-10\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-07_to_2026-09-10\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-07_to_2026-09-10\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-07_to_2026-09-10\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-07_to_2026-09-10\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-07_to_2026-09-10\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-07_to_2026-09-10\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-07_to_2026-09-10\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-07_to_2026-09-10\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-07_to_2026-09-10\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-07_to_2026-09-10\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-07_to_2026-09-10\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-07_to_2026-09-10\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-07_to_2026-09-10\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-07_to_2026-09-10\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-07_to_2026-09-10\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-08_to_2026-09-11\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-08_to_2026-09-11\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-08_to_2026-09-11\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-08_to_2026-09-11\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-08_to_2026-09-11\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-08_to_2026-09-11\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-08_to_2026-09-11\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-08_to_2026-09-11\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-08_to_2026-09-11\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-08_to_2026-09-11\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-08_to_2026-09-11\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-08_to_2026-09-11\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-08_to_2026-09-11\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-08_to_2026-09-11\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-08_to_2026-09-11\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-08_to_2026-09-11\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-08_to_2026-09-11\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-08_to_2026-09-11\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-08_to_2026-09-11\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-08_to_2026-09-11\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-08_to_2026-09-11\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-08_to_2026-09-11\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-08_to_2026-09-11\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-08_to_2026-09-11\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-08_to_2026-09-11\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-08_to_2026-09-11\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-08_to_2026-09-11\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-08_to_2026-09-11\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-09_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-09_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-09_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-09_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-09_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-09_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-09_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-09_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-09_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-09_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-09_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-09_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-09_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-09_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-09_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-09_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-09_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-09_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-09_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-09_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-09_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-09_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-09_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-09_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-09_to_2026-09-12\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-09_to_2026-09-12\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-09_to_2026-09-12\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-09_to_2026-09-12\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-10_to_2026-09-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-10_to_2026-09-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-10_to_2026-09-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-10_to_2026-09-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-10_to_2026-09-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-10_to_2026-09-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-10_to_2026-09-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-10_to_2026-09-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-10_to_2026-09-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-10_to_2026-09-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-10_to_2026-09-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-10_to_2026-09-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-10_to_2026-09-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-10_to_2026-09-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-10_to_2026-09-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-10_to_2026-09-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-10_to_2026-09-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-10_to_2026-09-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-10_to_2026-09-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-10_to_2026-09-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-10_to_2026-09-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-10_to_2026-09-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-10_to_2026-09-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-10_to_2026-09-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-10_to_2026-09-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-10_to_2026-09-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-10_to_2026-09-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-10_to_2026-09-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-10_to_2026-09-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-10_to_2026-09-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-10_to_2026-09-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-10_to_2026-09-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-10_to_2026-09-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-10_to_2026-09-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-10_to_2026-09-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-10_to_2026-09-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-10_to_2026-09-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-10_to_2026-09-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-10_to_2026-09-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-10_to_2026-09-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-10_to_2026-09-15\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-10_to_2026-09-15\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-10_to_2026-09-15\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-10_to_2026-09-15\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-13_to_2026-09-16\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-13_to_2026-09-16\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-13_to_2026-09-16\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-13_to_2026-09-16\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-13_to_2026-09-16\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-13_to_2026-09-16\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-13_to_2026-09-16\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-13_to_2026-09-16\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-13_to_2026-09-16\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-13_to_2026-09-16\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-13_to_2026-09-16\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-13_to_2026-09-16\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-13_to_2026-09-16\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-13_to_2026-09-16\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-13_to_2026-09-16\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-13_to_2026-09-16\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-13_to_2026-09-16\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-13_to_2026-09-16\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-13_to_2026-09-16\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-13_to_2026-09-16\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-13_to_2026-09-16\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-13_to_2026-09-16\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-13_to_2026-09-16\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-13_to_2026-09-16\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-13_to_2026-09-16\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-13_to_2026-09-16\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-13_to_2026-09-16\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-13_to_2026-09-16\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-13_to_2026-09-16\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-13_to_2026-09-16\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-13_to_2026-09-16\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-13_to_2026-09-16\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-13_to_2026-09-16\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-13_to_2026-09-16\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-13_to_2026-09-16\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-13_to_2026-09-16\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-13_to_2026-09-16\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-13_to_2026-09-16\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-13_to_2026-09-16\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-13_to_2026-09-16\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-13_to_2026-09-16\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-13_to_2026-09-16\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-13_to_2026-09-16\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-13_to_2026-09-16\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-14_to_2026-09-17\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-14_to_2026-09-17\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-14_to_2026-09-17\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-14_to_2026-09-17\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-14_to_2026-09-17\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-14_to_2026-09-17\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-14_to_2026-09-17\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-14_to_2026-09-17\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-14_to_2026-09-17\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-14_to_2026-09-17\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-14_to_2026-09-17\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-14_to_2026-09-17\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-14_to_2026-09-17\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-14_to_2026-09-17\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-14_to_2026-09-17\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-14_to_2026-09-17\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-14_to_2026-09-17\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-14_to_2026-09-17\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-14_to_2026-09-17\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-14_to_2026-09-17\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-14_to_2026-09-17\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-14_to_2026-09-17\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-14_to_2026-09-17\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-14_to_2026-09-17\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-14_to_2026-09-17\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-14_to_2026-09-17\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-14_to_2026-09-17\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-14_to_2026-09-17\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-14_to_2026-09-17\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-14_to_2026-09-17\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-14_to_2026-09-17\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-14_to_2026-09-17\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-14_to_2026-09-17\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-14_to_2026-09-17\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-14_to_2026-09-17\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-14_to_2026-09-17\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-14_to_2026-09-17\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-14_to_2026-09-17\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-14_to_2026-09-17\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-14_to_2026-09-17\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-14_to_2026-09-17\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-14_to_2026-09-17\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-14_to_2026-09-17\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-14_to_2026-09-17\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-15_to_2026-09-18\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-15_to_2026-09-18\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-15_to_2026-09-18\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-15_to_2026-09-18\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-15_to_2026-09-18\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-15_to_2026-09-18\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-15_to_2026-09-18\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-15_to_2026-09-18\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-15_to_2026-09-18\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-15_to_2026-09-18\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-15_to_2026-09-18\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-15_to_2026-09-18\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-15_to_2026-09-18\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-15_to_2026-09-18\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-15_to_2026-09-18\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-15_to_2026-09-18\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-15_to_2026-09-18\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-15_to_2026-09-18\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-15_to_2026-09-18\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-15_to_2026-09-18\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-15_to_2026-09-18\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-15_to_2026-09-18\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-15_to_2026-09-18\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-15_to_2026-09-18\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-15_to_2026-09-18\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-15_to_2026-09-18\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-15_to_2026-09-18\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-15_to_2026-09-18\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-15_to_2026-09-18\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-15_to_2026-09-18\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-15_to_2026-09-18\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-15_to_2026-09-18\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-15_to_2026-09-18\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-15_to_2026-09-18\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-15_to_2026-09-18\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-15_to_2026-09-18\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-15_to_2026-09-18\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-15_to_2026-09-18\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-15_to_2026-09-18\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-15_to_2026-09-18\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-15_to_2026-09-18\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-15_to_2026-09-18\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-15_to_2026-09-18\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-15_to_2026-09-18\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-16_to_2026-09-19\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-16_to_2026-09-19\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-16_to_2026-09-19\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-16_to_2026-09-19\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-16_to_2026-09-19\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-16_to_2026-09-19\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-16_to_2026-09-19\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-16_to_2026-09-19\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-16_to_2026-09-19\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-16_to_2026-09-19\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-16_to_2026-09-19\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-16_to_2026-09-19\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-16_to_2026-09-19\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-16_to_2026-09-19\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-16_to_2026-09-19\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-16_to_2026-09-19\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-16_to_2026-09-19\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-16_to_2026-09-19\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-16_to_2026-09-19\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-16_to_2026-09-19\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-16_to_2026-09-19\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-16_to_2026-09-19\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-16_to_2026-09-19\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-16_to_2026-09-19\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-16_to_2026-09-19\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-16_to_2026-09-19\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-16_to_2026-09-19\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-16_to_2026-09-19\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-16_to_2026-09-19\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-16_to_2026-09-19\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-16_to_2026-09-19\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-16_to_2026-09-19\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-16_to_2026-09-19\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-16_to_2026-09-19\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-16_to_2026-09-19\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-16_to_2026-09-19\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-16_to_2026-09-19\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-16_to_2026-09-19\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-16_to_2026-09-19\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-16_to_2026-09-19\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-16_to_2026-09-19\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-16_to_2026-09-19\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-16_to_2026-09-19\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-16_to_2026-09-19\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-17_to_2026-09-22\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-17_to_2026-09-22\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-17_to_2026-09-22\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-17_to_2026-09-22\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-17_to_2026-09-22\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-17_to_2026-09-22\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-17_to_2026-09-22\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-17_to_2026-09-22\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-17_to_2026-09-22\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-17_to_2026-09-22\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-17_to_2026-09-22\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-17_to_2026-09-22\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-17_to_2026-09-22\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-17_to_2026-09-22\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-17_to_2026-09-22\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-17_to_2026-09-22\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-17_to_2026-09-22\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-17_to_2026-09-22\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-17_to_2026-09-22\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-17_to_2026-09-22\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-17_to_2026-09-22\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-17_to_2026-09-22\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-17_to_2026-09-22\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-17_to_2026-09-22\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-17_to_2026-09-22\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-17_to_2026-09-22\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-17_to_2026-09-22\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-17_to_2026-09-22\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-17_to_2026-09-22\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-17_to_2026-09-22\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-17_to_2026-09-22\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-17_to_2026-09-22\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-17_to_2026-09-22\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-17_to_2026-09-22\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-17_to_2026-09-22\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-17_to_2026-09-22\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-17_to_2026-09-22\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-17_to_2026-09-22\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-17_to_2026-09-22\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-17_to_2026-09-22\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-17_to_2026-09-22\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-17_to_2026-09-22\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-17_to_2026-09-22\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-17_to_2026-09-22\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-20_to_2026-09-23\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-20_to_2026-09-23\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-20_to_2026-09-23\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AAPL\\windows\\2026-09-20_to_2026-09-23\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-20_to_2026-09-23\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-20_to_2026-09-23\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-20_to_2026-09-23\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\AMZN\\windows\\2026-09-20_to_2026-09-23\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-20_to_2026-09-23\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-20_to_2026-09-23\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-20_to_2026-09-23\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\COST\\windows\\2026-09-20_to_2026-09-23\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-20_to_2026-09-23\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-20_to_2026-09-23\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-20_to_2026-09-23\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\CROX\\windows\\2026-09-20_to_2026-09-23\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-20_to_2026-09-23\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-20_to_2026-09-23\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-20_to_2026-09-23\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\GOOG\\windows\\2026-09-20_to_2026-09-23\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-20_to_2026-09-23\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-20_to_2026-09-23\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-20_to_2026-09-23\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\IONQ\\windows\\2026-09-20_to_2026-09-23\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-20_to_2026-09-23\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-20_to_2026-09-23\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-20_to_2026-09-23\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\MU\\windows\\2026-09-20_to_2026-09-23\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-20_to_2026-09-23\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-20_to_2026-09-23\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-20_to_2026-09-23\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\NVDA\\windows\\2026-09-20_to_2026-09-23\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-20_to_2026-09-23\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-20_to_2026-09-23\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-20_to_2026-09-23\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\PATH\\windows\\2026-09-20_to_2026-09-23\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-20_to_2026-09-23\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-20_to_2026-09-23\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-20_to_2026-09-23\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\SNDK\\windows\\2026-09-20_to_2026-09-23\\provider.dbn.zst",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-20_to_2026-09-23\\normalized.parquet",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-20_to_2026-09-23\\manifest.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-20_to_2026-09-23\\receipt.json",
+    "C:\\DATASTORE\\market-data\\databento\\us-equities\\XNAS.ITCH\\ohlcv-1m\\TWST\\windows\\2026-09-20_to_2026-09-23\\provider.dbn.zst",
+    "C:\\DATASTORE\\stocks\\AAPL\\corporate\\stock_splits\\fmp\\normalized\\AAPL_stock_splits.parquet",
+    "C:\\DATASTORE\\stocks\\AMZN\\corporate\\stock_splits\\fmp\\normalized\\AMZN_stock_splits.parquet",
+    "C:\\DATASTORE\\stocks\\GOOG\\corporate\\stock_splits\\fmp\\normalized\\GOOG_stock_splits.parquet",
+    "C:\\DATASTORE\\stocks\\MU\\corporate\\stock_splits\\fmp\\normalized\\MU_stock_splits.parquet",
+    "C:\\DATASTORE\\stocks\\NVDA\\corporate\\stock_splits\\fmp\\normalized\\NVDA_stock_splits.parquet",
+    "C:\\DATASTORE\\stocks\\COST\\corporate\\stock_splits\\fmp\\normalized\\COST_stock_splits.parquet"
+  ],
+  "source_ranges": [
+    {
+      "symbol": "AAPL",
+      "rows": 1680,
+      "first_action": "2019-09-18",
+      "last_action": "2026-09-23"
+    },
+    {
+      "symbol": "AMZN",
+      "rows": 1680,
+      "first_action": "2019-09-18",
+      "last_action": "2026-09-23"
+    },
+    {
+      "symbol": "COST",
+      "rows": 1700,
+      "first_action": "2019-09-18",
+      "last_action": "2026-09-23"
+    },
+    {
+      "symbol": "CROX",
+      "rows": 2090,
+      "first_action": "2018-05-31",
+      "last_action": "2026-09-23"
+    },
+    {
+      "symbol": "GOOG",
+      "rows": 1680,
+      "first_action": "2019-09-18",
+      "last_action": "2026-09-23"
+    },
+    {
+      "symbol": "IONQ",
+      "rows": 1207,
+      "first_action": "2021-11-01",
+      "last_action": "2026-09-23"
+    },
+    {
+      "symbol": "MU",
+      "rows": 1700,
+      "first_action": "2019-09-18",
+      "last_action": "2026-09-23"
+    },
+    {
+      "symbol": "NVDA",
+      "rows": 1672,
+      "first_action": "2019-09-18",
+      "last_action": "2026-09-23"
+    },
+    {
+      "symbol": "PATH",
+      "rows": 1321,
+      "first_action": "2021-05-20",
+      "last_action": "2026-09-23"
+    },
+    {
+      "symbol": "SNDK",
+      "rows": 377,
+      "first_action": "2025-03-25",
+      "last_action": "2026-09-23"
+    },
+    {
+      "symbol": "TWST",
+      "rows": 1962,
+      "first_action": "2018-11-30",
+      "last_action": "2026-09-23"
+    }
+  ],
+  "source_kinds": {
+    "verified-native-1m-aggregate": 210,
+    "verified-native-ohlcv-1d": 16859
+  },
+  "orders_placed": 0,
+  "fitting_performed": false,
+  "published": false
+}

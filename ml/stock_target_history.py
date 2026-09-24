@@ -5,25 +5,240 @@ import argparse
 import json
 import math
 import os
+import shutil
 from datetime import date, timedelta
 from pathlib import Path
 
 import exchange_calendars as xcals
 import pandas as pd
+import numpy as np
 
 from datafetching.cme_runtime import load_repository_environment
 from datafetching.databento_cold_start import (
     COORDINATOR_VERSION, MANIFEST_VERSION, PLAN_DATASET_US_EQUITIES, STANDARD_PLAN_AUTHORITY,
-    _checksum, _entry_storage_path, _overlap_days, _read_request_cursor, _request_kwargs,
+    _checksum, _download_generic_entry, _entry_storage_path, _metadata_call, _overlap_days,
+    _read_request_cursor, _request_kwargs,
     _validate_execution_request_identity, _validate_manifest_checksum, _validate_manifest_included_scope,
     _verify_generic_partition, _window_start, _write_json_atomic, discover_dataset_catalog,
-    execute_manifest, preflight_manifest, schema_window,
+    execute_manifest, preflight_manifest, required_free_bytes, schema_window,
 )
 from datafetching.databento_storage import HISTORY_PROFILE, MARKET_US_EQUITIES, dataset_root
+from datafetching.history_scope import price_floor, read_history_policy
 from datafetching.parquet_store import DATASTORE_TARGETS, resolve_datastore_dir
 from datafetching.runtime_lock import exclusive_runtime_lock
 from ml.artifacts import create_timestamp_directory, file_checksum, utc_timestamp
 from ml.stock_trader.contracts import STOCK_TRADER_SYMBOLS
+
+
+FEATURE_HISTORY_EXTENSION_VERSION = "xnas-stock-feature-history-prefix-v1"
+FEATURE_HISTORY_MAX_BILLABLE_BYTES = 20_000_000_000
+
+
+def _verified_feature_partitions(root: Path, symbol: str, schema: str) -> list[dict]:
+    """Verify retained native evidence, including earlier onboarding requests."""
+    source = dataset_root(root, market=MARKET_US_EQUITIES, dataset="XNAS.ITCH").resolve()
+    result = []
+    for path in sorted((source / schema / symbol / "windows").glob("*/manifest.json")):
+        directory = path.parent.resolve()
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        request = manifest["request"]
+        if (request.get("dataset") != "XNAS.ITCH" or request.get("schema") != schema
+                or request.get("symbol_scope") != [symbol] or request.get("stype_in") != "raw_symbol"
+                or request.get("storage_contract") != "isolated-cold-start"
+                or request.get("standard_plan_dataset") != PLAN_DATASET_US_EQUITIES):
+            raise ValueError(f"{symbol}/{schema} feature-history archive has a different source identity")
+        expected = _entry_storage_path(root, dataset="XNAS.ITCH", market=MARKET_US_EQUITIES,
+            schema=schema, symbol=symbol, start=date.fromisoformat(request["start"]),
+            end=date.fromisoformat(request["end"]), contract="isolated-cold-start").resolve()
+        if (directory != expected or not directory.is_relative_to(source)
+                or Path(request["storage_path"]).resolve() != directory):
+            raise ValueError("Feature-history archive has an invalid native destination")
+        for name in ("raw", "normalized"):
+            if not (directory / manifest[name]["path"]).resolve().is_relative_to(directory):
+                raise ValueError("Feature-history payload escapes its archive partition")
+        # Onboarding has its own immutable request-id convention. The native
+        # verifier binds that exact request to both receipt and payloads.
+        _verify_generic_partition(directory, request)
+        evidence = {"manifest_path": str(path), "manifest_sha256": file_checksum(path),
+                    "request": request, "earliest_observed_timestamp": None}
+        if schema != "ohlcv-1m":
+            frame = pd.read_parquet(directory / manifest["normalized"]["path"])
+            column = manifest["normalized"]["timestamp_column"]
+            if column not in frame and frame.index.name == column:
+                frame = frame.reset_index()
+            if "symbol" in frame and set(frame.symbol.astype(str).str.upper()) != {symbol}:
+                raise ValueError("Feature-history archive contains another symbol")
+            prices = frame.loc[:, ["open", "high", "low", "close"]].apply(pd.to_numeric, errors="coerce")
+            undefined = frame.loc[:, ["open", "high", "low", "close"]].isna().all(axis=1)
+            observed = np.isfinite(prices).all(axis=1) & prices.gt(0).all(axis=1)
+            consistent = prices.high.ge(prices[["open", "low", "close"]].max(axis=1)) & prices.low.le(
+                prices[["open", "high", "close"]].min(axis=1))
+            if (~undefined & ~(observed & consistent)).any():
+                raise ValueError(f"{symbol}/{schema} feature-history contains invalid observed OHLC")
+            times = pd.to_datetime(frame.loc[observed, column], utc=True, errors="raise")
+            if times.empty or times.isna().any():
+                raise ValueError(f"{symbol}/{schema} has no valid observed feature prices")
+            evidence.update(earliest_observed_timestamp=times.min().isoformat(),
+                undefined_price_rows=int(undefined.sum()))
+        result.append(evidence)
+    if not result:
+        raise ValueError(f"Verified {symbol}/{schema} feature-history archive is missing")
+    return result
+
+
+def build_feature_history_extension_manifest(root: Path, *, through: date) -> dict:
+    """Extend only the missing prefix supported by existing observed features."""
+    root = Path(root).resolve()
+    requests, evidence = [], {}
+    window = schema_window(PLAN_DATASET_US_EQUITIES, "ohlcv-1m")
+    for symbol in sorted(STOCK_TRADER_SYMBOLS):
+        cursor = _verified_target_cursor(root, symbol)
+        if cursor is None:
+            raise ValueError(f"{symbol} feature-history extension requires an existing verified minute cursor")
+        features = [item for schema in ("ohlcv-1d", "ohlcv-1h")
+                    for item in _verified_feature_partitions(root, symbol, schema)]
+        minutes = _verified_feature_partitions(root, symbol, "ohlcv-1m")
+        needed = min(pd.Timestamp(item["earliest_observed_timestamp"]).date() for item in features)
+        policy = read_history_policy(root, symbol)
+        if policy is not None:
+            needed = max(needed, price_floor(policy).date())
+        existing_start = min(date.fromisoformat(item["request"]["start"]) for item in minutes)
+        if existing_start > through:
+            raise ValueError("Existing minute history starts after the requested completed session")
+        evidence[symbol] = {"feature_start": needed.isoformat(), "minute_start": existing_start.isoformat(),
+            "cursor_before": cursor, "history_policy": policy,
+            "feature_partitions": features, "minute_partitions": minutes,
+            "status": "PREFIX_REQUIRED" if needed < existing_start else "ALREADY_COVERED"}
+        if needed >= existing_start:
+            continue
+        identity = {"dataset": "XNAS.ITCH", "standard_plan_dataset": PLAN_DATASET_US_EQUITIES,
+            "schema": "ohlcv-1m", "symbol_scope": [symbol], "stype_in": "raw_symbol",
+            "start": needed.isoformat(), "end": existing_start.isoformat(),
+            "storage_contract": "isolated-cold-start", "window": window,
+            "fetch_mode": "feature-history-prefix", "baseline_start": needed.isoformat(),
+            "previous_completed_through": cursor["completed_through"]}
+        path = _entry_storage_path(root, dataset="XNAS.ITCH", market=MARKET_US_EQUITIES,
+            schema="ohlcv-1m", symbol=symbol, start=needed, end=existing_start, contract="isolated-cold-start")
+        request = {"request_id": _checksum(identity)[:24], **identity, "storage_path": str(path), "status": "PENDING"}
+        _validate_execution_request_identity(root, request)
+        requests.append(request)
+    body = {"schema_version": FEATURE_HISTORY_EXTENSION_VERSION, "as_of": through.isoformat(),
+        "datastore_root": str(root), "entitlement_authority": STANDARD_PLAN_AUTHORITY,
+        "source_contract": "xnas-itch-archive-v1", "requests": requests, "symbols": evidence,
+        "maximum_cost_usd": 0.0, "maximum_billable_bytes": FEATURE_HISTORY_MAX_BILLABLE_BYTES,
+        "cursor_policy": "preserve_exact_existing_cursor_no_prefix_cursor_write"}
+    return {**body, "manifest_id": _checksum(body)[:24], "semantic_checksum_sha256": _checksum(body)}
+
+
+def _nonnegative_metadata_integer(value, *, name: str) -> int:
+    number = float(value)
+    if isinstance(value, bool) or not math.isfinite(number) or number < 0 or number != int(number):
+        raise ValueError(f"Provider returned an invalid feature-history {name}")
+    return int(number)
+
+
+def _extend_to_feature_history(root: Path, *, client, through: date, run: Path,
+                               execute: bool, reporter) -> dict:
+    """Use native writers under exact zero-dollar and bounded-capacity gates."""
+    from datafetching.databento_cold_start import history_cursor_path
+
+    record = {"schema_version": FEATURE_HISTORY_EXTENSION_VERSION, "status": "PREPARING",
+              "required": True, "orders_placed": 0, "started_at": utc_timestamp().isoformat()}
+    record_path = run / "feature-history-extension.json"
+    snapshots = {}
+    try:
+        for symbol in STOCK_TRADER_SYMBOLS:
+            path = history_cursor_path(root, market=MARKET_US_EQUITIES, dataset="XNAS.ITCH",
+                                       schema="ohlcv-1m", symbol=symbol)
+            if path.is_file():
+                snapshots[symbol] = (path, path.read_bytes())
+        _write_json_atomic(run / "feature-history-original-cursors.json", {
+            symbol: {"path": str(path), "sha256": file_checksum(path),
+                     "content": payload.decode("utf-8")}
+            for symbol, (path, payload) in snapshots.items()})
+        manifest = build_feature_history_extension_manifest(root, through=through)
+        _write_json_atomic(run / "feature-history-manifest.json", manifest)
+        record.update(manifest_sha256=file_checksum(run / "feature-history-manifest.json"),
+                      requests=len(manifest["requests"]), completed_requests=[])
+        _write_json_atomic(record_path, record)
+        if manifest["requests"]:
+            catalog = discover_dataset_catalog(client, dataset="XNAS.ITCH", required_schemas=("ohlcv-1m",))
+            estimates = []
+            bounds = catalog["ohlcv-1m"]
+            preflight = {"dataset_range": catalog, "estimates": estimates, "maximum_cost_usd": 0.0,
+                         "maximum_billable_bytes": FEATURE_HISTORY_MAX_BILLABLE_BYTES,
+                         "generated_at": utc_timestamp().isoformat()}
+            _write_json_atomic(run / "feature-history-preflight.json", preflight)
+            for request in manifest["requests"]:
+                if request["start"] < bounds["start"] or request["end"] > bounds["end"]:
+                    raise ValueError("Provider range does not cover the required feature-history prefix")
+                cost = float(_metadata_call(client.metadata.get_cost, **_request_kwargs(request)))
+                if not math.isfinite(cost) or cost < 0:
+                    raise ValueError("Provider returned an invalid feature-history cost")
+                estimates.append({"request_id": request["request_id"], "estimated_cost_usd": cost})
+            _write_json_atomic(run / "feature-history-preflight.json", preflight)
+            if any(item["estimated_cost_usd"] != 0 for item in estimates):
+                raise ValueError("Feature-history prefix requires included zero-cost requests")
+            for request, estimate in zip(manifest["requests"], estimates, strict=True):
+                kwargs = _request_kwargs(request)
+                estimate["estimated_download_size_bytes"] = _nonnegative_metadata_integer(
+                    _metadata_call(client.metadata.get_billable_size, **kwargs), name="billable size")
+                estimate["record_count"] = _nonnegative_metadata_integer(
+                    _metadata_call(client.metadata.get_record_count, **kwargs), name="record count")
+            size = sum(item["estimated_download_size_bytes"] for item in estimates)
+            required = required_free_bytes(size)
+            free = shutil.disk_usage(root).free
+            preflight.update(total_estimated_download_size_bytes=size, required_free_bytes=required,
+                available_free_bytes=free, capacity_pass=free >= required and size <= FEATURE_HISTORY_MAX_BILLABLE_BYTES)
+            _write_json_atomic(run / "feature-history-preflight.json", preflight)
+            if not preflight["capacity_pass"]:
+                raise ValueError("Feature-history prefix capacity preflight failed")
+            if any(item["record_count"] == 0 for item in estimates):
+                raise ValueError("Required feature-history prefix has no provider records")
+            record["preflight_sha256"] = file_checksum(run / "feature-history-preflight.json")
+            if execute:
+                for request in manifest["requests"]:
+                    record.update(status="RUNNING", active_request=request["request_id"])
+                    _write_json_atomic(record_path, record)
+                    _validate_execution_request_identity(root, request)
+                    _download_generic_entry(client, datastore_root=root, request=request, reporter=reporter)
+                    directory = Path(request["storage_path"])
+                    _verify_generic_partition(directory, request)
+                    record["completed_requests"].append({"request_id": request["request_id"],
+                        "manifest_path": str(directory / "manifest.json"),
+                        "manifest_sha256": file_checksum(directory / "manifest.json")})
+                    _write_json_atomic(record_path, record)
+        for symbol, (path, payload) in snapshots.items():
+            if path.read_bytes() != payload:
+                raise RuntimeError(f"{symbol} feature-history prefix changed the production minute cursor")
+            _verified_target_cursor(root, symbol)
+        record.pop("active_request", None)
+        record.update(status="VERIFIED" if execute else "PREFLIGHTED", completed_at=utc_timestamp().isoformat(),
+                      current_cursors_preserved=True, estimated_cost_usd=0.0)
+        _write_json_atomic(record_path, record)
+        return record
+    except Exception as exc:
+        record.update(status="FAILED", error_type=type(exc).__name__, error=str(exc),
+            current_cursors_preserved=all(path.is_file() and path.read_bytes() == payload
+                                         for path, payload in snapshots.values()))
+        _write_json_atomic(record_path, record)
+        _write_json_atomic(run / "receipt.json", {"status": "FAILED", "orders_placed": 0,
+            "failed_stage": "feature_history_extension", "error_type": type(exc).__name__, "error": str(exc),
+            "feature_history_extension_sha256": file_checksum(record_path)})
+        raise
+
+
+def _bind_feature_history_receipt(run: Path, extension: dict | None) -> Path:
+    if extension is not None:
+        path = run / "receipt.json"
+        receipt = json.loads(path.read_text(encoding="utf-8"))
+        if receipt["status"] == "CURRENT" and extension["status"] == "PREFLIGHTED" and extension["requests"]:
+            receipt["status"] = "PREFLIGHTED"
+        receipt.update(feature_history_extension={"required": True, "status": extension["status"],
+            "path": str(run / "feature-history-extension.json"),
+            "sha256": file_checksum(run / "feature-history-extension.json")})
+        _write_json_atomic(path, receipt)
+    return run
 
 
 def latest_completed_through(as_of=None) -> date:
@@ -309,7 +524,8 @@ def _live_subscription_preflight(client, preflight: dict, run: Path) -> None:
 
 
 def maintain_target_history(root: Path, *, client, through: date | None = None,
-                            execute: bool = False, reporter=print, api_key: str | None = None) -> Path:
+                            execute: bool = False, reporter=print, api_key: str | None = None,
+                            extend_to_feature_history: bool = False) -> Path:
     """Cost-preflight exact requests before native download; never request paid data."""
     root = Path(root).resolve()
     through = through or latest_completed_through()
@@ -318,24 +534,26 @@ def maintain_target_history(root: Path, *, client, through: date | None = None,
     run = create_timestamp_directory(root / "ml/stock-target-history-runs")
     with exclusive_runtime_lock(root / ".ducketz-databento-cold-start.lock",
                                 process_name="Independent stock target history"):
+        extension = _extend_to_feature_history(root, client=client, through=through,
+            run=run, execute=execute, reporter=reporter) if extend_to_feature_history else None
         manifest = build_target_history_manifest(root, through=_historical_request_through(through))
         _write_json_atomic(run / "manifest.json", manifest)
         if not manifest["requests"] and not _needs_session_coverage(root, through):
             _write_json_atomic(run / "receipt.json", {"status": "CURRENT", "completed_through": through.isoformat(),
                 "manifest_sha256": file_checksum(run / "manifest.json"), "orders_placed": 0})
-            return run
+            return _bind_feature_history_receipt(run, extension)
         catalog = discover_dataset_catalog(client, dataset="XNAS.ITCH", required_schemas=("ohlcv-1m",))
         bounds = catalog["ohlcv-1m"]
         if any(request["start"] < bounds["start"] for request in manifest["requests"]):
             raise ValueError("Provider range does not cover the exact stock history request")
         if not manifest["requests"] or any(request["end"] > bounds["end"] for request in manifest["requests"]):
-            return _live_fallback(root, client=client, manifest=manifest, catalog=catalog,
-                through=through, run=run, execute=execute, reporter=reporter, api_key=api_key)
+            return _bind_feature_history_receipt(_live_fallback(root, client=client, manifest=manifest, catalog=catalog,
+                through=through, run=run, execute=execute, reporter=reporter, api_key=api_key), extension)
         counts = _historical_acquisition(root, client=client, manifest=manifest, catalog=catalog,
                                         run=run, execute=execute, reporter=reporter)
         if execute and _needs_session_coverage(root, through):
-            return _live_fallback(root, client=client, manifest=manifest, catalog=catalog,
-                through=through, run=run, execute=execute, reporter=reporter, api_key=api_key)
+            return _bind_feature_history_receipt(_live_fallback(root, client=client, manifest=manifest, catalog=catalog,
+                through=through, run=run, execute=execute, reporter=reporter, api_key=api_key), extension)
         _write_json_atomic(run / "receipt.json", {
             "status": "COMPLETE" if execute else "PREFLIGHTED", "completed_through": through.isoformat(),
             "counts": counts, "manifest_sha256": file_checksum(run / "manifest.json"),
@@ -343,7 +561,7 @@ def maintain_target_history(root: Path, *, client, through: date | None = None,
             "cost_preflight_sha256": file_checksum(run / "cost-preflight.json"),
             "estimated_cost_usd": 0.0, "orders_placed": 0, "completed_at": utc_timestamp().isoformat(),
         })
-        return run
+        return _bind_feature_history_receipt(run, extension)
 
 
 def main(argv=None) -> int:
@@ -353,6 +571,8 @@ def main(argv=None) -> int:
     data.add_argument("--datastore-target", choices=tuple(DATASTORE_TARGETS), default="pc")
     parser.add_argument("--through", type=date.fromisoformat)
     parser.add_argument("--execute", action="store_true")
+    parser.add_argument("--extend-to-feature-history", action="store_true",
+                        help="Acquire only verified daily/hourly feature history's missing minute prefix")
     args = parser.parse_args(argv)
     root = resolve_datastore_dir(root_dir=args.datastore, target=None if args.datastore else args.datastore_target)
     load_repository_environment()
@@ -361,7 +581,8 @@ def main(argv=None) -> int:
     if not api_key:
         raise RuntimeError("DATABENTO_API_KEY is required")
     run = maintain_target_history(root, client=db.Historical(api_key), through=args.through,
-                                  execute=args.execute, api_key=api_key)
+                                  execute=args.execute, api_key=api_key,
+                                  extend_to_feature_history=args.extend_to_feature_history)
     print(f"Stock target history receipt: {run / 'receipt.json'}")
     return 0
 

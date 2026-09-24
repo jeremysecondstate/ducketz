@@ -1,0 +1,9 @@
+# September 23 daily archive / training-history clarification
+
+User correctly identified AAPL and MU XNAS.ITCH ohlcv-1d archives extending before2023. Direct inspection of both supplied normalized.parquet files found1757 dailybars each, actual index ts_event2019-08-19T00:00Z through2026-08-14T00:00Z. Rawpayload, normalizedpayload andreceipt-boundmanifest hashesallverify. Provider manifests retain degraded-datewarnings2021-07-07,2021-10-26,2022-09-19; checksumintegrityalone doesnotclearqualitywarnings.
+
+Earlier statement referredto currentcausalfeaturepipeline andselected1m targethistory, notoldeststockpriceson disk. CurrentGameplanselect_prior_session_sources explicitlyuses1h operational samples for allfour groups. Those derive fromcanonicalLoopA EQUS.MINI stockbars/technicals, whileuserfilesare separateXNAS.ITCH coldarchives.2023iscurrentmaterializedfeaturecoverage, notafundamentaltrainingfloor. Thisisafixablehistory-integrationlimitation.
+
+Databentoohlcv-1d aggregatesUTCdates. Older completedbars cancontribute causaltrend/volatility/historyfeatures. They do notidentifypricesateachcurrent04:00/17:00orhourlyforecastboundarywithin5minutes. EvenGameplan1dtarget is04–17Pacific;1wfirst04tofifth17, notUTCdailyclose-to-close. Extendingexactexistingtrainingexamplesback2019 requires appropriatehistoricalfeatures/hourlyinputs, compatibleminuteendpointobservations andsplit/availability/source-qualityhandling. AlternativelydailyUTCclose-targetresearch isadifferenttargetandmustnotbepresentedasexistingGameplanqualification.
+
+Recommenda source-bound2019-onwardcandidatehistoryaudit/reconstruction where data permits, ratherthanassuming2023isoldestusabledata. Compareonunchangedrecentchronologicaldevelopmentwindows;retainindependentassessment. No sourcechange, downloads, training, publication, trader oroperationalmutationperformedinthisclarification. Officialschemahttps://databento.com/docs/schemas-and-data-formats/ohlcv .

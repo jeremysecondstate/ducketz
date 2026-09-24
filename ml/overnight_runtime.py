@@ -159,7 +159,8 @@ def _production_watchlist(repository_root: Path) -> Path:
 
 def _pin_stock_gameplan(root: Path, *, stock_price_source: str, deadline_at: pd.Timestamp,
                         pinned: Mapping[str, object] | None = None,
-                        probability_target: str | None = None) -> dict[str, str]:
+                        probability_target: str | None = None,
+                        archive_history: bool = False) -> dict[str, str]:
     """Keep post-publication stages on one immutable successor across resume."""
     from ml.nightly_gameplan import read_current_gameplan, read_gameplan_run
 
@@ -174,6 +175,10 @@ def _pin_stock_gameplan(root: Path, *, stock_price_source: str, deadline_at: pd.
         if file_checksum(path / "receipt.json") != pinned.get("receipt_sha256"):
             raise ValueError("Pinned stock training publication receipt changed")
     config = publication.manifest.get("configuration", {})
+    from ml.gameplan_source_selection import ARCHIVE_SOURCE_SELECTION_VERSION
+    if ((config.get("archive_history") is True) != archive_history
+            or (config.get("source_selection_contract") == ARCHIVE_SOURCE_SELECTION_VERSION) != archive_history):
+        raise ValueError("Pinned stock publication differs from the saved archive history policy")
     if probability_target is not None:
         from ml.gameplan_probability_target import probability_target_contract
         if probability_target_contract(config) != probability_target:
@@ -204,6 +209,7 @@ def run_overnight_pipeline(
     independent_stock_horizons: bool = False,
     stock_price_source: str | None = None,
     probability_target_contract: str | None = None,
+    archive_history: bool | None = None,
     deadline_exception: Path | None = None,
 ) -> Path:
     """Run the one-owner post-close chain and fail before downstream stages."""
@@ -227,9 +233,16 @@ def run_overnight_pipeline(
         if probability_target_contract is not None and probability_target_contract != previous_target:
             raise ValueError("Resume must preserve its verified probability target contract")
         probability_target_contract = previous_target
+        previous_archive_history = resume.get("archive_history") is True
+        if archive_history is not None and archive_history != previous_archive_history:
+            raise ValueError("Resume must preserve its verified archive history policy")
+        archive_history = previous_archive_history
+    archive_history = archive_history is True
     stock_price_source = stock_price_source or STOCK_PRICE_SOURCES[0]
     if stock_price_source not in STOCK_PRICE_SOURCES:
         raise ValueError("Unknown stock price source contract")
+    if archive_history and (not independent_stock_horizons or stock_price_source != "xnas-itch-archive-v1"):
+        raise ValueError("Archive history requires independent XNAS stock preparation")
     if independent_stock_horizons and not stock_only:
         raise ValueError("Independent stock horizons require explicit stock-only preparation")
     probability_target_contract = resolve_probability_target(
@@ -361,6 +374,7 @@ def run_overnight_pipeline(
             *(("--independent-stock-horizons",) if independent_stock_horizons else ()),
             *(("--stock-price-source", stock_price_source) if independent_stock_horizons else ()),
             *(("--probability-target-contract", probability_target_contract) if independent_stock_horizons else ()),
+            *(("--archive-history",) if archive_history else ()),
         ),
         INDEPENDENT_ENRICHMENT_STAGE: (
             python, "-u", "-m", "ml.stock_trader.independent_training", *datastore_argument,
@@ -373,6 +387,7 @@ def run_overnight_pipeline(
         ),
         INDEPENDENT_HISTORY_STAGE: (
             python, "-u", "-m", "ml.stock_target_history", *datastore_argument, "--execute",
+            *(("--extend-to-feature-history",) if archive_history else ()),
         ),
     }
     report: dict[str, object] = {
@@ -397,6 +412,7 @@ def run_overnight_pipeline(
     if independent_stock_horizons:
         report.update(independent_stock_horizons=True, target_contract_version="independent-stock-targets-v1",
                       stock_price_source=stock_price_source, probability_target_contract=probability_target_contract,
+                      archive_history=archive_history,
                       gameplan_variant="YG" if probability_target_contract == RAW_DIRECTION_TARGET else "OG")
         if resume and resume.get("enrichment_gameplan"):
             report["enrichment_gameplan"] = resume["enrichment_gameplan"]
@@ -443,6 +459,7 @@ def run_overnight_pipeline(
                         root, stock_price_source=stock_price_source, deadline_at=deadline_at,
                         pinned=report.get("enrichment_gameplan"),
                         probability_target=probability_target_contract,
+                        archive_history=archive_history,
                     )
                     command = (*command, "--gameplan-run", str(root / report["enrichment_gameplan"]["run_path"]))
                     if stage in (INDEPENDENT_TRADE_PLANNING_STAGE, INDEPENDENT_ACTUALS_REVIEW_STAGE):
@@ -819,6 +836,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--probability-target-contract", choices=("raw-price-direction-v1", "cost-adjusted-positive-return-v1"),
                         help="Frozen directional target identity; new independent runs use raw direction and resumes retain their saved target")
     parser.add_argument("--status", action="store_true", help="Read the latest overnight progress without starting work")
+    parser.add_argument("--archive-history", action="store_true", default=None,
+                        help="Use the verified full XNAS feature archive and extend missing minute-label history; preserved on resume")
     parser.add_argument("--request-stop-run", type=Path, help="Ask the owner to stop its current stage")
     parser.add_argument("--recover-run", type=Path, help="Recover an attempt whose supervisor process exited")
     parser.add_argument("--claim-supervision", metavar="UUID", help="Acquire/renew this Scheduled operator's three-minute supervision lease")
@@ -887,6 +906,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 independent_stock_horizons=args.independent_stock_horizons,
                 stock_price_source=args.stock_price_source,
                 probability_target_contract=args.probability_target_contract,
+                archive_history=args.archive_history,
                 deadline_exception=args.deadline_exception,
             )
         except Exception as exc:

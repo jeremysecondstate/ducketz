@@ -37,7 +37,7 @@ from ml.calibration import IdentityCalibrator, fit_probability_calibrator
 from ml.current_publication import read_current_publication
 from ml.gameplan_estimators import ProbabilityBlend as _ProbabilityBlend, PriorProbabilityShrinkage
 from ml.gameplan_source_selection import (
-    GAMEPLAN_SOURCE_SELECTION_VERSION, SOURCE_SELECTION_COLUMNS,
+    GAMEPLAN_SOURCE_SELECTION_VERSION, ARCHIVE_SOURCE_SELECTION_VERSION, SOURCE_SELECTION_VERSIONS, SOURCE_SELECTION_COLUMNS,
     select_prior_session_sources, source_selection_contract,
 )
 from ml.gameplan_promotion import (
@@ -147,6 +147,7 @@ def run_nightly_gameplan_once(
     independent_stock_horizons: bool = False,
     stock_price_source: str = CANONICAL_STOCK_PRICE_SOURCE,
     probability_target_contract: str | None = None,
+    archive_history: bool = False,
 ) -> NightlyGameplanResult:
     """Train, freeze, and atomically publish one next-session gameplan.
 
@@ -202,6 +203,27 @@ def run_nightly_gameplan_once(
         if independent_stock_horizons else
         _overnight_sources(samples, symbols=symbols, available_at=created)
     )
+    operational_sources = sources
+    archive = None
+    archive_files = ()
+    if archive_history:
+        if not independent_stock_horizons or stock_price_source != "xnas-itch-archive-v1":
+            raise ValueError("Archive history requires independent XNAS stock preparation")
+        from ml.gameplan_archive_features import load_archive_feature_sources
+        from ml.gameplan_archive_integration import combine_archive_sources
+        from ml.gameplan_archive_seconds import verify_second_minute_overlap
+        from dataclasses import replace
+        archive = combine_archive_sources(
+            load_archive_feature_sources(root, symbols=symbols, available_at=created),
+            operational_sources, feature_columns=source_feature_columns)
+        seconds_report, seconds_files = verify_second_minute_overlap(root, symbols=symbols, available_at=created)
+        archive = replace(archive, report={**archive.report, "second_minute_consistency": seconds_report},
+                          source_files=tuple(dict.fromkeys((*archive.source_files, *seconds_files))))
+        archive.sources.attrs["source_selection"] = archive.report
+        sources = archive.sources
+        archive_files = archive.source_files
+        feature_columns = tuple(dict.fromkeys((*archive.feature_columns, *STOCK_CALENDAR_FEATURE_NAMES)))
+    selection_version = source_selection_contract(sources) if independent_stock_horizons else None
     source_selection_report = sources.attrs.get("source_selection", {})
     current_sources, action_date = _current_overnight_sources(
         sources,
@@ -239,6 +261,11 @@ def run_nightly_gameplan_once(
             price_source_contract=stock_price_source,
             probability_target=probability_target,
         )
+        if archive is not None:
+            from ml.gameplan_archive_integration import exclude_quality_intervals
+            groups = exclude_quality_intervals(groups, archive.report.get("excluded_intervals", ()),
+                                              split_boundaries=(*archive.report.get("split_boundaries", ()),
+                                                  *archive.report.get("target_discontinuity_boundaries", ())))
         for group, frame in groups.items():
             if frame.empty or frame["target"].nunique() != 2:
                 raise RuntimeError(
@@ -253,7 +280,7 @@ def run_nightly_gameplan_once(
     from ml.gameplan_evaluation import evaluate_saved_gameplans, saved_independent_observation_sources
 
     evaluation_groups = dict(groups)
-    evaluation_price_files = list(minute_bar_files)
+    evaluation_price_files = [*minute_bar_files, *archive_files]
     if independent_stock_horizons and any((root / "ml/nightly-gameplan-runs").glob("*/receipt.json")):
         legacy_sources = _overnight_sources(samples, symbols=symbols, available_at=created)
         legacy_bars = minute_bars
@@ -265,7 +292,7 @@ def run_nightly_gameplan_once(
         evaluation_groups.update({"legacy/1h": legacy_hourly, "legacy/4h": legacy_four,
                                   "legacy/1d": legacy_daily, "legacy/1w": legacy_weekly})
         for historical_source, selection_contract in saved_independent_observation_sources(root):
-            if (historical_source, selection_contract) == (stock_price_source, GAMEPLAN_SOURCE_SELECTION_VERSION):
+            if (historical_source, selection_contract) == (stock_price_source, selection_version):
                 continue
             if historical_source == CANONICAL_STOCK_PRICE_SOURCE:
                 historical_bars = legacy_bars
@@ -274,9 +301,19 @@ def run_nightly_gameplan_once(
                     root, symbols=symbols, source_contract=historical_source,
                 )
                 evaluation_price_files.extend(historical_files)
-            historical_sources = sources if selection_contract == GAMEPLAN_SOURCE_SELECTION_VERSION else legacy_sources
+            historical_sources = operational_sources if selection_contract == GAMEPLAN_SOURCE_SELECTION_VERSION else legacy_sources
+            if selection_contract == ARCHIVE_SOURCE_SELECTION_VERSION:
+                from ml.gameplan_archive_features import load_archive_feature_sources
+                historical_archive = archive or load_archive_feature_sources(root, symbols=symbols, available_at=created)
+                historical_sources = historical_archive.sources
+                evaluation_price_files.extend(historical_archive.source_files)
             historical = build_stock_training_groups(historical_sources, feature_columns=(),
                 minute_bars=historical_bars, available_at=created, price_source_contract=historical_source)
+            if selection_contract == ARCHIVE_SOURCE_SELECTION_VERSION:
+                from ml.gameplan_archive_integration import exclude_quality_intervals
+                historical = exclude_quality_intervals(historical, historical_archive.report.get("excluded_intervals", ()),
+                                                       split_boundaries=(*historical_archive.report.get("split_boundaries", ()),
+                                                           *historical_archive.report.get("target_discontinuity_boundaries", ())))
             evaluation_groups.update({f"{historical_source}/{selection_contract}/{group}": frame for group, frame in historical.items()})
     evaluation = evaluate_saved_gameplans(
         root, observed_groups=evaluation_groups, evaluated_at=created,
@@ -324,7 +361,7 @@ def run_nightly_gameplan_once(
             from ml.gameplan_champions import latest_promoted_champion, retain_champion
             champion = latest_promoted_champion(root, group=group, action_date=action_date,
                 symbols=symbols, price_source=stock_price_source, before=created,
-                source_selection_contract=GAMEPLAN_SOURCE_SELECTION_VERSION,
+                source_selection_contract=selection_version,
                 probability_target=probability_target)
             if champion is not None:
                 trained, retained_outputs = retain_champion(trained, champion=champion,
@@ -391,7 +428,7 @@ def run_nightly_gameplan_once(
         **({"target_price_source_contract": stock_price_source, "target_price_dataset": price_dataset,
             "stock_price_source": price_source_report,
             "target_calendar_feature_contract": STOCK_CALENDAR_FEATURE_CONTRACT,
-            "source_selection_contract": GAMEPLAN_SOURCE_SELECTION_VERSION,
+            "source_selection_contract": selection_version,
             "source_selection": source_selection_report} if independent_stock_horizons else {}),
         "action_date": action_date.isoformat(),
         "timezone": str(SCHEDULE_TIMEZONE),
@@ -454,6 +491,18 @@ def run_nightly_gameplan_once(
         ],
     }
     _write_json_atomic(run / gameplan_name, plan_payload)
+    archive_outputs = ()
+    if archive is not None:
+        history_report = {**archive.report, "orders_placed": 0,
+            "training_cohorts": {group: {"rows": len(frame),
+                "first_action_date": str(frame.action_date.min()),
+                "last_action_date": str(frame.action_date.max()),
+                "by_symbol": {str(symbol): {"rows": len(rows), "first_action_date": str(rows.action_date.min()),
+                    "last_action_date": str(rows.action_date.max())} for symbol, rows in frame.groupby("symbol")},
+                "quality_excluded_rows": frame.attrs.get("archive_quality_excluded_rows", 0)}
+                for group, frame in groups.items()}}
+        _write_json_atomic(run / "archive-history.json", history_report)
+        archive_outputs = ("archive-history.json",)
 
     output_names = (
         forecasts_name,
@@ -463,6 +512,7 @@ def run_nightly_gameplan_once(
         gameplan_name,
         *model_output_names,
         *training_cohort_names,
+        *archive_outputs,
     )
     write_manifest(
         run,
@@ -475,6 +525,7 @@ def run_nightly_gameplan_once(
             *strategy_inputs,
             *cursor_files,
             *minute_bar_files,
+            *archive_files,
             *champion_input_files,
             evaluation.run_directory / "receipt.json",
             evaluation.run_directory / "evaluations.parquet",
@@ -493,7 +544,8 @@ def run_nightly_gameplan_once(
             **({"target_price_source_contract": stock_price_source, "target_price_dataset": price_dataset,
                 "stock_price_source": price_source_report,
                 "target_calendar_feature_contract": STOCK_CALENDAR_FEATURE_CONTRACT,
-                "source_selection_contract": GAMEPLAN_SOURCE_SELECTION_VERSION,
+                "source_selection_contract": selection_version,
+                "archive_history": archive_history,
                 "source_selection": source_selection_report} if independent_stock_horizons else {}),
             "action_date": action_date.isoformat(),
             "timezone": str(SCHEDULE_TIMEZONE),
@@ -2267,11 +2319,21 @@ def _verify_source_selection_metadata(run: Path, manifest: Mapping) -> None:
     contract = config.get("source_selection_contract")
     if contract is None:
         return  # Historical publications retain their original reader contract.
-    if (contract != GAMEPLAN_SOURCE_SELECTION_VERSION
+    if (contract not in SOURCE_SELECTION_VERSIONS
             or config.get("target_contract_version") != STOCK_TARGET_CONTRACT_VERSION
             or config.get("source_selection", {}).get("source_selection_contract") != contract):
         raise RuntimeError("Gameplan source selection configuration is invalid")
     outputs = manifest.get("output_files", {})
+    if contract == ARCHIVE_SOURCE_SELECTION_VERSION and "archive-history.json" not in outputs:
+        raise RuntimeError("Archive history evidence is not manifest-bound")
+    if (config.get("archive_history") is True) != (contract == ARCHIVE_SOURCE_SELECTION_VERSION):
+        raise RuntimeError("Archive history configuration and feature contract disagree")
+    if contract == ARCHIVE_SOURCE_SELECTION_VERSION:
+        history = json.loads((run / "archive-history.json").read_text(encoding="utf-8"))
+        if (any(history.get(key) != value for key, value in config["source_selection"].items())
+                or history.get("orders_placed") != 0
+                or set(history.get("training_cohorts", {})) != set(MODEL_GROUPS)):
+            raise RuntimeError("Archive history report and source selection configuration disagree")
     required = ("gameplan.json", "model-reports.json", "forecasts.parquet",
                 *(f"training-cohort-{group}.parquet" for group in MODEL_GROUPS))
     if not set(required).issubset(outputs):
@@ -2287,6 +2349,9 @@ def _verify_source_selection_metadata(run: Path, manifest: Mapping) -> None:
         if (frame.empty or not set(SOURCE_SELECTION_COLUMNS).issubset(frame)
                 or source_selection_contract(frame) != contract):
             raise RuntimeError("Gameplan rows lack their source selection evidence")
+        if contract == ARCHIVE_SOURCE_SELECTION_VERSION:
+            from ml.gameplan_archive_integration import validate_archive_feature_clocks
+            validate_archive_feature_clocks(frame)
 
 
 def _verify_probability_cohort(frame: pd.DataFrame, contract: str) -> None:
@@ -2496,6 +2561,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         default="pc",
     )
     parser.add_argument("--once", action="store_true", help="Compatibility flag")
+    parser.add_argument("--archive-history", action="store_true",
+                        help="Use verified historical XNAS feature rows; preserves price and model quality gates")
     parser.add_argument(
         "--stock-only", action="store_true",
         help="Prepare stock forecasts with explicit no-trade options intents, without Strategy models or candidates",
@@ -2519,6 +2586,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             run_nightly_gameplan_once(root, stock_only=args.stock_only,
                                       independent_stock_horizons=args.independent_stock_horizons,
                                       stock_price_source=args.stock_price_source,
+                                      archive_history=args.archive_history,
                                       probability_target_contract=args.probability_target_contract)
         except Exception as exc:
             print(f"Nightly gameplan failed: {type(exc).__name__}: {exc}")

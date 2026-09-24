@@ -360,10 +360,11 @@ def run_gameplan_evaluation_once(root: Path, *, evaluated_at: object | None = No
     daily, weekly = _daily_weekly_outcomes(samples, feature_columns=())
     from ml.independent_stock_targets import build_stock_training_groups
     from ml.stock_target_prices import CANONICAL_STOCK_PRICE_SOURCE, load_stock_target_prices
-    from ml.gameplan_source_selection import GAMEPLAN_SOURCE_SELECTION_VERSION, select_prior_session_sources
+    from ml.gameplan_source_selection import GAMEPLAN_SOURCE_SELECTION_VERSION, ARCHIVE_SOURCE_SELECTION_VERSION, select_prior_session_sources
     groups = {"1h": hourly, "4h": four, "1d": daily, "1w": weekly}
     price_files = list(bar_files)
     independent_sources = None
+    archive_sources = None
     for contract, selection_contract in sorted(saved_independent_observation_sources(root), key=str):
         source_bars = bars
         if contract != CANONICAL_STOCK_PRICE_SOURCE:
@@ -378,8 +379,19 @@ def run_gameplan_evaluation_once(root: Path, *, evaluated_at: object | None = No
                 independent_sources = select_prior_session_sources(samples, symbols=symbols, available_at=now,
                     feature_columns=_feature_columns(source.manifest, samples))
             selected_sources = independent_sources
+        elif selection_contract == ARCHIVE_SOURCE_SELECTION_VERSION:
+            if archive_sources is None:
+                from ml.gameplan_archive_features import load_archive_feature_sources
+                archive_sources = load_archive_feature_sources(root, symbols=symbols, available_at=now)
+                price_files.extend(archive_sources.source_files)
+            selected_sources = archive_sources.sources
         independent = build_stock_training_groups(selected_sources, feature_columns=(), minute_bars=source_bars,
                                                    available_at=now, price_source_contract=contract)
+        if selection_contract == ARCHIVE_SOURCE_SELECTION_VERSION:
+            from ml.gameplan_archive_integration import exclude_quality_intervals
+            independent = exclude_quality_intervals(independent, archive_sources.report.get("excluded_intervals", ()),
+                                                    split_boundaries=(*archive_sources.report.get("split_boundaries", ()),
+                                                        *archive_sources.report.get("target_discontinuity_boundaries", ())))
         groups.update({f"{contract}/{selection_contract}/{name}": frame for name, frame in independent.items()})
     return evaluate_saved_gameplans(root, observed_groups=groups,
                                    evaluated_at=now, input_files=(samples_path, *dict.fromkeys(price_files)))

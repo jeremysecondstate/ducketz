@@ -1,0 +1,25 @@
+{
+  "status": "VERIFIED_NATIVE_REQUEST_CONSTRUCTION",
+  "contract_symbols": [
+    "ESZ6",
+    "NQZ6",
+    "CLX6",
+    "GCZ6"
+  ],
+  "continuous_symbols": [
+    "ES.v.0",
+    "NQ.v.0",
+    "RTY.v.0",
+    "CL.v.0",
+    "GC.v.0"
+  ],
+  "raw_schemas": [
+    "ohlcv-1m",
+    "bbo-1m",
+    "mbp-10"
+  ],
+  "provider_requests_in_successful_offline_validation": 0,
+  "orders_placed": 0,
+  "available_end_stubbed_for_offline_validation": true,
+  "prior_validation_attempt": "specs consulted metadata using dummy audit-no-network key and received401; production credential not used; no dataset request"
+}

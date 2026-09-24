@@ -478,6 +478,41 @@ def test_independent_pipeline_trains_sizing_then_plans_trades_from_same_publicat
     assert receipt["logs"]["gameplan_trade_planning.log"]["checksum_sha256"] == file_checksum(directory / "gameplan_trade_planning.log")
 
 
+@pytest.mark.parametrize("enabled", [False, True])
+def test_archive_history_routes_stage_flags_and_preserves_failed_attempt(tmp_path, monkeypatch, enabled):
+    calls = []
+    def fail_publication(command, **kwargs):
+        calls.append(command)
+        kwargs["log_path"].write_text("synthetic stage evidence")
+        return 7 if command[3] == "ml.nightly_gameplan" else 0
+    monkeypatch.setattr("ml.overnight_runtime._run_stage", fail_publication)
+    with pytest.raises(RuntimeError, match="exited with code 7"):
+        run(tmp_path, start_at="stock_target_history", stop_after="gameplan_publication",
+            stock_only=True, independent_stock_horizons=True,
+            stock_price_source="xnas-itch-archive-v1", archive_history=enabled)
+    failed = Path(overnight_status(tmp_path)["run_path"])
+    saved = json.loads((failed / "stage-report.json").read_text())
+    assert saved["archive_history"] is enabled
+    assert ("--extend-to-feature-history" in calls[0]) is enabled
+    assert ("--archive-history" in calls[-1]) is enabled
+    preserved = _evidence_snapshot(failed)
+    with pytest.raises(ValueError, match="preserve its verified archive history policy"):
+        run(tmp_path, resume_run=failed, archive_history=not enabled)
+    calls.clear()
+    def success(command, **kwargs):
+        calls.append(command)
+        kwargs["log_path"].write_text("synthetic stage complete")
+        return 0
+    monkeypatch.setattr("ml.overnight_runtime._run_stage", success)
+    resumed = run(tmp_path, resume_run=failed)
+    report = json.loads((resumed / "stage-report.json").read_text())
+    assert report["archive_history"] is enabled
+    assert report["deadline_at"] == saved["deadline_at"]
+    assert [c[3] for c in calls] == ["ml.nightly_gameplan"]
+    assert ("--archive-history" in calls[0]) is enabled
+    assert _evidence_snapshot(failed) == preserved
+
+
 def test_independent_sizing_failure_resumes_without_republishing_forecasts(tmp_path, monkeypatch):
     monkeypatch.setattr("ml.overnight_runtime._pin_stock_gameplan", _synthetic_gameplan_pin)
     def stage(command, **kwargs):
@@ -669,6 +704,9 @@ def test_enrichment_pin_uses_original_run_when_current_pointer_changes(tmp_path,
              "target_price_source_contract": "xnas-itch-archive-v1"}},
         receipt={"action_date": "2026-09-08"})
     monkeypatch.setattr("ml.nightly_gameplan.read_current_gameplan", lambda root: publication)
+    with pytest.raises(ValueError, match="archive history policy"):
+        _pin_stock_gameplan(tmp_path, stock_price_source="xnas-itch-archive-v1",
+            deadline_at=pd.Timestamp("2026-09-08T11:00Z"), archive_history=True)
     selected = _pin_stock_gameplan(tmp_path, stock_price_source="xnas-itch-archive-v1",
                                   deadline_at=pd.Timestamp("2026-09-08T11:00Z"))
     monkeypatch.setattr("ml.nightly_gameplan.read_current_gameplan", lambda root: pytest.fail("resume cannot read current pointer"))

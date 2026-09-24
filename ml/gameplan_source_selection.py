@@ -14,6 +14,8 @@ import pandas as pd
 
 
 GAMEPLAN_SOURCE_SELECTION_VERSION = "independent-gameplan-prior-session-features-v1"
+ARCHIVE_SOURCE_SELECTION_VERSION = "xnas-archive-prior-session-features-v1"
+SOURCE_SELECTION_VERSIONS = frozenset((GAMEPLAN_SOURCE_SELECTION_VERSION, ARCHIVE_SOURCE_SELECTION_VERSION))
 GAMEPLAN_SOURCE_TIMEZONE = "America/Los_Angeles"
 SOURCE_SELECTION_COLUMNS = (
     "source_session", "source_selection_contract", "source_feature_cutoff",
@@ -33,9 +35,9 @@ def source_selection_contract(frame: pd.DataFrame) -> str | None:
     if "source_selection_contract" not in frame.columns:
         return None
     values = frame["source_selection_contract"]
-    if values.isna().any() or not values.eq(GAMEPLAN_SOURCE_SELECTION_VERSION).all():
+    if values.isna().any() or len(values.unique()) != 1 or str(values.iloc[0]) not in SOURCE_SELECTION_VERSIONS:
         raise ValueError("Unsupported or inconsistent Gameplan source selection contract")
-    return GAMEPLAN_SOURCE_SELECTION_VERSION
+    return str(values.iloc[0])
 
 
 def _clock(day: date, hour: int, minute: int = 0) -> pd.Timestamp:

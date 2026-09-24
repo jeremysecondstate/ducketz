@@ -1,0 +1,68 @@
+{
+  "requested_at": "2026-09-23T20:40:16.199046+00:00",
+  "scope": "ONE_READ_ONLY_SYMBOLOGY_LOOKUP_NO_DATASET_DOWNLOAD",
+  "request": {
+    "dataset": "GLBX.MDP3",
+    "symbols": [
+      10252,
+      261401,
+      301334
+    ],
+    "stype_in": "instrument_id",
+    "stype_out": "raw_symbol",
+    "start_date": "2026-09-22",
+    "end_date": "2026-09-24"
+  },
+  "source_observation_file": "C:\\DATASTORE\\pools\\cme\\CME_CONTEXT\\cme_context_bbo-1m\\databento\\raw\\CME_CONTEXT_cme_context_bbo-1m_raw.parquet",
+  "source_observation_sha256": "9e5311511744c7486743d435c90779b673d083931c15a5345bea8329081be79d",
+  "source_observed_at": "2026-09-23T03:58:59.878783703Z",
+  "source_instrument_mapping": {
+    "ES.v.0": 10252,
+    "NQ.v.0": 261401,
+    "CL.v.0": 301334
+  },
+  "provider_operation": "Historical.symbology.resolve",
+  "market_data_downloaded": false,
+  "orders_placed": 0,
+  "configuration_changed": false,
+  "status": "RESPONSE_RECEIVED",
+  "response": {
+    "result": {
+      "10252": [
+        {
+          "d0": "2026-09-22",
+          "d1": "2026-09-24",
+          "s": "ESZ6"
+        }
+      ],
+      "261401": [
+        {
+          "d0": "2026-09-22",
+          "d1": "2026-09-24",
+          "s": "NQZ6"
+        }
+      ],
+      "301334": [
+        {
+          "d0": "2026-09-22",
+          "d1": "2026-09-24",
+          "s": "CLX6"
+        }
+      ]
+    },
+    "symbols": [
+      "10252",
+      "261401",
+      "301334"
+    ],
+    "stype_in": "instrument_id",
+    "stype_out": "raw_symbol",
+    "start_date": "2026-09-22",
+    "end_date": "2026-09-24",
+    "partial": [],
+    "not_found": [],
+    "message": "OK",
+    "status": 0
+  },
+  "completed_at": "2026-09-23T20:40:16.886002+00:00"
+}
