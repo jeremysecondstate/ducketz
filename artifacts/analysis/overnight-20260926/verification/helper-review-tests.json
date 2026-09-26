@@ -1,17 +1,26 @@
 {
-  "checked_at": "2026-09-26T04:15:11.793227+00:00",
+  "checked_at": "2026-09-26T06:29:04.491341+00:00",
   "status": "PASS",
   "checks": [
     {
       "check": "ALL_HELPER_AST_PARSE",
       "status": "PASS",
-      "files": 10
+      "files": 15
     },
     {
       "check": "CODE_ENVIRONMENT_UNCHANGED",
-      "status": "UNCHANGED",
+      "status": "UNCHANGED_EXCEPT_EXACT_REVIEWED_ISOLATED_MODULES",
       "code_files": 255,
-      "baseline_recorded_at": "2026-09-26T04:10:46.108210+00:00"
+      "baseline_recorded_at": "2026-09-26T04:10:46.108210+00:00",
+      "reviewed_isolated_drift_paths": [
+        "ml/hyperliquid_paper_runtime.py",
+        "ml/hyperliquid_forecast_reader.py",
+        "ml/hyperliquid_powder_exchange.py",
+        "ml/hyperliquid_powder_ledger.py",
+        "ml/hyperliquid_powder_lock.py",
+        "ml/hyperliquid_powder_runtime.py"
+      ],
+      "explicit_review": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\reviewed-isolated-code-drift.json"
     },
     {
       "check": "verify_completed_run.py missing COMPLETE guard",
@@ -27,7 +36,7 @@
         "overnight_run": "C:\\DATASTORE\\ml\\overnight-runs\\NOT_AN_EXISTING_NATIVE_RUN_PREPARATION_GUARD",
         "status": "NOT_READY_FOR_FINAL_VERIFICATION",
         "verification_is_read_only": true,
-        "verified_at": "2026-09-26T04:15:11.056531+00:00"
+        "verified_at": "2026-09-26T06:29:03.749052+00:00"
       }
     },
     {

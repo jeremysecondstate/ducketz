@@ -1,0 +1,219 @@
+{
+  "reviewed_at": "2026-09-26T06:44:48.238127+00:00",
+  "run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260926T040723.834511Z",
+  "action_date": "2026-09-28",
+  "status": "VERIFIED_SAVED_MODELS_WITH_COVERAGE_NOTES",
+  "full_native_completion_verified": false,
+  "scope": "Reproduced saved promotion arithmetic; estimator-inference score reproduction is a separate audit.",
+  "source_receipt_sha256": "4f1e9c7a6a01868a194b5015d106163ea322655322f59d53b4a297e5daebbd4d",
+  "model_reports_sha256": "91fc03bbd371ae8a71b715808fef3c4b9d1a6b97c9a12e673cd650d49e8b58a2",
+  "forecasts_sha256": "fa5470abda577f7db7f3ba84a71b16db6906d8914e4fbf69ec91ec0a169d1198",
+  "groups": {
+    "1h": {
+      "fitted_target_rows": 155560,
+      "evidence_checks_pass": true,
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "strictly_beats_both_baselines": false,
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.2503562802553099,
+          "training_rate_baseline": 0.250000079660241,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.255000079660241,
+          "actual_baseline_excess": 0.0003562005950689,
+          "margin_to_maximum": 0.0046437994049311,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.6938734126820015,
+          "training_rate_baseline": 0.6931473398804298,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7031473398804298,
+          "actual_baseline_excess": 0.0007260728015717,
+          "margin_to_maximum": 0.0092739271984283,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "failed_promotion_checks": [],
+      "forecast_statuses": {
+        "PROMOTED": 154
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1h@16:00",
+        "fitted_rows": 1
+      },
+      "zero_assessment_symbols": [],
+      "learned_sizing": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 143,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 137,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 6
+        }
+      }
+    },
+    "4h": {
+      "fitted_target_rows": 38445,
+      "evidence_checks_pass": true,
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "strictly_beats_both_baselines": true,
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.24971467391595553,
+          "training_rate_baseline": 0.250034616002107,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.255034616002107,
+          "actual_baseline_excess": -0.00031994208615147,
+          "margin_to_maximum": 0.00531994208615147,
+          "strictly_beats_training_baseline": true,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.6925767615959547,
+          "training_rate_baseline": 0.6932164198438693,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7032164198438693,
+          "actual_baseline_excess": -0.0006396582479146,
+          "margin_to_maximum": 0.0106396582479146,
+          "strictly_beats_training_baseline": true,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "failed_promotion_checks": [],
+      "forecast_statuses": {
+        "PROMOTED": 44
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "4h@16:00",
+        "fitted_rows": 24
+      },
+      "zero_assessment_symbols": [],
+      "learned_sizing": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 78,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 76,
+          "UNSEEN_EXACT_TARGET_SCOPE": 1,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+        }
+      }
+    },
+    "1d": {
+      "fitted_target_rows": 24839,
+      "evidence_checks_pass": true,
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "strictly_beats_both_baselines": true,
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.2504586446112885,
+          "training_rate_baseline": 0.2507676409057194,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.2557676409057194,
+          "actual_baseline_excess": -0.0003089962944309,
+          "margin_to_maximum": 0.0053089962944309,
+          "strictly_beats_training_baseline": true,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.69406901482387,
+          "training_rate_baseline": 0.6946828149411466,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7046828149411466,
+          "actual_baseline_excess": -0.0006138001172766,
+          "margin_to_maximum": 0.0106138001172766,
+          "strictly_beats_training_baseline": true,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "failed_promotion_checks": [],
+      "forecast_statuses": {
+        "PROMOTED": 55
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1d@D+1",
+        "fitted_rows": 2
+      },
+      "zero_assessment_symbols": [],
+      "learned_sizing": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 11,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 10,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 1
+        }
+      }
+    },
+    "1w": {
+      "fitted_target_rows": 4838,
+      "evidence_checks_pass": true,
+      "promotion_status": "PROMOTED",
+      "promotion_policy": "independent-stock-directional-promotion-v2",
+      "strictly_beats_both_baselines": false,
+      "metric_limits": {
+        "brier_score": {
+          "assessment": 0.2533104540023315,
+          "training_rate_baseline": 0.2515490808736704,
+          "allowed_baseline_excess": 0.005,
+          "maximum_under_saved_policy": 0.2565490808736704,
+          "actual_baseline_excess": 0.0017613731286611,
+          "margin_to_maximum": 0.0032386268713389,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        },
+        "log_loss": {
+          "assessment": 0.6998786793017542,
+          "training_rate_baseline": 0.6962750531287822,
+          "allowed_baseline_excess": 0.01,
+          "maximum_under_saved_policy": 0.7062750531287822,
+          "actual_baseline_excess": 0.003603626172972,
+          "margin_to_maximum": 0.006396373827028,
+          "strictly_beats_training_baseline": false,
+          "inequality": "<=",
+          "metric_passes_saved_policy": true
+        }
+      },
+      "failed_promotion_checks": [],
+      "forecast_statuses": {
+        "PROMOTED": 11
+      },
+      "minimum_exact_route_support": {
+        "symbol": "TWST",
+        "route": "1w@D+5",
+        "fitted_rows": 8
+      },
+      "zero_assessment_symbols": [],
+      "learned_sizing": {
+        "fit_status": "FITTED",
+        "fitted_scopes": 39,
+        "qualified_scopes": 0,
+        "reason_counts": {
+          "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 37,
+          "UNSEEN_EXACT_TARGET_SCOPE": 1,
+          "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+        }
+      }
+    }
+  },
+  "errors": [],
+  "models_fitted_or_relabelled": false,
+  "orders_placed": 0
+}

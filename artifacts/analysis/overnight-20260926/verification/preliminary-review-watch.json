@@ -1,0 +1,192 @@
+{
+  "started_at": "2026-09-26T06:19:58.756922+00:00",
+  "updated_at": "2026-09-26T06:25:58.908255+00:00",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260926T040723.834511Z",
+  "status": "PINNED_PUBLICATION_READY",
+  "observations": [
+    {
+      "status": "RUNNING",
+      "current_stage": "gameplan_publication",
+      "heartbeat_at": "2026-09-26T06:19:33.190972+00:00",
+      "cpu_seconds": 213.671875,
+      "io_bytes": 2327806794,
+      "log_bytes": 0,
+      "recent_issues": [],
+      "observed_at": "2026-09-26T06:19:58.757087+00:00"
+    },
+    {
+      "status": "RUNNING",
+      "current_stage": "gameplan_publication",
+      "heartbeat_at": "2026-09-26T06:20:03.216273+00:00",
+      "cpu_seconds": 244.9375,
+      "io_bytes": 3603298930,
+      "log_bytes": 0,
+      "recent_issues": [],
+      "observed_at": "2026-09-26T06:20:28.761240+00:00"
+    },
+    {
+      "status": "RUNNING",
+      "current_stage": "gameplan_publication",
+      "heartbeat_at": "2026-09-26T06:20:33.254210+00:00",
+      "cpu_seconds": 274.84375,
+      "io_bytes": 3603298930,
+      "log_bytes": 0,
+      "recent_issues": [],
+      "observed_at": "2026-09-26T06:20:58.764930+00:00"
+    },
+    {
+      "status": "RUNNING",
+      "current_stage": "gameplan_publication",
+      "heartbeat_at": "2026-09-26T06:21:03.284659+00:00",
+      "cpu_seconds": 313.0625,
+      "io_bytes": 3972102510,
+      "log_bytes": 850390,
+      "recent_issues": [],
+      "observed_at": "2026-09-26T06:21:28.776324+00:00"
+    },
+    {
+      "status": "RUNNING",
+      "current_stage": "gameplan_publication",
+      "heartbeat_at": "2026-09-26T06:21:33.336526+00:00",
+      "cpu_seconds": 349.515625,
+      "io_bytes": 5182933638,
+      "log_bytes": 1210213,
+      "recent_issues": [],
+      "observed_at": "2026-09-26T06:21:58.785529+00:00"
+    },
+    {
+      "status": "RUNNING",
+      "current_stage": "gameplan_publication",
+      "heartbeat_at": "2026-09-26T06:22:03.380300+00:00",
+      "cpu_seconds": 380.296875,
+      "io_bytes": 5854187495,
+      "log_bytes": 1210213,
+      "recent_issues": [],
+      "observed_at": "2026-09-26T06:22:28.798203+00:00"
+    },
+    {
+      "status": "RUNNING",
+      "current_stage": "gameplan_publication",
+      "heartbeat_at": "2026-09-26T06:22:33.404461+00:00",
+      "cpu_seconds": 410.125,
+      "io_bytes": 6287476057,
+      "log_bytes": 1210213,
+      "recent_issues": [],
+      "observed_at": "2026-09-26T06:22:58.805073+00:00"
+    },
+    {
+      "status": "RUNNING",
+      "current_stage": "gameplan_publication",
+      "heartbeat_at": "2026-09-26T06:23:03.443161+00:00",
+      "cpu_seconds": 446.3125,
+      "io_bytes": 7681788778,
+      "log_bytes": 2252564,
+      "recent_issues": [],
+      "observed_at": "2026-09-26T06:23:28.820645+00:00"
+    },
+    {
+      "status": "RUNNING",
+      "current_stage": "gameplan_publication",
+      "heartbeat_at": "2026-09-26T06:23:33.509799+00:00",
+      "cpu_seconds": 477.703125,
+      "io_bytes": 7721567089,
+      "log_bytes": 2420426,
+      "recent_issues": [],
+      "observed_at": "2026-09-26T06:23:58.831537+00:00"
+    },
+    {
+      "status": "RUNNING",
+      "current_stage": "gameplan_publication",
+      "heartbeat_at": "2026-09-26T06:24:03.540671+00:00",
+      "cpu_seconds": 556.390625,
+      "io_bytes": 8705260332,
+      "log_bytes": 2423479,
+      "recent_issues": [
+        "{\"training_event\": \"FIT_WARNING\", \"fit\": \"gameplan/1h/target-quality\", \"message\": \"Excluded returns whose price observations miss the target boundaries.\", \"target_boundary_quality\": {\"policy\": \"clock-window-boundaries-within-five-minutes-v1\", \"enforced\": true, \"maximum_boundary_gap_seconds\": 300.0, \"candidate_rows\": 239274, \"aligned_rows\": 171984, \"excluded_rows\": 67290, \"excluded_rows_by_route\": {\"1h@04:00\": 6612, \"1h@05:00\": 6111, \"1h@06:00\": 4191, \"1h@07:00\": 82, \"1h@08:00\": 91, \"1h@09:00\": 104, \"1h@10:00\": 172, \"1h@11:00\": 159, \"1h@12:00\": 121, \"1h@13:00\": 6776, \"1h@14:00\": 9209, \"1h@15:00\": 10185, \"1h@16:00\": 12379, \"1h@gap\": 11098}, \"admitted_rows_by_symbol\": {\"AAPL\": 21875, \"AMZN\": 21362, \"COST\": 14920, \"CROX\": 14260, \"GOOG\": 19365, \"IONQ\": 13361, \"MU\": 18999, \"NVDA\": 21409, \"PATH\": 10614, \"SNDK\": 4116, \"TWST\": 11703}, \"admitted_rows_by_route\": {\"1h@04:00\": 10479, \"1h@05:00\": 10980, \"1h@06:00\": 12900, \"1h@07:00\": 17009, \"1h@08:00\": 17000, \"1h@09:00\": 16987, \"1h@10:00\": 16919, \"1h@11:00\": 16932, \"1h@12:00\": 16970, \"1h@13:00\": 10315, \"1h@14:00\": 7882, \"1h@15:00\": 6906, \"1h@16:00\": 4712, \"1h@gap\": 5993}, \"conflicting_minute_rows_excluded\": 0, \"target_contract_version\": \"independent-stock-targets-v1\", \"target_price_source_contract\": \"xnas-itch-archive-v1\", \"target_price_dataset\": \"XNAS.ITCH\"}}"
+      ],
+      "observed_at": "2026-09-26T06:24:28.849360+00:00"
+    },
+    {
+      "status": "RUNNING",
+      "current_stage": "gameplan_publication",
+      "heartbeat_at": "2026-09-26T06:24:33.573704+00:00",
+      "cpu_seconds": 660.484375,
+      "io_bytes": 8705268347,
+      "log_bytes": 2431462,
+      "recent_issues": [
+        "{\"training_event\": \"FIT_WARNING\", \"fit\": \"gameplan/1h/target-quality\", \"message\": \"Excluded returns whose price observations miss the target boundaries.\", \"target_boundary_quality\": {\"policy\": \"clock-window-boundaries-within-five-minutes-v1\", \"enforced\": true, \"maximum_boundary_gap_seconds\": 300.0, \"candidate_rows\": 239274, \"aligned_rows\": 171984, \"excluded_rows\": 67290, \"excluded_rows_by_route\": {\"1h@04:00\": 6612, \"1h@05:00\": 6111, \"1h@06:00\": 4191, \"1h@07:00\": 82, \"1h@08:00\": 91, \"1h@09:00\": 104, \"1h@10:00\": 172, \"1h@11:00\": 159, \"1h@12:00\": 121, \"1h@13:00\": 6776, \"1h@14:00\": 9209, \"1h@15:00\": 10185, \"1h@16:00\": 12379, \"1h@gap\": 11098}, \"admitted_rows_by_symbol\": {\"AAPL\": 21875, \"AMZN\": 21362, \"COST\": 14920, \"CROX\": 14260, \"GOOG\": 19365, \"IONQ\": 13361, \"MU\": 18999, \"NVDA\": 21409, \"PATH\": 10614, \"SNDK\": 4116, \"TWST\": 11703}, \"admitted_rows_by_route\": {\"1h@04:00\": 10479, \"1h@05:00\": 10980, \"1h@06:00\": 12900, \"1h@07:00\": 17009, \"1h@08:00\": 17000, \"1h@09:00\": 16987, \"1h@10:00\": 16919, \"1h@11:00\": 16932, \"1h@12:00\": 16970, \"1h@13:00\": 10315, \"1h@14:00\": 7882, \"1h@15:00\": 6906, \"1h@16:00\": 4712, \"1h@gap\": 5993}, \"conflicting_minute_rows_excluded\": 0, \"target_contract_version\": \"independent-stock-targets-v1\", \"target_price_source_contract\": \"xnas-itch-archive-v1\", \"target_price_dataset\": \"XNAS.ITCH\"}}"
+      ],
+      "observed_at": "2026-09-26T06:24:58.866534+00:00"
+    },
+    {
+      "status": "RUNNING",
+      "current_stage": "gameplan_publication",
+      "heartbeat_at": "2026-09-26T06:25:03.605572+00:00",
+      "cpu_seconds": 796.921875,
+      "io_bytes": 8716218180,
+      "log_bytes": 2455069,
+      "recent_issues": [
+        "{\"training_event\": \"FIT_WARNING\", \"fit\": \"gameplan/1h/target-quality\", \"message\": \"Excluded returns whose price observations miss the target boundaries.\", \"target_boundary_quality\": {\"policy\": \"clock-window-boundaries-within-five-minutes-v1\", \"enforced\": true, \"maximum_boundary_gap_seconds\": 300.0, \"candidate_rows\": 239274, \"aligned_rows\": 171984, \"excluded_rows\": 67290, \"excluded_rows_by_route\": {\"1h@04:00\": 6612, \"1h@05:00\": 6111, \"1h@06:00\": 4191, \"1h@07:00\": 82, \"1h@08:00\": 91, \"1h@09:00\": 104, \"1h@10:00\": 172, \"1h@11:00\": 159, \"1h@12:00\": 121, \"1h@13:00\": 6776, \"1h@14:00\": 9209, \"1h@15:00\": 10185, \"1h@16:00\": 12379, \"1h@gap\": 11098}, \"admitted_rows_by_symbol\": {\"AAPL\": 21875, \"AMZN\": 21362, \"COST\": 14920, \"CROX\": 14260, \"GOOG\": 19365, \"IONQ\": 13361, \"MU\": 18999, \"NVDA\": 21409, \"PATH\": 10614, \"SNDK\": 4116, \"TWST\": 11703}, \"admitted_rows_by_route\": {\"1h@04:00\": 10479, \"1h@05:00\": 10980, \"1h@06:00\": 12900, \"1h@07:00\": 17009, \"1h@08:00\": 17000, \"1h@09:00\": 16987, \"1h@10:00\": 16919, \"1h@11:00\": 16932, \"1h@12:00\": 16970, \"1h@13:00\": 10315, \"1h@14:00\": 7882, \"1h@15:00\": 6906, \"1h@16:00\": 4712, \"1h@gap\": 5993}, \"conflicting_minute_rows_excluded\": 0, \"target_contract_version\": \"independent-stock-targets-v1\", \"target_price_source_contract\": \"xnas-itch-archive-v1\", \"target_price_dataset\": \"XNAS.ITCH\"}}",
+        "{\"training_event\": \"FIT_WARNING\", \"fit\": \"gameplan/4h/target-quality\", \"message\": \"Excluded returns whose price observations miss the target boundaries.\", \"target_boundary_quality\": {\"policy\": \"clock-window-boundaries-within-five-minutes-v1\", \"enforced\": true, \"maximum_boundary_gap_seconds\": 300.0, \"candidate_rows\": 68353, \"aligned_rows\": 42994, \"excluded_rows\": 25359, \"excluded_rows_by_route\": {\"4h@04:00\": 4731, \"4h@08:00\": 145, \"4h@12:00\": 8732, \"4h@16:00\": 11751}, \"admitted_rows_by_symbol\": {\"AAPL\": 5878, \"AMZN\": 5668, \"COST\": 3752, \"CROX\": 2928, \"GOOG\": 4977, \"IONQ\": 3237, \"MU\": 4938, \"NVDA\": 5740, \"PATH\": 2652, \"SNDK\": 1072, \"TWST\": 2152}, \"admitted_rows_by_route\": {\"4h@04:00\": 12360, \"4h@08:00\": 16946, \"4h@12:00\": 8359, \"4h@16:00\": 5329}, \"conflicting_minute_rows_excluded\": 0, \"target_contract_version\": \"independent-stock-targets-v1\", \"target_price_source_contract\": \"xnas-itch-archive-v1\", \"target_price_dataset\": \"XNAS.ITCH\"}}",
+        "{\"training_event\": \"FIT_WARNING\", \"fit\": \"gameplan/1d/target-quality\", \"message\": \"Excluded returns whose price observations miss the target boundaries.\", \"target_boundary_quality\": {\"policy\": \"clock-window-boundaries-within-five-minutes-v1\", \"enforced\": true, \"maximum_boundary_gap_seconds\": 300.0, \"candidate_rows\": 85345, \"aligned_rows\": 29782, \"excluded_rows\": 55563, \"excluded_rows_by_route\": {\"1d@D+1\": 11138, \"1d@D+2\": 11122, \"1d@D+3\": 11109, \"1d@D+4\": 11103, \"1d@D+5\": 11091}, \"admitted_rows_by_symbol\": {\"AAPL\": 5401, \"AMZN\": 5237, \"COST\": 1689, \"CROX\": 300, \"GOOG\": 4211, \"IONQ\": 1800, \"MU\": 4093, \"NVDA\": 5237, \"PATH\": 954, \"SNDK\": 840, \"TWST\": 20}, \"admitted_rows_by_route\": {\"1d@D+1\": 5953, \"1d@D+2\": 5958, \"1d@D+3\": 5960, \"1d@D+4\": 5955, \"1d@D+5\": 5956}, \"conflicting_minute_rows_excluded\": 0, \"target_contract_version\": \"independent-stock-targets-v1\", \"target_price_source_contract\": \"xnas-itch-archive-v1\", \"target_price_dataset\": \"XNAS.ITCH\"}}"
+      ],
+      "observed_at": "2026-09-26T06:25:28.894012+00:00"
+    },
+    {
+      "status": "RUNNING",
+      "current_stage": "stock_enrichment_training",
+      "heartbeat_at": "2026-09-26T06:25:38.675918+00:00",
+      "cpu_seconds": 0.015625,
+      "io_bytes": 620,
+      "log_bytes": 0,
+      "recent_issues": [],
+      "observed_at": "2026-09-26T06:25:58.908255+00:00"
+    }
+  ],
+  "model_fit_events": [
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1d/logistic-c0.001-selection\", \"elapsed_seconds\": 0.12, \"iterations\": \"[20]\", \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1d/logistic-c0.01-selection\", \"elapsed_seconds\": 0.13, \"iterations\": \"[39]\", \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1d/logistic-c0.1-selection\", \"elapsed_seconds\": 0.16, \"iterations\": \"[55]\", \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1d/logistic-c1-selection\", \"elapsed_seconds\": 0.16, \"iterations\": \"[57]\", \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1d/logistic-final\", \"elapsed_seconds\": 0.11, \"iterations\": \"[20]\", \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1d/neural-final\", \"elapsed_seconds\": 1.47, \"iterations\": 33, \"loss\": 0.6501502756738028, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1d/neural-selection\", \"elapsed_seconds\": 2.12, \"iterations\": 56, \"loss\": 0.62342416756323, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1d/tree-final\", \"elapsed_seconds\": 3.17, \"iterations\": 114, \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1d/tree-selection\", \"elapsed_seconds\": 3.15, \"iterations\": 120, \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1h/logistic-c0.001-selection\", \"elapsed_seconds\": 0.85, \"iterations\": \"[27]\", \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1h/logistic-c0.01-selection\", \"elapsed_seconds\": 0.96, \"iterations\": \"[40]\", \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1h/logistic-c0.1-selection\", \"elapsed_seconds\": 0.94, \"iterations\": \"[38]\", \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1h/logistic-c1-selection\", \"elapsed_seconds\": 0.98, \"iterations\": \"[38]\", \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1h/logistic-final\", \"elapsed_seconds\": 0.96, \"iterations\": \"[39]\", \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1h/neural-final\", \"elapsed_seconds\": 9.93, \"iterations\": 34, \"loss\": 0.6821841978922906, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1h/neural-selection\", \"elapsed_seconds\": 7.46, \"iterations\": 29, \"loss\": 0.682856900775263, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1h/tree-final\", \"elapsed_seconds\": 10.9, \"iterations\": 99, \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1h/tree-selection\", \"elapsed_seconds\": 11.63, \"iterations\": 115, \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1w/logistic-c0.001-selection\", \"elapsed_seconds\": 0.03, \"iterations\": \"[14]\", \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1w/logistic-c0.01-selection\", \"elapsed_seconds\": 0.03, \"iterations\": \"[32]\", \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1w/logistic-c0.1-selection\", \"elapsed_seconds\": 0.04, \"iterations\": \"[68]\", \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1w/logistic-c1-selection\", \"elapsed_seconds\": 0.05, \"iterations\": \"[98]\", \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1w/logistic-final\", \"elapsed_seconds\": 0.03, \"iterations\": \"[12]\", \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1w/neural-final\", \"elapsed_seconds\": 0.37, \"iterations\": 39, \"loss\": 0.6023366178918041, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1w/neural-selection\", \"elapsed_seconds\": 0.33, \"iterations\": 39, \"loss\": 0.5791297587385763, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1w/tree-final\", \"elapsed_seconds\": 2.26, \"iterations\": 120, \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/1w/tree-selection\", \"elapsed_seconds\": 2.31, \"iterations\": 120, \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/4h/logistic-c0.001-selection\", \"elapsed_seconds\": 0.21, \"iterations\": \"[20]\", \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/4h/logistic-c0.01-selection\", \"elapsed_seconds\": 0.21, \"iterations\": \"[36]\", \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/4h/logistic-c0.1-selection\", \"elapsed_seconds\": 0.27, \"iterations\": \"[70]\", \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/4h/logistic-c1-selection\", \"elapsed_seconds\": 0.38, \"iterations\": \"[123]\", \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/4h/logistic-final\", \"elapsed_seconds\": 0.38, \"iterations\": \"[115]\", \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/4h/neural-final\", \"elapsed_seconds\": 2.37, \"iterations\": 35, \"loss\": 0.6640005400251944, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/4h/neural-selection\", \"elapsed_seconds\": 3.1, \"iterations\": 49, \"loss\": 0.6520996140429103, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/4h/tree-final\", \"elapsed_seconds\": 3.88, \"iterations\": 22, \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_COMPLETE\", \"fit\": \"gameplan/4h/tree-selection\", \"elapsed_seconds\": 3.64, \"iterations\": 52, \"loss\": null, \"warnings\": 0}",
+    "{\"training_event\": \"FIT_WARNING\", \"fit\": \"gameplan/1d/target-quality\", \"message\": \"Excluded returns whose price observations miss the target boundaries.\", \"target_boundary_quality\": {\"policy\": \"clock-window-boundaries-within-five-minutes-v1\", \"enforced\": true, \"maximum_boundary_gap_seconds\": 300.0, \"candidate_rows\": 85345, \"aligned_rows\": 29782, \"excluded_rows\": 55563, \"excluded_rows_by_route\": {\"1d@D+1\": 11138, \"1d@D+2\": 11122, \"1d@D+3\": 11109, \"1d@D+4\": 11103, \"1d@D+5\": 11091}, \"admitted_rows_by_symbol\": {\"AAPL\": 5401, \"AMZN\": 5237, \"COST\": 1689, \"CROX\": 300, \"GOOG\": 4211, \"IONQ\": 1800, \"MU\": 4093, \"NVDA\": 5237, \"PATH\": 954, \"SNDK\": 840, \"TWST\": 20}, \"admitted_rows_by_route\": {\"1d@D+1\": 5953, \"1d@D+2\": 5958, \"1d@D+3\": 5960, \"1d@D+4\": 5955, \"1d@D+5\": 5956}, \"conflicting_minute_rows_excluded\": 0, \"target_contract_version\": \"independent-stock-targets-v1\", \"target_price_source_contract\": \"xnas-itch-archive-v1\", \"target_price_dataset\": \"XNAS.ITCH\"}}",
+    "{\"training_event\": \"FIT_WARNING\", \"fit\": \"gameplan/1h/target-quality\", \"message\": \"Excluded returns whose price observations miss the target boundaries.\", \"target_boundary_quality\": {\"policy\": \"clock-window-boundaries-within-five-minutes-v1\", \"enforced\": true, \"maximum_boundary_gap_seconds\": 300.0, \"candidate_rows\": 239274, \"aligned_rows\": 171984, \"excluded_rows\": 67290, \"excluded_rows_by_route\": {\"1h@04:00\": 6612, \"1h@05:00\": 6111, \"1h@06:00\": 4191, \"1h@07:00\": 82, \"1h@08:00\": 91, \"1h@09:00\": 104, \"1h@10:00\": 172, \"1h@11:00\": 159, \"1h@12:00\": 121, \"1h@13:00\": 6776, \"1h@14:00\": 9209, \"1h@15:00\": 10185, \"1h@16:00\": 12379, \"1h@gap\": 11098}, \"admitted_rows_by_symbol\": {\"AAPL\": 21875, \"AMZN\": 21362, \"COST\": 14920, \"CROX\": 14260, \"GOOG\": 19365, \"IONQ\": 13361, \"MU\": 18999, \"NVDA\": 21409, \"PATH\": 10614, \"SNDK\": 4116, \"TWST\": 11703}, \"admitted_rows_by_route\": {\"1h@04:00\": 10479, \"1h@05:00\": 10980, \"1h@06:00\": 12900, \"1h@07:00\": 17009, \"1h@08:00\": 17000, \"1h@09:00\": 16987, \"1h@10:00\": 16919, \"1h@11:00\": 16932, \"1h@12:00\": 16970, \"1h@13:00\": 10315, \"1h@14:00\": 7882, \"1h@15:00\": 6906, \"1h@16:00\": 4712, \"1h@gap\": 5993}, \"conflicting_minute_rows_excluded\": 0, \"target_contract_version\": \"independent-stock-targets-v1\", \"target_price_source_contract\": \"xnas-itch-archive-v1\", \"target_price_dataset\": \"XNAS.ITCH\"}}",
+    "{\"training_event\": \"FIT_WARNING\", \"fit\": \"gameplan/1w/target-quality\", \"message\": \"Excluded returns whose price observations miss the target boundaries.\", \"target_boundary_quality\": {\"policy\": \"clock-window-boundaries-within-five-minutes-v1\", \"enforced\": true, \"maximum_boundary_gap_seconds\": 300.0, \"candidate_rows\": 17047, \"aligned_rows\": 5935, \"excluded_rows\": 11112, \"excluded_rows_by_route\": {\"1w@D+5\": 11112}, \"admitted_rows_by_symbol\": {\"AAPL\": 1082, \"AMZN\": 1047, \"COST\": 337, \"CROX\": 62, \"GOOG\": 845, \"IONQ\": 357, \"MU\": 811, \"NVDA\": 1048, \"PATH\": 170, \"SNDK\": 166, \"TWST\": 10}, \"admitted_rows_by_route\": {\"1w@D+5\": 5935}, \"conflicting_minute_rows_excluded\": 0, \"target_contract_version\": \"independent-stock-targets-v1\", \"target_price_source_contract\": \"xnas-itch-archive-v1\", \"target_price_dataset\": \"XNAS.ITCH\"}}",
+    "{\"training_event\": \"FIT_WARNING\", \"fit\": \"gameplan/4h/target-quality\", \"message\": \"Excluded returns whose price observations miss the target boundaries.\", \"target_boundary_quality\": {\"policy\": \"clock-window-boundaries-within-five-minutes-v1\", \"enforced\": true, \"maximum_boundary_gap_seconds\": 300.0, \"candidate_rows\": 68353, \"aligned_rows\": 42994, \"excluded_rows\": 25359, \"excluded_rows_by_route\": {\"4h@04:00\": 4731, \"4h@08:00\": 145, \"4h@12:00\": 8732, \"4h@16:00\": 11751}, \"admitted_rows_by_symbol\": {\"AAPL\": 5878, \"AMZN\": 5668, \"COST\": 3752, \"CROX\": 2928, \"GOOG\": 4977, \"IONQ\": 3237, \"MU\": 4938, \"NVDA\": 5740, \"PATH\": 2652, \"SNDK\": 1072, \"TWST\": 2152}, \"admitted_rows_by_route\": {\"4h@04:00\": 12360, \"4h@08:00\": 16946, \"4h@12:00\": 8359, \"4h@16:00\": 5329}, \"conflicting_minute_rows_excluded\": 0, \"target_contract_version\": \"independent-stock-targets-v1\", \"target_price_source_contract\": \"xnas-itch-archive-v1\", \"target_price_dataset\": \"XNAS.ITCH\"}}"
+  ],
+  "provider_calls": 0,
+  "orders_placed": 0,
+  "production_mutations": 0,
+  "native_supervision_owner_changed": false
+}

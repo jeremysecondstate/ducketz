@@ -1,0 +1,137 @@
+{
+  "started_at": "2026-09-26T06:31:53.911741+00:00",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260926T040723.834511Z",
+  "implementation_before": {
+    "status": "UNCHANGED_EXCEPT_EXACT_REVIEWED_ISOLATED_MODULES",
+    "code_files": 255,
+    "baseline_recorded_at": "2026-09-26T04:10:46.108210+00:00",
+    "reviewed_isolated_drift_paths": [
+      "ml/hyperliquid_paper_runtime.py",
+      "ml/hyperliquid_forecast_reader.py",
+      "ml/hyperliquid_powder_exchange.py",
+      "ml/hyperliquid_powder_ledger.py",
+      "ml/hyperliquid_powder_lock.py",
+      "ml/hyperliquid_powder_runtime.py"
+    ],
+    "explicit_review": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\reviewed-isolated-code-drift.json"
+  },
+  "checks": [
+    {
+      "check": "verify_completed_run",
+      "started_at": "2026-09-26T06:31:53.941477+00:00",
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-B",
+        "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\verify_completed_run.py",
+        "--overnight-run",
+        "C:\\DATASTORE\\ml\\overnight-runs\\20260926T040723.834511Z"
+      ],
+      "stdout": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\completion-audit.json",
+      "stderr": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\verify_completed_run-stderr.log",
+      "exit_code": 0,
+      "seconds": 742.584,
+      "finished_at": "2026-09-26T06:44:16.575359+00:00"
+    },
+    {
+      "check": "verify_yg_completion",
+      "started_at": "2026-09-26T06:44:16.577691+00:00",
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-B",
+        "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\verify_yg_completion.py",
+        "--overnight-run",
+        "C:\\DATASTORE\\ml\\overnight-runs\\20260926T040723.834511Z",
+        "--output",
+        "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\yg-completion.json"
+      ],
+      "stdout": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\verify_yg_completion-stdout.log",
+      "stderr": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\verify_yg_completion-stderr.log",
+      "exit_code": 0,
+      "seconds": 13.538,
+      "finished_at": "2026-09-26T06:44:30.116114+00:00"
+    },
+    {
+      "check": "audit_provider_completion",
+      "started_at": "2026-09-26T06:44:30.116590+00:00",
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-B",
+        "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\audit_provider_completion.py",
+        "--terminal-run",
+        "C:\\DATASTORE\\ml\\overnight-runs\\20260926T040723.834511Z",
+        "--hash-current"
+      ],
+      "stdout": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\audit_provider_completion-stdout.log",
+      "stderr": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\audit_provider_completion-stderr.log",
+      "exit_code": 0,
+      "seconds": 1.286,
+      "finished_at": "2026-09-26T06:44:31.402825+00:00"
+    },
+    {
+      "check": "review_models",
+      "started_at": "2026-09-26T06:44:31.403318+00:00",
+      "command": [
+        "C:\\dev\\ducketz\\.venv\\Scripts\\python.exe",
+        "-B",
+        "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\review_models.py",
+        "--overnight-run",
+        "C:\\DATASTORE\\ml\\overnight-runs\\20260926T040723.834511Z",
+        "--gameplan-run",
+        "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z",
+        "--enrichment-run",
+        "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260926T062539.552484Z"
+      ],
+      "stdout": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\review_models-stdout.log",
+      "stderr": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\review_models-stderr.log",
+      "exit_code": 0,
+      "seconds": 94.77,
+      "finished_at": "2026-09-26T06:46:06.180097+00:00"
+    }
+  ],
+  "status": "VERIFIED_WITH_COVERAGE_NOTES",
+  "orders_placed": 0,
+  "provider_calls": 0,
+  "production_mutations": 0,
+  "implementation_after": {
+    "status": "UNCHANGED_EXCEPT_EXACT_REVIEWED_ISOLATED_MODULES",
+    "code_files": 255,
+    "baseline_recorded_at": "2026-09-26T04:10:46.108210+00:00",
+    "reviewed_isolated_drift_paths": [
+      "ml/hyperliquid_paper_runtime.py",
+      "ml/hyperliquid_forecast_reader.py",
+      "ml/hyperliquid_powder_exchange.py",
+      "ml/hyperliquid_powder_ledger.py",
+      "ml/hyperliquid_powder_lock.py",
+      "ml/hyperliquid_powder_runtime.py"
+    ],
+    "explicit_review": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\reviewed-isolated-code-drift.json"
+  },
+  "evidence": {
+    "completion-audit.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\completion-audit.json",
+      "sha256": "e62d821b8335bc6f21ec7c06ab7fd58746c1725050198c90ee4b3f3cc3b4bf12"
+    },
+    "yg-completion.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\yg-completion.json",
+      "sha256": "94d1470c2bfe18c0f5d1c3980c11b27295160314d758caa65d577926eb40edd1"
+    },
+    "provider-completion.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\provider-completion.json",
+      "sha256": "f279728333cbcb1f57b363073aaa2f73518ba94804ac84d91c1999e3939faec6"
+    },
+    "model-review.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\model-review.json",
+      "sha256": "266ac5a341eb49e22e89e97801b016a8557d80a02220dba4c4ef3d471702d6d9"
+    },
+    "model-metric-summary.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\model-metric-summary.json",
+      "sha256": "5a0c3961b58d95b0c5974209943f7a7da2e48abc99766c854d6248b07cf014c8"
+    }
+  },
+  "limitations": [
+    "Model quality and unavailable actual outcomes retain their saved status.",
+    "Controls, holdings ledger and schedule pre/post verification remain a separate root/preflight audit.",
+    "Archive API validates raw/normalized hashes and native request headers; second/minute check does not replay every raw DBN record."
+  ],
+  "finished_at": "2026-09-26T06:46:06.212755+00:00"
+}

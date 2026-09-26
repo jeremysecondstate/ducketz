@@ -1,0 +1,1265 @@
+{
+  "reviewed_at": "2026-09-26T06:28:18.283555+00:00",
+  "status": "SAVED_SIZING_REPORTS_VERIFY",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260926T040723.834511Z",
+  "native_status_at_review": "RUNNING",
+  "implementation": {
+    "status": "UNCHANGED_EXCEPT_EXACT_REVIEWED_ISOLATED_MODULES",
+    "code_files": 255,
+    "baseline_recorded_at": "2026-09-26T04:10:46.108210+00:00",
+    "reviewed_isolated_drift_paths": [
+      "ml/hyperliquid_paper_runtime.py",
+      "ml/hyperliquid_forecast_reader.py",
+      "ml/hyperliquid_powder_exchange.py",
+      "ml/hyperliquid_powder_ledger.py",
+      "ml/hyperliquid_powder_lock.py",
+      "ml/hyperliquid_powder_runtime.py"
+    ],
+    "explicit_review": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\reviewed-isolated-code-drift.json"
+  },
+  "run": "C:\\DATASTORE\\ml\\stock-trader-model-runs\\20260926T062539.552484Z",
+  "source_gameplan": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z",
+  "pinned_receipt_sha256": "4f1e9c7a6a01868a194b5015d106163ea322655322f59d53b4a297e5daebbd4d",
+  "bound_output_sha256": {
+    "manifest.json": "cb8d640d3cf0b23126fec559c9a21ca2df9348a614aecf6bddd28dcfb755395d",
+    "training-report.json": "0f086ded5209d4f1f4982e39a757f87152e228289c44f4536852fb0012a26dea",
+    "model.json": "523dee548a2150dfc8feb417ed939d5f03ab801e1add7e3107fcb314c8798e95"
+  },
+  "native_log_sha256_at_review": "100c4a6b1b3ca3dc7de2810dee9effa774de3e500c690faee9c07c75d804251d",
+  "scope_policy": "pooled-horizon-with-observed-target-coverage-v1",
+  "admission_policy": "archive-optional-market-observations-v1",
+  "qualified_target_contracts": [],
+  "supported_horizons": [],
+  "horizons": {
+    "1h": {
+      "fit_status": "FITTED",
+      "fitted_scopes": 143,
+      "diagnostic_scopes": 143,
+      "qualified_scopes": 0,
+      "assessment_scores": {
+        "adverse_mse": 4.432332861981698e-05,
+        "base_adverse_mse": 4.800398659615006e-05,
+        "base_brier": 0.23616428640161716,
+        "base_log_loss": 0.6652157455871305,
+        "base_return_mse": 0.00011474431705579176,
+        "brier": 0.23164707955393352,
+        "ece": 0.024626691599745384,
+        "log_loss": 0.6553900948317453,
+        "probability_range": [
+          0.23587739703444557,
+          0.5610051782133038
+        ],
+        "return_mse": 0.00011488491129300967
+      },
+      "quality_checks": {
+        "brier_below_baseline": true,
+        "log_loss_below_baseline": true,
+        "ece_at_most_0_15": true,
+        "return_mse_below_baseline": false,
+        "adverse_mse_at_most_baseline": true,
+        "varying_probability": true,
+        "assessment_clusters_at_least_minimum": true
+      },
+      "failed_quality_checks": [
+        "return_mse_below_baseline"
+      ],
+      "scope_reasons": {
+        "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 137,
+        "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 6
+      },
+      "market_feature_admission": {
+        "admitted_rows": 93040,
+        "excluded_by_feature": {
+          "bp__compression_score": 72749,
+          "bp__direction_score": 72749,
+          "mr__atr_percent": 72749,
+          "mr__momentum_risk_adjusted": 72749,
+          "mr__range_position": 72749,
+          "mr__trend_atr": 72749,
+          "mr__volatility_ratio": 72749,
+          "mr__volume_score": 72749
+        },
+        "excluded_by_symbol": {
+          "AAPL": 9818,
+          "AMZN": 9449,
+          "COST": 6744,
+          "CROX": 8222,
+          "GOOG": 8003,
+          "IONQ": 3178,
+          "MU": 8175,
+          "NVDA": 9528,
+          "PATH": 3346,
+          "TWST": 6286
+        },
+        "excluded_missing_market_rows": 72749,
+        "excluded_rows_sha256": "6d61443903d04989c556d28d9a0ec757f796a7e1d4cbf9145c12dfb66eeaf45b",
+        "input_execution_rows": 165789,
+        "policy": "archive-optional-market-observations-v1",
+        "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing"
+      },
+      "partitions": {
+        "assessment": {
+          "decision_clusters": 63,
+          "first_decision": "2026-06-27T00:05:00+00:00",
+          "last_decision": "2026-09-25T00:05:00+00:00",
+          "last_target_end": "2026-09-26T00:00:00+00:00",
+          "positive_rate": 0.38231418028465997,
+          "rows": 7588,
+          "rows_sha256": "369645b03ce221e185b84f07046cc7fdc2547fe0a2c3fb9b4ae4751ea2481745"
+        },
+        "calibration": {
+          "decision_clusters": 63,
+          "first_decision": "2026-03-27T00:05:00+00:00",
+          "last_decision": "2026-06-26T00:05:00+00:00",
+          "last_target_end": "2026-06-27T00:00:00+00:00",
+          "positive_rate": 0.40870474447784605,
+          "rows": 7651,
+          "rows_sha256": "4858de6005fe9142087161a659b1676d856f18dc73f1ba4c50fde3aeef12da3c"
+        },
+        "selection": {
+          "decision_clusters": 63,
+          "first_decision": "2025-12-24T00:05:00+00:00",
+          "last_decision": "2026-03-26T00:05:00+00:00",
+          "last_target_end": "2026-03-27T00:00:00+00:00",
+          "positive_rate": 0.3866961081976263,
+          "rows": 7246,
+          "rows_sha256": "aa2e5ad370f2ec53693e34eb0e4088e21c57d7886476ab621743ec391e5d93d3"
+        },
+        "train": {
+          "decision_clusters": 684,
+          "first_decision": "2023-04-04T00:05:00+00:00",
+          "last_decision": "2025-12-23T00:05:00+00:00",
+          "last_target_end": "2025-12-24T00:00:00+00:00",
+          "positive_rate": 0.38602508681170716,
+          "rows": 70555,
+          "rows_sha256": "7b7ed4a51328a6c01efe0db1734678117ad46644ffc815fc6c89e32c22fc4b93"
+        }
+      },
+      "development_selection": {
+        "assessment_used_for_selection": false,
+        "candidate_metrics": {
+          "1.0": {
+            "adverse_mse": 3.827871186557991e-05,
+            "allocation_transformed_target_mse": 6.166151716627391,
+            "log_loss": 0.654566717289247,
+            "return_mse": 0.00010929333667650988
+          },
+          "20.0": {
+            "adverse_mse": 3.827983714411495e-05,
+            "allocation_transformed_target_mse": 6.16614213142833,
+            "log_loss": 0.6545574476952348,
+            "return_mse": 0.00010929313644152131
+          },
+          "5.0": {
+            "adverse_mse": 3.827894662472869e-05,
+            "allocation_transformed_target_mse": 6.166149681446455,
+            "log_loss": 0.6545647368463805,
+            "return_mse": 0.00010929329441241647
+          }
+        },
+        "candidate_penalties": [
+          1.0,
+          5.0,
+          20.0
+        ],
+        "head_objectives": {
+          "adverse_return": "adverse_mse",
+          "allocation_fraction": "allocation_transformed_target_mse",
+          "expected_net_return": "return_mse",
+          "trade_probability": "log_loss"
+        },
+        "policy": "independent-enrichment-head-objective-selection-v1",
+        "selected_penalties": {
+          "adverse_return": 1.0,
+          "allocation_fraction": 20.0,
+          "expected_net_return": 20.0,
+          "trade_probability": 20.0
+        },
+        "tie_policy": "first_penalty_in_fixed_order"
+      },
+      "calibration_selection": {
+        "assessment_used_for_selection": false,
+        "candidate_metrics": {
+          "identity": {
+            "brier_score": 0.2356198708251797,
+            "log_loss": 0.6636552613217831,
+            "rows": 3925
+          },
+          "platt": {
+            "brier_score": 0.23559458317604368,
+            "log_loss": 0.6636414877151838,
+            "rows": 3925
+          }
+        },
+        "fit_decision_clusters": 31,
+        "fit_last_target_end": "2026-05-12T00:00:00+00:00",
+        "fit_rows": 3726,
+        "full_calibration_refit_rows": 7651,
+        "policy": "independent-enrichment-logit-development-selection-v1",
+        "purged_rows": 0,
+        "selected_family": "platt",
+        "selection_basis": "minimum_later_calibration_development_log_loss_identity_wins_ties",
+        "selection_status": "SELECTED_ON_PURGED_DEVELOPMENT",
+        "split": "first_half_vs_second_half_decision_clusters",
+        "validation_decision_clusters": 32,
+        "validation_first_decision": "2026-05-12T00:05:00+00:00",
+        "validation_rows": 3925
+      },
+      "iterative_optimizers_converged": true,
+      "thin_scope_evidence": {
+        "CROX|1h@16:00|60m": {
+          "assessment_decision_clusters": 0,
+          "assessment_scores": null,
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 7,
+          "horizon_assessment_scores": {
+            "adverse_mse": 4.432332861981698e-05,
+            "base_adverse_mse": 4.800398659615006e-05,
+            "base_brier": 0.23616428640161716,
+            "base_log_loss": 0.6652157455871305,
+            "base_return_mse": 0.00011474431705579176,
+            "brier": 0.23164707955393352,
+            "ece": 0.024626691599745384,
+            "log_loss": 0.6553900948317453,
+            "probability_range": [
+              0.23587739703444557,
+              0.5610051782133038
+            ],
+            "return_mse": 0.00011488491129300967
+          },
+          "pooled_symbol_route_fit_decision_clusters": 7,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        },
+        "TWST|1h@04:00|60m": {
+          "assessment_decision_clusters": 1,
+          "assessment_scores": {
+            "adverse_mse": 3.7015556432969093e-07,
+            "base_adverse_mse": 6.259448025247126e-06,
+            "base_brier": 0.14906362130032547,
+            "base_log_loss": 0.48790300339020043,
+            "base_return_mse": 2.7595109528705695e-05,
+            "brier": 0.1767286477690445,
+            "ece": 0.4203910652821305,
+            "log_loss": 0.5454016533371895,
+            "probability_range": [
+              0.4203910652821305,
+              0.4203910652821305
+            ],
+            "return_mse": 2.458810989943009e-05
+          },
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 12,
+          "horizon_assessment_scores": {
+            "adverse_mse": 4.432332861981698e-05,
+            "base_adverse_mse": 4.800398659615006e-05,
+            "base_brier": 0.23616428640161716,
+            "base_log_loss": 0.6652157455871305,
+            "base_return_mse": 0.00011474431705579176,
+            "brier": 0.23164707955393352,
+            "ece": 0.024626691599745384,
+            "log_loss": 0.6553900948317453,
+            "probability_range": [
+              0.23587739703444557,
+              0.5610051782133038
+            ],
+            "return_mse": 0.00011488491129300967
+          },
+          "pooled_symbol_route_fit_decision_clusters": 12,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        },
+        "TWST|1h@05:00|60m": {
+          "assessment_decision_clusters": 4,
+          "assessment_scores": {
+            "adverse_mse": 4.8678418677378076e-05,
+            "base_adverse_mse": 6.027950074322599e-05,
+            "base_brier": 0.26297603887850574,
+            "base_log_loss": 0.7197970205894946,
+            "base_return_mse": 0.0001866615494228642,
+            "brier": 0.25469564130096733,
+            "ece": 0.061183538701664875,
+            "log_loss": 0.7026169247845417,
+            "probability_range": [
+              0.43402786352660655,
+              0.44547498307850225
+            ],
+            "return_mse": 0.00018327183114663845
+          },
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 14,
+          "horizon_assessment_scores": {
+            "adverse_mse": 4.432332861981698e-05,
+            "base_adverse_mse": 4.800398659615006e-05,
+            "base_brier": 0.23616428640161716,
+            "base_log_loss": 0.6652157455871305,
+            "base_return_mse": 0.00011474431705579176,
+            "brier": 0.23164707955393352,
+            "ece": 0.024626691599745384,
+            "log_loss": 0.6553900948317453,
+            "probability_range": [
+              0.23587739703444557,
+              0.5610051782133038
+            ],
+            "return_mse": 0.00011488491129300967
+          },
+          "pooled_symbol_route_fit_decision_clusters": 14,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        },
+        "TWST|1h@14:00|60m": {
+          "assessment_decision_clusters": 2,
+          "assessment_scores": {
+            "adverse_mse": 3.664181141983466e-06,
+            "base_adverse_mse": 3.771288911890761e-06,
+            "base_brier": 0.26297603887850574,
+            "base_log_loss": 0.7197970205894946,
+            "base_return_mse": 2.136366616998595e-05,
+            "brier": 0.2657373972383456,
+            "ece": 0.1525315991568864,
+            "log_loss": 0.7254106838238651,
+            "probability_range": [
+              0.33988236134483263,
+              0.35505444034139455
+            ],
+            "return_mse": 2.2854992060914224e-05
+          },
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 3,
+          "horizon_assessment_scores": {
+            "adverse_mse": 4.432332861981698e-05,
+            "base_adverse_mse": 4.800398659615006e-05,
+            "base_brier": 0.23616428640161716,
+            "base_log_loss": 0.6652157455871305,
+            "base_return_mse": 0.00011474431705579176,
+            "brier": 0.23164707955393352,
+            "ece": 0.024626691599745384,
+            "log_loss": 0.6553900948317453,
+            "probability_range": [
+              0.23587739703444557,
+              0.5610051782133038
+            ],
+            "return_mse": 0.00011488491129300967
+          },
+          "pooled_symbol_route_fit_decision_clusters": 3,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        },
+        "TWST|1h@15:00|60m": {
+          "assessment_decision_clusters": 1,
+          "assessment_scores": {
+            "adverse_mse": 1.22646222188097e-07,
+            "base_adverse_mse": 3.5027212242259463e-06,
+            "base_brier": 0.14906362130032547,
+            "base_log_loss": 0.48790300339020043,
+            "base_return_mse": 7.738017684547872e-07,
+            "brier": 0.09525692587223024,
+            "ece": 0.3086372075305086,
+            "log_loss": 0.3690905677105542,
+            "probability_range": [
+              0.3086372075305086,
+              0.3086372075305086
+            ],
+            "return_mse": 2.5465325454857725e-07
+          },
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 1,
+          "horizon_assessment_scores": {
+            "adverse_mse": 4.432332861981698e-05,
+            "base_adverse_mse": 4.800398659615006e-05,
+            "base_brier": 0.23616428640161716,
+            "base_log_loss": 0.6652157455871305,
+            "base_return_mse": 0.00011474431705579176,
+            "brier": 0.23164707955393352,
+            "ece": 0.024626691599745384,
+            "log_loss": 0.6553900948317453,
+            "probability_range": [
+              0.23587739703444557,
+              0.5610051782133038
+            ],
+            "return_mse": 0.00011488491129300967
+          },
+          "pooled_symbol_route_fit_decision_clusters": 1,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        },
+        "TWST|1h@16:00|60m": {
+          "assessment_decision_clusters": 2,
+          "assessment_scores": {
+            "adverse_mse": 8.37647180647506e-07,
+            "base_adverse_mse": 7.215182543479193e-06,
+            "base_brier": 0.26297603887850574,
+            "base_log_loss": 0.7197970205894946,
+            "base_return_mse": 1.2683223047684683e-06,
+            "brier": 0.2966026559075493,
+            "ece": 0.20812328047525397,
+            "log_loss": 0.7962441447421037,
+            "probability_range": [
+              0.28860009973025563,
+              0.29515333931923643
+            ],
+            "return_mse": 1.5821041171507332e-06
+          },
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 1,
+          "horizon_assessment_scores": {
+            "adverse_mse": 4.432332861981698e-05,
+            "base_adverse_mse": 4.800398659615006e-05,
+            "base_brier": 0.23616428640161716,
+            "base_log_loss": 0.6652157455871305,
+            "base_return_mse": 0.00011474431705579176,
+            "brier": 0.23164707955393352,
+            "ece": 0.024626691599745384,
+            "log_loss": 0.6553900948317453,
+            "probability_range": [
+              0.23587739703444557,
+              0.5610051782133038
+            ],
+            "return_mse": 0.00011488491129300967
+          },
+          "pooled_symbol_route_fit_decision_clusters": 1,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        }
+      }
+    },
+    "4h": {
+      "fit_status": "FITTED",
+      "fitted_scopes": 78,
+      "diagnostic_scopes": 79,
+      "qualified_scopes": 0,
+      "assessment_scores": {
+        "adverse_mse": 0.0001886822321047188,
+        "base_adverse_mse": 0.00021261050818037605,
+        "base_brier": 0.24836652616123323,
+        "base_log_loss": 0.6898767615186002,
+        "base_return_mse": 0.0005518054653486977,
+        "brier": 0.2476998760858098,
+        "ece": 0.009033985239235794,
+        "log_loss": 0.6885537382767614,
+        "probability_range": [
+          0.35395523118379346,
+          0.687798941420116
+        ],
+        "return_mse": 0.000554361989889524
+      },
+      "quality_checks": {
+        "brier_below_baseline": true,
+        "log_loss_below_baseline": true,
+        "ece_at_most_0_15": true,
+        "return_mse_below_baseline": false,
+        "adverse_mse_at_most_baseline": true,
+        "varying_probability": true,
+        "assessment_clusters_at_least_minimum": true
+      },
+      "failed_quality_checks": [
+        "return_mse_below_baseline"
+      ],
+      "scope_reasons": {
+        "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 76,
+        "UNSEEN_EXACT_TARGET_SCOPE": 1,
+        "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+      },
+      "market_feature_admission": {
+        "admitted_rows": 25082,
+        "excluded_by_feature": {
+          "bp__compression_score": 17846,
+          "bp__direction_score": 17846,
+          "mr__atr_percent": 17846,
+          "mr__momentum_risk_adjusted": 17846,
+          "mr__range_position": 17846,
+          "mr__trend_atr": 17846,
+          "mr__volatility_ratio": 17846,
+          "mr__volume_score": 17846
+        },
+        "excluded_by_symbol": {
+          "AAPL": 2722,
+          "AMZN": 2556,
+          "COST": 1641,
+          "CROX": 1619,
+          "GOOG": 2008,
+          "IONQ": 675,
+          "MU": 2125,
+          "NVDA": 2591,
+          "PATH": 798,
+          "TWST": 1111
+        },
+        "excluded_missing_market_rows": 17846,
+        "excluded_rows_sha256": "58b584a4e3bd16d28ead11647dbff93daf3942a70b8246a5850789b4bafd7f3f",
+        "input_execution_rows": 42928,
+        "policy": "archive-optional-market-observations-v1",
+        "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing"
+      },
+      "partitions": {
+        "assessment": {
+          "decision_clusters": 63,
+          "first_decision": "2026-06-27T00:05:00+00:00",
+          "last_decision": "2026-09-25T00:05:00+00:00",
+          "last_target_end": "2026-09-25T23:00:00+00:00",
+          "positive_rate": 0.4594229035166817,
+          "rows": 2218,
+          "rows_sha256": "1ee2f871347401b072894403ca3f5ba08071ddd6996f82a094d6b3a8032f4f59"
+        },
+        "calibration": {
+          "decision_clusters": 63,
+          "first_decision": "2026-03-27T00:05:00+00:00",
+          "last_decision": "2026-06-26T00:05:00+00:00",
+          "last_target_end": "2026-06-26T23:00:00+00:00",
+          "positive_rate": 0.4828964904486895,
+          "rows": 2251,
+          "rows_sha256": "ce84a6fc080f7beff4d3f36dd73bb5f198967fe5eb40d24bb2d1961bccc5b161"
+        },
+        "selection": {
+          "decision_clusters": 63,
+          "first_decision": "2025-12-24T00:05:00+00:00",
+          "last_decision": "2026-03-26T00:05:00+00:00",
+          "last_target_end": "2026-03-26T23:00:00+00:00",
+          "positive_rate": 0.4380120152921901,
+          "rows": 1831,
+          "rows_sha256": "6c9ce941fb17bcdb37ab3330a711ac6a03177457b47e2281f4b8e286235cd0df"
+        },
+        "train": {
+          "decision_clusters": 684,
+          "first_decision": "2023-04-04T00:05:00+00:00",
+          "last_decision": "2025-12-23T00:05:00+00:00",
+          "last_target_end": "2025-12-24T00:00:00+00:00",
+          "positive_rate": 0.46547314578005117,
+          "rows": 18768,
+          "rows_sha256": "f8fd65674b892971fe60a7db95317dfceac3e9e0c8e459ab1c73161a97d5fe4d"
+        }
+      },
+      "development_selection": {
+        "assessment_used_for_selection": false,
+        "candidate_metrics": {
+          "1.0": {
+            "adverse_mse": 0.00013846430361059324,
+            "allocation_transformed_target_mse": 6.986008737056112,
+            "log_loss": 0.6864895049249896,
+            "return_mse": 0.0004402938668534478
+          },
+          "20.0": {
+            "adverse_mse": 0.00013848731729199806,
+            "allocation_transformed_target_mse": 6.985765775105332,
+            "log_loss": 0.6863491961384497,
+            "return_mse": 0.00044028331596681394
+          },
+          "5.0": {
+            "adverse_mse": 0.00013846911013629579,
+            "allocation_transformed_target_mse": 6.985956863502932,
+            "log_loss": 0.6864588559066347,
+            "return_mse": 0.00044029161909658556
+          }
+        },
+        "candidate_penalties": [
+          1.0,
+          5.0,
+          20.0
+        ],
+        "head_objectives": {
+          "adverse_return": "adverse_mse",
+          "allocation_fraction": "allocation_transformed_target_mse",
+          "expected_net_return": "return_mse",
+          "trade_probability": "log_loss"
+        },
+        "policy": "independent-enrichment-head-objective-selection-v1",
+        "selected_penalties": {
+          "adverse_return": 1.0,
+          "allocation_fraction": 20.0,
+          "expected_net_return": 20.0,
+          "trade_probability": 20.0
+        },
+        "tie_policy": "first_penalty_in_fixed_order"
+      },
+      "calibration_selection": {
+        "assessment_used_for_selection": false,
+        "candidate_metrics": {
+          "identity": {
+            "brier_score": 0.2456392274761091,
+            "log_loss": 0.6843478858717317,
+            "rows": 1143
+          },
+          "platt": {
+            "brier_score": 0.2509534811193537,
+            "log_loss": 0.6950168123920791,
+            "rows": 1143
+          }
+        },
+        "fit_decision_clusters": 31,
+        "fit_last_target_end": "2026-05-11T23:00:00+00:00",
+        "fit_rows": 1101,
+        "full_calibration_refit_rows": 0,
+        "policy": "independent-enrichment-logit-development-selection-v1",
+        "purged_rows": 7,
+        "selected_family": "identity",
+        "selection_basis": "minimum_later_calibration_development_log_loss_identity_wins_ties",
+        "selection_status": "SELECTED_ON_PURGED_DEVELOPMENT",
+        "split": "first_half_vs_second_half_decision_clusters",
+        "validation_decision_clusters": 32,
+        "validation_first_decision": "2026-05-12T00:05:00+00:00",
+        "validation_rows": 1143
+      },
+      "iterative_optimizers_converged": true,
+      "thin_scope_evidence": {
+        "SNDK|4h@16:00|5220m": {
+          "assessment_decision_clusters": 2,
+          "assessment_scores": {
+            "adverse_mse": 0.000116539686935505,
+            "base_adverse_mse": 3.288873242197511e-05,
+            "base_brier": 0.2883344332413873,
+            "base_log_loss": 0.7699587110518994,
+            "base_return_mse": 0.0004169709954925319,
+            "brier": 0.11836273633218242,
+            "ece": 0.34380437170382994,
+            "log_loss": 0.42148364445477027,
+            "probability_range": [
+              0.6434956153230592,
+              0.668895641269281
+            ],
+            "return_mse": 0.00024139630766892967
+          },
+          "exact_scope_observed_in_fit": false,
+          "fit_decision_clusters": 0,
+          "horizon_assessment_scores": {
+            "adverse_mse": 0.0001886822321047188,
+            "base_adverse_mse": 0.00021261050818037605,
+            "base_brier": 0.24836652616123323,
+            "base_log_loss": 0.6898767615186002,
+            "base_return_mse": 0.0005518054653486977,
+            "brier": 0.2476998760858098,
+            "ece": 0.009033985239235794,
+            "log_loss": 0.6885537382767614,
+            "probability_range": [
+              0.35395523118379346,
+              0.687798941420116
+            ],
+            "return_mse": 0.000554361989889524
+          },
+          "pooled_symbol_route_fit_decision_clusters": 35,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "UNSEEN_EXACT_TARGET_SCOPE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        },
+        "TWST|4h@16:00|3780m": {
+          "assessment_decision_clusters": 1,
+          "assessment_scores": {
+            "adverse_mse": 7.133240077933973e-05,
+            "base_adverse_mse": 2.5279562318042844e-05,
+            "base_brier": 0.21439880529828326,
+            "base_log_loss": 0.6218171230078148,
+            "base_return_mse": 1.295024198174331e-06,
+            "brier": 0.3029982786521439,
+            "ece": 0.5504527942086804,
+            "log_loss": 0.7995144121388632,
+            "probability_range": [
+              0.5504527942086804,
+              0.5504527942086804
+            ],
+            "return_mse": 4.3645821031224315e-06
+          },
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 2,
+          "horizon_assessment_scores": {
+            "adverse_mse": 0.0001886822321047188,
+            "base_adverse_mse": 0.00021261050818037605,
+            "base_brier": 0.24836652616123323,
+            "base_log_loss": 0.6898767615186002,
+            "base_return_mse": 0.0005518054653486977,
+            "brier": 0.2476998760858098,
+            "ece": 0.009033985239235794,
+            "log_loss": 0.6885537382767614,
+            "probability_range": [
+              0.35395523118379346,
+              0.687798941420116
+            ],
+            "return_mse": 0.000554361989889524
+          },
+          "pooled_symbol_route_fit_decision_clusters": 14,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        },
+        "TWST|4h@16:00|900m": {
+          "assessment_decision_clusters": 5,
+          "assessment_scores": {
+            "adverse_mse": 5.710515554684818e-05,
+            "base_adverse_mse": 2.5254539072830248e-05,
+            "base_brier": 0.24397305647552486,
+            "base_log_loss": 0.6810737582254486,
+            "base_return_mse": 0.0008803523390090018,
+            "brier": 0.24707045339692207,
+            "ece": 0.03168929209797289,
+            "log_loss": 0.6874466703754111,
+            "probability_range": [
+              0.41668000806741595,
+              0.44642773847726847
+            ],
+            "return_mse": 0.0009258847809849223
+          },
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 12,
+          "horizon_assessment_scores": {
+            "adverse_mse": 0.0001886822321047188,
+            "base_adverse_mse": 0.00021261050818037605,
+            "base_brier": 0.24836652616123323,
+            "base_log_loss": 0.6898767615186002,
+            "base_return_mse": 0.0005518054653486977,
+            "brier": 0.2476998760858098,
+            "ece": 0.009033985239235794,
+            "log_loss": 0.6885537382767614,
+            "probability_range": [
+              0.35395523118379346,
+              0.687798941420116
+            ],
+            "return_mse": 0.000554361989889524
+          },
+          "pooled_symbol_route_fit_decision_clusters": 14,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        }
+      }
+    },
+    "1d": {
+      "fit_status": "FITTED",
+      "fitted_scopes": 11,
+      "diagnostic_scopes": 11,
+      "qualified_scopes": 0,
+      "assessment_scores": {
+        "adverse_mse": 0.00046240643173937494,
+        "base_adverse_mse": 0.0004989951026974996,
+        "base_brier": 0.24909612869935405,
+        "base_log_loss": 0.691339011563011,
+        "base_return_mse": 0.0016454000707987507,
+        "brier": 0.2585124690649951,
+        "ece": 0.07852038183750698,
+        "log_loss": 0.7137270219388178,
+        "probability_range": [
+          0.32305347649652366,
+          0.9698984786517725
+        ],
+        "return_mse": 0.0017329525281245522
+      },
+      "quality_checks": {
+        "brier_below_baseline": false,
+        "log_loss_below_baseline": false,
+        "ece_at_most_0_15": true,
+        "return_mse_below_baseline": false,
+        "adverse_mse_at_most_baseline": true,
+        "varying_probability": true,
+        "assessment_clusters_at_least_minimum": true
+      },
+      "failed_quality_checks": [
+        "brier_below_baseline",
+        "log_loss_below_baseline",
+        "return_mse_below_baseline"
+      ],
+      "scope_reasons": {
+        "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 10,
+        "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 1
+      },
+      "market_feature_admission": {
+        "admitted_rows": 3791,
+        "excluded_by_feature": {
+          "bp__compression_score": 2141,
+          "bp__direction_score": 2141,
+          "mr__atr_percent": 2141,
+          "mr__momentum_risk_adjusted": 2141,
+          "mr__range_position": 2141,
+          "mr__trend_atr": 2141,
+          "mr__volatility_ratio": 2141,
+          "mr__volume_score": 2141
+        },
+        "excluded_by_symbol": {
+          "AAPL": 463,
+          "AMZN": 439,
+          "COST": 117,
+          "CROX": 35,
+          "GOOG": 262,
+          "IONQ": 15,
+          "MU": 310,
+          "NVDA": 444,
+          "PATH": 55,
+          "TWST": 1
+        },
+        "excluded_missing_market_rows": 2141,
+        "excluded_rows_sha256": "7bcf89f69d35fab3292794fa4084870824da79d7d3b52f17e0f312ec961bf9cb",
+        "input_execution_rows": 5932,
+        "policy": "archive-optional-market-observations-v1",
+        "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing"
+      },
+      "partitions": {
+        "assessment": {
+          "decision_clusters": 63,
+          "first_decision": "2026-06-27T00:05:00+00:00",
+          "last_decision": "2026-09-25T00:05:00+00:00",
+          "last_target_end": "2026-09-26T00:00:00+00:00",
+          "positive_rate": 0.4608879492600423,
+          "rows": 473,
+          "rows_sha256": "4e7e27eca552403fbc431559b5277e1c836a9828b6e509b1b94e3a68d4a85376"
+        },
+        "calibration": {
+          "decision_clusters": 63,
+          "first_decision": "2026-03-27T00:05:00+00:00",
+          "last_decision": "2026-06-26T00:05:00+00:00",
+          "last_target_end": "2026-06-27T00:00:00+00:00",
+          "positive_rate": 0.5166666666666667,
+          "rows": 480,
+          "rows_sha256": "24db9b5504cd356f11c699a50a05d4f4e013897eca9829ec3385c05607435759"
+        },
+        "selection": {
+          "decision_clusters": 63,
+          "first_decision": "2025-08-23T00:05:00+00:00",
+          "last_decision": "2026-03-26T00:05:00+00:00",
+          "last_target_end": "2026-03-27T00:00:00+00:00",
+          "positive_rate": 0.5087719298245614,
+          "rows": 456,
+          "rows_sha256": "0c801c828c4b92fafab08f4460c2894daa53c2ce85bc96c0d16edbc97dad2301"
+        },
+        "train": {
+          "decision_clusters": 427,
+          "first_decision": "2023-04-04T00:05:00+00:00",
+          "last_decision": "2025-08-22T00:05:00+00:00",
+          "last_target_end": "2025-08-23T00:00:00+00:00",
+          "positive_rate": 0.4815281276238455,
+          "rows": 2382,
+          "rows_sha256": "bee226063b277c7fd600532a89823196de7aaff138d60b8de4543ec749d5f969"
+        }
+      },
+      "development_selection": {
+        "assessment_used_for_selection": false,
+        "candidate_metrics": {
+          "1.0": {
+            "adverse_mse": 0.00033146547288341073,
+            "allocation_transformed_target_mse": 7.870186676425062,
+            "log_loss": 0.6850013428780997,
+            "return_mse": 0.0013376139283731929
+          },
+          "20.0": {
+            "adverse_mse": 0.0003262357083667775,
+            "allocation_transformed_target_mse": 7.865621713686488,
+            "log_loss": 0.684930497978524,
+            "return_mse": 0.0013356128453500214
+          },
+          "5.0": {
+            "adverse_mse": 0.00032976913599602205,
+            "allocation_transformed_target_mse": 7.86917023676564,
+            "log_loss": 0.6849748007385871,
+            "return_mse": 0.0013371895535571384
+          }
+        },
+        "candidate_penalties": [
+          1.0,
+          5.0,
+          20.0
+        ],
+        "head_objectives": {
+          "adverse_return": "adverse_mse",
+          "allocation_fraction": "allocation_transformed_target_mse",
+          "expected_net_return": "return_mse",
+          "trade_probability": "log_loss"
+        },
+        "policy": "independent-enrichment-head-objective-selection-v1",
+        "selected_penalties": {
+          "adverse_return": 20.0,
+          "allocation_fraction": 20.0,
+          "expected_net_return": 20.0,
+          "trade_probability": 20.0
+        },
+        "tie_policy": "first_penalty_in_fixed_order"
+      },
+      "calibration_selection": {
+        "assessment_used_for_selection": false,
+        "candidate_metrics": {
+          "identity": {
+            "brier_score": 0.25472017436804195,
+            "log_loss": 0.7032761358929571,
+            "rows": 248
+          },
+          "platt": {
+            "brier_score": 0.27155459073567795,
+            "log_loss": 0.7371587418452926,
+            "rows": 248
+          }
+        },
+        "fit_decision_clusters": 31,
+        "fit_last_target_end": "2026-05-12T00:00:00+00:00",
+        "fit_rows": 232,
+        "full_calibration_refit_rows": 0,
+        "policy": "independent-enrichment-logit-development-selection-v1",
+        "purged_rows": 0,
+        "selected_family": "identity",
+        "selection_basis": "minimum_later_calibration_development_log_loss_identity_wins_ties",
+        "selection_status": "SELECTED_ON_PURGED_DEVELOPMENT",
+        "split": "first_half_vs_second_half_decision_clusters",
+        "validation_decision_clusters": 32,
+        "validation_first_decision": "2026-05-12T00:05:00+00:00",
+        "validation_rows": 248
+      },
+      "iterative_optimizers_converged": true,
+      "thin_scope_evidence": {
+        "TWST|1d@D+1|780m": {
+          "assessment_decision_clusters": 2,
+          "assessment_scores": {
+            "adverse_mse": 1.3325038533886347e-05,
+            "base_adverse_mse": 4.734499740441933e-05,
+            "base_brier": 0.250198653033109,
+            "base_log_loss": 0.6935446445619442,
+            "base_return_mse": 0.019151226303775803,
+            "brier": 0.4708204982154522,
+            "ece": 0.4696363563520505,
+            "log_loss": 1.7671420502858104,
+            "probability_range": [
+              0.9693742340523285,
+              0.9698984786517725
+            ],
+            "return_mse": 0.01850333884524968
+          },
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 1,
+          "horizon_assessment_scores": {
+            "adverse_mse": 0.00046240643173937494,
+            "base_adverse_mse": 0.0004989951026974996,
+            "base_brier": 0.24909612869935405,
+            "base_log_loss": 0.691339011563011,
+            "base_return_mse": 0.0016454000707987507,
+            "brier": 0.2585124690649951,
+            "ece": 0.07852038183750698,
+            "log_loss": 0.7137270219388178,
+            "probability_range": [
+              0.32305347649652366,
+              0.9698984786517725
+            ],
+            "return_mse": 0.0017329525281245522
+          },
+          "pooled_symbol_route_fit_decision_clusters": 1,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        }
+      }
+    },
+    "1w": {
+      "fit_status": "FITTED",
+      "fitted_scopes": 39,
+      "diagnostic_scopes": 40,
+      "qualified_scopes": 0,
+      "assessment_scores": {
+        "adverse_mse": 0.0028765315330270672,
+        "base_adverse_mse": 0.002839695628660329,
+        "base_brier": 0.25350742223427114,
+        "base_log_loss": 0.7002253779584034,
+        "base_return_mse": 0.008158022796320231,
+        "brier": 0.27933853764289546,
+        "ece": 0.1259766977243087,
+        "log_loss": 0.7718293680855024,
+        "probability_range": [
+          0.2318916250547798,
+          0.9365390066482943
+        ],
+        "return_mse": 0.010305470471010564
+      },
+      "quality_checks": {
+        "brier_below_baseline": false,
+        "log_loss_below_baseline": false,
+        "ece_at_most_0_15": true,
+        "return_mse_below_baseline": false,
+        "adverse_mse_at_most_baseline": false,
+        "varying_probability": true,
+        "assessment_clusters_at_least_minimum": true
+      },
+      "failed_quality_checks": [
+        "brier_below_baseline",
+        "log_loss_below_baseline",
+        "return_mse_below_baseline",
+        "adverse_mse_at_most_baseline"
+      ],
+      "scope_reasons": {
+        "HELD_OUT_HORIZON_QUALITY_NOT_PROMOTED": 37,
+        "UNSEEN_EXACT_TARGET_SCOPE": 1,
+        "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE": 2
+      },
+      "market_feature_admission": {
+        "admitted_rows": 3765,
+        "excluded_by_feature": {
+          "bp__compression_score": 2081,
+          "bp__direction_score": 2081,
+          "mr__atr_percent": 2081,
+          "mr__momentum_risk_adjusted": 2081,
+          "mr__range_position": 2081,
+          "mr__trend_atr": 2081,
+          "mr__volatility_ratio": 2081,
+          "mr__volume_score": 2081
+        },
+        "excluded_by_symbol": {
+          "AAPL": 454,
+          "AMZN": 428,
+          "COST": 115,
+          "CROX": 31,
+          "GOOG": 258,
+          "IONQ": 13,
+          "MU": 297,
+          "NVDA": 439,
+          "PATH": 44,
+          "TWST": 2
+        },
+        "excluded_missing_market_rows": 2081,
+        "excluded_rows_sha256": "819e35da28ed9a7e7bae7c883b7bc6cc56b6144940e71c6e09271e6001f9b7da",
+        "input_execution_rows": 5846,
+        "policy": "archive-optional-market-observations-v1",
+        "reason": "Archive rows without optional operational market observations cannot fit market-aware sizing"
+      },
+      "partitions": {
+        "assessment": {
+          "decision_clusters": 63,
+          "first_decision": "2026-06-23T00:05:00+00:00",
+          "last_decision": "2026-09-19T00:05:00+00:00",
+          "last_target_end": "2026-09-26T00:00:00+00:00",
+          "positive_rate": 0.5052854122621564,
+          "rows": 473,
+          "rows_sha256": "243d0d53e06e8fe676f90d4ba8d4d4d08bfbe96661d1d4f407aa1dd6bdefdc12"
+        },
+        "calibration": {
+          "decision_clusters": 59,
+          "first_decision": "2026-03-21T00:05:00+00:00",
+          "last_decision": "2026-06-13T00:05:00+00:00",
+          "last_target_end": "2026-06-23T00:00:00+00:00",
+          "positive_rate": 0.65625,
+          "rows": 448,
+          "rows_sha256": "5074ecaeabd4ff0ecb63065d92c8c55909bb8b7be7fc406e6821937de0b82979"
+        },
+        "selection": {
+          "decision_clusters": 59,
+          "first_decision": "2025-08-19T00:05:00+00:00",
+          "last_decision": "2026-03-14T00:05:00+00:00",
+          "last_target_end": "2026-03-21T00:00:00+00:00",
+          "positive_rate": 0.6111111111111112,
+          "rows": 432,
+          "rows_sha256": "b912dbba248ede9db84c194fa97499c2f92bb00b4919c754a4e779486ccbcca5"
+        },
+        "train": {
+          "decision_clusters": 419,
+          "first_decision": "2023-04-04T00:05:00+00:00",
+          "last_decision": "2025-08-12T00:05:00+00:00",
+          "last_target_end": "2025-08-19T00:00:00+00:00",
+          "positive_rate": 0.5561290322580645,
+          "rows": 2325,
+          "rows_sha256": "10adb9b8fd84025acc36c4adf72d537f3012bd289b70636605ae8b026a24de64"
+        }
+      },
+      "development_selection": {
+        "assessment_used_for_selection": false,
+        "candidate_metrics": {
+          "1.0": {
+            "adverse_mse": 0.0009982839721114406,
+            "allocation_transformed_target_mse": 12.912420657541698,
+            "log_loss": 1.0605447143429447,
+            "return_mse": 0.009268125185632296
+          },
+          "20.0": {
+            "adverse_mse": 0.0009935531275799565,
+            "allocation_transformed_target_mse": 12.892878693131673,
+            "log_loss": 0.877778848113215,
+            "return_mse": 0.00926740914009696
+          },
+          "5.0": {
+            "adverse_mse": 0.0009971106334264045,
+            "allocation_transformed_target_mse": 12.908183385025787,
+            "log_loss": 0.9596681606288615,
+            "return_mse": 0.00926797803503939
+          }
+        },
+        "candidate_penalties": [
+          1.0,
+          5.0,
+          20.0
+        ],
+        "head_objectives": {
+          "adverse_return": "adverse_mse",
+          "allocation_fraction": "allocation_transformed_target_mse",
+          "expected_net_return": "return_mse",
+          "trade_probability": "log_loss"
+        },
+        "policy": "independent-enrichment-head-objective-selection-v1",
+        "selected_penalties": {
+          "adverse_return": 20.0,
+          "allocation_fraction": 20.0,
+          "expected_net_return": 20.0,
+          "trade_probability": 20.0
+        },
+        "tie_policy": "first_penalty_in_fixed_order"
+      },
+      "calibration_selection": {
+        "assessment_used_for_selection": false,
+        "candidate_metrics": {
+          "identity": {
+            "brier_score": 0.25101930840674214,
+            "log_loss": 0.7009441514155462,
+            "rows": 231
+          },
+          "platt": {
+            "brier_score": 0.3011607389770593,
+            "log_loss": 0.8158136552025164,
+            "rows": 231
+          }
+        },
+        "fit_decision_clusters": 25,
+        "fit_last_target_end": "2026-05-02T00:00:00+00:00",
+        "fit_rows": 188,
+        "full_calibration_refit_rows": 0,
+        "policy": "independent-enrichment-logit-development-selection-v1",
+        "purged_rows": 29,
+        "selected_family": "identity",
+        "selection_basis": "minimum_later_calibration_development_log_loss_identity_wins_ties",
+        "selection_status": "SELECTED_ON_PURGED_DEVELOPMENT",
+        "split": "first_half_vs_second_half_decision_clusters",
+        "validation_decision_clusters": 30,
+        "validation_first_decision": "2026-05-02T00:05:00+00:00",
+        "validation_rows": 231
+      },
+      "iterative_optimizers_converged": true,
+      "thin_scope_evidence": {
+        "SNDK|1w@D+5|10860m": {
+          "assessment_decision_clusters": 8,
+          "assessment_scores": {
+            "adverse_mse": 0.016633665665529214,
+            "base_adverse_mse": 0.015347979205320203,
+            "base_brier": 0.25419182273394103,
+            "base_log_loss": 0.7016019072187517,
+            "base_return_mse": 0.026077832732189013,
+            "brier": 0.38532107409416905,
+            "ece": 0.3596031631512602,
+            "log_loss": 1.0863940140186203,
+            "probability_range": [
+              0.8397799947806289,
+              0.8908608246076998
+            ],
+            "return_mse": 0.046781490605594216
+          },
+          "exact_scope_observed_in_fit": false,
+          "fit_decision_clusters": 0,
+          "horizon_assessment_scores": {
+            "adverse_mse": 0.0028765315330270672,
+            "base_adverse_mse": 0.002839695628660329,
+            "base_brier": 0.25350742223427114,
+            "base_log_loss": 0.7002253779584034,
+            "base_return_mse": 0.008158022796320231,
+            "brier": 0.27933853764289546,
+            "ece": 0.1259766977243087,
+            "log_loss": 0.7718293680855024,
+            "probability_range": [
+              0.2318916250547798,
+              0.9365390066482943
+            ],
+            "return_mse": 0.010305470471010564
+          },
+          "pooled_symbol_route_fit_decision_clusters": 36,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "UNSEEN_EXACT_TARGET_SCOPE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        },
+        "TWST|1w@D+5|6540m": {
+          "assessment_decision_clusters": 0,
+          "assessment_scores": null,
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 2,
+          "horizon_assessment_scores": {
+            "adverse_mse": 0.0028765315330270672,
+            "base_adverse_mse": 0.002839695628660329,
+            "base_brier": 0.25350742223427114,
+            "base_log_loss": 0.7002253779584034,
+            "base_return_mse": 0.008158022796320231,
+            "brier": 0.27933853764289546,
+            "ece": 0.1259766977243087,
+            "log_loss": 0.7718293680855024,
+            "probability_range": [
+              0.2318916250547798,
+              0.9365390066482943
+            ],
+            "return_mse": 0.010305470471010564
+          },
+          "pooled_symbol_route_fit_decision_clusters": 6,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        },
+        "TWST|1w@D+5|9420m": {
+          "assessment_decision_clusters": 2,
+          "assessment_scores": {
+            "adverse_mse": 0.001385195306865414,
+            "base_adverse_mse": 0.0003275345521854551,
+            "base_brier": 0.1894475354651707,
+            "base_log_loss": 0.5713822391897985,
+            "base_return_mse": 0.03844084733250061,
+            "brier": 0.5626288996601442,
+            "ece": 0.749864016365746,
+            "log_loss": 1.388417633521209,
+            "probability_range": [
+              0.2318916250547798,
+              0.26838034221372836
+            ],
+            "return_mse": 0.045037227097734875
+          },
+          "exact_scope_observed_in_fit": true,
+          "fit_decision_clusters": 4,
+          "horizon_assessment_scores": {
+            "adverse_mse": 0.0028765315330270672,
+            "base_adverse_mse": 0.002839695628660329,
+            "base_brier": 0.25350742223427114,
+            "base_log_loss": 0.7002253779584034,
+            "base_return_mse": 0.008158022796320231,
+            "brier": 0.27933853764289546,
+            "ece": 0.1259766977243087,
+            "log_loss": 0.7718293680855024,
+            "probability_range": [
+              0.2318916250547798,
+              0.9365390066482943
+            ],
+            "return_mse": 0.010305470471010564
+          },
+          "pooled_symbol_route_fit_decision_clusters": 6,
+          "qualification_policy_version": "pooled-horizon-with-observed-target-coverage-v1",
+          "reason": "INSUFFICIENT_POOLED_SYMBOL_ROUTE_EVIDENCE",
+          "status": "RESEARCH",
+          "target_price_dataset": "XNAS.ITCH",
+          "target_price_source_contract": "xnas-itch-archive-v1"
+        }
+      }
+    }
+  },
+  "errors": [],
+  "orders_placed": 0,
+  "provider_calls": 0,
+  "full_native_completion_verified": false,
+  "cohort_and_inference_reproduction": "DEFERRED_TO_FINAL_COMPLETION",
+  "conclusion": "Saved strict quality, development selection, chronological partitions, admission arithmetic and scope-status evidence agree. No concrete fitting/data defect is demonstrated by this bounded review; inference and exact cohort admission reconstruction remain pending."
+}

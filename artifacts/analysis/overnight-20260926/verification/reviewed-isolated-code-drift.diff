@@ -1,0 +1,1759 @@
+diff --git a/ml/hyperliquid_forecast_reader.py b/ml/hyperliquid_forecast_reader.py
+new file mode 100644
+index 0000000..3e2e6fc
+--- /dev/null
++++ b/ml/hyperliquid_forecast_reader.py
+@@ -0,0 +1,84 @@
++"""Validate saved forecasts for consumers without constructing a trading runtime."""
++from __future__ import annotations
++
++import json
++import math
++from pathlib import Path
++import re
++
++import pandas as pd
++
++from datafetching.hyperliquid_candles import INTERVAL_MS
++
++
++RUN_ID = re.compile(r"\d{8}T\d{6}Z-[a-f0-9]{8}")
++
++
++def _stamp(value):
++    result = pd.Timestamp(value)
++    if pd.isna(result) or result.tzinfo is None:
++        raise ValueError("A timestamp must be timezone-aware.")
++    return result.timestamp()
++
++
++def read_forecast(coin, now, policy, interval, horizon, *, feature_loader=None):
++    """Return ``(prediction, horizon_sigma)`` from local immutable artifacts.
++
++    ``policy`` provides data_root, max_forecast_age_seconds and
++    max_model_age_seconds. The optional loader preserves Paper's existing
++    per-runtime feature cache; the default reads the pinned Parquet directly.
++    Qualification permission and allocation remain consumer policy decisions.
++    The returned copy includes ``_valid_until_epoch`` for a consumer's final
++    pre-submit freshness check; this value is computed from validated sources.
++    """
++    if not isinstance(coin, str) or re.fullmatch(r"[A-Z0-9]{1,20}", coin) is None:
++        raise ValueError("Use a simple uppercase coin symbol.")
++    if interval not in INTERVAL_MS or type(horizon) is not int or horizon <= 0:
++        raise ValueError("A supported interval and positive horizon are required.")
++    root = Path(policy.data_root)
++    directory = root / "_models" / coin / interval / f"h{horizon}"
++    prediction = json.loads((directory / "latest_prediction.json").read_text())
++    if (prediction["coin"], prediction["interval"], prediction["horizon_bars"]) != (coin, interval, horizon):
++        raise ValueError("Forecast belongs to a different market or horizon.")
++    p = float(prediction["p_not_down"])
++    q = float(prediction["p_down"])
++    if not math.isfinite(p) or not 0 <= p <= 1 or not math.isfinite(q) or abs(p + q - 1) > 1e-9:
++        raise ValueError("Invalid complementary forecast probabilities.")
++    created, decision = _stamp(prediction["created_at_utc"]), _stamp(prediction["decision_close_utc"])
++    if not decision <= created <= now or not 0 <= now - decision <= policy.max_forecast_age_seconds:
++        raise ValueError("Forecast is stale or has a future timestamp.")
++    target = _stamp(prediction["target_close_utc"])
++    if target <= now:
++        raise ValueError("Forecast outcome has already matured.")
++    if target != decision + INTERVAL_MS[interval] * horizon / 1000:
++        raise ValueError("Forecast target does not match the configured horizon.")
++    if type(prediction.get("qualified")) is not bool:
++        raise ValueError("Forecast qualification must be explicit.")
++    model_id = prediction["model_id"]
++    if not isinstance(model_id, str) or not RUN_ID.fullmatch(model_id):
++        raise ValueError("Invalid local model identifier.")
++    record = json.loads((directory / "runs" / model_id / "record.json").read_text())
++    if (record.get("coin"), record.get("interval"), record.get("horizon_bars"), record.get("model_id")) != (coin, interval, horizon, model_id):
++        raise ValueError("Model record identity does not match the forecast.")
++    trained = _stamp(record["trained_at_utc"])
++    if trained > created:
++        raise ValueError("Model was published after the recorded forecast.")
++    if not 0 <= now - trained <= policy.max_model_age_seconds:
++        raise ValueError("Forecast model exceeds its configured age.")
++    run_id = prediction["data_run_id"]
++    if not isinstance(run_id, str) or not RUN_ID.fullmatch(run_id):
++        raise ValueError("Invalid local data run identifier.")
++    frame = (feature_loader(coin, run_id) if feature_loader else pd.read_parquet(
++        root / coin / interval / "runs" / run_id / "features.parquet",
++        columns=["close_time", "close", "volatility_log_return_20"]))
++    row = frame.loc[frame.close_time.eq(pd.Timestamp(prediction["decision_close_utc"]))]
++    if len(row) != 1:
++        raise ValueError("The forecast's volatility feature is unavailable.")
++    sigma = float(row.iloc[0]["volatility_log_return_20"]) * math.sqrt(horizon)
++    if not math.isfinite(sigma) or sigma < 0:
++        raise ValueError("The forecast's volatility feature is invalid.")
++    return {**prediction, "_valid_until_epoch": min(
++        decision + policy.max_forecast_age_seconds,
++        target,
++        trained + policy.max_model_age_seconds,
++    )}, sigma
+diff --git a/ml/hyperliquid_paper_runtime.py b/ml/hyperliquid_paper_runtime.py
+index dbcf0df..c28ddf4 100644
+--- a/ml/hyperliquid_paper_runtime.py
++++ b/ml/hyperliquid_paper_runtime.py
+@@ -25,6 +25,7 @@ from ml.hyperliquid_paper_policy import load_config, DEFAULT_PAPER_CONFIG_PATH,
+ from ml.hyperliquid_paper_market import PublicPaperMarket, simulate_fill, consume_fill
+ from ml.hyperliquid_paper_ledger import PaperLedger
+ from ml.hyperliquid_paper_seed import mirror_accounts
++from ml.hyperliquid_forecast_reader import read_forecast
+ from datafetching.hyperliquid_candles import INTERVAL_MS
+ 
+ RUN_ID = re.compile(r"\d{8}T\d{6}Z-[a-f0-9]{8}")
+@@ -114,41 +115,8 @@ class PaperRuntime:
+         return self._frames[coin][1]
+ 
+     def _forecast(self, coin, now):
+-        directory = self.config.data_root / "_models" / coin / self.interval / f"h{self.horizon}"
+-        prediction = json.loads((directory / "latest_prediction.json").read_text())
+-        if (prediction["coin"], prediction["interval"], prediction["horizon_bars"]) != (coin, self.interval, self.horizon):
+-            raise ValueError("Forecast belongs to a different market or horizon.")
+-        p = float(prediction["p_not_down"])
+-        q = float(prediction["p_down"])
+-        if not math.isfinite(p) or not 0 <= p <= 1 or not math.isfinite(q) or abs(p + q - 1) > 1e-9:
+-            raise ValueError("Invalid complementary forecast probabilities.")
+-        created, decision = stamp(prediction["created_at_utc"]), stamp(prediction["decision_close_utc"])
+-        if not decision <= created <= now or not 0 <= now - decision <= self.config.max_forecast_age_seconds:
+-            raise ValueError("Forecast is stale or has a future timestamp.")
+-        if stamp(prediction["target_close_utc"]) <= now:
+-            raise ValueError("Forecast outcome has already matured.")
+-        if stamp(prediction["target_close_utc"]) != decision + INTERVAL_MS[self.interval] * self.horizon / 1000:
+-            raise ValueError("Forecast target does not match the configured horizon.")
+-        if type(prediction.get("qualified")) is not bool:
+-            raise ValueError("Forecast qualification must be explicit.")
+-        model_id = prediction["model_id"]
+-        if not RUN_ID.fullmatch(model_id):
+-            raise ValueError("Invalid local model identifier.")
+-        record = json.loads((directory / "runs" / model_id / "record.json").read_text())
+-        if (record.get("coin"), record.get("interval"), record.get("horizon_bars"), record.get("model_id")) != (coin, self.interval, self.horizon, model_id):
+-            raise ValueError("Model record identity does not match the forecast.")
+-        if stamp(record["trained_at_utc"]) > created:
+-            raise ValueError("Model was published after the recorded forecast.")
+-        if not 0 <= now - stamp(record["trained_at_utc"]) <= self.config.max_model_age_seconds:
+-            raise ValueError("Forecast model exceeds its configured age.")
+-        frame = self._features(coin, prediction["data_run_id"])
+-        row = frame.loc[frame.close_time.eq(pd.Timestamp(prediction["decision_close_utc"]))]
+-        if len(row) != 1:
+-            raise ValueError("The forecast's volatility feature is unavailable.")
+-        sigma = float(row.iloc[0]["volatility_log_return_20"]) * math.sqrt(self.horizon)
+-        if not math.isfinite(sigma) or sigma < 0:
+-            raise ValueError("The forecast's volatility feature is invalid.")
+-        return prediction, sigma
++        return read_forecast(coin, now, self.config, self.interval, self.horizon,
++                             feature_loader=self._features)
+ 
+     def _funding(self, marks, now):
+         # Use realized exchange rates with the exact completed-candle close as
+diff --git a/ml/hyperliquid_powder_exchange.py b/ml/hyperliquid_powder_exchange.py
+new file mode 100644
+index 0000000..962be48
+--- /dev/null
++++ b/ml/hyperliquid_powder_exchange.py
+@@ -0,0 +1,524 @@
++"""Strict, opt-in mainnet bridge; no live I/O occurs at import/construction.
++
++Contracts verified against installed SDK and official docs, 2026-09-25:
++https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint
++https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/exchange-endpoint
++https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/tick-and-lot-size
++
++Order acknowledgements are never execution evidence. Unknown transport outcomes
++require reconciliation; this module never retries a signed exchange request.
++V1 excludes subaccounts, vaults, portfolio margin and cross-account transfers.
++"""
++from decimal import Decimal, ROUND_FLOOR, ROUND_CEILING
++import math
++import os
++import re
++import time
++
++from app.hyperliquid_accounts import valid_wallet
++from app.services.hyperliquid import HyperliquidInfoClient
++from app.services.hyperliquid_trading import HyperliquidTradingConfig, hyperliquid_price_tick
++from ml.hyperliquid_paper_market import PublicPaperMarket, SPOT_BASES
++from ml.hyperliquid_powder_lock import assert_ownership
++
++ACCOUNTS = ("alex", "jeremy", "clearpond")
++MAINNET = "https://api.hyperliquid.xyz"
++ALIASES = {value: key for key, value in SPOT_BASES.items()}
++
++
++class PreSubmitRejected(PermissionError):
++    """Submission stopped before any signed request; safe to record REJECTED."""
++
++
++def finite(value, name, *, positive=False, nonnegative=False):
++    if isinstance(value, bool):
++        raise ValueError(f"Invalid {name}")
++    try:
++        value = float(value)
++    except (ValueError, TypeError, OverflowError):
++        raise ValueError(f"Invalid {name}") from None
++    if not math.isfinite(value) or positive and value <= 0 or nonnegative and value < 0:
++        raise ValueError(f"Invalid {name}")
++    return value
++
++
++def mapping(value, name):
++    if not isinstance(value, dict):
++        raise ValueError(f"Missing or malformed {name}")
++    return value
++
++
++def rows(value, name):
++    if not isinstance(value, list) or any(not isinstance(row, dict) for row in value):
++        raise ValueError(f"Missing or malformed {name}")
++    return value
++
++
++def integer(value, name):
++    if type(value) is not int or value < 0:
++        raise ValueError(f"Invalid {name}")
++    return value
++
++
++def _signer(secret):
++    from eth_account import Account
++    try:
++        return Account.from_key(secret).address.lower()
++    except Exception:
++        raise ValueError("Invalid local Hyperliquid signer") from None
++
++
++class PowderExchange:
++    network = MAINNET
++
++    def __init__(self, symbols, max_order_notional=500, max_quote_age_seconds=45,
++                 slippage_bps=2, ownership_token=None, *, client=None, market=None,
++                 config_factory=HyperliquidTradingConfig, signer=_signer,
++                 exchange_factory=None, clock=time.time):
++        self.symbols = tuple(symbols)
++        if (not self.symbols or len(set(self.symbols)) != len(self.symbols)
++                or any(not isinstance(s, str) or not re.fullmatch(r"[A-Z0-9]{1,20}", s) for s in self.symbols)):
++            raise ValueError("Use distinct supported uppercase symbols")
++        self.max_order_notional = finite(max_order_notional, "order cap", positive=True)
++        self.max_quote_age_seconds = finite(max_quote_age_seconds, "quote age", positive=True)
++        self.slippage_bps = finite(slippage_bps, "slippage", nonnegative=True)
++        if self.slippage_bps >= 10000 or self.max_quote_age_seconds > 45:
++            raise ValueError("Unsupported slippage or quote age")
++        self.ownership_token = ownership_token
++        self.client = client or HyperliquidInfoClient(info_url=MAINNET + "/info", timeout_seconds=10)
++        self.market = market or PublicPaperMarket(info_url=MAINNET + "/info", clock=clock)
++        self.config_factory, self.signer = config_factory, signer
++        self.exchange_factory, self.clock = exchange_factory, clock
++        self.pre_submit_check = None
++        self.identities = None
++        self._bindings = None
++        self._configs = {}
++        self._markets = {}
++        self._submitted = set()
++
++    def _endpoint(self):
++        configured = os.getenv("HYPERLIQUID_INFO_URL", MAINNET + "/info").rstrip("/")
++        for endpoint in (configured, self.client.info_url, self.market.info_url):
++            if endpoint.rstrip("/") != MAINNET + "/info":
++                raise PermissionError("Powder read and signing endpoints must both be mainnet")
++
++    def _info(self, kind, **payload):
++        self._endpoint()
++        return self.client.post_info({"type": kind, **payload})
++
++    def preflight(self):
++        self._endpoint()
++        identities, bindings, configs = {}, {}, {}
++        for account in ACCOUNTS:
++            config = self.config_factory(account)
++            finite(config.max_live_notional, "live environment order cap", positive=True)
++            api = str(config.api_address).lower()
++            if not valid_wallet(api) or self.signer(config.api_secret) != api:
++                raise PermissionError(f"{account}: signer identity mismatch")
++            role = mapping(self._info("userRole", user=api), "agent role")
++            if role.get("role") != "agent":
++                raise PermissionError(f"{account}: a verified API agent is required")
++            owner = str(mapping(role.get("data"), "agent owner").get("user", "")).lower()
++            if not valid_wallet(owner):
++                raise PermissionError(f"{account}: invalid owner mapping")
++            explicit = str(config.wallet_address or "").lower()
++            if explicit and explicit != owner:
++                raise PermissionError(f"{account}: configured owner differs from agent authority")
++            owner_role = mapping(self._info("userRole", user=owner), "owner role")
++            if owner_role.get("role") != "user":
++                raise PermissionError("Subaccount and vault execution are unsupported")
++            identities[account], bindings[account], configs[account] = owner, (owner, api), config
++        if len(set(identities.values())) != len(ACCOUNTS):
++            raise PermissionError("Powder account owners must be distinct")
++        if self._bindings is not None and bindings != self._bindings:
++            raise PermissionError("Account identity changed after preflight")
++        self.identities, self._bindings, self._configs = identities, bindings, configs
++        return dict(identities)
++
++    def observe(self):
++        identities = self.preflight()
++        started = self.clock()
++        raw, needed = {}, set(self.symbols)
++        for account, owner in identities.items():
++            perp = mapping(self._info("clearinghouseState", user=owner), "perpetual state")
++            spot = mapping(self._info("spotClearinghouseState", user=owner), "spot state")
++            mode = self._info("userAbstraction", user=owner)
++            if mode not in {"unifiedAccount", "default", "standard", "disabled"}:
++                raise PermissionError("Unsupported or unknown account abstraction")
++            inventory = rows(perp.get("assetPositions"), "perpetual positions")
++            balances = rows(spot.get("balances"), "spot balances")
++            orders = rows(self._info("frontendOpenOrders", user=owner), "open orders")
++            if orders:
++                raise PermissionError("Open exchange orders require reconciliation before trading")
++            for item in inventory:
++                position = mapping(item.get("position"), "position")
++                qty = finite(position.get("szi"), "perpetual quantity")
++                coin = position.get("coin")
++                if qty and (coin not in self.symbols or account == "clearpond"
++                            or account == "alex" and qty > 0 or account == "jeremy" and qty < 0):
++                    raise PermissionError("Held perpetual position violates configured account role/universe")
++            for balance in balances:
++                qty = finite(balance.get("total"), "spot total", nonnegative=True)
++                coin = balance.get("coin")
++                symbol = ALIASES.get(coin, coin)
++                if qty and coin != "USDC":
++                    if account == "clearpond" and symbol not in self.symbols:
++                        raise PermissionError("Unexpected managed spot asset")
++                    if not isinstance(symbol, str) or not re.fullmatch(r"[A-Z0-9]{1,20}", symbol):
++                        raise PermissionError("Unsupported inherited spot asset")
++                    needed.add(symbol)
++            raw[account] = (perp, spot, mode)
++        quote = mapping(self.market.snapshot(sorted(needed)), "market snapshot")
++        markets = mapping(quote.get("markets"), "market marks")
++        now = self.clock()
++        if now - started > self.max_quote_age_seconds:
++            raise ValueError("Account observation exceeded freshness budget")
++        accounts = {}
++        for account, (perp, spot, mode) in raw.items():
++            positions = {}
++            for symbol in self.symbols:
++                kind = "spot" if account == "clearpond" else "perp"
++                q = self._quote(markets, kind, symbol, now)
++                positions[symbol] = {"quantity": 0.0, "mark": q["mark"], "entry_price": None, "kind": kind}
++            gross, passive_positions = 0.0, {}
++            for item in perp["assetPositions"]:
++                p = item["position"]
++                qty = finite(p["szi"], "quantity")
++                if not qty:
++                    continue
++                target = positions[p["coin"]]
++                if target["quantity"]:
++                    raise ValueError("Duplicate perpetual position")
++                target.update(quantity=qty, entry_price=finite(p.get("entryPx"), "entry price", positive=True))
++                finite(p.get("unrealizedPnl"), "perpetual P/L")
++                gross += abs(qty) * target["mark"]
++            summary = mapping(perp.get("marginSummary"), "margin summary")
++            perp_equity = finite(summary.get("accountValue"), "perpetual equity")
++            available = finite(perp.get("withdrawable"), "withdrawable", nonnegative=True)
++            # A valid complete balances array may omit zero-balance tokens.
++            # Missing/malformed balances itself was rejected above.
++            spot_equity, spot_cash = 0.0, 0.0
++            maintenance = spot.get("tokenToAvailableAfterMaintenance")
++            if mode == "unifiedAccount" and not isinstance(maintenance, list):
++                raise ValueError("Missing unified maintenance availability")
++            maintenance_by_token = {}
++            for pair in maintenance or []:
++                if not isinstance(pair, list) or len(pair) != 2 or pair[0] in maintenance_by_token:
++                    raise ValueError("Malformed maintenance availability")
++                maintenance_by_token[pair[0]] = finite(pair[1], "maintenance availability", nonnegative=True)
++            seen, seen_symbols = set(), set()
++            for balance in spot["balances"]:
++                coin = balance["coin"]
++                if coin in seen:
++                    raise ValueError("Duplicate spot balance")
++                seen.add(coin)
++                qty = finite(balance["total"], "spot total", nonnegative=True)
++                hold = finite(balance.get("hold"), "spot hold", nonnegative=True)
++                if hold > qty:
++                    raise ValueError("Spot hold exceeds balance")
++                if coin == "USDC":
++                    spot_equity += qty
++                    spot_cash = qty - hold
++                    if mode == "unifiedAccount":
++                        token = balance.get("token")
++                        if token not in maintenance_by_token:
++                            raise ValueError("Missing USDC maintenance availability")
++                        spot_cash = min(spot_cash, maintenance_by_token[token])
++                elif qty:
++                    symbol = ALIASES.get(coin, coin)
++                    if symbol in seen_symbols:
++                        raise ValueError("Duplicate spot asset alias")
++                    seen_symbols.add(symbol)
++                    q = self._quote(markets, "spot", symbol, now)
++                    spot_equity += qty * q["mark"]
++                    gross += qty * q["mark"]
++                    if account == "clearpond":
++                        free = qty - hold
++                        if mode == "unifiedAccount":
++                            token = balance.get("token")
++                            if token not in maintenance_by_token:
++                                raise ValueError("Missing managed token maintenance availability")
++                            free = min(free, maintenance_by_token[token])
++                        positions[symbol].update(quantity=qty, available_quantity=free)
++                    else:
++                        passive_positions[symbol] = {"quantity": qty, "mark": q["mark"]}
++            equity = spot_equity if mode == "unifiedAccount" else spot_equity + perp_equity
++            accounts[account] = {"equity": finite(equity, "marked account equity"),
++                                 "available_cash": spot_cash if mode == "unifiedAccount" or account == "clearpond" else available,
++                                 "gross": finite(gross, "gross exposure", nonnegative=True), "positions": positions, "passive_positions": passive_positions,
++                                 "account_mode": mode}
++        self._markets = markets
++        return {"observed_at": started, "started_at": started, "completed_at": now,
++                "identities": identities, "accounts": accounts, "open_orders": []}
++
++    def _order_cap(self, account):
++        config = self._configs.get(account)
++        if config is None:
++            raise PermissionError("Verified account configuration is required")
++        return min(self.max_order_notional, finite(config.max_live_notional, "live environment order cap", positive=True))
++
++    def _evidence(self, observation):
++        """Pin quantities and free collateral, not fluctuating mark prices."""
++        result = {"observed_at": finite(observation.get("observed_at"), "observation time"),
++                  "identities": dict(mapping(observation.get("identities"), "observed identities")), "accounts": {}}
++        for account in ACCOUNTS:
++            state = observation["accounts"][account]
++            result["accounts"][account] = {
++                "available_cash": finite(state.get("available_cash"), "available cash", nonnegative=True),
++                "account_mode": state.get("account_mode"),
++                "positions": {s: finite(p.get("quantity"), "observed quantity") for s, p in state["positions"].items()},
++                "available_quantities": {s: finite(p.get("available_quantity", abs(p["quantity"])), "available quantity", nonnegative=True)
++                                         for s, p in state["positions"].items()},
++                "passive_positions": {s: finite(p.get("quantity"), "passive quantity") for s, p in state.get("passive_positions", {}).items()},
++            }
++        return result
++
++    def _quote(self, markets, kind, symbol, now):
++        q = dict(mapping(markets.get(f"{kind}:{symbol}"), f"{kind}:{symbol} quote"))
++        if q.get("coin") != symbol or q.get("kind") != kind:
++            raise ValueError("Market identity mismatch")
++        q["mark"] = finite(q.get("mark"), "mark", positive=True)
++        from datetime import datetime
++        try:
++            stamp = datetime.fromisoformat(q["book_time_utc"].replace("Z", "+00:00"))
++            if stamp.tzinfo is None or not -5 <= now - stamp.timestamp() <= self.max_quote_age_seconds:
++                raise ValueError()
++        except (KeyError, TypeError, ValueError):
++            raise ValueError("Stale or missing executable quote") from None
++        decimals = q.get("sz_decimals")
++        if type(decimals) is not int or not 0 <= decimals <= 8:
++            raise ValueError("Unknown market size precision")
++        if not isinstance(q.get("wire_coin"), str) or not q["wire_coin"]:
++            raise ValueError("Missing executable market route")
++        return q
++
++    def make_order(self, account, symbol, delta_notional, reduce_only, observation):
++        if account not in ACCOUNTS or symbol not in self.symbols or type(reduce_only) is not bool:
++            raise ValueError("Unknown order account/market")
++        if observation.get("identities") != self.identities:
++            raise PermissionError("Observation account binding differs")
++        now = self.clock()
++        if not 0 <= now - finite(observation.get("observed_at"), "observation time") <= self.max_quote_age_seconds:
++            raise ValueError("Stale account observation")
++        delta = finite(delta_notional, "notional change")
++        if not delta:
++            raise ValueError("No executable size")
++        kind = "spot" if account == "clearpond" else "perp"
++        q = self._quote(self._markets, kind, symbol, now)
++        is_buy = delta > 0
++        levels = q.get("asks" if is_buy else "bids")
++        if not isinstance(levels, list) or not levels or not isinstance(levels[0], list) or len(levels[0]) != 2:
++            raise ValueError("No executable depth")
++        price = Decimal(str(finite(levels[0][0], "book price", positive=True)))
++        price *= Decimal(1) + Decimal(str(self.slippage_bps / 10000)) * (1 if is_buy else -1)
++        tick = hyperliquid_price_tick(price, size_decimals=q["sz_decimals"], spot=kind == "spot")
++        price = (price / tick).to_integral_value(rounding=ROUND_FLOOR if is_buy else ROUND_CEILING) * tick
++        if price <= 0:
++            raise ValueError("Invalid rounded price")
++        qty = min(Decimal(str(abs(delta))) / Decimal(str(q["mark"])), Decimal(str(self._order_cap(account))) / price)
++        if not reduce_only and not (kind == "spot" and not is_buy):
++            qty = min(qty, Decimal(str(abs(delta))) / price)
++        current = observation["accounts"][account]["positions"][symbol]
++        if reduce_only or kind == "spot" and not is_buy:
++            existing = finite(current.get("quantity"), "held quantity")
++            if not existing or existing * delta >= 0:
++                raise ValueError("Requested reduction does not reduce a held position")
++            available = abs(existing) if kind == "perp" else finite(current.get("available_quantity", existing), "available spot", nonnegative=True)
++            qty = min(qty, Decimal(str(available)))
++        qty = qty.quantize(Decimal(1).scaleb(-q["sz_decimals"]), rounding=ROUND_FLOOR)
++        if qty <= 0 or qty * price < 10:
++            raise ValueError("Order is below minimum size or $10 notional")
++        return {"account": account, "symbol": symbol, "coin": q["wire_coin"], "is_buy": is_buy,
++                "size": float(qty), "limit_price": float(price), "reduce_only": reduce_only and kind == "perp", "tif": "Ioc",
++                "observation": self._evidence(observation)}
++
++    def _request(self, intent, *, enforce_cap=False):
++        request = mapping(intent.get("request"), "intent request")
++        if not re.fullmatch(r"0x[0-9a-fA-F]{32}", str(intent.get("cloid", ""))):
++            raise ValueError("Invalid durable client order identity")
++        if request.get("account") not in ACCOUNTS or request.get("symbol") not in self.symbols:
++            raise ValueError("Unknown intent account/market")
++        if request.get("tif") != "Ioc" or type(request.get("is_buy")) is not bool or type(request.get("reduce_only")) is not bool:
++            raise ValueError("Powder only submits explicit IOC requests")
++        size = finite(request.get("size"), "size", positive=True)
++        price = finite(request.get("limit_price"), "limit price", positive=True)
++        if size * price < 10 or enforce_cap and size * price > self._order_cap(request["account"]) + 1e-8:
++            raise PermissionError("Order notional is outside configured bounds")
++        finite(intent.get("created_at"), "intent time", positive=True)
++        return request
++
++    def _submission_guard(self, intent):
++        request = self._request(intent, enforce_cap=True)
++        account = request["account"]
++        assert_ownership(self.ownership_token, account)
++        if any(os.getenv(key, "").lower() != "true" for key in ("HYPERLIQUID_ENABLE_POWDER", "HYPERLIQUID_ENABLE_LIVE_ORDERS")):
++            raise PermissionError("Explicit session Powder and live-order gates are required")
++        if not 0 <= self.clock() - intent["created_at"] <= self.max_quote_age_seconds:
++            raise ValueError("Stale or future submission intent")
++        evidence = mapping(request.get("observation"), "planning observation")
++        if not 0 <= self.clock() - finite(evidence.get("observed_at"), "planning observation time") <= self.max_quote_age_seconds:
++            raise ValueError("Stale planning account observation")
++        if account == "clearpond" and request["is_buy"] or account != "clearpond" and not request["reduce_only"]:
++            if self.clock() >= finite(request.get("forecast_valid_until"), "forecast deadline", positive=True):
++                raise ValueError("Forecast expired before submission")
++        kind = "spot" if account == "clearpond" else "perp"
++        quote = self._quote(self._markets, kind, request["symbol"], self.clock())
++        if request["coin"] != quote["wire_coin"]:
++            raise PermissionError("Order route differs from verified market")
++        size, price = Decimal(str(request["size"])), Decimal(str(request["limit_price"]))
++        step = Decimal(1).scaleb(-quote["sz_decimals"])
++        tick = hyperliquid_price_tick(price, size_decimals=quote["sz_decimals"], spot=kind == "spot")
++        if size % step or price % tick:
++            raise ValueError("Order violates exchange precision")
++        if (account == "alex" and request["is_buy"] and not request["reduce_only"]
++                or account == "jeremy" and not request["is_buy"] and not request["reduce_only"]
++                or account == "clearpond" and request["reduce_only"]):
++            raise PermissionError("Order violates account role")
++        if intent["cloid"] in self._submitted:
++            raise PermissionError("Submission already attempted; reconcile instead")
++        return request
++
++    def _prepare_submission(self, intent):
++        request = self._request(intent)
++        assert_ownership(self.ownership_token, request["account"])
++        if any(os.getenv(key, "").lower() != "true" for key in ("HYPERLIQUID_ENABLE_POWDER", "HYPERLIQUID_ENABLE_LIVE_ORDERS")):
++            raise PermissionError("Explicit session Powder and live-order gates are required")
++        self.preflight()
++        request = self._submission_guard(intent)
++        account = request["account"]
++        config = self._configs[account]
++        if self.exchange_factory:
++            exchange = self.exchange_factory(config, self.identities[account])
++        else:
++            from eth_account import Account
++            from hyperliquid.exchange import Exchange
++            exchange = Exchange(Account.from_key(config.api_secret), MAINNET,
++                                account_address=self.identities[account], timeout=10)
++        if getattr(exchange, "base_url", None) != MAINNET or getattr(exchange, "vault_address", None) is not None:
++            raise PermissionError("Unexpected signing network or vault routing")
++        # SDK construction itself fetches metadata. Re-read actual inventory and
++        # collateral afterwards, then validate the full age budget at the boundary.
++        actual = self.observe()
++        current, planned = self._evidence(actual), request["observation"]
++        if current["identities"] != planned.get("identities"):
++            raise PermissionError("Planning account identity changed")
++        for name in ACCOUNTS:
++            before = mapping(planned.get("accounts", {}).get(name), "planning account")
++            after = current["accounts"][name]
++            if any(before.get(key) != after[key] for key in ("positions", "passive_positions", "account_mode")):
++                raise PermissionError("Actual account inventory changed after planning")
++        # Falling collateral is expected during a stop. The required policy
++        # callback evaluates current cash; it must not block a valid reduction
++        # merely because cash declined since planning.
++        position = actual["accounts"][account]["positions"][request["symbol"]]
++        if request["reduce_only"] or account == "clearpond" and not request["is_buy"]:
++            quantity = finite(position.get("quantity"), "actual held quantity")
++            if quantity * (1 if request["is_buy"] else -1) >= 0:
++                raise PermissionError("Actual position does not support this reduction")
++            available = abs(quantity) if account != "clearpond" else finite(position.get("available_quantity"), "actual available base", nonnegative=True)
++            if request["size"] > available + 1e-10:
++                raise PermissionError("Reduction exceeds actual available quantity")
++        if not callable(self.pre_submit_check):
++            raise PermissionError("Runtime policy validation callback is required")
++        self.pre_submit_check(request, actual)
++        self._submission_guard(intent)
++        kind = "spot" if account == "clearpond" else "perp"
++        quote = self._quote(self._markets, kind, request["symbol"], self.clock())
++        levels = quote.get("asks" if request["is_buy"] else "bids")
++        best = finite(levels[0][0], "fresh executable price", positive=True)
++        tolerance = best * self.slippage_bps / 10000
++        if (request["is_buy"] and request["limit_price"] > best + tolerance + 1e-8
++                or not request["is_buy"] and request["limit_price"] < best - tolerance - 1e-8):
++            raise PermissionError("IOC limit exceeds the fresh quote slippage bound")
++        return exchange, request
++
++    def submit(self, intent):
++        try:
++            exchange, request = self._prepare_submission(intent)
++        except Exception as exc:
++            raise PreSubmitRejected(f"Pre-submit validation: {type(exc).__name__}: {exc}") from None
++        # No retry is safe after entering this boundary, including transport errors.
++        self._submitted.add(intent["cloid"])
++        from hyperliquid.utils.types import Cloid
++        return exchange.order(request["coin"], request["is_buy"], request["size"],
++                              request["limit_price"], {"limit": {"tif": "Ioc"}},
++                              reduce_only=request["reduce_only"], cloid=Cloid.from_str(intent["cloid"]))
++
++    def reconcile(self, intent):
++        result = {"state": "UNKNOWN", "fills": [], "oid": None, "detail": "Unproven exchange outcome"}
++        try:
++            request = self._request(intent)
++            self.preflight()
++            account, cloid = request["account"], intent["cloid"]
++            user = self.identities[account]
++            status = mapping(self._info("orderStatus", user=user, oid=cloid), "order status")
++            if status.get("status") != "order":
++                return result
++            wrapper = mapping(status.get("order"), "order status detail")
++            order = mapping(wrapper.get("order"), "order identity")
++            oid = integer(order.get("oid"), "order id")
++            if (order.get("cloid") != cloid or order.get("coin") != request["coin"]
++                    or order.get("side") != ("B" if request["is_buy"] else "A")
++                    or not math.isclose(finite(order.get("origSz"), "original size"), request["size"], rel_tol=1e-8, abs_tol=1e-10)):
++                raise ValueError("Exchange order identity does not match durable intent")
++            result["oid"] = oid
++            start = max(0, int((intent["created_at"] - 5) * 1000))
++            end = int((self.clock() + 5) * 1000)
++            history = rows(self._info("userFillsByTime", user=user, startTime=start,
++                                      endTime=end, aggregateByTime=False), "fill history")
++            # Time-range caps can hide rows even if no matching oid is visible.
++            if len(history) >= 500:
++                raise ValueError("Fill history may be truncated; operator reconciliation required")
++            found = {}
++            for fill in history:
++                if fill.get("oid") != oid:
++                    continue
++                tid = integer(fill.get("tid"), "trade identity")
++                when = integer(fill.get("time"), "fill timestamp")
++                if not start <= when <= end or fill.get("coin") != request["coin"] or fill.get("side") != order["side"]:
++                    raise ValueError("Fill identity/time mismatch")
++                qty = finite(fill.get("sz"), "fill size", positive=True)
++                price = finite(fill.get("px"), "fill price", positive=True)
++                if request["is_buy"] and price > request["limit_price"] + 1e-8 or not request["is_buy"] and price < request["limit_price"] - 1e-8:
++                    raise ValueError("Fill violates the IOC price limit")
++                fee = finite(fill.get("fee"), "actual fill fee")
++                fee_token = fill.get("feeToken")
++                if not isinstance(fee_token, str) or not fee_token:
++                    raise ValueError("Actual fee token is unavailable")
++                allowed_fees = {"USDC"}
++                if account == "clearpond":
++                    allowed_fees.update((request["symbol"], SPOT_BASES.get(request["symbol"], request["symbol"])))
++                if fee_token not in allowed_fees:
++                    raise ValueError("Unsupported execution fee currency")
++                normalized = {"account": account, "symbol": request["symbol"], "coin": fill["coin"],
++                              "oid": oid, "tid": tid, "time": when,
++                              "quantity": qty if request["is_buy"] else -qty,
++                              "price": price, "fee": fee, "fee_token": fee_token, "raw": fill}
++                if tid in found and normalized != found[tid]:
++                    raise ValueError("Conflicting duplicate fill")
++                found[tid] = normalized
++            total = sum(abs(fill["quantity"]) for fill in found.values())
++            if total > request["size"] + max(1e-10, request["size"] * 1e-8):
++                raise ValueError("Actual fills exceed intended quantity")
++            state = wrapper.get("status")
++            if state == "filled":
++                if not found or not math.isclose(total, request["size"], rel_tol=1e-8, abs_tol=1e-10):
++                    raise ValueError("Filled status lacks complete actual fill evidence")
++                mapped = "FILLED"
++            elif state == "open":
++                mapped = "OPEN"
++            elif isinstance(state, str) and (state == "canceled" or state.endswith("Canceled") or state == "scheduledCancel"):
++                remaining = finite(order.get("sz"), "canceled remainder", nonnegative=True)
++                if not math.isclose(total + remaining, request["size"], rel_tol=1e-8, abs_tol=1e-10):
++                    raise ValueError("Canceled status lacks complete fill/remainder evidence")
++                mapped = "CANCELED"
++            elif isinstance(state, str) and (state == "rejected" or state.endswith("Rejected")):
++                if found:
++                    raise ValueError("Rejected order unexpectedly has fills")
++                mapped = "REJECTED"
++            else:
++                return result
++            return {"state": mapped, "fills": list(found.values()), "oid": oid, "detail": state}
++        except Exception as exc:
++            result["detail"] = f"Reconciliation unavailable: {type(exc).__name__}"
++            return result
+diff --git a/ml/hyperliquid_powder_ledger.py b/ml/hyperliquid_powder_ledger.py
+new file mode 100644
+index 0000000..a42e77c
+--- /dev/null
++++ b/ml/hyperliquid_powder_ledger.py
+@@ -0,0 +1,390 @@
++"""Durable live-order intent and reconciliation evidence; no exchange calls.
++
++This ledger is separate from PaperLedger and does not invent portfolio balances,
++fills, cashflows or P/L. An intent is committed before submission; UNKNOWN is a
++reconciliation obligation, never permission to submit again.
++"""
++from __future__ import annotations
++
++from contextlib import contextmanager
++import hashlib
++import json
++import math
++from pathlib import Path
++import sqlite3
++import time
++from uuid import uuid4
++
++
++STATES = frozenset({"PREPARED", "SUBMITTING", "UNKNOWN", "OPEN", "FILLED", "CANCELED", "REJECTED"})
++TERMINAL_STATES = frozenset({"FILLED", "CANCELED", "REJECTED"})
++_TRANSITIONS = {
++    "PREPARED": {"SUBMITTING", "REJECTED"},
++    "SUBMITTING": {"UNKNOWN", "OPEN", "FILLED", "CANCELED", "REJECTED"},
++    "UNKNOWN": {"UNKNOWN", "OPEN", "FILLED", "CANCELED", "REJECTED"},
++    "OPEN": {"OPEN", "UNKNOWN", "FILLED", "CANCELED"},
++    "FILLED": {"FILLED"}, "CANCELED": {"CANCELED"}, "REJECTED": {"REJECTED"},
++}
++_SCHEMA = "hyperliquid-powder-intents-v1"
++
++
++def _json(value):
++    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
++
++
++def _number(value, *, positive=False):
++    if isinstance(value, bool):
++        raise ValueError("Expected a finite numeric value")
++    try:
++        result = float(value)
++    except (TypeError, ValueError, OverflowError) as exc:
++        raise ValueError("Expected a finite numeric value") from exc
++    if not math.isfinite(result) or positive and result <= 0:
++        raise ValueError("Expected a finite positive value" if positive else "Expected a finite value")
++    return result
++
++
++def _object(value, name):
++    if not isinstance(value, dict):
++        raise ValueError(f"{name} must be an object")
++    return json.loads(_json(value))
++
++
++def _intent(row):
++    if row is None:
++        return None
++    value = dict(row)
++    for key in ("request", "decision", "result"):
++        value[key] = json.loads(value.pop(key + "_json"))
++    return value
++
++
++def _fill(row):
++    value = dict(row)
++    payload = json.loads(value.pop("data_json"))
++    return {**payload, **value}
++
++
++def _event(row):
++    value = dict(row)
++    value["details"] = json.loads(value.pop("details_json"))
++    return value
++
++
++def _metadata(connection):
++    rows = {row[0]: json.loads(row[1]) for row in connection.execute(
++        "SELECT key,value_json FROM metadata WHERE key IN ('binding','baseline')")}
++    return {"binding": rows.get("binding"), "baseline": rows.get("baseline")}
++
++
++class PowderLedger:
++    def __init__(self, path, *, clock=time.time):
++        self.path = Path(path).resolve()
++        self.clock = clock
++        self.path.parent.mkdir(parents=True, exist_ok=True)
++        self.connection = sqlite3.connect(self.path, timeout=2.0, isolation_level=None)
++        self.connection.row_factory = sqlite3.Row
++        try:
++            tables = {row[0] for row in self.connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
++            if tables and "metadata" not in tables:
++                raise ValueError("Refusing to initialize Powder in a different ledger/database")
++            if "metadata" in tables:
++                schema = self.connection.execute("SELECT value_json FROM metadata WHERE key='schema'").fetchone()
++                if schema is None or json.loads(schema[0]) != _SCHEMA:
++                    raise ValueError("Unsupported Powder ledger schema")
++            self.connection.execute("PRAGMA journal_mode=WAL")
++            self.connection.execute("PRAGMA synchronous=FULL")
++            self.connection.execute("PRAGMA foreign_keys=ON")
++            self.connection.executescript("""
++                CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY,value_json TEXT NOT NULL);
++                CREATE TABLE IF NOT EXISTS observations (
++                    id INTEGER PRIMARY KEY AUTOINCREMENT,recorded_at REAL NOT NULL,data_json TEXT NOT NULL);
++                CREATE TABLE IF NOT EXISTS intents (
++                    id INTEGER PRIMARY KEY AUTOINCREMENT,cloid TEXT UNIQUE,account TEXT NOT NULL,
++                    state TEXT NOT NULL,created_at REAL NOT NULL,updated_at REAL NOT NULL,
++                    request_json TEXT NOT NULL,reason TEXT NOT NULL,decision_json TEXT NOT NULL,
++                    result_json TEXT NOT NULL DEFAULT '{}');
++                CREATE TABLE IF NOT EXISTS intent_events (
++                    id INTEGER PRIMARY KEY AUTOINCREMENT,intent_id INTEGER REFERENCES intents(id),
++                    created_at REAL NOT NULL,event TEXT NOT NULL,details_json TEXT NOT NULL);
++                CREATE TABLE IF NOT EXISTS fills (
++                    account TEXT NOT NULL,tid TEXT NOT NULL,intent_id INTEGER NOT NULL REFERENCES intents(id),
++                    symbol TEXT NOT NULL,quantity REAL NOT NULL,price REAL NOT NULL,fee REAL NOT NULL,
++                    data_json TEXT NOT NULL,PRIMARY KEY(account,tid));
++                CREATE TABLE IF NOT EXISTS cooldowns (
++                    account TEXT NOT NULL,coin TEXT NOT NULL,timestamp REAL NOT NULL,
++                    PRIMARY KEY(account,coin));
++                CREATE INDEX IF NOT EXISTS intents_state ON intents(state);
++                CREATE INDEX IF NOT EXISTS fills_intent ON fills(intent_id);
++            """)
++            with self._transaction():
++                self.connection.execute("INSERT OR IGNORE INTO metadata VALUES ('schema',?)", (_json(_SCHEMA),))
++                self.connection.execute("INSERT OR IGNORE INTO metadata VALUES ('nonce',?)", (_json(uuid4().hex),))
++        except BaseException:
++            self.connection.close()
++            raise
++
++    @contextmanager
++    def _transaction(self):
++        self.connection.execute("BEGIN IMMEDIATE")
++        try:
++            yield
++            self.connection.commit()
++        except BaseException:
++            self.connection.rollback()
++            raise
++
++    def _event(self, intent_id, event, details):
++        self.connection.execute("INSERT INTO intent_events(intent_id,created_at,event,details_json) VALUES (?,?,?,?)",
++                                (intent_id, _number(self.clock()), event, _json(details)))
++
++    def activate(self, binding, baseline):
++        binding, baseline = _object(binding, "binding"), _object(baseline, "baseline")
++        if not binding or not baseline:
++            raise ValueError("Activation requires explicit account/config binding and an actual baseline")
++        with self._transaction():
++            current = _metadata(self.connection)
++            if current["binding"] is not None:
++                if current["binding"] != binding:
++                    raise ValueError("Powder activation binding changed; refusing account/config reassignment")
++                return
++            self.connection.execute("INSERT INTO metadata VALUES ('binding',?)", (_json(binding),))
++            self.connection.execute("INSERT INTO metadata VALUES ('baseline',?)", (_json(baseline),))
++            self._event(None, "activated", {"binding": binding})
++
++    activation = activate
++
++    def metadata(self):
++        return _metadata(self.connection)
++
++    def record_observation(self, observation):
++        observation = _object(observation, "observation")
++        with self._transaction():
++            self.connection.execute("INSERT INTO observations(recorded_at,data_json) VALUES (?,?)",
++                                    (_number(self.clock()), _json(observation)))
++
++    def latest_observation(self):
++        row = self.connection.execute("SELECT data_json FROM observations ORDER BY id DESC LIMIT 1").fetchone()
++        return json.loads(row[0]) if row else None
++
++    def prepare(self, request, reason, decision):
++        request, decision = _object(request, "request"), _object(decision, "decision")
++        if not isinstance(request.get("account"), str) or not request["account"]:
++            raise ValueError("An intent requires an account")
++        if not isinstance(request.get("symbol"), str) or not request["symbol"]:
++            raise ValueError("An intent requires an explicit market symbol")
++        if type(request.get("is_buy")) is not bool or type(request.get("reduce_only")) is not bool:
++            raise ValueError("Intent side and reduce_only must be explicit booleans")
++        _number(request.get("size"), positive=True)
++        _number(request.get("limit_price"), positive=True)
++        if not isinstance(reason, str) or not reason:
++            raise ValueError("An intent requires a reason")
++        now = _number(self.clock())
++        with self._transaction():
++            if _metadata(self.connection)["binding"] is None:
++                raise ValueError("Activate and pin account binding before preparing an intent")
++            cursor = self.connection.execute("""INSERT INTO intents(account,state,created_at,updated_at,
++                request_json,reason,decision_json) VALUES (?,?,?,?,?,?,?)""",
++                (request["account"], "PREPARED", now, now, _json(request), reason, _json(decision)))
++            identity = cursor.lastrowid
++            nonce = json.loads(self.connection.execute("SELECT value_json FROM metadata WHERE key='nonce'").fetchone()[0])
++            cloid = "0x" + hashlib.sha256(f"{nonce}:{request['account']}:{identity}".encode()).hexdigest()[:32]
++            self.connection.execute("UPDATE intents SET cloid=? WHERE id=?", (cloid, identity))
++            self._event(identity, "prepared", {"cloid": cloid})
++        return self.get_intent(identity)
++
++    def get_intent(self, identity):
++        row = self.connection.execute("SELECT * FROM intents WHERE id=?", (identity,)).fetchone()
++        if row is None:
++            raise ValueError("Unknown Powder intent")
++        return _intent(row)
++
++    def mark_submitting(self, identity):
++        with self._transaction():
++            intent = self.get_intent(identity)
++            if intent["state"] != "PREPARED":
++                raise ValueError("Only a PREPARED intent can be submitted; unresolved intents must be reconciled")
++            self.connection.execute("UPDATE intents SET state='SUBMITTING',updated_at=? WHERE id=?",
++                                    (_number(self.clock()), identity))
++            self._event(identity, "submitting", {})
++
++    def mark_unknown(self, identity, detail):
++        self.resolve(identity, {"state": "UNKNOWN", "detail": str(detail)})
++
++    def resolve(self, identity, result):
++        result = _object(result, "reconciliation result")
++        state = result.get("state")
++        if state not in STATES or state in {"PREPARED", "SUBMITTING"}:
++            raise ValueError("Reconciliation requires an explicit exchange/evidence state")
++        new_fills = result.get("fills", [])
++        if not isinstance(new_fills, list):
++            raise ValueError("Reconciled fills must be a list")
++        with self._transaction():
++            intent = self.get_intent(identity)
++            if state not in _TRANSITIONS[intent["state"]]:
++                raise ValueError(f"Invalid intent transition: {intent['state']} -> {state}")
++            request = intent["request"]
++            if new_fills and (intent["state"] == "PREPARED" or state == "REJECTED"):
++                raise ValueError("An unsubmitted/rejected intent cannot contain fills")
++            for original in new_fills:
++                fill = _object(original, "fill")
++                if fill.get("account") != request["account"]:
++                    raise ValueError("Fill account does not match its intent")
++                tid = fill.get("tid")
++                if isinstance(tid, bool) or not isinstance(tid, (str, int)) or not str(tid).strip():
++                    raise ValueError("Actual exchange fills require a stable tid")
++                symbol = fill.get("symbol", request["symbol"])
++                if symbol != request["symbol"]:
++                    raise ValueError("Fill symbol does not match its intent")
++                quantity = _number(fill.get("quantity"))
++                price, fee = _number(fill.get("price"), positive=True), _number(fill.get("fee"))
++                if quantity == 0 or (quantity > 0) != request["is_buy"]:
++                    raise ValueError("Actual fill quantity must have the intent's nonzero signed side")
++                fill.update(account=request["account"], tid=str(tid), symbol=symbol,
++                            quantity=quantity, price=price, fee=fee)
++                existing = self.connection.execute("SELECT * FROM fills WHERE account=? AND tid=?",
++                                                   (request["account"], str(tid))).fetchone()
++                if existing:
++                    previous = _fill(existing)
++                    keys = ("account", "tid", "symbol", "quantity", "price", "fee", "fee_token", "oid")
++                    if existing["intent_id"] != identity or any(previous.get(k) != fill.get(k) for k in keys):
++                        raise ValueError("Conflicting exchange evidence for an already recorded fill")
++                    continue
++                self.connection.execute("INSERT INTO fills VALUES (?,?,?,?,?,?,?,?)",
++                    (request["account"], str(tid), identity, symbol, quantity, price, fee, _json(fill)))
++            filled = abs(self.connection.execute("SELECT COALESCE(SUM(quantity),0) FROM fills WHERE intent_id=?",
++                                                 (identity,)).fetchone()[0])
++            requested = _number(request["size"], positive=True)
++            tolerance = max(1e-10, requested * 1e-8)
++            if filled > requested + tolerance:
++                raise ValueError("Reconciled fills exceed the immutable requested quantity")
++            if state == "FILLED" and (filled == 0 or abs(filled - requested) > tolerance):
++                raise ValueError("FILLED requires actual exchange fill evidence for the complete requested quantity")
++            if state == "REJECTED" and filled:
++                raise ValueError("A rejected intent cannot have recorded fills")
++            previous = intent["result"]
++            combined = {**previous, **result}
++            self.connection.execute("UPDATE intents SET state=?,updated_at=?,result_json=? WHERE id=?",
++                                    (state, _number(self.clock()), _json(combined), identity))
++            self._event(identity, "reconciled", result)
++
++    def pending(self):
++        return [_intent(row) for row in self.connection.execute(
++            "SELECT * FROM intents WHERE state NOT IN ('FILLED','CANCELED','REJECTED') ORDER BY id")]
++
++    def list_intents(self, limit=500):
++        return [_intent(row) for row in self.connection.execute("SELECT * FROM intents ORDER BY id DESC LIMIT ?",
++                                                               (_limit(limit),))]
++
++    def fills(self, limit=500):
++        return [_fill(row) for row in self.connection.execute("SELECT * FROM fills ORDER BY rowid DESC LIMIT ?",
++                                                             (_limit(limit),))]
++
++    def fill_totals(self):
++        totals = {}
++        for row in self.connection.execute("SELECT account,symbol,SUM(quantity) FROM fills GROUP BY account,symbol"):
++            totals.setdefault(row[0], {})[row[1]] = row[2]
++        return totals
++
++    def fill_notionals(self):
++        totals = {}
++        for row in self.connection.execute("SELECT account,symbol,SUM(quantity*price) FROM fills GROUP BY account,symbol"):
++            totals.setdefault(row[0], {})[row[1]] = row[2]
++        return totals
++
++    def inventory_totals(self):
++        """Actual owned inventory changes, including base-token spot fees.
++
++        Trade quantity remains unchanged in fill_totals for execution evidence
++        and VWAP. Clear Pond is the spot account in this release; a fee charged
++        in its traded base asset reduces inventory regardless of buy/sell side.
++        """
++        aliases = {"UBTC": "BTC", "UETH": "ETH", "UZEC": "ZEC"}
++        totals = {}
++        for row in self.connection.execute("SELECT * FROM fills"):
++            fill = _fill(row)
++            delta = fill["quantity"]
++            if fill["account"] == "clearpond":
++                token = str(fill.get("fee_token") or "").upper()
++                base = aliases.get(token, token)
++                symbol = aliases.get(fill["symbol"], fill["symbol"])
++                if base == symbol:
++                    delta -= fill["fee"]
++                elif token != "USDC":
++                    raise ValueError("Unknown spot fee currency; inventory reconciliation is unavailable")
++            account = totals.setdefault(fill["account"], {})
++            account[fill["symbol"]] = account.get(fill["symbol"], 0) + delta
++        return totals
++
++    def events(self, limit=500):
++        return [_event(row) for row in self.connection.execute("SELECT * FROM intent_events ORDER BY id DESC LIMIT ?",
++                                                              (_limit(limit),))]
++
++    def get_cooldown(self, account, coin):
++        row = self.connection.execute("SELECT timestamp FROM cooldowns WHERE account=? AND coin=?", (account, coin)).fetchone()
++        return row[0] if row else None
++
++    def set_cooldown(self, account, coin, timestamp):
++        timestamp = _number(timestamp)
++        if not isinstance(account, str) or not account or not isinstance(coin, str) or not coin:
++            raise ValueError("Cooldown requires account and coin")
++        with self._transaction():
++            self.connection.execute("""INSERT INTO cooldowns VALUES (?,?,?) ON CONFLICT(account,coin)
++                DO UPDATE SET timestamp=MAX(timestamp,excluded.timestamp)""", (account, coin, timestamp))
++
++    def close(self):
++        self.connection.close()
++
++    def __enter__(self):
++        return self
++
++    def __exit__(self, *_):
++        self.close()
++
++
++def _limit(value):
++    return max(1, min(int(value), 500))
++
++
++def read_status(path, *, limit=500):
++    """Bounded, read-only UI projection. Never constructs or activates a ledger."""
++    path = Path(path).resolve()
++    result = {"status": "missing", "metadata": {"binding": None, "baseline": None},
++              "latest_observation": None, "intents": [], "fills": [], "events": [], "pending": [],
++              "counts": {"intents": 0, "fills": 0, "pending": 0}}
++    if not path.is_file():
++        return result
++    connection = None
++    try:
++        connection = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=.2, isolation_level=None)
++        connection.row_factory = sqlite3.Row
++        connection.execute("PRAGMA query_only=ON")
++        deadline = time.monotonic() + 1
++        connection.set_progress_handler(lambda: int(time.monotonic() > deadline), 2000)
++        connection.execute("BEGIN")
++        schema = connection.execute("SELECT value_json FROM metadata WHERE key='schema'").fetchone()
++        if schema is None or json.loads(schema[0]) != _SCHEMA:
++            raise ValueError("Unsupported Powder ledger schema")
++        result["metadata"] = _metadata(connection)
++        row = connection.execute("SELECT data_json FROM observations ORDER BY id DESC LIMIT 1").fetchone()
++        result["latest_observation"] = json.loads(row[0]) if row else None
++        bound = _limit(limit)
++        result["intents"] = [_intent(row) for row in connection.execute("SELECT * FROM intents ORDER BY id DESC LIMIT ?", (bound,))]
++        result["fills"] = [_fill(row) for row in connection.execute("SELECT * FROM fills ORDER BY rowid DESC LIMIT ?", (bound,))]
++        result["events"] = [_event(row) for row in connection.execute("SELECT * FROM intent_events ORDER BY id DESC LIMIT ?", (bound,))]
++        result["pending"] = [_intent(row) for row in connection.execute(
++            "SELECT * FROM intents WHERE state NOT IN ('FILLED','CANCELED','REJECTED') ORDER BY id LIMIT ?", (bound,))]
++        result["counts"] = {
++            "intents": connection.execute("SELECT COUNT(*) FROM intents").fetchone()[0],
++            "fills": connection.execute("SELECT COUNT(*) FROM fills").fetchone()[0],
++            "pending": connection.execute("SELECT COUNT(*) FROM intents WHERE state NOT IN ('FILLED','CANCELED','REJECTED')").fetchone()[0],
++        }
++        result["status"] = "ready" if result["metadata"]["binding"] is not None else "not_activated"
++    except (OSError, sqlite3.DatabaseError, ValueError, TypeError) as exc:
++        result.update(status="error", error=f"{type(exc).__name__}: {exc}")
++    finally:
++        if connection is not None:
++            connection.set_progress_handler(None, 0)
++            connection.rollback()
++            connection.close()
++    return result
+diff --git a/ml/hyperliquid_powder_lock.py b/ml/hyperliquid_powder_lock.py
+new file mode 100644
+index 0000000..2f29953
+--- /dev/null
++++ b/ml/hyperliquid_powder_lock.py
+@@ -0,0 +1,59 @@
++"""Shared account ownership for Powder and the manual Hyperliquid workspace."""
++from contextlib import contextmanager, ExitStack
++from pathlib import Path
++import os
++import threading
++from uuid import uuid4
++
++from filelock import FileLock, Timeout
++
++LOCK_ROOT = Path("C:/DATASTORE/hyperliquid/_powder/_ownership")
++ACCOUNTS = ("alex", "jeremy", "clearpond")
++_owned = {}
++_mutex = threading.RLock()
++
++
++def _lock(account):
++    if account not in ACCOUNTS:
++        raise ValueError("Unknown Hyperliquid account")
++    LOCK_ROOT.mkdir(parents=True, exist_ok=True)
++    return FileLock(str(LOCK_ROOT / f"{account}.lock"), timeout=0)
++
++
++@contextmanager
++def account_ownership(accounts=ACCOUNTS):
++    """Hold every account lock for the full automated session, or acquire none."""
++    accounts = tuple(sorted(set(accounts)))
++    if not accounts:
++        raise ValueError("Account ownership cannot be empty")
++    token = uuid4().hex
++    try:
++        with ExitStack() as stack:
++            for account in accounts:
++                stack.enter_context(_lock(account))
++            with _mutex:
++                _owned[token] = (frozenset(accounts), os.getpid())
++            try:
++                yield token
++            finally:
++                with _mutex:
++                    _owned.pop(token, None)
++    except Timeout:
++        raise PermissionError("Hyperliquid account is owned by another trading action or Powder session") from None
++
++
++def assert_ownership(token, account):
++    with _mutex:
++        held, pid = _owned.get(token, ((), None))
++    if account not in held or pid != os.getpid():
++        raise PermissionError("Powder requires active account ownership in this process")
++
++
++@contextmanager
++def manual_action_guard(account):
++    """Hold through the entire signed manual action, avoiding a precheck race."""
++    try:
++        with _lock(account.strip().lower()):
++            yield
++    except Timeout:
++        raise PermissionError("Manual trading is unavailable while Powder owns this account") from None
+diff --git a/ml/hyperliquid_powder_runtime.py b/ml/hyperliquid_powder_runtime.py
+new file mode 100644
+index 0000000..64aea65
+--- /dev/null
++++ b/ml/hyperliquid_powder_runtime.py
+@@ -0,0 +1,616 @@
++"""Explicitly activated live IOC consumer; imports and inspection never arm it.
++
++--check observes public/account state without signing or writing a ledger.
++Every execution session requires BOTH --activate and --execute. Stopping ends
++new submissions; it never flattens inventory or continues risk management.
++"""
++from __future__ import annotations
++
++import argparse
++from contextlib import contextmanager
++from dataclasses import asdict, dataclass
++from datetime import datetime, timezone
++import hashlib
++import json
++import math
++import os
++from pathlib import Path
++import signal
++import threading
++import time
++
++from datafetching.hyperliquid_candles import INTERVAL_MS
++from ml.hyperliquid_model_config import load_config as load_model_config
++from ml.hyperliquid_paper_policy import load_config as load_paper_config, target_notionals, should_rebalance
++
++ACCOUNTS = ("alex", "jeremy", "clearpond")
++DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[1] / "configs" / "hyperliquid-powder.json"
++PENDING = {"PREPARED", "SUBMITTING", "UNKNOWN", "OPEN"}
++
++
++class SafetyHalt(RuntimeError):
++    """State changed outside this activation's reconciled execution history."""
++
++
++def _number(value, name, *, positive=False):
++    if type(value) not in (int, float) or not math.isfinite(value) or (positive and value <= 0):
++        raise ValueError(f"{name} must be a finite {'positive ' if positive else ''}number")
++    return float(value)
++
++
++def _unique(pairs):
++    result = {}
++    for key, value in pairs:
++        if key in result:
++            raise ValueError(f"Duplicate Powder setting: {key}")
++        result[key] = value
++    return result
++
++
++def _json(value):
++    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False, default=str)
++
++
++@dataclass(frozen=True)
++class PowderConfig:
++    paper_config: Path
++    mode: str = "powder"
++    max_order_notional: float = 500.0
++    poll_seconds: float = 30.0
++
++    def __post_init__(self):
++        if self.mode != "powder":
++            raise ValueError("Powder configuration requires mode='powder'")
++        if not 0 < _number(self.max_order_notional, "max_order_notional") <= 500:
++            raise ValueError("max_order_notional must be positive and at most $500")
++        _number(self.poll_seconds, "poll_seconds", positive=True)
++        object.__setattr__(self, "paper_config", Path(self.paper_config).resolve())
++
++
++def load_config(path=DEFAULT_CONFIG_PATH):
++    path = Path(path).resolve()
++    values = json.loads(path.read_text(encoding="utf-8-sig"), object_pairs_hook=_unique,
++                        parse_constant=lambda value: (_ for _ in ()).throw(ValueError(f"Invalid number {value}")))
++    if not isinstance(values, dict):
++        raise ValueError("Powder settings must be an object")
++    if set(values) != {"version", "mode", "paper_config", "max_order_notional", "poll_seconds"}:
++        raise ValueError("Powder settings require exactly version, mode, paper_config, max_order_notional, poll_seconds")
++    version = values.pop("version")
++    if type(version) is not int or version != 1 or values.get("mode") != "powder":
++        raise ValueError("Powder settings require version 1 and mode powder")
++    raw = values["paper_config"]
++    if not isinstance(raw, str) or not raw.strip():
++        raise ValueError("paper_config must be a nonempty path")
++    values["paper_config"] = Path(raw) if Path(raw).is_absolute() else path.parent / raw
++    return PowderConfig(**values)
++
++
++def _settings(path):
++    config = load_config(path)
++    policy = load_paper_config(config.paper_config)
++    model = load_model_config(policy.model_config)
++    markets = model.load_markets()
++    if markets.output_root != policy.data_root:
++        raise ValueError("Powder policy and model data roots differ")
++    document = {"powder": asdict(config), "policy": asdict(policy),
++                "models": asdict(model), "markets": asdict(markets)}
++    digest = hashlib.sha256(_json(document).encode()).hexdigest()
++    return config, policy, model, markets, digest
++
++
++def _utc(now):
++    return datetime.fromtimestamp(now, timezone.utc).isoformat()
++
++
++def _atomic(path, payload):
++    path.parent.mkdir(parents=True, exist_ok=True)
++    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
++    try:
++        temporary.write_text(_json(payload), encoding="utf-8")
++        os.replace(temporary, path)
++    finally:
++        temporary.unlink(missing_ok=True)
++
++
++def read_status(config_path=DEFAULT_CONFIG_PATH):
++    """No directories, lock probes, activation, credentials or ledger creation."""
++    _, policy, _, _, _ = _settings(config_path)
++    path = policy.data_root / "_powder" / "_runtime" / "status.json"
++    if not path.exists():
++        return {"mode": "powder", "state": "NOT_ACTIVATED", "execution_enabled": False}
++    result = json.loads(path.read_text(encoding="utf-8"))
++    result["saved_status_only"] = True
++    return result
++
++
++class PowderRuntime:
++    def __init__(self, config_path=DEFAULT_CONFIG_PATH, *, broker, ledger=None,
++                 clock=time.time, forecast_reader=None):
++        self.config_path = Path(config_path).resolve()
++        self.config, self.policy, self.model, self.markets, self.digest = _settings(self.config_path)
++        self.symbols, self.interval = tuple(self.markets.symbols), self.markets.interval
++        self.horizon = self.model.horizons_bars[0]
++        self.horizon_seconds = INTERVAL_MS[self.interval] * self.horizon / 1000
++        self.root = self.policy.data_root / "_powder"
++        self.control = self.root / "_runtime"
++        self.broker, self.ledger, self.clock = broker, ledger, clock
++        if forecast_reader is None:
++            from ml.hyperliquid_forecast_reader import read_forecast
++            forecast_reader = read_forecast
++        self.forecast_reader = forecast_reader
++        self.stopped = threading.Event()
++        self.binding = None
++        self._activated = False
++        self._ready = False
++        self._halt_reason = None
++        self.forecast_errors = {}
++        self.risk_limit_violations = []
++        self.broker.pre_submit_check = self._pre_submit_check
++
++    def _status(self, state, reason="", error=None):
++        result = {"mode": "powder", "state": state, "updated_at_utc": _utc(self.clock()),
++                  "pid": os.getpid(), "execution_enabled": self._activated and state not in {"HALTED", "STOPPED"},
++                  "reason": reason, "last_error": error, "policy_digest": self.digest,
++                  "forecast_errors": self.forecast_errors, "risk_limit_violations": self.risk_limit_violations}
++        _atomic(self.control / "status.json", result)
++        return result
++
++    def _stop_requested(self):
++        return self.stopped.is_set() or (self.control / "stop.request").exists()
++
++    def _identities(self):
++        identities = self.broker.preflight()
++        if not isinstance(identities, dict) or set(identities) != set(ACCOUNTS):
++            raise SafetyHalt("Exactly the three configured account identities are required")
++        if any(not isinstance(value, str) or not value for value in identities.values()):
++            raise SafetyHalt("Account identity is unavailable")
++        if len(set(identities.values())) != len(ACCOUNTS):
++            raise SafetyHalt("Powder accounts must bind to distinct owners")
++        return identities
++
++    def _observation(self):
++        observed = self.broker.observe()
++        now = self.clock()
++        age = now - _number(observed.get("observed_at"), "observed_at")
++        if not -5 <= age <= self.policy.max_quote_age_seconds:
++            raise SafetyHalt("Account observation is stale or future dated")
++        if observed.get("identities") != self.binding["identities"]:
++            raise SafetyHalt("Observed account identities differ from the activation")
++        if observed.get("open_orders"):
++            raise SafetyHalt("Unreconciled open orders prevent Powder execution")
++        if set(observed.get("accounts", {})) != set(ACCOUNTS):
++            raise SafetyHalt("An account observation is missing")
++        for account, values in observed["accounts"].items():
++            for field in ("equity", "available_cash", "gross"):
++                _number(values.get(field), f"{account}.{field}")
++            if values["gross"] < 0 or values["available_cash"] < 0:
++                raise SafetyHalt("Negative gross exposure or available cash")
++            if set(values.get("positions", {})) != set(self.symbols):
++                raise SafetyHalt("Unknown holdings or incomplete configured market observations")
++            for symbol, position in values["positions"].items():
++                quantity = _number(position.get("quantity"), f"{account}.{symbol}.quantity")
++                _number(position.get("mark"), f"{account}.{symbol}.mark", positive=True)
++                if position.get("entry_price") is not None:
++                    _number(position["entry_price"], f"{account}.{symbol}.entry_price", positive=True)
++                if position.get("kind") != ("spot" if account == "clearpond" else "perp"):
++                    raise SafetyHalt("Position market kind violates its account role")
++                if account == "alex" and quantity > 0 or account != "alex" and quantity < 0:
++                    raise SafetyHalt("Position direction violates its account role")
++            passive = values.get("passive_positions", {})
++            if not isinstance(passive, dict) or set(passive) - set(self.symbols) or account == "clearpond" and passive:
++                raise SafetyHalt("Unknown or misplaced passive holdings")
++            for symbol, position in passive.items():
++                if _number(position.get("quantity"), "passive quantity") < 0:
++                    raise SafetyHalt("Passive inventory cannot be negative")
++                _number(position.get("mark"), "passive mark", positive=True)
++        return observed
++
++    def _forecasts(self):
++        result, errors = {}, {}
++        for symbol in self.symbols:
++            try:
++                forecast, sigma = self.forecast_reader(symbol, self.clock(), self.policy, self.interval, self.horizon)
++                if self.policy.require_qualified_forecasts and not forecast["qualified"]:
++                    raise ValueError("Research forecasts are excluded by the bound policy")
++                result[symbol] = (forecast, sigma)
++            except (OSError, ValueError, KeyError, TypeError) as exc:
++                errors[symbol] = str(exc)
++        self.forecast_errors = errors
++        return result, errors
++
++    def check(self):
++        identities = self._identities()
++        self.binding = {"mode": "powder", "network": self.broker.network,
++                        "identities": identities, "policy_digest": self.digest,
++                        "symbols": self.symbols, "interval": self.interval, "horizon": self.horizon}
++        observed = self._observation()
++        forecasts, errors = self._forecasts()
++        return {"mode": "powder", "state": "NOT_READY" if errors else "CHECKED", "execution_enabled": False,
++                "binding": self.binding, "observation": observed,
++                "forecast_symbols": list(forecasts), "forecast_errors": errors}
++
++    def activate(self, *, execute=False):
++        if execute is not True:
++            raise SafetyHalt("An explicit execution session is required")
++        if not getattr(self.broker, "network", None):
++            raise SafetyHalt("Exchange network binding is missing")
++        self._ready = False
++        self._halt_reason = None
++        self.binding = {"mode": "powder", "network": self.broker.network,
++                        "identities": self._identities(), "policy_digest": self.digest,
++                        "symbols": self.symbols, "interval": self.interval, "horizon": self.horizon}
++        if self.ledger is None:
++            from ml.hyperliquid_powder_ledger import PowderLedger
++            self.ledger = PowderLedger(self.root / "ledger.sqlite3", clock=self.clock)
++        existing = self.ledger.metadata()
++        if existing.get("binding") and _json(existing["binding"]) != _json(self.binding):
++            raise SafetyHalt("Persisted activation binding differs; refusing to adopt a different session")
++        for intent in self.ledger.pending():
++            if intent["state"] == "PREPARED":
++                self.ledger.resolve(intent["id"], {"state": "REJECTED", "fills": [], "reason": "abandoned_without_submission"})
++        self._activated = True
++        if not self._reconcile():
++            return self._status("BLOCKED", "Pending intent requires exchange reconciliation")
++        _, errors = self._forecasts()
++        if errors:
++            self._activated = False
++            return self._status("NOT_READY", "Every configured market requires an eligible forecast before activation")
++        observed = self._observation()
++        self.ledger.activate(self.binding, observed)
++        self._accept_observation(observed)
++        self._ready = True
++        return self._status("RUNNING", "Explicit session activated; existing inventory adopted without orders")
++
++    def _reconcile(self):
++        for intent in self.ledger.pending():
++            if intent["state"] == "PREPARED":
++                raise SafetyHalt("Unexpected prepared intent outside activation")
++            try:
++                result = self.broker.reconcile(intent)
++                self.ledger.resolve(intent["id"], result)
++            except Exception as exc:
++                self.ledger.mark_unknown(intent["id"], f"Reconciliation failed: {type(exc).__name__}: {exc}")
++        return not self.ledger.pending()
++
++    def _accept_observation(self, observed):
++        previous = self.ledger.latest_observation() or self.ledger.metadata().get("baseline")
++        totals, notionals = self.ledger.fill_totals(), self.ledger.fill_notionals()
++        inventory = self.ledger.inventory_totals()
++        entries = {}
++        for account, values in observed["accounts"].items():
++            entries[account] = {}
++            if previous:
++                old_passive = previous["accounts"][account].get("passive_positions", {})
++                new_passive = values.get("passive_positions", {})
++                for symbol in set(old_passive) | set(new_passive):
++                    if not math.isclose(old_passive.get(symbol, {}).get("quantity", 0),
++                                        new_passive.get(symbol, {}).get("quantity", 0), rel_tol=1e-8, abs_tol=1e-9):
++                        raise SafetyHalt(f"Unexpected external passive position change: {account}/{symbol}")
++            for symbol, position in values["positions"].items():
++                current = position["quantity"]
++                old_position = previous["accounts"][account]["positions"][symbol] if previous else position
++                old = old_position["quantity"]
++                prior_total = (previous or {}).get("_owned_fill_totals", {}).get(account, {}).get(symbol, 0)
++                delta = totals.get(account, {}).get(symbol, 0) - prior_total
++                prior_inventory = (previous or {}).get("_owned_inventory_totals", {}).get(account, {}).get(symbol, 0)
++                inventory_delta = inventory.get(account, {}).get(symbol, 0) - prior_inventory
++                if previous and not math.isclose(current, old + inventory_delta, rel_tol=1e-8, abs_tol=1e-9):
++                    raise SafetyHalt(f"Unexpected external position change: {account}/{symbol}")
++                entry = position.get("entry_price")
++                if entry is None:
++                    entry = (previous or {}).get("_risk_entries", {}).get(account, {}).get(symbol)
++                    if entry is None and old:
++                        entry = old_position["mark"]  # Adoption risk reference, never historical P/L.
++                    if delta and abs(current) > abs(old):
++                        prior_cost = previous.get("_owned_fill_notionals", {}).get(account, {}).get(symbol, 0) if previous else 0
++                        price = (notionals.get(account, {}).get(symbol, 0) - prior_cost) / delta
++                        entry = (abs(old) * (entry or old_position["mark"]) + abs(delta) * price) / abs(current)
++                entries[account][symbol] = entry if current else None
++        observed = {**observed, "_owned_fill_totals": totals, "_owned_fill_notionals": notionals,
++                    "_owned_inventory_totals": inventory, "_risk_entries": entries}
++        self.ledger.record_observation(observed)
++        return observed
++
++    def _plan(self, observed, forecasts, errors):
++        accounts = observed["accounts"]
++        equity = sum(values["equity"] for values in accounts.values())
++        gross = sum(values["gross"] for values in accounts.values())
++        baseline = self.ledger.metadata()["baseline"]
++        candidates = []
++        passive_gross = {symbol: sum(v.get("passive_positions", {}).get(symbol, {}).get("quantity", 0)
++                                    * v.get("passive_positions", {}).get(symbol, {}).get("mark", 0)
++                                    for v in accounts.values()) for symbol in self.symbols}
++        symbol_gross = {symbol: passive_gross[symbol] + sum(abs(v["positions"][symbol]["quantity"]) * v["positions"][symbol]["mark"]
++                                                        for v in accounts.values()) for symbol in self.symbols}
++        violations = [f"account:{a}" for a, v in accounts.items() if v["gross"] > max(0, v["equity"]) * self.policy.account_utilization + 1e-8]
++        if gross > max(0, equity) * self.policy.pool_gross_fraction + 1e-8:
++            violations.append("pool")
++        violations.extend(f"symbol:{s}" for s in self.symbols if symbol_gross[s] > max(0, equity) * self.policy.per_symbol_gross_fraction + 1e-8)
++        self.risk_limit_violations = violations
++        for symbol in self.symbols:
++            current = {a: accounts[a]["positions"][symbol]["quantity"] * accounts[a]["positions"][symbol]["mark"] for a in ACCOUNTS}
++            forecast, sigma = forecasts.get(symbol, (None, None))
++            plan = target_notionals(forecast["p_not_down"], sigma, max(0, equity), current,
++                                   max(0, gross - sum(map(abs, current.values()))), self.policy) if forecast else {
++                                       "targets": dict.fromkeys(ACCOUNTS, 0.0), "details": {"reason": errors.get(symbol, "forecast_unavailable")}}
++            managed_target = sum(map(abs, plan["targets"].values()))
++            symbol_room = max(0, equity * self.policy.per_symbol_gross_fraction - passive_gross[symbol])
++            if managed_target > symbol_room:
++                plan["targets"] = {a: value * symbol_room / managed_target for a, value in plan["targets"].items()}
++            for account in ACCOUNTS:
++                values, position = accounts[account], accounts[account]["positions"][symbol]
++                target, reason, priority = plan["targets"][account], "signal_rebalance", 3
++                entry = observed["_risk_entries"][account][symbol]
++                stopped = bool(current[account] and entry and math.copysign(1, current[account]) * (position["mark"] / entry - 1) <= -self.policy.stop_loss_fraction)
++                if stopped:
++                    self.ledger.set_cooldown(account, symbol, self.clock() + self.horizon_seconds)
++                    target, reason, priority = 0.0, "stop_loss", 0
++                elif (self.ledger.get_cooldown(account, symbol) or 0) > self.clock():
++                    target, reason, priority = 0.0, "stop_cooldown", 1
++                elif not forecast:
++                    target, reason, priority = 0.0, "forecast_unavailable", 2
++                other = max(0, values["gross"] - abs(current[account]))
++                capacity = max(0, values["equity"] * self.policy.account_utilization - other)
++                target = math.copysign(min(abs(target), capacity), target)
++                over_cap = (values["gross"] > max(0, values["equity"]) * self.policy.account_utilization
++                            or gross > max(0, equity) * self.policy.pool_gross_fraction
++                            or symbol_gross[symbol] > max(0, equity) * self.policy.per_symbol_gross_fraction)
++                reduction = abs(target) < abs(current[account])
++                if reduction:
++                    priority = min(priority, 1 if over_cap else 2)
++                    if over_cap and reason == "signal_rebalance":
++                        reason = "risk_cap"
++                else:
++                    if violations:
++                        continue  # Inherited passive exposure may be unmanageable; never add risk over a limit.
++                    reserve = max(0, baseline["accounts"][account]["equity"]) * self.policy.reserve_cash_fraction
++                    cash_room = max(0, values["available_cash"] - reserve)
++                    fee = self.policy.spot_fee_rate if account == "clearpond" else self.policy.perp_fee_rate
++                    increase = min(max(0, abs(target) - abs(current[account])), cash_room / (1 + fee + .002))
++                    target = math.copysign(abs(current[account]) + increase, target)
++                if not should_rebalance(current[account], target, self.policy, force_reduce=stopped or over_cap):
++                    continue
++                candidates.append((priority, -abs(target - current[account]), account, symbol,
++                                   target - current[account], reduction, reason,
++                                   {"forecast": forecast, "policy": plan["details"], "current_notional": current[account], "target_notional": target}))
++        return sorted(candidates, key=lambda item: item[:4])
++
++    def _pre_submit_check(self, request, actual):
++        """Replan after the broker's network reads and immediately before signing."""
++        if not self._activated or self._stop_requested():
++            raise SafetyHalt("Execution stopped before signing")
++        try:
++            if _settings(self.config_path)[-1] != self.digest:
++                raise SafetyHalt("Bound configuration changed before signing")
++            if actual.get("identities") != self.binding["identities"] or self.broker.network != self.binding["network"]:
++                raise SafetyHalt("Account/network binding changed before signing")
++            observed = self._accept_observation(actual)
++        except Exception as exc:
++            self._activated = False
++            self._halt_reason = f"Pre-submit binding/inventory validation failed: {type(exc).__name__}: {exc}"
++            raise SafetyHalt(self._halt_reason) from None
++        forecasts, errors = self._forecasts()
++        candidates = self._plan(observed, forecasts, errors)
++        candidate, blocked_reduction = None, False
++        for item in candidates:
++            if blocked_reduction and not item[5]:
++                break
++            try:
++                self.broker.make_order(item[2], item[3], item[4], item[5], observed)
++            except ValueError:
++                blocked_reduction |= item[5]
++                continue
++            candidate = item
++            break
++        if candidate is None:
++            raise SafetyHalt("Fresh policy has no executable adjustment")
++        _, _, account, symbol, delta, reduction, _, _ = candidate
++        if request["account"] != account or request["symbol"] != symbol or request["is_buy"] != (delta > 0):
++            raise SafetyHalt("Fresh risk/forecast priorities changed; replan before submission")
++        position = observed["accounts"][account]["positions"][symbol]
++        if request["size"] * position["mark"] > abs(delta) + 1e-7:
++            raise SafetyHalt("Rounded order exceeds the freshly marked adjustment")
++        if request["reduce_only"] != (reduction and account != "clearpond"):
++            raise SafetyHalt("Fresh position target changed the order's risk direction")
++        if not reduction:
++            if errors or forecasts[symbol][0].get("_valid_until_epoch", 0) <= self.clock():
++                raise SafetyHalt("Fresh forecast validation disallows increased exposure")
++            # An artifact may change within the same still-fresh horizon. Exact
++            # policy replanning above decides whether this rounded order remains safe.
++            values = observed["accounts"][account]
++            reserve = max(0, self.ledger.metadata()["baseline"]["accounts"][account]["equity"]) * self.policy.reserve_cash_fraction
++            fee = self.policy.spot_fee_rate if account == "clearpond" else self.policy.perp_fee_rate
++            if request["size"] * request["limit_price"] * (1 + fee) > max(0, values["available_cash"] - reserve) + 1e-7:
++                raise SafetyHalt("Fresh collateral cannot cover the bounded order and reserve")
++        # Artifact reads and replanning above can take time; stop/config intent
++        # must still hold when control returns to the broker's signing boundary.
++        try:
++            if _settings(self.config_path)[-1] != self.digest:
++                raise SafetyHalt("Bound configuration changed during final forecast validation")
++        except Exception as exc:
++            self._activated = False
++            self._halt_reason = f"Final configuration validation failed: {type(exc).__name__}: {exc}"
++            raise SafetyHalt(self._halt_reason) from None
++        if self._stop_requested():
++            raise SafetyHalt("Execution stopped during final forecast validation")
++
++    def tick(self):
++        if not self._activated:
++            raise SafetyHalt("Runtime is not activated")
++        if self._stop_requested():
++            return self._status("STOPPED", "Stop requested; inventory was not flattened")
++        if _settings(self.config_path)[-1] != self.digest:
++            raise SafetyHalt("Bound configuration changed during execution")
++        if self._identities() != self.binding["identities"] or self.broker.network != self.binding["network"]:
++            raise SafetyHalt("Account/network binding changed during execution")
++        if not self._reconcile():
++            return self._status("BLOCKED", "Unknown/open intent blocks every submission")
++        if not self._ready:
++            _, errors = self._forecasts()
++            if errors:
++                self._activated = False
++                return self._status("NOT_READY", "Pending reconciliation completed; forecasts are not ready for activation")
++            self._ready = True
++        observed = self._accept_observation(self._observation())
++        forecasts, errors = self._forecasts()
++        skipped = []
++        blocked_reduction = False
++        for _, _, account, symbol, delta, reduction, reason, decision in self._plan(observed, forecasts, errors):
++            if blocked_reduction and not reduction:
++                break
++            try:
++                request = self.broker.make_order(account, symbol, delta, reduction, observed)
++            except ValueError as exc:
++                skipped.append(f"{account}/{symbol}: {exc}")
++                blocked_reduction |= reduction
++                continue
++            size = _number(request.get("size"), "order size", positive=True)
++            price = _number(request.get("limit_price"), "limit price", positive=True)
++            if (request.get("account") != account or request.get("symbol") != symbol or request.get("tif") != "Ioc"
++                    or type(request.get("is_buy")) is not bool or request["is_buy"] != (delta > 0)
++                    or type(request.get("reduce_only")) is not bool or request["reduce_only"] != (reduction and account != "clearpond")
++                    or size * price > self.config.max_order_notional + 1e-7 or size * price < 10 - 1e-8):
++                raise SafetyHalt("Broker order does not match the bounded IOC plan")
++            position = observed["accounts"][account]["positions"][symbol]
++            if size * position["mark"] > abs(delta) + 1e-7:
++                raise SafetyHalt("Order exceeds the planned adjustment")
++            if reduction and size > abs(position["quantity"]) + 1e-9:
++                raise SafetyHalt("A reduction cannot cross through zero")
++            if not reduction:
++                fresh, errors = self._forecasts()
++                if errors or _json(fresh.get(symbol)) != _json(forecasts.get(symbol)):
++                    return self._status("RUNNING", "Forecast changed or expired before preparation; replan on next tick")
++                request["forecast_valid_until"] = _number(fresh[symbol][0].get("_valid_until_epoch"), "validated forecast expiry", positive=True)
++                if self.clock() >= request["forecast_valid_until"]:
++                    return self._status("RUNNING", "Forecast expired before preparation; replan on next tick")
++                account_values = observed["accounts"][account]
++                reserve = max(0, self.ledger.metadata()["baseline"]["accounts"][account]["equity"]) * self.policy.reserve_cash_fraction
++                fee = self.policy.spot_fee_rate if account == "clearpond" else self.policy.perp_fee_rate
++                if size * price * (1 + fee) > max(0, account_values["available_cash"] - reserve) + 1e-7:
++                    raise SafetyHalt("Order exceeds cash available after the bound reserve and fee")
++            if self._stop_requested():
++                return self._status("STOPPED", "Stopped before order preparation")
++            intent = self.ledger.prepare(request, reason, decision)
++            if self._stop_requested():
++                self.ledger.resolve(intent["id"], {"state": "REJECTED", "fills": [], "reason": "stop_before_submission"})
++                return self._status("STOPPED", "Stopped before submission")
++            self.ledger.mark_submitting(intent["id"])
++            intent = self.ledger.get_intent(intent["id"])
++            if self._stop_requested():
++                self.ledger.resolve(intent["id"], {"state": "REJECTED", "fills": [], "reason": "stop_before_submission"})
++                return self._status("STOPPED", "Stopped at submission boundary")
++            from ml.hyperliquid_powder_exchange import PreSubmitRejected
++            try:
++                acknowledgement = self.broker.submit(intent)
++                response = acknowledgement.get("response", {}) if isinstance(acknowledgement, dict) else {}
++                statuses = response.get("data", {}).get("statuses") if isinstance(response, dict) and isinstance(response.get("data"), dict) else None
++                if (isinstance(acknowledgement, dict) and acknowledgement.get("status") == "ok" and response.get("type") == "order"
++                        and isinstance(statuses, list) and len(statuses) == 1 and isinstance(statuses[0], dict)
++                        and set(statuses[0]) == {"error"} and isinstance(statuses[0]["error"], str)):
++                    self.ledger.resolve(intent["id"], {"state": "REJECTED", "fills": [], "reason": statuses[0]["error"]})
++                # Every other ACK is deliberately not an execution record.
++            except PreSubmitRejected as exc:
++                self.ledger.resolve(intent["id"], {"state": "REJECTED", "fills": [], "reason": str(exc)})
++            except Exception as exc:
++                self.ledger.mark_unknown(intent["id"], f"Submit outcome unknown: {type(exc).__name__}: {exc}")
++            self._reconcile()
++            if not self._activated:
++                return self._status("HALTED", "Manual investigation required; no automatic restart", self._halt_reason)
++            if self._stop_requested():
++                return self._status("STOPPED", "Stop requested at submission boundary; inventory was not flattened")
++            return self._status("BLOCKED" if self.ledger.pending() else "RUNNING",
++                                "Submitted one IOC; next tick re-observes and replans")
++        return self._status("RUNNING", "; ".join(skipped) or "No executable adjustment; risk and forecasts reviewed")
++
++    def run(self, *, execute=False, max_cycles=None):
++        try:
++            result = self.activate(execute=execute)
++            if result["state"] == "NOT_READY":
++                return result
++            count = 0
++            while not self._stop_requested():
++                result = self.tick()
++                if result["state"] in {"STOPPED", "NOT_READY", "HALTED"}:
++                    return result
++                count += 1
++                if max_cycles is not None and count >= max_cycles:
++                    break
++                self.stopped.wait(self.config.poll_seconds)
++            return self._status("STOPPED", "Execution session ended; positions remain and risk checks stopped")
++        except Exception as exc:
++            return self._status("HALTED", "Manual investigation required; no automatic restart", f"{type(exc).__name__}: {exc}")
++        finally:
++            self._activated = False
++            if self.ledger is not None:
++                self.ledger.close()
++
++
++@contextmanager
++def _execution_environment():
++    names = ("HYPERLIQUID_ENABLE_LIVE_ORDERS", "HYPERLIQUID_ENABLE_POWDER")
++    saved = {name: os.environ.get(name) for name in names}
++    try:
++        for name in names:
++            os.environ[name] = "true"
++        yield
++    finally:
++        for name, value in saved.items():
++            if value is None:
++                os.environ.pop(name, None)
++            else:
++                os.environ[name] = value
++
++
++def _dispatch(args):
++    if args.status:
++        result = read_status(args.config)
++    elif args.stop:
++        _, policy, _, _, _ = _settings(args.config)
++        _atomic(policy.data_root / "_powder" / "_runtime" / "stop.request", {"requested_at_utc": _utc(time.time())})
++        result = {"mode": "powder", "state": "STOP_REQUESTED", "execution_enabled": False}
++    else:
++        from ml.hyperliquid_powder_exchange import PowderExchange
++        config, policy, _, markets, _ = _settings(args.config)
++        kwargs = dict(max_order_notional=config.max_order_notional,
++                      max_quote_age_seconds=policy.max_quote_age_seconds, slippage_bps=policy.slippage_bps)
++        if args.check:
++            result = PowderRuntime(args.config, broker=PowderExchange(markets.symbols, **kwargs)).check()
++        else:
++            from ml.hyperliquid_powder_lock import account_ownership
++            with account_ownership() as token:
++                with _execution_environment():
++                    runtime = PowderRuntime(args.config, broker=PowderExchange(markets.symbols, ownership_token=token, **kwargs))
++                    # An explicit new activation consumes an old completed stop request.
++                    (runtime.control / "stop.request").unlink(missing_ok=True)
++                    signal.signal(signal.SIGINT, lambda *_: runtime.stopped.set())
++                    signal.signal(signal.SIGTERM, lambda *_: runtime.stopped.set())
++                    result = runtime.run(execute=True)
++    return result
++
++
++def main(argv=None):
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
++    controls = parser.add_mutually_exclusive_group()
++    controls.add_argument("--check", action="store_true")
++    controls.add_argument("--status", action="store_true")
++    controls.add_argument("--stop", action="store_true")
++    parser.add_argument("--activate", action="store_true")
++    parser.add_argument("--execute", action="store_true")
++    args = parser.parse_args(argv)
++    if (args.check or args.status or args.stop) and (args.activate or args.execute):
++        parser.error("Inspection/stop controls cannot be combined with activation")
++    if not (args.check or args.status or args.stop) and not (args.activate and args.execute):
++        parser.error("Execution requires BOTH --activate and --execute for every session")
++    try:
++        result = _dispatch(args)
++    except Exception as exc:
++        result = {"mode": "powder", "state": "NOT_READY", "execution_enabled": False,
++                  "reason": "Configuration, account preflight or ownership validation failed",
++                  "error_type": type(exc).__name__}
++    print(json.dumps(result, indent=2, default=str))
++    return 1 if result.get("state") in {"HALTED", "BLOCKED", "NOT_READY"} else 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())

@@ -1,0 +1,1 @@
+{"status": "VERIFIED_SAVED_MODELS_WITH_COVERAGE_NOTES", "run": "C:\\DATASTORE\\ml\\nightly-gameplan-runs\\20260926T061604.318956Z", "directional": {"1h": "PROMOTED", "4h": "PROMOTED", "1d": "PROMOTED", "1w": "PROMOTED"}, "enrichment": "MODELS_FIT", "errors": [], "report": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\model-review.md"}

@@ -55,10 +55,21 @@
   "provider_calls": 0,
   "orders_placed": 0,
   "additional_helpers": {
-    "audit_environment.py": "0d5ca54732fbc2895fd0e82eba185654a6bcfd638349ed0c4d35fe96fea124a6",
+    "audit_environment.py": "82f57cbfd2f33b76e4a74e5711a69997e74e3710aba04cb99196880aee044a39",
+    "preliminary_directional_review.py": "010c5c258cb9dda97a845e525095e3b2790756644bca09bc476dbdb1dbc1d79a",
+    "preliminary_sizing_review.py": "43eceb8342ccc02f37f0b0e04f3b067ba10a985416c78a6145d6b0d7ae35187e",
+    "prepare_helpers.py": "5fbd3c750a020364e9ff1f33de308716b132db83aa8359bfbd4ab5552bea323e",
+    "prepare_preliminary_review.py": "a108872dbb9ab626bf23fd6917da810527c231169393f81b9de993b83fc2fe09",
+    "review_isolated_drift.py": "771d6c2703985e3e2e4ff71366983ccacd6a84c0c7d16a58253d232ad5262f4e",
     "run_final_checks.py": "04cb2674d2ac4cd323bcd2c6cbe57508413281efe50df2876546ad9a62cb567f",
-    "validate_helpers.py": "573bd6c1ebb550ec336487d531d8f35fff1abd2f6c4c53d76a75a9587adaa4cd"
+    "validate_helpers.py": "e154311ee2dab91871cc89895d872e371c2e4e1e8b7dbe578554461e83d22fad",
+    "watch_preliminary_review.py": "fd4002d180b36d5acc84f3ebe5ff96f9a3f221b7cdfa0859f5b258f62c86634a"
   },
-  "reviewed_at": "2026-09-26T04:15:11.793227+00:00",
-  "bounded_checks": "helper-review-tests.json"
+  "reviewed_at": "2026-09-26T06:29:04.491341+00:00",
+  "bounded_checks": "helper-review-tests.json",
+  "explicit_isolated_drift_review": {
+    "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\reviewed-isolated-code-drift.json",
+    "sha256": "2221e34c845496a3d4951b35bbaaed22be0d081abb466e88493a40cd5e5362b9",
+    "original_environment_baseline_preserved": true
+  }
 }

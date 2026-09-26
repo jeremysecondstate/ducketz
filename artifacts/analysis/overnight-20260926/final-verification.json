@@ -1,0 +1,74 @@
+{
+  "closed_at": "2026-09-26T06:56:22.662567+00:00",
+  "status": "VERIFIED_WITH_COVERAGE_NOTES",
+  "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\20260926T040723.834511Z",
+  "source_session": "2026-09-25",
+  "action_date": "2026-09-28",
+  "orders_placed": 0,
+  "all_eight_native_stages_complete": true,
+  "all_four_audits_exit_zero": true,
+  "preservation_checks_passed": 21,
+  "actuals_coverage_checks_passed": 17,
+  "errors": [],
+  "supervision": {
+    "owner_token": "5de5b56b-8488-49a3-9606-9d615a47a2de",
+    "monitor_renewals": 273,
+    "all_monitor_renewals_acquired": true,
+    "maximum_monitor_renewal_gap_seconds": 35.961741,
+    "monitor_stopped": true,
+    "last_monitor_renewal_at": "2026-09-26T06:51:48.205196+00:00",
+    "closure_reacquired_at": "2026-09-26T06:55:28.944171+00:00",
+    "release": {
+      "status": "RELEASED",
+      "owner_token": "5de5b56b-8488-49a3-9606-9d615a47a2de",
+      "updated_at": "2026-09-26T06:55:39.365241+00:00",
+      "expires_at": "2026-09-26T06:55:39.365241+00:00"
+    },
+    "usage_interruption": "After audits and peer review, before final administrative closure. No running pipeline or repair during expired-claim gap."
+  },
+  "peer_review": {
+    "status": "PASS",
+    "original_report_sha256": "9ae59c98f733c36f8808d78050f8e7b820054048d475c84db7b2faa0e09057b6",
+    "original_links_verified": 29,
+    "closure_only_report_edit_after_review": true
+  },
+  "evidence": {
+    "completion-summary.md": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\completion-summary.md",
+      "sha256": "f4a5dba507b64302d9de351c5001c36b00cbc5f6714e60133e9e8746f2de7e7c"
+    },
+    "verification/audit-runner.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\audit-runner.json",
+      "sha256": "958abe57af13bcb8492e81624f439e1093a94c36d6b55603d8dd1a3d3c4b71b8"
+    },
+    "verification/completion-audit.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\completion-audit.json",
+      "sha256": "e62d821b8335bc6f21ec7c06ab7fd58746c1725050198c90ee4b3f3cc3b4bf12"
+    },
+    "verification/yg-completion.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\yg-completion.json",
+      "sha256": "94d1470c2bfe18c0f5d1c3980c11b27295160314d758caa65d577926eb40edd1"
+    },
+    "verification/provider-completion.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\provider-completion.json",
+      "sha256": "f279728333cbcb1f57b363073aaa2f73518ba94804ac84d91c1999e3939faec6"
+    },
+    "verification/model-review.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\verification\\model-review.json",
+      "sha256": "266ac5a341eb49e22e89e97801b016a8557d80a02220dba4c4ef3d471702d6d9"
+    },
+    "preflight/final-preservation.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\preflight\\final-preservation.json",
+      "sha256": "c71de26d4d298d3c302595913abb7b9bd7001daa699f2bc5119770f25da2d361"
+    },
+    "preflight/actuals-coverage-review.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\preflight\\actuals-coverage-review.json",
+      "sha256": "ee357acec97bca8d564023583ea9175fee452471f4a0b5e7556a1f387b8869fa"
+    },
+    "supervision-release.json": {
+      "path": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260926\\supervision-release.json",
+      "sha256": "5c78f03af2d6399d1ad82169e25dc483dd8b4e5e881f655abc65ac131da1bf20"
+    }
+  },
+  "next_action": "Do not rerun completed source September 25. Honor native calendar no-ops and the unchanged 21:05 Pacific schedule."
+}

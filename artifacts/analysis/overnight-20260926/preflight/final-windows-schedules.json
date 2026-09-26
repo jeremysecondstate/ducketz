@@ -1,0 +1,36 @@
+{
+  "reviewed_at": "2026-09-26T06:32:51.0735932Z",
+  "tasks": [
+    {
+      "name": "Ducketz Independent Stock Session",
+      "state": "Disabled",
+      "task_path": "\\",
+      "actions": [
+        {
+          "Execute": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+          "Arguments": "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:\\dev\\ducketz\\docs\\datafetch-ml\\start_stock_session.ps1\"",
+          "WorkingDirectory": "C:\\dev\\ducketz"
+        }
+      ],
+      "triggers": [
+        {
+          "Enabled": true,
+          "StartBoundary": "2026-09-08T03:55:00",
+          "DaysOfWeek": 62,
+          "WeeksInterval": 1
+        }
+      ],
+      "settings": {
+        "Enabled": false,
+        "StartWhenAvailable": true,
+        "WakeToRun": true,
+        "RestartCount": 5,
+        "RestartInterval": "PT1M",
+        "MultipleInstances": 2
+      },
+      "last_run_time": "2026-09-15T03:55:00.0000000-07:00",
+      "last_task_result": 1,
+      "next_run_time": "2026-09-28T03:55:00.0000000-07:00"
+    }
+  ]
+}

@@ -41,6 +41,10 @@ Relevant evidence: `ml/stock_direction_policy.py:6`, `ml/gameplan_cash_ledger.py
 
 `audit-environment-baseline.json` captures hashes of 255 Python/doc/watchlist files at preparation. Every major audit checks this baseline before heavy work; the runner checks it again after. Changed/missing/added source files fail with explicit paths and hashes. Review genuine concurrent changes before adapting the baseline; do not automatically accept drift. The original copy script refuses to overwrite an existing environment baseline.
 
+The preliminary reviewer stopped on six concurrent Hyperliquid changes. Root authorized a read-only relevance review: 237 non-Hyperliquid `ml`/`datafetching` sources contain no Hyperliquid reference, and all captured native stock-pipeline sources remain unchanged. `reviewed-isolated-code-drift.json` retains exact old/new hashes, the reviewed Git heads and rationale; the companion `.diff` preserves source evidence. The original baseline remains intact. Only those exact reviewed bytes are admitted by the guard; new edits still fail. This exception grants no execution authority to any Hyperliquid code.
+
+The now-complete pinned publication and sizing stages also have bounded preliminary reviews in `preliminary-directional-review.md/.json` and `preliminary-sizing-review.md/.json`. These read only small manifest-bound reports and forecast rows, recompute saved arithmetic, and explicitly defer archive/cohort/estimator reconstruction to the final runner. All four directional groups passed saved v2 gates; separate learned sizing fit all four groups with zero qualified scopes under its strict saved gates. These are observed current results, not assumptions built into the verifier.
+
 Read-only comparison from commit `59fa889` to the captured HEAD found no changes to existing native overnight/model/planning modules or these contracts; additions under `ml`/`datafetching` are separate Hyperliquid modules. Concurrent UI work was left untouched. Relevant provenance and helper hashes are in `preparation.json`.
 
 ## Contingencies and coverage caveats

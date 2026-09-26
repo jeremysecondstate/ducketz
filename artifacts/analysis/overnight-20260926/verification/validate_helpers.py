@@ -68,7 +68,13 @@ preparation = json.loads((OUT/'preparation.json').read_text(encoding='utf-8'))
 for entry in preparation['files']:
     entry['adapted_sha256'] = hashlib.sha256((OUT/entry['name']).read_bytes()).hexdigest()
 preparation['additional_helpers'] = {name: hashlib.sha256((OUT/name).read_bytes()).hexdigest()
-    for name in ('audit_environment.py', 'run_final_checks.py', 'validate_helpers.py')}
+    for name in sorted(path.name for path in OUT.glob('*.py'))
+    if name not in {entry['name'] for entry in preparation['files']}}
+reviewed_drift = OUT/'reviewed-isolated-code-drift.json'
+if reviewed_drift.exists():
+    preparation['explicit_isolated_drift_review'] = {
+        'path': str(reviewed_drift), 'sha256': hashlib.sha256(reviewed_drift.read_bytes()).hexdigest(),
+        'original_environment_baseline_preserved': True}
 preparation['reviewed_at'] = result['checked_at']
 preparation['syntax_validation'] = 'ALL_HELPERS_AST_PARSE'
 preparation['bounded_checks'] = 'helper-review-tests.json'
