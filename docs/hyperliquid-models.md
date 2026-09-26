@@ -1,5 +1,8 @@
 # Hyperliquid models and continuous predictions
 
+For the maintained cross-system map, runtime inventory and operating procedures,
+see [Hyperliquid system analysis](hyperliquid-system-analysis/README.md).
+
 For persistent worker/publication timings, polling-delay separation and timing
 exports, see [Hyperliquid operation timing](hyperliquid-timings.md).
 

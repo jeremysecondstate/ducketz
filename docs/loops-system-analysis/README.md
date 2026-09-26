@@ -1,5 +1,9 @@
 # Ducketz Loops system analysis
 
+The separate Hyperliquid data/model/Paper portfolio stack and H.Y.P.E.R.
+workspace are documented in
+[Hyperliquid system analysis](../hyperliquid-system-analysis/README.md).
+
 Research-selected additions use [Research symbol onboarding](RESEARCH_SYMBOL_ONBOARDING.md): an explicitly selected batch, a 2018 historical floor, included-plan cost checks, candidate training, verified publication, and atomic activation. Read current membership from `datafetching/watchlist.txt` and validate historical publications against their own saved universes.
 
 This directory documents the current Loops implementation. Code, immutable

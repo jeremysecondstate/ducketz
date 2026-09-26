@@ -52,6 +52,7 @@ class PaperViewSnapshot:
     sources: dict[str, SourceState] = field(default_factory=dict)
     warnings: tuple[str, ...] = ()
     history_sampled: bool = False
+    powder: PaperViewSnapshot | None = None
 
 
 def _mapping(value):

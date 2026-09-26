@@ -22,6 +22,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from app.services.hyperliquid_paper_view import HyperliquidPaperViewService, PaperViewSnapshot, SourceState
+from app.services.hyperliquid_powder_view import HyperliquidWorkspaceViewService, project_powder
 from app.ui.ducket_bucket import DucketBucketApp
 from app.ui.hyper_workspace import HyperWorkspace
 from visual_option_management_fixture import _write_window_png
@@ -203,6 +204,7 @@ def main() -> None:
     parser.add_argument("--mode", choices=("Paper", "Powder"), default="Paper")
     parser.add_argument("--size", default="1706x1000", help="Root dimensions, for example 1180x760.")
     parser.add_argument("--capture", type=Path)
+    parser.add_argument("--powder-demo", action="store_true", help="Add illustrative Powder observations; no exchange or runtime calls.")
     parser.add_argument("--scroll-bottom", action="store_true")
     parser.add_argument("--local-data-root", type=Path,
                         help="Read a local artifact tree once before starting Tk, using the read-only adapter.")
@@ -214,8 +216,23 @@ def main() -> None:
             raise ValueError
     except (TypeError, ValueError):
         parser.error("--size must be WIDTHxHEIGHT, at least 800x600.")
-    snapshot = (HyperliquidPaperViewService(args.local_data_root).load_snapshot()
+    if args.powder_demo and args.local_data_root:
+        parser.error("--powder-demo cannot be mixed with local records")
+    snapshot = (HyperliquidWorkspaceViewService(args.local_data_root).load_snapshot()
                 if args.local_data_root else _snapshot())
+    if args.powder_demo:
+        now = OBSERVED.timestamp()
+        snapshot.powder = project_powder({"latest_observation": {"observed_at": now,
+            "accounts": {"alex": {"equity": 6500, "available_cash": 4500, "gross": 2000,
+                "positions": {"BTC": {"quantity": -.02, "mark": 100000, "entry_price": 102000, "kind": "perp"}}},
+                "jeremy": {"equity": 6800, "available_cash": 5300, "gross": 1500,
+                "positions": {"ETH": {"quantity": .5, "mark": 3000, "entry_price": 2990, "kind": "perp"}}},
+                "clearpond": {"equity": 24000, "available_cash": 20000, "gross": 4000,
+                "positions": {"HYPE": {"quantity": 100, "mark": 40, "entry_price": None, "kind": "spot"}}}}},
+            "fills": [{"account": "clearpond", "symbol": "HYPE", "tid": 7, "oid": 12345,
+                       "quantity": 1, "price": 40, "fee": .0007, "fee_token": "HYPE", "time": now * 1000}]},
+            paper=snapshot, now=now, runtime={"state": "STOPPED", "updated_at_utc": OBSERVED.isoformat(),
+                                           "reason": "Offline visual fixture; no process was started."})
     evidence_label = ("CURRENT LOCAL RECORDS · read-only" if args.local_data_root else
                       "OFFLINE VISUAL FIXTURE · Illustrative sample data · 2026-09-25 20:30 PT")
     root = tk.Tk()

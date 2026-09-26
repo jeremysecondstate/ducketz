@@ -25,6 +25,7 @@ from ml.hyperliquid_paper_policy import load_config, DEFAULT_PAPER_CONFIG_PATH, 
 from ml.hyperliquid_paper_market import PublicPaperMarket, simulate_fill, consume_fill
 from ml.hyperliquid_paper_ledger import PaperLedger
 from ml.hyperliquid_paper_seed import mirror_accounts
+from ml.hyperliquid_forecast_reader import read_forecast
 from datafetching.hyperliquid_candles import INTERVAL_MS
 
 RUN_ID = re.compile(r"\d{8}T\d{6}Z-[a-f0-9]{8}")
@@ -114,41 +115,8 @@ class PaperRuntime:
         return self._frames[coin][1]
 
     def _forecast(self, coin, now):
-        directory = self.config.data_root / "_models" / coin / self.interval / f"h{self.horizon}"
-        prediction = json.loads((directory / "latest_prediction.json").read_text())
-        if (prediction["coin"], prediction["interval"], prediction["horizon_bars"]) != (coin, self.interval, self.horizon):
-            raise ValueError("Forecast belongs to a different market or horizon.")
-        p = float(prediction["p_not_down"])
-        q = float(prediction["p_down"])
-        if not math.isfinite(p) or not 0 <= p <= 1 or not math.isfinite(q) or abs(p + q - 1) > 1e-9:
-            raise ValueError("Invalid complementary forecast probabilities.")
-        created, decision = stamp(prediction["created_at_utc"]), stamp(prediction["decision_close_utc"])
-        if not decision <= created <= now or not 0 <= now - decision <= self.config.max_forecast_age_seconds:
-            raise ValueError("Forecast is stale or has a future timestamp.")
-        if stamp(prediction["target_close_utc"]) <= now:
-            raise ValueError("Forecast outcome has already matured.")
-        if stamp(prediction["target_close_utc"]) != decision + INTERVAL_MS[self.interval] * self.horizon / 1000:
-            raise ValueError("Forecast target does not match the configured horizon.")
-        if type(prediction.get("qualified")) is not bool:
-            raise ValueError("Forecast qualification must be explicit.")
-        model_id = prediction["model_id"]
-        if not RUN_ID.fullmatch(model_id):
-            raise ValueError("Invalid local model identifier.")
-        record = json.loads((directory / "runs" / model_id / "record.json").read_text())
-        if (record.get("coin"), record.get("interval"), record.get("horizon_bars"), record.get("model_id")) != (coin, self.interval, self.horizon, model_id):
-            raise ValueError("Model record identity does not match the forecast.")
-        if stamp(record["trained_at_utc"]) > created:
-            raise ValueError("Model was published after the recorded forecast.")
-        if not 0 <= now - stamp(record["trained_at_utc"]) <= self.config.max_model_age_seconds:
-            raise ValueError("Forecast model exceeds its configured age.")
-        frame = self._features(coin, prediction["data_run_id"])
-        row = frame.loc[frame.close_time.eq(pd.Timestamp(prediction["decision_close_utc"]))]
-        if len(row) != 1:
-            raise ValueError("The forecast's volatility feature is unavailable.")
-        sigma = float(row.iloc[0]["volatility_log_return_20"]) * math.sqrt(self.horizon)
-        if not math.isfinite(sigma) or sigma < 0:
-            raise ValueError("The forecast's volatility feature is invalid.")
-        return prediction, sigma
+        return read_forecast(coin, now, self.config, self.interval, self.horizon,
+                             feature_loader=self._features)
 
     def _funding(self, marks, now):
         # Use realized exchange rates with the exact completed-candle close as

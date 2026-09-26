@@ -1,5 +1,8 @@
 # Hyperliquid operation timing
 
+For the maintained cross-system map and monitoring procedures,
+see [Hyperliquid system analysis](hyperliquid-system-analysis/README.md).
+
 Data and model workers retain timing measurements independently of their
 scheduling intervals. A 15-minute candle interval is not 15 minutes of work;
 the five-second model polling interval is not five seconds of fitting.

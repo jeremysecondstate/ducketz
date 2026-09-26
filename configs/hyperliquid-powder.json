@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "mode": "powder",
+  "paper_config": "hyperliquid-paper.json",
+  "max_order_notional": 500,
+  "poll_seconds": 30
+}

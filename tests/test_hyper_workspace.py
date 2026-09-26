@@ -210,7 +210,7 @@ def test_powder_has_no_paper_balances_or_journal_and_labels_forecast_preview(wor
     for widgets in view.account_values.values():
         for key in ("equity", "pnl", "free_cash", "gross_exposure"):
             assert not any(character.isdigit() for character in widgets[key].cget("text"))
-    assert view.badge.cget("text") == "REAL MONEY · PLANNED"
+    assert view.badge.cget("text") == "REAL MONEY"
     assert view.mode_status.cget("text") == "Not connected"
     assert not view._chart_points
     assert "Not connected" in view.detail.get("1.0", "end")
@@ -223,6 +223,30 @@ def test_powder_has_no_paper_balances_or_journal_and_labels_forecast_preview(wor
     view.view.set("Positions")
     view._render()
     assert len(view.tree.get_children()) == len(_snapshot().positions)
+
+
+def test_powder_observations_and_fills_are_separate_from_paper(workspace):
+    from app.services.hyperliquid_powder_view import project_powder
+    view, window, _ = workspace
+    paper = _snapshot()
+    paper.powder = project_powder({"latest_observation": {"observed_at": 1000,
+        "accounts": {"clearpond": {"equity": 800, "available_cash": 600, "gross": 200,
+            "positions": {"HYPE": {"quantity": 5, "mark": 40, "kind": "spot"}}}}},
+        "fills": [{"account": "clearpond", "symbol": "HYPE", "tid": 7, "quantity": 1,
+                   "price": 40, "fee": .001, "fee_token": "HYPE", "time": 1000000}]},
+        paper=paper, now=1001)
+    view.show_snapshot(paper)
+    view.mode.set("Powder")
+    window.update()
+    assert view.metric_values["equity"].cget("text") == "$800.00"
+    assert view.metric_values["pnl"].cget("text") == "—"
+    assert len(view.tree.get_children()) == 1
+    view.view.set("Fills")
+    view._render()
+    assert "0.001 HYPE" in view.tree.item(view.tree.get_children()[0], "values")
+    assert "Not connected" not in view.detail.get("1.0", "end")
+    view.mode.set("Paper")
+    assert "42,112.86" in view.metric_values["equity"].cget("text")
 
 
 def test_missing_and_degraded_sources_remain_visible_without_fabricated_balances(workspace):

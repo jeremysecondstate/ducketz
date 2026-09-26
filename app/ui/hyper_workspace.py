@@ -14,7 +14,8 @@ from datetime import datetime, timezone, timedelta
 from tkinter import ttk
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from app.services.hyperliquid_paper_view import HyperliquidPaperViewService, filter_rows
+from app.services.hyperliquid_paper_view import filter_rows
+from app.services.hyperliquid_powder_view import HyperliquidWorkspaceViewService, project_powder
 from app.ui.theme import TEXT, MUTED_TEXT, DANGER, WARNING
 
 PAGE = "#071522"
@@ -124,7 +125,7 @@ class Tooltip:
 class HyperWorkspace:
     def __init__(self, root, parent, *, service=None, auto_load=True, refresh_ms=5000):
         self.root, self.parent = root, parent
-        self.service = service if service is not None else HyperliquidPaperViewService()
+        self.service = service if service is not None else HyperliquidWorkspaceViewService()
         self.snapshot = None
         self.refresh_ms = max(100, int(refresh_ms))
         self._closed = self._loading = False
@@ -246,7 +247,7 @@ class HyperWorkspace:
             self.metric_captions[key] = label(panel, "", size=8, color=MUTED_TEXT)
             self.metric_captions[key].pack(anchor="w", padx=12, pady=(0, 8))
             self.metric_cards.append(panel)
-        Tooltip(self.metric_cards[1], "Change from paper opening marked equity, including costs. Inherited gains/losses are excluded; account P/L is adjusted for internal transfers.")
+        Tooltip(self.metric_cards[1], lambda: "Change from paper opening marked equity, including costs. Inherited gains/losses are excluded; account P/L is adjusted for internal transfers." if self.mode.get() == "Paper" else "Powder does not calculate P/L from balance changes: cashflows, actual funding and non-USDC fees need full accounting first.")
         Tooltip(self.metric_cards[4], lambda: "Performance export as of: " + str((self.snapshot.performance if self.snapshot else {}).get("as_of_utc", "unavailable")))
         self.workspace = tk.Frame(self.body, bg=PAGE)
         self.workspace.pack(fill="both", expand=True, padx=14, pady=(0, 10))
@@ -528,6 +529,17 @@ class HyperWorkspace:
         if self._wheel_binding:
             self.root.unbind("<MouseWheel>", self._wheel_binding)
 
+    @property
+    def snapshot(self):
+        if hasattr(self, "mode") and self.mode.get() == "Powder":
+            return self._powder_snapshot
+        return self._paper_snapshot
+
+    @snapshot.setter
+    def snapshot(self, value):
+        self._paper_snapshot = value
+        self._powder_snapshot = (value.powder or project_powder({}, paper=value)) if value else None
+
     def show_snapshot(self, snapshot):
         if self._closed:
             return
@@ -545,6 +557,8 @@ class HyperWorkspace:
         sources = self.snapshot.sources
         aliases = {"data": ("data", "feature", "candle", "coordinator"), "forecasts": ("forecast", "prediction"),
                    "models": ("model", "training"), "paper": ("paper", "ledger")}[key]
+        if key == "paper" and self.mode.get() == "Powder":
+            aliases = ("powder",)
         return [source for name, source in sources.items() if any(word in name.casefold() for word in aliases)]
 
     def _source_tooltip(self, key):
@@ -560,16 +574,20 @@ class HyperWorkspace:
             return
         paper = self.mode.get() == "Paper"
         snap = self.snapshot
-        pooled = snap.pooled if snap and paper else {}
-        self.badge.configure(text="SIMULATED" if paper else "REAL MONEY · PLANNED", fg=MINT if paper else WARNING)
+        pooled = snap.pooled if snap else {}
+        connected = bool(snap and snap.runtime.get("connected"))
+        self.badge.configure(text="SIMULATED" if paper else "REAL MONEY", fg=MINT if paper else WARNING)
         self.mode_status.configure(text=("Portfolio " + local_time(snap.portfolio_observed_at_utc) if snap and paper else
-                                         "Awaiting local records" if paper else "Not connected"), fg=MUTED_TEXT if paper else WARNING)
+                                         "Awaiting local records" if paper else
+                                         "Observed " + local_time(snap.portfolio_observed_at_utc) if connected else "Not connected"), fg=MUTED_TEXT if paper else WARNING)
         for key, (title, state, text, cadence) in self.source_labels.items():
             group = self._source_group(key)
-            if key == "paper" and not paper:
+            if key == "paper" and not paper and not connected:
                 title.configure(text="Execution · Not connected", fg=WARNING)
-                state.configure(text="No execution adapter", fg=MUTED_TEXT)
+                state.configure(text="Awaiting user activation", fg=MUTED_TEXT)
                 continue
+            if key == "paper" and not paper:
+                text = "Powder"
             rank = {"fresh": 0, "missing": 2, "partial": 3, "stale": 4, "stopped": 5, "error": 6}
             worst = max(group, key=lambda s: rank.get(s.state, 3), default=None)
             status = worst.state.capitalize() if worst else "Unavailable"
@@ -594,7 +612,8 @@ class HyperWorkspace:
         if self._error:
             warnings.insert(0, self._error + (" — displaying previous snapshot" if snap else ""))
         self.alert.configure(text=(warnings[0] + (f"  (+{len(warnings)-1} in Operations)" if len(warnings) > 1 else "")) if warnings else
-                             ("Paper ledger · simulated fills and virtual transfers" if paper else "Not connected · shared forecasts are a preview; execution history is empty"),
+                             ("Paper ledger · simulated fills and virtual transfers" if paper else
+                              "Actual exchange observations · read-only view" if connected else "Not connected · shared forecasts are a preview; execution history is empty"),
                              fg=WARNING if warnings or not paper else MUTED_TEXT)
         self.metric_titles["pnl"].configure(text="Paper P/L since start" if paper else "P/L since activation")
         values = {"equity": money(pooled.get("equity")), "pnl": money(pooled.get("total_pnl"), True),
@@ -605,14 +624,14 @@ class HyperWorkspace:
             self.metric_values[key].configure(text=value)
         pnl, opening, equity, exposure = (number(pooled.get(k)) for k in ("total_pnl", "initial_equity", "equity", "gross_exposure"))
         self.metric_values["pnl"].configure(fg=DANGER if pnl is not None and pnl < 0 else MINT if pnl is not None else TEXT)
-        self.metric_captions["equity"].configure(text="Three paper accounts" if paper else "Awaiting reconciled accounts")
-        self.metric_captions["pnl"].configure(text=f"{pct(pnl / opening)} vs opening" if pnl is not None and opening else "Opening baseline unavailable")
+        self.metric_captions["equity"].configure(text="Three paper accounts" if paper else "Last observed exchange equity" if connected else "Awaiting reconciled accounts")
+        self.metric_captions["pnl"].configure(text=f"{pct(pnl / opening)} vs opening" if pnl is not None and opening else "Cashflow accounting pending" if connected else "Opening baseline unavailable")
         self.metric_captions["exposure"].configure(text=f"{pct(exposure / equity)} of equity" if exposure is not None and equity else "No exposure observation")
-        self.metric_captions["fees"].configure(text="Cumulative simulated fill fees" if paper else "Awaiting actual exchange fees")
+        self.metric_captions["fees"].configure(text="Cumulative simulated fill fees" if paper else "Actual fees listed per fill")
         perf_stamp = snap.performance.get("as_of_utc") if snap and paper else None
         self.metric_captions["drawdown"].configure(text="Export " + local_time(perf_stamp) if perf_stamp else "No performance export")
         for key, widgets in self.account_values.items():
-            account = snap.accounts.get(key, {}) if snap and paper else {}
+            account = snap.accounts.get(key, {}) if snap else {}
             widgets["equity"].configure(text=money(account.get("equity")))
             apnl = number(account.get("total_pnl"))
             widgets["pnl"].configure(text="P/L since opening  " + money(apnl, True), fg=DANGER if apnl is not None and apnl < 0 else MINT)
@@ -625,7 +644,7 @@ class HyperWorkspace:
             widgets["panel"].configure(highlightbackground=MINT if ACCOUNT_KEYS.get(self.account_filter.get()) == key else LINE)
         self.exposure_note.configure(text="Accounts are isolated.\nPool exposure does not imply shared exchange margin.")
         self.chart_title.configure(text="Performance since paper start" if paper else "Performance since activation")
-        self.costs.configure(text=f"Fees  {money(pooled.get('fees'))}    ·    Funding  {money(pooled.get('funding'), True)} · estimated" if paper else "Fees  —    ·    Funding  — · awaiting execution")
+        self.costs.configure(text=f"Fees  {money(pooled.get('fees'))}    ·    Funding  {money(pooled.get('funding'), True)} · estimated" if paper else "Fees: see confirmed fills · Funding totals unavailable")
         if snap and paper and snap.runtime.get("funding_errors"):
             self.costs.configure(text=self.costs.cget("text") + " · settlements pending", fg=WARNING)
         else:
@@ -635,7 +654,7 @@ class HyperWorkspace:
         qualification_policy = ("Only qualified forecasts participate." if config.get("require_qualified_forecasts") is True else
                                 "Qualified and research models may participate." if config.get("require_qualified_forecasts") is False else "Forecast eligibility policy unavailable.")
         self.policy_label.configure(text=(f"Paper policy · {pct(config.get('per_symbol_gross_fraction'))} / symbol · {pct(config.get('pool_gross_fraction'))} pool cap\n{qualification_policy}" if paper else
-                                         "Execution unavailable. Switching modes does not connect or enable real-money trading."))
+                                         "User command starts Powder. Switching tabs only changes this read-only view.\nSee docs/hyperliquid-system-analysis/POWDER_ACTIVATION.md"))
         self.footer.configure(text=("H.Y.P.E.R. / " + self.mode.get() + "   ·   " + ("View refreshed " + local_time(snap.observed_at_utc, date=True) if snap else "No local snapshot") + "   ·   Read-only · times PT"))
         self._draw_chart()
         self._render_table()
@@ -646,7 +665,7 @@ class HyperWorkspace:
             return
         meter = self.account_values[key]["meter"]
         meter.delete("all")
-        account = self.snapshot.accounts.get(key, {}) if self.snapshot and self.mode.get() == "Paper" else {}
+        account = self.snapshot.accounts.get(key, {}) if self.snapshot else {}
         amount, balance = number(account.get("gross_exposure")), number(account.get("equity"))
         if amount is not None and balance and balance > 0:
             ratio = min(1, max(0, amount / balance))
@@ -693,8 +712,9 @@ class HyperWorkspace:
         if not series:
             powder = self.mode.get() == "Powder"
             canvas.create_text(width/2, height/2-12, text="Real performance will appear here" if powder else "No equity observations available", fill=TEXT, font=("Segoe UI", 12))
-            canvas.create_text(width/2, height/2+16, text="Not connected · awaiting execution and reconciliation" if powder else "The local ledger supplies the chart", fill=MUTED_TEXT, font=("Segoe UI", 9))
-            self.chart_note.configure(text="No real-money opening baseline" if powder else "Account filter selects the chart; asset/model filters select activity")
+            connected = bool(self.snapshot and self.snapshot.runtime.get("connected"))
+            canvas.create_text(width/2, height/2+16, text=("Cashflow-adjusted performance is not available" if connected else "Not connected · awaiting execution and reconciliation") if powder else "The local ledger supplies the chart", fill=MUTED_TEXT, font=("Segoe UI", 9))
+            self.chart_note.configure(text=("Actual balances and fills are available below" if connected else "No real-money opening baseline") if powder else "Account filter selects the chart; asset/model filters select activity")
             return
         left, top, right, bottom = 78, 18, width-20, height-32
         values = [point[1] for point in series]
@@ -770,7 +790,7 @@ class HyperWorkspace:
                 self.tree.heading(key, text=title)
                 self.tree.column(key, width=width, minwidth=width, stretch=key == "reason", anchor="w")
         self._table_view = (self.mode.get(), view)
-        source = getattr(self.snapshot, view.lower(), []) if self.snapshot and self.mode.get() == "Paper" else []
+        source = getattr(self.snapshot, view.lower(), []) if self.snapshot else []
         rows = filter_rows(source, **self._filters())
         self._rows_by_id = {}
         for index, row in enumerate(rows):
@@ -799,12 +819,13 @@ class HyperWorkspace:
         self.row_count.configure(text=f"{len(rows)} records")
         self.empty_table.place_forget()
         if not rows:
-            self.empty_table.configure(text="Not connected\nNo exchange activity yet" if self.mode.get() == "Powder" else "No records match these filters" if self.snapshot else "Awaiting local ledger")
+            connected = bool(self.snapshot and self.snapshot.runtime.get("connected"))
+            self.empty_table.configure(text="Not connected\nNo exchange activity yet" if self.mode.get() == "Powder" and not connected else "No records match these filters" if self.snapshot else "Awaiting local ledger")
             self.empty_table.place(relx=.5, rely=.5, anchor="center")
         self.table_note.configure(text=("Inherited positions retain their entry cost basis; unrealized P/L can predate paper opening." if view == "Positions" else
                                        "Committed virtual cash movements · zero fee · pool net flow is zero." if view == "Transfers" else
                                        f"Latest {getattr(self.service, 'journal_limit', 500)} records per journal · select a row for reasoning and provenance.") if self.mode.get() == "Paper" else
-                                      "Confirmed execution records will appear after an execution adapter is connected.")
+                                      "Actual exchange records · transfer automation is not enabled · adopted spot entry basis is unavailable.")
         preview = next((r for r in (self.snapshot.forecasts if self.snapshot else [])
                         if r.get("coin") == self._inspector_forecast), None)
         if preview:
@@ -824,6 +845,8 @@ class HyperWorkspace:
             return "Inherited" if row.get("passive") else ("Buy" if (number(row.get("quantity")) or 0) > 0 else "Sell") if view == "Fills" else str(value or "—").title()
         if key == "quantity":
             return quantity(value)
+        if key == "fee" and self.mode.get() == "Powder":
+            return f"{quantity(value)} {row.get('feeToken', 'unknown token')}"
         if key in ("avg_entry", "mark_price", "notional", "unrealized_pnl", "current_notional", "target_notional", "price", "fee", "amount"):
             return money(value)
         if key == "p_not_down":
@@ -892,10 +915,10 @@ class HyperWorkspace:
         sections = []
         def add(text, tag="body"):
             sections.append((str(text) + "\n", tag))
-        if self.mode.get() == "Powder" and view != "Forecast preview":
+        if self.mode.get() == "Powder" and view != "Forecast preview" and not (self.snapshot and self.snapshot.runtime.get("connected")):
             self.detail_heading.configure(text="Execution detail")
             add("Not connected", "title")
-            add("Real balances, orders, fills and transfers require an execution and reconciliation adapter.")
+            add("Use the documented user activation command after the readiness check. Selecting this tab cannot start trading.")
             add("Order acknowledgement · requested / filled quantity · actual fees · exchange order ID · reconciliation", "section")
             add("No exchange execution records are available.")
         elif not row:
@@ -930,7 +953,14 @@ class HyperWorkspace:
                 add(f"{data.get('kind', '—').title()} · {data.get('side', '—').title()} · {quantity(data.get('quantity'))}\nEntry {money(data.get('avg_entry'))}  →  Mark {money(data.get('mark_price'))}\nGross {money(data.get('notional'))}\nUnrealized P/L {money(data.get('unrealized_pnl'), True)}")
                 if data.get("passive"):
                     add("Inherited · unmanaged", "title")
-                add("Unrealized P/L uses the retained entry and may include gains or losses from before paper opening. Account headline P/L uses the paper opening baseline.")
+                add("Unrealized P/L uses the retained entry and may include gains or losses from before paper opening. Account headline P/L uses the paper opening baseline." if self.mode.get() == "Paper" else
+                    "Perpetual entry comes from the exchange and may predate activation. Adopted spot cost basis and strategy P/L are unavailable.")
+            elif view == "Fills" and self.mode.get() == "Powder":
+                add("CONFIRMED EXCHANGE FILL", "section")
+                add(f"Executed {quantity(data.get('quantity'))} · Price {money(data.get('price'))}")
+                add(f"Actual fee {quantity(data.get('fee'))} {data.get('feeToken', 'unknown token')}")
+                add(f"Exchange order {data.get('oid', '—')} · Trade {data.get('tid', '—')}")
+                add("Confirmed fills are distinct from order requests and acknowledgements. Partial fills remain partial.")
             else:
                 add("SIGNAL", "section")
                 p = number(data.get("p_not_down"))
@@ -956,6 +986,11 @@ class HyperWorkspace:
                     add(f"Confidence {pct(policy.get('confidence'))} · Horizon volatility {pct(policy.get('effective_horizon_sigma'))}")
                     if policy.get("account_cash_constraints_applied"):
                         add("Policy-stage account cash constraint applied")
+                if self.mode.get() == "Powder" and view == "Decisions":
+                    add("ORDER INTENT", "section")
+                    request = data.get("request", {})
+                    add(f"{data.get('state', 'Unknown')} · Requested {quantity(request.get('size'))} · Limit {money(request.get('limit_price'))}")
+                    add(f"Client order ID {data.get('cloid', '—')}")
                 execution = {**data, **(data.get("execution") or {})}
                 if view == "Fills" or "requested_quantity" in execution:
                     add("SIMULATED EXECUTION", "section")

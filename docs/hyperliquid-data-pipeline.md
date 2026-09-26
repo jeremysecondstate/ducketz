@@ -1,5 +1,8 @@
 # Hyperliquid market data and shared features
 
+For the maintained cross-system map, runtime inventory and operating procedures,
+see [Hyperliquid system analysis](hyperliquid-system-analysis/README.md).
+
 For persistent stage/cycle timings and a Parquet performance export, see
 [Hyperliquid operation timing](hyperliquid-timings.md).
 

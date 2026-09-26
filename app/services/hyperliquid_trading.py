@@ -148,32 +148,34 @@ class HyperliquidExecutionAdapter:
         ]
 
     def modify_order(self, order_id: int, ticket: HyperliquidOrderTicket) -> Any:
-        normalized_ticket = normalize_hyperliquid_ticket_for_wire(ticket)
-        config = self.config()
-        config.validate_for_live_order(normalized_ticket)
-
-        if order_id <= 0:
-            raise ValueError("Hyperliquid edit requires a positive order ID.")
-
-        return self._local_signed_modify(order_id, normalized_ticket, config)
+        from ml.hyperliquid_powder_lock import manual_action_guard
+        with manual_action_guard(self.account_key):
+            normalized_ticket = normalize_hyperliquid_ticket_for_wire(ticket)
+            config = self.config()
+            config.validate_for_live_order(normalized_ticket)
+            if order_id <= 0:
+                raise ValueError("Hyperliquid edit requires a positive order ID.")
+            return self._local_signed_modify(order_id, normalized_ticket, config)
 
     def submit(self, ticket: HyperliquidOrderTicket) -> Any:
-        normalized_ticket = normalize_hyperliquid_ticket_for_wire(ticket)
-        config = self.config()
-        config.validate_for_live_order(normalized_ticket)
-        return self._local_signed_submit(normalized_ticket, config)
+        from ml.hyperliquid_powder_lock import manual_action_guard
+        with manual_action_guard(self.account_key):
+            normalized_ticket = normalize_hyperliquid_ticket_for_wire(ticket)
+            config = self.config()
+            config.validate_for_live_order(normalized_ticket)
+            return self._local_signed_submit(normalized_ticket, config)
 
     def cancel(self, coin: str, order_id: int) -> Any:
-        config = self.config()
-        config.validate_for_live_action()
-
-        normalized_coin = coin.strip()
-        if not normalized_coin:
-            raise ValueError("Hyperliquid cancel requires a coin / market.")
-        if order_id <= 0:
-            raise ValueError("Hyperliquid cancel requires a positive order ID.")
-
-        return self._local_signed_cancel(normalized_coin, order_id, config)
+        from ml.hyperliquid_powder_lock import manual_action_guard
+        with manual_action_guard(self.account_key):
+            config = self.config()
+            config.validate_for_live_action()
+            normalized_coin = coin.strip()
+            if not normalized_coin:
+                raise ValueError("Hyperliquid cancel requires a coin / market.")
+            if order_id <= 0:
+                raise ValueError("Hyperliquid cancel requires a positive order ID.")
+            return self._local_signed_cancel(normalized_coin, order_id, config)
 
     def _exchange(self, config: HyperliquidTradingConfig) -> Any:
         with self._sdk_exchange_lock:

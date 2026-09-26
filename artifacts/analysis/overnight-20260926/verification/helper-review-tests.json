@@ -1,0 +1,76 @@
+{
+  "checked_at": "2026-09-26T04:15:11.793227+00:00",
+  "status": "PASS",
+  "checks": [
+    {
+      "check": "ALL_HELPER_AST_PARSE",
+      "status": "PASS",
+      "files": 10
+    },
+    {
+      "check": "CODE_ENVIRONMENT_UNCHANGED",
+      "status": "UNCHANGED",
+      "code_files": 255,
+      "baseline_recorded_at": "2026-09-26T04:10:46.108210+00:00"
+    },
+    {
+      "check": "verify_completed_run.py missing COMPLETE guard",
+      "status": "PASS",
+      "exit_code": 2,
+      "result": {
+        "archive_checks_started": false,
+        "native_statuses": {
+          "receipt.json": "MISSING",
+          "stage-report.json": "MISSING"
+        },
+        "next_step": "Wait for native COMPLETE report and receipt, then verify the terminal attempt.",
+        "overnight_run": "C:\\DATASTORE\\ml\\overnight-runs\\NOT_AN_EXISTING_NATIVE_RUN_PREPARATION_GUARD",
+        "status": "NOT_READY_FOR_FINAL_VERIFICATION",
+        "verification_is_read_only": true,
+        "verified_at": "2026-09-26T04:15:11.056531+00:00"
+      }
+    },
+    {
+      "check": "audit_provider_completion.py missing COMPLETE guard",
+      "status": "PASS",
+      "exit_code": 2,
+      "result": {
+        "status": "NOT_READY_FOR_FINAL_VERIFICATION",
+        "native_run": "C:\\DATASTORE\\ml\\overnight-runs\\NOT_AN_EXISTING_NATIVE_RUN_PREPARATION_GUARD",
+        "native_report_status": "MISSING",
+        "native_receipt_status": "MISSING",
+        "archive_checks_started": false,
+        "provider_calls": 0
+      }
+    },
+    {
+      "check": "run_final_checks.py missing COMPLETE guard",
+      "status": "PASS",
+      "exit_code": 2,
+      "result": {
+        "status": "NOT_READY_FOR_FINAL_VERIFICATION",
+        "heavy_checks_started": false,
+        "native_statuses": [
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "check": "YG_GUARD_PRECEDES_ENVIRONMENT_AND_MODEL_IMPORTS",
+      "status": "PASS"
+    },
+    {
+      "check": "FRIDAY_SOURCE_SATURDAY_PROVIDER_END_MONDAY_ACTION",
+      "status": "PASS"
+    },
+    {
+      "check": "SAVED_METRIC_GUARD_REJECTS_MISSING_CHANGED_NONFINITE",
+      "status": "PASS"
+    }
+  ],
+  "scope": "AST, source constants, missing-completion refusal, numeric report guard and code hashes only; no market/model/account reads.",
+  "source_archive_checks_started": false,
+  "production_mutations": 0,
+  "orders_placed": 0
+}

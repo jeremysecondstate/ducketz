@@ -4,6 +4,16 @@ Implemented September 25, 2026 in the existing `C:/dev/ducketz` checkout.
 H.Y.P.E.R. is mounted immediately after Hyperliquid Duckets. The existing manual
 account workspace remains mounted separately.
 
+**Powder update, September 25:** the later
+[activation/recovery implementation](../../hyperliquid-system-analysis/POWDER_ACTIVATION.md)
+adds a separately launched execution runtime and a read-only projection of its
+actual observations, order intents and confirmed fills. Powder remains inactive
+until the user runs the explicit command. The original disconnected screenshots
+and delivery details below describe the initial UI version. Current offline
+examples: [Powder fill evidence](powder-execution-fixture.png) and
+[compact scrolled layout](powder-execution-fixture-compact.png). These are labeled
+fixtures, not real trades.
+
 ## Open the application
 
 From `C:/dev/ducketz` in PowerShell:
@@ -16,11 +26,11 @@ Reopen an existing application window to load the new code, then select
 **H.Y.P.E.R. → Paper**. This page reads saved local records automatically about
 every five seconds. The refresh button only refreshes the view.
 
-**Powder** mirrors the composition, displays **REAL MONEY · PLANNED / Not
-connected**, and contains no execution balances, positions or activity. Its
-model forecasts are explicitly a shared preview. There is no execution adapter
-or runtime start, stop, pause, reseed, policy-edit, order or transfer control on
-either page.
+In the initial delivery, **Powder** mirrored the composition, displayed **REAL MONEY · PLANNED / Not
+connected**, and contained no execution balances, positions or activity. Its
+model forecasts were explicitly a shared preview. That version had no Powder
+execution adapter. Both current pages still expose no runtime start, stop,
+pause, reseed, policy-edit, order or transfer controls.
 
 ## Included behavior
 

@@ -9,13 +9,13 @@
   "target_completion_pacific": "2026-09-26T03:30:00-07:00",
   "expected_loop_a_cycle": "20260926T040724.729021Z-pid46624",
   "baseline_publication": "C:/DATASTORE/ml/nightly-gameplan-runs/20260925T060654.631426Z",
-  "syntax_validation": "ALL_SIX_AST_PARSE",
+  "syntax_validation": "ALL_HELPERS_AST_PARSE",
   "files": [
     {
       "name": "verify_completed_run.py",
       "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\verify_completed_run.py",
       "original_sha256": "991ff1fdb801accbce144023b4c65611abe40782d3249eb60154fa4114e15b98",
-      "adapted_sha256": "38b691062164116dc918aceb03f1df7c0287c54bea2bfca79f6ca3df1f473515"
+      "adapted_sha256": "5f3b2eee7e6c66db94589ebb52677360dd14e701d99f4f8d80ee2fd651974dd6"
     },
     {
       "name": "verify_yg_completion.py",
@@ -27,7 +27,7 @@
       "name": "verify_archive_history.py",
       "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\verify_archive_history.py",
       "original_sha256": "5b01afe7f687982493ee6ebb8fec4934f6e04f9c501fd3b2c576eb21308a20b3",
-      "adapted_sha256": "5732c66e57750040fee77ba25e48472c23f4769bd41b5a7611d1584250a0099a"
+      "adapted_sha256": "cdbc37e72bda7504568c018aca0344b678446fc5407a6fbd82e6c740dd98b706"
     },
     {
       "name": "audit_provider_completion.py",
@@ -45,7 +45,7 @@
       "name": "review_models.py",
       "copied_from": "C:\\dev\\ducketz\\artifacts\\analysis\\overnight-20260925\\verification\\review_models.py",
       "original_sha256": "829c1d4eb2fe77d44d5789c3051a220a7f5909f6d0572866ccc462e158d7426b",
-      "adapted_sha256": "26a933f7ce36754774d75beb8793568869c68a1437c54243e3e20bbd6930866e"
+      "adapted_sha256": "54e9a8b4195d624c6acdccb4386526879b6331231c02a40c61e84c679d5bb79f"
     }
   ],
   "code_inventory_files": 255,
@@ -53,5 +53,12 @@
   "production_mutations": 0,
   "pipeline_starts": 0,
   "provider_calls": 0,
-  "orders_placed": 0
+  "orders_placed": 0,
+  "additional_helpers": {
+    "audit_environment.py": "0d5ca54732fbc2895fd0e82eba185654a6bcfd638349ed0c4d35fe96fea124a6",
+    "run_final_checks.py": "04cb2674d2ac4cd323bcd2c6cbe57508413281efe50df2876546ad9a62cb567f",
+    "validate_helpers.py": "573bd6c1ebb550ec336487d531d8f35fff1abd2f6c4c53d76a75a9587adaa4cd"
+  },
+  "reviewed_at": "2026-09-26T04:15:11.793227+00:00",
+  "bounded_checks": "helper-review-tests.json"
 }

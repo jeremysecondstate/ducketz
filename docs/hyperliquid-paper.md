@@ -1,5 +1,8 @@
 # Hyperliquid paper accounts, execution, and transfers
 
+For the maintained cross-system map, accounting contracts and operating procedures,
+see [Hyperliquid system analysis](hyperliquid-system-analysis/README.md).
+
 This runtime applies recorded model forecasts to three local paper accounts.
 It uses current public Hyperliquid order books for simulated fills and a SQLite
 ledger for positions, cash, fees, funding estimates, and virtual transfers.
@@ -271,8 +274,10 @@ _runtime/
 
 SQLite commits a cycle's transfers, fills, decisions, and valuation together,
 or rolls the entire cycle back. Parquets are inspectable exports rather than
-the source of truth. Exports refresh after changes, periodically, and at
-shutdown; the runtime status is the more frequent operational view.
+the source of truth. Parquets and the performance report refresh after changes
+or 900 seconds since the previous export. Graceful shutdown exports Parquet
+journals but does not regenerate `performance.json`; retain its `as_of_utc`.
+The runtime status is the more frequent operational view.
 
 The performance report separates qualified and research fill counts and
 reports fees, estimated funding, turnover, marked P/L, and drawdown. Its cash
