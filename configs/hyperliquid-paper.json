@@ -17,7 +17,7 @@
   "bullish_spot_fraction": 0.6,
   "account_utilization": 0.8,
   "min_trade_notional": 25,
-  "rebalance_min_delta_fraction": 0.10,
+  "rebalance_min_delta_fraction": 0.20,
   "perp_fee_rate": 0.00045,
   "spot_fee_rate": 0.0007,
   "slippage_bps": 0,

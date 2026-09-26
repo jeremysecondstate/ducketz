@@ -126,8 +126,12 @@ behavioral change; see [Maintenance](MAINTENANCE.md).
 
 ## Source entry points
 
-Latest experiment: [September 26 fresh 54%/46% Paper mirror](audits/2026-09-26-fresh-entry-4pp-paper.md).
-The preceding Paper sample is permanently excluded from analysis and recovery.
+Latest experiment: [September 26 retuning and fresh 1:1 Paper mirror](audits/2026-09-26-paper-retune-fresh-mirror.md).
+The active recipe retains shared 49%/51% thresholds and now requires 20% of the
+target (at least $25) for ordinary rebalances. Tested model alternatives were
+rejected; the retained training recipe was freshly fitted. The accepted opening
+is `20260926T154957Z-rebalance20-fresh-models` at $42,081.207237518516.
+A separate predecessor seeded at 10:35:59 UTC is permanently excluded from analysis and recovery.
 The user completed deletion; absence of its cleanup directory was verified at
 **2026-09-26 11:36:32 UTC**. Independent model research and still-earlier archives
 remain separate and preserved.

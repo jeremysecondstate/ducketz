@@ -28,7 +28,10 @@ def test_checked_in_policy_is_paper_mirror_and_qualified_only_without_account_re
     assert config.require_qualified_forecasts is True
     assert config.initial_cash == {"alex": 10000, "jeremy": 10000, "clearpond": 10000}
     assert config.paper_root == config.data_root / "_paper"
-    assert config == PaperConfig(require_qualified_forecasts=True, entry_band=0.01, exit_band=0.01)
+    assert config == PaperConfig(
+        require_qualified_forecasts=True, entry_band=0.01, exit_band=0.01,
+        rebalance_min_delta_fraction=0.20,
+    )
 
 
 def test_defaults_and_active_config_use_book_prices_and_distinct_taker_fee_rates(tmp_path):
@@ -251,10 +254,15 @@ def test_invalid_inputs_never_create_targets(changes):
         plan(**changes)
 
 
-def test_rebalancing_ignores_small_changes_but_does_not_block_exits_or_risk_reductions():
-    config = PaperConfig()
+@pytest.mark.parametrize("rebalance_fraction", [0.10, 0.20])
+def test_rebalancing_ignores_small_changes_but_does_not_block_exits_or_risk_reductions(rebalance_fraction):
+    config = PaperConfig(rebalance_min_delta_fraction=rebalance_fraction)
     assert not should_rebalance(1000, 1050, config)
-    assert should_rebalance(1000, 1200, config)
+    assert should_rebalance(1000, 1300, config)
+    # A representative same-side trim from the paper run is deferred by the
+    # wider adjustment threshold, while a required risk reduction still passes.
+    assert should_rebalance(-1550, -1297, config) is (rebalance_fraction == 0.10)
+    assert should_rebalance(-1550, -1297, config, force_reduce=True)
     assert not should_rebalance(0, 24.99, config)
     assert should_rebalance(0, 25, config)
     assert should_rebalance(1, 0, config)

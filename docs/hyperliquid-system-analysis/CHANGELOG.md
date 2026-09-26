@@ -3,6 +3,18 @@
 This records changes to the maintained system contract. Runtime events and
 performance history belong in their own journals and dated evidence.
 
+## 2026-09-26 — Bounded retuning and fresh verified mirror
+
+Tested and rejected three model alternatives on chronological, purged data;
+all worsened both selection probability losses. Retained and freshly fitted the
+existing training recipe. Paper now requires 20% of target notional rather than
+10% for ordinary rebalances, retaining $25 minimum, full-exit/risk bypasses,
+shared49/51 signals, fees and risk limits. Preserved the previous Paper/model
+trees intact; verified a new $42,081.21, nine-position mirror with zero opening
+P/L, fills and fees, then resumed and independently checked execution accounting.
+609 relevant tests passed. Operations Watch v10 uses the new baseline. See the
+[retuning and fresh-run audit](audits/2026-09-26-paper-retune-fresh-mirror.md).
+
 ## 2026-09-26 — Bounded retries for forecast/book timing failures
 
 Fixed a race where Paper fetched books before reading a newly published forecast,

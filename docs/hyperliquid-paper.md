@@ -8,6 +8,12 @@ It uses current public Hyperliquid order books for simulated fills and a SQLite
 ledger for positions, cash, fees, funding estimates, and virtual transfers.
 The data and model coordinators continue independently.
 
+The latest [September 26 fresh-run audit](hyperliquid-system-analysis/audits/2026-09-26-paper-retune-fresh-mirror.md)
+records an untouched $42,081.21 mirror opening and the ordinary rebalance
+threshold change from 10% to 20%. Three tested training alternatives were
+rejected; fresh models retain the existing recipe. Opening verification and
+subsequent trading costs are separate records.
+
 The configuration selected on **2026-09-26** sets
 `require_qualified_forecasts: true`: only fresh, validated Qualified forecasts
 drive allocation. Research forecasts remain visible for analysis but cannot
@@ -176,7 +182,7 @@ sufficient remaining capacity, confidence is approximately 0.615. The symbol
 target is approximately $1,846: $1,108 spot and $738 long perpetuals. Account
 cash and collateral checks can reduce those amounts further.
 
-Normal adjustments must exceed the larger of $25 or 10% of the target's
+Normal adjustments must reach the larger of $25 or 20% of the target's
 notional value. Complete exits and required risk reductions bypass this
 adjustment threshold, although an executable fill still needs to meet its
 minimum trade size. Starting settings can be changed in

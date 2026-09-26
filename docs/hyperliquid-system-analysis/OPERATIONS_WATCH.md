@@ -1,6 +1,6 @@
 # Hyperliquid Operations Watch
 
-Operating contract: **2026-09-26 / v9**. Companion to [Monitoring and recovery](MONITORING.md).
+Operating contract: **2026-09-26 / v10**. Companion to [Monitoring and recovery](MONITORING.md).
 
 ## Schedule and scope
 
@@ -125,88 +125,102 @@ Interpret observations using [Monitoring](MONITORING.md):
 
 The current baseline is data + models + qualified-only Paper intended running,
 Powder off. The latest user-authorized mirror is
-`20260926T123436Z-book-vwap`, opened at
-**2026-09-26T12:34:36.903077126Z**, with opening equity
-**42088.24361973616** and nine inherited positions. Per-account baselines are
-Alex **5812.349172182411**, Jeremy **6200.32835489704**, and Clear Pond
-**30075.566092656707**. Before trading was launched, prepare-only verification
-confirmed one opening cycle, four equity rows, zero fills/decisions/transfers/
-funding, and zero experiment P/L and fees. Account-read timing and available
-exchange timestamps are retained; source-to-opening valuation differences were
-Alex -0.006585, Jeremy +0.004615 and Clear Pond 0. Source observations remain
+`20260926T154957Z-rebalance20-fresh-models`, opened at
+**2026-09-26T15:49:57.767916203Z**, with opening equity
+**42081.207237518516** and nine inherited positions. Per-account baselines are
+Alex **5782.635843127269**, Jeremy **6222.39298639688**, and Clear Pond
+**30076.178407994368**. Prepare-only verification confirmed one opening cycle,
+four equity rows, zero fills/decisions/transfers/funding, and zero experiment P/L
+and fees before trading. Source-to-opening valuation differences were Alex
+-0.006585, Jeremy +0.004615 and Clear Pond 0. Account reads and quotes remain
 non-atomic; do not manufacture cash adjustments to force display equality.
-Opening evidence is
-`_operations/paper-remirror-zero-slippage-opening-verification.json`. Use the newest
-automation memory for verified continuous-worker identity and post-start
-advancement, rather than treating this opening-only proof as runtime health.
-Fills consume fetched executable book depth and use its average price directly:
-**zero additional slippage**, perpetual taker fee **0.00045**, spot taker fee
-**0.0007**. Spread/depth and changing marks can still affect P/L. Rates are the
-configured simulation rates; no account-specific fee tier was inferred.
-The superseded 12:00:59 mirror is preserved intact at
-`_paper_archives/20260926T120059Z-fresh-mirror-opening-replaced`; manifest:
-`_operations/paper-remirror-zero-slippage-preservation.json`. Its historical
-nonzero-slippage fills remain evidence, not a recovery target. See the
+
+Evidence is under `_operations/paper-retune-20260926/`: `opening.json` and
+`opening-health.json` verify preparation; `first-cycle.json` independently
+replays subsequent accounting against the immutable opening hashes.
+`trading-health.json`, observed **15:51:04 UTC**, verified data **57004**, models
+**49636** (launcher **57304**, hidden cmd **34468**) and Paper **67548** (launcher
+**27672**, hidden cmd **45084**), fresh sources and an advancing Paper observation
+at **15:50:43.117672 UTC**. Powder was disconnected with zero pending intents.
+Use newer automation memory and actual process identity for recovery; these
+dated observations do not establish permanent health.
+
+Current Paper policy **`fdf124acdc8fc9a6`** raises
+`rebalance_min_delta_fraction` from **0.10 to 0.20**. Ordinary changes must reach
+the greater of $25 or 20% of final target notional; complete exits and required
+risk reductions still bypass that adjustment threshold. The wider threshold
+is a prospective turnover experiment, not evidence of improved returns.
+The Paper configuration hash changed; market/model/Powder configurations did
+not. Compare all four current content hashes against accepted memory.
+
+Shared **49%/51% entry and exit** thresholds remain:
+`entry_band=exit_band=0.01`, long eligibility at or above 51% and short eligibility
+at or below 49%, for flat and held positions. Shared-threshold sizing uses
+absolute edge/saturation, with nonzero size at an eligible boundary. Qualified-only
+signals, minimum trades, exposure caps, stops and cooldowns remain in force.
+Fills consume fetched executable depth at its VWAP with **zero additional
+slippage**, plus configured taker fees **0.00045** for perps and **0.0007** for spot.
+Spread, depth and changing marks still affect P/L; no account-specific fee tier
+was inferred.
+
+Fresh models were fitted after preserving the old model tree, using the retained
+training recipe: uncapped fitting, calibration **192**, assessment **288**,
+MLP maximum iterations **100**, and **900-second** retraining. Two regularization
+candidates and an MLP 300-iteration candidate failed the fixed probability-loss
+selection gates; none was deployed. Earlier training-window proposals were also
+rejected, and `max_train_rows` remains unused. See the
+[training comparison](audits/2026-09-26-training-regularization-and-budget.md).
+Fresh model IDs do not imply a changed recipe or a proven forecasting edge.
+
+The execution contract remains
+`quote_execution_policy=forecast_first_bounded_quote_retry_v1`: freeze forecasts
+before fresh books, attempt at most three snapshots per tick, and recheck expiry.
+Pure all-account quote skips without fills/transfers/funding remain pending
+while valid; narrow append-only recovery may handle historical quote-only skips.
+Completed, partial or mixed executions remain consumed. Never remove completion
+keys or force a replay. Deferred quotes alone do not warrant a restart; report
+prolonged outages. Historical policy phases and decision checks are in the
+[shared-threshold audit](audits/2026-09-26-shared-49-51-paper.md),
+[quote-retry audit](audits/2026-09-26-paper-quote-retry.md) and
+[decision-gate audit](audits/2026-09-26-paper-decision-gates.md).
+
+`persisted_position_risk_reference_v1` preserves inherited historical perpetual
+entry for accounting and the opening mark as the fresh stop reference. Partial
+reductions retain the reference; additions weight it with executed entry; a new
+position starts at its fill price. Legacy resumes retain their persisted
+`legacy_avg_entry` reference. Never rebase stops, rewrite the seed or reset
+cooldowns on restart.
+
+The superseded **12:34:36** experiment and its full `_paper` and `_models` trees
+are preserved at `_paper_archives/20260926T154800Z-before-training-retune`:
+**404 files / 256,957,217 bytes**, with hashes verified by
+`_operations/paper-retune-20260926/preservation-before.json` and
+`preservation-verified.json`. Healthy data continued during the transition;
+models and Paper were intentionally stopped and replaced. This archive is
+historical evidence, not a recovery target.
+
+The superseded **12:00:59** mirror remains intact at
+`_paper_archives/20260926T120059Z-fresh-mirror-opening-replaced`, with manifest
+`_operations/paper-remirror-zero-slippage-preservation.json`; its historical
+nonzero-slippage fills remain evidence. See the
 [book-VWAP restart audit](audits/2026-09-26-book-vwap-paper.md).
+The disputed **11:30:32** mirror remains intact at
+`_paper_archives/20260926T113032Z-fresh-entry-4pp-disputed`, with manifest
+`_operations/paper-restart-20260926-preservation.json` and original metadata.
+Its `analysis_eligible: true` metadata does not establish user acceptance or
+authorize recovery; see the [reconstruction](audits/2026-09-26-paper-restart-reconstruction.md).
 
-The disputed 11:30:32 mirror is preserved intact at
-`_paper_archives/20260926T113032Z-fresh-entry-4pp-disputed`; preservation manifest:
-`_operations/paper-restart-20260926-preservation.json`. Its original metadata was
-not rewritten. `analysis_eligible: true` in that preserved metadata is not user
-acceptance of its restart or permission to restore it as the active baseline.
-See the [forensic reconstruction](audits/2026-09-26-paper-restart-reconstruction.md)
-for the initial seven executions and their costs.
-The run seeded at 10:35:59 UTC is explicitly excluded from every evaluation and
-recovery use. Automatic policy review initially rejected recursive removal; the
-user completed deletion, and `_pending_deletion/20260926T103559Z-excluded-paper`
-was verified absent at **2026-09-26 11:36:32 UTC**. Never reintroduce its sample
-for analysis or restore it as a recovery target. `_operations/excluded-paper-runs.json`
-records this permanent exclusion. Both still-earlier archived runs and independent
-model research are separate and preserved. Their preservation and the permanent
-exclusion remain in force under contract v9.
-The tested training changes were rejected: retain uncapped fitting, calibration
-192, assessment 288 and 900-second retraining. `max_train_rows` is an available
-but unused setting. Use the latest seed from automation memory. Older seeds are
-historical, not recovery targets.
-The ledger opened under `entry_band=0.04`, `exit_band=0.02`, policy
-**`2c8197e2cbe140d6`**. The user then requested **49%/51% for both entries and
-exits**, retaining the same experiment. Shared-threshold policy **`747825fed0f17c1c`**
-uses `entry_band=exit_band=0.01`: long eligibility at or above 51%, short
-eligibility at or below 49%, for both flat and held positions. There is no
-hysteresis gap. Shared-threshold sizing uses edge/saturation so an eligible
-boundary has nonzero target size; unequal-band historical policies retain their
-old sizing. Qualification, fee rates, zero added slippage, caps and cooldowns
-are unchanged. The execution fix is current policy **`1d260fb385aec9de`**, with
-`quote_execution_policy=forecast_first_bounded_quote_retry_v1`. Forecasts are
-frozen before fresh books are fetched, with at most three snapshot attempts per
-tick and an expiry recheck before execution. Pure all-account quote skips with
-no fills/transfers/funding remain pending for later polls while valid. A narrow
-append-only recovery handles old quote-only skips without rewriting them.
-Completed fills, partial executions and mixed outcomes remain consumed; the
-watch must never remove completion keys or force a replay. A deferred quote
-attempt is not by itself an unhealthy worker, but prolonged quote outages still
-require reporting. Current config hashes and worker identity
-are in the latest memory. No fresh mirror or ledger reset is authorized.
+The **10:35:59** predecessor is permanently excluded from every evaluation and
+recovery use. Automatic review initially rejected recursive removal; the user
+completed deletion, and `_pending_deletion/20260926T103559Z-excluded-paper` was
+verified absent at **2026-09-26 11:36:32 UTC**. Never analyze, reconstruct or
+restore that sample. `_operations/excluded-paper-runs.json` records the exclusion.
+Still-earlier archives and independent model research remain separate and
+preserved. These restrictions remain in force under contract v10.
 
-Both policies identify `persisted_position_risk_reference_v1`: newly mirrored
-positions retain historical perpetual entry for accounting while their fresh
-stop reference is the opening mark. Partial reductions preserve that reference;
-additions weight it with their executed entry, and a new position starts at its
-fill price. Existing legacy experiments migrate their current positions to
-`legacy_avg_entry` risk references; reopening them never rebases stops to today's
-mark or rewrites their seed/history. Recovery preserves persisted risk references
-and cooldowns. Do not reapply an opening mark on each process restart.
-
-Model qualification, exposure limits, fee rates and training settings remain
-unchanged. The retry fix changes the versioned execution policy in code; all four
-configuration hashes are unchanged from the shared49/51 phase. Added slippage
-remains zero. Updated identities in automation
-memory supersede all prior seeds. Healthy data and model workers remained in
-service during the Paper-only refresh.
-Hold/Skip decisions now save specific checks; they are expected outcomes, not
-missing fills or grounds for recovery. See the
-[phase record](audits/2026-09-26-paper-decision-gates.md).
-Historical intent is not permission to override newer operator actions.
+The watch may resume only the current verified seed; no further mirror or ledger
+reset is authorized for the watch. Historical intent never overrides newer
+operator stops, maintenance or user instructions.
 
 1. First inspect `_operations/paper-maintenance.json` when present. An
    `in_progress` record forbids recovery/reseeding while its owner completes an

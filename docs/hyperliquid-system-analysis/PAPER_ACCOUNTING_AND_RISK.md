@@ -111,7 +111,7 @@ Values verified in [hyperliquid-paper.json](../../configs/hyperliquid-paper.json
 | `per_symbol_gross_fraction` / `pool_gross_fraction` | 0.15 / 0.60 | Desired gross limits relative to pooled equity |
 | `bullish_spot_fraction` | 0.60 | Bullish allocation share assigned to Clear Pond |
 | `account_utilization` / `reserve_cash_fraction` | 0.80 / 0.10 | Account exposure ceiling and reserve relative to opening equity |
-| `min_trade_notional` / `rebalance_min_delta_fraction` | $25 / 0.10 | Normal adjustment threshold |
+| `min_trade_notional` / `rebalance_min_delta_fraction` | $25 / 0.20 | Normal adjustment threshold |
 | `transfer_min_amount` | $100 | Minimum planned virtual transfer |
 | `stop_loss_fraction` | 0.03 | Adverse move from the persisted stop reference that requests reduction |
 | `perp_fee_rate` / `spot_fee_rate` | 0.00045 / 0.00070 | Fixed simulated taker fee fractions |
@@ -148,7 +148,7 @@ Alex's target is zero. Bearish gross becomes Alex's negative target; both long
 targets are zero. This is probability conviction scaled by volatility, not an
 expected-return forecast, Kelly allocation, or guaranteed loss bound.
 
-Normal changes require `abs(target−current) ≥ max($25, 10%×abs(target))`.
+Normal changes require `abs(target−current) ≥ max($25, 20%×abs(target))`.
 A full exit or forced reduction bypasses this policy threshold; executable
 quantity precision and the simulator's separate $10 fill minimum still apply.
 
@@ -168,7 +168,7 @@ decisions; three Qualified rows do not mean three independent opportunities.
 | Existing matching direction | Uses the same boundary: longs exit below 51%, shorts exit above 49%; sizing can still change |
 | Account role | Alex cannot open longs; Jeremy/Clear Pond cannot open shorts |
 | After a stop fill | That account/coin cannot re-enter for one forecast horizon: currently 3,600 seconds |
-| Normal adjustment | Difference must meet the greater of $25 or 10% of the final target |
+| Normal adjustment | Difference must meet the greater of $25 or 20% of the final target |
 | Complete exit/risk reduction | Bypasses the normal adjustment threshold, but still needs executable precision/depth and the separate $10 fill minimum |
 | Already at target | Hold; there is no quantity to execute |
 

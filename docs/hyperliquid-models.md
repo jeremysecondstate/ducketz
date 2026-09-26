@@ -151,6 +151,14 @@ does not select or activate a different production training policy by itself.
 
 ## Work scheduling and model recipe
 
+The later [September 26 regularization and iteration-budget comparison](hyperliquid-system-analysis/audits/2026-09-26-training-regularization-and-budget.md)
+also retained these training settings. Stronger regularization, removing the
+neural member from that regularized ensemble, and raising only its iteration
+limit from 100 to 300 each worsened both selection losses. No tested training
+parameter was adopted. The subsequent fresh Paper run uses newly fitted models
+of the retained recipe and a wider ordinary rebalance threshold; see the
+[fresh-run audit](hyperliquid-system-analysis/audits/2026-09-26-paper-retune-fresh-mirror.md).
+
 The runtime polls for completed data snapshots every five seconds. Predictions
 use an already saved model. New model fits run in a background worker thread,
 with at most one training job globally and two numerical threads by
