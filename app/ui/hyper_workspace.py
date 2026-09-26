@@ -29,6 +29,9 @@ ACCOUNTS = {"alex": ("Alex", "Short perps", "AL"),
 ACCOUNT_KEYS = {label: key for key, (label, _, _) in ACCOUNTS.items()}
 REASONS = {"entry_deadband": "Below entry threshold", "hold_with_hysteresis": "Hold within exit band",
            "signal_rebalance": "Adjust to forecast target", "entry_based_stop": "Entry-based stop",
+           "stop_loss": "Stop loss", "stop_cooldown": "Stop cooldown", "risk_cap": "Exposure limit",
+           "unqualified_forecast_excluded": "Research signal excluded",
+           "qualified_forecast_unavailable": "Qualified forecast unavailable",
            "paper_target_collateral_allocation": "Fund target collateral", "no_change": "Target already met"}
 
 
@@ -206,7 +209,7 @@ class HyperWorkspace:
         self.ops.pack(fill="x", padx=14, pady=(0, 6))
         self.source_labels, self.source_boxes = {}, []
         for i, (key, title, cadence) in enumerate((("data", "Data / features", "15m candles"),
-                    ("forecasts", "Forecasts", "15m · 1h horizon"), ("models", "Models", "Hourly fit · 5s poll"),
+                    ("forecasts", "Forecasts", "15m · 1h horizon"), ("models", "Models", "Scheduled fit · 5s poll"),
                     ("paper", "Paper", "30s quote / risk cycle"))):
             self.ops.columnconfigure(i, weight=1, uniform="source")
             box = tk.Frame(self.ops, bg=PANEL)
@@ -373,7 +376,6 @@ class HyperWorkspace:
 
     def _build_right(self):
         self.forecast_card = card(self.right)
-        self.forecast_card.pack(fill="x", pady=(0, 8))
         label(self.forecast_card, "Latest forecasts", size=12, bold=True).pack(anchor="w", padx=12, pady=(10, 1))
         self.forecast_caption = label(self.forecast_card, "P(not-down) · 4 × 15m = 1 hour", size=8, color=MUTED_TEXT)
         self.forecast_caption.pack(anchor="w", padx=12, pady=(0, 4))
@@ -385,7 +387,6 @@ class HyperWorkspace:
                                    size=8, color=MUTED_TEXT, wraplength=380, justify="left")
         self.forecast_note.pack(fill="x", padx=12, pady=(1, 9))
         self.detail_card = card(self.right)
-        self.detail_card.pack(fill="both", expand=True, pady=(0, 8))
         self.detail_heading = label(self.detail_card, "Decision detail", size=12, bold=True)
         self.detail_heading.pack(anchor="w", padx=12, pady=(10, 6))
         ttk.Checkbutton(self.detail_card, text="Show saved record", variable=self.show_record,
@@ -403,14 +404,18 @@ class HyperWorkspace:
         self.detail.tag_configure("section", foreground=MUTED_TEXT, font=("Segoe UI", 9, "bold"), spacing1=10, spacing3=4)
         self.detail.tag_configure("body", spacing3=4)
         self.policy_label = label(self.right, "", size=8, color=MUTED_TEXT, wraplength=400, justify="left")
-        self.policy_label.pack(fill="x", padx=2)
 
     def _resize(self, event):
+        if self._closed:
+            return
         self.alert.configure(wraplength=max(200, event.width-32), justify="left")
         self.canvas.itemconfigure(self._body_window, width=event.width)
         self._apply_layout(event.width)
         self.body.update_idletasks()
-        desired = max(self.body.winfo_reqheight(), event.height)
+        # Idle handlers can close the view or deliver a newer resize.
+        if self._closed:
+            return
+        desired = max(self.body.winfo_reqheight(), self.canvas.winfo_height())
         self.canvas.itemconfigure(self._body_window, height=desired)
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
@@ -418,7 +423,6 @@ class HyperWorkspace:
         mode = "wide" if width >= 1450 else "compact" if width >= 950 else "narrow"
         if mode == self._layout_mode:
             return
-        self._layout_mode = mode
         for i in range(5):
             self.metrics.columnconfigure(i, weight=1 if i < (3 if mode == "narrow" else 5) else 0,
                                          uniform="metric" if i < (3 if mode == "narrow" else 5) else "")
@@ -450,26 +454,33 @@ class HyperWorkspace:
             self.accounts_rail.grid(row=1, column=0, sticky="ew", pady=(8, 0))
             self.center.grid(row=0, column=0, sticky="nsew")
             self.right.grid(row=2, column=0, sticky="nsew", pady=(8, 0))
+        # Keep one geometry manager for this container across all breakpoints.
+        # Switching between grid and pack can fail during Configure callbacks.
         for child in (self.forecast_card, self.detail_card, self.policy_label):
-            child.pack_forget()
             child.grid_forget()
-        self.right.columnconfigure(0, weight=42, uniform="right")
-        self.right.columnconfigure(1, weight=58, uniform="right")
+        for i in range(3):
+            self.right.rowconfigure(i, weight=0)
         if mode == "compact":
+            self.right.columnconfigure(0, weight=42, uniform="right")
+            self.right.columnconfigure(1, weight=58, uniform="right")
             self.forecast_card.grid(row=0, column=0, sticky="new", padx=(0, 8))
             self.detail_card.grid(row=0, column=1, rowspan=2, sticky="nsew")
             self.policy_label.grid(row=1, column=0, sticky="new", padx=(0, 8), pady=8)
             self.detail.configure(height=19)
         else:
-            self.forecast_card.pack(fill="x", pady=(0, 8))
-            self.detail_card.pack(fill="both", expand=True, pady=(0, 8))
-            self.policy_label.pack(fill="x", padx=2)
+            self.right.columnconfigure(0, weight=1, uniform="")
+            self.right.columnconfigure(1, weight=0, uniform="")
+            self.right.rowconfigure(1, weight=1)
+            self.forecast_card.grid(row=0, column=0, sticky="new", pady=(0, 8))
+            self.detail_card.grid(row=1, column=0, sticky="nsew", pady=(0, 8))
+            self.policy_label.grid(row=2, column=0, sticky="ew", padx=2)
             self.detail.configure(height=12)
         for i, panel in enumerate(self.metric_cards):
             panel.grid_forget()
             panel.grid(row=i // 3 if mode == "narrow" else 0, column=i % 3 if mode == "narrow" else i,
                        sticky="nsew", padx=(0, 7), pady=(0, 5 if mode == "narrow" else 0))
         self.chart.configure(height=190 if mode == "wide" else 220)
+        self._layout_mode = mode
 
     def _wheel(self, event):
         if self._closed or not str(event.widget).startswith(str(self.parent)):
@@ -653,6 +664,9 @@ class HyperWorkspace:
         config = policy.get("config", policy) if isinstance(policy, dict) else {}
         qualification_policy = ("Only qualified forecasts participate." if config.get("require_qualified_forecasts") is True else
                                 "Qualified and research models may participate." if config.get("require_qualified_forecasts") is False else "Forecast eligibility policy unavailable.")
+        recipe = config.get("recipe_version", policy.get("recipe_version"))
+        if config.get("require_qualified_forecasts") is True and recipe == "direction-volatility-v2-qualified-hold":
+            qualification_policy = "Only qualified signals. Hold without an eligible signal; risk checks continue."
         self.policy_label.configure(text=(f"Paper policy · {pct(config.get('per_symbol_gross_fraction'))} / symbol · {pct(config.get('pool_gross_fraction'))} pool cap\n{qualification_policy}" if paper else
                                          "User command starts Powder. Switching tabs only changes this read-only view.\nSee docs/hyperliquid-system-analysis/POWDER_ACTIVATION.md"))
         self.footer.configure(text=("H.Y.P.E.R. / " + self.mode.get() + "   ·   " + ("View refreshed " + local_time(snap.observed_at_utc, date=True) if snap else "No local snapshot") + "   ·   Read-only · times PT"))
@@ -783,6 +797,8 @@ class HyperWorkspace:
             "Fills": (("time", "Time PT", 83), ("account", "Account", 90), ("market", "Market", 85), ("side", "Side", 52), ("quantity", "Executed qty", 99), ("price", "Fill price", 88), ("notional", "Notional", 88), ("fee", "Fee", 65), ("qualification", "Model", 87)),
             "Transfers": (("time", "Time PT", 90), ("from_account", "From", 95), ("to_account", "To", 95), ("amount", "USDC", 100), ("reason", "Reason", 210), ("status", "Status", 95)),
         }[view]
+        if view == "Fills" and self.mode.get() == "Paper":
+            columns += (("reason", "Reason", 190),)
         if not same_view:
             self.tree.delete(*self.tree.get_children())
             self.tree.configure(columns=[c[0] for c in columns])
@@ -852,12 +868,18 @@ class HyperWorkspace:
         if key == "p_not_down":
             return pct(value)
         if key == "qualification":
+            if self._no_journal_forecast(row, view):
+                return "Risk exit" if row.get("reason") == "stop_loss" else "No forecast"
             return str(value or "unavailable").capitalize()
         if key == "reason":
             return REASONS.get(value, value or "—")
         if key == "status" and view == "Transfers":
             return "Committed"
         return str(value or "—").capitalize()
+
+    def _no_journal_forecast(self, row, view):
+        return (self.mode.get() == "Paper" and view in {"Decisions", "Fills"}
+                and not any(row.get(key) for key in ("model_id", "forecast_id", "prediction_id")))
 
     def _render_forecasts(self):
         if not hasattr(self, "forecast_canvas") or self._closed:
@@ -968,7 +990,10 @@ class HyperWorkspace:
                 minutes = data.get('horizon_minutes', number(bars) * 15 if number(bars) is not None else None)
                 p_down = data.get("p_down") if "p_down" in data else 1-p if p is not None else None
                 horizon = f"{bars} × 15m bars · {quantity(minutes)} minute horizon" if bars is not None and minutes is not None else "Forecast horizon unavailable"
-                add(f"P(not-down) {pct(p)}    P(down) {pct(p_down)}\n{horizon}")
+                if self._no_journal_forecast(data, view):
+                    add("No forecast attributed to this record.")
+                else:
+                    add(f"P(not-down) {pct(p)}    P(down) {pct(p_down)}\n{horizon}")
                 if data.get("source_state") and data["source_state"] != "fresh":
                     add("Forecast source: " + data["source_state"])
                 for model, probability in (data.get("per_model") or {}).items():
@@ -999,7 +1024,10 @@ class HyperWorkspace:
                     if execution.get("book_time_utc"):
                         add("Book " + local_time(execution["book_time_utc"], date=True))
                 add("PROVENANCE", "section")
-                add(str(data.get("qualification", "unavailable")).capitalize() + " model · evaluation label, not profitability")
+                if self._no_journal_forecast(data, view):
+                    add("Risk exit · no forecast attribution" if data.get("reason") == "stop_loss" else "No forecast attribution")
+                else:
+                    add(str(data.get("qualification", "unavailable")).capitalize() + " model · evaluation label, not profitability")
                 for field, title in (("model_created_at_utc", "Model published"), ("model_published_at_utc", "Model published"), ("training_cutoff_utc", "Training cutoff"), ("training_label_cutoff_utc", "Training label cutoff"), ("calibration_cutoff_utc", "Calibration cutoff"), ("train_end_utc", "Training cutoff"), ("calibration_end_utc", "Calibration cutoff"), ("policy_id", "Policy"), ("forecast_id", "Forecast"), ("model_id", "Model"), ("data_run_id", "Source run")):
                     if data.get(field):
                         add(f"{title}  {data[field]}")

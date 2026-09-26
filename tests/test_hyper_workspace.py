@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import threading
 import time
+import traceback
 import tkinter as tk
 from dataclasses import replace
 from tkinter import ttk
@@ -28,7 +29,16 @@ def root():
 
 
 @pytest.fixture
-def workspace(root, monkeypatch):
+def tk_callback_errors(root, monkeypatch):
+    errors = []
+    monkeypatch.setattr(root, "report_callback_exception", lambda *exc: errors.append(
+        "".join(traceback.format_exception(*exc))))
+    yield errors
+    assert not errors, "Tk callback failed:\n" + "\n".join(errors)
+
+
+@pytest.fixture
+def workspace(root, monkeypatch, tk_callback_errors):
     # H.Y.P.E.R. is an observer. No view action may initialize a ledger, reach
     # the exchange or start a process, including merely switching to Powder.
     import subprocess
@@ -179,6 +189,48 @@ def test_hold_reason_is_explained_without_an_execution_claim(workspace):
     assert "SIMULATED EXECUTION" not in description
 
 
+@pytest.mark.parametrize("journal", ["Decisions", "Fills"])
+@pytest.mark.parametrize("reason,model_label,reason_label", [
+    ("qualified_forecast_unavailable", "No forecast", "Qualified forecast unavailable"),
+    ("stop_loss", "Risk exit", "Stop loss"),
+])
+def test_paper_journals_explain_missing_forecast_attribution(workspace, journal, reason, model_label, reason_label):
+    view, window, _ = workspace
+    snapshot = _snapshot()
+    source = getattr(snapshot, journal.lower())
+    row = {**source[0], "model_id": None, "forecast_id": None, "prediction_id": None,
+           "qualified": None, "qualification": "unavailable", "reason": reason,
+           "p_not_down": None, "details": {}}
+    view.show_snapshot(replace(snapshot, **{journal.lower(): [row]}))
+    view.view.set(journal)
+    view._render()
+    item = view.tree.get_children()[0]
+    assert view.tree.set(item, "qualification") == model_label
+    assert view.tree.heading("reason", "text") == "Reason"
+    assert view.tree.set(item, "reason") == reason_label
+    view.tree.selection_set(item)
+    view.tree.event_generate("<<TreeviewSelect>>")
+    window.update()
+    description = view.detail.get("1.0", "end").split("SAVED RECORD")[0]
+    assert "No forecast attributed to this record" in description
+    assert "Unavailable model" not in description
+    assert view._rows_by_id[item]["qualification"] == "unavailable"
+    view.qualification_filter.set("Qualified")
+    assert not view.tree.get_children()
+
+
+@pytest.mark.parametrize("recipe,holds", [("direction-volatility-v1", False),
+                                         ("direction-volatility-v2-qualified-hold", True)])
+def test_qualified_policy_hold_text_matches_recorded_recipe(workspace, recipe, holds):
+    view, _, _ = workspace
+    snapshot = _snapshot()
+    view.show_snapshot(replace(snapshot, policy={**snapshot.policy, "require_qualified_forecasts": True,
+                                                 "recipe_version": recipe}))
+    text = view.policy_label.cget("text")
+    assert ("Hold without an eligible signal; risk checks continue." in text) is holds
+    assert ("Only qualified signals." if holds else "Only qualified forecasts participate.") in text
+
+
 @pytest.mark.parametrize("account,key,expected_count", [("Alex", "alex", 2), ("Jeremy", "jeremy", 1)])
 def test_transfer_account_filter_includes_both_sides(workspace, account, key, expected_count):
     view, _, _ = workspace
@@ -244,6 +296,8 @@ def test_powder_observations_and_fills_are_separate_from_paper(workspace):
     view.view.set("Fills")
     view._render()
     assert "0.001 HYPE" in view.tree.item(view.tree.get_children()[0], "values")
+    assert "reason" not in view.tree["columns"]
+    assert view.tree.set(view.tree.get_children()[0], "qualification") == "Unavailable"
     assert "Not connected" not in view.detail.get("1.0", "end")
     view.mode.set("Paper")
     assert "42,112.86" in view.metric_values["equity"].cget("text")
@@ -280,6 +334,37 @@ def test_compact_layout_keeps_panels_reachable_without_horizontal_clipping(works
     view.canvas.yview_moveto(1)
     window.update_idletasks()
     assert view.canvas.yview()[1] == pytest.approx(1)
+
+
+def test_resizing_repeatedly_between_layouts_keeps_right_panels_visible(workspace):
+    view, window, _ = workspace
+    for width, mode in [(1180, "compact"), (1706, "wide"), (1180, "compact"),
+                        (850, "narrow"), (1180, "compact"), (1706, "wide")] * 2:
+        window.geometry(f"{width}x760")
+        window.update()
+        assert view._layout_mode == mode
+        for panel in (view.forecast_card, view.detail_card, view.policy_label):
+            assert panel.winfo_ismapped()
+            assert panel.winfo_x() >= 0
+            assert panel.winfo_x() + panel.winfo_width() <= view.right.winfo_width() + 2
+        forecast, detail = view.forecast_card, view.detail_card
+        if mode == "compact":
+            assert detail.winfo_x() >= forecast.winfo_x() + forecast.winfo_width()
+        else:
+            assert detail.winfo_y() >= forecast.winfo_y() + forecast.winfo_height()
+
+
+def test_resize_tolerates_view_destruction_during_idle_layout(workspace):
+    view, window, parent = workspace
+    event = tk.Event()
+    event.width, event.height = 1180, 760
+    window.after_idle(parent.destroy)
+    view._resize(event)
+    assert view._closed
+    assert not view._jobs
+    # A previously queued resize must also leave the destroyed widgets alone.
+    view._resize(event)
+    window.update()
 
 
 def test_drawdown_chart_uses_transfer_adjusted_presampling_drawdown(workspace):

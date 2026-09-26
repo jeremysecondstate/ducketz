@@ -1,6 +1,6 @@
 # Paper portfolio loop
 
-Verified against repository code/configuration on **2026-09-25**. This is the
+Updated for qualified-only Paper behavior on **2026-09-26**. This is the
 virtual execution consumer of completed market/model artifacts. It does not
 train models, sign orders, synchronize later real-account balances into Paper,
 or provide Powder execution.
@@ -37,7 +37,8 @@ does not create a signing client. The ledger itself performs no network calls.
    account inventory, or use explicitly selected manual cash. Missing mirror
    evidence does not fall back to manual balances.
 4. Publish the persisted opening snapshot and policy settings. Hash settings plus
-   `direction-volatility-v1` into `policy_id`; preserve its policy file.
+   recipe `direction-volatility-v2-qualified-hold` into `policy_id` when
+   qualification is required; legacy mixed mode retains `direction-volatility-v1`.
 5. Reconstruct stop cooldowns from prior `stop_loss` fills; read funding cursor.
 6. Run the tick below, then wait the configured 30 seconds. Actual start-to-start
    duration includes tick work and network waits. `--once` also mutates Paper;
@@ -47,6 +48,9 @@ does not create a signing client. The ledger itself performs no network calls.
 
 Changing policy configuration requires a restart to load it consistently. Market
 universe reload is separate. Existing seed/cycle history survives both changes.
+For the September 26 experiment, the previous ledger was deliberately archived
+under `_paper_archives/20260926T073643Z-research-and-qualified`; the new mirror
+copies opening inventory/cash before any first-cycle risk or allocation changes.
 
 ## Tick sequence
 
@@ -58,8 +62,9 @@ universe reload is separate. Existing seed/cycle history survives both changes.
    work; there is no automatic substitution of last-known marks.
 4. If the five-minute funding check is due, reconstruct settlement quantities,
    request published rates and commit deduplicated estimated funding events.
-5. For each symbol, validate its forecast and exact source feature; on known
-   missing/invalid/stale evidence, use a no-forecast reduction/skip path.
+5. For each symbol, validate its forecast and exact source feature. Current
+   qualified-only mode holds exposure when evidence is missing/invalid/stale or
+   Research; that absence cannot create signal exposure or transfers.
 6. Calculate current managed quantities, entry-based stops and collateral
    excess; check the cycle key before ordinary processing.
 7. Derive pool targets, apply stop cooldowns, reject unusable executable quotes,
@@ -84,14 +89,22 @@ Published `status=running` may still have nonempty `errors`, `quote_errors` or
 | Times | Decision ≤ publication ≤ now; decision age ≤900 seconds; outcome remains future and exactly matches the configured horizon. |
 | Model age | Model publication is not later than forecast publication and is ≤86,400 seconds old. |
 | Volatility | Exactly one source feature row at the decision close; finite nonnegative 20-return volatility scaled by `sqrt(horizon)`. |
-| Qualification | Current config admits research and qualified models; `require_qualified_forecasts=true` would exclude research. |
-| Book | Valid separate market book, no earlier than forecast publication; runtime currently allows a 45-second age and 5-second future tolerance. |
+| Qualification | Current config requires `qualified=true`, `role=active` and matching record `eligible=true`; Research cannot allocate. |
+| No accepted forecast | Keep current target, then apply stops, persisted cooldown and account/symbol/pool exposure caps; legacy `require_qualified_forecasts=false` keeps zero-target fallback. |
+| Book | Valid separate market book, no earlier than an accepted signal's publication; 45-second age and 5-second future tolerance also apply to no-signal risk reductions. |
 | Fill | Market precision, visible depth, adverse slippage and $10 minimum; a zero/partial fill is not the desired position. |
 
 The public market layer independently enforces a fixed 45-second book age.
 If a required risk-reduction book is unavailable, the account keeps its target
 at current exposure and the coin's increases are suppressed. A held market
 omitted by the public snapshot fails the earlier whole-ledger mark gate instead.
+
+Rejected Research provenance is retained in `details.policy.rejected_forecast`.
+No-signal decisions/fills have null top-level signal IDs, qualification and
+probability. Reasons distinguish `unqualified_forecast_excluded`,
+`qualified_forecast_unavailable`, `stop_loss`, `stop_cooldown` and `risk_cap`; underlying forecast validation
+errors remain in policy details. A later accepted Qualified forecast resumes
+allocation. Model publication itself still permits a labeled Research fallback.
 
 ## Replay identities and restart behavior
 

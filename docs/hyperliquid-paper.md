@@ -8,12 +8,21 @@ It uses current public Hyperliquid order books for simulated fills and a SQLite
 ledger for positions, cash, fees, funding estimates, and virtual transfers.
 The data and model coordinators continue independently.
 
-The initial configuration uses all forecasts, with every decision and fill
-tagged as qualified or research-only. An unqualified candidate can therefore
-participate in the experiment without being represented as a qualified model.
+The configuration selected on **2026-09-26** sets
+`require_qualified_forecasts: true`: only fresh, validated Qualified forecasts
+drive allocation. Research forecasts remain visible for analysis but cannot
+create signal exposure or virtual transfers. Without an accepted forecast,
+Paper holds current exposure subject to its continuing risk reductions.
 This runtime only accepts `mode: "paper"`. There is no switch that sends these
-orders or transfers to the real accounts. A later execution adapter would need
-its own implementation and integration.
+orders or transfers to the real accounts. The separate
+[Powder runtime](hyperliquid-system-analysis/POWDER_ACTIVATION.md) remains inactive
+until explicit user activation and has a different missing-signal policy.
+
+The earlier mixed Research/Qualified experiment is retained at
+`C:/DATASTORE/hyperliquid/_paper_archives/20260926T073643Z-research-and-qualified`.
+The new experiment uses a fresh mirror baseline rather than resuming that
+archive. Configuration alone does not prove it has started; inspect its own
+opening snapshot and runtime evidence.
 
 ## Account roles and opening inventory
 
@@ -37,6 +46,11 @@ opening mark as its paper cost basis. Small inherited spot balances in Alex or
 Jeremy are retained as passive inventory; this strategy does not trade those
 balances. Existing real open orders are counted in the snapshot metadata but
 are not imported as paper orders.
+
+The opening inventory and cash mirror the observed real accounts one-for-one;
+they are not resized to the model allocation during seeding. The first trading
+cycle can immediately change them through stop/cap reductions or an accepted
+Qualified forecast, so a later portfolio need not match the opening snapshot.
 
 Account information and quotes are collected over several requests, so the
 opening snapshot is not an atomic exchange snapshot. Unified-account balances
@@ -67,14 +81,25 @@ resumes it. Changing seed settings does not replace existing paper balances.
   finite probabilities, and have known source features. By default the decision
   candle must be at most 15 minutes old, the model at most 24 hours old, and the
   forecast's outcome time must still be in the future.
+- A `qualified: true` publication must also have `role: "active"` and a
+  matching model record with `eligible: true`; a badge alone is insufficient.
 
 The runtime uses the first configured model horizon, initially four 15-minute
 candles. Its one-hour horizon is a rolling forecast, not an instruction to close
 every position exactly one hour after entry. A later forecast can maintain,
 increase, reduce, or reverse the desired pool exposure while respecting the
-account roles. Missing, stale, or explicitly excluded forecasts produce zero
-strategy targets; existing active positions are then considered for reduction
-when executable quotes are available.
+account roles. With the current qualification requirement, missing, stale,
+invalid or Research forecasts preserve the current position target rather than
+requesting a signal-driven exit. They cannot increase exposure or request
+virtual transfers. Stops, persisted cooldowns and account/symbol/pool exposure
+caps still apply, and reductions require usable marks and executable books.
+
+This behavior is recorded as recipe
+`direction-volatility-v2-qualified-hold`. The optional legacy setting
+`require_qualified_forecasts: false` retains `direction-volatility-v1`: Research
+forecasts may allocate, while missing/invalid/stale forecasts use zero targets.
+The [shared reader](../ml/hyperliquid_forecast_reader.py) validates publication
+evidence; this hold-versus-zero choice belongs to the Paper consumer.
 
 ## Starting signal and sizing rules
 
@@ -153,7 +178,7 @@ explicit paper assumption, not a promise about real withdrawal mechanics.
 
 Stops initially trigger after a 3% adverse price move from the position's
 average entry. They are checked on polling ticks, not by an exchange-hosted
-stop order. A stop or stale signal can therefore execute later at a worse
+stop order. A risk reduction can therefore execute later at a worse
 price, or remain partially unfilled. This runtime does not reproduce the
 exchange's liquidation engine. Stops on inherited perpetual positions use
 their inherited entry price; the performance baseline still begins at opening
@@ -279,7 +304,14 @@ or 900 seconds since the previous export. Graceful shutdown exports Parquet
 journals but does not regenerate `performance.json`; retain its `as_of_utc`.
 The runtime status is the more frequent operational view.
 
-The performance report separates qualified and research fill counts and
+Decision/fill records attribute a signal only when it was accepted. A rejected
+Research publication is retained under `details.policy.rejected_forecast`,
+with the exclusion or validation reason in policy details. Top-level forecast
+IDs, qualification and probability are null when a hold or risk exit has no
+accepted signal; they are not attributed to the rejected model. H.Y.P.E.R. exposes **No forecast**
+and **Risk exit** labels with a Reason column.
+
+The performance report separates qualified, research and unattributed fill counts and
 reports fees, estimated funding, turnover, marked P/L, and drawdown. Its cash
 benchmark is a flat 0% return. This is not a same-inventory buy-and-hold
 counterfactual for the mirrored starting portfolio. Results reflect the

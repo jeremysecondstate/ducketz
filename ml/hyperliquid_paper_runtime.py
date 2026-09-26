@@ -84,7 +84,8 @@ class PaperRuntime:
                                       metadata={"seed_mode": "cash"})
         _atomic_json(self.directory / "opening_snapshot.json", self.ledger.seed())
         settings = {key: str(value) if isinstance(value, Path) else value for key, value in asdict(self.config).items()}
-        settings["recipe_version"] = "direction-volatility-v1"
+        settings["recipe_version"] = ("direction-volatility-v2-qualified-hold" if self.config.require_qualified_forecasts
+                                      else "direction-volatility-v1")
         self.policy_id = hashlib.sha256(json.dumps(settings, sort_keys=True).encode()).hexdigest()[:16]
         policy_path = self.directory / "policies" / f"{self.policy_id}.json"
         policy_path.parent.mkdir(parents=True, exist_ok=True)
@@ -208,34 +209,62 @@ class PaperRuntime:
         positions = current_positions(state, coin)
         current = {a: (p["quantity"] * marks[p["market"]] if p else 0.0) for a, p in positions.items()}
         forecast_id = prediction["prediction_id"] if prediction else None
+        excluded_forecast = bool(prediction and cfg.require_qualified_forecasts and not prediction["qualified"])
+        signal_prediction = None if excluded_forecast else prediction
+        hold_without_signal = cfg.require_qualified_forecasts and signal_prediction is None
         key = f"forecast:{forecast_id}" if prediction else f"stale:{coin}:{int(now // 900)}"
         stop_accounts = [a for a, p in positions.items() if p and
                          p["quantity"] * (marks[p["market"]] - p["avg_entry"]) / (abs(p["quantity"]) * p["avg_entry"]) <= -cfg.stop_loss_fraction]
+        cooldown = self.horizon * INTERVAL_MS[self.interval] / 1000
+        cooldown_accounts = {a for a in ACCOUNTS if current[a] and now - self._stops.get((a, coin), -math.inf) < cooldown}
         over_limit = any(v["gross_exposure"] > max(0, v["equity"]) for a, v in state["accounts"].items() if a != "clearpond")
+        if cfg.require_qualified_forecasts:
+            pooled_equity = max(0.0, state["pooled"]["equity"])
+            managed_gross = sum(abs(n) for n in current.values())
+            passive_gross = sum(p["notional"] for p in state["pooled"]["positions"] if p["coin"] == coin and p["passive"])
+            gross_capacity = min(max(0.0, pooled_equity * cfg.per_symbol_gross_fraction - passive_gross),
+                                 max(0.0, pooled_equity * cfg.pool_gross_fraction
+                                     - (state["pooled"]["gross_exposure"] - managed_gross)))
+            over_limit = (managed_gross > gross_capacity + 1e-8 or any(
+                v["gross_exposure"] > max(0.0, v["equity"]) * cfg.account_utilization + 1e-8
+                for v in state["accounts"].values()))
         already_done = self.ledger.has_cycle(key)
-        if already_done and not stop_accounts and not over_limit:
+        if already_done and not stop_accounts and not over_limit and not (cfg.require_qualified_forecasts and cooldown_accounts):
             return False
-        if prediction and not (cfg.require_qualified_forecasts and not prediction["qualified"]):
+        if prediction and not excluded_forecast:
             plan = target_notionals(prediction["p_not_down"], sigma, max(0, state["pooled"]["equity"]), current,
                                    max(0, state["pooled"]["gross_exposure"] - sum(abs(n) for n in current.values())), cfg)
             targets, details = plan["targets"], plan["details"]
         else:
-            targets = {a: 0.0 for a in ACCOUNTS}
+            targets = dict(current) if hold_without_signal else {a: 0.0 for a in ACCOUNTS}
             details = {"reason": error or "unqualified_forecast_excluded"}
+            if hold_without_signal:
+                details["signal_action"] = "hold_until_qualified_forecast"
+            if excluded_forecast:
+                # Keep the rejected publication for audit without presenting it
+                # as the source of a policy-driven reduction or hold decision.
+                details["rejected_forecast"] = dict(prediction)
         for account in stop_accounts:
             targets[account] = 0.0
-        cooldown = self.horizon * INTERVAL_MS[self.interval] / 1000
         for account in ACCOUNTS:
             if now - self._stops.get((account, coin), -math.inf) < cooldown:
                 targets[account] = 0.0
         if already_done:
             key = f"risk:{coin}:{int(now // cfg.poll_seconds)}"
             for account in ACCOUNTS:
-                if account not in stop_accounts:
+                if account not in stop_accounts and not (cfg.require_qualified_forecasts and account in cooldown_accounts):
                     targets[account] = current[account]
+        cap_accounts = set()
+        if cfg.require_qualified_forecasts:
+            target_gross = sum(abs(n) for n in targets.values())
+            if target_gross > gross_capacity:
+                bounded = {a: n * gross_capacity / target_gross for a, n in targets.items()}
+                cap_accounts = {a for a in ACCOUNTS if abs(bounded[a]) < abs(current[a]) and abs(bounded[a]) < abs(targets[a])}
+                targets = bounded
         if not prediction and not any(current.values()):
             if not self.ledger.has_cycle(key):
-                self._execute(key, marks, decisions=[{"coin": coin, "action": "skip", "reason": error}])
+                self._execute(key, marks, decisions=[{"coin": coin, "action": "skip",
+                    "reason": "qualified_forecast_unavailable" if hold_without_signal else error, "policy": details}])
             return False
         # Only books observed after forecast availability can supply fills.
         quote_issues = {}
@@ -246,7 +275,7 @@ class PaperRuntime:
             issue = None
             if book is None:
                 issue = f"No executable {kind} book for {coin}."
-            elif prediction and stamp(book["book_time_utc"]) < stamp(prediction["created_at_utc"]):
+            elif signal_prediction and stamp(book["book_time_utc"]) < stamp(signal_prediction["created_at_utc"]):
                 issue = "Executable book predates the forecast."
             elif not -5 <= now - stamp(book["book_time_utc"]) <= cfg.max_quote_age_seconds:
                 issue = "Executable book is stale or future-dated."
@@ -274,19 +303,27 @@ class PaperRuntime:
                 other = values["gross_exposure"] - abs(current[account])
                 capacity = max(0, (values["equity"] + extra[account]) * cfg.account_utilization - other)
                 target = math.copysign(min(abs(target), capacity), target)
-            reason = "stop_loss" if account in stop_accounts else (error or "signal_rebalance")
-            common = {"account": account, "coin": coin, "kind": kind, "forecast_id": forecast_id,
-                      "model_id": prediction["model_id"] if prediction else None,
-                      "qualified": prediction["qualified"] if prediction else None,
-                      "data_run_id": prediction["data_run_id"] if prediction else None,
-                      "forecast_created_at_utc": prediction["created_at_utc"] if prediction else None,
-                      "p_not_down": prediction["p_not_down"] if prediction else None,
+            if cfg.require_qualified_forecasts and abs(target) < abs(current[account]) and abs(target) < abs(targets[account]):
+                cap_accounts.add(account)
+            reason = ("stop_loss" if account in stop_accounts else
+                      "stop_cooldown" if cfg.require_qualified_forecasts and account in cooldown_accounts else
+                      "risk_cap" if account in cap_accounts else
+                      "unqualified_forecast_excluded" if excluded_forecast else
+                      "qualified_forecast_unavailable" if hold_without_signal else error or "signal_rebalance")
+            common = {"account": account, "coin": coin, "kind": kind,
+                      "forecast_id": signal_prediction["prediction_id"] if signal_prediction else None,
+                      "model_id": signal_prediction["model_id"] if signal_prediction else None,
+                      "qualified": signal_prediction["qualified"] if signal_prediction else None,
+                      "data_run_id": signal_prediction["data_run_id"] if signal_prediction else None,
+                      "forecast_created_at_utc": signal_prediction["created_at_utc"] if signal_prediction else None,
+                      "p_not_down": signal_prediction["p_not_down"] if signal_prediction else None,
                       "current_notional": current[account], "target_notional": target,
                       "reason": reason, "policy": details}
             if account in quote_issues:
                 decisions.append({**common, "action": "skip", "reason": quote_issues[account]})
                 continue
-            if should_rebalance(current[account], target, cfg, force_reduce=account in stop_accounts or over_limit):
+            if should_rebalance(current[account], target, cfg, force_reduce=(account in stop_accounts or over_limit
+                    or cfg.require_qualified_forecasts and account in cooldown_accounts)):
                 delta = (target - current[account]) / marks[f"{kind}:{coin}"]
                 fill = simulate_fill(available_books[f"{kind}:{coin}"], delta, cfg.slippage_bps,
                                      min_notional=10, now=now)

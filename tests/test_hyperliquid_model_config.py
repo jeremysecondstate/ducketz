@@ -1,5 +1,5 @@
 """Configuration must keep the market universe shared and model state separate."""
-from dataclasses import FrozenInstanceError, dataclass
+from dataclasses import FrozenInstanceError, asdict, dataclass
 import json
 from pathlib import Path
 import sys
@@ -25,7 +25,7 @@ def test_default_file_uses_shared_market_config_and_one_hour_initial_horizon():
     settings = load_config(DEFAULT_MODEL_CONFIG_PATH)
     assert settings.markets_config == DEFAULT_MARKETS_CONFIG_PATH
     assert settings.horizons_bars == (4,)
-    assert settings.retrain_seconds == 3600
+    assert settings.retrain_seconds == 900
     assert settings.model_threads == 2
     assert settings.min_train_rows == 1000
     assert settings.calibration_rows == 192
@@ -39,6 +39,7 @@ def test_default_file_uses_shared_market_config_and_one_hour_initial_horizon():
 def test_version_only_uses_project_defaults_without_reading_market_config(tmp_path):
     settings = load_config(write_config(tmp_path))
     assert settings == ModelConfig()
+    assert settings.max_train_rows is None
     missing = load_config(write_config(tmp_path, markets_config="not-created-yet.json"))
     assert missing.markets_config == tmp_path / "not-created-yet.json"
 
@@ -79,18 +80,38 @@ def test_horizons_are_sorted_and_recipe_factory_passes_only_model_settings(monke
         assessment_rows: int
         random_state: int
         model_threads: int
+        max_train_rows: int | None
 
     monkeypatch.setitem(sys.modules, "ml.hyperliquid_models", SimpleNamespace(ModelSettings=Recipe))
     settings = ModelConfig(
         horizons_bars=[16, 1, 4], min_train_rows=1500, calibration_rows=200,
-        assessment_rows=300, model_threads=3,
+        assessment_rows=300, model_threads=3, max_train_rows=2000,
     )
     assert settings.horizons_bars == (1, 4, 16)
-    assert settings.model_settings(4) == Recipe(4, 1500, 200, 300, 42, 3)
+    assert settings.model_settings(4) == Recipe(4, 1500, 200, 300, 42, 3, 2000)
     with pytest.raises(ValueError, match="configuration's horizons"):
         settings.model_settings(2)
     with pytest.raises(ValueError, match="configuration's horizons"):
         settings.model_settings(True)
+
+
+@pytest.mark.parametrize("cap", [None, 1000, 2000])
+def test_optional_training_cap_round_trips_to_actual_model_recipe(tmp_path, cap):
+    config = load_config(write_config(tmp_path, max_train_rows=cap))
+    recipe = config.model_settings(4)
+    assert recipe.max_train_rows == cap
+    assert asdict(recipe)["max_train_rows"] == cap
+    assert recipe.min_train_rows == config.min_train_rows == 1000
+
+
+@pytest.mark.parametrize("cap", [True, False, 0, -1, 999, 1000.0, "1000"])
+def test_training_cap_requires_integer_at_least_minimum_fit_size(tmp_path, cap):
+    with pytest.raises(ValueError, match="max_train_rows"):
+        ModelConfig(max_train_rows=cap)
+    with pytest.raises(ValueError, match="max_train_rows"):
+        load_config(write_config(tmp_path, max_train_rows=cap))
+    with pytest.raises(ValueError, match="max_train_rows"):
+        ModelConfig(min_train_rows=1500, max_train_rows=1000)
 
 
 @pytest.mark.parametrize("horizons", [[], None, "4", [True], [4.0], [0], [-1], [1, 1]])

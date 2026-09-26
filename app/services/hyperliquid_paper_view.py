@@ -404,6 +404,9 @@ class HyperliquidPaperViewService:
             return []
 
     def _markets(self, snapshot, now, warnings):
+        training_cadence = _number(_mapping(snapshot.runtime.get("models")).get("retrain_seconds"))
+        if training_cadence is None or training_cadence <= 0:
+            training_cadence = 3600
         for coin in SYMBOLS:
             base = self.data_root / coin / "15m"
             loop, error = self._json(base / "loop_status.json", warnings)
@@ -485,7 +488,7 @@ class HyperliquidPaperViewService:
             snapshot.sources[f"forecast:{coin}"] = source
             candidate, candidate_error = self._json(model / "candidate.json", warnings, optional=True)
             snapshot.sources[f"training:{coin}"] = self._source(f"training:{coin}", candidate.get("trained_at_utc"),
-                now, 3600, state=candidate_error, detail="Candidate publication; not the fitting-data cutoff")
+                now, training_cadence, state=candidate_error, detail="Candidate publication; not the fitting-data cutoff")
 
         events = self._tail_events(self.data_root / "_models" / "_runtime" / "training_events.jsonl", warnings)
         latest = {}

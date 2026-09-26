@@ -20,15 +20,15 @@ def plan(probability=0.65, sigma=0.01, equity=30000.0, current=None, other_gross
     return target_notionals(probability, sigma, equity, current or {}, other_gross, config or PaperConfig())
 
 
-def test_defaults_are_paper_mirror_and_all_forecasts_without_account_reads():
+def test_checked_in_policy_is_paper_mirror_and_qualified_only_without_account_reads():
     config = load_config(DEFAULT_PAPER_CONFIG_PATH)
     assert config.mode == "paper"
     assert config.seed_mode == "mirror"
     assert config.model_config == DEFAULT_MODEL_CONFIG_PATH
-    assert config.require_qualified_forecasts is False
+    assert config.require_qualified_forecasts is True
     assert config.initial_cash == {"alex": 10000, "jeremy": 10000, "clearpond": 10000}
     assert config.paper_root == config.data_root / "_paper"
-    assert config == PaperConfig()
+    assert config == PaperConfig(require_qualified_forecasts=True)
 
 
 def test_minimal_config_does_not_read_a_missing_model_file_and_resolves_relative_paths(tmp_path, monkeypatch):

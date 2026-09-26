@@ -1,6 +1,7 @@
 # Paper accounting and risk
 
 Verified against repository code and the checked-in configuration on **2026-09-25**.
+Qualification and no-signal behavior updated for the **2026-09-26** experiment.
 The numbers below describe this configuration snapshot, not permanent strategy
 rules or a statement about a running process's loaded settings. Compare its
 `_paper/policy.json` and event `policy_id` with the checked-in configuration.
@@ -90,7 +91,7 @@ Values verified in [hyperliquid-paper.json](../../configs/hyperliquid-paper.json
 
 | Parameter | Value | Meaning |
 | --- | --- | --- |
-| `require_qualified_forecasts` | `false` | Research and qualified forecasts can participate |
+| `require_qualified_forecasts` | `true` | Only fresh Qualified signals allocate; without one, hold current exposure subject to risk reductions |
 | `poll_seconds` | 30 seconds | Wait after each loop iteration, not guaranteed start-to-start latency |
 | `entry_band` / `exit_band` / `saturation_band` | 0.05 / 0.02 / 0.15 | Absolute distance of P(not-down) from 0.5 |
 | `volatility_budget_fraction` / `sigma_floor` | 0.001 / 0.005 | Dollar-volatility sizing budget and horizon-volatility floor |
@@ -202,17 +203,23 @@ Sources: [PublicPaperMarket and simulate_fill](../../ml/hyperliquid_paper_market
 
 ## Failure, replay and stopping boundaries
 
-Invalid, missing, stale, matured or excluded forecasts request zero managed
-targets when usable quotes permit execution. A missing quote for a required
-reduction preserves that leg and blocks risk increases in the coin's plan.
+With the current qualification requirement, invalid, missing, stale, matured
+or Research forecasts retain current managed targets. They cannot create new
+signal exposure or virtual transfers; stops, persisted cooldowns and
+account/symbol/pool exposure caps can still require reductions. Recipe
+`direction-volatility-v2-qualified-hold` records this behavior; the optional
+legacy `require_qualified_forecasts=false` mode retains zero-target fallback.
+A missing quote for a required reduction preserves that leg and blocks risk
+increases in the coin's plan.
 More severely, the market provider omits a market whose book fails validation:
 if that market is held, the missing mark aborts the entire tick before its
 per-symbol risk handling. There is no guaranteed last-mark valuation fallback.
 
 Committed forecast IDs execute once. No-forecast cycles use a 15-minute bucket;
 completed keys suppress ordinary retry attempts even after a partial/unfilled
-result. Active stop or over-limit paths can use a 30-second risk key. Thus a
-30-second polling cadence is not a promise to retry every stale exit every tick.
+result. Active stop, cooldown or over-limit paths can use a 30-second risk key.
+A 30-second polling cadence does not guarantee that every desired adjustment
+will be retried or filled on every tick.
 
 Stops request zero targets after a 3% entry-based adverse move, using inherited
 entry for mirrored perps. They are polled, can gap, and can fail to fill. After a

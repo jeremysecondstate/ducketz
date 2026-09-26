@@ -38,6 +38,8 @@ def read_forecast(coin, now, policy, interval, horizon, *, feature_loader=None):
     root = Path(policy.data_root)
     directory = root / "_models" / coin / interval / f"h{horizon}"
     prediction = json.loads((directory / "latest_prediction.json").read_text())
+    if not isinstance(prediction.get("prediction_id"), str) or not prediction["prediction_id"].strip():
+        raise ValueError("Forecast requires a nonempty prediction_id.")
     if (prediction["coin"], prediction["interval"], prediction["horizon_bars"]) != (coin, interval, horizon):
         raise ValueError("Forecast belongs to a different market or horizon.")
     p = float(prediction["p_not_down"])
@@ -60,6 +62,8 @@ def read_forecast(coin, now, policy, interval, horizon, *, feature_loader=None):
     record = json.loads((directory / "runs" / model_id / "record.json").read_text())
     if (record.get("coin"), record.get("interval"), record.get("horizon_bars"), record.get("model_id")) != (coin, interval, horizon, model_id):
         raise ValueError("Model record identity does not match the forecast.")
+    if prediction["qualified"] and (prediction.get("role") != "active" or record.get("eligible") is not True):
+        raise ValueError("Qualified forecast requires an active role and an eligible model record.")
     trained = _stamp(record["trained_at_utc"])
     if trained > created:
         raise ValueError("Model was published after the recorded forecast.")

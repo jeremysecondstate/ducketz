@@ -1,6 +1,7 @@
 # Powder activation and recovery
 
-Last verified: **2026-09-25**. [System index](README.md) · [Monitoring](MONITORING.md)
+Last updated: **2026-09-26** for the shared qualification setting.
+[System index](README.md) · [Monitoring](MONITORING.md)
 
 Powder is the separate, explicitly launched real-account execution runtime.
 It is **disabled until the user runs its activation command**. Installing this
@@ -68,10 +69,18 @@ trader through a chat instruction such as “activate the powder.”
 The [Powder config](../../configs/hyperliquid-powder.json) references the current
 [Paper policy](../../configs/hyperliquid-paper.json). At launch, the runner pins
 validated policy, market/model configuration, account identities, interval and
-horizon. This includes the Paper setting that currently permits research as well
-as qualified forecasts. Review that setting deliberately before activation.
+horizon. The shared setting is now `require_qualified_forecasts=true`, so future
+activation admits only fresh Qualified signals, with active role and an eligible
+matching model record. Research publications remain visible but cannot drive
+allocation. Review the pinned configuration deliberately before activation.
 Changing policy/configuration while Powder is running blocks further execution;
 an existing ledger's binding must remain compatible on restart.
+
+**Paper's new no-signal hold behavior does not carry over to Powder.** Powder
+still derives zero targets for missing, stale, invalid or excluded forecasts,
+which can request reductions of adopted positions when executable. Paper's
+`direction-volatility-v2-qualified-hold` experiment instead holds current targets
+subject to independent risk exits. This change does not activate Powder.
 
 Probability/volatility sizing and account roles are shared:
 

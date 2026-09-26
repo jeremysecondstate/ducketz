@@ -1,6 +1,7 @@
 # Hyperliquid loop inventory
 
 Last verified 2026-09-25; code/config authority.
+Model fitting cadence and Paper qualification/no-signal policy updated 2026-09-26.
 
 This inventory describes implemented owners and their configured behavior. It
 does not assert that a process is currently running, register a schedule, or
@@ -14,7 +15,7 @@ runtime evidence using [Monitoring](MONITORING.md).
 | Market coordinator | [`ml.hyperliquid_coordinator`](../../ml/hyperliquid_coordinator.py) | Coordinator checks about every second; each market catches up immediately, then targets completed 15-minute candles plus 5 seconds | Per-market completed run selected by `latest.json`; coordinator owns worker lifetimes | Public-data requests only |
 | Per-market data worker | [`ml.hyperliquid_data_loop`](../../ml/hyperliquid_data_loop.py) and [`hyperliquid_data_pipeline`](../../ml/hyperliquid_data_pipeline.py) | Independent candle timer and 15–120-second retry backoff | OHLCV, causal features, labels, summary and feature catalog | None |
 | Model runtime | [`ml.hyperliquid_model_runtime`](../../ml/hyperliquid_model_runtime.py) | Poll completed data/model pointers every 5 seconds | Model publication and immutable forecast records | None |
-| Candidate fitting | Same model runtime; one background job globally | Normally 3,600 seconds of source-candle progress since the last candidate; missing/incompatible candidates also trigger fitting | Exact evaluated bundle, report and assessment; candidate/active pointers | None |
+| Candidate fitting | Same model runtime; one background job globally | Normally 900 seconds (15 minutes) of source-candle progress since the last candidate; missing/incompatible candidates also trigger fitting | Exact evaluated bundle, report and assessment; candidate/active pointers | None |
 | Forecasting and matured scoring | Same model runtime, polling thread | New data/model identity; at most one saved forecast per decision close | `predictions.parquet`, `outcomes.parquet`; JSON projections and metrics | None |
 | Paper portfolio / quote / risk cycle | [`ml.hyperliquid_paper_runtime`](../../ml/hyperliquid_paper_runtime.py) | 30-second configured polling, independently of candle/model timers | Transactional `_paper/ledger.sqlite3` | Simulated fills and internal virtual transfers only |
 | Powder execution | [`ml.hyperliquid_powder_runtime`](../../ml/hyperliquid_powder_runtime.py) | Explicit user activation; 30-second configured polling | Separate `_powder/ledger.sqlite3` intents, actual fills and observations | IOC orders under account ownership; no transfer calls |
@@ -31,10 +32,14 @@ The timing exporter is not a scheduler or a prerequisite for publication.
 The checked-in [market config](../../configs/hyperliquid-markets.json) specifies
 BTC, ETH, HYPE and ZEC, a `15m` interval, `C:/DATASTORE/hyperliquid`, and two
 concurrent data-update slots. The [model config](../../configs/hyperliquid-models.json)
-selects four-bar forecasts and two numerical threads. The
-[paper config](../../configs/hyperliquid-paper.json) currently permits both
-qualified and research forecasts. These are configuration facts, not permanent
-market membership or qualification claims.
+selects four-bar forecasts, 900-second fitting progress and two numerical threads.
+Qualification gates and reserved calibration/assessment blocks are unchanged;
+more frequent fitting does not guarantee more Qualified candidates. The
+[paper config](../../configs/hyperliquid-paper.json) now sets
+`require_qualified_forecasts=true`: only fresh Qualified signals drive allocation.
+Paper holds current exposure without an accepted signal, subject to independent
+risk reductions; see the [Paper loop](loops/paper.md). These are configuration
+facts, not permanent market membership or qualification claims.
 
 | Owner | Applies during operation | Requires restart / other boundary |
 | --- | --- | --- |

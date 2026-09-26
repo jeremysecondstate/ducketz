@@ -37,6 +37,7 @@ class ModelConfig:
     calibration_rows: int = 192
     assessment_rows: int = 288
     max_model_age_seconds: float = 86400.0
+    max_train_rows: int | None = None
 
     def __post_init__(self):
         if not isinstance(self.markets_config, (str, Path)) or not str(self.markets_config).strip():
@@ -56,6 +57,9 @@ class ModelConfig:
             minimum = 1 if name == "model_threads" else 2
             if type(value) is not int or value < minimum:
                 raise ValueError(f"{name} must be an integer of at least {minimum}.")
+        if self.max_train_rows is not None and (
+                type(self.max_train_rows) is not int or self.max_train_rows < self.min_train_rows):
+            raise ValueError("max_train_rows must be None or an integer >= min_train_rows.")
         object.__setattr__(self, "markets_config", Path(self.markets_config).resolve())
         object.__setattr__(self, "horizons_bars", tuple(sorted(self.horizons_bars)))
 
@@ -83,6 +87,7 @@ class ModelConfig:
             assessment_rows=self.assessment_rows,
             random_state=42,
             model_threads=self.model_threads,
+            max_train_rows=self.max_train_rows,
         )
 
 

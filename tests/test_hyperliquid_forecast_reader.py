@@ -45,7 +45,8 @@ def test_reads_pinned_forecast_without_a_runtime(artifacts):
 
 
 @pytest.mark.parametrize("change", [{"p_down": .7}, {"qualified": None}, {"target_close_utc": utc(NOW)},
-    {"decision_close_utc": utc(NOW+10)}, {"model_id": "../outside"}, {"data_run_id": "../outside"}])
+    {"decision_close_utc": utc(NOW+10)}, {"model_id": "../outside"}, {"data_run_id": "../outside"},
+    {"prediction_id": None}, {"prediction_id": ""}, {"prediction_id": "  "}, {"prediction_id": 1}])
 def test_rejects_invalid_or_stale_provenance(artifacts, change):
     policy, model, prediction = artifacts
     (model / "latest_prediction.json").write_text(json.dumps({**prediction, **change}), encoding="utf-8")
@@ -63,6 +64,33 @@ def test_optional_feature_loader_preserves_existing_paper_cache_contract(artifac
     _, sigma = read_forecast("BTC", NOW, policy, "15m", 4, feature_loader=load)
     assert calls == [("BTC", DATA_ID)]
     assert sigma == pytest.approx(.04)
+
+
+@pytest.mark.parametrize("role,eligible", [
+    ("research_candidate", True), (None, True), ("active", False),
+    ("active", None), ("active", "true"), ("active", 1),
+])
+def test_qualified_flag_must_match_the_recorded_release(artifacts, role, eligible):
+    policy, model, prediction = artifacts
+    (model / "latest_prediction.json").write_text(json.dumps(
+        {**prediction, "qualified": True, "role": role}), encoding="utf-8")
+    path = model / "runs" / MODEL_ID / "record.json"
+    record = json.loads(path.read_text(encoding="utf-8"))
+    path.write_text(json.dumps({**record, "eligible": eligible}), encoding="utf-8")
+    with pytest.raises(ValueError, match="active role and an eligible model record"):
+        read_forecast("BTC", NOW, policy, "15m", 4)
+
+
+def test_accepts_corroborated_qualified_forecast(artifacts):
+    policy, model, prediction = artifacts
+    (model / "latest_prediction.json").write_text(json.dumps(
+        {**prediction, "qualified": True, "role": "active"}), encoding="utf-8")
+    path = model / "runs" / MODEL_ID / "record.json"
+    record = json.loads(path.read_text(encoding="utf-8"))
+    path.write_text(json.dumps({**record, "eligible": True}), encoding="utf-8")
+    actual, _ = read_forecast("BTC", NOW, policy, "15m", 4)
+    assert actual["qualified"] is True
+    assert actual["_valid_until_epoch"] == NOW + 870
 
 
 @pytest.mark.parametrize("forecast_age,model_age,remaining", [

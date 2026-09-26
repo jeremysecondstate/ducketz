@@ -131,6 +131,20 @@ def runner(tmp_path):
         pass
 
 
+@pytest.fixture
+def qualified_runner(tmp_path):
+    config, data = configurations(tmp_path, require_qualified_forecasts=True)
+    clock = Clock()
+    market = FakeMarket(clock)
+    instance = runtime_module.PaperRuntime(config, market=market, clock=clock)
+    instance.initialize()
+    yield instance, clock, market, data
+    try:
+        instance.ledger.close()
+    except sqlite3.ProgrammingError:
+        pass
+
+
 def test_fresh_forecast_fills_from_actual_spot_and_perp_books_and_preserves_roles(runner):
     instance, clock, market, data = runner
     forecast(data, p=0.65, qualified=False, price=77)
@@ -251,12 +265,225 @@ def test_reductions_below_exchange_minimum_are_reported_as_unfilled_dust(runner)
     assert stop[0]["execution"]["reason"] == "below_min_notional"
 
 
-def test_research_exclusion_can_be_enabled_explicitly(runner):
+@pytest.mark.parametrize("probability", [0.35, 0.65])
+def test_research_exclusion_can_be_enabled_explicitly(runner, probability):
     instance, clock, market, data = runner
     instance.config = replace(instance.config, require_qualified_forecasts=True)
-    forecast(data, qualified=False)
+    forecast(data, qualified=False, p=probability)
     instance.tick()
     assert instance.ledger.history("fills") == []
+    assert instance.ledger.history("transfers") == []
+    for row in instance.ledger.history("decisions"):
+        details = json.loads(row["details_json"])
+        assert row["reason"] == "unqualified_forecast_excluded"
+        assert row["forecast_id"] is None and row["model_id"] is None
+        assert details["qualified"] is None
+        assert details["policy"]["rejected_forecast"]["p_not_down"] == probability
+
+
+@pytest.mark.parametrize("probability", [0.35, 0.65])
+def test_qualified_hold_preserves_existing_inventory_despite_research_direction(qualified_runner, probability):
+    instance, clock, market, data = qualified_runner
+    marks = {"perp:BTC": 100.0, "spot:BTC": 102.0}
+    instance._execute("inherited", marks, orders=[
+        {"account": "alex", "coin": "BTC", "kind": "perp", "quantity": -2, "price": 100},
+        {"account": "jeremy", "coin": "BTC", "kind": "perp", "quantity": 2, "price": 100},
+        {"account": "clearpond", "coin": "BTC", "kind": "spot", "quantity": 3, "price": 102},
+    ])
+    inventory, fills = instance.ledger.inventory(), instance.ledger.history("fills")
+    rejected = forecast(data, qualified=False, p=probability)
+    instance.tick()
+    clock.now += 31
+    instance.tick()
+    assert instance.ledger.inventory() == inventory
+    assert instance.ledger.history("fills") == fills
+    assert not instance.ledger.history("transfers")
+    for row in instance.ledger.history("decisions"):
+        details = json.loads(row["details_json"])
+        assert row["action"] == "hold" and row["reason"] == "unqualified_forecast_excluded"
+        assert row["forecast_id"] is None and row["model_id"] is None
+        assert all(details[key] is None for key in ("qualified", "data_run_id", "forecast_created_at_utc", "p_not_down"))
+        assert details["policy"]["rejected_forecast"]["prediction_id"] == rejected["prediction_id"]
+        assert details["policy"]["rejected_forecast"]["qualified"] is False
+        assert details["target_notional"] == details["current_notional"]
+
+
+@pytest.mark.parametrize("probability,accounts", [(0.35, {"alex"}), (0.65, {"jeremy", "clearpond"})])
+def test_qualified_signal_can_allocate_in_qualified_hold_recipe(qualified_runner, probability, accounts):
+    instance, _, _, data = qualified_runner
+    forecast(data, qualified=True, p=probability)
+    instance.tick()
+    fills = instance.ledger.history("fills")
+    assert {row["account"] for row in fills} == accounts
+    assert all(json.loads(row["details_json"])["qualified"] is True for row in fills)
+    assert all(row["forecast_id"] == "forecast-1" for row in fills)
+    assert json.loads((data / "_paper" / "policy.json").read_text())["recipe_version"] == "direction-volatility-v2-qualified-hold"
+
+
+def test_qualified_hold_rollover_has_no_closing_cost_and_fresh_signal_resumes(qualified_runner):
+    instance, clock, market, data = qualified_runner
+    forecast(data, qualified=True)
+    first = instance.tick()
+    inventory, fills = instance.ledger.inventory(), instance.ledger.history("fills")
+    clock.now = BASE + 901
+    waiting = instance.tick()
+    assert instance.ledger.inventory() == inventory
+    assert instance.ledger.history("fills") == fills
+    assert waiting["portfolio"]["pooled"]["fees"] == first["portfolio"]["pooled"]["fees"]
+    assert "stale" in waiting["errors"]["BTC"]
+    assert all(row["reason"] == "qualified_forecast_unavailable"
+               for row in instance.ledger.history("decisions") if row["forecast_id"] is None)
+    clock.now = BASE + 906
+    forecast(data, qualified=True, identity="forecast-2", decision=BASE+900, p=.35)
+    resumed = instance.tick()
+    assert {p["account"] for p in resumed["portfolio"]["pooled"]["positions"]} == {"alex"}
+    assert all(row["forecast_id"] == "forecast-2" for row in instance.ledger.history("fills")[len(fills):])
+
+
+@pytest.mark.parametrize("unavailable", [False, True])
+def test_qualified_hold_stop_exit_does_not_use_rejected_or_missing_signal(qualified_runner, unavailable):
+    instance, clock, market, data = qualified_runner
+    marks = {"perp:BTC": 100.0, "spot:BTC": 102.0}
+    instance._execute("inherited", marks, orders=[
+        {"account": "jeremy", "coin": "BTC", "kind": "perp", "quantity": 2, "price": 100},
+    ])
+    if not unavailable:
+        forecast(data, qualified=False)
+        market.book_offset = -26  # Fresh book may predate an excluded publication.
+    market.price["perp"] = 94
+    result = instance.tick()
+    assert result["portfolio"]["pooled"]["positions"] == []
+    exit_fill = instance.ledger.history("fills")[-1]
+    assert exit_fill["reason"] == "stop_loss" and exit_fill["quantity"] == -2
+    assert exit_fill["forecast_id"] is None and exit_fill["model_id"] is None
+    assert json.loads(exit_fill["details_json"])["qualified"] is None
+    assert instance._stops[("jeremy", "BTC")] == clock()
+
+
+@pytest.mark.parametrize("missing", [False, True])
+def test_qualified_hold_unavailable_forecast_preserves_existing_inventory(qualified_runner, missing):
+    instance, _, _, data = qualified_runner
+    marks = {"perp:BTC": 100.0, "spot:BTC": 102.0}
+    instance._execute("inherited", marks, orders=[
+        {"account": "jeremy", "coin": "BTC", "kind": "perp", "quantity": 2, "price": 100},
+    ])
+    if not missing:
+        forecast(data, qualified=True, overrides={"p_down": .9})
+    inventory, fills = instance.ledger.inventory(), instance.ledger.history("fills")
+    result = instance.tick()
+    assert instance.ledger.inventory() == inventory
+    assert instance.ledger.history("fills") == fills
+    assert not instance.ledger.history("transfers")
+    assert result["errors"]["BTC"]
+    for row in instance.ledger.history("decisions"):
+        details = json.loads(row["details_json"])
+        assert row["reason"] == "qualified_forecast_unavailable"
+        assert details["policy"]["reason"] == result["errors"]["BTC"]
+        assert row["forecast_id"] is None and row["model_id"] is None
+
+
+def test_qualified_hold_partial_stop_continues_in_cooldown_after_restart(qualified_runner):
+    instance, clock, market, data = qualified_runner
+    marks = {"perp:BTC": 100.0, "spot:BTC": 102.0}
+    instance._execute("inherited", marks, orders=[
+        {"account": "jeremy", "coin": "BTC", "kind": "perp", "quantity": .3, "price": 100},
+    ])
+    forecast(data, qualified=False)
+    market.price["perp"], market.depth = 94, .12
+    instance.tick()
+    assert instance.ledger.history("fills")[-1]["reason"] == "stop_loss"
+    assert instance.ledger.inventory()[0]["quantity"] == pytest.approx(.18)
+    instance.ledger.close()
+    clock.now += 31
+    # Recovery removes the price stop, but the $18 residual is still an exit
+    # despite falling below the ordinary $25 rebalance threshold.
+    market.price["perp"] = 100
+    reopened = runtime_module.PaperRuntime(instance.config_path, market=market, clock=clock)
+    reopened.initialize()
+    try:
+        reopened.tick()
+        reduction = reopened.ledger.history("fills")[-1]
+        assert reduction["reason"] == "stop_cooldown"
+        assert reduction["quantity"] == pytest.approx(-.12)
+        assert reduction["forecast_id"] is None and reduction["model_id"] is None
+        assert reopened.ledger.inventory()[0]["quantity"] == pytest.approx(.06)
+        assert not reopened.ledger.history("transfers")
+    finally:
+        reopened.ledger.close()
+
+
+@pytest.mark.parametrize("cap", ["account", "symbol", "pool"])
+def test_qualified_hold_still_reduces_exposure_caps(qualified_runner, cap):
+    instance, clock, market, data = qualified_runner
+    limits = {"account_utilization": 1, "per_symbol_gross_fraction": 1, "pool_gross_fraction": 1}
+    limits[{"account": "account_utilization", "symbol": "per_symbol_gross_fraction", "pool": "pool_gross_fraction"}[cap]] = .3 if cap == "account" else .1
+    instance.config = replace(instance.config, **limits)
+    marks = {"perp:BTC": 100.0, "spot:BTC": 102.0}
+    instance._execute("inherited", marks, orders=[
+        {"account": "jeremy", "coin": "BTC", "kind": "perp", "quantity": 50, "price": 100},
+    ])
+    forecast(data, qualified=False)
+    instance.tick()
+    reduction = instance.ledger.history("fills")[-1]
+    assert reduction["reason"] == "risk_cap"
+    assert reduction["quantity"] == pytest.approx(-20)
+    assert reduction["forecast_id"] is None and reduction["model_id"] is None
+    assert not instance.ledger.history("transfers")
+
+
+def test_qualified_hold_rechecks_caps_after_same_research_forecast(qualified_runner):
+    instance, clock, market, data = qualified_runner
+    instance.config = replace(instance.config, per_symbol_gross_fraction=1, pool_gross_fraction=1)
+    marks = {"perp:BTC": 100.0, "spot:BTC": 102.0}
+    instance._execute("inherited", marks, orders=[
+        {"account": "jeremy", "coin": "BTC", "kind": "perp", "quantity": 50, "price": 100},
+    ])
+    forecast(data, qualified=False)
+    instance.tick()
+    assert len(instance.ledger.history("fills")) == 1
+    instance._execute("funding-loss", marks, funding=[
+        {"funding_id": "funding-loss", "account": "jeremy", "coin": "BTC", "amount": -5000},
+    ])
+    clock.now += 31
+    instance.tick()
+    reduction = instance.ledger.history("fills")[-1]
+    assert reduction["reason"] == "risk_cap" and reduction["quantity"] == pytest.approx(-10)
+
+
+def test_qualified_hold_and_signal_idempotency_survive_restart(qualified_runner):
+    instance, clock, market, data = qualified_runner
+    forecast(data, qualified=True)
+    instance.tick()
+    original_fills = instance.ledger.history("fills")
+    instance.ledger.close()
+    clock.now += 31
+    reopened = runtime_module.PaperRuntime(instance.config_path, market=market, clock=clock)
+    reopened.initialize()
+    try:
+        reopened.tick()
+        assert reopened.ledger.history("fills") == original_fills
+        clock.now = BASE + 901
+        reopened.tick()
+        assert reopened.ledger.history("fills") == original_fills
+    finally:
+        reopened.ledger.close()
+
+
+def test_qualified_only_missing_forecast_id_does_not_bypass_stop_checks(runner):
+    instance, clock, market, data = runner
+    instance.config = replace(instance.config, require_qualified_forecasts=True)
+    prediction = forecast(data, qualified=True)
+    instance.tick()
+    clock.now += 31
+    market.price = {"perp": 94.0, "spot": 95.0}
+    del prediction["prediction_id"]
+    path = data / "_models" / "BTC" / "15m" / "h4" / "latest_prediction.json"
+    path.write_text(json.dumps(prediction))
+    result = instance.tick()
+    assert "prediction_id" in result["errors"]["BTC"]
+    assert result["portfolio"]["pooled"]["positions"] == []
+    stops = instance.ledger.history("fills")[-2:]
+    assert all(row["reason"] == "stop_loss" and row["forecast_id"] is None for row in stops)
 
 
 @pytest.mark.parametrize("offset", [-26, -60, 60])

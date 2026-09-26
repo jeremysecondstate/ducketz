@@ -1,6 +1,6 @@
 # Models, forecasts and forward evaluation
 
-Last verified 2026-09-25; code/config authority.
+Last updated 2026-09-26 for 15-minute fitting and the consumer qualification contract; code/config authority.
 
 One model runtime consumes completed data snapshots, schedules candidate fits,
 publishes forecasts and scores later outcomes. These activities share an
@@ -41,11 +41,13 @@ artifacts remain available for historical review.
 
 The present horizon list is `[4]`: four 15-minute candles, or a one-hour
 outcome from each decision candle. Candidate fitting normally becomes due
-after 3,600 seconds of source-candle progress since the saved candidate's
+after 900 seconds (15 minutes) of source-candle progress since the saved candidate's
 input snapshot, with a changed source run. This avoids schedule drift from
 fit duration. Older metadata without source-close evidence falls back to
 publication age. Missing candidates, changed recipe/feature revision, invalid
 candidate timestamps, or explicit bounded force-training can also trigger work.
+The checked-in cadence changed from hourly on September 26; the config loader's
+fallback remains 3,600 seconds if `retrain_seconds` is omitted.
 
 A round-robin cursor selects due jobs across the configured keys. Failed
 training/publication sets a 60-second retry delay in the current config. Model
@@ -104,7 +106,9 @@ or online weight adjustments. Convergence warnings are retained in the report.
 The exact evaluated bundle is published without refitting on calibration or
 assessment rows. Parameters can therefore lag the latest input candle by days
 while inference uses its newest feature row. Inspect actual report cutoffs;
-do not turn an earlier observed lag into a permanent fixed duration.
+15-minute fitting does not shorten this reserved-window gap (123 hours in the
+[first measured run](../../hyperliquid-models.md#first-measured-run)). Do not
+turn that observed lag into a permanent fixed duration.
 
 ## Qualification and publication
 
@@ -115,8 +119,11 @@ from matured fitting and calibration outcomes. Accuracy and ROC AUC are
 reported but are not the promotion gate.
 
 The assessment block is a promotion holdout, not an untouched final test.
-Successive rolling assessments may overlap. Qualification concerns probability
-scores; it does not establish trading profitability after fees or funding.
+With regular complete 15-minute input, successive 288-row assessment blocks
+advance by one row and share 287 rows. Gaps or catch-up can change that step.
+The faster cadence retains the same baseline comparisons and does not guarantee
+more Qualified models. Qualification concerns probability scores; it does not
+establish trading profitability after fees or funding.
 Current coin-specific qualification must be read from current records.
 
 | Artifact | Authority and update contract |
@@ -159,10 +166,19 @@ Forward metrics separate active and research roles, but they do not feed
 automatic retraining rules, ensemble weights, promotion gates or paper sizing.
 
 Paper consumes the saved forecast under its own age, quote and policy rules.
-The checked-in paper configuration permits research forecasts. Neither a
-qualified badge nor a fresh forecast proves that a fill occurred. Four bars
-describe the prediction's outcome horizon; paper does not implement a fixed
-one-hour holding-period exit. See [Paper](paper.md).
+The checked-in Paper configuration now requires Qualified forecasts. The
+[shared reader](../../../ml/hyperliquid_forecast_reader.py) requires a claimed
+`qualified=true` forecast to have `role=active` and matching model record
+`eligible=true`, in addition to identity, probability, timestamp and source-feature
+checks. Research forecasts still publish and receive forward scores; consumer
+exclusion does not turn them into Qualified forecasts or disable their model loop.
+
+Without an accepted forecast, current Paper holds exposure subject to risk
+reductions and forbids new signal exposure/transfers. Powder remains inactive;
+it shares the qualification setting but retains its own missing-signal
+zero-target behavior. Neither a qualified badge nor a fresh forecast proves a
+fill occurred. Four bars describe the outcome horizon, not a fixed one-hour
+holding-period exit. See [Paper](paper.md).
 
 ## Failure evidence and maintenance
 

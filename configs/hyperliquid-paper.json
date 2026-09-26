@@ -5,7 +5,7 @@
   "data_root": "C:/DATASTORE/hyperliquid",
   "model_config": "hyperliquid-models.json",
   "initial_cash": {"alex": 10000, "jeremy": 10000, "clearpond": 10000},
-  "require_qualified_forecasts": false,
+  "require_qualified_forecasts": true,
   "poll_seconds": 30,
   "entry_band": 0.05,
   "exit_band": 0.02,

@@ -2,7 +2,7 @@
   "version": 1,
   "markets_config": "hyperliquid-markets.json",
   "horizons_bars": [4],
-  "retrain_seconds": 3600,
+  "retrain_seconds": 900,
   "poll_seconds": 5,
   "retry_seconds": 60,
   "model_threads": 2,

@@ -95,6 +95,21 @@ def test_ledger_is_authoritative_pooled_not_double_counted_and_pnl_excludes_inhe
     assert snapshot.seed["timestamp_utc"] == utc(NOW-600)
 
 
+@pytest.mark.parametrize("cadence,expected_cadence,expected_state", [
+    (900, 900, "stale"), (3600, 3600, "fresh"),
+    (None, 3600, "fresh"), (0, 3600, "fresh"), (True, 3600, "fresh"),
+])
+def test_training_freshness_uses_running_model_cadence(paper_root, cadence, expected_cadence, expected_state):
+    runtime_path = paper_root / "_models" / "_runtime" / "status.json"
+    runtime = json.loads(runtime_path.read_text())
+    write_json(runtime_path, {**runtime, "retrain_seconds": cadence})
+    write_json(paper_root / "_models" / "BTC" / "15m" / "h4" / "candidate.json",
+               {"model_id": "model1", "trained_at_utc": utc(NOW-1801)})
+    source = service(paper_root).load_snapshot().sources["training:BTC"]
+    assert source.cadence_seconds == expected_cadence
+    assert source.state == expected_state
+
+
 def test_read_only_snapshot_does_not_construct_writer_or_change_authoritative_files(paper_root, monkeypatch):
     files = {p: hashlib.sha256(p.read_bytes()).digest() for p in paper_root.rglob("*") if p.is_file()}
     def forbidden(*args, **kwargs):

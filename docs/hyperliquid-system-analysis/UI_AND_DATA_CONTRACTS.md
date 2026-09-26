@@ -1,6 +1,6 @@
 # H.Y.P.E.R. UI and data contracts
 
-Last verified: **2026-09-25**. [Index](README.md) ·
+Last updated: **2026-09-26** for qualified-only Paper provenance and resize handling. [Index](README.md) ·
 [Accounting](PAPER_ACCOUNTING_AND_RISK.md) · [Operations](MONITORING.md)
 
 ## Entry points and ownership
@@ -61,6 +61,15 @@ or partial evidence. Source-file errors do not become fabricated zero balances.
 | Worst drawdown | Positive magnitude of the export's historical pooled drawdown |
 | Position unrealized P/L | Relative to retained entry; may include performance predating Paper |
 | Qualified / Research | Recorded model evaluation status, not winning/losing trade classification |
+| No forecast / Risk exit | No accepted signal is attributed to the decision/fill; independent risk reductions are not relabeled Research trades |
+
+Current Paper allocation requires fresh Qualified forecasts. Research previews
+can still appear in the model panel while the strategy holds current exposure
+subject to risk limits. A rejected Research publication is inspectable under
+`details.policy.rejected_forecast`; the decision/fill's top-level forecast/model
+IDs, qualification and probability stay null. The **Reason** column distinguishes
+exclusion, unavailable forecast and risk-exit decisions. A saved rejected model
+is audit context, not an execution signal.
 
 ## Interaction and refresh contract
 
@@ -70,6 +79,13 @@ or partial evidence. Source-file errors do not become fabricated zero balances.
 - Filters, chart metric/range and stable selected row identities survive reads.
   Destroying the view cancels callbacks and prevents an outstanding result from
   touching destroyed widgets.
+- Resizing between wide, compact and narrow layouts keeps the forecast/detail
+  container on the same geometry manager (`grid`). Resize callbacks tolerate
+  view destruction during idle layout updates. Closing/reopening Duckets does
+  not stop or restart the independently launched data, model or Paper workers.
+- Candidate freshness uses the model runtime's accepted `retrain_seconds`,
+  currently 900 seconds; its stale threshold is twice that cadence. Older status
+  files without a valid cadence retain the historical 3,600-second fallback.
 - Account selection also selects the chart. Asset/model filters apply to loaded
   activity and shared forecast previews, not an invented asset-specific equity
   decomposition. Forecasts themselves are shared across accounts.
@@ -121,6 +137,9 @@ complete live cashflow accounting exists. The shared model panel remains labeled
 as a forecast preview. Switching modes never converts Paper holdings or enables
 trading. Refresh and inspection have no lifecycle or execution authority; the
 user uses the separate [activation commands](POWDER_ACTIVATION.md).
+Powder shares the now-qualified-only configuration on future activation, but
+retains zero targets for missing/rejected signals. The UI must not imply that
+Paper's no-signal hold rule applies to real-account execution.
 
 ## Verification and visual references
 

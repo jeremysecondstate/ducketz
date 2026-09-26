@@ -55,6 +55,7 @@ class ModelSettings:
     assessment_rows: int = 288
     random_state: int = 42
     model_threads: int = 2
+    max_train_rows: int | None = None
 
     def __post_init__(self) -> None:
         for name in ("horizon_bars", "min_train_rows", "calibration_rows",
@@ -63,6 +64,9 @@ class ModelSettings:
             minimum = 2 if name.endswith("rows") else 1
             if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
                 raise ValueError(f"{name} must be an integer >= {minimum}.")
+        if self.max_train_rows is not None and (
+                type(self.max_train_rows) is not int or self.max_train_rows < self.min_train_rows):
+            raise ValueError("max_train_rows must be None or an integer >= min_train_rows.")
         if (isinstance(self.random_state, bool)
                 or not isinstance(self.random_state, int)
                 or not 0 <= self.random_state <= 2**32 - 1):
@@ -206,6 +210,7 @@ def _training_rows(snapshot: MarketSnapshot, horizon_bars: int) -> pd.DataFrame:
 
 
 def _split_rows(frame: pd.DataFrame, settings: ModelSettings) -> dict[str, pd.DataFrame]:
+    """Purge partition boundaries, then optionally retain only the latest fit rows."""
     if len(frame) < settings.assessment_rows:
         raise ValueError("Not enough mature labels for the assessment block.")
     assessment = frame.iloc[-settings.assessment_rows:].copy()
@@ -216,6 +221,8 @@ def _split_rows(frame: pd.DataFrame, settings: ModelSettings) -> dict[str, pd.Da
         raise ValueError("Not enough mature labels for the purged calibration block.")
     calibration = before_assessment.iloc[-settings.calibration_rows:].copy()
     fit = frame.loc[frame["label_end_time"] < calibration["close_time"].iloc[0]].copy()
+    if settings.max_train_rows is not None:
+        fit = fit.iloc[-settings.max_train_rows:].copy()
     if len(fit) < settings.min_train_rows:
         raise ValueError(f"Only {len(fit)} training rows after horizon purging; need {settings.min_train_rows}.")
     if fit["y_not_down"].nunique() != 2:
@@ -313,6 +320,8 @@ def train_candidate(
     frame = _training_rows(snapshot, settings.horizon_bars)
     blocks = _split_rows(frame, settings)
     fit, calibration, assessment_rows = (blocks[name] for name in ("fit", "calibration", "assessment"))
+    fit_rows_before_window_cap = int((frame["label_end_time"] < calibration["close_time"].iloc[0]).sum())
+    training_window_omitted_rows = fit_rows_before_window_cap - len(fit)
     names = list(snapshot.feature_names)
     x_fit, x_calibration, x_assessment = (block.loc[:, names] for block in (fit, calibration, assessment_rows))
     y_fit, y_calibration, y_assessment = (block["y_not_down"].to_numpy() for block in (fit, calibration, assessment_rows))
@@ -406,7 +415,10 @@ def train_candidate(
         "splits": {name: _block_summary(block) for name, block in blocks.items()},
         "mature_usable_rows": len(frame),
         "unknown_or_featureless_rows": len(snapshot.features) - len(frame),
-        "purged_rows": len(frame) - sum(len(block) for block in blocks.values()),
+        "max_train_rows": settings.max_train_rows,
+        "fit_rows_before_window_cap": fit_rows_before_window_cap,
+        "training_window_omitted_rows": training_window_omitted_rows,
+        "purged_rows": len(frame) - sum(len(block) for block in blocks.values()) - training_window_omitted_rows,
         "calibration_methods": calibration_methods,
         "prior_baseline_probability": prior,
         "model_timings": model_timings,

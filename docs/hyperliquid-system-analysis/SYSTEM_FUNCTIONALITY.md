@@ -1,6 +1,6 @@
 # System functionality and current limits
 
-Last verified: **2026-09-25**. [Index](README.md)
+Last updated: **2026-09-26** for 15-minute model fitting and qualified-only Paper behavior. [Index](README.md)
 
 ## Implemented capabilities
 
@@ -8,11 +8,11 @@ Last verified: **2026-09-25**. [Index](README.md)
 | --- | --- | --- |
 | Market maintenance | Independent per-symbol updates, bounded parallel work, completed-candle publications, retained local history and revision catch-up | [Market-data loop](loops/market-data.md) |
 | Features | Shared causal formulas, per-build calculation reuse, separate symbol datasets, explicit warmup/null/gap behavior and feature catalog | [Feature implementation](../../technicals/hyperliquid_features.py) |
-| Model fitting | Separate per-symbol/horizon bundles; chronological fitting, calibration and assessment; target-maturity exclusions at boundaries | [Model loop](loops/models.md) |
+| Model fitting | Separate per-symbol/horizon bundles due every 900s of source-candle progress; unchanged chronological fitting/calibration/assessment and target-maturity exclusions | [Model loop](loops/models.md) |
 | Qualification | Saved candidate and qualified-active distinction; probability-score comparisons with baselines; fresh active preference and labeled research fallback | [Model artifacts](../../ml/hyperliquid_model_artifacts.py) |
 | Forecast history | Recorded not-down/down probabilities before outcomes, once per symbol/interval/horizon/candle, with matured forward evaluation | [Model loop](loops/models.md) |
 | Opening Paper inventory | Configured mirror of real marked holdings/cash, validated roles, immutable opening baseline, existing-ledger resume | [Paper initialization](../../ml/hyperliquid_paper_seed.py) |
-| Portfolio allocation | Pool-level volatility/confidence sizing, directional account roles, per-symbol/pool/account constraints, virtual collateral transfers | [Accounting and risk](PAPER_ACCOUNTING_AND_RISK.md) |
+| Portfolio allocation | Fresh Qualified forecasts drive sizing/transfers; otherwise hold current exposure subject to stop/cooldown and per-symbol/pool/account risk reductions | [Paper loop](loops/paper.md) |
 | Simulated execution | Spot/perp book validation, finite shared depth, rounded partial fills, fee/slippage assumptions, retained execution details | [Paper market simulation](../../ml/hyperliquid_paper_market.py) |
 | Paper journal | Transactional cycles, fills, transfers, decisions, funding, equity, events and opening inventory | [Paper ledger](../../ml/hyperliquid_paper_ledger.py) |
 | Risk observations | Polled stops, recorded cooldowns and reduction paths; missing held-market marks can prevent an entire tick | [Paper loop](loops/paper.md) |
@@ -28,8 +28,9 @@ Last verified: **2026-09-25**. [Index](README.md)
    fitting cutoff and calibration cutoff are different clocks.
 2. A **qualified model** has satisfied the implemented retrospective probability
    criteria. It has not established profitable execution after fees, funding
-   and risk. A research model can participate in the currently configured
-   Paper policy without being relabeled qualified.
+   and risk. Research forecasts remain recorded and visible, but the current
+   Paper policy excludes them from allocation. Qualified publications require
+   active role plus an eligible matching model record.
 3. A **forecast** is an observation of a rolling horizon. Four 15-minute bars
    mean one hour, not four scheduled trades or a mandatory one-hour exit.
 4. A **desired target** does not prove cash is available or an executable fill
@@ -38,17 +39,20 @@ Last verified: **2026-09-25**. [Index](README.md)
    flag without current timestamps/process evidence is insufficient.
 6. A **gracefully stopped Paper process** preserves its ledger and holdings but
    performs no continued quote/risk checks. It does not flatten positions.
+7. A **one-for-one opening mirror** is a seed snapshot, not a promise to retain
+   identical holdings after the first risk or Qualified-signal allocation cycle.
 
 ## Current limits that matter when extending the system
 
 | Limit | Practical implication |
 | --- | --- |
 | Powder requires explicit activation and supported verified account routing | No default/background activation; subaccounts, vaults and portfolio margin are rejected in V1. |
+| Paper and Powder have different no-signal behavior | Current Paper holds exposure subject to risk reductions; Powder remains inactive and retains zero targets for missing/rejected signals on any future activation. Both consume the shared qualification setting. |
 | Powder cashflow performance and automatic transfers are not implemented | Actual equity/positions/fills are available after activation; P/L/drawdown/funding totals stay unavailable rather than using Paper estimates. |
 | No exchange liquidation/maintenance-margin simulation | Paper exposure/collateral checks and polled stops do not establish exchange liquidation protection. |
 | Visible-book simulation | No maker queue, guaranteed future liquidity or full exchange latency model; recorded partial fills remain partial. |
 | Funding uses a completed-perpetual-close proxy | Funding is labeled estimated and unavailable settlements remain pending errors. |
-| Models are evaluated bundles without a final all-data refit | Reserved calibration/assessment data are not silently added to estimator fitting after qualification. |
+| Models are evaluated bundles without a final all-data refit | Reserved calibration/assessment data are not silently added to estimator fitting after qualification. The 15-minute cadence does not shorten the reserved-window fit lag or change qualification checks. |
 | Runtime configuration is broader than the current UI | Data/models support configured membership; the Paper view currently discovers BTC/ETH/HYPE/ZEC at `15m/h4`. Universe/interval/horizon changes require a UI/adapter review. |
 | Paper uses the first configured model horizon | Adding model horizons does not create independent Paper horizon portfolios. |
 | Full snapshot rebuild/publication | Data writes complete changed Parquet snapshots; persistent incremental feature state and automatic snapshot retention are not implemented. |

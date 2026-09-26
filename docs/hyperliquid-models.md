@@ -77,14 +77,14 @@ installed by these commands.
 
 ## Shared universe and configuration
 
-The default model settings are in `configs/hyperliquid-models.json`:
+The checked-in model settings are in `configs/hyperliquid-models.json`:
 
 ```json
 {
   "version": 1,
   "markets_config": "hyperliquid-markets.json",
   "horizons_bars": [4],
-  "retrain_seconds": 3600,
+  "retrain_seconds": 900,
   "poll_seconds": 5,
   "retry_seconds": 60,
   "model_threads": 2,
@@ -108,14 +108,46 @@ columns in the input labels. The data pipeline initially provides horizons
 of 1, 4, and 16 candles. A one-hour horizon means a new one-hour-ahead forecast
 on each completed 15-minute candle; it does not mean four precommitted trades.
 
-The initial retraining cadence is **hourly**, while a fresh one-hour-ahead
-prediction is generated for each new 15-minute candle. Retraining follows
-elapsed candle history since the candidate's input snapshot, so the few
-seconds spent fitting do not gradually move the schedule later. This is a
-starting cadence; use measured runtime and forward evaluation to compare
-alternatives.
+The current retraining cadence is **every 15 minutes** (`retrain_seconds=900`),
+changed from hourly on 2026-09-26. A fresh one-hour-ahead prediction is still
+generated for each new 15-minute candle. Retraining follows elapsed candle
+history since the candidate's input snapshot and requires a changed source
+run, so fitting duration does not gradually move the schedule later. This is
+an explicit configuration override; the loader's fallback default remains
+3,600 seconds when the setting is omitted.
 Changing training settings requires a runtime restart; symbol membership
 continues to come from the shared market config.
+
+### Optional fitting-window cap (not enabled)
+
+`max_train_rows` is an available configuration field, but it was **not enabled**
+after the September 26 offline comparison. Production remains uncapped with
+192 calibration rows and 288 assessment rows, as shown above. Omitting the field
+or setting it to JSON `null` selects the Python default `None` and keeps all
+eligible fitting rows. A configured cap must be an integer at least
+`min_train_rows`; booleans, fractional values and smaller caps are rejected.
+
+The implementation first constructs the chronological assessment/calibration
+blocks and purges overlapping label horizons. It then removes only the oldest
+rows of the remaining fitting block, retaining at most `max_train_rows` recent
+rows. Calibration and assessment rows are unchanged. Minimum fitting size and
+the presence of both target classes are checked after the cap. The cap does not
+move the fitting end time forward or shorten the reserved-window fitting lag.
+Its value is included in the saved model settings that identify the recipe.
+
+New reports distinguish recency-window omissions from horizon exclusions:
+
+| Report field | Meaning |
+| --- | --- |
+| `max_train_rows` | Requested cap, or `null` for uncapped fitting |
+| `fit_rows_before_window_cap` | Mature fitting rows available after horizon purging, before the optional cap |
+| `training_window_omitted_rows` | Old fitting rows removed by the cap; zero when uncapped |
+| `purged_rows` | Rows excluded at label-horizon partition boundaries; excludes window omissions |
+| `splits.fit.rows` | Rows actually used to fit the estimators and their preprocessing |
+
+See [model settings and splitting](../ml/hyperliquid_models.py) and
+[configuration validation](../ml/hyperliquid_model_config.py). This capability
+does not select or activate a different production training policy by itself.
 
 ## Work scheduling and model recipe
 
@@ -173,6 +205,14 @@ proof of future profitability. The runtime separately records forecasts before
 their outcomes arrive, then appends matured outcomes and forward metrics.
 Forecasts are immutable per symbol, interval, horizon, and decision close: a
 later model cannot rewrite an earlier forecast from the same candle.
+
+The 15-minute cadence keeps the same qualification comparisons and partition
+sizes. With regular complete input, consecutive builds shift the 288-row
+assessment by one 15-minute row, sharing 287 rows; catch-up or missing usable
+rows can change that step. More frequent candidates do not guarantee more
+Qualified models. They also do not shorten the reserved-window fitting lag
+(123 hours in the first measured run above); exact cutoffs remain in each
+report.
 
 Probability metrics do not include trading costs, funding, liquidation risk,
 or a tested position-sizing policy. This layer produces research forecasts;

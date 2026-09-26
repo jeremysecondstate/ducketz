@@ -3,8 +3,18 @@
 Last source verification: **2026-09-25**. This is a code/configuration audit,
 not a claim that a saved PID or worker is currently alive. Commands below use
 `C:/dev/ducketz` as the working directory and the supplied datastore root.
+Model fitting cadence updated **2026-09-26** to 900 seconds.
 Read [the system overview](README.md) and [loop inventory](LOOP_INVENTORY.md)
-before changing process ownership. No installed scheduler is assumed here.
+before changing process ownership. The separately configured
+[Operations Watch](OPERATIONS_WATCH.md) performs a compact check every 30 minutes,
+with conditional Paper recovery and read-only Powder monitoring. It requires
+the local app/PC to be running and is not a Windows boot service.
+
+On September 26, the workers were restored after a Codex app restart using
+independent Windows process launches. See the dated
+[recovery audit](audits/2026-09-26-paper-session-recovery.md) for evidence and
+launch-lifetime limitations. Hidden windows alone do not establish that a
+worker can survive the launching host's exit.
 
 ## Keep four different questions separate
 
@@ -15,8 +25,10 @@ before changing process ownership. No installed scheduler is assumed here.
 | Is a forecast eligible for Paper? | Runtime validation of symbol/horizon, complementary probabilities, decision/model age, future outcome and source volatility | An order filled or the model will make money |
 | How has Paper performed? | Committed ledger equity, transfer-adjusted P/L, costs and drawdown | Live-money results or model qualification |
 
-`qualified` / `research` are evaluation labels. The supplied paper policy
-permits both. An alive model runtime can have a failed market slot while
+`qualified` / `research` are evaluation labels. The current Paper experiment
+requires qualified signals; Research or unavailable forecasts retain existing
+targets with independent risk checks. The previous mixed-model run is archived.
+An alive model runtime can have a failed market slot while
 retaining an older predictor. Read the slot errors even if its outer status is
 `running`. Powder's **Not connected** state is expected until the separate runner
 has recorded actual observations. See [Powder activation/recovery](POWDER_ACTIVATION.md),
@@ -112,7 +124,7 @@ the projection before treating the UI as complete. See [maintenance](MAINTENANCE
 | Data coordinator | Checks configuration about every second; at most two pipeline updates | Coordinator heartbeat versus each worker's candle close |
 | Data publication | 15m close + 5s; startup catch-up; failed/late attempts retry from 15s up to 120s | `lag_intervals_after_delay`, `expected_close_utc`, gap counts and `next_wake_utc` |
 | Model polling | Every 5s; one background training job globally | Poll heartbeat versus `training_market` and candidate publication |
-| Candidate fitting | Hourly source-candle progress; failed fit/publication retry delay 60s | Fit/calibration cutoffs versus publication time |
+| Candidate fitting | Every 900s (15m) of source-candle progress; failed fit/publication retry delay 60s | Fit/calibration cutoffs versus publication time; qualification gates remain unchanged |
 | Forecast publication | Each completed 15m candle; four bars = one-hour horizon | `decision_close_utc`, `created_at_utc`, `target_close_utc` |
 | Paper quote / risk cycle | About every 30s, plus work duration | Portfolio observation, errors and committed cycle |
 | Funding lookup | At most once per 300s in Paper | Funding cursor and missing settlement/price-proxy errors |
@@ -125,13 +137,23 @@ Values come from [market](../../configs/hyperliquid-markets.json),
 running configuration before applying them to another installation.
 
 Adapter age thresholds are display heuristics: data/forecast sources allow
-1,020s, candidates normally 7,200s, and other sources normally twice their
-declared cadence. Paper's decision-candle eligibility limit is **900s**, so a
+1,020s, candidates twice the configured fitting cadence (1,800s at 900s), and
+other sources normally twice their declared cadence. Paper's decision-candle
+eligibility limit is **900s**, so a
 forecast can fail Paper validation before its UI age badge becomes stale.
 The adapter assigns performance exports a 300s cadence and flags age above
 600s, while unchanged Paper cycles may wait 900s before exporting. That lag
 alert alone is expected in this interval and does not prove a worker fault.
 Missing/future timestamps or explicit errors can override age-only status.
+The [September 26 rollover audit](audits/2026-09-26-paper-forecast-rollover.md)
+found stale-forecast reductions followed by reentries around 32 seconds later.
+This was trading-policy turnover, not evidence that the model process needed a
+restart. The new qualified-only Paper recipe holds targets without an eligible
+signal, with risk checks still active; the legacy mixed-model recipe retains
+its prior zero-target fallback. An **Unavailable** historical fill label can mean
+a reduction with no forecast attribution; it is not a third model quality tier.
+See the [qualified-only experiment](audits/2026-09-26-qualified-only-paper.md).
+
 Paper also limits model age to 24h and executable book age to 45s under the
 supplied policy. Runtime `updated_at_utc` is not an individual book timestamp;
 do not derive a universal quote-age claim from that heartbeat.
@@ -224,7 +246,7 @@ flatten positions, continue risk checks, or pause with active protection.**
 | `training_failed` / `publication_failed` | Inspect slot error, event outcome and disk access. Preserve candidate/active history; forcing training is not a read-only repair. |
 | Research forecast / no promotion | Inspect qualification report and forward metrics; research output is not itself a runtime failure. |
 | `last_prediction_error` | Check predictor age, schema/source identity and latest feature row; a healthy outer runtime may still lack an eligible forecast. |
-| Paper `errors[coin]` | Read exact forecast validation reason: decision age, model age, horizon, probability, source row or matured outcome. Zero targets can trigger reductions only when executable quotes exist. |
+| Paper `errors[coin]` | Read exact forecast validation reason: decision age, model age, horizon, probability, source row or matured outcome. Qualified-only Paper holds targets without an accepted signal, while risk reductions require executable quotes. The legacy mixed-mode recipe uses zero targets. |
 | `quote_errors` / missing held mark | Read route/book error and `last_error`; a cycle can degrade. Do not label retained values fresh or substitute candle prices for execution. |
 | `funding_errors` | Check exact completed-candle proxy and funding cursor. Missing settlement evidence is not a zero cashflow. Preserve the cursor/history. |
 | Partial fills / holds / skips | Inspect requested, executed and unfilled quantities plus reason/policy. A target is not a fill; no action may be correct. |
@@ -237,7 +259,8 @@ then restore data → models → Paper. Confirm current coherent data, a valid
 forecast and quotes before expecting normal decisions. Existing Paper resumes
 its ledger and reconstructs stop cooldowns; preserve opening seed, policies,
 funding cursor and journals. Upstream-only interruption while Paper remains
-running can lead to stale-signal reductions, so decide that behavior explicitly.
+running can invalidate forecasts. Qualified-only Paper then holds targets with
+risk checks; legacy mixed-mode Paper can make stale-signal reductions.
 
 Record incident times, root/config identity, source/model/forecast/cycle IDs,
 first error and recovery in dated `audits/` evidence using

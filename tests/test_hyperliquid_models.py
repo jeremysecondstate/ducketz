@@ -154,6 +154,9 @@ def test_training_purges_label_horizons_and_preserves_unknown_tail():
     assert splits["calibration"]["rows"] == 50
     assert splits["assessment"]["rows"] == 60
     assert report["purged_rows"] == 8
+    assert report["max_train_rows"] is None
+    assert report["fit_rows_before_window_cap"] == splits["fit"]["rows"]
+    assert report["training_window_omitted_rows"] == 0
     assert report["unknown_or_featureless_rows"] == 4
     assert assessment["label_end_time"].max() == source.features["close_time"].iloc[-1]
     assert source.labels["future_return_4bar"].iloc[-4:].isna().all()
@@ -166,6 +169,63 @@ def test_training_purges_label_horizons_and_preserves_unknown_tail():
     # The small MLP deliberately hits its iteration cap; this stays inspectable.
     assert any("ConvergenceWarning" in warning for warning in report["warnings"])
     json.dumps(report, allow_nan=False)
+
+
+@pytest.mark.parametrize("cap", [None, 120, 160, 1000])
+def test_training_cap_keeps_latest_purged_fit_rows_and_same_later_blocks(cap):
+    frame = models._training_rows(snapshot(), 4)
+    full = models._split_rows(frame, settings())
+    capped = models._split_rows(frame, settings(max_train_rows=cap))
+    expected_fit = full["fit"] if cap is None else full["fit"].iloc[-cap:]
+    pd.testing.assert_frame_equal(capped["fit"], expected_fit)
+    for name in ("calibration", "assessment"):
+        pd.testing.assert_frame_equal(capped[name], full[name])
+    assert capped["fit"].label_end_time.max() < capped["calibration"].close_time.min()
+    assert capped["calibration"].label_end_time.max() < capped["assessment"].close_time.min()
+
+
+def test_capped_fit_report_separates_old_rows_from_horizon_purging():
+    source = snapshot()
+    frame = models._training_rows(source, 4)
+    full = models._split_rows(frame, settings())
+    result = models.train_candidate(source, settings(max_train_rows=160), model_factory=logistic_only)
+    report = result["report"]
+    assert report["splits"]["fit"]["rows"] == 160
+    assert report["max_train_rows"] == 160
+    assert report["fit_rows_before_window_cap"] == len(full["fit"])
+    assert report["training_window_omitted_rows"] == len(full["fit"]) - 160
+    assert report["purged_rows"] == 8
+    assert report["mature_usable_rows"] == (
+        sum(block["rows"] for block in report["splits"].values())
+        + report["purged_rows"] + report["training_window_omitted_rows"])
+    for name in ("calibration", "assessment"):
+        assert report["splits"][name] == models._block_summary(full[name])
+    latest_fit = full["fit"].iloc[-160:]
+    fitted = result["bundle"].estimators["logistic"]
+    np.testing.assert_allclose(fitted["imputer"].statistics_, latest_fit[list(models.FEATURE_NAMES)].median())
+    np.testing.assert_allclose(fitted["scaler"].mean_, latest_fit[list(models.FEATURE_NAMES)].mean())
+    assert report["splits"]["fit"]["first_decision_close_utc"] == latest_fit.close_time.iloc[0].isoformat()
+    json.dumps(report, allow_nan=False)
+
+
+def test_training_cap_rechecks_classes_in_retained_rows():
+    frame = models._training_rows(snapshot(), 4)
+    original_fit = models._split_rows(frame, settings())["fit"]
+    frame.loc[original_fit.index[-120:], "y_not_down"] = 1
+    assert models._split_rows(frame, settings())["fit"].y_not_down.nunique() == 2
+    with pytest.raises(ValueError, match="both down and not-down"):
+        models._split_rows(frame, settings(max_train_rows=120))
+
+
+@pytest.mark.parametrize("cap", [True, False, 0, -1, 119, 120.0, "120"])
+def test_training_cap_validates_type_and_minimum(cap):
+    with pytest.raises(ValueError, match="max_train_rows"):
+        settings(max_train_rows=cap)
+
+
+def test_training_cap_does_not_bypass_minimum_mature_fit_history():
+    with pytest.raises(ValueError, match="training rows"):
+        models.train_candidate(snapshot(180), settings(max_train_rows=120), model_factory=logistic_only)
 
 
 def test_fit_preprocessing_does_not_observe_later_features():

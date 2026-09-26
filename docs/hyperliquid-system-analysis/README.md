@@ -1,6 +1,6 @@
 # Hyperliquid portfolio system analysis
 
-Last verified: **2026-09-25** against repository code and configuration.
+Last updated: **2026-09-26** for qualified-only Paper and 15-minute model retraining.
 
 This is the maintained system-level reference for the Hyperliquid data,
 forecasting, paper portfolio and H.Y.P.E.R. operations workspace. It follows the
@@ -16,11 +16,13 @@ Three analysis/simulation runtimes and an optional user-activated Powder runner 
 1. **Market data:** one coordinator maintains separate BTC, ETH, HYPE and ZEC
    15-minute candle, feature and label publications using shared code.
 2. **Models:** one runtime consumes completed publications, fits per-market
-   models on an hourly source-candle schedule, and records a new one-hour
+   models on a 15-minute source-candle schedule, and records a new one-hour
    forecast for each completed 15-minute candle. Model polling is five seconds;
    polling is not fitting or a new forecast.
-3. **Paper portfolio:** one runtime applies forecasts accepted by its freshness
-   and policy checks, including research forecasts under the current configuration.
+3. **Paper portfolio:** one runtime allocates only from fresh, validated Qualified
+   forecasts under the current configuration. Without one, it holds current
+   exposure subject to stop/cooldown and exposure-cap reductions; rejected
+   signals cannot cause new exposure or virtual transfers.
    It performs account-local risk checks, observes public books, and commits simulated fills,
    virtual transfers, funding estimates and valuations to a SQLite ledger.
    Its configured quote/risk polling interval is 30 seconds.
@@ -36,8 +38,10 @@ Paper balances. Actual P/L/funding accounting and automatic transfers remain
 planned. The existing **Hyperliquid Duckets** manual workspace shares account
 ownership locks with Powder so local manual mutations cannot race the runner.
 
-The entry points do not install an operating-system startup task or a Codex
-automation. Process liveness, external scheduler configuration, qualification,
+The entry points do not install an operating-system startup task. The separately
+configured [Operations Watch](OPERATIONS_WATCH.md) checks local health every
+30 minutes and can recover interrupted Paper operations. Process liveness,
+external scheduler configuration, qualification,
 balances and performance must be checked at the time of operation; this index
 does not declare them permanently current.
 
@@ -55,6 +59,7 @@ does not declare them permanently current.
 | How are P/L, transfers, sizing and risk interpreted? | [Paper accounting and risk](PAPER_ACCOUNTING_AND_RISK.md) |
 | Where does each UI value come from? | [UI and data contracts](UI_AND_DATA_CONTRACTS.md) |
 | How do I inspect health, diagnose a failure or operate a runtime? | [Monitoring and recovery](MONITORING.md) |
+| What does the 30-minute scheduled watch check and recover? | [Operations Watch](OPERATIONS_WATCH.md) |
 | What must be updated when the implementation changes? | [Maintenance checklist and change-impact matrix](MAINTENANCE.md) |
 | What changed in this reference set? | [Changelog](CHANGELOG.md) |
 
@@ -72,10 +77,21 @@ restart. Small inherited spot balances in Alex and Jeremy remain unmanaged.
 The opening marked equity, rather than an inherited position's historical cost
 basis, defines strategy performance since Paper began.
 
-The automatic portfolio runtime accepts Paper mode only. Real-money automated
-execution, exchange reconciliation and live portfolio controls are not
-implemented by this stack. A manual real-account action does not automatically
-change the independently evolving Paper ledger.
+The September 26 experiment sets `require_qualified_forecasts=true` and records
+recipe `direction-volatility-v2-qualified-hold`. Its fresh opening mirror retains
+the observed inventory/cash one-for-one before the first allocation/risk cycle.
+The prior mixed Research/Qualified ledger is preserved in
+`C:/DATASTORE/hyperliquid/_paper_archives/20260926T073643Z-research-and-qualified`;
+its P/L and decisions are not the new experiment's opening history. Verify the
+new opening snapshot and heartbeat before treating the experiment as running.
+
+The Paper runtime accepts Paper mode only. The separate Powder runner implements
+real-money execution and reconciliation after explicit user activation; the
+Operations Watch does not activate or restart it. A manual real-account action
+does not automatically change the independently evolving Paper ledger.
+Powder reads the same qualification setting on a future activation, but its
+missing/rejected-signal policy still uses zero targets; it does not inherit
+Paper's no-signal hold behavior.
 
 ## Evidence and documentation authority
 
@@ -109,6 +125,10 @@ code. Update this reference set and any affected companion guide with the same
 behavioral change; see [Maintenance](MAINTENANCE.md).
 
 ## Source entry points
+
+Latest experiment: [September 26 model comparison and Paper refresh](audits/2026-09-26-model-comparison-and-paper-refresh.md).
+The tested training alternatives were rejected; the fresh mirror retains the
+current recipe. Earlier run evidence remains archived.
 
 - [Market configuration](../../configs/hyperliquid-markets.json),
   [model configuration](../../configs/hyperliquid-models.json),
